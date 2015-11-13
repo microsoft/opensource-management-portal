@@ -20,7 +20,6 @@ router.get('/', function(req, res, next) {
 });
 
 router.use('/thanks', require('./thanks'));
-router.use(require('./microsoft-specific'));
 
 router.use(require('./index-authenticated'));
 
