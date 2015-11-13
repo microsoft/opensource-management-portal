@@ -1,0 +1,53 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../../layout
+
+block content
+  div.container
+
+    if entry.type == 'repo'
+      h1 Edit Repo Request
+      p You have this ability since you are an organization repo approver.
+
+      if entry.active === true
+        form(method='post')
+          table.table.table-bordered
+            thead
+              tr
+                th Repo Name
+                th Organization
+                th Initial Visibility
+            tbody
+              tr
+                td
+                  p
+                    input.form-control(type='text', name='repoName', value=entry.repoName)
+                td
+                  p= entry.org
+                td
+                  p
+                    select.form-control#inputVisibility(name='repoVisibility')
+                      option(value='private', selected=entry.repoVisibility == 'private') Private
+                      option(value='public', selected=entry.repoVisibility == 'public') Public
+          table.table.table-bordered
+            thead
+              tr
+                th Public Repo Description & Optional URL
+            tbody
+              tr
+                td
+                  p
+                    strong Repo Description
+                    br
+                    input.form-control(type='text', name='repoDescription', value=entry.repoDescription)
+                  p
+                    strong Optional Repo URL
+                    br
+                    input.form-control(type='text', name='repoUrl', value=entry.repoUrl)
+
+          input.btn.btn-primary.btn-sm(type='submit', name='save', value='Save Changes')
+      else
+        p.lead This request has already been closed. NO ACTION REQUIRED.

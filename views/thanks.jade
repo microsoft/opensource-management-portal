@@ -1,0 +1,44 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends layout
+
+block content
+  div.container
+    div.row(style='margin-top:48px')
+      div.col-md-5.col-lg-5.col-sm-5
+        h1.huge Great OSS.
+        p.lead.
+          This application is powered by the work of a great number or developers, 
+          engineers, services & experts. Thanks!
+      div.col-md-7.col-lg-7.col-sm-7
+        if components
+          h2 Powered by
+          h4
+            a(href='https://nodejs.org/', target='_new') Node.js
+          h4
+            a(href='https://azure.microsoft.com/en-us/services/app-service/', target='_new') Azure App Service
+          h4
+            a(href='https://azure.microsoft.com/en-us/services/storage/', target='_new') Azure Storage Service
+          h4
+            a(href='https://azure.microsoft.com/en-us/services/application-insights/', target='_new') Microsoft Application Insights
+          h4
+            a(href='https://developer.github.com/v3/', target='_new') GitHub API
+
+          h2 Node.js Modules
+          each details, component in components
+            h4
+              a(href=details.homepage, target='_new')= component
+              if details.description
+                small= ' ' + details.description
+          h2 Front-end Components
+          h4
+            a(href='https://getbootstrap.com/', target='_new') Bootstrap
+          h4
+            a(href='https://jquery.com/', target='_new') jQuery
+          h4
+            a(href='http://timeago.yarp.com/', target='_new') Timeago for jQuery
+          h4
+            a(href='https://github.com/natinusala/jquery-uitablefilter', target='_new') UITableFilter for jQuery, multi-column fork

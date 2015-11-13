@@ -1,0 +1,27 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+block content
+  div.container
+
+    h1 Team Properties
+
+    form.form-horizontal(method='post')
+
+      div.form-group
+        label.col-sm-2.control-label(for='inputGitHubName') GitHub Team Name
+        div.col-sm-10
+          input.form-control#inputGitHubName(type='text', value=team.name, placeholder='GitHub Team Name', name='ghname')
+
+      div.form-group
+        label.col-sm-2.control-label(for='textareaDescription') Description
+        div.col-sm-10
+          textarea.form-control#textareaDescription(name='description', rows='3', placeholder='Description')= team.description
+
+      div.form-group
+        div.col-sm-12
+          input.btn.btn-primary(type='submit',value='Save changes',data-transition='fade', data-theme='c')

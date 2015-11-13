@@ -1,0 +1,63 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../../layout
+
+block content
+  div.container
+
+    h1
+      span.capitalize= repo.name
+      | 
+      small Visibility
+
+    if repo && repo.private === true
+
+      p.lead Are you ready to go public?
+
+      p As a team maintainer for a team that manages this repo, you have the ability to take this repo from <strong>private and hidden</strong> to public. Once it is public, anyone will be able to see the repo, fork the repo, and start submitting pull requests.
+
+      p Things to keep in mind before going public:
+
+      ul
+        li Any required legal sign-off
+        li Does your repo have a nice README.md file?
+        li Does your repo have a LICENSE.TXT file?
+        li Are your source files marked with the appropriate open source license headers?
+        li Are you proud of the current organization of files and folders?
+        li Have you placed information about accepting contributions in the README.md or CONTRIBUTING.md? Consider onboarding with a CLA bot to help manage requests.
+        li Have you double-checked that there are no unexpected or private binaries?
+        li Is your management team aware of this action?
+
+      p Once a repo goes public it may be exposed on GitHub feeds showing new repos, so if your project is not public or not announced yet, realize that it is hard to turn back.
+
+      form(method='POST')
+        table.table
+          tbody
+            tr
+              td.twentypercent
+                p Public Repo Description
+              td
+                p
+                  input.form-control(name='description', type='text', value=repo.description)
+            tr
+              td.twentypercent
+                p Optional Repo Website URL
+              td
+                p
+                  input.form-control(name='homepage', type='text', value=repo.homepage)
+            tr
+              td.twentypercent
+                p Commit
+              td
+                p
+                  input.btn.btn-primary(type='submit', value='Go public')
+
+    else
+
+      p This repo is already public, no action is currently available.
+
+      p If you need to take this repo private (which could cause data loss with other forks), please contact the GitHub administrators for the organization to perform this actual manually.
+

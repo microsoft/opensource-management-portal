@@ -1,0 +1,28 @@
+# Node
+node_modules/
+npm-debug.log
+
+# OS X
+.DS_Store
+
+# Local test files
+sync-*.js
+
+# Local development environment scripts
+bin/local*
+bin/contoso
+app.yaml
+
+# Tooling
+.vscode/
+
+# Editors
+.vscode/
+
+# Other routes and components that need not be included here
+docs/
+routes/microsoft-specific*
+routes/friends/
+routes/docs.js
+views/docs/
+public/css/docs.css

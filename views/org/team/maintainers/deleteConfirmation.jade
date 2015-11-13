@@ -1,0 +1,27 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../../layout
+
+block content
+  div.container
+
+    h1 Downgrade maintainer "#{maintainer.ghu}" from team "#{team.name}"?
+
+    p This action will remove downgrade the user to a member instead of a team maintainer.
+
+    form.form-horizontal(method='post')
+  
+      div.form-group
+        div.col-sm-2.control-label Team Title
+        div.col-sm-10.control-label(style='text-align: left')= team.name
+  
+      div.form-group
+        div.col-sm-2.control-label GitHub Username to remove
+        div.col-sm-10.control-label(style='text-align: left')= maintainer.ghu || maintainer.ghid
+
+      div.form-group
+        div.col-sm-12
+          input.btn.btn-primary(type='submit',value='Confirm downgrade to member',data-transition='fade', data-theme='c')

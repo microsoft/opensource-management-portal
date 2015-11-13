@@ -1,0 +1,27 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../../layout
+
+block content
+  div.container
+
+    if results
+      h1.capitalize #{pendingRequest.org}/#{pendingRequest.repoName} Repository Created
+      p
+        a.btn.btn-muted.btn-sm(href='https://github.com/' + pendingRequest.org + '/' + pendingRequest.repoName, target='_new')
+          | https://github.com/#{pendingRequest.org}/#{pendingRequest.repoName}
+          | 
+          i.glyphicon.glyphicon-share-alt
+      p
+        | The repo #{pendingRequest.repoName} has been created in the #{pendingRequest.org} organization successfully.
+        if pendingRequest.repoVisibility == 'private'
+          br
+          small Since the new repo is private, depending on the teams selected by the requestor, <em>you</em> may not be able to view this new repo, even as a repo approver. FYI.
+      if results.length
+        h3 Operations Performed
+        ul
+          each result in results
+            li(style=result.error ? 'color:red' : undefined)= result.message

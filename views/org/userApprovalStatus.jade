@@ -1,0 +1,62 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block content
+  div.container
+    if entry.active === true
+      h1 Awaiting action by an approver
+    else if entry.active === false
+      h1 Issue closed or resolved
+    h4 REQUEST GUID
+    p= entry.RowKey
+    h4 STATUS
+    p
+      if entry.active === true
+        | Awaiting team maintainer action
+      else if entry.active === false
+        | Closed / Resolved
+      else
+        | Unknown
+    if entry.justification 
+      h4
+        | BUSINESS JUSTIFICATION 
+        small written by #{entry.ghu}
+      blockquote= entry.justification
+    if entry.active === true
+      h4 DETAILS
+      p
+        if team
+          a.btn.btn-sm.btn-default(href='https://github.com/' + team.org.name + '/' + team.org.getWorkflowRepository().name + '/issues/' + entry.issue, target='_new') GitHub Tracking Issue# #{entry.issue}
+      p
+        small This is the issue created on GitHub and assigned to a team maintainer to handle the request. Note that the issue is visible by everyone who is a member of the organization on GitHub, so it is not the best place to provide specific justification information... but if you bump the issue, the contact should hopefully get a reminder to take a look.
+      h4 ACTIONS
+      form(method='post', action='/approvals/' + entry.RowKey + '/cancel')
+        input.btn.btn-primary.btn-sm(type='submit', value='Cancel My Request')
+
+    else
+      table.table
+        thead
+          tr
+            th Decision
+            th Decision by
+            th Actions
+            th Decision note
+            th Decision made
+        tbody
+          tr
+            td= (entry.decision && entry.decision.toUpperCase) ? entry.decision.toUpperCase() : 'n/a'
+            td= entry.decisionBy || 'Unknown Decisionmaker'
+            td
+              if entry.decisionEmail
+                a.btn.btn-sm.btn-default(href='mailto:' + entry.decisionEmail) Email the maintainer
+            td= entry.decisionNote || 'No notes left regarding this decision by the decisionmaker.'
+            td
+              p
+                if entry.decisionTime && entry.decisionTime.toISOString
+                  time(datetime=entry.decisionTime.toISOString())= entry.decisionTime.toDateString()
+                else
+                 | n/a

@@ -1,0 +1,30 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends layout
+
+block content
+  div.container
+    div.row
+      div.col-md-6.col-lg-6.col-sm-6
+        h1 Hi, #{user.github.displayName || user.github.username}
+        h2 #{config.companyName} employees & vendors
+        p.lead To join the organization, please authenticate with Azure Active Directory to continue.
+        p
+          a.btn.btn-primary(href='/signin/azure') Sign in to #{config.companyName} IT
+        p The initial sign-up process should take <strong>2-15 minutes</strong>, depending on how your GitHub account is configured and your familiarity with modern multi-factor authentication as required by Microsoft corporate policy for securing credentials.
+        p This onboarding experience will:
+        ul
+          li Validate the corporate identity to associate with #{user.github.username}
+          li Step you through joining the GitHub organization
+          li Verify and/or configure the two-factor security of your GitHub account
+          li Allow you to request access to any team projects
+      div.col-md-6.col-lg-6.col-sm-6
+        div.alert-gray(style='padding:12px')
+          h3 Outside Collaboration
+          p.lead Are you expecting to collaborate as an external third party, but do not have #{config.companyName} corporate credentials?
+          p To participate as an <em>Outside Collaborator</em> with the username "#{user.github.username}", a maintainer from the team you are collaborating with will need to add your username directly.
+          p
+            small This process changed in October 2015 with the rollout of a new permission system for organizations from GitHub.

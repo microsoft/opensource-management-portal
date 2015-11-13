@@ -1,0 +1,25 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../../layout
+
+block content
+  div.container
+
+    h1.capitalize
+      =repo.full_name
+      | 
+      small Delete
+
+    p This will delete the repo. It may not delete forks if the repo is public. If the repo is private, data loss could occur.
+
+    form(method='POST')
+      p.lead Are you sure that you want to delete this repo?
+      hr
+      p
+        input.capitalize.btn.btn-lg.btn-primary(type='submit', value='Delete ' + repo.name)
+      hr
+      p
+        a.btn.btn-lg.btn-default(href='../') Cancel

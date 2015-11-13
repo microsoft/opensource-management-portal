@@ -1,0 +1,101 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block content
+  div.container
+
+    p
+      a.btn.btn-sm.btn-default(href='/organization/') Back
+
+    h1 #{errors.length} Active (Untriaged) Errors
+    
+    div.container
+      if errors && errors.length && errors.length > 0
+        each error in errors
+          form(method='post', action='/organization/errors/' + error.PartitionKey + '/' + error.RowKey + '/')
+            input.btn.btn-sm.btn-primary(type='submit', name='action', value='Delete')
+            | &nbsp; &nbsp; 
+            input.btn.btn-sm.btn-default(type='submit', name='action', value='Archive')
+            | &nbsp; &nbsp; 
+            if error.t
+              - var seconds = (error.t * 1)
+              time.lead(datetime=(new Date(seconds)).toISOString())= (new Date(seconds)).toDateString()
+          if error.url
+            h3
+              = error.url
+              if error.status
+                | &nbsp; 
+                HTTP #{error.status}
+          if error.e
+            h2= error.e
+          if error.json
+            - var json = JSON.parse(error.json)
+            if json
+              h5 METADATA
+              ul.list-inline
+                each js, val in json
+                  if val == 'innerError'
+                    // Painful but important look into objects while avoiding circular JSON references by hand in Jade
+                    li <strong>innerError</strong>:
+                    ul
+                      each js2, val2 in json.innerError
+                        if js2.toString() == '[object Object]'
+                          li <strong>#{val2}</strong>:
+                          ul
+                            each js3, val3 in js2
+                              if js3.toString() == '[object Object]'
+                                li <strong>#{val3}</strong>:
+                                ul
+                                  each js4, val4 in js3
+                                    if js4.toString() == '[object Object]'
+                                      li <strong>#{val4}</strong>:
+                                      ul
+                                        each js5, val5 in js4
+                                          li <strong>#{val5}:</strong>: #{js5}
+                                    else
+                                      li <strong>#{val4}</strong>: #{js4}
+                              else
+                                li <strong>#{val3}</strong>: #{js3}
+                        else
+                          li <strong>#{val2}</strong>: #{js2}
+                  else
+                    li <strong>#{val}</strong>: #{js}
+          div.row
+            div.col-sm-6.col-md-6.col-lg-6
+              h5 CORRELATION ID
+              p= error.cid
+            div.col-sm-6.col-md-6.col-lg-6
+              h5 USERNAME
+              p
+                a.btn.btn-muted.btn-sm(href='/organization/whois/github/' + error.ghu, target='_new')= error.ghu
+                | &nbsp; 
+                a.btn.btn-muted.btn-sm(href='/organization/whois/github/' + error.ghu, target='_new') Whois
+          div.row
+            div.col-sm-6.col-md-6.col-lg-6
+              h5 PARTITION KEY
+              p= error.PartitionKey
+            div.col-sm-6.col-md-6.col-lg-6
+              h5 ROW KEY
+              p= error.RowKey
+          div.row
+            div.col-sm-6.col-md-6.col-lg-6
+              h5 HOST
+              p= error.host
+            div.col-sm-6.col-md-6.col-lg-6
+              h5 USER AGENT
+              p= error.ua
+          div.row
+            div.col-sm-6.col-md-6.col-lg-6
+              if error.referer
+                h5 REFERER
+                p= error.referer
+            div.col-sm-6.col-md-6.col-lg-6
+          if error.stack
+            pre= error.stack
+          hr
+      else
+        p No active errors found.

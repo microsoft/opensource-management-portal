@@ -1,0 +1,36 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../../layout
+
+block content
+  div.container
+
+    h1 Transfer your maintainance role of team "#{team.name}"?
+
+    p This action will transfer your team maintainer role for this specific team to another employee.
+    
+    p Your access will be downgraded to member. If you wish to leave the team all-together, you will then have to remove yourself from the team, too.
+
+    form.form-horizontal(method='post')
+  
+      div.form-group
+        div.col-sm-2.control-label Team Title
+        div.col-sm-10.control-label(style='text-align: left')= team.name
+  
+      div.form-group
+        div.col-sm-2.control-label Your GitHub Username
+        div.col-sm-10.control-label(style='text-align: left')= user.github.username || user.github.id
+
+      div.form-group
+        label.col-sm-2.control-label(for='inputMaintainer') New Team Maintainer
+        div.col-sm-10
+          select.form-control#inputMaintainer(name='newMaintainer')
+            each employee in employees
+              option(value=employee.ghid, selected=employee.ghid == user.github.id)= employee.aadupn + ' (' + employee.ghu + ')'
+
+      div.form-group
+        div.col-sm-12
+          input.btn.btn-primary(type='submit',value='Confirm transfer of role',data-transition='fade', data-theme='c')

@@ -1,0 +1,61 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+block content
+  div.container
+
+    h1 Team Security Check
+
+    p Modern security (two-factor) is required to help preserve the security of credentials, the organization and the company.
+
+    if noncompliantUsers && noncompliantUsers.length > 0
+
+      p Your team has #{noncompliantUsers.length} user(s) that are not compliant. Please have them enable two-factor authentication on their GitHub account.
+
+      table.table
+        thead
+          tr
+            th Avatar
+            th Modern Security
+            th GitHub Username
+            th Authorization Type
+            th Identity
+            th Actions
+        tbody
+          for teamMember in noncompliantUsers
+            tr
+              td
+                p
+                  if teamMember.avatar()
+                    img(alt=teamMember.login, src=teamMember.avatar(100) + '&s=100', style='margin-right:10px;width:50px;height:50px', width=50, height=50, data-user=teamMember.id)
+              td
+                p
+                  strong(style='color:red') NO 2FA
+              td
+                a.btn.btn-sm.btn-muted(href='https://github.com/' + teamMember.login, title=teamMember.id)= teamMember.login
+              td
+                if teamMember.link
+                  p Active Directory
+                else
+                  p
+                    strong UNKNOWN
+                    br
+                    small This user may have been added by a GitHub administrator for the organization. The user is not registered in the table of identities.
+              td= teamMember.contactEmail()
+              td
+                form(method='get', action=teamUrl + 'members/' + teamMember.login + '/remove')
+                  if (teamMember.contactEmail())
+                    p
+                      a.btn.btn-sm.btn-default(href='mailto:' + teamMember.contactEmail()) Send mailto
+                  p
+                    input.btn.btn-sm.btn-default(type='submit', value='Remove from team', data-transition='fade', data-theme='c')
+    else
+      h2
+        i.glyphicon.glyphicon-ok
+        | 
+        | Your team is OK
+      p Your team is in full compliance at this time. Thank you for your efforts.

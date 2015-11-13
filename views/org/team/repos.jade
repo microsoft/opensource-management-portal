@@ -1,0 +1,67 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+block content
+  div.container
+
+    h1 Repositories
+    p These repos are associated with this team. If you believe the team needs additional repos assigned to it, please contact your org's GitHub administrators.
+
+    if repos && repos.length && repos.length > 0
+      for repo in repos
+        if true == true
+          h2
+            = repo.name
+            | &nbsp;
+            small
+              if repo.private === true
+                span.label.label-danger private
+              else
+                span.label.label-success public
+
+          if repo.description
+            p.lead= repo.description
+          table.table.table-bordered
+            head
+              tr
+                th(colspan='2') Actions
+            tbody
+              tr
+                td
+                  p
+                    a.btn.btn-default.btn-sm(href=teamUrl + 'repos/' + repo.name + '/properties') Change description or rename the repo
+                td
+                  p Change basic properties of the repo.
+              tr
+                td
+                  p
+                    a.btn.btn-default.btn-sm(href=teamUrl + 'repos/' + repo.name + '/visibility/swap')= repo.private ? 'Make this repo public' : 'Make repo private'
+                td
+                  p Change the visibility of the repo.
+              tr
+                td
+                  p
+                    a.btn.btn-default.btn-sm(href=teamUrl + 'repos/' + repo.name + '/collaborators') Manage Collaborators
+                td
+                  p Manage Outside Collaborators and one-off corporate collaborator permissions.
+              tr
+                td
+                  p
+                    a.btn.btn-default.btn-sm(href=repo.html_url, target='_new')
+                      | View repo on GitHub 
+                      i.glyphicon.glyphicon-share-alt
+                td
+                  p
+                    = repo.html_url
+              tr
+                td
+                  p
+                    a.btn.btn-default.btn-sm(href=teamUrl + 'repos/' + repo.name + '/delete') Delete this repository
+                td
+                  p Opens a page to confirm deletion.
+    else
+      p No repos.

@@ -1,0 +1,106 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block js_doc_ready
+  | var validatePermissions = function (){
+  | var message = 'You must select at least one write or admin team. Otherwise you will be unable to use your repo once created!';
+  each selectTeam in selectTeams
+    | var itemValue = $('#existingTeamPermission#{selectTeam.number}').val();
+    | if (itemValue == 'admin' || itemValue == 'push') { message = null; }
+  | return message;
+  | };
+  | $('#permissionsForm').on('submit', function(e) { e.preventDefault(); var message = validatePermissions(); if (!message) { this.submit(); } else { alert(message); } });
+
+block content
+  div.container
+
+    h1 Request a new #{org.name} repo
+
+    form.form-horizontal#permissionsForm(method='post')
+      h5 Name
+      p
+        input.form-control#inputGitHubName(type='text', placeholder='Repo Name (no spaces)', name='name')
+      h5 Description
+      p
+        input.form-control#inputGitHubName(type='text', placeholder='Description for the public', name='description')
+
+      h4 Business Justification and Open Source Approval
+
+      p Please provide more information about your request, including business justification and the context of your anticipated involvement.
+      p
+        small This request and your justification note will be stored for historical reasons as long as you maintain access to the team, so consider that your request may be viewed by engineering managers, directors and CVPs as they review the open source activities and compliance goals that are in place. 
+      p
+        textarea.form-control(rows=3, name='justification', placeholder='Justification, open source approval information, and/or context for team maintainers and leadership.')
+
+      h4 Initial Visibility
+      
+      p As the team maintainer, you can take your repo "public" using this same portal site at any time in the future.
+
+      div.form-group
+        span.col-sm-2.control-label Repo Visibility
+        div.col-sm-10
+          if allowPrivateRepos === true
+            p
+              input(name='visibility', type='radio', value='private', checked='checked')
+              | 
+              | Private
+            p
+              input(name='visibility', type='radio', value='public')
+              | 
+              | Public
+          else
+            p
+              input(name='visibility', type='radio', value='public', checked='checked', disabled='disabled')
+              | 
+              | Public
+
+      h4 Teams and Permissions
+      p Teams contain specific permissions per repo. For as many teams as are needed, please select the team and maximum permission level for this repo.
+      p If you need new teams (for write access), create them before submitting this request. Teams can be created directly on GitHub at <a href="https://github.com/orgs/#{orgName}/new-team" target="_new">https://github.com/orgs/#{orgName}/new-team</a>.
+
+      div.container
+        input(type='hidden', name='teamCount', value=selectTeams.length)
+        each selectTeam in selectTeams
+          div.row
+            div.col-sm-12.col-md-12.col-lg-12
+              if selectTeam.id && selectTeam.info
+                h5
+                  | Recommended Team
+                  | 
+                  small= selectTeam.name
+                p= selectTeam.info
+              else
+                h5 Optional Team ##{selectTeam.number}
+          div.row
+            div.col-sm-7.col-md-7.col-lg-7
+              p
+                select.form-control(name='existingTeam' + selectTeam.number)
+                  option(value=0, selected=selectTeam.id ? 'selected' : undefined) None
+                  each team in teams
+                    option(value=team.id, selected=team.id == selectTeam.id ? 'selected' : undefined)= team.name
+            div.col-sm-5.col-md-5.col-lg-5
+              p
+                select.form-control(name='existingTeamPermission' + selectTeam.number, id='existingTeamPermission' + selectTeam.number)
+                  option(value='pull', selected='selected') Read (Pull, Fork)
+                  option(value='push') Write (Push, Accept PRs)
+                  option(value='admin') Manage (Web Hooks, Outside Collaborators, Settings)
+      if approvers
+        h4 Request Approver#{approvers.length > 1 ? 's' : ''} for #{org.name}
+        p Repo decisions for this organization are made by the following employee#{approvers.length > 1 ? 's' : ''}:
+        p
+          for teamMember in approvers
+            span.person-tile
+              if teamMember.avatar()
+                img(alt=teamMember.login, src=teamMember.avatar('80'), style='margin-right:10px;width:20px;height:20px', width=20, height=20)
+              a.btn.btn-sm.btn-muted(href='https://github.com/' + teamMember.login, title=teamMember.id, target='_new')= teamMember.login
+              if teamMember.contactEmail()
+                a.btn.btn-sm.btn-muted-more(href='mailto:' + teamMember.contactEmail())= teamMember.contactName()
+
+      p
+        input.btn.btn-primary(type='submit', value='Submit Request')
+        | &nbsp; 
+        a.btn.btn-default(href='/') Cancel

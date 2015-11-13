@@ -1,0 +1,79 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+block content
+  div.container
+
+    h1 Approvals
+
+    if pendingApprovals && pendingApprovals.length && pendingApprovals.length > 0
+      div
+        div.container
+          each entry in pendingApprovals
+            h3(style='padding-bottom: 16px')
+              =entry.type === 'repo' ? 'New Repository' : 'Join team'
+            div.row
+              div.col-md-4.col-lg-4
+                form(method='post', action=teamUrl + 'approvals/' + entry.RowKey)
+                  p
+                    a.btn.btn-sm.btn-muted(href='https://github.com/' + team.org.getWorkflowRepository().full_name + '/issues/' + entry.issue, target='_new')= entry.issue
+                    | &nbsp;
+                    a.btn.btn-sm.btn-muted(href=teamUrl + 'approvals/' + entry.RowKey)
+                      i.glyphicon.glyphicon-zoom-in
+                      | &nbsp;
+                      | Detailed Request
+                    if entry.requestedTime
+                      | &nbsp; &nbsp;
+                      time(datetime=entry.requestedTime.toISOString())= entry.requestedTime.toDateString()
+                  if entry.active === true
+                    h5 ACTIONS
+                    p
+                      input.btn.btn-sm.btn-default(type='submit', name='approve', value='Approve')
+                    if entry.type != 'repo'
+                      p
+                        input.btn.btn-sm.btn-primary(type='submit', name='approveWithComment', value='Approve with Comment...')
+                    p
+                      input.btn.btn-sm.btn-default(type='submit', name='deny', value='Deny...')
+              div.col-md-4.col-lg-4
+                if entry.type === 'repo'
+                  h5 REPO
+                  p= entry.repoName
+                  h5 PERMISSIONS
+                  p
+                    small Open the "Detailed Request" view to see permissions and other info for the repo request.
+                else if entry.type === 'joinTeam'
+                  h5 TEAM NAME
+                  p
+                    a(href='https://github.com/orgs/' + entry.org + '/teams/' + entry.teamname, target='_new')= entry.teamname
+                if entry.justification
+                  h5 BUSINESS JUSTIFICATION
+                  blockquote
+                    =entry.justification
+              div.col-md-4.col-lg-4
+                if entry.completeRequestingUser && entry.completeRequestingUser.corporateAlias()
+                  h5 CORPORATE IDENTITY
+                  p
+                    - var corporateUser = entry.completeRequestingUser
+                    if corporateUser.link
+                      if corporateUser.link.aadname
+                        a.btn.btn-sm.btn-muted(href=corporateUser.corporateProfileUrl(), target='_new')= corporateUser.link.aadname
+                      if corporateUser.corporateAlias()
+                        a.btn.btn-sm.btn-muted-more(href=corporateUser.corporateProfileUrl(), target='_new')
+                          = corporateUser.corporateAlias() + ' '
+                          i.glyphicon.glyphicon-share-alt
+                if entry.ghu
+                  h5 GITHUB PROFILE
+                  p
+                    a.btn.btn-sm.btn-muted(href='https://github.com/' + entry.ghu, target='_new')= entry.ghu
+                if entry.email
+                  h5 EMAIL
+                  p
+                    a.btn.btn-sm.btn-muted-more(href='mailto:' + entry.email)= entry.email ? entry.email : 'Unknown'
+                    | &nbsp; 
+                    a.btn.btn-sm.btn-default(href='mailto:' + entry.email) Send Mail
+    else
+      p No pending approvals. Nice work!

@@ -1,0 +1,6 @@
+.git
+node_modules
+public/js/jquery*.*
+public/js/html5*.*
+public/js/bootstrap*.*
+public/js/timeago*.*

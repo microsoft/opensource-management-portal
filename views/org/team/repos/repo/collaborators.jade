@@ -1,0 +1,160 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../../../layout
+
+block content
+  div.container
+
+    h1 Collaborators
+    p.
+      A collaborator on GitHub is someone who has access to a specific repo, with a specific set of 
+      permissions, but who is not necessarily a member of the organization.
+    if corporateCollaborators && corporateCollaborators.length && corporateCollaborators.length > 0
+      h2 #{corporateCollaborators.length > 1 ? corporateCollaborators.length : ''} Corporate Collaborator#{corporateCollaborators.length > 1 ? 's' : ''}
+      p These corporate users have repo-specific collaboration rights. This often is a good place to give a specific corporate user "admin" access for a repo to manage settings on GitHub such as web hooks.
+      if true == true
+        table.table
+          thead
+            tr
+              th Avatar
+              th GitHub Username
+              th Authorization Type
+              th Permission Level
+              th Actions
+          tbody
+            for teamMember in corporateCollaborators
+              tr
+                td
+                  p
+                    if teamMember.avatar_url
+                      img(alt=teamMember.ghu, src=teamMember.avatar_url + '&s=100', style='margin-right:10px;width:50px;height:50px', width=50, height=50, data-user=teamMember.id)
+                td
+                  a.btn.btn-sm.btn-muted(href='https://github.com/' + teamMember.login, title=teamMember.id)= teamMember.login
+                td
+                  if teamMember.link
+                    p
+                      | Active Directory 
+                      | &nbsp;
+                      a.btn.btn-sm.btn-muted(href=teamMember.corporateProfileUrl(), target='_new')
+                        = teamMember.corporateAlias() || teamMember.link.aadupn
+                        | 
+                        i.glyphicon.glyphicon-share-alt
+                      if teamMember.contactEmail()
+                        | &nbsp; &nbsp;
+                        a.btn.btn-sm.btn-default(href='mailto:' + teamMember.contactEmail()) Send Mail
+                  else
+                    p
+                      strong Not a portal user
+                td
+                  - var rcp = teamMember._repoCollaboratorPermissions
+                  - var permissionColor = rcp.admin === true ? 'alert-danger' : (rcp.push === true ? 'btn-primary' : 'alert-success')
+                  - var permissionText = rcp.admin === true ? 'Admin' : (rcp.push === true ? 'Write' : 'Read')
+                  p
+                    a.btn.btn-sm(class=permissionColor, href='javascript:alert("Change the permission level by simply adding the same user again, with the new permission level.")')= permissionText
+                td
+                  form(method='post', action=repoCollaboratorsUrl + '/' + teamMember.login + '/remove', onsubmit='return confirm("Are you sure that you want to remove ' + teamMember.login + ' as a collaborator?");')
+                    p
+                      input.btn.btn-sm.btn-default(type='submit', value='Remove Collaborator', data-transition='fade', data-theme='c')
+    if collaborators
+      if collaborators.length && collaborators.length > 0
+      h2 #{collaborators.length > 1 ? collaborators.length : ''} Outside Collaborator#{collaborators.length > 1 ? 's' : ''}
+      p.
+        The Outside Collaborator role is ideal for external vendors or partners on projects who do not 
+        have corporate credentials.
+      p.
+        It is the responsibility of repo team maintainers to carefully select, curate and manage their 
+        collaborators, since these users exist outside of the organizational management system. Employees 
+        should always join the org instead of being appointed as Outside Collaborators.
+      div
+        table.table
+          thead
+            tr
+              th Avatar
+              th GitHub Username
+              th Authorization Type
+              th Permission Level
+              th Actions
+          tbody
+            for teamMember in collaborators
+              tr
+                td
+                  p
+                    if teamMember.avatar_url
+                      img(alt=teamMember.ghu, src=teamMember.avatar_url + '&s=100', style='margin-right:10px;width:50px;height:50px', width=50, height=50, data-user=teamMember.id)
+                td
+                  a.btn.btn-sm.btn-muted(href='https://github.com/' + teamMember.login, title=teamMember.id)= teamMember.login
+                td
+                  if teamMember.link
+                    p
+                      | Active Directory 
+                      br
+                      a.btn.btn-sm.btn-muted(href=teamMember.corporateProfileUrl(), target='_new')
+                        = teamMember.corporateAlias() || teamMember.link.aadupn
+                        | 
+                        i.glyphicon.glyphicon-share-alt
+                  else
+                    p Outside Collaborator
+                td
+                  - var rcp = teamMember._repoCollaboratorPermissions
+                  - var permissionColor = rcp.admin === true ? 'alert-danger' : (rcp.push === true ? 'btn-primary' : 'alert-success')
+                  - var permissionText = rcp.admin === true ? 'Admin' : (rcp.push === true ? 'Write' : 'Read')
+                  p
+                    a.btn.btn-sm(class=permissionColor, href='javascript:alert("Change the permission level by simply adding the same user again, with the new permission level.")')= permissionText
+                td
+                  form(method='post', action=repoCollaboratorsUrl + '/' + teamMember.login + '/remove', onsubmit='return confirm("Are you sure that you want to remove ' + teamMember.login + ' as a collaborator?");')
+                    p
+                      input.btn.btn-sm.btn-default(type='submit', value='Remove Collaborator', data-transition='fade', data-theme='c')
+    hr
+    div.row
+      div.col-md-6.col-lg-6.col-sm-6
+        h2 Add an Outside Collaborator
+        p.
+          An outside collaborator is not an employee. They are not tracked by this portal. As a team maintainer, <em>you</em> 
+          are responsible for your outside collaborators.
+        p.
+          When an outside collaborator's need for access is done, please remove the user from the repo.
+        form.form-horizontal(method='post', action=repoCollaboratorsUrl + '/add')
+          h5 GITHUB USERNAME
+          p
+            input.form-control#inputUsername(type='text', name='username', placeholder='GitHub username of the collaborator')
+          h5 REPOSITORY
+          p= repo.full_name
+          h5 PERMISSION LEVEL FOR THE REPO
+          p
+            select.form-control#inputPermissionLevel(name='permission')
+              option(value='admin') Admin: Manage repo settings, hooks, properties, even delete the repo
+              option(value='push') Push (Write): Allow for direct pushes to this repo, accepting PRs
+              option(value='pull', selected='selected') Pull (Read): Allow the user to pull from the repo, fork, submit PRs
+            input.btn.btn-default.btn-sm(type='submit',value='Add Outside Collaborator',data-transition='fade', data-theme='c')
+
+      div.col-md-6.col-lg-6.col-sm-6
+        h2 Add a Corporate Collaborator
+        p.
+          You can also add an existing organization member (an employee) as a collaborator on 
+          a specific repository.
+        p.
+          The most common scenario for the capability is to add a specific employee with "Admin" 
+          privilege. This will let that employee use the "settings" tab for the repo on the 
+          GitHub.com site to configure web hooks, repo properties, and other essentials.
+        p.
+          We still recommend the team approach for most operations.
+        form.form-horizontal(method='post', action=repoCollaboratorsUrl + '/add')
+          h5 CORPORATE IDENTITY
+          p
+            select.form-control#inputAddMember(name='username')
+              each employee in employees
+                option(value=employee.ghu, selected=employee.ghid == user.github.id)= employee.aadupn + ' : ' + employee.ghu
+          h5 REPOSITORY
+          p= repo.full_name
+          h5 PERMISSION LEVEL FOR THE REPO
+          p
+            input(type='hidden', name='corporate', value='corporate')
+            select.form-control#inputPermissionLevel(name='permission')
+              option(value='admin') Admin: Manage repo settings, hooks, properties, even delete the repo
+              option(value='push') Push (Write): Allow for direct pushes to this repo, accepting PRs
+              option(value='pull', selected='selected') Pull (Read): Allow the user to pull from the repo, fork, submit PRs
+          p
+            input.btn.btn-default.btn-sm(type='submit',value='Add Corporate Collaborator',data-transition='fade', data-theme='c')

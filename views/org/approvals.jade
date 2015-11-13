@@ -1,0 +1,104 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block content
+  div.container
+    if teamResponsibilities && teamResponsibilities.length && teamResponsibilities.length > 0
+      h1 Approvals for Your Review
+      div.container
+        each entry in teamResponsibilities
+          h2(style='padding-bottom: 16px')
+            =entry.type === 'repo' ? 'New Repository' : 'Join a team'
+            | 
+            small Permission Request
+          div.row
+            div.col-md-5.col-lg-5
+              form(method='post', action='/' + entry._teamInstance.org.name + '/teams/' + entry._teamInstance.name + '/approvals/' + entry.RowKey)
+                p
+                  a.btn.btn-sm.btn-muted(href='https://github.com/' + entry._teamInstance.org.name + '/' + entry._teamInstance.org.getWorkflowRepository().name + '/issues/' + entry.issue, target='_new')= entry.issue
+                  | &nbsp;
+                  a.btn.btn-sm.btn-muted(href='/' + entry._teamInstance.org.name + '/teams/' + entry._teamInstance.name + '/approvals/' + entry.RowKey)
+                    i.glyphicon.glyphicon-zoom-in
+                    | 
+                    | View Detailed Request Page
+                if entry.active === true
+                  p
+                    input.btn.btn-sm.btn-default(type='submit', name='approve', value='Approve')
+                  p
+                    input.btn.btn-sm.btn-primary(type='submit', name='approveWithComment', value='Approve with Comment...')
+                  p
+                    input.btn.btn-sm.btn-default(type='submit', name='deny', value='Deny...')
+            div.col-md-7.col-lg-7
+              p
+                a.btn.btn-sm.btn-muted(href='https://github.com/' + entry.ghu, target='_new')= entry.ghu
+                a.btn.btn-sm.btn-muted-more(href='mailto:' + entry.email)= entry.email ? entry.email : 'Unknown'
+              if entry.type == 'repo' && entry.repoName
+                h3 Repository Information
+                blockquote
+                  p
+                    strong Name
+                    br
+                    = entry.repoName
+                  p
+                    strong Organization
+                    br
+                    = entry.org
+                  if entry.repoVisibility !== undefined
+                    p
+                      strong Visibility
+                      br
+                      = (entry.repoVisibility == 'public' ? 'Public' : 'Private')
+              if entry.justification
+                h3 Business Justification
+                blockquote
+                  =entry.justification
+          hr
+
+    h1 Requests you have made
+    if usersRequests && usersRequests.length && usersRequests.length > 0
+      div.container
+        each myRequest in usersRequests
+          div.row(style='margin-top:24px')
+            div.col-md-5.col-lg-5
+              if myRequest._teamInstance
+                p
+                  a.btn.btn-sm.btn-muted(href='https://github.com/' + myRequest._teamInstance.org.name + '/' + myRequest._teamInstance.org.getWorkflowRepository().name + '/issues/' + myRequest.issue, target='_new') Tracking Issue ##{myRequest.issue}
+              form(method='post', action='/approvals/' + myRequest.RowKey + '/cancel')
+                p
+                  input.btn.btn-sm.btn-default(type='submit', value='Cancel my request')
+            div.col-md-7.col-lg-7
+              if myRequest.type == 'repo' && myRequest.repoName
+                h3 Repository Information
+                blockquote
+                  p
+                    strong Name
+                    br
+                    = myRequest.repoName
+                  p
+                    strong Organization
+                    br
+                    = myRequest.org
+                  if myRequest.repoVisibility !== undefined
+                    p
+                      strong Visibility
+                      br
+                      = (myRequest.repoVisibility == 'public' ? 'Public' : 'Private')
+              else if myRequest.type == 'joinTeam'
+                h3 Request to join a team
+                h5 Organization
+                p= myRequest.org
+                h5 Team Name
+                p= myRequest.teamname
+                h5 GitHub Team ID
+                p= myRequest.teamid
+              if myRequest.justification
+                h3 My Business Justification
+                blockquote
+                  =myRequest.justification
+          hr
+    else
+      p.lead There are no active requests open at this time.

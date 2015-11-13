@@ -1,0 +1,182 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block js_doc_ready
+  | var inviteInterfaceUpdateOnClick = function(){$('#openInviteButton').removeClass('btn-primary').addClass('btn-muted');$('#inviteAcceptedButton').removeClass('btn-muted').addClass('btn-primary');alert('On the next page press the green Join button.\n\nThen close the page and return here to continue onboarding to #{org.name}.');return true;};
+  | $('#openInviteButton').click(inviteInterfaceUpdateOnClick);
+  | $('#openInviteButton2').click(inviteInterfaceUpdateOnClick);
+
+block content
+  div.container
+
+    if state == 'pending'
+
+      h1 You've been invited!
+
+      p.lead We've just had GitHub send you an invitation to <em>#{org.name}</em>.
+      p
+        | For security purposes, GitHub requires you to accept the invitation directly on their web site. 
+        strong You must come back to this tab after accepting your invitation to continue setting up your open source teams and permissions. 
+      div.row
+        div.col-md-6.col-lg-6
+          h3 Step 1: Accept your invite from GitHub
+          p
+            | Open your invite on GitHub and press the green button.
+          p
+            a.btn.btn-lg.capitalize.btn-primary#openInviteButton(href='https://github.com/orgs/' + org.name + '/invitation', target='_new') Open your #{org.name} invitation
+          h3 Step 2: Return back here
+          p
+            | After pressing the green Join button, close the GitHub site and click Continue on this page. We'll then take you to a security check the "Join Teams" experience.
+          p
+            a.btn.btn-lg.btn-muted#inviteAcceptedButton(href=org.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '')) I've accepted my invite on GitHub.com, continue...
+        div.col-md-6.col-lg-6
+          p(style='border:1px solid #ccc; padding:12px')
+            a#openInviteButton2(target='_new', href='https://github.com/orgs/' + org.name + '/invitation')
+              img.img-responsive(src='/img/GitHubInvitation.png', title='A screenshot of what the GitHub invitation looks like. The experience is hosted outside of this portal and actually on GitHub.com', alt='A screenshot of what the GitHub invitation looks like. The experience is hosted outside of this portal and actually on GitHub.com')
+            br
+            | A sample GitHub invite. Press the green button and close the page.
+
+    else if state == 'active'
+      h1 You're now a member of #{org.name}.
+      p You are currently a member of this additional organization. No additional work is required to gain access to it.
+      p If you need to join a specific team to gain additional permissions, you can use the Join a Team experience on this site.
+      p
+        a.btn.btn-primary(href='/teams') Join a team
+
+    else
+      div.row
+        div.col-md-6.col-lg-6
+          h1
+            if onboarding
+              | Let's join #{org.name}!
+            else
+              | Would you like to join #{org.name}?
+          if user && user.github && user.github.increasedScope
+            form(method='post')
+              p(style='margin-top:24px')
+                input.btn.btn-primary.btn-huge(type='submit', value='Join ' + org.name + ' now')
+          else
+            p.lead Quickest way: authorize this portal to join on my behalf
+            p
+              a.btn.btn-primary.btn-huge(href='/' + org.name + '/join/express' + (onboarding ? '?onboarding=' + onboarding : ''))
+                | Join #{org.name} now
+            p.
+              Click to authorize this portal to use an additional GitHub API scope, 
+              <a href="https://developer.github.com/v3/oauth/#scopes" target="_new"><code>org:write</code></a> 
+              to automate the join process. <em>The additional scope will be removed the next time you sign 
+              in to this portal.</em>
+            hr
+            form(method='post')
+              p
+                input.btn.btn-primary.btn-lg(type='submit', value='Join ' + org.name + ' (Manual)')
+              p.
+                This alternate path does not increase the scope of permissions granted to this portal. After 
+                clicking the manual join button, we will 1) send you an invitation from #{org.name}, 2) ask 
+                you to accept the invitation over on GitHub.com, and then 3) verify that the invitation was 
+                accepted properly.
+            ul
+              li An invitation will be sent from GitHub
+              li On the next page we'll explain how the GitHub invitation works
+              li You will accept the invitation on the GitHub.com web site
+              li We'll give you a chance to request to join teams in the organization
+          if onboarding
+            hr
+            h3 Your onboarding progress
+            h5
+              | Sign in with GitHub & #{config.companyName} IT
+              | 
+              i.glyphicon.glyphicon-ok
+            h5
+              | Link your identity
+              | 
+              i.glyphicon.glyphicon-ok
+            h5.text-primary
+              | Join and accept your first organization invite from GitHub
+            h5
+              | Multifactor security checkup
+            h5
+              | Profile review
+            h5
+              | Publish your membership <em>(optional)</em>
+            h5
+              | Join a team <em>(optional)</em>
+
+        div.col-md-6.col-lg-6
+          if orgUser
+            p
+              img.img-thumbnail.img-responsive(src=orgUser.avatar(400), alt=(orgUser.name || orgUser.login))
+            h3= orgUser.name
+            h4= orgUser.login
+            p(style='margin-top:18px')
+              a.btn.btn-sm.btn-muted(href='https://github.com/' + org.name, target='_new')
+                | View on GitHub 
+                i.glyphicon.glyphicon-share-alt
+            hr
+            
+            div.row
+              div.col-md-6.col-lg-6
+                if orgUser.company
+                  h6 Company
+                  p= orgUser.company
+                if orgUser.location
+                  h6 Location
+                  p= orgUser.location
+                if orgUser.email
+                      h6 E-mail
+                  p= orgUser.email
+                if orgUser.otherFields.blog
+                  h6 On the Web
+                  p
+                    a(href=orgUser.otherFields.blog, target='_new')
+                      = orgUser.otherFields.blog
+                      | 
+                      i.glyphicon.glyphicon-share-alt
+                if orgUser.getProfileCreatedDate()
+                  h6 Created
+                  p 
+                    time(datetime=orgUser.getProfileCreatedDate().toISOString())= orgUser.getProfileCreatedDate().toDateString()
+                if orgUser.getProfileCreatedDate()
+                  h6 Updated
+                  p 
+                    time(datetime=orgUser.getProfileUpdatedDate().toISOString())= orgUser.getProfileUpdatedDate().toDateString()
+                hr
+                if org.inner.settings.organizationPurpose
+                  h6 How we use this organization
+                  p= org.inner.settings.organizationPurpose
+                if org.inner.settings.type
+                  h6 Supported Repository Types
+                  ul
+                    li Public Repositories
+                    if org.inner.settings.type == 'publicprivate'
+                      li Private Repositories
+                  //-if org.inner.settings.type == 'publicprivate'
+                    p This organization has a billing relationship on behalf of #{config.companyName} to support private repos designated for open source use.
+
+              div.col-md-6.col-lg-h6
+                h6 Repositories
+                if orgUser.otherFields.public_repos
+                  h2
+                    = orgUser.otherFields.public_repos + ' '
+                    small Open Source
+                    //- small Public
+                if orgUser.otherFields.total_private_repos
+                  h2
+                    = orgUser.otherFields.total_private_repos + ' '
+                    small Private
+                
+                hr
+                h6 #{config.companyName} Investment
+                if orgUser.otherFields.plan && orgUser.otherFields.plan.private_repos
+                  h2.capitalize
+                    = orgUser.otherFields.plan.name + ' '
+                    small Plan
+                  h2
+                      = (orgUser.otherFields.plan.private_repos - orgUser.otherFields.total_private_repos) + ' '
+                      small Remaining Private Repos
+                h2
+                  | &infin;&nbsp;
+                  small Remaining OSS Repos

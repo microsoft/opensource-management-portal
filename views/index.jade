@@ -1,0 +1,100 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends layout
+
+block js_doc_ready
+  | try {
+  | if (initializeManageFilter !== undefined) { initializeManageFilter() }
+  | if (initializeMembershipFilter !== undefined) { initializeMembershipFilter() }
+  | } catch(ex) {};
+
+block content
+  div.container
+    if onboarding === true
+      h1.huge Hi.
+    else
+      h1
+        | Open Source Portal 
+        small for GitHub
+    if accountInfo && onboarding !== true
+      div.container
+        div.row(style='margin-top:16px')
+          // linked membership
+          div.col-md-4.col-lg-4.col-sm-4
+            if accountInfo.isLinkedUser !== false
+              div.metro-box.ms-blue
+                a(href='/unlink')
+                  h3 Linked Identity
+                  p= config.companyName.toUpperCase()
+            else
+              div.metro-box.ms-light-gray
+                a(href='/link')
+                  h3 Not linked
+                  p= config.companyName.toUpperCase()
+          // 2-factor authentication
+          if accountInfo.twoFactorOff === true || accountInfo.twoFactorOn === true
+            div.col-md-4.col-lg-4.col-sm-4
+              if accountInfo.twoFactorOff === true
+                div.metro-box.ms-red
+                  a(href=activeOrgUrl + 'security-check')
+                    h3 2FA
+                    p OFF
+              else if accountInfo.twoFactorOn === true
+                div.metro-box.ms-green
+                  a(href=activeOrgUrl + 'security-check')
+                    h3 2-factor auth
+                    p PROTECTED
+        div.row(style='margin-top:16px')
+          div.col-md-4.col-lg-4.col-sm-4
+            if accountInfo.isLinkedUser !== false
+              p You've linked your GitHub and corporate identities.
+            else
+              p To join the organization, you need to <a href="/link">link your GitHub and Microsoft-related identities</a>.
+          div.col-md-4.col-lg-4.col-sm-4
+            if accountInfo.twoFactorOff === true || accountInfo.twoFactorOn === true
+              if accountInfo.twoFactorOff === true
+                p Your account is a security risk and is not in compliance. <strong>Your access may be revoked at any time, without notice, and may cause work stoppage or loss.</strong>
+              else if accountInfo.twoFactorOn === true
+                p Your account uses modern security. Thank you.
+
+    if accountInfo.organizations
+      if onboarding !== true
+        h1
+          a.a-unstyled(name='orgs') #{config.companyName} Organizations
+
+      if onboarding === true
+        h3 Please select the organization that you would like to join.
+
+      each o in accountInfo.organizations
+        div.link-box
+          a(href=o.baseUrl + (o.membershipStateTemporary === 'active' ? '' : 'join') + onboardingPostfixUrl)
+            h2
+              strong.capitalize= o.name
+              | 
+              if o.membershipStateTemporary == 'active'
+                small Member
+              else if o.membershipStateTemporary == 'pending'
+                small
+                  span.label.label-danger Membership Pending
+              else
+                small
+                  span.label.label-primary Join this organization
+            p.lead= o.setting('description')
+
+      //-if accountInfo.isSudoer
+        h1 Organization Administration
+        p Your account is a delegate administrator for the organization. You have additional capabilities enabled to help ensure the health of the organization.
+        p
+          a.btn.btn-default(href='/organization') Organization Delegate Dashboard
+
+      if accountInfo.teamsMaintained && accountInfo.teamsMaintained.length && accountInfo.teamsMaintained.length > 0
+        if accountInfo.pendingApprovals && accountInfo.pendingApprovals.length && accountInfo.pendingApprovals.length > 0
+          h1 Approvals: Please Review
+          p
+            a.btn.btn-default(href='/approvals/') See all pending approvals (#{accountInfo.pendingApprovals.length})
+    hr
+    p
+      a.btn.btn-default(href='/unlink') Remove my corporate GitHub access

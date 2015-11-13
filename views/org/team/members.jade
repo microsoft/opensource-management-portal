@@ -1,0 +1,76 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+block content
+  div.container
+
+    h1 Team Membership
+    if teamMembers
+      if teamMembers.length && teamMembers.length > 0
+        //- We brute force the API here instead of paging. Not as scaled as the rest...
+        if teamMembers.length > 100
+          p
+            strong Note: at this time this app does not support paging of team members. If this really bugs you, let us know...
+        table.table
+          thead
+            tr
+              th Avatar
+              th GitHub Username
+              th Authorization Type
+              th Identity
+              th Actions
+          tbody
+            for teamMember in teamMembers
+              tr
+                td
+                  p
+                    if teamMember.avatar_url
+                      img(alt=teamMember.ghu, src=teamMember.avatar_url + '&s=100', style='margin-right:10px;width:50px;height:50px', width=50, height=50, data-user=teamMember.id)
+                td
+                  a.btn.btn-sm.btn-muted(href='https://github.com/' + teamMember.login, title=teamMember.id)= teamMember.login
+                td
+                  if teamMember.link
+                    p Active Directory
+                  else
+                    p
+                      strong Not a portal user
+                      br
+                      small This user may have been added by a GitHub administrator for the organization. The user is not registered in the table of identities.
+                if teamMember.link
+                  td
+                    a.btn.btn-sm.btn-muted(href=teamMember.corporateProfileUrl(), target='_new')
+                      = teamMember.corporateAlias() || teamMember.link.aadupn
+                      | 
+                      i.glyphicon.glyphicon-share-alt
+                else
+                  td ?
+                td.twentypercent
+                  form(method='get', action=teamUrl + 'members/' + teamMember.login + '/remove')
+                    p
+                      if teamMember.contactEmail()
+                        a.btn.btn-sm.btn-default(href='mailto:' + teamMember.contactEmail()) Send Mail
+                        | &nbsp; &nbsp;
+                      input.btn.btn-sm.btn-default(type='submit', value='Remove...', data-transition='fade', data-theme='c')
+    hr
+    h2 Add Members
+
+    p Here you can add employees who have <em>already registered with this portal in the past</em>. The easiest, most consistent experience however is to ask users to self-join using this portal and have you approve their request.
+    p
+      small The list is sorted by corporate identity and also notes the GitHub username associated with that identity.
+    form.form-horizontal(method='post', action=teamUrl + 'members/add')
+      p
+        select.form-control#inputAddMember(name='addMember')
+          each employee in employees
+            option(value=employee.ghid, selected=employee.ghid == user.github.id)= employee.aadupn + ' : ' + employee.ghu
+        br
+        input.btn.btn-primary(type='submit',value='Add to team',data-transition='fade', data-theme='c')
+    p
+      strong Outside Collaborators
+      br
+      | You can also add an "Outside Collaborator" or corporate collaborator to a <em>repo</em>.
+      br
+      a.btn.btn-sm.btn-default(href=teamUrl + 'repos/') Manage Repositories and Collaborators

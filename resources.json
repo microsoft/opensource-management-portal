@@ -1,0 +1,70 @@
+{
+    "public-homepage": [
+        {
+            "title": "Public links go here",
+            "link": "https://github.com/"
+        }
+    ],
+    "footer": {
+        "Open Source Portal": [
+            {
+                "title": "Information about the portal",
+                "link": "about:blank"
+            }
+        ],
+        "Open Source Links": [
+            {
+                "title": "Open Source",
+                "link": "https://osstool.redmond.corp.microsoft.com:8888/palamida/Home.htm"
+            }
+        ],
+        "All Git + GitHub": [
+            {
+                "title": "GitHub Workflow",
+                "link": "https://guides.github.com/introduction/flow/"
+            },
+            {
+                "title": "Git Book",
+                "link": "https://git-scm.com/book/en/v2"
+            },
+            {
+                "title": "A successful Git branching model",
+                "link": "http://nvie.com/posts/a-successful-git-branching-model/"
+            },
+            {
+                "title": "Is your project welcoming?",
+                "link": "http://www.erikaheidi.com/blog/is-your-open-source-project-welcoming-to-new-contributors"
+            }
+        ]
+    },
+    "onboarding-complete": {
+        "all": [
+            {
+                "title": "A link to show everyone after onboarding",
+                "link": "https://nytimes.com",
+                "text": "Information about why the link is important."
+            }
+        ],
+        "github": [
+            {
+                "title": "GitHub Workflow",
+                "link": "https://guides.github.com/introduction/flow/"
+            },
+            {
+                "title": "Git Book",
+                "link": "https://git-scm.com/book/en/v2"
+            },
+            {
+                "title": "A successful Git branching model",
+                "link": "http://nvie.com/posts/a-successful-git-branching-model/"
+            }
+        ],
+        "specific-org-name": [
+            {
+                "title": "An org-specific link for the org named specific-org-name",
+                "link": "about:blank",
+                "text": "About this org-specific link."
+            }
+        ]
+    }
+}

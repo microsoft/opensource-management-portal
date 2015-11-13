@@ -1,0 +1,127 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+block content
+  div.container
+    h1
+      = team.name
+      | 
+      small.capitalize #{team.org.name} Team Maintainer
+    if team.description
+      p.lead= team.description
+    h2 Team + Repo Management
+    table.table
+      tbody
+        tr
+          td
+            if pendingApprovals && pendingApprovals.length && pendingApprovals.length > 0
+              a.btn.btn-sm.alert-danger(href=teamUrl + 'approvals/')
+                strong= pendingApprovals.length
+                | 
+                | Pending Approval#{pendingApprovals.length > 1 ? 's' : ''}
+            else
+              a.btn.btn-sm.btn-default(href=teamUrl + 'approvals/') No Pending Approvals
+          td
+            p Manage requests related to this team.
+        tr
+          td
+            a.btn.btn-default.btn-sm(href=teamUrl + 'properties/') Edit Name and Description
+          td
+            p Manage the basic GitHub properties for this team.
+        tr
+          td
+            a.btn.btn-default.btn-sm(href=teamUrl + 'repos/') Manage Repositories
+          td
+            p Take a repo from private to public, delete old repos, change repo descriptions. Manage repo collaborators.
+        tr
+          td
+            a.btn.btn-default.btn-sm(href=teamUrl + 'members/') Manage Team Members
+          td
+            p Invite new members to your team. Remove members from the team. Remove employees from the entire org when they leave the company.
+        tr
+          td
+            a.btn.btn-default.btn-sm(href=teamUrl + 'members/securityCheck') Audit 2FA Compliance
+          td
+            p Identify non-compliant members of your team who have two-factor authentication disabled.
+        tr
+          td
+            a.btn.btn-default.btn-sm(href=teamUrl + 'delete') Delete Team
+          td
+            p Delete this team permanently. Keeps all repos.
+        tr
+          td
+            a.btn.btn-default.btn-sm(href='https://github.com/orgs/' + team.org.name + '/teams/' + team.slug, target='_new')
+              | Open Team on GitHub 
+              i.glyphicon.glyphicon-share-alt
+          td
+            p
+              | Opens the team within GitHub's web interface.
+              br
+              small Note that this portal provides elevated operations on your behalf: many operations are not available on GitHub.
+    h2 Team Maintainers
+    if maintainers && maintainers.length
+      if maintainers.length < 2
+        div.alert.alert-gray(role='alert')
+          strong This team only has a single maintainer
+          br
+          | It is strongly recommended that each team have at least 2 team maintainers to make it easier to stay on top of approving your team's join requests, handle the team during vacations and other times, and so on. Please add an additional team maintainer!
+      table.table
+        thead
+          tr
+            th
+            th Name
+            th GitHub Username
+            th Authorization Type
+            th Identity
+            th Action
+        tbody
+        each maintainer in maintainers
+          tr
+            td(width='40')
+              if maintainer.avatar()
+                p
+                  img(alt=maintainer.login, src=maintainer.avatar('80'), style='margin-right:10px;width:40px;height:40px', width=40, height=40)
+            if maintainer.link
+              td= maintainer.link.aadname || maintainer.link.ghu  || maintainer.id
+            else
+              td= maintainer.id
+            td= (maintainer.link && maintainer.link.ghu) ? maintainer.link.ghu : maintainer.login
+            td
+              if maintainer.link
+                p Active Directory
+              else
+                p <strong>User not registered in portal</strong>
+            td= maintainer.contactEmail() || maintainer.login
+            td
+              //- If the current maintainer is also the current site user
+              if maintainer.id == user.github.id
+                p
+                  a.btn.btn-sm.btn-default(href=teamUrl + 'maintainers/transfer/') Transfer Role
+                  if maintainers.length > 2
+                    //- If there are already 2 other maintainer (total of 3), it's OK for the current user to drop themselves from the team.
+                    | &nbsp;
+                    a.btn.btn-sm.btn-default(href=teamUrl + 'maintainers/downgradeSelf') Downgrade Me to Member
+              else if maintainers.length > 1
+                p
+                  a.btn.btn-sm.btn-default(href=teamUrl + 'maintainers/' + maintainer.id + '/downgrade') Downgrade to Member
+    else
+      p There are not yet any maintainers defined in the new permission system on GitHub.
+
+    h3 Add a new team maintainer
+    form.form-horizontal(method='post', action=teamUrl + 'maintainers/add')
+      p
+        select.form-control#inputMaintainer(name='maintainer2')
+          each employee in employees
+            option(value=employee.ghid, selected=employee.ghid == user.github.id)= employee.aadupn + ' (' + employee.ghu + ')'
+      p
+        input.btn.btn-default(type='submit',value='Add new team maintainer',data-transition='fade', data-theme='c')
+    hr
+    small
+      ul.list-unstyled
+        li This team has the GitHub ID of <strong>#{team.id}</strong>
+        if !(pendingApprovals && pendingApprovals.length && pendingApprovals.length > 0)
+          li There are currently no pending approvals for you to manage. Nice!

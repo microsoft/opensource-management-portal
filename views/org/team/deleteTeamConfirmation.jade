@@ -1,0 +1,40 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+block content
+  div.container
+
+    h1 Remove team  "#{team.name}"?
+
+    p.lead Are you sure that you wish to delete your team, "#{team.name}"?
+
+    p Thanks for your role in helping maintaining the GitHub membership of your team and the organization at large. This operation would delete the team but would not affect any of the repositories associated with it at this time.
+
+    p <strong>WARNING:</strong> This operation cannot be undone if you do not mean to delete this team. You would have to request a new team creation.
+
+    table.table
+      thead
+        tr
+          th Field
+          th Value
+      tbody
+        tr
+          td GitHub name
+          td= team.name
+        tr
+          td GitHub Team ID
+          td= team.id
+        tr
+          td Description
+          td= team.description
+
+    form.form-horizontal(method='post')
+      p
+        input.btn.btn-primary(type='submit',value='Delete this team',data-transition='fade', data-theme='c')
+        | &nbsp;&nbsp;
+        a.btn.btn-default(href=teamUrl) Cancel
+        

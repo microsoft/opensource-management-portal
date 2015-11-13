@@ -1,0 +1,28 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends layout
+
+// Conditions for this page:
+// - linked
+// - NOT authenticated yet with AAD
+
+block content
+  div.container
+
+    h1 Please sign in with #{config.companyName} IT
+
+    p Hey #{user.github.displayName || user.github.username}:
+
+    p It looks like you have used a #{config.companyName} organization before, but this is the first time you are using the new open source portal.
+
+    p We need you to quickly authenticate with Azure Active Directory and your corporate identity this one time before you can access the portal. This should only take a minute or so depending on whether your corporate account has multi-factor (MFA) authentication already.
+
+    p This is also a good time to remind you of the policy and make sure the lawyers are happy.
+
+    p
+      a.btn.btn-primary(href='/signin/azure') Sign In to #{config.companyName}
+      | &nbsp;
+      a.btn.btn-default(href='/signout') Cancel and Sign Out

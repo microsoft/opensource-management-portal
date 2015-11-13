@@ -1,0 +1,33 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends layout
+
+block content
+  div.container
+
+    if user
+
+      h1= user.github.displayName || user.github.username
+
+    else
+    
+      h1.huge
+        | Open Source Portal 
+        small for GitHub
+    
+      p.lead Self-service GitHub organization management portal for #{config.companyName}
+
+      p This portal empowers #{config.companyName} employees to perform self-service GitHub organization tasks including org onboarding and team membership workflows for several #{config.companyName} orgs. This portal is intended for employee use.
+
+      if corporateLinks && corporateLinks.length && corporateLinks.length > 0
+        h2 #{config.companyName} Open Source
+        ul
+          each cl in corporateLinks
+            li
+              a(href=cl.link)
+                = cl.title
+                | 
+                i.glyphicon.glyphicon-share-alt

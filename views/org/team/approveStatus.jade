@@ -1,0 +1,192 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+block content
+  div.container
+
+    //- This can be used for local debugging if needed:
+    //- pre= JSON.stringify(entry, undefined, 2)
+
+    if entry.type == 'repo'
+      if entry.repoVisibility == 'public'
+        h1 New Public #{entry.org} Repository Request
+      else
+        h1 New Private #{entry.org} Repository Request
+    else
+      h1 Open Source Access Request
+
+    if entry.active === true
+      if entry.type == 'repo'
+        p.lead Please review this repository creation request on behalf of the #{entry.org} organization.
+        p Keep in mind ideal naming patterns and best practices for this organization. Feel free to take the time to communicate with other approvers over e-mail or modify the request prior to creating the repo.
+        if entry.repoVisibility == 'private'
+          p Private repositories count against our organization's private repo quota. Consider whether this repo and its business justification imply that the project is heading toward an open source release soon. You may recommend to the maintainer that instead they use a different corporate source control system until ready to go public, for example.
+      else
+        p.lead Please review this pending permission request
+    else
+      p.lead This request has already been closed. NO ACTION REQUIRED.
+      p
+        form(method='post')
+          input.btn.btn-sm.btn-default(type='submit', name='reopen', value='Re-open')
+
+    if entry.requestedTime && entry.requestedTime.toISOString
+      p
+        | This request was opened by 
+        a(href='https://github.com/' + entry.ghu, target='_new')= entry.ghu
+        | 
+        time(datetime=entry.requestedTime.toISOString())= entry.requestedTime.toDateString()
+
+    p
+      form(method='post', action=teamUrl + 'approvals/' + entry.RowKey)
+        if entry.active === true
+          input.btn.btn-primary.btn-sm(type='submit', name='approve', value='Approve')
+          | &nbsp;
+          input.btn.btn-sm.btn-default(type='submit', name='approveWithComment', value='Approve with Comment...')
+          | &nbsp;
+          input.btn.btn-sm.btn-default(type='submit', name='deny', value='Deny...')
+          | &nbsp;
+          if entry.type == 'repo'
+            a.btn.btn-sm.btn-muted(href=(teamUrl + 'approvals/' + entry.RowKey + '/edit')) Edit Request as an approver
+          else
+            // At this time, editing of standard permission requests is not implemented.
+
+    if entry.decision
+      table.table.table-bordered
+        thead
+          tr
+            th Decision Status
+            th Decision Made
+            th Decision Maker
+        tbody
+          tr
+            td
+              if entry.decision
+                p= entry.decision.toUpperCase()
+            td
+              if entry.decisionTime
+                p
+                  time(datetime=entry.decisionTime.toISOString())= entry.decisionTime.toDateString()
+              else
+                p Unknown
+            td
+              p
+                if entry.decisionBy && entry.decisionEmail
+                  a(href='mailto:' + entry.decisionEmail)= entry.decisionBy
+                else
+                  = entry.decisionBy
+                  | &nbsp;
+                  = entry.decisionEmail
+          if entry.decisionNote
+            tr
+              td(colspan='3')
+                p
+                  strong Note by decision maker:
+                  br
+                  = entry.decisionNote
+
+    if entry.justification
+      table.table.table-bordered
+        thead
+          tr
+            th Justification provided by user
+        tbody
+          tr
+            td= entry.justification
+
+    //- REPO CREATE DETAILS
+    if entry.type == 'repo'
+      table.table.table-bordered
+        thead
+          tr
+            th Repo Name
+            th Organization
+            th Initial Visibility
+        tbody
+          tr
+            td
+              p(style='font-size:225%')= entry.repoName
+            td
+              p= entry.org
+            td
+              p
+                if entry.repoVisibility == 'public'
+                  strong(style='color:red') PUBLIC
+                else
+                  | Private
+      table.table.table-bordered
+        thead
+          tr
+            th Public Repo Description & Optional URL
+        tbody
+          tr
+            td
+              p= entry.repoDescription
+              if entry.repoUrl
+                p
+                  small
+                    a(href=entry.repoUrl, target='_new')
+                      i= entry.repoUrl
+      if expandedTeamInfo
+        table.table.table-bordered
+          thead
+            tr
+              th(colspan='3') Team Permissions
+            tr
+              th Team ID
+              th Team Name
+              th Permission Level for Repository
+          tbody
+            each eti in expandedTeamInfo
+              tr
+                td= eti.id
+                td= eti.name
+                td.capitalize= eti._temporary_permission
+
+    table.table.table-bordered
+      thead
+        tr
+          if entry.type !== 'repo'
+            th Team Requested
+          th GitHub Tracking Issue
+      tbody
+        tr
+          if entry.type !== 'repo'
+            td
+              p
+                a(href='https://github.com/orgs/' + entry.org + '/teams/' + entry.teamname, target='_new')= entry.teamname
+          td
+            p
+              a.btn.btn-sm.btn-default(href='https://github.com/' + team.org.getWorkflowRepository().full_name + '/issues/' + entry.issue, target='_new')= entry.issue
+
+    table.table.table-bordered
+      thead
+        tr
+          th GitHub Account
+          th Corporate Identity
+      tbody
+        tr
+          td
+            p
+              if requestingUser.avatar()
+                img(alt=requestingUser.login, src=requestingUser.avatar(80) + '&s=80', style='margin-right:10px;width:30px;height:30px')
+              a.btn.btn-sm.btn-muted(href='https://github.com/' + requestingUser.login, target='_new')= requestingUser.login
+          td
+            p
+              if requestingUser.link && requestingUser.corporateAlias()
+                if requestingUser.link.aadname
+                  a.btn.btn-sm.btn-muted(href=requestingUser.corporateProfileUrl(), target='_new')= requestingUser.link.aadname
+                if requestingUser.corporateAlias()
+                  a.btn.btn-sm.btn-muted-more(href=requestingUser.corporateProfileUrl(), target='_new')
+                    = requestingUser.corporateAlias() + ' '
+                    i.glyphicon.glyphicon-share-alt
+                else if requestingUser.link.aadupn
+                  = requestingUser.link.aadupn
+                else
+                  | UNKNOWN ALIAS
+              | &nbsp;
+              if entry.email
+                a.btn.btn-sm.btn-default(href='mailto:' + entry.email) Send Mail

@@ -1,0 +1,87 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+block content
+  div.container
+
+    if entry.type == 'joinTeam'
+      h1
+        | Request to join
+        | 
+        small.capitalize= entry.teamname
+    else if entry.type == 'repo'
+      h1.capitalize
+        | New #{entry.org} Repo Request
+        | 
+        small.capitalize= entry.repoName
+
+    if entry.type == 'repo' && entry.repoVisibility == 'public'
+      p
+        strong Warning: this is a request for a new public repo which could be immediately visible for the world, journalists, bloggers and more.
+
+    // CONSIDER: Integrate with directory lookup options...
+    if entry.email
+      p
+        a.btn.btn-sm.btn-default(href='mailto:' + entry.email) Send Mail to #{entry.email}
+
+    table.table
+      thead
+        tr
+          th GitHub User
+          th Identity
+          if entry.type == 'joinTeam'
+            th Team to join
+          else if entry.type == 'repo'
+            th Repo to create
+          th Issue ID
+      tbody
+        tr
+          td
+            p
+              a.btn.btn-muted.btn-sm(href='https://github.com/' + entry.ghu, target='_new')= entry.ghu
+          td
+            p
+              a.btn.btn-muted.btn-sm(href='mailto:' + requestingUser.contactEmail())= requestingUser.contactEmail()
+          if entry.type == 'joinTeam'
+            td
+              p
+                if team
+                  a(href='https://github.com/orgs/' + team.org.name + '/teams/' + (team.slug || team.name), target='_new')= team.name
+          else if entry.type == 'repo'
+            td
+              p= entry.repoName
+          td
+            p
+              if team
+                a.btn.btn-sm.btn-default(href='https://github.com/' + team.org.name + '/' + team.org.getWorkflowRepository().name + '/issues/' + entry.issue, target='_new')= entry.issue
+
+    if entry.justification
+      h5 BUSINESS JUSTIFICATION & CONTEXT
+      blockquote= entry.justification
+
+    h5 ACTIONS
+
+    if action == 'approve'
+      p Please write your comment relating to why this request has been approved. This may be helpful to future administrations to understand whether this user is a member of the team, doing a specific timebound project, or otherwise may or may not have different future needs.
+    else
+      p To help keep the record straight, please consider noting why this request is being denied. This will be visible to the user who has requested permission, but not recorded in the associated GitHub issue tied to this request.
+
+    form(method='post', action=teamUrl + 'approvals/' + entry.RowKey)
+      p
+        textarea.form-control(name='text', rows='3', placeholder='Historical note by ' + user.github.username)
+      p
+        if action == 'approve'
+          input.btn.btn-primary(type='submit', name='approve', value='Approve')
+        else
+          input.btn.btn-primary(type='submit', name='deny', value='Deny')
+        | &nbsp;
+        a.btn.btn-default(href='/team/' + entry.teamid + '/approvals/' + entry.RowKey) Cancel
+
+    hr
+
+    p
+      small Request ID: #{entry.RowKey}

@@ -1,0 +1,75 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends layout
+
+// Conditions for this page:
+// - not yet linked
+// - authenticated with AAD
+
+block content
+  div.container
+    div.row
+      div.col-md-7.col-lg-7
+        h1 Link your accounts
+        p.
+          Let's make the lawyers happy by helping us associate your corporate and 
+          social coding accounts. Linking does not alter your GitHub account in any way. 
+          This allows us to answer the question <em>"who is #{user.github.displayUsernameTemporary || user.github.username}?"</em> 
+          and to give you the self-service tools to manage your open source work.
+        table.table
+          thead
+            tr
+              th GitHub User
+              th #{config.companyName} Identity
+          tbody
+            tr
+              td= user.github.displayUsernameTemporary || user.github.username
+              td= user.azure.username
+        p By continuing, you agree:
+        ul
+          li My GitHub account is controlled exclusively by #{user.azure.username}.
+          li My GitHub password is safe, secure and smart.
+          li I will enable two-factor authentication on the account and keep it active. I understand that I will lose access if I remove this security protection.
+        form(method='post')
+          p(style='margin-top:24px')
+            input.btn.btn-primary(type='submit', value='I Agree')
+            | &nbsp; &nbsp;
+            a.btn.btn-default(href='/signout') Cancel
+        hr
+        h3 Your onboarding progress
+        h5
+          | Sign in with GitHub & #{config.companyName} IT
+          | 
+          i.glyphicon.glyphicon-ok
+        h5.text-primary
+          | Link your identity
+        h5
+          | Join and accept your first organization invite from GitHub
+        h5
+          | Multifactor security checkup
+        h5
+          | Profile review
+        h5
+          | Publish your membership <em>(optional)</em>
+        h5
+          | Join a team <em>(optional)</em>
+
+      div.col-md-5.col-lg-5.alert-gray
+        if user && user.github && user.github.id
+          if config && config.corporate && config.corporate.trainingResources
+            - var footres = config.corporate.trainingResources.footer
+            if footres
+              // These same resources appear on every single auth page footer, too.
+              h3 Training & Resources
+              p Bookmark these great resources today. These are important resources to grok.
+              each categoryList, category in footres
+                h5= category
+                ul
+                  each item in categoryList
+                    li
+                      a(href=item.link, target='_new')
+                        = item.title + ' '
+                        i.glyphicon.glyphicon-share-alt

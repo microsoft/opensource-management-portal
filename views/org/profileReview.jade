@@ -1,0 +1,96 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block content
+  if true
+    if true
+      div.container
+        div.row
+          div.col-lg-8.col-md-8.col-sm-8
+            h1 Let's review your public profile
+            if onboarding
+              p.lead Since you're onboarding to #{org.name} for the first time, this is the perfect time to quickly think about this.
+            p Your interactions in public open source repos (commenting on issues, creating and working with pull requests, contributing source) will be associated with your public GitHub profile.
+            p With the company's open source and social media policies in mind, consider the answer to this question: "Is my profile professional?"
+            ul
+              li Are you using the name you use professionally?
+              li Have you included #{config.companyName} in your profile?
+              li Have you included an e-mail address?
+              li Have you replaced the default GitHub-generated avatar graphic with a professional, smart, acceptable profile avatar?
+            p(style='margin-top:24px')
+              a.btn.btn-primary(href=org.baseUrl + (onboarding ? 'membership?onboarding=' + onboarding : 'membership')) Continue
+              | &nbsp;&nbsp;
+              a.btn.btn-default(href='https://github.com/settings/profile', target='_new')
+                | Edit your profile in a new tab 
+                i.glyphicon.glyphicon-share-alt
+            if onboarding
+              hr
+              h3 Your onboarding progress
+              h5
+                | Sign in with GitHub & #{config.companyName} IT
+                | 
+                i.glyphicon.glyphicon-ok
+              h5
+                | Link your identity
+                | 
+                i.glyphicon.glyphicon-ok
+              h5
+                | Join and accept your first organization invite from GitHub
+                | 
+                i.glyphicon.glyphicon-ok
+              h5
+                | Multifactor security checkup
+                | 
+                i.glyphicon.glyphicon-ok
+              h5.text-primary
+                | Profile review
+              h5
+                | Publish your membership <em>(optional)</em>
+              h5
+                | Join a team <em>(optional)</em>
+
+          div.col-lg-4.col-md-4.col-sm-4
+            div.row
+              div.col-lg-12.col-sm-12.col-md-12.alert-gray
+                h4 YOUR GITHUB PROFILE
+                p
+                  img.img-thumbnail(style='max-width:200px', src=userProfile.avatar(400), alt=(userProfile.name || userProfile.login))
+                h3= userProfile.name
+                h4= userProfile.login
+                span(style=userProfileWarnings.company)
+                  p
+                    | Company
+                    br
+                    if userProfile.company
+                      strong= userProfile.company
+                    else
+                      strong No company listed
+                if userProfile.location
+                  span
+                    p
+                      | Location
+                      br
+                      strong= userProfile.location
+                span(style=userProfileWarnings.email)
+                  p
+                    | E-mail
+                    br
+                    if userProfile.email
+                      strong= userProfile.email
+                    else
+                      strong No e-mail provided
+                if userProfile.otherFields.blog
+                  span
+                    p
+                      | Web
+                      br 
+                      a(href=userProfile.otherFields.blog, target='_new')
+                        strong= userProfile.otherFields.blog
+                p(style='margin:16px 0')
+                  a.btn.btn-default.btn-sm(href='https://github.com/settings/profile', target='_new')
+                    | Edit your profile in a new tab 
+                    i.glyphicon.glyphicon-share-alt

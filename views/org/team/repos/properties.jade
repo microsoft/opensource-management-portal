@@ -1,0 +1,52 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../../layout
+
+block content
+  div.container
+
+    h1
+      span.capitalize= repo.name
+      | 
+      small Update Properties
+
+    if repo
+
+      p Here you can change the repo name and/or description. Please be careful with your changes and consider any common naming and voice guidance for your organization.
+
+      form(method='POST')
+        table.table
+          tbody
+            tr
+              td.twentypercent
+                p
+                  | Repo Name
+                  br
+                  small Change with care. In general, renames should be avoided.
+              td
+                p
+                  input.form-control(name='name', type='text', value=repo.name)
+            tr
+              td.twentypercent
+                p Repo Description
+              td
+                p
+                  input.form-control(name='description', type='text', value=repo.description)
+            tr
+              td.twentypercent
+                p Optional Repo Website URL
+              td
+                p
+                  input.form-control(name='homepage', type='text', value=repo.homepage)
+            tr
+              td(colspan='2')
+                p
+                  input.btn.btn-primary(type='submit', value='Save Changes')
+
+    else
+
+      p No operations available at this time.
+

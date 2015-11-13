@@ -1,0 +1,162 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block js_doc_ready
+  | if (initializeTeamFilter) { initializeTeamFilter() }
+
+block content
+  div.container
+
+    if onboardingOrJoining
+      if orgUser
+        div.row
+          div.col-md-9.col-lg-9.col-sm-9
+            h1.huge Welcome!
+            p.lead You're ready to go, onboarded and ready to contribute & collaborate with the #{org.name} open source world.
+            if org.inner.settings.trainingResources
+              p Here are some useful links and resources to help get you up and running quickly.
+              - var tr = org.inner.settings.trainingResources
+              if tr.organization && tr.organization.length && tr.organization.length > 0
+                ul.list-unstyled
+                  each resource in tr.organization
+                    li
+                      p
+                        a(href=resource.link, target='_new')
+                          = resource.title + ' '
+                          i.glyphicon.glyphicon-share-alt
+                        if resource.text
+                          br
+                          small= resource.text
+              if tr.corporate && tr.corporate.length && tr.corporate.length > 0
+                ul.list-unstyled
+                  each resource in tr.corporate
+                    li
+                      p
+                        a(href=resource.link, target='_new')
+                          = resource.title + ' '
+                          i.glyphicon.glyphicon-share-alt
+                        if resource.text
+                          br
+                          small= resource.text
+              if tr.github && tr.github.length && tr.github.length > 0
+                ul.list-unstyled
+                  each resource in tr.github
+                    li
+                      p
+                        a(href=resource.link, target='_new')
+                          = resource.title + ' '
+                          i.glyphicon.glyphicon-share-alt
+                        if resource.text
+                          br
+                          small= resource.text
+
+          div.col-md-3.col-lg-3.col-sm-3
+            p
+              img.img-thumbnail.img-responsive(src=orgUser.avatar(400), alt=(orgUser.name || orgUser.login))
+            h3= orgUser.name
+            h4= orgUser.login
+            p(style='margin-top:18px')
+              a.btn.btn-sm.btn-muted(href='https://github.com/' + org.name, target='_new')
+                | View on GitHub 
+                i.glyphicon.glyphicon-share-alt
+            if org && org.baseUrl
+              p
+                a.btn.btn-sm.btn-muted(href=org.baseUrl)
+                  | #{org.name} Portal
+
+    if isSudoer || userIsMaintainer
+      h1
+        | Teams 
+        if isSudoer
+          small including sudoer options
+    else
+      h1 Join a Team
+
+    if onboardingOrJoining
+      p Now that you're an organization member, you can request to join any teams if you need access to private repos or special permissions, such as those to accept pull requests. You can use the standard GitHub workflow of fork-pull request to contribute to nearly any repo when you have read (pull) access.
+
+    if highlightedTeams && highlightedTeams.length
+      h3 Recommended Team#{highlightedTeams.length > 1 ? 's' : ''}
+      each ht in highlightedTeams
+        h4= ht.name
+        p= ht.description
+        p
+          if ht._hack_isMember === true
+            if isSudoer || (userTeamsMaintainedById && userTeamsMaintainedById[ht.id])
+              a.btn.btn-sm.btn-primary(href='/' + ht.org.name + '/teams/' + ht.slug) Manage this team
+            else
+              a.btn.btn-sm.btn-muted(href='/' + ht.org.name + '/teams/' + ht.slug + '/join') Already a member
+          else
+            a.btn.btn-default.btn-sm(href='/' + ht.org.name + '/teams/' + ht.slug + '/join') Request to join
+
+    if availableTeams && availableTeams.length && availableTeams.length > 0
+      if org
+        h3.capitalize #{org.name} Teams
+      else
+        h3 All teams across organizations
+
+      script(type='text/javascript').
+        function initializeTeamFilter() {
+          var inputManageFilter = $('#manage-filter');
+          if (inputManageFilter) {
+            inputManageFilter.keyup(function () {;
+              $.uiTableFilter($('table#teams-table'), this.value, ['Team', 'Organization', 'Description']);
+            });
+          }
+        }
+
+      table.table#teams-table
+        thead
+          tr
+            th(colspan=org ? '2' : '3')
+              form#manage-teams-filter-form
+                input.form-control#manage-filter(name='filter', placeholder='Filter teams', type='text')
+            th
+              p
+                i.glyphicon.glyphicon-search
+          tr
+            th.thirtypercent Team
+            if !org
+              th.fifteenpercent Organization
+            th Description
+            if isSudoer
+              th.thirtypercent Actions
+            else
+              th Actions
+        tbody
+          each availableTeam in availableTeams
+            if availableTeam.hidden
+              //- Some teams are hidden from view when they are not designed for general use, such as continuous integration servers
+            else
+              tr
+                td
+                  p
+                    = availableTeam.name
+                    if availableTeam.name != availableTeam.slug
+                      br
+                      small= availableTeam.slug
+                if !org
+                  td
+                    if availableTeam.org
+                      small= availableTeam.org.name
+                td
+                  p= availableTeam.description
+                td
+                  p
+                    if availableTeam._hack_isMember === true
+                      if userTeamsMaintainedById && userTeamsMaintainedById[availableTeam.id]
+                        a.btn.btn-sm.btn-primary(href='/' + availableTeam.org.name + '/teams/' + availableTeam.slug) Manage this team
+                      else
+                        a.btn.btn-sm.btn-muted(href='/' + availableTeam.org.name + '/teams/' + availableTeam.slug + (isSudoer ? '' : '/join')) Already a member
+                    else
+                      if isSudoer
+                        a.btn.btn-muted.btn-sm(href='/' + availableTeam.org.name + '/teams/' + availableTeam.slug) Manage as sudoer
+                        | &nbsp; 
+                      a.btn.btn-default.btn-sm(href='/' + availableTeam.org.name + '/teams/' + availableTeam.slug + '/join') Request to join
+
+    else
+      p No additional teams are available at this time.

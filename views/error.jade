@@ -1,0 +1,45 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends layout
+
+block content
+  div.container#top(style='margin-top:60px')
+  div.container#content
+    div.row
+      div.col-md-4
+        p
+          img(src='/img/rainycloud.png', style='border:0; width:318px; height:318px', title="It's a rainy day. This is an error page.")
+
+      div.col-md-8
+        p
+          em Oops. It's a little rainy in the cloud today.
+
+        h1= message
+        if errorStatus
+          h2= 'HTTP ' + errorStatus
+
+        if detailed
+          p.lead= detailed
+
+        if errorFancyLink
+          p
+            a.btn.btn-primary(href=errorFancyLink.link)= errorFancyLink.title
+
+        if config && config.corporate && config.corporate.portalAdministratorEmail
+          p
+            if correlationId && user && user.github && user.github.username
+              a.btn.btn-sm.btn-muted(href='mailto:' + config.corporate.portalAdministratorEmail + '?subject=Open Source Portal Error Message ' + (message ? ': ' + message : '') + '&body=I ran into an error message while using the open source portal.%0D%0A%0D%0AThe error included a Correlation ID: ' + correlationId + '%0D%0A%0D%0ATo speed this request up, could you also share information about what you were trying to do at the time of the error? Thanks.%0D%0A%0D%0A---%0D%0AGitHub username: ' + user.github.username + (message ? '%0D%0AMessage: ' + message : '') + (error.status ? '%0D%0AStatus Code: ' + error.status : '') + (detailed ? '%0D%0ADetailed Message: ' + detailed : ''))
+                | Report bug
+            else if correlationId
+              a.btn.btn-sm.btn-muted(href='mailto:' + config.corporate.portalAdministratorEmail + '?subject=Open Source Portal Error Message&body=I ran into an error message while using the open source portal.%0D%0A%0D%0AThe error included a Correlation ID: ' + correlationId + '%0D%0A%0D%0ATo speed this request up, could you also share information about your GitHub username and what you were trying to do at the time of the error? Thanks.')
+                | Report bug
+            else
+              a.btn.btn-sm.btn-muted(href='mailto:' + config.corporate.portalAdministratorEmail + '?subject=Open Source Portal Error Message&body=I ran into an error message while using the open source portal.%0D%0A%0D%0AThe error message did not include a Correlation ID.')
+                | Report bug
+
+        if correlationId
+          small
+            | Correlation ID: #{correlationId}
