@@ -78,6 +78,15 @@ block content
 
     if onboardingOrJoining
       p Now that you're an organization member, you can request to join any teams if you need access to private repos or special permissions, such as those to accept pull requests. You can use the standard GitHub workflow of fork-pull request to contribute to nearly any repo when you have read (pull) access.
+    else
+      p On GitHub, source code is stored in a <strong>Repository</strong> (repo). <strong>Teams</strong> manage who can see and directly write to sets of repos.
+
+    h3 Need help finding the right team?
+    
+    p Use the "Explore repos" feature to find the team that you need if you know the name of the repo you're looking to work with. For public open source projects, you can always just fork a repo and submit a pull request with your changes. For private repos, you need to have "read" access to a repo.
+    
+    p
+      a.btn.btn-sm.btn-default(href='/' + org.name + '/repos') Explore repos to find teams
 
     if highlightedTeams && highlightedTeams.length
       h3 Recommended Team#{highlightedTeams.length > 1 ? 's' : ''}

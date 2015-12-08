@@ -9,6 +9,7 @@ var async = require('async');
 var utils = require('../../utils');
 
 var teamsRoute = require('./teams');
+var reposRoute = require('./repos');
 var membershipRoute = require('./membership');
 var joinRoute = require('./join');
 var leaveRoute = require('./leave');
@@ -102,6 +103,7 @@ router.get('/', function (req, res, next) {
 router.use('/membership', membershipRoute);
 router.use('/leave', leaveRoute);
 router.use('/teams', teamsRoute);
+router.use('/repos', reposRoute);
 router.use('/security-check', securityCheckRoute);
 router.use('/profile-review', profileReviewRoute);
 router.use('/approvals', approvalsSystem);

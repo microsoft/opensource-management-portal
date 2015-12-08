@@ -1,0 +1,58 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block js_doc_ready
+  | if (initializeRepoFilter) { initializeRepoFilter() }
+
+block content
+  div.container
+
+    h1 #{org.name} Repositories
+
+    p This page can help you identify the team(s) that you may need to join to work with a particular repo. Press "Explore Teams" for any given repo to look up the team(s) that have rights to work with the repo and then request access.
+
+    script(type='text/javascript').
+      function initializeRepoFilter() {
+        var inputManageFilter = $('#manage-filter');
+        if (inputManageFilter) {
+          inputManageFilter.keyup(function () {;
+            $.uiTableFilter($('table#repos-table'), this.value, ['Repo', 'Description']);
+          });
+        }
+      }
+
+    table.table#repos-table
+      thead
+        tr
+          th(colspan='3')
+            form#manage-repos-filter-form
+              input.form-control#manage-filter(name='filter', placeholder='Filter repos', type='text')
+          th
+            p
+              i.glyphicon.glyphicon-search
+        tr
+          th.thirtypercent Repo Name
+          th State
+          th Description
+          th Actions
+      tbody
+        each repo in repos
+          tr
+            td
+              p
+                a.btn.btn-sm.btn-muted(href=repo.html_url, target='_new')
+                  = repo.name
+                  | 
+                  i.glyphicon.glyphicon-share-alt
+            td
+              p
+                a.btn.btn-sm(class=repo.private === true ? 'alert-danger' : 'alert-success', target='_new', href=repo.html_url)= repo.private === true ? 'Private' : 'Open Source'
+            td
+              p= repo.description
+            td
+              p
+                a.btn.btn-default.btn-sm(href='/' + repo.org.name + '/repos/' + repo.name + '/teams') Find / Join Teams

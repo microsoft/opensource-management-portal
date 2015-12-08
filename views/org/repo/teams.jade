@@ -1,0 +1,48 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+block content
+  div.container
+
+    h1 #{repo.name} Teams
+    
+    //- At this time we do not differentiate between secret and visible teams.
+
+    p This page can help you identify the team(s) that you may need to join to work with the "#{repo.name}" repo on GitHub.
+
+    if teams && teams.length && teams.length > 0
+      - var currentPermissionType = ''
+      each team in teams
+        if currentPermissionType !== team.permission
+          if currentPermissionType !== ''
+            hr
+          h2.capitalize= team.permission
+          - currentPermissionType = team.permission
+          if team.permission == 'admin'
+            blockquote Members of these teams have complete control over the repo including the ability to delete, rename, modify collaborators, take public, and manage web hooks and other settings.
+          else if team.permission == 'pull'
+            blockquote Standard access, members are able to clone & pull from this repo, as well as submit pull requests.
+          else if team.permission == 'push'
+            blockquote Write access for accepting pull requests.
+        h4.capitalize= team.name
+        if team.description
+          p
+            small= team.description
+        p
+          - var availableTeam = team
+          if availableTeam._hack_isMember === true
+            if userTeamsMaintainedById && userTeamsMaintainedById[availableTeam.id]
+              a.btn.btn-sm.btn-primary(href='/' + availableTeam.org.name + '/teams/' + availableTeam.slug) Manage this team
+            else
+              a.btn.btn-sm.btn-muted(href='/' + availableTeam.org.name + '/teams/' + availableTeam.slug + (isSudoer ? '' : '/join')) Already a member
+          else
+            if isSudoer
+              a.btn.btn-muted.btn-sm(href='/' + availableTeam.org.name + '/teams/' + availableTeam.slug) Manage as sudoer
+              | &nbsp; 
+            a.btn.btn-default.btn-sm(href='/' + availableTeam.org.name + '/teams/' + availableTeam.slug + '/join') Request to join
+    else
+      p No teams manage this repo.

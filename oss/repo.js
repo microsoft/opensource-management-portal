@@ -111,6 +111,9 @@ var detailsToSkip = [
     'releases_url',
     'svn_url',
     'mirror_url',
+    'organization',
+    'network_count',
+    'subscribers_count',
 ];
 
 // ----------------------------------------------------------------------------
@@ -120,6 +123,22 @@ OpenSourceRepo.prototype.createGitHubRepoClient = function () {
     var client = this.org.createGenericGitHubClient();
     debug('creating repo client for ' + this.org.name + '/' + this.name);
     return client.repo(this.org.name + '/' + this.name);
+};
+
+// ----------------------------------------------------------------------------
+// Retrieve the details for the repo.
+// ----------------------------------------------------------------------------
+OpenSourceRepo.prototype.getDetails = function (callback) {
+    var client = this.createGitHubRepoClient();
+    var self = this;
+    client.info(function (error, details) {
+        if (error) {
+            console.dir(error);
+            return callback(utils.wrapError(error, 'Could not get details about the repo. It may not exist.'));
+        }
+        setDetails(self, details);
+        callback(null, details);
+    });
 };
 
 // ----------------------------------------------------------------------------
@@ -168,6 +187,37 @@ OpenSourceRepo.prototype.removeCollaborator = function (githubUsername, callback
             return callback(utils.wrapError(error, 'The collaborator could not be removed at this time. Was "' + githubUsername + '" even a collaborator for ' + self.name + '?'));
         }
         callback();
+    });
+};
+
+// ----------------------------------------------------------------------------
+// Retrieve the list of teams that maintain this repo.
+// ----------------------------------------------------------------------------
+OpenSourceRepo.prototype.teams = function getRepoTeamList(allowRedis, callback) {
+    var self = this;
+    if (typeof allowRedis == 'function') {
+        callback = allowRedis;
+        allowRedis = true;
+    }
+    var instancesFromJson = function (teamInstances) {
+        async.map(teamInstances, function (teamInstance, cb) {
+            cb(null, self.org.team(teamInstance.id, teamInstance));
+        }, callback);
+    };
+    var redisKey = 'org#' + self.org.name + '/repo#' + self.name + ':teams';
+    self.oss.redis.getObject(redisKey, function (error, data) {
+        if (!error && data && allowRedis === true) {
+            return instancesFromJson(data);
+        }
+        var ghrepo = self.createGitHubRepoClient();
+        ghrepo.teams(function (error, teamInstances) {
+            if (error) {
+                return callback(error);
+            }
+            self.oss.redis.setObjectWithExpire(redisKey, teamInstances, utils.randomInteger(20, 90), function () {
+                instancesFromJson(teamInstances);
+            });
+        });
     });
 };
 
