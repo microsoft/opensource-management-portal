@@ -95,6 +95,96 @@ block content
           h1 Approvals: Please Review
           p
             a.btn.btn-default(href='/approvals/') See all pending approvals (#{accountInfo.pendingApprovals.length})
+
+        if accountInfo.teamsMaintained
+          h1 Teams You Maintain
+          script(type='text/javascript').
+            function initializeManageFilter() {
+              var inputManageFilter = $('#manage-filter');
+              if (inputManageFilter) {
+                inputManageFilter.keyup(function () {;
+                  $.uiTableFilter($('table#manage-table'), this.value, ['Title', 'Organization', 'GitHub Name']);
+                });
+              }
+            }
+          div.container
+            table.table#manage-table
+              thead
+                tr
+                  th(colspan='2')
+                    form#manage-filter-form
+                      input.form-control#manage-filter(name='filter', placeholder='Filter teams I manage', type='text')
+                  th
+                    p
+                      i.glyphicon.glyphicon-search
+                tr
+                  th GitHub Name
+                  th Organization
+                  th Actions
+              tbody
+                each team in accountInfo.teamsMaintained
+                  tr
+                    td
+                      a.btn.btn-sm.btn-muted(href=team.org.baseUrl + 'teams/' + team.slug)= team.name
+                    td.twentypercent.capitalize= team.org.name
+                    td.thirtypercent
+                      p
+                        a.btn.btn-sm.btn-default(href=team.org.baseUrl + 'teams/' + team.slug) Manage Team
+                        | 
+                        a.btn.btn-default.btn-sm(href='https://github.com/orgs/' + team.org.name + '/teams/' + team.slug, target='_new')
+                          | Open on GitHub 
+                          i.glyphicon.glyphicon-share-alt
+
+      if accountInfo.isLinkedUser && onboarding !== true
+        h1 Team Memberships
+        if accountInfo.teamsMaintainedHash
+          p Here are teams that you are a member of but not a maintainer of.
+        if accountInfo.userTeamMemberships && accountInfo.userTeamMemberships.length && accountInfo.userTeamMemberships.length > 0
+          script(type='text/javascript').
+            function initializeMembershipFilter() {
+              var inputMembershipFilter = $('#membership-filter');
+              if (inputMembershipFilter) {
+                inputMembershipFilter.keyup(function () {;
+                  $.uiTableFilter($('table#membership-table'), this.value, ['Team', 'Organization']);
+                });
+              }
+            }
+          table.table#membership-table
+            thead
+              tr
+                th(colspan='2')
+                  form#membership-filter-form
+                    input.form-control#membership-filter(name='filter', placeholder='Filter my teams', type='text')
+                th
+                  p
+                    i.glyphicon.glyphicon-search
+              tr
+                th Team
+                th Organization
+                th Actions
+            tbody
+              each team in accountInfo.userTeamMemberships
+                if team.id && accountInfo.teamsMaintainedHash && accountInfo.teamsMaintainedHash[team.id] !== undefined
+                  // Skipping this team since they are already maintaining it
+                else
+                  tr
+                    td
+                      a.capitalize.btn.btn-sm.btn-muted(href='https://github.com/orgs/' + team.org.name + '/teams/' + team.slug, target='_new')= team.name
+                    td.twentypercent.capitalize= team.org.name
+                    td.twentypercent
+                      p
+                        if config.github.teamEveryoneId == team.id
+                          a.btn.btn-default.btn-sm(href=team.org.baseUrl + '/leave') Leave Organization
+                        else
+                          a.btn.btn-default.btn-sm(href='https://github.com/orgs/' + team.org.name + '/teams/' + team.slug, target='_new')
+                            | Open on GitHub 
+                            i.glyphicon.glyphicon-share-alt
+          //- The user will get a better experience joining teams if they go through the organization onboarding first.
+          //-p
+            a.btn.btn-default(href='/teams')= (accountInfo.userTeamMemberships && accountInfo.userTeamMemberships.length && accountInfo.userTeamMemberships.length > 0) ? 'Join another team' : 'Join a team'
+        else
+          p You are not currently a member of any GitHub teams that grant you permission to specific repositories. Note that this display is cached and may not be up-to-date.
+
     hr
     p
       a.btn.btn-default(href='/unlink') Remove my corporate GitHub access
