@@ -139,6 +139,7 @@ block content
                     if availableTeam.name != availableTeam.slug
                       br
                       small= availableTeam.slug
+                    != '<!-- ' + availableTeam.slug + ':' + availableTeam.id + ' -->'
                 if !org
                   td
                     if availableTeam.org
