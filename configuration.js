@@ -37,6 +37,7 @@ module.exports = function translateEnvironmentToConfiguration(env) {
             callbackUrl: env.GITHUB_CALLBACK_URL,
         },
         organizations: [],
+        onboarding: [],
         // A salt needs to be provided to secure sessions and cookies.
         express: {
             sessionSalt: env.SESSION_SALT
@@ -82,6 +83,7 @@ module.exports = function translateEnvironmentToConfiguration(env) {
     };
     for (i = 1; env['GITHUB_ORG' + i + '_NAME']; i++) {
         var prefix = 'GITHUB_ORG' + i + '_';
+        var onboarding = env[prefix + 'ONBOARDING'];
         var org = {
             name: env[prefix + 'NAME'],
             type: env[prefix + 'TYPE'] || 'public',
@@ -111,7 +113,7 @@ module.exports = function translateEnvironmentToConfiguration(env) {
         } else {
             throw new Error('Invalid matching of size for highlighted teams.');
         }
-        config.organizations.push(org);
+        (onboarding ? config.onboarding : config.organizations).push(org);
     }
     return config;
 };

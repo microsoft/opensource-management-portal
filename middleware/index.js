@@ -37,4 +37,8 @@ module.exports = function initMiddleware(app, express, config, dirname) {
     app.use(require('./locals'));
 
     require('./passport-routes')(app, passport);
+    
+    if (config.onboarding && config.onboarding.length && config.onboarding.length > 0) {
+        require('./onboarding')(app, config);
+    }
 };
