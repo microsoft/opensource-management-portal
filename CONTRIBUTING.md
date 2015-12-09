@@ -22,8 +22,9 @@ Thank you!
 ## License
 
 For more information on this project's licensing, please see the 
-`LICENSE` file in the root of the repo. <!-- Not a link, since 
-some projects use LICENSE and others use LICENSE.TXT -->
+`LICENSE` file in the root of the repo.
+
+<!-- Not a link, since some projects use LICENSE and others use LICENSE.TXT -->
 
 ## How to contribute code
 
