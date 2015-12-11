@@ -99,7 +99,7 @@ module.exports = function translateEnvironmentToConfiguration(env) {
             highlightedTeams: [],
         };
         if (i == 1) {
-            org.teamPortalSudoers = env[prefix + 'PORTAL_SUDOERS_TEAMID'];
+            org.teamPortalSudoers = env[prefix + 'PORTAL_SUDOERS_TEAMID'] || env[prefix + 'SUDOERS_TEAMID'];
         }
         var highlightIds = utils.arrayFromString(env[prefix + 'HIGHLIGHTED_TEAMS']);
         var highlightText = utils.arrayFromString(env[prefix + 'HIGHLIGHTED_TEAMS_INFO'], ';');
