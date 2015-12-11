@@ -15,7 +15,10 @@ block content
 
       div.col-md-8
         p
-          em Oops. It's a little rainy in the cloud today.
+          em
+            | Oops.
+            if !skipLog
+              | It's a little rainy in the cloud today.
 
         h1= message
         if errorStatus
@@ -28,18 +31,25 @@ block content
           p
             a.btn.btn-primary(href=errorFancyLink.link)= errorFancyLink.title
 
-        if config && config.corporate && config.corporate.portalAdministratorEmail
-          p
+        p
+          if skipLog
+            a.btn.btn-sm.btn-default(href='about:blank', onclick='window.history.back(); return false;') Go back
+            | &nbsp; &nbsp; 
+
+          if config && config.corporate && config.corporate.portalAdministratorEmail
+            - var issueType = skipLog ? 'Ask a portal maintainer for assistance' : 'Report bug'
             if correlationId && user && user.github && user.github.username
               a.btn.btn-sm.btn-muted(href='mailto:' + config.corporate.portalAdministratorEmail + '?subject=Open Source Portal Error Message ' + (message ? ': ' + message : '') + '&body=I ran into an error message while using the open source portal.%0D%0A%0D%0AThe error included a Correlation ID: ' + correlationId + '%0D%0A%0D%0ATo speed this request up, could you also share information about what you were trying to do at the time of the error? Thanks.%0D%0A%0D%0A---%0D%0AGitHub username: ' + user.github.username + (message ? '%0D%0AMessage: ' + message : '') + (error.status ? '%0D%0AStatus Code: ' + error.status : '') + (detailed ? '%0D%0ADetailed Message: ' + detailed : ''))
-                | Report bug
+                = ' ' + issueType
             else if correlationId
               a.btn.btn-sm.btn-muted(href='mailto:' + config.corporate.portalAdministratorEmail + '?subject=Open Source Portal Error Message&body=I ran into an error message while using the open source portal.%0D%0A%0D%0AThe error included a Correlation ID: ' + correlationId + '%0D%0A%0D%0ATo speed this request up, could you also share information about your GitHub username and what you were trying to do at the time of the error? Thanks.')
-                | Report bug
+                = ' ' + issueType
             else
               a.btn.btn-sm.btn-muted(href='mailto:' + config.corporate.portalAdministratorEmail + '?subject=Open Source Portal Error Message&body=I ran into an error message while using the open source portal.%0D%0A%0D%0AThe error message did not include a Correlation ID.')
-                | Report bug
+                = ' ' + issueType
 
-        if correlationId
-          small
-            | Correlation ID: #{correlationId}
+  if correlationId
+    div.container#correlation
+      p.text-right
+        small.text-muted
+          | Correlation ID: #{correlationId}

@@ -58,6 +58,7 @@ module.exports = function(err, req, res, next) {
         detailed: err && err.detailed ? err.detailed : undefined,
         errorFancyLink: err && err.fancyLink ? err.fancyLink : undefined,
         errorStatus: errorStatus,
+        skipLog: err.skipLog,
         error: {},
         title: err.status === 404 ? 'Not Found' : 'Oops',
         user: req.user,
