@@ -87,7 +87,10 @@ block content
                   span.label.label-danger Membership Pending
               else
                 small
-                  span.label.label-primary Join this organization
+                  if o.setting('locked')
+                    span.label.label-default Locked
+                  else
+                    span.label.label-primary Join this organization
             p.lead= o.setting('description')
 
       //-if accountInfo.isSudoer

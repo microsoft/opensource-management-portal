@@ -7,6 +7,17 @@ var express = require('express');
 var router = express.Router();
 var utils = require('../../utils');
 
+router.use(function (req, res, next) {
+    var org = req.org;
+    var err = null;
+    if (org.setting('locked')) {
+        err = new Error('This organization is locked to new members.');
+        err.detailed = 'At this time, the maintainers of the "' + org.name + '" organization have decided to not enable onboarding through this portal.';
+        err.skipLog = true;
+    }
+    next(err);
+});
+
 router.get('/', function (req, res, next) {
     var org = req.org;
     var onboarding = req.query.onboarding;

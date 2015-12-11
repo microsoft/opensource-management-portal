@@ -80,6 +80,20 @@ module.exports = function translateEnvironmentToConfiguration(env) {
             ttl: env.REDIS_TTL || (60 * 60 * 24 * 7 /* one week */),
             prefix: env.REDIS_PREFIX,
         },
+        // Documentation is used for the documentation articles section.
+        // The articles are loaded from an Azure Blob Storage container.
+        documentation: {
+            storage : {
+                account: env.DOCUMENTATION_STORAGE_ACCOUNT,
+                key: env.DOCUMENTATION_STORAGE_KEY,
+                container: env.DOCUMENTATION_STORAGE_CONTAINER
+            },
+            culture: env.DOCUMENTATION_CULTURE || 'en-us',
+            settingsName: env.DOCUMENTATION_SETTINGS_NAME || 'settings.json',
+            articleListFormat:  env.DOCUMENTATION_ARTCILE_LIST_FORMAT || '%s/%s/documentation/articles/%s.html',
+            gitHubAvatarURL : env.DOCUMENTATION_GITHUB_AVATAR_URL || 'https://avatars3.githubusercontent.com/u/%s?v=3&amp;s=%s',
+            contributeBaseUrl : env.DOCUMENTATION_CONTRIBUTE_BASE_URL || 'https://github.com/Azure/azureopensource-portal/blob/master/%s'
+        }
     };
     for (i = 1; env['GITHUB_ORG' + i + '_NAME']; i++) {
         var prefix = 'GITHUB_ORG' + i + '_';
@@ -96,12 +110,19 @@ module.exports = function translateEnvironmentToConfiguration(env) {
             teamAllRepoWriteId: env[prefix + 'ALLREPOWRITE_TEAMID'],
             teamSudoers: env[prefix + 'SUDOERS_TEAMID'],
             description: env[prefix + 'DESCRIPTION'],
-            priority: env[prefix + 'PRIORITY'] || 'primary',
+            priority: env[prefix + 'PRIORITY'] || 'primary', // This value for now should be a string, 'primary' (default) or 'secondary', used to have a secondary class of orgs on the site homepage
+            locked: env[prefix + 'LOCKED'] || false, // If a string value is present, i.e. 'locked' or 'lock', then the org will not allow joining at this time. Not a long-term feature once org join approval workflow is supported.
             highlightedTeams: [],
         };
+        // The first org can have a special team, a portal sudoers team, that get
+        // sudo access to ALL managed organizations. If such a property is not
+        // present, the org's sudoers team become portal maintainers, too.
         if (i == 1) {
             org.teamPortalSudoers = env[prefix + 'PORTAL_SUDOERS_TEAMID'] || env[prefix + 'SUDOERS_TEAMID'];
         }
+        // Highlighted teams are those which should be shown above all other teams
+        // in the 'join a team' user interface, designed for very large teams that
+        // most org members should consider being members of.
         var highlightIds = utils.arrayFromString(env[prefix + 'HIGHLIGHTED_TEAMS']);
         var highlightText = utils.arrayFromString(env[prefix + 'HIGHLIGHTED_TEAMS_INFO'], ';');
         if (highlightIds.length === highlightText.length) {
