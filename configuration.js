@@ -96,6 +96,7 @@ module.exports = function translateEnvironmentToConfiguration(env) {
             teamAllRepoWriteId: env[prefix + 'ALLREPOWRITE_TEAMID'],
             teamSudoers: env[prefix + 'SUDOERS_TEAMID'],
             description: env[prefix + 'DESCRIPTION'],
+            priority: env[prefix + 'PRIORITY'] || 'primary',
             highlightedTeams: [],
         };
         if (i == 1) {

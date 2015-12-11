@@ -68,7 +68,8 @@ router.get('/', function (req, res, next) {
                     return callback(error);
                 }
                 async.sortBy(orgsUnsorted, function (org, cb) {
-                    cb(null, org.name);
+                    var pri = org.setting('priority') ? org.setting('priority') : 'primary';
+                     cb(null, pri + ':' + org.name);
                 }, function (error, orgs) {
                     if (error) {
                         return callback(error);

@@ -68,7 +68,13 @@ block content
       if onboarding === true
         h3 Please select the organization that you would like to join.
 
+      - var currentPriority = ''
       each o in accountInfo.organizations
+        if o.setting('priority') !== currentPriority
+          - currentPriority = o.setting('priority')
+          if currentPriority == 'secondary'
+            h2 Additional Organizations
+            p Here are additional organizations that are managed by this portal but are intended for specific teams, projects and purposes.
         div.link-box
           a(href=o.baseUrl + (o.membershipStateTemporary === 'active' ? '' : 'join') + onboardingPostfixUrl)
             h2
