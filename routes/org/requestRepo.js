@@ -147,7 +147,21 @@ router.get('/', function (req, res, next) {
         if (error) {
           return next(utils.wrapError(error, 'Could not read the entire list of read (pull) teams from GitHub. Please try again later or report this error if you continue seeing it.'));
         }
-        var team = org.getRepoApproversTeam();
+        var team;
+        try {
+            team = org.getRepoApproversTeam();
+        } catch (ex) {
+            // If the organization does not have a repo approvers team, we assume
+            // that they allow any of their members to create repos directly on
+            // the GitHub site.
+            var err = new Error('This organization allows the creation of repositories directly on GitHub.');
+            err.skipLog = true;
+            err.fancyLink = {
+                link: 'https://github.com/organizations/' + org.name + '/repositories/new',
+                title: 'Create a new repo directly on GitHub',
+            };
+            return next(err);
+        }
         team.getMemberLinks(function (error, approvers) {
               if (error) {
                   return next(new Error('Could not retrieve the repo approvers for ' + orgName));
