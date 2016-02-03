@@ -79,6 +79,7 @@ module.exports = function translateEnvironmentToConfiguration(env) {
             key: env.REDIS_KEY,
             ttl: env.REDIS_TTL || (60 * 60 * 24 * 7 /* one week */),
             prefix: env.REDIS_PREFIX,
+            tls: env.REDIS_TLS_HOST,
         },
         // Documentation is used for the documentation articles section.
         // The articles are loaded from an Azure Blob Storage container.

@@ -6,14 +6,13 @@
 var session = require('express-session');
 var RedisStore = require('connect-redis')(session);
 
-module.exports = function (config) {
+module.exports = function (config, redisClient) {
+    var redisOptions = {
+        client: redisClient,
+        ttl: config.redis.ttl,
+    };
     var settings = {
-        store: new RedisStore({
-            port: config.redis.port,
-            host: config.redis.host,
-            pass: config.redis.key,
-            ttl: config.redis.ttl
-        }),
+        store: new RedisStore(redisOptions),
         secret: config.express.sessionSalt,
         name: 'sid',
         resave: false,

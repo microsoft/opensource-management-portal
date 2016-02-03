@@ -9,7 +9,7 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var compression = require('compression');
 
-module.exports = function initMiddleware(app, express, config, dirname) {
+module.exports = function initMiddleware(app, express, config, dirname, redisClient) {
     require('./appInsights')(config);
 
     app.set('views', path.join(dirname, 'views'));
@@ -23,7 +23,7 @@ module.exports = function initMiddleware(app, express, config, dirname) {
     app.use(compression());
     app.use(cookieParser());
 
-    app.use(require('./session')(config));
+    app.use(require('./session')(config, redisClient));
     var passport = require('./passport-config')(app, config);
 
     app.use(express.static(path.join(dirname, 'public')));

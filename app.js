@@ -13,7 +13,15 @@ var app = express();
 app.initializeApplication = function init(config, callback) {
     var dc;
     var redisFirstCallback;
-    var redisClient = redis.createClient(config.redis.port, config.redis.host);
+    var redisOptions = {
+        auth_pass: config.redis.key,
+    };
+    if (config.redis.tls) {
+        redisOptions.tls = {
+            servername: config.redis.tls,
+        };
+    }
+    var redisClient = redis.createClient(config.redis.port, config.redis.host, redisOptions);
     redisClient.on('connect', function () {
         if (redisFirstCallback) {
             var cb = redisFirstCallback;
@@ -41,7 +49,7 @@ app.initializeApplication = function init(config, callback) {
             redisClient: redisClient
         };
         app.set('runtimeConfig', config);
-        require('./middleware/')(app, express, config, __dirname);
+        require('./middleware/')(app, express, config, __dirname, redisClient);
         app.use('/', require('./routes/'));
         require('./middleware/error-routes')(app);
         callback(null, app);
