@@ -48,6 +48,8 @@ var detailsToSkip = [
     'repos_url',
     'events_url',
     'received_events_url',
+    'hooks_url',
+    'issues_url',
     'type',
     'site_admin',
     // only in detailed info responses:
