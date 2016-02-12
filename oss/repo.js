@@ -114,6 +114,7 @@ var detailsToSkip = [
     'organization',
     'network_count',
     'subscribers_count',
+    'deployments_url',
 ];
 
 // ----------------------------------------------------------------------------
