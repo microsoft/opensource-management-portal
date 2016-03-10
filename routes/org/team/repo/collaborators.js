@@ -52,7 +52,6 @@ router.post('/:username/remove', function (req, res, next) {
     var repo = req.repo;
     var username = req.params.username;
     var oss = repo.oss;
-    console.dir(username);
     repo.removeCollaborator(username, function (error) {
        if (error) {
            return next(error);
