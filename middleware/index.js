@@ -10,6 +10,7 @@ var bodyParser = require('body-parser');
 var compression = require('compression');
 
 module.exports = function initMiddleware(app, express, config, dirname, redisClient) {
+    app.use(require('./hsts'));
     require('./appInsights')(config);
 
     app.set('views', path.join(dirname, 'views'));
