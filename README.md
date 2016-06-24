@@ -1,3 +1,5 @@
+> v4 development: note that this project will experience breaking changes in the move to v4, namely a rearchitecture in how onboarding works
+
 # Azure GitHub Management: azure-oss-portal
 
 The Azure Open Source Portal for GitHub is the culmination of years of trying to manage the 
