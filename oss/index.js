@@ -112,8 +112,8 @@ OpenSourceUserContext.prototype.isPortalAdministrator = function (callback) {
     */
     this.org().getPortalSudoersTeam().isMember(function (error, isMember) {
         if (error) {
-            return callback(utils.wrapError(error, 
-            'We had trouble querying GitHub for important team management ' + 
+            return callback(utils.wrapError(error,
+            'We had trouble querying GitHub for important team management ' +
             'information. Please try again later or report this issue.'));
         }
         callback(null, isMember === true);
@@ -223,7 +223,13 @@ OpenSourceUserContext.prototype.getCompleteUsersFromUsernameIdHash = function (h
         },
         function (cb) {
             async.each(list, function (user, innerCb) {
-                user.getDetailsByUsername(innerCb);
+                user.getDetailsByUsername(function (formerUserError) {
+                    // Ignore the user with an error... this means they left GitHub.
+                    if (formerUserError) {
+                        console.dir(formerUserError);
+                    }
+                    innerCb();
+                });
             }, function (error) {
                 cb(error);
             });

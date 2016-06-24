@@ -61,11 +61,13 @@ router.get('/', function (req, res, next) {
                     return callback(error);
                 }
                 if (maintainers && maintainers.length && maintainers.length > 0) {
-                    oss.getLinksForUsers(maintainers, function (error) {
+                    oss.getLinksForUsers(maintainers, function (errorIgnore) {
                         async.each(maintainers, function (mt, cb) {
-                            mt.getDetailsByUsername(cb);
+                            mt.getDetailsByUsername(function (errorIgnoreEx) {
+                                cb(null);
+                            });
                         }, function () {
-                            callback(error, maintainers);
+                            callback(null, maintainers);
                         });
                     });
                 } else {
