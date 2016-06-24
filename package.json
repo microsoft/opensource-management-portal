@@ -4,7 +4,7 @@
   "contributors": [
       "Wilcox, Jeff <jwilcox@microsoft.com>"
   ],
-  "version": "3.0.2",
+  "version": "4.0.0-alpha.0",
   "license": "MIT",
   "private": true,
   "keywords": [
