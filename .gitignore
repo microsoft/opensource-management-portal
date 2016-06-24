@@ -22,7 +22,6 @@ app.yaml
 # Other routes and components that need not be included here
 docs/
 routes/microsoft-specific*
-routes/friends/
 routes/docs.js
 views/docs/
 public/css/docs.css
