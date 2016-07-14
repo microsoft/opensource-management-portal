@@ -10,7 +10,7 @@ var utils = require('../utils');
 function RedisHelper (ossInstance, prefix) {
     this.oss = ossInstance;
     this.redis = ossInstance.redisClient();
-    this.prefix = prefix ? prefix + ',' : '';
+    this.prefix = prefix ? prefix + '.' : '';
 }
 
 function objectFromJson(json, callback) {
@@ -37,6 +37,21 @@ function objectToJson(object, callback) {
     }
     callback(error, json);
 }
+
+RedisHelper.prototype.getSet = function (key, callback) {
+    var k = this.prefix + key;
+    this.redis.smembers(k, callback);
+};
+
+RedisHelper.prototype.addSetMember = function (key, member, callback) {
+    var k = this.prefix + key;
+    this.redis.sadd(k, member, callback);
+};
+
+RedisHelper.prototype.removeSetMember = function (key, member, callback) {
+    var k = this.prefix + key;
+    this.redis.srem(k, member, callback);
+};
 
 RedisHelper.prototype.get = function (key, callback) {
     var k = this.prefix + key;

@@ -5,14 +5,18 @@
 
 const path = require('path');
 const favicon = require('serve-favicon');
-const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const compression = require('compression');
 
 module.exports = function initMiddleware(app, express, config, dirname, redisClient, initializationError) {
     if (!initializationError) {
+      if (config.allowHttp) {
+        console.warn('WARNING: Allowing HTTP for local debugging');
+      } else {
+        app.use(require('./sslify'));
         app.use(require('./hsts'));
-        require('./appInsights')(config);
+      }
+      require('./appInsights')(config);
     }
 
     app.set('views', path.join(dirname, 'views'));
@@ -24,7 +28,6 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
     app.use(bodyParser.json());
     app.use(bodyParser.urlencoded({ extended: false }));
     app.use(compression());
-    app.use(cookieParser());
 
     var passport;
     if (!initializationError) {
@@ -40,7 +43,7 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
 
     app.use(require('./scrubbedUrl'));
     app.use(require('./logger'));
-    if (!initializationError && process.env.WEBSITE_SKU) {
+    if (!initializationError && config.websiteSku && !config.allowHttp) {
         app.use(require('./requireSecureAppService'));
     }
     app.use(require('./correlationId'));

@@ -43,7 +43,7 @@ module.exports = function (app, config) {
     clientID: config.github.clientId,
     clientSecret: config.github.clientSecret,
     callbackURL: config.github.callbackUrl,
-    scope: ['user:email'],
+    scope: [],
     userAgent: 'passport-azure-oss-portal-for-github' // CONSIDER: User agent should be configured.
   }, gitHubTokenToSubset));
 
@@ -55,11 +55,12 @@ module.exports = function (app, config) {
     realm: config.activeDirectory.tenantId,
     clientID: config.activeDirectory.clientId,
     clientSecret: config.activeDirectory.clientSecret,
-    //oidcIssuer: config.creds.issuer,
+    oidcIssuer: config.activeDirectory.issuer,
     identityMetadata: 'https://login.microsoftonline.com/common/.well-known/openid-configuration',
     skipUserProfile: true,
     responseType: 'id_token code',
     responseMode: 'form_post',
+    validateIssuer: true,
   }, function (iss, sub, profile, accessToken, refreshToken, done) {
     done(null, profile);
   });
@@ -72,7 +73,7 @@ module.exports = function (app, config) {
     clientID: config.github.clientId,
     clientSecret: config.github.clientSecret,
     callbackURL: config.github.callbackUrl + '/increased-scope',
-    scope: ['user:email', 'write:org'],
+    scope: ['write:org'],
     userAgent: 'passport-azure-oss-portal-for-github' // CONSIDER: User agent should be configured.
   }, gitHubTokenToSubset);
 
@@ -82,4 +83,4 @@ module.exports = function (app, config) {
   app.use(passport.session());
 
   return passport;
-};
+}

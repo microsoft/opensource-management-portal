@@ -21,7 +21,7 @@ module.exports = function configurePassport(app, passport) {
             // function will not be called.
         });
 
-    app.get('/auth/github/callback', 
+    app.get('/auth/github/callback',
         passport.authenticate('github', { failureRedirect: '/failure/github' }),
         function (req, res) {
             var url = '/';
@@ -34,7 +34,7 @@ module.exports = function configurePassport(app, passport) {
 
     app.get('/signout', function (req, res) {
         req.logout();
-        res.redirect('/');
+        res.redirect('https://github.com/logout');
     });
 
     // ----------------------------------------------------------------------------
@@ -43,13 +43,13 @@ module.exports = function configurePassport(app, passport) {
     app.get('/signin/github/increased-scope', function (req, res){
         if (req.session && req.headers && req.headers.referer) {
             req.session.referer = req.headers.referer;
-        }  
+        }
         return res.redirect('/auth/github/increased-scope');
     });
 
     app.get('/auth/github/increased-scope', passport.authorize('expanded-github-scope'));
 
-    app.get('/auth/github/callback/increased-scope', 
+    app.get('/auth/github/callback/increased-scope',
         passport.authorize('expanded-github-scope'), function (req, res, next) {
             var account = req.account;
             var user = req.user;

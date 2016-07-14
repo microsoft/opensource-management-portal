@@ -21,12 +21,14 @@ block content
         if messageTiny
           p
             small= messageTiny
+        if messageOutput
+          p
+            pre= messageOutput
 
         p
           a.btn.btn-default(href='/') Home
 
         if config && config.corporate && config.corporate.portalAdministratorEmail
         p
-          | If you have any questions, please ping 
-          | 
+          | If you have any questions, please ping &nbsp;
           a.alert-link(href='mailto:' + config.corporate.portalAdministratorEmail)= config.corporate.portalAdministratorEmail

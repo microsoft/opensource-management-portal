@@ -10,7 +10,7 @@ logger.token('github', function getGitHub(req) {
 });
 
 logger.token('correlationId', function getCorrelationId(req) {
-  return req.correlationId ? req.correlationId : undefined;
+  return req.correlationId;
 });
 
 logger.token('scrubbedUrl', function getScrubbedUrl(req) {
@@ -18,6 +18,6 @@ logger.token('scrubbedUrl', function getScrubbedUrl(req) {
 });
 
 // ----------------------------------------------------------------------------
-// Use the customized ogger for Express requests.
+// Use the customized logger for Express requests.
 // ----------------------------------------------------------------------------
 module.exports = logger(':github :method :scrubbedUrl :status :response-time ms - :res[content-length] :correlationId');

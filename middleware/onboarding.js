@@ -37,6 +37,7 @@ module.exports = function (app, config) {
           }
           console.log(s);
         } else if (error) {
+          console.log(`Error retrieving teams for the organization ${org.name}:`);
           console.dir(error);
           console.log(s);
         }

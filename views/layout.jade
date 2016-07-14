@@ -130,9 +130,31 @@ html(lang="en")
           p(class='pull-right')
             a(href='#top', title=headSha) Back to top
             if ! user
-              |  &middot; 
+              |  &middot;
               a(href='/signin/github') Sign In
-        
+
+        if config && config.showDebugFooter === true
+          div.clearfix
+          div.row.alert-gray(style='padding:12px')
+            h6 Instance Configuration
+            div.col-md-6.col-lg-6
+              if correlationId
+                h4 Correlation ID: #{correlationId}
+              if serverName
+                h4 Hostname: #{serverName}
+              if config && config.applicationInsights && config.applicationInsights.instrumentationKey
+                h4 AppInsights: Instrumented
+            div.col-md-6.col-lg-6(style='background-color:white')
+              if config && config.azureStorage
+                h4
+                  | Storage:&nbsp;
+                  span.bg-danger(style='color:white;padding:2px')= config.azureStorage.account
+              if config && config.redis
+                h4
+                  | Redis:&nbsp;
+                  span.bg-danger(style='color:white;padding:2px')= config.redis.host
+                h4
+                  | Redis Prefix: #{config.redis.prefix}
         if user && user.github && user.github.id
           if config && config.corporate && config.corporate.trainingResources
             - var footres = config.corporate.trainingResources.footer
@@ -161,13 +183,13 @@ html(lang="en")
               | &copy; #{config && config.companyName ? config.companyName : ''}
               br
               if serverName && correlationId
-                | Powered by 
-                span(title=correlationId + ' ' + serverName) Microsoft Azure, 
-                a(href='/thanks') great open source 
+                | Powered by&nbsp;
+                span(title=correlationId + ' ' + serverName) Microsoft Azure,&nbsp;
+                a(href='/thanks') great open source&nbsp;
                 | and the GitHub API
               else
-                | Powered by Microsoft Azure, 
-                a(href='/thanks') great open source 
+                | Powered by Microsoft Azure,&nbsp;
+                a(href='/thanks') great open source&nbsp;
                 | and the GitHub API
 
     if (appInsightsKey)

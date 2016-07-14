@@ -10,6 +10,7 @@ module.exports = function (config, redisClient) {
   var redisOptions = {
     client: redisClient,
     ttl: config.redis.ttl,
+    prefix: config.redis.prefix + '.session:',
   };
   var settings = {
     store: new RedisStore(redisOptions),

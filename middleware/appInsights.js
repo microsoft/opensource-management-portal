@@ -8,11 +8,7 @@
 // ----------------------------------------------------------------------------
 module.exports = function initializeAppInsights(config) {
     if (config.applicationInsights.instrumentationKey) {
-        var AppInsights = require('applicationinsights');
-        var appInsights = new AppInsights({
-            instrumentationKey: config.applicationInsights.instrumentationKey
-        });
-        appInsights.trackAllHttpServerRequests('favicon');
-        appInsights.trackAllUncaughtExceptions();
+      var appInsights = require('applicationinsights');
+      appInsights.setup(config.applicationInsights.instrumentationKey).start();
     }
 };
