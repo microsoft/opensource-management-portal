@@ -4,9 +4,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-var app = require('../app');
-var debug = require('debug')('g:server');
-var http = require('http');
+const app = require('../app');
+const debug = require('debug')('g:server');
+const http = require('http');
 
 function normalizePort(val) {
   var port = parseInt(val, 10);
@@ -29,7 +29,7 @@ app.set('port', port);
 
 var configurationError = null;
 try {
-  var config = require('../configuration')(process.env);
+  var config = require('../configuration')();
 } catch (err) {
   configurationError = err;
 }
