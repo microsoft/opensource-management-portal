@@ -10,7 +10,7 @@ block content
 
     if publicMembership
       h1
-        | Thanks for supporting #{org.name} 
+        | Thanks for supporting #{org.name}
       p.lead Your membership is currently public.
       p If you conceal your membership, you will not appear on the #{org.name} list of members nor be counted in the public membership count.
     else
@@ -25,7 +25,7 @@ block content
       form(method='post')
         p
           input.btn.btn-lg.btn-primary(type='submit', value=publicMembership ? 'Conceal my membership' : 'Make my membership public', name=publicMembership ? 'conceal' : 'publicize')
-          | &nbsp; &nbsp; 
+          | &nbsp; &nbsp;
           if onboarding || joining
             a.btn.btn-default.btn-lg(href=org.baseUrl + 'teams' + teamPostfix)
               if publicMembership
@@ -54,8 +54,8 @@ block content
 
       hr
       h4 About this additional GitHub authorization
-      p This open source portal is designed to use the bare minimum of <a href="https://developer.github.com/v3/oauth/#scopes" target="_new">GitHub OAuth scopes</a> - the <code>user:email</code> scope. To change your public membership, we need to temporarily increase the scope to the <code>write:org</code> scope that enables publicizing and unpublicizing your membership.
+      p This open source portal is designed to use the bare minimum of <a href="https://developer.github.com/v3/oauth/#scopes" target="_new">GitHub OAuth scopes</a>. To change your public membership, we need to temporarily increase the scope to the <code>write:org</code> scope that enables publicizing and unpublicizing your membership.
 
-      p If you would rather not grant the additional scope, you can also modify your organization membership status manually at 
+      p If you would rather not grant the additional scope, you can also modify your organization membership status manually at
           a(href='https://github.com/orgs/' + org.name + '/people?query=' + theirUsername, target='_new') https://github.com/orgs/#{org.name}/people?query=#{theirUsername}
       p The next time you sign in to use this portal, the expanded scope will be removed.

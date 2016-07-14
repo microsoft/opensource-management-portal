@@ -43,7 +43,7 @@ module.exports = function (app, config) {
     clientID: config.github.clientId,
     clientSecret: config.github.clientSecret,
     callbackURL: config.github.callbackUrl,
-    scope: ['user:email'],
+    scope: [],
     userAgent: 'passport-azure-oss-portal-for-github' // CONSIDER: User agent should be configured.
   }, gitHubTokenToSubset));
 
@@ -73,7 +73,7 @@ module.exports = function (app, config) {
     clientID: config.github.clientId,
     clientSecret: config.github.clientSecret,
     callbackURL: config.github.callbackUrl + '/increased-scope',
-    scope: ['user:email', 'write:org'],
+    scope: ['write:org'],
     userAgent: 'passport-azure-oss-portal-for-github' // CONSIDER: User agent should be configured.
   }, gitHubTokenToSubset);
 

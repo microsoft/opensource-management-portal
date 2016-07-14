@@ -182,13 +182,13 @@ html(lang="en")
               | &copy; #{config && config.companyName ? config.companyName : ''}
               br
               if serverName && correlationId
-                | Powered by
-                span(title=correlationId + ' ' + serverName) Microsoft Azure,
-                a(href='/thanks') great open source
+                | Powered by&nbsp;
+                span(title=correlationId + ' ' + serverName) Microsoft Azure,&nbsp;
+                a(href='/thanks') great open source&nbsp;
                 | and the GitHub API
               else
-                | Powered by Microsoft Azure,
-                a(href='/thanks') great open source
+                | Powered by Microsoft Azure,&nbsp;
+                a(href='/thanks') great open source&nbsp;
                 | and the GitHub API
 
     if (appInsightsKey)
