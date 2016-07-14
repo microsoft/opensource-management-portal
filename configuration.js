@@ -32,7 +32,7 @@ module.exports = function translateEnvironmentToConfiguration(legacyConfiguratio
     if (legacyConfiguration) throw new Error('No parameters should be passed in as configuration now that painless-config is in use.');
     var configurationHelper = painlessConfig;
     for (var j = 0; j < requiredConfigurationKeys.length; j++) {
-        if (configurationHelper.get(requiredConfigurationKeys[j]) === undefined) {
+        if (!configurationHelper.get(requiredConfigurationKeys[j])) {
             throw new Error(`Configuration parameter "${requiredConfigurationKeys[j]}" is required for this application to initialize.`);
         }
     }
