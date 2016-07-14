@@ -87,7 +87,7 @@ html(lang="en")
                     a.btn.btn-sm.btn-white(href='/signout', style='margin-left:10px') Sign out
                 else
                   p
-                    small Sign in or create your GitHub.com account to manage your #{config.companyName} open source identity.
+                    small Sign in or create your GitHub.com account to manage your #{config && config.companyName || 'corporate'} open source identity.
                   p
                     a.btn.btn-primary(href='/signin/github') Sign in
               div.col-md-6

@@ -19,7 +19,11 @@ function DataClient (config, callback) {
     var storageAccountName = config.azureStorage.account;
     var storageAccountKey = config.azureStorage.key;
     var prefix = config.azureStorage.prefix;
-    this.table = azure.createTableService(storageAccountName, storageAccountKey);
+    try {
+        this.table = azure.createTableService(storageAccountName, storageAccountKey);
+    } catch (storageAccountError) {
+        return callback(storageAccountError);
+    }
     this.entGen = azure.TableUtilities.entityGenerator;
     this.options = {
         partitionKey: prefix + 'pk',

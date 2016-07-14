@@ -3,16 +3,35 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-var async = require('async');
-var DataClient = require('./data');
-var express = require('express');
-var redis = require('redis');
-var app = express();
+const async = require('async');
+const DataClient = require('./data');
+const express = require('express');
+const redis = require('redis');
+const app = express();
 
 // Asynchronous initialization for the Express app, configuration and data stores.
-app.initializeApplication = function init(config, callback) {
-    var dc;
-    var redisFirstCallback;
+app.initializeApplication = function init(config, configurationError, callback) {
+  var dc;
+  var finalizeInitialization = (error) => {
+    if (dc) {
+      app.set('dataclient', dc);
+      dc.cleanupInTheFuture = {
+        redisClient: redisClient
+      };
+    }
+    app.set('runtimeConfig', config);
+    require('./middleware/')(app, express, config, __dirname, redisClient, error);
+    if (!error) {
+      app.use('/', require('./routes/'));
+    }
+    require('./middleware/error-routes')(app, error);
+    callback(null, app);
+  };
+  if (configurationError) {
+    return finalizeInitialization(configurationError);
+  }
+
+  var redisFirstCallback;
     var redisOptions = {
         auth_pass: config.redis.key,
     };
@@ -33,7 +52,7 @@ app.initializeApplication = function init(config, callback) {
         function (cb) {
             new DataClient(config, function (error, dcInstance) {
                 dc = dcInstance;
-                cb();
+                cb(error);
             });
         },
         function (cb) {
@@ -41,18 +60,7 @@ app.initializeApplication = function init(config, callback) {
             redisClient.auth(config.redis.key);
         },
     ], function (error) {
-        if (error) {
-            throw error;
-        }
-        app.set('dataclient', dc);
-        dc.cleanupInTheFuture = {
-            redisClient: redisClient
-        };
-        app.set('runtimeConfig', config);
-        require('./middleware/')(app, express, config, __dirname, redisClient);
-        app.use('/', require('./routes/'));
-        require('./middleware/error-routes')(app);
-        callback(null, app);
+        finalizeInitialization(error);
     });
 };
 

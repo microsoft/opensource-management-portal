@@ -9,9 +9,11 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var compression = require('compression');
 
-module.exports = function initMiddleware(app, express, config, dirname, redisClient) {
-    app.use(require('./hsts'));
-    require('./appInsights')(config);
+module.exports = function initMiddleware(app, express, config, dirname, redisClient, initializationError) {
+    if (!initializationError) {
+        app.use(require('./hsts'));
+        require('./appInsights')(config);
+    }
 
     app.set('views', path.join(dirname, 'views'));
     app.set('view engine', 'jade');
@@ -24,22 +26,25 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
     app.use(compression());
     app.use(cookieParser());
 
-    app.use(require('./session')(config, redisClient));
-    var passport = require('./passport-config')(app, config);
+    if (!initializationError) {
+        app.use(require('./session')(config, redisClient));
+        var passport = require('./passport-config')(app, config);
+    }
 
     app.use(express.static(path.join(dirname, 'public')));
 
     app.use(require('./scrubbedUrl'));
     app.use(require('./logger'));
-    if (process.env.WEBSITE_SKU) {
+    if (!initializationError && process.env.WEBSITE_SKU) {
         app.use(require('./requireSecureAppService'));
     }
     app.use(require('./correlationId'));
     app.use(require('./locals'));
 
-    require('./passport-routes')(app, passport);
-    
-    if (config.onboarding && config.onboarding.length && config.onboarding.length > 0) {
-        require('./onboarding')(app, config);
+    if (!initializationError) {
+        require('./passport-routes')(app, passport);
+        if (config.onboarding && config.onboarding.length && config.onboarding.length > 0) {
+            require('./onboarding')(app, config);
+        }
     }
 };

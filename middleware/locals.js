@@ -11,7 +11,7 @@ var os = require('os');
 module.exports = function (req, res, next) {
     req.app.locals.correlationId = req.correlationId;
     req.app.locals.serverName = os.hostname();
-    req.app.locals.appInsightsKey = req.app.settings.runtimeConfig.applicationInsights.instrumentationKey;
+    req.app.locals.appInsightsKey = req.app.settings && req.app.settings.runtimeConfig && req.app.settings.runtimeConfig.applicationInsights ? req.app.settings.runtimeConfig.applicationInsights.instrumentationKey : null;
 
     next();
 };

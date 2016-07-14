@@ -27,9 +27,13 @@ function normalizePort(val) {
 var port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
 
-var config = require('../configuration')(process.env);
-
-app.initializeApplication(config, function (error) {
+var configurationError = null;
+try {
+  var config = require('../configuration')(process.env);
+} catch (err) {
+  configurationError = err;
+}
+app.initializeApplication(config, configurationError, function (error) {
   if (error) throw error;
 
   var server = http.createServer(app);
