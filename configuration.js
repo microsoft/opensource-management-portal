@@ -48,6 +48,7 @@ module.exports = function translateEnvironmentToConfiguration(legacyConfiguratio
         websiteSku: configurationHelper.get('WEBSITE_SKU'),
         expectedSslCertificate: configurationHelper.get('EXPECTED_SSL_CERTIFICATE'),
         allowHttp: configurationHelper.get('DEBUG_ALLOW_HTTP'),
+        showDebugFooter: configurationHelper.get('DEBUG_SHOW_FOOTER'),
         corporate: {
             userProfilePrefix: configurationHelper.get('CORPORATE_PROFILE_PREFIX'),
             trainingResources: require('./resources.json'),
