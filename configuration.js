@@ -3,129 +3,151 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+// set environment vars required in bash profile for consistency
+// need to encrypt keys and add cert for security
+
+const painlessConfig = require('painless-config');
+
 var utils = require('./utils');
 
-module.exports = function translateEnvironmentToConfiguration(env) {
-    if (!env) {
-        env = process.env;
+const requiredConfigurationKeys = [
+    'COMPANY_NAME',
+    'CORPORATE_PROFILE_PREFIX',
+    'PORTAL_ADMIN_EMAIL',
+    'GITHUB_CLIENT_ID',
+    'GITHUB_CLIENT_SECRET',
+    'GITHUB_CALLBACK_URL',
+    'SESSION_SALT',
+    'AAD_CLIENT_ID',
+    'AAD_CLIENT_SECRET',
+    'AAD_TENANT_ID',
+    'AAD_ISSUER',
+    'AAD_REDIRECT_URL',
+    'XSTORE_ACCOUNT',
+    'XSTORE_KEY',
+    'REDIS_KEY',
+];
+
+module.exports = function translateEnvironmentToConfiguration(legacyConfiguration) {
+    if (legacyConfiguration) throw new Error('No parameters should be passed in as configuration now that painless-config is in use.');
+    var configurationHelper = painlessConfig;
+    for (var j = 0; j < requiredConfigurationKeys.length; j++) {
+        if (configurationHelper.get(requiredConfigurationKeys[j]) === undefined) {
+            throw new Error(`Configuration parameter "${requiredConfigurationKeys[j]}" is required for this application to initialize.`);
+        }
     }
     var i = 0;
     var pkgInfo = require('./package.json');
     var config = {
         logging: {
-            errors: env.SITE_SKIP_ERRORS === undefined,
+            errors: configurationHelper.get('SITE_SKIP_ERRORS') === undefined,
             version: pkgInfo.version,
         },
-        companyName: env.COMPANY_NAME,
-        serviceBanner: env.SITE_SERVICE_BANNER,
+        companyName: configurationHelper.get('COMPANY_NAME'),
+        serviceBanner: configurationHelper.get('SITE_SERVICE_BANNER'),
+        websiteSku: configurationHelper.get('WEBSITE_SKU'),
+        expectedSslCertificate: configurationHelper.get('EXPECTED_SSL_CERTIFICATE'),
+        allowHttp: configurationHelper.get('DEBUG_ALLOW_HTTP'),
         corporate: {
-            userProfilePrefix: env.CORPORATE_PROFILE_PREFIX,
+            userProfilePrefix: configurationHelper.get('CORPORATE_PROFILE_PREFIX'),
             trainingResources: require('./resources.json'),
-            portalAdministratorEmail: env.PORTAL_ADMIN_EMAIL,
+            portalAdministratorEmail: configurationHelper.get('PORTAL_ADMIN_EMAIL'),
         },
         // Friends are GitHub username(s) which have special
         // access for application use such as CLA tooling and
         // compliance/audit accounts. Supports comma-sep lists.
         friends: {
-            cla: utils.arrayFromString(env.FRIENDS_CLA),
-            employeeData: utils.arrayFromString(env.FRIENDS_DATA),
+            cla: utils.arrayFromString(configurationHelper.get('FRIENDS_CLA')),
+            employeeData: utils.arrayFromString(configurationHelper.get('FRIENDS_DATA')),
         },
         // GitHub application properties and secrets
         github: {
-            clientId: env.GITHUB_CLIENT_ID,
-            clientSecret: env.GITHUB_CLIENT_SECRET,
-            callbackUrl: env.GITHUB_CALLBACK_URL,
+            clientId: configurationHelper.get('GITHUB_CLIENT_ID'),
+            clientSecret: configurationHelper.get('GITHUB_CLIENT_SECRET'),
+            callbackUrl: configurationHelper.get('GITHUB_CALLBACK_URL'),
         },
         organizations: [],
         onboarding: [],
         // A salt needs to be provided to secure sessions and cookies.
         express: {
-            sessionSalt: env.SESSION_SALT
+            sessionSalt: configurationHelper.get('SESSION_SALT'),
         },
-        // The app uses authentication with Azure Active Directory to grant access 
+        // The app uses authentication with Azure Active Directory to grant access
         // to the GitHub organization.
         activeDirectory: {
-            clientId: env.AAD_CLIENT_ID,
-            clientSecret: env.AAD_CLIENT_SECRET,
-            tenantId: env.AAD_TENANT_ID,
-            redirectUrl: env.AAD_REDIRECT_URL,
-            allowTenantGuests: (env.AAD_ALLOW_TENANT_GUESTS && env.AAD_ALLOW_TENANT_GUESTS == 'allow') 
+            clientId: configurationHelper.get('AAD_CLIENT_ID'),
+            clientSecret: configurationHelper.get('AAD_CLIENT_SECRET'),
+            tenantId: configurationHelper.get('AAD_TENANT_ID'),
+            redirectUrl: configurationHelper.get('AAD_REDIRECT_URL'),
+            issuer: configurationHelper.get('AAD_ISSUER'),
+            allowTenantGuests: (configurationHelper.get('AAD_ALLOW_TENANT_GUESTS') && configurationHelper.get('AAD_ALLOW_TENANT_GUESTS') === 'allow'),
         },
-        // AppInsights is a Microsoft Cloud product for gathering analytics and 
-        // other useful information about apps. This app uses the Node.js npm 
-        // module for app insights to gather information on server generation 
-        // times, while the client JavaScript wrapper for AppInsights is also 
-        // used for monitoring client browser attributes and information. If the 
+        // AppInsights is a Microsoft Cloud product for gathering analytics and
+        // other useful information about apps. This app uses the Node.js npm
+        // module for app insights to gather information on server generation
+        // times, while the client JavaScript wrapper for AppInsights is also
+        // used for monitoring client browser attributes and information. If the
         // key is not supplied, the app continues functioning.
         applicationInsights: {
-            instrumentationKey: env.APPINSIGHTS_INSTRUMENTATION_KEY
+            instrumentationKey: configurationHelper.get('APPINSIGHTS_INSTRUMENTATION_KEY'),
         },
-        // An Azure storage account is used as all data is stored in a 
-        // geo-replicated storage account in table store. This is simple 
-        // model vs a SQL Database instance, but requires doing joins 
+        // An Azure storage account is used as all data is stored in a
+        // geo-replicated storage account in table store. This is simple
+        // model vs a SQL Database instance, but requires doing joins
         // on the server.
         azureStorage: {
-            account: env.XSTORE_ACCOUNT,
-            key: env.XSTORE_KEY,
-            prefix: env.XSTORE_PREFIX
+            account: configurationHelper.get('XSTORE_ACCOUNT'),
+            key: configurationHelper.get('XSTORE_KEY'),
+            prefix: configurationHelper.get('XSTORE_PREFIX'),
         },
-        // Redis is used for shared session state across running site instances. 
-        // The Azure Redis offering includes a redundant option, but as the 
-        // session store is designed like a cache, the only outcome of lost 
+        // Redis is used for shared session state across running site instances.
+        // The Azure Redis offering includes a redundant option, but as the
+        // session store is designed like a cache, the only outcome of lost
         // Redis data is that the user will need to sign in again.
         redis: {
-            port: env.REDIS_PORT,
-            host: env.REDIS_HOST,
-            key: env.REDIS_KEY,
-            ttl: env.REDIS_TTL || (60 * 60 * 24 * 7 /* one week */),
-            prefix: env.REDIS_PREFIX,
-            tls: env.REDIS_TLS_HOST,
+            port: configurationHelper.get('REDIS_PORT') || (configurationHelper.get('REDIS_TLS_HOST') ? 6380 : 6379),
+            host: configurationHelper.get('REDIS_HOST') || configurationHelper.get('REDIS_TLS_HOST'),
+            key: configurationHelper.get('REDIS_KEY'),
+            ttl: configurationHelper.get('REDIS_TTL') || (60 * 60 * 24 * 7 /* one week */),
+            prefix: configurationHelper.get('REDIS_PREFIX'),
+            tls: configurationHelper.get('REDIS_TLS_HOST'),
         },
-        // Documentation is used for the documentation articles section.
-        // The articles are loaded from an Azure Blob Storage container.
-        documentation: {
-            storage : {
-                account: env.DOCUMENTATION_STORAGE_ACCOUNT,
-                key: env.DOCUMENTATION_STORAGE_KEY,
-                container: env.DOCUMENTATION_STORAGE_CONTAINER
-            },
-            culture: env.DOCUMENTATION_CULTURE || 'en-us',
-            settingsName: env.DOCUMENTATION_SETTINGS_NAME || 'settings.json',
-            articleListFormat:  env.DOCUMENTATION_ARTCILE_LIST_FORMAT || '%s/%s/documentation/articles/%s.html',
-            gitHubAvatarURL : env.DOCUMENTATION_GITHUB_AVATAR_URL || 'https://avatars3.githubusercontent.com/u/%s?v=3&amp;s=%s',
-            contributeBaseUrl : env.DOCUMENTATION_CONTRIBUTE_BASE_URL || 'https://github.com/Azure/azureopensource-portal/blob/master/%s'
-        }
     };
-    for (i = 1; env['GITHUB_ORG' + i + '_NAME']; i++) {
+    for (i = 1; configurationHelper.get('GITHUB_ORG' + i + '_NAME'); i++) {
         var prefix = 'GITHUB_ORG' + i + '_';
-        var onboarding = env[prefix + 'ONBOARDING'];
+        var onboarding = configurationHelper.get(prefix + 'ONBOARDING');
         var org = {
-            name: env[prefix + 'NAME'],
-            type: env[prefix + 'TYPE'] || 'public',
-            ownerToken: env[prefix + 'TOKEN'],
-            notificationRepo: env[prefix + 'NOTIFICATION_REPO'],
-            teamAllMembers: env[prefix + 'EVERYONE_TEAMID'],
-            teamRepoApprovers: env[prefix + 'REPO_APPROVERS_TEAMID'],
-            hookSecrets: utils.arrayFromString(env[prefix + 'HOOK_TOKENS']),
-            teamAllRepos: env[prefix + 'SECURITY_TEAMID'],
-            teamAllRepoWriteId: env[prefix + 'ALLREPOWRITE_TEAMID'],
-            teamSudoers: env[prefix + 'SUDOERS_TEAMID'],
-            description: env[prefix + 'DESCRIPTION'],
-            priority: env[prefix + 'PRIORITY'] || 'primary', // This value for now should be a string, 'primary' (default) or 'secondary', used to have a secondary class of orgs on the site homepage
-            locked: env[prefix + 'LOCKED'] || false, // If a string value is present, i.e. 'locked' or 'lock', then the org will not allow joining at this time. Not a long-term feature once org join approval workflow is supported.
+            name: configurationHelper.get(prefix + 'NAME'),
+            type: configurationHelper.get(prefix + 'TYPE') || 'private',
+            ownerToken: configurationHelper.get(prefix + 'TOKEN'),
+            notificationRepo: configurationHelper.get(prefix + 'NOTIFICATION_REPO'),
+            teamAllMembers: configurationHelper.get(prefix + 'EVERYONE_TEAMID'),
+            teamRepoApprovers: configurationHelper.get(prefix + 'REPO_APPROVERS_TEAMID'),//If not set then repos. get created in Git.
+            hookSecrets: utils.arrayFromString(configurationHelper.get(prefix + 'HOOK_TOKENS')),
+            teamAllRepos: configurationHelper.get(prefix + 'SECURITY_TEAMID'),
+            teamAllRepoWriteId: configurationHelper.get(prefix + 'ALLREPOWRITE_TEAMID'),
+            teamSudoers: configurationHelper.get(prefix + 'SUDOERS_TEAMID'),
+            description: configurationHelper.get(prefix + 'DESCRIPTION'),
+            licenses: configurationHelper.get(prefix + 'LICENSES') ? utils.arrayFromString(configurationHelper.get(prefix + 'LICENSES')) : null,
+            priority: configurationHelper.get(prefix + 'PRIORITY') || 'primary', // This value for now should be a string, 'primary' (default) or 'secondary', used to have a secondary class of orgs on the site homepage
+            locked: configurationHelper.get(prefix + 'LOCKED') || false, // If a string value is present, i.e. 'locked' or 'lock', then the org will not allow joining at this time. Not a long-term feature once org join approval workflow is supported.
             highlightedTeams: [],
+            approvalTypes: configurationHelper.get(prefix + 'APPROVAL_TYPES') ? utils.arrayFromString(configurationHelper.get(prefix + 'APPROVAL_TYPES')) : null,
+            approvalUrlRequired : configurationHelper.get(prefix + 'APPROVAL_URL_REQUIRED_FOR') ? utils.arrayFromString(configurationHelper.get(prefix + 'APPROVAL_URL_REQUIRED_FOR')) : null,
+            approvalUrlFormat: configurationHelper.get(prefix + 'APPROVAL_URL_FORMAT'),
+            exemptionDetailsRequired : configurationHelper.get(prefix + 'EXEMPTION_DETAILS_REQUIRED_FOR') ? utils.arrayFromString(configurationHelper.get(prefix + 'EXEMPTION_DETAILS_REQUIRED_FOR')) : null
         };
         // The first org can have a special team, a portal sudoers team, that get
         // sudo access to ALL managed organizations. If such a property is not
         // present, the org's sudoers team become portal maintainers, too.
         if (i == 1) {
-            org.teamPortalSudoers = env[prefix + 'PORTAL_SUDOERS_TEAMID'] || env[prefix + 'SUDOERS_TEAMID'];
+            org.teamPortalSudoers = configurationHelper.get(prefix + 'PORTAL_SUDOERS_TEAMID') || configurationHelper.get(prefix + 'SUDOERS_TEAMID');
         }
         // Highlighted teams are those which should be shown above all other teams
         // in the 'join a team' user interface, designed for very large teams that
         // most org members should consider being members of.
-        var highlightIds = utils.arrayFromString(env[prefix + 'HIGHLIGHTED_TEAMS']);
-        var highlightText = utils.arrayFromString(env[prefix + 'HIGHLIGHTED_TEAMS_INFO'], ';');
+        var highlightIds = utils.arrayFromString(configurationHelper.get(prefix + 'HIGHLIGHTED_TEAMS'));
+        var highlightText = utils.arrayFromString(configurationHelper.get(prefix + 'HIGHLIGHTED_TEAMS_INFO'), ';');
         if (highlightIds.length === highlightText.length) {
             for (var j = 0; j < highlightIds.length; j++) {
                 org.highlightedTeams.push({
