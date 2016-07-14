@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-var hsts = require('hsts');
+const hsts = require('hsts');
 
 module.exports = hsts({
   maxAge: 10886400000,     // Must be at least 18 weeks to be approved

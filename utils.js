@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-var async = require('async');
+const async = require('async');
 
 // ----------------------------------------------------------------------------
 // Returns an integer, random, between low and high (exclusive) - [low, high)

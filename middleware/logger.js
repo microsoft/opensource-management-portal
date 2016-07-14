@@ -3,22 +3,18 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-var logger = require('morgan');
+const logger = require('morgan');
 
 logger.token('github', function getGitHub(req) {
-    if (req.user && req.user.github && req.user.github.username) {
-        return req.user.github.username;
-    } else {
-        return undefined;
-    }
+  return req.user && req.user.github && req.user.github.username ? req.user.github.username : undefined;
 });
 
 logger.token('correlationId', function getCorrelationId(req) {
-    return req.correlationId ? req.correlationId : undefined;
+  return req.correlationId ? req.correlationId : undefined;
 });
 
 logger.token('scrubbedUrl', function getScrubbedUrl(req) {
-    return req.scrubbedUrl || req.originalUrl || req.url;
+  return req.scrubbedUrl || req.originalUrl || req.url;
 });
 
 // ----------------------------------------------------------------------------

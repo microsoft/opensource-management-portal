@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-var uuid = require('node-uuid');
+const uuid = require('node-uuid');
 
 module.exports = function(err, req, res, next) {
     var config = null;
