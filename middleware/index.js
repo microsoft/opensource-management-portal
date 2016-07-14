@@ -26,9 +26,14 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
     app.use(compression());
     app.use(cookieParser());
 
+    var passport;
     if (!initializationError) {
-        app.use(require('./session')(config, redisClient));
-        var passport = require('./passport-config')(app, config);
+      app.use(require('./session')(config, redisClient));
+      try {
+        passport = require('./passport-config')(app, config);
+      } catch (passportError) {
+        initializationError = passportError;
+      }
     }
 
     app.use(express.static(path.join(dirname, 'public')));
