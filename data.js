@@ -8,94 +8,95 @@
 // to do here to better factor this and allow for other data providers
 // such as MonogDB...
 
-var azure = require('azure-storage');
-var async = require('async');
-var uuid = require('node-uuid');
-var os = require('os');
+const azure = require('azure-storage');
+const async = require('async');
+const uuid = require('node-uuid');
+const os = require('os');
 
 var staticHostname = os.hostname().toString();
 
-function DataClient (config, callback) {
-    var storageAccountName = config.azureStorage.account;
-    var storageAccountKey = config.azureStorage.key;
-    var prefix = config.azureStorage.prefix;
-    try {
-        this.table = azure.createTableService(storageAccountName, storageAccountKey);
-    } catch (storageAccountError) {
-        return callback(storageAccountError);
+function DataClient(config, callback) {
+  var storageAccountName = config.azureStorage.account;
+  var storageAccountKey = config.azureStorage.key;
+  var prefix = config.azureStorage.prefix;
+  try {
+    if (!storageAccountName || !storageAccountKey) {
+        throw new Error('Storage account information is not configured.');
     }
-    this.entGen = azure.TableUtilities.entityGenerator;
-    this.options = {
-        partitionKey: prefix + 'pk',
-        linksTableName: prefix + 'links',
-        pendingApprovalsTableName: prefix + 'pending',
-        errorsTableName: prefix + 'errors',
-        auditTableName: prefix + 'auditlog',
-    };
-    var dc = this;
-    var tableNames = [
-        dc.options.linksTableName,
-        dc.options.pendingApprovalsTableName,
-        dc.options.errorsTableName,
-        dc.options.auditTableName,
-    ];
-    async.each(tableNames, function (tableName, callback) {
-        dc.table.createTableIfNotExists(tableName, callback);
-    }, function (error) {
-        if (callback) {
-            return callback(error, dc);
-        }
-    });
+    this.table = azure.createTableService(storageAccountName, storageAccountKey);
+  } catch (storageAccountError) {
+    return callback(storageAccountError);
+  }
+  this.entGen = azure.TableUtilities.entityGenerator;
+  this.options = {
+    partitionKey: prefix + 'pk',
+    linksTableName: prefix + 'links',
+    pendingApprovalsTableName: prefix + 'pending',
+    errorsTableName: prefix + 'errors',
+    auditTableName: prefix + 'auditlog',
+  };
+  var dc = this;
+  var tableNames = [
+    dc.options.linksTableName,
+    dc.options.pendingApprovalsTableName,
+    dc.options.errorsTableName,
+    dc.options.auditTableName,
+  ];
+  async.each(tableNames, function (tableName, callback) {
+    dc.table.createTableIfNotExists(tableName, callback);
+  }, function (error) {
+    if (callback) return callback(error, dc);
+  });
 }
 
 // Strip the Azure table storage fields if no uninteresting fields are provided.
 var reduceEntity = function reduceEntity(instance, uninterestingFields) {
-    if (instance === undefined || instance === null) {
-        return instance;
-    }
-    if (uninterestingFields === undefined) {
-        uninterestingFields = ['.metadata', 'Timestamp', 'RowKey', 'PartitionKey'];
-    }
-    if (uninterestingFields && uninterestingFields.length) {
-        for (var i = 0; i < uninterestingFields.length; i++) {
-            if (instance[uninterestingFields[i]] !== undefined) {
-                delete instance[uninterestingFields[i]];
-            }
-        }
-    }
-    for (var column in instance) {
-        if (instance[column] && instance[column]._ !== undefined) {
-            instance[column] = instance[column]._;
-        }
-    }
+  if (instance === undefined || instance === null) {
     return instance;
+  }
+  if (uninterestingFields === undefined) {
+    uninterestingFields = ['.metadata', 'Timestamp', 'RowKey', 'PartitionKey'];
+  }
+  if (uninterestingFields && uninterestingFields.length) {
+    for (var i = 0; i < uninterestingFields.length; i++) {
+      if (instance[uninterestingFields[i]] !== undefined) {
+        delete instance[uninterestingFields[i]];
+      }
+    }
+  }
+  for (var column in instance) {
+    if (instance[column] && instance[column]._ !== undefined) {
+      instance[column] = instance[column]._;
+    }
+  }
+  return instance;
 };
 
 DataClient.prototype.reduceEntity = reduceEntity;
 
 DataClient.prototype.requestToUserInformation = function rtui(req, storeFullUserInformation) {
-    var info = {
-        ghid: undefined,
-        ghu: undefined,
-        aad: undefined,
-        fulluser: undefined
-    };
-    if (storeFullUserInformation) {
-        info.fulluser = JSON.stringify(req.user);
+  var info = {
+    ghid: undefined,
+    ghu: undefined,
+    aad: undefined,
+    fulluser: undefined
+  };
+  if (storeFullUserInformation) {
+    info.fulluser = JSON.stringify(req.user);
+  }
+  if (req && req.user && req.user.github && req.user.github.id) {
+    info.ghid = req.user.github.id;
+    if (info.ghid.toString) {
+      info.ghid = info.ghid.toString();
     }
-    if (req && req.user && req.user.github && req.user.github.id) {
-        info.ghid = req.user.github.id;
-        if (info.ghid.toString) {
-            info.ghid = info.ghid.toString();
-        }
-        if (req.user.github.username) {
-            info.ghu = req.user.github.username;
-        }
+    if (req.user.github.username) {
+      info.ghu = req.user.github.username;
     }
-    if (req && req.user && req.user.azure && req.user.azure.username) {
-        info.aad = req.user.azure.username;
-    }
-    return info;
+  }
+  if (req && req.user && req.user.azure && req.user.azure.username) {
+    info.aad = req.user.azure.username;
+  }
+  return info;
 };
 
 DataClient.prototype.insertErrorLogEntry = function insertErrorEntry(version, req, err, meta, callback) {
@@ -103,7 +104,7 @@ DataClient.prototype.insertErrorLogEntry = function insertErrorEntry(version, re
     var storeFullUserInformation = false;
     var storeUnknownUserErrors = false;
     var storeRequestInformation = true;
-    var cbNoErrors = function(callback) {
+    var cbNoErrors = function (callback) {
         if (callback) {
             callback();
         }
@@ -115,8 +116,7 @@ DataClient.prototype.insertErrorLogEntry = function insertErrorEntry(version, re
     // (t, cid): (time when method called, correlation ID)
     // (e, json, meta): (error message, JSON serialized err, JSON metadata)
     // (url, host, ...): various host and request informational fields
-    try
-    {
+    try {
         var info = dc.requestToUserInformation(req, storeFullUserInformation);
         // We may encounter users without a session. In these cases, we could log with -1 ID for pkey (OR use correlation ID for the pkey... hmm.)
         if (info.ghid === undefined) {
@@ -138,7 +138,7 @@ DataClient.prototype.insertErrorLogEntry = function insertErrorEntry(version, re
         var errorStatus = '200';
         if (err) {
             // If err.meta is set, use that for the metadata up-level, and remove from err object.
-            if (err.meta && ! meta) {
+            if (err.meta && !meta) {
                 meta = err.meta;
                 delete err.meta;
             }
@@ -191,6 +191,7 @@ DataClient.prototype.insertErrorLogEntry = function insertErrorEntry(version, re
         }
     } catch (ex) {
         // Retry policy could be nice, OR log this separately if possible. Streaming logs will store this for now at least.
+        console.log('Error caught during error log attempt:')
         console.dir(ex);
         return cbNoErrors(callback);
     }
@@ -198,6 +199,7 @@ DataClient.prototype.insertErrorLogEntry = function insertErrorEntry(version, re
         dc.table.insertEntity(dc.options.errorsTableName, entity, function (error, xy) {
             if (error) {
                 // CONSIDER: Replace console with debug call for morgan
+                console.log('Error caught during error log entity insertion:');
                 console.dir(error);
             }
             cbNoErrors(callback);
@@ -221,7 +223,7 @@ DataClient.prototype.removeError = function (partitionKey, rowKey, callback) {
 DataClient.prototype.getActiveErrors = function (correlationId, callback) {
     var dc = this;
     // Correlation ID is optional
-    if (typeof(correlationId) == 'function') {
+    if (typeof (correlationId) == 'function') {
         callback = correlationId;
         correlationId = undefined;
     }
@@ -303,7 +305,7 @@ DataClient.prototype.mergeIntoEntity = function mit(entity, obj, callback) {
 
 DataClient.prototype.createEntity = function ce(partitionKey, rowKey, obj, callback) {
     var dc = this;
-    if (typeof(obj) == 'function') {
+    if (typeof (obj) == 'function') {
         callback = obj;
         obj = undefined;
     }
@@ -325,18 +327,18 @@ DataClient.prototype.createEntity = function ce(partitionKey, rowKey, obj, callb
 // -----
 // CONSIDER: Replace link calls with reduced entity "association" calls, then depre. & remove these funcs.
 DataClient.prototype.createLinkObjectFromRequest = function createLinkObject(req, callback) {
-	if (req && req.user && req.user.github && req.user.azure && req.user.github.username && req.user.github.id && req.user.azure.username && req.user.azure.oid) {
-		return callback(null, {
-			ghu: req.user.github.username,
-			ghid: req.user.github.id.toString(),
-			aadupn: req.user.azure.username,
-			aadname: req.user.azure.displayName,
-			aadoid: req.user.azure.oid,
-			joined: new Date().getTime()
-		});
-	} else {
-		return callback(new Error('Not all fields needed for creating a link are available and authenticated. This may be a temporary problem or an implementation bug.'));
-	}
+    if (req && req.user && req.user.github && req.user.azure && req.user.github.username && req.user.github.id && req.user.azure.username && req.user.azure.oid) {
+        return callback(null, {
+            ghu: req.user.github.username,
+            ghid: req.user.github.id.toString(),
+            aadupn: req.user.azure.username,
+            aadname: req.user.azure.displayName,
+            aadoid: req.user.azure.oid,
+            joined: new Date().getTime()
+        });
+    } else {
+        return callback(new Error('Not all fields needed for creating a link are available and authenticated. This may be a temporary problem or an implementation bug.'));
+    }
 };
 
 DataClient.prototype.getUserLinks = function gul(users, callback) {
@@ -358,7 +360,7 @@ DataClient.prototype.getUserLinks = function gul(users, callback) {
     dc.table.queryEntities(dc.options.linksTableName,
         query,
         null,
-        function(error, results, headers) {
+        function (error, results, headers) {
             if (error) {
                 error.headers = headers;
                 return callback(error);
@@ -381,27 +383,27 @@ DataClient.prototype.getUserLinks = function gul(users, callback) {
 
 DataClient.prototype.getUserLinkByUsername = function gulbyu(githubUsername, callback) {
     this.getUserLinkByProperty('ghu', githubUsername, function (error, data) {
-    	if (error) return callback(error);
-    	if (data && data.length) {
-    		if (data.length == 1) {
-    			callback(null, data[0]);	
-    		} else {
-    			if (data.length === 0) {
-    				callback(null, false);
-    			} else {
-					callback(new Error('Multiple entries returned. The data may be consistent. Please file a bug.'));
-    			}
-    		}    		
-    	} else {
-    		callback(new Error('No results.'));
-    	}
+        if (error) return callback(error);
+        if (data && data.length) {
+            if (data.length == 1) {
+                callback(null, data[0]);
+            } else {
+                if (data.length === 0) {
+                    callback(null, false);
+                } else {
+                    callback(new Error('Multiple entries returned. The data may be consistent. Please file a bug.'));
+                }
+            }
+        } else {
+            callback(new Error('No results.'));
+        }
     });
 };
 
 DataClient.prototype.updateLink = function updl(userid, mergeEntity, callback) {
-	var dc = this;
-	var entity = dc.createEntity(dc.options.partitionKey, userid, mergeEntity);
-	dc.table.mergeEntity(dc.options.linksTableName, entity, callback);
+    var dc = this;
+    var entity = dc.createEntity(dc.options.partitionKey, userid, mergeEntity);
+    dc.table.mergeEntity(dc.options.linksTableName, entity, callback);
 };
 
 DataClient.prototype.getUserByAadUpn = function gubauapn(employeeAlias, callback) {
@@ -410,113 +412,113 @@ DataClient.prototype.getUserByAadUpn = function gubauapn(employeeAlias, callback
 
 DataClient.prototype.getUserLinkByProperty = function gulbprop(propertyName, value, callback) {
     var dc = this;
-	var query = new azure.TableQuery()
-      .where(propertyName + ' eq ?', value);
+    var query = new azure.TableQuery()
+        .where(propertyName + ' eq ?', value);
     dc.table.queryEntities(dc.options.linksTableName,
-    	query,
-    	null,
-    	function(error, results) {
-    		if (error) return callback(error);
-    		var entries = [];
-    		if (results && results.entries && results.entries.length) {
-				for (var i = 0; i < results.entries.length; i++) {
-					entries.push(reduceEntity(results.entries[i]));
-				}
-    		}
-    		callback(null, entries);
-    	});
+        query,
+        null,
+        function (error, results) {
+            if (error) return callback(error);
+            var entries = [];
+            if (results && results.entries && results.entries.length) {
+                for (var i = 0; i < results.entries.length; i++) {
+                    entries.push(reduceEntity(results.entries[i]));
+                }
+            }
+            callback(null, entries);
+        });
 };
 
 DataClient.prototype.getLink = function getLink(githubId, callback) {
-	var dc = this;
-	if (githubId === undefined) {
-		return callback(new Error('The GitHub ID is undefined.'));
-	}
-	if (typeof githubId != 'string') {
-		githubId = githubId.toString();
-	}
-	dc.table.retrieveEntity(dc.options.linksTableName, dc.options.partitionKey, githubId, function (error, result, response) {
-		if (error && !result) {
-			return callback(null, false);
-		}
-		return callback(error, result, response);
-	});
+    var dc = this;
+    if (githubId === undefined) {
+        return callback(new Error('The GitHub ID is undefined.'));
+    }
+    if (typeof githubId != 'string') {
+        githubId = githubId.toString();
+    }
+    dc.table.retrieveEntity(dc.options.linksTableName, dc.options.partitionKey, githubId, function (error, result, response) {
+        if (error && !result) {
+            return callback(null, false);
+        }
+        return callback(error, result, response);
+    });
 };
 
 DataClient.prototype.getAllEmployees = function getAllEmployees(callback) {
-	var dc = this;
-	var pageSize = 500;
+    var dc = this;
+    var pageSize = 500;
     var employees = [];
     var done = false;
     var continuationToken = null;
-	async.whilst(
-		function areWeDone() { return !done; },
-	    function grabPage(cb) {
-			var query = new azure.TableQuery()
-		      .select(['aadupn', 'ghu', 'ghid'])
-		      .top(pageSize);
-		    dc.table.queryEntities(dc.options.linksTableName, query, continuationToken, function (error, results) {
-		    	if (error) {
-		    		done = true;
-		    		return cb(error);
-		    	}
-		    	if (results.continuationToken) {
-		    		continuationToken = results.continuationToken;
-		    	} else {
-		    		done = true;
-		    	}
-				if (results && results.entries && results.entries.length) {
-					for (var i = 0; i < results.entries.length; i++) {
-						employees.push(reduceEntity(results.entries[i]));
-					}
-				}
-				cb();
-		    });
-		}, function (error) {
-			if (error) return callback(error);
-    		async.sortBy(employees, function (person, sortCallback) {
-    			if (person.aadupn && person.aadupn.toLowerCase) {
-    				person.aadupn = person.aadupn.toLowerCase();
-    			}
-    			sortCallback(null, person.aadupn);
-    		}, callback);
-		});
+    async.whilst(
+        function areWeDone() { return !done; },
+        function grabPage(cb) {
+            var query = new azure.TableQuery()
+                .select(['aadupn', 'ghu', 'ghid'])
+                .top(pageSize);
+            dc.table.queryEntities(dc.options.linksTableName, query, continuationToken, function (error, results) {
+                if (error) {
+                    done = true;
+                    return cb(error);
+                }
+                if (results.continuationToken) {
+                    continuationToken = results.continuationToken;
+                } else {
+                    done = true;
+                }
+                if (results && results.entries && results.entries.length) {
+                    for (var i = 0; i < results.entries.length; i++) {
+                        employees.push(reduceEntity(results.entries[i]));
+                    }
+                }
+                cb();
+            });
+        }, function (error) {
+            if (error) return callback(error);
+            async.sortBy(employees, function (person, sortCallback) {
+                if (person.aadupn && person.aadupn.toLowerCase) {
+                    person.aadupn = person.aadupn.toLowerCase();
+                }
+                sortCallback(null, person.aadupn);
+            }, callback);
+        });
 };
 
 // 9/4/15 jwilcox: insertLink and updateLink now use the shared merge/copy entity calls. Previously these 2 methods instead did a string-only entGen and copy of key/values, so beware any behavior changes. Remove this line once happy with that.
 DataClient.prototype.insertLink = function insertLink(githubId, details, callback) {
-	var dc = this;
-	if (githubId === undefined) {
-		return callback(new Error('The GitHub ID is undefined.'));
-	}
-	if (typeof githubId != 'string') {
-		githubId = githubId.toString();
-	}
-	var entity = dc.createEntity(dc.options.partitionKey, githubId, details);
-	dc.table.insertEntity(dc.options.linksTableName, entity, callback);
+    var dc = this;
+    if (githubId === undefined) {
+        return callback(new Error('The GitHub ID is undefined.'));
+    }
+    if (typeof githubId != 'string') {
+        githubId = githubId.toString();
+    }
+    var entity = dc.createEntity(dc.options.partitionKey, githubId, details);
+    dc.table.insertEntity(dc.options.linksTableName, entity, callback);
 };
 
 DataClient.prototype.updateLink = function insertLink(githubId, details, callback) {
-	var dc = this;
-	if (githubId === undefined) {
-		return callback(new Error('The GitHub ID is undefined.'));
-	}
-	if (typeof githubId != 'string') {
-		githubId = githubId.toString();
-	}
-	var entity = dc.createEntity(dc.options.partitionKey, githubId, details);
-	dc.table.mergeEntity(dc.options.linksTableName, entity, callback);
+    var dc = this;
+    if (githubId === undefined) {
+        return callback(new Error('The GitHub ID is undefined.'));
+    }
+    if (typeof githubId != 'string') {
+        githubId = githubId.toString();
+    }
+    var entity = dc.createEntity(dc.options.partitionKey, githubId, details);
+    dc.table.mergeEntity(dc.options.linksTableName, entity, callback);
 };
 
 DataClient.prototype.removeLink = function removeLink(githubId, callback) {
-	var dc = this;
-	if (githubId === undefined) {
-		return callback(new Error('The GitHub ID is undefined.'));
-	}
-	if (typeof githubId != 'string') {
-		githubId = githubId.toString();
-	}
-	dc.table.deleteEntity(dc.options.linksTableName, dc.createEntity(dc.options.partitionKey, githubId), callback);
+    var dc = this;
+    if (githubId === undefined) {
+        return callback(new Error('The GitHub ID is undefined.'));
+    }
+    if (typeof githubId != 'string') {
+        githubId = githubId.toString();
+    }
+    dc.table.deleteEntity(dc.options.linksTableName, dc.createEntity(dc.options.partitionKey, githubId), callback);
 };
 
 // pending approvals workflow
@@ -546,8 +548,8 @@ DataClient.prototype.getPendingApprovals = function getPendingApprovals(teamsIn,
         }
     }
     var query = new azure.TableQuery()
-      .where('PartitionKey eq ?', this.options.partitionKey)
-      .and('active eq ?', true);
+        .where('PartitionKey eq ?', this.options.partitionKey)
+        .and('active eq ?', true);
     if (teams.length > 0) {
         var clauses = [];
         for (i = 0; i < teams.length; i++) {
@@ -557,54 +559,54 @@ DataClient.prototype.getPendingApprovals = function getPendingApprovals(teamsIn,
         query.and.apply(query, args);
     }
     dc.table.queryEntities(dc.options.pendingApprovalsTableName,
-    	query,
-    	null,
-    	function(error, results) {
-    		if (error) return callback(error);
-    		var entries = [];
-    		if (results && results.entries && results.entries.length) {
-				for (var i = 0; i < results.entries.length; i++) {
-					var r = results.entries[i];
-					if (r && r.active && r.active._) {
-						entries.push(reduceEntity(r, ['.metadata']));
-					}
-				}
-    		}
-    		callback(null, entries);
-    	});
+        query,
+        null,
+        function (error, results) {
+            if (error) return callback(error);
+            var entries = [];
+            if (results && results.entries && results.entries.length) {
+                for (var i = 0; i < results.entries.length; i++) {
+                    var r = results.entries[i];
+                    if (r && r.active && r.active._) {
+                        entries.push(reduceEntity(r, ['.metadata']));
+                    }
+                }
+            }
+            callback(null, entries);
+        });
 };
 
 DataClient.prototype.insertApprovalRequest = function iar(teamid, details, callback) {
-	var dc = this;
-	if (typeof teamid != 'string') {
-		teamid = teamid.toString();
-	}
-	details.teamid = teamid;
-	dc.insertGeneralApprovalRequest('joinTeam', details, callback);
+    var dc = this;
+    if (typeof teamid != 'string') {
+        teamid = teamid.toString();
+    }
+    details.teamid = teamid;
+    dc.insertGeneralApprovalRequest('joinTeam', details, callback);
 };
 
 DataClient.prototype.insertGeneralApprovalRequest = function igar(ticketType, details, callback) {
-	var dc = this;
-	var id = uuid.v4();
-	var entity = dc.createEntity(dc.options.partitionKey, id, {
-		tickettype: ticketType
-	});
-	dc.mergeIntoEntity(entity, details);
-	dc.table.insertEntity(dc.options.pendingApprovalsTableName, entity, function (error, result, response) {
-		if (error) {
-			return callback(error);
-		}
-		// Pass back the generated request ID first.
-		callback(null, id, result, response);
-	});
+    var dc = this;
+    var id = uuid.v4();
+    var entity = dc.createEntity(dc.options.partitionKey, id, {
+        tickettype: ticketType
+    });
+    dc.mergeIntoEntity(entity, details);
+    dc.table.insertEntity(dc.options.pendingApprovalsTableName, entity, function (error, result, response) {
+        if (error) {
+            return callback(error);
+        }
+        // Pass back the generated request ID first.
+        callback(null, id, result, response);
+    });
 };
 
 DataClient.prototype.getApprovalRequest = function gar(requestId, callback) {
-	var dc = this;
-	dc.table.retrieveEntity(dc.options.pendingApprovalsTableName, dc.options.partitionKey, requestId, function (error, ent) {
-		if (error) return callback(error);
-		callback(null, reduceEntity(ent, ['.metadata']));
-	});
+    var dc = this;
+    dc.table.retrieveEntity(dc.options.pendingApprovalsTableName, dc.options.partitionKey, requestId, function (error, ent) {
+        if (error) return callback(error);
+        callback(null, reduceEntity(ent, ['.metadata']));
+    });
 };
 
 DataClient.prototype.getPendingApprovalsForUserId = function gpeaf(githubid, callback) {
@@ -613,13 +615,13 @@ DataClient.prototype.getPendingApprovalsForUserId = function gpeaf(githubid, cal
         githubid = githubid.toString();
     }
     var query = new azure.TableQuery()
-      .where('PartitionKey eq ?', this.options.partitionKey)
-      .and('active eq ?', true)
-      .and('ghid eq ?', githubid);
+        .where('PartitionKey eq ?', this.options.partitionKey)
+        .and('active eq ?', true)
+        .and('ghid eq ?', githubid);
     dc.table.queryEntities(dc.options.pendingApprovalsTableName,
         query,
         null,
-        function(error, results) {
+        function (error, results) {
             if (error) return callback(error);
             var entries = [];
             if (results && results.entries && results.entries.length) {
@@ -635,9 +637,9 @@ DataClient.prototype.getPendingApprovalsForUserId = function gpeaf(githubid, cal
 };
 
 DataClient.prototype.updateApprovalRequest = function uar(requestId, mergeEntity, callback) {
-	var dc = this;
-	var entity = dc.createEntity(dc.options.partitionKey, requestId, mergeEntity);
-	dc.table.mergeEntity(dc.options.pendingApprovalsTableName, entity, callback);
+    var dc = this;
+    var entity = dc.createEntity(dc.options.partitionKey, requestId, mergeEntity);
+    dc.table.mergeEntity(dc.options.pendingApprovalsTableName, entity, callback);
 };
 
 module.exports = DataClient;
