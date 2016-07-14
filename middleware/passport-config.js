@@ -55,11 +55,12 @@ module.exports = function (app, config) {
     realm: config.activeDirectory.tenantId,
     clientID: config.activeDirectory.clientId,
     clientSecret: config.activeDirectory.clientSecret,
-    //oidcIssuer: config.creds.issuer,
+    oidcIssuer: config.activeDirectory.issuer,
     identityMetadata: 'https://login.microsoftonline.com/common/.well-known/openid-configuration',
     skipUserProfile: true,
     responseType: 'id_token code',
     responseMode: 'form_post',
+    validateIssuer: true,
   }, function (iss, sub, profile, accessToken, refreshToken, done) {
     done(null, profile);
   });
