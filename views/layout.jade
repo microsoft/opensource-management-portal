@@ -84,12 +84,12 @@ html(lang="en")
                       img(alt=user.github.displayName, src=user.github.avatarUrl + '&s=80', style='margin-right:10px;width:30px;height:30px', data-user=user.github.id)
                     a.btn.btn-sm.btn-muted(href='https://github.com/settings/profile', target='_new', title='Click to edit your public GitHub profile')= user.github.username
                     a.btn.btn-sm.btn-muted-more(href='https://github.com/settings/profile', target='_new', title='Click to edit your public GitHub profile')= user.github.displayName || user.github.username
-                    a.btn.btn-sm.btn-white(href='/signout', style='margin-left:10px') Sign out
+                    a.btn.btn-sm.btn-white(href='/signout', style='margin-left:10px') Sign Out
                 else
                   p
                     small Sign in or create your GitHub.com account to manage your #{config && config.companyName || 'corporate'} open source identity.
                   p
-                    a.btn.btn-primary(href='/signin/github') Sign in
+                    a.btn.btn-sm.btn-primary(href='/signin/github') Sign in
               div.col-md-6
                 if user && !error
                   if ossLink
@@ -143,6 +143,9 @@ html(lang="en")
                 h4 Hostname: #{serverName}
               if config && config.applicationInsights && config.applicationInsights.instrumentationKey
                 h4 AppInsights: Instrumented
+              if config && config.primaryAuthenticationScheme
+                h4
+                  | Primary Authentication: #{config.primaryAuthenticationScheme === 'github' ? 'GitHub' : 'Azure Active Directory'}
             div.col-md-6.col-lg-6(style='background-color:white')
               if config && config.azureStorage
                 h4

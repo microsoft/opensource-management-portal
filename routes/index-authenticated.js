@@ -3,27 +3,31 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-var express = require('express');
-var router = express.Router();
-var async = require('async');
-var moment = require('moment');
-var utils = require('../utils');
-var OpenSourceUserContext = require('../oss');
-
-var linkRoute = require('./link');
-var linkedUserRoute = require('./index-linked');
+const express = require('express');
+const router = express.Router();
+const async = require('async');
+const moment = require('moment');
+const utils = require('../utils');
+const OpenSourceUserContext = require('../oss');
+const linkRoute = require('./link');
+const linkedUserRoute = require('./index-linked');
 
 router.use(function (req, res, next) {
+    var config = req.app.settings.runtimeConfig;
     if (req.isAuthenticated()) {
+        if (req.user && !req.user.github) {
+            // no github info
+            // IF secondary auth,... 1) check for a link
+//            return next(new Error('We do not have your GitHub stuff.'));
+        }
         if (req.user && req.user.github && !req.user.github.id) {
             return next(new Error('Invalid GitHub user information provided by GitHub.'));
         }
-        var config = req.app.settings.runtimeConfig;
         var dc = req.app.settings.dataclient;
-        var instance = new OpenSourceUserContext(config, dc, req.user, dc.cleanupInTheFuture.redisClient, function (error) {
+        var unused = new OpenSourceUserContext(config, dc, req.user, dc.cleanupInTheFuture.redisClient, function (error, instance) {
             req.oss = instance;
             instance.addBreadcrumb(req, 'Organizations');
-            return next();
+            return next(error);
         });
     } else {
         var url = req.originalUrl;
@@ -32,7 +36,8 @@ router.use(function (req, res, next) {
                 req.session.referer = req.originalUrl;
             }
         }
-        res.redirect('/auth/github');
+        var authUrl = config.primaryAuthenticationScheme === 'github' ? '/auth/github' : '/auth/azure';
+        res.redirect(authUrl);
     }
 });
 
@@ -45,16 +50,24 @@ router.get('/', function (req, res, next) {
     var config = req.app.settings.runtimeConfig;
     var onboarding = req.query.onboarding !== undefined;
     var allowCaching = onboarding ? false : true;
-    if (!link && req.user.azure === undefined) {
-        return oss.render(req, res, 'welcome', 'Welcome');
+
+    if (!link) {
+        if (config.primaryAuthenticationScheme === 'github' && req.user.azure === undefined ||
+            config.primaryAuthenticationScheme === 'aad' && req.user.github === undefined) {
+            return oss.render(req, res, 'welcome', 'Welcome');
+        }
+        if (config.primaryAuthenticationScheme === 'github' && req.user.azure && req.user.azure.oid ||
+            config.primaryAuthenticationScheme === 'aad' && req.user.github && req.user.github.id) {
+            return res.redirect('/link');
+        }
+        return next(new Error('This account is not yet linked, but a workflow error is preventing further progress. Please report this issue. Thanks.'));
     }
-    if (!link && req.user.azure && req.user.azure.oid) {
-        return res.redirect('/link');
-    }
+
     // They're changing their corporate identity (rare, often just service accounts)
     if (link && link.aadupn && req.user.azure && req.user.azure.username && req.user.azure.username.toLowerCase() !== link.aadupn.toLowerCase()) {
         return res.redirect('/link/update');
     }
+    // TODO: Add similar code for GitHub data, etc.
     var twoFactorOff = null;
     var activeOrg = null;
     async.parallel({

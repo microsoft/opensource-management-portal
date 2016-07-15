@@ -9,50 +9,54 @@ const bodyParser = require('body-parser');
 const compression = require('compression');
 
 module.exports = function initMiddleware(app, express, config, dirname, redisClient, initializationError) {
-    if (!initializationError) {
-      if (config.allowHttp) {
-        console.warn('WARNING: Allowing HTTP for local debugging');
-      } else {
-        app.use(require('./sslify'));
-        app.use(require('./hsts'));
-      }
-      require('./appInsights')(config);
+  if (!initializationError) {
+    if (config.allowHttp) {
+      console.warn('WARNING: Allowing HTTP for local debugging');
+    } else {
+      app.use(require('./sslify'));
+      app.use(require('./hsts'));
     }
+    require('./appInsights')(config);
+  }
 
-    app.set('views', path.join(dirname, 'views'));
-    app.set('view engine', 'jade');
-    app.set('view cache', false);
+  app.set('views', path.join(dirname, 'views'));
+  app.set('view engine', 'jade');
+  app.set('view cache', false);
 
-    app.use(favicon(dirname + '/public/favicon.ico'));
+  app.use(favicon(dirname + '/public/favicon.ico'));
 
-    app.use(bodyParser.json());
-    app.use(bodyParser.urlencoded({ extended: false }));
-    app.use(compression());
+  app.use(bodyParser.json());
+  app.use(bodyParser.urlencoded({ extended: false }));
+  app.use(compression());
 
-    var passport;
-    if (!initializationError) {
-      app.use(require('./session')(config, redisClient));
-      try {
-        passport = require('./passport-config')(app, config);
-      } catch (passportError) {
-        initializationError = passportError;
-      }
+  var passport;
+  if (!initializationError) {
+    app.use(require('./session')(config, redisClient));
+    try {
+      passport = require('./passport-config')(app, config);
+    } catch (passportError) {
+      initializationError = passportError;
     }
+  }
 
-    app.use(express.static(path.join(dirname, 'public')));
+  app.use(express.static(path.join(dirname, 'public')));
 
-    app.use(require('./scrubbedUrl'));
-    app.use(require('./logger'));
-    if (!initializationError && config.websiteSku && !config.allowHttp) {
-        app.use(require('./requireSecureAppService'));
+  app.use(require('./scrubbedUrl'));
+  app.use(require('./logger'));
+  if (!initializationError && config.websiteSku && !config.allowHttp) {
+    app.use(require('./requireSecureAppService'));
+  }
+  app.use(require('./correlationId'));
+  app.use(require('./locals'));
+
+  if (!initializationError) {
+    require('./passport-routes')(app, passport, config);
+    if (config.onboarding && config.onboarding.length && config.onboarding.length > 0) {
+        require('./onboarding')(app, config);
     }
-    app.use(require('./correlationId'));
-    app.use(require('./locals'));
+  }
 
-    if (!initializationError) {
-        require('./passport-routes')(app, passport);
-        if (config.onboarding && config.onboarding.length && config.onboarding.length > 0) {
-            require('./onboarding')(app, config);
-        }
-    }
+  if (initializationError) {
+    throw initializationError;
+  }
 };

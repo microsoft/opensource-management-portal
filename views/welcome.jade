@@ -9,20 +9,45 @@ block content
   div.container
     div.row
       div.col-md-6.col-lg-6.col-sm-6
-        h1 Hi, #{user.github.displayName || user.github.username}
-        h2 #{config.companyName} employees & vendors
-        p.lead To onboard, please authenticate with Active Directory.
-        p
-          a.btn.btn-lg.btn-primary(href='/signin/azure') Sign in to #{config.companyName} IT
+        if config.primaryAuthenticationScheme === 'github'
+          h1 Hi, #{user.github.displayName || user.github.username}
+          h2 #{config.companyName} employees &amp; vendors
+        else if config.primaryAuthenticationScheme === 'aad'
+          h1 Hi, #{user.azure.displayName || user.azure.username}
+        if config.primaryAuthenticationScheme === 'github'
+          p.lead To onboard, please authenticate with Active Directory.
+          p
+            a.btn.btn-lg.btn-primary(href='/signin/azure') Sign in to #{config.companyName}
+        else if config.primaryAuthenticationScheme === 'aad'
+          p.lead Please authenticate with the GitHub account that you want to use for your #{config.companyName} work.
+          div
+            a.btn.btn-primary.btn-huge.full-width(href='/signin/github')
+              h3 I already have a GitHub username
+              p Sign In
+          div
+            a.btn.btn-default.full-width(href='/signin/github/join')
+              h3 I'm new to GitHub
+              p Let's create a brand new GitHub username
       div.col-md-6.col-lg-6.col-sm-6
-        //-div.alert-gray(style='padding:12px')
         div(style='padding:12px')
-          //h3 Onboarding
-          p.lead Joining for the first time should take 2-15 minutes
-          p The initial sign-up process should take <strong>2-15 minutes</strong>, depending on whether your GitHub account already has multi-factor authentication enabled.
-          p This onboarding experience will:
+          p.lead Joining should take 2-15 minutes
+          p Onboarding goes pretty quickly, depending on whether you already have a GitHub account and GitHub multi-factor authentication setup.
           ul
-            li Validate the corporate identity to associate with #{user.github.username}
-            li Step you through joining the GitHub organization
+            if config.primaryAuthenticationScheme === 'github'
+              li Validate the corporate account to link with #{user.github.username}
+            if config.primaryAuthenticationScheme === 'aad'
+              li Validate the GitHub account to link with #{user.azure.username}
+            li Join a #{config.companyName} GitHub organization
             li Verify and/or configure the two-factor security of your GitHub account
-            li Allow you to request access to any team projects
+            li Allow you to request access to GitHub teams
+
+          if config.primaryAuthenticationScheme === 'aad'
+            hr
+            p.lead One or two GitHub usernames?
+            p.
+              Since Git repositories can be locally configured to mark commits
+              with a name and e-mail address, it's easy to use a single GitHub
+              account for both corporate and other GitHub projects you may
+              work with.
+            p
+              a(href='about:blank', target='_new') Click here for more information

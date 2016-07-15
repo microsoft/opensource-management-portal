@@ -1,0 +1,24 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends layout
+
+block content
+  div.container
+    h2 Create your GitHub account username
+    p.
+      Once you have created your account and verified your e-mail address,
+      please come back to this repository management site to continue your
+      onboarding experience.
+    hr
+    div.row
+      div.col-sm-6.col-md-6.col-lg-6
+
+        a.btn.btn-primary.full-width(href='/auth/github/join')
+          h3 I'm new to GitHub
+          p Let's create a brand new GitHub username
+
+      div.col-sm-6.col-md-6.col-lg-6
+        p.lead Since GitHub is a third-party service, it has its own set of usernames, passwords, multi-factor authentication, and settings.

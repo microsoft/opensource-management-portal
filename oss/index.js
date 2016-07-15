@@ -24,6 +24,10 @@ function OpenSourceUserContext (applicationConfiguration, dataClient, user, redi
     this.modernUser = function () {
         return modernUser;
     };
+    this.createModernUser = function (id, login) {
+        modernUser = new User(this, id);
+        modernUser.login = login;
+    }
     this.setting = function (name) {
         return applicationConfiguration[name];
     };
@@ -53,14 +57,13 @@ function OpenSourceUserContext (applicationConfiguration, dataClient, user, redi
         github: user && user.github && user.github.id ? user.github.id.toString() : undefined,
     };
     if (this.id.github) {
-        modernUser = new User(this, this.id.github);
-        modernUser.login = this.usernames.github;
+        this.createModernUser(this.id.github, this.usernames.github);
     }
     this.baseUrl = '/';
     this.redis = new RedisHelper(this, applicationConfiguration.redis.prefix);
-    this.initializeBasics(function () {
+    this.initializeBasics(function (initError) {
         if (callback) {
-            return callback(null, self);
+            return callback(initError, self);
         }
     });
 }
@@ -69,11 +72,38 @@ function OpenSourceUserContext (applicationConfiguration, dataClient, user, redi
 // Populate the user's OSS context object.
 // ----------------------------------------------------------------------------
 OpenSourceUserContext.prototype.initializeBasics = function (callback) {
+    var self = this;
+    var requestUser = this.requestUser();
+    if (!userObject && this.setting('primaryAuthenticationScheme') === 'aad' && requestUser.azure && requestUser.azure.username) {
+        return this.dataClient().getUserByAadUpn(requestUser.azure.username, function (findError, userLinks) {
+            if (findError) {
+                // XXX: wrap with a useful message?
+                return callback(findError);
+            }
+            if (userLinks.length === 0) {
+                return callback();
+            }
+            if (userLinks.length > 1) {
+                var tooManyLinksError = new Error(`This account has ${userLinks.length} linked GitHub accounts.`);
+                tooManyLinksError.links = userLinks;
+                tooManyLinksError.tooManyLinks = true;
+                return callback(tooManyLinksError);
+            }
+            var link = userLinks[0];
+            self.usernames.github = link.ghu;
+            self.id.github = link.ghid.toString();
+            self.createModernUser(self.id.github, self.usernames.github);
+            self.entities.link = link;
+            self.modernUser().link = link;
+            // todo: if their AAD name or upn has changed, but oid is still the same... schedule an update!
+            // question: should this.authenticated.github be true or false, since it isn't authenticated yet?
+            callback(null, false);
+        });
+    }
     var userObject = this.modernUser();
     if (!userObject) {
         return callback(new Error("There's a logic bug in the user context object. We cannot continue."));
     }
-    var self = this;
     userObject.getLink(function (error, link) {
         if (error) {
             return callback(utils.wrapError(error, 'We were not able to retrieve information about any link for your user account at this time.'));

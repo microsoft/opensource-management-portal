@@ -13,8 +13,7 @@ block content
   div.container
 
     h1
-      span.capitalize= org.name
-      | 
+      span.capitalize= org.name + ' '
       small Organization
 
     div.container
@@ -147,7 +146,7 @@ block content
                         a.btn.btn-default.btn-sm(href=team.org.baseUrl + 'leave') Leave Organization
                       else
                         a.btn.btn-default.btn-sm(href='https://github.com/orgs/' + team.org.name + '/teams/' + team.slug, target='_new')
-                          | Open on GitHub 
+                          | Open on GitHub
                           i.glyphicon.glyphicon-share-alt
       else
         //-p You are not currently a member of any GitHub teams that grant you permission to specific repositories. You may be pre-approved to join teams.
@@ -167,7 +166,7 @@ block content
             h4= orgUser.login
             p(style='margin-top:18px')
               a.btn.btn-sm.btn-muted(href='https://github.com/' + org.name, target='_new')
-                | View on GitHub 
+                | View on GitHub
                 i.glyphicon.glyphicon-share-alt
           div.col-md-8.col-lg-8.col-md-offset-1.col-lg-offset-1
             div.row
@@ -185,16 +184,15 @@ block content
                   h6 On the Web
                   p
                     a(href=orgUser.otherFields.blog, target='_new')
-                      = orgUser.otherFields.blog
-                      | 
+                      = orgUser.otherFields.blog + ' '
                       i.glyphicon.glyphicon-share-alt
                 if orgUser.getProfileCreatedDate()
                   h6 Created
-                  p 
+                  p
                     time(datetime=orgUser.getProfileCreatedDate().toISOString())= orgUser.getProfileCreatedDate().toDateString()
                 if orgUser.getProfileCreatedDate()
                   h6 Updated
-                  p 
+                  p
                     time(datetime=orgUser.getProfileUpdatedDate().toISOString())= orgUser.getProfileUpdatedDate().toDateString()
                 hr
                 if org.inner.settings.organizationPurpose
@@ -231,7 +229,7 @@ block content
                       small Remaining Private Repos
                 h2
                   | &infin;&nbsp;
-                  small Remaining OSS Repos
+                  small Remaining Public Repos
 
       if org.inner.settings.trainingResources
         - var tr = org.inner.settings.trainingResources

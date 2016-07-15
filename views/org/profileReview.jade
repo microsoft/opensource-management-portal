@@ -25,26 +25,22 @@ block content
               a.btn.btn-primary(href=org.baseUrl + (onboarding ? 'membership?onboarding=' + onboarding : 'membership')) Continue
               | &nbsp;&nbsp;
               a.btn.btn-default(href='https://github.com/settings/profile', target='_new')
-                | Edit your profile in a new tab 
+                | Edit your profile in a new tab&nbsp;
                 i.glyphicon.glyphicon-share-alt
             if onboarding
               hr
               h3 Your onboarding progress
               h5
-                | Sign in with GitHub & #{config.companyName} IT
-                | 
+                | Sign in with GitHub & #{config.companyName}&nbsp;
                 i.glyphicon.glyphicon-ok
               h5
-                | Link your identity
-                | 
+                | Link your identity&nbsp;
                 i.glyphicon.glyphicon-ok
               h5
-                | Join and accept your first organization invite from GitHub
-                | 
+                | Join your first GitHub organization&nbsp;
                 i.glyphicon.glyphicon-ok
               h5
-                | Multifactor security checkup
-                | 
+                | Multifactor security checkup&nbsp;
                 i.glyphicon.glyphicon-ok
               h5.text-primary
                 | Profile review
@@ -87,10 +83,10 @@ block content
                   span
                     p
                       | Web
-                      br 
+                      br
                       a(href=userProfile.otherFields.blog, target='_new')
                         strong= userProfile.otherFields.blog
                 p(style='margin:16px 0')
                   a.btn.btn-default.btn-sm(href='https://github.com/settings/profile', target='_new')
-                    | Edit your profile in a new tab 
+                    | Edit your profile in a new tab&nbsp;
                     i.glyphicon.glyphicon-share-alt

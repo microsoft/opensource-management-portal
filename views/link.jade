@@ -14,26 +14,34 @@ block content
     div.row
       div.col-md-7.col-lg-7
         h1 Link your accounts
-        p Linking associates your corporate and social coding accounts to enable self-service GitHub management. It does not alter your GitHub account in any way.
+        p.lead.
+          Enable self-service open source management by linking
+          your corporate &amp; social coding accounts
         table.table
           thead
             tr
-              th GitHub User
-              th #{config.companyName} Identity
+              th GitHub Username
+              th
+              th #{config.companyName} Directory
           tbody
             tr
-              td= user.github.displayUsernameTemporary || user.github.username
-              td= user.azure.username
+              - gitAlertClass = config.primaryAuthenticationScheme == 'github' ? '' : 'alert-success'
+              - aadAlertClass = config.primaryAuthenticationScheme == 'aad' ? '' : 'alert-success'
+              td(class=gitAlertClass)= user.github.displayUsernameTemporary || user.github.username
+              td
+                div.text-center
+                  i.glyphicon.glyphicon-link
+              td(class=aadAlertClass)= user.azure.username
         p By continuing, you agree:
         ul
-          li My GitHub account is controlled exclusively by #{user.azure.username}.
-          li My GitHub password is safe, secure and smart.
-          li I will enable two-factor authentication on my GitHub account and keep it active. I understand that I will lose access if I remove this security protection.
+          li My GitHub account is controlled by #{user.azure.username}
+          li My GitHub password is safe and secure
+          li I will enable two-factor authentication on my GitHub account
         form(method='post')
           p(style='margin-top:24px')
-            input.btn.btn-primary(type='submit', value='I Agree')
+            input.btn.btn-lg.btn-primary(type='submit', value='Link')
             | &nbsp; &nbsp;
-            a.btn.btn-default(href='/signout') Cancel
+            a.btn.btn-lg.btn-default(href='/signout') Cancel
         hr
         h3 Your onboarding progress
         h5
@@ -42,7 +50,7 @@ block content
         h5.text-primary
           | Link your identity
         h5
-          | Join and accept your first organization invite from GitHub
+          | Join your first GitHub organization
         h5
           | Multifactor security checkup
         h5
@@ -58,8 +66,7 @@ block content
             - var footres = config.corporate.trainingResources.footer
             if footres
               // These same resources appear on every single auth page footer, too.
-              h3 Training & Resources
-              p Bookmark these great resources today. These are important resources to grok.
+              h3 Open Source Resources
               each categoryList, category in footres
                 h5= category
                 ul
