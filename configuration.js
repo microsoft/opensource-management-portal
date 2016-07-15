@@ -48,7 +48,7 @@ module.exports = function translateEnvironmentToConfiguration(legacyConfiguratio
         websiteSku: configurationHelper.get('WEBSITE_SKU'),
         expectedSslCertificate: configurationHelper.get('EXPECTED_SSL_CERTIFICATE'),
         allowHttp: configurationHelper.get('DEBUG_ALLOW_HTTP'),
-        showDebugFooter: configurationHelper.get('DEBUG_SHOW_FOOTER'),
+        showDebugFooter: (configurationHelper.get('DEBUG_SHOW_FOOTER') === true || configurationHelper.get('DEBUG_SHOW_FOOTER') === 'true'),
         corporate: {
             userProfilePrefix: configurationHelper.get('CORPORATE_PROFILE_PREFIX'),
             trainingResources: require('./resources.json'),
@@ -61,6 +61,7 @@ module.exports = function translateEnvironmentToConfiguration(legacyConfiguratio
             cla: utils.arrayFromString(configurationHelper.get('FRIENDS_CLA')),
             employeeData: utils.arrayFromString(configurationHelper.get('FRIENDS_DATA')),
         },
+        primaryAuthenticationScheme: configurationHelper.get('PRIMARY_AUTHENTICATION_SCHEME'),
         // GitHub application properties and secrets
         github: {
             clientId: configurationHelper.get('GITHUB_CLIENT_ID'),

@@ -129,7 +129,7 @@ h1.huge {
 
 h2 strong {
     font-family: "Segoe UI Semibold", Segoe, "Segoe WP", Calibri, Candara, Tahoma, Verdana, Arial, sans-serif;
-    font-weight: normal; 
+    font-weight: normal;
 }
 
 /* custom color button for a more muted appearance */
@@ -182,6 +182,10 @@ h2 strong {
   color: #fff;
   background-color: #0078d7;
   border-color: #0078d7;
+}
+
+.full-width {
+  width: 100%;
 }
 
 /* wiki editing tools */

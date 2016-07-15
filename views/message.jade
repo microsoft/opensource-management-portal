@@ -26,9 +26,10 @@ block content
             pre= messageOutput
 
         p
-          a.btn.btn-default(href='/') Home
+          br
+          a.btn.btn-default(href='/')= buttonText || 'Home'
 
         if config && config.corporate && config.corporate.portalAdministratorEmail
-        p
-          | If you have any questions, please ping &nbsp;
-          a.alert-link(href='mailto:' + config.corporate.portalAdministratorEmail)= config.corporate.portalAdministratorEmail
+          p
+            | If you have any questions, please ping &nbsp;
+            a.alert-link(href='mailto:' + config.corporate.portalAdministratorEmail)= config.corporate.portalAdministratorEmail

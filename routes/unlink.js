@@ -58,9 +58,7 @@ router.post('/', function (req, res, next) {
             if (error) {
                 return next(utils.wrapError(error, 'You were successfully removed from all of your organizations. However, a minor failure happened during a data housecleaning operation. Double check that you are happy with your current membership status on GitHub.com before continuing. Press Report Bug if you would like this handled for sure.'));
             }
-            delete req.user.azure;
-            req.logout();
-            res.redirect('/');
+            res.redirect('/signout');
         });
     });
 });

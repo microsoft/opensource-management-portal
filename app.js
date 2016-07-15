@@ -20,7 +20,11 @@ app.initializeApplication = function init(config, configurationError, callback) 
       };
     }
     app.set('runtimeConfig', config);
-    require('./middleware/')(app, express, config, __dirname, redisClient, error);
+    try {
+      require('./middleware/')(app, express, config, __dirname, redisClient, error);
+    } catch (middlewareError) {
+      error = middlewareError;
+    }
     if (!error) {
       app.use('/', require('./routes/'));
     }

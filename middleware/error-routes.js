@@ -14,6 +14,7 @@ module.exports = function configureErrorRoutes(app, initializationError) {
         app.use((req, res, next) => {
             var error = new Error('Application initialization error');
             error.detailed = initializationError.message || null;
+            error.innerError = initializationError;
             return next(error);
         });
     }

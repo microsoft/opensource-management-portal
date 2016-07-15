@@ -11,7 +11,7 @@ extends layout
 block content
   div.container
 
-    h1 Remove your corporate association with #{user.github.displayName || user.github.username}?
+    h1 Unlink #{user.github.username}?
 
     if orgs && orgs.length && orgs.length > 0
       p You are currently a member of the following #{config.companyName} organization#{orgs.length == 1 ? '' : 's'} on GitHub:
@@ -21,23 +21,21 @@ block content
 
       p Please carefully review this page. Removing your corporate association will remove you from all of the organizations listed above.
       p.
-        <strong>Potential data loss warning:</strong> If you use private repos with your 
-        project, and have changes in a private fork that have not yet been committed to the 
+        <strong>Potential data loss warning:</strong> If you use private repos with your
+        project, and have changes in a private fork that have not yet been committed to the
         upstream repo for the org, they will be lost when membership is removed.
 
-    p By continuing, you understand:
+    p Please be very careful and review the following before deciding whether to "unlink" your GitHub account:
 
     ul
+      li Your GitHub account #{user.github.username} will lose access to #{config.companyName} organizations
+      li Private forks of repos from these orgs, if any, will be removed by GitHub
+      li Work committed in a private fork of a #{config.companyName} org will be lost
 
-      li My GitHub account #{user.github.username} will lose access to any of my organizations
-      li Any private forks of repos from my orgs will be removed by GitHub
-      li Any work done in a private fork of repos from my orgs will be lost. I understand this data loss potential.
-      li Your account will no longer be part of the audit process and is again my own responsibility.
-      
     p If you have any questions about this, please contact your team's GitHub liasons or your corporate legal contact.
 
     form(method='post', action='/unlink')
       p
-        input.btn.btn-primary(type='submit', value='I Agree. Remove my corporate access.')
-        | &nbsp; 
-        a.btn.btn-default(href='/') Cancel
+        input.btn.btn-lg.btn-primary(type='submit', value='Remove my corporate link')
+        | &nbsp; &nbsp; &nbsp;
+        a.btn.btn-lg.btn-default(href='/') Cancel

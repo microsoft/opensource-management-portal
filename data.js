@@ -223,7 +223,7 @@ DataClient.prototype.removeError = function (partitionKey, rowKey, callback) {
 DataClient.prototype.getActiveErrors = function (correlationId, callback) {
     var dc = this;
     // Correlation ID is optional
-    if (typeof (correlationId) == 'function') {
+    if (typeof (correlationId) === 'function') {
         callback = correlationId;
         correlationId = undefined;
     }
@@ -305,7 +305,7 @@ DataClient.prototype.mergeIntoEntity = function mit(entity, obj, callback) {
 
 DataClient.prototype.createEntity = function ce(partitionKey, rowKey, obj, callback) {
     var dc = this;
-    if (typeof (obj) == 'function') {
+    if (typeof (obj) === 'function') {
         callback = obj;
         obj = undefined;
     }
@@ -385,7 +385,7 @@ DataClient.prototype.getUserLinkByUsername = function gulbyu(githubUsername, cal
     this.getUserLinkByProperty('ghu', githubUsername, function (error, data) {
         if (error) return callback(error);
         if (data && data.length) {
-            if (data.length == 1) {
+            if (data.length === 1) {
                 callback(null, data[0]);
             } else {
                 if (data.length === 0) {
@@ -527,12 +527,12 @@ DataClient.prototype.getPendingApprovals = function getPendingApprovals(teamsIn,
     var dc = this;
     var teams = null;
     var i;
-    if (typeof teamsIn == 'number') {
+    if (typeof teamsIn === 'number') {
         teams = [teamsIn.toString()];
     }
-    else if (typeof teamsIn == 'string') {
+    else if (typeof teamsIn === 'string') {
         teams = [teamsIn];
-    } else if (typeof teamsIn == 'function') {
+    } else if (typeof teamsIn === 'function') {
         callback = teamsIn;
         teams = []; // Special case: empty list means all pending approvals
     } else {
@@ -611,7 +611,7 @@ DataClient.prototype.getApprovalRequest = function gar(requestId, callback) {
 
 DataClient.prototype.getPendingApprovalsForUserId = function gpeaf(githubid, callback) {
     var dc = this;
-    if (typeof githubid == 'number') {
+    if (typeof githubid === 'number') {
         githubid = githubid.toString();
     }
     var query = new azure.TableQuery()
