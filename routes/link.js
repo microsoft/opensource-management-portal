@@ -27,7 +27,7 @@ router.post('/', function (req, res, next) {
         }
         dc.insertLink(req.user.github.id, linkObject, function (error, result, response) {
             if (error) {
-                // There are legacy upgrade scenarios for some users where they already have a 
+                // There are legacy upgrade scenarios for some users where they already have a
                 // link, even though they are already on this page. In that case, we just do
                 // a retroactive upsert.
                 dc.updateLink(req.user.github.id, linkObject, function (error2) {

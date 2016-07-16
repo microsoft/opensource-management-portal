@@ -11,6 +11,7 @@ const utils = require('../utils');
 const OpenSourceUserContext = require('../oss');
 const linkRoute = require('./link');
 const linkedUserRoute = require('./index-linked');
+const linkCleanupRoute = require('./link-cleanup');
 
 router.use(function (req, res, next) {
     var config = req.app.settings.runtimeConfig;
@@ -23,23 +24,39 @@ router.use(function (req, res, next) {
         if (req.user && req.user.github && !req.user.github.id) {
             return next(new Error('Invalid GitHub user information provided by GitHub.'));
         }
-        var dc = req.app.settings.dataclient;
-        var unused = new OpenSourceUserContext(config, dc, req.user, dc.cleanupInTheFuture.redisClient, function (error, instance) {
-            req.oss = instance;
-            instance.addBreadcrumb(req, 'Organizations');
-            return next(error);
-        });
-    } else {
-        var url = req.originalUrl;
-        if (url) {
-            if (req.session) {
-                req.session.referer = req.originalUrl;
-            }
-        }
-        var authUrl = config.primaryAuthenticationScheme === 'github' ? '/auth/github' : '/auth/azure';
-        res.redirect(authUrl);
+        return next();
     }
+
+    var url = req.originalUrl;
+    if (url) {
+        if (req.session) {
+            req.session.referer = req.originalUrl;
+        }
+    }
+    var authUrl = config.primaryAuthenticationScheme === 'github' ? '/auth/github' : '/auth/azure';
+    res.redirect(authUrl);
 });
+
+router.use((req, res, next) => {
+    var config = req.app.settings.runtimeConfig;
+    var dc = req.app.settings.dataclient;
+    var unused = new OpenSourceUserContext(config, dc, req.user, dc.cleanupInTheFuture.redisClient, function (error, instance) {
+        req.oss = instance;
+        if (error && error.tooManyLinks === true) {
+            if (req.url === '/link-cleanup') {
+                // The only URL permitted in this state is the cleanup endpoint
+                console.log('permitted');
+                return next();
+            }
+            console.log('not permitted');
+            return res.redirect('/link-cleanup');
+        }
+        instance.addBreadcrumb(req, 'Organizations');
+        return next(error);
+    });
+});
+
+router.use('/link-cleanup', linkCleanupRoute);
 
 router.use('/link', linkRoute);
 
