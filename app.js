@@ -41,7 +41,7 @@ app.initializeApplication = function init(config, configurationError, callback) 
   };
   if (config.redis.tls) {
     redisOptions.tls = {
-        servername: config.redis.tls,
+      servername: config.redis.tls,
     };
   }
   var redisClient = redis.createClient(config.redis.port, config.redis.host, redisOptions);
@@ -51,19 +51,19 @@ app.initializeApplication = function init(config, configurationError, callback) 
       redisFirstCallback = null;
       cb();
     }
-    });
-    async.parallel([
-      function (cb) {
-        new DataClient(config, function (error, dcInstance) {
-          dc = dcInstance;
-          cb(error);
-        });
-      },
-      function (cb) {
-        redisFirstCallback = cb;
-        redisClient.auth(config.redis.key);
-      },
-    ], function (error) {
+  });
+  async.parallel([
+    function (cb) {
+      new DataClient(config, function (error, dcInstance) {
+        dc = dcInstance;
+        cb(error);
+      });
+    },
+    function (cb) {
+      redisFirstCallback = cb;
+      redisClient.auth(config.redis.key);
+    },
+  ], function (error) {
     finalizeInitialization(error);
   });
 };
