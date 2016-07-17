@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+/*eslint no-console: ["error", { allow: ["log", "dir"] }] */
+
 const async = require('async');
 const github = require('octonode');
 const utils = require('../utils');
@@ -40,9 +42,11 @@ module.exports = function (app, config) {
           console.dir(error);
           console.log(s);
         }
+        callback();
       });
     } else {
       console.log('An org requires that its NAME and TOKEN configuration parameters are set before onboarding can begin.');
+      callback();
     }
   }, function () {
     console.log('This concludes the execution of the onboarding helper.');

@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+/*eslint no-console: ["error", { allow: ["error", "log"] }] */
+
 module.exports = function (err, req, res, next) {
   var config = null;
   var errorStatus = err && err.status ? err.status : undefined;
