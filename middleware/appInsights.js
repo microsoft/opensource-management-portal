@@ -7,8 +7,8 @@
 // Application Insights integration
 // ----------------------------------------------------------------------------
 module.exports = function initializeAppInsights(config) {
-    if (config.applicationInsights.instrumentationKey) {
-      var appInsights = require('applicationinsights');
-      appInsights.setup(config.applicationInsights.instrumentationKey).start();
-    }
+  if (config.applicationInsights.instrumentationKey) {
+    var appInsights = require('applicationinsights');
+    appInsights.setup(config.applicationInsights.instrumentationKey).start();
+  }
 };
