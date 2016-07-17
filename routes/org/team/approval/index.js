@@ -3,199 +3,199 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-var express = require('express');
-var router = express.Router();
-var async = require('async');
-var utils = require('../../../../utils');
+const express = require('express');
+const router = express.Router();
+const async = require('async');
+const utils = require('../../../../utils');
 
 function teamsInfoFromRequest(team, approvalRequest, callback) {
-    var oss = team.oss;
-    if (approvalRequest.teamsCount) {
-        var count = parseInt(approvalRequest.teamsCount, 10);
-        var detailedTeams = [];
-        for (var i = 0; i < count; i++) {
-            var key = 'teamid' + i;
-            if (approvalRequest[key] && approvalRequest[key + 'p']) {
-                detailedTeams.push({
-                    id: approvalRequest[key],
-                    permission: approvalRequest[key + 'p'],
-                });
-            }
-        }
-        async.map(detailedTeams, function (basic, cb) {
-            var permission = basic.permission;
-            oss.getTeam(basic.id, function (error, teamInstance) {
-                if (teamInstance) {
-                    teamInstance._temporary_permission = permission;
-                }
-                cb(error, teamInstance);
-            });
-        }, callback);
-    } else {
-        callback();
+  var oss = team.oss;
+  if (approvalRequest.teamsCount) {
+    var count = parseInt(approvalRequest.teamsCount, 10);
+    var detailedTeams = [];
+    for (var i = 0; i < count; i++) {
+      var key = 'teamid' + i;
+      if (approvalRequest[key] && approvalRequest[key + 'p']) {
+        detailedTeams.push({
+          id: approvalRequest[key],
+          permission: approvalRequest[key + 'p'],
+        });
+      }
     }
+    async.map(detailedTeams, function (basic, cb) {
+      var permission = basic.permission;
+      oss.getTeam(basic.id, function (error, teamInstance) {
+        if (teamInstance) {
+          teamInstance._temporary_permission = permission;
+        }
+        cb(error, teamInstance);
+      });
+    }, callback);
+  } else {
+    callback();
+  }
 }
 
-router.get('/', function (req, res, next) {
-    var approvalRequest = req.approvalEngine.request;
-    var oss = req.oss;
-    var team = req.team;
-    teamsInfoFromRequest(team, approvalRequest, function (error, expandedTeamInfo) {
-        // Ignoring any errors for now.
-        if (approvalRequest.requested) {
-            var asInt = parseInt(approvalRequest.requested, 10);
-            approvalRequest.requestedTime = new Date(asInt);
-        }
-        if (approvalRequest.decisionTime) {
-            approvalRequest.decisionTime = new Date(parseInt(approvalRequest.decisionTime, 10));
-        }
-        oss.render(req, res, 'org/team/approveStatus', 'Request Status', {
-            entry: approvalRequest,
-            requestingUser: req.approvalEngine.user,
-            expandedTeamInfo: expandedTeamInfo,
-            team: team,
-            teamUrl: req.teamUrl,
-        });
+router.get('/', function (req, res) {
+  var approvalRequest = req.approvalEngine.request;
+  var oss = req.oss;
+  var team = req.team;
+  teamsInfoFromRequest(team, approvalRequest, function (error, expandedTeamInfo) {
+    // Ignoring any errors for now.
+    if (approvalRequest.requested) {
+      var asInt = parseInt(approvalRequest.requested, 10);
+      approvalRequest.requestedTime = new Date(asInt);
+    }
+    if (approvalRequest.decisionTime) {
+      approvalRequest.decisionTime = new Date(parseInt(approvalRequest.decisionTime, 10));
+    }
+    oss.render(req, res, 'org/team/approveStatus', 'Request Status', {
+      entry: approvalRequest,
+      requestingUser: req.approvalEngine.user,
+      expandedTeamInfo: expandedTeamInfo,
+      team: team,
+      teamUrl: req.teamUrl,
     });
+  });
 });
 
 router.get('/edit', function (req, res, next) {
-    var approvalEngine = req.approvalEngine;
-    if (approvalEngine.editGet) {
-        return approvalEngine.editGet(req, res, next);
-    }
-    next(new Error('Editing is not supported for this request type.'));
+  var approvalEngine = req.approvalEngine;
+  if (approvalEngine.editGet) {
+    return approvalEngine.editGet(req, res, next);
+  }
+  next(new Error('Editing is not supported for this request type.'));
 });
 
 router.post('/edit', function (req, res, next) {
-    var approvalEngine = req.approvalEngine;
-    if (approvalEngine.editPost) {
-        return approvalEngine.editPost(req, res, next);
-    }
-    next(new Error('Editing is not supported for this request type.'));
+  var approvalEngine = req.approvalEngine;
+  if (approvalEngine.editPost) {
+    return approvalEngine.editPost(req, res, next);
+  }
+  next(new Error('Editing is not supported for this request type.'));
 });
 
-router.get('/setNote/:action', function (req, res, next) {
-    var engine = req.approvalEngine;
-    var action = req.params.action;
-    if (action == 'approveWithComment') {
-      action = 'approve';
-    }
-    engine.team.oss.render(req, res, 'org/team/approveStatusWithNote', 'Record your comment for request ' + engine.id + ' (' + action + ')', {
-      entry: engine.request,
-      action: action,
-      requestingUser: engine.user,
-      team: req.team,
-      teamUrl: req.teamUrl,
-    });
+router.get('/setNote/:action', function (req, res) {
+  var engine = req.approvalEngine;
+  var action = req.params.action;
+  if (action == 'approveWithComment') {
+    action = 'approve';
+  }
+  engine.team.oss.render(req, res, 'org/team/approveStatusWithNote', 'Record your comment for request ' + engine.id + ' (' + action + ')', {
+    entry: engine.request,
+    action: action,
+    requestingUser: engine.user,
+    team: req.team,
+    teamUrl: req.teamUrl,
+  });
 });
 
 router.post('/', function (req, res, next) {
-    var engine = req.approvalEngine;
-    var requestid = engine.id;
-    var team = engine.team;
-    var org = req.org;
-    var dc = req.app.settings.dataclient;
-    if (! req.body.text && req.body.deny) {
-        return res.redirect(req.teamUrl + 'approvals/' + requestid + '/setNote/deny');
-    }
-    if (req.body.reopen) {
-        req.oss.saveUserAlert(req, 'Request re-opened.', engine.typeName, 'success');
-        return dc.updateApprovalRequest(requestid, {
-            active: true
-        }, function (error) {
-            res.redirect(req.teamUrl + 'approvals/' + requestid);
-        });
-    }
-    if (! req.body.text && req.body.approveWithComment) {
-        return res.redirect(req.teamUrl + 'approvals/' + requestid + '/setNote/approveWithComment');
-    }
-    var action = req.body.approveWithComment || req.body.approve ? 'approve' : 'deny';
-    var bodyText = req.body.text;
-    var oss = req.oss;
-    var notificationRepo = org.getWorkflowRepository();
-    var friendlyErrorMessage = 'Whoa? What happened?';
-    var pendingRequest = engine.request;
-    var issue = null;
-    async.waterfall([
-        function (callback) {
-            issue = notificationRepo.issue(pendingRequest.issue);
-            var bodyAddition = engine.messageForAction(action);
-            if (bodyText !== undefined) {
-                bodyAddition += '\n\nA note was included with the decision and can be viewed by team maintainers and the requesting user.';
-            }
-            var comment = bodyAddition + '\n\n<small>This was generated by the Open Source Portal on behalf of ' +
-                oss.usernames.github + '.</small>';
-            if (pendingRequest.ghu) {
-                comment += '\n\n' + 'FYI, @' + pendingRequest.ghu + '\n';
-            }
-            friendlyErrorMessage = 'While trying to comment on issue #' + issue.number + ', an error occurred.';
-            issue.createComment(comment, callback);
-        },
-        function (comment) {
-            var callback = arguments[arguments.length - 1];
-            var requestUpdates = {
-                decision: action,
-                active: false,
-                decisionTime: (new Date().getTime()).toString(),
-                decisionBy: oss.usernames.github,
-                decisionNote: bodyText,
-                decisionEmail: oss.modernUser().contactEmail(),
-            };
-            friendlyErrorMessage = 'The approval request information could not be updated, indicating a data store problem potentially. The decision may not have been recorded.';
-            dc.updateApprovalRequest(requestid, requestUpdates, callback);
-        },
-        function () {
-            var callback = arguments[arguments.length - 1];
-            if (action == 'approve') {
-                engine.performApprovalOperation(callback);
-            } else {
-                callback();
-            }
-        },
-        function closeIssue() {
-            var callback = arguments[arguments.length - 1];
-            friendlyErrorMessage = 'The issue #' + issue.number + ' that tracks the request could not be closed.';
-            issue.close(callback);
-        },
-        function () {
-            friendlyErrorMessage = null;
-            var callback = arguments[arguments.length - 1];
-            if (action == 'approve' && engine.generateSecondaryTasks) {
-                engine.generateSecondaryTasks(callback);
-            } else {
-                callback();
-            }
-        },
-        // Secondary tasks run after the primary and in general will not 
-        // fail the approval operation. By sending an empty error callback
-        // but then an object with an error property set, the operation
-        // that failed can report status. Whether an error or not, a
-        // message property will be shown for each task result.
-        function () {
-            friendlyErrorMessage = null;
-            var tasks = arguments.length > 1 ? arguments[0] : [];
-            var callback = arguments[arguments.length - 1];
-            async.series(tasks, callback);
-        },
-    ], function (error, output) {
-        if (error) {
-            if (friendlyErrorMessage) {
-                error = utils.wrapError(error, friendlyErrorMessage);
-            }
-            return next(error);
-        }
-        req.oss.saveUserAlert(req, 'Thanks for processing the request with your ' + action.toUpperCase() + ' decision.', engine.typeName, 'success');
-        if (action !== 'approve' || !engine.getApprovedViewName) {
-            return res.redirect(req.teamUrl);
-        }
-        oss.render(req, res, engine.getApprovedViewName(), 'Approved', {
-            pendingRequest: pendingRequest,
-            results: output,
-            team: team,
-            teamUrl: req.teamUrl,
-        });
+  var engine = req.approvalEngine;
+  var requestid = engine.id;
+  var team = engine.team;
+  var org = req.org;
+  var dc = req.app.settings.dataclient;
+  if (!req.body.text && req.body.deny) {
+    return res.redirect(req.teamUrl + 'approvals/' + requestid + '/setNote/deny');
+  }
+  if (req.body.reopen) {
+    req.oss.saveUserAlert(req, 'Request re-opened.', engine.typeName, 'success');
+    return dc.updateApprovalRequest(requestid, {
+      active: true
+    }, function () {
+      res.redirect(req.teamUrl + 'approvals/' + requestid);
     });
+  }
+  if (!req.body.text && req.body.approveWithComment) {
+    return res.redirect(req.teamUrl + 'approvals/' + requestid + '/setNote/approveWithComment');
+  }
+  var action = req.body.approveWithComment || req.body.approve ? 'approve' : 'deny';
+  var bodyText = req.body.text;
+  var oss = req.oss;
+  var notificationRepo = org.getWorkflowRepository();
+  var friendlyErrorMessage = 'Whoa? What happened?';
+  var pendingRequest = engine.request;
+  var issue = null;
+  async.waterfall([
+    function (callback) {
+      issue = notificationRepo.issue(pendingRequest.issue);
+      var bodyAddition = engine.messageForAction(action);
+      if (bodyText !== undefined) {
+        bodyAddition += '\n\nA note was included with the decision and can be viewed by team maintainers and the requesting user.';
+      }
+      var comment = bodyAddition + '\n\n<small>This was generated by the Open Source Portal on behalf of ' +
+        oss.usernames.github + '.</small>';
+      if (pendingRequest.ghu) {
+        comment += '\n\n' + 'FYI, @' + pendingRequest.ghu + '\n';
+      }
+      friendlyErrorMessage = 'While trying to comment on issue #' + issue.number + ', an error occurred.';
+      issue.createComment(comment, callback);
+    },
+    function () {
+      var callback = arguments[arguments.length - 1];
+      var requestUpdates = {
+        decision: action,
+        active: false,
+        decisionTime: (new Date().getTime()).toString(),
+        decisionBy: oss.usernames.github,
+        decisionNote: bodyText,
+        decisionEmail: oss.modernUser().contactEmail(),
+      };
+      friendlyErrorMessage = 'The approval request information could not be updated, indicating a data store problem potentially. The decision may not have been recorded.';
+      dc.updateApprovalRequest(requestid, requestUpdates, callback);
+    },
+    function () {
+      var callback = arguments[arguments.length - 1];
+      if (action == 'approve') {
+        engine.performApprovalOperation(callback);
+      } else {
+        callback();
+      }
+    },
+    function closeIssue() {
+      var callback = arguments[arguments.length - 1];
+      friendlyErrorMessage = 'The issue #' + issue.number + ' that tracks the request could not be closed.';
+      issue.close(callback);
+    },
+    function () {
+      friendlyErrorMessage = null;
+      var callback = arguments[arguments.length - 1];
+      if (action == 'approve' && engine.generateSecondaryTasks) {
+        engine.generateSecondaryTasks(callback);
+      } else {
+        callback();
+      }
+    },
+    // Secondary tasks run after the primary and in general will not 
+    // fail the approval operation. By sending an empty error callback
+    // but then an object with an error property set, the operation
+    // that failed can report status. Whether an error or not, a
+    // message property will be shown for each task result.
+    function () {
+      friendlyErrorMessage = null;
+      var tasks = arguments.length > 1 ? arguments[0] : [];
+      var callback = arguments[arguments.length - 1];
+      async.series(tasks, callback);
+    },
+  ], function (error, output) {
+    if (error) {
+      if (friendlyErrorMessage) {
+        error = utils.wrapError(error, friendlyErrorMessage);
+      }
+      return next(error);
+    }
+    req.oss.saveUserAlert(req, 'Thanks for processing the request with your ' + action.toUpperCase() + ' decision.', engine.typeName, 'success');
+    if (action !== 'approve' || !engine.getApprovedViewName) {
+      return res.redirect(req.teamUrl);
+    }
+    oss.render(req, res, engine.getApprovedViewName(), 'Approved', {
+      pendingRequest: pendingRequest,
+      results: output,
+      team: team,
+      teamUrl: req.teamUrl,
+    });
+  });
 });
 
 module.exports = router;

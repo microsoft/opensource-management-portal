@@ -9,6 +9,6 @@ const uuid = require('node-uuid');
 // Generate a correlation ID
 // ----------------------------------------------------------------------------
 module.exports = function (req, res, next) {
-    req.correlationId = uuid.v4();
-    next();
+  req.correlationId = uuid.v4();
+  next();
 };

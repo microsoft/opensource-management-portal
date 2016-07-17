@@ -52,7 +52,7 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
   if (!initializationError) {
     require('./passport-routes')(app, passport, config);
     if (config.onboarding && config.onboarding.length && config.onboarding.length > 0) {
-        require('./onboarding')(app, config);
+      require('./onboarding')(app, config);
     }
   }
 

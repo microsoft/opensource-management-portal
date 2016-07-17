@@ -5,7 +5,6 @@
 
 const async = require('async');
 const github = require('octonode');
-
 const utils = require('../utils');
 
 // ----------------------------------------------------------------------------
@@ -21,11 +20,11 @@ module.exports = function (app, config) {
   async.each(config.onboarding, function (org, callback) {
     if (org && org.name && org.ownerToken) {
       var s = 'Organization Onboarding Helper for "' + org.name + '":\n';
-        for (var key in org) {
-          s += '- ' + key + ': ';
-          s += (org[key] !== undefined) ? 'value set' : 'undefined';
-          s += '\n';
-        }
+      for (var key in org) {
+        s += '- ' + key + ': ';
+        s += (org[key] !== undefined) ? 'value set' : 'undefined';
+        s += '\n';
+      }
       var ghc = github.client(org.ownerToken);
       var ghorg = ghc.org(org.name);
       utils.retrieveAllPages(ghorg.teams.bind(ghorg), function (error, teamInstances) {
