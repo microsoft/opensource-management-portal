@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+/*eslint no-console: ["error", { allow: ["warn"] }] */
+
 const path = require('path');
 const favicon = require('serve-favicon');
 const bodyParser = require('body-parser');
@@ -52,7 +54,7 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
   if (!initializationError) {
     require('./passport-routes')(app, passport, config);
     if (config.onboarding && config.onboarding.length && config.onboarding.length > 0) {
-        require('./onboarding')(app, config);
+      require('./onboarding')(app, config);
     }
   }
 

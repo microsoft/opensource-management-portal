@@ -6,24 +6,22 @@
 'use strict';
 
 const passport = require('passport');
-const utils = require('../utils');
-
 const GitHubStrategy = require('passport-github').Strategy;
 const OIDCStrategy = require('passport-azure-ad').OIDCStrategy;
 
 function githubResponseToSubset(accessToken, refreshToken, profile, done) {
   let subset = {
     github: {
-        accessToken: accessToken,
-        avatarUrl: profile._json && profile._json.avatar_url ? profile._json.avatar_url : undefined,
-        displayName: profile.displayName,
-        id: profile.id,
-        profileUrl: profile.profileUrl,
-        username: profile.username,
+      accessToken: accessToken,
+      avatarUrl: profile._json && profile._json.avatar_url ? profile._json.avatar_url : undefined,
+      displayName: profile.displayName,
+      id: profile.id,
+      profileUrl: profile.profileUrl,
+      username: profile.username,
     }
   };
   return done(null, subset);
-};
+}
 
 function activeDirectorySubset(iss, sub, profile, accessToken, refreshToken, done) {
   // CONSIDER: TODO: Hybrid tenant checks.
@@ -48,16 +46,16 @@ module.exports = function (app, config) {
     config.primaryAuthenticationScheme = 'github';
   }
   if (config.primaryAuthenticationScheme !== 'github' && config.primaryAuthenticationScheme !== 'aad') {
-    throw new Error(`Unsupported primary authentication scheme type "${primaryAuthenticationScheme}"`);
+    throw new Error(`Unsupported primary authentication scheme type "${config.primaryAuthenticationScheme}"`);
   }
 
   // ----------------------------------------------------------------------------
   // GitHub Passport session setup.
   // ----------------------------------------------------------------------------
-  passport.serializeUser(function(user, done) {
+  passport.serializeUser(function (user, done) {
     done(null, user);
   });
-  passport.deserializeUser(function(obj, done) {
+  passport.deserializeUser(function (obj, done) {
     done(null, obj);
   });
   let githubOptions = {
@@ -108,4 +106,4 @@ module.exports = function (app, config) {
   app.use(passport.session());
 
   return passport;
-}
+};
