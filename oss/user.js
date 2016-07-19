@@ -131,6 +131,55 @@ OpenSourceUser.prototype.avatar = function (optionalSize) {
 };
 
 // ----------------------------------------------------------------------------
+// Returns the user's active memberships in organizations managed by this
+// portal.
+// ----------------------------------------------------------------------------
+OpenSourceUser.prototype.getActiveOrganizationMemberships = function (callback) {
+  var self = this;
+  var oss = self.oss;
+  var currentOrganizationMemberships = [];
+  async.each(oss.orgs(), function (o, cb) {
+    o.queryUserMembership(false /* no caching */, function (error, result) {
+      var state = null;
+      if (result && result.state) {
+        state = result.state;
+      }
+      if (state == 'active') // IGNORE: need to find out how to cancel pending invites... || state == 'pending') {
+        currentOrganizationMemberships.push(o);
+      cb(error);
+    });
+  }, function (error) {
+    callback(error, currentOrganizationMemberships);
+  });
+});
+
+// ----------------------------------------------------------------------------
+// Unlinks the user. For now we assume that this is a very serious operation.
+// This will unlink and then also drop from all GitHub organizations managed by
+// this instance of the portal.
+// ----------------------------------------------------------------------------
+OpenSourceUser.prototype.unlinkAndDrop = function (callback) {
+  var self = this;
+  var oss = self.oss;
+  self.getActiveOrganizationMemberships((getOrganizationsError, currentOrganizationMemberships) => {
+    if (getOrganizationsError) {
+      return callback(getOrganizationsError);
+    }
+    async.each(currentOrganizationMemberships, function (org, callback) {
+      org.removeUserMembership(function () {
+        // TODO: We now continue with deletes when one fails. Common
+        // failure case is when they have a pending invite, it will live
+        // on... which is not ideal.
+        callback();
+      });
+    }, function (/* ignored error per above statement */) {
+      var dc = self.oss.dataClient();
+      dc.removeLink(oss.id.github, callback);
+    });
+  });
+};
+
+// ----------------------------------------------------------------------------
 // Retrieve the link, if any, for this user from the underlying datastore. Will
 // cache the value in memory for this instance, since the lifetime of these
 // objects is a single request.

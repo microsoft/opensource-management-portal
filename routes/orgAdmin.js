@@ -8,6 +8,8 @@ const router = express.Router();
 const async = require('async');
 const github = require('octonode');
 
+// TODO: Refactor OSS user to better be able to remove the user using the central codepath.
+
 // These functions are not pretty.
 
 router.use(function ensureOrganizationSudoer(req, res, next) {
