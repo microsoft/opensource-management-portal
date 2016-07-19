@@ -13,8 +13,27 @@ const Team = require('./team');
 const User = require('./user');
 const RedisHelper = require('./redis');
 
-function OpenSourceUserContext(applicationConfiguration, dataClient, user, redisInstance, callback) {
+function OpenSourceUserContext(options, callback) {
   var self = this;
+  self.displayNames = {
+    github: null,
+  };
+  self.usernames = {
+    github: null,
+    azure: null,
+  };
+  self.id = {
+    github: null,
+  };
+  self.entities = {
+    link: null,
+    primaryMembership: null,
+  };
+  var applicationConfiguration = options.config;
+  var dataClient = options.dataClient;
+  var redisInstance = options.redisClient;
+  var requestUser = options.request ? options.request.user : null;
+  var link = options.link;
   var modernUser;
   this.cache = {
     orgs: {},
@@ -26,6 +45,7 @@ function OpenSourceUserContext(applicationConfiguration, dataClient, user, redis
   this.createModernUser = function (id, login) {
     modernUser = new User(this, id);
     modernUser.login = login;
+    return modernUser;
   };
   this.setting = function (name) {
     return applicationConfiguration[name];
@@ -36,89 +56,117 @@ function OpenSourceUserContext(applicationConfiguration, dataClient, user, redis
   this.redisClient = function () {
     return redisInstance;
   };
-  this.requestUser = function () {
-    return user;
-  };
-  this.safeConfigurationTemp = safeSettings(applicationConfiguration);
-  this.authenticated = {
-    github: user && user.github && user.github.id,
-    azure: user && user.azure && user.azure.username,
-  };
-  this.entities = {
-    link: null,
-    primaryMembership: null,
-  };
-  this.usernames = {
-    github: user && user.github && user.github.username ? user.github.username : undefined,
-    azure: user && user.azure && user.azure.username ? user.azure.username : undefined,
-  };
-  this.id = {
-    github: user && user.github && user.github.id ? user.github.id.toString() : undefined,
-  };
-  if (this.id.github) {
-    this.createModernUser(this.id.github, this.usernames.github);
-  }
+  this.safeConfiguration = safeSettings(applicationConfiguration);
   this.baseUrl = '/';
   this.redis = new RedisHelper(this, applicationConfiguration.redis.prefix);
-  this.initializeBasics(function (initError) {
-    if (callback) {
-      return callback(initError, self);
-    }
-  });
+  if (link && options.request) {
+    return callback(new Error('The context cannot be set from both a request and a link instance.'));
+  }
+  if (link) {
+    return setPropertiesFromLink(self, link, callback);
+  }
+  if (options.request) {
+    return this.resolveLinkFromRequest(options.request, callback);
+  }
+  callback(new Error('Could not initialize the context for the acting user.'), self);
+}
+
+function setPropertiesFromLink(context, link, callback) {
+  context.usernames.github = link.ghu;
+  context.id.github = link.ghid.toString();
+  context.usernames.azure = link.aadupn;
+  context.entities.link = link;
+  var modernUser = context.modernUser();
+  if (!modernUser && context.id.github) {
+    modernUser = context.createModernUser(context.id.github, context.usernames.github);
+  }
+  modernUser.link = link;
+  callback(null, context);
+}
+
+function tooManyLinksError(self, userLinks, callback) {
+  var tooManyLinksError = new Error(`This account has ${userLinks.length} linked GitHub accounts.`);
+  tooManyLinksError.links = userLinks;
+  tooManyLinksError.tooManyLinks = true;
+  return callback(tooManyLinksError, self);
+}
+
+function existingGitHubIdentityError(self, link, requestUser, callback) {
+  var endUser = requestUser.azure.displayName || requestUser.azure.username;
+  var obfuscatedUsername = utils.obfuscate(link.ghu, 4);
+  var anotherGitHubAccountError = new Error(`${endUser}, there is a different GitHub account linked to your corporate identity.`);
+  anotherGitHubAccountError.anotherAccount = true;
+  anotherGitHubAccountError.detailed = `If you need to switch which account is associated with your identity, please unlink the old account first. Your other GitHub account username ends in: ${obfuscatedUsername}.`;
+  anotherGitHubAccountError.fancyLink = {
+    link: '/signout/github/?redirect=github',
+    title: `Sign Out ${requestUser.github.username} on GitHub`,
+  };
+  return callback(anotherGitHubAccountError, self);
 }
 
 // ----------------------------------------------------------------------------
 // Populate the user's OSS context object.
 // ----------------------------------------------------------------------------
-OpenSourceUserContext.prototype.initializeBasics = function (callback) {
+OpenSourceUserContext.prototype.resolveLinkFromRequest = function (request, callback) {
   var self = this;
-  var requestUser = this.requestUser();
-  if (!userObject && this.setting('primaryAuthenticationScheme') === 'aad' && requestUser.azure && requestUser.azure.username) {
-    return this.dataClient().getUserByAadUpn(requestUser.azure.username, function (findError, userLinks) {
+  var requestUser = request.user;
+  if (requestUser && requestUser.github) {
+    self.usernames.github = requestUser.github.username;
+    self.id.github = requestUser.github.id;
+    self.displayNames.github = requestUser.github.displayName;
+  }
+  if (requestUser && requestUser.azure) {
+    self.usernames.azure = requestUser.azure.username;
+  }
+  if (self.setting('primaryAuthenticationScheme') === 'aad' && requestUser.azure && requestUser.azure.username) {
+    return self.dataClient().getUserByAadUpn(requestUser.azure.username, function (findError, userLinks) {
       if (findError) {
-        // XXX: wrap with a useful message?
-        return callback(findError);
+        return callback(utils.wrapError(findError, 'There was a problem trying to load the link for the active user.'), self);
       }
       if (userLinks.length === 0) {
-        return callback();
+        return callback(null, self);
       }
       if (userLinks.length > 1) {
-        var tooManyLinksError = new Error(`This account has ${userLinks.length} linked GitHub accounts.`);
-        tooManyLinksError.links = userLinks;
-        tooManyLinksError.tooManyLinks = true;
-        return callback(tooManyLinksError);
+        return tooManyLinksError(self, userLinks, callback);
       }
       var link = userLinks[0];
-      self.usernames.github = link.ghu;
-      self.id.github = link.ghid.toString();
-      self.createModernUser(self.id.github, self.usernames.github);
-      self.entities.link = link;
-      self.modernUser().link = link;
-      // todo: if their AAD name or upn has changed, but oid is still the same... schedule an update!
-      // question: should this.authenticated.github be true or false, since it isn't authenticated yet?
-      callback(null, false);
+      if (requestUser.github && requestUser.github.username && link.ghu !== requestUser.github.username) {
+        if (link.ghid === requestUser.github.id) {
+          // TODO: The user has changed their GitHub name, simply update the link record.
+        } else {
+          return existingGitHubIdentityError(self, link, requestUser, callback);
+        }
+      }
+      if (requestUser.azure.displayName !== link.aadname) {
+        // TODO: update their display name?
+        console.warn(`The user's Azure display name has changed. Link: ${link.aadname}, Passport: ${requestUser.azure.displayName}`);
+      }
+      if (requestUser.azure.username !== link.aadupn) {
+        // Confirm that their OID is the same
+        // RARE: TODO: ??? update their AAD upn in the link
+        // if OID has changed, freak out?
+        console.warn(`The user's Azure username has changed. Link: ${link.aadupn}, Passport: ${requestUser.azure.username}`);
+      }
+      return setPropertiesFromLink(self, link, callback);
     });
   }
-  var userObject = this.modernUser();
+  var userObject;
+  if (self.id.github) {
+    userObject = self.createModernUser(self.id.github, self.usernames.github);
+  }
   if (!userObject) {
-    return callback(new Error('There\'s a logic bug in the user context object. We cannot continue.'));
+    return callback(new Error('There\'s a logic bug in the user context object. We cannot continue.'), self);
   }
   userObject.getLink(function (error, link) {
     if (error) {
-      return callback(utils.wrapError(error, 'We were not able to retrieve information about any link for your user account at this time.'));
+      return callback(utils.wrapError(error, 'We were not able to retrieve information about any link for your user account at this time.'), self);
     }
     if (link) {
-      self.entities.link = link;
+      // CONSIDER: If the link values differ from the request properties...
+      return setPropertiesFromLink(self, link, callback);
+    } else {
+      callback(null, self);
     }
-    callback(null, false);
-    /*self.org().queryUserMembership(true, function (error, result) {
-        // CONSIDER: This is part of the isAdministrator updates...
-        if (result && result.state && result.role && result.role === 'admin') {
-            self.entities.primaryMembership = result;
-        }
-        callback(null, false);
-    });
-    */
   });
 };
 
@@ -559,8 +607,7 @@ OpenSourceUserContext.prototype.saveUserAlert = function (req, message, title, c
 };
 
 function safeSettings(config) {
-  // CONSIDER: IMPLEMENT.
-  return config;
+  return config.obfuscatedConfig;
 }
 
 // ----------------------------------------------------------------------------
@@ -578,11 +625,31 @@ OpenSourceUserContext.prototype.render = function (req, res, view, title, option
   if (breadcrumbs && breadcrumbs.length && breadcrumbs.length > 0) {
     breadcrumbs[breadcrumbs.length - 1].isLast = true;
   }
+  var authScheme = this.setting('primaryAuthenticationScheme');
+  var user = {
+    primaryAuthenticationScheme: authScheme,
+    primaryUsername: authScheme === 'github' ? this.usernames.github : this.usernames.azure,
+    githubSignout: authScheme === 'github' ? '/signout' : '/signout/github',
+    azureSignout: authScheme === 'github' ? '/signout/azure' : '/signout',
+  };
+  if (this.id.github || this.usernames.github) {
+    user.github = {
+      id: this.id.github,
+      username: this.usernames.github,
+      displayName: this.displayNames.github,
+      increasedScope: null, // TODO: Increased scope should be set in the pipeline
+    };
+  }
+  if (this.usernames.azure) {
+    user.azure = {
+      username: this.usernames.azure,
+    };
+  }
   var obj = {
     title: title,
-    config: this.safeConfigurationTemp,
+    config: this.safeConfiguration,
     serviceBanner: this.setting('serviceBanner'),
-    user: this.requestUser(),
+    user: user,
     ossLink: this.entities.link,
     showBreadcrumbs: true,
     breadcrumbs: breadcrumbs,

@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+const async = require('async');
 const utils = require('../utils');
 const debug = require('debug')('azureossportal');
 
@@ -165,12 +166,12 @@ OpenSourceUser.prototype.unlinkAndDrop = function (callback) {
     if (getOrganizationsError) {
       return callback(getOrganizationsError);
     }
-    async.each(currentOrganizationMemberships, function (org, callback) {
+    async.each(currentOrganizationMemberships, function (org, cb) {
       org.removeUserMembership(function () {
         // TODO: We now continue with deletes when one fails. Common
         // failure case is when they have a pending invite, it will live
         // on... which is not ideal.
-        callback();
+        cb();
       });
     }, function (/* ignored error per above statement */) {
       var dc = self.oss.dataClient();

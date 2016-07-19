@@ -17,7 +17,7 @@ block content
       each column in linksForCleanupByColumn
         div.col-sm-6.col-md-6.col-lg-6
           each link in column
-            div(style='border:4px solid #ddd;padding:0 24px 0 16px')
+            div.horizontal-pad.vertical-space(style='border:4px solid #ddd')
               div
                 h2= link.ghu
                 p GitHub Account
@@ -25,11 +25,11 @@ block content
                   | View #{link.ghu} GitHub Profile &nbsp;
                   i.glyphicon.glyphicon-share-alt
                 form(method='post').vertical-space
-                  input(type='hidden', name='unlink', value=link.ghu)
-                  - var isConfirming = confirming === link.ghu
+                  input(type='hidden', name='unlink', value=link.ghid)
+                  - var isConfirming = confirming === link.ghid
                   - var buttonClass = isConfirming ? 'btn-danger' : 'btn-default'
                   if isConfirming
-                    input(type='hidden', name='confirm', value=link.ghu)
+                    input(type='hidden', name='confirm', value=link.ghid)
                     p.text-danger Please confirm that you are ready to unlink this GitHub account. It will lose access to any and all corporate organizations, teams and private repos.
                   input.btn.btn-lg(class=buttonClass, type='submit', value=isConfirming ? 'Yes, unlink #{link.ghu}' : 'Unlink #{link.ghu}')
                 if link.joinedDate

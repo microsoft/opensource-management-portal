@@ -161,6 +161,26 @@ exports.arrayToHashById = function athi(inputArray) {
 };
 
 // ----------------------------------------------------------------------------
+// Obfuscate a string value, optionally leaving a few characters visible.
+// ----------------------------------------------------------------------------
+exports.obfuscate = function obfuscate(value, lastCharactersShowCount) {
+  if (value === undefined || value === null || value.length === undefined) {
+    return value;
+  }
+  var length = value.length;
+  lastCharactersShowCount = lastCharactersShowCount || 0;
+  lastCharactersShowCount = Math.min(lastCharactersShowCount, length - 1);
+  var obfuscated = '';
+  for (var i = 0; i < length - lastCharactersShowCount; i++) {
+    obfuscated += '*';
+  }
+  for (var j = length - lastCharactersShowCount; j < length; j++) {
+    obfuscated += value[j];
+  }
+  return obfuscated;
+}
+
+// ----------------------------------------------------------------------------
 // A very basic breadcrumb stack that ties in to an Express request object.
 // ----------------------------------------------------------------------------
 exports.addBreadcrumb = function (req, breadcrumbTitle, optionalBreadcrumbLink) {

@@ -14,17 +14,17 @@ const linkCleanupRoute = require('./link-cleanup');
 router.use(function (req, res, next) {
   var config = req.app.settings.runtimeConfig;
   if (req.isAuthenticated()) {
-    if (req.user && !req.user.github) {
-      // no github info
-      // IF secondary auth,... 1) check for a link
-      //            return next(new Error('We do not have your GitHub stuff.'));
+    var expectedAuthenticationProperty = config.primaryAuthenticationScheme === 'github' ? 'github' : 'azure';
+    if (req.user && !req.user[expectedAuthenticationProperty]) {
+      console.warn(`A user session was authenticated but did not have present the property ${expectedAuthenticationProperty} expected for this type of authentication. Signing them out.`);
+      return res.redirect('/signout');
     }
-    if (req.user && req.user.github && !req.user.github.id) {
-      return next(new Error('Invalid GitHub user information provided by GitHub.'));
+    var expectedAuthenticationKey = config.primaryAuthenticationScheme === 'github' ? 'id' : 'username';
+    if (!req.user[expectedAuthenticationProperty][expectedAuthenticationKey]) {
+      return next(new Error('Invalid information present for the authentication provider.'));
     }
     return next();
   }
-
   var url = req.originalUrl;
   if (url) {
     if (req.session) {
@@ -36,9 +36,13 @@ router.use(function (req, res, next) {
 });
 
 router.use((req, res, next) => {
-  var config = req.app.settings.runtimeConfig;
-  var dc = req.app.settings.dataclient;
-  new OpenSourceUserContext(config, dc, req.user, dc.cleanupInTheFuture.redisClient, function (error, instance) {
+  var options = {
+    config: req.app.settings.runtimeConfig,
+    dataClient: req.app.settings.dataclient,
+    redisClient: req.app.settings.dataclient.cleanupInTheFuture.redisClient,
+    request: req,
+  };
+  new OpenSourceUserContext(options, (error, instance) => {
     req.oss = instance;
     if (error && error.tooManyLinks === true) {
       if (req.url === '/link-cleanup') {
@@ -160,7 +164,7 @@ router.get('/', function (req, res, next) {
         onboarding = true;
       }
       var render = function (results) {
-        var pageTitle = results && results.userOrgMembership === false ? 'My GitHub Account' : config.companyName + ' - Open Source Portal for GitHub';
+        var pageTitle = results && results.userOrgMembership === false ? 'My GitHub Account' : config.companyName + ' - ' + config.portalName;
         oss.render(req, res, 'index', pageTitle, {
           accountInfo: results,
           onboarding: onboarding,

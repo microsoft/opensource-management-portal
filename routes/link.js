@@ -45,7 +45,11 @@ router.post('/', function (req, res, next) {
 });
 
 router.get('/update', function (req, res, next) {
+  var config = req.app.settings.runtimeConfig;
   var oss = req.oss;
+  if (config.primaryAuthenticationScheme === 'aad'){
+    return next('Changing a GitHub account is not yet supported.');
+  }
   if (!(oss.usernames.azure)) {
     return oss.render(req, res, 'linkUpdate', 'Update your account ' + oss.usernames.github + ' by signing in with corporate credentials.');
   }

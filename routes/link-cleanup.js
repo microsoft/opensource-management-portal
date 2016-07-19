@@ -10,6 +10,7 @@ const router = express.Router();
 const async = require('async');
 const moment = require('moment');
 const utils = require('../utils');
+const OpenSourceUserContext = require('../oss');
 
 // Enforcing just a single GitHub account per Active Directory user. With
 // mild refactoring, this portal could easily support a session selecting
@@ -37,19 +38,20 @@ router.use((req, res, next) => {
   });
 });
 
-function renderCleanupPage(req, res, optionalUsernameToConfirm) {
+function renderCleanupPage(req, res, idToConfirm, links) {
+  links = links || req.linksForCleanup;
   let twoColumns = [[], []];
-  for (let i = 0; i < req.linksForCleanup.length; i++) {
-    if (req.linksForCleanup[i].joined) {
-      req.linksForCleanup[i].joinedDate = new Date(Math.round(req.linksForCleanup[i].joined));
+  for (let i = 0; i < links.length; i++) {
+    if (links[i].joined) {
+      links[i].joinedDate = new Date(Math.round(links[i].joined));
     }
-    twoColumns[i % 2].push(req.linksForCleanup[i]);
+    twoColumns[i % 2].push(links[i]);
   }
   req.oss.render(req, res, 'multiplegithubaccounts', 'GitHub Cleanup', {
     linksForCleanupByColumn: twoColumns,
     numberToRemove: req.linksForCleanup.length - 1,
-    confirming: optionalUsernameToConfirm,
-  })
+    confirming: idToConfirm,
+  });
 }
 
 router.get('/', (req, res, next) => {
@@ -57,20 +59,45 @@ router.get('/', (req, res, next) => {
 });
 
 router.post('/', (req, res, next) => {
-  let username = req.body.unlink;
-  let isConfirming = req.body.confirm === username;
-  if (!isConfirming) {
-    return renderCleanupPage(req, res, username);
+  let id = req.body.unlink;
+  let link = null;
+  let remainingLinks = [];
+  for (let i = 0; i < req.linksForCleanup.length; i++) {
+    if (req.linksForCleanup[i].ghid === id) {
+      link = req.linksForCleanup[i];
+    } else {
+      remainingLinks.push(req.linksForCleanup[i]);
+    }
   }
-
+  if (!link) {
+    return next(new Error(`Could not identify the link for GitHub user ${id}.`));
+  }
+  let isConfirming = req.body.confirm === id;
+  if (!isConfirming) {
+    return renderCleanupPage(req, res, id);
+  }
+  var options = {
+    config: req.app.settings.runtimeConfig,
+    dataClient: req.app.settings.dataclient,
+    redisClient: req.app.settings.dataclient.cleanupInTheFuture.redisClient,
+    link: link,
+  };
+  new OpenSourceUserContext(options, function (contextError, unlinkContext) {
+    if (contextError) {
+      return next(contextError);
+    }
+    unlinkContext.modernUser().unlinkAndDrop((unlinkError) => {
+      if (unlinkError) {
+        return next(unlinkError);
+      }
+      if (remainingLinks.length > 1) {
+        renderCleanupPage(req, res, null, remainingLinks);
+      } else {
+        req.oss.saveUserAlert(req, link.ghu + ' has been unlinked. You now have just one GitHub account link.', 'Link cleanup complete', 'success');
+        res.redirect('/');
+      }
+    });
+  });
 });
-
-/*        var link = userLinks[0];
-        self.usernames.github = link.ghu;
-        self.id.github = link.ghid.toString();
-        self.createModernUser(self.id.github, self.usernames.github);
-        self.entities.link = link;
-        self.modernUser().link = link;
-        */
 
 module.exports = router;

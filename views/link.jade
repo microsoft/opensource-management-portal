@@ -27,7 +27,7 @@ block content
             tr
               - gitAlertClass = config.primaryAuthenticationScheme == 'github' ? '' : 'alert-success'
               - aadAlertClass = config.primaryAuthenticationScheme == 'aad' ? '' : 'alert-success'
-              td(class=gitAlertClass)= user.github.displayUsernameTemporary || user.github.username
+              td(class=gitAlertClass)= user.github.username
               td
                 div.text-center
                   i.glyphicon.glyphicon-link

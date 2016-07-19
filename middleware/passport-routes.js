@@ -38,6 +38,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     app.get('/signin/github/join', (req, res) => {
       res.render('creategithubaccount', {
         title: 'Create a GitHub account',
+        user: req.user,
       });
     });
 
@@ -80,6 +81,9 @@ module.exports = function configurePassport(app, passport, initialConfig) {
       delete req.user.github;
     }
     var url = req.headers.referer || '/';
+    if (req.query.redirect === 'github') {
+      url = 'https://github.com/logout';
+    }
     res.redirect(url);
   });
 

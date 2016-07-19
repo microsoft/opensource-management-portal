@@ -7,12 +7,12 @@ doctype html
 html(lang="en")
   head
     meta(charset='utf-8')
-    title= (user && user.github && user.github.username) ? title + ' - ' + user.github.username : title
+    title= (user && user.primaryUsername) ? title + ' - ' + user.primaryUsername : title
     meta(http-equiv='X-UA-Compatible', content='IE=edge')
     meta(name='viewport', content='width=device-width, initial-scale=1.0')
     meta(name='author', content='Microsoft Open Source')
     link(href='/css/bootstrap.min.css?1', rel='stylesheet')
-    link(href='/repos-css/oss.css?2a', rel='stylesheet')
+    link(href='/repos-css/oss.css?2b', rel='stylesheet')
     link(rel='shortcut icon', href='/favicon.ico')
     link(rel='apple-touch-icon', sizes='114x114,72x72,144x144,60x60,120x120,76x76,152x152,180x180', href='/favicon-144.png')
     meta(name='msapplication-config', content='none')
@@ -73,6 +73,8 @@ html(lang="en")
         nav(role='navigation')
           div.container(style='margin-top:24px;margin-bottom:12px')
             div.row(style=(user && !error && ossLink) ? 'margin-left:0' : 'margin-left:-30px')
+              - var githubSignout = user && user.githubSignout ? user.githubSignout : '/signout'
+              - var azureSignout = user && user.azureSignout ? user.azureSignout : '/signout'
               div.col-md-6
                 if user && user.github
                   h4 Your GitHub Account
@@ -84,10 +86,16 @@ html(lang="en")
                       img(alt=user.github.displayName, src=user.github.avatarUrl + '&s=80', style='margin-right:10px;width:30px;height:30px', data-user=user.github.id)
                     a.btn.btn-sm.btn-muted(href='https://github.com/settings/profile', target='_new', title='Click to edit your public GitHub profile')= user.github.username
                     a.btn.btn-sm.btn-muted-more(href='https://github.com/settings/profile', target='_new', title='Click to edit your public GitHub profile')= user.github.displayName || user.github.username
-                    a.btn.btn-sm.btn-white(href='/signout', style='margin-left:10px') Sign Out
+                    if primaryAuthenticationScheme == 'github'
+                      a.btn.btn-sm.btn-white(href=githubSignout, style='margin-left:10px') Sign Out
+                    else
+                      a.btn.btn-sm.btn-white(href='/link/update', style='margin-left:10px') Change
                 else
                   p
-                    small Sign in or create your GitHub.com account to manage your #{config && config.companyName || 'corporate'} open source identity.
+                    if primaryAuthenticationScheme == 'github'
+                      small Sign in or create your GitHub.com account to manage your #{config && config.companyName || 'corporate'} open source identity
+                    else
+                      small Sign in to GitHub
                   p
                     a.btn.btn-sm.btn-primary(href='/signin/github') Sign in
               div.col-md-6
@@ -98,16 +106,19 @@ html(lang="en")
                       if ossLink.aadname
                         a.btn.btn-sm.btn-muted(href='/signin/azure')= ossLink.aadname
                       a.btn.btn-sm.btn-muted-more(href='/signin/azure')= ossLink.aadupn
-                      a.btn.btn-sm.btn-white(href='/link/update', style='margin-left:10px') Change
+                      if primaryAuthenticationScheme == 'github'
+                        a.btn.btn-sm.btn-white(href='/link/update', style='margin-left:10px') Change
+                      else
+                        a.btn.btn-sm.btn-white(href=azureSignout, style='margin-left:10px') Sign Out
                   else if user.azure
                     //- NOTE: This is actually visually backward from the above link display...
                     h4 Your #{config && config.companyName ? config.companyName : 'Corporate'} Identity
                     p
                       if user.azure.username
-                        a.btn.btn-sm.btn-muted(href='/signout/azure')= user.azure.username
+                        a.btn.btn-sm.btn-muted(href=azureSignout)= user.azure.username
                       if user.azure.displayName
                         a.btn.btn-sm.btn-muted-more(href='/signout/azure')= user.azure.displayName
-                      a.btn.btn-sm.btn-white(href='/signout/azure', style='margin-left:10px') Sign Out
+                      a.btn.btn-sm.btn-white(href=azureSignout, style='margin-left:10px') Sign Out
     //- Just show breadcrumbs when there is an interesting path available
     if showBreadcrumbs === true && breadcrumbs && breadcrumbs.length && breadcrumbs.length > 1
       div.container
@@ -151,6 +162,8 @@ html(lang="en")
                 h4
                   | Storage:&nbsp;
                   span.bg-danger(style='color:white;padding:2px')= config.azureStorage.account
+                h4
+                  | Storage Prefix: #{config.azureStorage.prefix}
               if config && config.redis
                 h4
                   | Redis:&nbsp;

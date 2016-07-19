@@ -210,6 +210,22 @@ footer {
   margin-bottom: 16px;
 }
 
+.pad, vertical-pad, .vertical-pad-top {
+  padding-top: 16px;
+}
+
+.pad, vertical-pad, .vertical-pad-bottom {
+  padding-bottom: 16px;
+}
+
+.pad, .horizontal-pad, .horizontal-pad-left {
+  padding-left: 16px;
+}
+
+.pad, .horizontal-pad, .horizontal-pad-right {
+  padding-right: 16px;
+}
+
 code {
     color: #333;
 }
