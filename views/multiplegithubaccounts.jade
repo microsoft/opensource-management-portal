@@ -11,23 +11,33 @@ block content
     p.lead You need to unlink #{numberToRemove == 1 ? 'a' : numberToRemove} GitHub account#{numberToRemove == 1 ? '' : 's'}
     p.
       Please remove the accounts that you are not using for
-      corporate work at this time. <strong>Removed accounts
-      will lose access to any private repositories.</strong>
+      corporate work at this time. Removed accounts
+      will lose access to any private repositories.
     div.row
       each column in linksForCleanupByColumn
         div.col-sm-6.col-md-6.col-lg-6
           each link in column
-            div.metro-box.ms-blue
-              a(target='_new', href='https://github.com/' + link.ghu)
-                h3= link.ghu
+            div(style='border:4px solid #ddd;padding:0 24px 0 16px')
+              div
+                h2= link.ghu
                 p GitHub Account
+                a.btn.btn-sm.btn-muted(href='https://github.com/' + link.ghu, target='_new')
+                  | View #{link.ghu} GitHub Profile &nbsp;
+                  i.glyphicon.glyphicon-share-alt
+                form(method='post').vertical-space
+                  input(type='hidden', name='unlink', value=link.ghu)
+                  - var isConfirming = confirming === link.ghu
+                  - var buttonClass = isConfirming ? 'btn-danger' : 'btn-default'
+                  if isConfirming
+                    input(type='hidden', name='confirm', value=link.ghu)
+                    p.text-danger Please confirm that you are ready to unlink this GitHub account. It will lose access to any and all corporate organizations, teams and private repos.
+                  input.btn.btn-lg(class=buttonClass, type='submit', value=isConfirming ? 'Yes, unlink #{link.ghu}' : 'Unlink #{link.ghu}')
                 if link.joinedDate
                   h5
                     | Linked&nbsp;
                     time(datetime=link.joinedDate.toISOString())= link.joinedDate.toDateString()
 
     if config && config.corporate && config.corporate.portalAdministratorEmail
-      hr
-      p
+      p.vertical-space
         | If you have any questions, please ping &nbsp;
         a.btn.btn-sm.btn-muted(href='mailto:' + config.corporate.portalAdministratorEmail)= config.corporate.portalAdministratorEmail

@@ -37,7 +37,7 @@ router.use((req, res, next) => {
   });
 });
 
-router.get('/', (req, res, next) => {
+function renderCleanupPage(req, res, optionalUsernameToConfirm) {
   let twoColumns = [[], []];
   for (let i = 0; i < req.linksForCleanup.length; i++) {
     if (req.linksForCleanup[i].joined) {
@@ -48,11 +48,21 @@ router.get('/', (req, res, next) => {
   req.oss.render(req, res, 'multiplegithubaccounts', 'GitHub Cleanup', {
     linksForCleanupByColumn: twoColumns,
     numberToRemove: req.linksForCleanup.length - 1,
+    confirming: optionalUsernameToConfirm,
   })
+}
+
+router.get('/', (req, res, next) => {
+  renderCleanupPage(req, res);
 });
 
 router.post('/', (req, res, next) => {
-  next(new Error('tbi'));
+  let username = req.body.unlink;
+  let isConfirming = req.body.confirm === username;
+  if (!isConfirming) {
+    return renderCleanupPage(req, res, username);
+  }
+
 });
 
 /*        var link = userLinks[0];
