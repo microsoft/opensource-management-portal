@@ -30,22 +30,61 @@ const requiredConfigurationKeys = [
   'REDIS_KEY',
 ];
 
-module.exports = function translateEnvironmentToConfiguration(legacyConfiguration) {
-  if (legacyConfiguration) {
-    throw new Error('No parameters should be passed in as configuration now that painless-config is in use.');
-  }
+const secretConfigurationKeys = [
+  'GITHUB_CLIENT_SECRET',
+  'SESSION_SALT',
+  'AAD_CLIENT_SECRET',
+  'XSTORE_KEY',
+  'REDIS_KEY',
+  '*TOKEN*', // Special case: covers auth tokens, hook tokens, etc.
+];
+
+const obfuscationSuffixCharactersToShow = 4;
+
+module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets) {
   var configurationHelper = painlessConfig;
   for (let i = 0; i < requiredConfigurationKeys.length; i++) {
     if (!configurationHelper.get(requiredConfigurationKeys[i])) {
       throw new Error(`Configuration parameter "${requiredConfigurationKeys[i]}" is required for this application to initialize.`);
     }
   }
+  if (obfuscateSecrets === true) {
+    var secretKeys = new Set(secretConfigurationKeys);
+    var wildcards = [];
+    for (var wi = 0; wi < secretConfigurationKeys.length; wi++) {
+      var wik = secretConfigurationKeys[wi];
+      if (wik.startsWith('*') && wik.endsWith('*')) {
+        wildcards.push(wik.substr(1, wik.length - 2));
+      }
+    }
+    configurationHelper = {
+      get: function (key) {
+        var value = painlessConfig.get(key);
+        if (secretKeys.has(key) && value !== undefined) {
+          value = utils.obfuscate(value, obfuscationSuffixCharactersToShow);
+        } else {
+          for (var p = 0; p < wildcards.length; p++) {
+            if (key.includes(wildcards[p])) {
+              value = utils.obfuscate(value, obfuscationSuffixCharactersToShow);
+              break;
+            }
+          }
+        }
+        return value;
+      }
+    };
+  } else if (obfuscateSecrets !== false && obfuscateSecrets !== undefined) {
+    throw new Error(`Invalid first parameter value: ${obfuscateSecrets}`);
+  }
   let config = {
     logging: {
       errors: configurationHelper.get('SITE_SKIP_ERRORS') === undefined,
       version: pkgInfo.version,
     },
+    secretConfigurationKeys: secretConfigurationKeys,
+    obfuscatedConfig: null,
     companyName: configurationHelper.get('COMPANY_NAME'),
+    portalName: configurationHelper.get('PORTAL_NAME') || 'Open Source Portal for GitHub',
     serviceBanner: configurationHelper.get('SITE_SERVICE_BANNER'),
     websiteSku: configurationHelper.get('WEBSITE_SKU'),
     expectedSslCertificate: configurationHelper.get('EXPECTED_SSL_CERTIFICATE'),
