@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+/*eslint no-console: ["error", { allow: ["warn"] }] */
+
 const express = require('express');
 const router = express.Router();
 const async = require('async');

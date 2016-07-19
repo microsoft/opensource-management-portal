@@ -178,7 +178,7 @@ exports.obfuscate = function obfuscate(value, lastCharactersShowCount) {
     obfuscated += value[j];
   }
   return obfuscated;
-}
+};
 
 // ----------------------------------------------------------------------------
 // A very basic breadcrumb stack that ties in to an Express request object.

@@ -7,9 +7,6 @@
 
 const express = require('express');
 const router = express.Router();
-const async = require('async');
-const moment = require('moment');
-const utils = require('../utils');
 const OpenSourceUserContext = require('../oss');
 
 // Enforcing just a single GitHub account per Active Directory user. With
@@ -19,7 +16,7 @@ const OpenSourceUserContext = require('../oss');
 router.use((req, res, next) => {
   let config = req.app.settings.runtimeConfig;
   if (config.primaryAuthenticationScheme !== 'aad') {
-    return next(new Error('Link cleanup is only supported for certain types of authentication schemes.'))
+    return next(new Error('Link cleanup is only supported for certain types of authentication schemes.'));
   }
 
   let dc = req.app.settings.dataclient;
@@ -54,7 +51,7 @@ function renderCleanupPage(req, res, idToConfirm, links) {
   });
 }
 
-router.get('/', (req, res, next) => {
+router.get('/', (req, res) => {
   renderCleanupPage(req, res);
 });
 

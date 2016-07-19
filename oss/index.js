@@ -13,6 +13,8 @@ const Team = require('./team');
 const User = require('./user');
 const RedisHelper = require('./redis');
 
+/*eslint no-console: ["error", { allow: ["warn"] }] */
+
 function OpenSourceUserContext(options, callback) {
   var self = this;
   self.displayNames = {
@@ -32,7 +34,6 @@ function OpenSourceUserContext(options, callback) {
   var applicationConfiguration = options.config;
   var dataClient = options.dataClient;
   var redisInstance = options.redisClient;
-  var requestUser = options.request ? options.request.user : null;
   var link = options.link;
   var modernUser;
   this.cache = {
