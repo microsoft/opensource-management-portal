@@ -37,14 +37,12 @@ function DataClient(config, callback) {
     linksTableName: prefix + 'links',
     pendingApprovalsTableName: prefix + 'pending',
     errorsTableName: prefix + 'errors',
-    auditTableName: prefix + 'auditlog',
   };
   var dc = this;
   var tableNames = [
     dc.options.linksTableName,
     dc.options.pendingApprovalsTableName,
     dc.options.errorsTableName,
-    dc.options.auditTableName,
   ];
   async.each(tableNames, function (tableName, callback) {
     dc.table.createTableIfNotExists(tableName, callback);
