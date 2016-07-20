@@ -48,7 +48,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
           client_id: config.github.clientId,
           redirect_uri: config.github.callbackUrl,
           response_type: 'code',
-          scope: '', // TODO: Improve by pulling from object?
+          scope: req.app.settings['runtime/passport/github/scope'],
         }),
         source: 'oauth',
       });

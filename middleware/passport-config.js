@@ -79,9 +79,14 @@ module.exports = function (app, config) {
     validateIssuer: true,
   }, activeDirectorySubset);
 
-  // Validate the authorization URL borrowed from the passport-github library
+  // Validate the borrow some parameters from the GitHub passport library
   if (githubPassportStrategy._oauth2 && githubPassportStrategy._oauth2._authorizeUrl) {
     app.set('runtime/passport/github/authorizeUrl', githubPassportStrategy._oauth2._authorizeUrl);
+  } else {
+    throw new Error('The GitHub Passport strategy library may have been updated, it no longer contains the expected Authorize URL property within the OAuth2 object.');
+  }
+  if (githubPassportStrategy._scope && githubPassportStrategy._scopeSeparator) {
+    app.set('runtime/passport/github/scope', githubPassportStrategy._scope.join(githubPassportStrategy._scopeSeparator));
   } else {
     throw new Error('The GitHub Passport strategy library may have been updated, it no longer contains the expected Authorize URL property within the OAuth2 object.');
   }
