@@ -139,10 +139,8 @@ OpenSourceUserContext.prototype.resolveLinkFromRequest = function (request, call
         return tooManyLinksError(self, userLinks, callback);
       }
       var link = userLinks[0];
-      if (requestUser.github && requestUser.github.username && link.ghu !== requestUser.github.username) {
-        if (link.ghid !== requestUser.github.id) {
-          return existingGitHubIdentityError(self, link, requestUser, callback);
-        }
+      if (requestUser.github && requestUser.github.username && link.ghu !== requestUser.github.username && link.ghid !== requestUser.github.id) {
+        return existingGitHubIdentityError(self, link, requestUser, callback);
       }
       return self.setPropertiesFromLink(link, callback);
     });
@@ -159,7 +157,6 @@ OpenSourceUserContext.prototype.resolveLinkFromRequest = function (request, call
       return callback(utils.wrapError(error, 'We were not able to retrieve information about any link for your user account at this time.'), self);
     }
     if (link) {
-      // CONSIDER: If the link values differ from the request properties...
       return self.setPropertiesFromLink(link, callback);
     } else {
       callback(null, self);
