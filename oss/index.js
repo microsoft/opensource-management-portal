@@ -35,6 +35,10 @@ function OpenSourceUserContext(options, callback) {
     link: null,
     primaryMembership: null,
   };
+  self.tokens = {
+    github: null,
+    githubIncreasedScope: null,
+  };
   var applicationConfiguration = options.config;
   var dataClient = options.dataClient;
   var redisInstance = options.redisClient;
@@ -83,6 +87,8 @@ OpenSourceUserContext.prototype.setPropertiesFromLink = function (link, callback
   this.entities.link = link;
   this.displayNames.azure = link.aadname;
   this.avatars.github = link.ghavatar;
+  this.tokens.github = link.ghtoken;
+  this.tokens.githubIncreasedScope = link.ghtokenincreasedscope;
   var modernUser = this.modernUser();
   if (!modernUser && this.id.github) {
     modernUser = this.createModernUser(this.id.github, this.usernames.github);
@@ -639,7 +645,8 @@ OpenSourceUserContext.prototype.render = function (req, res, view, title, option
       username: this.usernames.github,
       displayName: this.displayNames.github,
       avatarUrl: this.avatars.github,
-      increasedScope: null, // TODO: Increased scope should be set in the pipeline
+      accessToken: this.tokens.github !== undefined,
+      increasedScope: this.tokens.githubIncreasedScope !== undefined,
     };
   }
   if (this.usernames.azure) {
