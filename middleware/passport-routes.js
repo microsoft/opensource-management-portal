@@ -6,34 +6,18 @@
 'use strict';
 
 const querystring = require('querystring');
+const utils = require('../utils');
 
 module.exports = function configurePassport(app, passport, initialConfig) {
-  function storeReferrer(req) {
-    if (req.session && req.headers && req.headers.referer && req.session.referer !== undefined && !req.headers.referer.includes('/signout')) {
-      req.session.referer = req.headers.referer;
-    }
-  }
-
-  function redirectToReferrer(req, res, url) {
-    url = url || '/';
-    if (req.session && req.session.referer) {
-      url = req.session.referer;
-      delete req.session.referer;
-    }
-    res.redirect(url);
-  }
-
   app.get('/signin', function (req, res) {
-    storeReferrer(req);
-    return res.redirect(initialConfig.primaryAuthenticationScheme === 'github' ? '/auth/github' : '/auth/azure');
+    utils.storeReferrer(req, res, initialConfig.primaryAuthenticationScheme === 'github' ? '/auth/github' : '/auth/azure');
   });
 
   // ----------------------------------------------------------------------------
   // passport integration with GitHub
   // ----------------------------------------------------------------------------
   app.get('/signin/github', function (req, res) {
-    storeReferrer(req);
-    return res.redirect('/auth/github');
+    utils.storeReferrer(req, res, '/auth/github');
   });
 
   var ghMiddleware = initialConfig.primaryAuthenticationScheme === 'github' ? passport.authenticate('github') : passport.authorize('github');
@@ -44,7 +28,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     if (initialConfig.primaryAuthenticationScheme !== 'github') {
       req.user.github = req.account.github;
     }
-    redirectToReferrer(req, res);
+    utils.redirectToReferrer(req, res);
   });
 
   if (initialConfig.primaryAuthenticationScheme === 'aad') {
@@ -106,8 +90,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
   // Expanded GitHub auth scope routes
   // ----------------------------------------------------------------------------
   app.get('/signin/github/increased-scope', function (req, res) {
-    storeReferrer(req);
-    return res.redirect('/auth/github/increased-scope');
+    utils.storeReferrer(req, res, '/auth/github/increased-scope');
   });
 
   // TODO: xxx
@@ -119,7 +102,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
       var account = req.account;
       var user = req.user;
       user.github.increasedScope = account;
-      redirectToReferrer(req, res);
+      utils.redirectToReferrer(req, res);
     });
 
   // ----------------------------------------------------------------------------
@@ -133,12 +116,11 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     if (initialConfig.primaryAuthenticationScheme !== 'aad') {
       req.user.azure = req.account.azure;
     }
-    redirectToReferrer(req, res);
+    utils.redirectToReferrer(req, res);
   });
 
   app.get('/signin/azure', function (req, res) {
-    storeReferrer(req);
-    return res.redirect('/auth/azure');
+    utils.storeReferrer(req, res, '/auth/azure');
   });
 
   app.get('/signout/azure', function (req, res) {
