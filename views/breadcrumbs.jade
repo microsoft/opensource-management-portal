@@ -1,0 +1,15 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+//- Just show breadcrumbs when there is an interesting path available
+if showBreadcrumbs === true && breadcrumbs && breadcrumbs.length && breadcrumbs.length > 1
+  div.container
+    ol.breadcrumb
+      each crumb in breadcrumbs
+        li
+          if crumb.isLast === true || crumb.url === false
+            span.capitalize= crumb.title
+          else
+            a.capitalize(href=crumb.url)= crumb.title

@@ -1,0 +1,31 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+if alerts || serviceBanner || sudoMode
+  div.alerts
+    if sudoMode
+      div.alert(id='sudo-banner', class='alert-danger')
+        div.container
+          h3 Organization Sudoer
+          p You are currently authorized on this page via your sudo capabilities as an organization administrator.
+    if serviceBanner
+      div.alert(id='service-banner', class='alert-info', role='alert')
+        button.close(type='button', data-dismiss='alert' aria-label='Close')
+          span(aria-hidden='true') &times;
+        div.container
+          h3 Service Alert
+          h4= serviceBanner
+    if alerts
+      each alert in alerts
+        div.alert(id='layout-alert-' + alert.number, class='alert-' + (alert.context ? alert.context : 'info'), role='alert')
+          button.close(type='button', data-dismiss='alert' aria-label='Close')
+            span(aria-hidden='true') &times;
+          div.container
+            if alert.title
+              h3= alert.title
+            h4= alert.message
+            if alert.optionalLink
+              p
+                a.btn.btn-muted(href=alert.optionalLink, title=alert.optionalLink)= alert.optionalCaption ? alert.optionalCaption : alert.optionalLink

@@ -1,0 +1,65 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+div.navbar.navbar-default.second-row-nav
+  div.container
+    div.navbar-header
+      //-button.navbar-toggle.collapsed(type='button', data-toggle='collapse', data-target='.nav-collapse')
+      //-button.navbar-toggle(type='button', data-toggle='collapse', data-target='.nav-collapse')
+        span.sr-only Toggle navigation
+        span.icon-bar
+        span.icon-bar
+        span.icon-bar
+      //- a.navbar-brand(href='./')= page.folderMetadata.title
+    //nav.collapse.navbar-collapse.nav-collapse(role='navigation')
+    nav(role='navigation')
+      div.container(style='margin-top:24px;margin-bottom:12px')
+        div.row(style=(user && !error && ossLink) ? 'margin-left:0' : 'margin-left:-30px')
+          - var githubSignout = user && user.githubSignout ? user.githubSignout : '/signout'
+          - var azureSignout = user && user.azureSignout ? user.azureSignout : '/signout'
+          div.col-md-6
+            if user && user.github
+              h4 Your GitHub Account
+            else
+              h4 GitHub Account
+            if user && user.github
+              p
+                if user.github && user.github.avatarUrl
+                  img(alt=user.github.displayName, src=user.github.avatarUrl + '&s=80', style='margin-right:10px;width:30px;height:30px', data-user=user.github.id)
+                a.btn.btn-sm.btn-muted(href='https://github.com/settings/profile', target='_new', title='Click to edit your public GitHub profile')= user.github.username
+                a.btn.btn-sm.btn-muted-more(href='https://github.com/settings/profile', target='_new', title='Click to edit your public GitHub profile')= user.github.displayName || user.github.username
+                if primaryAuthenticationScheme == 'github'
+                  a.btn.btn-sm.btn-white(href=githubSignout, style='margin-left:10px') Sign Out
+                else
+                  a.btn.btn-sm.btn-white(href='/link/update', style='margin-left:10px') Change
+            else
+              p
+                if primaryAuthenticationScheme == 'github'
+                  small Sign in or create your GitHub.com account to manage your #{config && config.companyName || 'corporate'} open source identity
+                else
+                  small Sign in to GitHub
+              p
+                a.btn.btn-sm.btn-primary(href='/signin/github') Sign in
+          div.col-md-6
+            if user && !error
+              if ossLink
+                h4 Your #{config && config.companyName ? config.companyName : 'Corporate'} Identity
+                p
+                  if ossLink.aadname
+                    a.btn.btn-sm.btn-muted(href='/signin/azure')= ossLink.aadname
+                  a.btn.btn-sm.btn-muted-more(href='/signin/azure')= ossLink.aadupn
+                  if primaryAuthenticationScheme == 'github'
+                    a.btn.btn-sm.btn-white(href='/link/update', style='margin-left:10px') Change
+                  else
+                    a.btn.btn-sm.btn-white(href=azureSignout, style='margin-left:10px') Sign Out
+              else if user.azure
+                //- NOTE: This is actually visually backward from the above link display...
+                h4 Your #{config && config.companyName ? config.companyName : 'Corporate'} Identity
+                p
+                  if user.azure.username
+                    a.btn.btn-sm.btn-muted(href=azureSignout)= user.azure.username
+                  if user.azure.displayName
+                    a.btn.btn-sm.btn-muted-more(href='/signout/azure')= user.azure.displayName
+                  a.btn.btn-sm.btn-white(href=azureSignout, style='margin-left:10px') Sign Out

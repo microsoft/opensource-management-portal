@@ -1,0 +1,77 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+footer.wiki-footer
+  hr
+  div.container
+    div
+      p(class='pull-right')
+        a(href='#top', title=headSha) Back to top
+        if ! user
+          |  &middot;
+          a(href='/signin/github') Sign In
+    if config && config.showDebugFooter === true
+      div.clearfix
+      div.row.alert-gray(style='padding:12px')
+        h6 Instance Configuration
+        div.col-md-6.col-lg-6
+          if correlationId
+            h4 Correlation ID: #{correlationId}
+          if serverName
+            h4 Hostname: #{serverName}
+          if config && config.applicationInsights && config.applicationInsights.instrumentationKey
+            h4 AppInsights: Instrumented
+          if config && config.primaryAuthenticationScheme
+            h4
+              | Primary Authentication: #{config.primaryAuthenticationScheme === 'github' ? 'GitHub' : 'Azure Active Directory'}
+        div.col-md-6.col-lg-6(style='background-color:white')
+          if config && config.azureStorage
+            h4
+              | Storage:&nbsp;
+              span.bg-danger(style='color:white;padding:2px')= config.azureStorage.account
+            h4
+              | Storage Prefix: #{config.azureStorage.prefix}
+          if config && config.redis
+            h4
+              | Redis:&nbsp;
+              span.bg-danger(style='color:white;padding:2px')= config.redis.host
+            h4
+              | Redis Prefix: #{config.redis.prefix}
+    if user && user.github && user.github.id
+      if config && config.corporate && config.corporate.trainingResources
+        - var footres = config.corporate.trainingResources.footer
+        if footres
+          div.clearfix
+          div.row(style='margin-bottom:24px')
+            each categoryList, category in footres
+              div.col-md-3.col-lg-3
+                h5= category
+                ul.list-unstyled
+                  each item in categoryList
+                    li
+                      a(href=item.link)= item.title
+      div.clearfix
+        p
+          small It is important to note that uptime of this service is dependent on GitHub's API availability and rate limit.
+        ul.list-inline
+          if config && config.corporate && config.corporate.portalAdministratorEmail
+            li
+              a(href='mailto:' + config.corporate.portalAdministratorEmail) Contact Portal Administrator
+            li
+              a(href='https://github.com/azure/azure-oss-portal', target='_new') Contribute to this portal on GitHub
+    div
+      p
+        small
+          | &copy; #{config && config.companyName ? config.companyName : ''}
+          br
+          if serverName && correlationId
+            | Powered by&nbsp;
+            span(title=correlationId + ' ' + serverName) Microsoft Azure,&nbsp;
+            a(href='/thanks') great open source&nbsp;
+            | and the GitHub API
+          else
+            | Powered by Microsoft Azure,&nbsp;
+            a(href='/thanks') great open source&nbsp;
+            | and the GitHub API
