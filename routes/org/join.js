@@ -52,8 +52,7 @@ router.get('/', function (req, res, next) {
       org.acceptOrganizationInvitation(userToken, function (error, updatedState) {
         if (error) {
           if (error.statusCode == 401) {
-            req.session.referer = req.originalUrl;
-            return res.redirect('/auth/github/increased-scope');
+            return utils.storeOriginalUrlAsReferrer(req, res, '/auth/github/increased-scope');
           }
           // We do not error out, they can still fall back on the
           // manual acceptance system that the page will render.
@@ -80,8 +79,7 @@ router.get('/express', function (req, res, next) {
     } else if (req.user.github.increasedScope && req.user.github.increasedScope.github && req.user.github.increasedScope.github.accessToken) {
       joinOrg(req, res, next);
     } else {
-      req.session.referer = req.originalUrl;
-      res.redirect('/auth/github/increased-scope');
+      utils.storeOriginalUrlAsReferrer(req, res, '/auth/github/increased-scope');
     }
   });
 });

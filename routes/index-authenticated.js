@@ -12,6 +12,7 @@ const OpenSourceUserContext = require('../oss');
 const linkRoute = require('./link');
 const linkedUserRoute = require('./index-linked');
 const linkCleanupRoute = require('./link-cleanup');
+const utils = require('../utils');
 
 router.use(function (req, res, next) {
   var config = req.app.settings.runtimeConfig;
@@ -27,14 +28,7 @@ router.use(function (req, res, next) {
     }
     return next();
   }
-  var url = req.originalUrl;
-  if (url) {
-    if (req.session) {
-      req.session.referer = req.originalUrl;
-    }
-  }
-  var authUrl = config.primaryAuthenticationScheme === 'github' ? '/auth/github' : '/auth/azure';
-  res.redirect(authUrl);
+  utils.storeOriginalUrlAsReferrer(req, res, config.primaryAuthenticationScheme === 'github' ? '/auth/github' : '/auth/azure');
 });
 
 router.use((req, res, next) => {
@@ -111,6 +105,19 @@ router.use((req, res, next) => {
       next();
     });
   });
+});
+
+// Ensure we have a GitHub token for AAD users once they are linked. This is
+// for users of the portal before the switch to supporting primary authentication
+// of a type other than GitHub.
+router.use((req, res, next) => {
+  if (req.app.settings.runtimeConfig.primaryAuthenticationScheme === 'aad' && req.oss && req.oss.modernUser()) {
+    var link = req.oss.modernUser().link;
+    if (link && !link.ghtoken) {
+      return utils.storeOriginalUrlAsReferrer(req, res, '/link/reconnect');
+    }
+  }
+  next();
 });
 
 router.get('/', function (req, res, next) {

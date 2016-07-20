@@ -45,11 +45,28 @@ router.post('/', function (req, res, next) {
   });
 });
 
+router.get('/reconnect', function (req, res, next) {
+  var config = req.app.settings.runtimeConfig;
+  var oss = req.oss;
+  if (config.primaryAuthenticationScheme !== 'aad'){
+    return next(utils.wrapError(null, 'Account reconnection is only needed for Active Directory authentication applications.', true));
+  }
+  // If the request comes back to the reconnect page, the authenticated app will
+  // actually update the link the next time around.
+  if (req.user.github && req.user.github.id || !(oss && oss.entities && oss.entities.link && oss.entities.link.ghu && !oss.entities.link.ghtoken)) {
+    return res.redirect('/');
+  }
+  return oss.render(req, res, 'reconnectGitHub', 'Please sign in with GitHub', {
+    expectedUsername: oss.entities.link.ghu,
+  });
+});
+
 router.get('/update', function (req, res, next) {
   var config = req.app.settings.runtimeConfig;
   var oss = req.oss;
-  if (config.primaryAuthenticationScheme === 'aad'){
-    return next(new Error('Changing a GitHub account is not yet supported.'));
+  // TODO: A "change" experience might be slightly different for AAD
+  if (config.primaryAuthenticationScheme === 'aad') {
+    return next(utils.wrapError(null, 'Changing a GitHub account is not yet supported.', true));
   }
   if (!(oss.usernames.azure)) {
     return oss.render(req, res, 'linkUpdate', 'Update your account ' + oss.usernames.github + ' by signing in with corporate credentials.');

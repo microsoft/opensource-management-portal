@@ -100,10 +100,17 @@ function tooManyLinksError(self, userLinks, callback) {
 
 function existingGitHubIdentityError(self, link, requestUser, callback) {
   var endUser = requestUser.azure.displayName || requestUser.azure.username;
-  var obfuscatedUsername = utils.obfuscate(link.ghu, 4);
+  var authenticatedGitHubUsername = requestUser.github.username;
+  var obfuscatedUsername = utils.obfuscate(link.ghu, Math.min(link.ghu.length / 2));
   var anotherGitHubAccountError = new Error(`${endUser}, there is a different GitHub account linked to your corporate identity.`);
   anotherGitHubAccountError.anotherAccount = true;
-  anotherGitHubAccountError.detailed = `If you need to switch which account is associated with your identity, please unlink the old account first. Your other GitHub account username ends in: ${obfuscatedUsername}.`;
+  anotherGitHubAccountError.skipLog = true;
+  anotherGitHubAccountError.detailed = (
+    `You've authenticated with the GitHub username of "${authenticatedGitHubUsername}", which is not the account that you have linked.</p>
+    <p class="lead">If you need to switch which account is associated with your identity, please sign out of GitHub,
+    come back to the portal to unlink the old account, and then continue with the new account.</p>
+
+    <p class="lead">Your other GitHub account username ends in: ${obfuscatedUsername}.`);
   anotherGitHubAccountError.fancyLink = {
     link: '/signout/github/?redirect=github',
     title: `Sign Out ${requestUser.github.username} on GitHub`,

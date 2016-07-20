@@ -23,7 +23,7 @@ exports.storeReferrer = function storeReferrer(req, res, redirect) {
   if (redirect) {
     res.redirect(redirect);
   }
-}
+};
 
 // ----------------------------------------------------------------------------
 // Session utility: store the original URL
@@ -35,7 +35,7 @@ exports.storeOriginalUrlAsReferrer = function storeOriginalUrl(req, res, redirec
   if (redirect) {
     res.redirect(redirect);
   }
-}
+};
 
 exports.redirectToReferrer = function redirectToReferrer(req, res, url) {
   url = url || '/';
@@ -44,7 +44,7 @@ exports.redirectToReferrer = function redirectToReferrer(req, res, url) {
     delete req.session.referer;
   }
   res.redirect(url);
-}
+};
 
 // ----------------------------------------------------------------------------
 // Provide our own error wrapper and message for an underlying thrown error.

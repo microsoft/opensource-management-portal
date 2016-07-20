@@ -1,0 +1,24 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends layout
+
+// Conditions for this page:
+// - linked
+// - using AAD-primary authentication
+// - no stored GitHub token
+
+block content
+  div.container
+
+    h1 Please sign in with GitHub
+    p.lead It's been a while since you signed in with GitHub.
+    p We need to validate your account. Please sign in with your <large>#{expectedUsername}</large> GitHub username.
+
+    .vertical-space
+      p
+        a.btn.btn-primary(href='/signin/github') Sign In
+        | &nbsp; &nbsp; &nbsp;
+        a.btn.btn-default(href='/signout') Cancel
