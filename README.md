@@ -1,5 +1,3 @@
-> v4 development: note that this project will experience breaking changes in the move to v4, namely a rearchitecture in how onboarding works
-
 # Azure GitHub Management: azure-oss-portal
 
 The Azure Open Source Portal for GitHub is the culmination of years of trying to manage the 
@@ -26,3 +24,9 @@ Oh, and you'll need your own GitHub org.
 ## LICENSE
 
 [MIT License](LICENSE)
+
+### Contributions welcome
+
+Happy to have contributions, though please consider reviewing the CONTRIBUTING.MD file, the code of conduct, 
+and then also open a work item to help discuss the features or functionality ahead of kicking off any such 
+work.
