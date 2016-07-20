@@ -7,13 +7,14 @@ var express = require('express');
 var router = express.Router();
 var utils = require('../utils');
 
-router.get('/', function (req, res, next) {
+router.get('/', function (req, res) {
   var oss = req.oss;
   if (!(oss.usernames.azure && oss.usernames.github)) {
-    return next(new Error('You must be signed in to both Active Directory and your GitHub account in order to link your account.'));
+    // return next(new Error('You must be signed in to both Active Directory and your GitHub account in order to link your account.'));
+    return res.redirect('/');
   }
   if (!req.oss.entities.link) {
-    req.oss.render(req, res, 'link', 'Link GitHub with corporate identity ' + req.oss.usernames.azure);
+    req.oss.render(req, res, 'link', 'Link GitHub with corporate identity');
   } else {
     return res.redirect('/');
   }
@@ -48,7 +49,7 @@ router.get('/update', function (req, res, next) {
   var config = req.app.settings.runtimeConfig;
   var oss = req.oss;
   if (config.primaryAuthenticationScheme === 'aad'){
-    return next('Changing a GitHub account is not yet supported.');
+    return next(new Error('Changing a GitHub account is not yet supported.'));
   }
   if (!(oss.usernames.azure)) {
     return oss.render(req, res, 'linkUpdate', 'Update your account ' + oss.usernames.github + ' by signing in with corporate credentials.');

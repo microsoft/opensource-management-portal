@@ -3,6 +3,48 @@
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
+- var azureSignoutLink = azureSignout || '/signout/azure'
+- var githubSignoutLink = githubSignout || '/signout/github?redirect=github'
+- var scheme = primaryAuthenticationScheme || config.primaryAuthenticationScheme
+
+mixin userTile(username, displayName, link, linkTitle, actionLink, action)
+  if username
+    a.btn.btn-sm.btn-muted(href=link, target='_new', title=linkTitle)= username
+  if displayName
+    a.btn.btn-sm.btn-muted-more(href=link, target='_new', title=linkTitle)= displayName
+  if action
+    a.btn.btn-sm.btn-white(href=actionLink, style='margin-left:10px')= action
+
+mixin userGitHub
+  - var actionLink = scheme === 'github' || !ossLink ? githubSignoutLink : '/link/update'
+  - var action = scheme === 'github'|| !ossLink ? 'Sign Out' : 'Change'
+  h4 GitHub Account
+  if user && user.github
+    p
+      if user.github && user.github.avatarUrl
+        img(alt=user.github.displayName, src=user.github.avatarUrl + '&s=80', style='margin-right:10px;width:30px;height:30px', data-user=user.github.id)
+      +userTile(user.github.username, user.github.displayName || user.github.username, 'https://github.com/settings/profile', 'Click to edit your public GitHub profile', actionLink, action)
+  else
+    if scheme === 'github'
+      p
+        small Sign in or create your GitHub.com account to manage your #{config && config.companyName || 'corporate'} open source identity
+    p
+      a.btn.btn-sm.btn-primary(href='/signin/github') Sign In
+
+mixin userAzure
+  - var actionLink = scheme === 'github' ? '/link/update' : azureSignoutLink
+  - var action = scheme === 'github' ? 'Change' : 'Sign Out'
+  if user && user.azure
+    h4 #{config && config.companyName ? config.companyName : 'Corporate'} Identity
+    p
+      +userTile(user.azure.username, user.azure.displayName, '/settings', 'View your settings', actionLink, action)
+  else if scheme !== 'github'
+    h4 #{config && config.companyName ? config.companyName : 'Corporate'} Identity
+    p
+      small Sign in to manage your #{config && config.companyName || 'corporate'} open source identity
+    p
+      a.btn.btn-sm.btn-primary(href='/signin') Sign In
+
 div.navbar.navbar-default.second-row-nav
   div.container
     div.navbar-header
@@ -17,49 +59,14 @@ div.navbar.navbar-default.second-row-nav
     nav(role='navigation')
       div.container(style='margin-top:24px;margin-bottom:12px')
         div.row(style=(user && !error && ossLink) ? 'margin-left:0' : 'margin-left:-30px')
-          - var githubSignout = user && user.githubSignout ? user.githubSignout : '/signout'
-          - var azureSignout = user && user.azureSignout ? user.azureSignout : '/signout'
           div.col-md-6
-            if user && user.github
-              h4 Your GitHub Account
+            if scheme === 'github'
+              +userGitHub
             else
-              h4 GitHub Account
-            if user && user.github
-              p
-                if user.github && user.github.avatarUrl
-                  img(alt=user.github.displayName, src=user.github.avatarUrl + '&s=80', style='margin-right:10px;width:30px;height:30px', data-user=user.github.id)
-                a.btn.btn-sm.btn-muted(href='https://github.com/settings/profile', target='_new', title='Click to edit your public GitHub profile')= user.github.username
-                a.btn.btn-sm.btn-muted-more(href='https://github.com/settings/profile', target='_new', title='Click to edit your public GitHub profile')= user.github.displayName || user.github.username
-                if primaryAuthenticationScheme == 'github'
-                  a.btn.btn-sm.btn-white(href=githubSignout, style='margin-left:10px') Sign Out
-                else
-                  a.btn.btn-sm.btn-white(href='/link/update', style='margin-left:10px') Change
-            else
-              p
-                if primaryAuthenticationScheme == 'github'
-                  small Sign in or create your GitHub.com account to manage your #{config && config.companyName || 'corporate'} open source identity
-                else
-                  small Sign in to GitHub
-              p
-                a.btn.btn-sm.btn-primary(href='/signin/github') Sign in
+              +userAzure
           div.col-md-6
-            if user && !error
-              if ossLink
-                h4 Your #{config && config.companyName ? config.companyName : 'Corporate'} Identity
-                p
-                  if ossLink.aadname
-                    a.btn.btn-sm.btn-muted(href='/signin/azure')= ossLink.aadname
-                  a.btn.btn-sm.btn-muted-more(href='/signin/azure')= ossLink.aadupn
-                  if primaryAuthenticationScheme == 'github'
-                    a.btn.btn-sm.btn-white(href='/link/update', style='margin-left:10px') Change
-                  else
-                    a.btn.btn-sm.btn-white(href=azureSignout, style='margin-left:10px') Sign Out
-              else if user.azure
-                //- NOTE: This is actually visually backward from the above link display...
-                h4 Your #{config && config.companyName ? config.companyName : 'Corporate'} Identity
-                p
-                  if user.azure.username
-                    a.btn.btn-sm.btn-muted(href=azureSignout)= user.azure.username
-                  if user.azure.displayName
-                    a.btn.btn-sm.btn-muted-more(href='/signout/azure')= user.azure.displayName
-                  a.btn.btn-sm.btn-white(href=azureSignout, style='margin-left:10px') Sign Out
+            unless error
+              if scheme === 'github'
+                +userAzure
+              else if user && user.azure && user.azure.username
+                +userGitHub

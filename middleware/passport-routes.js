@@ -8,13 +8,31 @@
 const querystring = require('querystring');
 
 module.exports = function configurePassport(app, passport, initialConfig) {
+  function storeReferrer(req) {
+    if (req.session && req.headers && req.headers.referer && req.session.referer !== undefined && !req.headers.referer.includes('/signout')) {
+      req.session.referer = req.headers.referer;
+    }
+  }
+
+  function redirectToReferrer(req, res, url) {
+    url = url || '/';
+    if (req.session && req.session.referer) {
+      url = req.session.referer;
+      delete req.session.referer;
+    }
+    res.redirect(url);
+  }
+
+  app.get('/signin', function (req, res) {
+    storeReferrer(req);
+    return res.redirect(initialConfig.primaryAuthenticationScheme === 'github' ? '/auth/github' : '/auth/azure');
+  });
+
   // ----------------------------------------------------------------------------
   // passport integration with GitHub
   // ----------------------------------------------------------------------------
   app.get('/signin/github', function (req, res) {
-    if (req.session && req.headers && req.headers.referer) {
-      req.session.referer = req.headers.referer;
-    }
+    storeReferrer(req);
     return res.redirect('/auth/github');
   });
 
@@ -26,12 +44,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     if (initialConfig.primaryAuthenticationScheme !== 'github') {
       req.user.github = req.account.github;
     }
-    var url = '/';
-    if (req.session && req.session.referer) {
-      url = req.session.referer;
-      delete req.session.referer;
-    }
-    res.redirect(url);
+    redirectToReferrer(req, res);
   });
 
   if (initialConfig.primaryAuthenticationScheme === 'aad') {
@@ -39,6 +52,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
       res.render('creategithubaccount', {
         title: 'Create a GitHub account',
         user: req.user,
+        config: initialConfig.obfuscatedConfig,
       });
     });
 
@@ -66,9 +80,10 @@ module.exports = function configurePassport(app, passport, initialConfig) {
       res.redirect('https://github.com/logout');
     } else {
       res.render('message', {
-        messageTitle: 'Goodbye!',
+        messageTitle: 'Goodbye',
         message: 'You have been signed out.',
         buttonText: 'Sign In Again',
+        config: initialConfig.obfuscatedConfig,
       });
     }
   });
@@ -91,9 +106,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
   // Expanded GitHub auth scope routes
   // ----------------------------------------------------------------------------
   app.get('/signin/github/increased-scope', function (req, res) {
-    if (req.session && req.headers && req.headers.referer) {
-      req.session.referer = req.headers.referer;
-    }
+    storeReferrer(req);
     return res.redirect('/auth/github/increased-scope');
   });
 
@@ -106,12 +119,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
       var account = req.account;
       var user = req.user;
       user.github.increasedScope = account;
-      var url = '/';
-      if (req.session && req.session.referer) {
-        url = req.session.referer;
-        delete req.session.referer;
-      }
-      res.redirect(url);
+      redirectToReferrer(req, res);
     });
 
   // ----------------------------------------------------------------------------
@@ -125,20 +133,11 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     if (initialConfig.primaryAuthenticationScheme !== 'aad') {
       req.user.azure = req.account.azure;
     }
-    var url = '/';
-    if (req.session && req.session.referer) {
-      url = req.session.referer;
-      delete req.session.referer;
-    }
-    return res.redirect(url);
+    redirectToReferrer(req, res);
   });
 
   app.get('/signin/azure', function (req, res) {
-    if (req.session && req.headers && req.headers.referer) {
-      if (req.session.referer === undefined) {
-        req.session.referer = req.headers.referer;
-      }
-    }
+    storeReferrer(req);
     return res.redirect('/auth/azure');
   });
 

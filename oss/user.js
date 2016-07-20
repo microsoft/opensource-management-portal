@@ -181,6 +181,24 @@ OpenSourceUser.prototype.unlinkAndDrop = function (callback) {
 };
 
 // ----------------------------------------------------------------------------
+// Updates a link for the user. At this time it does not do much validation.
+// ----------------------------------------------------------------------------
+OpenSourceUser.prototype.updateLink = function (mergeLink, callback) {
+  var self = this;
+  if (self.link && self.link.ghid !== self.id) {
+    callback(new Error('Had trouble before merging entities for a link update.'));
+  }
+  var dc = self.oss.dataClient();
+  dc.updateLink(self.id, mergeLink, (updateError) => {
+    if (updateError) {
+      return callback(utils.wrapError(updateError, `We were not able to perform an update to the link for user ID ${self.id} at this time.`));
+    }
+    utils.merge(self.link, mergeLink);
+    return callback(null, self.link);
+  });
+};
+
+// ----------------------------------------------------------------------------
 // Retrieve the link, if any, for this user from the underlying datastore. Will
 // cache the value in memory for this instance, since the lifetime of these
 // objects is a single request.

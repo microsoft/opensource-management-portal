@@ -62,6 +62,57 @@ router.use('/link-cleanup', linkCleanupRoute);
 
 router.use('/link', linkRoute);
 
+// Link cleanups
+router.use((req, res, next) => {
+  if (!req.oss || !req.oss.modernUser()) {
+    return next();
+  }
+  var link = req.oss.modernUser().link;
+  if (req.user.azure && req.user.azure.oid && link.aadoid && req.user.azure.oid !== link.aadoid) {
+    return next(new Error('Directory security identifier mismatch. Please submit a report to have this checked on.'));
+  }
+  if (req.user.github && req.user.github.id && link.ghid && req.user.github.id !== link.ghid) {
+    return next(new Error('GitHub user security identifier mismatch. Please submit a report to have this checked on.'));
+  }
+  var linkUpdates = {};
+  var updatedProperties = new Set();
+  var sessionToLinkMap = {
+    github: {
+      username: 'ghu',
+      avatarUrl: 'ghavatar',
+      accessToken: 'ghtoken',
+    },
+    azure: {
+      displayName: 'aadname',
+      username: 'aadupn',
+    },
+  };
+  for (var sessionKey in sessionToLinkMap) {
+    for (var property in sessionToLinkMap[sessionKey]) {
+      var linkProperty = sessionToLinkMap[sessionKey][property];
+      if (req.user[sessionKey] && req.user[sessionKey][property] && link[linkProperty] !== req.user[sessionKey][property]) {
+        linkUpdates[linkProperty] = req.user[sessionKey][property];
+        updatedProperties.add(`${sessionKey}.${property}`);
+        console.warn(`Link property "${linkProperty}" updated from "${link[linkProperty]}"->"${linkUpdates[linkProperty]}"`);
+      }
+    }
+  }
+  if (updatedProperties.has('github.accessToken')) {
+    linkUpdates.ghtokenupdated = new Date().getTime();
+  }
+  if (Object.keys(linkUpdates).length === 0) {
+    return next();
+  }
+  req.oss.modernUser().updateLink(linkUpdates, (mergeError, mergedLink) => {
+    if (mergeError) {
+      return next(mergeError);
+    }
+    req.oss.setPropertiesFromLink(mergedLink, () => {
+      next();
+    });
+  });
+});
+
 router.get('/', function (req, res, next) {
   var oss = req.oss;
   var link = req.oss.entities.link;
@@ -83,10 +134,10 @@ router.get('/', function (req, res, next) {
   }
 
   // They're changing their corporate identity (rare, often just service accounts)
-  if (link && link.aadupn && req.user.azure && req.user.azure.username && req.user.azure.username.toLowerCase() !== link.aadupn.toLowerCase()) {
+  if (config.primaryAuthenticationScheme === 'github' && link && link.aadupn && req.user.azure && req.user.azure.username && req.user.azure.username.toLowerCase() !== link.aadupn.toLowerCase()) {
     return res.redirect('/link/update');
   }
-  // TODO: Add similar code for GitHub data, etc.
+
   var twoFactorOff = null;
   var activeOrg = null;
   async.parallel({

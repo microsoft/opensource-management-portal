@@ -19,10 +19,14 @@ function OpenSourceUserContext(options, callback) {
   var self = this;
   self.displayNames = {
     github: null,
+    azure: null,
   };
   self.usernames = {
     github: null,
     azure: null,
+  };
+  self.avatars = {
+    github: null,
   };
   self.id = {
     github: null,
@@ -64,7 +68,7 @@ function OpenSourceUserContext(options, callback) {
     return callback(new Error('The context cannot be set from both a request and a link instance.'));
   }
   if (link) {
-    return setPropertiesFromLink(self, link, callback);
+    return self.setPropertiesFromLink(link, callback);
   }
   if (options.request) {
     return this.resolveLinkFromRequest(options.request, callback);
@@ -72,18 +76,20 @@ function OpenSourceUserContext(options, callback) {
   callback(new Error('Could not initialize the context for the acting user.'), self);
 }
 
-function setPropertiesFromLink(context, link, callback) {
-  context.usernames.github = link.ghu;
-  context.id.github = link.ghid.toString();
-  context.usernames.azure = link.aadupn;
-  context.entities.link = link;
-  var modernUser = context.modernUser();
-  if (!modernUser && context.id.github) {
-    modernUser = context.createModernUser(context.id.github, context.usernames.github);
+OpenSourceUserContext.prototype.setPropertiesFromLink = function (link, callback) {
+  this.usernames.github = link.ghu;
+  this.id.github = link.ghid.toString();
+  this.usernames.azure = link.aadupn;
+  this.entities.link = link;
+  this.displayNames.azure = link.aadname;
+  this.avatars.github = link.ghavatar;
+  var modernUser = this.modernUser();
+  if (!modernUser && this.id.github) {
+    modernUser = this.createModernUser(this.id.github, this.usernames.github);
   }
   modernUser.link = link;
-  callback(null, context);
-}
+  callback(null, this);
+};
 
 function tooManyLinksError(self, userLinks, callback) {
   var tooManyLinksError = new Error(`This account has ${userLinks.length} linked GitHub accounts.`);
@@ -115,12 +121,14 @@ OpenSourceUserContext.prototype.resolveLinkFromRequest = function (request, call
     self.usernames.github = requestUser.github.username;
     self.id.github = requestUser.github.id;
     self.displayNames.github = requestUser.github.displayName;
+    self.avatars.github = requestUser.github.avatarUrl;
   }
   if (requestUser && requestUser.azure) {
     self.usernames.azure = requestUser.azure.username;
+    self.displayNames.azure = requestUser.azure.displayName;
   }
-  if (self.setting('primaryAuthenticationScheme') === 'aad' && requestUser.azure && requestUser.azure.username) {
-    return self.dataClient().getUserByAadUpn(requestUser.azure.username, function (findError, userLinks) {
+  if (self.setting('primaryAuthenticationScheme') === 'aad' && requestUser.azure && requestUser.azure.oid) {
+    return self.dataClient().getUserByAadOid(requestUser.azure.oid, function (findError, userLinks) {
       if (findError) {
         return callback(utils.wrapError(findError, 'There was a problem trying to load the link for the active user.'), self);
       }
@@ -132,23 +140,11 @@ OpenSourceUserContext.prototype.resolveLinkFromRequest = function (request, call
       }
       var link = userLinks[0];
       if (requestUser.github && requestUser.github.username && link.ghu !== requestUser.github.username) {
-        if (link.ghid === requestUser.github.id) {
-          // TODO: The user has changed their GitHub name, simply update the link record.
-        } else {
+        if (link.ghid !== requestUser.github.id) {
           return existingGitHubIdentityError(self, link, requestUser, callback);
         }
       }
-      if (requestUser.azure.displayName !== link.aadname) {
-        // TODO: update their display name?
-        console.warn(`The user's Azure display name has changed. Link: ${link.aadname}, Passport: ${requestUser.azure.displayName}`);
-      }
-      if (requestUser.azure.username !== link.aadupn) {
-        // Confirm that their OID is the same
-        // RARE: TODO: ??? update their AAD upn in the link
-        // if OID has changed, freak out?
-        console.warn(`The user's Azure username has changed. Link: ${link.aadupn}, Passport: ${requestUser.azure.username}`);
-      }
-      return setPropertiesFromLink(self, link, callback);
+      return self.setPropertiesFromLink(link, callback);
     });
   }
   var userObject;
@@ -164,7 +160,7 @@ OpenSourceUserContext.prototype.resolveLinkFromRequest = function (request, call
     }
     if (link) {
       // CONSIDER: If the link values differ from the request properties...
-      return setPropertiesFromLink(self, link, callback);
+      return self.setPropertiesFromLink(link, callback);
     } else {
       callback(null, self);
     }
@@ -638,12 +634,14 @@ OpenSourceUserContext.prototype.render = function (req, res, view, title, option
       id: this.id.github,
       username: this.usernames.github,
       displayName: this.displayNames.github,
+      avatarUrl: this.avatars.github,
       increasedScope: null, // TODO: Increased scope should be set in the pipeline
     };
   }
   if (this.usernames.azure) {
     user.azure = {
       username: this.usernames.azure,
+      displayName: this.displayNames.azure,
     };
   }
   var obj = {

@@ -321,14 +321,20 @@ DataClient.prototype.createEntity = function ce(partitionKey, rowKey, obj, callb
 // CONSIDER: Replace link calls with reduced entity "association" calls, then depre. & remove these funcs.
 DataClient.prototype.createLinkObjectFromRequest = function createLinkObject(req, callback) {
   if (req && req.user && req.user.github && req.user.azure && req.user.github.username && req.user.github.id && req.user.azure.username && req.user.azure.oid) {
-    return callback(null, {
+    var link = {
       ghu: req.user.github.username,
       ghid: req.user.github.id.toString(),
       aadupn: req.user.azure.username,
       aadname: req.user.azure.displayName,
       aadoid: req.user.azure.oid,
-      joined: new Date().getTime()
-    });
+      joined: new Date().getTime(),
+    };
+    link.ghavatar = req.user.github.avatarUrl;
+    if (req.user.github.accessToken) {
+      link.ghtoken = req.user.github.accessToken;
+      link.ghtokenupdated = new Date().getTime();
+    }
+    return callback(null, link);
   } else {
     return callback(new Error('Not all fields needed for creating a link are available and authenticated. This may be a temporary problem or an implementation bug.'));
   }
@@ -402,6 +408,10 @@ DataClient.prototype.updateLink = function updl(userid, mergeEntity, callback) {
 
 DataClient.prototype.getUserByAadUpn = function gubauapn(employeeAlias, callback) {
   this.getUserLinkByProperty('aadupn', employeeAlias.toLowerCase(), callback);
+};
+
+DataClient.prototype.getUserByAadOid = function getByOid(oid, callback) {
+  this.getUserLinkByProperty('aadoid', oid, callback);
 };
 
 DataClient.prototype.getUserLinkByProperty = function gulbprop(propertyName, value, callback) {

@@ -42,7 +42,24 @@ block content
             input.btn.btn-lg.btn-primary(type='submit', value='Link')
             | &nbsp; &nbsp;
             a.btn.btn-lg.btn-default(href='/signout') Cancel
-        hr
+
+      div.col-md-5.col-lg-5
+        if user && user.github && user.github.id
+          .alert-gray.pad
+            if config && config.corporate && config.corporate.trainingResources
+              - var footres = config.corporate.trainingResources.footer
+              if footres
+                // These same resources appear on every single auth page footer, too.
+                h3 Open Source Resources
+                each categoryList, category in footres
+                  h5= category
+                  ul
+                    each item in categoryList
+                      li
+                        a(href=item.link, target='_new')
+                          = item.title + ' '
+                          i.glyphicon.glyphicon-share-alt
+
         h3 Your onboarding progress
         h5
           | Sign in with GitHub & #{config.companyName} IT&nbsp;
@@ -59,19 +76,3 @@ block content
           | Publish your membership <em>(optional)</em>
         h5
           | Join a team <em>(optional)</em>
-
-      div.col-md-5.col-lg-5.alert-gray
-        if user && user.github && user.github.id
-          if config && config.corporate && config.corporate.trainingResources
-            - var footres = config.corporate.trainingResources.footer
-            if footres
-              // These same resources appear on every single auth page footer, too.
-              h3 Open Source Resources
-              each categoryList, category in footres
-                h5= category
-                ul
-                  each item in categoryList
-                    li
-                      a(href=item.link, target='_new')
-                        = item.title + ' '
-                        i.glyphicon.glyphicon-share-alt
