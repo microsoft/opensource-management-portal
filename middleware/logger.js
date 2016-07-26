@@ -8,6 +8,8 @@
 const logger = require('morgan');
 
 const encryptionMetadataKey = '_ClientEncryptionMetadata2';
+const piiFormat = ':id :method :scrubbedUrl :status :response-time ms - :res[content-length] :encryptedSession :correlationId';
+const format = ':method :scrubbedUrl :status :response-time ms - :res[content-length] :encryptedSession :correlationId';
 
 logger.token('encryptedSession', function getUserId(req) {
   const config = req.app.settings.runtimeConfig;
@@ -33,7 +35,6 @@ logger.token('scrubbedUrl', function getScrubbedUrl(req) {
   return req.scrubbedUrl || req.originalUrl || req.url;
 });
 
-// ----------------------------------------------------------------------------
-// Use the customized logger for Express requests.
-// ----------------------------------------------------------------------------
-module.exports = logger(':id :method :scrubbedUrl :status :response-time ms - :res[content-length] :encryptedSession :correlationId');
+module.exports = function createLogger(config) {
+  return logger(config.logging.showUsers === true ? piiFormat : format);
+};

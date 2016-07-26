@@ -80,6 +80,7 @@ module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets) 
     logging: {
       errors: configurationHelper.get('SITE_SKIP_ERRORS') === undefined,
       version: pkgInfo.version,
+      showUsers: configurationHelper.get('SITE_SHOW_USERS') === 'show',
     },
     secretConfigurationKeys: secretConfigurationKeys,
     obfuscatedConfig: null,

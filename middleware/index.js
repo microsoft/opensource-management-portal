@@ -44,7 +44,7 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
   }
 
   app.use(require('./scrubbedUrl'));
-  app.use(require('./logger'));
+  app.use(require('./logger')(config));
   if (!initializationError && config.websiteSku && !config.allowHttp) {
     app.use(require('./requireSecureAppService'));
   }
