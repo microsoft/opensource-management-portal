@@ -137,6 +137,8 @@ router.get('/', function (req, res, next) {
       config.authentication.scheme === 'aad' && req.user.github && req.user.github.id) {
       return res.redirect('/link');
     }
+    console.log('user:');
+    console.dir(req.user);
     return next(new Error('This account is not yet linked, but a workflow error is preventing further progress. Please report this issue. Thanks.'));
   }
 

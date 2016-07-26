@@ -105,8 +105,6 @@ function deserialize(config, user, done) {
     if (userEncryptedEntities[entityName] !== undefined) {
       let entityValue = user[entityName];
       tasks[entityName] = deserializeEntity.bind(null, config, entityName, entityValue);
-    } else {
-      u[entityName] = user[entityName];
     }
   }
   async.parallel(tasks, (error, results) => {
@@ -116,11 +114,22 @@ function deserialize(config, user, done) {
     for (const result in results) {
       u[result] = results[result];
     }
+    for (const unencryptedEntity in user) {
+      if (userEncryptedEntities[unencryptedEntity] === undefined) {
+        u[unencryptedEntity] = user[unencryptedEntity];
+      }
+
+    }
     return done(null, u);
   });
+}
+
+function initialize(config, app, serializerInstance) {
+  app._sessionSerializer = serializerInstance;
 }
 
 module.exports = {
   serialize: serialize,
   deserialize: deserialize,
+  initialize: initialize,
 };

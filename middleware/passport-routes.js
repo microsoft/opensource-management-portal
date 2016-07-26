@@ -22,15 +22,41 @@ module.exports = function configurePassport(app, passport, initialConfig) {
 
   var ghMiddleware = initialConfig.authentication.scheme === 'github' ? passport.authenticate('github') : passport.authorize('github');
 
+  function authenticationCallback(secondaryAuthScheme, secondaryAuthProperty, req, res, next) {
+    const after = (req, res) => utils.redirectToReferrer(req, res);
+    if (initialConfig.authentication.scheme !== secondaryAuthScheme) {
+      return hoistAccountToSession(req, req.account, secondaryAuthProperty, (error) => {
+        return error ? next(error) : after(req, res);
+      });
+    }
+    return after(req, res);
+  }
+
+  function hoistAccountToSession(req, account, property, callback) {
+    const serializer = req.app._sessionSerializer;
+    const entity = account[property];
+    if (entity === undefined) {
+      return callback(new Error(`No entity available with the property ${property} to be hoisted.`));
+    }
+    if (serializer === undefined) {
+      req.user[property] = entity;
+      return callback();
+    }
+    console.log('hoisting with a serializer');
+    console.dir(req.session);
+    return callback(new Error('not implemented'));
+  }
+
   app.get('/auth/github', ghMiddleware);
 
-  app.get('/auth/github/callback', ghMiddleware, (req, res) => {
+  /*app.get('/auth/github/callback', ghMiddleware, (req, res) => {
     if (initialConfig.authentication.scheme !== 'github') {
-      console.log('setting req account to user obj');
-      req.user.github = req.account.github;
+      hoistAccountToSession(req.app, req.account, 'github');
     }
     utils.redirectToReferrer(req, res);
-  });
+  });*/
+
+  app.get('/auth/github/callback', ghMiddleware, authenticationCallback.bind(null, 'github', 'github'));
 
   if (initialConfig.authentication.scheme === 'aad') {
     app.get('/signin/github/join', (req, res) => {
@@ -113,12 +139,17 @@ module.exports = function configurePassport(app, passport, initialConfig) {
 
   app.get('/auth/azure', aadMiddleware);
 
-  app.post('/auth/azure/callback', aadMiddleware, (req, res) => {
+  app.post('/auth/azure/callback', aadMiddleware, authenticationCallback.bind(null, 'aad', 'azure'));
+
+  /*  (req, res, next) => {
+    const after = (req, res) => utils.redirectToReferrer(req, res);
     if (initialConfig.authentication.scheme !== 'aad') {
-      req.user.azure = req.account.azure;
+      return hoistAccountToSession(req.app, req.account, 'azure', (error) => {
+        return error ? next(error) : after(req, res);
+      });
     }
-    utils.redirectToReferrer(req, res);
-  });
+    return after(req, res);
+  });*/
 
   app.get('/signin/azure', function (req, res) {
     utils.storeReferrer(req, res, '/auth/azure');

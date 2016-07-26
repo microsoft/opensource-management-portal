@@ -24,10 +24,11 @@ function createDeserialize(config) {
 }
 
 function initialize(config, app) {
-  const initializer = ensureSerializer(config).initialize;
+  const serializerInstance = ensureSerializer(config);
+  const initializer = serializerInstance.initialize;
   if (initializer) {
     // Allow an opportunity to provide a warning or connect a route
-    initializer(app);
+    initializer(config, app, serializerInstance);
   }
 }
 
