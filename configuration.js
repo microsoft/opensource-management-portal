@@ -41,8 +41,9 @@ const secretConfigurationKeys = [
 
 const obfuscationSuffixCharactersToShow = 4;
 
-module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets) {
-  var configurationHelper = painlessConfig;
+module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets, configurationHelper) {
+  let initialConfigurationHelper = configurationHelper || painlessConfig;
+  configurationHelper = initialConfigurationHelper;
   for (let i = 0; i < requiredConfigurationKeys.length; i++) {
     if (!configurationHelper.get(requiredConfigurationKeys[i])) {
       throw new Error(`Configuration parameter "${requiredConfigurationKeys[i]}" is required for this application to initialize.`);
@@ -59,7 +60,7 @@ module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets) 
     }
     configurationHelper = {
       get: function (key) {
-        var value = painlessConfig.get(key);
+        var value = initialConfigurationHelper.get(key);
         if (secretKeys.has(key) && value !== undefined) {
           value = utils.obfuscate(value, obfuscationSuffixCharactersToShow);
         } else {

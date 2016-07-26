@@ -32,6 +32,45 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     return after(req, res);
   }
 
+  function processSignout(primaryAuthScheme, secondaryAuthProperty, req, res, next) {
+    if (initialConfig.authentication.scheme === primaryAuthScheme) {
+      return res.redirect('/signout');
+    }
+    const after = (req, res) => {
+      var url = req.headers.referer || '/';
+      if (req.query.redirect === 'github') {
+        url = 'https://github.com/logout';
+      }
+      res.redirect(url);
+    };
+    if (req.user && req.user[secondaryAuthProperty] !== undefined) {
+      delete req.user[secondaryAuthProperty];
+      return resaveUser(req, (error) => {
+        return error ? next(error) : after(req, res);
+      });
+    }
+    return after(req, res);
+  }
+
+  // User-beware, I should not be writing my own truncating shallow object copy code
+  function shallowTruncatingCopy(obj) {
+    let o = {};
+    for (const entity in obj) {
+      const value = obj[entity];
+      if (typeof value === 'object') {
+        o[entity] = {};
+        for (const property in value) {
+          if (typeof value[property] !== 'object') {
+            o[entity][property] = value[property];
+          }
+        }
+      } else {
+        o[entity] = value;
+      }
+    }
+    return o;
+  }
+
   function hoistAccountToSession(req, account, property, callback) {
     const serializer = req.app._sessionSerializer;
     const entity = account[property];
@@ -42,19 +81,23 @@ module.exports = function configurePassport(app, passport, initialConfig) {
       req.user[property] = entity;
       return callback();
     }
-    console.log('hoisting with a serializer');
-    console.dir(req.session);
-    return callback(new Error('not implemented'));
+    const clone = shallowTruncatingCopy(req.user);
+    clone[property] = entity;
+    resaveUser(req, clone, callback);
+  }
+
+  function resaveUser(req, clone, callback) {
+    if (typeof clone === 'function') {
+      callback = clone;
+      clone = undefined;
+    }
+    if (clone === undefined) {
+      clone = shallowTruncatingCopy(req.user);
+    }
+    req.login(clone, callback);
   }
 
   app.get('/auth/github', ghMiddleware);
-
-  /*app.get('/auth/github/callback', ghMiddleware, (req, res) => {
-    if (initialConfig.authentication.scheme !== 'github') {
-      hoistAccountToSession(req.app, req.account, 'github');
-    }
-    utils.redirectToReferrer(req, res);
-  });*/
 
   app.get('/auth/github/callback', ghMiddleware, authenticationCallback.bind(null, 'github', 'github'));
 
@@ -99,19 +142,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     }
   });
 
-  app.get('/signout/github', function (req, res) {
-    if (req.app.settings.runtimeConfig.authentication.scheme === 'github') {
-      return res.redirect('/signout');
-    }
-    if (req.user && req.user.github) {
-      delete req.user.github;
-    }
-    var url = req.headers.referer || '/';
-    if (req.query.redirect === 'github') {
-      url = 'https://github.com/logout';
-    }
-    res.redirect(url);
-  });
+  app.get('/signout/github', processSignout.bind(null, 'github', 'github'));
 
   // ----------------------------------------------------------------------------
   // Expanded GitHub auth scope routes
@@ -141,27 +172,10 @@ module.exports = function configurePassport(app, passport, initialConfig) {
 
   app.post('/auth/azure/callback', aadMiddleware, authenticationCallback.bind(null, 'aad', 'azure'));
 
-  /*  (req, res, next) => {
-    const after = (req, res) => utils.redirectToReferrer(req, res);
-    if (initialConfig.authentication.scheme !== 'aad') {
-      return hoistAccountToSession(req.app, req.account, 'azure', (error) => {
-        return error ? next(error) : after(req, res);
-      });
-    }
-    return after(req, res);
-  });*/
-
   app.get('/signin/azure', function (req, res) {
     utils.storeReferrer(req, res, '/auth/azure');
   });
 
-  app.get('/signout/azure', function (req, res) {
-    if (req.app.settings.runtimeConfig.authentication.scheme === 'aad') {
-      return res.redirect('/signout');
-    }
-    if (req.user && req.user.azure) {
-      delete req.user.azure;
-    }
-    res.redirect('/');
-  });
+  app.get('/signout/azure', processSignout.bind(null, 'aad', 'azure'));
+
 };
