@@ -6,6 +6,7 @@
 'use strict';
 
 const passport = require('passport');
+const serializer = require('./passport/serializer');
 const GitHubStrategy = require('passport-github').Strategy;
 const OIDCStrategy = require('passport-azure-ad').OIDCStrategy;
 
@@ -25,39 +26,30 @@ function githubResponseToSubset(accessToken, refreshToken, profile, done) {
 
 function activeDirectorySubset(iss, sub, profile, accessToken, refreshToken, done) {
   // CONSIDER: TODO: Hybrid tenant checks.
-  // CONSIDER: Should check for existance of UPN, OID
   let subset = {
     azure: {
       displayName: profile.displayName,
       oid: profile._json.oid,
       username: profile._json.upn,
-      token: {
-        access: accessToken,
-        refresh: refreshToken,
-        exp: profile._json.exp,
-      },
-    }
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      exp: profile._json.exp,
+    },
   };
   done(null, subset);
 }
 
 module.exports = function (app, config) {
-  if (!config.primaryAuthenticationScheme) {
-    config.primaryAuthenticationScheme = 'github';
+  if (!config.authentication.scheme) {
+    config.authentication.scheme = 'github';
   }
-  if (config.primaryAuthenticationScheme !== 'github' && config.primaryAuthenticationScheme !== 'aad') {
-    throw new Error(`Unsupported primary authentication scheme type "${config.primaryAuthenticationScheme}"`);
+  if (config.authentication.scheme !== 'github' && config.authentication.scheme !== 'aad') {
+    throw new Error(`Unsupported primary authentication scheme type "${config.authentication.scheme}"`);
   }
 
   // ----------------------------------------------------------------------------
   // GitHub Passport session setup.
   // ----------------------------------------------------------------------------
-  passport.serializeUser(function (user, done) {
-    done(null, user);
-  });
-  passport.deserializeUser(function (obj, done) {
-    done(null, obj);
-  });
   let githubOptions = {
     clientID: config.github.clientId,
     clientSecret: config.github.clientSecret,
@@ -109,6 +101,10 @@ module.exports = function (app, config) {
 
   app.use(passport.initialize());
   app.use(passport.session());
+
+  passport.serializeUser(serializer.serialize(config));
+  passport.deserializeUser(serializer.deserialize(config));
+  serializer.initialize(config, app);
 
   return passport;
 };

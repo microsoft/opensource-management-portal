@@ -17,18 +17,18 @@ const utils = require('../utils');
 router.use(function (req, res, next) {
   var config = req.app.settings.runtimeConfig;
   if (req.isAuthenticated()) {
-    var expectedAuthenticationProperty = config.primaryAuthenticationScheme === 'github' ? 'github' : 'azure';
+    var expectedAuthenticationProperty = config.authentication.scheme === 'github' ? 'github' : 'azure';
     if (req.user && !req.user[expectedAuthenticationProperty]) {
       console.warn(`A user session was authenticated but did not have present the property ${expectedAuthenticationProperty} expected for this type of authentication. Signing them out.`);
       return res.redirect('/signout');
     }
-    var expectedAuthenticationKey = config.primaryAuthenticationScheme === 'github' ? 'id' : 'username';
+    var expectedAuthenticationKey = config.authentication.scheme === 'github' ? 'id' : 'username';
     if (!req.user[expectedAuthenticationProperty][expectedAuthenticationKey]) {
       return next(new Error('Invalid information present for the authentication provider.'));
     }
     return next();
   }
-  utils.storeOriginalUrlAsReferrer(req, res, config.primaryAuthenticationScheme === 'github' ? '/auth/github' : '/auth/azure');
+  utils.storeOriginalUrlAsReferrer(req, res, config.authentication.scheme === 'github' ? '/auth/github' : '/auth/azure');
 });
 
 router.use((req, res, next) => {
@@ -111,7 +111,7 @@ router.use((req, res, next) => {
 // for users of the portal before the switch to supporting primary authentication
 // of a type other than GitHub.
 router.use((req, res, next) => {
-  if (req.app.settings.runtimeConfig.primaryAuthenticationScheme === 'aad' && req.oss && req.oss.modernUser()) {
+  if (req.app.settings.runtimeConfig.authentication.scheme === 'aad' && req.oss && req.oss.modernUser()) {
     var link = req.oss.modernUser().link;
     if (link && !link.ghtoken) {
       return utils.storeOriginalUrlAsReferrer(req, res, '/link/reconnect');
@@ -129,19 +129,19 @@ router.get('/', function (req, res, next) {
   var allowCaching = onboarding ? false : true;
 
   if (!link) {
-    if (config.primaryAuthenticationScheme === 'github' && req.user.azure === undefined ||
-      config.primaryAuthenticationScheme === 'aad' && req.user.github === undefined) {
+    if (config.authentication.scheme === 'github' && req.user.azure === undefined ||
+      config.authentication.scheme === 'aad' && req.user.github === undefined) {
       return oss.render(req, res, 'welcome', 'Welcome');
     }
-    if (config.primaryAuthenticationScheme === 'github' && req.user.azure && req.user.azure.oid ||
-      config.primaryAuthenticationScheme === 'aad' && req.user.github && req.user.github.id) {
+    if (config.authentication.scheme === 'github' && req.user.azure && req.user.azure.oid ||
+      config.authentication.scheme === 'aad' && req.user.github && req.user.github.id) {
       return res.redirect('/link');
     }
     return next(new Error('This account is not yet linked, but a workflow error is preventing further progress. Please report this issue. Thanks.'));
   }
 
   // They're changing their corporate identity (rare, often just service accounts)
-  if (config.primaryAuthenticationScheme === 'github' && link && link.aadupn && req.user.azure && req.user.azure.username && req.user.azure.username.toLowerCase() !== link.aadupn.toLowerCase()) {
+  if (config.authentication.scheme === 'github' && link && link.aadupn && req.user.azure && req.user.azure.username && req.user.azure.username.toLowerCase() !== link.aadupn.toLowerCase()) {
     return res.redirect('/link/update');
   }
 

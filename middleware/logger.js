@@ -10,7 +10,7 @@ const logger = require('morgan');
 logger.token('id', function getUserId(req) {
   let config = req.app.settings.runtimeConfig;
   if (config) {
-    let userType = config.primaryAuthenticationScheme === 'aad' ? 'azure' : 'github';
+    let userType = config.authentication.scheme === 'aad' ? 'azure' : 'github';
     return req.user && req.user[userType] && req.user[userType].username ? req.user[userType].username : undefined;
   }
 });

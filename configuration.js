@@ -102,7 +102,12 @@ module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets) 
       cla: utils.arrayFromString(configurationHelper.get('FRIENDS_CLA')),
       employeeData: utils.arrayFromString(configurationHelper.get('FRIENDS_DATA')),
     },
-    primaryAuthenticationScheme: configurationHelper.get('PRIMARY_AUTHENTICATION_SCHEME'),
+    authentication: {
+      encrypt: configurationHelper.get('AUTHENTICATION_ENCRYPT') === 'encrypt',
+      key: configurationHelper.get('AUTHENTICATION_ENCRYPT_KEY'),
+      keyId: configurationHelper.get('AUTHENTICATION_ENCRYPT_KEY_ID'),
+      scheme: configurationHelper.get('AUTHENTICATION_SCHEME'),
+    },
     github: {
       clientId: configurationHelper.get('GITHUB_CLIENT_ID'),
       clientSecret: configurationHelper.get('GITHUB_CLIENT_SECRET'),

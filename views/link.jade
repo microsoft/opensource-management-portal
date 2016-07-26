@@ -25,8 +25,8 @@ block content
               th #{config.companyName} Directory
           tbody
             tr
-              - gitAlertClass = config.primaryAuthenticationScheme == 'github' ? '' : 'alert-success'
-              - aadAlertClass = config.primaryAuthenticationScheme == 'aad' ? '' : 'alert-success'
+              - gitAlertClass = config.authentication.scheme == 'github' ? '' : 'alert-success'
+              - aadAlertClass = config.authentication.scheme == 'aad' ? '' : 'alert-success'
               td(class=gitAlertClass)= user.github.username
               td
                 div.text-center

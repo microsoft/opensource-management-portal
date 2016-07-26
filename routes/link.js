@@ -48,7 +48,7 @@ router.post('/', function (req, res, next) {
 router.get('/reconnect', function (req, res, next) {
   var config = req.app.settings.runtimeConfig;
   var oss = req.oss;
-  if (config.primaryAuthenticationScheme !== 'aad'){
+  if (config.authentication.scheme !== 'aad'){
     return next(utils.wrapError(null, 'Account reconnection is only needed for Active Directory authentication applications.', true));
   }
   // If the request comes back to the reconnect page, the authenticated app will
@@ -65,7 +65,7 @@ router.get('/update', function (req, res, next) {
   var config = req.app.settings.runtimeConfig;
   var oss = req.oss;
   // TODO: A "change" experience might be slightly different for AAD
-  if (config.primaryAuthenticationScheme === 'aad') {
+  if (config.authentication.scheme === 'aad') {
     return next(utils.wrapError(null, 'Changing a GitHub account is not yet supported.', true));
   }
   if (!(oss.usernames.azure)) {

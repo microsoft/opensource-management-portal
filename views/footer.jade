@@ -23,9 +23,12 @@ footer.wiki-footer
             h4 Hostname: #{serverName}
           if config && config.applicationInsights && config.applicationInsights.instrumentationKey
             h4 AppInsights: Instrumented
-          if config && config.primaryAuthenticationScheme
+          if config && config.authentication.scheme
             h4
-              | Primary Authentication: #{config.primaryAuthenticationScheme === 'github' ? 'GitHub' : 'Azure Active Directory'}
+              | Primary Authentication: #{config.authentication.scheme === 'github' ? 'GitHub' : 'Azure Active Directory'}
+          if config && config.authentication.encrypt !== undefined
+            h4
+              | Session Encryption: #{config.authentication.encrypt === true ? 'Encrypted' : 'Plain Text'}
         div.col-md-6.col-lg-6(style='background-color:white')
           if config && config.azureStorage
             h4

@@ -140,7 +140,7 @@ OpenSourceUserContext.prototype.resolveLinkFromRequest = function (request, call
     self.usernames.azure = requestUser.azure.username;
     self.displayNames.azure = requestUser.azure.displayName;
   }
-  if (self.setting('primaryAuthenticationScheme') === 'aad' && requestUser.azure && requestUser.azure.oid) {
+  if (self.setting('authentication').scheme === 'aad' && requestUser.azure && requestUser.azure.oid) {
     return self.dataClient().getUserByAadOid(requestUser.azure.oid, function (findError, userLinks) {
       if (findError) {
         return callback(utils.wrapError(findError, 'There was a problem trying to load the link for the active user.'), self);
@@ -632,7 +632,7 @@ OpenSourceUserContext.prototype.render = function (req, res, view, title, option
   if (breadcrumbs && breadcrumbs.length && breadcrumbs.length > 0) {
     breadcrumbs[breadcrumbs.length - 1].isLast = true;
   }
-  var authScheme = this.setting('primaryAuthenticationScheme');
+  var authScheme = this.setting('authentication').scheme;
   var user = {
     primaryAuthenticationScheme: authScheme,
     primaryUsername: authScheme === 'github' ? this.usernames.github : this.usernames.azure,

@@ -15,7 +15,7 @@ const OpenSourceUserContext = require('../oss');
 
 router.use((req, res, next) => {
   let config = req.app.settings.runtimeConfig;
-  if (config.primaryAuthenticationScheme !== 'aad') {
+  if (config.authentication.scheme !== 'aad') {
     return next(new Error('Link cleanup is only supported for certain types of authentication schemes.'));
   }
 

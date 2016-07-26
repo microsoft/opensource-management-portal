@@ -17,6 +17,30 @@ function generate32bitKey(callback) {
 
 describe('encryption', () => {
   describe('encryptEntity', () => {
+    it('unencrypted entities can be processed', () => {
+      let dynamicKeyId = uuid.v4();
+      generate32bitKey((error, key) => {
+        let keyEncryptionKeys = {
+          dynamicKeyId: key,
+        };
+        let sampleEncryptionOptions = {
+          keyEncryptionKeyId: dynamicKeyId,
+          encryptedPropertyNames: ['secret'],
+          keyEncryptionKeys: keyEncryptionKeys,
+        };
+        let entity = {
+          hello: 'world',
+          notSecret: 'this is not a secret',
+          secret: 'this is a secret',
+          superSecret: 'the password is password',
+        };
+        let partitionKey = 'partition' + uuid.v4();
+        let rowKey = 'row' + uuid.v4();
+        encryption.decryptEntity(partitionKey, rowKey, entity, sampleEncryptionOptions, (anotherError, roundtripEntity) => {
+          assert.deepEqual(entity, roundtripEntity, 'roundtripEntity is equal to entity');
+        });
+      });
+    }),
     it('should have encryption metadata', () => {
       let dynamicKeyId = uuid.v4();
       generate32bitKey((error, key) => {

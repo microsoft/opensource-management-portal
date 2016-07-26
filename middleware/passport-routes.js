@@ -10,7 +10,7 @@ const utils = require('../utils');
 
 module.exports = function configurePassport(app, passport, initialConfig) {
   app.get('/signin', function (req, res) {
-    utils.storeReferrer(req, res, initialConfig.primaryAuthenticationScheme === 'github' ? '/auth/github' : '/auth/azure');
+    utils.storeReferrer(req, res, initialConfig.authentication.scheme === 'github' ? '/auth/github' : '/auth/azure');
   });
 
   // ----------------------------------------------------------------------------
@@ -20,18 +20,19 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     utils.storeReferrer(req, res, '/auth/github');
   });
 
-  var ghMiddleware = initialConfig.primaryAuthenticationScheme === 'github' ? passport.authenticate('github') : passport.authorize('github');
+  var ghMiddleware = initialConfig.authentication.scheme === 'github' ? passport.authenticate('github') : passport.authorize('github');
 
   app.get('/auth/github', ghMiddleware);
 
   app.get('/auth/github/callback', ghMiddleware, (req, res) => {
-    if (initialConfig.primaryAuthenticationScheme !== 'github') {
+    if (initialConfig.authentication.scheme !== 'github') {
+      console.log('setting req account to user obj');
       req.user.github = req.account.github;
     }
     utils.redirectToReferrer(req, res);
   });
 
-  if (initialConfig.primaryAuthenticationScheme === 'aad') {
+  if (initialConfig.authentication.scheme === 'aad') {
     app.get('/signin/github/join', (req, res) => {
       res.render('creategithubaccount', {
         title: 'Create a GitHub account',
@@ -60,7 +61,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     var config = req.app.settings.runtimeConfig;
     req.logout();
 
-    if (config.primaryAuthenticationScheme === 'github') {
+    if (config.authentication.scheme === 'github') {
       res.redirect('https://github.com/logout');
     } else {
       res.render('message', {
@@ -73,7 +74,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
   });
 
   app.get('/signout/github', function (req, res) {
-    if (req.app.settings.runtimeConfig.primaryAuthenticationScheme === 'github') {
+    if (req.app.settings.runtimeConfig.authentication.scheme === 'github') {
       return res.redirect('/signout');
     }
     if (req.user && req.user.github) {
@@ -108,12 +109,12 @@ module.exports = function configurePassport(app, passport, initialConfig) {
   // ----------------------------------------------------------------------------
   // passport integration with Azure Active Directory
   // ----------------------------------------------------------------------------
-  var aadMiddleware = initialConfig.primaryAuthenticationScheme === 'github' ? passport.authorize('azure-active-directory') : passport.authenticate('azure-active-directory');
+  var aadMiddleware = initialConfig.authentication.scheme === 'github' ? passport.authorize('azure-active-directory') : passport.authenticate('azure-active-directory');
 
   app.get('/auth/azure', aadMiddleware);
 
   app.post('/auth/azure/callback', aadMiddleware, (req, res) => {
-    if (initialConfig.primaryAuthenticationScheme !== 'aad') {
+    if (initialConfig.authentication.scheme !== 'aad') {
       req.user.azure = req.account.azure;
     }
     utils.redirectToReferrer(req, res);
@@ -124,7 +125,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
   });
 
   app.get('/signout/azure', function (req, res) {
-    if (req.app.settings.runtimeConfig.primaryAuthenticationScheme === 'aad') {
+    if (req.app.settings.runtimeConfig.authentication.scheme === 'aad') {
       return res.redirect('/signout');
     }
     if (req.user && req.user.azure) {
