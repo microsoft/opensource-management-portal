@@ -182,18 +182,19 @@ OpenSourceUser.prototype.unlinkAndDrop = function (callback) {
 
 // ----------------------------------------------------------------------------
 // Updates a link for the user. At this time it does not do much validation.
+// This is a full replacement of the link, not a merge.
 // ----------------------------------------------------------------------------
-OpenSourceUser.prototype.updateLink = function (mergeLink, callback) {
+OpenSourceUser.prototype.updateLink = function (updatedLink, callback) {
   var self = this;
   if (self.link && self.link.ghid !== self.id) {
     callback(new Error('Had trouble before merging entities for a link update.'));
   }
   var dc = self.oss.dataClient();
-  dc.updateLink(self.id, mergeLink, (updateError) => {
+  dc.updateLink(self.id, updatedLink, (updateError) => {
     if (updateError) {
       return callback(utils.wrapError(updateError, `We were not able to perform an update to the link for user ID ${self.id} at this time.`));
     }
-    utils.merge(self.link, mergeLink);
+    self.link = updatedLink;
     return callback(null, self.link);
   });
 };

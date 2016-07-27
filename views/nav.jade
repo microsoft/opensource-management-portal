@@ -5,7 +5,7 @@
 
 - var azureSignoutLink = azureSignout || '/signout/azure'
 - var githubSignoutLink = githubSignout || '/signout/github?redirect=github'
-- var scheme = primaryAuthenticationScheme || config.primaryAuthenticationScheme
+- var scheme = primaryAuthenticationScheme || config.authentication.scheme
 
 mixin userTile(username, displayName, link, linkTitle, actionLink, action)
   if username

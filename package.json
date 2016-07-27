@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "start": "node ./bin/www",
-    "jshint": "jshint ."
+    "test": "mocha && eslint ."
   },
   "engines": {
     "node": "~4.4.1"

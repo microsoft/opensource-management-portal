@@ -31,6 +31,8 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
   app.use(bodyParser.urlencoded({ extended: false }));
   app.use(compression());
 
+  app.use(express.static(path.join(dirname, 'public')));
+
   var passport;
   if (!initializationError) {
     app.use(require('./session')(config, redisClient));
@@ -41,10 +43,8 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
     }
   }
 
-  app.use(express.static(path.join(dirname, 'public')));
-
   app.use(require('./scrubbedUrl'));
-  app.use(require('./logger'));
+  app.use(require('./logger')(config));
   if (!initializationError && config.websiteSku && !config.allowHttp) {
     app.use(require('./requireSecureAppService'));
   }

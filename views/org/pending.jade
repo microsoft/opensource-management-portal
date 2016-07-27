@@ -55,7 +55,7 @@ block content
               | Let's join #{org.name}!
             else
               | Would you like to join #{org.name}?
-          if user && user.github && user.github.increasedScope
+          if user && user.github && user.githubIncreasedScope
             form(method='post')
               p(style='margin-top:24px')
                 input.btn.btn-primary.btn-huge(type='submit', value='Join ' + org.name + ' now')

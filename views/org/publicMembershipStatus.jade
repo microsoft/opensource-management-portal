@@ -16,7 +16,7 @@ block content
     else
       h1 Would you like to publish your #{org.name} org membership?
 
-    if user && user.github && user.github.increasedScope
+    if user && user.github.increasedScope === true
       p &nbsp;
       if !publicMembership
         p.lead Show your support for #{config.companyName} open source!

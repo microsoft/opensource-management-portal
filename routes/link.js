@@ -34,7 +34,7 @@ router.post('/', function (req, res, next) {
         dc.updateLink(req.user.github.id, linkObject, function (updateLinkError) {
           if (updateLinkError) {
             updateLinkError.original = insertError;
-            return next(utils.wrapError(updateLinkError, 'We had trouble storing the corporate identity link information. Please file this issue and we will have an administrator take a look.'));
+            return next(utils.wrapError(updateLinkError, 'We had trouble storing the corporate identity link information after 2 tries. Please file this issue and we will have an administrator take a look.'));
           }
           return res.redirect('/?onboarding=yes');
         });
@@ -48,7 +48,7 @@ router.post('/', function (req, res, next) {
 router.get('/reconnect', function (req, res, next) {
   var config = req.app.settings.runtimeConfig;
   var oss = req.oss;
-  if (config.primaryAuthenticationScheme !== 'aad'){
+  if (config.authentication.scheme !== 'aad'){
     return next(utils.wrapError(null, 'Account reconnection is only needed for Active Directory authentication applications.', true));
   }
   // If the request comes back to the reconnect page, the authenticated app will
@@ -65,12 +65,13 @@ router.get('/update', function (req, res, next) {
   var config = req.app.settings.runtimeConfig;
   var oss = req.oss;
   // TODO: A "change" experience might be slightly different for AAD
-  if (config.primaryAuthenticationScheme === 'aad') {
+  if (config.authentication.scheme === 'aad') {
     return next(utils.wrapError(null, 'Changing a GitHub account is not yet supported.', true));
   }
   if (!(oss.usernames.azure)) {
     return oss.render(req, res, 'linkUpdate', 'Update your account ' + oss.usernames.github + ' by signing in with corporate credentials.');
   }
+  // TODO: NOTE: This will destroy link data not in the session for recreation. May be OK.
   var dc = req.app.settings.dataclient;
   dc.createLinkObjectFromRequest(req, function (error, linkObject) {
     dc.updateLink(req.user.github.id, linkObject, function (updateLinkError) {

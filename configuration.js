@@ -41,8 +41,9 @@ const secretConfigurationKeys = [
 
 const obfuscationSuffixCharactersToShow = 4;
 
-module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets) {
-  var configurationHelper = painlessConfig;
+module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets, configurationHelper) {
+  let initialConfigurationHelper = configurationHelper || painlessConfig;
+  configurationHelper = initialConfigurationHelper;
   for (let i = 0; i < requiredConfigurationKeys.length; i++) {
     if (!configurationHelper.get(requiredConfigurationKeys[i])) {
       throw new Error(`Configuration parameter "${requiredConfigurationKeys[i]}" is required for this application to initialize.`);
@@ -59,7 +60,7 @@ module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets) 
     }
     configurationHelper = {
       get: function (key) {
-        var value = painlessConfig.get(key);
+        var value = initialConfigurationHelper.get(key);
         if (secretKeys.has(key) && value !== undefined) {
           value = utils.obfuscate(value, obfuscationSuffixCharactersToShow);
         } else {
@@ -80,6 +81,7 @@ module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets) 
     logging: {
       errors: configurationHelper.get('SITE_SKIP_ERRORS') === undefined,
       version: pkgInfo.version,
+      showUsers: configurationHelper.get('SITE_SHOW_USERS') === 'show',
     },
     secretConfigurationKeys: secretConfigurationKeys,
     obfuscatedConfig: null,
@@ -102,7 +104,12 @@ module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets) 
       cla: utils.arrayFromString(configurationHelper.get('FRIENDS_CLA')),
       employeeData: utils.arrayFromString(configurationHelper.get('FRIENDS_DATA')),
     },
-    primaryAuthenticationScheme: configurationHelper.get('PRIMARY_AUTHENTICATION_SCHEME'),
+    authentication: {
+      encrypt: configurationHelper.get('AUTHENTICATION_ENCRYPT') === 'encrypt',
+      key: configurationHelper.get('AUTHENTICATION_ENCRYPT_KEY'),
+      keyId: configurationHelper.get('AUTHENTICATION_ENCRYPT_KEY_ID'),
+      scheme: configurationHelper.get('AUTHENTICATION_SCHEME'),
+    },
     github: {
       clientId: configurationHelper.get('GITHUB_CLIENT_ID'),
       clientSecret: configurationHelper.get('GITHUB_CLIENT_SECRET'),
