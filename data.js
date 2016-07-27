@@ -5,6 +5,8 @@
 
 'use strict';
 
+/*eslint no-console: ["error", { allow: ["warn"] }] */
+
 // This file is very sad. :(
 
 // This is the original data interface for this portal. It uses Azure
@@ -296,7 +298,7 @@ DataClient.prototype.mergeIntoEntity = function mit(entity, obj, callback) {
         // Opinionated entity processing: store all numbers as strings
         entity[key] = dc.entGen.String(obj[key].toString());
       } else {
-        console.log('rich merge opportunity for key ' + key + ' type:' + typeof obj[key]);
+        console.warn('Consider whether a new entity merge clause is required for key ' + key + ' of type:' + typeof obj[key]);
         if (obj[key].toString) {
           entity[key] = dc.entGen.String(obj[key].toString());
         } else {
@@ -469,7 +471,7 @@ DataClient.prototype.getLink = function getLink(githubId, callback) {
   }
   dc.table.retrieveEntity(dc.options.linksTableName, dc.options.partitionKey, githubId, function (error, result, response) {
     if (error && !result) {
-      return callback(null, false);
+      return callback(error, false);
     }
     return callback(error, result, response);
   });

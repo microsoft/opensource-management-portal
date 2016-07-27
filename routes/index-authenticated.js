@@ -58,7 +58,7 @@ router.use('/link', linkRoute);
 
 // Link cleanups
 router.use((req, res, next) => {
-  if (!req.oss || !req.oss.modernUser()) {
+  if (!req.oss || !req.oss.modernUser() || req.oss.modernUser().link === false) {
     return next();
   }
   var link = req.oss.modernUser().link;
