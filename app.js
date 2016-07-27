@@ -8,10 +8,12 @@ const DataClient = require('./data');
 const express = require('express');
 const redis = require('redis');
 const app = express();
+const keyVaultHelper = require('./lib/keyVaultHelper');
 
 // Asynchronous initialization for the Express app, configuration and data stores.
 app.initializeApplication = function init(config, configurationError, callback) {
   var dc;
+  var redisClient;
   var finalizeInitialization = (error) => {
     if (dc) {
       app.set('dataclient', dc);
@@ -34,37 +36,41 @@ app.initializeApplication = function init(config, configurationError, callback) 
   if (configurationError) {
     return finalizeInitialization(configurationError);
   }
-
-  var redisFirstCallback;
-  var redisOptions = {
-    auth_pass: config.redis.key,
-  };
-  if (config.redis.tls) {
-    redisOptions.tls = {
-      servername: config.redis.tls,
-    };
-  }
-  var redisClient = redis.createClient(config.redis.port, config.redis.host, redisOptions);
-  redisClient.on('connect', function () {
-    if (redisFirstCallback) {
-      var cb = redisFirstCallback;
-      redisFirstCallback = null;
-      cb();
+  keyVaultHelper.initialize(config, (keyVaultError, keyVaultClient) => {
+    if (keyVaultError) {
+      return finalizeInitialization(keyVaultError);
     }
-  });
-  async.parallel([
-    function (cb) {
-      new DataClient(config, function (error, dcInstance) {
-        dc = dcInstance;
-        cb(error);
-      });
-    },
-    function (cb) {
-      redisFirstCallback = cb;
-      redisClient.auth(config.redis.key);
-    },
-  ], function (error) {
-    finalizeInitialization(error);
+    var redisFirstCallback;
+    var redisOptions = {
+      auth_pass: config.redis.key,
+    };
+    if (config.redis.tls) {
+      redisOptions.tls = {
+        servername: config.redis.tls,
+      };
+    }
+    redisClient = redis.createClient(config.redis.port, config.redis.host, redisOptions);
+    redisClient.on('connect', function () {
+      if (redisFirstCallback) {
+        var cb = redisFirstCallback;
+        redisFirstCallback = null;
+        cb();
+      }
+    });
+    async.parallel([
+      function (cb) {
+        new DataClient(config, function (error, dcInstance) {
+          dc = dcInstance;
+          cb(error);
+        });
+      },
+      function (cb) {
+        redisFirstCallback = cb;
+        redisClient.auth(config.redis.key);
+      },
+    ], function (error) {
+      finalizeInitialization(error);
+    });
   });
 };
 
