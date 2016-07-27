@@ -10,12 +10,14 @@ const encryption = require('../../lib/encryption');
 const utils = require('../../utils');
 
 const userEncryptedEntities = {
-  github: new Set(['accessToken']),
   azure: new Set(['accessToken', 'refreshToken']),
+  github: new Set(['accessToken']),
+  githubIncreasedScope: new Set(['accessToken']),
 };
 
 const userEntityId = {
   github: 'id',
+  githubIncreasedScope: 'id',
   azure: 'oid',
 };
 
@@ -60,6 +62,9 @@ function serializeEntity(config, entityName, entity, callback) {
 function deserializeEntity(config, entityName, entity, callback) {
   const partitionKey = entityName;
   const idPropertyName = userEntityId[entityName];
+  if (idPropertyName === undefined) {
+    return callback(new Error('The entity type is not configured properly.'));
+  }
   const rowKey = entity[idPropertyName];
   if (rowKey === undefined) {
     return callback(new Error('The unique identifier for the user entity was not available.'));
@@ -79,7 +84,7 @@ function deserializeEntity(config, entityName, entity, callback) {
 
 function serialize(config, user, done) {
   const tasks = {};
-  for (const entityName in user) {
+  for (const entityName in userEncryptedEntities) {
     const entityPresent = user[entityName];
     if (entityPresent !== undefined) {
       const entityOriginalValue = entityPresent;

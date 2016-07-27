@@ -94,6 +94,8 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     if (clone === undefined) {
       clone = shallowTruncatingCopy(req.user);
     }
+    console.log('resaving hoist');
+    console.dir(clone);
     req.login(clone, callback);
   }
 
@@ -152,17 +154,13 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     utils.storeReferrer(req, res, '/auth/github/increased-scope');
   });
 
-  // TODO: xxx
   app.get('/auth/github/increased-scope', passport.authorize('expanded-github-scope'));
 
-  // TODO: xxx
-  app.get('/auth/github/callback/increased-scope',
-    passport.authorize('expanded-github-scope'), function (req, res) {
-      var account = req.account;
-      var user = req.user;
-      user.github.increasedScope = account;
-      utils.redirectToReferrer(req, res);
-    });
+  // TODO: Validate that the increased scope user ID === the actual user ID
+
+  app.get('/auth/github/callback/increased-scope', 
+    passport.authorize('expanded-github-scope'), 
+    authenticationCallback.bind(null, 'all', 'githubIncreasedScope'));
 
   // ----------------------------------------------------------------------------
   // passport integration with Azure Active Directory

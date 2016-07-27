@@ -47,8 +47,8 @@ router.get('/', function (req, res, next) {
     };
     if (state == 'active') {
       clearAuditListAndRedirect();
-    } else if (state == 'pending' && req.user.github.increasedScope) {
-      var userToken = req.user.github.increasedScope.github.accessToken;
+    } else if (state == 'pending' && req.user.githubIncreasedScope) {
+      var userToken = req.user.githubIncreasedScope.accessToken;
       org.acceptOrganizationInvitation(userToken, function (error, updatedState) {
         if (error) {
           if (error.statusCode == 401) {
@@ -76,10 +76,11 @@ router.get('/express', function (req, res, next) {
     var state = result && result.state ? result.state : false;
     if (state == 'active' || state == 'pending') {
       res.redirect(org.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + org.name));
-    } else if (req.user.github.increasedScope && req.user.github.increasedScope.github && req.user.github.increasedScope.github.accessToken) {
+    } else if (req.user.githubIncreasedScope && req.user.githubIncreasedScope.accessToken) {
       joinOrg(req, res, next);
     } else {
-      utils.storeOriginalUrlAsReferrer(req, res, '/auth/github/increased-scope');
+      next(new Error('damn'));
+//      utils.storeOriginalUrlAsReferrer(req, res, '/auth/github/increased-scope');
     }
   });
 });

@@ -34,7 +34,7 @@ router.post('/', function (req, res, next) {
         dc.updateLink(req.user.github.id, linkObject, function (updateLinkError) {
           if (updateLinkError) {
             updateLinkError.original = insertError;
-            return next(utils.wrapError(updateLinkError, 'We had trouble storing the corporate identity link information. Please file this issue and we will have an administrator take a look.'));
+            return next(utils.wrapError(updateLinkError, 'We had trouble storing the corporate identity link information after 2 tries. Please file this issue and we will have an administrator take a look.'));
           }
           return res.redirect('/?onboarding=yes');
         });
@@ -71,6 +71,7 @@ router.get('/update', function (req, res, next) {
   if (!(oss.usernames.azure)) {
     return oss.render(req, res, 'linkUpdate', 'Update your account ' + oss.usernames.github + ' by signing in with corporate credentials.');
   }
+  // TODO: NOTE: This will destroy link data not in the session for recreation. May be OK.
   var dc = req.app.settings.dataclient;
   dc.createLinkObjectFromRequest(req, function (error, linkObject) {
     dc.updateLink(req.user.github.id, linkObject, function (updateLinkError) {

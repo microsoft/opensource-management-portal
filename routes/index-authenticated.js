@@ -19,7 +19,8 @@ router.use(function (req, res, next) {
   if (req.isAuthenticated()) {
     var expectedAuthenticationProperty = config.authentication.scheme === 'github' ? 'github' : 'azure';
     if (req.user && !req.user[expectedAuthenticationProperty]) {
-      console.warn(`A user session was authenticated but did not have present the property ${expectedAuthenticationProperty} expected for this type of authentication. Signing them out.`);
+      console.dir(req.user);
+      console.warn(`A user session was authenticated but did not have present the property "${expectedAuthenticationProperty}" expected for this type of authentication. Signing them out.`);
       return res.redirect('/signout');
     }
     var expectedAuthenticationKey = config.authentication.scheme === 'github' ? 'id' : 'username';
@@ -74,7 +75,10 @@ router.use((req, res, next) => {
     github: {
       username: 'ghu',
       avatarUrl: 'ghavatar',
-      accessToken: 'ghtoken',
+      accessToken: 'gitHubToken',
+    },
+    githubIncreasedScope: {
+      accessToken: 'gitHubTokenIncreasedScope',
     },
     azure: {
       displayName: 'aadname',
@@ -92,16 +96,20 @@ router.use((req, res, next) => {
     }
   }
   if (updatedProperties.has('github.accessToken')) {
-    linkUpdates.ghtokenupdated = new Date().getTime();
+    linkUpdates.gitHubTokenUpdated = new Date().getTime();
   }
+  // ? githubIncreasedScope.accessToken
   if (Object.keys(linkUpdates).length === 0) {
     return next();
   }
-  req.oss.modernUser().updateLink(linkUpdates, (mergeError, mergedLink) => {
+  console.dir(linkUpdates);
+  utils.merge(link, linkUpdates);
+  console.dir(link);
+  req.oss.modernUser().updateLink(link, (mergeError /*, mergedLink*/) => {
     if (mergeError) {
       return next(mergeError);
     }
-    req.oss.setPropertiesFromLink(mergedLink, () => {
+    req.oss.setPropertiesFromLink(/*mergedLink*/link, () => {
       next();
     });
   });
@@ -113,7 +121,7 @@ router.use((req, res, next) => {
 router.use((req, res, next) => {
   if (req.app.settings.runtimeConfig.authentication.scheme === 'aad' && req.oss && req.oss.modernUser()) {
     var link = req.oss.modernUser().link;
-    if (link && !link.ghtoken) {
+    if (link && !link.gitHubToken) {
       return utils.storeOriginalUrlAsReferrer(req, res, '/link/reconnect');
     }
   }

@@ -10,16 +10,28 @@ const serializer = require('./passport/serializer');
 const GitHubStrategy = require('passport-github').Strategy;
 const OIDCStrategy = require('passport-azure-ad').OIDCStrategy;
 
+// FYI: GitHub does not provide refresh tokens
+
 function githubResponseToSubset(accessToken, refreshToken, profile, done) {
   let subset = {
     github: {
       accessToken: accessToken,
+      id: profile.id,
+      username: profile.username,
+    },
+  };
+  return done(null, subset);
+}
+
+function githubResponseToIncreasedScopeSubset(accessToken, refreshToken, profile, done) {
+  let subset = {
+    githubIncreasedScope: {
+      accessToken: accessToken,
       avatarUrl: profile._json && profile._json.avatar_url ? profile._json.avatar_url : undefined,
       displayName: profile.displayName,
       id: profile.id,
-      profileUrl: profile.profileUrl,
       username: profile.username,
-    }
+    },
   };
   return done(null, subset);
 }
@@ -95,7 +107,7 @@ module.exports = function (app, config) {
     callbackURL: config.github.callbackUrl + '/increased-scope',
     scope: ['write:org'],
     userAgent: 'passport-azure-oss-portal-for-github' // CONSIDER: User agent should be configured.
-  }, githubResponseToSubset);
+  }, githubResponseToIncreasedScopeSubset);
 
   passport.use('expanded-github-scope', expandedGitHubScopeStrategy);
 

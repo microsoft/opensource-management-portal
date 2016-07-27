@@ -57,6 +57,13 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
       require('./onboarding')(app, config);
     }
   }
+  /*
+app.use((req, res, next) => {
+  if (req.session && req.session.passport) {
+    console.dir(req.session.passport.user);
+  }
+  next();
+});*/
 
   if (initializationError) {
     throw initializationError;
