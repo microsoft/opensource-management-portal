@@ -350,7 +350,7 @@ DataClient.prototype.createLinkObjectFromRequest = function createLinkObject(req
       link.githubToken = req.user.github.accessToken;
       link.githubTokenUpdated = new Date().getTime();
     }
-    if (req.user.githubIncreasedScope.accessToken) {
+    if (req.user.githubIncreasedScope && req.user.githubIncreasedScope.accessToken) {
       link.githubTokenIncreasedScope = req.user.githubIncreasedScope.accessToken;
       link.githubTokenIncreasedScopeUpdated = new Date().getTime();
     }
