@@ -38,11 +38,7 @@ function DataClient(config, callback) {
     encrypt: config.authentication.encrypt,
   };
   if (this.options.encrypt === true) {
-    const encryptColumns = new Set(['gitHubToken', 'gitHubTokenIncreasedScope']);
-    function keyResolver(config, id, callback) {
-      const key = id === config.authentication.keyId ? config.authentication.key : null;
-      return callback(null, key);
-    }
+    const encryptColumns = new Set(['githubToken', 'githubTokenIncreasedScope']);
     const encryptionOptions = {
       keyEncryptionKeyId: config.authentication.keyId,
       keyResolver: keyResolver.bind(undefined, config),
@@ -65,6 +61,11 @@ function DataClient(config, callback) {
   }, function (error) {
     if (callback) return callback(error, dc);
   });
+}
+
+function keyResolver(config, id, callback) {
+  const key = id === config.authentication.keyId ? config.authentication.key : null;
+  return callback(null, key);
 }
 
 var reduceEntity = function reduceEntity(instance) {
@@ -273,22 +274,29 @@ DataClient.prototype.mergeIntoEntity = function mit(entity, obj, callback) {
   var dc = this;
   if (obj) {
     for (var key in obj) {
+      // Currently stripping metadata
       if (key === '.metadata') {
-        console.log('stripped metadata');
         continue;
       }
       if (obj[key] === undefined) {
         // Skip undefined objects, including the key
         continue;
       }
-      if (obj[key] === true) {
+      if (typeof obj[key] === 'string') {
+        entity[key] = dc.entGen.String(obj[key]);
+      } else if (obj[key] === true) {
         entity[key] = dc.entGen.Boolean(true);
       } else if (obj[key] === false) {
         entity[key] = dc.entGen.Boolean(false);
       } else if (Buffer.isBuffer(obj[key])) {
         entity[key] = dc.entGen.Binary(obj[key]);
+      } else if (obj[key] instanceof Date) {
+        entity[key] = dc.entGen.DateTime(obj[key]);
+      } else if (typeof obj[key] === 'number') {
+        // Opinionated entity processing: store all numbers as strings
+        entity[key] = dc.entGen.String(obj[key].toString());
       } else {
-        // CONSIDER: Richer merging opportunities!
+        console.log('rich merge opportunity for key ' + key + ' type:' + typeof obj[key]);
         if (obj[key].toString) {
           entity[key] = dc.entGen.String(obj[key].toString());
         } else {
@@ -318,7 +326,7 @@ DataClient.prototype.createEntity = function ce(partitionKey, rowKey, obj, callb
     dc.mergeIntoEntity(entity, obj);
   }
   if (callback) {
-    callback(null, entity);
+    return callback(null, entity);
   } else {
     return entity;
   }
@@ -339,8 +347,12 @@ DataClient.prototype.createLinkObjectFromRequest = function createLinkObject(req
     };
     link.ghavatar = req.user.github.avatarUrl;
     if (req.user.github.accessToken) {
-      link.gitHubToken = req.user.github.accessToken;
-      link.gitHubTokenUpdated = new Date().getTime();
+      link.githubToken = req.user.github.accessToken;
+      link.githubTokenUpdated = new Date().getTime();
+    }
+    if (req.user.githubIncreasedScope.accessToken) {
+      link.githubTokenIncreasedScope = req.user.githubIncreasedScope.accessToken;
+      link.githubTokenIncreasedScopeUpdated = new Date().getTime();
     }
     return callback(null, link);
   } else {
