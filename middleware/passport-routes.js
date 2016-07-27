@@ -133,11 +133,11 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     if (config.authentication.scheme === 'github') {
       res.redirect('https://github.com/logout');
     } else {
+      var unlinked = req.query.unlink !== undefined;
       res.render('message', {
-        messageTitle: 'Goodbye',
-        message: 'You have been signed out.',
+        message: unlinked ? 'Your social coding account has been unlinked, access removed from the corporate organizations, and you have been signed out.' : 'Goodbye.',
         title: 'Goodbye',
-        buttonText: 'Sign In Again',
+        buttonText: unlinked ? 'Join' : 'Sign In',
         config: initialConfig.obfuscatedConfig,
       });
     }
