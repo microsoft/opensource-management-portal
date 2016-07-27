@@ -136,6 +136,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
       res.render('message', {
         messageTitle: 'Goodbye',
         message: 'You have been signed out.',
+        title: 'Goodbye',
         buttonText: 'Sign In Again',
         config: initialConfig.obfuscatedConfig,
       });
