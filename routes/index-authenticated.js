@@ -19,7 +19,6 @@ router.use(function (req, res, next) {
   if (req.isAuthenticated()) {
     var expectedAuthenticationProperty = config.authentication.scheme === 'github' ? 'github' : 'azure';
     if (req.user && !req.user[expectedAuthenticationProperty]) {
-      console.dir(req.user);
       console.warn(`A user session was authenticated but did not have present the property "${expectedAuthenticationProperty}" expected for this type of authentication. Signing them out.`);
       return res.redirect('/signout');
     }
@@ -75,10 +74,10 @@ router.use((req, res, next) => {
     github: {
       username: 'ghu',
       avatarUrl: 'ghavatar',
-      accessToken: 'gitHubToken',
+      accessToken: 'githubToken',
     },
     githubIncreasedScope: {
-      accessToken: 'gitHubTokenIncreasedScope',
+      accessToken: 'githubTokenIncreasedScope',
     },
     azure: {
       displayName: 'aadname',
@@ -96,15 +95,15 @@ router.use((req, res, next) => {
     }
   }
   if (updatedProperties.has('github.accessToken')) {
-    linkUpdates.gitHubTokenUpdated = new Date().getTime();
+    linkUpdates.githubTokenUpdated = new Date().getTime();
   }
-  // ? githubIncreasedScope.accessToken
+  if (updatedProperties.has('githubIncreasedScope.accessToken')) {
+    linkUpdates.githubTokenIncreasedScopeUpdated = new Date().getTime();
+  }
   if (Object.keys(linkUpdates).length === 0) {
     return next();
   }
-  console.dir(linkUpdates);
   utils.merge(link, linkUpdates);
-  console.dir(link);
   req.oss.modernUser().updateLink(link, (mergeError /*, mergedLink*/) => {
     if (mergeError) {
       return next(mergeError);
@@ -121,7 +120,7 @@ router.use((req, res, next) => {
 router.use((req, res, next) => {
   if (req.app.settings.runtimeConfig.authentication.scheme === 'aad' && req.oss && req.oss.modernUser()) {
     var link = req.oss.modernUser().link;
-    if (link && !link.gitHubToken) {
+    if (link && !link.githubToken) {
       return utils.storeOriginalUrlAsReferrer(req, res, '/link/reconnect');
     }
   }

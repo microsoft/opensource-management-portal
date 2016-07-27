@@ -94,8 +94,6 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     if (clone === undefined) {
       clone = shallowTruncatingCopy(req.user);
     }
-    console.log('resaving hoist');
-    console.dir(clone);
     req.login(clone, callback);
   }
 
@@ -158,8 +156,8 @@ module.exports = function configurePassport(app, passport, initialConfig) {
 
   // TODO: Validate that the increased scope user ID === the actual user ID
 
-  app.get('/auth/github/callback/increased-scope', 
-    passport.authorize('expanded-github-scope'), 
+  app.get('/auth/github/callback/increased-scope',
+    passport.authorize('expanded-github-scope'),
     authenticationCallback.bind(null, 'all', 'githubIncreasedScope'));
 
   // ----------------------------------------------------------------------------

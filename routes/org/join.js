@@ -79,8 +79,7 @@ router.get('/express', function (req, res, next) {
     } else if (req.user.githubIncreasedScope && req.user.githubIncreasedScope.accessToken) {
       joinOrg(req, res, next);
     } else {
-      next(new Error('damn'));
-//      utils.storeOriginalUrlAsReferrer(req, res, '/auth/github/increased-scope');
+      utils.storeOriginalUrlAsReferrer(req, res, '/auth/github/increased-scope');
     }
   });
 });

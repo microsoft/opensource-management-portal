@@ -87,8 +87,8 @@ OpenSourceUserContext.prototype.setPropertiesFromLink = function (link, callback
   this.entities.link = link;
   this.displayNames.azure = link.aadname;
   this.avatars.github = link.ghavatar;
-  this.tokens.github = link.gitHubToken;
-  this.tokens.githubIncreasedScope = link.gitHubTokenIncreasedScope;
+  this.tokens.github = link.githubToken;
+  this.tokens.githubIncreasedScope = link.githubTokenIncreasedScope;
   var modernUser = this.modernUser();
   if (!modernUser && this.id.github) {
     modernUser = this.createModernUser(this.id.github, this.usernames.github);
