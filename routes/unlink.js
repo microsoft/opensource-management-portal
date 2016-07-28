@@ -8,8 +8,6 @@ const router = express.Router();
 const async = require('async');
 const utils = require('../utils');
 
-// XXX: TEST
-
 router.use(function (req, res, next) {
   var oss = req.oss;
   var memberOfOrgs = [];
