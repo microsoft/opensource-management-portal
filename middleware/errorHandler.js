@@ -62,6 +62,6 @@ module.exports = function (err, req, res, next) {
     error: {},
     title: err.status === 404 ? 'Not Found' : 'Oops',
     user: req.user,
-    config: config.obfuscatedConfig,
+    config: config && config.obfuscatedConfig ? config.obfuscatedConfig : null,
   });
 };
