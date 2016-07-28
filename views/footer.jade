@@ -26,9 +26,12 @@ footer.wiki-footer
           if config && config.authentication.scheme
             h4
               | Primary Authentication: #{config.authentication.scheme === 'github' ? 'GitHub' : 'Azure Active Directory'}
-          if config && config.authentication.encrypt !== undefined
+          if config && config.session.encryption !== undefined
             h4
-              | Session Encryption: #{config.authentication.encrypt === true ? 'Encrypted' : 'Plain Text'}
+              | Session Encryption: #{config.session.encryption === true ? 'Encrypted' : 'Plain Text'}
+          if config && config.azureStorage.encryption !== undefined
+            h4
+              | Table Encryption: #{config.azureStorage.encryption === true ? 'Encrypted' : 'Plain Text'}
         div.col-md-6.col-lg-6(style='background-color:white')
           if config && config.azureStorage
             h4

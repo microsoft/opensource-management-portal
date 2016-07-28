@@ -29,12 +29,8 @@ function validateNoRichProperties(properties) {
   }
 }
 
-function keyResolver(config, id, callback) {
-  const key = id === config.authentication.keyId ? config.authentication.key : null;
-  return callback(null, key);
-}
-
-function serializeEntity(config, entityName, entity, callback) {
+function serializeEntity(options, entityName, entity, callback) {
+  const config = options.config;
   const partitionKey = entityName;
   const idPropertyName = userEntityId[entityName];
   const rowKey = entity[idPropertyName];
@@ -45,13 +41,17 @@ function serializeEntity(config, entityName, entity, callback) {
   if (rowKey === undefined) {
     return callback(new Error('The unique identifier for the user entity was not available.'));
   }
-  const options = {
-    keyEncryptionKeyId: config.authentication.keyId,
-    keyResolver: keyResolver.bind(null, config),
+  const keyResolver = options.keyResolver;
+  if (keyResolver === undefined) {
+    return callback(new Error('A key resolver must be supplied to use encryption.'));
+  }
+  const encryptionOptions = {
+    keyEncryptionKeyId: config.session.encryptionKeyId,
+    keyResolver: keyResolver,
     encryptedPropertyNames: userEncryptedEntities[entityName],
     binaryProperties: 'base64',
   };
-  encryption.encryptEntity(partitionKey, rowKey, entity, options, (encryptError, encryptedEntity) => {
+  encryption.encryptEntity(partitionKey, rowKey, entity, encryptionOptions, (encryptError, encryptedEntity) => {
     if (encryptError) {
       return callback(utils.wrapError(encryptError, 'There was a problem with the security subsystem starting your session.'));
     }
@@ -59,7 +59,8 @@ function serializeEntity(config, entityName, entity, callback) {
   });
 }
 
-function deserializeEntity(config, entityName, entity, callback) {
+function deserializeEntity(options, entityName, entity, callback) {
+  const config = options.config;
   const partitionKey = entityName;
   const idPropertyName = userEntityId[entityName];
   if (idPropertyName === undefined) {
@@ -69,12 +70,16 @@ function deserializeEntity(config, entityName, entity, callback) {
   if (rowKey === undefined) {
     return callback(new Error('The unique identifier for the user entity was not available.'));
   }
-  const options = {
+  const keyResolver = options.keyResolver;
+  if (keyResolver === undefined) {
+    return callback(new Error('A key resolver must be supplied to use encryption.'));
+  }
+  const encryptionOptions = {
     keyEncryptionKeyId: config.authentication.keyId,
-    keyResolver: keyResolver.bind(null, config),
+    keyResolver: keyResolver,
     binaryProperties: 'base64',
   };
-  encryption.decryptEntity(partitionKey, rowKey, entity, options, (encryptError, decryptedEntity) => {
+  encryption.decryptEntity(partitionKey, rowKey, entity, encryptionOptions, (encryptError, decryptedEntity) => {
     if (encryptError) {
       return callback(utils.wrapError(encryptError, 'There was a problem with the security subsystem retrieving your session.'));
     }
@@ -82,14 +87,14 @@ function deserializeEntity(config, entityName, entity, callback) {
   });
 }
 
-function serialize(config, user, done) {
+function serialize(options, user, done) {
   const tasks = {};
   for (const entityName in userEncryptedEntities) {
     const entityPresent = user[entityName];
     if (entityPresent !== undefined) {
       const entityOriginalValue = entityPresent;
       delete user[entityName];
-      tasks[entityName] = serializeEntity.bind(null, config, entityName, entityOriginalValue);
+      tasks[entityName] = serializeEntity.bind(null, options, entityName, entityOriginalValue);
     }
   }
   async.parallel(tasks, (error, results) => {
@@ -103,13 +108,13 @@ function serialize(config, user, done) {
   });
 }
 
-function deserialize(config, user, done) {
+function deserialize(options, user, done) {
   const tasks = {};
   let u = {};
   for (const entityName in user) {
     if (userEncryptedEntities[entityName] !== undefined) {
       let entityValue = user[entityName];
-      tasks[entityName] = deserializeEntity.bind(null, config, entityName, entityValue);
+      tasks[entityName] = deserializeEntity.bind(null, options, entityName, entityValue);
     }
   }
   async.parallel(tasks, (error, results) => {
@@ -129,7 +134,7 @@ function deserialize(config, user, done) {
   });
 }
 
-function initialize(config, app, serializerInstance) {
+function initialize(options, app, serializerInstance) {
   app._sessionSerializer = serializerInstance;
 }
 

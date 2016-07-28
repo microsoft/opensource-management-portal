@@ -19,10 +19,13 @@ const os = require('os');
 
 var staticHostname = os.hostname().toString();
 
-function DataClient(config, callback) {
-  var storageAccountName = config.azureStorage.account;
-  var storageAccountKey = config.azureStorage.key;
-  var prefix = config.azureStorage.prefix;
+function DataClient(options, callback) {
+  if (options.config === undefined) {
+    return callback(new Error('Configuration must be provided to the data client.'));
+  }
+  var storageAccountName = options.config.azureStorage.account;
+  var storageAccountKey = options.config.azureStorage.key;
+  var prefix = options.config.azureStorage.prefix;
   try {
     if (!storageAccountName || !storageAccountKey) {
       throw new Error('Storage account information is not configured.');
@@ -37,13 +40,13 @@ function DataClient(config, callback) {
     linksTableName: prefix + 'links',
     pendingApprovalsTableName: prefix + 'pending',
     errorsTableName: prefix + 'errors',
-    encrypt: config.authentication.encrypt,
+    encryption: options.config.azureStorage.encryption,
   };
-  if (this.options.encrypt === true) {
+  if (this.options.encryption === true) {
     const encryptColumns = new Set(['githubToken', 'githubTokenIncreasedScope']);
     const encryptionOptions = {
-      keyEncryptionKeyId: config.authentication.keyId,
-      keyResolver: keyResolver.bind(undefined, config),
+      keyEncryptionKeyId: options.config.azureStorage.encryptionKeyId,
+      keyResolver: options.keyEncryptionKeyResolver,
       encryptedPropertyNames: encryptColumns,
       binaryProperties: 'buffer',
       tableDehydrator: reduceEntity,
@@ -63,11 +66,6 @@ function DataClient(config, callback) {
   }, function (error) {
     if (callback) return callback(error, dc);
   });
-}
-
-function keyResolver(config, id, callback) {
-  const key = id === config.authentication.keyId ? config.authentication.key : null;
-  return callback(null, key);
 }
 
 var reduceEntity = function reduceEntity(instance) {

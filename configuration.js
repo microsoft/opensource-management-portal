@@ -105,9 +105,6 @@ module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets, 
       employeeData: utils.arrayFromString(configurationHelper.get('FRIENDS_DATA')),
     },
     authentication: {
-      encrypt: configurationHelper.get('AUTHENTICATION_ENCRYPT') === 'encrypt',
-      key: configurationHelper.get('AUTHENTICATION_ENCRYPT_KEY'),
-      keyId: configurationHelper.get('AUTHENTICATION_ENCRYPT_KEY_ID'),
       scheme: configurationHelper.get('AUTHENTICATION_SCHEME'),
     },
     github: {
@@ -119,6 +116,8 @@ module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets, 
     onboarding: [],
     session: {
       salt: configurationHelper.get('SESSION_SALT'),
+      encryption: configurationHelper.get('SESSION_ENCRYPTION') === 'encrypt',
+      encryptionKeyId: configurationHelper.get('SESSION_ENCRYPTION_KEY_ID'),
     },
     activeDirectory: {
       clientId: configurationHelper.get('AAD_CLIENT_ID'),
@@ -126,7 +125,7 @@ module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets, 
       tenantId: configurationHelper.get('AAD_TENANT_ID'),
       redirectUrl: configurationHelper.get('AAD_REDIRECT_URL'),
       issuer: configurationHelper.get('AAD_ISSUER'),
-      allowTenantGuests: (configurationHelper.get('AAD_ALLOW_TENANT_GUESTS') && configurationHelper.get('AAD_ALLOW_TENANT_GUESTS') === 'allow'),
+      allowTenantGuests: configurationHelper.get('AAD_ALLOW_TENANT_GUESTS') === 'allow',
     },
     // AppInsights is a Microsoft Cloud product for gathering analytics and
     // other useful information about apps. This app uses the Node.js npm
@@ -145,6 +144,8 @@ module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets, 
       account: configurationHelper.get('XSTORE_ACCOUNT'),
       key: configurationHelper.get('XSTORE_KEY'),
       prefix: configurationHelper.get('XSTORE_PREFIX'),
+      encryption: configurationHelper.get('XSTORE_ENCRYPTION') === 'encrypt',
+      encryptionKeyId: configurationHelper.get('XSTORE_ENCRYPTION_KEY_ID'),
     },
     // Redis is used for shared session state across running site instances.
     // The Azure Redis offering includes a redundant option, but as the

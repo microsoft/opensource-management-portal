@@ -9,6 +9,7 @@ const express = require('express');
 const redis = require('redis');
 const app = express();
 const keyVaultHelper = require('./lib/keyVaultHelper');
+const keyVaultResolver = require('./lib/keyVaultResolver');
 
 // Asynchronous initialization for the Express app, configuration and data stores.
 app.initializeApplication = function init(config, configurationError, callback) {
@@ -44,6 +45,8 @@ app.initializeApplication = function init(config, configurationError, callback) 
       if (resolveError) {
         return finalizeInitialization(resolveError);
       }
+      const keyEncryptionKeyResolver = keyVaultResolver(keyVaultClient);
+      app.set('keyEncryptionKeyResolver', keyEncryptionKeyResolver);
       var redisFirstCallback;
       var redisOptions = {
         auth_pass: config.redis.key,
@@ -63,7 +66,11 @@ app.initializeApplication = function init(config, configurationError, callback) 
       });
       async.parallel([
         function (cb) {
-          new DataClient(config, function (error, dcInstance) {
+          const dataClientOptions = {
+            config: config,
+            keyEncryptionKeyResolver: keyEncryptionKeyResolver,
+          };
+          new DataClient(dataClientOptions, function (error, dcInstance) {
             dc = dcInstance;
             cb(error);
           });

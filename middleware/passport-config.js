@@ -114,9 +114,14 @@ module.exports = function (app, config) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  passport.serializeUser(serializer.serialize(config));
-  passport.deserializeUser(serializer.deserialize(config));
-  serializer.initialize(config, app);
+  const serializerOptions = {
+    config: config,
+    keyResolver: app.get('keyEncryptionKeyResolver'),
+  };
+
+  passport.serializeUser(serializer.serialize(serializerOptions));
+  passport.deserializeUser(serializer.deserialize(serializerOptions));
+  serializer.initialize(serializerOptions, app);
 
   return passport;
 };

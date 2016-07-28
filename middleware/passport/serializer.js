@@ -8,27 +8,27 @@
 const serializer = {};
 
 function ensureSerializer(config) {
-  const serializerKey = config.authentication.encrypt;
+  const serializerKey = config.session.encryption;
   if (!serializer[serializerKey]) {
     serializer[serializerKey] = require(serializerKey === true ? './encryptionSerializer' : './plainSerializer');
   }
   return serializer[serializerKey];
 }
 
-function createSerialize(config) {
-  return ensureSerializer(config).serialize.bind(null, config);
+function createSerialize(options) {
+  return ensureSerializer(options.config).serialize.bind(null, options);
 }
 
-function createDeserialize(config) {
-  return ensureSerializer(config).deserialize.bind(null, config);
+function createDeserialize(options) {
+  return ensureSerializer(options.config).deserialize.bind(null, options);
 }
 
-function initialize(config, app) {
-  const serializerInstance = ensureSerializer(config);
+function initialize(options, app) {
+  const serializerInstance = ensureSerializer(options.config);
   const initializer = serializerInstance.initialize;
   if (initializer) {
     // Allow an opportunity to provide a warning or connect a route
-    initializer(config, app, serializerInstance);
+    initializer(options, app, serializerInstance);
   }
 }
 
