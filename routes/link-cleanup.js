@@ -48,6 +48,7 @@ function renderCleanupPage(req, res, idToConfirm, links) {
     linksForCleanupByColumn: twoColumns,
     numberToRemove: req.linksForCleanup.length - 1,
     confirming: idToConfirm,
+    hideGitHubAccount: true,
   });
 }
 

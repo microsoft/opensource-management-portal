@@ -203,7 +203,7 @@ exports.obfuscate = function obfuscate(value, lastCharactersShowCount) {
   }
   var length = value.length;
   lastCharactersShowCount = lastCharactersShowCount || 0;
-  lastCharactersShowCount = Math.min(lastCharactersShowCount, length - 1);
+  lastCharactersShowCount = Math.min(Math.round(lastCharactersShowCount), length - 1);
   var obfuscated = '';
   for (var i = 0; i < length - lastCharactersShowCount; i++) {
     obfuscated += '*';

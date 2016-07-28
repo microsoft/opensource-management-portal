@@ -81,7 +81,9 @@ function deserializeEntity(options, entityName, entity, callback) {
   };
   encryption.decryptEntity(partitionKey, rowKey, entity, encryptionOptions, (encryptError, decryptedEntity) => {
     if (encryptError) {
-      return callback(utils.wrapError(encryptError, 'There was a problem with the security subsystem retrieving your session.'));
+      const userError = utils.wrapError(encryptError, 'There was a problem with the security subsystem retrieving your session.');
+      userError.forceSignOut = true;
+      return callback(userError);
     }
     callback(null, decryptedEntity);
   });

@@ -18,18 +18,21 @@ mixin userTile(username, displayName, link, linkTitle, actionLink, action)
 mixin userGitHub
   - var actionLink = scheme === 'github' || !ossLink ? githubSignoutLink : '/link/update'
   - var action = scheme === 'github'|| !ossLink ? 'Sign Out' : 'Change'
-  h4 GitHub Account
-  if user && user.github
-    p
-      if user.github && user.github.avatarUrl
-        img(alt=user.github.displayName, src=user.github.avatarUrl + '&s=80', style='margin-right:10px;width:30px;height:30px', data-user=user.github.id)
-      +userTile(user.github.username, user.github.displayName || user.github.username, 'https://github.com/settings/profile', 'Click to edit your public GitHub profile', actionLink, action)
+  if hideGitHubAccount === true
+    //- A few specific pages should not show the GitHub account user pane
   else
-    if scheme === 'github'
+    h4 GitHub Account
+    if user && user.github
       p
-        small Sign in or create your GitHub.com account to manage your #{config && config.companyName || 'corporate'} open source identity
-    p
-      a.btn.btn-sm.btn-primary(href='/signin/github') Sign In
+        if user.github && user.github.avatarUrl
+          img(alt=user.github.displayName, src=user.github.avatarUrl + '&s=80', style='margin-right:10px;width:30px;height:30px', data-user=user.github.id)
+        +userTile(user.github.username, user.github.displayName || user.github.username, 'https://github.com/settings/profile', 'Click to edit your public GitHub profile', actionLink, action)
+    else
+      if scheme === 'github'
+        p
+          small Sign in or create your GitHub.com account to manage your #{config && config.companyName || 'corporate'} open source identity
+      p
+        a.btn.btn-sm.btn-primary(href='/signin/github') Sign In
 
 mixin userAzure
   - var actionLink = scheme === 'github' ? '/link/update' : azureSignoutLink
