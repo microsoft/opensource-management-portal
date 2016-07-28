@@ -82,8 +82,8 @@ describe('configuration', () => {
     it('successfully scrubs secret keys', () => {
       const configResult = createBareConfigurationWithScrub();
       assert.isDefined(configResult.obfuscatedConfig, 'obfuscated config exists');
-      assert.notEqual(configResult.obfuscatedConfig.express.sessionSalt, 'super secret', 'session salt is hidden');
-      assert.notEqual(configResult.obfuscatedConfig.express.sessionSalt, '***', 'session salt is obfuscated');
+      assert.notEqual(configResult.obfuscatedConfig.session.salt, 'super secret', 'session salt is hidden');
+      assert.notEqual(configResult.obfuscatedConfig.session.salt, '***', 'session salt is obfuscated');
     });
   });
 });

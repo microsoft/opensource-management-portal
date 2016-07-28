@@ -117,8 +117,8 @@ module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets, 
     },
     organizations: [],
     onboarding: [],
-    express: {
-      sessionSalt: configurationHelper.get('SESSION_SALT'),
+    session: {
+      salt: configurationHelper.get('SESSION_SALT'),
     },
     activeDirectory: {
       clientId: configurationHelper.get('AAD_CLIENT_ID'),
