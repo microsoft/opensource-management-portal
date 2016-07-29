@@ -16,6 +16,8 @@ function githubResponseToSubset(accessToken, refreshToken, profile, done) {
   let subset = {
     github: {
       accessToken: accessToken,
+      displayName: profile.displayName,
+      avatarUrl: profile._json && profile._json.avatar_url ? profile._json.avatar_url : undefined,
       id: profile.id,
       username: profile.username,
     },
@@ -27,8 +29,6 @@ function githubResponseToIncreasedScopeSubset(accessToken, refreshToken, profile
   let subset = {
     githubIncreasedScope: {
       accessToken: accessToken,
-      avatarUrl: profile._json && profile._json.avatar_url ? profile._json.avatar_url : undefined,
-      displayName: profile.displayName,
       id: profile.id,
       username: profile.username,
     },
