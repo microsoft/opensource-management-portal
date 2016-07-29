@@ -469,6 +469,12 @@ DataClient.prototype.getLink = function getLink(githubId, callback) {
   }
   dc.table.retrieveEntity(dc.options.linksTableName, dc.options.partitionKey, githubId, function (error, result, response) {
     if (error && !result) {
+      // This routine returns no error and a false 'link' when an entity is
+      // missing, but we still want to return an error for anything else,
+      // especially if there is encryption configured.
+      if (error.statusCode == 404 && error.code === 'ResourceNotFound') {
+        error = null;
+      }
       return callback(error, false);
     }
     return callback(error, result, response);
