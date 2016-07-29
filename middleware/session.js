@@ -14,7 +14,7 @@ module.exports = function (config, redisClient) {
   };
   var settings = {
     store: new RedisStore(redisOptions),
-    secret: config.express.sessionSalt,
+    secret: config.session.salt,
     name: 'sid',
     resave: false,
     saveUninitialized: false,

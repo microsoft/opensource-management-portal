@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+const async = require('async');
 const utils = require('../utils');
 const debug = require('debug')('azureossportal');
 
@@ -128,6 +129,74 @@ OpenSourceUser.prototype.avatar = function (optionalSize) {
   } else {
     return undefined;
   }
+};
+
+// ----------------------------------------------------------------------------
+// Returns the user's active memberships in organizations managed by this
+// portal.
+// ----------------------------------------------------------------------------
+OpenSourceUser.prototype.getActiveOrganizationMemberships = function (callback) {
+  var self = this;
+  var oss = self.oss;
+  var currentOrganizationMemberships = [];
+  async.each(oss.orgs(), function (o, cb) {
+    o.queryUserMembership(false /* no caching */, function (error, result) {
+      var state = null;
+      if (result && result.state) {
+        state = result.state;
+      }
+      if (state == 'active') // IGNORE: need to find out how to cancel pending invites... || state == 'pending') {
+        currentOrganizationMemberships.push(o);
+      cb(error);
+    });
+  }, function (error) {
+    callback(error, currentOrganizationMemberships);
+  });
+};
+
+// ----------------------------------------------------------------------------
+// Unlinks the user. For now we assume that this is a very serious operation.
+// This will unlink and then also drop from all GitHub organizations managed by
+// this instance of the portal.
+// ----------------------------------------------------------------------------
+OpenSourceUser.prototype.unlinkAndDrop = function (callback) {
+  var self = this;
+  var oss = self.oss;
+  self.getActiveOrganizationMemberships((getOrganizationsError, currentOrganizationMemberships) => {
+    if (getOrganizationsError) {
+      return callback(getOrganizationsError);
+    }
+    async.each(currentOrganizationMemberships, function (org, cb) {
+      org.removeUserMembership(function () {
+        // TODO: We now continue with deletes when one fails. Common
+        // failure case is when they have a pending invite, it will live
+        // on... which is not ideal.
+        cb();
+      });
+    }, function (/* ignored error per above statement */) {
+      var dc = self.oss.dataClient();
+      dc.removeLink(oss.id.github, callback);
+    });
+  });
+};
+
+// ----------------------------------------------------------------------------
+// Updates a link for the user. At this time it does not do much validation.
+// This is a full replacement of the link, not a merge.
+// ----------------------------------------------------------------------------
+OpenSourceUser.prototype.updateLink = function (updatedLink, callback) {
+  var self = this;
+  if (self.link && self.link.ghid !== self.id) {
+    callback(new Error('Had trouble before merging entities for a link update.'));
+  }
+  var dc = self.oss.dataClient();
+  dc.updateLink(self.id, updatedLink, (updateError) => {
+    if (updateError) {
+      return callback(utils.wrapError(updateError, `We were not able to perform an update to the link for user ID ${self.id} at this time.`));
+    }
+    self.link = updatedLink;
+    return callback(null, self.link);
+  });
 };
 
 // ----------------------------------------------------------------------------

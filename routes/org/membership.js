@@ -34,11 +34,11 @@ router.post('/', function (req, res, next) {
   var user = req.user;
   var onboarding = req.query.onboarding;
   var joining = req.query.joining;
-  if (user && user.github && user.github.increasedScope && user.github.increasedScope.github && user.github.increasedScope.github.accessToken) {
+  if (user && user.githubIncreasedScope && user.githubIncreasedScope.accessToken) {
     var org = req.org ? req.org : req.oss.org();
     var message1 = req.body.conceal ? 'concealing' : 'publicizing';
     var message2 = req.body.conceal ? 'hidden' : 'public, thanks for your support';
-    org[req.body.conceal ? 'setPrivateMembership' : 'setPublicMembership'].call(org, user.github.increasedScope.github.accessToken, function (error) {
+    org[req.body.conceal ? 'setPrivateMembership' : 'setPublicMembership'].call(org, user.githubIncreasedScope.accessToken, function (error) {
       if (error) {
         return next(utils.wrapError(error, 'We had trouble ' + message1 + ' your membership. Did you authorize the increased scope of access with GitHub?'));
       }

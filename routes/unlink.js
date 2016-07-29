@@ -32,34 +32,28 @@ router.use(function (req, res, next) {
 });
 
 router.get('/', function (req, res, next) {
-  var link = req.oss.entities.link;
-  if (link && link.ghu) {
-    return req.oss.render(req, res, 'unlink', 'Remove corporate link and organization memberships', {
-      orgs: req.currentOrganizationMemberships,
-    });
-  } else {
-    return next('No link could be found.');
-  }
+  var oss = req.oss;
+  oss.modernUser().getActiveOrganizationMemberships((error, currentOrganizationMemberships) => {
+    if (error) {
+      return next(error);
+    }
+    var link = req.oss.entities.link;
+    if (link && link.ghu) {
+      return req.oss.render(req, res, 'unlink', 'Remove corporate link and organization memberships', {
+        orgs: currentOrganizationMemberships,
+      });
+    } else {
+      return next('No link could be found.');
+    }
+  });
 });
 
 router.post('/', function (req, res, next) {
-  var currentOrganizationMemberships = req.currentOrganizationMemberships;
-  async.each(currentOrganizationMemberships, function (org, callback) {
-    org.removeUserMembership(function () {
-      // CHANGE: We now continue with deletes when one fails. Common
-      // failure case is when they have a pending invite, it will live
-      // on... which is not ideal.
-      callback();
-    });
-  }, function (/* ignored error per above statement */) {
-    var dc = req.app.settings.dataclient;
-    var oss = req.oss;
-    dc.removeLink(oss.id.github, function (error) {
-      if (error) {
-        return next(utils.wrapError(error, 'You were successfully removed from all of your organizations. However, a minor failure happened during a data housecleaning operation. Double check that you are happy with your current membership status on GitHub.com before continuing. Press Report Bug if you would like this handled for sure.'));
-      }
-      res.redirect('/signout');
-    });
+  req.oss.modernUser().unlinkAndDrop((error) => {
+    if (error) {
+      return next(utils.wrapError(error, 'You were successfully removed from all of your organizations. However, a minor failure happened during a data housecleaning operation. Double check that you are happy with your current membership status on GitHub.com before continuing. Press Report Bug if you would like this handled for sure.'));
+    }
+    res.redirect('/signout?unlink');
   });
 });
 

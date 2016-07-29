@@ -20,15 +20,18 @@
   ],
   "scripts": {
     "start": "node ./bin/www",
-    "jshint": "jshint ."
+    "test": "mocha && eslint ."
   },
   "engines": {
     "node": "~4.4.1"
   },
   "dependencies": {
+    "adal-node": "^0.1.21",
     "applicationinsights": "^0.15.16",
-    "async": "^2.0.0",
+    "async": "^2.0.1",
+    "azure-keyvault": "^0.10.1",
     "azure-storage": "^1.1.0",
+    "body-parser": "^1.15.2",
     "compression": "^1.6.0",
     "connect-redis": "^3.1.0",
     "debug": "~2.2.0",
@@ -39,7 +42,9 @@
     "jade": "1.11.0",
     "moment": "^2.14.1",
     "morgan": "~1.7.0",
+    "node-jose": "^0.9.0",
     "node-uuid": "^1.4.3",
+    "object-path": "^0.11.1",
     "octonode": "0.7.6",
     "painless-config": "^0.1.0",
     "passport": "^0.3.2",
@@ -49,6 +54,8 @@
     "serve-favicon": "~2.3.0"
   },
   "devDependencies": {
-    "jshint": "^2.8.0"
+    "chai": "^3.5.0",
+    "eslint": "^3.1.1",
+    "mocha": "^2.5.3"
   }
 }

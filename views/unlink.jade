@@ -32,10 +32,8 @@ block content
       li Private forks of repos from these orgs, if any, will be removed by GitHub
       li Work committed in a private fork of a #{config.companyName} org will be lost
 
-    p If you have any questions about this, please contact your team's GitHub liasons or your corporate legal contact.
-
     form(method='post', action='/unlink')
       p
-        input.btn.btn-lg.btn-primary(type='submit', value='Remove my corporate link')
+        input.btn.btn-lg.btn-danger(type='submit', value='Remove my corporate link')
         | &nbsp; &nbsp; &nbsp;
         a.btn.btn-lg.btn-default(href='/') Cancel

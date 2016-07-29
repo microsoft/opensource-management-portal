@@ -30,6 +30,10 @@ app.set('port', port);
 var configurationError = null;
 try {
   var config = require('../configuration')();
+  if (config.secretConfigurationKeys) {
+    var obfuscatedConfig = require('../configuration')(true);
+    config.obfuscatedConfig = obfuscatedConfig;
+  }
 } catch (err) {
   configurationError = err;
 }

@@ -24,15 +24,17 @@ block content
         if errorStatus
           h2= 'HTTP ' + errorStatus
 
+        //- Detailed is a user-intended field. It can contain raw HTML.
+        //- Do not allow detailed to be set from user input or responses.
         if detailed
-          p.lead= detailed
+          p.lead!= detailed
 
         if errorFancyLink
           p
             a.btn.btn-primary(href=errorFancyLink.link)= errorFancyLink.title
 
         p
-          if skipLog
+          if skipLog && !errorFancyLink
             a.btn.btn-sm.btn-default(href='about:blank', onclick='window.history.back(); return false;') Go back
             | &nbsp; &nbsp;
 

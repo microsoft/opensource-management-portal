@@ -197,10 +197,33 @@ textarea#editor-body {
   font-family: Consolas, Courier, "Courier New";
 }
 
-/* general styling for the wiki */
 footer {
   margin-top: 36px;
   margin-bottom: 24px;
+}
+
+.vertical-space, .vertical-space-top {
+  margin-top: 16px;
+}
+
+.vertical-space, .vertical-space-bottom {
+  margin-bottom: 16px;
+}
+
+.pad, vertical-pad, .vertical-pad-top {
+  padding-top: 16px;
+}
+
+.pad, vertical-pad, .vertical-pad-bottom {
+  padding-bottom: 16px;
+}
+
+.pad, .horizontal-pad, .horizontal-pad-left {
+  padding-left: 16px;
+}
+
+.pad, .horizontal-pad, .horizontal-pad-right {
+  padding-right: 16px;
 }
 
 code {

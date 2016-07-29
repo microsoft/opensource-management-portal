@@ -5,12 +5,12 @@
 
 'use strict';
 
+/*eslint no-console: ["error", { allow: ["warn"] }] */
+
 // This file is very sad. :(
 
 // This is the original data interface for this portal. It uses Azure
-// table storage and its Node.js SDK. There's a lot of potential work
-// to do here to better factor this and allow for other data providers
-// such as MonogDB...
+// table storage and its Node.js SDK.
 
 const azure = require('azure-storage');
 const async = require('async');
@@ -19,10 +19,13 @@ const os = require('os');
 
 var staticHostname = os.hostname().toString();
 
-function DataClient(config, callback) {
-  var storageAccountName = config.azureStorage.account;
-  var storageAccountKey = config.azureStorage.key;
-  var prefix = config.azureStorage.prefix;
+function DataClient(options, callback) {
+  if (options.config === undefined) {
+    return callback(new Error('Configuration must be provided to the data client.'));
+  }
+  var storageAccountName = options.config.azureStorage.account;
+  var storageAccountKey = options.config.azureStorage.key;
+  var prefix = options.config.azureStorage.prefix;
   try {
     if (!storageAccountName || !storageAccountKey) {
       throw new Error('Storage account information is not configured.');
@@ -37,14 +40,26 @@ function DataClient(config, callback) {
     linksTableName: prefix + 'links',
     pendingApprovalsTableName: prefix + 'pending',
     errorsTableName: prefix + 'errors',
-    auditTableName: prefix + 'auditlog',
+    encryption: options.config.azureStorage.encryption,
   };
+  if (this.options.encryption === true) {
+    const encryptColumns = new Set(['githubToken', 'githubTokenIncreasedScope']);
+    const encryptionOptions = {
+      keyEncryptionKeyId: options.config.azureStorage.encryptionKeyId,
+      keyResolver: options.keyEncryptionKeyResolver,
+      encryptedPropertyNames: encryptColumns,
+      binaryProperties: 'buffer',
+      tableDehydrator: reduceEntity,
+      tableRehydrator: this.createEntity.bind(this),
+    };
+    const tableClient = this.table;
+    this.table = require('./lib/tableEncryption')(tableClient, encryptionOptions);
+  }
   var dc = this;
   var tableNames = [
     dc.options.linksTableName,
     dc.options.pendingApprovalsTableName,
     dc.options.errorsTableName,
-    dc.options.auditTableName,
   ];
   async.each(tableNames, function (tableName, callback) {
     dc.table.createTableIfNotExists(tableName, callback);
@@ -53,20 +68,9 @@ function DataClient(config, callback) {
   });
 }
 
-// Strip the Azure table storage fields if no uninteresting fields are provided.
-var reduceEntity = function reduceEntity(instance, uninterestingFields) {
+var reduceEntity = function reduceEntity(instance) {
   if (instance === undefined || instance === null) {
     return instance;
-  }
-  if (uninterestingFields === undefined) {
-    uninterestingFields = ['.metadata', 'Timestamp', 'RowKey', 'PartitionKey'];
-  }
-  if (uninterestingFields && uninterestingFields.length) {
-    for (var i = 0; i < uninterestingFields.length; i++) {
-      if (instance[uninterestingFields[i]] !== undefined) {
-        delete instance[uninterestingFields[i]];
-      }
-    }
   }
   for (var column in instance) {
     if (instance[column] && instance[column]._ !== undefined) {
@@ -78,16 +82,12 @@ var reduceEntity = function reduceEntity(instance, uninterestingFields) {
 
 DataClient.prototype.reduceEntity = reduceEntity;
 
-DataClient.prototype.requestToUserInformation = function rtui(req, storeFullUserInformation) {
+DataClient.prototype.requestToUserInformation = function rtui(req) {
   var info = {
     ghid: undefined,
     ghu: undefined,
     aad: undefined,
-    fulluser: undefined
   };
-  if (storeFullUserInformation) {
-    info.fulluser = JSON.stringify(req.user);
-  }
   if (req && req.user && req.user.github && req.user.github.id) {
     info.ghid = req.user.github.id;
     if (info.ghid.toString) {
@@ -105,7 +105,6 @@ DataClient.prototype.requestToUserInformation = function rtui(req, storeFullUser
 
 DataClient.prototype.insertErrorLogEntry = function insertErrorEntry(version, req, err, meta, callback) {
   // generic configuration, should move out at some point...
-  var storeFullUserInformation = false;
   var storeUnknownUserErrors = false;
   var storeRequestInformation = true;
   var cbNoErrors = function (callback) {
@@ -121,7 +120,7 @@ DataClient.prototype.insertErrorLogEntry = function insertErrorEntry(version, re
   // (e, json, meta): (error message, JSON serialized err, JSON metadata)
   // (url, host, ...): various host and request informational fields
   try {
-    var info = dc.requestToUserInformation(req, storeFullUserInformation);
+    var info = dc.requestToUserInformation(req);
     // We may encounter users without a session. In these cases, we could log with -1 ID for pkey (OR use correlation ID for the pkey... hmm.)
     if (info.ghid === undefined) {
       if (!storeUnknownUserErrors) {
@@ -209,6 +208,7 @@ DataClient.prototype.insertErrorLogEntry = function insertErrorEntry(version, re
 DataClient.prototype.updateError = function (partitionKey, rowKey, mergeEntity, callback) {
   var dc = this;
   var entity = dc.createEntity(partitionKey, rowKey, mergeEntity);
+  console.warn('This method does not work with encryption at this time.');
   dc.table.mergeEntity(dc.options.errorsTableName, entity, callback);
 };
 
@@ -224,7 +224,6 @@ DataClient.prototype.getActiveErrors = function (correlationId, callback) {
     callback = correlationId;
     correlationId = undefined;
   }
-  var metadataFieldsToSkip = ['.metadata', 'Timestamp'];
   var done = false;
   var continuationToken = null;
   var entries = [];
@@ -248,7 +247,7 @@ DataClient.prototype.getActiveErrors = function (correlationId, callback) {
         }
         if (results && results.entries && results.entries.length) {
           for (var i = 0; i < results.entries.length; i++) {
-            entries.push(reduceEntity(results.entries[i], metadataFieldsToSkip));
+            entries.push(reduceEntity(results.entries[i]));
           }
         }
         asyncCallback();
@@ -275,14 +274,29 @@ DataClient.prototype.mergeIntoEntity = function mit(entity, obj, callback) {
   var dc = this;
   if (obj) {
     for (var key in obj) {
+      // Currently stripping metadata
+      if (key === '.metadata') {
+        continue;
+      }
       if (obj[key] === undefined) {
         // Skip undefined objects, including the key
+        continue;
+      }
+      if (typeof obj[key] === 'string') {
+        entity[key] = dc.entGen.String(obj[key]);
       } else if (obj[key] === true) {
         entity[key] = dc.entGen.Boolean(true);
       } else if (obj[key] === false) {
         entity[key] = dc.entGen.Boolean(false);
+      } else if (Buffer.isBuffer(obj[key])) {
+        entity[key] = dc.entGen.Binary(obj[key]);
+      } else if (obj[key] instanceof Date) {
+        entity[key] = dc.entGen.DateTime(obj[key]);
+      } else if (typeof obj[key] === 'number') {
+        // Opinionated entity processing: store all numbers as strings
+        entity[key] = dc.entGen.String(obj[key].toString());
       } else {
-        // CONSIDER: Richer merging opportunities!
+        console.warn('Consider whether a new entity merge clause is required for key ' + key + ' of type:' + typeof obj[key]);
         if (obj[key].toString) {
           entity[key] = dc.entGen.String(obj[key].toString());
         } else {
@@ -312,7 +326,7 @@ DataClient.prototype.createEntity = function ce(partitionKey, rowKey, obj, callb
     dc.mergeIntoEntity(entity, obj);
   }
   if (callback) {
-    callback(null, entity);
+    return callback(null, entity);
   } else {
     return entity;
   }
@@ -323,14 +337,24 @@ DataClient.prototype.createEntity = function ce(partitionKey, rowKey, obj, callb
 // CONSIDER: Replace link calls with reduced entity "association" calls, then depre. & remove these funcs.
 DataClient.prototype.createLinkObjectFromRequest = function createLinkObject(req, callback) {
   if (req && req.user && req.user.github && req.user.azure && req.user.github.username && req.user.github.id && req.user.azure.username && req.user.azure.oid) {
-    return callback(null, {
+    var link = {
       ghu: req.user.github.username,
       ghid: req.user.github.id.toString(),
       aadupn: req.user.azure.username,
       aadname: req.user.azure.displayName,
       aadoid: req.user.azure.oid,
-      joined: new Date().getTime()
-    });
+      joined: new Date().getTime(),
+    };
+    link.ghavatar = req.user.github.avatarUrl;
+    if (req.user.github.accessToken) {
+      link.githubToken = req.user.github.accessToken;
+      link.githubTokenUpdated = new Date().getTime();
+    }
+    if (req.user.githubIncreasedScope && req.user.githubIncreasedScope.accessToken) {
+      link.githubTokenIncreasedScope = req.user.githubIncreasedScope.accessToken;
+      link.githubTokenIncreasedScopeUpdated = new Date().getTime();
+    }
+    return callback(null, link);
   } else {
     return callback(new Error('Not all fields needed for creating a link are available and authenticated. This may be a temporary problem or an implementation bug.'));
   }
@@ -396,14 +420,24 @@ DataClient.prototype.getUserLinkByUsername = function gulbyu(githubUsername, cal
   });
 };
 
-DataClient.prototype.updateLink = function updl(userid, mergeEntity, callback) {
+DataClient.prototype.updateLink = function updl(userid, replaceEntity, callback) {
   var dc = this;
-  var entity = dc.createEntity(dc.options.partitionKey, userid, mergeEntity);
-  dc.table.mergeEntity(dc.options.linksTableName, entity, callback);
+  if (userid === undefined) {
+    return callback(new Error('The GitHub ID is undefined.'));
+  }
+  if (typeof userid != 'string') {
+    userid = userid.toString();
+  }
+  var entity = dc.createEntity(dc.options.partitionKey, userid, replaceEntity);
+  dc.table.replaceEntity(dc.options.linksTableName, entity, callback);
 };
 
 DataClient.prototype.getUserByAadUpn = function gubauapn(employeeAlias, callback) {
   this.getUserLinkByProperty('aadupn', employeeAlias.toLowerCase(), callback);
+};
+
+DataClient.prototype.getUserByAadOid = function getByOid(oid, callback) {
+  this.getUserLinkByProperty('aadoid', oid, callback);
 };
 
 DataClient.prototype.getUserLinkByProperty = function gulbprop(propertyName, value, callback) {
@@ -435,7 +469,7 @@ DataClient.prototype.getLink = function getLink(githubId, callback) {
   }
   dc.table.retrieveEntity(dc.options.linksTableName, dc.options.partitionKey, githubId, function (error, result, response) {
     if (error && !result) {
-      return callback(null, false);
+      return callback(error, false);
     }
     return callback(error, result, response);
   });
@@ -481,29 +515,16 @@ DataClient.prototype.getAllEmployees = function getAllEmployees(callback) {
     });
 };
 
-// 9/4/15 jwilcox: insertLink and updateLink now use the shared merge/copy entity calls. Previously these 2 methods instead did a string-only entGen and copy of key/values, so beware any behavior changes. Remove this line once happy with that.
 DataClient.prototype.insertLink = function insertLink(githubId, details, callback) {
   var dc = this;
   if (githubId === undefined) {
     return callback(new Error('The GitHub ID is undefined.'));
   }
-  if (typeof githubId != 'string') {
+  if (typeof githubId !== 'string') {
     githubId = githubId.toString();
   }
   var entity = dc.createEntity(dc.options.partitionKey, githubId, details);
   dc.table.insertEntity(dc.options.linksTableName, entity, callback);
-};
-
-DataClient.prototype.updateLink = function insertLink(githubId, details, callback) {
-  var dc = this;
-  if (githubId === undefined) {
-    return callback(new Error('The GitHub ID is undefined.'));
-  }
-  if (typeof githubId != 'string') {
-    githubId = githubId.toString();
-  }
-  var entity = dc.createEntity(dc.options.partitionKey, githubId, details);
-  dc.table.mergeEntity(dc.options.linksTableName, entity, callback);
 };
 
 DataClient.prototype.removeLink = function removeLink(githubId, callback) {
@@ -564,7 +585,7 @@ DataClient.prototype.getPendingApprovals = function getPendingApprovals(teamsIn,
         for (var i = 0; i < results.entries.length; i++) {
           var r = results.entries[i];
           if (r && r.active && r.active._) {
-            entries.push(reduceEntity(r, ['.metadata']));
+            entries.push(reduceEntity(r));
           }
         }
       }
@@ -601,7 +622,7 @@ DataClient.prototype.getApprovalRequest = function gar(requestId, callback) {
   var dc = this;
   dc.table.retrieveEntity(dc.options.pendingApprovalsTableName, dc.options.partitionKey, requestId, function (error, ent) {
     if (error) return callback(error);
-    callback(null, reduceEntity(ent, ['.metadata']));
+    callback(null, reduceEntity(ent));
   });
 };
 
@@ -624,7 +645,7 @@ DataClient.prototype.getPendingApprovalsForUserId = function gpeaf(githubid, cal
         for (var i = 0; i < results.entries.length; i++) {
           var r = results.entries[i];
           if (r && r.active && r.active._) {
-            entries.push(reduceEntity(r, ['.metadata']));
+            entries.push(reduceEntity(r));
           }
         }
       }

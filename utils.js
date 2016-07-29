@@ -13,6 +13,40 @@ exports.randomInteger = function (low, high) {
 };
 
 // ----------------------------------------------------------------------------
+// Session utility: Store the referral URL, if present, and redirect to a new
+// location.
+// ----------------------------------------------------------------------------
+exports.storeReferrer = function storeReferrer(req, res, redirect) {
+  if (req.session && req.headers && req.headers.referer && req.session.referer !== undefined && !req.headers.referer.includes('/signout')) {
+    req.session.referer = req.headers.referer;
+  }
+  if (redirect) {
+    res.redirect(redirect);
+  }
+};
+
+// ----------------------------------------------------------------------------
+// Session utility: store the original URL
+// ----------------------------------------------------------------------------
+exports.storeOriginalUrlAsReferrer = function storeOriginalUrl(req, res, redirect) {
+  if (req.session && req.originalUrl) {
+    req.session.referer = req.originalUrl;
+  }
+  if (redirect) {
+    res.redirect(redirect);
+  }
+};
+
+exports.redirectToReferrer = function redirectToReferrer(req, res, url) {
+  url = url || '/';
+  if (req.session && req.session.referer) {
+    url = req.session.referer;
+    delete req.session.referer;
+  }
+  res.redirect(url);
+};
+
+// ----------------------------------------------------------------------------
 // Provide our own error wrapper and message for an underlying thrown error.
 // Useful for the user-presentable version.
 // ----------------------------------------------------------------------------
@@ -158,6 +192,26 @@ exports.arrayToHashById = function athi(inputArray) {
     }
   }
   return hash;
+};
+
+// ----------------------------------------------------------------------------
+// Obfuscate a string value, optionally leaving a few characters visible.
+// ----------------------------------------------------------------------------
+exports.obfuscate = function obfuscate(value, lastCharactersShowCount) {
+  if (value === undefined || value === null || value.length === undefined) {
+    return value;
+  }
+  var length = value.length;
+  lastCharactersShowCount = lastCharactersShowCount || 0;
+  lastCharactersShowCount = Math.min(Math.round(lastCharactersShowCount), length - 1);
+  var obfuscated = '';
+  for (var i = 0; i < length - lastCharactersShowCount; i++) {
+    obfuscated += '*';
+  }
+  for (var j = length - lastCharactersShowCount; j < length; j++) {
+    obfuscated += value[j];
+  }
+  return obfuscated;
 };
 
 // ----------------------------------------------------------------------------

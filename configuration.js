@@ -30,22 +30,63 @@ const requiredConfigurationKeys = [
   'REDIS_KEY',
 ];
 
-module.exports = function translateEnvironmentToConfiguration(legacyConfiguration) {
-  if (legacyConfiguration) {
-    throw new Error('No parameters should be passed in as configuration now that painless-config is in use.');
-  }
-  var configurationHelper = painlessConfig;
+const secretConfigurationKeys = [
+  'GITHUB_CLIENT_SECRET',
+  'SESSION_SALT',
+  'AAD_CLIENT_SECRET',
+  'XSTORE_KEY',
+  'REDIS_KEY',
+  '*TOKEN*', // Special case: covers auth tokens, hook tokens, etc.
+];
+
+const obfuscationSuffixCharactersToShow = 4;
+
+module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets, configurationHelper) {
+  let initialConfigurationHelper = configurationHelper || painlessConfig;
+  configurationHelper = initialConfigurationHelper;
   for (let i = 0; i < requiredConfigurationKeys.length; i++) {
     if (!configurationHelper.get(requiredConfigurationKeys[i])) {
       throw new Error(`Configuration parameter "${requiredConfigurationKeys[i]}" is required for this application to initialize.`);
     }
   }
+  if (obfuscateSecrets === true) {
+    var secretKeys = new Set(secretConfigurationKeys);
+    var wildcards = [];
+    for (var wi = 0; wi < secretConfigurationKeys.length; wi++) {
+      var wik = secretConfigurationKeys[wi];
+      if (wik.startsWith('*') && wik.endsWith('*')) {
+        wildcards.push(wik.substr(1, wik.length - 2));
+      }
+    }
+    configurationHelper = {
+      get: function (key) {
+        var value = initialConfigurationHelper.get(key);
+        if (secretKeys.has(key) && value !== undefined) {
+          value = utils.obfuscate(value, obfuscationSuffixCharactersToShow);
+        } else {
+          for (var p = 0; p < wildcards.length; p++) {
+            if (key.includes(wildcards[p])) {
+              value = utils.obfuscate(value, obfuscationSuffixCharactersToShow);
+              break;
+            }
+          }
+        }
+        return value;
+      }
+    };
+  } else if (obfuscateSecrets !== false && obfuscateSecrets !== undefined) {
+    throw new Error(`Invalid first parameter value: ${obfuscateSecrets}`);
+  }
   let config = {
     logging: {
       errors: configurationHelper.get('SITE_SKIP_ERRORS') === undefined,
       version: pkgInfo.version,
+      showUsers: configurationHelper.get('SITE_SHOW_USERS') === 'show',
     },
+    secretConfigurationKeys: secretConfigurationKeys,
+    obfuscatedConfig: null,
     companyName: configurationHelper.get('COMPANY_NAME'),
+    portalName: configurationHelper.get('PORTAL_NAME') || 'Open Source Portal for GitHub',
     serviceBanner: configurationHelper.get('SITE_SERVICE_BANNER'),
     websiteSku: configurationHelper.get('WEBSITE_SKU'),
     expectedSslCertificate: configurationHelper.get('EXPECTED_SSL_CERTIFICATE'),
@@ -63,7 +104,9 @@ module.exports = function translateEnvironmentToConfiguration(legacyConfiguratio
       cla: utils.arrayFromString(configurationHelper.get('FRIENDS_CLA')),
       employeeData: utils.arrayFromString(configurationHelper.get('FRIENDS_DATA')),
     },
-    primaryAuthenticationScheme: configurationHelper.get('PRIMARY_AUTHENTICATION_SCHEME'),
+    authentication: {
+      scheme: configurationHelper.get('AUTHENTICATION_SCHEME'),
+    },
     github: {
       clientId: configurationHelper.get('GITHUB_CLIENT_ID'),
       clientSecret: configurationHelper.get('GITHUB_CLIENT_SECRET'),
@@ -71,8 +114,10 @@ module.exports = function translateEnvironmentToConfiguration(legacyConfiguratio
     },
     organizations: [],
     onboarding: [],
-    express: {
-      sessionSalt: configurationHelper.get('SESSION_SALT'),
+    session: {
+      salt: configurationHelper.get('SESSION_SALT'),
+      encryption: configurationHelper.get('SESSION_ENCRYPTION') === 'encrypt',
+      encryptionKeyId: configurationHelper.get('SESSION_ENCRYPTION_KEY_ID'),
     },
     activeDirectory: {
       clientId: configurationHelper.get('AAD_CLIENT_ID'),
@@ -80,7 +125,7 @@ module.exports = function translateEnvironmentToConfiguration(legacyConfiguratio
       tenantId: configurationHelper.get('AAD_TENANT_ID'),
       redirectUrl: configurationHelper.get('AAD_REDIRECT_URL'),
       issuer: configurationHelper.get('AAD_ISSUER'),
-      allowTenantGuests: (configurationHelper.get('AAD_ALLOW_TENANT_GUESTS') && configurationHelper.get('AAD_ALLOW_TENANT_GUESTS') === 'allow'),
+      allowTenantGuests: configurationHelper.get('AAD_ALLOW_TENANT_GUESTS') === 'allow',
     },
     // AppInsights is a Microsoft Cloud product for gathering analytics and
     // other useful information about apps. This app uses the Node.js npm
@@ -99,6 +144,8 @@ module.exports = function translateEnvironmentToConfiguration(legacyConfiguratio
       account: configurationHelper.get('XSTORE_ACCOUNT'),
       key: configurationHelper.get('XSTORE_KEY'),
       prefix: configurationHelper.get('XSTORE_PREFIX'),
+      encryption: configurationHelper.get('XSTORE_ENCRYPTION') === 'encrypt',
+      encryptionKeyId: configurationHelper.get('XSTORE_ENCRYPTION_KEY_ID'),
     },
     // Redis is used for shared session state across running site instances.
     // The Azure Redis offering includes a redundant option, but as the

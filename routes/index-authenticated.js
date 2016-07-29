@@ -3,43 +3,129 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+/*eslint no-console: ["error", { allow: ["warn"] }] */
+
 const express = require('express');
 const router = express.Router();
 const async = require('async');
 const OpenSourceUserContext = require('../oss');
 const linkRoute = require('./link');
 const linkedUserRoute = require('./index-linked');
+const linkCleanupRoute = require('./link-cleanup');
+const utils = require('../utils');
 
 router.use(function (req, res, next) {
   var config = req.app.settings.runtimeConfig;
   if (req.isAuthenticated()) {
-    if (req.user && !req.user.github) {
-      // no github info
-      // IF secondary auth,... 1) check for a link
-      //            return next(new Error('We do not have your GitHub stuff.'));
+    var expectedAuthenticationProperty = config.authentication.scheme === 'github' ? 'github' : 'azure';
+    if (req.user && !req.user[expectedAuthenticationProperty]) {
+      console.warn(`A user session was authenticated but did not have present the property "${expectedAuthenticationProperty}" expected for this type of authentication. Signing them out.`);
+      return res.redirect('/signout');
     }
-    if (req.user && req.user.github && !req.user.github.id) {
-      return next(new Error('Invalid GitHub user information provided by GitHub.'));
+    var expectedAuthenticationKey = config.authentication.scheme === 'github' ? 'id' : 'username';
+    if (!req.user[expectedAuthenticationProperty][expectedAuthenticationKey]) {
+      return next(new Error('Invalid information present for the authentication provider.'));
     }
-    var dc = req.app.settings.dataclient;
-    new OpenSourceUserContext(config, dc, req.user, dc.cleanupInTheFuture.redisClient, function (error, instance) {
-      req.oss = instance;
-      instance.addBreadcrumb(req, 'Organizations');
-      return next(error);
-    });
-  } else {
-    var url = req.originalUrl;
-    if (url) {
-      if (req.session) {
-        req.session.referer = req.originalUrl;
-      }
-    }
-    var authUrl = config.primaryAuthenticationScheme === 'github' ? '/auth/github' : '/auth/azure';
-    res.redirect(authUrl);
+    return next();
   }
+  utils.storeOriginalUrlAsReferrer(req, res, config.authentication.scheme === 'github' ? '/auth/github' : '/auth/azure');
 });
 
+router.use((req, res, next) => {
+  var options = {
+    config: req.app.settings.runtimeConfig,
+    dataClient: req.app.settings.dataclient,
+    redisClient: req.app.settings.dataclient.cleanupInTheFuture.redisClient,
+    request: req,
+  };
+  new OpenSourceUserContext(options, (error, instance) => {
+    req.oss = instance;
+    if (error && error.tooManyLinks === true) {
+      if (req.url === '/link-cleanup') {
+        // The only URL permitted in this state is the cleanup endpoint
+        return next();
+      }
+      return res.redirect('/link-cleanup');
+    }
+    instance.addBreadcrumb(req, 'Organizations');
+    return next(error);
+  });
+});
+
+router.use('/link-cleanup', linkCleanupRoute);
+
 router.use('/link', linkRoute);
+
+// Link cleanups
+router.use((req, res, next) => {
+  if (!req.oss || !req.oss.modernUser() || req.oss.modernUser().link === false) {
+    return next();
+  }
+  var link = req.oss.modernUser().link;
+  if (req.user.azure && req.user.azure.oid && link.aadoid && req.user.azure.oid !== link.aadoid) {
+    return next(new Error('Directory security identifier mismatch. Please submit a report to have this checked on.'));
+  }
+  if (req.user.github && req.user.github.id && link.ghid && req.user.github.id !== link.ghid) {
+    return next(new Error('GitHub user security identifier mismatch. Please submit a report to have this checked on.'));
+  }
+  var linkUpdates = {};
+  var updatedProperties = new Set();
+  var sessionToLinkMap = {
+    github: {
+      username: 'ghu',
+      avatarUrl: 'ghavatar',
+      accessToken: 'githubToken',
+    },
+    githubIncreasedScope: {
+      accessToken: 'githubTokenIncreasedScope',
+    },
+    azure: {
+      displayName: 'aadname',
+      username: 'aadupn',
+    },
+  };
+  for (var sessionKey in sessionToLinkMap) {
+    for (var property in sessionToLinkMap[sessionKey]) {
+      var linkProperty = sessionToLinkMap[sessionKey][property];
+      if (req.user[sessionKey] && req.user[sessionKey][property] && link[linkProperty] !== req.user[sessionKey][property]) {
+        linkUpdates[linkProperty] = req.user[sessionKey][property];
+        updatedProperties.add(`${sessionKey}.${property}`);
+        console.warn(`Link property "${linkProperty}" updated from "${link[linkProperty]}"->"${linkUpdates[linkProperty]}"`);
+      }
+    }
+  }
+  if (updatedProperties.has('github.accessToken')) {
+    linkUpdates.githubTokenUpdated = new Date().getTime();
+  }
+  if (updatedProperties.has('githubIncreasedScope.accessToken')) {
+    linkUpdates.githubTokenIncreasedScopeUpdated = new Date().getTime();
+  }
+  if (Object.keys(linkUpdates).length === 0) {
+    return next();
+  }
+  utils.merge(link, linkUpdates);
+  req.oss.modernUser().updateLink(link, (mergeError /*, mergedLink*/) => {
+    if (mergeError) {
+      return next(mergeError);
+    }
+    req.oss.setPropertiesFromLink(/*mergedLink*/link, () => {
+      next();
+    });
+  });
+});
+
+// Ensure we have a GitHub token for AAD users once they are linked. This is
+// for users of the portal before the switch to supporting primary authentication
+// of a type other than GitHub.
+router.use((req, res, next) => {
+  if (req.app.settings.runtimeConfig.authentication.scheme === 'aad' && req.oss && req.oss.modernUser()) {
+    var link = req.oss.modernUser().link;
+    if (link && !link.githubToken) {
+      return utils.storeOriginalUrlAsReferrer(req, res, '/link/reconnect');
+    }
+  }
+  next();
+});
 
 router.get('/', function (req, res, next) {
   var oss = req.oss;
@@ -50,22 +136,22 @@ router.get('/', function (req, res, next) {
   var allowCaching = onboarding ? false : true;
 
   if (!link) {
-    if (config.primaryAuthenticationScheme === 'github' && req.user.azure === undefined ||
-      config.primaryAuthenticationScheme === 'aad' && req.user.github === undefined) {
+    if (config.authentication.scheme === 'github' && req.user.azure === undefined ||
+      config.authentication.scheme === 'aad' && req.user.github === undefined) {
       return oss.render(req, res, 'welcome', 'Welcome');
     }
-    if (config.primaryAuthenticationScheme === 'github' && req.user.azure && req.user.azure.oid ||
-      config.primaryAuthenticationScheme === 'aad' && req.user.github && req.user.github.id) {
+    if (config.authentication.scheme === 'github' && req.user.azure && req.user.azure.oid ||
+      config.authentication.scheme === 'aad' && req.user.github && req.user.github.id) {
       return res.redirect('/link');
     }
     return next(new Error('This account is not yet linked, but a workflow error is preventing further progress. Please report this issue. Thanks.'));
   }
 
   // They're changing their corporate identity (rare, often just service accounts)
-  if (link && link.aadupn && req.user.azure && req.user.azure.username && req.user.azure.username.toLowerCase() !== link.aadupn.toLowerCase()) {
+  if (config.authentication.scheme === 'github' && link && link.aadupn && req.user.azure && req.user.azure.username && req.user.azure.username.toLowerCase() !== link.aadupn.toLowerCase()) {
     return res.redirect('/link/update');
   }
-  // TODO: Add similar code for GitHub data, etc.
+
   var twoFactorOff = null;
   var activeOrg = null;
   async.parallel({
@@ -145,7 +231,7 @@ router.get('/', function (req, res, next) {
         onboarding = true;
       }
       var render = function (results) {
-        var pageTitle = results && results.userOrgMembership === false ? 'My GitHub Account' : config.companyName + ' - Open Source Portal for GitHub';
+        var pageTitle = results && results.userOrgMembership === false ? 'My GitHub Account' : config.companyName + ' - ' + config.portalName;
         oss.render(req, res, 'index', pageTitle, {
           accountInfo: results,
           onboarding: onboarding,

@@ -51,6 +51,9 @@ module.exports = function (err, req, res, next) {
     console.error('Headers were already sent.');
     return next(err);
   }
+  if (err && err.forceSignOut === true && req && req.logout) {
+    req.logout();
+  }
   res.status(err.status || 500);
   res.render('error', {
     message: err.message,
@@ -62,6 +65,6 @@ module.exports = function (err, req, res, next) {
     error: {},
     title: err.status === 404 ? 'Not Found' : 'Oops',
     user: req.user,
-    config: config,
+    config: config && config.obfuscatedConfig ? config.obfuscatedConfig : null,
   });
 };

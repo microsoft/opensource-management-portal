@@ -28,14 +28,13 @@ function getPackageInfo() {
 }
 
 router.get('/', function (req, res) {
-  var config = req.app.settings.runtimeConfig;
+  var config = req.app.settings.runtimeConfig.obfuscatedConfig;
   var components = getPackageInfo();
   res.render('thanks', {
-    user: req.user,
     config: config,
     components: components,
     serviceBanner: config && config.serviceBanner ? config.serviceBanner : undefined,
-    title: 'Open Source Portal for GitHub - ' + config.companyName
+    title: 'Open Source Components',
   });
 });
 

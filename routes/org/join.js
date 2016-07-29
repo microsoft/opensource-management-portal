@@ -47,13 +47,12 @@ router.get('/', function (req, res, next) {
     };
     if (state == 'active') {
       clearAuditListAndRedirect();
-    } else if (state == 'pending' && req.user.github.increasedScope) {
-      var userToken = req.user.github.increasedScope.github.accessToken;
+    } else if (state == 'pending' && req.user.githubIncreasedScope) {
+      var userToken = req.user.githubIncreasedScope.accessToken;
       org.acceptOrganizationInvitation(userToken, function (error, updatedState) {
         if (error) {
           if (error.statusCode == 401) {
-            req.session.referer = req.originalUrl;
-            return res.redirect('/auth/github/increased-scope');
+            return utils.storeOriginalUrlAsReferrer(req, res, '/auth/github/increased-scope');
           }
           // We do not error out, they can still fall back on the
           // manual acceptance system that the page will render.
@@ -77,11 +76,10 @@ router.get('/express', function (req, res, next) {
     var state = result && result.state ? result.state : false;
     if (state == 'active' || state == 'pending') {
       res.redirect(org.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + org.name));
-    } else if (req.user.github.increasedScope && req.user.github.increasedScope.github && req.user.github.increasedScope.github.accessToken) {
+    } else if (req.user.githubIncreasedScope && req.user.githubIncreasedScope.accessToken) {
       joinOrg(req, res, next);
     } else {
-      req.session.referer = req.originalUrl;
-      res.redirect('/auth/github/increased-scope');
+      utils.storeOriginalUrlAsReferrer(req, res, '/auth/github/increased-scope');
     }
   });
 });
