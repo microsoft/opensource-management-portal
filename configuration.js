@@ -105,7 +105,7 @@ module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets, 
       employeeData: utils.arrayFromString(configurationHelper.get('FRIENDS_DATA')),
     },
     authentication: {
-      scheme: configurationHelper.get('AUTHENTICATION_SCHEME'),
+      scheme: configurationHelper.get('AUTHENTICATION_SCHEME') || 'github',
     },
     github: {
       clientId: configurationHelper.get('GITHUB_CLIENT_ID'),
