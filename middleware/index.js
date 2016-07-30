@@ -22,7 +22,7 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
   }
 
   app.set('views', path.join(dirname, 'views'));
-  app.set('view engine', 'jade');
+  app.set('view engine', 'pug');
   app.set('view cache', false);
 
   app.use(favicon(dirname + '/public/favicon.ico'));

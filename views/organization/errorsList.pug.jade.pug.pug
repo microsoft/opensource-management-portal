@@ -39,7 +39,7 @@ block content
               ul.list-inline
                 each js, val in json
                   if val == 'innerError'
-                    // Painful but important look into objects while avoiding circular JSON references by hand in Jade
+                    // Painful but important look into objects while avoiding circular JSON references
                     li <strong>innerError</strong>:
                     ul
                       each js2, val2 in json.innerError

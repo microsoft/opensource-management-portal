@@ -39,7 +39,6 @@
     "express-session": "^1.14.0",
     "express-sslify": "^1.0.1",
     "hsts": "^1.0.0",
-    "jade": "1.11.0",
     "moment": "^2.14.1",
     "morgan": "~1.7.0",
     "node-jose": "^0.9.0",
@@ -50,6 +49,7 @@
     "passport": "^0.3.2",
     "passport-azure-ad": "^2.0.0",
     "passport-github": "^1.1.0",
+    "pug": "^2.0.0-beta4",
     "redis": "^2.6.2",
     "serve-favicon": "~2.3.0"
   },
