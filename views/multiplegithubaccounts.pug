@@ -31,7 +31,7 @@ block content
                   if isConfirming
                     input(type='hidden', name='confirm', value=link.ghid)
                     p.text-danger Please confirm that you are ready to unlink this GitHub account. It will lose access to any and all corporate organizations, teams and private repos.
-                  input.btn.btn-lg(class=buttonClass, type='submit', value=isConfirming ? 'Yes, unlink #{link.ghu}' : 'Unlink #{link.ghu}')
+                  input.btn.btn-lg(class=buttonClass, type='submit', value=isConfirming ? `Yes, unlink ${link.ghu}` : `Unlink ${link.ghu}`)
                 if link.joinedDate
                   h5
                     | Linked&nbsp;

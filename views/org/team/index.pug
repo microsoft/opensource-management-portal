@@ -9,8 +9,7 @@ block content
   div.container
     h1
       = team.name
-      | 
-      small.capitalize #{team.org.name} Team Maintainer
+      small.capitalize &nbsp; #{team.org.name} Team Maintainer
     if team.description
       p.lead= team.description
     h2 Team + Repo Management
