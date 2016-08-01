@@ -7,7 +7,7 @@
 
 const express = require('express');
 const router = express.Router();
-const OpenSourceUserContext = require('../oss');
+const OpenSourceUserContext = require('../lib/context');
 
 // Enforcing just a single GitHub account per Active Directory user. With
 // mild refactoring, this portal could easily support a session selecting
