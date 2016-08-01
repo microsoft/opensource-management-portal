@@ -90,7 +90,6 @@ router.use((req, res, next) => {
       if (req.user[sessionKey] && req.user[sessionKey][property] && link[linkProperty] !== req.user[sessionKey][property]) {
         linkUpdates[linkProperty] = req.user[sessionKey][property];
         updatedProperties.add(`${sessionKey}.${property}`);
-        console.warn(`Link property "${linkProperty}" updated from "${link[linkProperty]}"->"${linkUpdates[linkProperty]}"`);
       }
     }
   }
