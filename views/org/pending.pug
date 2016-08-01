@@ -14,7 +14,6 @@ block content
   div.container
 
     if state == 'pending'
-
       h1 Action Required: You've been manually invited!
 
       p.lead GitHub has sent an invitation to <em>#{org.name}</em>.
@@ -121,7 +120,7 @@ block content
                   h6 Location
                   p= orgUser.location
                 if orgUser.email
-                      h6 E-mail
+                  h6 E-mail
                   p= orgUser.email
                 if orgUser.otherFields.blog
                   h6 On the Web
