@@ -35,6 +35,9 @@ function DataClient(options, callback) {
     return callback(storageAccountError);
   }
   this.entGen = azure.TableUtilities.entityGenerator;
+  if (prefix === undefined) {
+    prefix = '';
+  }
   this.options = {
     partitionKey: prefix + 'pk',
     linksTableName: prefix + 'links',
