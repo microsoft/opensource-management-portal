@@ -494,7 +494,7 @@ DataClient.prototype.getAllEmployees = function getAllEmployees(callback) {
     function areWeDone() { return !done; },
     function grabPage(cb) {
       var query = new azure.TableQuery()
-        .select(['aadupn', 'ghu', 'ghid'])
+        .select(['aadupn', 'ghu', 'ghid', 'PartitionKey', 'RowKey'])
         .top(pageSize);
       dc.table.queryEntities(dc.options.linksTableName, query, continuationToken, function (error, results) {
         if (error) {
