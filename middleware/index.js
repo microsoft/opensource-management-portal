@@ -18,7 +18,7 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
       app.use(require('./sslify'));
       app.use(require('./hsts'));
     }
-    require('./appInsights')(config);
+    require('./appInsights')(app, config);
   }
 
   app.set('views', path.join(dirname, 'views'));
