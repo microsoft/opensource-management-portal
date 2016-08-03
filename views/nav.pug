@@ -10,7 +10,7 @@
 mixin userTile(username, displayName, link, linkTitle, actionLink, action)
   if username
     a.btn.btn-sm.btn-muted(href=link, target='_new', title=linkTitle)= username
-  if displayName
+  if displayName && displayName !== username
     a.btn.btn-sm.btn-muted-more(href=link, target='_new', title=linkTitle)= displayName
   if action
     a.btn.btn-sm.btn-white(href=actionLink, style='margin-left:10px')= action
