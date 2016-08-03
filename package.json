@@ -26,7 +26,7 @@
     "node": "~4.4.1"
   },
   "dependencies": {
-    "adal-node": "^0.1.21",
+    "adal-node": "^0.1.22",
     "applicationinsights": "^0.15.16",
     "async": "^2.0.1",
     "azure-keyvault": "^0.10.1",
