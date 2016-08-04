@@ -1,10 +1,10 @@
 # Azure GitHub Management: azure-oss-portal
 
-The Azure Open Source Portal for GitHub is the culmination of years of trying to manage the 
+The Azure Open Source Portal for GitHub is the culmination of years of trying to manage the
 Azure presence on GitHub through a lot of trial, error, and improvement in tooling.
 
-Starting as a hackathon, today it is used to manage a number of organizations on GitHub at 
-an enterprise-grade scale by automating organization onboarding and delegating management 
+Starting as a hackathon, today it is used to manage a number of organizations on GitHub at
+an enterprise-grade scale by automating organization onboarding and delegating management
 decisions to team maintainers.
 
 > A ton of information is available right now in this post in lieu of other README content  [http://www.jeff.wilcox.name/2015/11/azure-on-github/](http://www.jeff.wilcox.name/2015/11/azure-on-github/)
@@ -27,6 +27,24 @@ Oh, and you'll need your own GitHub org.
 
 ### Contributions welcome
 
-Happy to have contributions, though please consider reviewing the CONTRIBUTING.MD file, the code of conduct, 
-and then also open a work item to help discuss the features or functionality ahead of kicking off any such 
+Happy to have contributions, though please consider reviewing the CONTRIBUTING.MD file, the code of conduct,
+and then also open a work item to help discuss the features or functionality ahead of kicking off any such
 work.
+
+# Implementation Details
+
+## Application Insights
+
+When using Microsoft Application Insights, this library reports a number of metrics, events and
+dependencies.
+
+Library events include:
+
+- UserUnlink: When a user object is unlinked and dropped
+
+User interface events include:
+
+- PortalUserUnlink: When a person initiates and completes an unlink
+- PortalUserLink: When a person links their account
+- PortalUserReconnectNeeded: When a user needs to reconnect their GitHub account
+- PortalUserReconnected: When a user successfully reconnects their GitHub account when using AAD-first auth

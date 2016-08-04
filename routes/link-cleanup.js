@@ -79,6 +79,7 @@ router.post('/', (req, res, next) => {
     dataClient: req.app.settings.dataclient,
     redisClient: req.app.settings.dataclient.cleanupInTheFuture.redisClient,
     link: link,
+    insights: req.insights,
   };
   new OpenSourceUserContext(options, function (contextError, unlinkContext) {
     if (contextError) {
