@@ -18,6 +18,7 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
       app.use(require('./sslify'));
       app.use(require('./hsts'));
     }
+    app.use(require('./correlationId'));
     require('./appInsights')(app, config);
   }
 
@@ -48,7 +49,6 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
   if (!initializationError && config.websiteSku && !config.allowHttp) {
     app.use(require('./requireSecureAppService'));
   }
-  app.use(require('./correlationId'));
   app.use(require('./locals'));
 
   if (!initializationError) {
