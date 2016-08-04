@@ -37,6 +37,7 @@ router.use((req, res, next) => {
     dataClient: req.app.settings.dataclient,
     redisClient: req.app.settings.dataclient.cleanupInTheFuture.redisClient,
     request: req,
+    insights: req.insights,
   };
   new OpenSourceUserContext(options, (error, instance) => {
     req.oss = instance;

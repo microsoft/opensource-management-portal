@@ -27,6 +27,7 @@ router.post('/', function (req, res, next) {
       return next(utils.wrapError(createLinkError, 'We had trouble linking your corporate and GitHub accounts.'));
     }
     dc.insertLink(req.user.github.id, linkObject, function (insertError) {
+      req.insights.trackEvent('PortalUserLink');
       if (insertError) {
         // There are legacy upgrade scenarios for some users where they already have a
         // link, even though they are already on this page. In that case, we just do
@@ -54,8 +55,10 @@ router.get('/reconnect', function (req, res, next) {
   // If the request comes back to the reconnect page, the authenticated app will
   // actually update the link the next time around.
   if (req.user.github && req.user.github.id || !(oss && oss.entities && oss.entities.link && oss.entities.link.ghu && !oss.entities.link.ghtoken)) {
+    req.insights.trackEvent('PortalUserReconnected');
     return res.redirect('/');
   }
+  req.insights.trackEvent('PortalUserReconnectNeeded');
   return oss.render(req, res, 'reconnectGitHub', 'Please sign in with GitHub', {
     expectedUsername: oss.entities.link.ghu,
   });
