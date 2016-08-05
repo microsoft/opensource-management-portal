@@ -17,7 +17,7 @@ block content
       h1.huge Hi.
     else
       h1
-        | Open Source Portal 
+        | Open Source Portal
         small for GitHub
     if accountInfo && onboarding !== true
       div.container
@@ -78,8 +78,7 @@ block content
         div.link-box
           a(href=o.baseUrl + (o.membershipStateTemporary === 'active' ? '' : 'join') + onboardingPostfixUrl)
             h2
-              strong.capitalize= o.name
-              | 
+              strong.capitalize= o.name + ' '
               if o.membershipStateTemporary == 'active'
                 small Member
               else if o.membershipStateTemporary == 'pending'
@@ -138,10 +137,9 @@ block content
                     td.twentypercent.capitalize= team.org.name
                     td.thirtypercent
                       p
-                        a.btn.btn-sm.btn-default(href=team.org.baseUrl + 'teams/' + team.slug) Manage Team
-                        | 
+                        a.btn.btn-sm.btn-default(href=team.org.baseUrl + 'teams/' + team.slug) Manage Team + ' '
                         a.btn.btn-default.btn-sm(href='https://github.com/orgs/' + team.org.name + '/teams/' + team.slug, target='_new')
-                          | Open on GitHub 
+                          | Open on GitHub
                           i.glyphicon.glyphicon-share-alt
 
       if accountInfo.isLinkedUser && onboarding !== true
@@ -186,7 +184,7 @@ block content
                           a.btn.btn-default.btn-sm(href=team.org.baseUrl + '/leave') Leave Organization
                         else
                           a.btn.btn-default.btn-sm(href='https://github.com/orgs/' + team.org.name + '/teams/' + team.slug, target='_new')
-                            | Open on GitHub 
+                            | Open on GitHub
                             i.glyphicon.glyphicon-share-alt
           //- The user will get a better experience joining teams if they go through the organization onboarding first.
           //-p

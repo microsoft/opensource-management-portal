@@ -20,7 +20,10 @@ block content
             if !skipLog
               | It's a little rainy in the cloud today.
 
-        h1= message
+        if messageHasNonHtmlNewlines === true
+          pre= message
+        else
+          h1= message
         if errorStatus
           h2= 'HTTP ' + errorStatus
 
@@ -42,7 +45,7 @@ block content
             - var issueType = skipLog ? 'Ask a portal maintainer for assistance' : 'Report bug'
             - var reportedUrl = scrubbedUrl && serverAddress ? 'URL: ' + serverAddress + scrubbedUrl : ''
             if correlationId && user && user.github && user.github.username
-              a.btn.btn-sm.btn-muted(href='mailto:' + config.corporate.portalAdministratorEmail + '?subject=Open Source Portal Error Message ' + (message ? ': ' + message : '') + '&body=I ran into an error message while using the open source portal.%0D%0A%0D%0AThe error included a Correlation ID: ' + correlationId + '%0D%0A%0D%0ATo speed this request up, could you also share information about what you were trying to do at the time of the error? Thanks.%0D%0A%0D%0A---%0D%0AGitHub username: ' + user.github.username + (message ? '%0D%0AMessage: ' + message : '') + (error.status ? '%0D%0AStatus Code: ' + error.status : '') + (detailed ? '%0D%0ADetailed Message: ' + detailed : '') + '%0D%0A' + reportedUrl)
+              a.btn.btn-sm.btn-muted(href='mailto:' + config.corporate.portalAdministratorEmail + '?subject=Open Source Portal Error Message ' + (encodedMessage ? ': ' + encodedMessage : '') + '&body=I ran into an error message while using the open source portal.%0D%0A%0D%0AThe error included a Correlation ID: ' + correlationId + '%0D%0A%0D%0ATo speed this request up, could you also share information about what you were trying to do at the time of the error? Thanks.%0D%0A%0D%0A---%0D%0AGitHub username: ' + user.github.username + (encodedMessage ? '%0D%0AMessage: ' + encodedMessage : '') + (error.status ? '%0D%0AStatus Code: ' + error.status : '') + (detailed ? '%0D%0ADetailed Message: ' + encodedDetailed : '') + '%0D%0A' + reportedUrl)
                 = ' ' + issueType
             else if correlationId
               a.btn.btn-sm.btn-muted(href='mailto:' + config.corporate.portalAdministratorEmail + '?subject=Open Source Portal Error Message&body=I ran into an error message while using the open source portal.%0D%0A%0D%0AThe error included a Correlation ID: ' + correlationId + '%0D%0A%0D%0ATo speed this request up, could you also share information about your GitHub username and what you were trying to do at the time of the error? Thanks.' + '%0D%0A' + reportedUrl)

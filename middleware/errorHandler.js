@@ -5,6 +5,40 @@
 
 /*eslint no-console: ["error", { allow: ["error", "log"] }] */
 
+const querystring = require('querystring');
+
+function redactRootPathsFromString(string, path) {
+  if (typeof string === 'string' && string.includes && string.split) {
+    return string.split(path).join('[app]');
+  }
+  return string;
+}
+
+function redactRootPaths(view) {
+  const path = process.cwd();
+  if (typeof view === 'object') {
+    for (var property in view) {
+      if (view.hasOwnProperty(property)) {
+        var value = view[property];
+        if (typeof value === 'string') {
+          view[property] = redactRootPathsFromString(value, path);
+        }
+      }
+    }
+  } else if (typeof view === 'string') {
+    return redactRootPathsFromString(view, path);
+  }
+  return view;
+}
+
+function containsNewlinesNotHtml(error) {
+  if (error && error.message && error.message.includes && error.message.split) {
+    var newlines = error.message.split('\n');
+    return newlines.length > 3 && !error.message.includes('</');
+  }
+  return false;
+}
+
 module.exports = function (err, req, res, next) {
   var config = null;
   var errorStatus = err && err.status ? err.status : undefined;
@@ -54,11 +88,14 @@ module.exports = function (err, req, res, next) {
   if (err && err.forceSignOut === true && req && req.logout) {
     req.logout();
   }
-  res.status(err.status || 500);
-  res.render('error', {
-    message: err.message,
+  var safeMessage = redactRootPaths(err.message);
+  const view = {
+    message: safeMessage,
+    encodedMessage: querystring.escape(safeMessage),
+    messageHasNonHtmlNewlines: containsNewlinesNotHtml(err),
     serviceBanner: config && config.serviceBanner ? config.serviceBanner : undefined,
-    detailed: err && err.detailed ? err.detailed : undefined,
+    detailed: err && err.detailed ? redactRootPaths(err.detailed) : undefined,
+    encodedDetailed: err && err.detailed ? querystring.escape(redactRootPaths(err.detailed)) : undefined,
     errorFancyLink: err && err.fancyLink ? err.fancyLink : undefined,
     errorStatus: errorStatus,
     skipLog: err.skipLog,
@@ -66,5 +103,7 @@ module.exports = function (err, req, res, next) {
     title: err.status === 404 ? 'Not Found' : 'Oops',
     user: req.user,
     config: config && config.obfuscatedConfig ? config.obfuscatedConfig : null,
-  });
+  };
+  res.status(err.status || 500);
+  res.render('error', view);
 };
