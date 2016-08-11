@@ -64,6 +64,7 @@ function createBareMinimumConfiguration() {
     const key = requiredConfigurationKeys[index];
     env[key] = secretSet.has(key) ? 'super secret' : 'just a value';
   }
+  env['CONFIGURATION_ENVIRONMENT'] = 'test';
   return wrappingConfigurationHelper(env);
 }
 
@@ -97,6 +98,35 @@ describe('configuration', () => {
       assert.notEqual(configResult.obfuscatedConfig.session.salt, '***', 'session salt is obfuscated');
     });
   });
+
+  describe('organizations file', () => {
+    it('the proper environment is selected', () => {
+      const testEnv = createBareMinimumConfiguration();
+      const configResult = require('../configuration')(false, testEnv);
+      let pass = false;
+      for (let i = 0; i < configResult.organizations.length; i++) {
+        const org = configResult.organizations[i];
+        if (org.name === 'test-org-1') {
+          pass = true;
+        }
+      }
+      assert.isTrue(pass, 'the test org is present');
+    });
+    it('data is set', () => {
+      const testEnv = createBareMinimumConfiguration();
+      const configResult = require('../configuration')(false, testEnv);
+      let pass = false;
+      for (let i = 0; i < configResult.organizations.length; i++) {
+        const org = configResult.organizations[i];
+        if (org.name === 'test-org-1') {
+          assert.equal(org.token, '12345', 'token present');
+          pass = true;
+        }
+      }
+      assert.isTrue(pass, 'found the test org');
+    });
+  });
+
 
   describe('keyVaultHelper', () => {
     it('non-URL values passthrough', () => {

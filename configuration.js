@@ -8,6 +8,7 @@
 // set environment vars required in bash profile for consistency
 // need to encrypt keys and add cert for security
 
+const organizationsEnvironments = require('./organizations');
 const painlessConfig = require('painless-config');
 const pkgInfo = require('./package.json');
 const utils = require('./utils');
@@ -92,6 +93,7 @@ module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets, 
     expectedSslCertificate: configurationHelper.get('EXPECTED_SSL_CERTIFICATE'),
     allowHttp: configurationHelper.get('DEBUG_ALLOW_HTTP'),
     showDebugFooter: (configurationHelper.get('DEBUG_SHOW_FOOTER') === true || configurationHelper.get('DEBUG_SHOW_FOOTER') === 'true'),
+    environment: configurationHelper.get('CONFIGURATION_ENVIRONMENT'),
     corporate: {
       userProfilePrefix: configurationHelper.get('CORPORATE_PROFILE_PREFIX'),
       trainingResources: require('./resources.json'),
@@ -160,6 +162,12 @@ module.exports = function translateEnvironmentToConfiguration(obfuscateSecrets, 
       tls: configurationHelper.get('REDIS_TLS_HOST'),
     },
   };
+  if (config.environment && organizationsEnvironments && organizationsEnvironments[config.environment] !== undefined) {
+    organizationsEnvironments[config.environment].forEach((item) => {
+      const isOnboarding = item.onboarding === true;
+      (isOnboarding ? config.onboarding : config.organizations).push(item);
+    });
+  }
   for (let i = 1; configurationHelper.get('GITHUB_ORG' + i + '_NAME'); i++) {
     var prefix = 'GITHUB_ORG' + i + '_';
     var onboarding = configurationHelper.get(prefix + 'ONBOARDING');
