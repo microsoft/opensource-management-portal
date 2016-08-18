@@ -14,9 +14,19 @@ const linkedUserRoute = require('./index-linked');
 const linkCleanupRoute = require('./link-cleanup');
 const utils = require('../utils');
 
+function isTokenNotExpired(req) {
+  if (req.user && req.user.azure && req.user.azure.exp && Number(req.user.azure.exp)) {
+    // Provide an allowance of up to five minutes beyond the token lifetime range. More info: https://azure.microsoft.com/en-us/documentation/articles/active-directory-token-and-claims/
+    const allowedOverTime = 5 * 60;
+    const current = new Date().getTime() / 1000;
+    return current <= (Number(req.user.azure.exp) + allowedOverTime);
+  }
+  return false;
+}
+
 router.use(function (req, res, next) {
   var config = req.app.settings.runtimeConfig;
-  if (req.isAuthenticated()) {
+  if (req.isAuthenticated() && isTokenNotExpired(req)) {
     var expectedAuthenticationProperty = config.authentication.scheme === 'github' ? 'github' : 'azure';
     if (req.user && !req.user[expectedAuthenticationProperty]) {
       console.warn(`A user session was authenticated but did not have present the property "${expectedAuthenticationProperty}" expected for this type of authentication. Signing them out.`);
