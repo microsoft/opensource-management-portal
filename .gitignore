@@ -2,6 +2,9 @@
 node_modules/
 npm-debug.log
 
+# Client script
+bower_components/
+
 # OS X
 .DS_Store
 

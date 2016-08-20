@@ -1,0 +1,28 @@
+{
+  "name": "azure-oss-portal",
+  "description": "Azure Open Source Portal for GitHub",
+  "main": "",
+  "authors": [
+    "Jeff Wilcox <jwilcox@microsoft.com>"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "github",
+    "management",
+    "organization"
+  ],
+  "homepage": "https://github.com/Azure/azure-oss-portal",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jQuery": "^3.1.0",
+    "bootstrap": "^3.3.7",
+    "bootswatch": "^3.3.7"
+  }
+}
