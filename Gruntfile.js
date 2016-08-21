@@ -10,7 +10,7 @@ module.exports = function (grunt) {
 
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
-    builddir: 'public/testing',
+    builddir: 'public/css',
     banner: '/*!\n' +
             ' * <%= pkg.name %> v<%= pkg.version %>\n' +
             ' * Homepage: <%= pkg.homepage %>\n' +
@@ -18,9 +18,19 @@ module.exports = function (grunt) {
             ' * Licensed under <%= pkg.license %>\n' +
             ' * Based on Bootstrap\n' +
             '*/\n',
+    concat: {
+      options: {
+        banner: '<%= banner %>',
+        stripBanners: false
+      },
+      dist: {
+        src: [],
+        dest: ''
+      }
+    },
     clean: {
       build: {
-        src: ['*/build.scss', '!global/build.scss']
+        src: ['*/build.scss', '!theme/build.scss']
       }
     },
   });
@@ -28,7 +38,7 @@ module.exports = function (grunt) {
   grunt.registerTask('none', function() {});
 
   grunt.registerTask('build_scss', 'build a regular theme from scss', function() {
-    var theme = 'bower_components/bootswatch/cosmo/';
+    var theme = 'theme';
     var compress = true;
 
     var isValidTheme = grunt.file.exists(theme, '_variables.scss') && grunt.file.exists(theme, '_bootswatch.scss');
@@ -45,7 +55,7 @@ module.exports = function (grunt) {
     var dist = {};
     concatSrc = 'theme/build.scss';
     concatDest = theme + '/build.scss';
-    scssDest = '<%=builddir%>/' + theme + '/bootstrap.css';
+    scssDest = '<%=builddir%>/bootstrap.css';
     scssSrc = [theme + '/' + 'build.scss'];
 
     dist = {src: concatSrc, dest: concatDest};
@@ -57,8 +67,18 @@ module.exports = function (grunt) {
     grunt.config('sass.dist.options.precision', 8);
     grunt.config('sass.dist.options.unix-newlines', true);
  
-    grunt.task.run(['concat', 'sass:dist', 'prefix:' + scssDest, 'clean:build',
-        compress ? 'compress_scss:' + scssDest + ':' + '<%=builddir%>/' + theme + '/bootstrap.min.css' : 'none']);
+    grunt.task.run(['concat', 'sass:dist', /*'prefix:' + scssDest,*/ 'clean:build',
+        compress ? 'compress_scss:' + scssDest + ':' + '<%=builddir%>/bootstrap.min.css' : 'none']);
   });
-  
+
+  grunt.registerTask('compress_scss', 'compress a generic css with sass', function(fileSrc, fileDst) {
+    var files = {}; files[fileDst] = fileSrc;
+    grunt.log.writeln('compressing file ' + fileSrc);
+
+    grunt.config('sass.dist.files', files);
+    grunt.config('sass.dist.options.style', 'compressed');
+    grunt.task.run(['sass:dist']);
+  });
+
+  grunt.registerTask('default', ['build_scss']);
 };

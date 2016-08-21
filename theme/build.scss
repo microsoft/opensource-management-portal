@@ -1,3 +1,5 @@
-@import "variables";
-@import "../bower_components/bootstrap-sass-official/assets/stylesheets/bootstrap";
-@import "bootswatch";
+//@import "variables";
+@import "../bower_components/bootswatch/cosmo/_variables";
+@import "../bower_components/bootstrap-sass/assets/stylesheets/bootstrap";
+@import "../bower_components/bootswatch/cosmo/_bootswatch";
+//@import "bootswatch";
