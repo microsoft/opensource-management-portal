@@ -11,6 +11,7 @@ bower_components/
 # Static assets
 public/
 resources/scss/build.scss
+resources/less/build.less
 
 # OS X
 .DS_Store

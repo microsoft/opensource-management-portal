@@ -18,6 +18,15 @@ module.exports = function (grunt) {
     ' * Licensed under <%= pkg.license %>\n' +
     ' * Based on Bootstrap\n' +
     '*/\n',
+    less: {
+      dist: {
+        options: {
+          compress: false,
+          strictMath: true
+        },
+        files: {}
+      }
+    },
     concat: {
       options: {
         banner: '<%= banner %>',
@@ -82,49 +91,47 @@ module.exports = function (grunt) {
     },
     clean: {
       build: {
-        src: ['*/build.scss', '!theme/build.scss']
+        src: ['*/build.scss', '*/build.less']
       }
     },
   });
 
   grunt.registerTask('none', function () { });
 
-  grunt.registerTask('build_scss', 'build a regular theme from scss', function() {
-    var theme = 'resources/scss';
+  grunt.registerTask('build_less', 'build a regular theme from less', function() {
+    var theme = 'resources/less';
     var compress = true;
 
     var concatSrc;
     var concatDest;
-    var scssDest;
-    var scssSrc;
+    var lessDest;
+    var lessSrc;
     var files = {};
     var dist = {};
-    concatSrc = theme + '/_build.scss';
-    concatDest = theme + '/build.scss';
-    scssDest = '<%=builddir%>/bootstrap.css';
-    scssSrc = [theme + '/' + 'build.scss'];
+    concatSrc = 'theme/_build.less';
+    concatDest = theme + '/build.less';
+    lessDest = '<%=builddir%>/bootstrap.css';
+    lessSrc = [ theme + '/' + 'build.less' ];
 
     dist = {src: concatSrc, dest: concatDest};
     grunt.config('concat.dist', dist);
     files = {};
-    files[scssDest] = scssSrc;
-    grunt.config('sass.dist.files', files);
-    grunt.config('sass.dist.options.style', 'expanded');
-    grunt.config('sass.dist.options.precision', 8);
-    grunt.config('sass.dist.options.unix-newlines', true);
+    files[lessDest] = lessSrc;
+    grunt.config('less.dist.files', files);
+    grunt.config('less.dist.options.compress', false);
 
-    grunt.task.run(['concat', 'sass', /*'prefix:' + scssDest,*/ 'clean:build',
-        compress ? 'compress_scss:' + scssDest + ':' + '<%=builddir%>/bootstrap.min.css' : 'none']);
+    grunt.task.run(['concat', 'less:dist', /*'prefix:' + lessDest,*/ 'clean:build',
+      compress ? 'compress:'+lessDest+':'+'<%=builddir%>/' + theme + '/bootstrap.min.css':'none']);
   });
 
-  grunt.registerTask('compress_scss', 'compress a generic css with sass', function(fileSrc, fileDst) {
+  grunt.registerTask('compress', 'compress a generic css', function(fileSrc, fileDst) {
     var files = {}; files[fileDst] = fileSrc;
     grunt.log.writeln('compressing file ' + fileSrc);
 
-    grunt.config('sass.dist.files', files);
-    grunt.config('sass.dist.options.style', 'compressed');
-    grunt.task.run(['sass:dist']);
+    grunt.config('less.dist.files', files);
+    grunt.config('less.dist.options.compress', true);
+    grunt.task.run(['less:dist']);
   });
 
-  grunt.registerTask('default', ['copy', 'build_scss']);
+  grunt.registerTask('default', ['copy', 'build_less']);
 };
