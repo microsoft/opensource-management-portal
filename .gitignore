@@ -5,7 +5,7 @@ npm-debug.log
 # Client script
 bower_components/
 .sass-cache/
-public/css/*.map
+public/css/
 
 # OS X
 .DS_Store
