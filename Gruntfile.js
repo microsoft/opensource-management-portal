@@ -39,16 +39,6 @@ module.exports = function (grunt) {
           },
         ]
       },
-      html5shiv: {
-        files: [
-          {
-            expand: true,
-            src: '**',
-            cwd: 'bower_components/html5shiv/dist/',
-            dest: '<%= buildscriptdir %>',
-          },
-        ]
-      },
       jquery: {
         files: [
           {
