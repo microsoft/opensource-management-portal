@@ -62,6 +62,6 @@
     "grunt-contrib-copy": "^1.0.0",
     "grunt-contrib-less": "^1.4.0",
     "load-grunt-tasks": "^3.5.2",
-    "mocha": "^3.0.1",
+    "mocha": "^3.0.1"
   }
 }
