@@ -4,20 +4,20 @@
 //
 
 module.exports = function (grunt) {
-  grunt.loadNpmTasks('grunt-contrib-sass');
-  grunt.loadNpmTasks('grunt-contrib-concat');
-  grunt.loadNpmTasks('grunt-contrib-clean');
+  require('load-grunt-tasks')(grunt);
 
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
     builddir: 'public/css',
+    buildscriptdir: 'public/js/',
+    buildrootdir: 'public/',
     banner: '/*!\n' +
-            ' * <%= pkg.name %> v<%= pkg.version %>\n' +
-            ' * Homepage: <%= pkg.homepage %>\n' +
-            ' * Copyright 2012-<%= grunt.template.today("yyyy") %> <%= pkg.author %>\n' +
-            ' * Licensed under <%= pkg.license %>\n' +
-            ' * Based on Bootstrap\n' +
-            '*/\n',
+    ' * <%= pkg.name %> v<%= pkg.version %>\n' +
+    ' * Homepage: <%= pkg.homepage %>\n' +
+    ' * Copyright 2012-<%= grunt.template.today("yyyy") %> <%= pkg.author %>\n' +
+    ' * Licensed under <%= pkg.license %>\n' +
+    ' * Based on Bootstrap\n' +
+    '*/\n',
     concat: {
       options: {
         banner: '<%= banner %>',
@@ -28,6 +28,58 @@ module.exports = function (grunt) {
         dest: ''
       }
     },
+    copy: {
+      bootstrap: {
+        files: [
+          {
+            expand: true,
+            src: '**',
+            cwd: 'bower_components/bootstrap/dist/',
+            dest: '<%= buildrootdir %>',
+          },
+        ]
+      },
+      html5shiv: {
+        files: [
+          {
+            expand: true,
+            src: '**',
+            cwd: 'bower_components/html5shiv/dist/',
+            dest: '<%= buildscriptdir %>',
+          },
+        ]
+      },
+      jquery: {
+        files: [
+          {
+            expand: true,
+            src: '**',
+            cwd: 'bower_components/jQuery/dist/',
+            dest: '<%= buildscriptdir %>',
+          },
+        ]
+      },
+      timeago: {
+        files: [
+          {
+            expand: true,
+            src: 'jquery.timeago.js',
+            cwd: 'bower_components/jquery-timeago/',
+            dest: '<%= buildscriptdir %>',
+          },
+        ]
+      },
+      uitablefilter: {
+        files: [
+          {
+            expand: true,
+            src: 'jquery.uitablefilter.js',
+            cwd: 'bower_components/jquery-uitablefilter/',
+            dest: '<%= buildscriptdir %>',
+          },
+        ]
+      },
+    },
     clean: {
       build: {
         src: ['*/build.scss', '!theme/build.scss']
@@ -35,7 +87,7 @@ module.exports = function (grunt) {
     },
   });
 
-  grunt.registerTask('none', function() {});
+  grunt.registerTask('none', function () { });
 
   grunt.registerTask('build_scss', 'build a regular theme from scss', function() {
     var theme = 'theme';
@@ -66,8 +118,8 @@ module.exports = function (grunt) {
     grunt.config('sass.dist.options.style', 'expanded');
     grunt.config('sass.dist.options.precision', 8);
     grunt.config('sass.dist.options.unix-newlines', true);
- 
-    grunt.task.run(['concat', 'sass:dist', /*'prefix:' + scssDest,*/ 'clean:build',
+
+    grunt.task.run([/*'concat',*/ 'sass', /*'prefix:' + scssDest,*/ 'clean:build',
         compress ? 'compress_scss:' + scssDest + ':' + '<%=builddir%>/bootstrap.min.css' : 'none']);
   });
 
@@ -80,5 +132,5 @@ module.exports = function (grunt) {
     grunt.task.run(['sass:dist']);
   });
 
-  grunt.registerTask('default', ['build_scss']);
+  grunt.registerTask('default', ['build_scss', 'copy']);
 };

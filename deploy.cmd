@@ -126,7 +126,16 @@ IF EXIST "%DEPLOYMENT_SOURCE%\package.json" (
   popd
 )
 
-:: 4. Bower
+:: 5. Install npm development packages
+IF EXIST "%DEPLOYMENT_SOURCE%\package.json" (
+  pushd "%DEPLOYMENT_SOURCE%"
+  call :ExecuteCmd !NPM_CMD! install --only=dev
+  IF !ERRORLEVEL! NEQ 0 goto error
+  popd
+)
+
+
+:: 6. Bower
 IF EXIST "%DEPLOYMENT_SOURCE%\bower.json" (
   echo Installing Bower components...
   pushd "%DEPLOYMENT_SOURCE%"
@@ -135,7 +144,7 @@ IF EXIST "%DEPLOYMENT_SOURCE%\bower.json" (
   popd
 )
 
-:: 5. Grunt
+:: 7. Grunt
 IF EXIST "%DEPLOYMENT_SOURCE%\Gruntfile.js" (
   pushd "%DEPLOYMENT_SOURCE%"
   echo Grunting...
@@ -146,7 +155,7 @@ IF EXIST "%DEPLOYMENT_SOURCE%\Gruntfile.js" (
   popd
 )
 
-:: 6. KuduSync
+:: 8. KuduSync
 IF /I "%IN_PLACE_DEPLOYMENT%" NEQ "1" (
   call :ExecuteCmd "%KUDU_SYNC_CMD%" -v 50 -f "%DEPLOYMENT_SOURCE%" -t "%DEPLOYMENT_TARGET%" -n "%NEXT_MANIFEST_PATH%" -p "%PREVIOUS_MANIFEST_PATH%" -i ".git;.hg;.deployment;deploy.cmd"
   IF !ERRORLEVEL! NEQ 0 goto error
