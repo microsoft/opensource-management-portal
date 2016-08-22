@@ -66,7 +66,7 @@ IF DEFINED KUDU_SELECT_NODE_VERSION_CMD (
     SET /p NODE_EXE=<"%DEPLOYMENT_TEMP%\__nodeVersion.tmp"
     IF !ERRORLEVEL! NEQ 0 goto error
   )
-  
+
   IF EXIST "%DEPLOYMENT_TEMP%\__npmVersion.tmp" (
     SET /p NPM_JS_PATH=<"%DEPLOYMENT_TEMP%\__npmVersion.tmp"
     IF !ERRORLEVEL! NEQ 0 goto error
@@ -96,17 +96,29 @@ echo Handling customized node.js deployment.
 :: 1. Select node version
 call :SelectNodeVersion
 
-:: 2. Customize npm
+:: 2. Clean all existing modules
+IF EXIST "%DEPLOYMENT_SOURCE%\node_modules" (
+  pushd "%DEPLOYMENT_SOURCE%"
+  IF /I "%SKIP_NPM_CLEAN%" NEQ "1" (
+    echo Existing npm modules found, removing...
+    rmdir /s /q node_modules
+    IF !ERRORLEVEL! NEQ 0 goto error
+  )
+  popd
+)
+
+:: 3. Customize npm
 IF EXIST "%DEPLOYMENT_SOURCE%\package.json" (
   pushd "%DEPLOYMENT_SOURCE%"
-  call :ExecuteCmd !NPM_CMD! config set color false  
+  echo Installing npm packages at the deploy source of %DEPLOYMENT_SOURCE%
+  call :ExecuteCmd !NPM_CMD! config set color false
   IF !ERRORLEVEL! NEQ 0 goto error
-  call :ExecuteCmd !NPM_CMD! config set progress false  
+  call :ExecuteCmd !NPM_CMD! config set progress false
   IF !ERRORLEVEL! NEQ 0 goto error
   popd
 )
 
-:: 3. Install npm packages
+:: 4. Install npm packages
 IF EXIST "%DEPLOYMENT_SOURCE%\package.json" (
   pushd "%DEPLOYMENT_SOURCE%"
   call :ExecuteCmd !NPM_CMD! install --production
@@ -114,7 +126,36 @@ IF EXIST "%DEPLOYMENT_SOURCE%\package.json" (
   popd
 )
 
-:: 4. KuduSync
+:: 5. Install npm development packages
+IF EXIST "%DEPLOYMENT_SOURCE%\package.json" (
+  pushd "%DEPLOYMENT_SOURCE%"
+  call :ExecuteCmd !NPM_CMD! install --only=dev
+  IF !ERRORLEVEL! NEQ 0 goto error
+  popd
+)
+
+
+:: 6. Bower
+IF EXIST "%DEPLOYMENT_SOURCE%\bower.json" (
+  echo Installing Bower components...
+  pushd "%DEPLOYMENT_SOURCE%"
+  call node_modules\.bin\bower install
+  IF !ERRORLEVEL! NEQ 0 goto error
+  popd
+)
+
+:: 7. Grunt
+IF EXIST "%DEPLOYMENT_SOURCE%\Gruntfile.js" (
+  pushd "%DEPLOYMENT_SOURCE%"
+  echo Grunting...
+  call :ExecuteCmd !NPM_CMD! install grunt-cli
+  IF !ERRORLEVEL! NEQ 0 goto error
+  call node_modules\.bin\grunt --no-color default
+  IF !ERRORLEVEL! NEQ 0 goto error
+  popd
+)
+
+:: 8. KuduSync
 IF /I "%IN_PLACE_DEPLOYMENT%" NEQ "1" (
   call :ExecuteCmd "%KUDU_SYNC_CMD%" -v 50 -f "%DEPLOYMENT_SOURCE%" -t "%DEPLOYMENT_TARGET%" -n "%NEXT_MANIFEST_PATH%" -p "%PREVIOUS_MANIFEST_PATH%" -i ".git;.hg;.deployment;deploy.cmd"
   IF !ERRORLEVEL! NEQ 0 goto error

@@ -54,8 +54,15 @@
     "serve-favicon": "~2.3.0"
   },
   "devDependencies": {
+    "bower": "^1.7.9",
     "chai": "^3.5.0",
     "eslint": "^3.1.1",
-    "mocha": "^3.0.1"
+    "grunt-contrib-clean": "^1.0.0",
+    "grunt-contrib-concat": "^1.0.1",
+    "grunt-contrib-copy": "^1.0.0",
+    "grunt-sass": "^1.2.1",
+    "load-grunt-tasks": "^3.5.2",
+    "mocha": "^3.0.1",
+    "node-sass": "^3.8.0"
   }
 }
