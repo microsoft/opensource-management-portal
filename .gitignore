@@ -7,6 +7,10 @@ bower_components/
 .sass-cache/
 public/css/
 
+# Bower deployed
+public/fonts/
+public/js/
+
 # OS X
 .DS_Store
 
