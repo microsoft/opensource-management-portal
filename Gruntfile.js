@@ -49,6 +49,16 @@ module.exports = function (grunt) {
           },
         ]
       },
+      resources: {
+        files: [
+          {
+            expand: true,
+            src: '**',
+            cwd: 'resources/',
+            dest: '<%= buildrootdir %>',
+          },
+        ]
+      },
       timeago: {
         files: [
           {
@@ -80,22 +90,16 @@ module.exports = function (grunt) {
   grunt.registerTask('none', function () { });
 
   grunt.registerTask('build_scss', 'build a regular theme from scss', function() {
-    var theme = 'theme';
+    var theme = 'resources/scss';
     var compress = true;
 
-    var isValidTheme = grunt.file.exists(theme, '_variables.scss') && grunt.file.exists(theme, '_bootswatch.scss');
-
-     // cancel the build (without failing) if this directory is not a valid theme
-    if (!isValidTheme) {
-      return;
-    }
     var concatSrc;
     var concatDest;
     var scssDest;
     var scssSrc;
     var files = {};
     var dist = {};
-    concatSrc = 'theme/build.scss';
+    concatSrc = theme + '/_build.scss';
     concatDest = theme + '/build.scss';
     scssDest = '<%=builddir%>/bootstrap.css';
     scssSrc = [theme + '/' + 'build.scss'];
@@ -109,7 +113,7 @@ module.exports = function (grunt) {
     grunt.config('sass.dist.options.precision', 8);
     grunt.config('sass.dist.options.unix-newlines', true);
 
-    grunt.task.run([/*'concat',*/ 'sass', /*'prefix:' + scssDest,*/ 'clean:build',
+    grunt.task.run(['concat', 'sass', /*'prefix:' + scssDest,*/ 'clean:build',
         compress ? 'compress_scss:' + scssDest + ':' + '<%=builddir%>/bootstrap.min.css' : 'none']);
   });
 
@@ -122,5 +126,5 @@ module.exports = function (grunt) {
     grunt.task.run(['sass:dist']);
   });
 
-  grunt.registerTask('default', ['build_scss', 'copy']);
+  grunt.registerTask('default', ['copy', 'build_scss']);
 };

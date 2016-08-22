@@ -1,36 +1,25 @@
+# Logs
+*.log
+
 # Node
 node_modules/
-npm-debug.log
 
 # Client script
 bower_components/
 .sass-cache/
-public/css/
 
-# Bower deployed
-public/fonts/
-public/js/
+# Static assets
+public/
+resources/scss/build.scss
 
 # OS X
 .DS_Store
 
-# Local test files
+# Local scripts
 sync-*.js
 
 # Local development environment scripts
-bin/local*
-bin/contoso
 app.yaml
-
-# Tooling
-.vscode/
 
 # Editors
 .vscode/
-
-# Other routes and components that need not be included here
-docs/
-routes/microsoft-specific*
-routes/docs.js
-views/docs/
-public/css/docs.css
