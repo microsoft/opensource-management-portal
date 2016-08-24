@@ -47,7 +47,7 @@
     "octonode": "0.7.6",
     "painless-config": "^0.1.0",
     "passport": "^0.3.2",
-    "passport-azure-ad": "^2.0.0",
+    "passport-azure-ad": "^2.0.1",
     "passport-github": "^1.1.0",
     "pug": "^2.0.0-beta4",
     "redis": "^2.6.2",

@@ -76,7 +76,7 @@ module.exports = function (app, config) {
     clientID: config.activeDirectory.clientId,
     clientSecret: config.activeDirectory.clientSecret,
     oidcIssuer: config.activeDirectory.issuer,
-    identityMetadata: 'https://login.microsoftonline.com/common/.well-known/openid-configuration',
+    identityMetadata: 'https://login.microsoftonline.com/' + config.activeDirectory.tenantId + '/.well-known/openid-configuration',
     skipUserProfile: true,
     responseType: 'id_token code',
     responseMode: 'form_post',
