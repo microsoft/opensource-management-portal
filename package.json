@@ -20,8 +20,8 @@
   ],
   "scripts": {
     "start": "node ./bin/www",
-    "test": "mocha && eslint . && cd client && ember test",
-    "build": "bower install && cd client && npm install && bower install && cd .. && grunt"
+    "test": "mocha && eslint .",
+    "build": "bower install && grunt"
   },
   "engines": {
     "node": "~6.9.0"
