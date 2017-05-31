@@ -1,0 +1,11 @@
+{
+  "localhost-config": {
+    "properties": {
+      "CONFIGURATION_ENVIRONMENT": "localhost",
+      "APPINSIGHTS_INSTRUMENTATION_KEY": "",
+      "SESSION_COOKIE_DOMAIN": "",
+      "AAD_CLIENT_SECRET": "your AAD app secret to enable KeyVault, if needed",
+      "MAIL_OVERRIDE_RECIPIENT": "your e-mail address"
+    }
+  }
+}
