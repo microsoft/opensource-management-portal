@@ -1,10 +1,10 @@
 {
-  "name": "open-source-portal-for-github",
+  "name": "opensource-portal",
   "author": "Microsoft Corporation",
   "contributors": [
-    "Wilcox, Jeff <jwilcox@microsoft.com>"
+    "Jeff Wilcox <jwilcox@microsoft.com>"
   ],
-  "version": "4.0.0-alpha.0",
+  "version": "4.2.0",
   "license": "MIT",
   "private": true,
   "keywords": [
@@ -20,48 +20,75 @@
   ],
   "scripts": {
     "start": "node ./bin/www",
-    "test": "mocha && eslint ."
+    "test": "mocha && eslint . && cd client && ember test",
+    "build": "bower install && cd client && npm install && bower install && cd .. && grunt"
   },
   "engines": {
-    "node": "~4.4.1"
+    "node": "~6.9.0"
   },
   "dependencies": {
+    "@ospo/environment": "0.0.43",
     "adal-node": "^0.1.22",
-    "applicationinsights": "^0.15.16",
-    "async": "^2.0.1",
-    "azure-keyvault": "^0.10.1",
-    "azure-storage": "^1.1.0",
-    "body-parser": "^1.15.2",
+    "applicationinsights": "^0.19.0",
+    "async": "^2.2.0",
+    "azure-keyvault": "^1.0.0",
+    "azure-sb": "^0.10.4",
+    "azure-storage": "^2.1.0",
+    "basic-auth": "^1.1.0",
+    "body-parser": "^1.17.1",
+    "child-process-promise": "^2.2.0",
     "compression": "^1.6.0",
-    "connect-redis": "^3.1.0",
-    "debug": "~2.2.0",
-    "express": "^4.14.0",
-    "express-session": "^1.14.0",
+    "connect-redis": "^3.2.0",
+    "debug": "^2.6.4",
+    "express": "^4.15.2",
+    "express-session": "^1.15.2",
     "express-sslify": "^1.0.1",
-    "hsts": "^1.0.0",
-    "moment": "^2.14.1",
-    "morgan": "~1.7.0",
-    "node-jose": "^0.9.0",
-    "node-uuid": "^1.4.3",
-    "object-path": "^0.11.1",
+    "file-size": "^1.0.0",
+    "github": "github:jeffwilcox/node-github",
+    "grunt-contrib-less": "^1.4.1",
+    "hsts": "^2.0.0",
+    "lodash": "^4.17.2",
+    "memory-cache": "^0.1.6",
+    "moment": "^2.18.0",
+    "moment-timezone": "^0.5.13",
+    "morgan": "^1.8.1",
+    "mssql": "^3.3.0",
+    "mz": "^2.6.0",
+    "node-jose": "^0.9.4",
+    "node-uuid": "^1.4.8",
+    "npm-registry-client": "^8.0.1",
+    "oauth": "0.9.x",
     "octonode": "0.7.6",
-    "painless-config": "^0.1.0",
+    "ospo-pug-view-services": "^0.5.2",
+    "painless-config-resolver": "1.0.0",
     "passport": "^0.3.2",
-    "passport-azure-ad": "^2.0.1",
-    "passport-github": "^1.1.0",
-    "pug": "^2.0.0-beta4",
-    "redis": "^2.6.2",
-    "serve-favicon": "~2.3.0"
+    "passport-azure-ad": "^3.0.5",
+    "passport-strategy": "1.x.x",
+    "pug": "=2.0.0-beta4",
+    "q": "^1.5.0",
+    "qlimit": "^0.1.1",
+    "redis": "^2.7.1",
+    "request": "^2.81.0",
+    "secure-compare": "^3.0.1",
+    "serve-favicon": "^2.4.2",
+    "tmp": "0.0.31",
+    "uid2": "0.0.x",
+    "validator": "^7.0.0"
   },
   "devDependencies": {
     "bower": "^1.7.9",
     "chai": "^3.5.0",
-    "eslint": "^3.1.1",
+    "eslint": "^3.17.1",
+    "grunt": "1.0.1",
     "grunt-contrib-clean": "^1.0.0",
     "grunt-contrib-concat": "^1.0.1",
     "grunt-contrib-copy": "^1.0.0",
     "grunt-contrib-less": "^1.4.0",
+    "grunt-exec": "^2.0.0",
     "load-grunt-tasks": "^3.5.2",
     "mocha": "^3.0.1"
-  }
+  },
+  "painlessConfigObjectPackages": [
+    "./config"
+  ]
 }
