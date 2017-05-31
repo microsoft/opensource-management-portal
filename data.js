@@ -12,6 +12,7 @@
 // This is the original data interface for this portal. It uses Azure
 // table storage and its Node.js SDK.
 
+const _ = require('lodash');
 const azure = require('azure-storage');
 const async = require('async');
 const uuid = require('node-uuid');
@@ -23,9 +24,9 @@ function DataClient(options, callback) {
   if (options.config === undefined) {
     return callback(new Error('Configuration must be provided to the data client.'));
   }
-  var storageAccountName = options.config.azureStorage.account;
-  var storageAccountKey = options.config.azureStorage.key;
-  var prefix = options.config.azureStorage.prefix;
+  var storageAccountName = options.config.github.links.table.account;
+  var storageAccountKey = options.config.github.links.table.key;
+  var prefix = options.config.github.links.table.prefix;
   try {
     if (!storageAccountName || !storageAccountKey) {
       throw new Error('Storage account information is not configured.');
@@ -43,12 +44,13 @@ function DataClient(options, callback) {
     linksTableName: prefix + 'links',
     pendingApprovalsTableName: prefix + 'pending',
     errorsTableName: prefix + 'errors',
-    encryption: options.config.azureStorage.encryption,
+    settingsTableName: `${prefix}settings`,
+    encryption: options.config.github.links.table.encryption,
   };
   if (this.options.encryption === true) {
     const encryptColumns = new Set(['githubToken', 'githubTokenIncreasedScope']);
     const encryptionOptions = {
-      keyEncryptionKeyId: options.config.azureStorage.encryptionKeyId,
+      keyEncryptionKeyId: options.config.github.links.table.encryptionKeyId,
       keyResolver: options.keyEncryptionKeyResolver,
       encryptedPropertyNames: encryptColumns,
       binaryProperties: 'buffer',
@@ -63,6 +65,7 @@ function DataClient(options, callback) {
     dc.options.linksTableName,
     dc.options.pendingApprovalsTableName,
     dc.options.errorsTableName,
+    dc.options.settingsTableName,
   ];
   async.each(tableNames, function (tableName, callback) {
     dc.table.createTableIfNotExists(tableName, callback);
@@ -281,8 +284,8 @@ DataClient.prototype.mergeIntoEntity = function mit(entity, obj, callback) {
       if (key === '.metadata') {
         continue;
       }
-      if (obj[key] === undefined) {
-        // Skip undefined objects, including the key
+      if (obj[key] === undefined || obj[key] === null) {
+        // Skip undefined/null objects, including the key
         continue;
       }
       if (typeof obj[key] === 'string') {
@@ -346,7 +349,7 @@ DataClient.prototype.createLinkObjectFromRequest = function createLinkObject(req
       aadupn: req.user.azure.username,
       aadname: req.user.azure.displayName,
       aadoid: req.user.azure.oid,
-      joined: new Date().getTime(),
+      joined: new Date(),
     };
     link.ghavatar = req.user.github.avatarUrl;
     if (req.user.github.accessToken) {
@@ -443,23 +446,67 @@ DataClient.prototype.getUserByAadOid = function getByOid(oid, callback) {
   this.getUserLinkByProperty('aadoid', oid, callback);
 };
 
-DataClient.prototype.getUserLinkByProperty = function gulbprop(propertyName, value, callback) {
-  var dc = this;
-  var query = new azure.TableQuery()
+function getUserLinkByPropertyOneAttempt(dc, propertyName, value, callback) {
+  'use strict';
+  const query = new azure.TableQuery()
     .where(propertyName + ' eq ?', value);
   dc.table.queryEntities(dc.options.linksTableName,
     query,
     null,
     function (error, results) {
       if (error) return callback(error);
-      var entries = [];
+      const entries = [];
       if (results && results.entries && results.entries.length) {
-        for (var i = 0; i < results.entries.length; i++) {
+        for (let i = 0; i < results.entries.length; i++) {
           entries.push(reduceEntity(results.entries[i]));
         }
       }
       callback(null, entries);
     });
+}
+
+function getUserLinkByPropertyRetryOnEmptyResults(dc, propertyName, value, callback) {
+  'use strict';
+  let mostRecentEntries = null;
+  // Wrap the one-time query operation; local to this function an error is simulated
+  // for empty results (which are valid) to reuse the async library's retry logic.
+  const getAndEmptyAsError = (wrappedFunctionCallback) => {
+    getUserLinkByPropertyOneAttempt(dc, propertyName, value, (error, results) => {
+      if (!error && results && Array.isArray(results) && results.length === 0) {
+        error = new Error('No results were returned from the link by property query. This message should not be seen in production environments.');
+        error.simulated = true;
+      }
+      mostRecentEntries = results;
+      return wrappedFunctionCallback(error, results);
+    });
+  };
+  async.retry({
+    times: 3,
+    // Immediately return is an actual error
+    errorFilter: function (err) {
+      return err.simulated === true;
+    },
+    // Exponential backoff
+    interval: function (retryCount) {
+      return 50 * Math.pow(2, retryCount);
+    }
+  },
+  getAndEmptyAsError,
+  (retryError) => {
+    if (retryError && retryError.simulated === true) {
+      retryError = null;
+    }
+    return callback(retryError, retryError ? undefined : mostRecentEntries);
+  });
+}
+
+DataClient.prototype.getUserLinkByProperty = function gulbprop(propertyName, value, callback) {
+  // This is an important function that calls Azure to retrieve the link
+  // for a user. A query operation is used and sometimes returns an empty
+  // result set, even though the link exists. This robustness improvement
+  // is targeted for now; it will use a short exponential backoff retry
+  // whenever an empty result set is returned.
+  getUserLinkByPropertyRetryOnEmptyResults(this, propertyName, value, callback);
 };
 
 DataClient.prototype.getLink = function getLink(githubId, callback) {
@@ -484,7 +531,25 @@ DataClient.prototype.getLink = function getLink(githubId, callback) {
   });
 };
 
-DataClient.prototype.getAllEmployees = function getAllEmployees(callback) {
+DataClient.prototype.getAllEmployees = function getAllEmployees(options, callback) {
+  if (!callback && typeof(options) === 'function') {
+    callback = options;
+    options = {};
+  }
+  let columns = ['aadupn', 'ghu', 'ghid', 'PartitionKey', 'RowKey'];
+  if (options.includeNames) {
+    columns.push('aadname');
+  }
+  if (options.includeId) {
+    columns.push('aadoid');
+  }
+  if (options.includeServiceAccounts) {
+    columns.push('serviceAccount');
+    columns.push('serviceAccountMail');
+  }
+  if (options.all) {
+    columns = undefined;
+  }
   var dc = this;
   var pageSize = 500;
   var employees = [];
@@ -494,7 +559,7 @@ DataClient.prototype.getAllEmployees = function getAllEmployees(callback) {
     function areWeDone() { return !done; },
     function grabPage(cb) {
       var query = new azure.TableQuery()
-        .select(['aadupn', 'ghu', 'ghid', 'PartitionKey', 'RowKey'])
+        .select(columns)
         .top(pageSize);
       dc.table.queryEntities(dc.options.linksTableName, query, continuationToken, function (error, results) {
         if (error) {
@@ -515,12 +580,13 @@ DataClient.prototype.getAllEmployees = function getAllEmployees(callback) {
       });
     }, function (error) {
       if (error) return callback(error);
-      async.sortBy(employees, function (person, sortCallback) {
-        if (person.aadupn && person.aadupn.toLowerCase) {
-          person.aadupn = person.aadupn.toLowerCase();
+      employees.forEach(account => {
+        if (account.aadupn) {
+          account.aadupn = account.aadupn.toLowerCase();
         }
-        sortCallback(null, person.aadupn);
-      }, callback);
+      });
+      const sorted = _.sortBy(employees, ['aadupn', 'ghu']);
+      callback(null, sorted);
     });
 };
 
@@ -545,6 +611,21 @@ DataClient.prototype.removeLink = function removeLink(githubId, callback) {
     githubId = githubId.toString();
   }
   dc.table.deleteEntity(dc.options.linksTableName, dc.createEntity(dc.options.partitionKey, githubId), callback);
+};
+
+// basic settings interface
+// ------------------------
+DataClient.prototype.getSetting = function (partitionKey, rowKey, callback) {
+  getReducedEntity(this, this.options.settingsTableName, partitionKey, rowKey, callback);
+};
+
+DataClient.prototype.setSetting = function (partitionKey, rowKey, value, callback) {
+  const entity = this.createEntity(partitionKey, rowKey, value);
+  this.table.insertEntity(this.options.settingsTableName, entity, callback);
+};
+
+DataClient.prototype.deleteSetting = function (partitionKey, rowKey, callback) {
+  this.table.deleteEntity(this.options.settingsTableName, this.createEntity(partitionKey, rowKey), callback);
 };
 
 // pending approvals workflow
@@ -627,12 +708,38 @@ DataClient.prototype.insertGeneralApprovalRequest = function igar(ticketType, de
   });
 };
 
-DataClient.prototype.getApprovalRequest = function gar(requestId, callback) {
-  var dc = this;
-  dc.table.retrieveEntity(dc.options.pendingApprovalsTableName, dc.options.partitionKey, requestId, function (error, ent) {
+function getReducedEntity(dc, tableName, partitionKey, rowKey, callback) {
+  dc.table.retrieveEntity(tableName, partitionKey, rowKey, function (error, ent) {
     if (error) return callback(error);
     callback(null, reduceEntity(ent));
   });
+}
+
+DataClient.prototype.getRepositoryApproval = function (fieldName, repositoryValue, callback) {
+  const dc = this;
+  // Shortcoming: repoName is case sensitive
+  const query = new azure.TableQuery()
+    .where('PartitionKey eq ?', this.options.partitionKey)
+    .and('tickettype eq ?', 'repo')
+    .and(`${fieldName} eq ?`, repositoryValue);
+  dc.table.queryEntities(dc.options.pendingApprovalsTableName,
+    query,
+    null,
+    function (error, results) {
+      if (error) return callback(error);
+      const entries = [];
+      if (results && results.entries && results.entries.length) {
+        for (let i = 0; i < results.entries.length; i++) {
+          const r = results.entries[i];
+          entries.push(reduceEntity(r));
+        }
+      }
+      callback(null, entries);
+    });
+};
+
+DataClient.prototype.getApprovalRequest = function gar(requestId, callback) {
+  getReducedEntity(this, this.options.pendingApprovalsTableName, this.options.partitionKey, requestId, callback);
 };
 
 DataClient.prototype.getPendingApprovalsForUserId = function gpeaf(githubid, callback) {
@@ -662,10 +769,24 @@ DataClient.prototype.getPendingApprovalsForUserId = function gpeaf(githubid, cal
     });
 };
 
-DataClient.prototype.updateApprovalRequest = function uar(requestId, mergeEntity, callback) {
+DataClient.prototype.replaceApprovalRequest = function uar(requestId, mergeEntity, callback) {
   var dc = this;
   var entity = dc.createEntity(dc.options.partitionKey, requestId, mergeEntity);
-  dc.table.mergeEntity(dc.options.pendingApprovalsTableName, entity, callback);
+  dc.table.replaceEntity(dc.options.pendingApprovalsTableName, entity, callback);
+};
+
+DataClient.prototype.updateApprovalRequest = function updatedVersion2(requestId, mergeEntity, callback) {
+  // This is a less efficient implementation for now due to encryption work.
+  var dc = this;
+  dc.getApprovalRequest(requestId, (getError, currentVersion) => {
+    if (getError) {
+      return callback(getError);
+    }
+    var newObject = {};
+    Object.assign(newObject, currentVersion);
+    Object.assign(newObject, mergeEntity);
+    dc.replaceApprovalRequest(requestId, newObject, callback);
+  });
 };
 
 module.exports = DataClient;

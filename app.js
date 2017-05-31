@@ -5,6 +5,10 @@
 
 const express = require('express');
 const app = express();
+
+app.disable('x-powered-by');
+require('debug')('oss-initialize')('loading express application');
+
 const initialize = require('./middleware/initialize');
 
 app.initializeApplication = initialize.bind(undefined, app, express, __dirname);

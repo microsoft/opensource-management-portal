@@ -23,6 +23,7 @@
   "dependencies": {
     "jQuery": "^3.1.0",
     "bootstrap": "^3.3.7",
+    "bootswatch": "^3.3.7",
     "jquery-timeago": "timeago#^1.5.3",
     "jquery-uitablefilter": "git://github.com/natinusala/jquery-uitablefilter.git",
     "typeahead.js": "^0.11.1",
