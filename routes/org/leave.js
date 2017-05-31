@@ -49,10 +49,6 @@ router.use(function (req, res, next) {
 router.get('/', function (req, res) {
   var org = req.org;
   var orgs = req.orgLeave.memberOfOrgs;
-  // Unlink is more severe and will handle removing the remaining organization membership...
-  if (orgs.length < 2) {
-    return res.redirect('/unlink');
-  }
   req.oss.render(req, res, 'org/leave', 'Leave ' + org.name, {
     org: org,
     orgs: orgs,
@@ -61,10 +57,6 @@ router.get('/', function (req, res) {
 
 router.post('/', function (req, res, next) {
   var org = req.org;
-  var orgs = req.orgLeave.memberOfOrgs;
-  if (orgs.length < 2) {
-    return res.redirect('/unlink');
-  }
   org.removeUserMembership(function (error) {
     if (error) {
       return next(utils.wrapError(error, 'We received an error code back from GitHub when trying to remove your membership from ' + org.name + '.'));

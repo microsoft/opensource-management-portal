@@ -9,15 +9,16 @@ var router = express.Router();
 var cachedPackageInformation = null;
 
 // Super-synchronous but rarely used page...
-function getPackageInfo() {
+function getPackageInfo(config) {
   if (cachedPackageInformation) {
     return cachedPackageInformation;
   }
   var thisPackage = require('../package.json');
   cachedPackageInformation = {};
+  const privateFeedScope = config && config.npm && config.npm.privateFeedScope ? config.npm.privateFeedScope : 'no-configured-private-feed-scope';
   for (var dependency in thisPackage.dependencies) {
     var componentPackage = require('../node_modules/' + dependency + '/package.json');
-    if (componentPackage && componentPackage.homepage) {
+    if (componentPackage && componentPackage.name && !componentPackage.name.includes(`@${privateFeedScope}`)) {
       cachedPackageInformation[dependency] = {
         homepage: componentPackage.homepage,
         description: componentPackage.description,
@@ -29,11 +30,11 @@ function getPackageInfo() {
 
 router.get('/', function (req, res) {
   var config = req.app.settings.runtimeConfig.obfuscatedConfig;
-  var components = getPackageInfo();
+  var components = getPackageInfo(config);
   res.render('thanks', {
     config: config,
     components: components,
-    serviceBanner: config && config.serviceBanner ? config.serviceBanner : undefined,
+    serviceBanner: config && config.serviceMessage ? config.serviceMessage.banner : undefined,
     title: 'Open Source Components',
   });
 });

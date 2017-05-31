@@ -3,52 +3,179 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-var express = require('express');
-var router = express.Router();
-var utils = require('../utils');
+/*eslint no-console: ["error", { allow: ["warn"] }] */
 
-router.get('/', function (req, res) {
-  var oss = req.oss;
+'use strict';
+
+const emailRender = require('../lib/emailRender');
+const express = require('express');
+const isEmail = require('validator/lib/isEmail');
+const router = express.Router();
+const utils = require('../utils');
+const unlinkRoute = require('./unlink');
+
+router.get('/', function (req, res, next) {
+  const oss = req.oss;
   if (!(oss.usernames.azure && oss.usernames.github)) {
-    // return next(new Error('You must be signed in to both Active Directory and your GitHub account in order to link your account.'));
-    return res.redirect('/');
+    req.insights.trackEvent('PortalSessionNeedsBothGitHubAndAadUsernames');
+    return res.redirect('/?signin');
   }
   if (!req.oss.entities.link) {
-    req.oss.render(req, res, 'link', 'Link GitHub with corporate identity');
+    showLinkPage(req, res, next);
   } else {
-    return res.redirect('/');
+    req.insights.trackEvent('LinkRouteLinkLocated');
+    return req.oss.render(req, res, 'linkConfirmed', 'You\'re already linked');
   }
 });
 
-router.post('/', function (req, res, next) {
-  var dc = req.app.settings.dataclient;
+function showLinkPage(req, res) {
+  function render(options) {
+    req.oss.render(req, res, 'link', 'Link GitHub with corporate identity', options || {});
+  }
+  const config = req.app.settings.runtimeConfig;
+  const graphProvider = req.app.settings.graphProvider;
+  if (config.authentication.scheme !== 'aad' || !graphProvider){
+    return render();
+  }
+  const aadId = req.oss.id.aad;
+  graphProvider.getUserAndManagerById(aadId, (error, graphUser) => {
+    // By design, we want to log the errors but do not want any individual
+    // lookup problem to break the underlying experience of letting a user
+    // link. This is important if someone is new in the company, they may
+    // not be in the graph fully yet.
+    if (error) {
+      req.insights.trackException(error, {
+        event: 'PortalLinkInformationGraphLookupError',
+      });
+    } else if (graphUser) {
+      req.insights.trackEvent(graphUser.manager ? 'PortalLinkInformationGraphLookupUser' : 'PortalLinkInformationGraphLookupServiceAccount');
+    }
+    render({
+      graphUser: graphUser,
+      isServiceAccountCandidate: graphUser && !graphUser.manager,
+    });
+  });
+}
+
+router.get('/enableMultipleAccounts', function (req, res) {
+  if (req.user.github) {
+    req.session.enableMultipleAccounts = true;
+    return res.redirect('/link/cleanup');
+  }
+  req.insights.trackEvent('PortalUserEnabledMultipleAccounts');
+  utils.storeOriginalUrlAsReferrer(req, res, '/auth/github', 'multiple accounts enabled need to auth with GitHub again now');
+});
+
+router.post('/', linkUser);
+
+function sendWelcomeMailThenRedirect(req, res, config, url, linkObject, mailProvider, linkedAccountMail) {
+  res.redirect(url);
+
+  if (!mailProvider || !linkedAccountMail) {
+    return;
+  }
+
+  const to = [
+    linkedAccountMail,
+  ];
+  const toAsString = to.join(', ');
+
+  const cc = [];
+  if (config.brand && config.brand.operationsEmail && linkObject.isServiceAccount) {
+    cc.push(config.brand.operationsEmail);
+  }
+
+  const mail = {
+    to: to,
+    subject: `${linkObject.aadupn} linked to ${linkObject.ghu}`,
+    reason: (`You are receiving this one-time e-mail because you have linked your account.
+              To stop receiving these mails, you can unlink your account.
+              This mail was sent to: ${toAsString}`),
+    headline: `Welcome to GitHub, ${linkObject.ghu}`,
+    classification: 'information',
+    service: `${config.brand.companyName} GitHub`,
+    correlationId: req.correlationId,
+  };
+  const contentOptions = {
+    correlationId: req.correlationId,
+    link: linkObject,
+  };
+  emailRender.render(req.app.settings.basedir, 'link', contentOptions, (renderError, mailContent) => {
+    if (renderError) {
+      return req.insights.trackException(renderError, {
+        content: contentOptions,
+        eventName: 'LinkMailRenderFailure',
+      });
+    }
+    mail.content = mailContent;
+    mailProvider.sendMail(mail, (mailError, mailResult) => {
+      const customData = {
+        content: contentOptions,
+        receipt: mailResult,
+      };
+      if (mailError) {
+        customData.eventName = 'LinkMailFailure';
+        return req.insights.trackException(mailError, customData);
+      }
+      return req.insights.trackEvent('LinkMailSuccess', customData);
+    });
+  });
+}
+
+function linkUser(req, res, next) {
+  const config = req.app.settings.runtimeConfig;
+  const isServiceAccount = req.body.sa === '1';
+  const serviceAccountMail = req.body.serviceAccountMail;
+  const linkedAccountMail = req.body.sam;
+  const mailProvider = req.app.settings.mailProvider;
+  if (isServiceAccount && !isEmail(serviceAccountMail)) {
+    return next(utils.wrapError(null, 'Please enter a valid e-mail address for the Service Account maintainer.', true));
+  }
+  req.insights.trackEvent(isServiceAccount ? 'PortalUserLinkingStart' : 'PortalUserLinkingServiceAccountStart');
+  const metricName = isServiceAccount ? 'PortalServiceAccountLinks' : 'PortalUserLinks';
+  const dc = req.app.settings.dataclient;
   dc.createLinkObjectFromRequest(req, function (createLinkError, linkObject) {
     if (createLinkError) {
-      return next(utils.wrapError(createLinkError, 'We had trouble linking your corporate and GitHub accounts.'));
+      return next(utils.wrapError(createLinkError, `We had trouble linking your corporate and GitHub accounts: ${createLinkError.message}`));
+    }
+    if (isServiceAccount) {
+      linkObject.serviceAccount = true;
+      linkObject.serviceAccountMail = serviceAccountMail;
     }
     dc.insertLink(req.user.github.id, linkObject, function (insertError) {
       req.insights.trackEvent('PortalUserLink');
+      req.insights.trackMetric(metricName, 1);
       if (insertError) {
+        req.insights.trackException(insertError, {
+          event: 'PortalUserLinkInsertLinkError',
+        });
         // There are legacy upgrade scenarios for some users where they already have a
         // link, even though they are already on this page. In that case, we just do
         // a retroactive upsert.
         dc.updateLink(req.user.github.id, linkObject, function (updateLinkError) {
           if (updateLinkError) {
+            req.insights.trackException(updateLinkError, {
+              event: 'PortalUserLinkInsertLinkSecondError',
+            });
             updateLinkError.original = insertError;
             return next(utils.wrapError(updateLinkError, 'We had trouble storing the corporate identity link information after 2 tries. Please file this issue and we will have an administrator take a look.'));
           }
-          return res.redirect('/?onboarding=yes');
+          req.oss.invalidateLinkCache(() => {
+            sendWelcomeMailThenRedirect(req, res, config, '/?onboarding=yes', linkObject, mailProvider, linkedAccountMail);
+          });
         });
       } else {
-        return res.redirect('/?onboarding=yes');
+        sendWelcomeMailThenRedirect(req, res, config, '/?onboarding=yes', linkObject, mailProvider, linkedAccountMail);
       }
     });
   });
-});
+}
+
+router.use('/remove', unlinkRoute);
 
 router.get('/reconnect', function (req, res, next) {
-  var config = req.app.settings.runtimeConfig;
-  var oss = req.oss;
+  const config = req.app.settings.runtimeConfig;
+  const oss = req.oss;
   if (config.authentication.scheme !== 'aad'){
     return next(utils.wrapError(null, 'Account reconnection is only needed for Active Directory authentication applications.', true));
   }
@@ -61,28 +188,31 @@ router.get('/reconnect', function (req, res, next) {
   req.insights.trackEvent('PortalUserReconnectNeeded');
   return oss.render(req, res, 'reconnectGitHub', 'Please sign in with GitHub', {
     expectedUsername: oss.entities.link.ghu,
+    migratedOpenSourceHubUser: oss.entities.link.hubImport,
   });
 });
 
 router.get('/update', function (req, res, next) {
-  var config = req.app.settings.runtimeConfig;
-  var oss = req.oss;
+  const config = req.app.settings.runtimeConfig;
+  const oss = req.oss;
   // TODO: A "change" experience might be slightly different for AAD
   if (config.authentication.scheme === 'aad') {
     return next(utils.wrapError(null, 'Changing a GitHub account is not yet supported.', true));
   }
   if (!(oss.usernames.azure)) {
-    return oss.render(req, res, 'linkUpdate', 'Update your account ' + oss.usernames.github + ' by signing in with corporate credentials.');
+    return oss.render(req, res, 'linkUpdate', `Update your account ${oss.usernames.github} by signing in with corporate credentials.`);
   }
   // TODO: NOTE: This will destroy link data not in the session for recreation. May be OK.
-  var dc = req.app.settings.dataclient;
+  const dc = req.app.settings.dataclient;
   dc.createLinkObjectFromRequest(req, function (error, linkObject) {
     dc.updateLink(req.user.github.id, linkObject, function (updateLinkError) {
       if (updateLinkError) {
-        return next(utils.wrapError(updateLinkError, 'We had trouble updating the link using a data store API.'));
+        return next(utils.wrapError(updateLinkError, `We had trouble updating the link using a data store API: ${updateLinkError.message}`));
       }
       oss.saveUserAlert(req, 'Your GitHub account is now associated with the corporate identity for ' + linkObject.aadupn + '.', 'Corporate Identity Link Updated', 'success');
-      res.redirect('/');
+      oss.invalidateLinkCache(() => {
+        res.redirect('/');
+      });
     });
   });
 });

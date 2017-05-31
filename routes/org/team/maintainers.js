@@ -3,125 +3,89 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+'use strict';
+
 const express = require('express');
 const router = express.Router();
+const teamAdminRequired = require('./teamAdminRequired');
 
-router.get('/:maintainerid/downgrade', function (req, res, next) {
-  var team = req.team;
-  var dc = req.app.settings.dataclient;
-  var maintainerid = req.params.maintainerid;
-  var oss = req.oss;
-  dc.getLink(maintainerid, function (error, person) {
-    if (error) {
-      return next(error);
+function refreshMaintainers(team2, callback) {
+  const options = {
+    maxAgeSeconds: -1,
+    backgroundRefresh: false,
+  };
+  team2.getMaintainers(options, callback);
+}
+
+router.use((req, res, next) => {
+  // Get the latest maintainers with every request
+  const team2 = req.team2;
+  refreshMaintainers(team2, (error, maintainers) => {
+    if (maintainers) {
+      req.verifiedCurrentMaintainers = maintainers;
     }
-    person = dc.reduceEntity(person);
-    oss.addBreadcrumb(req, 'Downgrade ' + person.ghu);
-    oss.render(req, res, 'org/team/maintainers/deleteConfirmation', team.name + ' - Downgrade user to a member from a maintainer?', {
-      team: team,
-      teamUrl: req.teamUrl,
-      maintainer: person,
-    });
+    return next(error);
   });
 });
 
-router.post('/:maintainerid/downgrade', function (req, res, next) {
-  var team = req.team;
-  var dc = req.app.settings.dataclient;
-  dc.getLink(req.params.maintainerid, function (error, link) {
-    if (error) {
-      return next(error);
-    }
-    var username = link.ghu._;
-    team.addMembership('member', username, function (error) {
-      if (error) {
-        return next(error);
-      }
-      req.oss.saveUserAlert(req, 'Downgraded "' + username + '" to a standard user.', 'User permission downgraded', 'success');
-      res.redirect(req.teamUrl);
-    });
-  });
+router.get('/refresh', (req, res) => {
+  // Since the views are cached, this can help resolve support situations before they start
+  res.redirect(req.teamUrl);
 });
 
-router.post('/add', function (req, res, next) {
-  var team = req.team;
-  var oss = req.oss;
-  var id = req.body.maintainer2;
-  var newMaintainer = oss.user(id);
-  newMaintainer.getLinkRequired(function (error, link) {
-    if (error) {
-      return next(error);
-    }
-    if (link.ghu === undefined) {
-      return next(new Error('No username.'));
-    }
-    team.addMembership('maintainer', link.ghu, function (error) {
-      if (error) {
-        return next(error);
-      }
-      req.oss.saveUserAlert(req, 'Added "' + link.ghu + '" as a Team Maintainer. They now have the same permission level of access that you have.', 'Team Maintainer Added', 'success');
-      res.redirect(req.teamUrl);
-    });
-  });
-});
 
-router.get('/downgradeSelf', function (req, res, next) {
-  var team = req.team;
-  // NOTE: This path does not actually verify. You've been warned!
-  // Remove the current user as a team maintainer.
-  team.addMembership('member', req.oss.entities.link.ghu, function (error) {
-    if (error) {
-      return next(error);
-    }
-    req.oss.saveUserAlert(req, 'You\'ve downgraded yourself!', 'Dropping yourself as a team maintainer', 'success');
-    res.redirect('/');
-  });
-});
+router.post('/:id/downgrade', teamAdminRequired, (req, res, next) => {
+  const team2 = req.team2;
+  const id = req.params.id;
+  const verifiedCurrentMaintainers = req.verifiedCurrentMaintainers;
 
-router.get('/transfer', function (req, res, next) {
-  var oss = req.oss;
-  var team = req.team;
-  var dc = req.app.settings.dataclient;
-  dc.getAllEmployees(function (error, employees) {
-    if (error) {
-      return next(error);
+  let maintainer = null;
+  for (let i = 0; i < verifiedCurrentMaintainers.length; i++) {
+    if (verifiedCurrentMaintainers[i].id == id /* less truthy, strings */) {
+      maintainer = verifiedCurrentMaintainers[i];
+      break;
     }
-    oss.addBreadcrumb(req, 'Transfer my team maintainer role');
-    oss.render(req, res, 'org/team/maintainers/transferConfirmation', team.name + ' - Transfer your team maintainance role', {
-      team: team,
-      teamUrl: req.teamUrl,
-      employees: employees,
-    });
-  });
-});
-
-router.post('/transfer', function (req, res, next) {
-  var team = req.team;
-  var dc = req.app.settings.dataclient;
-  var newMaintainer = req.body.newMaintainer;
-  if (newMaintainer == req.user.github.id) {
-    return next(new Error('You are already a team maintainer, so you cannot transfer the role to yourself.'));
   }
-  dc.getLink(newMaintainer, function (error, link) {
-    if (error) {
-      return next(error);
+  if (!maintainer) {
+    return next(new Error(`The GitHub user with ID ${id} is not currently a maintainer of the team, so cannot be downgraded.`));
+  }
+  const username = maintainer.login;
+  team2.addMembership(username, changeMembershipError => {
+    if (changeMembershipError) {
+      return next(changeMembershipError);
     }
-    var username = link.ghu._;
-    team.addMembership('maintainer', username, function (addMaintainerError) {
-      req.oss.saveUserAlert(req, 'Added "' + username + '" to the team as a maintainer.', 'Maintainer Transfer Part 1 of 2', 'success');
-      if (addMaintainerError) {
-        return next(addMaintainerError);
+    req.oss.saveUserAlert(req, `Downgraded ${username} from a team maintainer to a team member`, team2.name + ' membership updated', 'success');
+    refreshMaintainers(team2, refreshError => {
+      if (refreshError) {
+        return next(refreshError);
       }
-      // Downgrade ourselves now!
-      team.addMembership('member', function (addError) {
-        if (addError) {
-          return next(addError);
-        }
-        req.oss.saveUserAlert(req, 'Remove you as a maintainer.', 'Maintainer Transfer Part 2 of 2', 'success');
-        res.redirect('/');
-      });
+      res.redirect(req.teamUrl);
     });
   });
 });
+
+router.use('/add', teamAdminRequired, (req, res, next) => {
+  req.team2AddType = 'maintainer';
+  return next();
+});
+
+router.post('/add', teamAdminRequired, function (req, res, next) {
+  const team2 = req.team2;
+  const login = req.body.username;
+  team2.addMaintainer(login, (addMaintainerError) => {
+    if (addMaintainerError) {
+      return next(addMaintainerError);
+    }
+    req.oss.saveUserAlert(req, `Added ${login} as a team maintainer`, team2.name + ' membership updated', 'success');
+    refreshMaintainers(team2, refreshError => {
+      if (refreshError) {
+        return next(refreshError);
+      }
+      return res.redirect(req.teamUrl);
+    });
+  });
+});
+
+router.use('/add', require('../../peopleSearch'));
 
 module.exports = router;

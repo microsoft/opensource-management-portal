@@ -12,44 +12,61 @@ const reposRoute = require('./repos');
 const membershipRoute = require('./membership');
 const joinRoute = require('./join');
 const leaveRoute = require('./leave');
+const orgPermissions = require('../../middleware/github/orgPermissions');
 const securityCheckRoute = require('./2fa');
 const profileReviewRoute = require('./profileReview');
 const approvalsSystem = require('../approvals');
-const requestRepo = require('./requestRepo');
+const newRepoSpa = require('./newRepoSpa');
+const peopleRoute = require('./people');
 
 router.use(function (req, res, next) {
   var onboarding = req.query.onboarding;
-  req.org.oss.addBreadcrumb(req, req.org.name, onboarding ? false : undefined);
+  req.oss.addBreadcrumb(req, req.org.name, onboarding ? false : undefined);
+  req.reposContext = {
+    section: 'org',
+    org: req.org,
+  };
   next();
 });
 
+// Routes that do not require that the user be an org member
 router.use('/join', joinRoute);
+router.use('/repos', reposRoute);
+router.use('/people', peopleRoute);
+router.use('/teams', teamsRoute);
 
 // Org membership requirement middleware
+router.use(orgPermissions, (req, res, next) => {
+  const organization = req.organization;
+  const orgPermissions = req.orgPermissions;
+  if (!orgPermissions) {
+    return next(new Error('Organization permissions are unavailable'));
+  }
 
-router.use(function (req, res, next) {
-  var org = req.org;
-  org.queryUserMembership(function (error, result) {
-    if (result && result.state && result.state == 'active') {
-      next();
-    } else {
-      res.redirect(org.baseUrl + 'join');
-    }
-  });
+  // Decorate the route for the sudoer
+  if (orgPermissions.sudo) {
+    req.sudoMode = true;
+  }
+
+  const membershipStatus = orgPermissions.membershipStatus;
+  if (membershipStatus === 'active') {
+    return next();
+  } else {
+    return res.redirect('/' + organization.name + '/join');
+  }
 });
 
-// Org membership required endppoints:
+// Org membership required endpoints:
 
 router.get('/', function (req, res, next) {
+  const operations = req.app.settings.providers.operations;
   var org = req.org;
   var oss = req.oss;
   var dc = req.app.settings.dataclient;
   async.parallel({
-    teamsMaintained: function (callback) {
-      org.getMyTeamMemberships('maintainer', callback);
-    },
-    userTeamMemberships: function (callback) {
-      org.getMyTeamMemberships('all', callback);
+    organizationOverview: (callback) => {
+      const uc = operations.getUserContext(oss.id.github);
+      return uc.getAggregatedOrganizationOverview(org.name, callback);
     },
     isMembershipPublic: function (callback) {
       org.queryUserPublicMembership(callback);
@@ -80,7 +97,7 @@ router.get('/', function (req, res, next) {
         });
       };
       // Check for pending approvals
-      var teamsMaintained = results.teamsMaintained;
+      var teamsMaintained = results.organizationOverview.teams.maintainer;
       if (teamsMaintained && teamsMaintained.length && teamsMaintained.length > 0) {
         var teamsMaintainedHash = {};
         for (var i = 0; i < teamsMaintained.length; i++) {
@@ -101,11 +118,12 @@ router.get('/', function (req, res, next) {
 
 router.use('/membership', membershipRoute);
 router.use('/leave', leaveRoute);
-router.use('/teams', teamsRoute);
-router.use('/repos', reposRoute);
 router.use('/security-check', securityCheckRoute);
 router.use('/profile-review', profileReviewRoute);
 router.use('/approvals', approvalsSystem);
-router.use('/new-repo', requestRepo);
+router.use('/new-repo', (req, res) => {
+  res.redirect(req.org.baseUrl + 'wizard');
+});
+router.use('/wizard', newRepoSpa);
 
 module.exports = router;

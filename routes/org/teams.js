@@ -3,95 +3,68 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-var express = require('express');
-var router = express.Router();
-var async = require('async');
-var utils = require('../../utils');
+'use strict';
 
-var teamRoute = require('./team/');
+const express = require('express');
+const lowercaser = require('../../middleware/lowercaser');
+const router = express.Router();
+const utils = require('../../utils');
+
+const teamRoute = require('./team/');
 
 router.use(function (req, res, next) {
   req.org.oss.addBreadcrumb(req, 'Teams');
+  req.reposContext = {
+    section: 'teams',
+    org: req.org,
+  };
   next();
 });
 
 router.get('/', function (req, res, next) {
-  var org = req.org;
-  var onboardingOrJoining = req.query.joining || req.query.onboarding;
-  async.parallel({
-    allTeams: org.getTeams.bind(org),
-    userTeams: org.getMyTeamMemberships.bind(org, 'all'),
-    teamsMaintained: org.getMyTeamMemberships.bind(org, 'maintainer'),
-    isAdministrator: function (callback) {
-      org.isUserSudoer(function (ignored, isAdmin) {
-        callback(null, isAdmin);
-      });
-    },
-    orgUser: function (callback) {
-      if (onboardingOrJoining) {
-        org.getOrganizationUserProfile(callback);
-      } else {
-        callback();
-      }
-    },
-  }, function (error, r) {
-    var i = 0;
-    if (error) {
-      return next(error);
-    }
-    var userTeamsMaintainedById = {};
-    var userIsMaintainer = false;
-    if (r.teamsMaintained && r.teamsMaintained.length && r.teamsMaintained.length > 0) {
-      userTeamsMaintainedById = utils.arrayToHashById(r.teamsMaintained);
-      userIsMaintainer = true;
-    }
-    var userTeamsById = {};
-    for (i = 0; i < r.userTeams.length; i++) {
-      userTeamsById[r.userTeams[i].id] = true;
-    }
-    for (i = 0; i < r.allTeams.length; i++) {
-      r.allTeams[i]._hack_isMember = userTeamsById[r.allTeams[i].id] ? true : false;
-    }
-    org.oss.render(req, res, 'org/teams', 'Join a team', {
-      availableTeams: r.allTeams,
-      highlightedTeams: org.getHighlightedTeams(),
-      org: org,
-      isSudoer: r.isAdministrator === true,
-      onboardingOrJoining: onboardingOrJoining,
-      orgUser: r.orgUser,
-      userTeamsMaintainedById: userTeamsMaintainedById,
-      userIsMaintainer: userIsMaintainer,
-    });
-  });
+  const beforeLinkReferrer = utils.popSessionVariable(req, res, 'beforeLinkReferrer');
+  if (beforeLinkReferrer !== undefined) {
+    return res.redirect(beforeLinkReferrer);
+  }
+  return next();
 });
 
-router.use('/:teamname', function (req, res, next) {
-  var org = req.org;
-  var teamName = req.params.teamname;
-  org.teamFromName(teamName, function (error, team) {
-    if (error && error.slug) {
-      return res.redirect(org.baseUrl + 'teams/' + error.slug);
+router.get('/', lowercaser(['sort', 'set']), require('../teamsPager'));
+
+router.use('/:teamSlug', (req, res, next) => {
+  const legacyOrgInstance = req.org;
+  const orgBaseUrl = legacyOrgInstance.baseUrl;
+  const organization = req.organization;
+  const slug = req.params.teamSlug;
+  organization.getTeamFromName(slug, (getTeamError, team) => {
+    // Redirect if a name was provided when a slug is more appropriate
+    if (getTeamError && getTeamError.slug) {
+      return res.redirect(`${orgBaseUrl}teams/${getTeamError.slug}`);
     }
-    if (!(team && team.id)) {
-      if (!error) {
-        error = new Error('No team named "' + teamName + '" could be found.');
-        error.status = 404;
-      } else {
-        error = utils.wrapError('There was a problem querying for team information. The team may not exist.');
-      }
-      return next(error);
+    if (getTeamError) {
+      return next(getTeamError);
     }
-    var teamId = team.id;
-    var oss = org.oss;
-    oss.getTeam(teamId, function (error, team) {
-      if (error) {
-        return next(error);
-      }
-      req.team = team;
-      req.teamUrl = org.baseUrl + 'teams/' + team.slug + '/';
-      req.org.oss.addBreadcrumb(req, team.name);
-      next();
-    });
+
+    // The `req.team` variable is currently used by the "legacy"
+    // operations system, so for the time being until there is more
+    // appropriate time for refactoring, this will have to do.
+    req.team2 = team;
+
+    // Set the legacy team instance as well
+    const clone = Object.assign({}, team);
+    const legacyTeam = legacyOrgInstance.team(team.id, clone);
+    req.team = legacyTeam;
+
+    // Difference: traditionally legacyTeam.getDetails(...) would also
+    // be called now to fill out the properties; this happened without
+    // a cache and was quite slow for no great value provided. Need
+    // to confirm that this is OK now that it is omitted.
+
+    // Breadcrumb and path updates
+    req.teamUrl = `${orgBaseUrl}teams/${team.slug}/`;
+    req.oss.addBreadcrumb(req, team.name);
+
+    return next();
   });
 });
 

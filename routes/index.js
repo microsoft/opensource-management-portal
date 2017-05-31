@@ -6,7 +6,10 @@
 var express = require('express');
 var router = express.Router();
 
+router.use('/api', require('./api'));
 router.use('/thanks', require('./thanks'));
+router.use('/myinfo', require('./diagnostics'));
+router.use('/explore', require('./explore'));
 
 router.use(require('./index-authenticated'));
 

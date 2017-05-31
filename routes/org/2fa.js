@@ -15,7 +15,7 @@ router.get('/', function (req, res, next) {
   org.oss.addBreadcrumb(req, 'Multi-factor authentication check');
   org.queryUserMultifactorStateOk(function (error, state) {
     if (error) {
-      return next(utils.wrapError(error, 'A problem occurred while trying to query important compliance information regarding your account.'));
+      return next(utils.wrapError(error, `We were unable to validate your security settings with GitHub. The error GitHub gave us: ${error.message || error}`));
     }
     if (state === true && (req.body.validate || onboarding || joining)) {
       var url = org.baseUrl;
