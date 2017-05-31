@@ -1,0 +1,4 @@
+{
+  "applicationInsightsKey": "env://APPINSIGHTS_INSTRUMENTATION_KEY",
+  "googleAnalyticsKey": "env://GOOGLE_ANALYTICS_KEY"
+}

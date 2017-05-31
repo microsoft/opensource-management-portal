@@ -1,0 +1,3 @@
+{
+  "sharedSecret": "env://GITHUB_WEBHOOK_SHARED_SECRET"
+}

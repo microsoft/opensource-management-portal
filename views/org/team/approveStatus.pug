@@ -13,9 +13,9 @@ block content
 
     if entry.type == 'repo'
       if entry.repoVisibility == 'public'
-        h1 New Public #{entry.org} Repository Request
+        h1 New public #{entry.org} Repository Request
       else
-        h1 New Private #{entry.org} Repository Request
+        h1 New private #{entry.org} Repository Request
     else
       h1 Open Source Access Request
 
@@ -35,9 +35,9 @@ block content
 
     if entry.requestedTime && entry.requestedTime.toISOString
       p
-        | This request was opened by 
+        | This request was opened by&nbsp;
         a(href='https://github.com/' + entry.ghu, target='_new')= entry.ghu
-        | 
+        | &nbsp;
         time(datetime=entry.requestedTime.toISOString())= entry.requestedTime.toDateString()
 
     p
@@ -151,16 +151,20 @@ block content
         tr
           if entry.type !== 'repo'
             th Team Requested
-          th GitHub Tracking Issue
+          //-if entry.issue
+            //- NOTE: Commenting out GitHub links with approval repos, since they are being deprecated internally and this is a quick fix
+            th GitHub Tracking Issue
       tbody
         tr
           if entry.type !== 'repo'
             td
               p
                 a(href='https://github.com/orgs/' + entry.org + '/teams/' + entry.teamname, target='_new')= entry.teamname
-          td
-            p
-              a.btn.btn-sm.btn-default(href='https://github.com/' + team.org.getWorkflowRepository().full_name + '/issues/' + entry.issue, target='_new')= entry.issue
+          //-if entry.issue
+            //- NOTE: Commenting out GitHub links with approval repos, since they are being deprecated internally and this is a quick fix
+            td
+              p
+                a.btn.btn-sm.btn-default(href='https://github.com/' + team.org.getWorkflowRepository().full_name + '/issues/' + entry.issue, target='_new')= entry.issue
 
     table.table.table-bordered
       thead

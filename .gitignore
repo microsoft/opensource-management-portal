@@ -1,6 +1,9 @@
 # Logs
 *.log
 
+# Component registration logs
+registration/
+
 # Node
 node_modules/
 
@@ -21,6 +24,3 @@ sync-*.js
 
 # Local development environment scripts
 app.yaml
-
-# Editors
-.vscode/

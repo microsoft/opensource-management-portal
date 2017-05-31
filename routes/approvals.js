@@ -44,7 +44,7 @@ router.get('/', function (req, res, next) {
     },
     requestsUserMade: function (callback) {
       // CONSIDER: Need to hydrate with _teamInstance just like above...
-      dc.getPendingApprovalsForUserId(req.user.github.id, callback);
+      dc.getPendingApprovalsForUserId(oss.id.github, callback);
     }
   }, function (error, results) {
     if (error) {
@@ -66,7 +66,7 @@ router.get('/', function (req, res, next) {
       }
       oss.render(req, res, 'org/approvals', 'Review My Approvals', {
         teamResponsibilities: results.ownedTeams,
-        usersRequests: results.requestsUserMade
+        usersRequests: results.requestsUserMade,
       });
     });
   });
@@ -80,7 +80,7 @@ router.post('/:requestid/cancel', function (req, res, next) {
     if (error) {
       return next(new Error('The pending request you are looking for does not seem to exist.'));
     }
-    if (pendingRequest.ghid == req.user.github.id) {
+    if (pendingRequest.ghid == oss.id.github) {
       dc.updateApprovalRequest(requestid, {
         active: false,
         decision: 'canceled-by-user',
@@ -93,15 +93,27 @@ router.post('/:requestid/cancel', function (req, res, next) {
           if (error) {
             return next(utils.wrapError(error, 'We could not get an instance of the team.'));
           }
-          var workflowRepo = team.org.getWorkflowRepository();
+          // Return the user now no matter what
+          res.redirect('/approvals/');
+
+          // Attempt to do more in the case that an issue exists - regardless of configured providers for requests
+          if (!pendingRequest.issue) {
+            return;
+          }
+
+          var workflowRepo = null;
+          try {
+            workflowRepo = team.org.getWorkflowRepository();
+          } catch (noWorkflowError) {
+            // OK, give up
+            return;
+          }
+
           var trackingIssue = workflowRepo.issue(pendingRequest.issue);
-          trackingIssue.createComment('This request was canceled by ' + req.user.github.username + ' via the open source portal and can be ignored.', function (/* ignoredError */) {
+          trackingIssue.createComment('This request was canceled by ' + oss.usernames.github + ' via the open source portal and can be ignored.', function (/* ignoredError */) {
             // We ignore any error from the comment field, since that isn't the important part...
-            trackingIssue.close(function (error) {
-              if (error) {
-                return next(utils.wrapError(error, 'We had trouble closing the issue. Please take a look or report this as a bug.'));
-              }
-              res.redirect('/approvals/');
+            trackingIssue.close(function (/* ignored error */) {
+              /* nothing */
             });
           });
         });
@@ -183,29 +195,57 @@ router.get('/:requestid', function (req, res, next) {
 
 function closeOldRequest(dc, oss, pendingRequest, req, res, next) {
   var org = oss.org(pendingRequest.org);
-  var notificationRepo = org.getWorkflowRepository();
+  const config = req.app.settings.runtimeConfig;
+  const repoApprovalTypesValues = config.github.approvalTypes.repo;
+  if (repoApprovalTypesValues.length === 0) {
+    return next(new Error('No repo approval providers configured.'));
+  }
+  const repoApprovalTypes = new Set(repoApprovalTypesValues);
+  const mailProviderInUse = repoApprovalTypes.has('mail');
+  var issueProviderInUse = repoApprovalTypes.has('github');
+  if (!mailProviderInUse && !issueProviderInUse) {
+    return next(new Error('No configured approval providers configured.'));
+  }
+  oss.saveUserAlert(req, 'The team this request was for no longer exists. The request has been canceled.', 'Team gone!', 'success');
   if (pendingRequest.active === false) {
-    oss.saveUserAlert(req, 'The team this request was for no longer exists.', 'Team gone!', 'success');
     return res.redirect('/');
   }
-  var issue = notificationRepo.issue(pendingRequest.issue);
-  issue.createComment('The team no longer exists on GitHub. This issue is being canceled.', function (error) {
-    if (error) {
-      next(error);
+  closeRequest(dc, pendingRequest.RowKey, 'Team no longer exists.', (closeError) => {
+    if (closeError) {
+      return next(closeError);
     }
-    dc.updateApprovalRequest(pendingRequest.RowKey, {
-      active: false,
-      decisionNote: 'Team no longer exists.',
-    }, function (error) {
-      if (error) {
-        next(error);
+    var notificationRepo = null;
+    try {
+      notificationRepo = org.getWorkflowRepository();
+    } catch (noWorkflowRepoError) {
+      issueProviderInUse = false;
+    }
+    if (!issueProviderInUse) {
+      return res.redirect('/');
+    }
+    const issue = notificationRepo.issue(pendingRequest.issue);
+    issue.createComment('The team no longer exists on GitHub. This issue is being cancelled.', function (commentError) {
+      if (commentError) {
+        next(commentError);
       }
-      issue.close(function () {
-        oss.saveUserAlert(req, 'The team this request was for no longer exists. The request has been canceled.', 'Team gone!', 'success');
-        res.redirect('/');
+      // Attempt to close the issue even if commenting failed
+      issue.close(function (closeError) {
+        if (!commentError &&  closeError) {
+          return next(closeError);
+        }
+        if (!commentError) {
+          res.redirect('/');
+        }
       });
     });
   });
+}
+
+function closeRequest(dc, rowKey, note, callback) {
+  dc.updateApprovalRequest(rowKey, {
+    active: false,
+    decisionNote: note,
+  }, callback);
 }
 
 module.exports = router;

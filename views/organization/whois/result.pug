@@ -1,0 +1,200 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+block content
+  div.container
+
+    p
+      a.btn.btn-sm.btn-default(href='/') Back
+
+    if info && info.renamedUserMessage
+      .alert.alert-warning
+        h3 Renamed user
+        p.lead= info.renamedUserMessage
+
+    if info && info.ghu && info.ghid
+
+      h1
+        = info.ghu
+        if info.serviceAccount
+          = ' '
+          .label.label-warning Service account
+
+      p Here is the information we have on this user. This user has a #[strong link].
+
+      if personEntry && personEntry.serviceAccount
+        .alert.alert-success
+          h3 Marked as a Service Account
+
+      .row
+        .col-md-6
+          h5 REDIS PEOPLE COLLECTION
+          p
+            small Daily snapshot from people feed
+          if personEntry
+            .alert.alert-success
+              h3
+                | Known person &nbsp;
+                small= upn
+              if personEntry && personEntry.alias
+                p
+                  a.btn.btn-sm.btn-default(target='_new', href='http://who/is/' + personEntry.alias)= 'http://who/is/' + personEntry.alias
+              p Based on the most recent Redis cache of the employee directory, this employee is known and active.
+              pre(style='font-size:8pt;width:50%')= JSON.stringify(personEntry, undefined, 2)
+          else
+            - var whatWeKnow = upn || info.aadupn
+            - var strippedAlias = whatWeKnow && whatWeKnow.includes('@') ? whatWeKnow.substr(0, whatWeKnow.indexOf('@')) : null
+            .alert(class=info && info.serviceAccount ? 'alert-success' : 'alert-danger')
+              h3
+                | Unknown person &nbsp;
+                small= whatWeKnow
+              p Based on the most recent Redis cache of the employee directory, there is no entry for this UPN.
+              if strippedAlias
+                p We have stripped a potential alias from the e-mail address, #{whatWeKnow}, to get to #{strippedAlias}...
+                p
+                  a.btn.btn-sm.btn-default(target='_new', href='http://who/is/' + strippedAlias)= 'http://who/is/' + strippedAlias
+        .col-md-6
+          h5 REAL-TIME MICROSOFT GRAPH
+          p
+            small Includes service accounts
+          if realtimeGraph
+            .alert.alert-success
+              h3 Account exists by ID
+              if realtimeGraph.displayName
+                h4= realtimeGraph.displayName
+              ul
+                li AAD ID: #{realtimeGraph.id}
+                if realtimeGraph.mail
+                  li Corporate mail: #{realtimeGraph.mail}
+                if realtimeGraph.userPrincipalName
+                  li UPN: #{realtimeGraph.userPrincipalName}
+
+            if realtimeGraph.manager
+              h4 Manager: #{realtimeGraph.manager.displayName}
+              ul
+                li AAD ID: #{realtimeGraph.manager.id}
+                if realtimeGraph.manager.mail
+                  li Corporate mail: #{realtimeGraph.manager.mail}
+                if realtimeGraph.manager.userPrincipalName
+                  li UPN: #{realtimeGraph.manager.userPrincipalName}
+            else if info && info.serviceAccount
+              .alert.alert-success
+                h4 No manager in the graph
+                p This account has no manager. It is properly marked as a "Service Account"
+            else
+              .alert.alert-warning
+                h4 No manager in the graph
+                p This account has no manager. It is likely a Service Account.
+
+          else
+            p No results. The real-time lookup requires the following conditions:
+
+            if info && info.aadoid
+              .alert.alert-danger
+                h3 Former employee
+                h5 Known ID #{info.aadoid} is missing
+            else
+              .alert.alert-warning
+                h3 Potential former employee
+                h5 Validate whether they are still employed
+                p No AAD ID was previously known, so they never linked their account using the portal when we were able to retrieve their ID
+            ul
+              li That the account is linked
+              li That the linked account has an Active Directory ID (AAD ID). An account may not have the AAD ID if they have never used the portal while signed in.
+              if info && info.aadoid
+                li This account #[strong did] have an AAD ID that failed the lookup: #{info.aadoid}
+
+      table.table
+        thead
+          tr
+            th GitHub Username
+            th GitHub User ID
+        tbody
+          tr
+            td
+              p
+                a.btn.btn-muted-more.btn-sm(href='https://github.com/' + info.ghu, target='_new')= info.ghu
+            td= info.ghid
+
+      if info.aadupn
+        h2 #{config.brand.companyName} Directory
+        table.table
+          thead
+            tr
+              th Name
+              th Email
+          tbody
+            tr
+              td= info.aadname
+              td
+                a.btn.btn-sm.btn-muted-more(href='mailto:' + info.aadupn)= info.aadupn
+      hr
+
+      //- not used
+      if info.foundGitHubId
+        pre= JSON.stringify(info.foundGitHubId, undefined, 2)
+
+    if info && info.orgs
+      h1 Active GitHub Organization Memberships
+      .container
+        each org in info.orgs
+          .row
+            .col-md-4
+              p.lead= org.name
+            .col-md-4
+              p
+                a.btn.btn-sm.btn-muted(target='_new', href='https://github.com/orgs/' + org.name + '/people?utf8=%E2%9C%93&query=' + info.ghu) View #{info.ghu} in GitHub people list
+
+      - var ghLogin = info.ghu || (info.githubInfoButNoLink ? info.githubInfoButNoLink.login : 'UNKNOWN THIS IS A BUG')
+      form(method='post', action=postUrl || '/organization/whois/github/' + ghLogin)
+        if info.orgs.length && info.orgs.length > 0
+          h1 Actions
+          p.lead DANGER ZONE - NO CONFIRMATION
+          ul.list-inline
+            li
+              input.btn.btn-danger(type='submit', value=info.ghid && info.ghu ? 'Remove link + drop from ' + info.orgs.length + ' orgs' : 'Drop from ' + info.orgs.length + ' orgs', name='remove-all')
+            if info.aadupn && !info.serviceAccount
+              li
+                input.btn.btn-default(type='submit', value='Mark as Service Account', name='mark-as-service-account')
+            if info.aadupn && info.serviceAccount
+              li
+                input.btn.btn-default(type='submit', value='Remove Service Account designation', name='unmark-service-account')
+        else if info.ghid && info.ghu
+          p <strong>NOTE:</strong> This user is not currently a member of any organizations. However, the "link" with their previous account still exists. Consider removing this.
+          h1 Actions
+          p.lead DANGER ZONE - NO CONFIRMATION
+          p
+            input.btn.btn-danger(type='submit', value='Remove link', name='remove-link-only')
+
+    if info && info.githubInfoButNoLink
+
+      h1 WHOIS #{info.githubInfoButNoLink.login}
+
+      p.lead We could not find a link for this user. This is a GitHub user.
+
+      p This person is not in any of the organizations managed by this site.
+
+      //-form(method='post', action=postUrl || '/organization/whois/github/' + info.ghu)
+        p
+          input.btn.btn-default(type='submit', value='Drop from org', name='remove-primary-org')
+
+      h3 GitHub Profile
+      ul
+        each value, property in info.githubInfoButNoLink
+          li
+            strong= property
+            | :&nbsp;
+            = value
+
+    else
+      if info && info.aadupn
+        p Their UPN was #{info.aadupn}
+      else
+        h1 We don't know who that is in relation to this system!
+        ul
+          li No "link" present currently
+          li Not a member of any of the official organizations at this time based on GitHub API data

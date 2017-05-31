@@ -1,0 +1,27 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ./layout.pug
+
+block content
+  .container
+
+    .nav
+      ul.pager.zero-pad-bottom
+        li.previous
+          a(href='javascript:window.history.back()')
+            span(aria-hidden=true) &larr;
+            = ' Back to reports'
+
+    h2= reportTitle
+
+    style(type='text/css')
+      | div.report li > div { display:inline }
+
+    p This report is generated every few hours using operation GitHub data. It is not a list of real-time issues and may contain cached information. The long-form weekly summary digest is prepared regularly but only sent once a week.
+
+    div(style='border:2px solid #333; padding: 18px;margin-top:28px')
+      .report
+        include ../../jobs/reports/views/administrator

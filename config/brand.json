@@ -1,0 +1,6 @@
+{
+  "companyName": "env://COMPANY_NAME",
+  "appName": "env://APP_NAME?default=Open Source Portal for GitHub",
+  "supportMail": "env://PORTAL_ADMIN_EMAIL",
+  "operationsMail": "env://GITHUB_OPERATIONS_EMAIL"
+}

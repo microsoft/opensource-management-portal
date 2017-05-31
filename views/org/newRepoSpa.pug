@@ -1,0 +1,12 @@
+extends ../layout
+
+block js
+  link(href='/client/dist/assets/vendor.css', rel='stylesheet')
+  //- script(type='text/javascript', src='/js/jquery.min.js')
+  script(src='/client/dist/assets/vendor.js')
+  script(src='/client/dist/assets/client.js')
+  script(type='text/javascript', src='/js/bootstrap.min.js')
+  script(type='text/javascript', src='/js/jquery.timeago.js')
+
+block content
+  #ember-app

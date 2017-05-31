@@ -1,12 +1,9 @@
 @if "%SCM_TRACE_LEVEL%" NEQ "4" @echo off
 
-:: Customized 8/4/16 trying to work around npm issues with App Service
-:: Installs packages before KuduSync
-
-:: ----------------------
-:: KUDU Deployment Script
-:: Version: 1.0.6
-:: ----------------------
+:: ------------------------------------
+:: Custom KUDU Deployment Script
+:: Version: 1.0.6; Custom Version 0.1.2
+:: ------------------------------------
 
 :: Prerequisites
 :: -------------
@@ -96,21 +93,16 @@ echo Handling customized node.js deployment.
 :: 1. Select node version
 call :SelectNodeVersion
 
-:: 2. Clean all existing modules
-IF EXIST "%DEPLOYMENT_SOURCE%\node_modules" (
-  pushd "%DEPLOYMENT_SOURCE%"
-  IF /I "%SKIP_NPM_CLEAN%" NEQ "1" (
-    echo Existing npm modules found, removing...
-    rmdir /s /q node_modules
-    IF !ERRORLEVEL! NEQ 0 goto error
-  )
-  popd
-)
+:: 2. Configure private npm feed
+call npm install configure-azure-appservice-private-npm-feed -g --silent --only=prod --no-shrinkwrap
+IF !ERRORLEVEL! NEQ 0 goto error
+
+call :ExecuteCmd %APPDATA%\npm\kuduPrivateNpm.cmd
+IF !ERRORLEVEL! NEQ 0 goto error
 
 :: 3. Customize npm
 IF EXIST "%DEPLOYMENT_SOURCE%\package.json" (
   pushd "%DEPLOYMENT_SOURCE%"
-  echo Installing npm packages at the deploy source of %DEPLOYMENT_SOURCE%
   call :ExecuteCmd !NPM_CMD! config set color false
   IF !ERRORLEVEL! NEQ 0 goto error
   call :ExecuteCmd !NPM_CMD! config set progress false
@@ -121,6 +113,7 @@ IF EXIST "%DEPLOYMENT_SOURCE%\package.json" (
 :: 4. Install npm packages
 IF EXIST "%DEPLOYMENT_SOURCE%\package.json" (
   pushd "%DEPLOYMENT_SOURCE%"
+  echo Installing npm packages at the deploy source of %DEPLOYMENT_SOURCE%
   call :ExecuteCmd !NPM_CMD! install --production
   IF !ERRORLEVEL! NEQ 0 goto error
   popd

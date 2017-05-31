@@ -3,173 +3,127 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-var express = require('express');
-var router = express.Router();
-var async = require('async');
-var utils = require('../../../utils');
+'use strict';
 
-router.get('/', function (req, res, next) {
-  var team = req.team;
-  var oss = req.oss;
-  var dc = oss.dataClient();
-  async.parallel({
-    employees: function (callback) {
-      dc.getAllEmployees(callback);
-    },
-    members: function (callback) {
-      team.getMemberLinks(callback);
-    },
-  }, function (error, data) {
+const express = require('express');
+const router = express.Router();
+const teamAdminRequired = require('./teamAdminRequired');
+
+function refreshMembers(team2, backgroundRefresh, maxSeconds, firstPageOnly, callback) {
+  const options = {
+    maxAgeSeconds: maxSeconds || 60,
+    backgroundRefresh: backgroundRefresh,
+  };
+  if (firstPageOnly) {
+    options.pageLimit = 1;
+  }
+  team2.getMembers(options, callback);
+}
+
+function refreshMembersAndSummary(team2, when, callback) {
+  refreshMembers(team2, false /* immediately refresh */, when === 'now' ? -1 : null, true /* start with just the first page */, firstPageError => {
+    refreshMembers(team2, false /* immediate */, when === 'now' ? -1 : null, false /* refresh all pages */, allPagesError => {
+      return callback(firstPageError || allPagesError);
+    });
+  });
+}
+
+router.use((req, res, next) => {
+  // Always make sure to have a relatively up-to-date membership cache available
+  const team2 = req.team2;
+  refreshMembers(team2, true /* background refresh ok */, null, false /* refresh all pages */, (error, members) => {
+    req.refreshedMembers = members;
+    return next(error);
+  });
+});
+
+router.get('/refresh', (req, res, next) => {
+  // Refresh all the pages and also the cached single-page view shown on the team page
+  const team2 = req.team2;
+  refreshMembersAndSummary(team2, 'whenever', error => {
     if (error) {
       return next(error);
     }
-    oss.addBreadcrumb(req, 'Members');
-    oss.render(req, res, 'org/team/members', team.name + ' - Team Membership', {
-      team: team,
-      teamUrl: req.teamUrl,
-      employees: data.employees,
-      teamMembers: data.members,
-    });
+    return res.redirect(req.teamUrl);
   });
 });
 
-router.get('/securityCheck', function (req, res, next) {
-  var team = req.team;
-  // This one is a little convoluted as the app has been refactored...
-  var teamMembers = null;
-  var usersNotInCompliance = [];
-  async.waterfall([
-    function (callback) {
-      team.getDetails(callback);
-    },
-    function (details, callback) {
-      team.getMemberLinks(callback);
-    },
-    function (memberLinks, callback) {
-      teamMembers = memberLinks;
-      // Now, get the org-wide audit list..
-      team.org.getAuditList(callback);
-    },
-    function (naughtyUsers, callback) {
-      for (var i = 0; i < teamMembers.length; i++) {
-        var login = teamMembers[i].login;
-        if (naughtyUsers[login]) {
-          usersNotInCompliance.push(teamMembers[i]);
-        }
-      }
-      callback(null, usersNotInCompliance);
-    },
-  ], function (error, naughtyUsers) {
-    if (error) {
-      return next(error);
-    }
-    var oss = team.oss;
-    oss.addBreadcrumb(req, 'Security Check');
-    oss.render(req, res, 'org/team/securityCheck', team.name + ' - Team Security Check', {
-      team: team,
-      teamUrl: req.teamUrl,
-      noncompliantUsers: naughtyUsers,
-    });
-  });
-});
-router.get('/:memberUsername/remove', function (req, res, next) {
-  var team = req.team;
-  var oss = req.oss;
-  var dc = req.app.settings.dataclient;
-  var removeUsername = req.params.memberUsername;
-  if (!removeUsername || (removeUsername.length && removeUsername.length === 0)) {
-    return next(new Error('A username must be provided.'));
-  }
-  // CONSIDER: NEED TO SUPPORT FOR ALL ORGANIZATIONS!
-  oss.addBreadcrumb(req, 'Remove ' + removeUsername);
-  dc.getUserLinkByUsername(removeUsername, function (error, link) {
-    // Note: an error is ok here; if there is an error, we still show the page, as 
-    // this is likely a user added directly by a GitHub administrator for the 
-    // organization instead of through the portal/tooling. We want to make sure 
-    // the user will still be removable.
-    oss.render(req, res, 'org/team/removeMemberConfirmation', team.name + ' - Remove User', {
-      userInformation: dc.reduceEntity(link),
-      removeUsername: removeUsername,
-      team: team,
-      teamUrl: req.teamUrl,
-    });
-  });
-});
+// Browse members
+router.use('/browse', (req, res, next) => {
+  req.team2RemoveType = 'member';
+  return next();
+}, require('../../peopleSearch'));
 
-// Remove a member by GitHub username (body field name: removeUsername)
-router.post('/:memberUsername/remove', function (req, res, next) {
-  var removeUsername = req.params.memberUsername;
-  var team = req.team;
-  if (team.org === undefined) {
-    return next(new Error('Org undefined.'));
-  }
-  var dc = req.app.settings.dataclient;
-  if (!removeUsername || (removeUsername.length && removeUsername.length === 0)) {
-    return next(new Error('A username must be provided.'));
-  }
-  dc.getUserLinkByUsername(removeUsername, function (error, link) {
-    if (req.body.removeFromTeam !== undefined) {
-      return team.removeMembership(removeUsername, function (error) {
-        if (error) {
-          return next(new Error('Removing the user from your team failed.'));
-        }
-        req.oss.saveUserAlert(req, removeUsername + ' has been removed from the team ' + team.name + '.', 'Team Member Remove', 'success');
-        return res.redirect(req.teamUrl + 'members');
-      });
+// Add org members to the team
+router.use('/add', teamAdminRequired, (req, res, next) => {
+  req.team2AddType = 'member';
+  return next();
+}, require('../../peopleSearch'));
+
+router.post('/remove', teamAdminRequired, (req, res, next) => {
+  const username = req.body.username;
+  const team2 = req.team2;
+  team2.removeMembership(username, removeError => {
+    if (removeError) {
+      return next(removeError);
     }
-    // More intrusive all-org, plus link move...
-    var org1 = team.org;
-    var entity = null;
-    if (link) {
-      entity = dc.reduceEntity(link);
-    }
-    // CONSIDER: NEED TO SUPPORT FOR ALL ORGANIZATIONS!
-    org1.removeUserMembership(removeUsername, function (error) {
+    req.oss.saveUserAlert(req, username + ' has been removed from the team ' + team2.name + '.', 'Team membership update', 'success');
+    refreshMembersAndSummary(team2, 'now', error => {
       if (error) {
-        return next(new Error('Removing the entire user failed. Please report this to the organization administrators to make sure the removal happens completely.'));
+        return next(error);
       }
-      req.oss.saveUserAlert(req, removeUsername + ' has been removed from ' + org1.name + '.', 'Member Remove from Organization', 'success');
-      if (entity && entity.ghu) {
-        return dc.removeLink(entity.ghid, function (error) {
-          if (error) {
-            return next(new Error('Although the user was removed from the organization and is no longer able to access the site, a failure happened trying to remove the user from the portal system. If you could reach out to the administrators to hunt down this issue, that would be great. Thanks. Please include the GitHub username of the user, ' + removeUsername));
-          }
-          req.oss.saveUserAlert(req, removeUsername + ' has been removed from the corporate GitHub system.', 'Member Remove from the company', 'success');
-          res.redirect(req.teamUrl + 'members');
-        });
-      }
-      return res.redirect(req.teamUrl + 'members');
+      return res.redirect(req.teamUrl + 'members/browse/');
     });
   });
 });
 
-router.post('/add', function (req, res, next) {
-  var team = req.team;
-  var dc = req.app.settings.dataclient;
-  var newMemberId = req.body.addMember;
-  team.getMembersCached('all', function (error, members) {
-    if (error) {
-      return next(new Error('Team information not found.'));
+router.post('/add', teamAdminRequired, (req, res, next) => {
+  const organization = req.organization;
+  const team2 = req.team2;
+  const refreshedMembers = req.refreshedMembers;
+  const username = req.body.username;
+  
+  // Allow a one minute org cache for self-correcting validation
+  const orgOptions = {
+    maxAgeSeconds: 60,
+    backgroundRefresh: true,
+  };
+
+  // Validate that the user is a current org member
+  organization.getMembership(username, orgOptions, (error, membership) => {
+    if (error || !membership) {
+      if (error && error.innerError && error.innerError.code === 404) {
+        error = new Error(`${username} is not a member of the organization and so cannot be added to the team until they have joined the org.`);
+      }
+      if (!membership && !error) {
+        error = new Error('No membership information available for the user');
+      }
+      return next(error);
     }
-    for (var member in members) {
-      var m = members[member];
-      if (m.ghid && m.ghid == newMemberId) {
-        return next(utils.wrapError(null, 'This person is already a member of the team.', true));
+    if (membership.state !== 'active') {
+      return next(new Error(`${username} has the organization state of ${membership.state}. The user is not an active member and so cannot be added to the team at this time.`));
+    }
+
+    // Make sure they are not already a member
+    const lc = username.toLowerCase();
+    for (let i = 0; i < refreshedMembers.length; i++) {
+      const member = refreshedMembers[i];
+      if (member.login.toLowerCase() === lc) {
+        return next(new Error(`The user ${username} is already a member of the team.`));
       }
     }
-    dc.getUserLinks([newMemberId], function (error, links) {
-      if (!error && links && links.length > 0 && links[0] && links[0].ghu) {
-        team.addMembership('member', links[0].ghu, function (error) {
-          if (!error) {
-            req.oss.saveUserAlert(req, 'Added "' + links[0].ghu + '" to the team.', 'Member Added', 'success');
-          }
-          return error ?
-            next(new Error('The GitHub API returned an error, they may be under attack or currently having system problems. This tool is dependent on their system being available in real-time, sorry.')) :
-            res.redirect(req.teamUrl + 'members');
-        });
-      } else {
-        return next(new Error('We had trouble finding the official identity link information about this user. Please report this to the admins.'));
+
+    team2.addMembership(username, error => {
+      if (error) {
+        return next(error);
       }
+      req.oss.saveUserAlert(req, `Added ${username} to the ${team2.name} team.`, 'Team membership update', 'success');
+      refreshMembersAndSummary(team2, 'now', refreshError => {
+        if (refreshError) {
+          return next(refreshError);
+        }
+        return res.redirect(req.teamUrl + 'members/browse/');
+      });
     });
   });
 });

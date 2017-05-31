@@ -9,7 +9,7 @@ block content
   div.container#top(style='margin-top:60px')
   div.container#content
     div.row
-      div.col-md-10
+      div.col-md-11
         if messageTitle
           p
             em= messageTitle
@@ -25,13 +25,18 @@ block content
           p
             pre= messageOutput
 
+        if messageLink && messageLinkTitle
+          p
+            br
+            a.btn.btn-primary(href=messageLink, target=messageLinkTarget || undefined)= messageLinkTitle
+
         p
           br
           a.btn.btn-default(href='/')= buttonText || 'Home'
 
-        if config && config.corporate && config.corporate.portalAdministratorEmail
+        if config && config.brand && config.brand.supportMail
           p.vertical-space
             | &nbsp;
           p.vertical-space
-            | If you have any questions, please ping &nbsp;
-            a.alert-link(href='mailto:' + config.corporate.portalAdministratorEmail)= config.corporate.portalAdministratorEmail
+            | If you have any questions, please ping&nbsp;
+            a.alert-link(href='mailto:' + config.brand.supportMail)= config.brand.supportMail

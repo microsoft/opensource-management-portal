@@ -12,10 +12,10 @@ router.get('/', function (req, res) {
   org.oss.modernUser().getDetailsByUsername(function () {
     var detailed = org.oss.modernUser();
     var userProfileWarnings = {};
-    if (!detailed.company || (detailed.company && detailed.company.toLowerCase().indexOf(org.oss.setting('companyName').toLowerCase()) < 0)) {
+    if (!detailed.company || (detailed.company && detailed.company.toLowerCase().indexOf(org.oss.setting('brand').companyName.toLowerCase()) < 0)) {
       userProfileWarnings.company = 'color:red';
     }
-    if (!detailed.email || (detailed.email && detailed.email.toLowerCase().indexOf(org.oss.setting('companyName').toLowerCase()) < 0)) {
+    if (!detailed.email || (detailed.email && detailed.email.toLowerCase().indexOf(org.oss.setting('brand').companyName.toLowerCase()) < 0)) {
       userProfileWarnings.email = 'color:red';
     }
     req.oss.render(req, res, 'org/profileReview', 'Your GitHub Profile', {

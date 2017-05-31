@@ -1,29 +1,92 @@
-# Azure GitHub Management: azure-oss-portal
+# opensource-portal
 
-The Azure Open Source Portal for GitHub is the culmination of years of trying to manage the
-Azure presence on GitHub through a lot of trial, error, and improvement in tooling.
+This Node.js application is a part of the suite of services provided by
+the Open Source Programs Office at Microsoft to enable large-scale GitHub
+management experiences.
 
-Starting as a hackathon, today it is used to manage a number of organizations on GitHub at
-an enterprise-grade scale by automating organization onboarding and delegating management
-decisions to team maintainers.
 
-> A ton of information is available right now in this post in lieu of other README content  [http://www.jeff.wilcox.name/2015/11/azure-on-github/](http://www.jeff.wilcox.name/2015/11/azure-on-github/)
+Key features center around opinionated takes on at-scale management, with an emphasis on _relentless automation_ and _delegation_:
 
-# Platform
+- __Linking__: the concept of associating a GitHub identity with an authenticated identity in another provider, for example an Azure Active Directory user
+- __Self-service GitHub organization join__: one-click GitHub organization joining for authorized users
+- __Cross-organization functionality__: consolidated views across a set of managed GitHub organizations including people, repos, teams
 
-- Node.js LTS+
+Before providing GitHub management functionality to all of Microsoft, this
+application started within Azure.
 
-# Service Dependencies
+> An introduction to this project is available in this 2015 post by Jeff Wilcox:   [http://www.jeff.wilcox.name/2015/11/azure-on-github/](http://www.jeff.wilcox.name/2015/11/azure-on-github/)
 
+The app is a GitHub OAuth application; with the May 2017 release of
+GitHub Apps (formerly called Integrations), this app over time may be
+refactored to support the integration concept, removing the need to
+dedicate a user seat to a machine account.
+
+## Node app
+
+- Node.js LTS (v6.10+ as of 5/31/17)
+- ES6
+- Mixed callback and Q promises at this time
+
+## Service Dependencies
+
+- At least one of your own GitHub organizations
 - Bring your own Redis server, or use Azure Redis Cache
 - Azure Active Directory, or hack your own Passport provider in
-- Azure Storage for table, `data.js` will need some refactoring to support other providers
+- Azure Storage for table, `data.js` will need some refactoring to support other providers. _Other providers are being considered, including Azure Premium Table, for better performance. Help would be appreciated here!_
 
-Oh, and you'll need your own GitHub org.
-
-# LICENSE
+## LICENSE
 
 [MIT License](LICENSE)
+
+## Dev prep, build, deploy
+
+### Prereqs
+
+#### Install Node packages
+
+Make sure to include dev dependencies
+
+```
+$ npm install
+```
+
+#### Suggested global NPM packages
+
+```
+$ npm install -g eslint bower mocha grunt-cli ember-cli
+```
+
+### Build
+
+```
+$ npm run-script build
+```
+
+Which is equivalent to running:
+
+```
+$ bower install
+$ cd client
+$ npm install
+$ bower install
+$ cd ..
+$ grunt
+```
+
+### Test
+
+This project is starting to get improved testability. But it will be a long slog.
+
+```
+$ npm test
+```
+
+Which is equivalent to running:
+
+```
+$ mocha
+$ eslint .
+```
 
 ## Contributions welcome
 
@@ -42,17 +105,19 @@ with any additional questions or comments.
 
 ## Configuration
 
-_We have avoided using a rich configuration framework in the name of agility and recognizing
-the diversity of many deployment environments._
-
 The configuration story for this application has been evolving over time. At this time, the
 following configuration elements are available at this time, each with a distinct purpose.
 
+A GitHub organization(s) configuration file in JSON format is required as of version 4.2.0 of the app.
+
 - Environment Variables (see `configuration.js` for details)
 - JSON Files (either committed directly to a repo or overwritten during deployment)
-  - `resources.json`: categories, links and special resources to light up learning resources
-  - `organizations.json`: organization configuration information, an alternate and additive way to include organization config in the app at deployment time. For this method to work, make sure to set the configuration environment to use from such a file using the `CONFIGURATION_ENVIRONMENT` env variable.
+  - `config/resources.json`: categories, links and special resources to light up learning resources
+  - `config/organizations.json`: organization configuration information, an alternate and additive way to include organization config in the app at deployment time. For this method to work, make sure to set the configuration environment to use from such a file using the `CONFIGURATION_ENVIRONMENT` env variable.
 - [Azure Key Vault](https://azure.microsoft.com/en-us/services/key-vault/) secrets
+
+With the current configuration story, a `CONFIGURATION_ENVIRONMENT` variable is required, as well
+as a secret for AAD to get KeyVault bootstrapped. That requirement will go away soon.
 
 ### KeyVault Secret Support
 
@@ -72,9 +137,8 @@ present.
 
 #### Key rotation
 
-At this time the secrets are only read during application initialization, so a
-rotation of a secret would require restarting, redeploying, or otherwise kicking
-the service to grab the rotated secret.
+As configuration, including secrets, is resolved at startup, any key rotation would need
+to include a restart of the app service.
 
 ## Application Insights
 
@@ -91,3 +155,32 @@ User interface events include:
 - PortalUserLink: When a person links their account
 - PortalUserReconnectNeeded: When a user needs to reconnect their GitHub account
 - PortalUserReconnected: When a user successfully reconnects their GitHub account when using AAD-first auth
+
+## E-mail
+
+A custom mail provider is being used internally, but a more generic mail
+provider contract exists in the library folder for the app now. This
+replaces or optionally augments the ability of the app to do workflow
+over mail. Since Microsoft is an e-mail company and all.
+
+# API
+
+Please see the [API.md](API.md) file for information about the early API implementation.
+
+# Undocumented / special features
+
+This is meant to start an index of interesting features for operations
+use.
+
+## people
+
+### /people search view
+
+- Add a `type=former` query string parameter to show a current understanding of potential former employees who cannot be found in the directory
+- In the `type=former` view, portal system sudoers will receive a link next to the user to 'manage user', showing more information and the option to remove from the org
+
+## repos
+
+### /repos search view
+
+- Add a `showids=1` query string parameter to have repository IDs show up next to repository names

@@ -1,0 +1,10 @@
+{
+  "provider": "env://MAIL_PROVIDER",
+  "from": "env://MAIL_FROM",
+  "overrideRecipient": "env://MAIL_OVERRIDE_RECIPIENT",
+  "customService": {
+    "url": "env://MAIL_CUSTOMSERVICE_URL",
+    "apiKey": "env://MAIL_CUSTOMSERVICE_KEY",
+    "version": "env://MAIL_CUSTOMSERVICE_VERSION"
+  }
+}

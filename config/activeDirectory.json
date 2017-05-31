@@ -1,0 +1,8 @@
+{
+  "clientId": "env://AAD_CLIENT_ID",
+  "clientSecret": "env://AAD_CLIENT_SECRET",
+  "tenantId": "env://AAD_TENANT_ID",
+  "redirectUrl": "env://AAD_REDIRECT_URL",
+  "issuer": "env://AAD_ISSUER",
+  "allowTenantGuests": "env://AAD_ALLOW_TENANT_GUESTS?trueIf=allow"
+}

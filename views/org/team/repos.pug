@@ -45,15 +45,20 @@ block content
               tr
                 td
                   p
-                    a.btn.btn-default.btn-sm(href=teamUrl + 'repos/' + repo.name + '/collaborators') Manage Collaborators
+                    a.btn.btn-default.btn-sm(href=teamUrl + 'repos/' + repo.name + '/collaborators') Manage collaborators
                 td
                   p Manage Outside Collaborators and one-off corporate collaborator permissions.
+              if legacyClaTeams
+                tr
+                  td
+                    p
+                      a.btn.btn-default.btn-sm(href=teamUrl + 'repos/' + repo.name + '/legacyCla') Manage CLA settings
+                  td
+                    p Microsoft contributor license agreement settings
               tr
                 td
                   p
-                    a.btn.btn-default.btn-sm(href=repo.html_url, target='_new')
-                      | View repo on GitHub 
-                      i.glyphicon.glyphicon-share-alt
+                    a.btn.btn-default.btn-sm(href=repo.html_url, target='_new') View repo on GitHub
                 td
                   p
                     = repo.html_url

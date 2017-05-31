@@ -1,0 +1,200 @@
+[
+  {
+    "name": "NewReposToday",
+    "title": "New repositories created today",
+    "category": "dailyDigestOnly",
+    "hasTable": true,
+    "hasList": false,
+    "table": {
+      "groupBy": "orgName",
+      "columns": {
+        "repoName": "Repository",
+        "status": "Type",
+        "createdByLink": "Created by",
+        "created": "Created",
+        "approvalType": "Release policy",
+        "administrators": "Administrators",
+        "actions": "Actions"
+      },
+      "columnWidths": {
+        "approvalType": "250px"
+      }
+    }
+  },
+  {
+    "name": "NewReposWeek",
+    "title": "New repositories (past week)",
+    "category": "weeklySummary",
+    "hasTable": true,
+    "hasList": false,
+    "table": {
+      "groupBy": "orgName",
+      "columns": {
+        "repoName": "Repository",
+        "status": "Type",
+        "createdByLink": "Created by",
+        "created": "Created",
+        "approvalType": "Release policy",
+        "administrators": "Administrators",
+        "actions": "Actions"
+      },
+      "columnWidths": {
+        "approvalType": "250px"
+      }
+    }
+  },
+  {
+    "name": "expiringPrivateEngineeringExemptions",
+    "title": "Expiring private engineering exemptions",
+    "description": "These are private repositories with exemptions expiring. Please open source the project, delete the repository, or supply a new justification to apply for a new exemption.",
+    "category": "weeklySummary",
+    "hasTable": true,
+    "hasList": false,
+    "table": {
+      "groupBy": "orgName",
+      "columns": {
+        "repoName": "Repository",
+        "status": "Type",
+        "exemptionExpiresAt": "Exemption expiration",
+        "created": "Created",
+        "administrator": "Administrators",
+        "actions": "Actions"
+      }
+    }
+  },
+  {
+    "name": "twoYearOldPrivateRepositories",
+    "title": "2+-year old private repositories",
+    "description": "These are very old private repositories. The repos should be deleted or moved to a private engineering system such as VSTS. Private development on GitHub is a security, compliance and business risk.",
+    "category": "weeklySummary",
+    "hasTable": true,
+    "hasList": false,
+    "table": {
+      "groupBy": "orgName",
+      "columns": {
+        "repoName": "Repository",
+        "status": "Type",
+        "recentActivity": "Recent activity",
+        "abandoned": "Abandoned",
+        "created": "Created",
+        "administrators": "Administrators",
+        "actions": "Actions"
+      }
+    }
+  },
+  {
+    "name": "reposWithoutCLA",
+    "title": "Public repositories without Contributor License Agreement (CLA) integration configured",
+    "description": "Public repositories should be integrated with the Contributor License Agreement system to protect IP rights of contributors and the company.",
+    "category": "weeklySummary",
+    "hasTable": true,
+    "hasList": false,
+    "table": {
+      "groupBy": "orgName",
+      "columns": {
+        "repoName": "Repository",
+        "status": "Type",
+        "recentActivity": "Recent activity",
+        "administrators": "Administrators",
+        "actions": "Actions"
+      }
+    }
+  },
+  {
+    "name": "oneYearOldPrivateRepositories",
+    "title": "Private engineering on GitHub (long-term)",
+    "ignoredDescription": "These repositories remain private, were created more than a year ago, and have not shipped as public open source. These repos should be deleted, moved to a private engineering system such as VSTS, or develop a plan to move to another engineering system.",
+    "ignoredActionText": "Microsoft GitHub is only intended for work in the process of being open sourced and in the support of open source projects. Consider building a plan to resource the relocation of these repositories to an approved, compliant corporate engineering system (1ES/OneBranch/VSTS) so that the project will meet security needs such as being located within a Microsoft data center.",
+    "category": "weeklySummary",
+    "hasTable": true,
+    "hasList": false,
+    "table": {
+      "groupBy": "orgName",
+      "columns": {
+        "repoName": "Repository",
+        "status": "Type",
+        "recentActivity": "Recent activity",
+        "abandoned": "Abandoned",
+        "created": "Created",
+        "administrators": "Administrators",
+        "actions": "Actions"
+      }
+    }
+  },
+  {
+    "name": "privateRepositoriesLessThanOneYear",
+    "title": "Private engineering on GitHub",
+    "description": "These are private repositories that have not shipped to the public and have been private for more than the allowed 30 days.",
+    "ignoredActionText": "Finalize the open source release (ship it), delete the repo, or move it to an internal approved engineering system.",
+    "category": "weeklySummary",
+    "hasTable": true,
+    "hasList": false,
+    "table": {
+      "groupBy": "orgName",
+      "columns": {
+        "repoName": "Repository",
+        "status": "Type",
+        "recentActivity": "Recent activity",
+        "created": "Created",
+        "administrators": "Administrators",
+        "actions": "Actions"
+      }
+    }
+  },
+  {
+    "name": "noRepositoryAdministrators",
+    "title": "Repositories without administrators",
+    "ignoredDescription": "These repositories have no administrator that can manage the repo permissions, settings, or even delete the repo. It is important that linked administrators are appointed. The best way to do this is by having an organization owner appoint a team with admin rights to the repo.",
+    "category": "weeklySummary",
+    "hasTable": true,
+    "hasList": false,
+    "table": {
+      "groupBy": "orgName",
+      "columns": {
+        "repoName": "Repository",
+        "actions": "Actions"
+      }
+    }
+  },
+  {
+    "name": "repositoryTooManyAdministrators",
+    "title": "Repositories with too many administrators",
+    "description": "More than 15 GitHub users have admin access to this repo. Admins can permanently delete repos, change permissions, directly push without using the proper permissions model.",
+    "category": "weeklySummary",
+    "hasTable": true,
+    "hasList": false,
+    "table": {
+      "groupBy": "orgName",
+      "columns": {
+        "repoName": "Repository",
+        "status": "Type",
+        "ageInMonths": "Months old",
+        "created": "Created",
+        "createdByLink": "Created by",
+        "administrators": "# of administrators",
+        "countOfAdministratorTeams": "# admin teams",
+        "countOfAdministratorCollaborators": "# direct admins",
+        "actions": "Actions"
+      }
+    }
+  },
+ {
+    "name": "abandonedPublicRepositories",
+    "title": "Abandoned public repositories",
+    "ignoredDescription": "These are very old public repositories. Whether the repos still serve a public purpose should be considered. An archive organization transfer may be appropriate.",
+    "category": "weeklySummary",
+    "hasTable": true,
+    "hasList": false,
+    "table": {
+      "groupBy": "orgName",
+      "columns": {
+        "repoName": "Repository",
+        "recentActivity": "Recent activity",
+        "abandoned": "Abandoned",
+        "created": "Created",
+        "administrators": "Administrators",
+        "actions": "Actions"
+      }
+    }
+  }
+]

@@ -10,8 +10,8 @@ block content
 
     if twoFactorOff === true
 
-      if notValidated
-        h1 MFA is still not enabled for #{user.github.displayName || user.github.username}...
+      if notValidated && user.github
+        h1 2FA is still not enabled for #{user.github.displayName || user.github.username}...
       else
         h1 2FA is not enabled
 
@@ -38,75 +38,14 @@ block content
           li
             a.btn.btn-default(href='/unlink') Cancel my corporate participation
 
-      p You can find out more about GitHub two-factor authentication online:
-
-      ul
-        li <a href="https://github.com/blog/1614-two-factor-authentication">GitHub Blog Post about 2FA</a>
-        li <a href="https://help.github.com/articles/about-two-factor-authentication/">GitHub 2FA Help</a>
-
-      hr
-
-      h2 Frequently Asked Questions
-
-      h3 I'm located overseas. What are my options for authenticating?
-
-      p GitHub supports some countries outside of the USA, but notably China is not included. If you are working in one of the countries that does not have SMS support from GitHub for MFA, you will need to use an Authenticator app that runs on your machine or smart phone. The app will provide the 2nd factor of authentication along with your password.
-
-      h3 What apps can I use for MFA?
-
-      p Most generic Authenticator apps should work. Make sure you trust the publisher. A starting point might be:
-
-      ul
-        li
-          p
-            a(href='http://www.windowsphone.com/en-us/store/app/authenticator/e7994dbc-2336-4950-91ba-ca22d653759b', target='_self') Authenticator by Microsoft for Windows Phone
-            br
-            small Known issues with GitHub, QR scanning does not work
-        li
-          p
-            a(href='https://itunes.apple.com/us/app/google-authenticator/id388497605', target='_self') Google Authenticator by Google for iPhone
-            br
-            small Works
-        li
-          p
-            a(href='https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2', target='_self') Google Authenticator by Google for Android
-            br
-            small Likely works. Not verified.
-
-      h3 Will my password still work in apps and clients like Git Bash?
-
-      p Once 2FA is enabled, you will no longer use your password when pushing or pulling changes from GitHub. Instead, on GitHub you will generate a Personal Access Token to be used in the same manner as a password.
-
-      h3 What is Multi-Factor Authentication (MFA)? What about Two-Factor Authentication (2FA)?
-
-      p Same things. Read more on <a href="http://en.wikipedia.org/wiki/Multi-factor_authentication" target="_self">Wikipedia</a>.
-
-      h3 Can I use the Azure AD app, "Azure Authenticator", with GitHub?
-
-      p Unfortunately not. You will need a different app for this.
-
-      h3 I don't have a smart phone. What can I do?
-
-      p There are some apps out there that support MFA for Windows and other operating systems. You may want to look into that.
-
-      h3 I've lost my backup codes and other information. Can you help?
-
-      p The multi-factor relationship for your GitHub account (#{user.github.username}) is managed entirely by GitHub. When you first setup MFA, they will offer to let you download or print backup codes. You should consider doing this and storing them in a safe place. GitHub may not be able to ever grant you access back to your account if you lose the backup information and the MFA information.
-
-      h3 The Microsoft Authenticator app for Windows Phone is not working well with GitHub and the QR code.
-
-      p This is a known issue. You need to manually enter the code inside the Microsoft app for Windows Phone authentication, there are bugs in the app parsing the values that GitHub provides. <strong>:-(</strong>
-
-      h3 Other questions?
-
-      p Please use the <em>Contact Administrators</em> in the footer of this page with other questions or suggested Q&A entries. We'll try to get them up here.
+      include twoFactorInstructions
 
     else
 
-      h1 Two-factor security is enabled for #{user.github.displayName || user.github.username}
+      h1 Two-factor security is enabled
 
       p.
         Thanks for helping to keep the organization secure.
-      
+
       p
         a.btn.btn-primary(href=org.baseUrl) Go to the #{org.name} portal

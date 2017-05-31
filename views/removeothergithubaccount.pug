@@ -1,0 +1,57 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends layout
+
+//- link, username
+
+block content
+  div.container
+    h2 You already have a linked GitHub username #{link.ghu}
+
+    p You are not signed in as your linked GitHub account right now. This may happen if you have lost your GitHub two-factor authentication recovery codes. Even GitHub support is not able to restore an account secured with 2FA if the recovery codes are lost.
+    p Either unlink your old account to link the new account instead, or sign out of the incorrect account.
+
+    div.row
+      div.col-sm-6.col-md-6.col-lg-6
+        div.horizontal-pad.vertical-space(style='border:4px solid #ddd')
+          div
+            h4 LINKED ACCOUNT
+            h2= link.ghu
+            p GitHub Account
+            a.btn.btn-sm.btn-muted(href='https://github.com/' + link.ghu, target='_new')
+              | View #{link.ghu} GitHub Profile
+            form(method='post').vertical-space
+              input(type='hidden', name='unlink', value=link.ghid)
+              - var isConfirming = confirming !== undefined
+              - var buttonClass = confirming ? 'btn-danger' : 'btn-default'
+              if isConfirming
+                p.text-danger Please confirm that you are ready to unlink this GitHub account. It will lose access to any and all corporate organizations, teams and private repos.
+                input(type='hidden', name='confirm', value=link.ghid)
+              input.btn.btn-lg(class=buttonClass, type='submit', value=isConfirming ? `Yes, unlink ${link.ghu}` : `Unlink ${link.ghu}`)
+            if link.joinedDate
+              h5
+                | Linked&nbsp;
+                time(datetime=link.joinedDate.toISOString())= link.joinedDate.toDateString()
+      div.col-sm-6.col-md-6.col-lg-6
+        div.horizontal-pad.vertical-space(style='border:4px solid #ddd')
+          div
+            h4.text-primary CURRENTLY SIGNED IN
+            h2= user.github.username
+            p GitHub Account
+            p
+              a.btn.btn-sm.btn-muted(href='https://github.com/' + user.github.username, target='_new')
+                | View #{user.github.username} GitHub Profile
+            if allowAdditionalAccountLink === true
+              form(method='post').vertical-space
+                input(type='hidden', name='link', value=user.github.id)
+                input.btn.btn-lg.btn-success(type='submit', value=`Link additional account ${user.github.username}`)
+            p
+              a.btn.btn-lg.btn-primary(href='/signout/github/?redirect=github') Sign out of GitHub
+
+    if config && config.brand && config.brand.supportMail
+      p.vertical-space
+        | If you have any questions, please ping&nbsp;
+        a.btn.btn-sm.btn-muted(href='mailto:' + config.brand.supportMail)= config.brand.supportMail

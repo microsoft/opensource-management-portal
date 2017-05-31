@@ -1,0 +1,2 @@
+# The typeahead patch file is brought in through bower + a grunt copy task
+typeahead.less

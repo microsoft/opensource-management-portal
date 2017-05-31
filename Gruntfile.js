@@ -48,6 +48,36 @@ module.exports = function (grunt) {
           },
         ]
       },
+      typeaheadjs: {
+        files: [
+          {
+            expand: true,
+            src: '**',
+            cwd: 'bower_components/typeahead.js/dist/',
+            dest: '<%= buildscriptdir %>',
+          },
+        ]
+      },
+      typeaheadjsBootstrapPatch: {
+        files: [
+          {
+            expand: true,
+            src: '*.less',
+            cwd: 'bower_components/typeahead.js-bootstrap3.less/',
+            dest: 'resources/less/',
+          },
+        ]
+      },
+      octicons: {
+        files: [
+          {
+            expand: true,
+            src: '**',
+            cwd: 'node_modules/octicons/build/',
+            dest: '<%= builddir %>',
+          },
+        ]
+      },
       jquery: {
         files: [
           {
@@ -88,12 +118,38 @@ module.exports = function (grunt) {
           },
         ]
       },
+      d3: {
+        files: [
+          {
+            expand: true,
+            src: 'd3.min.js',
+            cwd: 'bower_components/d3/',
+            dest: '<%= buildscriptdir %>',
+          },
+        ]
+      },
+      c3: {
+        files: [
+          {
+            expand: true,
+            src: 'c3.min.css',
+            cwd: 'bower_components/c3/',
+            dest: '<%= builddir %>',
+          },
+          {
+            expand: true,
+            src: 'c3.min.js',
+            cwd: 'bower_components/c3/',
+            dest: '<%= buildscriptdir %>',
+          },
+        ]
+      },
     },
     clean: {
       build: {
         src: ['*/build.scss', '*/build.less']
       }
-    },
+    }
   });
 
   grunt.registerTask('none', function () { });
@@ -108,7 +164,7 @@ module.exports = function (grunt) {
     var lessSrc;
     var files = {};
     var dist = {};
-    concatSrc = 'theme/_build.less';
+    concatSrc = theme + '/_build.less';
     concatDest = theme + '/build.less';
     lessDest = '<%=builddir%>/bootstrap.css';
     lessSrc = [ theme + '/' + 'build.less' ];
@@ -121,11 +177,12 @@ module.exports = function (grunt) {
     grunt.config('less.dist.options.compress', false);
 
     grunt.task.run(['concat', 'less:dist', /*'prefix:' + lessDest,*/ 'clean:build',
-      compress ? 'compress:'+lessDest+':'+'<%=builddir%>/' + theme + '/bootstrap.min.css':'none']);
+      compress ? 'compress:'+lessDest+':'+'<%=builddir%>/bootstrap.min.css':'none']);
   });
 
   grunt.registerTask('compress', 'compress a generic css', function(fileSrc, fileDst) {
-    var files = {}; files[fileDst] = fileSrc;
+    var files = {};
+    files[fileDst] = fileSrc;
     grunt.log.writeln('compressing file ' + fileSrc);
 
     grunt.config('less.dist.files', files);

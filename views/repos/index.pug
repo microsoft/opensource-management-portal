@@ -1,0 +1,319 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+//-block append js
+  script(type='text/javascript', src='/js/typeahead.bundle.min.js')
+
+block append js_doc_ready
+  include ../js/search.js
+  //-include autocomplete.js
+
+block content
+
+  //- View services
+  - var languageColor = viewServices.languageColor
+  - var octicon = viewServices.octicon
+  - var fileSize = viewServices.fileSize
+
+  //- View variables and options
+  - var specificTeamId = specificTeam ? specificTeam.id : null
+  - var specificTeamView = specificTeamPermissions && specificTeamId
+
+  .container
+    //-form#search-container
+      input.typeahead.search-input.typeahead-form-control(type='text', placeholder='Search repositories', spellcheck='false', autocomplete='off')
+
+    if specificTeam
+      .nav
+        ul.pager.zero-pad-bottom
+          li.previous
+            a(href='/' + organization.name + '/teams/' + specificTeam.slug)
+              span(aria-hidden=true) &larr;
+              = ' Back to the ' + specificTeam.name + ' team'
+
+    //- Scenario-based heading
+    if organization && specificTeam
+
+      h3
+        = specificTeam.name + ' team repositories'
+        if specificTeamPermissions && specificTeamPermissions.allowAdministration
+          = ' '
+          .label.label-warning.shrink66(
+            title=specificTeamPermissions.sudo ? 'As a sudo maintainer, you can administer team settings in this application but not directly on GitHub.com' : 'As a team maintainer you can administer team settings in this application and directly on GitHub.com'
+          )= specificTeamPermissions.sudo ? 'Sudo maintainer' : 'Team maintainer'
+      h5= organization.name + ' organization'
+
+    else if organization
+      h3= organization.name + ' repositories'
+
+    else
+      h1 Repositories
+      p.lead Across all officially managed Microsoft organizations
+
+    //- If the age of the data is known
+    if reposDataAgeInformation
+      p.text-primary(style='margin-bottom:24px')
+        if reposDataAgeInformation.changed
+          = 'Updated ' + reposDataAgeInformation.changed
+        if reposDataAgeInformation.updated && reposDataAgeInformation.changed
+          |, refreshed
+        else
+          | Refreshed
+        if reposDataAgeInformation.updated
+          = ' ' + reposDataAgeInformation.updated
+
+    .row
+      .col-md-8
+
+        ul.nav.nav-pills
+          li(class=(search.sort === 'Pushed' ? 'active' : ''))
+            a(href='?sort=Pushed&tag=' + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? tag : '') + (query.tt ? '&tt=' + query.tt : '') + (query.phrase ? '&q=' + query.phrase : ''), title='Sort by commit pushed date/time')
+              != octicon('git-commit', 20)
+              | &nbsp;Recent
+          li(class=(search.sort === 'Stars' ? 'active' : ''))
+            a(href='?sort=Stars&tag=' + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? tag : '') + (query.tt ? '&tt=' + query.tt : '') + (query.phrase ? '&q=' + query.phrase : ''), title='Sort by stars')
+              //- i.glyphicon.glyphicon-star
+              != octicon('star', 16)
+              |  Stars
+          li(class=(search.sort === 'Forks' ? 'active' : ''))
+            a(href='?sort=Forks&tag=' + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? tag : '') + (query.tt ? '&tt=' + query.tt : '') + (query.phrase ? '&q=' + query.phrase : ''), title='Sort by forks')
+              != octicon('repo-forked', 14)
+              |  Forks
+          li(class=(search.sort === 'Alphabet' ? 'active' : ''), title='Sort by repo name')
+            a(href='?sort=Alphabet&tag=' + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? tag : '') + (query.tt ? '&tt=' + query.tt : '') + (query.phrase ? '&q=' + query.phrase : ''))
+              //- i.glyphicon.glyphicon-sort-by-alphabet
+              != octicon('text-size', 20)
+              |  Name
+              //-i.glyphicon.glyphicon-triangle-bottom
+          li(class=(search.sort === 'Updated' ? 'active' : ''))
+            a(href='?sort=Updated&tag=' + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? tag : '') + (query.tt ? '&tt=' + query.tt : '') + (query.phrase ? '&q=' + query.phrase : ''), title='Sort by updated date')
+              != octicon('calendar', 20)
+              |  Updated
+          li(class=(search.sort === 'Created' ? 'active' : ''))
+            a(href='?sort=Created&tag=' + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? tag : '') + (query.tt ? '&tt=' + query.tt : '') + (query.phrase ? '&q=' + query.phrase : ''), title='Sort by created date')
+             != octicon('zap', 12)
+             |  Created
+          li(class=(search.sort === 'Size' ? 'active' : ''))
+            a(href='?sort=Size&tag=' + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? tag : '') + (query.tt ? '&tt=' + query.tt : '') + (query.phrase ? '&q=' + query.phrase : ''), title='Sort by approximate repo size')
+             != octicon('database', 16)
+             |  Size
+
+        form.form-horizontal#entitySearch(style='margin-top:24px')
+          .form-group
+            .col-md-5
+              div.input-group
+                input.form-control#inputQuery(
+                  placeholder='Search repositories...',
+                  type='text',
+                  value=query && query.phrase ? query.phrase : null,
+                  style='max-width:400px')
+                span.input-group-btn
+                  button(
+                    class='btn btn-muted'
+                    type='submit'
+                    style='border-width: 1px') Search
+            .col-md-7
+              ul.nav.nav-pills
+                li.dropdown(role='presentation')
+                  a.dropdown-toggle#typeLabel(data-toggle='dropdown', href='#', role='button', aria-haspopup='true', aria-expanded='false')
+                    = 'Type: '
+                    if query && query.type
+                      strong= query.type
+                    else
+                      strong All
+                    span.caret
+                  ul.dropdown-menu.border-1px-primary(aria-labelledby='typeLabel', style='border-top:0;margin-top:0;padding-top:0;padding-bottom:0')
+                    - var currentType = query && query.type ? query.type : 'all'
+                    li(class={ active: currentType === 'all' })
+                      a(href='?page_number=' + (search.page) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (query.tt ? '&tt=' + query.tt : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + ('&type=all') + (query.phrase ? '&q=' + query.phrase : '')) All
+                    li(class={ active: currentType === 'public' })
+                      a(href='?page_number=' + (search.page) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (query.tt ? '&tt=' + query.tt : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + ('&type=public') + (query.phrase ? '&q=' + query.phrase : '')) Public
+                    li(class={ active: currentType === 'private' })
+                      a(href=href='?page_number=' + (search.page) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (query.tt ? '&tt=' + query.tt : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + ('&type=private') + (query.phrase ? '&q=' + query.phrase : '')) Private
+                    li(class={ active: currentType === 'source' })
+                      a(href=href='?page_number=' + (search.page) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (query.tt ? '&tt=' + query.tt : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language): '') + ('&type=source') + (query.phrase ? '&q=' + query.phrase : '')) Sources
+                    li(class={ active: currentType === 'fork' })
+                      a(href=href='?page_number=' + (search.page) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (query.tt ? '&tt=' + query.tt : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + ('&type=fork') + (query.phrase ? '&q=' + query.phrase : '')) Forks
+                li.dropdown(role='presentation')
+                  a.dropdown-toggle#languageLabel(data-toggle='dropdown', href='#', role='button', aria-haspopup='true', aria-expanded='false')
+                    = 'Language: '
+                    if query && query.language
+                      strong= query.language
+                    else
+                      strong All
+                    span.caret
+                  ul.dropdown-menu.border-1px-primary(aria-labelledby='languageLabel', style='border-top:0;margin-top:0;padding-top:0;padding-bottom:0')
+                    - var currentLanguage = query && query.language ? query.language : 'all'
+                    li(class={ active: currentLanguage === 'all' })
+                      a(href='?page_number=' + (search.page) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + ('&language=all') + (query.type ? '&type=' + query.type : '') + (query.tt ? '&tt=' + query.tt : '') + (query.phrase ? '&q=' + query.phrase : '')) All
+                    if search && search.observedLanguages
+                      each language in Array.from(search.observedLanguages).sort()
+                        li(class={ active: currentLanguage === language.toLowerCase() })
+                          a(href='?page_number=' + (search.page) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + ('&language=' + search.observedLanguagesEncoded.get(language)) + (query.type ? '&type=' + query.type : '') + (query.tt ? '&tt=' + query.tt : '') + (query.phrase ? '&q=' + query.phrase : ''))= language
+                //- Let the user filter by the type of permission they have, unless this is a team's specific repos
+                if !specificTeamId
+                  li.dropdown(role='presentation')
+                    a.dropdown-toggle#teamTypeLabel(data-toggle='dropdown', href='#', role='button', aria-haspopup='true', aria-expanded='false')
+                      = 'Teams: '
+                      if query && query.tt
+                        strong= query.tt
+                      else
+                        strong Any / all
+                      span.caret
+                    ul.dropdown-menu.border-1px-primary(aria-labelledby='teamTypeLabel', style='border-top:0;margin-top:0;padding-top:0;padding-bottom:0')
+                      - var currentTeamType = query && query.tt ? query.tt : 'all'
+                      li(class={ active: currentTeamType === 'all' })
+                        a(href='?page_number=' + (search.page) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + ('&tt=all') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : '')) All
+                      li(class={ active: currentTeamType === 'myadmin' })
+                        a(href='?page_number=' + (search.page) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + ('&tt=myadmin') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : '')) Teams with admin
+                      li(class={ active: currentTeamType === 'mywrite' })
+                        a(href=href='?page_number=' + (search.page) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + ('&tt=mywrite') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : '')) Teams you can write with
+                      li(class={ active: currentTeamType === 'myread' })
+                        a(href=href='?page_number=' + (search.page) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language): '') + ('&tt=myread') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : '')) Teams you can pull via
+                      li(class={ active: currentTeamType === 'teamless' })
+                        a(href=href='?page_number=' + (search.page) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + ('&tt=teamless') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : '')) No teams
+        if filters.length
+          p(style='margin-top:24px')
+            if search.totalRepos > 1
+              strong= search.totalRepos.toLocaleString()
+              |  results
+            else if search.totalRepos === 1
+              strong 1
+              |  result
+            else
+              | No results
+            = ' for '
+            each filter in filters
+              = filter.displayPrefix ? filter.displayPrefix + ' ' : ''
+              strong= filter.displayValue || filter.value
+              = ' '
+              = filter.displaySuffix ? filter.displaySuffix + ' ' : ''
+            a.pull-right.btn.btn-sm.btn-muted-more(href='?')
+              != octicon('x', 14)
+              = ' Clear filter'
+
+          hr
+
+        if search.totalRepos === 0
+
+          .well.well-lg
+            div.text-center
+              p
+                != octicon('repo', 24)
+              if organization
+                p.lead This organization doesn't have any repositories that match.
+              else
+                p.lead No repositories match across all Microsoft organizations.
+
+        else
+          nav(style='margin-bottom:48px')
+            ul.pager
+              li.previous(class=(search.page > 1 ? '' : 'disabled'))
+                a(href='?page_number=' + (search.page-1) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (query.tt ? '&tt=' + query.tt : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                  span(aria-hidden="true") &larr; Previous
+              li
+                | #{search.pageFirstRepo.toLocaleString()} - #{search.pageLastRepo.toLocaleString()} of #{search.totalRepos.toLocaleString()}
+              li.next(class=(search.page < search.totalPages ? '' : 'disabled'))
+                a(href='?page_number=' + (search.page+1) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (query.tt ? '&tt=' + query.tt : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                  span(aria-hidden="true") Next &rarr;
+
+          each repo in search.repos
+            - var quickOrgName = repo.full_name.replace('/' + repo.name, '')
+            - var repoOrgName = repo.organization ? repo.organization.name : quickOrgName
+            - var localOrgName = organization ? organization.name : repoOrgName
+
+            .repo(id=repo.name, style='padding-bottom:36px;display:block')
+              h3
+                if showIds
+                  = repo.id + ' '
+                a(href='/' + localOrgName + '/repos/' + repo.name)= repo.name
+                if repo.private === true
+                  | &nbsp;
+                  .label.label-warning.shrink66(title='This is a private repository and not open source.') Private
+                if repo.permissions && specificTeam
+                  = ' '
+                  if repo.permissions.admin
+                    .label.label-danger.shrink66(title='The ' + specificTeam.name + ' team grants permission to administer the repo') Admin
+                  else if repo.permissions.push
+                    .label.label-warning.shrink66(title='The ' + specificTeam.name + ' team grants permission to commit directly to the repo and accept pull requests') Write
+                  else if repo.permissions.pull
+                    .label.label-success.shrink66(title='The ' + specificTeam.name + ' team grants permission to clone/read/see the repo') Read
+              if repo.description
+                p=repo.description
+              small
+                ul.list-inline.list-horizontal-space
+                  if repo.language
+                    li
+                      span(style={color: languageColor(repo.language)})
+                        != octicon('primitive-dot', 10)
+                      = ' ' + repo.language
+                  if repo.stargazers_count
+                    li
+                      != octicon('star', 15)
+                      = ' ' + repo.stargazers_count.toLocaleString()
+                  if repo.forks_count
+                    li
+                      != octicon('repo-forked', 12)
+                      = ' ' + repo.forks_count.toLocaleString()
+                  //- I'm using "pushed" as the "updated" to try and match what
+                  //- it feels like GH does on their homepage...
+                  if repo.momentDisplay.pushed
+                    li= 'Updated ' + repo.momentDisplay.pushed
+                  //- Looks like GitHub doesn't really show this value
+                  //-if repo.momentDisplay.updated
+                    li
+                      small= 'Updated ' + repo.momentDisplay.updated
+                    li &nbsp;
+                  if repo.momentDisplay.created
+                    li= 'Created ' + repo.momentDisplay.created
+                  if repo.size
+                    li
+                      != octicon('database', 13)
+                      = ' ' + fileSize(repo.size * 1024)
+
+              if specificTeam && teamUrl && specificTeamPermissions && specificTeamPermissions.allowAdministration
+                ul.list-inline
+                  li
+                    form(method='post', action=teamUrl + 'repos/' + repo.name + '/remove')
+                      p: input.btn.btn-sm.btn-muted(
+                        type='submit',
+                        onclick='return confirm(\'Are you sure that you want to remove access to this repo?\');'
+                        value='Remove team access to repo')
+                  li: a.btn.btn-sm.btn-muted(
+                    href='#',
+                    onclick='alert(\'To edit the permission level, a repo admin must perform this operation directly on GitHub.\'); return false;') Edit permission
+              if !organization
+                h6= repo.full_name.replace('/' + repo.name, '') + ' organization'
+
+          nav
+            ul.pager
+              li.previous(class=(search.page > 1 ? '' : 'disabled'))
+                a(href='?page_number=' + (search.page-1) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (query.tt ? '&tt=' + query.tt : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                  span(aria-hidden="true") &larr; Previous
+              li
+                h4(style="display:inline")
+                  | Page #{search.page} of #{search.totalPages}
+              li.next(class=(search.page < search.totalPages ? '' : 'disabled'))
+                a(href='?page_number=' + (search.page+1) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (query.tt ? '&tt=' + query.tt : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                  span(aria-hidden="true") Next &rarr;
+
+      .col-md-3.col-md-offset-1
+        div(style='margin-left:12px')
+
+          if orgs
+            h4 Need to create a repo?
+            p To create a new repo, first you need to select which organization will host it.
+
+            hr
+
+            h4 Organizations
+            ul.list-unstyled
+              each org in orgs
+                li(style='margin-bottom:8px')
+                  a.btn.btn-muted-more.btn-sm(
+                    href='/' + org.name + '/repos'
+                  )= org.name

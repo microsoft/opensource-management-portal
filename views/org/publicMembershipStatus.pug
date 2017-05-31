@@ -11,16 +11,14 @@ block content
     if publicMembership
       h1
         | Thanks for supporting #{org.name}
-      p.lead Your membership is currently public.
-      p If you conceal your membership, you will not appear on the #{org.name} list of members nor be counted in the public membership count.
+      p.lead Your membership is currently public
+      p If you conceal your membership, you won't appear in the #{org.name} member list or count.
     else
-      h1 Would you like to publish your #{org.name} org membership?
+      h1 Want to publish your #{org.name} org membership?
+      p.lead Show your support for #{config.brand.companyName} open source!
+      p Publicizing your org memberships is great for building community and reputation. If you to make your membership public, GitHub shows the "#{org.name}" avatar on <a href="https://github.com/#{user.github.username}" target="_new">your public GitHub profile</a> and shows you on the <a href="https://github.com/orgs/#{org.name}/people" target="_new">members page for #{org.name}</a>.
 
     if user && user.github.increasedScope === true
-      p &nbsp;
-      if !publicMembership
-        p.lead Show your support for #{config.companyName} open source!
-        p If you want to make your membership public, GitHub will show the "#{org.name}" organization on your public GitHub profile at <a href="https://github.com/#{user.github.username}" target="_new">https://github.com/#{user.github.username}</a>.
       p &nbsp;
       form(method='post')
         p
@@ -36,26 +34,45 @@ block content
             a.btn.btn-default.btn-lg(href=org.baseUrl) Cancel
 
     else
-      p If you make your membership public, others in the worldwide open source community will see you listed on the page for #{org.name} and your personal GitHub profile page will show the #{org.name} avatar.
-
-      h2 Authorize #{org.name} to publish your organization membership
-      p Authorize us to get permission from GitHub to update your organization status
+      p.lead Quick way: Authorize us to publish on your behalf
+      p.
+        Temporarily authorize this site to have
+        <a href="https://developer.github.com/v3/oauth/#scopes" target="_new"><code>write:org</code></a>
+        permissions and immediately publish your org membership.
       p
-        a.btn.btn-primary(href='/signin/github/increased-scope') Authorize additional permissions for #{org.name} with GitHub
+        a.btn.btn-primary.btn-lg(href='/signin/github/increased-scope') Publish Membership
         if (!(onboarding || joining))
           | &nbsp; &nbsp;
           a.btn.btn-default(href=org.baseUrl) Cancel
 
       if onboarding || joining
-        h2 Keep your membership private
-        p You can always change your mind from the organization portal start page.
+        p.lead Manual way: Follow this process
+        ul
+          li Head over to the <a href="https://github.com/orgs/#{org.name}/people">#{org.name} list of people</a>.
+          li Find yourself in the list and change the Public/Private setting.
         p
-          a.btn.btn-default(href=org.baseUrl + 'teams' + (onboarding ? '?onboarding=' + onboarding : '')) Keep my membership private
+          a.btn.btn-default.btn-lg(href=org.baseUrl + 'teams' + (onboarding ? '?onboarding=' + onboarding : '')) Continue without publishing
 
+    if onboarding
+      p &nbsp;
       hr
-      h4 About this additional GitHub authorization
-      p This open source portal is designed to use the bare minimum of <a href="https://developer.github.com/v3/oauth/#scopes" target="_new">GitHub OAuth scopes</a>. To change your public membership, we need to temporarily increase the scope to the <code>write:org</code> scope that enables publicizing and unpublicizing your membership.
-
-      p If you would rather not grant the additional scope, you can also modify your organization membership status manually at
-          a(href='https://github.com/orgs/' + org.name + '/people?query=' + theirUsername, target='_new') https://github.com/orgs/#{org.name}/people?query=#{theirUsername}
-      p The next time you sign in to use this portal, the expanded scope will be removed.
+      h3 Your onboarding progress
+      h5
+        | Sign in to your GitHub &amp; #{config.brand.companyName} accounts&nbsp;
+        i.glyphicon.glyphicon-ok
+      h5
+        | Link your accounts&nbsp;
+        i.glyphicon.glyphicon-ok
+      h5
+        | Join your first GitHub organization&nbsp;
+        i.glyphicon.glyphicon-ok
+      h5
+        | Multifactor security checkup&nbsp;
+        i.glyphicon.glyphicon-ok
+      h5
+        | Profile review&nbsp;
+        i.glyphicon.glyphicon-ok
+      h5.text-primary
+        | Publish your membership <em>(optional)</em>
+      h5
+        | Join a team <em>(optional)</em>

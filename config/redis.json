@@ -1,0 +1,8 @@
+{
+  "port": "env://REDIS_PORT",
+  "host": "env://REDIS_HOST",
+  "key": "env://REDIS_KEY",
+  "ttl": "env://REDIS_TTL?type=integer&default=604800",
+  "prefix": "env://REDIS_PREFIX",
+  "tls": "env://REDIS_TLS_HOST"
+}

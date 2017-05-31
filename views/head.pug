@@ -4,29 +4,31 @@
 //-
 
 head
+  - var resourceVersion = '4a'
   meta(charset='utf-8')
-  title= (user && user.primaryUsername) ? title + ' - ' + user.primaryUsername : title
+  //-title= (user && user.primaryUsername) ? title + ' - ' + user.primaryUsername : title
+  title= title
   meta(http-equiv='X-UA-Compatible', content='IE=edge')
   meta(name='viewport', content='width=device-width, initial-scale=1.0')
   meta(name='author', content='Microsoft Open Source')
-  link(href='/css/bootstrap.min.css?1a', rel='stylesheet')
-  link(href='/repos-css/oss.css?2b', rel='stylesheet')
+  link(href='/css/bootstrap.min.css?' + resourceVersion, rel='stylesheet')
+  link(href='/repos-css/oss.css?' + resourceVersion, rel='stylesheet')
+  link(href='/css/octicons.css?' + resourceVersion, rel='stylesheet')
   link(rel='shortcut icon', href='/favicon.ico')
   link(rel='apple-touch-icon', sizes='114x114,72x72,144x144,60x60,120x120,76x76,152x152,180x180', href='/favicon-144.png')
   meta(name='msapplication-config', content='none')
   //[if lt IE 9]
     <script src="https://ajax.aspnetcdn.com/ajax/respond/1.4.2/respond.min.js"/>
     [endif]
-  script(type='text/javascript', src='/js/jquery.min.js')
-  script(type='text/javascript', src='/js/bootstrap.min.js')
-  script(type='text/javascript', src='/js/jquery.timeago.js')
-  script(type='text/javascript', src='/js/jquery.uitablefilter.js')
+  block additional_head
+  block js
+    script(type='text/javascript', src='/js/jquery.min.js')
+    script(type='text/javascript', src='/js/bootstrap.min.js')
+    script(type='text/javascript', src='/js/jquery.timeago.js')
+    script(type='text/javascript', src='/js/jquery.uitablefilter.js')
   | <script type='text/javascript'>
   | $(document).ready(function() {
   block js_doc_ready
   | jQuery('time').timeago();
-  if alerts
-    each alert in alerts
-      | setTimeout(function () {$('#layout-alert-#{alert.number}').alert('close');}, 8000 * #{alert.number});
   | });
   | </script>

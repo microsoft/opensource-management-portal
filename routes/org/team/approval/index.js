@@ -5,7 +5,9 @@
 
 const express = require('express');
 const router = express.Router();
+
 const async = require('async');
+const emailRender = require('../../../../lib/emailRender');
 const utils = require('../../../../utils');
 
 function teamsInfoFromRequest(team, approvalRequest, callback) {
@@ -96,6 +98,7 @@ router.post('/', function (req, res, next) {
   var team = engine.team;
   var org = req.org;
   var dc = req.app.settings.dataclient;
+  const config = req.app.settings.runtimeConfig;
   if (!req.body.text && req.body.deny) {
     return res.redirect(req.teamUrl + 'approvals/' + requestid + '/setNote/deny');
   }
@@ -110,16 +113,59 @@ router.post('/', function (req, res, next) {
   if (!req.body.text && req.body.approveWithComment) {
     return res.redirect(req.teamUrl + 'approvals/' + requestid + '/setNote/approveWithComment');
   }
+  const repoApprovalTypesValues = config.github.approvalTypes.repo;
+  if (repoApprovalTypesValues.length === 0) {
+    return next(new Error('No repo approval providers configured.'));
+  }
+  const repoApprovalTypes = new Set(repoApprovalTypesValues);
+  const mailProviderInUse = repoApprovalTypes.has('mail');
+  var issueProviderInUse = repoApprovalTypes.has('github');
+  if (!mailProviderInUse && !issueProviderInUse) {
+    return next(new Error('No configured approval providers configured.'));
+  }
+  const mailProvider = req.app.settings.mailProvider;
+  if (!mailProvider) {
+    return next(new Error('A mail provider has been requested but a provider instance could not be found.'));
+  }
+  const mailAddressProvider = req.app.settings.mailAddressProvider;
+  // Approval workflow note: although the configuration may specify just a mail
+  // provider today, there may actually be an issue that was opened at the time
+  // of the request. So we will attempt to close any issues if the request has
+  // an issue ID.
   var action = req.body.approveWithComment || req.body.approve ? 'approve' : 'deny';
   var bodyText = req.body.text;
   var oss = req.oss;
-  var notificationRepo = org.getWorkflowRepository();
   var friendlyErrorMessage = 'Whoa? What happened?';
   var pendingRequest = engine.request;
+  var notificationRepo = null;
+  var issueId = pendingRequest.issue;
+  var userMailAddress = null;
+  try {
+    if (issueId) {
+      notificationRepo = org.getWorkflowRepository();
+    }
+  } catch (noWorkflowRepoError) {
+    // No provider configured
+    issueId = undefined;
+    issueProviderInUse = false;
+  }
   var issue = null;
   async.waterfall([
-    function (callback) {
-      issue = notificationRepo.issue(pendingRequest.issue);
+    function getMailAddressForUser(callback) {
+      const upn = pendingRequest.email;
+      mailAddressProvider.getAddressFromUpn(upn, (resolveError, mailAddress) => {
+        if (resolveError) {
+          return callback(resolveError);
+        }
+        userMailAddress = mailAddress;
+        callback();
+      });
+    },
+    function commentOnIssue(callback) {
+      if (!issueId) {
+        return callback();
+      }
+      issue = notificationRepo.issue(issueId);
       var bodyAddition = engine.messageForAction(action);
       if (bodyText !== undefined) {
         bodyAddition += '\n\nA note was included with the decision and can be viewed by team maintainers and the requesting user.';
@@ -130,9 +176,15 @@ router.post('/', function (req, res, next) {
         comment += '\n\n' + 'FYI, @' + pendingRequest.ghu + '\n';
       }
       friendlyErrorMessage = 'While trying to comment on issue #' + issue.number + ', an error occurred.';
-      issue.createComment(comment, callback);
+      issue.createComment(comment, (commentError) => {
+        if (commentError && mailProviderInUse) {
+          issue = null;
+          issueProviderInUse = false;
+        }
+        callback(commentError);
+      });
     },
-    function () {
+    function updateRequest() {
       var callback = arguments[arguments.length - 1];
       var requestUpdates = {
         decision: action,
@@ -142,10 +194,12 @@ router.post('/', function (req, res, next) {
         decisionNote: bodyText,
         decisionEmail: oss.modernUser().contactEmail(),
       };
+      var updatedRequest = Object.assign({}, pendingRequest);
+      Object.assign(updatedRequest, requestUpdates);
       friendlyErrorMessage = 'The approval request information could not be updated, indicating a data store problem potentially. The decision may not have been recorded.';
-      dc.updateApprovalRequest(requestid, requestUpdates, callback);
+      dc.replaceApprovalRequest(requestid, updatedRequest, callback);
     },
-    function () {
+    function performApprovalOperations() {
       var callback = arguments[arguments.length - 1];
       if (action == 'approve') {
         engine.performApprovalOperation(callback);
@@ -155,6 +209,9 @@ router.post('/', function (req, res, next) {
     },
     function closeIssue() {
       var callback = arguments[arguments.length - 1];
+      if (!issue) {
+        return callback();
+      }
       friendlyErrorMessage = 'The issue #' + issue.number + ' that tracks the request could not be closed.';
       issue.close(callback);
     },
@@ -167,7 +224,7 @@ router.post('/', function (req, res, next) {
         callback();
       }
     },
-    // Secondary tasks run after the primary and in general will not 
+    // Secondary tasks run after the primary and in general will not
     // fail the approval operation. By sending an empty error callback
     // but then an object with an error property set, the operation
     // that failed can report status. Whether an error or not, a
@@ -185,7 +242,85 @@ router.post('/', function (req, res, next) {
       }
       return next(error);
     }
+    var secondaryErrors = false;
+    if (output && output.length) {
+      output.forEach((secondaryResult) => {
+        if (secondaryResult.error) {
+          secondaryErrors = true;
+          try {
+            var extraInfo = {
+              eventName: 'ReposRequestSecondaryTaskError',
+            };
+            if (secondaryResult.error.data) {
+              Object.assign(extraInfo, secondaryResult.error.data);
+            }
+            if (secondaryResult.error.headers) {
+              Object.assign(extraInfo, secondaryResult.error.headers);
+            }
+            req.insights.trackException(secondaryResult.error, extraInfo);
+          } catch (unusedError) {
+            // never want this to fail
+          }
+        }
+      });
+    }
     req.oss.saveUserAlert(req, 'Thanks for processing the request with your ' + action.toUpperCase() + ' decision.', engine.typeName, 'success');
+    function sendDecisionMail() {
+      const wasApproved = action == 'approve';
+      const contentOptions = {
+        correlationId: req.correlationId,
+        pendingRequest: pendingRequest,
+        version: config.logging.version,
+        results: output,
+        wasApproved: wasApproved,
+        decisionBy: oss.usernames.github,
+        decisionNote: bodyText,
+        decisionEmail: oss.modernUser().contactEmail(),
+      };
+      if (!engine.getDecisionEmailViewName || !engine.getDecisionEmailSubject) {
+        return req.insights.trackException(new Error('No getDecisionEmailViewName available with the engine.'), Object.assign({
+          eventName: 'ReposRequestDecisionMailRenderFailure',
+        }, contentOptions));
+      }
+      const getDecisionEmailViewName = engine.getDecisionEmailViewName();
+      emailRender.render(req.app.settings.basedir, getDecisionEmailViewName, contentOptions, (renderError, mailContent) => {
+        if (renderError) {
+          return req.insights.trackException(renderError, Object.assign({
+            eventName: 'ReposRequestDecisionMailRenderFailure',
+          }, contentOptions));
+        }
+        // TODO: remove spike: adding the GitHub admin alias if there is a secondary failure
+        var recipients = [userMailAddress];
+        if (secondaryErrors) {
+          recipients.push('github-admin@microsoft.com');
+        }
+        const mail = {
+          to: recipients,
+          subject: engine.getDecisionEmailSubject(wasApproved, pendingRequest),
+          reason: (`You are receiving this e-mail because of a request that you created, and a decision has been made.
+                    This mail was sent to: ${pendingRequest.email}`),
+          content: mailContent,
+          headline: engine.getDecisionEmailHeadline(wasApproved, pendingRequest),
+          classification: wasApproved ? 'information' : 'warning',
+          service: 'Microsoft GitHub',
+          correlationId: req.correlationId,
+        };
+        mailProvider.sendMail(mail, (mailError, mailResult) => {
+          var customData = Object.assign({
+            receipt: mailResult,
+          }, contentOptions);
+          if (mailError) {
+            customData.eventName = 'ReposRequestDecisionMailFailure';
+            req.insights.trackException(mailError, customData);
+          } else {
+            req.insights.trackEvent('ReposRequestDecisionMailSuccess', customData);
+          }
+        });
+      });
+    }
+    if (mailProviderInUse) {
+      sendDecisionMail();
+    }
     if (action !== 'approve' || !engine.getApprovedViewName) {
       return res.redirect(req.teamUrl);
     }

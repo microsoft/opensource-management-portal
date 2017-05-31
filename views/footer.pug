@@ -3,81 +3,91 @@
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
-footer.wiki-footer
+footer
   hr
-  div.container
-    div
-      p(class='pull-right')
-        a(href='#top', title=headSha) Back to top
-        if ! user
-          |  &middot;
-          a(href='/signin/github') Sign In
-    if config && config.showDebugFooter === true
-      div.clearfix
-      div.row.alert-gray(style='padding:12px')
+  .container
+    if config && config.debug && config.debug.showDebugFooter === true
+      .clearfix
+      .row.alert-gray(style='padding:12px')
         h6 Instance Configuration
-        div.col-md-6.col-lg-6
+        .col-md-6.col-lg-6
           if correlationId
             h4 Correlation ID: #{correlationId}
-          if serverName
-            h4 Hostname: #{serverName}
-          if config && config.applicationInsights && config.applicationInsights.instrumentationKey
+          if config && config.telemetry && config.telemetry.applicationInsightsKey
             h4 AppInsights: Instrumented
+          if config && config.telemetry && config.telemetry.googleAnalyticsKey
+            h4 Google Analytics: Tracking
           if config && config.authentication.scheme
             h4
               | Primary Authentication: #{config.authentication.scheme === 'github' ? 'GitHub' : 'Azure Active Directory'}
           if config && config.session.encryption !== undefined
             h4
               | Session Encryption: #{config.session.encryption === true ? 'Encrypted' : 'Plain Text'}
-          if config && config.azureStorage.encryption !== undefined
+          if config && config.github.links.table.encryption !== undefined
             h4
-              | Table Encryption: #{config.azureStorage.encryption === true ? 'Encrypted' : 'Plain Text'}
-        div.col-md-6.col-lg-6(style='background-color:white')
-          if config && config.azureStorage
+              | Table Encryption: #{config.github.links.table.encryption === true ? 'Encrypted' : 'Plain Text'}
+        .col-md-6.col-lg-6(style='background-color:white')
+          if serverName
+            h4 Hostname: #{serverName}
+          if serverAddress
+            h4 Server: #{serverAddress}
+          if websiteHostname
+            h4 Site: #{websiteHostname}
+          if config && config.github.links.table
             h4
               | Storage:&nbsp;
-              span.bg-danger(style='color:white;padding:2px')= config.azureStorage.account
+              span.bg-danger(style='color:white;padding:2px')= config.github.links.table.account
             h4
-              | Storage Prefix: #{config.azureStorage.prefix}
+              | Storage Prefix: #{config.github.links.table.prefix}
           if config && config.redis
             h4
               | Redis:&nbsp;
-              span.bg-danger(style='color:white;padding:2px')= config.redis.host
+              span.bg-danger(style='color:white;padding:2px')= config.redis.host || config.redis.tls
             h4
               | Redis Prefix: #{config.redis.prefix}
-    if user && user.github && user.github.id
-      if config && config.corporate && config.corporate.trainingResources
-        - var footres = config.corporate.trainingResources.footer
-        if footres
-          div.clearfix
-          div.row(style='margin-bottom:24px')
+
+    .clearfix
+    .row(style='margin-bottom:12px')
+      if user && user.github && user.github.id
+        if config && config.corporate && config.corporate.trainingResources
+          - var footres = config.corporate.trainingResources.footer
+          if footres
             each categoryList, category in footres
               div.col-md-3.col-lg-3
                 h5= category
-                ul.list-unstyled
+                ul.list-unstyled.small
                   each item in categoryList
                     li
                       a(href=item.link)= item.title
-      div.clearfix
-        p
-          small It is important to note that uptime of this service is dependent on GitHub's API availability and rate limit.
-        ul.list-inline
-          if config && config.corporate && config.corporate.portalAdministratorEmail
-            li
-              a(href='mailto:' + config.corporate.portalAdministratorEmail) Contact Portal Administrator
-            li
-              a(href='https://github.com/azure/azure-oss-portal', target='_new') Contribute to this portal on GitHub
-    div
-      p
-        small
-          | &copy; #{config && config.companyName ? config.companyName : ''}
+            div.col-md-3.col-lg-3
+              h5(class='pull-right')
+                a(href='#top', title=headSha) Back to top
+      else
+        .col-sm-12.col-md-12.col-lg-12
+          h5(class='pull-right')
+            a(href='#top', title=headSha) Back to top
+
+    .row.small
+      .col-sm-6.col-md-6.col-lg-6
+        .clearfix
+          ul.list-inline(style='margin-bottom: 0px')
+            if config && config.brand && config.brand.supportMail
+              li
+                a(href='mailto:' + config.brand.supportMail) Contact site administrator
+              li
+                a(href='https://github.com/microsoft/ospo-opensource-repos', target='_new') &nbsp;&nbsp;Contribute to this site on GitHub
+        if serverName && correlationId
+          | Powered by&nbsp;
+          a(href='/thanks') great open source,&nbsp;
+          span(title=correlationId + ' ' + serverName) Microsoft Azure,&nbsp;
+          | and the GitHub API
+        else
+          | Powered by <a href="/thanks">great open source</a>, Microsoft Azure, and the GitHub API
+      .col-sm-6.col-md-6.col-lg-6
+        .pull-right.text-right
+          a#microsoftFooterLogo(href='https://microsoft.com', title='Microsoft')
+            img(src='/img/microsoft.png', alt='Microsoft', style='max-height:23px')
           br
-          if serverName && correlationId
-            | Powered by&nbsp;
-            span(title=correlationId + ' ' + serverName) Microsoft Azure,&nbsp;
-            a(href='/thanks') great open source&nbsp;
-            | and the GitHub API
-          else
-            | Powered by Microsoft Azure,&nbsp;
-            a(href='/thanks') great open source&nbsp;
-            | and the GitHub API
+          span &copy; #{config && config.brand.companyName ? config.brand.companyName : ''}
+    .row
+       div(style='margin-bottom: 30px')

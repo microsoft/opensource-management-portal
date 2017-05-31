@@ -36,5 +36,5 @@ logger.token('scrubbedUrl', function getScrubbedUrl(req) {
 });
 
 module.exports = function createLogger(config) {
-  return logger(config.logging.showUsers === true ? piiFormat : format);
+  return logger(config.debug.showUsers === true ? piiFormat : format);
 };

@@ -1,0 +1,155 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block append js_doc_ready
+  include ../js/search.js
+
+block content
+  - var languageColor = viewServices.languageColor
+  - var octicon = viewServices.octicon
+
+  .container
+    if organization
+      h3= organization.name + ' Teams'
+    else
+      h1 GitHub Teams
+      p.lead Across all officially managed Microsoft organizations
+
+    .row
+      .col-md-8
+        form.form-horizontal#entitySearch(style='margin-top:24px')
+          .form-group
+            .col-md-5
+              div.input-group
+                input.form-control#inputQuery(
+                  placeholder='Search repositories...',
+                  type='text',
+                  value=query && query.phrase ? query.phrase : null,
+                  style='max-width:400px')
+                span.input-group-btn
+                  button(
+                    class='btn btn-muted'
+                    type='submit'
+                    style='border-width: 1px') Search
+            .col-md-7
+
+              ul.nav.nav-pills
+                li(class=(query.set === 'all' ? 'active' : ''), title='All teams')
+                  a(href='?set=all')
+                    | All teams
+                li(class=(query.set === 'your' ? 'active' : ''), title='Teams you are a member or maintainer of')
+                  a(href='?set=your')
+                    | Your teams
+                li(class=(query.set === 'available' ? 'active' : ''), title='Teams that are available and you are not a member of')
+                  a(href='?set=available')
+                    | Available teams
+
+        if filters.length
+          p(style='margin-top:24px')
+            if search.totalTeams > 1
+              strong= search.totalTeams.toLocaleString()
+              |  results
+            else if search.totalTeams === 1
+              strong 1
+              |  result
+            else
+              | No results
+            = ' for '
+            each filter in filters
+              = filter.displayPrefix ? filter.displayPrefix + ' ' : ''
+              strong= filter.displayValue || filter.value
+              = ' '
+              = filter.displaySuffix ? filter.displaySuffix + ' ' : ''
+            a.pull-right.btn.btn-sm.btn-muted-more(href='?')
+              != octicon('x', 14)
+              = ' Clear filter'
+
+          hr
+
+        if search.totalTeams === 0
+
+          .well.well-lg
+            div.text-center
+              p
+                != octicon('organization', 24)
+              if organization
+                if query.set === 'your'
+                  p.lead None of your teams match.
+                  p
+                    a.btn.btn-primary.btn-sm(href='?set=available') View available teams
+                else
+                  p.lead This organization doesn't have any teams that match.
+              else
+                p.lead No teams match across all organizations.
+
+        else
+          nav(style='margin-bottom:48px')
+            ul.pager
+              li.previous(class=(search.page > 1 ? '' : 'disabled'))
+                a(href='?page_number=' + (search.page-1) + (query.set ? '&set=' + query.set : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                  span(aria-hidden="true") &larr; Previous
+              li
+                | #{search.pageFirstTeam.toLocaleString()} - #{search.pageLastTeam.toLocaleString()} of #{search.totalTeams.toLocaleString()}
+              li.next(class=(search.page < search.totalPages ? '' : 'disabled'))
+                a(href='?page_number=' + (search.page+1) + (query.set ? '&set=' + query.set : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                  span(aria-hidden="true") Next &rarr;
+
+          .container
+            each team in search.teams
+              .row.vertical-pad-bottom
+                // team: name, id, slug, description, organization.login
+                //- TODO: consider fixing this to be consistent in cross-org vs single org
+                - var orgName = team.organization.login ? team.organization.login : team.organization.name
+                - var isMultipleOrganizationView = !organization && team.organization
+                - var teamLink = '/' + orgName + '/teams/' + team.slug
+                .col-md-6
+                  .team(id=team.slug)
+                    h3: a(href=teamLink)= team.name
+                  if team.description
+                    p=team.description
+                .col-md-4(style={
+                  'margin-top': isMultipleOrganizationView ? null : '30px'
+                })
+                  if isMultipleOrganizationView
+                    h4(style='margin-top:12px')= orgName
+                  //- Actions
+                  - var userStatus = yourTeamsMap.get(team.id)
+                  if userStatus === 'maintainer'
+                    p: a.btn.btn-sm.btn-default(href=teamLink, title='As a Team Maintainer, you can manage this team') Manage team
+                  else if userStatus === 'member'
+                    p: a.btn.btn-sm.btn-muted-more(href=teamLink, title='You are a member of this team') You're a team member
+                  else
+                    p: a.btn.btn-sm.btn-muted(href=teamLink, title='Learn more about this team') Team information
+
+          nav
+            ul.pager
+              li.previous(class=(search.page > 1 ? '' : 'disabled'))
+                a(href='?page_number=' + (search.page-1) + (query.set ? '&set=' + query.set : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                  span(aria-hidden="true") &larr; Previous
+              li
+                h4(style="display:inline")
+                  | Page #{search.page} of #{search.totalPages}
+              li.next(class=(search.page < search.totalPages ? '' : 'disabled'))
+                a(href='?page_number=' + (search.page+1) + (query.set ? '&set=' + query.set : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                  span(aria-hidden="true") Next &rarr;
+
+      .col-md-3.col-md-offset-1
+        div(style='margin-left:12px')
+
+          if orgs
+            h4 Need to create a team?
+            p Any organization member can create a new team directly on the GitHub.com site.
+
+            hr
+
+            h4 Organizations
+            ul.list-unstyled
+              each org in orgs
+                li(style='margin-bottom:8px')
+                  a.btn.btn-muted-more.btn-sm(
+                    href='/' + org.name + '/teams'
+                  )= org.name

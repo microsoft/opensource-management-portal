@@ -11,61 +11,66 @@ block content
     // - authenticated with AAD
 
   div.container
+
     div.row
-      div.col-md-7.col-lg-7
-        h1 Link your accounts
-        p.lead.
-          Enable self-service open source management by linking
-          your corporate &amp; social coding accounts
-        table.table
-          thead
-            tr
-              th GitHub Username
-              th
-              th #{config.companyName} Directory
-          tbody
-            tr
-              - gitAlertClass = config.authentication.scheme == 'github' ? '' : 'alert-success'
-              - aadAlertClass = config.authentication.scheme == 'aad' ? '' : 'alert-success'
-              td(class=gitAlertClass)= user.github.username
-              td
-                div.text-center
-                  i.glyphicon.glyphicon-link
-              td(class=aadAlertClass)= user.azure.username
-        p By continuing, you agree:
-        ul
-          li My GitHub account is controlled by #{user.azure.username}
-          li My GitHub password is safe and secure
-          li I will enable two-factor authentication on my GitHub account
+      div.col-md-8.col-lg-8
         form(method='post')
+          if graphUser && graphUser.mail
+            input(type='hidden', name='sam', value=graphUser.mail)
+          if isServiceAccountCandidate
+            h1 Create a service account link
+            p.lead Service accounts are often used for continuous integration, deployment and test systems
+
+            h5 Service account contact
+            p This account is a Service Account at #{config.brand.companyName}. Since many mail-enabled service accounts are not regularly monitored for communications, we need to record an e-mail address to associate with the maintainers of this account.
+
+            input(type='hidden', name='sa', value='1')
+            input.form-control(name='serviceAccountMail', type='text', placeholder='Discussion list, security group, or e-mail address of the primary maintainer')
+
+            h5 Link details
+          else
+            h1 Link your accounts
+            p.lead.
+              #{graphUser && graphUser.givenName ? graphUser.givenName + ', get' : 'Get'} access to
+              #{config.brand.companyName} repos and enable self-service tools by linking
+              your #{config.brand.companyName} &amp; GitHub accounts
+          table.table
+            thead
+              tr
+                th GitHub Username
+                th
+                th #{config.brand.companyName} Directory
+            tbody
+              tr
+                td
+                  if user && user.github
+                    = user.github.username
+                td
+                  div.text-center
+                    i.glyphicon.glyphicon-link
+                td
+                  if user && user.azure
+                    = user.azure.username
+          p By continuing, you agree the following are true:
+          ul
+            if isServiceAccountCandidate && user && user.azure
+              li This GitHub account is a service account, #{user.azure.username}
+            if user && user.azure
+              li This GitHub account is controlled by #{user.azure.username}
+            li The GitHub account's passwords and personal access tokens are safe and secure
+            li This account will use two-factor authentication on GitHub.com
+            if isServiceAccountCandidate
+              li The e-mail address(es) associated with this service account can be used to communicate with those controlling the account regarding policy, operations, and outages
           p(style='margin-top:24px')
             input.btn.btn-lg.btn-primary(type='submit', value='Link')
-            | &nbsp; &nbsp;
-            a.btn.btn-lg.btn-default(href='/signout') Cancel
 
-      div.col-md-5.col-lg-5
-        if user && user.github && user.github.id
-          .alert-gray.pad
-            if config && config.corporate && config.corporate.trainingResources
-              - var footres = config.corporate.trainingResources.footer
-              if footres
-                // These same resources appear on every single auth page footer, too.
-                h3 Open Source Resources
-                each categoryList, category in footres
-                  h5= category
-                  ul
-                    each item in categoryList
-                      li
-                        a(href=item.link, target='_new')
-                          = item.title + ' '
-                          i.glyphicon.glyphicon-share-alt
-
+        p &nbsp;
         h3 Your onboarding progress
         h5
-          | Sign in with GitHub &amp; #{config.companyName} IT&nbsp;
+          | Sign in to your GitHub &amp; #{config.brand.companyName} accounts&nbsp;
           i.glyphicon.glyphicon-ok
         h5.text-primary
-          | Link your identity
+          | Link your accounts
         h5
           | Join your first GitHub organization
         h5
@@ -76,3 +81,20 @@ block content
           | Publish your membership <em>(optional)</em>
         h5
           | Join a team <em>(optional)</em>
+
+      div.col-md-4.col-lg-4
+        if user && user.github && user.github.id
+          .alert-gray.pad
+            if config && config.corporate && config.corporate.trainingResources
+              - var footres = config.corporate.trainingResources.footer
+              if footres
+                // These same resources appear on every single auth page footer, too.
+                h3 Open Source Resources
+                each categoryList, category in footres
+                  h5= category
+                  ul.list-unstyled
+                    each item in categoryList
+                      li
+                        a(href=item.link, target='_new')
+                          = item.title
+

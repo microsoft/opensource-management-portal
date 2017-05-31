@@ -7,12 +7,15 @@ extends layout
 
 block content
   div.container
-    h2 GitHub Cleanup
-    p.lead You need to unlink #{numberToRemove == 1 ? 'a' : numberToRemove} GitHub account#{numberToRemove == 1 ? '' : 's'}
-    p.
-      Please remove the accounts that you are not using for
-      corporate work at this time. Removed accounts
-      will lose access to any private repositories.
+    if enableMultipleAccounts === true
+      h2 Select your account
+    else
+      h2 GitHub cleanup
+      p.lead You need to unlink #{numberToRemove == 1 ? 'a' : numberToRemove} GitHub account#{numberToRemove == 1 ? '' : 's'}
+      p.
+        Please remove the accounts that you are not using for
+        corporate work at this time. Removed accounts
+        will lose access to any private repositories.
     div.row
       each column in linksForCleanupByColumn
         div.col-sm-6.col-md-6.col-lg-6
@@ -22,8 +25,11 @@ block content
                 h2= link.ghu
                 p GitHub Account
                 a.btn.btn-sm.btn-muted(href='https://github.com/' + link.ghu, target='_new')
-                  | View #{link.ghu} GitHub Profile &nbsp;
-                  i.glyphicon.glyphicon-share-alt
+                  | View #{link.ghu} GitHub Profile
+                if enableMultipleAccounts === true
+                  form(method='post').vertical-space
+                    input(type='hidden', name='select', value=link.ghid)
+                    input.btn-primary.btn-lg(class=buttonClass, type='submit', value=`Select ${link.ghu}`)
                 form(method='post').vertical-space
                   input(type='hidden', name='unlink', value=link.ghid)
                   - var isConfirming = confirming === link.ghid
@@ -37,7 +43,7 @@ block content
                     | Linked&nbsp;
                     time(datetime=link.joinedDate.toISOString())= link.joinedDate.toDateString()
 
-    if config && config.corporate && config.corporate.portalAdministratorEmail
+    if config && config.brand && config.brand.supportMail
       p.vertical-space
-        | If you have any questions, please ping &nbsp;
-        a.btn.btn-sm.btn-muted(href='mailto:' + config.corporate.portalAdministratorEmail)= config.corporate.portalAdministratorEmail
+        | If you have any questions, please ping&nbsp;
+        a.btn.btn-sm.btn-muted(href='mailto:' + config.brand.supportMail)= config.brand.supportMail

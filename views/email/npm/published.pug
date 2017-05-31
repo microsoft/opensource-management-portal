@@ -1,0 +1,26 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../body
+
+block content
+
+  if context.securityUpdates
+    h3 Publishing/packaging scripts skipped
+    p The NPM publishing service is not a build service and is not able to transpile or otherwise run publishing-related NPM scripts.
+    p The user who authorized the publish #[strong acknowledged that it is OK to proceed] with publishing just the package files in lieu of running the defined publishing scripts.
+    p If a project is implemented in TypeScript, CoffeeScript, or other technology and needs to transpile, a minor incremental version update should now be performed.
+    p As the requesting user has been authorized to publish the NPM module, the user's standard NPM token and build process can be continued.
+    p Alternate options included:
+    ul
+      li Offering to publish from an alternate branch that could have the publish output committed
+      li Publishing a skeleton (nearly empty) package from a branch, then turning over control to the author
+
+  if log
+    h3 Operations
+    ul
+      each le in log
+        if le
+          li= le

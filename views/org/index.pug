@@ -19,51 +19,39 @@ block content
     div.container
       div.row(style='margin-top:16px')
         div.col-md-3.col-lg-3
-          div.metro-box(class=accountInfo.isMembershipPublic === true ? 'ms-green' : 'ms-yellow')
-            a(href=org.baseUrl + 'membership')
-              if accountInfo.isMembershipPublic === true
-                h3 Public Member
-              else
-                h3 Concealed
-              p= org.name.toUpperCase() + ' ORGANIZATION'
-        div.col-md-3.col-lg-3
-          div.metro-box.ms-blue
-            a(href=org.baseUrl + 'teams')
-              h3 Join a team
-              p REQUEST ACCESS
-        div.col-md-3.col-lg-3
-          div.metro-box.ms-purple
-            a(href='https://github.com/orgs/' + org.name + '/new-team', target='_new')
-              h3 Create a team
-              p NEW TEAM
-        div.col-md-3.col-lg-3
           div.metro-box.ms-dark-blue
             a(href=org.baseUrl + 'new-repo')
               h3 Create a repo
-              p REQUEST A NEW REPO
-      div.row(style='margin-top:16px')
+              p NEW REPO
         div.col-md-3.col-lg-3
-          if accountInfo.isMembershipPublic === true
-            p Your membership is public and appears on your GitHub profile.
-          else
-            p Consider <a href="#{org.baseUrl}membership">taking your membership public</a> to help support our open source cause!
+          div.metro-box.ms-blue
+            a(href=org.baseUrl + 'teams?set=available')
+              h3 Join a team
+              p VIEW TEAMS
         div.col-md-3.col-lg-3
-          p Request to join a team. Teams have permissions to a set of repos.
+          div.metro-box.ms-purple
+            a(href='https://github.com/orgs/' + org.name + '/new-team', target='_new')
+              h3 Add a team
+              p NEW TEAM
         div.col-md-3.col-lg-3
-          p Create a team for new projects / assigning group permissions.
-        div.col-md-3.col-lg-3
-          p Request a new repo for your project.
+          div.metro-box(class=accountInfo.isMembershipPublic === true ? 'ms-green' : 'ms-yellow')
+            a(href=org.baseUrl + 'membership')
+              if accountInfo.isMembershipPublic === true
+                h3 Public member
+              else
+                h3 Concealed
+              p= 'PUBLIC MEMBERSHIP'
 
       if accountInfo.isSudoer
         h2 SUDO
         p Your account has sudoer rights for this organization. You have additional capabilities enabled to help ensure the health of the organization, its teams and repos. Please use care.
 
-      if accountInfo.teamsMaintained && accountInfo.teamsMaintained.length && accountInfo.teamsMaintained.length > 0
+      if accountInfo.organizationOverview.teams.maintainer && accountInfo.organizationOverview.teams.maintainer.length
         if accountInfo.pendingApprovals && accountInfo.pendingApprovals.length && accountInfo.pendingApprovals.length > 0
           h2 Pending Approvals
           p
             a.btn.btn-default(href='./approvals/') See all pending #{org.name} approvals (#{accountInfo.pendingApprovals.length})
-        if accountInfo.teamsMaintained
+        if accountInfo.organizationOverview.teams.maintainer
           h2.capitalize #{org.name} Teams You Maintain
           script(type='text/javascript').
             function initializeManageFilter() {
@@ -89,7 +77,7 @@ block content
                   // th Organization
                   th.thirtypercent Manage
               tbody
-                each team in accountInfo.teamsMaintained
+                each team in accountInfo.organizationOverview.teams.maintainer
                   tr
                     td
                       a.btn.btn-sm.btn-muted(href=org.baseUrl + 'teams/' + team.slug + '/')= team.name
@@ -104,12 +92,12 @@ block content
         p
           a.btn.btn-default.btn-sm(href=org.baseUrl + 'membership') Learn more
 
-      h1.capitalize #{org.name} Team Memberships
+      h2 Team Memberships
 
       if accountInfo.teamsMaintainedHash
-        p Here are teams that you are a member of but not a maintainer of.
+        p Here are teams that you are a member of but do not maintain.
 
-      if accountInfo.userTeamMemberships && accountInfo.userTeamMemberships.length && accountInfo.userTeamMemberships.length > 0
+      if accountInfo.organizationOverview.teams.member && accountInfo.organizationOverview.teams.member.length
         script(type='text/javascript').
           function initializeMembershipFilter() {
             var inputMembershipFilter = $('#membership-filter');
@@ -133,26 +121,22 @@ block content
               th.thirtypercent View
           tbody
             - var everyoneTeamId = org.inner.settings.teamAllMembers
-            each team in accountInfo.userTeamMemberships
+            each team in accountInfo.organizationOverview.teams.member
               if team.id && accountInfo.teamsMaintainedHash && accountInfo.teamsMaintainedHash[team.id] !== undefined
                 // Skipping this team since they are already maintaining it
               else
                 tr
                   td
-                    a.capitalize.btn.btn-sm.btn-muted(href='https://github.com/orgs/' + team.org.name + '/teams/' + team.slug, target='_new')= team.name
+                    a.capitalize.btn.btn-sm.btn-muted(href='/' + team.organization.login + '/teams/' + team.slug, target='_new')= team.name
                   td.thirtypercent
                     p
-                      if everyoneTeamId == team.id
-                        a.btn.btn-default.btn-sm(href=team.org.baseUrl + 'leave') Leave Organization
-                      else
-                        a.btn.btn-default.btn-sm(href='https://github.com/orgs/' + team.org.name + '/teams/' + team.slug, target='_new')
-                          | Open on GitHub
-                          i.glyphicon.glyphicon-share-alt
+                      a.btn.btn-default.btn-sm(href='/' + team.organization.login + '/teams/' + team.slug, target='_new')
+                        | Open on GitHub
       else
         //-p You are not currently a member of any GitHub teams that grant you permission to specific repositories. You may be pre-approved to join teams.
         p You are not currently a member of any GitHub teams for #{org.name}. <em>This view is cached.</em>
       p
-        a.btn.btn-default(href=org.baseUrl + 'teams')= (accountInfo.userTeamMemberships && accountInfo.userTeamMemberships.length && accountInfo.userTeamMemberships.length > 0) ? 'Join another team' : 'Join a team'
+        a.btn.btn-default(href=org.baseUrl + 'teams')= (accountInfo.organizationOverview.teams.member && accountInfo.organizationOverview.teams.member.length) ? 'Join another team' : 'Join a team'
 
       if accountInfo.orgUser
         hr
@@ -166,8 +150,7 @@ block content
             h4= orgUser.login
             p(style='margin-top:18px')
               a.btn.btn-sm.btn-muted(href='https://github.com/' + org.name, target='_new')
-                | View on GitHub
-                i.glyphicon.glyphicon-share-alt
+                | Open on GitHub
           div.col-md-8.col-lg-8.col-md-offset-1.col-lg-offset-1
             div.row
               div.col-md-6.col-lg-6
@@ -200,36 +183,34 @@ block content
                   p= org.inner.settings.organizationPurpose
                 if org.inner.settings.type
                   h6 Supported Repository Types
-                  ul
-                    li Public Repositories
-                    if org.inner.settings.type == 'publicprivate'
-                      li Private Repositories
+                  ul.list-unstyled
+                    li Public
+                    if org.inner.settings.type == 'publicprivate' || org.inner.settings.type == 'private'
+                      li Private
 
               div.col-md-6.col-lg-h6
                 h6 Repositories
                 if orgUser.otherFields.public_repos
                   h2
                     = orgUser.otherFields.public_repos + ' '
-                    small Open Source
-                    //- small Public
+                    small Public
                 if orgUser.otherFields.total_private_repos
                   h2
                     = orgUser.otherFields.total_private_repos + ' '
                     small Private
 
                 hr
-                h6 #{config.companyName} Investment
-
+                h6 Remaining Repositories
                 if orgUser.otherFields.plan && orgUser.otherFields.plan.private_repos
                   h2.capitalize
                     = orgUser.otherFields.plan.name + ' '
                     small Plan
                   h2
-                      = (orgUser.otherFields.plan.private_repos - orgUser.otherFields.total_private_repos) + ' '
-                      small Remaining Private Repos
+                    = (orgUser.otherFields.plan.private_repos - orgUser.otherFields.total_private_repos) + ' '
+                    small Private
                 h2
                   | &infin;&nbsp;
-                  small Remaining Public Repos
+                  small Public
 
       if org.inner.settings.trainingResources
         - var tr = org.inner.settings.trainingResources
@@ -246,7 +227,7 @@ block content
                   if resource.text
                     br
                     small= resource.text
-      hr
 
+      hr
       p
         a.btn.btn-default(href=org.baseUrl + 'leave') Leave #{org.name}

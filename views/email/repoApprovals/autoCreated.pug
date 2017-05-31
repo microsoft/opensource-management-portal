@@ -1,0 +1,61 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../body
+
+block content
+  h1 #{approvalRequest.org}/#{approvalRequest.repoName}
+  p
+    | Repo URL:&nbsp;
+    a(href='https://github.com/' + approvalRequest.org + '/' + approvalRequest.repoName, target='_new') https://github.com/#{approvalRequest.org}/#{approvalRequest.repoName}
+  if api && service
+    p.lead #{approvalRequest.repoName} was created by #{service}
+  else if api
+    p.lead #{approvalRequest.repoName} was created by a service
+  else
+    p.lead.
+      Your repo <strong>"#{approvalRequest.repoName}"</strong> has been created in the <strong>"#{approvalRequest.org}"</strong> organization.
+  if approvalRequest.repoVisibility == 'private'
+    p.
+      Since the new repo is private, you may receive a 404 if you yourself are
+      not a member of one of the teams that you requested have access. Let
+      github-admin@microsoft.com know if you need support.
+
+  if approvalRequest.license
+    h3 License
+    p= approvalRequest.license
+
+  if approvalRequest.approvalType
+    h3 Open Source Approval
+    p
+      | Type of approval: #{approvalRequest.approvalType}
+      if approvalRequest.approvalUrl
+        br
+        | Approval: #{approvalRequest.approvalUrl}
+      if approvalRequest.justification
+        br
+        | Justification: #{approvalRequest.justification}
+  if service || serviceOwner || serviceDescription
+    h3 Service information
+    p This repo was created by a service:
+    table.technical
+      thead
+        tr
+          if service
+            th Service
+          if serviceDescription
+            th Service information
+      tbody
+        tr
+          if service
+            td= service
+          if serviceDescription
+            td= serviceDescription
+
+  if results && results.length
+    h3 Operations performed
+    ul
+      each result in results
+        li(style=result.error ? 'color:red' : undefined)= result.message

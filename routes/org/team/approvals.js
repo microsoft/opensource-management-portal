@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const utils = require('../../../utils');
 const approvalRoute = require('./approval/');
+const async = require('async');
 
 // Not a great place for these, should move into independent files eventually...
 
@@ -17,6 +18,19 @@ function PermissionWorkflowEngine(team, approvalPackage) {
   this.id = approvalPackage.id;
   this.typeName = 'Team Join';
 }
+
+PermissionWorkflowEngine.prototype.getDecisionEmailViewName = function () {
+  return 'membershipApprovals/decision';
+};
+
+PermissionWorkflowEngine.prototype.getDecisionEmailSubject = function (approved, request) {
+  return approved ? `Welcome to the ${request.teamname} ${request.org} GitHub team` : `Your ${request.teamname} permission request was not approved`;
+};
+
+PermissionWorkflowEngine.prototype.getDecisionEmailHeadline = function (approved/*, request*/) {
+  return approved ? 'Welcome' : 'Sorry';
+};
+
 
 PermissionWorkflowEngine.prototype.messageForAction = function (action) {
   var message = null;
@@ -94,13 +108,59 @@ RepoWorkflowEngine.prototype.getApprovedViewName = function () {
   return 'org/team/repos/repoCreated';
 };
 
+RepoWorkflowEngine.prototype.getDecisionEmailViewName = function () {
+  return 'repoApprovals/decision';
+};
+
+RepoWorkflowEngine.prototype.getDecisionEmailSubject = function (approved, request) {
+  return approved ? `Your new repo, ${request.repoName}, is ready` : `Your ${request.repoName} repo request was not approved`;
+};
+
+RepoWorkflowEngine.prototype.getDecisionEmailHeadline = function (approved/*, request*/) {
+  return approved ? 'Repo ready' : 'Request returned';
+};
+
+function createSetLegacyClaTask(org, repoName, legalEntity, claMail) {
+  'use strict';
+  return function setLegacyClaTask(callback) {
+    const repo = org.repo(repoName);
+    repo.enableLegacyClaAutomation({
+      emails: claMail,
+      legalEntity: legalEntity,
+    }, (enableClaError) => {
+      // Don't propagate as an error, just record the issue...
+      let message = `Successfully enabled the ${legalEntity} CLA for ${repoName}, notifying ${claMail}.`;
+      if (enableClaError) {
+        message = `The ${legalEntity} CLA could not be enabled for the repo ${repoName} using the notification e-mail address(es) ${claMail}`;
+      }
+      const result = {
+        error: enableClaError,
+        message: message,
+      };
+      callback(null, result);
+    });
+  };
+}
+
 var createAddRepositoryTask = function createAddRepoTask(org, repoName, id, permission) {
   return function (cb) {
-    org.team(id).addRepository(repoName, permission, function (error) {
+    async.retry({
+      times: 3,
+      interval: function (retryCount) {
+        return 500 * Math.pow(2, retryCount);
+      }
+    }, function (callback) {
+      org.team(id).addRepository(repoName, permission, function (error) {
+        if (error) {
+          return callback(error);
+        }
+        return callback();
+      });
+    }, function (error) {
       // Don't propagate as an error, just record the issue...
-      var message = 'Successfully added the "' + repoName + '" repo to the team "' + id + '" with permission level ' + permission + '.';
+      var message = `Successfully added the "${repoName}" repo to GitHub team ID "${id}" with permission level ${permission.toUpperCase()}.`;
       if (error) {
-        message = 'The addition of the repo ' + repoName + ' to the team ' + id + ' could not be completed. The GitHub API returned an error.';
+        message = `The addition of the repo "${repoName}" to GitHub team ID "${id}" failed. The GitHub API returned an error: ${error.message}.`;
       }
       var result = {
         error: error,
@@ -126,6 +186,9 @@ RepoWorkflowEngine.prototype.generateSecondaryTasks = function (callback) {
       tasks.push(createAddRepositoryTask(org, repoName, teamId, permission));
     }
   }
+  if (pendingRequest.claMail && pendingRequest.claEntity) {
+    tasks.push(createSetLegacyClaTask(org, repoName, pendingRequest.claEntity, pendingRequest.claMail));
+  }
   callback(null, tasks);
 };
 
@@ -137,11 +200,15 @@ RepoWorkflowEngine.prototype.performApprovalOperation = function (callback) {
     'private': self.request.repoVisibility == 'public' ? false : true,
   };
   var org = self.team.org;
-  org.createRepository(self.request.repoName, properties, function (error) {
+  org.createRepository(self.request.repoName, properties, function (error, newRepoDetails) {
     if (error) {
-      error = utils.wrapError(error, 'The GitHub API did not allow the creation of the new repo.');
+      error = utils.wrapError(error, `The GitHub API did not allow the creation of the new repo. ${error.message}`);
+      return callback(error);
     }
-    callback(error);
+    // Adding a 3-second delay to see if this fixes the underlying GH issues or not
+    setTimeout(() => {
+      callback(null, newRepoDetails);
+    }, 3000);
   });
 };
 

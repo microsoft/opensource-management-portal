@@ -9,20 +9,14 @@ body {
   position: relative;
 }
 
-div#wiki-toolbar {
-  margin-top:12px;
-}
-
-.general-margin-left {
-  margin-left:12px;
-}
-
 div#content {
   margin-top:24px;
 }
 
-.container-pad {
-  margin-top:20px;
+div.flex-center {
+  display: flex;
+  align-content: center;
+  justify-content: center;
 }
 
 .person-tile {
@@ -46,85 +40,24 @@ div#content {
 .a-unstyled:hover { color: #000; text-decoration: none; }
 .a-unstyled:active { color: #333; }
 
-/* first row navigation styling */
-.first-row-nav {
-  background-color: #fff;
-  color: #111;
-  border: 0;
-}
-.first-row-nav a.navbar-brand {
-  color: #333;
-}
-.first-row-nav a.navbar-brand:hover {
-  color: #444;
-}
-.first-row-nav .navbar-nav > li > a {
-  color: #555;
-}
-.first-row-nav .navbar-nav > li > a:hover,
-.first-row-nav .navbar-nav > .active > a,
-.first-row-nav .navbar-nav > .active > a:hover {
-  color: #000;
-  background-color: #fff;
-}
-.first-row-nav .navbar-toggle .icon-bar {
-  background-color: #555;
-}
-.first-row-nav .navbar-header .navbar-toggle {
-  border-color: #fff;
-}
-.first-row-nav .navbar-header .navbar-toggle:hover,
-.first-row-nav .navbar-header .navbar-toggle:focus {
-  background-color: #f9f9f9;
-  border-color: #f9f9f9;
-}
-
-/* second row sub navigation for the portal */
+/*
 .navbar.second-row-nav {
   margin-top: -21px;
   padding-bottom: 2px;
   padding-top: 2px;
 }
-.second-row-nav {
-  background-color: #eee;
-  color: #111;
-  border: 0;
-}
-.second-row-nav a.navbar-brand {
-  color: #333;
-}
-.second-row-nav a.navbar-brand:hover {
-  color: #444;
-}
-.second-row-nav .navbar-nav > li > a {
-  color: #555;
-}
-.second-row-nav .navbar-nav > li > a:hover,
-.second-row-nav .navbar-nav > .active > a,
-.second-row-nav .navbar-nav > .active > a:hover {
-  color: #000;
-  background-color: #fff;
-}
-.second-row-nav .navbar-toggle .icon-bar {
-  background-color: #555;
-}
-.second-row-nav .navbar-header .navbar-toggle {
-  border-color: #fff;
-}
-.second-row-nav .navbar-header .navbar-toggle:hover,
-.second-row-nav .navbar-header .navbar-toggle:focus {
-  background-color: #f9f9f9;
-  border-color: #f9f9f9;
-}
-
-.btn-huge {
-    margin:24px 0px;
-    padding:24px 36px;
-    font-size:32pt;
-}
+*/
 
 h1.huge {
     font-size: 68px;
+}
+
+.shrink66 {
+  font-size: 66%;
+}
+
+.shrink50 {
+  font-size: 50%;
 }
 
 h2 strong {
@@ -132,60 +65,13 @@ h2 strong {
     font-weight: normal;
 }
 
-/* custom color button for a more muted appearance */
-.btn-default {
-  color:#fff;
-  background-color: #444;
-  border-color: #444;
-}
-
-.btn-muted {
-  color:#333;
-  background-color: #bbb;
-  border-color: #bbb;
-}
-.btn-muted:hover,
-.btn-muted:focus,
-.btn-muted:active,
-.btn-muted.active,
-.open > .dropdown-toggle.btn-default {
-  color: #000;
-  background-color: #999;
-  border-color: #999;
-}
-
-.btn-muted-more {
-  color:#777;
-  background-color: #ddd;
-  border-color: #ddd;
-}
-.btn-muted-more:hover,
-.btn-muted-more:focus,
-.btn-muted-more:active,
-.btn-muted-more.active,
-.open > .dropdown-toggle.btn-default {
-  color: #000;
-  background-color: #ccc;
-  border-color: #ccc;
-}
-
-.btn-white {
-  color:#333;
-  background-color: #fff;
-  border-color: #fff;
-}
-.btn-white:hover,
-.btnd-white:focus,
-.btnd-white:active,
-.btnd-white.active,
-.open > .dropdown-toggle.btn-default {
-  color: #fff;
-  background-color: #0078d7;
-  border-color: #0078d7;
-}
-
 .full-width {
   width: 100%;
+}
+
+/* extra wide inline spacing */
+.list-horizontal-space > li {
+  margin-right: 16px;
 }
 
 /* wiki editing tools */
@@ -199,7 +85,8 @@ textarea#editor-body {
 
 footer {
   margin-top: 36px;
-  margin-bottom: 24px;
+  bottom: 0;
+  background-color: #e6e6e6
 }
 
 .vertical-space, .vertical-space-top {
@@ -224,6 +111,18 @@ footer {
 
 .pad, .horizontal-pad, .horizontal-pad-right {
   padding-right: 16px;
+}
+
+.horizontal-space-right {
+  margin-right: 16px;
+}
+
+.zero-pad-bottom {
+  margin-bottom: 0;
+}
+
+ul.list-vspace > li, ul.list-vertical-space {
+  padding-bottom: 8px;
 }
 
 code {
@@ -279,7 +178,11 @@ div.alert {
 
 div.alerts {
     margin: 0;
-    padding-bottom: 20px;
+}
+
+/* 1px solid border in primary */
+.border-1px-primary {
+  border:1px solid #0072C6 !important;
 }
 
 /* theme colors and components */
@@ -312,10 +215,14 @@ div.link-box {
   width:100%;
 }
 .link-box a {
-  padding:.4em 25px;
+  padding:.4em 5px;
   display: inline-block;
   position:relative;
   width:100%;
+}
+.right .link-box a {
+  padding-left:0;
+  padding-right:0;
 }
 .link-box a:hover {
   text-decoration: none;
@@ -323,6 +230,12 @@ div.link-box {
 }
 .link-box p.lead {
   color: #444;
+}
+.text-mute {
+  color: #777;
+}
+.label-muted {
+  background-color: #777;
 }
 
 /* Brand box coloring v1 */
@@ -337,6 +250,21 @@ div.link-box {
 }
 .metro-orange {
   background:#fa6800;
+}
+
+/* Top Line Borders */
+.ms-red-border-top {
+  border-style: solid;
+  border-top-color:#e81123;
+  border-width:4px 0 0 0;
+}
+.ms-blue-border-top {
+  border-style: solid;
+  border-top-color:#0078d7;
+  border-width:4px 0 0 0;
+}
+.transparent-border {
+  border:0px solid transparent;
 }
 
 /* Core brand-related colors */

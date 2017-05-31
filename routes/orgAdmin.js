@@ -8,6 +8,8 @@ const router = express.Router();
 const async = require('async');
 const github = require('octonode');
 
+const utils = require('../utils');
+
 // TODO: Refactor OSS user to better be able to remove the user using the central codepath.
 
 // These functions are not pretty.
@@ -17,7 +19,7 @@ router.use(function ensureOrganizationSudoer(req, res, next) {
     if (isAdmin === true) {
       return next();
     }
-    next(new Error('These aren\'t the droids you are looking for. You do not have permission to be here.'));
+    next(utils.wrapError(null, 'These aren\'t the droids you are looking for. You do not have permission to be here.', true));
   });
 });
 
@@ -25,7 +27,26 @@ router.get('/', function (req, res) {
   req.oss.render(req, res, 'organization/index', 'Organization Dashboard');
 });
 
+function tryGetGithubUserIdFromUsernameLink(dc, config, oldGithubUsername, callback) {
+  dc.getUserLinkByProperty('ghu', oldGithubUsername, (getError, links) => {
+    if (!getError && links && links.length === 0) {
+      getError = new Error(`No link found by searching for the old username "${oldGithubUsername}".`);
+    }
+    if (!getError && links && links.length > 1) {
+      getError = new Error(`While searching for a link by the old username "${oldGithubUsername}" there were ${links.length} results instead of 1.`);
+    }
+    if (getError) {
+      return callback(getError);
+    }
+    callback(null, links[0]);
+  });
+}
+
 function whoisById(dc, config, githubId, userInfo, callback) {
+  if (userInfo && userInfo.ghid && userInfo.ghu) {
+    // Rename scenario; pass back the link
+    return callback(null, userInfo);
+  }
   dc.getLink(githubId, function (error, ok) {
     if (ok) {
       ok = dc.reduceEntity(ok);
@@ -42,27 +63,65 @@ function expandAllInformation(req, dc, config, entity, callback) {
   var oss = req.oss;
   var orgsList = oss.orgs();
   var orgsUserIn = [];
-  async.each(orgsList, function (org, callback) {
-    org.queryAnyUserMembership(entity.ghu, function (err, membership) {
-      if (membership && membership.state) {
-        orgsUserIn.push(org);
-      }
-      callback(null, membership);
+  const ghid = entity.ghid || (entity.githubInfoButNoLink ? entity.githubInfoButNoLink.id : undefined);
+  oss.getGithubUsernameFromId(ghid, (getUsernameError, username) => {
+    if (getUsernameError) {
+      return callback(getUsernameError);
+    }
+    if (entity && entity.ghu !== undefined && entity.ghu !== username) {
+      entity.renamedUserMessage = `This user used to be known as "${entity.ghu}" on GitHub but changed their username to "${username}".`;
+      entity.ghu = username;
+    }
+    async.each(orgsList, function (org, callback) {
+      org.queryAnyUserMembership(username, function (err, membership) {
+        if (membership && membership.state) {
+          orgsUserIn.push(org);
+        }
+        callback(null, membership);
+      });
+    }, function (expansionError) {
+      entity.orgs = orgsUserIn;
+      callback(expansionError, entity);
     });
-  }, function (expansionError) {
-    entity.orgs = orgsUserIn;
-    callback(expansionError, entity);
   });
-  // team memberships
-  // org(s) memberships
-  // "drop from org"
-  // "drop from all orgs"
-  // "email"
+}
+
+function getPersonServiceEntryByUpn(redisClient, upn, callback) {
+  redisClient.hget('upns', upn, (redisGetError, data) => {
+    if (redisGetError) {
+      return callback(redisGetError);
+    }
+    var person = null;
+    if (data) {
+      try {
+        person = JSON.parse(data);
+      } catch (jsonError) {
+        return callback(jsonError);
+      }
+    }
+    if (person) {
+      return callback(null, person);
+    }
+    return callback(null, null);
+  });
+}
+
+function getRealtimeAadIdInformation(req, anyInfo, callback) {
+  if (!anyInfo || !anyInfo.aadoid) {
+    return callback();
+  }
+  const graphProvider = req.app.settings.graphProvider;
+  if (!graphProvider) {
+    return callback();
+  }
+  const aadId = anyInfo.aadoid;
+  graphProvider.getUserAndManagerById(aadId, callback);
 }
 
 router.get('/whois/aad/:upn', function (req, res, next) {
   var config = req.app.settings.runtimeConfig;
   var dc = req.app.settings.dataclient;
+  var redisClient = req.app.settings.dataclient.cleanupInTheFuture.redisClient;
   var upn = req.params.upn;
   var oss = req.oss;
   dc.getUserByAadUpn(upn, function (error, usr) {
@@ -72,12 +131,19 @@ router.get('/whois/aad/:upn', function (req, res, next) {
     }
     if (usr.length && usr.length > 0) {
       expandAllInformation(req, dc, config, usr[0], function (error, z) {
-        oss.render(req, res, 'organization/whois/result', 'Whois by AAD UPN: ' + upn, {
-          info: z,
+        getPersonServiceEntryByUpn(redisClient, upn, (getInformationError, personEntry) => {
+          getRealtimeAadIdInformation(req, z, (ignore, realtimeGraph) => {
+            oss.render(req, res, 'organization/whois/result', 'Whois by AAD UPN: ' + upn, {
+              personEntry: personEntry,
+              upn: upn,
+              info: z,
+              realtimeGraph: realtimeGraph,
+            });
+          });
         });
       });
     } else {
-      return next(new Error('User not found.'));
+      return next(utils.wrapError(null, 'User not found', true));
     }
   });
 });
@@ -107,7 +173,7 @@ router.post('/errors/:partition/:row', function (req, res, next) {
       if (error) {
         return next(error);
       }
-      req.oss.saveUserAlert(req, 'Error ' + partitionKey + '/' + errorId + ' troaged.', 'Marked as no longer a new error instance', 'success');
+      req.oss.saveUserAlert(req, 'Error ' + partitionKey + '/' + errorId + ' triaged.', 'Marked as no longer a new error instance', 'success');
       res.redirect('/organization/errors/active/');
     });
   } else if (action == 'Delete') {
@@ -129,119 +195,120 @@ router.get('/whois/id/:githubid', function (req, res) {
   var id = req.params.githubid;
   var oss = req.oss;
   whoisById(dc, config, id, undefined, function (error, userInfoFinal) {
-    expandAllInformation(req, dc, config, userInfoFinal, function (error, z) {
-      oss.render(req, res, 'organization/whois/result', 'Whois by GitHub ID: ' + id, {
-        info: z,
-        postUrl: '/organization/whois/id/' + id,
-      });
-    });
-  });
-});
-
-router.post('/whois/id/:githubid', function (req, res, next) {
-  var config = req.app.settings.runtimeConfig;
-  var dc = req.app.settings.dataclient;
-  var id = req.params.githubid;
-  var valid = req.body['remove-link-only'];
-  if (!valid) {
-    return next(new Error('Invalid action for the ID POST action.'));
-  }
-  whoisById(dc, config, id, undefined, function (error, userInfoFinal) {
-    expandAllInformation(req, dc, config, userInfoFinal, function (whoisExpansionError) {
-      if (whoisExpansionError) {
-        return next(whoisExpansionError);
-      }
-      var tasks = [];
-      tasks.push(function removeLinkNow(callback) {
-        dc.removeLink(id, callback);
-      });
-      async.series(tasks, function (error, results) {
-        res.send('<pre>' + JSON.stringify({
-          error: error,
-          results: results
-        }, undefined, 2) + '</pre>');
-      });
-    });
-  });
-});
-
-router.get('/whois/github/:username', function (req, res, next) {
-  var config = req.app.settings.runtimeConfig;
-  var dc = req.app.settings.dataclient;
-  var username = req.params.username;
-  var githubOrgClient = github.client(config.github.complianceToken);
-  var ghuser = githubOrgClient.user(username);
-  var oss = req.oss;
-  ghuser.info(function (error, userInfo) {
-    if (error) {
-      error.skipLog = true;
-      return next(error);
-    }
-    var id = userInfo.id;
-    whoisById(dc, config, id, userInfo, function (error, userInfoFinal) {
-      expandAllInformation(req, dc, config, userInfoFinal, function (error, z) {
-        oss.render(req, res, 'organization/whois/result', 'Whois: ' + z.ghu, {
+    expandAllInformation(req, dc, config, userInfoFinal, function(error, z) {
+      getRealtimeAadIdInformation(req, z, (ignore, realtimeGraph) => {
+        oss.render(req, res, 'organization/whois/result', 'Whois by GitHub ID: ' + req.params.githubid, {
           info: z,
+          postUrl: '/organization/whois/id/' + id,
+          realtimeGraph: realtimeGraph,
         });
       });
     });
   });
 });
 
-function generateRemoveMembershipFunction(dc, config, username, org) {
-  var theOrg = org;
-  return function (callback) {
-    var o = theOrg;
-    o.removeUserMembership(username, callback);
-  };
+function getGithubUserInformationAndTryKnownOldName(dc, config, githubOrgClient, username, callback) {
+  var ghuser = githubOrgClient.user(username);
+  ghuser.info(function (error, userInfo) {
+    if (error && error.statusCode === 404) {
+      return tryGetGithubUserIdFromUsernameLink(dc, config, username, (tryGetError, userLink) => {
+        if (tryGetError) {
+          return callback(tryGetError);
+        }
+        return callback(null, userLink);
+      });
+    }
+    if (error) {
+      return callback(error);
+    }
+    callback(null, userInfo);
+  });
 }
+
+router.get('/whois/github/:username', function (req, res, next) {
+  var config = req.app.settings.runtimeConfig;
+  var dc = req.app.settings.dataclient;
+  var redisClient = req.app.settings.dataclient.cleanupInTheFuture.redisClient;
+  var username = req.params.username;
+
+  var githubOrgClient = github.client(config.github.complianceToken || config.github.organizations[0].ownerToken);
+  var oss = req.oss;
+  getGithubUserInformationAndTryKnownOldName(dc, config, githubOrgClient, username, (error, userInfo) => {
+    if (error) {
+      error.skipLog = true;
+      return next(error);
+    }
+    var id = userInfo.id || userInfo.ghid;
+    whoisById(dc, config, id, userInfo, function (error, userInfoFinal) {
+      expandAllInformation(req, dc, config, userInfoFinal, function(error, z) {
+        var upn = userInfoFinal ? userInfoFinal.aadupn : 'unknown-upn';
+        getPersonServiceEntryByUpn(redisClient, upn, (getInformationError, personEntry) => {
+          getRealtimeAadIdInformation(req, z, (ignore, realtimeGraph) => {
+            oss.render(req, res, 'organization/whois/result', 'Whois: ' + (z.ghu || username), {
+              info: z,
+              personEntry: personEntry,
+              realtimeGraph: realtimeGraph,
+            });
+          });
+        });
+      });
+    });
+  });
+});
 
 router.post('/whois/github/:username', function (req, res, next) {
   var config = req.app.settings.runtimeConfig;
   var dc = req.app.settings.dataclient;
   var username = req.params.username;
-  var githubOrgClient = github.client(config.github.complianceToken);
+  var githubOrgClient = github.client(config.github.complianceToken || config.github.organizations[0].ownerToken);
   var ghuser = githubOrgClient.user(username);
-  var valid = req.body['remove-all'] || req.body['remove-link-only'] || req.body['remove-primary-org'];
-  if (!valid) {
-    return next(new Error('Invalid action.'));
-  }
+  const oss = req.oss;
+  const markAsServiceAccount = req.body['mark-as-service-account'];
+  const unmarkServiceAccount = req.body['unmark-service-account'];
   ghuser.info(function (error, userInfo) {
     if (error) {
       return next(error);
     }
     var id = userInfo.id;
     whoisById(dc, config, id, userInfo, function (error, userInfoFinal) {
-      expandAllInformation(req, dc, config, userInfoFinal, function (error, u) {
-        var removeAllOrgs = req.body['remove-all'];
-        var removePrimaryOnly = req.body['remove-primary-org'];
-        var removeLink = !removePrimaryOnly; // Only if we know they have a link
-        var tasks = [];
-        if (removeAllOrgs && u.orgs && u.orgs.length > 0) {
-          u.orgs.reverse(); // want to end with the primary organization
-          for (var i = 0; i < u.orgs.length; i++) {
-            var org = u.orgs[i];
-            tasks.push(generateRemoveMembershipFunction(dc, config, username, org));
-          }
-        } else if (removePrimaryOnly) {
-          // When there is no link... edge case.
-          // EDGE CASE: This may need an update.
-          tasks.push(generateRemoveMembershipFunction(dc, config, username, config.github.organization));
-        }
-        if (removeLink) {
-          tasks.push(function removeLinkNow(callback) {
-            dc.removeLink(id, callback);
-          });
-        }
-        async.series(tasks, function (error, results) {
-          res.send('<pre>' + JSON.stringify({
-            error: error,
-            results: results
-          }, undefined, 2) + '</pre>');
+      if (userInfoFinal && userInfoFinal.githubInfoButNoLink !== undefined) {
+        userInfoFinal.ghu = userInfoFinal.githubInfoButNoLink.login;
+        userInfoFinal.ghid = userInfoFinal.githubInfoButNoLink.id;
+      }
+      if (markAsServiceAccount || unmarkServiceAccount) {
+        return modifyServiceAccount(dc, userInfoFinal, markAsServiceAccount, req, res, next);
+      }
+      oss.processPendingUnlink(userInfoFinal, (ignoredError, results) => {
+        oss.render(req, res, 'organization/whois/drop', `Dropped ${username}`, {
+          results: results,
+          entity: userInfoFinal,
         });
       });
     });
   });
 });
+
+function modifyServiceAccount(dc, linkSubset, markAsServiceAccount, req, res, next) {
+  const oss = req.oss;
+  dc.getLink(linkSubset.ghid, function (findError, link) {
+    if (findError) {
+      return next(findError);
+    }
+    link = dc.reduceEntity(link);
+    if (markAsServiceAccount) {
+      link.serviceAccount = true;
+    } else {
+      delete link.serviceAccount;
+    }
+    dc.updateLink(linkSubset.ghid, link, (updateError) => {
+      if (updateError) {
+        return next(updateError);
+      }
+      oss.invalidateLinkCache('aad', link.aadoid || 'no-aad-oid', () => {
+        res.json(link);
+      });
+    });
+  });
+}
 
 module.exports = router;

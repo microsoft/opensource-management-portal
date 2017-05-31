@@ -16,11 +16,20 @@ exports.randomInteger = function (low, high) {
 // Session utility: Store the referral URL, if present, and redirect to a new
 // location.
 // ----------------------------------------------------------------------------
-exports.storeReferrer = function storeReferrer(req, res, redirect) {
+exports.storeReferrer = function storeReferrer(req, res, redirect, optionalReason) {
+  const eventDetails = {
+    method: 'storeReferrer',
+    reason: optionalReason || 'unknown reason',
+  };
   if (req.session && req.headers && req.headers.referer && req.session.referer !== undefined && !req.headers.referer.includes('/signout')) {
     req.session.referer = req.headers.referer;
+    eventDetails.referer = req.headers.referer;
   }
   if (redirect) {
+    eventDetails.redirect = redirect;
+    if (req.insights) {
+      req.insights.trackEvent('RedirectWithReferrer', eventDetails);
+    }
     res.redirect(redirect);
   }
 };
@@ -28,23 +37,52 @@ exports.storeReferrer = function storeReferrer(req, res, redirect) {
 // ----------------------------------------------------------------------------
 // Session utility: store the original URL
 // ----------------------------------------------------------------------------
-exports.storeOriginalUrlAsReferrer = function storeOriginalUrl(req, res, redirect) {
-  if (req.session && req.originalUrl) {
-    req.session.referer = req.originalUrl;
-  }
-  if (redirect) {
-    res.redirect(redirect);
-  }
+exports.storeOriginalUrlAsReferrer = function storeOriginalUrl(req, res, redirect, optionalReason) {
+  storeOriginalUrlAsVariable(req, res, 'referer', redirect, optionalReason);
 };
 
-exports.redirectToReferrer = function redirectToReferrer(req, res, url) {
+exports.redirectToReferrer = function redirectToReferrer(req, res, url, optionalReason) {
   url = url || '/';
-  if (req.session && req.session.referer) {
-    url = req.session.referer;
-    delete req.session.referer;
+  const alternateUrl = popSessionVariable(req, res, 'referer');
+  const eventDetails = {
+    method: 'redirectToReferrer',
+    reason: optionalReason || 'unknown reason',
+  };
+  if (req.insights) {
+    req.insights.trackEvent('RedirectToReferrer', eventDetails);
   }
-  res.redirect(url);
+  res.redirect(alternateUrl || url);
 };
+
+function storeOriginalUrlAsVariable(req, res, variable, redirect, optionalReason) {
+  const eventDetails = {
+    method: 'storeOriginalUrlAsVariable',
+    variable: variable,
+    redirect: redirect,
+    reason: optionalReason || 'unknown reason',
+  };
+  if (req.session && req.originalUrl) {
+    req.session[variable] = req.originalUrl;
+  }
+  if (redirect) {
+    if (req.insights) {
+      req.insights.trackEvent('RedirectFromOriginalUrl', eventDetails);
+    }
+    res.redirect(redirect);
+  }
+}
+
+exports.storeOriginalUrlAsVariable = storeOriginalUrlAsVariable;
+
+function popSessionVariable(req, res, variableName) {
+  if (req.session && req.session[variableName] !== undefined) {
+    const url = req.session[variableName];
+    delete req.session[variableName];
+    return url;
+  }
+}
+
+exports.popSessionVariable = popSessionVariable;
 
 // ----------------------------------------------------------------------------
 // Provide our own error wrapper and message for an underlying thrown error.
@@ -60,42 +98,6 @@ exports.wrapError = function (error, message, userIntendedMessage) {
     err.skipLog = true;
   }
   return err;
-};
-
-// ----------------------------------------------------------------------------
-// Split and set an optional array, or empty array, trimming each.
-// ----------------------------------------------------------------------------
-exports.arrayFromString = function (a, split) {
-  if (!split) {
-    split = ',';
-  }
-  var b = a && a.split ? a.split(split) : [];
-  if (b && b.length) {
-    for (var i = 0; i < b.length; i++) {
-      b[i] = b[i].trim();
-    }
-  }
-  return b;
-};
-
-// ----------------------------------------------------------------------------
-// Simplistic merge of setting properties from b on object a.
-// ----------------------------------------------------------------------------
-exports.merge = function (a, b) {
-  if (a && b) {
-    for (var key in b) {
-      a[key] = b[key];
-    }
-  }
-  return a;
-};
-
-
-// ----------------------------------------------------------------------------
-// Improved "Is Array" check.
-// ----------------------------------------------------------------------------
-exports.isArray = function (value) {
-  return value && typeof value === 'object' && value.constructor === Array;
 };
 
 // ----------------------------------------------------------------------------
@@ -119,7 +121,7 @@ exports.retrieveAllPages = function retrieveAllPages(method, optionalFilter, cal
         per_page: 100,
       };
       if (optionalFilter) {
-        exports.merge(params, optionalFilter);
+        Object.assign(params, optionalFilter);
       }
       method.call(null, params, function (error, result, headers) {
         if (error) {
@@ -146,8 +148,6 @@ exports.stealValue = function steal(obj, key) {
     var val = obj[key];
     delete obj[key];
     return val;
-  } else {
-    return undefined;
   }
 };
 
@@ -155,7 +155,7 @@ exports.stealValue = function steal(obj, key) {
 // Given a list of string values, check a string, using a case-insensitive
 // comparison.
 // ----------------------------------------------------------------------------
-exports.inListInsensitive = function ili(list, value) {
+exports.inListInsensitive = function inListInsensitive(list, value) {
   value = value.toLowerCase();
   for (var i = 0; i < list.length; i++) {
     if (list[i].toLowerCase() === value) {
@@ -168,7 +168,7 @@ exports.inListInsensitive = function ili(list, value) {
 // ----------------------------------------------------------------------------
 // Given a list of lowercase values, check whether a value is present.
 // ----------------------------------------------------------------------------
-exports.isInListAnycaseInLowercaseList = function iila(list, value) {
+exports.isInListAnycaseInLowercaseList = function isInListAnycaseInLowercaseList(list, value) {
   value = value.toLowerCase();
   for (var i = 0; i < list.length; i++) {
     if (list[i] === value) {
@@ -182,7 +182,7 @@ exports.isInListAnycaseInLowercaseList = function iila(list, value) {
 // Given an array of things that have an `id` property, return a hash indexed
 // by that ID.
 // ----------------------------------------------------------------------------
-exports.arrayToHashById = function athi(inputArray) {
+exports.arrayToHashById = function arrayToHashById(inputArray) {
   var hash = {};
   if (inputArray && inputArray.length) {
     for (var i = 0; i < inputArray.length; i++) {
@@ -236,4 +236,17 @@ exports.addBreadcrumb = function (req, breadcrumbTitle, optionalBreadcrumbLink) 
     url: optionalBreadcrumbLink,
   });
   req.breadcrumbs = breadcrumbs;
+};
+
+exports.stackSafeCallback = function stackSafeCallback(callback, err, item, extraItem) {
+  // Works around RangeError: Maximum call stack size exceeded.
+  async.setImmediate(() => {
+    callback(err, item, extraItem);
+  });
+};
+
+exports.createSafeCallbackNoParams = function createSafeCallbackNoParams(cb) {
+  return () => {
+    exports.stackSafeCallback(cb);
+  };
 };

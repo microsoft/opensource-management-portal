@@ -4,13 +4,14 @@
 //
 
 'use strict';
+/*eslint no-console: ["error", { allow: ["warn"] }] */
 
 const async = require('async');
 const encryption = require('../../lib/encryption');
 const utils = require('../../utils');
 
 const userEncryptedEntities = {
-  azure: new Set(['accessToken', 'refreshToken']),
+  azure: new Set(),
   github: new Set(['accessToken']),
   githubIncreasedScope: new Set(['accessToken']),
 };
@@ -23,7 +24,12 @@ const userEntityId = {
 
 function validateNoRichProperties(properties) {
   for (const key in properties) {
+    if (properties[key] === undefined || properties[key] === null) {
+      continue;
+    }
     if (typeof properties[key] === 'object') {
+      console.warn(`The property ${key} is an object. To help with diagnosing the underlying area with the problem, here is the current value of the object:`);
+      console.warn(properties[key]);
       return new Error(`Session property ${key} is an object.`);
     }
   }
@@ -60,7 +66,6 @@ function serializeEntity(options, entityName, entity, callback) {
 }
 
 function deserializeEntity(options, entityName, entity, callback) {
-  const config = options.config;
   const partitionKey = entityName;
   const idPropertyName = userEntityId[entityName];
   if (idPropertyName === undefined) {
@@ -75,7 +80,6 @@ function deserializeEntity(options, entityName, entity, callback) {
     return callback(new Error('A key resolver must be supplied to use encryption.'));
   }
   const encryptionOptions = {
-    keyEncryptionKeyId: config.authentication.keyId,
     keyResolver: keyResolver,
     binaryProperties: 'base64',
   };

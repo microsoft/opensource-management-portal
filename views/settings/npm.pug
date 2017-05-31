@@ -1,0 +1,28 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends layout.pug
+
+block content
+  h1 NPM
+
+  if !npm
+    h3 Please validate your NPMJS account
+    p Your NPM token can be found in your #[code ~/.npmrc] file in your development environment, or you can run #[code npm login] to login locally and then examine that file.
+    form(method='post')
+      .form-group
+        label(for='npmToken') NPM token
+        input.form-control#npmToken(type='text', name='token', placeholder='NPM token')
+      button.btn.btn-default Validate
+    hr
+    p: small IMPORTANT: Your token will not be stored. It will, however, be used to validate your NPM username with the NPMJS registery to integate with NPM publishing features.
+    p: small You can manage and revoke your NPMJS tokens at #[a(href='https://www.npmjs.com/settings/tokens', target='_new') https://www.npmjs.com/settings/tokens].
+  else
+    p Your NPM username is #[strong #{npm}].
+    ul.list-inline
+      li: a.btn.btn-muted(href='https://npmjs.org/~' + npm, target='_new') NPM profile for #{npm}
+      li
+        form(method='post', action='/settings/npm/clear')
+          button.btn.btn-default Remove npm account

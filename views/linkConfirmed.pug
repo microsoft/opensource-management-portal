@@ -1,0 +1,24 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends layout
+
+block content
+  //- This is a nice-to-have page that just gives positive acknowledgement of a link
+
+  div.container
+
+    h1 You're linked
+
+    p You have linked your corporate identity, #{ossLink.aadupn}, with your GitHub username, #{ossLink.ghu}.
+
+    a.btn.btn-huge.btn-success(href='/') Link OK
+
+    hr(style='margin-top:50px')
+
+    div(style='margin-bottom:150px')
+      h3 No longer need GitHub.com access?
+      p You can remove your link. You will also be removed from any of your corporate GitHub.com organization memberships.
+      p: a.btn.btn-sm.btn-danger(href='/link/remove') Unlink your accounts

@@ -1,4 +1,8 @@
 # /node_modules/* and /bower_components/* ignored by default
 
 public/*
+private/*
 sync*.js
+thirdparty/*
+views/*
+client/*

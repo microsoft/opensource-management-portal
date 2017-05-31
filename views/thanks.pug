@@ -9,10 +9,11 @@ block content
   div.container
     div.row(style='margin-top:48px')
       div.col-md-5.col-lg-5.col-sm-5
-        h1.huge Great OSS.
+        h1.huge Epic Open Source.
         p.lead.
-          This application is powered by the work of a great number or developers, 
-          engineers, services & experts. Thanks!
+          This application is powered by the work of a great number or developers,
+          engineers, services & experts.
+        p.lead Thanks!
       div.col-md-7.col-lg-7.col-sm-7
         if components
           h2 Powered by
@@ -21,6 +22,8 @@ block content
           h4
             a(href='https://azure.microsoft.com/en-us/services/app-service/', target='_new') Azure App Service
           h4
+            a(href='https://azure.microsoft.com/en-us/services/key-vault/', target='_new') Azure Key Vault
+          h4
             a(href='https://azure.microsoft.com/en-us/services/storage/', target='_new') Azure Storage Service
           h4
             a(href='https://azure.microsoft.com/en-us/services/application-insights/', target='_new') Microsoft Application Insights
@@ -28,9 +31,13 @@ block content
             a(href='https://developer.github.com/v3/', target='_new') GitHub API
 
           h2 Node.js Modules
+          h5 ...and their dependencies
           each details, component in components
             h4
-              a(href=details.homepage, target='_new')= component
+              if details.homepage
+                a(href=details.homepage, target='_new')= component
+              else
+                span= component
               if details.description
                 small= ' ' + details.description
           h2 Front-end Components

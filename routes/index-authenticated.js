@@ -5,6 +5,7 @@
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
+const _ = require('lodash');
 const express = require('express');
 const router = express.Router();
 const async = require('async');
@@ -12,33 +13,26 @@ const OpenSourceUserContext = require('../lib/context');
 const linkRoute = require('./link');
 const linkedUserRoute = require('./index-linked');
 const linkCleanupRoute = require('./link-cleanup');
+const placeholdersRoute = require('./placeholders');
+const settingsRoute = require('./settings');
+const usernameConsistency = require('../middleware/links/usernameConsistency');
 const utils = require('../utils');
-
-function isTokenNotExpired(req) {
-  if (req.user && req.user.azure && req.user.azure.exp && Number(req.user.azure.exp)) {
-    // Provide an allowance of up to five minutes beyond the token lifetime range. More info: https://azure.microsoft.com/en-us/documentation/articles/active-directory-token-and-claims/
-    const allowedOverTime = 5 * 60;
-    const current = new Date().getTime() / 1000;
-    return current <= (Number(req.user.azure.exp) + allowedOverTime);
-  }
-  return false;
-}
 
 router.use(function (req, res, next) {
   var config = req.app.settings.runtimeConfig;
-  if (req.isAuthenticated() && isTokenNotExpired(req)) {
+  if (req.isAuthenticated()) {
     var expectedAuthenticationProperty = config.authentication.scheme === 'github' ? 'github' : 'azure';
     if (req.user && !req.user[expectedAuthenticationProperty]) {
       console.warn(`A user session was authenticated but did not have present the property "${expectedAuthenticationProperty}" expected for this type of authentication. Signing them out.`);
       return res.redirect('/signout');
     }
-    var expectedAuthenticationKey = config.authentication.scheme === 'github' ? 'id' : 'username';
+    var expectedAuthenticationKey = config.authentication.scheme === 'github' ? 'id' : 'oid';
     if (!req.user[expectedAuthenticationProperty][expectedAuthenticationKey]) {
       return next(new Error('Invalid information present for the authentication provider.'));
     }
     return next();
   }
-  utils.storeOriginalUrlAsReferrer(req, res, config.authentication.scheme === 'github' ? '/auth/github' : '/auth/azure');
+  utils.storeOriginalUrlAsReferrer(req, res, config.authentication.scheme === 'github' ? '/auth/github' : '/auth/azure', 'user is not authenticated and needs to authenticate');
 });
 
 router.use((req, res, next) => {
@@ -46,83 +40,36 @@ router.use((req, res, next) => {
     config: req.app.settings.runtimeConfig,
     dataClient: req.app.settings.dataclient,
     redisClient: req.app.settings.dataclient.cleanupInTheFuture.redisClient,
+    redisHelper: req.app.settings.redisHelper,
+    githubLibrary: req.app.settings.githubLibrary,
+    ossDbClient: req.app.settings.ossDbConnection,
     request: req,
     insights: req.insights,
   };
   new OpenSourceUserContext(options, (error, instance) => {
     req.oss = instance;
-    if (error && error.tooManyLinks === true) {
-      if (req.url === '/link-cleanup') {
-        // The only URL permitted in this state is the cleanup endpoint
+    if (error && (error.tooManyLinks === true || error.anotherAccount === true)) {
+      // The only URL permitted in this state is the cleanup endpoint and special multiple-account endpoint
+      if (req.url === '/link/cleanup' || req.url === '/link/enableMultipleAccounts' || req.url.startsWith('/placeholder')) {
         return next();
       }
-      return res.redirect('/link-cleanup');
+      return res.redirect('/link/cleanup');
     }
     instance.addBreadcrumb(req, 'Organizations');
     return next(error);
   });
 });
 
-router.use('/link-cleanup', linkCleanupRoute);
+router.use('/placeholder', placeholdersRoute);
+
+router.use('/link/cleanup', linkCleanupRoute);
 
 router.use('/link', linkRoute);
 
+router.use('/settings', settingsRoute);
+
 // Link cleanups
-router.use((req, res, next) => {
-  if (!req.oss || !req.oss.modernUser() || req.oss.modernUser().link === false) {
-    return next();
-  }
-  var link = req.oss.modernUser().link;
-  if (req.user.azure && req.user.azure.oid && link.aadoid && req.user.azure.oid !== link.aadoid) {
-    return next(new Error('Directory security identifier mismatch. Please submit a report to have this checked on.'));
-  }
-  if (req.user.github && req.user.github.id && link.ghid && req.user.github.id !== link.ghid) {
-    return next(new Error('GitHub user security identifier mismatch. Please submit a report to have this checked on.'));
-  }
-  var linkUpdates = {};
-  var updatedProperties = new Set();
-  var sessionToLinkMap = {
-    github: {
-      username: 'ghu',
-      avatarUrl: 'ghavatar',
-      accessToken: 'githubToken',
-    },
-    githubIncreasedScope: {
-      accessToken: 'githubTokenIncreasedScope',
-    },
-    azure: {
-      displayName: 'aadname',
-      username: 'aadupn',
-    },
-  };
-  for (var sessionKey in sessionToLinkMap) {
-    for (var property in sessionToLinkMap[sessionKey]) {
-      var linkProperty = sessionToLinkMap[sessionKey][property];
-      if (req.user[sessionKey] && req.user[sessionKey][property] && link[linkProperty] !== req.user[sessionKey][property]) {
-        linkUpdates[linkProperty] = req.user[sessionKey][property];
-        updatedProperties.add(`${sessionKey}.${property}`);
-      }
-    }
-  }
-  if (updatedProperties.has('github.accessToken')) {
-    linkUpdates.githubTokenUpdated = new Date().getTime();
-  }
-  if (updatedProperties.has('githubIncreasedScope.accessToken')) {
-    linkUpdates.githubTokenIncreasedScopeUpdated = new Date().getTime();
-  }
-  if (Object.keys(linkUpdates).length === 0) {
-    return next();
-  }
-  utils.merge(link, linkUpdates);
-  req.oss.modernUser().updateLink(link, (mergeError /*, mergedLink*/) => {
-    if (mergeError) {
-      return next(mergeError);
-    }
-    req.oss.setPropertiesFromLink(/*mergedLink*/link, () => {
-      next();
-    });
-  });
-});
+router.use(usernameConsistency());
 
 // Ensure we have a GitHub token for AAD users once they are linked. This is
 // for users of the portal before the switch to supporting primary authentication
@@ -131,19 +78,19 @@ router.use((req, res, next) => {
   if (req.app.settings.runtimeConfig.authentication.scheme === 'aad' && req.oss && req.oss.modernUser()) {
     var link = req.oss.modernUser().link;
     if (link && !link.githubToken) {
-      return utils.storeOriginalUrlAsReferrer(req, res, '/link/reconnect');
+      return utils.storeOriginalUrlAsReferrer(req, res, '/link/reconnect', 'no GitHub token or not a link while authenticating inside of index-authenticated.js');
     }
   }
   next();
 });
 
 router.get('/', function (req, res, next) {
+  const operations = req.app.settings.providers.operations;
   var oss = req.oss;
   var link = req.oss.entities.link;
-  var dc = req.app.settings.dataclient;
   var config = req.app.settings.runtimeConfig;
   var onboarding = req.query.onboarding !== undefined;
-  var allowCaching = onboarding ? false : true;
+  // var allowCaching = onboarding ? false : true;
 
   if (!link) {
     if (config.authentication.scheme === 'github' && req.user.azure === undefined ||
@@ -162,108 +109,92 @@ router.get('/', function (req, res, next) {
     return res.redirect('/link/update');
   }
 
-  var twoFactorOff = null;
+  // var twoFactorOff = null;
+  var warnings = [];
   var activeOrg = null;
+
   async.parallel({
     isLinkedUser: function (callback) {
       var link = oss.entities.link;
       callback(null, link && link.ghu ? link : false);
     },
-    organizations: function (callback) {
-      oss.getMyOrganizations(allowCaching, function (error, orgsUnsorted) {
-        if (error) {
-          return callback(error);
-        }
-        async.sortBy(orgsUnsorted, function (org, cb) {
-          var pri = org.setting('priority') ? org.setting('priority') : 'primary';
-          cb(null, pri + ':' + org.name);
-        }, function (error, orgs) {
-          if (error) {
-            return callback(error);
-          }
-          // Needs to piggy-back off of any 'active' user...
-          for (var i = 0; i < orgs.length; i++) {
-            if (orgs[i].membershipStateTemporary == 'active') {
-              activeOrg = orgs[i];
-              break;
-            }
-          }
-          if (activeOrg) {
-            activeOrg.queryUserMultifactorStateOkCached(function (error, ok) {
-              twoFactorOff = ok !== true;
-              callback(null, orgs);
-            });
-          } else {
-            callback(null, orgs);
-          }
-        });
-      });
-    },
-    teamsMaintained: function (callback) {
-      oss.getMyTeamMemberships('maintainer', callback);
-    },
-    userTeamMemberships: function (callback) {
-      oss.getMyTeamMemberships('all', callback);
+    overview: (callback) => {
+      const id = oss.id.github;
+      if (!id) {
+        return callback();
+      }
+      const uc = operations.getUserContext(id);
+      return uc.getAggregatedOverview(callback);
     },
     isAdministrator: function (callback) {
       callback(null, false);
-      // CONSIDER: Re-implement isAdministrator
-      // oss.isAdministrator(callback);
+      // oss.isAdministrator(callback); // CONSIDER: Re-implement isAdministrator
     }
   },
     function (error, results) {
       if (error) {
         return next(error);
       }
-      var i;
-      var countOfOrgs = results.organizations.length;
-      var countOfMemberships = 0;
-      if (results.organizations && results.organizations.length) {
-        for (i = 0; i < results.organizations.length; i++) {
-          if (results.organizations[i].membershipStateTemporary == 'active') {
-            ++countOfMemberships;
+      const overview = results.overview;
+      results.countOfOrgs = operations.organizations.length;
+      let groupedAvailableOrganizations = null;
+
+      // results may contains undefined returns because we skip some errors to make sure homepage always load successfully.
+      if (overview.organizations) {
+        if (overview.organizations.member.length) {
+          results.countOfOrgs = overview.organizations.member.length;
+          if (overview.organizations.member.length > 0) {
+            results.twoFactorOn = true;
+            // TODO: How to verify in a world with some mixed 2FA value orgs?
           }
         }
+        if (overview.organizations.available) {
+          groupedAvailableOrganizations = _.groupBy(operations.getOrganizations(overview.organizations.available), 'priority');
+        }
       }
-      results.countOfOrgs = countOfOrgs;
-      results.countOfMemberships = countOfMemberships;
-      if (countOfMemberships > 0 && twoFactorOff === false) {
-        results.twoFactorOn = true;
-      }
+
       if (results.isAdministrator && results.isAdministrator === true) {
         results.isSudoer = true;
       }
+
       if (results.twoFactorOff === true) {
         var tempOrgNeedToFix = oss.org();
         return res.redirect(tempOrgNeedToFix.baseUrl + 'security-check');
       }
-      if (countOfMemberships === 0 && !onboarding) {
-        onboarding = true;
-      }
       var render = function (results) {
-        var pageTitle = results && results.userOrgMembership === false ? 'My GitHub Account' : config.companyName + ' - ' + config.portalName;
+        if (warnings && warnings.length > 0) {
+          req.oss.saveUserAlert(req, warnings.join(', '), 'Some organizations or memberships could not be loaded', 'danger');
+        }
+        var pageTitle = results && results.userOrgMembership === false ? 'My GitHub Account' : config.brand.companyName + ' - ' + config.brand.appName;
         oss.render(req, res, 'index', pageTitle, {
           accountInfo: results,
           onboarding: onboarding,
-          onboardingPostfixUrl: onboarding === true ? '?onboarding=' + config.companyName : '',
+          onboardingPostfixUrl: onboarding === true ? '?onboarding=' + config.brand.companyName : '',
           activeOrgUrl: activeOrg ? activeOrg.baseUrl : '/?',
+          getOrg: (orgName) => {
+            return operations.getOrganization(orgName);
+          },
+          groupedAvailableOrganizations: groupedAvailableOrganizations,
         });
       };
-      var teamsMaintained = results.teamsMaintained;
-      if (teamsMaintained && teamsMaintained.length && teamsMaintained.length > 0) {
-        var teamsMaintainedHash = {};
-        for (i = 0; i < teamsMaintained.length; i++) {
-          teamsMaintainedHash[teamsMaintained[i].id] = teamsMaintained[i];
+      if (overview.teams && overview.teams.maintainer) {
+        const maintained = overview.teams.maintainer;
+        if (maintained.length > 0) {
+          var teamsMaintainedHash = {};
+          maintained.forEach(maintainedTeam => {
+            teamsMaintainedHash[maintainedTeam.id] = maintainedTeam;
+          });
+          results.teamsMaintainedHash = teamsMaintainedHash;
+          // dc.getPendingApprovals(teamsMaintained, function (error, pendingApprovals) {
+          //   if (error) {
+          //     return next(error);
+          //   }
+          //   results.pendingApprovals = pendingApprovals;
+          //   render(results);
+          // });
         }
-        results.teamsMaintainedHash = teamsMaintainedHash;
-        dc.getPendingApprovals(teamsMaintained, function (error, pendingApprovals) {
-          if (error) {
-            return next(error);
-          }
-          results.pendingApprovals = pendingApprovals;
-          render(results);
-        });
-      } else render(results);
+      }
+      render(results);
     });
 });
 

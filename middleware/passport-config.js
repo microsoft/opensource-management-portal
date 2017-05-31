@@ -7,7 +7,7 @@
 
 const passport = require('passport');
 const serializer = require('./passport/serializer');
-const GitHubStrategy = require('passport-github').Strategy;
+const GitHubStrategy = require('../thirdparty/passport-github').Strategy;
 const OIDCStrategy = require('passport-azure-ad').OIDCStrategy;
 
 // FYI: GitHub does not provide refresh tokens
@@ -36,16 +36,24 @@ function githubResponseToIncreasedScopeSubset(accessToken, refreshToken, profile
   return done(null, subset);
 }
 
-function activeDirectorySubset(iss, sub, profile, accessToken, refreshToken, done) {
+function activeDirectorySubset(iss, sub, profile, done) {
   // CONSIDER: TODO: Hybrid tenant checks.
+  // Internal-only code:
+  // ----------------------------------------------------------------
+  // We've identified users with e-mail addresses in AAD similar to
+  // myoutlookaddress#live.com. These are where people have had work
+  // shared with them through a service like Office 365; these users
+  // are not technically employees with active credentials, and so
+  // they should *not* have access. We reject here before the
+  // session tokens can be saved.
+  // if (username && username.indexOf && username.indexOf('#') >= 0) {
+  //   return next(new Error('Your hybrid tenant account, ' + username + ', is not permitted for this resource. Were you invited as an outside collaborator by accident? Please contact us if you have any questions.'));
+  // }
   let subset = {
     azure: {
       displayName: profile.displayName,
-      oid: profile._json.oid,
-      username: profile._json.upn,
-      accessToken: accessToken,
-      refreshToken: refreshToken,
-      exp: profile._json.exp,
+      oid: profile.oid,
+      username: profile.upn,
     },
   };
   done(null, subset);
@@ -63,21 +71,22 @@ module.exports = function (app, config) {
   // GitHub Passport session setup.
   // ----------------------------------------------------------------------------
   let githubOptions = {
-    clientID: config.github.clientId,
-    clientSecret: config.github.clientSecret,
-    callbackURL: config.github.callbackUrl,
+    clientID: config.github.oauth2.clientId,
+    clientSecret: config.github.oauth2.clientSecret,
+    callbackURL: config.github.oauth2.callbackUrl,
+    appInsightsClient: app.get('appInsightsClient'),
     scope: [],
     userAgent: 'passport-azure-oss-portal-for-github' // CONSIDER: User agent should be configured.
   };
   let githubPassportStrategy = new GitHubStrategy(githubOptions, githubResponseToSubset);
   let aadStrategy = new OIDCStrategy({
-    callbackURL: config.activeDirectory.redirectUrl,
+    redirectUrl: config.activeDirectory.redirectUrl,
+    allowHttpForRedirectUrl: config.webServer.allowHttp,
     realm: config.activeDirectory.tenantId,
     clientID: config.activeDirectory.clientId,
     clientSecret: config.activeDirectory.clientSecret,
     oidcIssuer: config.activeDirectory.issuer,
     identityMetadata: 'https://login.microsoftonline.com/' + config.activeDirectory.tenantId + '/.well-known/openid-configuration',
-    skipUserProfile: true,
     responseType: 'id_token code',
     responseMode: 'form_post',
     validateIssuer: true,
@@ -102,9 +111,9 @@ module.exports = function (app, config) {
   // Expanded OAuth-scope GitHub access for org membership writes.
   // ----------------------------------------------------------------------------
   let expandedGitHubScopeStrategy = new GitHubStrategy({
-    clientID: config.github.clientId,
-    clientSecret: config.github.clientSecret,
-    callbackURL: config.github.callbackUrl + '/increased-scope',
+    clientID: config.github.oauth2.clientId,
+    clientSecret: config.github.oauth2.clientSecret,
+    callbackURL: config.github.oauth2.callbackUrl + '/increased-scope',
     scope: ['write:org'],
     userAgent: 'passport-azure-oss-portal-for-github' // CONSIDER: User agent should be configured.
   }, githubResponseToIncreasedScopeSubset);
@@ -122,6 +131,13 @@ module.exports = function (app, config) {
   passport.serializeUser(serializer.serialize(serializerOptions));
   passport.deserializeUser(serializer.deserialize(serializerOptions));
   serializer.initialize(serializerOptions, app);
+
+  app.use((req, res, next) => {
+    if (req.insights && req.insights.properties && config.authentication.scheme === 'aad' && req.user && req.user.azure) {
+      req.insights.properties.aadId = req.user.azure.oid;
+    }
+    next();
+  });
 
   return passport;
 };

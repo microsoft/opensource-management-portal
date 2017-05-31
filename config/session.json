@@ -1,0 +1,7 @@
+{
+  "salt": "env://SESSION_SALT?default=nilawc4vy8aeuthgna9w345",
+  "name": "env://SESSION_NAME?default=sid",
+  "domain": "env://SESSION_COOKIE_DOMAIN",
+  "encryption": "env://SESSION_ENCRYPTION?trueIf=encrypt",
+  "encryptionKeyId": "env://SESSION_ENCRYPTION_KEY_ID"
+}

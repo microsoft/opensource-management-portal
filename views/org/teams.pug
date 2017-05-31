@@ -10,13 +10,12 @@ block js_doc_ready
 
 block content
   div.container
-
     if onboardingOrJoining
       if orgUser
         div.row
-          div.col-md-9.col-lg-9.col-sm-9
+          div.col-md-8.col-lg-8.col-sm-8
             h1.huge Welcome!
-            p.lead You're ready to go, onboarded and ready to contribute & collaborate with the #{org.name} open source world.
+            p.lead You're onboarded and ready to contribute & collaborate in the #{org.name} open source world.
             if org.inner.settings.trainingResources
               p Here are some useful links and resources to help get you up and running quickly.
               - var tr = org.inner.settings.trainingResources
@@ -54,40 +53,44 @@ block content
                           br
                           small= resource.text
 
-          div.col-md-3.col-lg-3.col-sm-3
+          div.col-md-4.col-lg-4.col-sm-4
             p
               img.img-thumbnail.img-responsive(src=orgUser.avatar(400), alt=(orgUser.name || orgUser.login))
             h3= orgUser.name
             h4= orgUser.login
             p(style='margin-top:18px')
-              a.btn.btn-sm.btn-muted(href='https://github.com/' + org.name, target='_new')
-                | View on GitHub 
-                i.glyphicon.glyphicon-share-alt
-            if org && org.baseUrl
-              p
-                a.btn.btn-sm.btn-muted(href=org.baseUrl)
-                  | #{org.name} Portal
+              a.btn.btn-sm.btn-muted(href='https://github.com/' + org.name, target='_new') Open on GitHub
+              if org && org.baseUrl
+                p
+                  a.btn.btn-sm.btn-muted(href=org.baseUrl) #{org.name} Portal
 
     if isSudoer || userIsMaintainer
       h1
-        | Teams 
+        | Teams&nbsp;
         if isSudoer
           small including sudoer options
     else
-      h1 Join a Team
+      div.row
+        div.col-md-8.col-lg-8.col-sm-8
+          h1 Join a team
+          p All GitHub users have read permissions on all public repos. You can use the standard fork and pull-request GitHub workflow and contribute to any repo you can read. That's what open source is all about!
 
-    if onboardingOrJoining
-      p Now that you're an organization member, you can request to join any teams if you need access to private repos or special permissions, such as those to accept pull requests. You can use the standard GitHub workflow of fork-pull request to contribute to nearly any repo when you have read (pull) access.
-    else
-      p On GitHub, source code is stored in a <strong>Repository</strong> (repo). <strong>Teams</strong> manage who can see and directly write to sets of repos.
+          p Joining a team gets you <a href="https://help.github.com/articles/repository-permission-levels-for-an-organization/" target="_new">more access to more repos</a>. For example, join a team to:
 
-    if org && org.name
-      h3 Need help finding the right team?
-    
-      p Use the "Explore repos" feature to find the team that you need if you know the name of the repo you're looking to work with. For public open source projects, you can always just fork a repo and submit a pull request with your changes. For private repos, you need to have "read" access to a repo.
-      if org && org.name
-        p
-          a.btn.btn-sm.btn-default(href='/' + org.name + '/repos') Explore repos to find teams
+          ul
+            li See private repos&mdash;they can only be seen by members of a team granted access.
+            li Merge PRs, manage issues&mdash;needed to change content, accept pull requests, &hellip;.
+            li Administer&mdash;needed to manage a repo's settings, and protected branches.
+          p To get these additional permissions, you need to join a team that has the permission you want.
+
+        div.col-md-4.col-lg-4.col-sm-4
+          if org && org.name
+            h3 Need help finding a team?
+
+            p Sometimes it's easiest to start with a repo you want to work on and find its associated teams.
+            p
+              a.btn.btn.btn-default(href='/' + org.name + '/repos') Explore repos. Find teams to join
+
 
     if highlightedTeams && highlightedTeams.length
       h3 Recommended Team#{highlightedTeams.length > 1 ? 's' : ''}
@@ -106,7 +109,7 @@ block content
 
     if availableTeams && availableTeams.length && availableTeams.length > 0
       if org
-        h3.capitalize #{org.name} Teams
+        h3.capitalize #{org.name} teams
       else
         h3 All teams across organizations
 
@@ -167,7 +170,7 @@ block content
                     else
                       if isSudoer
                         a.btn.btn-muted.btn-sm(href='/' + availableTeam.org.name + '/teams/' + availableTeam.slug) Manage as sudoer
-                        | &nbsp; 
+                        | &nbsp;
                       a.btn.btn-default.btn-sm(href='/' + availableTeam.org.name + '/teams/' + availableTeam.slug + '/join') Request to join
 
     else

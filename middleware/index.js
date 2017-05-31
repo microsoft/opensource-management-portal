@@ -5,56 +5,77 @@
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
+const debug = require('debug')('oss-initialize');
 const path = require('path');
 const favicon = require('serve-favicon');
 const bodyParser = require('body-parser');
 const compression = require('compression');
+const memory = require('./memory');
+const rawBodyParser = require('./rawBodyParser');
+const uptime = require('./uptime');
+const viewServices = require('ospo-pug-view-services');
 
 module.exports = function initMiddleware(app, express, config, dirname, redisClient, initializationError) {
+  const web = !(config.skipModules && config.skipModules.has('web'));
   if (!initializationError) {
-    if (config.allowHttp) {
+    if (!web) {
+      /* No web routes */
+    } else if (config.webServer.allowHttp) {
       console.warn('WARNING: Allowing HTTP for local debugging');
     } else {
       app.use(require('./sslify'));
       app.use(require('./hsts'));
     }
-    app.use(require('./correlationId'));
-    require('./appInsights')(app, config);
   }
 
   app.set('views', path.join(dirname, 'views'));
   app.set('view engine', 'pug');
   app.set('view cache', false);
 
-  app.use(favicon(dirname + '/public/favicon.ico'));
+  app.set('viewServices', viewServices);
+  const providers = app.get('providers');
+  providers.viewServices = viewServices;
 
-  app.use(bodyParser.json());
-  app.use(bodyParser.urlencoded({ extended: false }));
-  app.use(compression());
-
-  app.use(express.static(path.join(dirname, 'public')));
-
-  var passport;
-  if (!initializationError) {
-    app.use(require('./session')(config, redisClient));
-    try {
-      passport = require('./passport-config')(app, config);
-    } catch (passportError) {
-      initializationError = passportError;
+  if (web) {
+    const insights = app.settings.providers.insights;
+    if (insights) {
+      uptime.initialize(insights);
+      memory.initialize(insights);
     }
-  }
 
-  app.use(require('./scrubbedUrl'));
-  app.use(require('./logger')(config));
-  if (!initializationError && config.websiteSku && !config.allowHttp) {
-    app.use(require('./requireSecureAppService'));
-  }
-  app.use(require('./locals'));
+    app.use(favicon(dirname + '/public/favicon.ico'));
 
-  if (!initializationError) {
-    require('./passport-routes')(app, passport, config);
-    if (config.onboarding && config.onboarding.length && config.onboarding.length > 0) {
-      require('./onboarding')(app, config);
+    app.use(rawBodyParser);
+    app.use(bodyParser.json());
+    app.use(bodyParser.urlencoded({ extended: false }));
+    app.use(compression());
+
+    app.use(express.static(path.join(dirname, 'public')));
+    app.use('/client/dist', express.static(path.join(dirname, 'client/dist')));
+
+    var passport;
+    if (!initializationError) {
+      if (config.webServer.websiteSku && !config.webServer.allowHttp) {
+        app.use(require('./requireSecureAppService'));
+      }
+      app.use(require('./session')(app, config, redisClient));
+      try {
+        passport = require('./passport-config')(app, config);
+      } catch (passportError) {
+        initializationError = passportError;
+      }
+    }
+
+    app.use(require('./scrubbedUrl'));
+    app.use(require('./logger')(config));
+    app.use(require('./locals'));
+
+    if (!initializationError) {
+      require('./passport-routes')(app, passport, config);
+      if (config.github.organizations.onboarding && config.github.organizations.onboarding.length) {
+        debug('Onboarding helper loaded');
+        require('./onboarding')(app, config);
+      }
     }
   }
 
