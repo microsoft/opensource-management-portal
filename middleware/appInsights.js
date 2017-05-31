@@ -9,7 +9,11 @@ const insights = require('../lib/insights');
 
 module.exports = function initializeAppInsights(app, config) {
   let client = undefined;
-  const key = config.applicationInsights.instrumentationKey;
+  if (!config) {
+    // Configuration failure happened ahead of this module
+    return;
+  }
+  const key = config.telemetry && config.telemetry.applicationInsightsKey ? config.telemetry.applicationInsightsKey : null;
   if (key) {
     const appInsights = require('applicationinsights');
     const instance = appInsights.setup(key);
@@ -30,4 +34,6 @@ module.exports = function initializeAppInsights(app, config) {
     req.insights = insights(extraProperties, client);
     next();
   });
+
+  return insights({}, client);
 };

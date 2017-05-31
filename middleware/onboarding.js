@@ -19,7 +19,7 @@ const utils = require('../utils');
 // out of the way.
 // ----------------------------------------------------------------------------
 module.exports = function (app, config) {
-  async.each(config.onboarding, function (org, callback) {
+  async.each(config.github.organizations.onboarding, function (org, callback) {
     if (org && org.name && org.ownerToken) {
       var s = 'Organization Onboarding Helper for "' + org.name + '":\n';
       for (var key in org) {

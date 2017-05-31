@@ -6,6 +6,7 @@
 /*eslint no-console: ["error", { allow: ["error", "log"] }] */
 
 const querystring = require('querystring');
+const utils = require('../utils');
 
 function redactRootPathsFromString(string, path) {
   if (typeof string === 'string' && string.includes && string.split) {
@@ -40,14 +41,40 @@ function containsNewlinesNotHtml(error) {
 }
 
 module.exports = function (err, req, res, next) {
+  // CONSIDER: Let's eventually decouple all of our error message improvements to another area to keep the error handler intact.
   var config = null;
-  var errorStatus = err && err.status ? err.status : undefined;
+  var correlationId = req.correlationId;
+  var errorStatus = err ? (err.status || err.statusCode) : undefined;
+  // Per GitHub: https://developer.github.com/v3/oauth/#bad-verification-code
+  // When they offer a code that another GitHub auth server interprets as invalid,
+  // the app should retry.
+  if ((err.message === 'The code passed is incorrect or expired.' || (err.message === 'Failed to obtain access token' && err.oauthError.message === 'The code passed is incorrect or expired.')) && req.scrubbedUrl.startsWith('/auth/github/')) {
+    req.insights.trackMetric('GitHubInvalidExpiredCodeRedirect', 1);
+    req.insights.trackEvent('GitHubInvalidExpiredCodeRetry');
+    return res.redirect(req.scrubbedUrl === '/auth/github/callback/increased-scope?code=*****' ? '/auth/github/increased-scope' : '/auth/github');
+  }
+  if (err.message && err.message.includes && err.message.includes('ETIMEDOUT') && (err.message.includes('192.30.253.116') || err.message.includes('192.30.253.117'))) {
+    req.insights.trackMetric('GitHubApiTimeout', 1);
+    req.insights.trackEvent('GitHubApiTimeout');
+    err = utils.wrapError(err, 'The GitHub API is temporarily down. Please try again soon.');
+  }
+  var primaryUserInstance = req.user ? req.user.github : null;
   if (req && req.app && req.app.settings && req.app.settings.dataclient && req.app.settings.runtimeConfig) {
     config = req.app.settings.runtimeConfig;
+    if (config.authentication.scheme !== 'github') {
+      primaryUserInstance = req.user ? req.user.azure : null;
+    }
     var version = config && config.logging && config.logging.version ? config.logging.version : '?';
     var dc = req.app.settings.dataclient;
     if (config.logging.errors && err.status !== 403 && err.skipLog !== true) {
       dc.insertErrorLogEntry(version, req, err);
+      var insightsProperties = {
+        url: req.scrubbedUrl || req.originalUrl || req.url,
+      };
+      if (errorStatus) {
+        insightsProperties.statusCode = errorStatus.toString();
+      }
+      req.insights.trackException(err, insightsProperties);
     }
   }
   if (err !== undefined && err.skipLog !== true) {
@@ -93,17 +120,48 @@ module.exports = function (err, req, res, next) {
     message: safeMessage,
     encodedMessage: querystring.escape(safeMessage),
     messageHasNonHtmlNewlines: containsNewlinesNotHtml(err),
-    serviceBanner: config && config.serviceBanner ? config.serviceBanner : undefined,
+    serviceBanner: config && config.serviceMessage ? config.serviceMessage.banner : undefined,
     detailed: err && err.detailed ? redactRootPaths(err.detailed) : undefined,
     encodedDetailed: err && err.detailed ? querystring.escape(redactRootPaths(err.detailed)) : undefined,
     errorFancyLink: err && err.fancyLink ? err.fancyLink : undefined,
     errorStatus: errorStatus,
     skipLog: err.skipLog,
+    skipOops: err && err.skipOops ? err.skipOops : false,
     error: {},
-    title: err.status === 404 ? 'Not Found' : 'Oops',
+    title: err.title || (err.status === 404 ? 'Not Found' : 'Oops'),
+    primaryUser: primaryUserInstance,
     user: req.user,
     config: config && config.obfuscatedConfig ? config.obfuscatedConfig : null,
   };
-  res.status(err.status || 500);
-  res.render('error', view);
+
+  // Depending on the library in use, we get everything from non-numeric textual status
+  // descriptions to status codes as strings and more. Set the status code found in
+  // the error if we have it.
+  var errStatusAsNumber = null;
+  if (err.status) {
+    errStatusAsNumber = parseInt(err.status);
+  }
+  const resCode = errStatusAsNumber || err.code || err.statusCode || 500;
+  res.status(resCode);
+
+  // Support JSON-based error display for the API route, showing just a small
+  // subset of typical view properties to share from the error instance.
+  if (err && err.json === true) {
+    const safeError = {
+      message: safeMessage,
+      correlationId: correlationId,
+    };
+    if (err.documentation_url) {
+      safeError.documentation_url = err.documentation_url;
+    }
+    const fieldsOfInterest = ['serviceBanner', 'detailed'];
+    fieldsOfInterest.forEach((fieldName) => {
+      if (view[fieldName]) {
+        safeError[fieldName] = view[fieldName];
+      }
+    });
+    res.json(safeError);
+  } else {
+    res.render('error', view);
+  }
 };

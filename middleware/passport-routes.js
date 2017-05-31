@@ -10,20 +10,24 @@ const utils = require('../utils');
 
 module.exports = function configurePassport(app, passport, initialConfig) {
   app.get('/signin', function (req, res) {
-    utils.storeReferrer(req, res, initialConfig.authentication.scheme === 'github' ? '/auth/github' : '/auth/azure');
+    utils.storeReferrer(req, res, initialConfig.authentication.scheme === 'github' ? '/auth/github' : '/auth/azure', 'signin page hit, need to go authenticate');
   });
 
   // ----------------------------------------------------------------------------
   // passport integration with GitHub
   // ----------------------------------------------------------------------------
   app.get('/signin/github', function (req, res) {
-    utils.storeReferrer(req, res, '/auth/github');
+    utils.storeReferrer(req, res, '/auth/github', '/signin/github authentication page requested');
   });
 
   var ghMiddleware = initialConfig.authentication.scheme === 'github' ? passport.authenticate('github') : passport.authorize('github');
+  const githubFailureRoute = {
+    failureRedirect: '/auth/github/',
+  };
+  var ghMiddlewareWithFailure = initialConfig.authentication.scheme === 'github' ? passport.authenticate('github', githubFailureRoute) : passport.authorize('github', githubFailureRoute);
 
   function authenticationCallback(secondaryAuthScheme, secondaryAuthProperty, req, res, next) {
-    const after = (req, res) => utils.redirectToReferrer(req, res);
+    const after = (req, res) => utils.redirectToReferrer(req, res, '/', `authentication callback of type ${secondaryAuthScheme} and property ${secondaryAuthProperty}`);
     if (initialConfig.authentication.scheme !== secondaryAuthScheme) {
       return hoistAccountToSession(req, req.account, secondaryAuthProperty, (error) => {
         return error ? next(error) : after(req, res);
@@ -32,7 +36,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     return after(req, res);
   }
 
-  function processSignout(primaryAuthScheme, secondaryAuthProperty, req, res, next) {
+  function processSignout(primaryAuthScheme, secondaryAuthProperties, req, res, next) {
     if (initialConfig.authentication.scheme === primaryAuthScheme) {
       return res.redirect('/signout');
     }
@@ -43,8 +47,15 @@ module.exports = function configurePassport(app, passport, initialConfig) {
       }
       res.redirect(url);
     };
-    if (req.user && req.user[secondaryAuthProperty] !== undefined) {
-      delete req.user[secondaryAuthProperty];
+    const secondaryProperties = secondaryAuthProperties.split(',');
+    let dirty = false;
+    secondaryProperties.forEach((propertyName) => {
+      if (req.user && req.user[propertyName] !== undefined) {
+        delete req.user[propertyName];
+        dirty = true;
+      }
+    });
+    if (dirty) {
       return resaveUser(req, (error) => {
         return error ? next(error) : after(req, res);
       });
@@ -99,7 +110,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
 
   app.get('/auth/github', ghMiddleware);
 
-  app.get('/auth/github/callback', ghMiddleware, authenticationCallback.bind(null, 'github', 'github'));
+  app.get('/auth/github/callback', ghMiddlewareWithFailure, authenticationCallback.bind(null, 'github', 'github'));
 
   if (initialConfig.authentication.scheme === 'aad') {
     app.get('/signin/github/join', (req, res) => {
@@ -115,8 +126,8 @@ module.exports = function configurePassport(app, passport, initialConfig) {
       var authorizeRelativeUrl = req.app.settings['runtime/passport/github/authorizeUrl'].replace('https://github.com', '');
       var joinUrl = 'https://github.com/join?' + querystring.stringify({
         return_to: `${authorizeRelativeUrl}?` + querystring.stringify({
-          client_id: config.github.clientId,
-          redirect_uri: config.github.callbackUrl,
+          client_id: config.github.oauth2.clientId,
+          redirect_uri: config.github.oauth2.callbackUrl,
           response_type: 'code',
           scope: req.app.settings['runtime/passport/github/scope'],
         }),
@@ -129,27 +140,30 @@ module.exports = function configurePassport(app, passport, initialConfig) {
   app.get('/signout', function (req, res) {
     var config = req.app.settings.runtimeConfig;
     req.logout();
-
+    if (req.session) {
+      delete req.session.enableMultipleAccounts;
+      delete req.session.selectedGithubId;
+    }
     if (config.authentication.scheme === 'github') {
       res.redirect('https://github.com/logout');
     } else {
       var unlinked = req.query.unlink !== undefined;
       res.render('message', {
-        message: unlinked ? 'Your social coding account has been unlinked, access removed from the corporate organizations, and you have been signed out.' : 'Goodbye.',
+        message: unlinked ? `Your ${config.brand.companyName} and GitHub accounts have been unlinked. You no longer have access to any ${config.brand.companyName} organizations, and you have been signed out of this portal.` : 'Goodbye',
         title: 'Goodbye',
-        buttonText: unlinked ? 'Join' : 'Sign In',
+        buttonText: unlinked ? 'Re-link' : 'Sign In',
         config: initialConfig.obfuscatedConfig,
       });
     }
   });
 
-  app.get('/signout/github', processSignout.bind(null, 'github', 'github'));
+  app.get('/signout/github', processSignout.bind(null, 'github', 'github,githubIncreasedScope'));
 
   // ----------------------------------------------------------------------------
   // Expanded GitHub auth scope routes
   // ----------------------------------------------------------------------------
   app.get('/signin/github/increased-scope', function (req, res) {
-    utils.storeReferrer(req, res, '/auth/github/increased-scope');
+    utils.storeReferrer(req, res, '/auth/github/increased-scope', 'request for the /signin/github/increased-scope page to go auth with more GitHub scope');
   });
 
   app.get('/auth/github/increased-scope', passport.authorize('expanded-github-scope'));
@@ -157,7 +171,9 @@ module.exports = function configurePassport(app, passport, initialConfig) {
   // TODO: Validate that the increased scope user ID === the actual user ID
 
   app.get('/auth/github/callback/increased-scope',
-    passport.authorize('expanded-github-scope'),
+    passport.authorize('expanded-github-scope', {
+      failureRedirect: '/auth/github/increased-scope',
+    }),
     authenticationCallback.bind(null, 'all', 'githubIncreasedScope'));
 
   // ----------------------------------------------------------------------------
@@ -170,9 +186,10 @@ module.exports = function configurePassport(app, passport, initialConfig) {
   app.post('/auth/azure/callback', aadMiddleware, authenticationCallback.bind(null, 'aad', 'azure'));
 
   app.get('/signin/azure', function (req, res) {
-    utils.storeReferrer(req, res, '/auth/azure');
+    utils.storeReferrer(req, res, '/auth/azure', 'request for the /signin/azure page, need to authenticate');
   });
 
   app.get('/signout/azure', processSignout.bind(null, 'aad', 'azure'));
 
 };
+

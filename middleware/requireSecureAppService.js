@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+/*eslint no-console: ["error", { allow: ["warn"] }] */
+
 // ----------------------------------------------------------------------------
 // If this portal is deployed to Azure App Service, let's make sure that they
 // are connecting over SSL by validating the load balancer headers. If they are
@@ -19,8 +21,8 @@ module.exports = function (req, res, next) {
   var expectedHeaders = [
     '2048|256|C=US, S=Washington, L=Redmond, O=Microsoft Corporation, OU=Microsoft IT, CN=Microsoft IT SSL SHA2|CN=*.azurewebsites.net'
   ];
-  if (config.expectedSslCertificate) {
-    expectedHeaders.push(config.expectedSslCertificate);
+  if (config.webServer.expectedSslCertificate) {
+    expectedHeaders.push(config.webServer.expectedSslCertificate);
   }
   var isLegit = false;
   for (var i = 0; i < expectedHeaders.length; i++) {
@@ -28,12 +30,18 @@ module.exports = function (req, res, next) {
       isLegit = true;
     }
   }
-  if (isLegit === false) {
-    var err = new Error('The SSL connection may not be secured via Azure App Service. Please contact the site sponsors to investigate.');
-    err.headers = req.headers;
-    err.arrHeader = arr;
-    err.detailed = arr;
-    return next(err);
+  if (!isLegit) {
+    console.warn(`The SSL connection may not be secured via Azure App Service. Please contact the site sponsors to investigate: ${arr}`);
   }
+
+  // We are no longer throwing here as it affects the load balancers.
+  // if (isLegit === false) {
+    // var err = new Error('The SSL connection may not be secured via Azure App Service. Please contact the site sponsors to investigate.');
+    // err.headers = req.headers;
+    // err.arrHeader = arr;
+    // err.detailed = arr;
+    // return next(err);
+  // }
+  req.app.set('trust proxy', 1);
   next();
 };
