@@ -1,0 +1,125 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends layout
+
+block content
+  //- View services
+  - var fileSize = viewServices.fileSize
+  - var moment = viewServices.moment
+  - var _ = viewServices._
+
+  //- Styles
+  - var groupByTableCellStyle = 'background-color:#ddd;padding:6px;margin-top:4px'
+  - var actionTextStyle = 'color:red'
+  - var standardColumnMarginBottom = '2px'
+  - var standardColumnVerticalAlign = 'top'
+
+  //- Report (there should only be one)
+  - var isDigestService = digestRunDate && true
+  - var report = github && github.consolidated ? (isDigestService ? github.consolidated[0] : github.consolidated) : []
+
+  if report
+    //- Report
+    for entry in report
+      - var definition = entry.definition
+      - var list = entry.list
+      - var table = entry.table
+
+      h3= definition.title || definition.name
+      if definition.description
+        p= definition.description
+      if definition.actionText
+        p(style=actionTextStyle)= definition.actionText
+
+      if list && list.listItems
+        if list.heading
+          p= list.heading
+        - var groupByField = list.groupBy || 'just-group-everything-together'
+        - var currentGroupByValue = null
+        - var grouping = _.groupBy(list.listItems, groupByField)
+        each groupSet, heading in grouping
+          if typeof(heading) !== 'undefined'
+            h4= heading
+          each li in groupSet
+            if li && li.text
+              li: div(style={
+                  color: li.color
+                })
+                  = li.text
+                  if li.actions
+                    each action in li.actions
+                      = ' '
+                      a(href=action.link)= action.text || action.link
+
+      if table
+        - var groupByField = table.groupBy || null
+        - var currentGroupByValue = null
+        table
+          if table.columns
+            thead
+              each columnTitle, columnName in table.columns
+                th= columnTitle
+          if table.rows
+            tbody
+              each row in table.rows
+                if table.columns
+                  //- Group by a field
+                  - var columnCount = Object.getOwnPropertyNames(table.columns).length
+                  if groupByField
+                    - var localGroupByValue = row[groupByField]
+                    if localGroupByValue !== currentGroupByValue
+                      - currentGroupByValue = localGroupByValue
+                      if localGroupByValue
+                        tr
+                          td(colspan=columnCount, style=groupByTableCellStyle)
+                            h4= localGroupByValue
+                  tr
+                    each columnTitle, columnName in table.columns
+                      - var tableColumnWidth = table.columnWidths && table.columnWidths[columnName] ? table.columnWidths[columnName] : null
+                      td(style={
+                        width: tableColumnWidth,
+                        'vertical-align': standardColumnVerticalAlign,
+                        'margin-bottom': standardColumnMarginBottom,
+                      })
+                        - var localValue = row[columnName]
+                        if localValue
+                          if typeof(localValue) === 'object'
+                            if localValue.html
+                              != localValue.html
+                            else if localValue.link && localValue.text
+                              a(href=localValue.link)= localValue.text
+                            else if localValue.actions
+                              //- CONSIDER: list-inline actions
+                              each action in localValue.actions
+                                a(href=action.link)= action.text || action.link
+                                | &nbsp; &nbsp;
+                            else if localValue.text
+                              span(style={
+                                color: localValue.color
+                              })= localValue.text
+                            else
+                              small= JSON.stringify(localValue, undefined, 2)
+                          else
+                            = localValue
+                else
+                  tr: td No column headings defined, this report definition is not currently supported
+
+    p &nbsp;
+
+    hr
+
+    //- Explain the weekly digest
+    if report.metadata && report.metadata.dayOfWeek
+      - var recipientDisplay = recipient && recipient.name ? recipient.name : 'you'
+      if report.metadata.isWeeklyDigest
+        p: small: em This is a weekly summary prepared each #{report.metadata.dayOfWeek} for #{recipientDisplay}#{report.metadata.startedText ? ' using GitHub data as of ' + report.metadata.startedText : ''}
+      else
+        p: small: em This is an activity report for #{recipientDisplay}#{report.metadata.startedText ? ' using GitHub data as of ' + report.metadata.startedText : ''}
+    if report.reasons && report.reasons.length
+      p: small You're receiving this digest because of your role in the following resource#{report.reasons.length === 1 ? '' : 's'}:
+      ul
+        each reason in report.reasons
+          li: small= reason
