@@ -1,0 +1,5 @@
+{
+  "allowHttp": "env://DEBUG_ALLOW_HTTP?trueIf=1",
+  "websiteSku": "env://WEBSITE_SKU",
+  "expectedSslCertificate": "env://EXPECTED_SSL_CERTIFICATE"
+}

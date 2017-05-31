@@ -1,0 +1,6 @@
+{
+  "server": "env://LEGACY_OSSMGMT_SERVER",
+  "username": "env://LEGACY_OSSMGMT_USERNAME",
+  "password": "env://LEGACY_OSSMGMT_PASSWORD",
+  "database": "env://LEGACY_OSSMGMT_DATABASE"
+}

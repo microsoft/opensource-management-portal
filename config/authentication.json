@@ -1,0 +1,3 @@
+{
+  "scheme": "env://AUTHENTICATION_SCHEME?default=github"
+}

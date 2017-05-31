@@ -1,0 +1,5 @@
+{
+  "token": "env://NPM_PUBLISHING_TOKEN",
+  "notify": "env://NPM_PUBLISHING_NOTIFICATION_EMAIL",
+  "notifyFrom": "env://NPM_PUBLISHING_NOTIFICATION_FROM"
+}

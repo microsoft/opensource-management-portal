@@ -1,0 +1,3 @@
+{
+  "provider": "env://MAIL_ADDRESSES_PROVIDER"
+}

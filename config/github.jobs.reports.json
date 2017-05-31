@@ -1,0 +1,19 @@
+{
+  "enabled": "env://GITHUB_REPORTS_ENABLED?trueIf=enabled",
+  "mail": {
+    "enabled": "env://GITHUB_REPORTS_MAIL?trueIf=mail",
+    "from": "env://GITHUB_REPORTS_MAIL_FROM"
+  },
+  "witnessEventKey": "env://GITHUB_REPORTS_WITNESS_EVENT_KEY",
+  "witnessEventReportsTimeToLiveMinutes": "env://WITNESS_EVENT_REPORTS_TTL?type=integer&default=1440",
+  "appRedisReportKey": "env://GITHUB_REPORTS_REDIS_KEY?default=github:reports:consolidated",
+  "dataLake": {
+    "enabled": "env://GITHUB_REPORTS_BACKUP?trueIf=datalake",
+    "azureStorage": {
+      "account": "env://GITHUB_REPORTS_BACKUP_STORAGE_ACCOUNT_NAME",
+      "key": "env://GITHUB_REPORTS_BACKUP_STORAGE_ACCOUNT_KEY",
+      "containerName": "env://GITHUB_REPORTS_BACKUP_STORAGE_CONTAINER",
+      "blobPrefix": "env://GITHUB_REPORTS_BACKUP_STORAGE_BLOB_PREFIX"
+    }
+  }
+}

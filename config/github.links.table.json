@@ -1,0 +1,7 @@
+{
+  "account": "env://XSTORE_ACCOUNT",
+  "key": "env://XSTORE_KEY",
+  "prefix": "env://XSTORE_PREFIX",
+  "encryption": "env://XSTORE_ENCRYPTION?trueIf=encrypt",
+  "encryptionKeyId": "env://XSTORE_ENCRYPTION_KEY_ID"
+}

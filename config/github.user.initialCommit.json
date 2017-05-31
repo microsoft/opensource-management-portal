@@ -1,0 +1,4 @@
+{
+  "username": "env://GITHUB_WRITER_USERNAME",
+  "token": "env://GITHUB_WRITER_TOKEN"
+}
