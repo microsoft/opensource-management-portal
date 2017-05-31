@@ -11,9 +11,37 @@ block js_doc_ready
   | $('#openInviteButton2').click(inviteInterfaceUpdateOnClick);
 
 block content
-  div.container
+  .container
+    if writeOrgFailureMessage
+      .alert.alert-danger
+        if showTwoFactorWarning
+          h2 Two-factor authentication is required to continue
+        else
+          h2 GitHub API warning
+        p.lead= writeOrgFailureMessage
 
-    if state == 'pending'
+    if state === 'pending' && showTwoFactorWarning
+
+      p(style='margin-top:24px')
+        | This organization has enabled GitHub's&nbsp;
+        a(href='https://help.github.com/articles/requiring-two-factor-authentication-in-your-organization/', target='_new') two-factor authentication requirement
+        |. As a result, you cannot join the org until you&nbsp;
+        a(href='https://github.com/settings/two_factor_authentication/configure') turn on two-factor auth&nbsp;
+        | with GitHub.
+
+      form(method='post')
+        ul.list-inline
+          li
+            a.btn.btn-primary(href='https://github.com/settings/two_factor_authentication/configure', target='_new') Configure 2FA on GitHub
+          li
+            input.btn.btn-default(type='submit', value='Validate 2FA and continue', title='Pending - you have already been invited')
+
+      include twoFactorInstructions
+
+    else if state == 'pending'
+      if showApplicationPermissionWarning
+        // Need to figure out what the right message is to show here
+
       h1 Action Required: You've been manually invited!
 
       p.lead GitHub has sent an invitation to <em>#{org.name}</em>.
@@ -48,45 +76,41 @@ block content
 
     else
       div.row
-        div.col-md-6.col-lg-6
-          h1
-            if onboarding
-              | Let's join #{org.name}!
-            else
-              | Would you like to join #{org.name}?
-          if user && user.github && user.githubIncreasedScope
+        div.col-md-8.col-lg-8
+          h1 Want to join #{org.name}?
+          if hasIncreasedScope
             form(method='post')
               p(style='margin-top:24px')
-                input.btn.btn-primary.btn-huge(type='submit', value='Join ' + org.name + ' now')
+                input.btn.btn-primary.btn-huge(type='submit', value='Join ' + org.name)
           else
-            p.lead Quickest way: authorize this portal to join on my behalf
-            p
-              a.btn.btn-primary.btn-huge(href='/' + org.name + '/join/express' + (onboarding ? '?onboarding=' + onboarding : ''))
-                | Join #{org.name} now
+            p.lead Quick way: Authorize us to join on your behalf
             p.
               Authorize this site to use the
               <a href="https://developer.github.com/v3/oauth/#scopes" target="_new"><code>org:write</code></a>
-              scope to automate the join process.
-              //-<em>The additional scope will be removed the next time you sign in to this portal.</em>
+              permission and immediately join the organization.
+            p
+              a.btn.btn-primary.btn-huge(href='/' + org.name + '/join/express' + (onboarding ? '?onboarding=' + onboarding : ''))
+                | Join #{org.name}
             hr
+            p.lead Manual way: Follow this process
+            ul
+              li We'll explain how the GitHub invitation works.
+              li An email invitation will be sent to you from GitHub.
+              li You accept the invitation in on GitHub.com.
+              li You come back to this site and continue onboarding.
             form(method='post')
               p
-                input.btn.btn-default.btn(type='submit', value='Join ' + org.name + ' (Manual)')
-              p.
-                This alternate path will not increase the scope of permissions granted to this site. Instead, the process requires many manual steps:
-            ul
-              li An invitation will be sent from GitHub
-              li On the next page we'll explain how the GitHub invitation works
-              li You will accept the invitation on the GitHub.com web site
-              li We'll give you a chance to request to join teams in the organization
+                input.btn.btn-muted-more.btn-lg(type='submit', value='Manually Join ' + org.name)
+
           if onboarding
+            p &nbsp;
             hr
             h3 Your onboarding progress
             h5
-              | Sign in with GitHub &amp; #{config.companyName}&nbsp;
+              | Sign in to your GitHub &amp; #{config.brand.companyName} accounts&nbsp;
               i.glyphicon.glyphicon-ok
             h5
-              | Link your identity&nbsp;
+              | Link your accounts&nbsp;
               i.glyphicon.glyphicon-ok
             h5.text-primary
               | Join your first GitHub organization
@@ -99,7 +123,7 @@ block content
             h5
               | Join a team <em>(optional)</em>
 
-        div.col-md-6.col-lg-6
+        div.col-md-4.col-lg-4
           if orgUser
             p
               img.img-thumbnail.img-responsive(src=orgUser.avatar(400), alt=(orgUser.name || orgUser.login))
@@ -107,8 +131,7 @@ block content
             h4= orgUser.login
             p(style='margin-top:18px')
               a.btn.btn-sm.btn-muted(href='https://github.com/' + org.name, target='_new')
-                | View on GitHub
-                i.glyphicon.glyphicon-share-alt
+                | Open on GitHub
             hr
 
             div.row
@@ -142,19 +165,16 @@ block content
                   p= org.inner.settings.organizationPurpose
                 if org.inner.settings.type
                   h6 Supported Repository Types
-                  ul
-                    li Public Repositories
-                    if org.inner.settings.type == 'publicprivate'
-                      li Private Repositories
-                  //-if org.inner.settings.type == 'publicprivate'
-                    p This organization has a billing relationship on behalf of #{config.companyName} to support private repos designated for open source use.
-
+                  ul.list-unstyled
+                    li Public
+                    if org.inner.settings.type == 'publicprivate' || org.inner.settings.type == 'private'
+                      li Private
               div.col-md-6.col-lg-h6
                 h6 Repositories
                 if orgUser.otherFields.public_repos
                   h2
                     = orgUser.otherFields.public_repos + ' '
-                    small Open Source
+                    small Public
                     //- small Public
                 if orgUser.otherFields.total_private_repos
                   h2
@@ -162,14 +182,14 @@ block content
                     small Private
 
                 hr
-                h6 #{config.companyName} Investment
+                h6 Remaining Repositories
                 if orgUser.otherFields.plan && orgUser.otherFields.plan.private_repos
-                  h2.capitalize
+                  h2
                     = orgUser.otherFields.plan.name + ' '
                     small Plan
                   h2
                       = (orgUser.otherFields.plan.private_repos - orgUser.otherFields.total_private_repos) + ' '
-                      small Remaining Private Repos
+                      small Private
                 h2
                   | &infin;&nbsp;
-                  small Remaining Public Repos
+                  small Public

@@ -1,0 +1,40 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../body
+
+block content
+
+  if wasApproved
+    h1
+      | Welcome to #{pendingRequest.teamname} &nbsp;
+      small= org
+    p.lead A team maintainer has approved your request to join the GitHub team.
+  else
+    h1
+      | Your #{pendingRequest.teamname} request &nbsp;
+      small= org
+    p.lead Unfortunately your request was not approved at this time. Your request has been closed.
+
+    if decisionNote
+      h2 Message from decision maker
+      table(style='width:80%')
+        tbody
+          tr
+            td
+              p.lead= decisionNote
+    h2 Decision maker
+    p
+      = decisionBy
+      br
+      = decisionEmail
+
+    if pendingRequest.justification
+      h2 Your request
+      table(style='width:80%')
+        tbody
+          tr
+            td
+              p= pendingRequest.justification

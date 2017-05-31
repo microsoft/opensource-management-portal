@@ -8,8 +8,11 @@ html(lang="en")
   include head
   body
     include alerts
+    - var scheme = primaryAuthenticationScheme || (config ? config.authentication.scheme : null)
     include nav
-    include breadcrumbs
+    if reposContext && site === 'github'
+      include reposToolbar
+    //-include breadcrumbs
 
     // content
     block content
@@ -17,3 +20,4 @@ html(lang="en")
 
     include footer
     include insights
+    include ga

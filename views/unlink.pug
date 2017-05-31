@@ -11,29 +11,31 @@ block content
 
   div.container
 
-    h1 Unlink #{user.github.username}?
+    h1 Unlink #{user.azure.username} and #{user.github.username} (GitHub)?
+    p.lead Sorry to see you go.
 
     if orgs && orgs.length && orgs.length > 0
-      p You are currently a member of the following #{config.companyName} organization#{orgs.length == 1 ? '' : 's'} on GitHub:
+      - var unlinkText = 'Unlink anyway'
+      p Before you leave, you're currently a member of the following #{config.brand.companyName} organization#{orgs.length == 1 ? '' : 's'} on GitHub:
       ul
         each org in orgs
           li= org.name
 
-      p Please carefully review this page. Removing your corporate association will remove you from all of the organizations listed above.
-      p.
-        <strong>Potential data loss warning:</strong> If you use private repos with your
-        project, and have changes in a private fork that have not yet been committed to the
-        upstream repo for the org, they will be lost when membership is removed.
+      p Unlinking your accounts will remove you from all of the organizations listed above and <strong>may result in data loss</strong>.
 
-    p Please be very careful and review the following before deciding whether to "unlink" your GitHub account:
+      ul
+        li Your GitHub account, #{user.github.username}, will lose privileged access to these orgs.
+        li Private forks of repos from these orgs, if any, will be removed by GitHub.
+        li Work committed in a private fork of these org's repos will be lost.
 
-    ul
-      li Your GitHub account #{user.github.username} will lose access to #{config.companyName} organizations
-      li Private forks of repos from these orgs, if any, will be removed by GitHub
-      li Work committed in a private fork of a #{config.companyName} org will be lost
+    else
+      - var unlinkText = 'Unlink'
+      p Seems you are not in an #{config.brand.companyName} orgs so nothing should change in your GitHub experience.
 
-    form(method='post', action='/unlink')
+    p &nbsp;
+
+    form(method='post')
       p
-        input.btn.btn-lg.btn-danger(type='submit', value='Remove my corporate link')
+        input.btn.btn-lg.btn-danger(type='submit', value=unlinkText)
         | &nbsp; &nbsp; &nbsp;
         a.btn.btn-lg.btn-default(href='/') Cancel

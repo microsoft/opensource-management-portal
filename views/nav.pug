@@ -10,7 +10,7 @@
 mixin userTile(username, displayName, link, linkTitle, actionLink, action)
   if username
     a.btn.btn-sm.btn-muted(href=link, target='_new', title=linkTitle)= username
-  if displayName && displayName !== username
+  if displayName
     a.btn.btn-sm.btn-muted-more(href=link, target='_new', title=linkTitle)= displayName
   if action
     a.btn.btn-sm.btn-white(href=actionLink, style='margin-left:10px')= action
@@ -24,13 +24,13 @@ mixin userGitHub
     h4 GitHub Account
     if user && user.github
       p
-        if user.github && user.github.avatarUrl
+        if user.github.avatarUrl
           img(alt=user.github.displayName, src=user.github.avatarUrl + '&s=80', style='margin-right:10px;width:30px;height:30px', data-user=user.github.id)
         +userTile(user.github.username, user.github.displayName || user.github.username, 'https://github.com/settings/profile', 'Click to edit your public GitHub profile', actionLink, action)
     else
       if scheme === 'github'
         p
-          small Sign in or create your GitHub.com account to manage your #{config && config.companyName || 'corporate'} open source identity
+          small Sign in or create your GitHub.com account to manage your #{config && config.brand.companyName || 'corporate'} open source identity
       p
         a.btn.btn-sm.btn-primary(href='/signin/github') Sign In
 
@@ -38,13 +38,13 @@ mixin userAzure
   - var actionLink = scheme === 'github' ? '/link/update' : azureSignoutLink
   - var action = scheme === 'github' ? 'Change' : 'Sign Out'
   if user && user.azure
-    h4 #{config && config.companyName ? config.companyName : 'Corporate'} Identity
+    h4 #{config && config.brand.companyName ? config.brand.companyName : 'Corporate'} Identity
     p
       +userTile(user.azure.username, user.azure.displayName, '/settings', 'View your settings', actionLink, action)
   else if scheme !== 'github'
-    h4 #{config && config.companyName ? config.companyName : 'Corporate'} Identity
+    h4 #{config && config.brand.companyName ? config.brand.companyName : 'Corporate'} Identity
     p
-      small Sign in to manage your #{config && config.companyName || 'corporate'} open source identity
+      small Sign in to manage your #{config && config.brand.companyName || 'corporate'} open source identity
     p
       a.btn.btn-sm.btn-primary(href='/signin') Sign In
 

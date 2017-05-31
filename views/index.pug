@@ -12,85 +12,86 @@ block js_doc_ready
   | } catch(ex) {};
 
 block content
+  - var overview = accountInfo ? accountInfo.overview : null
   div.container
     if onboarding === true
-      h1.huge Hi.
+      if user && user.azure
+        h1.huge Congratulations, #{user.azure.displayName || user.azure.username}
+      else
+        h1.huge Congratulations
     else
-      h1
+      //h1
         | Open Source Portal&nbsp;
         small for GitHub
-    if accountInfo && onboarding !== true
-      div.container
-        div.row(style='margin-top:16px')
-          // linked membership
-          div.col-md-4.col-lg-4.col-sm-4
-            if accountInfo.isLinkedUser !== false
-              div.metro-box.ms-blue
-                a(href='/unlink')
-                  h3 Linked Identity
-                  p= config.companyName.toUpperCase()
-            else
-              div.metro-box.ms-light-gray
-                a(href='/link')
-                  h3 Not linked
-                  p= config.companyName.toUpperCase()
-          // 2-factor authentication
-          if accountInfo.twoFactorOff === true || accountInfo.twoFactorOn === true
-            div.col-md-4.col-lg-4.col-sm-4
-              if accountInfo.twoFactorOff === true
-                div.metro-box.ms-red
-                  a(href=activeOrgUrl + 'security-check')
-                    h3 2FA
-                    p OFF
-              else if accountInfo.twoFactorOn === true
-                div.metro-box.ms-green
-                  a(href=activeOrgUrl + 'security-check')
-                    h3 2-factor auth
-                    p PROTECTED
-        div.row(style='margin-top:16px')
-          div.col-md-4.col-lg-4.col-sm-4
-            if accountInfo.isLinkedUser !== false
-              p You've linked your GitHub and corporate identities.
-            else
-              p To join the organization, you need to <a href="/link">link your GitHub and Microsoft-related identities</a>.
-          div.col-md-4.col-lg-4.col-sm-4
-            if accountInfo.twoFactorOff === true || accountInfo.twoFactorOn === true
-              if accountInfo.twoFactorOff === true
-                p Your account is a security risk and is not in compliance. <strong>Your access may be revoked at any time, without notice, and may cause work stoppage or loss.</strong>
-              else if accountInfo.twoFactorOn === true
-                p Your account uses modern security. Thank you.
+    div.col-md-8
+      if accountInfo && onboarding !== true
+        if accountInfo.isLinkedUser !== false && accountInfo.twoFactorOn === true
+          // No longer showing this UI on the homepage for good states
+        else
+          div.container
+            div.row(style='margin-top:16px')
+              // linked membership
+              div.col-md-4.col-lg-4.col-sm-4
+                if accountInfo.isLinkedUser !== false
+                  div.metro-box.ms-blue
+                    a(href='/unlink')
+                      h3 Linked Identity
+                      p= config.brand.companyName.toUpperCase()
+                else
+                  div.metro-box.ms-light-gray
+                    a(href='/link')
+                      h3 Not linked
+                      p= config.brand.companyName.toUpperCase()
+              // 2-factor authentication
+              if accountInfo.twoFactorOff === true || accountInfo.twoFactorOn === true
+                div.col-md-4.col-lg-4.col-sm-4
+                  if accountInfo.twoFactorOff === true
+                    div.metro-box.ms-red
+                      a(href=activeOrgUrl + 'security-check')
+                        h3 2FA
+                        p AT RISK
+                  else if accountInfo.twoFactorOn === true
+                    div.metro-box.ms-green
+                      a(href=activeOrgUrl + 'security-check')
+                        h3 2-factor auth
+                        p PROTECTED
 
-    if accountInfo.organizations
-      if onboarding !== true
+      if onboarding !== true && overview && overview.organizations.member && overview.organizations.member.length
         h1
-          a.a-unstyled(name='orgs') #{config.companyName} Organizations
-
-      if onboarding === true
-        h3 Please select the organization that you would like to join.
+          a.a-unstyled(name='orgs') Your #{config.brand.companyName} GitHub organizations
+      else
+        h3 You've successfully linked your #{config.brand.companyName} and GitHub accounts.
 
       - var currentPriority = ''
-      each o in accountInfo.organizations
-        if o.setting('priority') !== currentPriority
-          - currentPriority = o.setting('priority')
-          if currentPriority == 'secondary'
-            h2 Additional Organizations
-            p Here are additional organizations that are managed by this portal but are intended for specific teams, projects and purposes.
-        div.link-box
-          a(href=o.baseUrl + (o.membershipStateTemporary === 'active' ? '' : 'join') + onboardingPostfixUrl)
-            h2
-              strong.capitalize= o.name + ' '
-              if o.membershipStateTemporary == 'active'
-                small Member
-              else if o.membershipStateTemporary == 'pending'
-                small
-                  span.label.label-danger Membership Pending
-              else
-                small
-                  if o.setting('locked')
-                    span.label.label-default Locked
-                  else
-                    span.label.label-primary Join this organization
-            p.lead= o.setting('description')
+      each o in overview.organizations.member
+          div.link-box
+            a(href=o + onboardingPostfixUrl)
+              h2: strong= o
+                //-else if o.membershipStateTemporary === 'pending'
+                  small
+                    span.label.label-danger Membership pending
+              - var oo = getOrg(o)
+              if oo.description
+                p.lead= oo.description
+
+      if onboarding === true
+        h3 Your onboarding progress
+        h5
+          | Sign in to your GitHub &amp; #{config.brand.companyName} accounts&nbsp;
+          i.glyphicon.glyphicon-ok
+        h5
+          | Link your accounts&nbsp;
+          i.glyphicon.glyphicon-ok
+        h5.text-primary
+          | Join your first GitHub organization
+        h5
+          | Multifactor security checkup
+        h5
+          | Profile review
+        h5
+          | Publish your membership <em>(optional)</em>
+        h5
+          | Join a team <em>(optional)</em>
 
       //-if accountInfo.isSudoer
         h1 Organization Administration
@@ -98,24 +99,25 @@ block content
         p
           a.btn.btn-default(href='/organization') Organization Delegate Dashboard
 
-      if accountInfo.teamsMaintained && accountInfo.teamsMaintained.length && accountInfo.teamsMaintained.length > 0
+      if overview.teams.maintainer && overview.teams.maintainer.length
         if accountInfo.pendingApprovals && accountInfo.pendingApprovals.length && accountInfo.pendingApprovals.length > 0
           h1 Approvals: Please Review
           p
             a.btn.btn-default(href='/approvals/') See all pending approvals (#{accountInfo.pendingApprovals.length})
 
-        if accountInfo.teamsMaintained
-          h1 Teams You Maintain
+        if overview.teams.maintainer
+          h1 Teams you maintain
           script(type='text/javascript').
             function initializeManageFilter() {
               var inputManageFilter = $('#manage-filter');
               if (inputManageFilter) {
                 inputManageFilter.keyup(function () {;
-                  $.uiTableFilter($('table#manage-table'), this.value, ['Title', 'Organization', 'GitHub Name']);
+                  $.uiTableFilter($('table#manage-table'), this.value, ['Title', 'Organization', 'GitHub name']);
                 });
               }
             }
-          div.container
+          //-div.container
+          div
             table.table#manage-table
               thead
                 tr
@@ -126,27 +128,24 @@ block content
                     p
                       i.glyphicon.glyphicon-search
                 tr
-                  th GitHub Name
+                  th GitHub name
                   th Organization
                   th Actions
               tbody
-                each team in accountInfo.teamsMaintained
+                each team in overview.teams.maintainer
                   tr
                     td
-                      a.btn.btn-sm.btn-muted(href=team.org.baseUrl + 'teams/' + team.slug)= team.name
-                    td.twentypercent.capitalize= team.org.name
+                      a.btn.btn-sm.btn-muted(href='/' + team.organization.login + '/teams/' + team.slug)= team.name
+                    td.twentypercent= team.organization.login
                     td.thirtypercent
-                      p
-                        a.btn.btn-sm.btn-default(href=team.org.baseUrl + 'teams/' + team.slug) Manage Team + ' '
-                        a.btn.btn-default.btn-sm(href='https://github.com/orgs/' + team.org.name + '/teams/' + team.slug, target='_new')
-                          | Open on GitHub
-                          i.glyphicon.glyphicon-share-alt
+                      ul.list-unstyled
+                        li: a.btn.btn-sm.btn-default(href='/' + team.organization.login + '/teams/' + team.slug) Manage
+                        //-li: a.btn.btn-sm.btn-muted(href='https://github.com/orgs/' + team.organization.login + '/teams/' + team.slug, target='_new') GitHub
 
       if accountInfo.isLinkedUser && onboarding !== true
-        h1 Team Memberships
-        if accountInfo.teamsMaintainedHash
+        if overview.teams && overview.teams.member && overview.teams.member.length
+          h1 Team memberships
           p Here are teams that you are a member of but not a maintainer of.
-        if accountInfo.userTeamMemberships && accountInfo.userTeamMemberships.length && accountInfo.userTeamMemberships.length > 0
           script(type='text/javascript').
             function initializeMembershipFilter() {
               var inputMembershipFilter = $('#membership-filter');
@@ -170,28 +169,60 @@ block content
                 th Organization
                 th Actions
             tbody
-              each team in accountInfo.userTeamMemberships
+              each team in overview.teams.member
                 if team.id && accountInfo.teamsMaintainedHash && accountInfo.teamsMaintainedHash[team.id] !== undefined
                   // Skipping this team since they are already maintaining it
                 else
                   tr
                     td
-                      a.capitalize.btn.btn-sm.btn-muted(href='https://github.com/orgs/' + team.org.name + '/teams/' + team.slug, target='_new')= team.name
-                    td.twentypercent.capitalize= team.org.name
+                      a.btn.btn-sm.btn-muted(href='/' + team.organization.login + '/teams/' + team.slug, target='_new')= team.name
+                      //-a.btn.btn-sm.btn-muted(href='https://github.com/orgs/' + team.organization.login + '/teams/' + team.slug, target='_new')= team.name
+                    td.twentypercent= team.organization.login
                     td.twentypercent
                       p
                         if config.github.teamEveryoneId == team.id
-                          a.btn.btn-default.btn-sm(href=team.org.baseUrl + '/leave') Leave Organization
+                          a.btn.btn-default.btn-sm(href='/' + team.organization.login + '/leave') Leave Organization
                         else
-                          a.btn.btn-default.btn-sm(href='https://github.com/orgs/' + team.org.name + '/teams/' + team.slug, target='_new')
+                          //-a.btn.btn-default.btn-sm(href='https://github.com/orgs/' + team.organization.login + '/teams/' + team.slug, target='_new')
+                          a.btn.btn-default.btn-sm(href='/' + team.organization.login + '/teams/' + team.slug, target='_new')
                             | Open on GitHub
-                            i.glyphicon.glyphicon-share-alt
           //- The user will get a better experience joining teams if they go through the organization onboarding first.
           //-p
             a.btn.btn-default(href='/teams')= (accountInfo.userTeamMemberships && accountInfo.userTeamMemberships.length && accountInfo.userTeamMemberships.length > 0) ? 'Join another team' : 'Join a team'
         else
-          p You are not currently a member of any GitHub teams that grant you permission to specific repositories. Note that this display is cached and may not be up-to-date.
+          //-p You are not currently a member of any GitHub teams that grant you permission to specific repositories. Note that this display is cached and may not be up-to-date.
+    div.col-md-4
+      if overview.organizations.available && overview.organizations.available.length
+        h2 Available #{config.brand.companyName} GitHub organizations
+        .right
+          if onboarding === true
+            p Join these #{config.brand.companyName} organizations to see private repos and get elevated privileges.
 
-    hr
-    p
-      a.btn.btn-default(href='/unlink') Remove my corporate GitHub access
+          - var currentPriority = ''
+          if groupedAvailableOrganizations
+            each list, groupType in groupedAvailableOrganizations
+              if groupType === 'secondary'
+                hr
+                h5 Additional Organizations
+                p.small The following organizations are specialized for specific teams and projects, but not general-purpose membership. Please only join if you have a business need.
+              each o in list
+                //-if o.membershipStateTemporary !== 'active' && o.membershipStateTemporary !== 'pending'
+                if o.priority !== currentPriority
+                  - currentPriority = o.priority
+                  //-if currentPriority == 'secondary'
+                //-if o.locked === true // o.membershipStateTemporary !== 'active'
+                if o.locked === true
+                  //- Do not show by invitation only orgs at this time
+                else
+                  div.link-box
+                    a(href='/' + o.name + '/join' + onboardingPostfixUrl)
+                      if groupType === 'secondary'
+                        h6.text-muted
+                          strong= o.name + ' '
+                          small: span.label.label-muted Join
+                        p.small.text-mute= o.description
+                      else
+                        h4
+                          = o.name + ' '
+                          small: span.label.label-primary Join
+                        p.small(style='color:#333')= o.description

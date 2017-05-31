@@ -1,0 +1,55 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../body
+
+block content
+  h2
+    = team
+    | &nbsp;
+    small= org
+
+  p.
+    An #{org} organization member has requested to join the <strong>"#{team}"</strong> team
+    on GitHub.
+  p In your role as a Team Maintainer, please approve or deny this request.
+  p
+    a(href=actionUrl, style='display:inline-block;background-color:#eee;font-size:18px;padding:12px') Review request
+
+  h3 Request details
+
+  table.technical(style='width:80%')
+    thead
+      tr
+        th(colspan=2) Requested by
+    tbody
+      tr
+        td
+          p
+            a(href='https://github.com/' + approvalRequest.ghu)= approvalRequest.ghu
+        td= approvalRequest.email
+    thead
+      tr
+        th(colspan=2) Team
+    tbody
+      tr
+        td GitHub organization
+        td= org
+      tr
+        td Team name
+        td= team
+    if approvalRequest.justification
+      thead
+        tr
+          th(colspan=2) Justification provided by #{personName || personMail}
+        tr
+          td(colspan=2)
+            p= approvalRequest.justification
+
+  p If you prefer not to click on email links, you can find this approval by:
+  ul
+    li Navigating to the open source repos site at #{reposSiteUrl}
+    li View your alerts, or go to the <em>/approvals</em> URL
+    li Review the request details

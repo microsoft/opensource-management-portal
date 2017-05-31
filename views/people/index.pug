@@ -1,0 +1,253 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block append js_doc_ready
+  include ../js/search.js
+
+block content
+  - var octicon = viewServices.octicon
+  - var itemType = 'members'
+  - var teamAdmin = specificTeamPermissions && specificTeamPermissions.allowAdministration
+
+  .container
+
+    if team2
+      .nav
+        ul.pager.zero-pad-bottom
+          li.previous
+            a(href='/' + organization.name + '/teams/' + team2.slug)
+              span(aria-hidden=true) &larr;
+              = ' Back to the ' + team2.name + ' team'
+      if team2AddType
+        h1 Add #{team2AddType}s to the #{team2.name} team
+      else
+        h1 People in the #{team2.name} team
+      h5= organization.name + ' organization'
+    else if organization
+      h1
+        | People
+        small= ' in the ' + organization.name + ' GitHub organization'
+    else
+      h1 People
+      p.lead Members of officially managed Microsoft organizations
+
+    if reposDataAgeInformation
+      p.text-primary(style='margin-bottom:24px')
+        if reposDataAgeInformation.changed
+          = 'Updated ' + reposDataAgeInformation.changed
+        if reposDataAgeInformation.updated && reposDataAgeInformation.changed
+          |, refreshed
+        else
+          | Refreshed
+        if reposDataAgeInformation.updated
+          = ' ' + reposDataAgeInformation.updated
+
+    .row
+      .col-md-10
+        //-ul.nav.nav-pills
+          li(class=(search.sort === 'Alphabet' ? 'active' : ''), title='Alphabetically sorted')
+            a(href='?sort=Alphabet&tag=' + (tag ? tag : '') + (query.phrase ? '&q=' + query.phrase : ''))
+              != octicon('text-size', 20)
+              |  Name
+
+        form.form-horizontal#entitySearch(style='margin-top:24px')
+          .form-group
+            .col-md-6
+              div.input-group
+                input.form-control#inputQuery(
+                  placeholder='Search members',
+                  type='text',
+                  value=query && query.phrase ? query.phrase : null,
+                  style='max-width:400px')
+                span.input-group-btn
+                  button(
+                    class='btn btn-muted'
+                    type='submit'
+                    style='border-width: 1px') Search
+            .col-md-6
+              ul.nav.nav-pills
+                li.dropdown(role='presentation')
+                  a.dropdown-toggle#typeLabel(data-toggle='dropdown', href='#', role='button', aria-haspopup='true', aria-expanded='false')
+                    = 'Type: '
+                    if query && query.type
+                      strong= query.type
+                    else
+                      strong All
+                    span.caret
+                  ul.dropdown-menu.border-1px-primary(aria-labelledby='typeLabel', style='border-top:0;margin-top:0;padding-top:0;padding-bottom:0')
+                    - var currentType = query && query.type ? query.type : 'all'
+                    li(class={ active: currentType === 'all' })
+                      a(href='?page_number=' + (search.page) + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + ('&type=all') + (query.phrase ? '&q=' + query.phrase : '')) All
+                    li(class={ active: currentType === 'linked' })
+                      a(href='?page_number=' + (search.page) + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + ('&type=linked') + (query.phrase ? '&q=' + query.phrase : '')) Linked
+                    li(class={ active: currentType === 'unlinked' })
+                      a(href=href='?page_number=' + (search.page) + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + ('&type=unlinked') + (query.phrase ? '&q=' + query.phrase : '')) Unlinked
+                    //-li(class={ active: currentType === 'former' })
+                      a(href=href='?page_number=' + (search.page) + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + ('&type=former') + (query.phrase ? '&q=' + query.phrase : '')) Former
+                    //-li(class={ active: currentType === 'active' })
+                      a(href=href='?page_number=' + (search.page) + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + ('&type=active') + (query.phrase ? '&q=' + query.phrase : '')) Active employment
+                    //-li(class={ active: currentType === 'serviceAccount' })
+                      a(href=href='?page_number=' + (search.page) + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + ('&type=serviceAccount') + (query.phrase ? '&q=' + query.phrase : '')) Service accounts
+                    //-li(class={ active: currentType === 'unknownAccount' })
+                      a(href=href='?page_number=' + (search.page) + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + ('&type=unknownAccount') + (query.phrase ? '&q=' + query.phrase : '')) Linked accounts not in the directory
+                //-li.dropdown(role='presentation')
+                  a.dropdown-toggle#twoFactorLabel(data-toggle='dropdown', href='#', role='button', aria-haspopup='true', aria-expanded='false')
+                    = 'Two factor: '
+                    if query && query.twoFactor && query.twoFactor === 'off'
+                      strong Two-factor off
+                    else
+                      strong Any 2fa state
+                    span.caret
+                  ul.dropdown-menu.border-1px-primary(aria-labelledby='twoFactorLabel', style='border-top:0;margin-top:0;padding-top:0;padding-bottom:0')
+                    - var currentTwoFactor = query && query.twoFactor ? query.twoFactor : 'all'
+                    li(class={ active: currentTwoFactor === 'all' })
+                      a(href='?page_number=' + (search.page) + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (search.type ? '&type=' + search.type : '') + ('&twoFactor=all') + (query.phrase ? '&q=' + query.phrase : '')) All
+                    li(class={ active: currentTwoFactor === 'off' })
+                      a(href=href='?page_number=' + (search.page) + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (search.type ? '&type=' + search.type : '') + ('&twoFactor=off') + (query.phrase ? '&q=' + query.phrase : '')) 2FA off
+
+        if filters.length > 0
+          p(style='margin-top:24px')
+            if search.totalItems > 1
+              strong= search.totalItems.toLocaleString()
+              |  results
+            else if search.totalItems === 1
+              strong 1
+              |  result
+            else
+              | No results
+            = ' for '
+            each filter in filters
+              = filter.displayPrefix ? filter.displayPrefix + ' ' : ''
+              strong= filter.displayValue || filter.value
+              = ' '
+              = filter.displaySuffix ? filter.displaySuffix + ' ' : ''
+            a.pull-right.btn.btn-sm.btn-muted-more(href='?')
+              != octicon('x', 14)
+              = ' Clear filter'
+
+          hr
+
+        if search.totalItems === 0
+
+          .well.well-lg
+            div.text-center
+              p
+                != octicon('organization', 24)
+              if team2
+                p.lead The #{team2.name} team doesn't have any people that match.
+              else if organization
+                p.lead This organization doesn't have any people that match.
+              else
+                p.lead No people match across all managed organizations.
+
+        else
+          nav(style='margin-bottom:48px')
+            ul.pager
+              li.previous(class=(search.page > 1 ? '' : 'disabled'))
+                a(href='?page_number=' + (search.page-1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                  span(aria-hidden="true") &larr; Previous
+              li
+                if search.totalItems == 1
+                  | One member
+                else
+                  | #{search.pageFirstItem.toLocaleString()} - #{search.pageLastItem.toLocaleString()} of #{search.totalItems.toLocaleString()} #{itemType}
+              li.next(class=(search.page < search.totalPages ? '' : 'disabled'))
+                a(href='?page_number=' + (search.page+1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                  span(aria-hidden="true") Next &rarr;
+
+          .row.vertical-pad-bottom
+            .col-sm-8
+            .col-sm-4
+              if !organization
+                h6 Memberships
+
+          each person in search.members
+            - var link = person.link
+            - var account = person.account ? person.account : person
+            - var corporate = person.corporate;
+            - var serviceAccount = person.link && person.link.serviceAccount
+            - var shorthandName = corporate && corporate.preferredName ? corporate.preferredName : (link ? (link.aadname || account.login) : account.login);
+            - var corporateIdentity = corporate && corporate.alias ? corporate.alias : (link ? link.aadupn : null)
+            - var email = corporate ? corporate.emailAddress || corporate.userPrincipalName : null
+
+            .row.vertical-pad-bottom
+              .col-sm-8
+                div.horizontal-space-right.vertical-space.pull-left(style='width:48px;height:48px;display:block;vertical-align:middle')
+                  if account.avatar_url
+                    img(src=account.avatar_url + '&s=96', style='width:48px;height:48px', title='Avatar of ' + shorthandName)
+                div(style='display:block;vertical-align:middle')
+                  h4
+                    a(href='https://github.com/' + account.login, target='_new')= shorthandName
+                    //-if !link
+                      = ' '
+                      .label.label-danger Not linked
+                    if team2AddType && person.isTeamMember
+                      = ' '
+                      .label.label-primary.shrink66 Team member
+                  ul.list-inline
+                    if shorthandName && shorthandName !== account.login
+                      li
+                        span(title=account.login + ' is the GitHub username for ' + shorthandName)= account.login
+                    if !link
+                      li
+                        .label.label-danger Not linked
+                    if corporateIdentity
+                      if link && !corporate
+                        li.text-warning!= octicon('link', 16)
+                        li
+                          span(title=link.aadoid)= link.aadupn
+                      else
+                        li!= octicon('link', 16)
+                        li
+                          span(title=corporateIdentity + ' is the corporate identity for ' + shorthandName)= corporateIdentity
+                      //- just corporate e-mails here, not user emails
+                      if email
+                        li
+                          a(href='mailto:' + email, title='Send corporate email to ' + email)
+                            != octicon('mail', 16)
+                    if serviceAccount
+                      li!= octicon('hubot', 16)
+                      li Service account
+                  if team2AddType && teamAdmin
+                    form(action=teamUrl + team2AddType + 's/add', method='post')
+                      input(type='hidden', name='username', value=account.login)
+                      input.btn.btn-sm.btn-muted(
+                        type='submit',
+                        onclick='return confirm(\'Are you sure that you want to add ' + account.login + ' as a team ' + team2AddType + '?\');',
+                        value= 'Add as ' + team2.name + ' team ' + team2AddType)
+                  if team2RemoveType && teamAdmin
+                    form(action=teamUrl + team2RemoveType + 's/remove', method='post')
+                      input(type='hidden', name='username', value=account.login)
+                      input.btn.btn-sm.btn-muted(
+                        type='submit',
+                        onclick='return confirm(\'Are you sure that you want to remove ' + account.login + ' from the team?\');',
+                        value= 'Remove from ' + team2.name + ' team')
+              .col-sm-2
+                if !organization && person.orgs
+                  ul.list-unstyled
+                    each values, _org_ in person.orgs
+                      li= _org_
+
+              .col-sm-2
+                //- Temporary, adding a direct link; the user would still need to be a global sudoer to use the linked page
+                if lightupSudoerLink
+                  a.btn.btn-sm.btn-default(target='_new', href='/organization/whois/github/' + account.login) Manage account
+
+          nav
+            ul.pager
+              li.previous(class=(search.page > 1 ? '' : 'disabled'))
+                a(href='?page_number=' + (search.page-1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                  span(aria-hidden="true") &larr; Previous
+              li
+                h4(style="display:inline")
+                  | Page #{search.page} of #{search.totalPages}
+              li.next(class=(search.page < search.totalPages ? '' : 'disabled'))
+                a(href='?page_number=' + (search.page+1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                  span(aria-hidden="true") Next &rarr;
+
+        hr
+        p The presence of people in this list does not imply that they are an employee.

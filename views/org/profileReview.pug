@@ -11,30 +11,31 @@ block content
       div.container
         div.row
           div.col-lg-8.col-md-8.col-sm-8
-            h1 Let's review your public profile
+            h1 Is your GitHub profile professional?
             if onboarding
-              p.lead Since you're onboarding to #{org.name} for the first time, this is the perfect time to quickly think about this.
-            p Your interactions in public open source repos (commenting on issues, creating and working with pull requests, contributing source) will be associated with your public GitHub profile.
-            p With the company's open source and social media policies in mind, consider the answer to this question: "Is my profile professional?"
+              p.lead Since you've just linked your #{config.brand.companyName} and GitHub accounts, it's a perfect time to think about how you show up in public on GitHub.
+            p Your interactions in public open source repos (commenting on issues, creating and working with pull requests, contributing source) are all associated with your public GitHub profile. With #{config.brand.companyName}'s open source and social media policies in mind, consider the these questions:
             ul
               li Are you using the name you use professionally?
-              li Have you included #{config.companyName} in your profile?
+              li Have you identified #{config.brand.companyName} as your company?
               li Have you included an e-mail address?
-              li Have you replaced the default GitHub-generated avatar graphic with a professional, smart, acceptable profile avatar?
-            p(style='margin-top:24px')
-              a.btn.btn-primary(href=org.baseUrl + (onboarding ? 'membership?onboarding=' + onboarding : 'membership')) Continue
+              li Do you have a professional, smart profile avatar?
+            p &nbsp;
+            p
+              a.btn.btn-primary.btn-lg(href=org.baseUrl + (onboarding ? 'membership?onboarding=' + onboarding : 'membership')) Continue
               | &nbsp;&nbsp;
-              a.btn.btn-default(href='https://github.com/settings/profile', target='_new')
-                | Edit your profile in a new tab&nbsp;
-                i.glyphicon.glyphicon-share-alt
+              a.btn.btn-default.btn-lg(href='https://github.com/settings/profile', target='_new')
+                | Edit your profile on GitHub
+
             if onboarding
+              p &nbsp;
               hr
               h3 Your onboarding progress
               h5
-                | Sign in with GitHub &amp; #{config.companyName}&nbsp;
+                | Sign in to your GitHub &amp; #{config.brand.companyName} accounts&nbsp;
                 i.glyphicon.glyphicon-ok
               h5
-                | Link your identity&nbsp;
+                | Link your accounts&nbsp;
                 i.glyphicon.glyphicon-ok
               h5
                 | Join your first GitHub organization&nbsp;
@@ -55,8 +56,16 @@ block content
                 h4 YOUR GITHUB PROFILE
                 p
                   img.img-thumbnail(style='max-width:200px', src=userProfile.avatar(400), alt=(userProfile.name || userProfile.login))
-                h3= userProfile.name
-                h4= userProfile.login
+                span
+                  p
+                    | GitHub username
+                    br
+                    strong= userProfile.login
+                span
+                  p
+                    | Name
+                    br
+                    strong= userProfile.name
                 span(style=userProfileWarnings.company)
                   p
                     | Company
@@ -88,5 +97,4 @@ block content
                         strong= userProfile.otherFields.blog
                 p(style='margin:16px 0')
                   a.btn.btn-default.btn-sm(href='https://github.com/settings/profile', target='_new')
-                    | Edit your profile in a new tab&nbsp;
-                    i.glyphicon.glyphicon-share-alt
+                    | Edit your profile on GitHub

@@ -1,0 +1,37 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends body
+
+block content
+  if link.serviceAccount
+    h4 Service Account linked
+
+  h3 Congratulations!
+  p Your GitHub account is now linked with your corporate identity.
+
+  table
+    tbody
+      if link.serviceAccount
+        tr
+          td Service Account
+          td= link.aadupn
+        if link.serviceAccountMail
+          td Contact e-mail
+          td= link.serviceAccountMail
+      tr
+        td GitHub account
+        td= link.ghu
+      tr
+        td Corporate identity
+        td= link.aadupn
+
+  h3 Microsoft open source resources
+  p.
+    Take a moment to review the resources at #[a(href='https://opensource.microsoft.com/resources') https://opensource.microsoft.com/resources]:
+  ul
+    li Common GitHub questions, policies and resources relating to releasing open source
+    li Service account guidance
+    li Contributor license agreement info

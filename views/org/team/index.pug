@@ -5,122 +5,314 @@
 
 extends ../../layout
 
-block content
-  div.container
-    h1
-      = team.name
-      small.capitalize &nbsp; #{team.org.name} Team Maintainer
-    if team.description
-      p.lead= team.description
-    h2 Team + Repo Management
-    table.table
-      tbody
-        tr
-          td
-            if pendingApprovals && pendingApprovals.length && pendingApprovals.length > 0
-              a.btn.btn-sm.alert-danger(href=teamUrl + 'approvals/')
-                strong= pendingApprovals.length
-                | 
-                | Pending Approval#{pendingApprovals.length > 1 ? 's' : ''}
-            else
-              a.btn.btn-sm.btn-default(href=teamUrl + 'approvals/') No Pending Approvals
-          td
-            p Manage requests related to this team.
-        tr
-          td
-            a.btn.btn-default.btn-sm(href=teamUrl + 'properties/') Edit Name and Description
-          td
-            p Manage the basic GitHub properties for this team.
-        tr
-          td
-            a.btn.btn-default.btn-sm(href=teamUrl + 'repos/') Manage Repositories
-          td
-            p Take a repo from private to public, delete old repos, change repo descriptions. Manage repo collaborators.
-        tr
-          td
-            a.btn.btn-default.btn-sm(href=teamUrl + 'members/') Manage Team Members
-          td
-            p Invite new members to your team. Remove members from the team. Remove employees from the entire org when they leave the company.
-        tr
-          td
-            a.btn.btn-default.btn-sm(href=teamUrl + 'members/securityCheck') Audit 2FA Compliance
-          td
-            p Identify non-compliant members of your team who have two-factor authentication disabled.
-        tr
-          td
-            a.btn.btn-default.btn-sm(href=teamUrl + 'delete') Delete Team
-          td
-            p Delete this team permanently. Keeps all repos.
-        tr
-          td
-            a.btn.btn-default.btn-sm(href='https://github.com/orgs/' + team.org.name + '/teams/' + team.slug, target='_new')
-              | Open Team on GitHub 
-              i.glyphicon.glyphicon-share-alt
-          td
-            p
-              | Opens the team within GitHub's web interface.
-              br
-              small Note that this portal provides elevated operations on your behalf: many operations are not available on GitHub.
-    h2 Team Maintainers
-    if maintainers && maintainers.length
-      if maintainers.length < 2
-        div.alert.alert-gray(role='alert')
-          strong This team only has a single maintainer
-          br
-          | It is strongly recommended that each team have at least 2 team maintainers to make it easier to stay on top of approving your team's join requests, handle the team during vacations and other times, and so on. Please add an additional team maintainer!
-      table.table
-        thead
-          tr
-            th
-            th Name
-            th GitHub Username
-            th Authorization Type
-            th Identity
-            th Action
-        tbody
-        each maintainer in maintainers
-          tr
-            td(width='40')
-              if maintainer.avatar()
-                p
-                  img(alt=maintainer.login, src=maintainer.avatar('80'), style='margin-right:10px;width:40px;height:40px', width=40, height=40)
-            if maintainer.link
-              td= maintainer.link.aadname || maintainer.link.ghu  || maintainer.id
-            else
-              td= maintainer.id
-            td= (maintainer.link && maintainer.link.ghu) ? maintainer.link.ghu : maintainer.login
-            td
-              if maintainer.link
-                p Active Directory
-              else
-                p <strong>User not registered in portal</strong>
-            td= maintainer.contactEmail() || maintainer.login
-            td
-              //- If the current maintainer is also the current site user
-              if maintainer.id == user.github.id
-                p
-                  a.btn.btn-sm.btn-default(href=teamUrl + 'maintainers/transfer/') Transfer Role
-                  if maintainers.length > 2
-                    //- If there are already 2 other maintainer (total of 3), it's OK for the current user to drop themselves from the team.
-                    | &nbsp;
-                    a.btn.btn-sm.btn-default(href=teamUrl + 'maintainers/downgradeSelf') Downgrade Me to Member
-              else if maintainers.length > 1
-                p
-                  a.btn.btn-sm.btn-default(href=teamUrl + 'maintainers/' + maintainer.id + '/downgrade') Downgrade to Member
-    else
-      p There are not yet any maintainers defined in the new permission system on GitHub.
+//- TODO: Add back team maintainer management
 
-    h3 Add a new team maintainer
-    form.form-horizontal(method='post', action=teamUrl + 'maintainers/add')
-      p
-        select.form-control#inputMaintainer(name='maintainer2')
-          each employee in employees
-            option(value=employee.ghid, selected=employee.ghid == user.github.id)= employee.aadupn + ' (' + employee.ghu + ')'
-      p
-        input.btn.btn-default(type='submit',value='Add new team maintainer',data-transition='fade', data-theme='c')
+mixin authenticGitHubLink()
+  ul.list-unstyled
+    li: a.btn.btn-sm(
+          href='https://github.com/orgs/' + organization.name + '/teams/' + team2.slug,
+          target="_blank",
+          class=admin ? 'btn-primary' : 'btn-muted-more'
+          )
+            = admin ? 'Manage on GitHub.com ' : 'Open on GitHub.com '
+            != octicon('mark-github', 18)
+    if teamDetails && teamDetails.privacy === 'secret' && !membershipStatus
+      li: p: small: p This team is marked as #[strong secret]. On GitHub you may see a 404 error unless you join the team.
+
+mixin membersList(typeOfList, membersList, isAdmin, moreMembersToShow)
+  ul.list-inline(style='margin-bottom:24px')
+    each member in membersList
+      li(style='vertical-align:top;width:370px')
+        ul.list-inline
+          if member.avatar_url
+            //- img-circle
+            li(style='vertical-align:top;margin-top:12px'): img(
+              alt=member.login,
+              src=member.avatar_url + '&s=96',
+              style='width:36px;height:36px')
+          li
+            - var primaryName = member.link ? (member.link.aadname || member.link.aadupn) : member.login
+            ul.list-unstyled(style='margin-right:16px')
+              li: h5
+                a(href='/people?q=' + member.login)= primaryName
+                if orgOwnersSet && orgOwnersSet.has(member.id)
+                  = ' '
+                  .label.label-info(title=organization.name + ' organization owner') Owner
+              ul.list-inline
+                if primaryName != member.login
+                  li: p= member.login
+                if member.mailAddress
+                  li: a(href='mailto:' + member.mailAddress, title='Send corporate email to ' + member.mailAddress)
+                    != octicon('mail', 16)
+
+              if isAdmin === true && typeOfList === 'member'
+                //- Member admin
+                if !maintainersSet.has(member.id)
+                  li: ul.list-inline
+                    li: form(method='post', action=teamUrl + 'maintainers/add')
+                      input(type='hidden', name='username', value=member.login)
+                      button.btn.btn-xs.btn-muted-more(
+                        onclick='return confirm(\'Are you sure that you want to promote ' + member.login + ' to be a team maintainer?\');'
+                        title='Add team maintainer rights for this user') Promote to maintainer
+                    li: form(method='post', action=teamUrl + 'members/remove')
+                      input(type='hidden', name='username', value=member.login)
+                      button.btn.btn-xs.btn-muted-more(
+                        onclick='return confirm(\'Are you sure that you want to remove ' + member.login + ' from the team?\');'
+                        title='Remove this user from the team') Remove
+
+              if isAdmin === true && typeOfList === 'maintainer'
+                //- Maintainer admin
+                //- If the current member is also the current site user
+                if orgOwnersSet && orgOwnersSet.has(member.id)
+                  //- Do not show "downgrade" of org owners
+                else
+                  if member.id == user.github.id
+                      //- a.btn.btn-xs.btn-muted-more(href=teamUrl + 'maintainers/transfer/') Transfer role
+                      if membersList.length > 1
+                        //- If there are already 1 other maintainer (total of 2), it's OK for the current user to drop themselves from the team.
+                        li: form(method='post', action=teamUrl + 'maintainers/' + member.id + '/downgrade')
+                          button.btn.btn-xs.btn-muted-more(
+                            href=teamUrl + 'maintainers/' + member.id + '/downgrade',
+                            onclick='return confirm(\'Are you sure that you want to downgrade your own team maintainer account to be a member? You will no longer be able to maintain this team on GitHub.\');') Downgrade yourself
+                  else if membersList.length > 1
+                    li: form(method='post', action=teamUrl + 'maintainers/' + member.id + '/downgrade')
+                      button.btn.btn-xs.btn-muted-more(
+                        onclick='return confirm(\'Are you sure that you want to downgrade this maintainer to a member?\');'
+                        title='Remove team maintainer rights from this user') Downgrade
+    if moreMembersToShow
+      li: div(style='width:160px')
+        p.lead.text-primary.text-center: small &hellip; and others
+
+block content
+
+  //- Variables
+  - var maximumMembersToShow = (4 * 3) - 1
+  - var maximumRepositoriesToShow = 5
+
+  //- View services
+  - var languageColor = viewServices.languageColor
+  - var octicon = viewServices.octicon
+
+  //- Mode variables
+  - var admin = teamPermissions.allowAdministration
+
+  div.container
+    .row: .col-md-12
+      h1
+        = team.name
+        if admin
+          = ' '
+          if isOrgOwner
+            .label.label-info.shrink66(
+              title='You are an organization owner'
+            )= 'Organization owner'
+          else
+            .label.label-warning.shrink66(
+              title=teamPermissions.sudo ? 'As a sudo maintainer, you can administer team settings in this application but not directly on GitHub.com' : 'As a team maintainer you can administer team settings in this application and directly on GitHub.com'
+            )= teamPermissions.sudo ? 'Sudo maintainer' : 'Team maintainer'
+        if membershipStatus === 'member'
+          = ' '
+          .label.label-muted.shrink66 Member
+        if isSystemTeam
+          = ' '
+          .label.label-danger.shrink66 System team
+
+      h5= organization.name + ' organization'
+      if team.description
+        p.lead= team.description
+
+    .row
+      .col-md-8
+
+        //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        //- JOIN
+        //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        if !membershipStatus
+
+          //- TODO: If they are not an org member, figure out what to do!
+
+          .panel.panel-default
+            .panel-heading
+              h3.panel-title
+                if isSystemTeam
+                  | You are not a member of this team
+                else if isBroadAccessTeam
+                  | Become a team member now
+                else
+                  | Request to become a team member
+            .panel-body
+              if isBroadAccessTeam
+                p.
+                  You can immediately join this team, it is designed to provide broad access
+                  to organization members.
+              else if isSystemTeam
+                p As a system team, this team's membership is closed.
+              else
+                p.
+                  You're not currently a member of this team. You can submit a request
+                  to join the team. A team maintainer will review your ask.
+              p
+                if isSystemTeam
+                  a.btn.btn-sm.btn-default(href='#', disabled=true) Membership is closed
+                else
+                  a.btn.btn-sm.btn-primary(href=teamUrl + 'join') Join this team
+
+        //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        //- TEAM MAINTAINERS
+        //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+        if maintainers
+          h2
+            = 'Team Maintainers '
+            small: a(href=teamUrl + 'maintainers/refresh', title='Refresh the team maintainers list')
+              i.glyphicon.glyphicon-refresh
+
+          if maintainers.length <= 0
+              div.alert.alert-danger(role='alert')
+                strong This team does not have any maintainers
+                br
+                | Without team maintainers members cannot request access to this team and it is unclear who the owner of the repository is.
+          else
+            if maintainers.length < 2
+              div.alert.alert-warning(role='alert')
+                strong This team only has a single maintainer
+                br
+                | It is strongly recommended that a team have multiple maintainers to make it easier to stay on top of permission requests.
+            +membersList('maintainer', maintainers, admin)
+
+          if admin
+            ul.list-inline
+              li: a.btn.btn-sm.btn-muted(href=teamUrl + 'maintainers/add') Add a team maintainer
+
+        //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        //- TEAM MEMBERS
+        //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        if membersFirstPage
+          h2
+            = 'Members '
+            small: a(href=teamUrl + 'members/refresh', title='Refresh the team members list')
+              i.glyphicon.glyphicon-refresh
+
+          if membersFirstPage.length <= 0
+            p This team has no members.
+          else
+            - var membersSubset = membersFirstPage.slice(0, maximumMembersToShow)
+            - var hasMore = membersFirstPage.length > membersSubset.length
+
+            +membersList('member', membersSubset, admin, hasMore)
+
+          ul.list-inline
+            if membersFirstPage.length
+              li: a.btn.btn-sm.btn-muted(href=teamUrl + 'members/browse/', title='Only a subset of members are listed on this page. A full view is also available.')
+                if teamDetails && teamDetails.members_count
+                  = 'Browse all ' + teamDetails.members_count.toLocaleString() + ' members'
+                else
+                  | Browse all team members
+            if admin
+              li: a.btn.btn-sm.btn-muted(href=teamUrl + 'members/add') Add a member
+
+        //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        //- REPOSITORIES
+        //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        hr
+        h2 Repositories
+        if repositories && teamDetails && teamDetails.repos_count
+          - var actualCount = repositories.length
+          - var countDifference = teamDetails.repos_count - actualCount
+          if countDifference <= 0
+            p.
+              This team provides access to #{teamDetails.repos_count.toLocaleString()}
+              #{teamDetails.repos_count === 1 ? 'repository' : 'repositories'}.
+          else
+            p.
+              This team provides access to #{actualCount.toLocaleString()}
+              #{actualCount === 1 ? 'repository' : 'repositories'} and
+              #{countDifference.toLocaleString()} #{actualCount === 1 ? 'fork' : 'forks'}.
+        else
+          p This team does not offer access to any repositories.
+
+        if repositories && repositories.length
+          - var repoCount = 0
+          - var localOrgName = organization.name
+          - var specificTeam = team2
+
+          each repositoryPermission in repositories
+            if (repoCount++ <= maximumRepositoriesToShow)
+              - var repo = repositoryPermission.repository
+              - var repoPermissions = repositoryPermission.permissions
+
+              .repo(id=repo.name, style='padding-bottom:36px;display:block')
+                h3
+                  a(href='/' + localOrgName + '/repos/' + repo.name)= repo.name
+                  if repo.private === true
+                    | &nbsp;
+                    .label.label-warning.shrink66(title='This is a private repository and not open source.') Private
+                  if repoPermissions && specificTeam
+                    = ' '
+                    if repoPermissions.admin
+                      .label.label-danger.shrink66(title='The ' + specificTeam.name + ' team grants permission to administer the repo') Admin
+                    else if repoPermissions.push
+                      .label.label-warning.shrink66(title='The ' + specificTeam.name + ' team grants permission to commit directly to the repo and accept pull requests') Write
+                    else if repoPermissions.pull
+                      .label.label-success.shrink66(title='The ' + specificTeam.name + ' team grants permission to clone/read/see the repo') Read
+                if repo.description
+                  p=repo.description
+                small
+                  ul.list-inline.list-horizontal-space
+                    if repo.language
+                      li
+                        span(style={color: languageColor(repo.language)})
+                          != octicon('primitive-dot', 10)
+                        = ' ' + repo.language
+                    if repo.stargazers_count
+                      li
+                        != octicon('star', 15)
+                        = ' ' + repo.stargazers_count.toLocaleString()
+                    if repo.forks_count
+                      li
+                        != octicon('repo-forked', 12)
+                        = ' ' + repo.forks_count.toLocaleString()
+
+          if repositories.length > maximumRepositoriesToShow
+            h3 and more &hellip;
+
+          p: a.btn.btn-sm.btn-muted(href=teamUrl + 'repos/') Browse all #{repositories.length} repositories assigned to the team
+
+      .col-md-4(style='margin-top:24px')
+
+        //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        //- AUTHENTIC GITHUB EXPERIENCE
+        //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        if !admin
+          +authenticGitHubLink()
+
+        //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        //- ADMINISTRATION
+        //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        if admin
+
+          if pendingApprovals && pendingApprovals.length && pendingApprovals.length > 0
+            h2 Permission requests
+            p: a.btn.btn-sm.alert-danger(href=teamUrl + 'approvals/')
+              strong= pendingApprovals.length
+              | &nbsp;
+              | Pending Approval#{pendingApprovals.length > 1 ? 's' : ''}
+
+          h3 Team management
+
+          +authenticGitHubLink()
+
+          ul.list-unstyled.list-vspace
+            li: a.btn.btn-muted.btn-sm(href=teamUrl + 'properties/', title='Manage the basic GitHub properties for this team') Team name & description
+            li: a.btn.btn-muted.btn-sm(href=teamUrl + 'repos/', title='Take a repo from private to public, delete old repos, change repo descriptions. Manage repo collaborators.') Manage repositories
+            li: a.btn.btn-muted.btn-sm(href=teamUrl + 'members/browse', title='Invite new members to your team. Remove members from the team. Remove employees from the entire org when they leave the company.') Manage members
+            li: a.btn.btn-muted.btn-sm(href=teamUrl + 'members/browse?twoFactor=off', title='Identify non-compliant members of your team who have two-factor authentication disabled.') Two-factor check
+            li: form(method='post', action=teamUrl + 'delete')
+              button.btn.btn-sm.btn-muted(
+                onclick='return confirm(\'Are you sure that you want to delete this team? This is a permanent operation.\');'
+                title='Permanently delete the team') Delete team
+
     hr
     small
       ul.list-unstyled
-        li This team has the GitHub ID of <strong>#{team.id}</strong>
-        if !(pendingApprovals && pendingApprovals.length && pendingApprovals.length > 0)
-          li There are currently no pending approvals for you to manage. Nice!
+        li This team has the GitHub ID of #{team.id}

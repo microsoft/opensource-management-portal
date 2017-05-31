@@ -7,29 +7,39 @@ extends ../../layout
 
 block content
   div.container
-    h1
-      | Join Request 
-      small.capitalize= team.name
-    if team.description
-      p.lead= team.description
-    p This form will open a request to join the <em>#{team.name}</em> team. Keep in mind that with the <a href="https://guides.github.com/introduction/flow/" target="_new">GitHub fork and pull request workflow <i class="glyphicon glyphicon-share-alt"></i></a>, you may be able to successfully contribute to an effort with just read rights.
-    if teamMaintainers
-      h4 Team Maintainer#{teamMaintainers.length > 1 ? 's' : ''}
-      p Permission decisions are delegated to the following maintainer#{teamMaintainers.length > 1 ? 's' : ''} of the team:
-      p
-        for teamMember in teamMaintainers
-          span.person-tile
-            if teamMember.avatar()
-              img(alt=teamMember.login, src=teamMember.avatar('80'), style='margin-right:10px;width:20px;height:20px', width=20, height=20)
-            a.btn.btn-sm.btn-muted(href='https://github.com/' + teamMember.login, title=teamMember.id, target='_new')= teamMember.login
-            if teamMember.contactEmail()
-              a.btn.btn-sm.btn-muted-more(href='mailto:' + teamMember.contactEmail())= teamMember.contactName()
-    form(method='post')
-      h4 Context & Business Justification
-      p Please provide context for the approvers, including your business justification and any context they may need. Did someone suggest that you join the team?
-      p
-        textarea.form-control(rows=3, name='justification', placeholder='Required: Business Justification')
-      p
-        input.btn.btn-primary(type='submit', value='Submit Team Access Request')
-        | &nbsp; 
+    if allowSelfJoin
+      h1
+        | Join confirmation&nbsp;
+        small=team.name
+      p This team is open to everyone in the organization. Would you like to join this team?
+      form(method='post')
+        input.btn.btn-primary(type='submit', value='Join')
+        | &nbsp;
         a.btn.btn-default(href=team.org.baseUrl + 'teams') Cancel
+    else
+      h1
+        | Join Request&nbsp;
+        small= team.name
+      if team.description
+        p.lead= team.description
+      p This form will open a request to join the <em>#{team.name}</em> team. Keep in mind that with the <a href="https://guides.github.com/introduction/flow/" target="_new">GitHub fork and pull request workflow</a>, you may be able to successfully contribute to an effort with just read rights.
+      if teamMaintainers
+        h4 Team Maintainer#{teamMaintainers.length > 1 ? 's' : ''}
+        p Permission decisions are delegated to the following maintainer#{teamMaintainers.length > 1 ? 's' : ''} of the team:
+        p
+          for teamMember in teamMaintainers
+            span.person-tile
+              if teamMember.avatar()
+                img(alt=teamMember.login, src=teamMember.avatar('80'), style='margin-right:10px;width:20px;height:20px', width=20, height=20)
+              a.btn.btn-sm.btn-muted(href='https://github.com/' + teamMember.login, title=teamMember.id, target='_new')= teamMember.login
+              if teamMember.contactEmail()
+                a.btn.btn-sm.btn-muted-more(href='mailto:' + teamMember.contactEmail())= teamMember.contactName()
+      form(method='post')
+        h4 Context & Business Justification
+        p Please provide context for the approvers, including your business justification and any context they may need. Did someone suggest that you join the team?
+        p
+          textarea.form-control(rows=3, name='justification', placeholder='Required: Business Justification')
+        p
+          input.btn.btn-primary(type='submit', value='Submit Team Access Request')
+          | &nbsp;
+          a.btn.btn-default(href=team.org.baseUrl + 'teams') Cancel

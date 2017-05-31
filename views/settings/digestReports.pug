@@ -1,0 +1,21 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ./layout.pug
+
+block content
+  div.container
+
+    h1 Open source administrator report
+
+    if availableReports && availableReports.length
+
+      p.lead Please select a report:
+
+      each report in availableReports
+        h4: a(href='/settings/digestReports/administrator/' + report.id)= report.description
+      
+    else
+      p No reports are currently available to you, that's great!

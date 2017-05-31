@@ -10,6 +10,6 @@ if showBreadcrumbs === true && breadcrumbs && breadcrumbs.length && breadcrumbs.
       each crumb in breadcrumbs
         li
           if crumb.isLast === true || crumb.url === false
-            span.capitalize= crumb.title
+            span= crumb.title
           else
-            a.capitalize(href=crumb.url)= crumb.title
+            a(href=crumb.url)= crumb.title

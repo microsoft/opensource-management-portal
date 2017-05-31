@@ -13,8 +13,6 @@ block content
       p
         a.btn.btn-muted.btn-sm(href='https://github.com/' + pendingRequest.org + '/' + pendingRequest.repoName, target='_new')
           | https://github.com/#{pendingRequest.org}/#{pendingRequest.repoName}
-          | 
-          i.glyphicon.glyphicon-share-alt
       p
         | The repo #{pendingRequest.repoName} has been created in the #{pendingRequest.org} organization successfully.
         if pendingRequest.repoVisibility == 'private'

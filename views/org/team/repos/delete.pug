@@ -8,9 +8,8 @@ extends ../../../layout
 block content
   div.container
 
-    h1.capitalize
-      =repo.full_name
-      | 
+    h1
+      = repo.full_name + ' '
       small Delete
 
     p This will delete the repo. It may not delete forks if the repo is public. If the repo is private, data loss could occur.

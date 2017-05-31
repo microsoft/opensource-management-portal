@@ -12,17 +12,31 @@ block content
 
   div.container
 
-    h1 Please sign in with #{config.companyName} IT
+    h1 Please sign in with #{config.brand.companyName} IT
 
-    p Hey #{user.github.displayName || user.github.username}:
+    if user && user.github
+      p Hey #{user.github.displayName || user.github.username}:
 
-    p It looks like you have used a #{config.companyName} organization before, but this is the first time you are using the new open source portal.
+    p It looks like you have used a #{config.brand.companyName} organization before, but this is the first time you are using the new open source portal.
 
     p We need you to quickly authenticate with Azure Active Directory and your corporate identity this one time before you can access the portal. This should only take a minute or so depending on whether your corporate account has multi-factor (MFA) authentication already.
 
+    p
+      strong Microsoft Account (MSA)/OrgID note:
+      | If you are currently signed into a Microsoft Account, this sign in process may not work. You may receive an error as we need you to sign in with the Microsoft IT tenant. If you're having problems, just open an InPrivate (IE), Incognito (Chrome), or Private Browsing (Safari) window and try there. Sorry for the trouble.
     p This is also a good time to remind you of the policy and make sure the lawyers are happy.
 
+    p By continuing, you are accepting the following terms:
+
+    ul
+      li I understand the <a href="https://microsoft.sharepoint.com/sites/lcaweb/Home/Product-Development/Using-Open-Source-Software" target="_new">open source policy at Microsoft <i class="glyphicon glyphicon-share-alt"></i></a>.
+      li My password is safe, secure and smart.
+      li I will enable multi-factor authentication on the account and keep it active as part of the onboarding policy. If I do not, I understand I may lose access at any moment.
+      li I understand that access to the GitHub organization is a privilege and that the right may be revoked for policy violations, including but not limited to turning off two factor authentication, shipping open source without business and/or legal approval, etc.
+
+    p If you have any questions about this, please contact your team's GitHub liason, LCA contact, or review the materials on the Open Source Hub.
+
     p
-      a.btn.btn-primary(href='/signin/azure') Sign In to #{config.companyName}
+      a.btn.btn-primary(href='/signin/azure') Sign In to #{config.brand.companyName}
       | &nbsp;
       a.btn.btn-default(href='/signout') Cancel and Sign Out

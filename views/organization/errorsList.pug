@@ -43,15 +43,15 @@ block content
                     li <strong>innerError</strong>:
                     ul
                       each js2, val2 in json.innerError
-                        if js2.toString() == '[object Object]'
+                        if js2 && js2.toString() == '[object Object]'
                           li <strong>#{val2}</strong>:
                           ul
                             each js3, val3 in js2
-                              if js3.toString() == '[object Object]'
+                              if js3 && js3.toString() == '[object Object]'
                                 li <strong>#{val3}</strong>:
                                 ul
                                   each js4, val4 in js3
-                                    if js4.toString() == '[object Object]'
+                                    if js4 && js4.toString() == '[object Object]'
                                       li <strong>#{val4}</strong>:
                                       ul
                                         each js5, val5 in js4

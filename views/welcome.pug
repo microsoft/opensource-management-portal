@@ -6,48 +6,52 @@
 extends layout
 
 block content
+  - var primary = config.authentication.scheme === 'github'? 'GitHub' : config.brand.companyName
+  - var secondary = config.authentication.scheme === 'github'? config.brand.companyName : 'GitHub'
   div.container
     div.row
-      div.col-md-6.col-lg-6.col-sm-6
-        if config.authentication.scheme === 'github'
+      div.col-md-12.col-lg-12.col-sm-12
+        if config.authentication.scheme === 'github' && user && user.github
           h1 Hi, #{user.github.displayName || user.github.username}
-          h2 #{config.companyName} employees &amp; vendors
-        else if config.authentication.scheme === 'aad'
+        else if config.authentication.scheme === 'aad' && user && user.azure
           h1 Hi, #{user.azure.displayName || user.azure.username}
         if config.authentication.scheme === 'github'
           p.lead To onboard, please authenticate with Active Directory.
           p
-            a.btn.btn-lg.btn-primary(href='/signin/azure') Sign in to #{config.companyName}
+            a.btn.btn-lg.btn-primary(href='/signin/azure') Sign in to #{config.brand.companyName}
         else if config.authentication.scheme === 'aad'
-          p.lead Please authenticate with the GitHub account that you want to use for your #{config.companyName} work.
+          p.lead Linking your #{config.brand.companyName} and GitHub accounts gives you access to the #{config.brand.companyName} orgs, teams, and repos on GitHub. We already know your #{primary} id, so just sign in to the #{secondary} account you want to link and we'll set that up.
+    div.row
+      div.col-md-6.col-lg-6.col-sm-6
           div
             a.btn.btn-primary.btn-huge.full-width(href='/signin/github')
-              h3 I already have a GitHub username
-              p Sign In
-          div
-            a.btn.btn-default.full-width(href='/signin/github/join')
-              h3 I'm new to GitHub
-              p Let's create a brand new GitHub username
+              h3 I already have a GitHub account
+              p Sign in
       div.col-md-6.col-lg-6.col-sm-6
+          div
+            a.btn.btn-default.btn-huge.full-width(href='/signin/github/join')
+              h3 I'm new to GitHub
+              p Create a GitHub account
+    div.row
+      div.col-md-12.col-lg-12.col-sm-12
         div(style='padding:12px')
-          p.lead Joining should take 2-15 minutes
-          p Onboarding goes pretty quickly, depending on whether you already have a GitHub account and GitHub multi-factor authentication setup.
+          p.lead Linking should take 2-10 minutes
+          p The process has just a few steps depending on whether or not you already have a GitHub account and multi-factor authentication setup.
           ul
             if config.authentication.scheme === 'github'
-              li Validate the corporate account to link with #{user.github.username}
+              li Validate the corporate account to link with #{user.github.username}.
             if config.authentication.scheme === 'aad'
-              li Validate the GitHub account to link with #{user.azure.username}
-            li Join a #{config.companyName} GitHub organization
-            li Verify and/or configure the two-factor security of your GitHub account
-            li Allow you to request access to GitHub teams
+              li Validate the GitHub account to link with #{user.azure.username}.
+            li Verify and/or configure multi-factor authentication for your GitHub account.
+            li [Optional] Join #{config.brand.companyName} GitHub organizations.
+            li [Optional] Request access to GitHub teams.
 
           if config.authentication.scheme === 'aad'
             hr
-            p.lead One or two GitHub usernames?
+            p.lead Multiple GitHub accounts?
             p.
               Since Git repositories can be locally configured to mark commits
               with a name and e-mail address, it's easy to use a single GitHub
-              account for both corporate and other GitHub projects you may
-              work with.
-            p
-              a(href='about:blank', target='_new') Click here for more information
+              account for both #{config.brand.companyName} and other GitHub projects you work on. We recommend
+              you use one GitHub account as this personalizes your contributions and builds a stronger
+              sense of community.

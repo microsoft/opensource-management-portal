@@ -20,8 +20,10 @@ block content
               div.col-md-4.col-lg-4
                 form(method='post', action=teamUrl + 'approvals/' + entry.RowKey)
                   p
-                    a.btn.btn-sm.btn-muted(href='https://github.com/' + team.org.getWorkflowRepository().full_name + '/issues/' + entry.issue, target='_new')= entry.issue
-                    | &nbsp;
+                    //-if entry.issue
+                      //- NOTE: Commenting out GitHub links with approval repos, since they are being deprecated internally and this is a quick fix
+                      a.btn.btn-sm.btn-muted(href='https://github.com/' + team.org.getWorkflowRepository().full_name + '/issues/' + entry.issue, target='_new')= entry.issue
+                    //-| &nbsp;
                     a.btn.btn-sm.btn-muted(href=teamUrl + 'approvals/' + entry.RowKey)
                       i.glyphicon.glyphicon-zoom-in
                       | &nbsp;
@@ -73,7 +75,7 @@ block content
                   h5 EMAIL
                   p
                     a.btn.btn-sm.btn-muted-more(href='mailto:' + entry.email)= entry.email ? entry.email : 'Unknown'
-                    | &nbsp; 
+                    | &nbsp;
                     a.btn.btn-sm.btn-default(href='mailto:' + entry.email) Send Mail
     else
       p No pending approvals. Nice work!

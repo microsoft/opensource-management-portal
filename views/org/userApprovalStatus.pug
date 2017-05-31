@@ -21,15 +21,16 @@ block content
         | Closed / Resolved
       else
         | Unknown
-    if entry.justification 
+    if entry.justification
       h4
-        | BUSINESS JUSTIFICATION 
+        | BUSINESS JUSTIFICATION
         small written by #{entry.ghu}
       blockquote= entry.justification
     if entry.active === true
       h4 DETAILS
       p
-        if team
+        //-if team && entry.issue
+          //- NOTE: Commenting out GitHub links with approval repos, since they are being deprecated internally and this is a quick fix
           a.btn.btn-sm.btn-default(href='https://github.com/' + team.org.name + '/' + team.org.getWorkflowRepository().name + '/issues/' + entry.issue, target='_new') GitHub Tracking Issue# #{entry.issue}
       p
         small This is the issue created on GitHub and assigned to a team maintainer to handle the request. Note that the issue is visible by everyone who is a member of the organization on GitHub, so it is not the best place to provide specific justification information... but if you bump the issue, the contact should hopefully get a reminder to take a look.

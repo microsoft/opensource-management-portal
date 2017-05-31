@@ -5,19 +5,25 @@
 
 extends layout
 
+//- Conditions for this page:
+  // - linked
+  // - using AAD-primary authentication
+  // - no stored GitHub token
+
 block content
   div.container
-    //- Conditions for this page:
-      // - linked
-      // - using AAD-primary authentication
-      // - no stored GitHub token
-
-    h1 Please sign in with GitHub
-    p.lead It's been a while since you signed in with GitHub.
-    p We need to validate your account. Please sign in with your <large>#{expectedUsername}</large> GitHub username.
-
+    if migratedOpenSourceHubUser !== undefined
+      h1 Welcome
+    else
+      h1 Please sign in with GitHub
+    if migratedOpenSourceHubUser !== undefined
+      p.lead Please sign in with GitHub
+      p Your account has been migrated from the Open Source Hub to the new GitHub management experience for Microsoft.
+      p Since this is the first time you are using this new app, we need you to authenticate with your "#{expectedUsername}" GitHub account.
+    else
+      p.lead This application needs to connect to your GitHub account to continue.
     .vertical-space
       p
-        a.btn.btn-primary(href='/signin/github') Sign In
+        a.btn.btn-lg.btn-primary(href='/signin/github') Authenticate with GitHub
         | &nbsp; &nbsp; &nbsp;
-        a.btn.btn-default(href='/signout') Cancel
+        a.btn.btn-lg.btn-default(href='/signout') Sign out

@@ -11,12 +11,12 @@ block content
     if entry.type == 'joinTeam'
       h1
         | Request to join
-        | 
+        | &nbsp;
         small.capitalize= entry.teamname
     else if entry.type == 'repo'
       h1.capitalize
         | New #{entry.org} Repo Request
-        | 
+        | &nbsp;
         small.capitalize= entry.repoName
 
     if entry.type == 'repo' && entry.repoVisibility == 'public'
@@ -56,7 +56,8 @@ block content
               p= entry.repoName
           td
             p
-              if team
+              //-if team && entry.issue
+                //- NOTE: Commenting out GitHub links with approval repos, since they are being deprecated internally and this is a quick fix
                 a.btn.btn-sm.btn-default(href='https://github.com/' + team.org.name + '/' + team.org.getWorkflowRepository().name + '/issues/' + entry.issue, target='_new')= entry.issue
 
     if entry.justification

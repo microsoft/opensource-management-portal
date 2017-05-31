@@ -1,0 +1,59 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+//- THIS PAGE IS MICROSOFT-SPECIFIC
+//- DO NOT MERGE THIS PAGE UP TO 'PUBLIC-DEVELOP'
+
+div.navbar.navbar-inverse
+  div.container-fluid
+    div.navbar-header
+      button.navbar-toggle.collapsed(type='button', data-toggle='collapse', data-target='#repos-section-navbar-collapse', aria-expanded='false')
+        span.sr-only Toggle navigation
+        span.icon-bar
+        span.icon-bar
+        span.icon-bar
+    div.collapse.navbar-collapse#repos-section-navbar-collapse
+      ul.nav.navbar-nav(style='margin-left:-30px')
+        li.dropdown(class={ active: /*reposContext.section === 'org' || */ reposContext.section === 'orgs' })
+          a.dropbown-toggle(
+              href=reposContext.org && reposContext.org.name ? '#' : '/',
+              data-toggle='dropdown',
+              role='button',
+              aria-haspopup='true',
+              aria-expanded='false')
+            //= reposContext.org && reposContext.org.name ? reposContext.org.name : 'Organizations'
+            = 'Organizations'
+            | &nbsp;
+            span.caret
+          ul.dropdown-menu
+            if reposContext.org
+              li
+                a(href='/' + reposContext.org.name)= reposContext.org.name
+            if reposContext.availableOrganizations && reposContext.availableOrganizations.length > 0
+              if reposContext.org
+                li.divider(role='separator')
+              li.dropdown-header My organizations
+              each availableOrg in reposContext.availableOrganizations
+                - var directPivot = reposContext.pivotDirectlyToOtherOrg ? reposContext.pivotDirectlyToOtherOrg : ''
+                li
+                  a(href='/' + availableOrg.name + directPivot)= availableOrg.name
+              if reposContext.section !== 'orgs'
+                li.divider(role='separator')
+                li
+                  a(href='/') Join another organization
+            else if reposContext.org === undefined
+              li
+                a(href='/') Join your first org
+        //- commenting out work-in-progress to get up to production
+        if reposContext.org
+          li(class={ active: reposContext.section === 'org' })
+            a(href=(reposContext.org ? '/' + reposContext.org.name : ''))= reposContext.org.name
+        li(class={ active: reposContext.section === 'repos' })
+          a(href=(reposContext.org ? '/' + reposContext.org.name : '') + '/repos') Repos
+        li(class={ active: reposContext.section === 'teams' })
+          a(href=(reposContext.org ? '/' + reposContext.org.name : '') + '/teams') Teams
+        li(class={ active: reposContext.section === 'people' })
+          a(href=(reposContext.org ? '/' + reposContext.org.name : '') + '/people') People
+      //-ul.nav.navbar-nav.navbar-right
