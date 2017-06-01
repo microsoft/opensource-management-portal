@@ -8,7 +8,7 @@ footer
   .container
     if config && config.debug && config.debug.showDebugFooter === true
       .clearfix
-      .row.alert-gray(style='padding:12px')
+      .row(style='padding:12px')
         h6 Instance Configuration
         .col-md-6.col-lg-6
           if correlationId
@@ -26,7 +26,7 @@ footer
           if config && config.github.links.table.encryption !== undefined
             h4
               | Table Encryption: #{config.github.links.table.encryption === true ? 'Encrypted' : 'Plain Text'}
-        .col-md-6.col-lg-6(style='background-color:white')
+        .col-md-6.col-lg-6
           if serverName
             h4 Hostname: #{serverName}
           if serverAddress
