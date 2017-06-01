@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+/*eslint no-console: ["error", { allow: ["warn"] }] */
+
 'use strict';
 
 const arrayFromString = require('./utils/arrayFromString');
@@ -39,6 +41,8 @@ module.exports = (graphApi) => {
       }
       (isOnboarding ? orgs.onboarding : orgs).push(org);
     });
+  } else {
+    console.warn('No GitHub organizations are configured. Set either GITHUB_ORGANIZATIONS_FILE or GITHUB_ORGANIZATIONS_ENVIRONMENT_MODULE in order to load an organization data file.');
   }
 
   if (!orgs.onboarding.length) {
