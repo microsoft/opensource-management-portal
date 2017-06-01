@@ -1,0 +1,32 @@
+{
+    "public-homepage": [
+        {
+            "title": "Microsoft on GitHub",
+            "link": "https://microsoft.github.io/"
+        }
+    ],
+    "footer": {
+        "Links of interest": [
+            {
+                "title": "GitHub.com",
+                "link": "https://www.github.com"
+            }
+        ]
+    },
+    "onboarding-complete": {
+        "all": [
+            {
+                "title": "Wikipedia",
+                "link": "https://www.wikipedia.org/",
+                "text": "Wikipedia"
+            }
+        ],
+        "OrgName": [
+            {
+                "title": "Organization-specific resource",
+                "link": "https://www.microsoft.com",
+                "text": "Microsoft"
+            }
+        ]
+    }
+}
