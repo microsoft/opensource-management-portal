@@ -9,8 +9,7 @@ const passport = require('passport');
 const serializer = require('./passport/serializer');
 const GitHubStrategy = require('../thirdparty/passport-github').Strategy;
 const OIDCStrategy = require('passport-azure-ad').OIDCStrategy;
-
-// FYI: GitHub does not provide refresh tokens
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 function githubResponseToSubset(accessToken, refreshToken, profile, done) {
   let subset = {
@@ -61,11 +60,28 @@ function activeDirectorySubset(iss, sub, profile, done) {
 
 module.exports = function (app, config) {
   if (!config.authentication.scheme) {
-    config.authentication.scheme = 'github';
+    config.authentication.scheme = 'aad';
   }
-  if (config.authentication.scheme !== 'github' && config.authentication.scheme !== 'aad') {
+  if (config.authentication.scheme !== 'github'
+    && config.authentication.scheme !== 'aad'
+    && config.authentication.scheme !== 'google') {
     throw new Error(`Unsupported primary authentication scheme type "${config.authentication.scheme}"`);
   }
+
+  function googleSubset(accessToken, refreshToken, profile, callback) {
+    const json = profile._json;
+    let domain = json && json.domain ? json.domain : null;
+    let expectedDomain = config.authentication.google && config.authentication.google.domain ? config.authentication.google.domain : null;
+    if (!expectedDomain) {
+      return callback(new Error('The Google Authentication provider must be configured with the expected Google Apps domain name. None has been configured.'));
+    }
+    if (domain !== expectedDomain) {
+      return callback(new Error(`You must be a member of the ${expectedDomain} domain to use this app`));
+    }
+
+    return callback(null, profile);
+  }
+
 
   // ----------------------------------------------------------------------------
   // GitHub Passport session setup.
@@ -79,6 +95,7 @@ module.exports = function (app, config) {
     userAgent: 'passport-azure-oss-portal-for-github' // CONSIDER: User agent should be configured.
   };
   let githubPassportStrategy = new GitHubStrategy(githubOptions, githubResponseToSubset);
+
   let aadStrategy = new OIDCStrategy({
     redirectUrl: config.activeDirectory.redirectUrl,
     allowHttpForRedirectUrl: config.webServer.allowHttp,
@@ -91,6 +108,16 @@ module.exports = function (app, config) {
     responseMode: 'form_post',
     validateIssuer: true,
   }, activeDirectorySubset);
+
+  let googleStrategy = null;
+  if (config.authentication && config.authentication.google) {
+    googleStrategy = new GoogleStrategy({
+      clientID: config.authentication.google.clientId,
+      clientSecret: config.authentication.google.clientSecret,
+      callbackURL: config.authentication.google.redierctUrl,
+      scope: ['email'],
+    }, googleSubset);
+  }
 
   // Validate the borrow some parameters from the GitHub passport library
   if (githubPassportStrategy._oauth2 && githubPassportStrategy._oauth2._authorizeUrl) {
@@ -105,7 +132,8 @@ module.exports = function (app, config) {
   }
 
   passport.use('github', githubPassportStrategy);
-  passport.use('azure-active-directory', aadStrategy);
+  //passport.use('azure-active-directory', aadStrategy);
+  passport.use('google', googleStrategy);
 
   // ----------------------------------------------------------------------------
   // Expanded OAuth-scope GitHub access for org membership writes.

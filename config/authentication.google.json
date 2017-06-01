@@ -1,0 +1,6 @@
+{
+  "clientId": "env://AUTH_GOOGLE_CLIENT_ID",
+  "clientSecret": "env://AUTH_GOOGLE_CLIENT_SECRET",
+  "domain": "env://AUTH_GOOGLE_DOMAIN",
+  "redirectUrl": "env://AUTH_GOOGLE_REDIRECT_URL"
+}

@@ -63,6 +63,7 @@
     "painless-config-resolver": "1.0.0",
     "passport": "^0.3.2",
     "passport-azure-ad": "^3.0.5",
+    "passport-google-oauth20": "^1.0.0",
     "passport-strategy": "1.x.x",
     "pug": "=2.0.0-beta4",
     "q": "^1.5.0",

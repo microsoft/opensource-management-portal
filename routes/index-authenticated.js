@@ -20,8 +20,10 @@ const utils = require('../utils');
 
 router.use(function (req, res, next) {
   var config = req.app.settings.runtimeConfig;
+  const authType = 'google'; // 'azure'
+  const redirectType = 'google'; // 'azure'
   if (req.isAuthenticated()) {
-    var expectedAuthenticationProperty = config.authentication.scheme === 'github' ? 'github' : 'azure';
+    var expectedAuthenticationProperty = config.authentication.scheme === 'github' ? 'github' : authType;
     if (req.user && !req.user[expectedAuthenticationProperty]) {
       console.warn(`A user session was authenticated but did not have present the property "${expectedAuthenticationProperty}" expected for this type of authentication. Signing them out.`);
       return res.redirect('/signout');
@@ -32,7 +34,7 @@ router.use(function (req, res, next) {
     }
     return next();
   }
-  utils.storeOriginalUrlAsReferrer(req, res, config.authentication.scheme === 'github' ? '/auth/github' : '/auth/azure', 'user is not authenticated and needs to authenticate');
+  utils.storeOriginalUrlAsReferrer(req, res, config.authentication.scheme === 'github' ? '/auth/github' : '/auth/' + redirectType, 'user is not authenticated and needs to authenticate');
 });
 
 router.use((req, res, next) => {

@@ -179,17 +179,35 @@ module.exports = function configurePassport(app, passport, initialConfig) {
   // ----------------------------------------------------------------------------
   // passport integration with Azure Active Directory
   // ----------------------------------------------------------------------------
-  var aadMiddleware = initialConfig.authentication.scheme === 'github' ? passport.authorize('azure-active-directory') : passport.authenticate('azure-active-directory');
+  const hasAAD = false;
+  if (hasAAD) {
+    var aadMiddleware = initialConfig.authentication.scheme === 'github' ? passport.authorize('azure-active-directory') : passport.authenticate('azure-active-directory');
 
-  app.get('/auth/azure', aadMiddleware);
+    app.get('/auth/azure', aadMiddleware);
 
-  app.post('/auth/azure/callback', aadMiddleware, authenticationCallback.bind(null, 'aad', 'azure'));
+    app.post('/auth/azure/callback', aadMiddleware, authenticationCallback.bind(null, 'aad', 'azure'));
 
-  app.get('/signin/azure', function (req, res) {
-    utils.storeReferrer(req, res, '/auth/azure', 'request for the /signin/azure page, need to authenticate');
-  });
+    app.get('/signin/azure', function (req, res) {
+      utils.storeReferrer(req, res, '/auth/azure', 'request for the /signin/azure page, need to authenticate');
+    });
 
-  app.get('/signout/azure', processSignout.bind(null, 'aad', 'azure'));
+    app.get('/signout/azure', processSignout.bind(null, 'aad', 'azure'));
+  }
 
+  const hasGoogle = true;
+  if (hasGoogle) {
+    const googleMiddleware = passport.authenticate('google');
+
+    app.get('/auth/google', googleMiddleware);
+
+    app.get('/auth/google/callback', googleMiddleware, authenticationCallback.bind(null, 'google', 'google'));
+
+    app.get('/signin/google', function (req, res) {
+      utils.storeReferrer(req, res, '/auth/google', 'request for the /signin/google page, need to authenticate');
+    });
+
+    app.get('/signout/google', processSignout.bind(null, 'aad', 'azure'));
+
+  }
 };
 
