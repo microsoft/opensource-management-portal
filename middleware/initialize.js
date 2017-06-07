@@ -51,6 +51,7 @@ module.exports = function init(app, express, rootdir, config, configurationError
     if (!error) {
       app.use('/', require('../routes/'));
     } else {
+      console.error(error);
       const appInsightsClient = providers.insights;
       const crash = (error) => {
         return () => {
@@ -184,12 +185,11 @@ module.exports = function init(app, express, rootdir, config, configurationError
     function createGraphProvider(cb) {
       graphProvider(config, (providerInitError, provider) => {
         if (providerInitError) {
-          console.dir(providerInitError); // return cb(providerInitError);
-        } else {
-          app.set('graphProvider', provider);
-          providers.graphProvider = provider;
+          return cb(providerInitError);
         }
-        return cb();
+        app.set('graphProvider', provider);
+        providers.graphProvider = provider;
+        cb();
       });
     },
     function createOssDbProvider(cb) {

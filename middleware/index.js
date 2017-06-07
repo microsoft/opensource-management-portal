@@ -16,6 +16,7 @@ const uptime = require('./uptime');
 const viewServices = require('ospo-pug-view-services');
 
 module.exports = function initMiddleware(app, express, config, dirname, redisClient, initializationError) {
+  config = config || {};
   const web = !(config.skipModules && config.skipModules.has('web'));
   if (!initializationError) {
     if (!web) {
