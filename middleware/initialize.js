@@ -183,13 +183,17 @@ module.exports = function init(app, express, rootdir, config, configurationError
       });
     },
     function createGraphProvider(cb) {
+      // The graph provider is optional. A graph provider can connect to a
+      // corporate directory to validate or lookup employees and other
+      // directory members at runtime to gather additional information.
       graphProvider(config, (providerInitError, provider) => {
         if (providerInitError) {
-          return cb(providerInitError);
+          console.warn(providerInitError);
+        } else {
+          app.set('graphProvider', provider);
+          providers.graphProvider = provider;
         }
-        app.set('graphProvider', provider);
-        providers.graphProvider = provider;
-        cb();
+        return cb();
       });
     },
     function createOssDbProvider(cb) {
