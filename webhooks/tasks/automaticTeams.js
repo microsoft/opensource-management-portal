@@ -35,6 +35,11 @@ module.exports = {
     const eventType = data.properties.event;
     const eventAction = data.body.action;
 
+    // Someone added a team to the repo
+    if (eventType === 'team' && eventAction === 'add_repository') {
+      return true;
+    }
+
     // Someone removed a team from the repo
     if (eventType === 'team' && eventAction === 'removed_from_repository') {
       return true;
@@ -62,7 +67,20 @@ module.exports = {
     }
     const recoveryTasks = [];
     const repositoryBody = data.body.repository;
-    const whoChangedIt = data.body.sender.login;
+    const whoChangedIt = data.body && data.body.sender ? data.body.sender.login : null;
+
+    function finalizeEventRemediation() {
+      if (recoveryTasks.length <= 0) {
+        return callback();
+      }
+      async.waterfall(recoveryTasks, (error) => {
+        const insights = operations.insights;
+        if (error) {
+          insights.trackException(error);
+        }
+        return callback(error);
+      });
+    }
 
     // New repository
     if (eventType === 'repository' && eventAction === 'created') {
@@ -73,6 +91,18 @@ module.exports = {
     } else if (eventType === 'team') {
       const teamBody = data.body.team;
       const teamId = teamBody.id;
+
+      if (!specialTeamIds.has(teamId) && eventAction === 'added_to_repository') {
+        // GitHub API issue reported 6/8/17, no visibility in the webhook event for the permission, and if the API is used, it is not always 'pull' only
+
+        // Let's see how large this team is and downgrade/block if it exceeds the threshold
+        // IF known everyone team, block immediately
+        // Mitigation: send mail
+
+        // do stuff; then
+        return finalizeEventRemediation();
+      }
+
       if (!specialTeamIds.has(teamId)) {
         return callback();
       }
@@ -91,16 +121,8 @@ module.exports = {
         }
       }
     }
-    if (recoveryTasks.length <= 0) {
-      return callback();
-    }
-    async.waterfall(recoveryTasks, (error) => {
-      const insights = operations.insights;
-      if (error) {
-        insights.trackException(error);
-      }
-      return callback(error);
-    });
+
+    return finalizeEventRemediation();
   },
 };
 
