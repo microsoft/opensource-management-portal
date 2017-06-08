@@ -33,6 +33,7 @@ const defaults = {
   repoBranchesStaleSeconds: 60 * 5 /* 5m */,
   accountDetailStaleSeconds: 60 * 60 * 24 /* 24h */,
   orgRepoWebhooksStaleSeconds: 60 * 60 * 8 /* 8h */,
+  teamRepositoryPermissionStaleSeconds: 0 /* 0m */,
 };
 
 class Operations {
