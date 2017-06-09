@@ -77,10 +77,14 @@ router.get('/teams', apiUserContext, (req, res, next) => {
     if (getTeamsError) {
       return next(jsonError(getTeamsError), 400);
     }
-    teams.forEach(teams => {
-      delete teams.otherFields;
-      delete teams.organization;
-      delete teams.slug;
+    const broadTeams = new Set(req.organization.broadAccessTeams);
+    teams.forEach(team => {
+      delete team.otherFields;
+      delete team.organization;
+      delete team.slug;
+      if (broadTeams.has(team.id)) {
+        team.broad = true;
+      }
     });
     res.json({
       teams: teams,
