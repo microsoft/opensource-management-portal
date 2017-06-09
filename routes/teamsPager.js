@@ -65,8 +65,8 @@ function reduceTeams(collections, property, map) {
 module.exports = (req, res, next) => {
   const operations = req.app.settings.operations;
   const isCrossOrg = req.teamsPagerMode === 'orgs';
-  const id = req.oss.id.github;
-  const orgName = isCrossOrg ? null : req.org.name;
+  const id = req.legacyUserContext.id.github;
+  const orgName = isCrossOrg ? null : req.organization.name.toLowerCase();
   getTeamsData(id, isCrossOrg ? null : orgName.toLowerCase(), operations, (error, teams, yourTeamsMap, totalMemberships, totalMaintainerships, warning) => {
     if (error) {
       return next(error);
@@ -95,9 +95,9 @@ module.exports = (req, res, next) => {
     });
     search.search(null, page, req.query.sort).then(() => {
       const onboardingOrJoining = req.query.joining || req.query.onboarding;
-      req.oss.render(req, res, 'teams/', 'Teams', {
-        orgs: isCrossOrg ? sortOrgs(req.oss.orgs()) : undefined,
-        organization: isCrossOrg ? undefined : req.org,
+      req.legacyUserContext.render(req, res, 'teams/', 'Teams', {
+        organizations: isCrossOrg ? sortOrgs(operations.getOrganizations(operations.organizationNames)) : undefined,
+        organization: isCrossOrg ? undefined : req.organization,
         search: search,
         filters: filters,
         query: {

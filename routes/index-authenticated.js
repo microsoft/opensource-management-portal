@@ -48,6 +48,7 @@ router.use((req, res, next) => {
   };
   new OpenSourceUserContext(options, (error, instance) => {
     req.oss = instance;
+    req.legacyUserContext = instance;
     if (error && (error.tooManyLinks === true || error.anotherAccount === true)) {
       // The only URL permitted in this state is the cleanup endpoint and special multiple-account endpoint
       if (req.url === '/link/cleanup' || req.url === '/link/enableMultipleAccounts' || req.url.startsWith('/placeholder')) {
@@ -95,7 +96,7 @@ router.get('/', function (req, res, next) {
   if (!link) {
     if (config.authentication.scheme === 'github' && req.user.azure === undefined ||
       config.authentication.scheme === 'aad' && req.user.github === undefined) {
-      return oss.render(req, res, 'welcome', 'Welcome');
+      return req.legacyUserContext.render(req, res, 'welcome', 'Welcome');
     }
     if (config.authentication.scheme === 'github' && req.user.azure && req.user.azure.oid ||
       config.authentication.scheme === 'aad' && req.user.github && req.user.github.id) {
@@ -163,10 +164,10 @@ router.get('/', function (req, res, next) {
       }
       var render = function (results) {
         if (warnings && warnings.length > 0) {
-          req.oss.saveUserAlert(req, warnings.join(', '), 'Some organizations or memberships could not be loaded', 'danger');
+          req.legacyUserContext.saveUserAlert(req, warnings.join(', '), 'Some organizations or memberships could not be loaded', 'danger');
         }
         var pageTitle = results && results.userOrgMembership === false ? 'My GitHub Account' : config.brand.companyName + ' - ' + config.brand.appName;
-        oss.render(req, res, 'index', pageTitle, {
+        req.legacyUserContext.render(req, res, 'index', pageTitle, {
           accountInfo: results,
           onboarding: onboarding,
           onboardingPostfixUrl: onboarding === true ? '?onboarding=' + config.brand.companyName : '',

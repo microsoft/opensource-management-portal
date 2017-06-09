@@ -19,7 +19,7 @@ router.use((req, res, next) => {
 });
 
 router.get('/', (req, res) => {
-  req.oss.render(req, res, 'settings/npm', 'NPM', {
+  req.legacyUserContext.render(req, res, 'settings/npm', 'NPM', {
     npm: req.npm,
   });
 });
@@ -55,7 +55,7 @@ router.post('/', (req, res, next) => {
       if (error) {
         return next(error);
       }
-      req.oss.saveUserAlert(req, `Your NPM account, ${username}, has been validated and saved.`, 'NPM', 'success');
+      req.legacyUserContext.saveUserAlert(req, `Your NPM account, ${username}, has been validated and saved.`, 'NPM', 'success');
       req.oss.invalidateLinkCache(() => {
         return res.redirect('/settings/npm');
       });
@@ -73,7 +73,7 @@ router.post('/clear', (req, res, next) => {
     if (error) {
       return next(error);
     }
-    req.oss.saveUserAlert(req, 'Your NPM information has been removed.', 'NPM', 'success');
+    req.legacyUserContext.saveUserAlert(req, 'Your NPM information has been removed.', 'NPM', 'success');
     req.oss.invalidateLinkCache(() => {
       return res.redirect('/settings/npm');
     });

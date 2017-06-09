@@ -10,13 +10,12 @@ module.exports = function addSystemWidePermissionsToRequest(req, res, next) {
   if (req.systemWidePermissions) {
     return next();
   }
-  const oss = req.oss;
   const systemWidePermissions = {
     allowAdministration: false,
     sudo: false,
   };
   req.systemWidePermissions = systemWidePermissions;
-  oss.isPortalAdministrator((portalSudoError, isPortalSudoer) => {
+  req.legacyUserContext.isPortalAdministrator((portalSudoError, isPortalSudoer) => {
     if (isPortalSudoer) {
       systemWidePermissions.sudo = true;
       systemWidePermissions.allowAdministration = true;

@@ -26,8 +26,7 @@ router.get('/metadata', (req, res, next) => {
 router.get('/personalizedTeams', apiUserContext, (req, res, next) => {
   const orgName = req.organization.name.toLowerCase();
   const operations = req.app.settings.providers.operations;
-  const oss = req.oss;
-  const id = oss.id.github;
+  const id = req.legacyUserContext.id.github;
   const uc = operations.getUserContext(id);
   let maintainedTeams = new Set();
   const broadTeams = new Set(req.organization.broadAccessTeams);
@@ -106,7 +105,6 @@ router.get('/repo/:repo', (req, res) => {
 });
 
 function discoverUserIdentities(req, res, next) {
-  const orgName = req.organization.name;
   const options = {
     config: req.app.settings.runtimeConfig,
     dataClient: req.app.settings.dataclient,
@@ -118,12 +116,7 @@ function discoverUserIdentities(req, res, next) {
     githubLibrary: req.app.settings.providers.github,
   };
   new OpenSourceUser(options, function (error, instance) {
-    req.oss = instance;
-    try {
-      req.org = instance.org(orgName);
-    } catch (ex) {
-      return next(jsonError(ex), 400);
-    }
+    req.legacyUserContext = instance;
     // Try and also learn if we know their e-mail address to send the new repo mail to
     const upn = instance.modernUser().contactEmail();
     const mailAddressProvider = req.app.settings.providers.mailAddressProvider;
@@ -144,9 +137,8 @@ router.post('/repo/:repo', discoverUserIdentities, (req, res, next) => {
 
   const config = req.app.settings.runtimeConfig;
 
-  const oss = req.oss;
-  if (oss && oss.usernames) {
-    body['ms.onBehalfOf'] = oss.usernames.github;
+  if (req.legacyUserContext && req.legacyUserContext.usernames) {
+    body['ms.onBehalfOf'] = req.legacyUserContext.usernames.github;
   }
 
   // Today we always create a private repo if we can
@@ -192,7 +184,7 @@ router.post('/repo/:repo', discoverUserIdentities, (req, res, next) => {
   delete body.confirmedPolicyException;
   delete body.claEntity;
 
-  const token = req.org.setting('ownerToken');
+  const token = req.organization.getRepositoryCreateGitHubToken();
   createRepo(req, res, body, token, (error, success) => {
     if (error) {
       if (!error.json) {

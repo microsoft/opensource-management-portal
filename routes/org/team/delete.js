@@ -16,7 +16,7 @@ router.post('/', teamAdminRequired, (req, res, next) => {
     if (error) {
       return next(error);
     }
-    req.oss.saveUserAlert(req, `${team2.name} team deleted`, 'Delete', 'success');
+    req.legacyUserContext.saveUserAlert(req, `${team2.name} team deleted`, 'Delete', 'success');
     res.redirect('/' + organization.name + '/teams');
   });
 });

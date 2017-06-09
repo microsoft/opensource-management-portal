@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+'use strict';
+
 const express = require('express');
 const router = express.Router();
 const async = require('async');
@@ -20,11 +22,12 @@ const newRepoSpa = require('./newRepoSpa');
 const peopleRoute = require('./people');
 
 router.use(function (req, res, next) {
-  var onboarding = req.query.onboarding;
-  req.oss.addBreadcrumb(req, req.org.name, onboarding ? false : undefined);
+  const onboarding = req.query.onboarding;
+  const organization = req.organization;
+  req.legacyUserContext.addBreadcrumb(req, organization.name, onboarding ? false : undefined);
   req.reposContext = {
     section: 'org',
-    org: req.org,
+    organization: req.organization,
   };
   next();
 });
@@ -60,20 +63,22 @@ router.use(orgPermissions, (req, res, next) => {
 
 router.get('/', function (req, res, next) {
   const operations = req.app.settings.providers.operations;
-  var org = req.org;
-  var oss = req.oss;
-  var dc = req.app.settings.dataclient;
+  const organization = req.organization;
+  const dc = req.app.settings.dataclient;
+  const username = req.legacyUserContext.usernames.github;
+  const id = req.legacyUserContext.id.github;
   async.parallel({
     organizationOverview: (callback) => {
-      const uc = operations.getUserContext(oss.id.github);
-      return uc.getAggregatedOrganizationOverview(org.name, callback);
+      const uc = operations.getUserContext(id);
+      return uc.getAggregatedOrganizationOverview(organization.name, callback);
     },
     isMembershipPublic: function (callback) {
-      org.queryUserPublicMembership(callback);
+      organization.checkPublicMembership(username, callback);
     },
     orgUser: function (callback) {
-      org.getDetails(function (error, details) {
-        var userDetails = details ? org.oss.user(details.id, details) : null;
+      organization.getDetails(function (error, details) {
+        // TODO: VALIDATE: What did the wrapping object provide? Avatar light-up?
+        const userDetails = details ? organization.memberFromEntity(details) : null;
         callback(error, userDetails);
       });
     },
@@ -90,17 +95,17 @@ router.get('/', function (req, res, next) {
       if (results.isAdministrator && results.isAdministrator === true) {
         results.isSudoer = true;
       }
-      var render = function (results) {
-        oss.render(req, res, 'org/index', org.name, {
+      const render = function (results) {
+        req.legacyUserContext.render(req, res, 'org/index', organization.name, {
           accountInfo: results,
-          org: org,
+          organization: organization,
         });
       };
       // Check for pending approvals
-      var teamsMaintained = results.organizationOverview.teams.maintainer;
+      const teamsMaintained = results.organizationOverview.teams.maintainer;
       if (teamsMaintained && teamsMaintained.length && teamsMaintained.length > 0) {
-        var teamsMaintainedHash = {};
-        for (var i = 0; i < teamsMaintained.length; i++) {
+        const teamsMaintainedHash = {};
+        for (let i = 0; i < teamsMaintained.length; i++) {
           teamsMaintainedHash[teamsMaintained[i].id] = teamsMaintained[i];
         }
         results.teamsMaintainedHash = teamsMaintainedHash;
@@ -122,7 +127,8 @@ router.use('/security-check', securityCheckRoute);
 router.use('/profile-review', profileReviewRoute);
 router.use('/approvals', approvalsSystem);
 router.use('/new-repo', (req, res) => {
-  res.redirect(req.org.baseUrl + 'wizard');
+  const organization = req.organization;
+  res.redirect(organization.baseUrl + 'wizard');
 });
 router.use('/wizard', newRepoSpa);
 

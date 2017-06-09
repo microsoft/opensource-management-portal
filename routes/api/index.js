@@ -107,6 +107,7 @@ router.use('/:org', function (req, res, next) {
   }
 
   const providers = req.app.settings.providers;
+  const operations = providers.operations;
   const options = {
     config: req.app.settings.runtimeConfig,
     dataClient: providers.dataclient,
@@ -114,14 +115,15 @@ router.use('/:org', function (req, res, next) {
     githubLibrary: providers.github,
   };
   new OpenSourceUser(options, function (error, instance) {
-    req.oss = instance;
-    var org;
+    req.legacyUserContext = instance;
+
+    let organization = null;
     try {
-      org = instance.org(orgName);
+      organization = operations.getOrganization(orgName);
     } catch (ex) {
       return next(jsonError(ex), 400);
     }
-    req.org = org;
+    req.organization = organization;
     return next();
   });
 });
@@ -133,7 +135,7 @@ router.post('/:org/repos', function (req, res, next) {
   delete convergedObject.access_token;
   delete convergedObject.authorization;
 
-  const token = req.org.setting('ownerToken');
+  const token = req.organization.getRepositoryCreateGitHubToken();
   createRepo(req, res, convergedObject, token, next, true /* send the response directly back without the callback */);
 });
 

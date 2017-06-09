@@ -74,9 +74,7 @@ RepoWorkflowEngine.prototype.messageForAction = function (action) {
 };
 
 RepoWorkflowEngine.prototype.editGet = function (req, res) {
-  var self = this;
-  var oss = self.team.oss;
-  oss.render(req, res, 'org/team/approvals/editRepo', 'Edit Repo Request', {
+  req.legacyUserContext.render(req, res, 'org/team/approvals/editRepo', 'Edit Repo Request', {
     entry: this.request,
     teamUrl: req.teamUrl,
     team: req.team,
@@ -235,7 +233,7 @@ function createRequestEngine(team, approvalPackage, callback) {
 // Find the request and assign the workflow engine
 
 router.use(function (req, res, next) {
-  req.oss.addBreadcrumb(req, 'Approvals');
+  req.legacyUserContext.addBreadcrumb(req, 'Approvals');
   next();
 });
 
@@ -245,7 +243,7 @@ router.get('/', function (req, res, next) {
     if (error) {
       return next(error);
     }
-    req.oss.render(req, res, 'org/team/approvals', 'Approvals for ' + team.name, {
+    req.legacyUserContext.render(req, res, 'org/team/approvals', 'Approvals for ' + team.name, {
       team: team,
       pendingApprovals: approvals,
       teamUrl: req.teamUrl,
@@ -283,7 +281,7 @@ router.use('/:requestid', function (req, res, next) {
           if (error) {
             return next(error);
           }
-          oss.addBreadcrumb(req, engine.typeName + ' Request');
+          req.legacyUserContext.addBreadcrumb(req, engine.typeName + ' Request');
           req.approvalEngine = engine;
           next();
         });

@@ -29,13 +29,12 @@ router.get('/', (req, res) => {
 });
 
 function renderForm(req, res, userChoiceError) {
-  const oss = req.oss;
   const branches = req.repoBranches;
   const link = req.link;
   const npmUsername = link.npm;
   const repository = req.repository;
   const organization = req.organization;
-  oss.render(req, res, 'extensions/npm/publish', 'NPM publishing', {
+  req.legacyUserContext.render(req, res, 'extensions/npm/publish', 'NPM publishing', {
     organization: organization,
     repository: repository,
     branches: branches,
@@ -65,7 +64,7 @@ router.post('/publish', (req, res, next) => {
     options.ignorePublishScripts = true;
   }
   npmPublish(options).then(success => {
-    return req.oss.render(req, res, 'extensions/npm/published', 'Published', {
+    return req.legacyUserContext.render(req, res, 'extensions/npm/published', 'Published', {
       organization: organization,
       repository: repository,
       log: success.log,

@@ -40,7 +40,6 @@ function teamsInfoFromRequest(team, approvalRequest, callback) {
 
 router.get('/', function (req, res) {
   var approvalRequest = req.approvalEngine.request;
-  var oss = req.oss;
   var team = req.team;
   teamsInfoFromRequest(team, approvalRequest, function (error, expandedTeamInfo) {
     // Ignoring any errors for now.
@@ -51,7 +50,7 @@ router.get('/', function (req, res) {
     if (approvalRequest.decisionTime) {
       approvalRequest.decisionTime = new Date(parseInt(approvalRequest.decisionTime, 10));
     }
-    oss.render(req, res, 'org/team/approveStatus', 'Request Status', {
+    req.legacyUserContext.render(req, res, 'org/team/approveStatus', 'Request Status', {
       entry: approvalRequest,
       requestingUser: req.approvalEngine.user,
       expandedTeamInfo: expandedTeamInfo,
@@ -83,7 +82,7 @@ router.get('/setNote/:action', function (req, res) {
   if (action == 'approveWithComment') {
     action = 'approve';
   }
-  engine.team.oss.render(req, res, 'org/team/approveStatusWithNote', 'Record your comment for request ' + engine.id + ' (' + action + ')', {
+  req.legacyUserContext.render(req, res, 'org/team/approveStatusWithNote', 'Record your comment for request ' + engine.id + ' (' + action + ')', {
     entry: engine.request,
     action: action,
     requestingUser: engine.user,
@@ -103,7 +102,7 @@ router.post('/', function (req, res, next) {
     return res.redirect(req.teamUrl + 'approvals/' + requestid + '/setNote/deny');
   }
   if (req.body.reopen) {
-    req.oss.saveUserAlert(req, 'Request re-opened.', engine.typeName, 'success');
+    req.legacyUserContext.saveUserAlert(req, 'Request re-opened.', engine.typeName, 'success');
     return dc.updateApprovalRequest(requestid, {
       active: true
     }, function () {
@@ -264,7 +263,7 @@ router.post('/', function (req, res, next) {
         }
       });
     }
-    req.oss.saveUserAlert(req, 'Thanks for processing the request with your ' + action.toUpperCase() + ' decision.', engine.typeName, 'success');
+    req.legacyUserContext.saveUserAlert(req, 'Thanks for processing the request with your ' + action.toUpperCase() + ' decision.', engine.typeName, 'success');
     function sendDecisionMail() {
       const wasApproved = action == 'approve';
       const contentOptions = {
@@ -324,7 +323,7 @@ router.post('/', function (req, res, next) {
     if (action !== 'approve' || !engine.getApprovedViewName) {
       return res.redirect(req.teamUrl);
     }
-    oss.render(req, res, engine.getApprovedViewName(), 'Approved', {
+    req.legacyUserContext.render(req, res, engine.getApprovedViewName(), 'Approved', {
       pendingRequest: pendingRequest,
       results: output,
       team: team,

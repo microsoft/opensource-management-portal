@@ -9,19 +9,21 @@ const async = require('async');
 const utils = require('../../utils');
 
 router.use(function (req, res, next) {
-  var org = req.org;
+  const organization = req.organization;
+  const operations = req.app.settings.operations;
   req.orgLeave = {
     state: null,
   };
-  var memberOfOrgs = [];
-  async.each(org.oss.orgs(), function (o, callback) {
-    o.queryUserMembership(false /* no caching */, function (error, result) {
-      var state = null;
+  const username = req.legacyUserContext.usernames.github;
+  const memberOfOrgs = [];
+  async.each(operations.organizations, function (o, callback) {
+    o.getOperationalMembership(username, (error, result) => {
+      let state = null;
       if (result && result.state) {
         state = result.state;
       }
       // This specific org...
-      if (o.name == org.name) {
+      if (o.name == organization.name) {
         req.orgLeave.state = state;
       }
       if (state == 'active' || state == 'pending') {
@@ -40,28 +42,29 @@ router.use(function (req, res, next) {
       return res.redirect('/');
     } else {
       req.orgLeave.memberOfOrgs = memberOfOrgs;
-      org.oss.addBreadcrumb(req, 'Leave');
+      req.legacyUserContext.addBreadcrumb(req, 'Leave');
       next();
     }
   });
 });
 
 router.get('/', function (req, res) {
-  var org = req.org;
-  var orgs = req.orgLeave.memberOfOrgs;
-  req.oss.render(req, res, 'org/leave', 'Leave ' + org.name, {
-    org: org,
+  const organization = req.organization;
+  const orgs = req.orgLeave.memberOfOrgs;
+  req.legacyUserContext.render(req, res, 'org/leave', 'Leave ' + organization.name, {
+    org: organization,
     orgs: orgs,
   });
 });
 
 router.post('/', function (req, res, next) {
-  var org = req.org;
-  org.removeUserMembership(function (error) {
+  const organization = req.organization;
+  const username = req.legacyUserContext.usernames.github;
+  organization.removeMember(username, error => {
     if (error) {
-      return next(utils.wrapError(error, 'We received an error code back from GitHub when trying to remove your membership from ' + org.name + '.'));
+      return next(utils.wrapError(error, 'We received an error code back from GitHub when trying to remove your membership from ' + organization.name + '.'));
     }
-    req.oss.saveUserAlert(req, 'Your ' + org.name + ' membership has been canceled at your request.', org.name, 'success');
+    req.legacyUserContext.saveUserAlert(req, 'Your ' + organization.name + ' membership has been canceled at your request.', organization.name, 'success');
     res.redirect('/');
   });
 });

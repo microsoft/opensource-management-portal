@@ -11,7 +11,7 @@ const utils = require('../utils');
 router.get('/', function (req, res, next) {
   var dc = req.app.settings.dataclient;
   var oss = req.oss;
-  oss.addBreadcrumb(req, 'Requests');
+  req.legacyUserContext.addBreadcrumb(req, 'Requests');
   async.parallel({
     ownedTeams: function (callback) {
       oss.getMyTeamMemberships('maintainer', function (getTeamMembershipsError, ownedTeams) {
@@ -64,7 +64,7 @@ router.get('/', function (req, res, next) {
       if (error) {
         return next(error);
       }
-      oss.render(req, res, 'org/approvals', 'Review My Approvals', {
+      req.legacyUserContext.render(req, res, 'org/approvals', 'Review My Approvals', {
         teamResponsibilities: results.ownedTeams,
         usersRequests: results.requestsUserMade,
       });
@@ -128,7 +128,7 @@ router.get('/:requestid', function (req, res, next) {
   var oss = req.oss;
   var requestid = req.params.requestid;
   var dc = oss.dataClient();
-  oss.addBreadcrumb(req, 'Your Request');
+  req.legacyUserContext.addBreadcrumb(req, 'Your Request');
   var isMaintainer = false, pendingRequest = null, team = null, maintainers = null;
   async.waterfall([
     function (callback) {
@@ -185,7 +185,7 @@ router.get('/:requestid', function (req, res, next) {
         var asInt = parseInt(pendingRequest.decisionTime, 10);
         pendingRequest.decisionTime = new Date(asInt);
       }
-      oss.render(req, res, 'org/userApprovalStatus', 'Review your request', {
+      req.legacyUserContext.render(req, res, 'org/userApprovalStatus', 'Review your request', {
         entry: pendingRequest,
         team: team,
       });

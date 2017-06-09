@@ -58,13 +58,16 @@ function getReposAndOptionalTeamPermissions(orgName, operations, githubId, teams
 module.exports = (req, res, next) => {
   const isCrossOrg = req.reposPagerMode === 'orgs';
   let teamsType = req.query.tt;
+  const orgName = isCrossOrg ? null : req.organization.name.toLowerCase();
 
   // Filter by team repositories, only in sub-team views
   const specificTeamPermissions = req.teamPermissions;
   const team2 = req.team2;
   let specificTeamId = team2 ? team2.id : null;
 
-  getReposAndOptionalTeamPermissions(isCrossOrg ? null : req.org.name.toLowerCase(), req.app.settings.operations, req.oss.id.github, teamsType, team2, specificTeamId, (error, reposData, ageInformation, repoPermissions, userRepos, specificRepositories) => {
+  const operations = req.app.settings.operations;
+
+  getReposAndOptionalTeamPermissions(orgName, operations, req.oss.id.github, teamsType, team2, specificTeamId, (error, reposData, ageInformation, repoPermissions, userRepos, specificRepositories) => {
     if (error) {
       return next(error);
     }
@@ -141,8 +144,8 @@ module.exports = (req, res, next) => {
 
     search.search(null, page, req.query.sort, false /* false == show private repos */)
     .then(() => {
-      req.oss.render(req, res, 'repos/', 'Repos', {
-        orgs: isCrossOrg ? sortOrgs(req.oss.orgs()) : undefined,
+      req.legacyUserContext.render(req, res, 'repos/', 'Repos', {
+        organizations: isCrossOrg ? sortOrgs(operations.getOrganizations(operations.organizationNames)) : undefined,
         organization: isCrossOrg ? undefined : req.org,
         search: search,
         filters: filters,

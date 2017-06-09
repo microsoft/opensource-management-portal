@@ -10,7 +10,7 @@ const router = express.Router();
 const lowercaser = require('../middleware/lowercaser');
 
 router.use(function (req, res, next) {
-  req.oss.addBreadcrumb(req, 'Repositories');
+  req.legacyUserContext.addBreadcrumb(req, 'Repositories');
   req.reposContext = {
     section: 'repos',
     pivotDirectlyToOtherOrg: '/repos/', // hack

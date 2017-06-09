@@ -24,13 +24,13 @@ router.get('/', function (req, res, next) {
     showLinkPage(req, res, next);
   } else {
     req.insights.trackEvent('LinkRouteLinkLocated');
-    return req.oss.render(req, res, 'linkConfirmed', 'You\'re already linked');
+    return req.legacyUserContext.render(req, res, 'linkConfirmed', 'You\'re already linked');
   }
 });
 
 function showLinkPage(req, res) {
   function render(options) {
-    req.oss.render(req, res, 'link', 'Link GitHub with corporate identity', options || {});
+    req.legacyUserContext.render(req, res, 'link', 'Link GitHub with corporate identity', options || {});
   }
   const config = req.app.settings.runtimeConfig;
   const graphProvider = req.app.settings.graphProvider;
@@ -186,7 +186,7 @@ router.get('/reconnect', function (req, res, next) {
     return res.redirect('/');
   }
   req.insights.trackEvent('PortalUserReconnectNeeded');
-  return oss.render(req, res, 'reconnectGitHub', 'Please sign in with GitHub', {
+  return req.legacyUserContext.render(req, res, 'reconnectGitHub', 'Please sign in with GitHub', {
     expectedUsername: oss.entities.link.ghu,
     migratedOpenSourceHubUser: oss.entities.link.hubImport,
   });
@@ -200,7 +200,7 @@ router.get('/update', function (req, res, next) {
     return next(utils.wrapError(null, 'Changing a GitHub account is not yet supported.', true));
   }
   if (!(oss.usernames.azure)) {
-    return oss.render(req, res, 'linkUpdate', `Update your account ${oss.usernames.github} by signing in with corporate credentials.`);
+    return req.legacyUserContext.render(req, res, 'linkUpdate', `Update your account ${oss.usernames.github} by signing in with corporate credentials.`);
   }
   // TODO: NOTE: This will destroy link data not in the session for recreation. May be OK.
   const dc = req.app.settings.dataclient;

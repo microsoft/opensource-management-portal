@@ -57,12 +57,11 @@ router.use('/join', orgPermissions, (req, res, next) => {
 
 router.get('/join', function (req, res, next) {
   const team = req.team;
-  const oss = req.oss;
 
   // The broad access "all members" team is always open for automatic joining without
   // approval. This short circuit is to show that option.
   if (team.org.getAllMembersTeam().id === team.id) {
-    return oss.render(req, res, 'org/team/join', `Join ${team.name}`, {
+    return req.legacyUserContext.render(req, res, 'org/team/join', `Join ${team.name}`, {
       team: team,
       allowSelfJoin: true,
     });
@@ -73,7 +72,7 @@ router.get('/join', function (req, res, next) {
     if (getMaintainersError) {
       return next(getMaintainersError);
     }
-    req.oss.render(req, res, 'org/team/join', `Join ${team.name}`, {
+    req.legacyUserContext.render(req, res, 'org/team/join', `Join ${team.name}`, {
       team: team,
       teamMaintainers: maintainers,
     });
@@ -95,7 +94,7 @@ router.post('/join', function (req, res, next) {
         });
         return next(utils.wrapError(error, `We had trouble adding you to the ${org.name} organization. ${req.oss.usernames.github}`));
       }
-      req.oss.saveUserAlert(req, `You have joined ${team.name} team successfully`, 'Join Successfully', 'success');
+      req.legacyUserContext.saveUserAlert(req, `You have joined ${team.name} team successfully`, 'Join Successfully', 'success');
       req.insights.trackEvent('GitHubJoinAllMembersTeamSuccess', {
         org: org.name,
         username: req.oss.usernames.github
@@ -242,7 +241,7 @@ router.post('/join', function (req, res, next) {
       dc.updateApprovalRequest(requestId, itemUpdates, callback);
     },
     function setAssignee() {
-      req.oss.saveUserAlert(req, 'Your request to join ' + team.name + ' has been submitted and will be reviewed by a team maintainer.', 'Permission Request', 'success');
+      req.legacyUserContext.saveUserAlert(req, 'Your request to join ' + team.name + ' has been submitted and will be reviewed by a team maintainer.', 'Permission Request', 'success');
       const callback = arguments[arguments.length - 1];
       if (!issueProviderInUse) {
         return callback();
@@ -411,7 +410,7 @@ router.get('/', orgPermissions, (req, res, next) => {
   let isOrgOwner = orgOwnersSet ? orgOwnersSet.has(id) : false;
 
   function renderPage() {
-    oss.render(req, res, 'org/team/index', team2.name, {
+    req.legacyUserContext.render(req, res, 'org/team/index', team2.name, {
       team: legacyTeam,
       teamUrl: req.teamUrl, // ?
       employees: [], // data.employees,

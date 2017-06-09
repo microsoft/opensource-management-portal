@@ -67,7 +67,7 @@ router.post('/remove', teamAdminRequired, (req, res, next) => {
     if (removeError) {
       return next(removeError);
     }
-    req.oss.saveUserAlert(req, username + ' has been removed from the team ' + team2.name + '.', 'Team membership update', 'success');
+    req.legacyUserContext.saveUserAlert(req, username + ' has been removed from the team ' + team2.name + '.', 'Team membership update', 'success');
     refreshMembersAndSummary(team2, 'now', error => {
       if (error) {
         return next(error);
@@ -82,7 +82,7 @@ router.post('/add', teamAdminRequired, (req, res, next) => {
   const team2 = req.team2;
   const refreshedMembers = req.refreshedMembers;
   const username = req.body.username;
-  
+
   // Allow a one minute org cache for self-correcting validation
   const orgOptions = {
     maxAgeSeconds: 60,
@@ -117,7 +117,7 @@ router.post('/add', teamAdminRequired, (req, res, next) => {
       if (error) {
         return next(error);
       }
-      req.oss.saveUserAlert(req, `Added ${username} to the ${team2.name} team.`, 'Team membership update', 'success');
+      req.legacyUserContext.saveUserAlert(req, `Added ${username} to the ${team2.name} team.`, 'Team membership update', 'success');
       refreshMembersAndSummary(team2, 'now', refreshError => {
         if (refreshError) {
           return next(refreshError);

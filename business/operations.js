@@ -40,6 +40,7 @@ class Operations {
     setRequiredProperties(this, ['github', 'config', 'dataClient', 'insights', 'redis'], options);
 
     this.providers = options;
+    this.baseUrl = '/';
 
     this.defaults = Object.assign({}, defaults);
     this.mailAddressProvider = options.mailAddressProvider;

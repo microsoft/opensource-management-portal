@@ -93,7 +93,7 @@ router.use((req, res, next) => {
 });
 
 router.get('/', (req, res) => {
-  req.oss.render(req, res, 'settings/authorizations', 'Account authorizations', {
+  req.legacyUserContext.render(req, res, 'settings/authorizations', 'Account authorizations', {
     authorizations: req.authorizations,
   });
 });
@@ -108,7 +108,7 @@ router.get('/github/clear', (req, res, next) => {
     if (error) {
       return next(error);
     }
-    req.oss.saveUserAlert(req, 'The GitHub tokens stored for this account have been removed. You may be required to authorize access to your GitHub account again to continue using this portal.', 'GitHub tokens cleared', 'success');
+    req.legacyUserContext.saveUserAlert(req, 'The GitHub tokens stored for this account have been removed. You may be required to authorize access to your GitHub account again to continue using this portal.', 'GitHub tokens cleared', 'success');
     req.oss.invalidateLinkCache(() => {
       return res.redirect('/signout/github/');
     });
@@ -136,7 +136,7 @@ router.get('/validate', (req, res, next) => {
     if (error) {
       return next(error);
     }
-    req.oss.render(req, res, 'settings/authorizations', 'Account authorizations', {
+    req.legacyUserContext.render(req, res, 'settings/authorizations', 'Account authorizations', {
       authorizations: req.authorizations,
     });
   });

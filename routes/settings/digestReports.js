@@ -81,7 +81,7 @@ router.get('/administrator/:id', (req, res, next) => {
   for (let i = 0; i < availableReports.length; i++) {
     const availableReport = availableReports[i];
     if (availableReport.id === id) {
-      return req.oss.render(req, res, 'settings/digestReportView', availableReport.description, {
+      return req.legacyUserContext.render(req, res, 'settings/digestReportView', availableReport.description, {
         reportTitle: availableReport.description,
         github: {
           consolidated: availableReport.report,
@@ -95,7 +95,7 @@ router.get('/administrator/:id', (req, res, next) => {
 router.get('/', (req, res) => {
   const availableReports = req.availableReports;
 
-  req.oss.render(req, res, 'settings/digestReports', 'Reports', {
+  req.legacyUserContext.render(req, res, 'settings/digestReports', 'Reports', {
     availableReports: availableReports,
   });
 });

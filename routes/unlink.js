@@ -39,7 +39,7 @@ router.get('/', function (req, res, next) {
     }
     var link = req.oss.entities.link;
     if (link && link.ghu) {
-      return req.oss.render(req, res, 'unlink', 'Remove corporate link and organization memberships', {
+      return req.legacyUserContext.render(req, res, 'unlink', 'Remove corporate link and organization memberships', {
         orgs: currentOrganizationMemberships,
       });
     } else {

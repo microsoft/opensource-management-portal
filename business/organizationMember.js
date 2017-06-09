@@ -23,6 +23,33 @@ class Member {
     privates.getToken = getToken;
     privates.operations = operations;
   }
+
+  getProfileCreatedDate() {
+    // legacy method that should probably be removed
+    if (this.created_at) {
+      return new Date(this.created_at);
+    }
+  }
+
+  getProfileUpdatedDate() {
+    // legacy method that should probably be removed
+    if (this.updated_at) {
+      return new Date(this.updated_at);
+    }
+  }
+
+  // ----------------------------------------------------------------------------
+  // Retrieves the URL for the user's avatar, if present. If the user's details
+  // have not been loaded, we will not yet have an avatar URL.
+  // ----------------------------------------------------------------------------
+  avatar(optionalSize) {
+    if (!optionalSize) {
+      optionalSize = 80;
+    }
+    if (this.avatar_url) {
+      return this.avatar_url + '&s=' + optionalSize;
+    }
+  }
 }
 
 module.exports = Member;

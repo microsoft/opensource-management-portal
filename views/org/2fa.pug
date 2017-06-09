@@ -15,7 +15,7 @@ block content
       else
         h1 2FA is not enabled
 
-      p.lead This GitHub org requires multi-factor authentication. Let's set it up now.
+      p.lead This GitHub organization requires multi-factor authentication. Let's set it up now.
 
       p If you already have an Authenticator app, this step takes <strong>2 minutes</strong>. If you need to install and configure an app for the first time, this will likely take <strong>5-10 minutes</strong>. This multi-factor setup is separate from your corporate authentication.
 
@@ -34,7 +34,7 @@ block content
           li
             a.btn.btn-primary(href='https://github.com/settings/two_factor_authentication/configure', target='_new') Configure 2FA <i class="glyphicon glyphicon-share-alt"></i>
           li
-            a.btn.btn-success(href=org.baseUrl + 'security-check?validate=validate' + (onboarding ? '&onboarding=' + onboarding : '')) Validate 2FA and Continue
+            a.btn.btn-success(href=organization.baseUrl + 'security-check?validate=validate' + (onboarding ? '&onboarding=' + onboarding : '')) Validate 2FA and Continue
           li
             a.btn.btn-default(href='/unlink') Cancel my corporate participation
 
@@ -48,4 +48,4 @@ block content
         Thanks for helping to keep the organization secure.
 
       p
-        a.btn.btn-primary(href=org.baseUrl) Go to the #{org.name} portal
+        a.btn.btn-primary(href=organization.baseUrl) Go to the #{organization.name} portal

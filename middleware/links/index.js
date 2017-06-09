@@ -9,8 +9,7 @@ module.exports = function addLinkToRequest(req, res, next) {
   if (req.link) {
     return next();
   }
-  const oss = req.oss;
-  const user = oss.modernUser();
+  const user = req.legacyUserContext.modernUser();
   if (!user) {
     return res.redirect('/');
   }

@@ -96,7 +96,7 @@ router.get('/', lowercaser(['sort']), (req, res, next) => {
       type: type,
       links: req.cachedLinks,
       getCorporateProfile: operations.mailAddressProvider.getCorporateEntry,
-      
+
       // Used to filter team members in ./org/ORG/team/TEAM/members and other views
       teamMembers: teamMembers,
 
@@ -107,7 +107,7 @@ router.get('/', lowercaser(['sort']), (req, res, next) => {
     try {
       search.search(page, req.query.sort)
       .then(() => {
-        req.oss.render(req, res, 'people/', 'People', {
+        req.legacyUserContext.render(req, res, 'people/', 'People', {
           search: search,
           filters: filters,
           query: {

@@ -19,10 +19,10 @@ const teamsFilterType = {
 };
 
 router.use(function (req, res, next) {
-  req.oss.addBreadcrumb(req, 'Repositories');
+  req.legacyUserContext.addBreadcrumb(req, 'Repositories');
   req.reposContext = {
     section: 'repos',
-    org: req.org,
+    organization: req.organization,
     pivotDirectlyToOtherOrg: '/repos/', // hack
   };
   req.reposPagerMode = 'org';
@@ -128,17 +128,11 @@ router.use('/:repoName', (req, res, next) => {
   const repoName = req.params.repoName;
   const organization = req.organization;
   const repository = organization.repository(repoName);
-  const legacyOrg = req.org;
   repository.getDetails(error => {
     if (error) {
       return next(error);
     }
     req.repository = repository;
-
-    // This is a temporary hack to enable CLA extensions until this old code can be revisited
-    const legacyRepo = legacyOrg.repo(repoName, Object.assign({}, repository));
-    repository.legacyRepo = legacyRepo;
-
     return next();
   });
 });
@@ -182,11 +176,7 @@ function legacyClaExtension(operations, repository, callback) {
     return callback(null, result);
   }
   cla.supported = true;
-  const legacyRepo = repository.legacyRepo;
-  if (!legacyRepo) {
-    return callback(new Error('The legacy repository system is not available to manage this request'));
-  }
-  legacyRepo.hasLegacyClaAutomation((legacyCheckError, enabled, webhookUrl, legalEntity, learnMoreUrl) => {
+  repository.hasLegacyClaAutomation((legacyCheckError, enabled, webhookUrl, legalEntity, learnMoreUrl) => {
     if (legacyCheckError) {
       return callback(legacyCheckError);
     }
@@ -196,7 +186,7 @@ function legacyClaExtension(operations, repository, callback) {
       cla.legalEntity = legalEntity;
       cla.webhookUrl = webhookUrl;
     }
-    legacyRepo.getLegacyClaSettings((getError, settings) => {
+    repository.getLegacyClaSettings((getError, settings) => {
       if (settings) {
         cla.mails = settings.NotifierEmails;
         if (settings.UpdatedOn) {
@@ -234,7 +224,7 @@ router.get('/:repoName', (req, res, next) => {
   const organization = req.organization;
   const repoPermissions = req.repoPermissions;
   const repository = req.repository;
-  const uc = operations.getUserContext(req.oss.id.github);
+  const uc = operations.getUserContext(req.legacyUserContext.id.github);
   return uc.getAggregatedOverview((aggregateError, aggregate) => {
     repository.getDetails((error) => {
       if (aggregateError || error) {
@@ -253,7 +243,7 @@ router.get('/:repoName', (req, res, next) => {
           }
           repository.organization.getDetails((error, details) => {
             organization.id = details.id;
-            req.oss.render(req, res, 'repos/repo', title, {
+            req.legacyUserContext.render(req, res, 'repos/repo', title, {
               organization: organization,
               repo: decorateRepoForView(repository),
               permissions: slicePermissionsForView(filterSystemTeams(teamsFilterType.systemTeamsExcluded, systemTeams, permissions)),
@@ -418,10 +408,9 @@ router.use('/:repoName/extensions/cla', requireAdministration, (req, res, next) 
 
 router.get('/:repoName/extensions/cla', function (req, res) {
   const repository = req.repository;
-  const oss = req.oss;
-  oss.addBreadcrumb(req, 'CLA');
+  req.legacyUserContext.addBreadcrumb(req, 'CLA');
   const claSettings = req.legalClaSettings;
-  oss.render(req, res, 'repos/legacyCla', `CLA - ${repository.name}`, {
+  req.legacyUserContext.render(req, res, 'repos/legacyCla', `CLA - ${repository.name}`, {
     claSettings: claSettings,
     repository: repository,
     organization: repository.organization,
@@ -454,7 +443,7 @@ router.post('/:repoName/extensions/cla', (req, res, next) => {
     if (error) {
       return next(error);
     }
-    req.oss.saveUserAlert(req, `${legalEntity} CLA ${isUpdate ? 'updated' : 'configured'} and set to contact ${emails}.`, 'Contribution license agreements', 'success');
+    req.legacyUserContext.saveUserAlert(req, `${legalEntity} CLA ${isUpdate ? 'updated' : 'configured'} and set to contact ${emails}.`, 'Contribution license agreements', 'success');
     res.redirect(repoRoot);
   });
 });

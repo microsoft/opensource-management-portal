@@ -18,21 +18,21 @@ div.navbar.navbar-inverse
       ul.nav.navbar-nav(style='margin-left:-30px')
         li.dropdown(class={ active: /*reposContext.section === 'org' || */ reposContext.section === 'orgs' })
           a.dropbown-toggle(
-              href=reposContext.org && reposContext.org.name ? '#' : '/',
+              href=reposContext.organization && reposContext.organization.name ? '#' : '/',
               data-toggle='dropdown',
               role='button',
               aria-haspopup='true',
               aria-expanded='false')
-            //= reposContext.org && reposContext.org.name ? reposContext.org.name : 'Organizations'
+            //= reposContext.organization && reposContext.organization.name ? reposContext.organization.name : 'Organizations'
             = 'Organizations'
             | &nbsp;
             span.caret
           ul.dropdown-menu
-            if reposContext.org
+            if reposContext.organization
               li
-                a(href='/' + reposContext.org.name)= reposContext.org.name
+                a(href='/' + reposContext.organization.name)= reposContext.organization.name
             if reposContext.availableOrganizations && reposContext.availableOrganizations.length > 0
-              if reposContext.org
+              if reposContext.organization
                 li.divider(role='separator')
               li.dropdown-header My organizations
               each availableOrg in reposContext.availableOrganizations
@@ -43,17 +43,17 @@ div.navbar.navbar-inverse
                 li.divider(role='separator')
                 li
                   a(href='/') Join another organization
-            else if reposContext.org === undefined
+            else if reposContext.organization === undefined
               li
                 a(href='/') Join your first org
         //- commenting out work-in-progress to get up to production
-        if reposContext.org
+        if reposContext.organization
           li(class={ active: reposContext.section === 'org' })
-            a(href=(reposContext.org ? '/' + reposContext.org.name : ''))= reposContext.org.name
+            a(href=(reposContext.organization ? '/' + reposContext.organization.name : ''))= reposContext.organization.name
         li(class={ active: reposContext.section === 'repos' })
-          a(href=(reposContext.org ? '/' + reposContext.org.name : '') + '/repos') Repos
+          a(href=(reposContext.organization ? '/' + reposContext.organization.name : '') + '/repos') Repos
         li(class={ active: reposContext.section === 'teams' })
-          a(href=(reposContext.org ? '/' + reposContext.org.name : '') + '/teams') Teams
+          a(href=(reposContext.organization ? '/' + reposContext.organization.name : '') + '/teams') Teams
         li(class={ active: reposContext.section === 'people' })
-          a(href=(reposContext.org ? '/' + reposContext.org.name : '') + '/people') People
+          a(href=(reposContext.organization ? '/' + reposContext.organization.name : '') + '/people') People
       //-ul.nav.navbar-nav.navbar-right
