@@ -96,6 +96,7 @@ router.post('/', function (req, res, next) {
   var requestid = engine.id;
   var team = engine.team;
   var org = req.org;
+  const organization = req.organization;
   var dc = req.app.settings.dataclient;
   const config = req.app.settings.runtimeConfig;
   if (!req.body.text && req.body.deny) {
@@ -141,7 +142,7 @@ router.post('/', function (req, res, next) {
   var userMailAddress = null;
   try {
     if (issueId) {
-      notificationRepo = org.getWorkflowRepository();
+      notificationRepo = organization.legacyNotificationsRepository;
     }
   } catch (noWorkflowRepoError) {
     // No provider configured

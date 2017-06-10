@@ -79,6 +79,14 @@ class Organization {
     common.createInstancesCallback(this, this.repositoryFromEntity, callback)(null, repos);
   }
 
+  get legacyNotificationsRepository() {
+    const repoName = _private(this).settings.notificationRepo;
+    if (!repoName) {
+      throw new Error('No workflow/notification repository is defined for the organization.');
+    }
+    return this.repository(repoName);
+  }
+
   get priority() {
     return _private(this).settings.priority || 'primary';
   }

@@ -15,8 +15,7 @@ const teamPermissionsMiddleware = require('../../../middleware/github/teamPermis
 const utils = require('../../../utils');
 
 router.use((req, res, next) => {
-  const oss = req.oss;
-  const login = oss.usernames.github;
+  const login = req.legacyUserContext.usernames.github;
   const team2 = req.team2;
   team2.getMembershipEfficiently(login, (getMembershipError, membership) => {
     if (getMembershipError) {
@@ -56,19 +55,20 @@ router.use('/join', orgPermissions, (req, res, next) => {
 });
 
 router.get('/join', function (req, res, next) {
-  const team = req.team;
+  const team2 = req.team2;
+  const organization = req.organization;
 
   // The broad access "all members" team is always open for automatic joining without
   // approval. This short circuit is to show that option.
-  if (team.org.getAllMembersTeam().id === team.id) {
-    return req.legacyUserContext.render(req, res, 'org/team/join', `Join ${team.name}`, {
-      team: team,
+  const broadAccessTeams = new Set(organization.broadAccessTeams);
+  if (broadAccessTeams.has(team.id)) {
+    return req.legacyUserContext.render(req, res, 'org/team/join', `Join ${team2.name}`, {
+      team: team2,
       allowSelfJoin: true,
     });
   }
 
-  // This maintainer custom logic code is only in the legacy 'team' at this time
-  team.getOfficialMaintainers((getMaintainersError, maintainers) => {
+  team2.getOfficialMaintainers((getMaintainersError, maintainers) => {
     if (getMaintainersError) {
       return next(getMaintainersError);
     }
@@ -81,25 +81,26 @@ router.get('/join', function (req, res, next) {
 
 router.post('/join', function (req, res, next) {
   const config = req.app.settings.runtimeConfig;
-  const oss = req.oss;
-  const org = req.org;
-  const team = req.team;
-  if (org.getAllMembersTeam().id === team.id) {
-    return team.addMembership('member', function (error) {
+  const organization = req.organization;
+  const team2 = req.team2;
+  const broadAccessTeams = new Set(organization.broadAccessTeams);
+  const username = req.legacyUserContext.usernames.github;
+  if (broadAccessTeams.has(team2.id)) {
+    return team2.addMembership(username, function (error) {
       if (error) {
         req.insights.trackEvent('GitHubJoinAllMembersTeamFailure', {
-          org: org.name,
-          username: req.oss.usernames.github,
+          organization: organization.name,
+          username: username,
           error: error.message,
         });
-        return next(utils.wrapError(error, `We had trouble adding you to the ${org.name} organization. ${req.oss.usernames.github}`));
+        return next(utils.wrapError(error, `We had trouble adding you to the ${organization.name} organization. ${username}`));
       }
-      req.legacyUserContext.saveUserAlert(req, `You have joined ${team.name} team successfully`, 'Join Successfully', 'success');
+      req.legacyUserContext.saveUserAlert(req, `You have joined ${team2.name} team successfully`, 'Join Successfully', 'success');
       req.insights.trackEvent('GitHubJoinAllMembersTeamSuccess', {
-        org: org.name,
-        username: req.oss.usernames.github
+        organization: organization.name,
+        username: username,
       });
-      return res.redirect(`${org.baseUrl}teams`);
+      return res.redirect(`${organization.baseUrl}teams`);
     });
   }
 
@@ -125,7 +126,7 @@ router.post('/join', function (req, res, next) {
   const mailAddressProvider = req.app.settings.mailAddressProvider;
   let notificationsRepo = null;
   try {
-    notificationsRepo = issueProviderInUse ? org.getWorkflowRepository() : null;
+    notificationsRepo = issueProviderInUse ? organization.legacyNotificationsRepository : null;
   } catch (noWorkflowRepo) {
     notificationsRepo = false;
     issueProviderInUse = false;
@@ -160,7 +161,7 @@ router.post('/join', function (req, res, next) {
       if (isMember === true) {
         return next(utils.wrapError(null, 'You are already a member of the team ' + team.name, true));
       }
-      team.getOfficialMaintainers(callback);
+      team2.getOfficialMaintainers(callback);
     },
     (maintainers, callback) => {
       async.filter(maintainers, (maintainer, filterCallback) => {

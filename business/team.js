@@ -13,6 +13,8 @@ const teamPrimaryProperties = githubEntityClassification.team.keep;
 const teamSecondaryProperties = githubEntityClassification.team.strip;
 
 const _ = require('lodash');
+const async = require('async');
+
 const TeamMember = require('./teamMember');
 const TeamRepositoryPermission = require('./teamRepositoryPermission');
 
@@ -39,11 +41,16 @@ class Team {
 
   getDetails(callback) {
     const self = this;
-    const token = _private(this).getToken();
-    const operations = _private(this).operations;
+    const privates = _private(this);
+    const token = privates.getToken();
+    const operations = privates.operations;
     const id = this.id;
     if (!id) {
       return callback(new Error('No "id" property associated with the team instance to retrieve the details for.'));
+    }
+    // CONSIDER: Either a time-based cache or ability to override the local cached behavior
+    if (privates.detailsEntity) {
+      return callback(null, privates.detailsEntity);
     }
     const parameters = {
       id: id,
@@ -52,6 +59,7 @@ class Team {
       if (error) {
         return callback(wrapError(error, 'Could not get details about the team.'));
       }
+      privates.detailsEntity = entity;
       common.assignKnownFields(self, entity, 'team', teamPrimaryProperties, teamSecondaryProperties);
       callback(null, entity);
     });
@@ -335,6 +343,28 @@ class Team {
       });
   }
 
+  getOfficialMaintainers(callback) {
+    this.getDetails(detailsError => {
+      if (detailsError) {
+        return callback(detailsError);
+      }
+      this.getMaintainers((getMaintainersError, maintainers) => {
+        if (getMaintainersError) {
+          return callback(getMaintainersError);
+        }
+        if (maintainers.length > 0) {
+          return resolveDirectLinks(maintainers, callback);
+        }
+        this.organization.sudoersTeam.getMembers((getMembersError, members) => {
+          if (getMembersError) {
+            return callback(getMembersError);
+          }
+          return resolveDirectLinks(members, callback);
+        });
+      });
+    });
+  }
+
   member(id, optionalEntity) {
     let entity = optionalEntity || {};
     if (!optionalEntity) {
@@ -355,6 +385,14 @@ class Team {
 }
 
 module.exports = Team;
+
+function resolveDirectLinks(people, callback) {
+  async.eachSeries(people, (member, next) => {
+    return member.resolveDirectLink(next);
+  }, error => {
+    return callback(error ? error : null, error ? null : people);
+  });
+}
 
 function repositoryFromEntity(entity) {
   // private, remapped "this"

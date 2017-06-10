@@ -57,8 +57,7 @@ block content
           td
             p
               //-if team && entry.issue
-                //- NOTE: Commenting out GitHub links with approval repos, since they are being deprecated internally and this is a quick fix
-                a.btn.btn-sm.btn-default(href='https://github.com/' + team.org.name + '/' + team.org.getWorkflowRepository().name + '/issues/' + entry.issue, target='_new')= entry.issue
+                //- NOTE: Commenting out GitHub links with approval repos, since they are deprecated
 
     if entry.justification
       h5 BUSINESS JUSTIFICATION & CONTEXT

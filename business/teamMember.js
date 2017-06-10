@@ -23,6 +23,20 @@ class TeamMember {
     privates.getToken = getToken;
     privates.operations = operations;
   }
+
+  resolveDirectLink(callback) {
+    // This method was added to directly attach a link instance
+    // equivalent to the legacy implementation of team mgmt.
+    // Consider a better design...
+    const operations = _private(this).operations;
+    operations.graphManager.getCachedLink(this.id, (getLinkError, link) => {
+      if (getLinkError) {
+        return callback(getLinkError);
+      }
+      this.link = link;
+      return callback(null, link);
+    });
+  }
 }
 
 module.exports = TeamMember;

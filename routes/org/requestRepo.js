@@ -178,7 +178,7 @@ router.post('/', function (req, res, next) {
   }
   var workflowRepository = null;
   try {
-    workflowRepository = issueProviderInUse ? org.getWorkflowRepository() : null;
+    workflowRepository = issueProviderInUse ? organization.legacyNotificationsRepository : null;
   } catch (noWorkflowRepoError) {
     issueProviderInUse = false;
   }

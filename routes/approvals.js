@@ -103,7 +103,8 @@ router.post('/:requestid/cancel', function (req, res, next) {
 
           var workflowRepo = null;
           try {
-            workflowRepo = team.org.getWorkflowRepository();
+            // ::: legacyNotificationsRepository is the new org value
+            workflowRepo = team2.organization.legacyNotificationsRepository;
           } catch (noWorkflowError) {
             // OK, give up
             return;
@@ -125,11 +126,16 @@ router.post('/:requestid/cancel', function (req, res, next) {
 });
 
 router.get('/:requestid', function (req, res, next) {
-  var oss = req.oss;
   var requestid = req.params.requestid;
+  const operations = req.app.settings.providers.operations;
   var dc = oss.dataClient();
   req.legacyUserContext.addBreadcrumb(req, 'Your Request');
-  var isMaintainer = false, pendingRequest = null, team = null, maintainers = null;
+  let isMaintainer = false;
+  let pendingRequest = null;
+  let team2 = null;
+  let maintainers = null;
+  const username = req.legacyUserContext.usernames.github;
+  const id = req.legacyUserContext.id.github;
   async.waterfall([
     function (callback) {
       dc.getApprovalRequest(requestid, callback);
@@ -137,33 +143,41 @@ router.get('/:requestid', function (req, res, next) {
     function (pendingRequestValue) {
       var callback = arguments[arguments.length - 1];
       pendingRequest = pendingRequestValue;
-      oss.getTeam(pendingRequest.teamid, callback);
-    },
-    function (teamValue, callback) {
-      team = teamValue;
-      team.org.isUserSudoer(callback);
+      if (!pendingRequest.org) {
+        // TODO: Need to make sure 'org' is _always_ provided going forward
+        // XXX
+        return callback(new Error('No organization information stored alongside the request'));
+      }
+      const organization = operations.getOrganization(pendingRequest.org);
+      team2 = organization.team(pendingRequest.teamid);
+      team2.getDetails(getDetailsError => {
+        if (getDetailsError) {
+          return callback(getDetailsError);
+        }
+        return organization.isSudoer(username, callback);
+      });
     },
     function (isOrgSudoer, callback) {
       isMaintainer = isOrgSudoer;
-      team.getOfficialMaintainers(callback);
+      team2.getOfficialMaintainers(callback);
     },
     function (maintainersValue, callback) {
       maintainers = maintainersValue;
       if (!isMaintainer) {
         for (var i = 0; i < maintainers.length; i++) {
-          if (maintainers[i].id == oss.id.github) {
+          if (maintainers[i].id == id) {
             isMaintainer = true;
           }
         }
       }
       if (isMaintainer) {
-        var err = new Error('Redirecting to the admin experience to approve');
-        var slugPreferred = team.slug || team.name;
-        err.redirect = '/' + team.org.name + '/teams/' + slugPreferred + '/approvals/' + requestid;
+        let err = new Error('Redirecting to the admin experience to approve');
+        let slugPreferred = team2.slug || team2.name;
+        err.redirect = '/' + organization.name + '/teams/' + slugPreferred + '/approvals/' + requestid;
         return callback(err);
       }
       if (pendingRequest.ghid != oss.id.github) {
-        var msg = new Error('This request does not exist or was created by another user.');
+        let msg = new Error('This request does not exist or was created by another user.');
         msg.skipLog = true;
         return callback(msg);
       }
@@ -176,18 +190,18 @@ router.get('/:requestid', function (req, res, next) {
       }
       // Edge case: the team no longer exists.
       if (error.innerError && error.innerError.innerError && error.innerError.innerError.statusCode == 404) {
-        var dc = req.app.settings.dataclient;
+        let dc = req.app.settings.dataclient;
         return closeOldRequest(dc, oss, pendingRequest, req, res, next);
       }
       return next(error);
     } else {
       if (pendingRequest.decisionTime) {
-        var asInt = parseInt(pendingRequest.decisionTime, 10);
+        let asInt = parseInt(pendingRequest.decisionTime, 10);
         pendingRequest.decisionTime = new Date(asInt);
       }
       req.legacyUserContext.render(req, res, 'org/userApprovalStatus', 'Review your request', {
         entry: pendingRequest,
-        team: team,
+        team: team2,
       });
     }
   });
@@ -195,6 +209,8 @@ router.get('/:requestid', function (req, res, next) {
 
 function closeOldRequest(dc, oss, pendingRequest, req, res, next) {
   var org = oss.org(pendingRequest.org);
+  const organization = new Error('TBI');
+  // xxxx
   const config = req.app.settings.runtimeConfig;
   const repoApprovalTypesValues = config.github.approvalTypes.repo;
   if (repoApprovalTypesValues.length === 0) {
@@ -216,7 +232,8 @@ function closeOldRequest(dc, oss, pendingRequest, req, res, next) {
     }
     var notificationRepo = null;
     try {
-      notificationRepo = org.getWorkflowRepository();
+      // legacyNotificationsRepository is the new value
+      notificationRepo = organization.legacyNotificationsRepository;
     } catch (noWorkflowRepoError) {
       issueProviderInUse = false;
     }
