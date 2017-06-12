@@ -11,6 +11,7 @@ const Account = require('./account');
 const GraphManager = require('./graphManager');
 const Organization = require('./organization');
 const UserContext = require('./user/context');
+const wrapError = require('../utils').wrapError;
 
 // defaults could move to configuration alternatively
 const defaults = {
@@ -325,6 +326,52 @@ class Operations {
     // TODO: Centralized "accounts" local store
     const entity = { id: id };
     return new Account(entity, this, getCentralOperationsToken.bind(null, this));
+  }
+
+  getAuthenticatedAccount(token, options, callback) {
+    if (!callback && typeof(options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    options = options || {};
+    const operations = _private(this).operations;
+    const parameters = {};
+    return operations.github.post(token, 'users.get', parameters, (error, entity) => {
+      if (error) {
+        return callback(wrapError(error, 'Could not get details about the authenticated account'));
+      }
+      const account = new Account(entity, this, getCentralOperationsToken.bind(null, this));
+      return callback(null, account);
+    });
+  }
+
+  getAccountByUsername(username, options, callback) {
+    if (!callback && typeof(options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    options = options || {};
+    const token = _private(this).getCentralOperationsToken();
+    const operations = _private(this).operations;
+    if (!username) {
+      return callback(new Error('Must provide a GitHub username to retrieve account information.'));
+    }
+    const parameters = {
+      username: username,
+    };
+    const cacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.accountDetailStaleSeconds,
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    return operations.github.call(token, 'users.getForUser', parameters, cacheOptions, (error, entity) => {
+      if (error) {
+        return callback(wrapError(error, `Could not get details about account "${username}".`));
+      }
+      const account = new Account(entity, this, getCentralOperationsToken.bind(null, this));
+      return callback(null, account);
+    });
   }
 }
 

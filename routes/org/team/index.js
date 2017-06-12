@@ -61,7 +61,7 @@ router.get('/join', function (req, res, next) {
   // The broad access "all members" team is always open for automatic joining without
   // approval. This short circuit is to show that option.
   const broadAccessTeams = new Set(organization.broadAccessTeams);
-  if (broadAccessTeams.has(team.id)) {
+  if (broadAccessTeams.has(team2.id)) {
     return req.legacyUserContext.render(req, res, 'org/team/join', `Join ${team2.name}`, {
       team: team2,
       allowSelfJoin: true,
@@ -72,8 +72,8 @@ router.get('/join', function (req, res, next) {
     if (getMaintainersError) {
       return next(getMaintainersError);
     }
-    req.legacyUserContext.render(req, res, 'org/team/join', `Join ${team.name}`, {
-      team: team,
+    req.legacyUserContext.render(req, res, 'org/team/join', `Join ${team2.name}`, {
+      team: team2,
       teamMaintainers: maintainers,
     });
   });
@@ -84,7 +84,8 @@ router.post('/join', function (req, res, next) {
   const organization = req.organization;
   const team2 = req.team2;
   const broadAccessTeams = new Set(organization.broadAccessTeams);
-  const username = req.legacyUserContext.usernames.github;
+  const legacyUserContext = req.legacyUserContext;
+  const username = legacyUserContext.usernames.github;
   if (broadAccessTeams.has(team2.id)) {
     return team2.addMembership(username, function (error) {
       if (error) {
@@ -135,9 +136,9 @@ router.post('/join', function (req, res, next) {
   const approvalScheme = displayHostname === 'localhost' && config.webServer.allowHttp === true ? 'http' : 'https';
   const reposSiteBaseUrl = `${approvalScheme}://${displayHostname}/`;
   const approvalBaseUrl = `${reposSiteBaseUrl}approvals/`;
-  const personName = oss.modernUser().contactName();
+  const personName = legacyUserContext.modernUser().contactName();
   let personMail = null;
-  const dc = oss.dataClient();
+  const dc = legacyUserContext.dataClient();
   let assignTo = null;
   let requestId = null;
   let allMaintainers = null;
@@ -145,7 +146,7 @@ router.post('/join', function (req, res, next) {
   let approvalRequest = null;
   async.waterfall([
     function getRequesterEmailAddress(callback) {
-      const upn = oss.modernUser().contactEmail();
+      const upn = legacyUserContext.modernUser().contactEmail();
       mailAddressProvider.getAddressFromUpn(upn, (resolveError, mailAddress) => {
         if (resolveError) {
           return callback(resolveError);
@@ -170,8 +171,8 @@ router.post('/join', function (req, res, next) {
     },
     function (maintainers, callback) {
       approvalRequest = {
-        ghu: oss.usernames.github,
-        ghid: oss.id.github,
+        ghu: legacyUserContext.usernames.github,
+        ghid: legacyUserContext.id.github,
         justification: req.body.justification,
         requested: ((new Date()).getTime()).toString(),
         active: false,
@@ -179,8 +180,8 @@ router.post('/join', function (req, res, next) {
         org: team.org.name,
         teamid: team.id,
         teamname: team.name,
-        email: oss.modernUser().contactEmail(),
-        name: oss.modernUser().contactName(),
+        email: legacyUserContext.modernUser().contactEmail(),
+        name: legacyUserContext.modernUser().contactName(),
       };
       const randomMaintainer = maintainers[Math.floor(Math.random() * maintainers.length)];
       assignTo = randomMaintainer ? randomMaintainer.login : '';
@@ -213,15 +214,15 @@ router.post('/join', function (req, res, next) {
       if (!issueProviderInUse) {
         return callback();
       }
-      const body = 'A team join request has been submitted by ' + oss.modernUser().contactName() + ' (' +
-        oss.modernUser().contactEmail() + ', [' + oss.usernames.github + '](' +
-        'https://github.com/' + oss.usernames.github + ')) to join your "' +
+      const body = 'A team join request has been submitted by ' + legacyUserContext.modernUser().contactName() + ' (' +
+        legacyUserContext.modernUser().contactEmail() + ', [' + legacyUserContext.usernames.github + '](' +
+        'https://github.com/' + legacyUserContext.usernames.github + ')) to join your "' +
         team.name + '" team ' + 'in the "' + team.org.name + '" organization.' + '\n\n' +
         allMaintainers + ': Can a team maintainer [review this request now](' +
         'https://' + req.hostname + '/approvals/' + requestId + ')?\n\n' +
         '<em>If you use this issue to comment with the team maintainers, please understand that your comment will be visible by all members of the organization.</em>';
       notificationsRepo.createIssue({
-        title: 'Request to join team "' + team.org.name + '/' + team.name + '" by ' + oss.usernames.github,
+        title: 'Request to join team "' + team.org.name + '/' + team.name + '" by ' + legacyUserContext.usernames.github,
         body: body,
       }, callback);
     },
@@ -385,8 +386,7 @@ router.use((req, res, next) => {
 });
 
 router.get('/', orgPermissions, (req, res, next) => {
-  const oss = req.oss;
-  const id = oss.id.github ? parseInt(oss.id.github, 10) : null;
+  const id = req.legacyUserContext.id.github ? parseInt(req.legacyUserContext.id.github, 10) : null;
   const teamPermissions = req.teamPermissions;
   const membershipStatus = req.membershipStatus;
   const team2 = req.team2;

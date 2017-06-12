@@ -16,6 +16,7 @@ module.exports = function prepareUserContext(req, res, next) {
     redisHelper: req.app.settings.redisHelper,
     githubLibrary: req.app.settings.githubLibrary,
     ossDbClient: req.app.settings.ossDbConnection,
+    operations: req.app.settings.providers.operations,
     request: req,
     insights: req.insights,
   };

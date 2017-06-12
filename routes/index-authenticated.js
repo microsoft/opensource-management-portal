@@ -43,10 +43,15 @@ router.use((req, res, next) => {
     redisHelper: req.app.settings.redisHelper,
     githubLibrary: req.app.settings.githubLibrary,
     ossDbClient: req.app.settings.ossDbConnection,
+    operations: req.app.settings.providers.operations,
     request: req,
     insights: req.insights,
   };
   new OpenSourceUserContext(options, (error, instance) => {
+    if (error) {
+      console.log('warn:');
+      console.dir(error);
+    }
     req.oss = instance;
     req.legacyUserContext = instance;
     if (error && (error.tooManyLinks === true || error.anotherAccount === true)) {
@@ -159,8 +164,9 @@ router.get('/', function (req, res, next) {
       }
 
       if (results.twoFactorOff === true) {
-        var tempOrgNeedToFix = oss.org();
-        return res.redirect(tempOrgNeedToFix.baseUrl + 'security-check');
+        // TODO: This would redirect to the organization /security-check endpoint
+        // return res.redirect(tempOrgNeedToFix.baseUrl + 'security-check');
+        // FIX: Reinstate two-factor off functionality
       }
       var render = function (results) {
         if (warnings && warnings.length > 0) {

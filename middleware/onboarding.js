@@ -6,8 +6,6 @@
 /*eslint no-console: ["error", { allow: ["log", "dir"] }] */
 
 const async = require('async');
-const github = require('octonode');
-const utils = require('../utils');
 
 // ----------------------------------------------------------------------------
 // Onboarding helper
@@ -19,30 +17,29 @@ const utils = require('../utils');
 // out of the way.
 // ----------------------------------------------------------------------------
 module.exports = function (app, config) {
-  async.each(config.github.organizations.onboarding, function (org, callback) {
-    if (org && org.name && org.ownerToken) {
-      var s = 'Organization Onboarding Helper for "' + org.name + '":\n';
-      for (var key in org) {
+  const operations = req.app.settings.providers.operations;
+  async.each(config.github.organizations.onboarding, function (orgEntry, callback) {
+    if (orgEntry && orgEntry.name && orgEntry.ownerToken) {
+      let s = 'Organization Onboarding Helper for "' + orgEntry.name + '":\n';
+      for (var key in orgEntry) {
         s += '- ' + key + ': ';
-        s += (org[key] !== undefined) ? 'value set' : 'undefined';
+        s += (orgEntry[key] !== undefined) ? 'value set' : 'undefined';
         s += '\n';
       }
-      var ghc = github.client(org.ownerToken);
-      var ghorg = ghc.org(org.name);
-      utils.retrieveAllPages(ghorg.teams.bind(ghorg), function (error, teamInstances) {
-        if (!error && teamInstances && teamInstances.length) {
+      const organization = operations.getOrganization(orgEntry.name);
+      organization.getTeams((error, teams) => {
+        if (error) {
+          console.log(`Error retrieving teams for the organization ${orgEntry.name}`);
+          console.dir(error);
+        } else {
           s += 'Here is a mapping from team ID to team slug (based on the name),\nto help with selecting the team IDs needed to run the portal\nsuch as the repo approvers and sudoers teams.\n\n';
-          for (var j = 0; j < teamInstances.length; j++) {
-            var team = teamInstances[j];
+          for (let j = 0; j < teams.length; j++) {
+            const team = teams[j];
             s += team.id + ': ' + team.slug + '\n';
           }
-          console.log(s);
-        } else if (error) {
-          console.log(`Error retrieving teams for the organization ${org.name}:`);
-          console.dir(error);
-          console.log(s);
         }
-        callback();
+        console.log(s);
+        return callback();
       });
     } else {
       console.log('An org requires that its NAME and TOKEN configuration parameters are set before onboarding can begin.');

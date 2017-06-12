@@ -148,10 +148,26 @@ class Organization {
     return teams.length === 1 ? this.team(teams[0]) : null;
   }
 
+  get repositoryApproversTeam() {
+    const teams = getSpecialTeam(this, 'teamRepoApprovers', 'organization repository approvers');
+    if (teams.length > 1) {
+      throw new Error('Multiple repository approval teams are not supported.');
+    }
+    return teams.length === 1 ? this.team(teams[0]) : null;
+  }
+
+  get systemSudoersTeam() {
+    const teams = getSpecialTeam(this, 'teamPortalSudoers', 'system sudoers');
+    if (teams.length > 1) {
+      throw new Error('Multiple system sudoer teams are not supported.');
+    }
+    return teams.length === 1 ? this.team(teams[0]) : null;
+  }
+
   get sudoersTeam() {
     const teams = getSpecialTeam(this, 'teamSudoers', 'organization sudoers');
     if (teams.length > 1) {
-      throw new Error('Multiple sudoer teams are not currently supported.');
+      throw new Error('Multiple sudoer teams are not supported.');
     }
     return teams.length === 1 ? this.team(teams[0]) : null;
   }

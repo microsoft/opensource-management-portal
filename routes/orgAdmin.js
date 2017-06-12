@@ -6,7 +6,6 @@
 const express = require('express');
 const router = express.Router();
 const async = require('async');
-const github = require('octonode');
 
 const utils = require('../utils');
 
@@ -64,7 +63,9 @@ function expandAllInformation(req, dc, config, entity, callback) {
   var orgsList = oss.orgs();
   var orgsUserIn = [];
   const ghid = entity.ghid || (entity.githubInfoButNoLink ? entity.githubInfoButNoLink.id : undefined);
-  oss.getGithubUsernameFromId(ghid, (getUsernameError, username) => {
+  // TODO: Need to instead use the newer GitHub client to retrieve from ID the username, the old getGithubUsernameFromId method is gone
+  // XXX
+  getGithubUsernameFromId(ghid, (getUsernameError, username) => {
     if (getUsernameError) {
       return callback(getUsernameError);
     }
@@ -253,19 +254,18 @@ router.get('/whois/github/:username', function (req, res, next) {
 });
 
 router.post('/whois/github/:username', function (req, res, next) {
-  var config = req.app.settings.runtimeConfig;
-  var dc = req.app.settings.dataclient;
-  var username = req.params.username;
-  var githubOrgClient = github.client(config.github.complianceToken || config.github.organizations[0].ownerToken);
-  var ghuser = githubOrgClient.user(username);
-  const oss = req.oss;
+  const config = req.app.settings.runtimeConfig;
+  const dc = req.app.settings.dataclient;
+  const username = req.params.username;
+  // token: config.github.complianceToken || config.github.organizations[0].ownerToken
   const markAsServiceAccount = req.body['mark-as-service-account'];
   const unmarkServiceAccount = req.body['unmark-service-account'];
-  ghuser.info(function (error, userInfo) {
-    if (error) {
-      return next(error);
+  const operations = req.app.settings.operations;
+  operations.getAccountByUsername(username, (getError, userInfo) => {
+    if (getError) {
+      return next(getError);
     }
-    var id = userInfo.id;
+    const id = userInfo.id;
     whoisById(dc, config, id, userInfo, function (error, userInfoFinal) {
       if (userInfoFinal && userInfoFinal.githubInfoButNoLink !== undefined) {
         userInfoFinal.ghu = userInfoFinal.githubInfoButNoLink.login;
@@ -274,7 +274,7 @@ router.post('/whois/github/:username', function (req, res, next) {
       if (markAsServiceAccount || unmarkServiceAccount) {
         return modifyServiceAccount(dc, userInfoFinal, markAsServiceAccount, req, res, next);
       }
-      oss.processPendingUnlink(userInfoFinal, (ignoredError, results) => {
+      req.legacyUserContext.processPendingUnlink(userInfoFinal, (ignoredError, results) => {
         req.legacyUserContext.render(req, res, 'organization/whois/drop', `Dropped ${username}`, {
           results: results,
           entity: userInfoFinal,

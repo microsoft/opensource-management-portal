@@ -138,7 +138,7 @@ router.post('/', function (req, res, next) {
     return next(utils.wrapError(null, 'You must select an admin team so that the repo can be written to and managed.', true));
   }
   const dc = req.app.settings.dataclient;
-  const team = org.getRepoApproversTeam(false);
+  const team2 = organization.repositoryApproversTeam;
   let template = 'other';
   if (req.body.license && req.body.license.toLowerCase() === 'mit') {
     template = 'mit';
@@ -588,7 +588,7 @@ router.get('/', function (req, res, next) {
     if (error) {
       return next(utils.wrapError(error, 'Could not read the entire list of read (pull) teams from GitHub. Please try again later or report this error if you continue seeing it.'));
     }
-    var team = org.getRepoApproversTeam(false);
+    const team2 = organization.repositoryApproversTeam;
     getApproverMembers(team, function (error, approvers) {
       if (error) {
         return next(new Error('Could not retrieve the repo approvers for ' + orgName));
@@ -609,7 +609,7 @@ router.get('/', function (req, res, next) {
           selectTeams.push(ht);
         }
       }
-      var allMembersTeam = org.getAllMembersTeam();
+      const allMembersTeam = organization.invitationTeam;
       ++featuredTeamsCount;
       selectTeams.push({
         number: i++,

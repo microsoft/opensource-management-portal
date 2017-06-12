@@ -45,7 +45,7 @@ class Account {
     }
     return operations.github.call(token, 'users.getById', parameters, cacheOptions, (error, entity) => {
       if (error) {
-        return callback(wrapError(error, 'Could not get details about account "${id}".'));
+        return callback(wrapError(error, `Could not get details about account "${id}".`));
       }
       common.assignKnownFields(self, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
       callback(null, entity);

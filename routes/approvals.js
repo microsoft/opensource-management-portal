@@ -208,9 +208,8 @@ router.get('/:requestid', function (req, res, next) {
 });
 
 function closeOldRequest(dc, oss, pendingRequest, req, res, next) {
-  var org = oss.org(pendingRequest.org);
-  const organization = new Error('TBI');
-  // xxxx
+  const operations = req.app.settings.providers.operations;
+  const organization = operations.getOrganization(pendingRequest.org);
   const config = req.app.settings.runtimeConfig;
   const repoApprovalTypesValues = config.github.approvalTypes.repo;
   if (repoApprovalTypesValues.length === 0) {

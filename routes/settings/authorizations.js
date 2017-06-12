@@ -9,13 +9,11 @@
 
 const async = require('async');
 const express = require('express');
-const github = require('octonode');
 const router = express.Router();
 
-function createGithubTokenValidator(link, token) {
+function createGithubTokenValidator(operations, link, token) {
   return (callback) => {
-    const me = github.client(token).me();
-    me.info((infoError, data, headers) => {
+    operations.getAuthenticatedAccount(token, (infoError, data, headers) => {
       let valid = true;
       let critical = false;
       let message = null;
@@ -52,10 +50,11 @@ router.use((req, res, next) => {
   // This is a lightweight, temporary implementation of authorization management to help clear
   // stored session tokens for apps like GitHub, VSTS, etc.
   const link = req.link;
+  const operations = req.app.settings.providers.operations;
   const authorizations = [];
   if (link.githubToken) {
     authorizations.push({
-      validator: createGithubTokenValidator(link, link.githubToken),
+      validator: createGithubTokenValidator(operations, link, link.githubToken),
       property: 'githubToken',
       title: 'GitHub Application: Public App Token',
       text: 'A GitHub token, authorizing this site, is stored. This token only has rights to read your public profile and validate that you are the authorized user of the GitHub account.',
@@ -75,7 +74,7 @@ router.use((req, res, next) => {
   }
   if (link.githubTokenIncreasedScope) {
     authorizations.push({
-      validator: createGithubTokenValidator(link, link.githubTokenIncreasedScope),
+      validator: createGithubTokenValidator(operations, link, link.githubTokenIncreasedScope),
       property: 'githubTokenIncreasedScope',
       title: 'GitHub Application: Organization Read/Write Token',
       text: 'A GitHub token, authorizing this site, is stored. The token has a scope to read and write your organization membership. This token is used to automate organization invitation and joining functionality without requiring manual steps.',
