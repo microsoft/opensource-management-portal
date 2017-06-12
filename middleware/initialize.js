@@ -81,12 +81,17 @@ module.exports = function init(app, express, rootdir, config, configurationError
     clientId: config.activeDirectory.clientId,
     clientSecret: config.activeDirectory.clientSecret,
   };
-  const keyVaultClient = keyVault(kvConfig);
   providers.config = config;
-  debug('configuration secrets resolved');
-  const keyEncryptionKeyResolver = keyVaultResolver(keyVaultClient);
-  app.set('keyEncryptionKeyResolver', keyEncryptionKeyResolver);
-  providers.keyEncryptionKeyResolver = keyEncryptionKeyResolver;
+  let keyEncryptionKeyResolver = null;
+  try {
+    const keyVaultClient = keyVault(kvConfig);
+    keyEncryptionKeyResolver = keyVaultResolver(keyVaultClient);
+    app.set('keyEncryptionKeyResolver', keyEncryptionKeyResolver);
+    providers.keyEncryptionKeyResolver = keyEncryptionKeyResolver;
+    debug('configuration secrets resolved');
+  } catch (noKeyVault) {
+    debug('configuration resolved');
+  }
   var redisFirstCallback;
   var redisOptions = {
     auth_pass: config.redis.key,
