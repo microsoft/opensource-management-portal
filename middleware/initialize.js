@@ -103,7 +103,7 @@ module.exports = function init(app, express, rootdir, config, configurationError
     };
   }
   debug(`connecting to Redis ${config.redis.host || config.redis.tls}`);
-  const port = config.redis.port || config.redis.tls ? 6380 : 6379;
+  const port = config.redis.port || (config.redis.tls ? 6380 : 6379);
   redisClient = redis.createClient(port, config.redis.host || config.redis.tls, redisOptions);
   const redisHelper = new RedisHelper(redisClient, config.redis.prefix);
   app.set('redisHelper', redisHelper);
