@@ -119,9 +119,10 @@ module.exports = {
           if (getTeamError) {
             return callback(getTeamError);
           }
-          if (eventAction === 'added_to_repository') {
-            return checkAddedRepositoryPreventionNeed(recoveryTasks, operations, organization, repositoryBody, teamId, whoChangedIt, teamSize, preventLargeTeamPermissions, finalizeEventRemediation);
-          } else if (eventAction === 'edited') {
+          // Special thanks to the GitHub API team. The added_to_repository event did not
+          // include the 'permissions' information. Fixed and deployed by GitHub on
+          // 6/13/17. Thank you for helping us simplify our code!
+          if (['added_to_repository', 'edited'].includes(eventAction) && newPermissions) {
             const specificReason = teamTooLargeForPurpose(teamId, newPermissions.admin, newPermissions.push, organization, teamSize, preventLargeTeamPermissions);
             if (specificReason) {
               // This permission grant is too large and should be decreased
@@ -175,22 +176,6 @@ function getTeamSize(organization, teamId, callback) {
       return callback(error);
     }
     return callback(null, team.members_count || 0);
-  });
-}
-
-function checkAddedRepositoryPreventionNeed(recoveryTasks, operations, organization, repositoryBody, teamId, whoChangedIt, teamSize, preventLargeTeamPermissions, finalizeEventRemediation) {
-  // GitHub API issue reported 6/8/17, no visibility in the webhook event for the permission, and if the API is used, it is not always 'pull' only
-  const team = organization.team(teamId);
-  const name = repositoryBody.name;
-  return team.checkRepositoryPermission(name, (error, permissions) => {
-    if (permissions) {
-      const specificReason = teamTooLargeForPurpose(teamId, permissions.admin, permissions.push, organization, teamSize, preventLargeTeamPermissions);
-      if (specificReason) {
-        // This permission grant is too large and should be decreased
-        addLargeTeamPermissionRevertTasks(recoveryTasks, operations, organization, repositoryBody, teamId, whoChangedIt, specificReason);
-      }
-    }
-    return finalizeEventRemediation(error);
   });
 }
 
