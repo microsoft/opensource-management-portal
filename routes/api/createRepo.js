@@ -5,6 +5,7 @@
 
 'use strict';
 
+const _ = require('lodash');
 const async = require('async');
 const emailRender = require('../../lib/emailRender');
 const jsonError = require('./jsonError');
@@ -121,6 +122,8 @@ function createRepo(req, res, convergedObject, token, callback, doNotCallbackFor
 
   parameters.org = req.org.name;
 
+  const organization = operations.getOrganization(parameters.org);
+
   // TODO: POST-1ES DAY REMOVE/FIX UNNEEDED CODE HERE
   delete parameters.confirmedPolicyException;
 
@@ -166,6 +169,7 @@ function createRepo(req, res, convergedObject, token, callback, doNotCallbackFor
 
     let teamNumber = 0;
     const teamTypes = ['pull', 'push', 'admin'];
+    downgradeBroadAccessTeams(organization, msProperties.teams);
     for (let i = 0; msProperties.teams && i < teamTypes.length; i++) {
       const teamType = teamTypes[i];
       const idList = msProperties.teams[teamType];
@@ -212,6 +216,20 @@ function createRepo(req, res, convergedObject, token, callback, doNotCallbackFor
       });
     });
   });
+}
+
+function downgradeBroadAccessTeams(organization, teams) {
+  const broadAccessTeams = new Set(organization.broadAccessTeams);
+  if (teams.admin && Array.isArray(teams.admin)) {
+    _.remove(teams.admin, teamId => {
+      if (broadAccessTeams.has(teamId)) {
+        teams.pull.push(teamId);
+        return true;
+      }
+      return false;
+    });
+  }
+  teams.pull = _.uniq(teams.pull); // deduplicate
 }
 
 function rollbackRepoError(req, res, next, error, statusCode, errorToLog) {
