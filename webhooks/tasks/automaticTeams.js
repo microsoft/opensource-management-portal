@@ -109,9 +109,6 @@ module.exports = {
           if (newPermissions[necessaryPermission] !== true) {
             recoveryTasks.push(createSetTeamPermissionTask(operations, organization, repositoryBody, teamId, necessaryPermission, `the permission was downgraded by the username ${whoChangedIt}`));
           }
-        } else if (eventAction === 'removed_from_repository') {
-          // Someone removed the entire team
-          recoveryTasks.push(createSetTeamPermissionTask(operations, organization, repositoryBody, teamId, necessaryPermission, `the team and its permission were removed by the username ${whoChangedIt}`));
         }
         return finalizeEventRemediation();
       }
