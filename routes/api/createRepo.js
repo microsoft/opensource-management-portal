@@ -223,13 +223,18 @@ function downgradeBroadAccessTeams(organization, teams) {
   if (teams.admin && Array.isArray(teams.admin)) {
     _.remove(teams.admin, teamId => {
       if (broadAccessTeams.has(teamId)) {
+        if (!teams.pull) {
+          teams.pull = [];
+        }
         teams.pull.push(teamId);
         return true;
       }
       return false;
     });
   }
-  teams.pull = _.uniq(teams.pull); // deduplicate
+  if (teams.pull && Array.isArray(teams.pull)) {
+    teams.pull = _.uniq(teams.pull); // deduplicate
+  }
 }
 
 function rollbackRepoError(req, res, next, error, statusCode, errorToLog) {
