@@ -23,6 +23,23 @@ class Member {
     privates.getToken = getToken;
     privates.operations = operations;
   }
+
+  getMailAddress(callback) {
+    if (!this.id) {
+      return callback(new Error('No organization member ID'));
+    }
+    const operations = _private(this).operations;
+    operations.graphManager.getCachedLink(this.id, (getLinkError, link) => {
+      if (getLinkError || !link || !link.aadupn) {
+        return callback(getLinkError);
+      }
+      const providers = operations.providers;
+      if (!providers.mailAddressProvider) {
+        return callback(new Error('No mailAddressProvider is available in this application instance'));
+      }
+      providers.mailAddressProvider.getAddressFromUpn(link.aadupn, callback);
+    });
+  }
 }
 
 module.exports = Member;

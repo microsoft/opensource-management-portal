@@ -12,6 +12,8 @@ const defaultLargeAdminTeamSize = 100;
 
 const async = require('async');
 
+const emailRender = require('../../lib/emailRender');
+
 function processOrgSpecialTeams(organization) {
   const specialTeams = organization.specialRepositoryPermissionTeams;
   let specials = [];
@@ -68,6 +70,7 @@ module.exports = {
     const repositoryBody = data.body.repository;
     const newPermissions = repositoryBody ? repositoryBody.permissions : null;
     const whoChangedIt = data.body && data.body.sender ? data.body.sender.login : null;
+    const whoChangedItId = whoChangedIt ? data.body.sender.id : null;
 
     function finalizeEventRemediation(immediateError) {
       if (immediateError) {
@@ -94,6 +97,7 @@ module.exports = {
     } else if (eventType === 'team') {
       const teamBody = data.body.team;
       const teamId = teamBody.id;
+      const teamName = teamBody.name;
 
       // Enforce required special team permissions
       if (specialTeamIds.has(teamId)) {
@@ -125,8 +129,8 @@ module.exports = {
           if (['added_to_repository', 'edited'].includes(eventAction) && newPermissions) {
             const specificReason = teamTooLargeForPurpose(teamId, newPermissions.admin, newPermissions.push, organization, teamSize, preventLargeTeamPermissions);
             if (specificReason) {
-              // This permission grant is too large and should be decreased
-              addLargeTeamPermissionRevertTasks(recoveryTasks, operations, organization, repositoryBody, teamId, whoChangedIt, specificReason);
+              // CONSIDER: system/ops accounts may actually be useful to consider allowing via operations.isSystemAccountByUsername
+              addLargeTeamPermissionRevertTasks(recoveryTasks, operations, organization, repositoryBody, teamId, teamName, whoChangedIt, whoChangedItId, specificReason);
             }
           }
           return finalizeEventRemediation();
@@ -179,7 +183,7 @@ function getTeamSize(organization, teamId, callback) {
   });
 }
 
-function addLargeTeamPermissionRevertTasks(recoveryTasks, operations, organization, repositoryBody, teamId, whoChangedIt, specificReason) {
+function addLargeTeamPermissionRevertTasks(recoveryTasks, operations, organization, repositoryBody, teamId, teamName, whoChangedIt, whoChangedItId, specificReason) {
   specificReason = specificReason ? ': ' + specificReason : '';
   const blockReason = `the permission was upgraded by ${whoChangedIt} but a large team permission prevention feature has reverted the change${specificReason}`;
   console.log(blockReason);
@@ -191,16 +195,75 @@ function addLargeTeamPermissionRevertTasks(recoveryTasks, operations, organizati
     organization: organization.name,
     repository: repositoryBody.name,
     whoChangedIt: whoChangedIt,
+    whoChangedItId: whoChangedItId,
   });
   recoveryTasks.push(createSetTeamPermissionTask(operations, organization, repositoryBody, teamId, 'pull', blockReason));
-  recoveryTasks.push(createLargeTeamPermissionPreventionWarningMailTask(operations, organization, repositoryBody, teamId, blockReason));
+  const owner = repositoryBody.owner.login.toLowerCase(); // We do not want to notify for each fork, if the permissions bubble to the fork
+  if (owner === organization.name.toLowerCase()) {
+    recoveryTasks.push(createLargeTeamPermissionPreventionWarningMailTask(operations, organization, repositoryBody, teamId, teamName, blockReason, whoChangedIt, whoChangedItId));
+  }
 }
 
-function createLargeTeamPermissionPreventionWarningMailTask(operations, organization, repositoryBody, teamId, reason) {
-  // TODO: Implement informational event if there is a mail provider available
+function createLargeTeamPermissionPreventionWarningMailTask(operations, organization, repositoryBody, teamId, teamName, reason, whoChangedIt, whoChangedItId) {
+  // System accounts should not need notifications
+  const mailProvider = operations.providers.mailProvider;
+  const insights = operations.providers.insights;
+  if (!mailProvider || operations.isSystemAccountByUsername(whoChangedIt)) {
+    return emptyCallback;
+  }
+  const senderMember = organization.member(whoChangedItId);
   return callback => {
-    return callback(null, reason);
+    senderMember.getMailAddress((error, mailAddress) => {
+      if (error || !mailAddress) {
+        return emptyCallback;
+      }
+      sendEmail(insights, operations.providers.basedir, mailProvider, mailAddress, {
+        repository: repositoryBody,
+        whoChangedIt: whoChangedIt,
+        teamName: teamName,
+        reason: reason,
+      }, callback);
+    });
   };
+}
+
+function emptyCallback(callback) {
+  return callback();
+}
+
+function sendEmail(insights, basedir, mailProvider, to, body, callback) {
+  const mail = {
+    to: to,
+    cc: 'jwilcox@microsoft.com',
+    subject: `Team permission change for ${body.repository.full_name} repository reverted`,
+    reason: `You are receiving this e-mail because you changed the permissions on the ${body.teamName} GitHub team, triggering this action.`,
+    headline: 'Team permission change reverted',
+    classification: 'warning',
+    service: 'Microsoft GitHub',
+  };
+  emailRender.render(basedir, 'largeTeamProtected', body, (renderError, mailContent) => {
+    if (renderError) {
+      insights.trackException(renderError, {
+        content: body,
+        eventName: 'JobAutomaticTeamsLargeTeamPermissionBlockMailRenderFailure',
+      });
+      return callback(renderError);
+    }
+    mail.content = mailContent;
+    mailProvider.sendMail(mail, (mailError, mailResult) => {
+      const customData = {
+        content: body,
+        receipt: mailResult,
+      };
+      if (mailError) {
+        customData.eventName = 'JobAutomaticTeamsLargeTeamPermissionBlockMailFailure';
+        insights.trackException(mailError, customData);
+        return callback(mailError);
+      }
+      insights.trackEvent('JobAutomaticTeamsLargeTeamPermissionBlockMailSuccess', customData);
+      callback();
+    });
+  });
 }
 
 function createSetTeamPermissionTask(operations, organization, repositoryBody, teamId, necessaryPermission, reason) {
