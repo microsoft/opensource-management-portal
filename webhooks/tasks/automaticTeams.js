@@ -142,7 +142,7 @@ module.exports = {
 
 function teamTooLargeForPurpose(teamId, isAdmin, isPush, organization, teamSize, preventLargeTeamPermissions) {
   const broadAccessTeams = organization.broadAccessTeams;
-  let isBroadAccessTeam = broadAccessTeams && broadAccessTeams.indexOf(teamId) >= 0;
+  let isBroadAccessTeam = broadAccessTeams && broadAccessTeams.includes(teamId);
   if (isBroadAccessTeam && (isAdmin || isPush)) {
     return 'The team is a very broad access team and does not allow push or admin access';
   }
