@@ -37,7 +37,7 @@ module.exports = {
     const eventAction = data.body.action;
 
     // Someone added a team to the repo
-    if (eventType === 'team' && (eventAction === 'add_repository' || eventAction === 'added_to_repository')) {
+    if (eventType === 'team' && ['add_repository', 'added_to_repository'].includes(eventAction)) {
       return true;
     }
 
