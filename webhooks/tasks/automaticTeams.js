@@ -8,6 +8,7 @@
 'use strict';
 
 const teamTypes = ['read', 'write', 'admin'];
+const defaultLargeAdminTeamSize = 100;
 
 const async = require('async');
 
@@ -35,6 +36,11 @@ module.exports = {
     const eventType = data.properties.event;
     const eventAction = data.body.action;
 
+    // Someone added a team to the repo
+    if (eventType === 'team' && ['add_repository', 'added_to_repository'].includes(eventAction)) {
+      return true;
+    }
+
     // Someone removed a team from the repo
     if (eventType === 'team' && eventAction === 'removed_from_repository') {
       return true;
@@ -56,13 +62,28 @@ module.exports = {
     const eventType = data.properties.event;
     const eventAction = data.body.action;
 
-    const [/*specialTeams*/, specials, specialTeamIds, specialTeamLevels] = processOrgSpecialTeams(organization);
-    if (specials.length <= 0) {
-      return callback();
-    }
+    const [/*specialTeams*/, /*specials*/, specialTeamIds, specialTeamLevels] = processOrgSpecialTeams(organization);
+    const preventLargeTeamPermissions = organization.preventLargeTeamPermissions;
     const recoveryTasks = [];
     const repositoryBody = data.body.repository;
-    const whoChangedIt = data.body.sender.login;
+    const newPermissions = repositoryBody ? repositoryBody.permissions : null;
+    const whoChangedIt = data.body && data.body.sender ? data.body.sender.login : null;
+
+    function finalizeEventRemediation(immediateError) {
+      if (immediateError) {
+        return callback(immediateError);
+      }
+      if (recoveryTasks.length <= 0) {
+        return callback();
+      }
+      async.waterfall(recoveryTasks, (error) => {
+        const insights = operations.insights;
+        if (error) {
+          insights.trackException(error);
+        }
+        return callback(error);
+      });
+    }
 
     // New repository
     if (eventType === 'repository' && eventAction === 'created') {
@@ -73,36 +94,68 @@ module.exports = {
     } else if (eventType === 'team') {
       const teamBody = data.body.team;
       const teamId = teamBody.id;
-      if (!specialTeamIds.has(teamId)) {
-        return callback();
-      }
-      const necessaryPermission = specialTeamLevels.get(teamId);
-      if (!necessaryPermission) {
-        return callback(new Error(`No ideal permission level found for the team ${teamId}.`));
-      }
-      if (eventAction === 'removed_from_repository') {
-        // Someone removed the entire team
-        recoveryTasks.push(createSetTeamPermissionTask(operations, organization, repositoryBody, teamId, necessaryPermission, `the team and its permission were removed by the username ${whoChangedIt}`));
-      } else if (eventAction === 'edited') {
-        // The team no longer has the appropriate permission level
-        const newPermissions = repositoryBody.permissions;
-        if (newPermissions[necessaryPermission] !== true) {
-          recoveryTasks.push(createSetTeamPermissionTask(operations, organization, repositoryBody, teamId, necessaryPermission, `the permission was downgraded by the username ${whoChangedIt}`));
+
+      // Enforce required special team permissions
+      if (specialTeamIds.has(teamId)) {
+        const necessaryPermission = specialTeamLevels.get(teamId);
+        if (!necessaryPermission) {
+          return callback(new Error(`No ideal permission level found for the team ${teamId}.`));
         }
+        if (eventAction === 'removed_from_repository') {
+          // Someone removed the entire team
+          recoveryTasks.push(createSetTeamPermissionTask(operations, organization, repositoryBody, teamId, necessaryPermission, `the team and its permission were removed by the username ${whoChangedIt}`));
+        } else if (eventAction === 'edited') {
+          // The team no longer has the appropriate permission level
+          if (newPermissions[necessaryPermission] !== true) {
+            recoveryTasks.push(createSetTeamPermissionTask(operations, organization, repositoryBody, teamId, necessaryPermission, `the permission was downgraded by the username ${whoChangedIt}`));
+          }
+        }
+        return finalizeEventRemediation();
+      }
+
+      // Prevent granting large teams access
+      if (preventLargeTeamPermissions) {
+        return getTeamSize(organization, teamId, (getTeamError, teamSize) => {
+          if (getTeamError) {
+            return callback(getTeamError);
+          }
+          // Special thanks to the GitHub API team. The added_to_repository event did not
+          // include the 'permissions' information. Fixed and deployed by GitHub on
+          // 6/13/17. Thank you for helping us simplify our code!
+          if (['added_to_repository', 'edited'].includes(eventAction) && newPermissions) {
+            const specificReason = teamTooLargeForPurpose(teamId, newPermissions.admin, newPermissions.push, organization, teamSize, preventLargeTeamPermissions);
+            if (specificReason) {
+              // This permission grant is too large and should be decreased
+              addLargeTeamPermissionRevertTasks(recoveryTasks, operations, organization, repositoryBody, teamId, whoChangedIt, specificReason);
+            }
+          }
+          return finalizeEventRemediation();
+        });
       }
     }
-    if (recoveryTasks.length <= 0) {
-      return callback();
-    }
-    async.waterfall(recoveryTasks, (error) => {
-      const insights = operations.insights;
-      if (error) {
-        insights.trackException(error);
-      }
-      return callback(error);
-    });
+
+    return finalizeEventRemediation();
   },
 };
+
+function teamTooLargeForPurpose(teamId, isAdmin, isPush, organization, teamSize, preventLargeTeamPermissions) {
+  const broadAccessTeams = organization.broadAccessTeams;
+  let isBroadAccessTeam = broadAccessTeams && broadAccessTeams.includes(teamId);
+  if (isBroadAccessTeam && (isAdmin || isPush)) {
+    return 'The team is a very broad access team and does not allow push or admin access';
+  }
+  let teamSizeLimitAdmin = defaultLargeAdminTeamSize;
+  let teamSizeLimitType = 'default limit';
+  if (preventLargeTeamPermissions && preventLargeTeamPermissions.maximumAdministrators) {
+    teamSizeLimitAdmin = preventLargeTeamPermissions.maximumAdministrators;
+    teamSizeLimitType = `administrator team limit in the ${organization.name} organization`;
+  }
+  if (isAdmin && teamSize >= teamSizeLimitAdmin) {
+    return `The team has ${teamSize} members which surpasses the ${teamSizeLimitAdmin} ${teamSizeLimitType}`;
+  }
+
+  return false;
+}
 
 function translateSpecialToGitHub(ourTerm) {
   switch (ourTerm) {
@@ -114,6 +167,40 @@ function translateSpecialToGitHub(ourTerm) {
     return 'pull';
   }
   throw new Error(`Unknown team type ${ourTerm}`);
+}
+
+function getTeamSize(organization, teamId, callback) {
+  const team = organization.team(teamId);
+  team.getDetails(error => {
+    if (error) {
+      return callback(error);
+    }
+    return callback(null, team.members_count || 0);
+  });
+}
+
+function addLargeTeamPermissionRevertTasks(recoveryTasks, operations, organization, repositoryBody, teamId, whoChangedIt, specificReason) {
+  specificReason = specificReason ? ': ' + specificReason : '';
+  const blockReason = `the permission was upgraded by ${whoChangedIt} but a large team permission prevention feature has reverted the change${specificReason}`;
+  console.log(blockReason);
+  const insights = operations.insights;
+  insights.trackMetric('JobAutomaticTeamsLargeTeamPermissionBlock', 1);
+  insights.trackEvent('JobAutomaticTeamsLargeTeamPermissionBlocked', {
+    specificReason: specificReason,
+    teamId: teamId,
+    organization: organization.name,
+    repository: repositoryBody.name,
+    whoChangedIt: whoChangedIt,
+  });
+  recoveryTasks.push(createSetTeamPermissionTask(operations, organization, repositoryBody, teamId, 'pull', blockReason));
+  recoveryTasks.push(createLargeTeamPermissionPreventionWarningMailTask(operations, organization, repositoryBody, teamId, blockReason));
+}
+
+function createLargeTeamPermissionPreventionWarningMailTask(operations, organization, repositoryBody, teamId, reason) {
+  // TODO: Implement informational event if there is a mail provider available
+  return callback => {
+    return callback(null, reason);
+  };
 }
 
 function createSetTeamPermissionTask(operations, organization, repositoryBody, teamId, necessaryPermission, reason) {
