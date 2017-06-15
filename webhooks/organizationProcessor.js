@@ -66,6 +66,9 @@ module.exports = function (options, callback) {
     });
     if (work.length > 0) {
       ++interestingEvents;
+      console.log(`[* interesting event found: ${event.properties.event} (${work.length} interested tasks)]`);
+    } else {
+      console.log(`[skipping event: ${event.properties.event}]`);
     }
     async.eachSeries(work, (processor, next) => {
       try {

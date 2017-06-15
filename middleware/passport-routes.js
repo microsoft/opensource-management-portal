@@ -10,7 +10,7 @@ const utils = require('../utils');
 
 module.exports = function configurePassport(app, passport, initialConfig) {
   app.get('/signin', function (req, res) {
-    utils.storeReferrer(req, res, initialConfig.authentication.scheme === 'github' ? '/auth/github' : '/auth/azure', 'signin page hit, need to go authenticate');
+    utils.storeReferrer(req, res, '/auth/azure', 'signin page hit, need to go authenticate');
   });
 
   // ----------------------------------------------------------------------------
@@ -20,11 +20,11 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     utils.storeReferrer(req, res, '/auth/github', '/signin/github authentication page requested');
   });
 
-  var ghMiddleware = initialConfig.authentication.scheme === 'github' ? passport.authenticate('github') : passport.authorize('github');
+  var ghMiddleware = passport.authorize('github');
   const githubFailureRoute = {
     failureRedirect: '/auth/github/',
   };
-  var ghMiddlewareWithFailure = initialConfig.authentication.scheme === 'github' ? passport.authenticate('github', githubFailureRoute) : passport.authorize('github', githubFailureRoute);
+  var ghMiddlewareWithFailure = passport.authorize('github', githubFailureRoute);
 
   function authenticationCallback(secondaryAuthScheme, secondaryAuthProperty, req, res, next) {
     const after = (req, res) => utils.redirectToReferrer(req, res, '/', `authentication callback of type ${secondaryAuthScheme} and property ${secondaryAuthProperty}`);

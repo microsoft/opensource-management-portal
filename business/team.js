@@ -297,6 +297,40 @@ class Team {
       common.createInstancesCallback(this, this.memberFromEntity, callback));
   }
 
+  checkRepositoryPermission(repositoryName, options, callback) {
+    if (!callback && typeof (options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    options = options || {};
+    let privates = _private(this);
+    let operations = privates.operations;
+    let token = privates.getToken();
+    let github = operations.github;
+    const organizationName = options.organizationName || this.organization.name;
+    const parameters = {
+      id: this.id,
+      owner: organizationName,
+      repo: repositoryName,
+    };
+    const cacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.teamRepositoryPermissionStaleSeconds,
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    parameters.headers = {
+      // Alternative response for additional information, including the permission level
+      'Accept': 'application/vnd.github.v3.repository+json',
+    };
+    return github.call(token, 'orgs.checkTeamRepo', parameters, cacheOptions, (error, details) => {
+      if (error) {
+        return callback(error);
+      }
+      return callback(null, details && details.permissions ? details.permissions : null);
+    });
+  }
+
   getRepositories(options, callback) {
     if (!callback && typeof (options) === 'function') {
       callback = options;

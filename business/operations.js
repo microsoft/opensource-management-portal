@@ -33,6 +33,7 @@ const defaults = {
   repoBranchesStaleSeconds: 60 * 5 /* 5m */,
   accountDetailStaleSeconds: 60 * 60 * 24 /* 24h */,
   orgRepoWebhooksStaleSeconds: 60 * 60 * 8 /* 8h */,
+  teamRepositoryPermissionStaleSeconds: 0 /* 0m */,
 };
 
 class Operations {
@@ -303,6 +304,21 @@ class Operations {
     }
     const combinedOptions = Object.assign(options, cacheOptions);
     this.getOrganization(orgName).getMembers(combinedOptions, callback);
+  }
+
+  get systemAccountsByUsername() {
+    return this.config.github && this.config.github.systemAccounts ? this.config.github.systemAccounts.logins : [];
+  }
+
+  isSystemAccountByUsername(username) {
+    const lc = username.toLowerCase();
+    const usernames = this.systemAccountsByUsername;
+    for (let i = 0; i < usernames.length; i++) {
+      if (usernames[i].toLowerCase() === lc) {
+        return true;
+      }
+    }
+    return false;
   }
 
   getAccount(id) {

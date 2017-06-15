@@ -29,7 +29,9 @@ module.exports = function init(app, express, rootdir, config, configurationError
     console.dir(configurationError);
   }
   app.set('basedir', rootdir);
-  var providers = {};
+  var providers = {
+    basedir: rootdir,
+  };
   app.set('providers', providers);
   var dc;
   var redisClient;
@@ -81,12 +83,17 @@ module.exports = function init(app, express, rootdir, config, configurationError
     clientId: config.activeDirectory.clientId,
     clientSecret: config.activeDirectory.clientSecret,
   };
-  const keyVaultClient = keyVault(kvConfig);
   providers.config = config;
-  debug('configuration secrets resolved');
-  const keyEncryptionKeyResolver = keyVaultResolver(keyVaultClient);
-  app.set('keyEncryptionKeyResolver', keyEncryptionKeyResolver);
-  providers.keyEncryptionKeyResolver = keyEncryptionKeyResolver;
+  let keyEncryptionKeyResolver = null;
+  try {
+    const keyVaultClient = keyVault(kvConfig);
+    keyEncryptionKeyResolver = keyVaultResolver(keyVaultClient);
+    app.set('keyEncryptionKeyResolver', keyEncryptionKeyResolver);
+    providers.keyEncryptionKeyResolver = keyEncryptionKeyResolver;
+    debug('configuration secrets resolved');
+  } catch (noKeyVault) {
+    debug('configuration resolved');
+  }
   var redisFirstCallback;
   var redisOptions = {
     auth_pass: config.redis.key,
@@ -98,7 +105,7 @@ module.exports = function init(app, express, rootdir, config, configurationError
     };
   }
   debug(`connecting to Redis ${config.redis.host || config.redis.tls}`);
-  const port = config.redis.port || config.redis.tls ? 6380 : 6379;
+  const port = config.redis.port || (config.redis.tls ? 6380 : 6379);
   redisClient = redis.createClient(port, config.redis.host || config.redis.tls, redisOptions);
   const redisHelper = new RedisHelper(redisClient, config.redis.prefix);
   app.set('redisHelper', redisHelper);

@@ -115,6 +115,10 @@ class Organization {
     return _private(this).settings.externalMembersPermitted || false;
   }
 
+  get preventLargeTeamPermissions() {
+    return _private(this).settings.preventLargeTeamPermissions || false;
+  }
+
   get description() {
     return _private(this).settings.description;
   }

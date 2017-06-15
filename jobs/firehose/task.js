@@ -124,8 +124,10 @@ module.exports = function runFirehoseTask(started, startedString, config) {
       isPeekLock: true,
     }, (peekError, lockedMessage) => {
       if (!lockedMessage) {
+        console.log(`[empty queue] ${emptyQueueDelaySeconds}s until retry`);
         return setTimeout(callback, emptyQueueDelaySeconds * 1000);
       }
+      console.log(`[message ${lockedMessage.brokerProperties.MessageId}] dequeued`);
       const insights = app.settings.appInsightsClient;
 
       let object = null;
@@ -148,6 +150,7 @@ module.exports = function runFirehoseTask(started, startedString, config) {
         insights.trackMetric('JobFirehoseQueueDelay', totalMs);
       }
       const acknowledgeEvent = function () {
+        console.log(`[message ${lockedMessage.brokerProperties.MessageId}] acknowledged (deleted)`);
         serviceBusService.deleteMessage(lockedMessage, (deleteError) => {
           if (deleteError) {
             console.dir(deleteError);
