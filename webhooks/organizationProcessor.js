@@ -39,11 +39,11 @@ module.exports = function (options, callback) {
   verifySignatures(properties.signature, organization.webhookSharedSecrets, rawBody, (validationError) => {
     if (validationError) {
       if (operations && operations.insights) {
-        const possibleOrg = body && body.organization ? body.organization.login : 'unknown-org';
-        console.warn(`incorrect hook signature - ${possibleOrg} organization`);
+        const possibleOrganization = body && body.organization ? body.organization.login : 'unknown-org';
+        console.warn(`incorrect hook signature - ${possibleOrganization} organization`);
         operations.insights.trackMetric('WebhookIncorrectSecrets', 1);
         operations.insights.trackEvent('WebhookIncorrectSecret', {
-          org: possibleOrg,
+          org: possibleOrganization,
           delivery: properties.delivery,
           event: properties.event,
           signature: properties.signature,

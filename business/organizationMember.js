@@ -49,6 +49,8 @@ class Member {
     if (this.avatar_url) {
       return this.avatar_url + '&s=' + optionalSize;
     }
+  }
+
   getMailAddress(callback) {
     if (!this.id) {
       return callback(new Error('No organization member ID'));

@@ -95,7 +95,6 @@ router.post('/', function (req, res, next) {
   var engine = req.approvalEngine;
   var requestid = engine.id;
   var team = engine.team;
-  var org = req.org;
   const organization = req.organization;
   var dc = req.app.settings.dataclient;
   const config = req.app.settings.runtimeConfig;
