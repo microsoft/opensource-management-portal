@@ -305,6 +305,21 @@ class Operations {
     this.getOrganization(orgName).getMembers(combinedOptions, callback);
   }
 
+  get systemAccountsByUsername() {
+    return this.config.github && this.config.github.systemAccounts ? this.config.github.systemAccounts.logins : [];
+  }
+
+  isSystemAccountByUsername(username) {
+    const lc = username.toLowerCase();
+    const usernames = this.systemAccountsByUsername;
+    for (let i = 0; i < usernames.length; i++) {
+      if (usernames[i].toLowerCase() === lc) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   getAccount(id) {
     // TODO: Centralized "accounts" local store
     const entity = { id: id };

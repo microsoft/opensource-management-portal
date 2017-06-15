@@ -29,7 +29,9 @@ module.exports = function init(app, express, rootdir, config, configurationError
     console.dir(configurationError);
   }
   app.set('basedir', rootdir);
-  var providers = {};
+  var providers = {
+    basedir: rootdir,
+  };
   app.set('providers', providers);
   var dc;
   var redisClient;
