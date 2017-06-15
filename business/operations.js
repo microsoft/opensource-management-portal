@@ -65,25 +65,25 @@ class Operations {
 
   get organizations() {
     if (!_private(this).organizations) {
-      const orgs = {};
+      const organizations = {};
       const names = this.organizationNames;
       for (let i = 0; i < names.length; i++) {
-        const org = createOrganization(this, names[i]);
-        orgs[names[i]] = org;
+        const organization = createOrganization(this, names[i]);
+        organizations[names[i]] = organization;
       }
-      _private(this).organizations = orgs;
+      _private(this).organizations = organizations;
     }
     return _private(this).organizations;
   }
 
-  getOrganizations(orgList) {
-    if (!orgList) {
+  getOrganizations(organizationList) {
+    if (!organizationList) {
       return this.organizations;
     }
     const references = [];
-    orgList.forEach(orgName => {
-      const org = this.getOrganization(orgName);
-      references.push(org);
+    organizationList.forEach(orgName => {
+      const organization = this.getOrganization(orgName);
+      references.push(organization);
     });
     return references;
   }
@@ -126,14 +126,14 @@ class Operations {
 
   getOrganization(name, callback) {
     const lc = name.toLowerCase();
-    const org = this.organizations[lc];
-    if (!org) {
+    const organization = this.organizations[lc];
+    if (!organization) {
       throw new Error(`Could not find configuration for the "${name}" organization.`);
     }
     if (callback) {
-      return callback(null, org);
+      return callback(null, organization);
     }
-    return org;
+    return organization;
   }
 
   getUserContext(userId) {
@@ -332,8 +332,8 @@ function getCentralOperationsToken(self) {
   if (self.config.github.organizations.length <= 0) {
     throw new Error('No organizations configured.');
   }
-  const firstOrg = self.config.github.organizations[0];
-  return firstOrg.ownerToken;
+  const firstOrganization = self.config.github.organizations[0];
+  return firstOrganization.ownerToken;
 }
 
 function createOrganization(self, name) {

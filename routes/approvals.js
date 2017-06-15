@@ -6,7 +6,6 @@
 const express = require('express');
 const router = express.Router();
 const async = require('async');
-const utils = require('../utils');
 
 router.get('/', function (req, res, next) {
   var dc = req.app.settings.dataclient;
@@ -73,14 +72,14 @@ router.get('/', function (req, res, next) {
 });
 
 router.post('/:requestid/cancel', function (req, res, next) {
-  var oss = req.oss;
-  var dc = req.app.settings.dataclient;
-  var requestid = req.params.requestid;
+  const dc = req.app.settings.dataclient;
+  const requestid = req.params.requestid;
+  const id = req.legacyUserContext.id.github;
   dc.getApprovalRequest(requestid, function (error, pendingRequest) {
     if (error) {
       return next(new Error('The pending request you are looking for does not seem to exist.'));
     }
-    if (pendingRequest.ghid == oss.id.github) {
+    if (pendingRequest.ghid == id) {
       dc.updateApprovalRequest(requestid, {
         active: false,
         decision: 'canceled-by-user',
@@ -89,35 +88,7 @@ router.post('/:requestid/cancel', function (req, res, next) {
         if (error) {
           return next(error);
         }
-        oss.getTeam(pendingRequest.teamid, function (error, team) {
-          if (error) {
-            return next(utils.wrapError(error, 'We could not get an instance of the team.'));
-          }
-          // Return the user now no matter what
-          res.redirect('/approvals/');
-
-          // Attempt to do more in the case that an issue exists - regardless of configured providers for requests
-          if (!pendingRequest.issue) {
-            return;
-          }
-
-          var workflowRepo = null;
-          try {
-            // ::: legacyNotificationsRepository is the new org value
-            workflowRepo = team2.organization.legacyNotificationsRepository;
-          } catch (noWorkflowError) {
-            // OK, give up
-            return;
-          }
-
-          var trackingIssue = workflowRepo.issue(pendingRequest.issue);
-          trackingIssue.createComment('This request was canceled by ' + oss.usernames.github + ' via the open source portal and can be ignored.', function (/* ignoredError */) {
-            // We ignore any error from the comment field, since that isn't the important part...
-            trackingIssue.close(function (/* ignored error */) {
-              /* nothing */
-            });
-          });
-        });
+        return res.redirect('/approvals/');
       });
     } else {
       return next(new Error('You are not authorized to cancel this request.'));
@@ -126,9 +97,9 @@ router.post('/:requestid/cancel', function (req, res, next) {
 });
 
 router.get('/:requestid', function (req, res, next) {
-  var requestid = req.params.requestid;
+  const requestid = req.params.requestid;
   const operations = req.app.settings.providers.operations;
-  var dc = oss.dataClient();
+  const dc = operations.dataClient;
   req.legacyUserContext.addBreadcrumb(req, 'Your Request');
   let isMaintainer = false;
   let pendingRequest = null;
@@ -136,6 +107,7 @@ router.get('/:requestid', function (req, res, next) {
   let maintainers = null;
   const username = req.legacyUserContext.usernames.github;
   const id = req.legacyUserContext.id.github;
+  let organization = null;
   async.waterfall([
     function (callback) {
       dc.getApprovalRequest(requestid, callback);
@@ -148,7 +120,7 @@ router.get('/:requestid', function (req, res, next) {
         // XXX
         return callback(new Error('No organization information stored alongside the request'));
       }
-      const organization = operations.getOrganization(pendingRequest.org);
+      organization = operations.getOrganization(pendingRequest.org);
       team2 = organization.team(pendingRequest.teamid);
       team2.getDetails(getDetailsError => {
         if (getDetailsError) {
@@ -176,7 +148,7 @@ router.get('/:requestid', function (req, res, next) {
         err.redirect = '/' + organization.name + '/teams/' + slugPreferred + '/approvals/' + requestid;
         return callback(err);
       }
-      if (pendingRequest.ghid != oss.id.github) {
+      if (pendingRequest.ghid != id) {
         let msg = new Error('This request does not exist or was created by another user.');
         msg.skipLog = true;
         return callback(msg);

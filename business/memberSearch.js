@@ -41,8 +41,8 @@ function translateMembers(members) {
   members.forEach(member => {
     if (member.orgs && !member.account) {
       const orgNames = Object.getOwnPropertyNames(member.orgs);
-      const firstOrg = orgNames[0];
-      member.account = member.orgs[firstOrg];
+      const firstOrganization = orgNames[0];
+      member.account = member.orgs[firstOrganization];
     }
   });
 }
