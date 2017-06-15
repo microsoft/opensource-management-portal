@@ -225,6 +225,16 @@ class Team {
   }
 
   isMember(username, role, options, callback) {
+    if (!callback && !options && typeof (role) === 'function') {
+      callback = role;
+      options = null;
+      role = null;
+    }
+    if (!callback && typeof (options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    options = options || {};
     const operations = _private(this).operations;
     role = role || 'member';
     options = options || {};

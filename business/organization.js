@@ -432,6 +432,10 @@ class Organization {
     }
 
     sudoerTeam.getMembershipEfficiently(username, (getMembershipError, membership) => {
+      // The team for sudoers may have been deleted, which is not an error
+      if (getMembershipError && getMembershipError.code === 404) {
+        return callback(null, false);
+      }
       if (getMembershipError) {
         return callback(getMembershipError);
       }

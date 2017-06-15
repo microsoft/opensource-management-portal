@@ -17,7 +17,7 @@ const async = require('async');
 // out of the way.
 // ----------------------------------------------------------------------------
 module.exports = function (app, config) {
-  const operations = req.app.settings.providers.operations;
+  const operations = app.settings.providers.operations;
   async.each(config.github.organizations.onboarding, function (orgEntry, callback) {
     if (orgEntry && orgEntry.name && orgEntry.ownerToken) {
       let s = 'Organization Onboarding Helper for "' + orgEntry.name + '":\n';
@@ -26,7 +26,7 @@ module.exports = function (app, config) {
         s += (orgEntry[key] !== undefined) ? 'value set' : 'undefined';
         s += '\n';
       }
-      const organization = operations.getOrganization(orgEntry.name);
+      const organization = operations.getOnboardingOrganization(orgEntry.name);
       organization.getTeams((error, teams) => {
         if (error) {
           console.log(`Error retrieving teams for the organization ${orgEntry.name}`);

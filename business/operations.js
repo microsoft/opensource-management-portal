@@ -77,6 +77,22 @@ class Operations {
     return _private(this).organizations;
   }
 
+  getOnboardingOrganization(name) {
+    // Specialized method to retrieve a new organization via the onboarding configuration collection, if any
+    name = name.toLowerCase();
+    const onboardingList = this.config.github.organizations.onboarding;
+    let instance = null;
+    if (onboardingList) {
+      for (let i = 0; i < onboardingList.length; i++) {
+        const settings = onboardingList[i];
+        if (settings && settings.name && settings.name.toLowerCase() === name) {
+          return createOrganization(this, name, settings);
+        }
+      }
+    }
+    throw new Error(`No onboarding organization settings configured for the ${name} organization`);
+  }
+
   getOrganizations(organizationList) {
     if (!organizationList) {
       return this.organizations;
@@ -383,15 +399,21 @@ function getCentralOperationsToken(self) {
   return firstOrganization.ownerToken;
 }
 
-function createOrganization(self, name) {
+function createOrganization(self, name, settings) {
   name = name.toLowerCase();
-  for (let i = 0; i < self.config.github.organizations.length; i++) {
-    const settings = self.config.github.organizations[i];
-    if (settings.name.toLowerCase() === name) {
-      return new Organization(self, name, settings);
+  if (!settings) {
+    const group = self.config.github.organizations;
+    for (let i = 0; i < group.length; i++) {
+      if (group[i].name && group[i].name.toLowerCase() === name) {
+        settings = group[i];
+        break;
+      }
     }
   }
-  throw new Error(`This application is not configured for the "${name}" organization.`);
+  if (!settings) {
+    throw new Error(`This application is not configured for the ${name} organization`);
+  }
+  return new Organization(self, name, settings);
 }
 
 function setRequiredProperties(self, properties, options) {
