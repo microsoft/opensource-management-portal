@@ -454,7 +454,7 @@ class Organization {
     const operations = _private(this).operations;
     const parameters = {
       org: this.name,
-      state: 'action',
+      state: 'active',
     };
     return operations.github.post(userToken, 'users.editOrgMembership', parameters, (error, response) => {
       if (error) {
@@ -490,6 +490,9 @@ class Organization {
   }
 
   getOperationalMembership(username, callback) {
+    if (!callback || !username) {
+      return callback(new Error('Username and a callback must be provided'));
+    }
     // This is a specific version of the getMembership function that takes
     // no options and never allows for caching [outside of the standard
     // e-tag validation with the real-time GitHub API]

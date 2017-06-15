@@ -28,13 +28,14 @@ router.use(usernameConsistency(true /* use GitHub API */));
 
 router.get('/', function (req, res, next) {
   const organization = req.organization;
-  const context = req.req.legacyUserContext;
+  const context = req.legacyUserContext;
+  const username = context.usernames.github;
   const userIncreasedScopeToken = context && context.tokens ? context.tokens.githubIncreasedScope : null;
   let onboarding = req.query.onboarding;
   let showTwoFactorWarning = false;
   let showApplicationPermissionWarning = false;
   let writeOrgFailureMessage = null;
-  organization.getOperationalMembership((error, result) => {
+  organization.getOperationalMembership(username, (error, result) => {
     let state = result && result.state ? result.state : false;
     const clearAuditListAndRedirect = function () {
       // Behavior change, only important to those not using GitHub's 2FA enforcement feature; no longer clearing the cache
@@ -47,13 +48,14 @@ router.get('/', function (req, res, next) {
           return next(error);
         }
         const userDetails = details ? organization.memberFromEntity(details) : null;
+        userDetails.entity = details;
         var title = organization.name + ' Organization Membership ' + (state == 'pending' ? 'Pending' : 'Join');
         req.legacyUserContext.render(req, res, 'org/pending', title, {
           result: result,
           state: state,
           hasIncreasedScope: userIncreasedScopeToken ? true : false,
           organization: organization,
-          orgUser: userDetails,
+          orgAccount: userDetails,
           onboarding: onboarding,
           writeOrgFailureMessage: writeOrgFailureMessage,
           showTwoFactorWarning: showTwoFactorWarning,

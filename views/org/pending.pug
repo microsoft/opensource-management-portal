@@ -124,9 +124,10 @@ block content
               | Join a team <em>(optional)</em>
 
         div.col-md-4.col-lg-4
-          if orgUser
+          if orgAccount && orgAccount.organizationProfile
+            - var orgUser = orgAccount.organizationProfile
             p
-              img.img-thumbnail.img-responsive(src=orgUser.avatar(400), alt=(orgUser.name || orgUser.login))
+              img.img-thumbnail.img-responsive(src=orgAccount.avatar(400), alt=(orgUser.name || orgUser.login))
             h3= orgUser.name
             h4= orgUser.login
             p(style='margin-top:18px')
@@ -145,20 +146,18 @@ block content
                 if orgUser.email
                   h6 E-mail
                   p= orgUser.email
-                if orgUser.otherFields.blog
+                if orgUser.blog
                   h6 On the Web
                   p
-                    a(href=orgUser.otherFields.blog, target='_new')
-                      = orgUser.otherFields.blog + ' '
-                      i.glyphicon.glyphicon-share-alt
-                if orgUser.getProfileCreatedDate()
+                    a(href=orgUser.blog, target='_new')= orgUser.blog
+                if orgAccount.getProfileCreatedDate && orgAccount.getProfileCreatedDate()
                   h6 Created
                   p
-                    time(datetime=orgUser.getProfileCreatedDate().toISOString())= orgUser.getProfileCreatedDate().toDateString()
-                if orgUser.getProfileCreatedDate()
+                    time(datetime=orgAccount.getProfileCreatedDate().toISOString())= orgAccount.getProfileCreatedDate().toDateString()
+                if orgAccount.getProfileUpdatedDate && orgAccount.getProfileUpdatedDate()
                   h6 Updated
                   p
-                    time(datetime=orgUser.getProfileUpdatedDate().toISOString())= orgUser.getProfileUpdatedDate().toDateString()
+                    time(datetime=orgAccount.getProfileUpdatedDate().toISOString())= orgAccount.getProfileUpdatedDate().toDateString()
                 hr
                 if organization.configuredOrganizationRepositoryTypes
                   h6 Supported Repository Types
@@ -168,24 +167,24 @@ block content
                       li Private
               div.col-md-6.col-lg-h6
                 h6 Repositories
-                if orgUser.otherFields.public_repos
+                if orgUser.public_repos
                   h2
-                    = orgUser.otherFields.public_repos + ' '
+                    = orgUser.public_repos + ' '
                     small Public
                     //- small Public
-                if orgUser.otherFields.total_private_repos
+                if orgUser.total_private_repos
                   h2
-                    = orgUser.otherFields.total_private_repos + ' '
+                    = orgUser.total_private_repos + ' '
                     small Private
 
                 hr
                 h6 Remaining Repositories
-                if orgUser.otherFields.plan && orgUser.otherFields.plan.private_repos
+                if orgUser.plan && orgUser.plan.private_repos
                   h2
-                    = orgUser.otherFields.plan.name + ' '
+                    = orgUser.plan.name + ' '
                     small Plan
                   h2
-                      = (orgUser.otherFields.plan.private_repos - orgUser.otherFields.total_private_repos) + ' '
+                      = (orgUser.plan.private_repos - orgUser.total_private_repos) + ' '
                       small Private
                 h2
                   | &infin;&nbsp;

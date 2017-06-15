@@ -77,7 +77,6 @@ router.get('/', function (req, res, next) {
     },
     orgUser: function (callback) {
       organization.getDetails(function (error, details) {
-        // TODO: VALIDATE: What did the wrapping object provide? Avatar light-up?
         const userDetails = details ? organization.memberFromEntity(details) : null;
         callback(error, userDetails);
       });

@@ -19,6 +19,11 @@ class Member {
       common.assignKnownFields(this, entity, 'member', memberPrimaryProperties, memberSecondaryProperties);
     }
 
+    // Organization accounts have a plan
+    if (entity && entity.plan) {
+      this.organizationProfile = entity;
+    }
+
     const privates = _private(this);
     privates.getToken = getToken;
     privates.operations = operations;
