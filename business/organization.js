@@ -470,16 +470,20 @@ class Organization {
       options = null;
     }
     options = options || {};
+    const orgName = this.name;
     const parameters = {
       username: username,
-      org: this.name,
+      org: orgName,
     };
     const privates = _private(this);
     const operations = privates.operations;
     const token = privates.getOwnerToken();
     return operations.github.call(token, 'orgs.getOrgMembership', parameters, (error, result) => {
+      if (error && error.code === 404) {
+        return callback(null, false);
+      }
       if (error) {
-        return callback(wrapError(error, `Trouble retrieving the membership for "${username}" in the ${this.name} organization`));
+        return callback(wrapError(error, `Trouble retrieving the membership for "${username}" in the ${orgName} organization`));
       }
       return callback(null, result);
     });

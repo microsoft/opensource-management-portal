@@ -50,22 +50,23 @@ router.use(function (req, res, next) {
 
 router.get('/', function (req, res) {
   const organization = req.organization;
-  const orgs = req.orgLeave.memberOfOrgs;
+  const organizations = req.orgLeave.memberOfOrgs;
   req.legacyUserContext.render(req, res, 'org/leave', 'Leave ' + organization.name, {
     org: organization,
-    orgs: orgs,
+    orgs: organizations,
   });
 });
 
 router.post('/', function (req, res, next) {
   const organization = req.organization;
+  const operations = req.app.settings.providers.operations;
   const username = req.legacyUserContext.usernames.github;
   organization.removeMember(username, error => {
     if (error) {
-      return next(utils.wrapError(error, 'We received an error code back from GitHub when trying to remove your membership from ' + organization.name + '.'));
+      return next(utils.wrapError(error, `We received an error code back from GitHub when trying to remove your membership from ${organization.name}.`));
     }
-    req.legacyUserContext.saveUserAlert(req, 'Your ' + organization.name + ' membership has been canceled at your request.', organization.name, 'success');
-    res.redirect('/');
+    req.legacyUserContext.saveUserAlert(req, `You have been removed from the ${organization.name} and are no longer a member.`, organization.name, 'success');
+    res.redirect(operations.baseUrl || '/');
   });
 });
 
