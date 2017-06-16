@@ -24,10 +24,58 @@ class TeamMember {
     privates.operations = operations;
   }
 
+  // ----------------------------------------------------------------------------
+  // Retrieves the URL for the user's avatar, if present. If the user's details
+  // have not been loaded, we will not yet have an avatar URL.
+  // ----------------------------------------------------------------------------
+  avatar(optionalSize) {
+    if (!optionalSize) {
+      optionalSize = 80;
+    }
+    if (this.avatar_url) {
+      return this.avatar_url + '&s=' + optionalSize;
+    }
+  }
+
+  get contactEmail() {
+    return _private(this).mailAddress || undefined;
+  }
+
+  get contactName() {
+    return this.link ? this.link.aadname : undefined;
+  }
+
+  getMailAddress(callback) {
+    const self = this;
+    if (_private(this).mailAddress) {
+      return callback(null, _private(this).mailAddress);
+    }
+    const operations = _private(this).operations;
+    const providers = operations.providers;
+    this.resolveDirectLink((error, link) => {
+      if (error || !link || !link.aadupn) {
+        return callback(error);
+      }
+      if (!providers.mailAddressProvider) {
+        return callback(new Error('No mailAddressProvider is available in this application instance'));
+      }
+      providers.mailAddressProvider.getAddressFromUpn(link.aadupn, (getError, mailAddress) => {
+        if (getError) {
+          return callback(getError);
+        }
+        _private(self).mailAddress = mailAddress;
+        return callback(null, mailAddress);
+      });
+    });
+  }
+
   resolveDirectLink(callback) {
     // This method was added to directly attach a link instance
     // equivalent to the legacy implementation of team mgmt.
     // Consider a better design...
+    if (this.link) {
+      return callback(null, this.link);
+    }
     const operations = _private(this).operations;
     operations.graphManager.getCachedLink(this.id, (getLinkError, link) => {
       if (getLinkError) {

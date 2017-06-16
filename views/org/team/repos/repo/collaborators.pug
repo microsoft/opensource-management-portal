@@ -40,9 +40,9 @@ block content
                       | &nbsp;
                       a.btn.btn-sm.btn-muted(href=teamMember.corporateProfileUrl(), target='_new')
                         = teamMember.corporateAlias() || teamMember.link.aadupn
-                      if teamMember.contactEmail()
+                      if teamMember.contactEmail
                         | &nbsp; &nbsp;
-                        a.btn.btn-sm.btn-default(href='mailto:' + teamMember.contactEmail()) Send Mail
+                        a.btn.btn-sm.btn-default(href='mailto:' + teamMember.contactEmail Send Mail
                   else
                     p
                       strong Not a portal user

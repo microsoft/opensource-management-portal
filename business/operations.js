@@ -81,7 +81,6 @@ class Operations {
     // Specialized method to retrieve a new organization via the onboarding configuration collection, if any
     name = name.toLowerCase();
     const onboardingList = this.config.github.organizations.onboarding;
-    let instance = null;
     if (onboardingList) {
       for (let i = 0; i < onboardingList.length; i++) {
         const settings = onboardingList[i];

@@ -432,7 +432,7 @@ module.exports = Team;
 
 function resolveDirectLinks(people, callback) {
   async.eachSeries(people, (member, next) => {
-    return member.resolveDirectLink(next);
+    return member.getMailAddress(next);
   }, error => {
     return callback(error ? error : null, error ? null : people);
   });

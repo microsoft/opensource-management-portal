@@ -57,6 +57,7 @@ class Member {
   }
 
   getMailAddress(callback) {
+    // duplicated code in organizationMember and teamMember
     if (!this.id) {
       return callback(new Error('No organization member ID'));
     }

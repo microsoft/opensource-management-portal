@@ -45,7 +45,7 @@ block content
               a.btn.btn-muted.btn-sm(href='https://github.com/' + entry.ghu, target='_new')= entry.ghu
           td
             p
-              a.btn.btn-muted.btn-sm(href='mailto:' + requestingUser.contactEmail())= requestingUser.contactEmail()
+              a.btn.btn-muted.btn-sm(href='mailto:' + requestingUser.contactEmail)= requestingUser.contactEmail
           if entry.type == 'joinTeam'
             td
               p
