@@ -82,14 +82,25 @@ module.exports = function runFirehoseTask(started, startedString, config) {
       } else if (getSubscriptionError) {
         throw getSubscriptionError;
       }
+      let deadLetters = 0;
+      let messageCount = 0;
       if (subscription && subscription.MessageCount) {
-        console.log(`Subscription ${subscription.SubscriptionName} is active and currently has ${subscription.MessageCount} messages in the queue`);
+        messageCount = parseInt(subscription.MessageCount, 10);
+        let activeMessageCountValue = subscription.CountDetails['d3p1:ActiveMessageCount'];
+        if (activeMessageCountValue) {
+          messageCount = parseInt(activeMessageCountValue, 10);
+        }
+        let deadLetterCountValue = subscription.CountDetails['d3p1:DeadLetterMessageCount'];
+        if (deadLetterCountValue) {
+          deadLetters = parseInt(deadLetterCountValue, 10);
+        }
       }
-      return subscriptionReady(app, serviceBusService, serviceBusConfig, firehoseConfig, parseInt(subscription.MessageCount));
+      console.log(`Subscription ${subscription.SubscriptionName} is active and currently has ${messageCount} messages in the queue and ${deadLetters} dead letters`);
+      return subscriptionReady(app, serviceBusService, serviceBusConfig, firehoseConfig, messageCount, deadLetters);
     });
   });
 
-  function subscriptionReady(app, serviceBusService, serviceBusConfig, firehoseConfig, messagesInQueue) {
+  function subscriptionReady(app, serviceBusService, serviceBusConfig, firehoseConfig, messagesInQueue, deadLetters) {
     let parallelism = messagesInQueue > maxParallelism / 2 ? maxParallelism : Math.min(5, maxParallelism);
     console.log(`Parallelism for this run will be ${parallelism} logical threads`);
     const insights = app.settings.appInsightsClient;
@@ -98,8 +109,10 @@ module.exports = function runFirehoseTask(started, startedString, config) {
       topic: serviceBusConfig.topic,
       subscription: serviceBusConfig.subscriptionName,
       messagesInQueue: messagesInQueue.toString(),
+      deadLetters: deadLetters.toString(),
     });
     insights.trackMetric('FirehoseMessagesInQueue', messagesInQueue);
+    insights.trackMetric('FirehoseDeadLetters', deadLetters);
     const tasks = [];
     for (let i = 0; i < parallelism; i++) {
       tasks.push(foreverExecutionThread.bind(null, app, serviceBusService, serviceBusConfig, firehoseConfig));
