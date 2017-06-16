@@ -504,6 +504,9 @@ class Organization {
   }
 
   checkPublicMembership(username, options, callback) {
+    // NOTE: This method is unable to be cached by the underlying
+    // system since there is no etag returned for status code-only
+    // results.
     if (!callback && typeof (options) === 'function') {
       callback = options;
       options = null;

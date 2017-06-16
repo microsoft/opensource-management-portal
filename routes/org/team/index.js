@@ -156,11 +156,11 @@ router.post('/join', function (req, res, next) {
       });
     },
     function (callback) {
-      team.isMember(callback);
+      team2.isMember(username, callback);
     },
     function (isMember, callback) {
       if (isMember === true) {
-        return next(utils.wrapError(null, 'You are already a member of the team ' + team.name, true));
+        return next(utils.wrapError(null, 'You are already a member of the team ' + team2.name, true));
       }
       team2.getOfficialMaintainers(callback);
     },
@@ -177,9 +177,9 @@ router.post('/join', function (req, res, next) {
         requested: ((new Date()).getTime()).toString(),
         active: false,
         type: 'joinTeam',
-        org: team.org.name,
-        teamid: team.id,
-        teamname: team.name,
+        org: team2.organization.name,
+        teamid: team2.id,
+        teamname: team2.name,
         email: legacyUserContext.modernUser().contactEmail(),
         name: legacyUserContext.modernUser().contactName(),
       };
@@ -205,7 +205,7 @@ router.post('/join', function (req, res, next) {
           return callback(addressResolutionError);
         }
         allMaintainers = mnt.join(', ');
-        dc.insertApprovalRequest(team.id, approvalRequest, callback);
+        dc.insertApprovalRequest(team2.id, approvalRequest, callback);
       });
     },
     function (newRequestId) {
@@ -217,12 +217,12 @@ router.post('/join', function (req, res, next) {
       const body = 'A team join request has been submitted by ' + legacyUserContext.modernUser().contactName() + ' (' +
         legacyUserContext.modernUser().contactEmail() + ', [' + legacyUserContext.usernames.github + '](' +
         'https://github.com/' + legacyUserContext.usernames.github + ')) to join your "' +
-        team.name + '" team ' + 'in the "' + team.org.name + '" organization.' + '\n\n' +
+        team2.name + '" team ' + 'in the "' + team2.organization.name + '" organization.' + '\n\n' +
         allMaintainers + ': Can a team maintainer [review this request now](' +
         'https://' + req.hostname + '/approvals/' + requestId + ')?\n\n' +
         '<em>If you use this issue to comment with the team maintainers, please understand that your comment will be visible by all members of the organization.</em>';
       notificationsRepo.createIssue({
-        title: 'Request to join team "' + team.org.name + '/' + team.name + '" by ' + legacyUserContext.usernames.github,
+        title: 'Request to join team "' + team2.organization.name + '/' + team2.name + '" by ' + legacyUserContext.usernames.github,
         body: body,
       }, callback);
     },
@@ -243,7 +243,7 @@ router.post('/join', function (req, res, next) {
       dc.updateApprovalRequest(requestId, itemUpdates, callback);
     },
     function setAssignee() {
-      req.legacyUserContext.saveUserAlert(req, 'Your request to join ' + team.name + ' has been submitted and will be reviewed by a team maintainer.', 'Permission Request', 'success');
+      req.legacyUserContext.saveUserAlert(req, 'Your request to join ' + team2.name + ' has been submitted and will be reviewed by a team maintainer.', 'Permission Request', 'success');
       const callback = arguments[arguments.length - 1];
       if (!issueProviderInUse) {
         return callback();
@@ -268,11 +268,11 @@ router.post('/join', function (req, res, next) {
       const approversAsString = approverMailAddresses.join(', ');
       const mail = {
         to: approverMailAddresses,
-        subject: `${personName} wants to join your ${team.name} team in the ${team.org.name} GitHub org`,
-        reason: (`You are receiving this e-mail because you are a team maintainer for the GitHub team "${team.name}" in the ${team.org.name} organization.
+        subject: `${personName} wants to join your ${team2.name} team in the ${team2.org.name} GitHub org`,
+        reason: (`You are receiving this e-mail because you are a team maintainer for the GitHub team "${team2.name}" in the ${team.org.name} organization.
                   To stop receiving these mails, you can remove your team maintainer status on GitHub.
                   This mail was sent to: ${approversAsString}`),
-        headline: `${team.name} permission request`,
+        headline: `${team2.name} permission request`,
         classification: 'action',
         service: 'Microsoft GitHub',
         correlationId: req.correlationId,
@@ -390,7 +390,6 @@ router.get('/', orgPermissions, (req, res, next) => {
   const teamPermissions = req.teamPermissions;
   const membershipStatus = req.membershipStatus;
   const team2 = req.team2;
-  const legacyTeam = req.team;
   const operations = req.app.settings.operations;
   const organization = req.organization;
 
@@ -412,7 +411,7 @@ router.get('/', orgPermissions, (req, res, next) => {
 
   function renderPage() {
     req.legacyUserContext.render(req, res, 'org/team/index', team2.name, {
-      team: legacyTeam,
+      team: team2,
       teamUrl: req.teamUrl, // ?
       employees: [], // data.employees,
       pendingApprovals: [], // data.pendingApprovals,
