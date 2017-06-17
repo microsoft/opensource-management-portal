@@ -59,7 +59,7 @@
     "oauth": "0.9.x",
     "octonode": "0.7.6",
     "ospo-pug-view-services": "^0.5.2",
-    "painless-config-resolver": "1.0.0",
+    "painless-config-resolver": "1.0.2",
     "passport": "^0.3.2",
     "passport-azure-ad": "^3.0.5",
     "passport-strategy": "1.x.x",
