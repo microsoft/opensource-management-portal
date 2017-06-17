@@ -9,28 +9,63 @@
 
 const arrayFromString = require('./utils/arrayFromString');
 
-// Resolves the organization configuration data; GITHUB_ORGANIZATIONS_FILE or GITHUB_ORGANIZATIONS_ENVIRONMENT_MODULE
-
-// TODO: Support and implement GITHUB_ORGANIZATIONS_ENVIRONMENT_MODULE
-// Thinking:
-// With the present of GITHUB_ORGANIZATIONS_ENVIRONMENT_MODULE, will npm require + pass along either the
-// environment or the GITHUB_ORGANIZATIONS_ENVIRONMENT variable to indicate what value to pass along
+// Resolves the organization configuration data; GITHUB_ORGANIZATIONS_FILE or GITHUB_ORGANIZATIONS_ENVIRONMENT_NAME
 
 const organizationsFileVariableName = 'GITHUB_ORGANIZATIONS_FILE';
+const organizationsEnvironmentVariableName = 'GITHUB_ORGANIZATIONS_ENVIRONMENT_NAME';
+const organizationsEnvironmentTypeVariableName = 'GITHUB_ORGANIZATIONS_ENVIRONMENT_TYPE_NAME';
+
+const defaultEnvironmentTypeName = 'github.organizations';
+
+function getModuleConfiguration(environmentInstances, environmentType, environmentName) {
+  if (!environmentInstances) {
+    throw new Error(`${organizationsEnvironmentVariableName} configured but no environment instances were loaded by the painless-config-as-code system`);
+  }
+  if (!environmentType) {
+    throw new Error('No GitHub organizations environment type configured');
+  }
+  if (!Array.isArray(environmentInstances)) {
+    return;
+  }
+  for (let i = 0; i < environmentInstances.length; i++) {
+    let instance = environmentInstances[i];
+    try {
+      let organizations = instance(environmentName, environmentType);
+      if (organizations) {
+        return organizations;
+      }
+    } catch (noProvider) {
+      /* The environment does not have the type */
+    }
+  }
+  throw new Error(`No environment instances of type ${environmentType} contained the ${environmentName} data`);
+}
 
 module.exports = (graphApi) => {
   const environmentProvider = graphApi.environment;
+  const environmentInstances = environmentProvider ? environmentProvider.environmentInstances : null;
   const orgs = [];
   orgs.onboarding = [];
-
   const defaultLegalEntities = arrayFromString(environmentProvider.get('GITHUB_ORGANIZATIONS_DEFAULT_LEGAL_ENTITIES'));
   const defaultTemplates = arrayFromString(environmentProvider.get('GITHUB_ORGANIZATIONS_DEFAULT_TEMPLATES'));
-
   const organizationsFile = environmentProvider.get(organizationsFileVariableName);
+  const organizationsEnvironmentName = environmentProvider.get(organizationsEnvironmentVariableName);
+  const organizationsEnvironmentType = environmentProvider.get(organizationsEnvironmentTypeVariableName) || defaultEnvironmentTypeName;
+  if (organizationsFile && organizationsEnvironmentName) {
+    console.warn(`GitHub organization loader: Configuration contains both ${organizationsFileVariableName} and ${organizationsEnvironmentVariableName} values. Only the file will be loaded.`);
+  }
+  let contents = null;
   if (organizationsFile) {
     // This will resolve locally; in this we may want to be able to
     // discover through other mechanisms, too.
-    const contents = require(`../data/${organizationsFile}`);
+    contents = require(`../data/${organizationsFile}`);
+  } else if (organizationsEnvironmentName && !environmentInstances) {
+    throw new Error(`${organizationsEnvironmentVariableName} configured but no environment instances were loaded by the painless-config-as-code system`);
+  } else if (organizationsEnvironmentName) {
+    contents = getModuleConfiguration(environmentInstances, organizationsEnvironmentType, organizationsEnvironmentName);
+  }
+
+  if (contents) {
     contents.forEach((org) => {
       const isOnboarding = org.onboarding === true;
       if (!org.legalEntities && !org.cla) {
@@ -42,7 +77,7 @@ module.exports = (graphApi) => {
       (isOnboarding ? orgs.onboarding : orgs).push(org);
     });
   } else {
-    console.warn('No GitHub organizations are configured. Set either GITHUB_ORGANIZATIONS_FILE or GITHUB_ORGANIZATIONS_ENVIRONMENT_MODULE in order to load an organization data file.');
+    console.warn('No GitHub organizations are configured. Set either GITHUB_ORGANIZATIONS_FILE or GITHUB_ORGANIZATIONS_ENVIRONMENT_NAME in order to load organizations');
   }
 
   if (!orgs.onboarding.length) {
