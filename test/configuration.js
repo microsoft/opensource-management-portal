@@ -33,7 +33,7 @@ describe('configuration', () => {
         e: 5,
       };
       keyVaultClient.getObjectSecrets(config, (error) => {
-        assert.isNull(error, 'no exception');
+        assert.isUndefined(error, 'no exception');
         assert.equal(config.a, 'animal', 'string works');
         assert.equal(config.b, 'bat', 'string works');
         assert.equal(config.c, 'cherry', 'string works');
@@ -110,7 +110,7 @@ describe('configuration', () => {
         a: secretId,
       };
       keyVaultClient.getObjectSecrets(config, (error) => {
-        assert.isNull(error, 'no exception');
+        assert.isUndefined(error, 'no exception');
         assert.equal(config.a, secretId, 'KeyVault URL is passed through');
       });
     });
