@@ -83,37 +83,37 @@ router.get('/', function (req, res, next) {
         oss.isAdministrator(callback);
     }*/
   },
-    function (error, results) {
-      if (error) {
-        return next(error);
-      }
-      if (results.isAdministrator && results.isAdministrator === true) {
-        results.isSudoer = true;
-      }
-      var render = function (results) {
-        oss.render(req, res, 'org/index', org.name, {
-          accountInfo: results,
-          org: org,
-        });
-      };
+  function (error, results) {
+    if (error) {
+      return next(error);
+    }
+    if (results.isAdministrator && results.isAdministrator === true) {
+      results.isSudoer = true;
+    }
+    var render = function (results) {
+      oss.render(req, res, 'org/index', org.name, {
+        accountInfo: results,
+        org: org,
+      });
+    };
       // Check for pending approvals
-      var teamsMaintained = results.organizationOverview.teams.maintainer;
-      if (teamsMaintained && teamsMaintained.length && teamsMaintained.length > 0) {
-        var teamsMaintainedHash = {};
-        for (var i = 0; i < teamsMaintained.length; i++) {
-          teamsMaintainedHash[teamsMaintained[i].id] = teamsMaintained[i];
-        }
-        results.teamsMaintainedHash = teamsMaintainedHash;
-        dc.getPendingApprovals(teamsMaintained, function (error, pendingApprovals) {
-          if (!error && pendingApprovals) {
-            results.pendingApprovals = pendingApprovals;
-          }
-          render(results);
-        });
-      } else {
-        render(results);
+    var teamsMaintained = results.organizationOverview.teams.maintainer;
+    if (teamsMaintained && teamsMaintained.length && teamsMaintained.length > 0) {
+      var teamsMaintainedHash = {};
+      for (var i = 0; i < teamsMaintained.length; i++) {
+        teamsMaintainedHash[teamsMaintained[i].id] = teamsMaintained[i];
       }
-    });
+      results.teamsMaintainedHash = teamsMaintainedHash;
+      dc.getPendingApprovals(teamsMaintained, function (error, pendingApprovals) {
+        if (!error && pendingApprovals) {
+          results.pendingApprovals = pendingApprovals;
+        }
+        render(results);
+      });
+    } else {
+      render(results);
+    }
+  });
 });
 
 router.use('/membership', membershipRoute);

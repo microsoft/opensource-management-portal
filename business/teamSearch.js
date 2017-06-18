@@ -26,10 +26,10 @@ TeamSearch.prototype.search = function search(tags, page, sort) {
   self.sort = sort ? sort.charAt(0).toUpperCase() + sort.slice(1) : 'Alphabet';
   return Q.all(
     self.filterByType(self.set)
-        .filterByPhrase(self.phrase)
-        .determinePages()['sortBy' + self.sort]()
-        .getPage(self.page)
-        );
+      .filterByPhrase(self.phrase)
+      .determinePages()['sortBy' + self.sort]()
+      .getPage(self.page)
+  );
 };
 
 TeamSearch.prototype.determinePages = function() {

@@ -106,25 +106,25 @@ router.get('/', lowercaser(['sort']), (req, res, next) => {
 
     try {
       search.search(page, req.query.sort)
-      .then(() => {
-        req.oss.render(req, res, 'people/', 'People', {
-          search: search,
-          filters: filters,
-          query: {
-            phrase: phrase,
-            twoFactor: twoFactor,
-            type: type,
-          },
-          organization: req.org || undefined,
-          lightupSudoerLink: type === 'former' && isPortalSudoer,
-          reposDataAgeInformation: ageInformation,
-          team2: team2,
-          team2AddType: req.team2AddType,
-          team2RemoveType: req.team2RemoveType,
-          teamUrl: req.teamUrl,
-          specificTeamPermissions: req.teamPermissions,
-        });
-      }).catch(next);
+        .then(() => {
+          req.oss.render(req, res, 'people/', 'People', {
+            search: search,
+            filters: filters,
+            query: {
+              phrase: phrase,
+              twoFactor: twoFactor,
+              type: type,
+            },
+            organization: req.org || undefined,
+            lightupSudoerLink: type === 'former' && isPortalSudoer,
+            reposDataAgeInformation: ageInformation,
+            team2: team2,
+            team2AddType: req.team2AddType,
+            team2RemoveType: req.team2RemoveType,
+            teamUrl: req.teamUrl,
+            specificTeamPermissions: req.teamPermissions,
+          });
+        }).catch(next);
     } catch (initialError) {
       return next(initialError);
     }

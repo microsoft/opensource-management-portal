@@ -131,71 +131,71 @@ router.get('/', function (req, res, next) {
       // oss.isAdministrator(callback); // CONSIDER: Re-implement isAdministrator
     }
   },
-    function (error, results) {
-      if (error) {
-        return next(error);
-      }
-      const overview = results.overview;
-      results.countOfOrgs = operations.organizations.length;
-      let groupedAvailableOrganizations = null;
+  function (error, results) {
+    if (error) {
+      return next(error);
+    }
+    const overview = results.overview;
+    results.countOfOrgs = operations.organizations.length;
+    let groupedAvailableOrganizations = null;
 
-      // results may contains undefined returns because we skip some errors to make sure homepage always load successfully.
-      if (overview.organizations) {
-        if (overview.organizations.member.length) {
-          results.countOfOrgs = overview.organizations.member.length;
-          if (overview.organizations.member.length > 0) {
-            results.twoFactorOn = true;
-            // TODO: How to verify in a world with some mixed 2FA value orgs?
-          }
-        }
-        if (overview.organizations.available) {
-          groupedAvailableOrganizations = _.groupBy(operations.getOrganizations(overview.organizations.available), 'priority');
+    // results may contains undefined returns because we skip some errors to make sure homepage always load successfully.
+    if (overview.organizations) {
+      if (overview.organizations.member.length) {
+        results.countOfOrgs = overview.organizations.member.length;
+        if (overview.organizations.member.length > 0) {
+          results.twoFactorOn = true;
+          // TODO: How to verify in a world with some mixed 2FA value orgs?
         }
       }
-
-      if (results.isAdministrator && results.isAdministrator === true) {
-        results.isSudoer = true;
+      if (overview.organizations.available) {
+        groupedAvailableOrganizations = _.groupBy(operations.getOrganizations(overview.organizations.available), 'priority');
       }
+    }
 
-      if (results.twoFactorOff === true) {
-        var tempOrgNeedToFix = oss.org();
-        return res.redirect(tempOrgNeedToFix.baseUrl + 'security-check');
+    if (results.isAdministrator && results.isAdministrator === true) {
+      results.isSudoer = true;
+    }
+
+    if (results.twoFactorOff === true) {
+      var tempOrgNeedToFix = oss.org();
+      return res.redirect(tempOrgNeedToFix.baseUrl + 'security-check');
+    }
+    var render = function (results) {
+      if (warnings && warnings.length > 0) {
+        req.oss.saveUserAlert(req, warnings.join(', '), 'Some organizations or memberships could not be loaded', 'danger');
       }
-      var render = function (results) {
-        if (warnings && warnings.length > 0) {
-          req.oss.saveUserAlert(req, warnings.join(', '), 'Some organizations or memberships could not be loaded', 'danger');
-        }
-        var pageTitle = results && results.userOrgMembership === false ? 'My GitHub Account' : config.brand.companyName + ' - ' + config.brand.appName;
-        oss.render(req, res, 'index', pageTitle, {
-          accountInfo: results,
-          onboarding: onboarding,
-          onboardingPostfixUrl: onboarding === true ? '?onboarding=' + config.brand.companyName : '',
-          activeOrgUrl: activeOrg ? activeOrg.baseUrl : '/?',
-          getOrg: (orgName) => {
-            return operations.getOrganization(orgName);
-          },
-          groupedAvailableOrganizations: groupedAvailableOrganizations,
+      var pageTitle = results && results.userOrgMembership === false ? 'My GitHub Account' : config.brand.companyName + ' - ' + config.brand.appName;
+      oss.render(req, res, 'index', pageTitle, {
+        accountInfo: results,
+        onboarding: onboarding,
+        onboardingPostfixUrl: onboarding === true ? '?onboarding=' + config.brand.companyName : '',
+        activeOrgUrl: activeOrg ? activeOrg.baseUrl : '/?',
+        getOrg: (orgName) => {
+          return operations.getOrganization(orgName);
+        },
+        groupedAvailableOrganizations: groupedAvailableOrganizations,
+      });
+    };
+    if (overview.teams && overview.teams.maintainer) {
+      const maintained = overview.teams.maintainer;
+      if (maintained.length > 0) {
+        var teamsMaintainedHash = {};
+        maintained.forEach(maintainedTeam => {
+          teamsMaintainedHash[maintainedTeam.id] = maintainedTeam;
         });
-      };
-      if (overview.teams && overview.teams.maintainer) {
-        const maintained = overview.teams.maintainer;
-        if (maintained.length > 0) {
-          var teamsMaintainedHash = {};
-          maintained.forEach(maintainedTeam => {
-            teamsMaintainedHash[maintainedTeam.id] = maintainedTeam;
-          });
-          results.teamsMaintainedHash = teamsMaintainedHash;
-          // dc.getPendingApprovals(teamsMaintained, function (error, pendingApprovals) {
-          //   if (error) {
-          //     return next(error);
-          //   }
-          //   results.pendingApprovals = pendingApprovals;
-          //   render(results);
-          // });
-        }
+        results.teamsMaintainedHash = teamsMaintainedHash;
+        // dc.getPendingApprovals(teamsMaintained, function (error, pendingApprovals) {
+        //   if (error) {
+        //     return next(error);
+        //   }
+        //   results.pendingApprovals = pendingApprovals;
+        //   render(results);
+        // });
       }
-      render(results);
-    });
+    }
+    render(results);
+  });
 });
 
 router.use(linkedUserRoute);

@@ -54,16 +54,16 @@ MemberSearch.prototype.search = function search(page, sort) {
 
   return Q.all(
     self.filterByTeamMembers()
-        .associateLinks()
-        .getCorporateProfilesEarly(self.type)
-        .then(() => {
-          return self.filterByType(self.type)
-                     .filterByPhrase(self.phrase)
-                     .determinePages()['sortBy' + self.sort]()
-                     .getPage(self.page)
-                     .sortOrganizations()
-                     .getCorporateProfiles();
-        }));
+      .associateLinks()
+      .getCorporateProfilesEarly(self.type)
+      .then(() => {
+        return self.filterByType(self.type)
+          .filterByPhrase(self.phrase)
+          .determinePages()['sortBy' + self.sort]()
+          .getPage(self.page)
+          .sortOrganizations()
+          .getCorporateProfiles();
+      }));
 };
 
 MemberSearch.prototype.filterByTeamMembers = function () {
