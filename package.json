@@ -20,8 +20,10 @@
   ],
   "scripts": {
     "start": "node ./bin/www",
-    "test": "mocha && eslint .",
-    "build": "bower install && grunt"
+    "test": "mocha && npm run lint",
+    "build": "bower install && grunt",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "engines": {
     "node": "~6.9.0"
@@ -77,7 +79,7 @@
   "devDependencies": {
     "bower": "^1.7.9",
     "chai": "^3.5.0",
-    "eslint": "^3.17.1",
+    "eslint": "^4.0.0",
     "grunt": "1.0.1",
     "grunt-contrib-clean": "^1.0.0",
     "grunt-contrib-concat": "^1.0.1",
