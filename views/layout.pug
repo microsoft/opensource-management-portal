@@ -21,3 +21,10 @@ html(lang="en")
     include footer
     include insights
     include ga
+    if config && config.continuousDeployment
+      != '\n<!--'
+      != (config.continuousDeployment.commitId ? '\nCommit ' + config.continuousDeployment.commitId : '')
+      != (config.continuousDeployment.build ? '\nBuild ' + config.continuousDeployment.build : '')
+      != (config.continuousDeployment.release ? '\nRelease ' + config.continuousDeployment.release : '')
+      != (config.continuousDeployment.name && config.continuousDeployment.version ? '\nPackage ' + config.continuousDeployment.name + ' ' + config.continuousDeployment.version : '')
+      != '\n-->'
