@@ -497,10 +497,9 @@ function getSupportedRepositoryTypesByPriority(self) {
   // plan.
   const settings = _private(self).settings;
   const type = settings.type || 'public';
-  let types = [];
+  let types = ['public'];
   switch (type) {
   case 'public':
-    types.push('public');
     break;
   case 'publicprivate':
     types.push('private');
