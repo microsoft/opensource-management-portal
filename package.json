@@ -20,8 +20,10 @@
   ],
   "scripts": {
     "start": "node ./bin/www",
-    "test": "mocha && eslint .",
-    "build": "bower install && grunt"
+    "test": "mocha && npm run lint",
+    "build": "bower install && grunt",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "engines": {
     "node": "~6.9.0"
@@ -58,7 +60,7 @@
     "npm-registry-client": "^8.0.1",
     "oauth": "0.9.x",
     "ospo-pug-view-services": "^0.5.2",
-    "painless-config-resolver": "1.0.0",
+    "painless-config-resolver": "1.0.2",
     "passport": "^0.3.2",
     "passport-azure-ad": "^3.0.5",
     "passport-strategy": "1.x.x",
@@ -76,7 +78,7 @@
   "devDependencies": {
     "bower": "^1.7.9",
     "chai": "^3.5.0",
-    "eslint": "^3.17.1",
+    "eslint": "^4.0.0",
     "grunt": "1.0.1",
     "grunt-contrib-clean": "^1.0.0",
     "grunt-contrib-concat": "^1.0.1",
