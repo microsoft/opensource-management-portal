@@ -117,6 +117,10 @@ class Organization {
     return getSpecialTeam(this, 'teamAllMembers', 'everyone membership');
   }
 
+  get privateRepositoriesSupported() {
+    return getSupportedRepositoryTypesByPriority(this).includes('private');
+  }
+
   get sudoersTeam() {
     const teams = getSpecialTeam(this, 'teamSudoers', 'organization sudoers');
     if (teams.length > 1) {
@@ -243,6 +247,7 @@ class Organization {
       },
       supportsCla: settings.cla && true,
       templates: getRepositoryCreateTemplates(this, operations),
+      visibilities: getSupportedRepositoryTypesByPriority(this),
     };
     return metadata;
   }
@@ -482,6 +487,33 @@ class Organization {
   repositoryFromEntity(entity) {
     return this.repository(entity.name, entity);
   }
+}
+
+function getSupportedRepositoryTypesByPriority(self) {
+  // Returns the types of repositories supported by the configuration for the organization.
+  // The returned array position 0 represents the recommended default choice for new repos.
+  // Note that while the configuration may say 'private', the organization may not have
+  // a billing relationship, so repo create APIs would fail asking you to upgrade to a paid
+  // plan.
+  const settings = _private(self).settings;
+  const type = settings.type || 'public';
+  let types = ['public'];
+  switch (type) {
+  case 'public':
+    break;
+  case 'publicprivate':
+    types.push('private');
+    break;
+  case 'private':
+    types.splice(0, 1, 'private');
+    break;
+  case 'privatepublic':
+    types.splice(0, 0, 'private');
+    break;
+  default:
+    throw new Error(`Unsupported configuration for repository types in the organization: ${type}`);
+  }
+  return types;
 }
 
 function getOwnerToken() {
