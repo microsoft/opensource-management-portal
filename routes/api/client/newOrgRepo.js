@@ -138,6 +138,7 @@ function discoverUserIdentities(req, res, next) {
 
 router.post('/repo/:repo', discoverUserIdentities, (req, res, next) => {
   const body = req.body;
+  const organization = req.organization;
   if (!body) {
     return next(jsonError('No body', 400));
   }
@@ -149,9 +150,12 @@ router.post('/repo/:repo', discoverUserIdentities, (req, res, next) => {
     body['ms.onBehalfOf'] = oss.usernames.github;
   }
 
-  // Today we always create a private repo if we can
-  // TODO: POST 1ES-DAY: Figure out the proper org config value here
-  body.private = true;
+  // Allow public or private repository visibility, if the configuration
+  // permits, but default to private for now until a user interface is
+  // built.
+  const createMetadata = organization.getRepositoryCreateMetadata();
+  const supportedVisibilities = createMetadata.visibilities || ['public'];
+  body.private = supportedVisibilities.includes('private');
 
   // these fields do not need translation: name, description
 
