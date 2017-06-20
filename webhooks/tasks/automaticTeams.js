@@ -8,7 +8,7 @@
 'use strict';
 
 const teamTypes = ['read', 'write', 'admin'];
-const defaultLargeAdminTeamSize = 100;
+const defaultLargeAdminTeamSize = 250;
 
 const async = require('async');
 
@@ -146,7 +146,7 @@ function teamTooLargeForPurpose(teamId, isAdmin, isPush, organization, teamSize,
   const broadAccessTeams = organization.broadAccessTeams;
   let isBroadAccessTeam = broadAccessTeams && broadAccessTeams.includes(teamId);
   if (isBroadAccessTeam && (isAdmin || isPush)) {
-    return 'The team is a very broad access team and does not allow push or admin access';
+    return 'The team is a very broad access team and does not allow push (write) or admin access to prevent widespread escalation of privileges and spamming thousands of people';
   }
   let teamSizeLimitAdmin = defaultLargeAdminTeamSize;
   let teamSizeLimitType = 'default limit';
