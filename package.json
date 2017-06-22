@@ -18,6 +18,11 @@
     "management",
     "organization"
   ],
+  "continuousDeployment": {
+    "build": "",
+    "release": "",
+    "commitId": ""
+  },
   "scripts": {
     "start": "node ./bin/www",
     "test": "mocha && npm run lint",
