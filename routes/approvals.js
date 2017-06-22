@@ -8,12 +8,13 @@ const router = express.Router();
 const async = require('async');
 
 router.get('/', function (req, res, next) {
-  var dc = req.app.settings.dataclient;
-  var oss = req.oss;
-  req.legacyUserContext.addBreadcrumb(req, 'Requests');
+  const dc = req.app.settings.dataclient;
+  const legacyUserContext = req.legacyUserContext;
+  legacyUserContext.addBreadcrumb(req, 'Requests');
+  const id = req.legacyUserContext.id.github;
   async.parallel({
     ownedTeams: function (callback) {
-      oss.getMyTeamMemberships('maintainer', function (getTeamMembershipsError, ownedTeams) {
+      legacyUserContext.getMyTeamMemberships('maintainer', function (getTeamMembershipsError, ownedTeams) {
         if (getTeamMembershipsError) {
           return callback(getTeamMembershipsError);
         }
@@ -25,7 +26,7 @@ router.get('/', function (req, res, next) {
             async.each(appvs, function (approval, cb) {
               var teamFromRequest = approval.teamid;
               if (teamFromRequest) {
-                oss.getTeam(teamFromRequest, function (getTeamError, teamInstance) {
+                legacyUserContext.getTeam(teamFromRequest, function (getTeamError, teamInstance) {
                   approval._teamInstance = teamInstance;
                   cb(getTeamError);
                 });
@@ -43,7 +44,7 @@ router.get('/', function (req, res, next) {
     },
     requestsUserMade: function (callback) {
       // CONSIDER: Need to hydrate with _teamInstance just like above...
-      dc.getPendingApprovalsForUserId(oss.id.github, callback);
+      dc.getPendingApprovalsForUserId(id, callback);
     }
   }, function (error, results) {
     if (error) {
@@ -52,7 +53,7 @@ router.get('/', function (req, res, next) {
     async.each(results.requestsUserMade, function (request, cb) {
       var teamFromRequest = request.teamid;
       if (teamFromRequest) {
-        oss.getTeam(teamFromRequest, function (err, teamInstance) {
+        legacyUserContext.getTeam(teamFromRequest, function (err, teamInstance) {
           request._teamInstance = teamInstance;
           cb(err);
         });
@@ -100,7 +101,8 @@ router.get('/:requestid', function (req, res, next) {
   const requestid = req.params.requestid;
   const operations = req.app.settings.providers.operations;
   const dc = operations.dataClient;
-  req.legacyUserContext.addBreadcrumb(req, 'Your Request');
+  const legacyUserContext = req.legacyUserContext;
+  legacyUserContext.addBreadcrumb(req, 'Your Request');
   let isMaintainer = false;
   let pendingRequest = null;
   let team2 = null;
@@ -163,7 +165,7 @@ router.get('/:requestid', function (req, res, next) {
       // Edge case: the team no longer exists.
       if (error.innerError && error.innerError.innerError && error.innerError.innerError.statusCode == 404) {
         let dc = req.app.settings.dataclient;
-        return closeOldRequest(dc, oss, pendingRequest, req, res, next);
+        return closeOldRequest(dc, legacyUserContext, pendingRequest, req, res, next);
       }
       return next(error);
     } else {
@@ -179,7 +181,7 @@ router.get('/:requestid', function (req, res, next) {
   });
 });
 
-function closeOldRequest(dc, oss, pendingRequest, req, res, next) {
+function closeOldRequest(dc, legacyUserContext, pendingRequest, req, res, next) {
   const operations = req.app.settings.providers.operations;
   const organization = operations.getOrganization(pendingRequest.org);
   const config = req.app.settings.runtimeConfig;
@@ -193,7 +195,7 @@ function closeOldRequest(dc, oss, pendingRequest, req, res, next) {
   if (!mailProviderInUse && !issueProviderInUse) {
     return next(new Error('No configured approval providers configured.'));
   }
-  oss.saveUserAlert(req, 'The team this request was for no longer exists. The request has been canceled.', 'Team gone!', 'success');
+  legacyUserContext.saveUserAlert(req, 'The team this request was for no longer exists. The request has been canceled.', 'Team gone!', 'success');
   if (pendingRequest.active === false) {
     return res.redirect('/');
   }

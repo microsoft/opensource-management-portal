@@ -21,10 +21,11 @@ module.exports = function (validateGitHubAccount) {
   // data changes on behalf of the GitHub user.
 
   function lightweightSessionConsistency(req, res, next) {
-    if (!req.oss || !req.oss.modernUser() || req.oss.modernUser().link === false) {
+    const legacyUserContext = req.legacyUserContext;
+    if (!legacyUserContext || !legacyUserContext.modernUser() || legacyUserContext.modernUser().link === false) {
       return next();
     }
-    const link = req.oss.modernUser().link;
+    const link = req.legacyUserContext.modernUser().link;
     if (req.user.azure && req.user.azure.oid && link.aadoid && req.user.azure.oid !== link.aadoid) {
       return next(new Error('Directory security identifier mismatch. Please submit a report to have this checked on.'));
     }
@@ -39,7 +40,7 @@ module.exports = function (validateGitHubAccount) {
         };
       }
       try {
-        req.oss.invalidateLinkCache(req.oss.setting('authentication').scheme, req.oss.id.aad, () => {}); // Try to invalidate any cached links to help with ops scenarios
+        legacyUserContext.invalidateLinkCache(req.legacyUserContext.id.aad, () => {}); // Try to invalidate any cached links to help with ops scenarios
       } catch (ignoreError) {
         // This does not impact providing the user with an error message
       }
@@ -80,7 +81,9 @@ module.exports = function (validateGitHubAccount) {
       return next();
     }
     Object.assign(link, linkUpdates);
-    req.oss.modernUser().updateLink(link, (mergeError) => {
+    const dataClient = req.app.settings.providers.dataClient;
+    const id = req.legacyUserContext.id.github;
+    dataClient.updateLink(id, link, (mergeError) => {
       if (mergeError) {
         req.insights.trackMetric('LinkConsistencyFailures', 1);
         req.insights.trackEvent('LinkConsistencyFailure', {
@@ -93,7 +96,7 @@ module.exports = function (validateGitHubAccount) {
       req.insights.trackEvent('LinkConsistencySuccess', {
         updates: JSON.stringify(linkUpdates),
       });
-      req.oss.setPropertiesFromLink(link, () => {
+      req.legacyUserContext.setPropertiesFromLink(link, () => {
         next();
       });
     });
@@ -101,7 +104,7 @@ module.exports = function (validateGitHubAccount) {
 
   function heavyConsistency(req, res, next) {
     'use strict';
-    const context = req.oss;
+    const context = req.legacyUserContext;
     if (!context || !context.id.github) {
       return next(new Error('A middleware component expected a user context ahead of validating the GitHub account.'));
     }

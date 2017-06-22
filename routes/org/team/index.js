@@ -269,7 +269,7 @@ router.post('/join', function (req, res, next) {
       const mail = {
         to: approverMailAddresses,
         subject: `${personName} wants to join your ${team2.name} team in the ${team2.org.name} GitHub org`,
-        reason: (`You are receiving this e-mail because you are a team maintainer for the GitHub team "${team2.name}" in the ${team.org.name} organization.
+        reason: (`You are receiving this e-mail because you are a team maintainer for the GitHub team "${team2.name}" in the ${team2.organization.name} organization.
                   To stop receiving these mails, you can remove your team maintainer status on GitHub.
                   This mail was sent to: ${approversAsString}`),
         headline: `${team2.name} permission request`,
@@ -283,8 +283,8 @@ router.post('/join', function (req, res, next) {
         actionUrl: approvalBaseUrl + requestId,
         reposSiteUrl: reposSiteBaseUrl,
         approvalRequest: approvalRequest,
-        team: team.name,
-        org: team.org.name,
+        team: team2.name,
+        org: team2.organization.name,
         personName: personName,
         personMail: personMail,
       };
@@ -323,7 +323,7 @@ router.post('/join', function (req, res, next) {
       // Let's send e-mail to the requester about this action
       const mail = {
         to: personMail,
-        subject: `Your ${team.org.name} "${team.name}" permission request has been submitted`,
+        subject: `Your ${team2.organization.name} "${team2.name}" permission request has been submitted`,
         reason: (`You are receiving this e-mail because you requested to join this team.
                   This mail was sent to: ${personMail}`),
         headline: 'Team request submitted',
@@ -337,8 +337,8 @@ router.post('/join', function (req, res, next) {
         actionUrl: approvalBaseUrl + requestId,
         reposSiteUrl: reposSiteBaseUrl,
         approvalRequest: approvalRequest,
-        team: team.name,
-        org: team.org.name,
+        team: team2.name,
+        org: team2.organization.name,
         personName: personName,
         personMail: personMail,
       };
@@ -370,7 +370,7 @@ router.post('/join', function (req, res, next) {
     if (error) {
       return next(error);
     }
-    res.redirect(team.org.baseUrl);
+    res.redirect(team2.organization.baseUrl);
   });
 });
 

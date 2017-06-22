@@ -82,13 +82,13 @@ RepoWorkflowEngine.prototype.editGet = function (req, res) {
 };
 
 RepoWorkflowEngine.prototype.editPost = function (req, res, next) {
-  var self = this;
-  var dc = self.team.oss.dataClient();
-  var visibility = req.body.repoVisibility;
+  const self = this;
+  const dc = req.app.settings.providers.dataClient;
+  const visibility = req.body.repoVisibility;
   if (!(visibility == 'public' || visibility == 'private')) {
     return next(new Error('Visibility for the repo request must be provided.'));
   }
-  var updates = {
+  const updates = {
     repoName: req.body.repoName,
     repoVisibility: visibility,
     repoUrl: req.body.repoUrl,
@@ -254,7 +254,7 @@ router.get('/', function (req, res, next) {
 router.use('/:requestid', function (req, res, next) {
   var team = req.team;
   var requestid = req.params.requestid;
-  var oss = req.oss;
+  const legacyUserContext = req.legacyUserContext;
   var dc = req.app.settings.dataclient;
   dc.getApprovalRequest(requestid, function (error, pendingRequest) {
     if (error) {
@@ -263,7 +263,7 @@ router.use('/:requestid', function (req, res, next) {
     var userHash = {};
     userHash[pendingRequest.ghu] = pendingRequest.ghid;
     var requestingUser = null;
-    oss.getCompleteUsersFromUsernameIdHash(userHash,
+    legacyUserContext.getCompleteUsersFromUsernameIdHash(userHash,
       function (error, users) {
         if (!error && !users[pendingRequest.ghu]) {
           error = new Error('Could not create an object to track the requesting user.');

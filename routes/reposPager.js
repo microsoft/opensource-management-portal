@@ -67,7 +67,7 @@ module.exports = (req, res, next) => {
 
   const operations = req.app.settings.operations;
 
-  getReposAndOptionalTeamPermissions(orgName, operations, req.oss.id.github, teamsType, team2, specificTeamId, (error, reposData, ageInformation, repoPermissions, userRepos, specificRepositories) => {
+  getReposAndOptionalTeamPermissions(orgName, operations, req.legacyUserContext.id.github, teamsType, team2, specificTeamId, (error, reposData, ageInformation, repoPermissions, userRepos, specificRepositories) => {
     if (error) {
       return next(error);
     }

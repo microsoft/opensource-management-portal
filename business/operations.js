@@ -33,6 +33,7 @@ const defaults = {
   corporateLinksStaleSeconds: 60 * 5 /* 5m */,
   repoBranchesStaleSeconds: 60 * 5 /* 5m */,
   accountDetailStaleSeconds: 60 * 60 * 24 /* 24h */,
+  teamDetailStaleSeconds: 60 * 60 * 2 /* 2h */,
   orgRepoWebhooksStaleSeconds: 60 * 60 * 8 /* 8h */,
   teamRepositoryPermissionStaleSeconds: 0 /* 0m */,
 };
@@ -349,14 +350,39 @@ class Operations {
       options = null;
     }
     options = options || {};
-    const operations = _private(this).operations;
+    const github = this.github;
     const parameters = {};
-    return operations.github.post(token, 'users.get', parameters, (error, entity) => {
+    return github.post(token, 'users.get', parameters, (error, entity) => {
       if (error) {
         return callback(wrapError(error, 'Could not get details about the authenticated account'));
       }
       const account = new Account(entity, this, getCentralOperationsToken.bind(null, this));
       return callback(null, account);
+    });
+  }
+
+  getTeamById(id, options, callback) {
+    if (!callback && typeof(options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    options = options || {};
+    const self = this;
+    getTeamDetailsById(this, id, options, (error, entity) => {
+      if (entity && !entity.organization) {
+        error = new Error(`Team ${id} response did not have an associated organization`);
+      }
+      const organizationName = entity.organization.name;
+      let organization = null;
+      try {
+        organization = self.getOrganization(organizationName);
+      } catch (er) {
+        error = er;
+      }
+      if (error) {
+        return callback(error);
+      }
+      return callback(null, organization.teamFromEntity(entity));
     });
   }
 
@@ -388,6 +414,29 @@ class Operations {
       return callback(null, account);
     });
   }
+}
+
+function getTeamDetailsById(self, id, options, callback) {
+  if (!callback && typeof(options) === 'function') {
+    callback = options;
+    options = null;
+  }
+  options = options || {};
+  const token = _private(self).getCentralOperationsToken();
+  const operations = _private(self).operations;
+  if (!id) {
+    return callback(new Error('Must provide a GitHub team ID to retrieve team information'));
+  }
+  const parameters = {
+    id: id,
+  };
+  const cacheOptions = {
+    maxAgeSeconds: options.maxAgeSeconds || operations.defaults.teamDetailStaleSeconds,
+  };
+  if (options.backgroundRefresh !== undefined) {
+    cacheOptions.backgroundRefresh = options.backgroundRefresh;
+  }
+  return operations.github.call(token, 'orgs.getTeam', parameters, cacheOptions, callback);
 }
 
 function getCentralOperationsToken(self) {

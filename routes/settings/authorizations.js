@@ -98,17 +98,19 @@ router.get('/', (req, res) => {
 });
 
 router.get('/github/clear', (req, res, next) => {
+  const dc = req.app.settings.providers.dataClient;
   const link = req.link;
   const linkAuthorizationsToDrop = ['githubToken', 'githubTokenIncreasedScope', 'githubTokenUpdated', 'githubTokenIncreasedScopeUpdated'];
   linkAuthorizationsToDrop.forEach((property) => {
     delete link[property];
   });
-  req.oss.modernUser().updateLink(link, (error) => {
+  const id = req.legacyUserContext.id.github;
+  dc.updateLink(id, link, error => {
     if (error) {
       return next(error);
     }
     req.legacyUserContext.saveUserAlert(req, 'The GitHub tokens stored for this account have been removed. You may be required to authorize access to your GitHub account again to continue using this portal.', 'GitHub tokens cleared', 'success');
-    req.oss.invalidateLinkCache(() => {
+    req.legacyUserContext.invalidateLinkCache(() => {
       return res.redirect('/signout/github/');
     });
   });
