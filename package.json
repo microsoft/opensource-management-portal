@@ -18,6 +18,11 @@
     "management",
     "organization"
   ],
+  "continuousDeployment": {
+    "build": "",
+    "release": "",
+    "commitId": ""
+  },
   "scripts": {
     "start": "node ./bin/www",
     "test": "mocha && npm run lint",
@@ -46,7 +51,6 @@
     "express-sslify": "^1.0.1",
     "file-size": "^1.0.0",
     "github": "github:jeffwilcox/node-github",
-    "grunt-contrib-less": "^1.4.1",
     "hsts": "^2.0.0",
     "lodash": "^4.17.2",
     "memory-cache": "^0.1.6",
