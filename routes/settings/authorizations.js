@@ -13,8 +13,9 @@ const router = express.Router();
 
 function createGithubTokenValidator(operations, link, token) {
   return (callback) => {
-    operations.getAuthenticatedAccount(token, (infoError, data, headers) => {
+    operations.getAuthenticatedAccount(token, (infoError, data) => {
       let valid = true;
+      let headers = data && data.extraFields ? data.extraFields.meta : null;
       let critical = false;
       let message = null;
       if (infoError) {
@@ -103,12 +104,14 @@ router.get('/github/clear', (req, res, next) => {
   linkAuthorizationsToDrop.forEach((property) => {
     delete link[property];
   });
-  req.oss.modernUser().updateLink(link, (error) => {
+  const id = req.legacyUserContext.id.github;
+  const aadoid = link.aadoid;
+  dc.updateLink(id, link, error => {
     if (error) {
       return next(error);
     }
     req.legacyUserContext.saveUserAlert(req, 'The GitHub tokens stored for this account have been removed. You may be required to authorize access to your GitHub account again to continue using this portal.', 'GitHub tokens cleared', 'success');
-    req.oss.invalidateLinkCache(() => {
+    req.legacyUserContext.invalidateLinkCache(aadoid, () => {
       return res.redirect('/signout/github/');
     });
   });

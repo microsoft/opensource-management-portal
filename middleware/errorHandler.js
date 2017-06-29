@@ -141,7 +141,7 @@ module.exports = function (err, req, res, next) {
   if (err.status) {
     errStatusAsNumber = parseInt(err.status);
   }
-  const resCode = errStatusAsNumber || err.code || err.statusCode || 500;
+  const resCode = errStatusAsNumber || (err.code && typeof(err.code) === 'number' ? err.code : false) || err.statusCode || 500;
   res.status(resCode);
 
   // Support JSON-based error display for the API route, showing just a small

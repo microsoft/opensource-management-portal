@@ -32,8 +32,11 @@ router.use(function (req, res, next) {
 });
 
 router.get('/', function (req, res, next) {
-  var oss = req.oss;
-  oss.modernUser().getActiveOrganizationMemberships((error, currentOrganizationMemberships) => {
+  const link = req.legacyUserContext.entities.link;
+  const id = req.legacyUserContext.id.github;
+  const operations = req.app.settings.providers.operations;
+  const account = operations.getAccount(id);
+  account.getOperationalOrganizationMemberships((error, currentOrganizationMemberships) => {
     if (error) {
       return next(error);
     }
@@ -49,8 +52,22 @@ router.get('/', function (req, res, next) {
 });
 
 router.post('/', function (req, res, next) {
-  req.oss.modernUser().unlinkAndDrop((error) => {
-    req.insights.trackEvent('PortalUserUnlink');
+  const id = req.legacyUserContext.id.github;
+  const operations = req.app.settings.providers.operations;
+  const account = operations.getAccount(id);
+  const insights = req.insights;
+  account.terminate(error => {
+    insights.trackEvent('PortalUserUnlink');
+    // If the cache is bad, the storage entity will already be gone
+    if (error && error.statusCode === 404) {
+      insights.trackEvent('PortalUserUnlinkAlreadyUnlinked', error);
+      error = null;
+    }
+    req.legacyUserContext.invalidateLinkCache(error => {
+      if (error) {
+        console.dir(error);
+      }
+    });
     if (error) {
       return next(utils.wrapError(error, 'You were successfully removed from all of your organizations. However, a minor failure happened during a data housecleaning operation. Double check that you are happy with your current membership status on GitHub.com before continuing. Press Report Bug if you would like this handled for sure.'));
     }
