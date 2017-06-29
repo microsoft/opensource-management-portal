@@ -27,8 +27,7 @@
     "start": "node ./bin/www",
     "test": "mocha && npm run lint",
     "build": "bower install && grunt",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint": "eslint ."
   },
   "engines": {
     "node": "~6.9.0"
