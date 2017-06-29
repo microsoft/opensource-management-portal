@@ -14,7 +14,7 @@ const utils = require('../utils');
 // These functions are not pretty.
 
 router.use(function ensureOrganizationSudoer(req, res, next) {
-  req.oss.isPortalAdministrator(function (error, isAdmin) {
+  req.legacyUserContext.isPortalAdministrator(function (error, isAdmin) {
     if (isAdmin === true) {
       return next();
     }
@@ -26,6 +26,7 @@ router.get('/', function (req, res) {
   req.legacyUserContext.render(req, res, 'organization/index', 'Organization Dashboard');
 });
 
+/*
 function tryGetGithubUserIdFromUsernameLink(dc, config, oldGithubUsername, callback) {
   dc.getUserLinkByProperty('ghu', oldGithubUsername, (getError, links) => {
     if (!getError && links && links.length === 0) {
@@ -40,6 +41,7 @@ function tryGetGithubUserIdFromUsernameLink(dc, config, oldGithubUsername, callb
     callback(null, links[0]);
   });
 }
+*/
 
 function whoisById(dc, config, githubId, userInfo, callback) {
   if (userInfo && userInfo.ghid && userInfo.ghu) {
@@ -59,24 +61,24 @@ function whoisById(dc, config, githubId, userInfo, callback) {
 }
 
 function expandAllInformation(req, dc, config, entity, callback) {
-  var oss = req.oss;
-  var orgsList = oss.orgs();
-  var orgsUserIn = [];
+  const operations = req.app.settings.providers.operations;
+  const orgsList = operations.organizations;
+  const orgsUserIn = [];
   const ghid = entity.ghid || (entity.githubInfoButNoLink ? entity.githubInfoButNoLink.id : undefined);
-  // TODO: Need to instead use the newer GitHub client to retrieve from ID the username, the old getGithubUsernameFromId method is gone
-  // XXX
-  getGithubUsernameFromId(ghid, (getUsernameError, username) => {
+  const account = operations.getAccount(ghid);
+  account.getDetails(getUsernameError => {
     if (getUsernameError) {
       return callback(getUsernameError);
     }
+    const username = account.login;
     if (entity && entity.ghu !== undefined && entity.ghu !== username) {
       entity.renamedUserMessage = `This user used to be known as "${entity.ghu}" on GitHub but changed their username to "${username}".`;
       entity.ghu = username;
     }
-    async.each(orgsList, function (org, callback) {
-      org.queryAnyUserMembership(username, function (err, membership) {
+    async.each(orgsList, function (organization, callback) {
+      organization.getMembership(username, function (err, membership) {
         if (membership && membership.state) {
-          orgsUserIn.push(org);
+          orgsUserIn.push(organization);
         }
         callback(null, membership);
       });
@@ -205,7 +207,12 @@ router.get('/whois/id/:githubid', function (req, res) {
   });
 });
 
-function getGithubUserInformationAndTryKnownOldName(dc, config, githubOrgClient, username, callback) {
+function getGithubUserInformationAndTryKnownOldName(dc, config, username, callback) {
+  return callback(new Error('Not yet fully implemented'));
+  // Refactor:
+/*
+  operations.getAccountByUsername(username, (error, account) => {
+  });
   var ghuser = githubOrgClient.user(username);
   ghuser.info(function (error, userInfo) {
     if (error && error.statusCode === 404) {
@@ -221,16 +228,15 @@ function getGithubUserInformationAndTryKnownOldName(dc, config, githubOrgClient,
     }
     callback(null, userInfo);
   });
+  */
 }
 
 router.get('/whois/github/:username', function (req, res, next) {
-  var config = req.app.settings.runtimeConfig;
-  var dc = req.app.settings.dataclient;
-  var redisClient = req.app.settings.dataclient.cleanupInTheFuture.redisClient;
-  var username = req.params.username;
-
-  var githubOrgClient = github.client(config.github.complianceToken || config.github.organizations[0].ownerToken);
-  getGithubUserInformationAndTryKnownOldName(dc, config, githubOrgClient, username, (error, userInfo) => {
+  const config = req.app.settings.runtimeConfig;
+  const dc = req.app.settings.dataclient;
+  const redisClient = req.app.settings.dataclient.cleanupInTheFuture.redisClient;
+  const username = req.params.username;
+  getGithubUserInformationAndTryKnownOldName(dc, config, username, (error, userInfo) => {
     if (error) {
       error.skipLog = true;
       return next(error);
@@ -285,7 +291,6 @@ router.post('/whois/github/:username', function (req, res, next) {
 });
 
 function modifyServiceAccount(dc, linkSubset, markAsServiceAccount, req, res, next) {
-  const oss = req.oss;
   dc.getLink(linkSubset.ghid, function (findError, link) {
     if (findError) {
       return next(findError);
@@ -300,7 +305,7 @@ function modifyServiceAccount(dc, linkSubset, markAsServiceAccount, req, res, ne
       if (updateError) {
         return next(updateError);
       }
-      oss.invalidateLinkCache('aad', link.aadoid || 'no-aad-oid', () => {
+      req.legacyUserContext.invalidateLinkCache(link.aadoid || 'no-aad-oid', () => {
         res.json(link);
       });
     });

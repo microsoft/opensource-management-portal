@@ -14,12 +14,12 @@ block content
     h1 Unlink #{user.azure.username} and #{user.github.username} (GitHub)?
     p.lead Sorry to see you go.
 
-    if orgs && orgs.length && orgs.length > 0
+    if organizations && organizations.length
       - var unlinkText = 'Unlink anyway'
       p Before you leave, you're currently a member of the following #{config.brand.companyName} organization#{orgs.length == 1 ? '' : 's'} on GitHub:
       ul
-        each org in orgs
-          li= org.name
+        each organization in organizations
+          li= organization.name
 
       p Unlinking your accounts will remove you from all of the organizations listed above and <strong>may result in data loss</strong>.
 

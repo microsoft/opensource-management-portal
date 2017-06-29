@@ -115,7 +115,7 @@ router.get('/', lowercaser(['sort']), (req, res, next) => {
             twoFactor: twoFactor,
             type: type,
           },
-          organization: req.org || undefined,
+          organization: req.organization || undefined,
           lightupSudoerLink: type === 'former' && isPortalSudoer,
           reposDataAgeInformation: ageInformation,
           team2: team2,

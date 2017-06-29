@@ -84,7 +84,7 @@ router.get('/', function (req, res, next) {
     /*
     CONSIDER: UPDATE ORG SUDOERS SYSTEM UI...
     isAdministrator: function (callback) {
-        oss.isAdministrator(callback);
+        legacyUserContext.isAdministrator(callback);
     }*/
   },
     function (error, results) {

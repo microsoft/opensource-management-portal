@@ -18,6 +18,11 @@
     "management",
     "organization"
   ],
+  "continuousDeployment": {
+    "build": "",
+    "release": "",
+    "commitId": ""
+  },
   "scripts": {
     "start": "node ./bin/www",
     "test": "mocha && npm run lint",
@@ -31,7 +36,7 @@
   "dependencies": {
     "adal-node": "^0.1.22",
     "applicationinsights": "^0.21.0",
-    "async": "^2.2.0",
+    "async": "^2.5.0",
     "azure-keyvault": "^1.0.0",
     "azure-sb": "^0.10.4",
     "azure-storage": "^2.1.0",
@@ -46,7 +51,6 @@
     "express-sslify": "^1.0.1",
     "file-size": "^1.0.0",
     "github": "github:jeffwilcox/node-github",
-    "grunt-contrib-less": "^1.4.1",
     "hsts": "^2.0.0",
     "lodash": "^4.17.2",
     "memory-cache": "^0.1.6",
@@ -57,7 +61,7 @@
     "mz": "^2.6.0",
     "node-jose": "^0.9.4",
     "node-uuid": "^1.4.8",
-    "npm-registry-client": "^8.0.1",
+    "npm-registry-client": "^8.4.0",
     "oauth": "0.9.x",
     "ospo-pug-view-services": "^0.5.2",
     "painless-config-resolver": "1.0.2",

@@ -44,10 +44,9 @@ function renderForm(req, res, userChoiceError) {
 }
 
 router.post('/publish', (req, res, next) => {
-  const oss = req.oss;
   const repository = req.repository;
   const organization = req.organization;
-  const upn = oss.modernUser().contactEmail();
+  const upn = req.legacyUserContext.modernUser().contactEmail();
   const collaborators = req.body.collaborators;
   const options = {
     operations: req.app.settings.providers.operations,

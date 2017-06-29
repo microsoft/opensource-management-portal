@@ -45,6 +45,33 @@ router.get('/github/:username', (req, res, next) => {
   });
 });
 
+router.get('/aad/userPrincipalName/:upn', (req, res, next) => {
+  const upn = req.params.upn;
+  const operations = req.app.settings.operations;
+  getAllUsers(req.apiVersion, operations, (error, results) => {
+    if (error) {
+      return next(error);
+    }
+    let r = [];
+    for (let i = 0; i < results.length; i++) {
+      const entry = results[i];
+      console.dir(entry);
+      if (entry && entry.aad && entry.aad.userPrincipalName === upn) {
+        r.push(entry);
+      }
+    }
+    req.insights.trackEvent('ApiRequestLinkByAadUpnResult', {
+      length: r.length.toString(),
+      userPrincipalName: upn,
+    });
+    if (r.length === 0) {
+      return next(jsonError('Could not find a link for the user', 404));
+    }
+    req.insights.trackMetric('ApiRequestLinkByAadUpn', 1);
+    return res.json(r);
+  });
+});
+
 router.get('/aad/:id', (req, res, next) => {
   if (req.apiVersion == '2016-12-01') {
     return next(jsonError('This API is not supported by the API version you are using.', 400));

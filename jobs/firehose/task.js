@@ -156,11 +156,9 @@ module.exports = function runFirehoseTask(started, startedString, config) {
       const logicAppStarted = moment.utc(properties.started);
       if (logicAppStarted) {
         // const enqueued = lockedMessage && lockedMessage.brokerProperties ? lockedMessage.brokerProperties.EnqueuedTimeUtc : null;
-        // const serviceBusDelay = moment.utc(enqueued, 'ddd, DD MMM YYYY HH:mm:ss');
-        // console.log('delays - bus delay: ' + serviceBusDelay.fromNow() + ', logic app to now: ' + logicAppStarted.fromNow() + ', total ms: ' + totalMs.toString());
-
-        const totalMs = moment.utc().diff(logicAppStarted);
-        insights.trackMetric('JobFirehoseQueueDelay', totalMs);
+        // const serviceBusDelay = moment.utc(enqueued, 'ddd, DD MMM YYYY HH:mm:ss'); // console.log('delays - bus delay: ' + serviceBusDelay.fromNow() + ', logic app to now: ' + logicAppStarted.fromNow() + ', total ms: ' + totalMs.toString());
+        const totalSeconds = moment.utc().diff(logicAppStarted) / 1000;
+        insights.trackMetric('JobFirehoseQueueDelay', totalSeconds);
       }
       const acknowledgeEvent = function () {
         console.log(`[message ${lockedMessage.brokerProperties.MessageId}] acknowledged (deleted)`);

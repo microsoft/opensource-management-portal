@@ -4,6 +4,7 @@
       "CONFIGURATION_ENVIRONMENT": "localhost",
       "APPINSIGHTS_INSTRUMENTATION_KEY": "",
       "SESSION_COOKIE_DOMAIN": "",
+      "KEYVAULT_CLIENT_ID_KEY": "AAD_CLIENT_ID",
       "AAD_CLIENT_SECRET": "your AAD app secret to enable KeyVault, if needed",
       "MAIL_OVERRIDE_RECIPIENT": "your e-mail address"
     }

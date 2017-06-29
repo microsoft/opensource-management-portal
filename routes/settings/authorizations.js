@@ -99,6 +99,7 @@ router.get('/', (req, res) => {
 });
 
 router.get('/github/clear', (req, res, next) => {
+  const dc = req.app.settings.providers.dataClient;
   const link = req.link;
   const linkAuthorizationsToDrop = ['githubToken', 'githubTokenIncreasedScope', 'githubTokenUpdated', 'githubTokenIncreasedScopeUpdated'];
   linkAuthorizationsToDrop.forEach((property) => {
