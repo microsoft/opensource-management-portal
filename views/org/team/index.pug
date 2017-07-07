@@ -17,7 +17,7 @@ mixin authenticGitHubLink()
             = admin ? 'Manage on GitHub.com ' : 'Open on GitHub.com '
             != octicon('mark-github', 18)
     if teamDetails && teamDetails.privacy === 'secret' && !membershipStatus
-      li: p: small: p This team is marked as #[strong secret]. On GitHub you may see a 404 error unless you join the team.
+      li: p: small: p This team is marked as #[strong secret]. On GitHub you will see a 404 error unless you are a team member.
 
 mixin membersList(typeOfList, membersList, isAdmin, moreMembersToShow)
   ul.list-inline(style='margin-bottom:24px')
@@ -302,7 +302,7 @@ block content
 
           +authenticGitHubLink()
 
-          ul.list-unstyled.list-vspace
+          ul.list-unstyled.list-vspace(style='margin-bottom:48px')
             li: a.btn.btn-muted.btn-sm(href=teamUrl + 'properties/', title='Manage the basic GitHub properties for this team') Team name & description
             li: a.btn.btn-muted.btn-sm(href=teamUrl + 'repos/', title='Take a repo from private to public, delete old repos, change repo descriptions. Manage repo collaborators.') Manage repositories
             li: a.btn.btn-muted.btn-sm(href=teamUrl + 'members/browse', title='Invite new members to your team. Remove members from the team. Remove employees from the entire org when they leave the company.') Manage members
@@ -311,6 +311,15 @@ block content
               button.btn.btn-sm.btn-muted(
                 onclick='return confirm(\'Are you sure that you want to delete this team? This is a permanent operation.\');'
                 title='Permanently delete the team') Delete team
+
+        //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        //- SHARE LINKS
+        //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        h4(style='margin-top:24px') Share
+        p: small You can share these links with other users who need to work with this team.
+        ul.list-unstyled.list-vspace
+          li: a.btn.btn-muted-more.btn-sm(href=teamUrl + 'join/', title='This URL can be shared for a linked user to join') Request to join this team
+          li: a.btn.btn-muted-more.btn-sm(href=teamUrl, title='This URL can be shared for anyone in the system to learn about what the team is and does') Get team information
 
     hr
     small
