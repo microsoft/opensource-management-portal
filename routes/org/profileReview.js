@@ -8,14 +8,17 @@
 const express = require('express');
 const router = express.Router();
 
-router.get('/', function (req, res) {
+router.get('/', function (req, res, next) {
   const organization = req.organization;
   const operations = req.app.settings.operations;
   const config = operations.config;
   const onboarding = req.query.onboarding;
   const context = req.legacyUserContext;
-  context.modernUser().getDetailsByUsername(function () {
-    const detailed = context.modernUser();
+  const login = context.usernames.github;
+  operations.getAccountByUsername(login, (getAccountError, detailed) => {
+    if (getAccountError) {
+      return next(getAccountError);
+    }
     const userProfileWarnings = {};
     if (!detailed.company || (detailed.company && detailed.company.toLowerCase().indexOf(config.brand.companyName.toLowerCase()) < 0)) {
       userProfileWarnings.company = 'color:red';

@@ -268,7 +268,7 @@ router.post('/join', function (req, res, next) {
       const approversAsString = approverMailAddresses.join(', ');
       const mail = {
         to: approverMailAddresses,
-        subject: `${personName} wants to join your ${team2.name} team in the ${team2.org.name} GitHub org`,
+        subject: `${personName} wants to join your ${team2.name} team in the ${team2.organization.name} GitHub org`,
         reason: (`You are receiving this e-mail because you are a team maintainer for the GitHub team "${team2.name}" in the ${team2.organization.name} organization.
                   To stop receiving these mails, you can remove your team maintainer status on GitHub.
                   This mail was sent to: ${approversAsString}`),

@@ -31,7 +31,7 @@ block content
       .nav
         ul.pager.zero-pad-bottom
           li.previous
-            a(href='/' + organization.name + '/teams/' + specificTeam.slug)
+            a(href='/' + specificTeam.organization.name + '/teams/' + specificTeam.slug)
               span(aria-hidden=true) &larr;
               = ' Back to the ' + specificTeam.name + ' team'
 
