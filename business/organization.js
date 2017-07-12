@@ -790,9 +790,13 @@ function getSpecialTeam(self, propertyName, friendlyName, throwIfMissing) {
   if (!settings[propertyName] && throwIfMissing) {
     throw new Error(`Missing configured organization "${self.name}" property ${propertyName} (special team ${friendlyName})`);
   }
+  const value = settings[propertyName];
+  if (value && Array.isArray(value)) {
+    return value;
+  }
   const teams = [];
-  if (settings[propertyName]) {
-    teams.push(parseInt(settings[propertyName], 10));
+  if (value) {
+    teams.push(parseInt(value, 10));
   }
   return teams;
 }
