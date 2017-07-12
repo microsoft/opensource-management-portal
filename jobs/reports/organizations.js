@@ -235,8 +235,10 @@ function getOrganizationData(context) {
 
             // Link information
             let fullName = null;
+            let corporateId = null;
             if (ownerEntry.link) {
               fullName = ownerEntry.link.aadname || ownerEntry.link.aadupn;
+              corporateId = ownerEntry.link.aadupn;
               if (ownerEntry.link.serviceAccount && ownerEntry.link.serviceAccountMail) {
                 fullName = {
                   link: 'mailto:' + ownerEntry.link.serviceAccountMail,
@@ -248,6 +250,7 @@ function getOrganizationData(context) {
                 color: 'red',
                 text: 'Not linked',
               };
+              corporateId = fullName;
               ownerEntry.actions.actions.push({
                 link: `https://github.com/${ownerEntry.login}`,
                 text: 'View profile',
@@ -259,6 +262,7 @@ function getOrganizationData(context) {
               ownerEntry.actions.actions.push(createAskToLinkAction(ownerEntry));
             }
             ownerEntry.fullName = fullName;
+            ownerEntry.corporateId = corporateId;
             bucket.rows.push(ownerEntry);
           }
         }

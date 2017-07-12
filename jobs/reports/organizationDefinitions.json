@@ -21,7 +21,7 @@
       "columns": {
         "login": "GitHub username",
         "githubFullName": "GitHub name",
-        "fullName": "Corporate identity",
+        "corporateId": "Corporate identity",
         "role": "Administrative role",
         "actions": "Actions"
       }
@@ -38,8 +38,8 @@
       "groupBy": "entityName",
       "columns": {
         "login": "GitHub username",
-        "githubFullName": "GitHub name",
-        "fullName": "Corporate identity",
+         "githubFullName": "GitHub name",
+        "corporateId": "Corporate identity",
         "role": "Administrative role",
         "actions": "Actions"
       }
