@@ -16,7 +16,7 @@ block content
 
     if organizations && organizations.length
       - var unlinkText = 'Unlink anyway'
-      p Before you leave, you're currently a member of the following #{config.brand.companyName} organization#{orgs.length == 1 ? '' : 's'} on GitHub:
+      p Before you leave, you're currently a member of the following #{config.brand.companyName} organization#{organizations.length == 1 ? '' : 's'} on GitHub:
       ul
         each organization in organizations
           li= organization.name
@@ -24,13 +24,13 @@ block content
       p Unlinking your accounts will remove you from all of the organizations listed above and <strong>may result in data loss</strong>.
 
       ul
-        li Your GitHub account, #{user.github.username}, will lose privileged access to these orgs.
-        li Private forks of repos from these orgs, if any, will be removed by GitHub.
+        li Your GitHub account, #{user.github.username}, will lose privileged access to these organizations.
+        li Private forks of repos from these organizations, if any, will be removed by GitHub.
         li Work committed in a private fork of these org's repos will be lost.
 
     else
       - var unlinkText = 'Unlink'
-      p You are not in any #{config.brand.companyName} orgs, so nothing should change in your GitHub experience.
+      p You are not in any #{config.brand.companyName} organizations, so nothing should change in your GitHub experience.
 
     p &nbsp;
 
