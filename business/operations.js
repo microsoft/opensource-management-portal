@@ -392,8 +392,8 @@ class Operations {
       options = null;
     }
     options = options || {};
-    const token = _private(this).getCentralOperationsToken();
-    const operations = _private(this).operations;
+    const token = getCentralOperationsToken(this);
+    const operations = this;
     if (!username) {
       return callback(new Error('Must provide a GitHub username to retrieve account information.'));
     }
@@ -422,7 +422,7 @@ function getTeamDetailsById(self, id, options, callback) {
     options = null;
   }
   options = options || {};
-  const token = _private(self).getCentralOperationsToken();
+  const token = getCentralOperationsToken(this);
   const operations = _private(self).operations;
   if (!id) {
     return callback(new Error('Must provide a GitHub team ID to retrieve team information'));
@@ -440,10 +440,11 @@ function getTeamDetailsById(self, id, options, callback) {
 }
 
 function getCentralOperationsToken(self) {
-  if (self.config.github.organizations.length <= 0) {
+  const s = self || this;
+  if (s.config.github.organizations.length <= 0) {
     throw new Error('No organizations configured.');
   }
-  const firstOrganization = self.config.github.organizations[0];
+  const firstOrganization = s.config.github.organizations[0];
   return firstOrganization.ownerToken;
 }
 

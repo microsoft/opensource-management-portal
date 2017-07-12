@@ -26,7 +26,6 @@ router.get('/', function (req, res) {
   req.legacyUserContext.render(req, res, 'organization/index', 'Organization Dashboard');
 });
 
-/*
 function tryGetGithubUserIdFromUsernameLink(dc, config, oldGithubUsername, callback) {
   dc.getUserLinkByProperty('ghu', oldGithubUsername, (getError, links) => {
     if (!getError && links && links.length === 0) {
@@ -41,7 +40,6 @@ function tryGetGithubUserIdFromUsernameLink(dc, config, oldGithubUsername, callb
     callback(null, links[0]);
   });
 }
-*/
 
 function whoisById(dc, config, githubId, userInfo, callback) {
   if (userInfo && userInfo.ghid && userInfo.ghu) {
@@ -207,14 +205,8 @@ router.get('/whois/id/:githubid', function (req, res) {
   });
 });
 
-function getGithubUserInformationAndTryKnownOldName(dc, config, username, callback) {
-  return callback(new Error('Not yet fully implemented'));
-  // Refactor:
-/*
+function getGithubUserInformationAndTryKnownOldName(operations, dc, config, username, callback) {
   operations.getAccountByUsername(username, (error, account) => {
-  });
-  var ghuser = githubOrgClient.user(username);
-  ghuser.info(function (error, userInfo) {
     if (error && error.statusCode === 404) {
       return tryGetGithubUserIdFromUsernameLink(dc, config, username, (tryGetError, userLink) => {
         if (tryGetError) {
@@ -226,17 +218,17 @@ function getGithubUserInformationAndTryKnownOldName(dc, config, username, callba
     if (error) {
       return callback(error);
     }
-    callback(null, userInfo);
+    callback(null, account);
   });
-  */
 }
 
 router.get('/whois/github/:username', function (req, res, next) {
   const config = req.app.settings.runtimeConfig;
+  const operations = req.app.settings.providers.operations;
   const dc = req.app.settings.dataclient;
   const redisClient = req.app.settings.dataclient.cleanupInTheFuture.redisClient;
   const username = req.params.username;
-  getGithubUserInformationAndTryKnownOldName(dc, config, username, (error, userInfo) => {
+  getGithubUserInformationAndTryKnownOldName(operations, dc, config, username, (error, userInfo) => {
     if (error) {
       error.skipLog = true;
       return next(error);
