@@ -76,7 +76,7 @@ module.exports = (req, res, next) => {
 
     let set = req.query.set;
     if (set !== 'all' && set !== 'available' && set !== 'your') {
-      set = 'your';
+      set = 'all';
     }
 
     const filters = [];
