@@ -17,7 +17,7 @@ module.exports = function initializeAppInsights(app, config) {
   if (key) {
     const appInsights = require('applicationinsights');
     const instance = appInsights.setup(key)
-      .setAutoCollectDependencies(true);
+      .setAutoCollectDependencies(false);
     client = instance.getClient(key);
     instance.start();
   }
