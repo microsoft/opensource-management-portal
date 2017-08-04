@@ -16,7 +16,8 @@ module.exports = function initializeAppInsights(app, config) {
   const key = config.telemetry && config.telemetry.applicationInsightsKey ? config.telemetry.applicationInsightsKey : null;
   if (key) {
     const appInsights = require('applicationinsights');
-    const instance = appInsights.setup(key);
+    const instance = appInsights.setup(key)
+      .setAutoCollectDependencies(false);
     client = instance.getClient(key);
     instance.start();
   }
