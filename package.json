@@ -73,6 +73,7 @@
     "qlimit": "^0.1.1",
     "redis": "^2.7.1",
     "request": "^2.81.0",
+    "requestretry": "^1.12.2",
     "secure-compare": "^3.0.1",
     "serve-favicon": "^2.4.2",
     "tmp": "0.0.31",

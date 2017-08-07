@@ -116,6 +116,7 @@ function discoverUserIdentities(req, res, next) {
     insights: req.insights,
     ossDbClient: req.app.settings.providers.ossDbConnection,
     githubLibrary: req.app.settings.providers.github,
+    operations: req.app.settings.providers.operations,
   };
   new OpenSourceUser(options, function (error, instance) {
     req.oss = instance;
