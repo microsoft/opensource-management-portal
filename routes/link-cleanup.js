@@ -135,6 +135,7 @@ function unlink(req, link, callback) {
     redisClient: req.app.settings.dataclient.cleanupInTheFuture.redisClient,
     redisHelper: req.app.settings.redisHelper,
     githubLibrary: req.app.settings.githubLibrary,
+    operations: req.app.settings.providers.operations,
     link: link,
     insights: req.insights,
   };
@@ -153,6 +154,7 @@ function invalidateCache(req, link, callback) {
     redisClient: req.app.settings.dataclient.cleanupInTheFuture.redisClient,
     redisHelper: req.app.settings.redisHelper,
     githubLibrary: req.app.settings.githubLibrary,
+    operations: req.app.settings.providers.operations,
     link: link,
     insights: req.insights,
   };
