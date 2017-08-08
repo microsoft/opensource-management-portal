@@ -372,7 +372,7 @@ class Operations {
       if (entity && !entity.organization) {
         error = new Error(`Team ${id} response did not have an associated organization`);
       }
-      const organizationName = entity.organization.name;
+      const organizationName = entity.organization.login;
       let organization = null;
       try {
         organization = self.getOrganization(organizationName);
@@ -422,8 +422,8 @@ function getTeamDetailsById(self, id, options, callback) {
     options = null;
   }
   options = options || {};
-  const token = getCentralOperationsToken(this);
-  const operations = _private(self).operations;
+  const token = getCentralOperationsToken(self);
+  const operations = self;
   if (!id) {
     return callback(new Error('Must provide a GitHub team ID to retrieve team information'));
   }

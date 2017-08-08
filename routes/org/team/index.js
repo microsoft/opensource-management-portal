@@ -278,6 +278,13 @@ router.post('/join', function (req, res, next) {
         correlationId: req.correlationId,
       };
       const contentOptions = {
+        reason: (`You are receiving this e-mail because you are a team maintainer for the GitHub team "${team2.name}" in the ${team2.organization.name} organization.
+                  To stop receiving these mails, you can remove your team maintainer status on GitHub.
+                  This mail was sent to: ${approversAsString}`),
+        category: ['request', 'repos'],
+        headline: `${team2.name} permission request`,
+        notification: 'action',
+        app: 'Microsoft GitHub',
         correlationId: req.correlationId,
         version: config.logging.version,
         actionUrl: approvalBaseUrl + requestId,

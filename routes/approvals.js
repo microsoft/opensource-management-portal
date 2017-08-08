@@ -9,15 +9,18 @@ const async = require('async');
 
 router.get('/', function (req, res, next) {
   const dc = req.app.settings.dataclient;
+  const operations = req.app.settings.providers.operations;
   const legacyUserContext = req.legacyUserContext;
   legacyUserContext.addBreadcrumb(req, 'Requests');
+  // CONSIDER: Requests on GitHub.com should be shown, too, now that that's integrated in many cases
   const id = req.legacyUserContext.id.github;
-  async.parallel({
-    ownedTeams: function (callback) {
-      legacyUserContext.getMyTeamMemberships('maintainer', function (getTeamMembershipsError, ownedTeams) {
-        if (getTeamMembershipsError) {
-          return callback(getTeamMembershipsError);
-        }
+  operations.getUserContext(id).getAggregatedOverview((overviewWarning, overview) => {
+    if (overviewWarning) {
+      return next(overviewWarning);
+    }
+    async.parallel({
+      ownedTeams: function (callback) {
+        const ownedTeams = overview.teams.maintainer;
         if (ownedTeams && ownedTeams.length && ownedTeams.length > 0) {
           dc.getPendingApprovals(ownedTeams, function (getPendingApprovalsError, appvs) {
             if (getPendingApprovalsError) {
@@ -40,33 +43,33 @@ router.get('/', function (req, res, next) {
         } else {
           callback();
         }
-      });
-    },
-    requestsUserMade: function (callback) {
-      // CONSIDER: Need to hydrate with _teamInstance just like above...
-      dc.getPendingApprovalsForUserId(id, callback);
-    }
-  }, function (error, results) {
-    if (error) {
-      return next(error);
-    }
-    async.each(results.requestsUserMade, function (request, cb) {
-      var teamFromRequest = request.teamid;
-      if (teamFromRequest) {
-        legacyUserContext.getTeam(teamFromRequest, function (err, teamInstance) {
-          request._teamInstance = teamInstance;
-          cb(err);
-        });
-      } else {
-        cb();
+      },
+      requestsUserMade: function (callback) {
+        // CONSIDER: Need to hydrate with _teamInstance just like above...
+        dc.getPendingApprovalsForUserId(id, callback);
       }
-    }, function (error) {
+    }, function (error, results) {
       if (error) {
         return next(error);
       }
-      req.legacyUserContext.render(req, res, 'org/approvals', 'Review My Approvals', {
-        teamResponsibilities: results.ownedTeams,
-        usersRequests: results.requestsUserMade,
+      async.each(results.requestsUserMade, function (request, cb) {
+        var teamFromRequest = request.teamid;
+        if (teamFromRequest) {
+          operations.getTeamById(teamFromRequest, (err, teamInstance) => {
+            request._teamInstance = teamInstance;
+            cb(err);
+          });
+        } else {
+          cb();
+        }
+      }, function (error) {
+        if (error) {
+          return next(error);
+        }
+        req.legacyUserContext.render(req, res, 'org/approvals', 'Review My Approvals', {
+          teamResponsibilities: results.ownedTeams,
+          usersRequests: results.requestsUserMade,
+        });
       });
     });
   });
