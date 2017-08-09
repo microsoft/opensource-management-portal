@@ -24,3 +24,6 @@ sync-*.js
 
 # Local development environment scripts
 app.yaml
+
+# IDEs
+.idea

@@ -45,14 +45,14 @@ repoSearch.prototype.search = function search(tags, page, sort) {
   self.sort = sort ? sort.charAt(0).toUpperCase() + sort.slice(1) : 'Pushed';
   return Q.all(
     self.filterBySpecificTeam(self.specificTeamRepos)
-        .filterByLanguageAndRecordAllLanguages(self.language)
-        .filterByType(self.type)
-        .filterByPhrase(self.phrase)
-        .filterByTeams(self.teamsType)
-        .determinePages()['sortBy' + self.sort]()
-        .getPage(self.page)
-        .augmentInformation()
-        );
+      .filterByLanguageAndRecordAllLanguages(self.language)
+      .filterByType(self.type)
+      .filterByPhrase(self.phrase)
+      .filterByTeams(self.teamsType)
+      .determinePages()['sortBy' + self.sort]()
+      .getPage(self.page)
+      .augmentInformation()
+  );
 };
 
 repoSearch.prototype.augmentInformation = function() {

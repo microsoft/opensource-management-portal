@@ -140,24 +140,24 @@ module.exports = (req, res, next) => {
     });
 
     search.search(null, page, req.query.sort, false /* false == show private repos */)
-    .then(() => {
-      req.oss.render(req, res, 'repos/', 'Repos', {
-        orgs: isCrossOrg ? sortOrgs(req.oss.orgs()) : undefined,
-        organization: isCrossOrg ? undefined : req.org,
-        search: search,
-        filters: filters,
-        query: {
-          phrase: phrase,
-          type: type,
-          language: language,
-          tt: teamsType ? req.query.tt : null,
-        },
-        reposDataAgeInformation: ageInformation,
-        specificTeamPermissions: specificTeamPermissions,
-        specificTeam: team2,
-        teamUrl: req.teamUrl,
-        showIds: showIds,
-      });
-    }).catch(next);
+      .then(() => {
+        req.oss.render(req, res, 'repos/', 'Repos', {
+          orgs: isCrossOrg ? sortOrgs(req.oss.orgs()) : undefined,
+          organization: isCrossOrg ? undefined : req.org,
+          search: search,
+          filters: filters,
+          query: {
+            phrase: phrase,
+            type: type,
+            language: language,
+            tt: teamsType ? req.query.tt : null,
+          },
+          reposDataAgeInformation: ageInformation,
+          specificTeamPermissions: specificTeamPermissions,
+          specificTeam: team2,
+          teamUrl: req.teamUrl,
+          showIds: showIds,
+        });
+      }).catch(next);
   });
 };

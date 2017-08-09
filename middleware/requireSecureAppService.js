@@ -36,11 +36,11 @@ module.exports = function (req, res, next) {
 
   // We are no longer throwing here as it affects the load balancers.
   // if (isLegit === false) {
-    // var err = new Error('The SSL connection may not be secured via Azure App Service. Please contact the site sponsors to investigate.');
-    // err.headers = req.headers;
-    // err.arrHeader = arr;
-    // err.detailed = arr;
-    // return next(err);
+  // var err = new Error('The SSL connection may not be secured via Azure App Service. Please contact the site sponsors to investigate.');
+  // err.headers = req.headers;
+  // err.arrHeader = arr;
+  // err.detailed = arr;
+  // return next(err);
   // }
   req.app.set('trust proxy', 1);
   next();

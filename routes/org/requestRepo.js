@@ -520,30 +520,30 @@ router.post('/', function (req, res, next) {
     }
   ],
 
-    function (err) {
-      if (err) {
-        return next(err);
-      }
-      else {
-        if (isApprovalRequired == true) {
-          oss.render(req, res, 'message', 'Repo request submitted', {
-            messageTitle: req.body.name.toUpperCase() + ' REPO',
-            message: 'Your request has been submitted for review to the approvers group for the requested organization.'
-          });
-        } else {
-          if (createdNewRepoDetails && createdNewRepoDetails.name) {
-            req.oss.saveUserAlert(req, `Your repo "${createdNewRepoDetails.name}" has been created.`, 'New GitHub repository created', 'success');
-          }
-          oss.render(req, res, 'message', 'Repo request approved', {
-            messageTitle: req.body.name.toUpperCase() + ' REPO',
-            message: 'Your request has been completed and the repo created.',
-            messageLink: createdNewRepoDetails.html_url,
-            messageLinkTitle: `Open ${createdNewRepoDetails.full_name} on GitHub`,
-            messageLinkTarget: 'new',
-          });
+  function (err) {
+    if (err) {
+      return next(err);
+    }
+    else {
+      if (isApprovalRequired == true) {
+        oss.render(req, res, 'message', 'Repo request submitted', {
+          messageTitle: req.body.name.toUpperCase() + ' REPO',
+          message: 'Your request has been submitted for review to the approvers group for the requested organization.'
+        });
+      } else {
+        if (createdNewRepoDetails && createdNewRepoDetails.name) {
+          req.oss.saveUserAlert(req, `Your repo "${createdNewRepoDetails.name}" has been created.`, 'New GitHub repository created', 'success');
         }
+        oss.render(req, res, 'message', 'Repo request approved', {
+          messageTitle: req.body.name.toUpperCase() + ' REPO',
+          message: 'Your request has been completed and the repo created.',
+          messageLink: createdNewRepoDetails.html_url,
+          messageLinkTitle: `Open ${createdNewRepoDetails.full_name} on GitHub`,
+          messageLinkTarget: 'new',
+        });
       }
-    });
+    }
+  });
 
 });
 

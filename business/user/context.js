@@ -88,9 +88,9 @@ class UserContext {
       }
       return results;
     }, callback)
-    .then(results => {
-      return callback(null, results);
-    }, callback);
+      .then(results => {
+        return callback(null, results);
+      }, callback);
   }
 
   getRepoCollaborators() {
