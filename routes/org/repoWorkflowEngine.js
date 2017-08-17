@@ -9,6 +9,7 @@ var utils = require('../../utils');
 const async = require('async');
 const fs = require('fs');
 const path = require('path');
+const recursiveReadDirectory = require('recursive-readdir');
 
 var repoWorkFlowEngine = RepoWorkflowEngine.prototype;
 
@@ -181,8 +182,10 @@ function createAddTemplateFilesTask(organization, repoName, templateName) {
       },
 
       function createDatasource(callback) {
-        fs.readdir(path.join(templatePath, templateName), (error, fileNames) => {
-          async.parallel(fileNames.map(fileName => {
+        const templateRoot = path.join(templatePath, templateName);
+        recursiveReadDirectory(templateRoot, (error, fileNames) => {
+          async.parallel(fileNames.map(absoluteFileName => {
+            const fileName = path.relative(templateRoot, absoluteFileName);
             return (cb) => {
               fs.readFile(path.join(templatePath, templateName, fileName), 'utf8', (error, file) => {
                 cb(error, { path: fileName, content: file });
