@@ -1,6 +1,6 @@
 FROM node:6-alpine
 
-ENV JOBNAME=temp
+ENV JOBNAME=everyMinute
 ENV APPDIR="/usr/src/job${JOBNAME}"
 
 ENV IS_DOCKER=1
