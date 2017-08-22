@@ -70,8 +70,7 @@ router.post('/', function (req, res, next) {
       }
     });
     if (error) {
-      insights.trackException(error);
-      return next(utils.wrapError(error, 'You were successfully removed from all of your organizations. However, a minor failure happened during a data housecleaning operation. Double check that you are happy with your current membership status on GitHub.com before continuing. Press Report Bug if you would like this handled for sure.'));
+      return next(utils.wrapError(error, 'You were successfully removed from all of your organizations. However, a minor failure happened during a data housecleaning operation. Double check that you are happy with your current membership status on GitHub.com before continuing.'));
     }
     return res.redirect('/signout?unlink');
   });
