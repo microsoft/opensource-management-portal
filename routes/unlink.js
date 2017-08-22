@@ -37,20 +37,17 @@ router.get('/', function (req, res, next) {
   const id = req.legacyUserContext.id.github;
   const operations = req.app.settings.providers.operations;
   const account = operations.getAccount(id);
-<<<<<<< HEAD
-  account.getOperationalOrganizationMemberships((error, currentOrganizationMemberships) => {
-=======
   account.getManagedOrganizationMemberships((error, currentOrganizationMemberships) => {
->>>>>>> db1291b957a5d4a9c28b2ffdc7ceaf9b53e0b41d
     if (error) {
       return next(error);
     }
-    if (link && link.ghu) {
-      return req.legacyUserContext.render(req, res, 'unlink', 'Remove corporate link and organization memberships', {
-        organizations: currentOrganizationMemberships,
+    var link = req.oss.entities.link;
+    if (link && link.ghid) {
+      return req.oss.render(req, res, 'unlink', 'Remove corporate link and organization memberships', {
+        orgs: currentOrganizationMemberships,
       });
     } else {
-      return next('No link could be found.');
+      return next(new Error('No link could be found.'));
     }
   });
 });
