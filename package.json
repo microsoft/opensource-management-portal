@@ -4,7 +4,7 @@
   "contributors": [
     "Jeff Wilcox <jwilcox@microsoft.com>"
   ],
-  "version": "4.2.0",
+  "version": "5.0.1",
   "license": "MIT",
   "private": true,
   "keywords": [
@@ -74,6 +74,7 @@
     "redis": "2.8.0",
     "request": "^2.81.0",
     "secure-compare": "^3.0.1",
+    "semver": "^5.4.1",
     "serve-favicon": "^2.4.2",
     "tmp": "0.0.33",
     "uid2": "0.0.x",

@@ -479,6 +479,11 @@ module.exports = Operations;
 
 function crossOrganizationResults(operations, results, keyProperty) {
   keyProperty = keyProperty || 'id';
+  // temp
+  if (results && results.data) {
+    console.log('results.data present in cross-organization results (SHOULD be flattened instead)');
+  }
+  // end-temp
   const map = new Map();
   operations.translateOrganizationNamesFromLowercase(results.orgs);
   for (const orgName of Object.getOwnPropertyNames(results.orgs)) {

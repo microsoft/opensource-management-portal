@@ -77,6 +77,28 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
         debug('Onboarding helper loaded');
         require('./onboarding')(app, config);
       }
+
+      /*providers.operations.getRepos((error, response) => {
+        const val = error || response;
+        console.dir(val);
+        const halt = true;
+      });*/
+      //const contosoDev = providers.operations.getOrganization('contosodev');
+      /*
+      providers.operations.getTeamsWithMembers(null, {}, (erx, own) => {
+        const hx = erx || own;
+        const halt = true;
+      });
+      */
+
+      // single response
+      /*
+      contosoDev.getDetails((error, response) => {
+        const val = error || response;
+        console.dir(val);
+        const halt = true;
+      });
+      */
     }
   }
 
