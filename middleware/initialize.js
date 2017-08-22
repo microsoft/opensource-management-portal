@@ -141,7 +141,7 @@ module.exports = function init(app, express, rootdir, config, configurationError
       };
       new DataClient(dataClientOptions, function (error, dcInstance) {
         dc = dcInstance;
-        debug('Azure Storage ready');
+        debug(`Azure Storage ready: ${dc.options.partitionKey} ${dc.options.linksTableName}`);
         providers.dataClient = dc;
         if (error) {
           return cb(error);
