@@ -148,6 +148,56 @@ router.get('/whois/aad/:upn', function (req, res, next) {
   });
 });
 
+router.get('/bulkRepoDelete', (req, res) => {
+  const oss = req.oss;
+  oss.render(req, res, 'organization/bulkRepoDelete', 'Bulk repository delete');
+});
+
+router.post('/bulkRepoDelete', (req, res, next) => {
+  const operations = req.app.settings.operations;
+  let repositories = req.body.repositories;
+  if (!repositories) {
+    return next(new Error('No repositories provided'));
+  }
+  repositories = repositories.split('\n');
+  const log = [];
+  async.eachLimit(repositories, 1, (repositoryName, next) => {
+    repositoryName = (repositoryName || '').trim();
+    if (!repositoryName.length) {
+      return next();
+    }
+    let githubcom = 'github.com';
+    let ghi = repositoryName.indexOf(githubcom);
+    if (ghi >= 0) {
+      let name = repositoryName.substr(ghi + githubcom.length + 1);
+      let divider = name.indexOf('/');
+      if (divider <= 0) {
+        return next();
+      }
+      let orgName = name.substr(0, divider);
+      let repoName = name.substr(divider + 1);
+      const repository = operations.getOrganization(orgName).repository(repoName);
+      repository.delete((errorIsh, more) => {
+        if (errorIsh) {
+          log.push(name + ': ' + errorIsh);
+        } else {
+          let metaStatus = more && more.meta ? more.meta.status : null;
+          log.push(name + ': ' + metaStatus);
+        }
+        return next();
+      });
+    } else {
+      log.push(`Skipping, does not appear to be a GitHub repo URL: ${repositoryName}`);
+      return next();
+    }
+  }, error => {
+    if (error) {
+      return next(error);
+    }
+    res.json(log);
+  });
+});
+
 router.get('/errors/active', function (req, res, next) {
   var dc = req.app.settings.dataclient;
   dc.getActiveErrors(function (error, errors) {

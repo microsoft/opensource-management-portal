@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+/*eslint no-console: ["error", { allow: ["warn"] }] */
+
 'use strict';
 
 const async = require('async');
@@ -479,11 +481,10 @@ module.exports = Operations;
 
 function crossOrganizationResults(operations, results, keyProperty) {
   keyProperty = keyProperty || 'id';
-  // temp: DO NOT MERGE
   if (results && results.data) {
-    console.log('results.data present in cross-organization results (SHOULD be flattened instead)');
+    // This debug aid can be removed anytime in Sept. 2017
+    console.warn('results.data present in cross-organization results (SHOULD be flattened instead)');
   }
-  // end-temp: DO NOT MERGE ABOVE INTO DEVELOP
   const map = new Map();
   operations.translateOrganizationNamesFromLowercase(results.orgs);
   for (const orgName of Object.getOwnPropertyNames(results.orgs)) {

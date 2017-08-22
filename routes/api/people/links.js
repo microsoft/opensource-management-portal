@@ -55,7 +55,6 @@ router.get('/aad/userPrincipalName/:upn', (req, res, next) => {
     let r = [];
     for (let i = 0; i < results.length; i++) {
       const entry = results[i];
-      console.dir(entry);
       if (entry && entry.aad && entry.aad.userPrincipalName === upn) {
         r.push(entry);
       }
