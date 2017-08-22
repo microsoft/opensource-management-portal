@@ -20,6 +20,9 @@ module.exports = function addOrgPermissionsToRequest(req, res, next) {
     owner: false,
     sudo: false,
   };
+  if (id && !login) {
+    return next(new Error(`While your technical GitHub ID ${id} is known, your GitHub username is not currently known.`));
+  }
   req.orgPermissions = orgPermissions;
   organization.isSudoer(login, (sudoCheckError, isSudoer) => {
     req.legacyUserContext.isPortalAdministrator((portalSudoError, isPortalSudoer) => {
