@@ -6,3 +6,4 @@ sync*.js
 thirdparty/*
 views/*
 client/*
+node_modules.private/*
