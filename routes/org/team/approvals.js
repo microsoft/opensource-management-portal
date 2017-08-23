@@ -14,7 +14,7 @@ const async = require('async');
 function PermissionWorkflowEngine(team, approvalPackage) {
   this.team = team;
   this.request = approvalPackage.request;
-  // no longer appears to be used: this.user = approvalPackage.requestingUser;
+  this.user = approvalPackage.requestingUser;
   this.id = approvalPackage.id;
   this.typeName = 'Team Join';
 }
@@ -58,7 +58,7 @@ PermissionWorkflowEngine.prototype.performApprovalOperation = function (callback
 function RepoWorkflowEngine(team, approvalPackage) {
   this.team = team;
   this.request = approvalPackage.request;
-  // no longer appears to be used: this.user = approvalPackage.requestingUser;
+  this.user = approvalPackage.requestingUser;
   this.id = approvalPackage.id;
   this.typeName = 'Repository Create';
 }

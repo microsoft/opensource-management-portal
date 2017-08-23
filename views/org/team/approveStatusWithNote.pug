@@ -37,27 +37,23 @@ block content
             th Team to join
           else if entry.type == 'repo'
             th Repo to create
-          th Issue ID
       tbody
         tr
           td
             p
               a.btn.btn-muted.btn-sm(href='https://github.com/' + entry.ghu, target='_new')= entry.ghu
           td
-            p
-              a.btn.btn-muted.btn-sm(href='mailto:' + requestingUser.contactEmail)= requestingUser.contactEmail
+            if requestingUser.contactEmail
+              p
+                a.btn.btn-muted.btn-sm(href='mailto:' + requestingUser.contactEmail())= requestingUser.contactEmail()
           if entry.type == 'joinTeam'
             td
               p
                 if team
-                  a(href='https://github.com/orgs/' + team.org.name + '/teams/' + (team.slug || team.name), target='_new')= team.name
+                  a(href=team.baseUrl, target='_new')= team.name
           else if entry.type == 'repo'
             td
               p= entry.repoName
-          td
-            p
-              //-if team && entry.issue
-                //- NOTE: Commenting out GitHub links with approval repos, since they are deprecated
 
     if entry.justification
       h5 BUSINESS JUSTIFICATION & CONTEXT

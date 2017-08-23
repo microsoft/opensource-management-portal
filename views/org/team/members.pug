@@ -50,7 +50,7 @@ block content
                   form(method='get', action=teamUrl + 'members/' + teamMember.login + '/remove')
                     p
                       if teamMember.contactEmail
-                        a.btn.btn-sm.btn-default(href='mailto:' + teamMember.contactEmail) Send Mail
+                        a.btn.btn-sm.btn-default(href='mailto:' + teamMember.contactEmail()) Send Mail
                         | &nbsp; &nbsp;
                       input.btn.btn-sm.btn-default(type='submit', value='Remove...', data-transition='fade', data-theme='c')
     hr

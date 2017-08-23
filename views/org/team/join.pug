@@ -33,7 +33,7 @@ block content
                 img(alt=teamMember.login, src=teamMember.avatar(), style='margin-right:0px;width:34px;height:34px', width=20, height=20)
               a.btn.btn-sm.btn-muted(href='https://github.com/' + teamMember.login, title=teamMember.id, target='_new')= teamMember.login
               if teamMember.contactEmail
-                a.btn.btn-sm.btn-muted-more(href='mailto:' + teamMember.contactEmail)= teamMember.contactName
+                a.btn.btn-sm.btn-muted-more(href='mailto:' + teamMember.contactEmail())= teamMember.contactName()
       form(method='post')
         h4 Context & Business Justification
         p Please provide context for the approvers, including your business justification and any context they may need. Did someone suggest that you join the team?

@@ -42,7 +42,7 @@ block content
                         = teamMember.corporateAlias() || teamMember.link.aadupn
                       if teamMember.contactEmail
                         | &nbsp; &nbsp;
-                        a.btn.btn-sm.btn-default(href='mailto:' + teamMember.contactEmail Send Mail
+                        a.btn.btn-sm.btn-default(href='mailto:' + teamMember.contactEmail()) Send Mail
                   else
                     p
                       strong Not a portal user

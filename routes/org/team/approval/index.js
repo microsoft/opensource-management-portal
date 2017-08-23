@@ -82,11 +82,13 @@ router.get('/setNote/:action', function (req, res) {
   if (action == 'approveWithComment') {
     action = 'approve';
   }
+  const team2 = req.team2;
+  console.dir(team2);
   req.legacyUserContext.render(req, res, 'org/team/approveStatusWithNote', 'Record your comment for request ' + engine.id + ' (' + action + ')', {
     entry: engine.request,
     action: action,
     requestingUser: engine.user,
-    team: req.team,
+    team: team2,
     teamUrl: req.teamUrl,
   });
 });

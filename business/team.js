@@ -32,6 +32,14 @@ class Team {
     privates.operations = operations;
   }
 
+  get baseUrl() {
+    if (this.organization && (this.slug || this.name)) {
+      return this.organization.baseUrl + 'teams/' + (this.slug || this.name) + '/';
+    }
+    const operations = _private(this).operations;
+    return operations.baseUrl + 'teams?q=' + this.id;
+  }
+
   ensureName(callback) {
     if (this.name && this.slug) {
       return callback();
