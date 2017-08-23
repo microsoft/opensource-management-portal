@@ -168,7 +168,11 @@ class Team {
         error = null;
       }
       if (error) {
-        return callback(wrapError(error, `Trouble retrieving the membership for "${username}" in team ${this.id}`));
+        const wrappedError = wrapError(error, `Trouble retrieving the membership for "${username}" in team ${this.id}`);
+        if (error.code) {
+          wrappedError.code = error.code;
+        }
+        return callback(wrappedError);
       }
       return callback(null, result);
     });
