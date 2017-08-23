@@ -528,7 +528,8 @@ class Organization {
     const privates = _private(this);
     const operations = privates.operations;
     const token = privates.getOwnerToken();
-    return operations.github.call(token, 'orgs.checkPublicMembership', parameters, error => {
+    parameters.allowEmptyResponse = true;
+    return operations.github.post(token, 'orgs.checkPublicMembership', parameters, error => {
       // The user either is not a member of the organization, or their membership is concealed
       if (error && error.code === 404) {
         return callback(null, false);
