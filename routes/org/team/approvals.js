@@ -13,6 +13,9 @@ const async = require('async');
 
 function PermissionWorkflowEngine(team, approvalPackage) {
   this.team = team;
+  if (!team) {
+    throw new Error('No team instance');
+  }
   this.request = approvalPackage.request;
   this.user = approvalPackage.requestingUser;
   this.id = approvalPackage.id;
@@ -238,7 +241,7 @@ router.use(function (req, res, next) {
 });
 
 router.get('/', function (req, res, next) {
-  var team = req.team;
+  var team = req.team2;
   team.getApprovals(function (error, approvals) {
     if (error) {
       return next(error);
@@ -252,7 +255,7 @@ router.get('/', function (req, res, next) {
 });
 
 router.use('/:requestid', function (req, res, next) {
-  var team = req.team;
+  var team = req.team2;
   var requestid = req.params.requestid;
   const legacyUserContext = req.legacyUserContext;
   var dc = req.app.settings.dataclient;

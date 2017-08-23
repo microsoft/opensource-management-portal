@@ -183,7 +183,9 @@ block content
                   img(alt=teamMember.login, src=teamMember.avatar('80'), style='margin-right:10px;width:20px;height:20px', width=20, height=20)
                 a.btn.btn-sm.btn-muted(href='https://github.com/' + teamMember.login, title=teamMember.id, target='_new')= teamMember.login
                 if teamMember.contactEmail
-                  a.btn.btn-sm.btn-muted-more(href='mailto:' + teamMember.contactEmail())= teamMember.contactName()
+                  - var teamMemberMailValue = typeof(teamMember.contactEmail) === 'function' ? teamMember.contactEmail() : teamMember.contactEmail;
+                  - var teamMemberName = typeof(teamMember.contactName) === 'function' ? teamMember.contactName() ? teamMember.contactName;
+                  a.btn.btn-sm.btn-muted-more(href='mailto:' + teamMemberMailValue)= teamMemberName
 
         if orgHasCla === true
           .row.col-md-12.col-lg-12
