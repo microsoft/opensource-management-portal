@@ -226,7 +226,7 @@ function createAddTemplateFilesTask(organization, repoName, templateName) {
         repository.removeCollaborator(userName, callback);
       },
     ], error => {
-      const message = `Initial commit of ${files.join(', ')} files to the ${repoName} repo succeeded.`;
+      let message = `Initial commit of ${files.join(', ')} files to the ${repoName} repo succeeded.`;
       if (error) {
         message = `Initial commit of template file(s) to the ${repoName} repo failed. An error: ${error.message}.`;
       }
