@@ -23,6 +23,8 @@ class Account {
     privates.getCentralOperationsToken = getCentralOperationsToken;
   }
 
+  // TODO: looks like we need to be able to resolve the link in here, too, to set instance.link
+
   // These were previously implemented in lib/user.js; functions may be needed
   // May also need to be in the org- and team- specific accounts, or built as proper objects
 
@@ -72,6 +74,28 @@ class Account {
   }
 
   // End previous functions
+
+  getDetailsAndLink(options, callback) {
+    if (!callback && typeof(options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    options = options || {};
+    const self = this;
+    self.getDetails(options, getDetailsError => {
+      if (getDetailsError) {
+        return callback(getDetailsError);
+      }
+      const operations = _private(this).operations;
+      operations.getLinkWithOverhead(self.id, (getLinkError, link) => {
+        // We do not assume that the link exists...
+        if (link) {
+          self.link = link;
+        }
+        return callback(null, self);
+      });
+    });
+  }
 
   getDetails(options, callback) {
     if (!callback && typeof(options) === 'function') {

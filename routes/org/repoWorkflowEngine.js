@@ -16,7 +16,7 @@ var repoWorkFlowEngine = RepoWorkflowEngine.prototype;
 function RepoWorkflowEngine(team, organization, approvalPackage) {
   this.team = team;
   this.request = approvalPackage.request;
-  this.user = approvalPackage.requestingUser;
+  // does not appear to be used any longer: this.user = approvalPackage.requestingUser;
   this.id = approvalPackage.id;
   this.organization = organization;
   this.typeName = 'Repository Create';

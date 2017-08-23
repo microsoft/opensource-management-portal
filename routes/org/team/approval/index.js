@@ -54,7 +54,7 @@ router.get('/', function (req, res) {
       entry: approvalRequest,
       requestingUser: req.approvalEngine.user,
       expandedTeamInfo: expandedTeamInfo,
-      team: team,
+      team: team2,
       teamUrl: req.teamUrl,
     });
   });

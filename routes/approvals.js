@@ -27,9 +27,10 @@ router.get('/', function (req, res, next) {
               return callback(getPendingApprovalsError);
             }
             async.each(appvs, function (approval, cb) {
-              var teamFromRequest = approval.teamid;
+              const teamFromRequest = approval.teamid;
               if (teamFromRequest) {
-                legacyUserContext.getTeam(teamFromRequest, function (getTeamError, teamInstance) {
+                const requestTeamId = parseInt(teamFromRequest, 10);
+                operations.getTeamById(requestTeamId, (getTeamError, teamInstance) => {
                   approval._teamInstance = teamInstance;
                   cb(getTeamError);
                 });

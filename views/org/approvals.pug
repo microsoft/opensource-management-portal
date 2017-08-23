@@ -17,11 +17,11 @@ block content
             small Permission Request
           div.row
             div.col-md-5.col-lg-5
-              form(method='post', action='/' + entry._teamInstance.org.name + '/teams/' + entry._teamInstance.name + '/approvals/' + entry.RowKey)
+              form(method='post', action='/' + entry._teamInstance.organization.name + '/teams/' + entry._teamInstance.name + '/approvals/' + entry.RowKey)
                 p
                   //-if entry.issue
                   //- NOTE: Commenting out GitHub links with approval repos, since they have been deprecated
-                  a.btn.btn-sm.btn-muted(href='/' + entry._teamInstance.org.name + '/teams/' + entry._teamInstance.name + '/approvals/' + entry.RowKey)
+                  a.btn.btn-sm.btn-muted(href='/' + entry._teamInstance.organization.name + '/teams/' + entry._teamInstance.name + '/approvals/' + entry.RowKey)
                     i.glyphicon.glyphicon-zoom-in
                     | &nbsp;
                     | View Detailed Request Page

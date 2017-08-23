@@ -14,7 +14,7 @@ const async = require('async');
 function PermissionWorkflowEngine(team, approvalPackage) {
   this.team = team;
   this.request = approvalPackage.request;
-  this.user = approvalPackage.requestingUser;
+  // no longer appears to be used: this.user = approvalPackage.requestingUser;
   this.id = approvalPackage.id;
   this.typeName = 'Team Join';
 }
@@ -58,7 +58,7 @@ PermissionWorkflowEngine.prototype.performApprovalOperation = function (callback
 function RepoWorkflowEngine(team, approvalPackage) {
   this.team = team;
   this.request = approvalPackage.request;
-  this.user = approvalPackage.requestingUser;
+  // no longer appears to be used: this.user = approvalPackage.requestingUser;
   this.id = approvalPackage.id;
   this.typeName = 'Repository Create';
 }
@@ -256,36 +256,29 @@ router.use('/:requestid', function (req, res, next) {
   var requestid = req.params.requestid;
   const legacyUserContext = req.legacyUserContext;
   var dc = req.app.settings.dataclient;
+  const operations = req.app.settings.providers.operations;
   dc.getApprovalRequest(requestid, function (error, pendingRequest) {
     if (error) {
       return next(utils.wrapError(error, 'The pending request you are looking for does not seem to exist.'));
     }
-    var userHash = {};
-    userHash[pendingRequest.ghu] = pendingRequest.ghid;
-    var requestingUser = null;
-    legacyUserContext.getCompleteUsersFromUsernameIdHash(userHash,
-      function (error, users) {
-        if (!error && !users[pendingRequest.ghu]) {
-          error = new Error('Could not create an object to track the requesting user.');
-        }
+    operations.getAccountWithDetailsAndLink(pendingRequest.ghid, (getAccountError, requestingUserAccount) => {
+      if (getAccountError) {
+        return next(getAccountError);
+      }
+      const approvalPackage = {
+        request: pendingRequest,
+        requestingUser: requestingUserAccount,
+        id: requestid,
+      };
+      createRequestEngine(team, approvalPackage, function (error, engine) {
         if (error) {
           return next(error);
         }
-        requestingUser = users[pendingRequest.ghu];
-        var approvalPackage = {
-          request: pendingRequest,
-          requestingUser: requestingUser,
-          id: requestid,
-        };
-        createRequestEngine(team, approvalPackage, function (error, engine) {
-          if (error) {
-            return next(error);
-          }
-          req.legacyUserContext.addBreadcrumb(req, engine.typeName + ' Request');
-          req.approvalEngine = engine;
-          next();
-        });
+        req.legacyUserContext.addBreadcrumb(req, engine.typeName + ' Request');
+        req.approvalEngine = engine;
+        next();
       });
+    });
   });
 });
 

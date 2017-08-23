@@ -44,6 +44,7 @@ function waterfallCallback() {
 
 router.post('/', function (req, res, next) {
   const organization = req.organization;
+  const operations = req.app.settings.providers.operations;
   let displayHostname = req.hostname;
   const config = req.app.settings.runtimeConfig;
   if (organization.createRepositoriesOnGitHub) {
@@ -344,7 +345,7 @@ router.post('/', function (req, res, next) {
       if (isApprovalRequired == true) {
         return callback(null, args);
       }
-      getRequestApprovalPkg(args.requestId, legacyUserContext, dc, function (err, approvalPackage) {
+      getRequestApprovalPkg(args.requestId, legacyUserContext, dc, operations, function (err, approvalPackage) {
         if (err) {
           return callback(utils.wrapError(err,
             'A request authorization package could not be created at this time.'));
@@ -567,7 +568,8 @@ router.get('/', function (req, res, next) {
   const languages = req.app.settings.runtimeConfig.github.gitignore.languages;
   const config = req.app.settings.runtimeConfig;
   var orgName = org.name.toLowerCase();
-  const organization = req.app.settings.providers.operations.getOrganization(orgName);
+  const operations = req.app.settings.providers.operations;
+  const organization = operations.getOrganization(orgName);
   const createMetadata = organization.getRepositoryCreateMetadata();
   var highlightedTeams = organization.inner.settings.highlightedTeams;
   var allowPrivateRepos = organization.configuredOrganizationRepositoryTypes == 'publicprivate' || organization.configuredOrganizationRepositoryTypes == 'private';
@@ -670,30 +672,23 @@ function getApproverMembers(team, cb) {
   team.getMemberLinks(cb);
 }
 
-function getRequestApprovalPkg(requestId, legacyUserContext, dc, cb) {
+function getRequestApprovalPkg(requestId, legacyUserContext, dc, operations, cb) {
   dc.getApprovalRequest(requestId, function (error, pendingRequest) {
     if (error) {
       cb(utils.wrapError(error, 'The pending request you are looking for does not seem to exist.'), null);
     }
-    var userHash = {};
-    userHash[pendingRequest.ghu] = pendingRequest.ghid;
-    var requestingUser = null;
-    legacyUserContext.getCompleteUsersFromUsernameIdHash(userHash,
-      function (error, users) {
-        if (!error && !users[pendingRequest.ghu]) {
-          error = new Error('Could not create an object to track the requesting user.');
-        }
-        if (error) {
-          return cb(error);
-        }
-        requestingUser = users[pendingRequest.ghu];
-        var approvalPackage = {
-          request: pendingRequest,
-          requestingUser: requestingUser,
-          id: requestId,
-        };
-        cb(null, approvalPackage);
-      });
+    operations.getAccountWithDetailsAndLink(pendingRequest.ghid, (getAccountError, requestingUserAccount) => {
+      if (getAccountError) {
+        return cb(getAccountError);
+      }
+      requestingUser = users[pendingRequest.ghu];
+      var approvalPackage = {
+        request: pendingRequest,
+        requestingUser: requestingUserAccount,
+        id: requestId,
+      };
+      cb(null, approvalPackage);
+    });
   });
 }
 

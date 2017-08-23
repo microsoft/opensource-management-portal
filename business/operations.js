@@ -217,6 +217,27 @@ class Operations {
       callback);
   }
 
+  getLinkWithOverhead(id, options, callback) {
+    // This literally retrieves the cache of all links. Which is silly, but quick and easy for now.
+    if (!callback && typeof (options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    const self = this;
+    self.getLinks(options, (getLinksError, links) => {
+      if (getLinksError) {
+        return callback(getLinksError);
+      }
+      const reduced = links.filter(link => {
+        return link && link.ghid == id /* allow string comparisons */;
+      });
+      if (reduced.length > 1) {
+        return callback(new Error('Multiple links were present for the same GitHub user'));
+      }
+      return callback(null, reduced.length === 1 ? reduced[0] : false);
+    });
+  }
+
   getTeamsWithMembers(orgName, options, callback) {
     const cacheOptions = {};
     options = options || {};
@@ -344,6 +365,11 @@ class Operations {
     // TODO: Centralized "accounts" local store
     const entity = { id: id };
     return new Account(entity, this, getCentralOperationsToken.bind(null, this));
+  }
+
+  getAccountWithDetailsAndLink(id, callback) {
+    const account = this.getAccount(id);
+    return account.getDetailsAndLink(callback);
   }
 
   getAuthenticatedAccount(token, options, callback) {
