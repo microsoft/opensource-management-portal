@@ -257,7 +257,6 @@ router.get('/', function (req, res, next) {
 router.use('/:requestid', function (req, res, next) {
   var team = req.team2;
   var requestid = req.params.requestid;
-  const legacyUserContext = req.legacyUserContext;
   var dc = req.app.settings.dataclient;
   const operations = req.app.settings.providers.operations;
   dc.getApprovalRequest(requestid, function (error, pendingRequest) {
