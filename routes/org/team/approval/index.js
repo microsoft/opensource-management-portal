@@ -83,7 +83,6 @@ router.get('/setNote/:action', function (req, res) {
     action = 'approve';
   }
   const team2 = req.team2;
-  console.dir(team2);
   req.legacyUserContext.render(req, res, 'org/team/approveStatusWithNote', 'Record your comment for request ' + engine.id + ' (' + action + ')', {
     entry: engine.request,
     action: action,
