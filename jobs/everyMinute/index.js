@@ -3,14 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-/* eslint no-console: ["error", { allow: ["log"] }] */
+/* eslint no-console: ["error", { allow: ["log", "dir"] }] */
 
 'use strict';
-
-const moment = require('moment');
-
-const started = moment().utc();
-const startedString = started.format();
 
 const painlessConfigResolver = require('painless-config-resolver')();
 
