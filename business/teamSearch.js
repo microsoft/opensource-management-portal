@@ -45,10 +45,10 @@ TeamSearch.prototype.getPage = function(page) {
   return this;
 };
 
-function teamMatchesPhrase(repo, phrase) {
+function teamMatchesPhrase(team, phrase) {
   // Poor man's search, starting with just a raw includes search
   // Assumes that phrase is already lowercase to work
-  let string = ((repo.name || '') + (repo.description || '')).toLowerCase();
+  let string = ((team.name || '') + (team.description || '') + (team.id || '') + (team.slug || '')).toLowerCase();
   return string.includes(phrase);
 }
 
