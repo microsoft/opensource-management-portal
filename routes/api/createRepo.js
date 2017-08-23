@@ -35,7 +35,7 @@ const hardcodedClaEntities = [
 ];
 
 function createRepo(req, res, convergedObject, token, callback, doNotCallbackForSuccess) {
-  if (!req.organziation) {
+  if (!req.organization) {
     return callback(jsonError(new Error('No organization available in the route.'), 400));
   }
   const operations = req.app.settings.operations;

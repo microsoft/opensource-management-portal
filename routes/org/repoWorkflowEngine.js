@@ -168,7 +168,7 @@ var createAddRepositoryTask = function createAddRepoTask(organization, repoName,
 function createAddTemplateFilesTask(organization, repoName, templateName) {
   'use strict';
   const templatePath = path.join(__dirname, '../../data/templates/');
-  const [, operations] = this.organization.getLegacySystemObjects();
+  const [, operations] = organization.getLegacySystemObjects();
   const config = operations.config;
   const userName = config.github.user.initialCommit.username;
   const token = config.github.user.initialCommit.token;
@@ -181,14 +181,22 @@ function createAddTemplateFilesTask(organization, repoName, templateName) {
         repository.addCollaborator(userName, 'push', callback);
       },
 
-      function createDatasource(callback) {
+      function createDatasource() {
+        const args = Array.prototype.slice.call(arguments);
+        const callback = args.pop();
         const templateRoot = path.join(templatePath, templateName);
         recursiveReadDirectory(templateRoot, (error, fileNames) => {
           async.parallel(fileNames.map(absoluteFileName => {
             const fileName = path.relative(templateRoot, absoluteFileName);
-            return (cb) => {
-              fs.readFile(path.join(templatePath, templateName, fileName), 'utf8', (error, file) => {
-                cb(error, { path: fileName, content: file });
+            return next => {
+              fs.readFile(path.join(templatePath, templateName, fileName), (error, file) => {
+                const base64content = file.toString('base64');
+                // new Buffer(data).toString('base64')
+                next(error,
+                  {
+                    path: fileName,
+                    content: base64content,
+                  });
               });
             };
           }), callback);
@@ -198,11 +206,11 @@ function createAddTemplateFilesTask(organization, repoName, templateName) {
       function addTemplateFiles(datasource, callback) {
         const message = 'Initial commit';
         async.series(datasource.map(item => {
-          return (cb) => {
+          return next => {
             const createFileOptions = {
               alternateToken: token,
             };
-            repository.createFile(item.path, item.content, message, createFileOptions, cb);
+            repository.createFile(item.path, item.content, message, createFileOptions, next);
           };
         }), (error, result) => {
           if (!error) {
@@ -217,12 +225,12 @@ function createAddTemplateFilesTask(organization, repoName, templateName) {
       function removeCollaborator(result, callback) {
         repository.removeCollaborator(userName, callback);
       },
-    ], (error) => {
-      var message = `Initial commit of ${files.join(', ')} files to the ${repoName} repo succeeded.`;
+    ], error => {
+      const message = `Initial commit of ${files.join(', ')} files to the ${repoName} repo succeeded.`;
       if (error) {
         message = `Initial commit of template file(s) to the ${repoName} repo failed. An error: ${error.message}.`;
       }
-      var result = {
+      const result = {
         error: error,
         message: message,
       };
