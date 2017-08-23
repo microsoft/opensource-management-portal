@@ -109,7 +109,6 @@ router.get('/', function (req, res, next) {
 
   async.parallel({
     isLinkedUser: function (callback) {
-      var link = oss.entities.link;
       callback(null, link && link.ghid ? link : false);
     },
     overview: (callback) => {
