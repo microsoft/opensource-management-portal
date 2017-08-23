@@ -146,7 +146,7 @@ module.exports = (req, res, next) => {
     .then(() => {
       req.legacyUserContext.render(req, res, 'repos/', 'Repos', {
         organizations: isCrossOrg ? sortOrgs(operations.getOrganizations(operations.organizationNames)) : undefined,
-        organization: isCrossOrg ? undefined : req.org,
+        organization: isCrossOrg ? undefined : req.organization,
         search: search,
         filters: filters,
         query: {
