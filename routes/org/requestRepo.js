@@ -3,12 +3,16 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+//-----------------------------------------------------------------------------
+//
 // This file is no longer used in production
-// TODO: Remove this file once the right open source strategy is understood
+//
+//-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
 //
 // WARNING:
+//
 // This file is a nightmare. The repo creation process has been modernized
 // and this is a remnant of the earlier implementation that was modified a
 // few too many different ways.
@@ -26,9 +30,17 @@ const RepoWorkflowEngine = require('./RepoWorkflowEngine.js');
 const express = require('express');
 const router = express.Router();
 
-// INTERNAL NOTE:
-// requestRepo.js is heavily diverged between the public and private implementations.
-// Merge and commit with care.
+//-----------------------------------------------------------------------------
+//
+// August 2017
+//
+// THIS ROUTE AND FUNCTION DOES NOT WORK
+// THIS ROUTE AND FUNCTION DOES NOT WORK
+// THIS ROUTE AND FUNCTION DOES NOT WORK
+//
+// The code has been refactored. A lot.
+//
+//-----------------------------------------------------------------------------
 
 router.use(function (req, res, next) {
   req.legacyUserContext.addBreadcrumb(req, 'Request a new repo');
