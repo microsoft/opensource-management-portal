@@ -1,6 +1,6 @@
-# digests web job
+# digests job
 
-This WebJob generates a consolidated report across all configured GitHub organizations
+This job generates a consolidated report across all configured GitHub organizations
 every few hours.
 
 > The initial cron schedule is `0 5 0,4,10,16,22 * * *`. This is designed to help _prime the reports_ that are stored.

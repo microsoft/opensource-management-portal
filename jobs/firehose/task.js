@@ -36,7 +36,7 @@ module.exports = function runFirehoseTask(started, startedString, config) {
   const maxParallelism = config.webJob.firehose.parallelism ? parseInt(config.webJob.firehose.parallelism) : 50;
   const emptyQueueDelaySeconds = config.webJob.firehose.emptyQueueDelaySeconds ? parseInt(config.webJob.firehose.emptyQueueDelaySeconds) : 10;
 
-  console.log(`WebJob started ${startedString} and will run for ${runtimeSeconds}s with empty delays of ${emptyQueueDelaySeconds}s`);
+  console.log(`Job started ${startedString} and will run for ${runtimeSeconds}s with empty delays of ${emptyQueueDelaySeconds}s`);
 
   const app = require('../../app');
   config.skipModules = new Set([

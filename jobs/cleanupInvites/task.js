@@ -18,7 +18,7 @@ const maxParallelism = 1;
 const defaultMaximumInvitationAgeDays = 7;
 
 module.exports = function run(started, startedString, config) {
-  console.log(`WebJob started ${startedString}`);
+  console.log(`Job started ${startedString}`);
 
   const app = require('../../app');
   config.skipModules = new Set([
