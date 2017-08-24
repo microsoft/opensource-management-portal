@@ -5,7 +5,7 @@
 
 'use strict';
 
-module.exports = graphApi => {
+module.exports = () => {
   // Useful information to help understand which CI/CD pipeline the app came from
   const packageJson = require('../package.json');
   const continuousDeployment = packageJson.continuousDeployment || {};

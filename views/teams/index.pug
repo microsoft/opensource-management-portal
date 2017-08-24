@@ -140,7 +140,7 @@ block content
       .col-md-3.col-md-offset-1
         div(style='margin-left:12px')
 
-          if orgs
+          if organizations
             h4 Need to create a team?
             p Any organization member can create a new team directly on the GitHub.com site.
 
@@ -148,8 +148,8 @@ block content
 
             h4 Organizations
             ul.list-unstyled
-              each org in orgs
+              each oneOrganization in organizations
                 li(style='margin-bottom:8px')
                   a.btn.btn-muted-more.btn-sm(
-                    href='/' + org.name + '/teams'
-                  )= org.name
+                    href='/' + oneOrganization.name + '/teams'
+                  )= oneOrganization.name

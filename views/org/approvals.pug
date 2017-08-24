@@ -17,13 +17,11 @@ block content
             small Permission Request
           div.row
             div.col-md-5.col-lg-5
-              form(method='post', action='/' + entry._teamInstance.org.name + '/teams/' + entry._teamInstance.name + '/approvals/' + entry.RowKey)
+              form(method='post', action='/' + entry._teamInstance.organization.name + '/teams/' + entry._teamInstance.name + '/approvals/' + entry.RowKey)
                 p
                   //-if entry.issue
-                  //- NOTE: Commenting out GitHub links with approval repos, since they are being deprecated internally and this is a quick fix
-                    a.btn.btn-sm.btn-muted(href='https://github.com/' + entry._teamInstance.org.name + '/' + entry._teamInstance.org.getWorkflowRepository().name + '/issues/' + entry.issue, target='_new')= entry.issue
-                    | &nbsp;
-                  a.btn.btn-sm.btn-muted(href='/' + entry._teamInstance.org.name + '/teams/' + entry._teamInstance.name + '/approvals/' + entry.RowKey)
+                  //- NOTE: Commenting out GitHub links with approval repos, since they have been deprecated
+                  a.btn.btn-sm.btn-muted(href='/' + entry._teamInstance.organization.name + '/teams/' + entry._teamInstance.name + '/approvals/' + entry.RowKey)
                     i.glyphicon.glyphicon-zoom-in
                     | &nbsp;
                     | View Detailed Request Page
@@ -67,9 +65,7 @@ block content
           div.row(style='margin-top:24px')
             div.col-md-5.col-lg-5
               //-if myRequest._teamInstance && myRequest.issue
-                //- NOTE: Commenting out GitHub links with approval repos, since they are being deprecated internally and this is a quick fix
-                p
-                  a.btn.btn-sm.btn-muted(href='https://github.com/' + myRequest._teamInstance.org.name + '/' + myRequest._teamInstance.org.getWorkflowRepository().name + '/issues/' + myRequest.issue, target='_new') Tracking Issue ##{myRequest.issue}
+                //- NOTE: Commenting out GitHub links with approval repos, since they are deprecated
               form(method='post', action='/approvals/' + myRequest.RowKey + '/cancel')
                 p
                   input.btn.btn-sm.btn-default(type='submit', value='Cancel my request')

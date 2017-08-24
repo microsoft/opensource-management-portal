@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-/*eslint no-console: ["error", { allow: ["log", "warn", "error", "dir"] }] */
+/*eslint no-console: ["error", { allow: ["log", "error", "warn", "dir"] }] */
 
 'use strict';
 
@@ -141,7 +141,7 @@ module.exports = function init(app, express, rootdir, config, configurationError
       };
       new DataClient(dataClientOptions, function (error, dcInstance) {
         dc = dcInstance;
-        debug('Azure Storage ready');
+        debug(`Azure Storage ready: ${dc.options.partitionKey} ${dc.options.linksTableName}`);
         providers.dataClient = dc;
         if (error) {
           return cb(error);

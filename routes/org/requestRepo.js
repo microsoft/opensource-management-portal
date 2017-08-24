@@ -3,8 +3,25 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+//-----------------------------------------------------------------------------
+//
 // This file is no longer used in production
-// TODO: Remove this file once the right open source strategy is understood
+//
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+//
+// WARNING:
+//
+// This file is a nightmare. The repo creation process has been modernized
+// and this is a remnant of the earlier implementation that was modified a
+// few too many different ways.
+//
+// With the latest refactoring to remove the 'legacy' parallel source code
+// for many GitHub operations, this code will _no longer work_ without
+// a little more effort.
+//
+//-----------------------------------------------------------------------------
 
 const async = require('async');
 const utils = require('../../utils');
@@ -13,12 +30,20 @@ const RepoWorkflowEngine = require('./RepoWorkflowEngine.js');
 const express = require('express');
 const router = express.Router();
 
-// INTERNAL NOTE:
-// requestRepo.js is heavily diverged between the public and private implementations.
-// Merge and commit with care.
+//-----------------------------------------------------------------------------
+//
+// August 2017
+//
+// THIS ROUTE AND FUNCTION DOES NOT WORK
+// THIS ROUTE AND FUNCTION DOES NOT WORK
+// THIS ROUTE AND FUNCTION DOES NOT WORK
+//
+// The code has been refactored. A lot.
+//
+//-----------------------------------------------------------------------------
 
 router.use(function (req, res, next) {
-  req.oss.addBreadcrumb(req, 'Request a new repo');
+  req.legacyUserContext.addBreadcrumb(req, 'Request a new repo');
   next();
 });
 
@@ -30,12 +55,12 @@ function waterfallCallback() {
 }
 
 router.post('/', function (req, res, next) {
-  var org = req.org;
-  var oss = org.oss;
-  var displayHostname = req.hostname;
+  const organization = req.organization;
+  const operations = req.app.settings.providers.operations;
+  let displayHostname = req.hostname;
   const config = req.app.settings.runtimeConfig;
-  if (org.inner.settings.createReposDirect) {
-    const directUrl = `https://github.com/organizations/${org.name}/repositories/new`;
+  if (organization.createRepositoriesOnGitHub) {
+    const directUrl = `https://github.com/organizations/${organization.name}/repositories/new`;
     const directError = utils.wrapError(null, 'This organization does not allow repository requests through this portal. Please use GitHub.com directly.', true);
     directError.fancyLink = {
       title: 'Create a repo on GitHub.com',
@@ -43,7 +68,7 @@ router.post('/', function (req, res, next) {
     };
     return next(directError);
   }
-  var orgHasCla = false;
+  let orgHasCla = false;
   try {
     const claTeams = org.getLegacyClaTeams(true);
     orgHasCla = req.body.claEntity && claTeams[req.body.claEntity];
@@ -87,10 +112,10 @@ router.post('/', function (req, res, next) {
   }
   const mailAddressProvider = req.app.settings.mailAddressProvider;
 
-  // Match the desired repo visibility to that which is supported in this org.
-  // If no type is given, default to the best choice for the current org.
+  // Match the desired repo visibility to that which is supported in this organization.
+  // If no type is given, default to the best choice for the current organization.
   var typeMap = { public: ['public'], private: ['private'], publicprivate: ['private', 'public'] };
-  var allowedTypes = typeMap[org.inner.settings.type.toLowerCase()];
+  var allowedTypes = typeMap[organization.configuredOrganizationRepositoryTypes.toLowerCase()];
   if (!allowedTypes)
     return next(new Error('Service not configured with allowed repo types'));
   var repoType = req.body.visibility || allowedTypes[0];
@@ -125,26 +150,30 @@ router.post('/', function (req, res, next) {
   if (!foundAdminTeam) {
     return next(utils.wrapError(null, 'You must select an admin team so that the repo can be written to and managed.', true));
   }
-  var dc = req.app.settings.dataclient;
-  var team = org.getRepoApproversTeam(false);
-  var template = 'other';
+  const dc = req.app.settings.dataclient;
+  const team2 = organization.repositoryApproversTeam;
+  let template = 'other';
   if (req.body.license && req.body.license.toLowerCase() === 'mit') {
     template = 'mit';
   }
-  var approvalRequest = {
-    ghu: oss.usernames.github,
-    ghid: oss.id.github,
+  const legacyUserContext = req.legacyUserContext;
+  const username = legacyUserContext.usernames.github;
+  const id = legacyUserContext.id.github;
+  const contextEmailIfAny = legacyUserContext.modernUser().contactEmail();
+  let approvalRequest = {
+    ghu: username,
+    ghid: id,
     justification: req.body.justification,
     requested: ((new Date()).getTime()).toString(),
     active: false,
     teamid: team == null ? -1 : team.id,
     type: 'repo',
-    org: org.name.toLowerCase(),
+    org: organization.name.toLowerCase(),
     repoName: req.body.name,
     repoDescription: req.body.description,
     repoUrl: req.body.url,
     repoVisibility: req.body.visibility,
-    email: oss.modernUser().contactEmail(),
+    email: contextEmailIfAny,
     license: req.body.license,
     approvalType: req.body.approvalType,
     approvalUrl: req.body.approvalUrl,
@@ -162,7 +191,7 @@ router.post('/', function (req, res, next) {
   }
   var workflowRepository = null;
   try {
-    workflowRepository = issueProviderInUse ? org.getWorkflowRepository() : null;
+    workflowRepository = issueProviderInUse ? organization.legacyNotificationsRepository : null;
   } catch (noWorkflowRepoError) {
     issueProviderInUse = false;
   }
@@ -191,7 +220,7 @@ router.post('/', function (req, res, next) {
 
     // get the user's e-mail address
     function (callback) {
-      const upn = oss.modernUser().contactEmail();
+      const upn = contextEmailIfAny;
       mailAddressProvider.getAddressFromUpn(upn, (resolveError, mailAddress) => {
         if (resolveError) {
           return callback(resolveError);
@@ -267,7 +296,7 @@ router.post('/', function (req, res, next) {
 
     //Step 3 - Create an issue in notification repository.
     issueProviderInUse === false ? waterfallCallback : function (args, callback) {
-      var body = 'Hi,\n' + oss.usernames.github + ' has requested a new repo for the ' + org.name + ' ' +
+      var body = 'Hi,\n' + username + ' has requested a new repo for the ' + organization.name + ' ' +
         'organization.' + '\n\n' +
         args.consolidatedMaintainers + ': Can a repo approver for this org review the request now at ' + '\n' +
         'https://' + displayHostname + '/approvals/' + args.requestId + '?\n\n' +
@@ -275,7 +304,7 @@ router.post('/', function (req, res, next) {
         '<small>If you use this issue to comment with the team maintainers(s), please understand that your comment will be visible by all members of the organization.</small>';
 
       workflowRepository.createIssue({
-        title: 'Request to create a repo - ' + oss.usernames.github,
+        title: 'Request to create a repo - ' + username,
         body: body,
       }, function (error, issue) {
         if (error) {
@@ -283,7 +312,7 @@ router.post('/', function (req, res, next) {
           return;
         }
         if (isApprovalRequired == true) {
-          req.oss.saveUserAlert(req, 'Your repo request has been submitted and will be reviewed by one of the repo approvers for the org for naming consistency, business justification, etc. Thanks!', 'Repo Request Submitted', 'success');
+          req.legacyUserContext.saveUserAlert(req, 'Your repo request has been submitted and will be reviewed by one of the repo approvers for the org for naming consistency, business justification, etc. Thanks!', 'Repo Request Submitted', 'success');
         }
         args.issue = issue;
         callback(null, args);
@@ -328,13 +357,13 @@ router.post('/', function (req, res, next) {
       if (isApprovalRequired == true) {
         return callback(null, args);
       }
-      getRequestApprovalPkg(args.requestId, oss, dc, function (err, approvalPackage) {
+      getRequestApprovalPkg(args.requestId, legacyUserContext, dc, operations, function (err, approvalPackage) {
         if (err) {
           return callback(utils.wrapError(err,
             'A request authorization package could not be created at this time.'));
         }
         args.approvalPackage = approvalPackage;
-        repoWorkflow = new RepoWorkflowEngine(null, org, approvalPackage);
+        repoWorkflow = new RepoWorkflowEngine(null, organization, approvalPackage);
         repoWorkflow.performApprovalOperation(function (err, newRepoDetails) {
           if (err) {
             err.detailed = 'Repo creation request is submitted but there was an error creating a repo.';
@@ -507,9 +536,9 @@ router.post('/', function (req, res, next) {
         active: false,
         repoId: createdNewRepoDetails.id,
         decisionTime: (new Date().getTime()).toString(),
-        decisionBy: oss.usernames.github,
+        decisionBy: username,
         decisionNote: args.issueCloseComment,
-        decisionEmail: oss.modernUser().contactEmail(),
+        decisionEmail: contextEmailIfAny,
       };
       dc.updateApprovalRequest(args.requestId, requestUpdates, function (err) {
         if (err) {
@@ -526,15 +555,15 @@ router.post('/', function (req, res, next) {
       }
       else {
         if (isApprovalRequired == true) {
-          oss.render(req, res, 'message', 'Repo request submitted', {
+          req.legacyUserContext.render(req, res, 'message', 'Repo request submitted', {
             messageTitle: req.body.name.toUpperCase() + ' REPO',
             message: 'Your request has been submitted for review to the approvers group for the requested organization.'
           });
         } else {
           if (createdNewRepoDetails && createdNewRepoDetails.name) {
-            req.oss.saveUserAlert(req, `Your repo "${createdNewRepoDetails.name}" has been created.`, 'New GitHub repository created', 'success');
+            req.legacyUserContext.saveUserAlert(req, `Your repo "${createdNewRepoDetails.name}" has been created.`, 'New GitHub repository created', 'success');
           }
-          oss.render(req, res, 'message', 'Repo request approved', {
+          req.legacyUserContext.render(req, res, 'message', 'Repo request approved', {
             messageTitle: req.body.name.toUpperCase() + ' REPO',
             message: 'Your request has been completed and the repo created.',
             messageLink: createdNewRepoDetails.html_url,
@@ -550,30 +579,30 @@ router.post('/', function (req, res, next) {
 router.get('/', function (req, res, next) {
   const languages = req.app.settings.runtimeConfig.github.gitignore.languages;
   const config = req.app.settings.runtimeConfig;
-  var org = req.org;
   var orgName = org.name.toLowerCase();
-  const organization = req.app.settings.providers.operations.getOrganization(orgName);
+  const operations = req.app.settings.providers.operations;
+  const organization = operations.getOrganization(orgName);
   const createMetadata = organization.getRepositoryCreateMetadata();
-  var highlightedTeams = org.inner.settings.highlightedTeams;
-  var allowPrivateRepos = org.inner.settings.type == 'publicprivate' || org.inner.settings.type == 'private';
-  var allowPublicRepos = org.inner.settings.type == 'publicprivate' || org.inner.settings.type == 'public';
-  if (org.inner.settings.createReposDirect) {
-    return org.oss.render(req, res, 'org/requestRepo', 'Request a a new repository on GitHub.com', {
+  var highlightedTeams = organization.inner.settings.highlightedTeams;
+  var allowPrivateRepos = organization.configuredOrganizationRepositoryTypes == 'publicprivate' || organization.configuredOrganizationRepositoryTypes == 'private';
+  var allowPublicRepos = organization.configuredOrganizationRepositoryTypes == 'publicprivate' || organization.configuredOrganizationRepositoryTypes == 'public';
+  if (organization.createRepositoriesOnGitHub) {
+    return req.legacyUserContext.render(req, res, 'org/requestRepo', 'Request a a new repository on GitHub.com', {
       orgName: orgName,
       orgConfig: org.inner.settings,
       org: org,
     });
   }
   var claTeams = null;
-  var orgHasCla = org.isLegacyClaAutomationAvailable();
+  var orgHasCla = organization.isLegacyClaAutomationAvailable();
   try {
-    claTeams = org.getLegacyClaTeams(true);
+    claTeams = organization.getLegacyClaTeams(true);
   } catch (noClaError) { /* ignored */ }
-  org.getTeams(false /* do not use cached */, function (error, teams) {
+  organization.getTeams(false /* do not use cached */, function (error, teams) {
     if (error) {
       return next(utils.wrapError(error, 'Could not read the entire list of read (pull) teams from GitHub. Please try again later or report this error if you continue seeing it.'));
     }
-    var team = org.getRepoApproversTeam(false);
+    const team2 = organization.repositoryApproversTeam;
     getApproverMembers(team, function (error, approvers) {
       if (error) {
         return next(new Error('Could not retrieve the repo approvers for ' + orgName));
@@ -594,7 +623,7 @@ router.get('/', function (req, res, next) {
           selectTeams.push(ht);
         }
       }
-      var allMembersTeam = org.getAllMembersTeam();
+      const allMembersTeam = organization.invitationTeam;
       ++featuredTeamsCount;
       selectTeams.push({
         number: i++,
@@ -628,7 +657,7 @@ router.get('/', function (req, res, next) {
         }
       }
 
-      org.oss.render(req, res, 'org/requestRepo', 'Request a a new repository', {
+      req.legacyUserContext.render(req, res, 'org/requestRepo', 'Request a a new repository', {
         orgName: orgName,
         orgConfig: org.inner.settings,
         allowPrivateRepos: allowPrivateRepos,
@@ -655,30 +684,23 @@ function getApproverMembers(team, cb) {
   team.getMemberLinks(cb);
 }
 
-function getRequestApprovalPkg(requestId, oss, dc, cb) {
+function getRequestApprovalPkg(requestId, legacyUserContext, dc, operations, cb) {
   dc.getApprovalRequest(requestId, function (error, pendingRequest) {
     if (error) {
       cb(utils.wrapError(error, 'The pending request you are looking for does not seem to exist.'), null);
     }
-    var userHash = {};
-    userHash[pendingRequest.ghu] = pendingRequest.ghid;
-    var requestingUser = null;
-    oss.getCompleteUsersFromUsernameIdHash(userHash,
-      function (error, users) {
-        if (!error && !users[pendingRequest.ghu]) {
-          error = new Error('Could not create an object to track the requesting user.');
-        }
-        if (error) {
-          return cb(error);
-        }
-        requestingUser = users[pendingRequest.ghu];
-        var approvalPackage = {
-          request: pendingRequest,
-          requestingUser: requestingUser,
-          id: requestId,
-        };
-        cb(null, approvalPackage);
-      });
+    operations.getAccountWithDetailsAndLink(pendingRequest.ghid, (getAccountError, requestingUserAccount) => {
+      if (getAccountError) {
+        return cb(getAccountError);
+      }
+      requestingUser = users[pendingRequest.ghu];
+      var approvalPackage = {
+        request: pendingRequest,
+        requestingUser: requestingUserAccount,
+        id: requestId,
+      };
+      cb(null, approvalPackage);
+    });
   });
 }
 

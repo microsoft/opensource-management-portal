@@ -48,7 +48,7 @@ router.use((req, res, next) => {
     insights: req.insights,
   };
   new OpenSourceUserContext(options, (error, instance) => {
-    req.oss = instance;
+    req.legacyUserContext = instance;
     if (error && (error.tooManyLinks === true || error.anotherAccount === true)) {
       // The only URL permitted in this state is the cleanup endpoint and special multiple-account endpoint
       if (req.url === '/link/cleanup' || req.url === '/link/enableMultipleAccounts' || req.url.startsWith('/placeholder')) {
@@ -76,8 +76,8 @@ router.use(usernameConsistency());
 // for users of the portal before the switch to supporting primary authentication
 // of a type other than GitHub.
 router.use((req, res, next) => {
-  if (req.app.settings.runtimeConfig.authentication.scheme === 'aad' && req.oss && req.oss.modernUser()) {
-    var link = req.oss.modernUser().link;
+  if (req.legacyUserContext && req.legacyUserContext.modernUser()) {
+    const link = req.legacyUserContext.modernUser().link;
     if (link && !link.githubToken) {
       return utils.storeOriginalUrlAsReferrer(req, res, '/link/reconnect', 'no GitHub token or not a link while authenticating inside of index-authenticated.js');
     }
@@ -87,40 +87,31 @@ router.use((req, res, next) => {
 
 router.get('/', function (req, res, next) {
   const operations = req.app.settings.providers.operations;
-  var oss = req.oss;
-  var link = req.oss.entities.link;
+  const link = req.legacyUserContext.entities.link;
   var config = req.app.settings.runtimeConfig;
   var onboarding = req.query.onboarding !== undefined;
   // var allowCaching = onboarding ? false : true;
 
   if (!link) {
-    if (config.authentication.scheme === 'github' && req.user.azure === undefined ||
-      config.authentication.scheme === 'aad' && req.user.github === undefined) {
-      return oss.render(req, res, 'welcome', 'Welcome');
+    if (req.user.github === undefined) {
+      return req.legacyUserContext.render(req, res, 'welcome', 'Welcome');
     }
-    if (config.authentication.scheme === 'github' && req.user.azure && req.user.azure.oid ||
-      config.authentication.scheme === 'aad' && req.user.github && req.user.github.id) {
+    if (req.user.github && req.user.github.id) {
       return res.redirect('/link');
     }
     return next(new Error('This account is not yet linked, but a workflow error is preventing further progress. Please report this issue. Thanks.'));
   }
 
-  // They're changing their corporate identity (rare, often just service accounts)
-  if (config.authentication.scheme === 'github' && link && link.aadupn && req.user.azure && req.user.azure.username && req.user.azure.username.toLowerCase() !== link.aadupn.toLowerCase()) {
-    return res.redirect('/link/update');
-  }
-
   // var twoFactorOff = null;
   var warnings = [];
   var activeOrg = null;
+  const id = req.legacyUserContext.id.github;
 
   async.parallel({
     isLinkedUser: function (callback) {
-      var link = oss.entities.link;
-      callback(null, link && link.ghu ? link : false);
+      callback(null, link && link.ghid ? link : false);
     },
     overview: (callback) => {
-      const id = oss.id.github;
       if (!id) {
         return callback();
       }
@@ -129,7 +120,7 @@ router.get('/', function (req, res, next) {
     },
     isAdministrator: function (callback) {
       callback(null, false);
-      // oss.isAdministrator(callback); // CONSIDER: Re-implement isAdministrator
+      // legacyUserContext.isAdministrator(callback); // CONSIDER: Re-implement isAdministrator
     }
   },
     function (error, results) {
@@ -159,15 +150,16 @@ router.get('/', function (req, res, next) {
       }
 
       if (results.twoFactorOff === true) {
-        var tempOrgNeedToFix = oss.org();
-        return res.redirect(tempOrgNeedToFix.baseUrl + 'security-check');
+        // TODO: This would redirect to the organization /security-check endpoint
+        // return res.redirect(tempOrgNeedToFix.baseUrl + 'security-check');
+        // FIX: Reinstate two-factor off functionality
       }
       var render = function (results) {
         if (warnings && warnings.length > 0) {
-          req.oss.saveUserAlert(req, warnings.join(', '), 'Some organizations or memberships could not be loaded', 'danger');
+          req.legacyUserContext.saveUserAlert(req, warnings.join(', '), 'Some organizations or memberships could not be loaded', 'danger');
         }
         var pageTitle = results && results.userOrgMembership === false ? 'My GitHub Account' : config.brand.companyName + ' - ' + config.brand.appName;
-        oss.render(req, res, 'index', pageTitle, {
+        req.legacyUserContext.render(req, res, 'index', pageTitle, {
           accountInfo: results,
           onboarding: onboarding,
           onboardingPostfixUrl: onboarding === true ? '?onboarding=' + config.brand.companyName : '',

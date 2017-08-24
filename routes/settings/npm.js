@@ -19,7 +19,7 @@ router.use((req, res, next) => {
 });
 
 router.get('/', (req, res) => {
-  req.oss.render(req, res, 'settings/npm', 'NPM', {
+  req.legacyUserContext.render(req, res, 'settings/npm', 'NPM', {
     npm: req.npm,
   });
 });
@@ -51,12 +51,12 @@ router.post('/', (req, res, next) => {
     const link = req.link;
     link.npm = username;
     link.npmValidated = new Date();
-    req.oss.modernUser().updateLink(link, (error) => {
+    req.legacyUserContext.modernUser().updateLink(link, (error) => {
       if (error) {
         return next(error);
       }
-      req.oss.saveUserAlert(req, `Your NPM account, ${username}, has been validated and saved.`, 'NPM', 'success');
-      req.oss.invalidateLinkCache(() => {
+      req.legacyUserContext.saveUserAlert(req, `Your NPM account, ${username}, has been validated and saved.`, 'NPM', 'success');
+      req.legacyUserContext.invalidateLinkCache(() => {
         return res.redirect('/settings/npm');
       });
     });
@@ -69,12 +69,14 @@ router.post('/clear', (req, res, next) => {
   linkAuthorizationsToDrop.forEach((property) => {
     delete link[property];
   });
-  req.oss.modernUser().updateLink(link, (error) => {
+  const dataClient = req.app.settings.providers.dataClient;
+  const id = req.legacyUserContext.id.github;
+  dataClient.updateLink(id, link, error => {
     if (error) {
       return next(error);
     }
-    req.oss.saveUserAlert(req, 'Your NPM information has been removed.', 'NPM', 'success');
-    req.oss.invalidateLinkCache(() => {
+    req.legacyUserContext.saveUserAlert(req, 'Your NPM information has been removed.', 'NPM', 'success');
+    req.legacyUserContext.invalidateLinkCache(() => {
       return res.redirect('/settings/npm');
     });
   });

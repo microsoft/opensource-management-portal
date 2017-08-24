@@ -42,7 +42,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "WebJob Firehose",
+      "name": "Job: Firehose",
       "program": "${workspaceRoot}/jobs/firehose/index.js",
       "cwd": "${workspaceRoot}",
       "env": {
@@ -53,7 +53,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "WebJob Invitation Cleanup",
+      "name": "Job: Invitation Cleanup",
       "program": "${workspaceRoot}/jobs/cleanupInvites/index.js",
       "cwd": "${workspaceRoot}",
       "env": {
@@ -64,7 +64,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "WebJob Permissions",
+      "name": "Job: Permissions",
       "program": "${workspaceRoot}/jobs/permissions/index.js",
       "cwd": "${workspaceRoot}",
       "env": {

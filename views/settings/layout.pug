@@ -16,8 +16,12 @@ block content
         .panel.panel-default
           .panel-heading Authorizations & accounts
           .list-group
-            a.list-group-item(href='/settings/authorizations', class={active: view === 'settings/authorizations'}) GitHub
+            a.list-group-item(href='/settings/authorizations', class={active: view === 'settings/authorizations'}) GitHub authorizations
             a.list-group-item(href='/settings/npm', class={active: view === 'settings/npm'}) NPM
+        .panel.panel-default
+          .panel-heading Requests & approvals
+          .list-group
+            a.list-group-item(href='/approvals', class={active: view === 'settings/approvals'}) Active requests
         .panel.panel-default
           .panel-heading Reports
           .list-group

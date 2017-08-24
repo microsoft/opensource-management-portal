@@ -15,7 +15,7 @@ block content
       form(method='post')
         input.btn.btn-primary(type='submit', value='Join')
         | &nbsp;
-        a.btn.btn-default(href=team.org.baseUrl + 'teams') Cancel
+        a.btn.btn-default(href=team.organization.baseUrl + 'teams') Cancel
     else
       h1
         | Join Request&nbsp;
@@ -30,10 +30,11 @@ block content
           for teamMember in teamMaintainers
             span.person-tile
               if teamMember.avatar()
-                img(alt=teamMember.login, src=teamMember.avatar('80'), style='margin-right:10px;width:20px;height:20px', width=20, height=20)
+                img(alt=teamMember.login, src=teamMember.avatar(), style='margin-right:0px;width:34px;height:34px', width=20, height=20)
               a.btn.btn-sm.btn-muted(href='https://github.com/' + teamMember.login, title=teamMember.id, target='_new')= teamMember.login
-              if teamMember.contactEmail()
-                a.btn.btn-sm.btn-muted-more(href='mailto:' + teamMember.contactEmail())= teamMember.contactName()
+              if teamMember.contactEmail
+                - var teamMemberMailValue = typeof(teamMember.contactEmail) === 'function' ? teamMember.contactEmail() : teamMember.contactEmail;
+                a.btn.btn-sm.btn-muted-more(href='mailto:' + teamMemberMailValue)= teamMemberMailValue
       form(method='post')
         h4 Context & Business Justification
         p Please provide context for the approvers, including your business justification and any context they may need. Did someone suggest that you join the team?
@@ -42,4 +43,4 @@ block content
         p
           input.btn.btn-primary(type='submit', value='Submit Team Access Request')
           | &nbsp;
-          a.btn.btn-default(href=team.org.baseUrl + 'teams') Cancel
+          a.btn.btn-default(href=team.organization.baseUrl + 'teams') Cancel

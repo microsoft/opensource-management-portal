@@ -13,11 +13,9 @@ const utils = require('../utils');
 router.use('/:orgName', function (req, res, next) {
   // This middleware contains both the original GitHub operations types
   // as well as the newer implementation. In time this will peel apart.
-  const oss = req.oss;
   const orgName = req.params.orgName;
   const operations = req.app.settings.operations;
   try {
-    req.org = oss.org(orgName);
     req.organization = operations.getOrganization(orgName);
     return next();
   } catch (ex) {

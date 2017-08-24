@@ -23,12 +23,15 @@ function assignKnownFields(self, entity, type, primaryProperties, secondaryPrope
     Object.assign(self.otherFields, otherSet);
   }
 
-  /*
   let remainingKeys = _.keys(copy);
   if (remainingKeys.length > 0) {
-    console.warn(`Remaining ${type} entity properties: ${remainingKeys.length}`);
+    if (!self.extraFields) {
+      self.extraFields = {};
+    }
+    remainingKeys.forEach(key => {
+      self.extraFields[key] = copy[key];
+    });
   }
-  */
 }
 
 function createInstancesCallback(self, createMethod, callback) {

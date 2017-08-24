@@ -12,6 +12,8 @@ const Collaborator = require('./collaborator');
 const RepositoryPermission = require('./repositoryPermission');
 const TeamPermission = require('./teamPermission');
 
+const legacyClaIntegration = require('./legacyClaIntegration');
+
 const githubEntityClassification = require('../data/github-entity-classification.json');
 const repoPrimaryProperties = githubEntityClassification.repo.keep;
 const repoSecondaryProperties = githubEntityClassification.repo.strip;
@@ -184,6 +186,78 @@ class Repository {
       common.createInstancesCallback(this, collaboratorPermissionFromEntity, callback));
   }
 
+  addCollaborator(username, permission, callback) {
+    if (typeof permission == 'function') {
+      callback = permission;
+      permission = 'pull';
+    }
+    const [github, token] = getGitHubClient(this);
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      username: username,
+      permission: permission,
+    };
+    // CONSIDER: If status code 404 on return, the username does not exist on GitHub as entered
+    github.post(token, 'repos.addCollaborator', parameters, callback);
+  }
+
+  removeCollaborator(username, callback) {
+    const [github, token] = getGitHubClient(this);
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      username: username,
+    };
+    github.post(token, 'repos.removeCollaborator', parameters, callback);
+  }
+
+  delete(callback) {
+    const [github, token] = getGitHubClient(this);
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+    };
+    github.post(token, 'repos.delete', parameters, callback);
+  }
+
+  createFile(path, content, commitMessage, options, callback) {
+    if (!callback && typeof (options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    options = options || {};
+    const [github, token] = getGitHubClient(this);
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      path: path,
+      message: commitMessage,
+      content: content,
+    };
+    if (options.branch) {
+      parameters.branch = options.branch;
+    }
+    if (options.committer) {
+      parameters.committer = options.committer;
+    }
+    let createFileToken = options.alternateToken || token;
+    github.post(createFileToken, 'repos.createFile', parameters, callback);
+  }
+
+  enableLegacyClaAutomation(options, callback) {
+    legacyClaIntegration.enable(this, options, callback);
+  }
+
+  hasLegacyClaAutomation(callback) {
+    legacyClaIntegration.has(this, callback);
+  }
+
+  getLegacyClaSettings(callback) {
+    const operations = _private(this).operations;
+    legacyClaIntegration.getCurrentSettings(operations, this, callback);
+  }
+
   setTeamPermission(teamId, newPermission, callback) {
     const [github, token] = getGitHubClient(this);
     const options = {
@@ -214,6 +288,45 @@ class Repository {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     return operations.github.call(token, 'repos.getHooks', parameters, cacheOptions, callback);
+  }
+
+  deleteWebhook(webhookId, callback) {
+    const [github, token] = getGitHubClient(this);
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      id: webhookId,
+    };
+    github.post(token, 'repos.deleteHook', parameters, callback);
+  }
+
+  createWebhook(options, callback) {
+    const [github, token] = getGitHubClient(this);
+
+    delete options.owner;
+    delete options.repo;
+
+    const parameters = Object.assign({
+      owner: this.organization.name,
+      repo: this.name,
+    }, options);
+
+    // Smart defaults: create an active JSON web hook to the 'url' option
+    if (!options.name) {
+      parameters.name = 'web';
+    }
+    if (options.active === undefined) {
+      parameters.active = true;
+    }
+    if (options.url && !options.config) {
+      delete parameters.url;
+      parameters.config = {
+        url: options.url,
+        content_type: 'json',
+      };
+    }
+
+    github.post(token, 'repos.createHook', parameters, callback);
   }
 
   getTeamPermissions(cacheOptions, callback) {

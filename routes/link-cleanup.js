@@ -59,7 +59,7 @@ router.use((req, res, next) => {
 });
 
 function renderChangeAccountPage(req, res, link) {
-  req.oss.render(req, res, 'removeothergithubaccount', 'Exiting GitHub account found', {
+  req.legacyUserContext.render(req, res, 'removeothergithubaccount', 'Exiting GitHub account found', {
     link: link,
     confirming: req.body.unlink,
     hideGitHubAccount: true,
@@ -76,7 +76,7 @@ function renderCleanupPage(req, res, idToConfirm, links) {
     }
     twoColumns[i % 2].push(links[i]);
   }
-  req.oss.render(req, res, 'multiplegithubaccounts', 'GitHub Cleanup', {
+  req.legacyUserContext.render(req, res, 'multiplegithubaccounts', 'GitHub Cleanup', {
     linksForCleanupByColumn: twoColumns,
     numberToRemove: req.linksForCleanup.length - 1,
     confirming: idToConfirm,
@@ -122,7 +122,7 @@ router.post('/', (req, res, next) => {
     if (remainingLinks.length > 1) {
       renderCleanupPage(req, res, null, remainingLinks);
     } else {
-      req.oss.saveUserAlert(req, link.ghu + ' has been unlinked. You now have just one GitHub account link.', 'Link cleanup complete', 'success');
+      req.legacyUserContext.saveUserAlert(req, link.ghu + ' has been unlinked. You now have just one GitHub account link.', 'Link cleanup complete', 'success');
       res.redirect('/');
     }
   });

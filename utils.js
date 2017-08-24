@@ -101,46 +101,6 @@ exports.wrapError = function (error, message, userIntendedMessage) {
 };
 
 // ----------------------------------------------------------------------------
-// Retrieves all pages of a GitHub (octonode) API endpoint by following the
-// next link, if present, in results. Each page is of max GitHub-allowed size,
-// 100 items. Keep in mind that each page is 1 API call from the API allownace.
-// ----------------------------------------------------------------------------
-exports.retrieveAllPages = function retrieveAllPages(method, optionalFilter, callback) {
-  if (typeof optionalFilter == 'function') {
-    callback = optionalFilter;
-    optionalFilter = null;
-  }
-  var done = false;
-  var page = 1;
-  var results = [];
-  async.whilst(
-    function () { return !done; },
-    function (cb) {
-      var params = {
-        page: page++,
-        per_page: 100,
-      };
-      if (optionalFilter) {
-        Object.assign(params, optionalFilter);
-      }
-      method.call(null, params, function (error, result, headers) {
-        if (error) {
-          done = true;
-        } else {
-          if (result && result.length) {
-            results = results.concat(result);
-          }
-          done = !(headers && headers.link && headers.link.indexOf('rel="next"') >= 0);
-        }
-        cb(error);
-      });
-    },
-    function (error) {
-      callback(error, error ? undefined : results);
-    });
-};
-
-// ----------------------------------------------------------------------------
 // A destructive removal function for an object. Removes a single key.
 // ----------------------------------------------------------------------------
 exports.stealValue = function steal(obj, key) {

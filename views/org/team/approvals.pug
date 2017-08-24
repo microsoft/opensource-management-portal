@@ -21,9 +21,7 @@ block content
                 form(method='post', action=teamUrl + 'approvals/' + entry.RowKey)
                   p
                     //-if entry.issue
-                      //- NOTE: Commenting out GitHub links with approval repos, since they are being deprecated internally and this is a quick fix
-                      a.btn.btn-sm.btn-muted(href='https://github.com/' + team.org.getWorkflowRepository().full_name + '/issues/' + entry.issue, target='_new')= entry.issue
-                    //-| &nbsp;
+                      //- NOTE: Commenting out GitHub links with approval repos, since they are deprecated
                     a.btn.btn-sm.btn-muted(href=teamUrl + 'approvals/' + entry.RowKey)
                       i.glyphicon.glyphicon-zoom-in
                       | &nbsp;

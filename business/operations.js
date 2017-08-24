@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+/*eslint no-console: ["error", { allow: ["warn"] }] */
+
 'use strict';
 
 const async = require('async');
@@ -12,6 +14,7 @@ const Account = require('./account');
 const GraphManager = require('./graphManager');
 const Organization = require('./organization');
 const UserContext = require('./user/context');
+const wrapError = require('../utils').wrapError;
 
 // defaults could move to configuration alternatively
 const defaults = {
@@ -33,6 +36,7 @@ const defaults = {
   corporateLinksStaleSeconds: 60 * 5 /* 5m */,
   repoBranchesStaleSeconds: 60 * 5 /* 5m */,
   accountDetailStaleSeconds: 60 * 60 * 24 /* 24h */,
+  teamDetailStaleSeconds: 60 * 60 * 2 /* 2h */,
   orgRepoWebhooksStaleSeconds: 60 * 60 * 8 /* 8h */,
   teamRepositoryPermissionStaleSeconds: 0 /* 0m */,
 };
@@ -42,6 +46,7 @@ class Operations {
     setRequiredProperties(this, ['github', 'config', 'dataClient', 'insights', 'redis'], options);
 
     this.providers = options;
+    this.baseUrl = '/';
 
     this.defaults = Object.assign({}, defaults);
     this.mailAddressProvider = options.mailAddressProvider;
@@ -65,25 +70,40 @@ class Operations {
 
   get organizations() {
     if (!_private(this).organizations) {
-      const orgs = {};
+      const organizations = {};
       const names = this.organizationNames;
       for (let i = 0; i < names.length; i++) {
-        const org = createOrganization(this, names[i]);
-        orgs[names[i]] = org;
+        const organization = createOrganization(this, names[i]);
+        organizations[names[i]] = organization;
       }
-      _private(this).organizations = orgs;
+      _private(this).organizations = organizations;
     }
     return _private(this).organizations;
   }
 
-  getOrganizations(orgList) {
-    if (!orgList) {
+  getOnboardingOrganization(name) {
+    // Specialized method to retrieve a new organization via the onboarding configuration collection, if any
+    name = name.toLowerCase();
+    const onboardingList = this.config.github.organizations.onboarding;
+    if (onboardingList) {
+      for (let i = 0; i < onboardingList.length; i++) {
+        const settings = onboardingList[i];
+        if (settings && settings.name && settings.name.toLowerCase() === name) {
+          return createOrganization(this, name, settings);
+        }
+      }
+    }
+    throw new Error(`No onboarding organization settings configured for the ${name} organization`);
+  }
+
+  getOrganizations(organizationList) {
+    if (!organizationList) {
       return this.organizations;
     }
     const references = [];
-    orgList.forEach(orgName => {
-      const org = this.getOrganization(orgName);
-      references.push(org);
+    organizationList.forEach(orgName => {
+      const organization = this.getOrganization(orgName);
+      references.push(organization);
     });
     return references;
   }
@@ -126,14 +146,14 @@ class Operations {
 
   getOrganization(name, callback) {
     const lc = name.toLowerCase();
-    const org = this.organizations[lc];
-    if (!org) {
+    const organization = this.organizations[lc];
+    if (!organization) {
       throw new Error(`Could not find configuration for the "${name}" organization.`);
     }
     if (callback) {
-      return callback(null, org);
+      return callback(null, organization);
     }
-    return org;
+    return organization;
   }
 
   getUserContext(userId) {
@@ -196,6 +216,27 @@ class Operations {
       options,
       caching,
       callback);
+  }
+
+  getLinkWithOverhead(id, options, callback) {
+    // This literally retrieves the cache of all links. Which is silly, but quick and easy for now.
+    if (!callback && typeof (options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    const self = this;
+    self.getLinks(options, (getLinksError, links) => {
+      if (getLinksError) {
+        return callback(getLinksError);
+      }
+      const reduced = links.filter(link => {
+        return link && link.ghid == id /* allow string comparisons */;
+      });
+      if (reduced.length > 1) {
+        return callback(new Error('Multiple links were present for the same GitHub user'));
+      }
+      return callback(null, reduced.length === 1 ? reduced[0] : false);
+    });
   }
 
   getTeamsWithMembers(orgName, options, callback) {
@@ -336,6 +377,105 @@ class Operations {
     const entity = { id: id };
     return new Account(entity, this, getCentralOperationsToken.bind(null, this));
   }
+
+  getAccountWithDetailsAndLink(id, callback) {
+    const account = this.getAccount(id);
+    return account.getDetailsAndLink(callback);
+  }
+
+  getAuthenticatedAccount(token, options, callback) {
+    if (!callback && typeof(options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    options = options || {};
+    const github = this.github;
+    const parameters = {};
+    return github.post(token, 'users.get', parameters, (error, entity) => {
+      if (error) {
+        return callback(wrapError(error, 'Could not get details about the authenticated account'));
+      }
+      const account = new Account(entity, this, getCentralOperationsToken.bind(null, this));
+      return callback(null, account);
+    });
+  }
+
+  getTeamById(id, options, callback) {
+    if (!callback && typeof(options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    options = options || {};
+    const self = this;
+    getTeamDetailsById(this, id, options, (error, entity) => {
+      if (entity && !entity.organization) {
+        error = new Error(`Team ${id} response did not have an associated organization`);
+      }
+      const organizationName = entity.organization.login;
+      let organization = null;
+      try {
+        organization = self.getOrganization(organizationName);
+      } catch (er) {
+        error = er;
+      }
+      if (error) {
+        return callback(error);
+      }
+      return callback(null, organization.teamFromEntity(entity));
+    });
+  }
+
+  getAccountByUsername(username, options, callback) {
+    if (!callback && typeof(options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    options = options || {};
+    const token = getCentralOperationsToken(this);
+    const operations = this;
+    if (!username) {
+      return callback(new Error('Must provide a GitHub username to retrieve account information.'));
+    }
+    const parameters = {
+      username: username,
+    };
+    const cacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.accountDetailStaleSeconds,
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    return operations.github.call(token, 'users.getForUser', parameters, cacheOptions, (error, entity) => {
+      if (error) {
+        return callback(wrapError(error, `Could not get details about account "${username}".`));
+      }
+      const account = new Account(entity, this, getCentralOperationsToken.bind(null, this));
+      return callback(null, account);
+    });
+  }
+}
+
+function getTeamDetailsById(self, id, options, callback) {
+  if (!callback && typeof(options) === 'function') {
+    callback = options;
+    options = null;
+  }
+  options = options || {};
+  const token = getCentralOperationsToken(self);
+  const operations = self;
+  if (!id) {
+    return callback(new Error('Must provide a GitHub team ID to retrieve team information'));
+  }
+  const parameters = {
+    id: id,
+  };
+  const cacheOptions = {
+    maxAgeSeconds: options.maxAgeSeconds || operations.defaults.teamDetailStaleSeconds,
+  };
+  if (options.backgroundRefresh !== undefined) {
+    cacheOptions.backgroundRefresh = options.backgroundRefresh;
+  }
+  return operations.github.call(token, 'orgs.getTeam', parameters, cacheOptions, callback);
 }
 
 function fireEvent(config, configurationName, value, callback) {
@@ -376,22 +516,29 @@ function fireEvent(config, configurationName, value, callback) {
 }
 
 function getCentralOperationsToken(self) {
-  if (self.config.github.organizations.length <= 0) {
+  const s = self || this;
+  if (s.config.github.organizations.length <= 0) {
     throw new Error('No organizations configured.');
   }
-  const firstOrg = self.config.github.organizations[0];
-  return firstOrg.ownerToken;
+  const firstOrganization = s.config.github.organizations[0];
+  return firstOrganization.ownerToken;
 }
 
-function createOrganization(self, name) {
+function createOrganization(self, name, settings) {
   name = name.toLowerCase();
-  for (let i = 0; i < self.config.github.organizations.length; i++) {
-    const settings = self.config.github.organizations[i];
-    if (settings.name.toLowerCase() === name) {
-      return new Organization(self, name, settings);
+  if (!settings) {
+    const group = self.config.github.organizations;
+    for (let i = 0; i < group.length; i++) {
+      if (group[i].name && group[i].name.toLowerCase() === name) {
+        settings = group[i];
+        break;
+      }
     }
   }
-  throw new Error(`This application is not configured for the "${name}" organization.`);
+  if (!settings) {
+    throw new Error(`This application is not configured for the ${name} organization`);
+  }
+  return new Organization(self, name, settings);
 }
 
 function setRequiredProperties(self, properties, options) {
@@ -408,6 +555,10 @@ module.exports = Operations;
 
 function crossOrganizationResults(operations, results, keyProperty) {
   keyProperty = keyProperty || 'id';
+  if (results && results.data) {
+    // This debug aid can be removed anytime in Sept. 2017
+    console.warn('results.data present in cross-organization results (SHOULD be flattened instead)');
+  }
   const map = new Map();
   operations.translateOrganizationNamesFromLowercase(results.orgs);
   for (const orgName of Object.getOwnPropertyNames(results.orgs)) {

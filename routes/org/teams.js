@@ -13,10 +13,10 @@ const utils = require('../../utils');
 const teamRoute = require('./team/');
 
 router.use(function (req, res, next) {
-  req.org.oss.addBreadcrumb(req, 'Teams');
+  req.legacyUserContext.addBreadcrumb(req, 'Teams');
   req.reposContext = {
     section: 'teams',
-    org: req.org,
+    organization: req.organization,
   };
   next();
 });
@@ -32,9 +32,8 @@ router.get('/', function (req, res, next) {
 router.get('/', lowercaser(['sort', 'set']), require('../teamsPager'));
 
 router.use('/:teamSlug', (req, res, next) => {
-  const legacyOrgInstance = req.org;
-  const orgBaseUrl = legacyOrgInstance.baseUrl;
   const organization = req.organization;
+  const orgBaseUrl = organization.baseUrl;
   const slug = req.params.teamSlug;
   organization.getTeamFromName(slug, (getTeamError, team) => {
     // Redirect if a name was provided when a slug is more appropriate
@@ -50,19 +49,9 @@ router.use('/:teamSlug', (req, res, next) => {
     // appropriate time for refactoring, this will have to do.
     req.team2 = team;
 
-    // Set the legacy team instance as well
-    const clone = Object.assign({}, team);
-    const legacyTeam = legacyOrgInstance.team(team.id, clone);
-    req.team = legacyTeam;
-
-    // Difference: traditionally legacyTeam.getDetails(...) would also
-    // be called now to fill out the properties; this happened without
-    // a cache and was quite slow for no great value provided. Need
-    // to confirm that this is OK now that it is omitted.
-
     // Breadcrumb and path updates
     req.teamUrl = `${orgBaseUrl}teams/${team.slug}/`;
-    req.oss.addBreadcrumb(req, team.name);
+    req.legacyUserContext.addBreadcrumb(req, team.name);
 
     return next();
   });

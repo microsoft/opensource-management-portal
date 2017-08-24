@@ -11,11 +11,10 @@ const router = express.Router();
 const peopleSearch = require('../peopleSearch');
 
 router.use(function (req, res, next) {
-  req.oss.addBreadcrumb(req, 'People');
+  req.legacyUserContext.addBreadcrumb(req, 'People');
   req.reposContext = {
     section: 'people',
-    org: req.org,
-    organization: req.org, // hack
+    organization: req.organization,
     pivotDirectlyToOtherOrg: '/people/', // hack
   };
   next();

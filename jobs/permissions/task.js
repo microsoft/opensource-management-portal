@@ -21,7 +21,7 @@ const automaticTeams = require('../../webhooks/tasks/automaticTeams');
 const maxParallelism = 2;
 
 module.exports = function run(started, startedString, config) {
-  console.log(`WebJob started ${startedString}`);
+  console.log(`Job started ${startedString}`);
 
   const app = require('../../app');
   config.skipModules = new Set([

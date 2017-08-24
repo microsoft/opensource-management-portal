@@ -45,7 +45,7 @@ function getPeople(operations, org, options, team2, callback) {
 
 router.get('/', lowercaser(['sort']), (req, res, next) => {
   const operations = req.app.settings.operations;
-  const org = req.org ? req.org.name : null;
+  const org = req.organization ? req.organization.name : null;
   const isPortalSudoer = req.systemWidePermissions && req.systemWidePermissions.allowAdministration === true;
   let twoFactor = req.query.twoFactor;
   const team2 = req.team2;
@@ -96,7 +96,7 @@ router.get('/', lowercaser(['sort']), (req, res, next) => {
       type: type,
       links: req.cachedLinks,
       getCorporateProfile: operations.mailAddressProvider.getCorporateEntry,
-      
+
       // Used to filter team members in ./org/ORG/team/TEAM/members and other views
       teamMembers: teamMembers,
 
@@ -107,7 +107,7 @@ router.get('/', lowercaser(['sort']), (req, res, next) => {
     try {
       search.search(page, req.query.sort)
       .then(() => {
-        req.oss.render(req, res, 'people/', 'People', {
+        req.legacyUserContext.render(req, res, 'people/', 'People', {
           search: search,
           filters: filters,
           query: {
@@ -115,7 +115,7 @@ router.get('/', lowercaser(['sort']), (req, res, next) => {
             twoFactor: twoFactor,
             type: type,
           },
-          organization: req.org || undefined,
+          organization: req.organization || undefined,
           lightupSudoerLink: type === 'former' && isPortalSudoer,
           reposDataAgeInformation: ageInformation,
           team2: team2,

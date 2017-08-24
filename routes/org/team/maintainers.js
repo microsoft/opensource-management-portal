@@ -54,7 +54,7 @@ router.post('/:id/downgrade', teamAdminRequired, (req, res, next) => {
     if (changeMembershipError) {
       return next(changeMembershipError);
     }
-    req.oss.saveUserAlert(req, `Downgraded ${username} from a team maintainer to a team member`, team2.name + ' membership updated', 'success');
+    req.legacyUserContext.saveUserAlert(req, `Downgraded ${username} from a team maintainer to a team member`, team2.name + ' membership updated', 'success');
     refreshMaintainers(team2, refreshError => {
       if (refreshError) {
         return next(refreshError);
@@ -76,7 +76,7 @@ router.post('/add', teamAdminRequired, function (req, res, next) {
     if (addMaintainerError) {
       return next(addMaintainerError);
     }
-    req.oss.saveUserAlert(req, `Added ${login} as a team maintainer`, team2.name + ' membership updated', 'success');
+    req.legacyUserContext.saveUserAlert(req, `Added ${login} as a team maintainer`, team2.name + ' membership updated', 'success');
     refreshMaintainers(team2, refreshError => {
       if (refreshError) {
         return next(refreshError);

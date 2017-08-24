@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-// Every minute, send an application insights metric indicating the app and VM memory use
+// Every ten minutes, send an application insights metric indicating the app and VM memory use
 
 const fileSize = require('file-size');
 const os = require('os');
@@ -37,7 +37,7 @@ function everyMinute(insights) {
 function initialize(insights) {
   if (insights) {
     const report = everyMinute.bind(null, insights);
-    setInterval(report, 1000 * 60);
+    setInterval(report, 1000 * 60 * 10);
     report();
   }
 }

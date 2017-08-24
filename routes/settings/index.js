@@ -19,7 +19,7 @@ const addLinkToMiddleware = require('../../middleware/links/');
 router.use(addLinkToMiddleware);
 
 router.get('/', (req, res) => {
-  req.oss.render(req, res, 'settings', 'Settings', {});
+  req.legacyUserContext.render(req, res, 'settings', 'Settings', {});
 });
 
 router.use('/authorizations', authorizationsRoute);

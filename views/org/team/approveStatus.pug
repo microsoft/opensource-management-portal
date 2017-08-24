@@ -161,10 +161,7 @@ block content
               p
                 a(href='https://github.com/orgs/' + entry.org + '/teams/' + entry.teamname, target='_new')= entry.teamname
           //-if entry.issue
-            //- NOTE: Commenting out GitHub links with approval repos, since they are being deprecated internally and this is a quick fix
-            td
-              p
-                a.btn.btn-sm.btn-default(href='https://github.com/' + team.org.getWorkflowRepository().full_name + '/issues/' + entry.issue, target='_new')= entry.issue
+            //- NOTE: Commenting out GitHub links with approval repos, since they are deprecated
 
     table.table.table-bordered
       thead

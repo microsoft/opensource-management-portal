@@ -11,14 +11,13 @@ const teamAdminRequired = require('./teamAdminRequired');
 const utils = require('../../../utils');
 
 router.get('/', teamAdminRequired, (req, res, next) => {
-  const oss = req.oss;
   const team2 = req.team2;
   team2.getDetails(error => {
     if (error) {
       return next(utils.wrapError(error, 'Had trouble getting the detailed properties for this team.'));
     }
-    oss.addBreadcrumb(req, 'Properties');
-    oss.render(req, res, 'org/team/properties', team2.name + ' - Properties', {
+    req.legacyUserContext.addBreadcrumb(req, 'Properties');
+    req.legacyUserContext.render(req, res, 'org/team/properties', team2.name + ' - Properties', {
       team: team2,
       teamUrl: req.teamUrl,
     });
@@ -36,7 +35,7 @@ router.post('/', teamAdminRequired, (req, res, next) => {
     if (error) {
       return next(error);
     }
-    req.oss.saveUserAlert(req, 'Team properties updated on GitHub', 'Properties Saved', 'success');
+    req.legacyUserContext.saveUserAlert(req, 'Team properties updated on GitHub', 'Properties Saved', 'success');
     team2.getDetails(getDetailsError => {
       if (getDetailsError) {
         return next(getDetailsError);

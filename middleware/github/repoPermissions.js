@@ -9,9 +9,8 @@ module.exports = function addRepoPermissionsToRequest(req, res, next) {
   if (req.repoPermissions) {
     return next();
   }
-  const oss = req.oss;
-  const login = oss.usernames.github;
-  // const id = oss.id.github ? parseInt(oss.id.github, 10) : null;
+  const login = req.legacyUserContext.usernames.github;
+  // const id = req.legacyUserContext.id.github ? parseInt(req.legacyUserContext.id.github, 10) : null;
   const organization = req.organization;
   const repository = req.repository;
   const repoPermissions = {
@@ -21,7 +20,7 @@ module.exports = function addRepoPermissionsToRequest(req, res, next) {
   };
   req.repoPermissions = repoPermissions;
   organization.isSudoer(login, (sudoCheckError, isSudoer) => {
-    oss.isPortalAdministrator((portalSudoError, isPortalSudoer) => {
+    req.legacyUserContext.isPortalAdministrator((portalSudoError, isPortalSudoer) => {
       if (portalSudoError) {
         return next(portalSudoError);
       }

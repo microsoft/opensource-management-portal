@@ -13,6 +13,9 @@ const async = require('async');
 
 function PermissionWorkflowEngine(team, approvalPackage) {
   this.team = team;
+  if (!team) {
+    throw new Error('No team instance');
+  }
   this.request = approvalPackage.request;
   this.user = approvalPackage.requestingUser;
   this.id = approvalPackage.id;
@@ -74,9 +77,7 @@ RepoWorkflowEngine.prototype.messageForAction = function (action) {
 };
 
 RepoWorkflowEngine.prototype.editGet = function (req, res) {
-  var self = this;
-  var oss = self.team.oss;
-  oss.render(req, res, 'org/team/approvals/editRepo', 'Edit Repo Request', {
+  req.legacyUserContext.render(req, res, 'org/team/approvals/editRepo', 'Edit Repo Request', {
     entry: this.request,
     teamUrl: req.teamUrl,
     team: req.team,
@@ -84,13 +85,13 @@ RepoWorkflowEngine.prototype.editGet = function (req, res) {
 };
 
 RepoWorkflowEngine.prototype.editPost = function (req, res, next) {
-  var self = this;
-  var dc = self.team.oss.dataClient();
-  var visibility = req.body.repoVisibility;
+  const self = this;
+  const dc = req.app.settings.providers.dataClient;
+  const visibility = req.body.repoVisibility;
   if (!(visibility == 'public' || visibility == 'private')) {
     return next(new Error('Visibility for the repo request must be provided.'));
   }
-  var updates = {
+  const updates = {
     repoName: req.body.repoName,
     repoVisibility: visibility,
     repoUrl: req.body.repoUrl,
@@ -235,17 +236,17 @@ function createRequestEngine(team, approvalPackage, callback) {
 // Find the request and assign the workflow engine
 
 router.use(function (req, res, next) {
-  req.oss.addBreadcrumb(req, 'Approvals');
+  req.legacyUserContext.addBreadcrumb(req, 'Approvals');
   next();
 });
 
 router.get('/', function (req, res, next) {
-  var team = req.team;
+  var team = req.team2;
   team.getApprovals(function (error, approvals) {
     if (error) {
       return next(error);
     }
-    req.oss.render(req, res, 'org/team/approvals', 'Approvals for ' + team.name, {
+    req.legacyUserContext.render(req, res, 'org/team/approvals', 'Approvals for ' + team.name, {
       team: team,
       pendingApprovals: approvals,
       teamUrl: req.teamUrl,
@@ -254,40 +255,32 @@ router.get('/', function (req, res, next) {
 });
 
 router.use('/:requestid', function (req, res, next) {
-  var team = req.team;
+  var team = req.team2;
   var requestid = req.params.requestid;
-  var oss = req.oss;
   var dc = req.app.settings.dataclient;
+  const operations = req.app.settings.providers.operations;
   dc.getApprovalRequest(requestid, function (error, pendingRequest) {
     if (error) {
       return next(utils.wrapError(error, 'The pending request you are looking for does not seem to exist.'));
     }
-    var userHash = {};
-    userHash[pendingRequest.ghu] = pendingRequest.ghid;
-    var requestingUser = null;
-    oss.getCompleteUsersFromUsernameIdHash(userHash,
-      function (error, users) {
-        if (!error && !users[pendingRequest.ghu]) {
-          error = new Error('Could not create an object to track the requesting user.');
-        }
+    operations.getAccountWithDetailsAndLink(pendingRequest.ghid, (getAccountError, requestingUserAccount) => {
+      if (getAccountError) {
+        return next(getAccountError);
+      }
+      const approvalPackage = {
+        request: pendingRequest,
+        requestingUser: requestingUserAccount,
+        id: requestid,
+      };
+      createRequestEngine(team, approvalPackage, function (error, engine) {
         if (error) {
           return next(error);
         }
-        requestingUser = users[pendingRequest.ghu];
-        var approvalPackage = {
-          request: pendingRequest,
-          requestingUser: requestingUser,
-          id: requestid,
-        };
-        createRequestEngine(team, approvalPackage, function (error, engine) {
-          if (error) {
-            return next(error);
-          }
-          oss.addBreadcrumb(req, engine.typeName + ' Request');
-          req.approvalEngine = engine;
-          next();
-        });
+        req.legacyUserContext.addBreadcrumb(req, engine.typeName + ' Request');
+        req.approvalEngine = engine;
+        next();
       });
+    });
   });
 });
 

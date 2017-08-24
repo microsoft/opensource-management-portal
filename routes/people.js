@@ -12,7 +12,7 @@ const peopleSearch = require('./peopleSearch');
 const systemWidePermissionsMiddleware = require('../middleware/github/systemWidePermissions');
 
 router.use(function (req, res, next) {
-  req.oss.addBreadcrumb(req, 'People');
+  req.legacyUserContext.addBreadcrumb(req, 'People');
   req.reposContext = {
     section: 'people',
     pivotDirectlyToOtherOrg: '/people/', // hack

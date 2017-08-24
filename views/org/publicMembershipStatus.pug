@@ -10,13 +10,13 @@ block content
 
     if publicMembership
       h1
-        | Thanks for supporting #{org.name}
+        | Thanks for supporting #{organization.name}
       p.lead Your membership is currently public
-      p If you conceal your membership, you won't appear in the #{org.name} member list or count.
+      p If you conceal your membership, you won't appear in the #{organization.name} member list or count.
     else
-      h1 Want to publish your #{org.name} org membership?
+      h1 Want to publish your #{organization.name} organization membership?
       p.lead Show your support for #{config.brand.companyName} open source!
-      p Publicizing your org memberships is great for building community and reputation. If you to make your membership public, GitHub shows the "#{org.name}" avatar on <a href="https://github.com/#{user.github.username}" target="_new">your public GitHub profile</a> and shows you on the <a href="https://github.com/orgs/#{org.name}/people" target="_new">members page for #{org.name}</a>.
+      p Publicizing your organization memberships is great for building community and reputation. If you to make your membership public, GitHub shows the "#{organization.name}" avatar on <a href="https://github.com/#{user.github.username}" target="_new">your public GitHub profile</a> and shows you on the <a href="https://github.com/orgs/#{organization.name}/people" target="_new">members page for #{organization.name}</a>.
 
     if user && user.github.increasedScope === true
       p &nbsp;
@@ -25,33 +25,33 @@ block content
           input.btn.btn-lg.btn-primary(type='submit', value=publicMembership ? 'Conceal my membership' : 'Make my membership public', name=publicMembership ? 'conceal' : 'publicize')
           | &nbsp; &nbsp;
           if onboarding || joining
-            a.btn.btn-default.btn-lg(href=org.baseUrl + 'teams' + teamPostfix)
+            a.btn.btn-default.btn-lg(href=organization.baseUrl + 'teams' + teamPostfix)
               if publicMembership
                 | Keep it public
               else
                 | Keep it hidden
           else
-            a.btn.btn-default.btn-lg(href=org.baseUrl) Cancel
+            a.btn.btn-default.btn-lg(href=organization.baseUrl) Cancel
 
     else
       p.lead Quick way: Authorize us to publish on your behalf
       p.
         Temporarily authorize this site to have
         <a href="https://developer.github.com/v3/oauth/#scopes" target="_new"><code>write:org</code></a>
-        permissions and immediately publish your org membership.
+        permissions and immediately publish your organization membership.
       p
         a.btn.btn-primary.btn-lg(href='/signin/github/increased-scope') Publish Membership
         if (!(onboarding || joining))
           | &nbsp; &nbsp;
-          a.btn.btn-default(href=org.baseUrl) Cancel
+          a.btn.btn-default(href=organization.baseUrl) Cancel
 
       if onboarding || joining
         p.lead Manual way: Follow this process
         ul
-          li Head over to the <a href="https://github.com/orgs/#{org.name}/people">#{org.name} list of people</a>.
+          li Head over to the <a href="https://github.com/orgs/#{organization.name}/people">#{organization.name} list of people</a>.
           li Find yourself in the list and change the Public/Private setting.
         p
-          a.btn.btn-default.btn-lg(href=org.baseUrl + 'teams' + (onboarding ? '?onboarding=' + onboarding : '')) Continue without publishing
+          a.btn.btn-default.btn-lg(href=organization.baseUrl + 'teams' + (onboarding ? '?onboarding=' + onboarding : '')) Continue without publishing
 
     if onboarding
       p &nbsp;

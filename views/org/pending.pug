@@ -6,7 +6,7 @@
 extends ../layout
 
 block js_doc_ready
-  | var inviteInterfaceUpdateOnClick = function(){$('#openInviteButton').removeClass('btn-primary').addClass('btn-muted');$('#inviteAcceptedButton').removeClass('btn-muted').addClass('btn-primary');alert('On the next page press the green Join button.\n\nThen close the page and return here to continue onboarding to #{org.name}.');return true;};
+  | var inviteInterfaceUpdateOnClick = function(){$('#openInviteButton').removeClass('btn-primary').addClass('btn-muted');$('#inviteAcceptedButton').removeClass('btn-muted').addClass('btn-primary');alert('On the next page press the green Join button.\n\nThen close the page and return here to continue onboarding to #{organization.name}.');return true;};
   | $('#openInviteButton').click(inviteInterfaceUpdateOnClick);
   | $('#openInviteButton2').click(inviteInterfaceUpdateOnClick);
 
@@ -44,7 +44,7 @@ block content
 
       h1 Action Required: You've been manually invited!
 
-      p.lead GitHub has sent an invitation to <em>#{org.name}</em>.
+      p.lead GitHub has sent an invitation to <em>#{organization.name}</em>.
       p
         | For security purposes, GitHub requires you to accept the invitation directly on their web site.&nbsp;
         strong You must come back to this tab after accepting your invitation to continue setting up your open source teams and permissions.
@@ -54,21 +54,21 @@ block content
           p
             | Open your invite on GitHub and press the green button.
           p
-            a.btn.btn-lg.capitalize.btn-primary#openInviteButton(href='https://github.com/orgs/' + org.name + '/invitation', target='_new') Open your #{org.name} invitation
+            a.btn.btn-lg.capitalize.btn-primary#openInviteButton(href='https://github.com/orgs/' + organization.name + '/invitation', target='_new') Open your #{organization.name} invitation
           h3 Step 2: Return back here
           p
             | After pressing the green Join button, close the GitHub site and click Continue on this page. We'll then take you to a security check the "Join Teams" experience.
           p
-            a.btn.btn-lg.btn-muted#inviteAcceptedButton(href=org.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '')) I've accepted my invite on GitHub.com, continue...
+            a.btn.btn-lg.btn-muted#inviteAcceptedButton(href=organization.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '')) I've accepted my invite on GitHub.com, continue...
         div.col-md-6.col-lg-6
           p(style='border:1px solid #ccc; padding:12px')
-            a#openInviteButton2(target='_new', href='https://github.com/orgs/' + org.name + '/invitation')
+            a#openInviteButton2(target='_new', href='https://github.com/orgs/' + organization.name + '/invitation')
               img.img-responsive(src='/img/GitHubInvitation.png', title='A screenshot of what the GitHub invitation looks like. The experience is hosted outside of this portal and actually on GitHub.com', alt='A screenshot of what the GitHub invitation looks like. The experience is hosted outside of this portal and actually on GitHub.com')
             br
             | A sample GitHub invite. Press the green button and close the page.
 
     else if state == 'active'
-      h1 You're now a member of #{org.name}.
+      h1 You're now a member of #{organization.name}.
       p You are currently a member of this additional organization. No additional work is required to gain access to it.
       p If you need to join a specific team to gain additional permissions, you can use the Join a Team experience on this site.
       p
@@ -77,11 +77,11 @@ block content
     else
       div.row
         div.col-md-8.col-lg-8
-          h1 Want to join #{org.name}?
+          h1 Want to join #{organization.name}?
           if hasIncreasedScope
             form(method='post')
               p(style='margin-top:24px')
-                input.btn.btn-primary.btn-huge(type='submit', value='Join ' + org.name)
+                input.btn.btn-primary.btn-huge(type='submit', value='Join ' + organization.name)
           else
             p.lead Quick way: Authorize us to join on your behalf
             p.
@@ -89,8 +89,8 @@ block content
               <a href="https://developer.github.com/v3/oauth/#scopes" target="_new"><code>org:write</code></a>
               permission and immediately join the organization.
             p
-              a.btn.btn-primary.btn-huge(href='/' + org.name + '/join/express' + (onboarding ? '?onboarding=' + onboarding : ''))
-                | Join #{org.name}
+              a.btn.btn-primary.btn-huge(href='/' + organization.name + '/join/express' + (onboarding ? '?onboarding=' + onboarding : ''))
+                | Join #{organization.name}
             hr
             p.lead Manual way: Follow this process
             ul
@@ -100,7 +100,7 @@ block content
               li You come back to this site and continue onboarding.
             form(method='post')
               p
-                input.btn.btn-muted-more.btn-lg(type='submit', value='Manually Join ' + org.name)
+                input.btn.btn-muted-more.btn-lg(type='submit', value='Manually Join ' + organization.name)
 
           if onboarding
             p &nbsp;
@@ -124,13 +124,14 @@ block content
               | Join a team <em>(optional)</em>
 
         div.col-md-4.col-lg-4
-          if orgUser
+          if orgAccount && orgAccount.organizationProfile
+            - var orgUser = orgAccount.organizationProfile
             p
-              img.img-thumbnail.img-responsive(src=orgUser.avatar(400), alt=(orgUser.name || orgUser.login))
+              img.img-thumbnail.img-responsive(src=orgAccount.avatar(400), alt=(orgUser.name || orgUser.login))
             h3= orgUser.name
             h4= orgUser.login
             p(style='margin-top:18px')
-              a.btn.btn-sm.btn-muted(href='https://github.com/' + org.name, target='_new')
+              a.btn.btn-sm.btn-muted(href='https://github.com/' + organization.name, target='_new')
                 | Open on GitHub
             hr
 
@@ -145,50 +146,45 @@ block content
                 if orgUser.email
                   h6 E-mail
                   p= orgUser.email
-                if orgUser.otherFields.blog
+                if orgUser.blog
                   h6 On the Web
                   p
-                    a(href=orgUser.otherFields.blog, target='_new')
-                      = orgUser.otherFields.blog + ' '
-                      i.glyphicon.glyphicon-share-alt
-                if orgUser.getProfileCreatedDate()
+                    a(href=orgUser.blog, target='_new')= orgUser.blog
+                if orgAccount.getProfileCreatedDate && orgAccount.getProfileCreatedDate()
                   h6 Created
                   p
-                    time(datetime=orgUser.getProfileCreatedDate().toISOString())= orgUser.getProfileCreatedDate().toDateString()
-                if orgUser.getProfileCreatedDate()
+                    time(datetime=orgAccount.getProfileCreatedDate().toISOString())= orgAccount.getProfileCreatedDate().toDateString()
+                if orgAccount.getProfileUpdatedDate && orgAccount.getProfileUpdatedDate()
                   h6 Updated
                   p
-                    time(datetime=orgUser.getProfileUpdatedDate().toISOString())= orgUser.getProfileUpdatedDate().toDateString()
+                    time(datetime=orgAccount.getProfileUpdatedDate().toISOString())= orgAccount.getProfileUpdatedDate().toDateString()
                 hr
-                if org.inner.settings.organizationPurpose
-                  h6 How we use this organization
-                  p= org.inner.settings.organizationPurpose
-                if org.inner.settings.type
+                if organization.configuredOrganizationRepositoryTypes
                   h6 Supported Repository Types
                   ul.list-unstyled
                     li Public
-                    if org.inner.settings.type == 'publicprivate' || org.inner.settings.type == 'private'
+                    if organization.configuredOrganizationRepositoryTypes == 'publicprivate' || organization.configuredOrganizationRepositoryTypes == 'private'
                       li Private
               div.col-md-6.col-lg-h6
                 h6 Repositories
-                if orgUser.otherFields.public_repos
+                if orgUser.public_repos
                   h2
-                    = orgUser.otherFields.public_repos + ' '
+                    = orgUser.public_repos + ' '
                     small Public
                     //- small Public
-                if orgUser.otherFields.total_private_repos
+                if orgUser.total_private_repos
                   h2
-                    = orgUser.otherFields.total_private_repos + ' '
+                    = orgUser.total_private_repos + ' '
                     small Private
 
                 hr
                 h6 Remaining Repositories
-                if orgUser.otherFields.plan && orgUser.otherFields.plan.private_repos
+                if orgUser.plan && orgUser.plan.private_repos
                   h2
-                    = orgUser.otherFields.plan.name + ' '
+                    = orgUser.plan.name + ' '
                     small Plan
                   h2
-                      = (orgUser.otherFields.plan.private_repos - orgUser.otherFields.total_private_repos) + ' '
+                      = (orgUser.plan.private_repos - orgUser.total_private_repos) + ' '
                       small Private
                 h2
                   | &infin;&nbsp;

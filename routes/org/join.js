@@ -3,17 +3,19 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+'use strict';
+
 const express = require('express');
 const router = express.Router();
 const usernameConsistency = require('../../middleware/links/usernameConsistency');
 const utils = require('../../utils');
 
 router.use(function (req, res, next) {
-  var org = req.org;
-  var err = null;
-  if (org.setting('locked')) {
+  const organization = req.organization;
+  let err = null;
+  if (organization.locked) {
     err = new Error('This organization is locked to new members.');
-    err.detailed = 'At this time, the maintainers of the "' + org.name + '" organization have decided to not enable onboarding through this portal.';
+    err.detailed = `At this time, the maintainers of the ${organization.name} organization have decided to not enable onboarding through this portal.`;
     err.skipLog = true;
   }
   next(err);
@@ -25,34 +27,35 @@ router.use(function (req, res, next) {
 router.use(usernameConsistency(true /* use GitHub API */));
 
 router.get('/', function (req, res, next) {
-  const org = req.org;
-  const context = req.oss;
+  const organization = req.organization;
+  const context = req.legacyUserContext;
+  const username = context.usernames.github;
   const userIncreasedScopeToken = context && context.tokens ? context.tokens.githubIncreasedScope : null;
-  var onboarding = req.query.onboarding;
-  var showTwoFactorWarning = false;
-  var showApplicationPermissionWarning = false;
-  var writeOrgFailureMessage = null;
-  org.queryUserMembership(false /* do not allow caching */, function (error, result) {
-    var state = result && result.state ? result.state : false;
-    var clearAuditListAndRedirect = function () {
-      org.clearAuditList(function () {
-        var url = org.baseUrl + 'security-check' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + org.name);
-        res.redirect(url);
-      });
+  let onboarding = req.query.onboarding;
+  let showTwoFactorWarning = false;
+  let showApplicationPermissionWarning = false;
+  let writeOrgFailureMessage = null;
+  organization.getOperationalMembership(username, (error, result) => {
+    let state = result && result.state ? result.state : false;
+    const clearAuditListAndRedirect = function () {
+      // Behavior change, only important to those not using GitHub's 2FA enforcement feature; no longer clearing the cache
+      const url = organization.baseUrl + 'security-check' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name);
+      res.redirect(url);
     };
-    var showPage = function () {
-      org.getDetails(function (error, details) {
+    const showPage = function () {
+      organization.getDetails(function (error, details) {
         if (error) {
           return next(error);
         }
-        var userDetails = details ? org.oss.user(details.id, details) : null;
-        var title = org.name + ' Organization Membership ' + (state == 'pending' ? 'Pending' : 'Join');
-        req.oss.render(req, res, 'org/pending', title, {
+        const userDetails = details ? organization.memberFromEntity(details) : null;
+        userDetails.entity = details;
+        var title = organization.name + ' Organization Membership ' + (state == 'pending' ? 'Pending' : 'Join');
+        req.legacyUserContext.render(req, res, 'org/pending', title, {
           result: result,
           state: state,
           hasIncreasedScope: userIncreasedScopeToken ? true : false,
-          org: org,
-          orgUser: userDetails,
+          organization: organization,
+          orgAccount: userDetails,
           onboarding: onboarding,
           writeOrgFailureMessage: writeOrgFailureMessage,
           showTwoFactorWarning: showTwoFactorWarning,
@@ -60,10 +63,10 @@ router.get('/', function (req, res, next) {
         });
       });
     };
-    if (state == 'active') {
+    if (state === 'active') {
       clearAuditListAndRedirect();
-    } else if (state == 'pending' && userIncreasedScopeToken) {
-      org.acceptOrganizationInvitation(userIncreasedScopeToken, function (error, updatedState) {
+    } else if (state === 'pending' && userIncreasedScopeToken) {
+      organization.acceptOrganizationInvitation(userIncreasedScopeToken, function (error, updatedState) {
         if (error) {
           // We do not error out, they can still fall back on the
           // manual acceptance system that the page will render.
@@ -92,13 +95,14 @@ function redirectToIncreaseScopeExperience(req, res, optionalReason) {
 }
 
 router.get('/express', function (req, res, next) {
-  var org = req.org;
-  var onboarding = req.query.onboarding;
-  const context = req.oss;
-  org.queryUserMembership(false /* do not allow caching */, function (error, result) {
+  const organization = req.organization;
+  const onboarding = req.query.onboarding;
+  const context = req.legacyUserContext;
+  const username = context.usernames.github;
+  organization.getOperationalMembership(username, function (error, result) {
     var state = result && result.state ? result.state : false;
     if (state == 'active' || state == 'pending') {
-      res.redirect(org.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + org.name));
+      res.redirect(organization.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name));
     } else if (context && context.tokens.githubIncreasedScope) {
       joinOrg(req, res, next);
     } else {
@@ -108,15 +112,15 @@ router.get('/express', function (req, res, next) {
 });
 
 function joinOrg(req, res, next) {
-  var org = req.org;
-  var onboarding = req.query.onboarding;
-  var everyoneTeam = org.getAllMembersTeam();
-  var username = req.oss.usernames.github;
-  everyoneTeam.addMembership('member', function (error) {
+  const organization = req.organization;
+  const onboarding = req.query.onboarding;
+  const invitationTeam = organization.invitationTeam;
+  const username = req.legacyUserContext.usernames.github;
+  invitationTeam.addMembership(username, function (error) {
     if (error) {
       req.insights.trackMetric('GitHubOrgInvitationFailures', 1);
       req.insights.trackEvent('GitHubOrgInvitationFailure', {
-        org: org.name,
+        organization: organization.name,
         username: username,
         error: error.message,
       });
@@ -124,14 +128,14 @@ function joinOrg(req, res, next) {
       if (error.code === 'ETIMEDOUT') {
         specificMessage = 'The GitHub API timed out.';
       }
-      return next(utils.wrapError(error, `We had trouble sending you an invitation through GitHub to join the ${org.name} organization. ${username} ${specificMessage}`));
+      return next(utils.wrapError(error, `We had trouble sending you an invitation through GitHub to join the ${organization.name} organization. ${username} ${specificMessage}`));
     }
     req.insights.trackMetric('GitHubOrgInvitationSuccesses', 1);
     req.insights.trackEvent('GitHubOrgInvitationSuccess', {
-      org: org.name,
+      organization: organization.name,
       username: username,
     });
-    res.redirect(org.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + org.name));
+    res.redirect(organization.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name));
   });
 }
 

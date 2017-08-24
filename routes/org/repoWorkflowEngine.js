@@ -1,16 +1,24 @@
-﻿var utils = require('../../utils');
+﻿//
+// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//
+
+/*eslint no-console: ["error", { allow: ["warn"] }] */
+
+var utils = require('../../utils');
 const async = require('async');
 const fs = require('fs');
 const path = require('path');
+const recursiveReadDirectory = require('recursive-readdir');
 
 var repoWorkFlowEngine = RepoWorkflowEngine.prototype;
 
-function RepoWorkflowEngine(team, org, approvalPackage) {
+function RepoWorkflowEngine(team, organization, approvalPackage) {
   this.team = team;
   this.request = approvalPackage.request;
   this.user = approvalPackage.requestingUser;
   this.id = approvalPackage.id;
-  this.org = org;
+  this.organization = organization;
   this.typeName = 'Repository Create';
 }
 
@@ -25,9 +33,7 @@ repoWorkFlowEngine.messageForAction = function (action) {
 };
 
 repoWorkFlowEngine.editGet = function (req, res) {
-  var self = this;
-  var oss = self.team.oss;
-  oss.render(req, res, 'org/team/approvals/editRepo', 'Edit Repo Request', {
+  req.legacyUserContext.render(req, res, 'org/team/approvals/editRepo', 'Edit Repo Request', {
     entry: this.request,
     teamUrl: req.teamUrl,
     team: req.team,
@@ -35,13 +41,14 @@ repoWorkFlowEngine.editGet = function (req, res) {
 };
 
 repoWorkFlowEngine.editPost = function (req, res, next) {
-  var self = this;
-  var dc = self.team.oss.dataClient();
-  var visibility = req.body.repoVisibility;
+  const self = this;
+  const [, operations] = this.organization.getLegacySystemObjects();
+  const dc = operations.dataClient;
+  const visibility = req.body.repoVisibility;
   if (!(visibility == 'public' || visibility == 'private')) {
     return next(new Error('Visibility for the repo request must be provided.'));
   }
-  var updates = {
+  const updates = {
     repoName: req.body.repoName,
     repoVisibility: visibility,
     repoUrl: req.body.repoUrl,
@@ -75,7 +82,7 @@ repoWorkFlowEngine.generateSecondaryTasks = function (callback) {
   var self = this;
   var pendingRequest = self.request;
   var tasks = [];
-  var org = self.org;
+  var organization = self.organization;
   var repoName = pendingRequest.repoName;
   var teamsCount = Math.floor(pendingRequest.teamsCount);
   for (var i = 0; i < teamsCount; i++) {
@@ -83,28 +90,28 @@ repoWorkFlowEngine.generateSecondaryTasks = function (callback) {
     var teamId = pendingRequest[key];
     var permission = pendingRequest[key + 'p'];
     if (teamId && permission) {
-      tasks.push(createAddRepositoryTask(org, repoName, teamId, permission));
+      tasks.push(createAddRepositoryTask(organization, repoName, teamId, permission));
     }
   }
   if (pendingRequest.claEntity) {
-    tasks.push(createSetLegacyClaTask(org, repoName, pendingRequest.claEntity, pendingRequest.claMail));
+    tasks.push(createSetLegacyClaTask(organization, repoName, pendingRequest.claEntity, pendingRequest.claMail));
   }
   if (pendingRequest.template) {
-    tasks.push(createAddTemplateFilesTask(org, repoName, pendingRequest.template));
+    tasks.push(createAddTemplateFilesTask(organization, repoName, pendingRequest.template));
   }
   callback(null, tasks);
 };
 
 repoWorkFlowEngine.performApprovalOperation = function (callback) {
-  var self = this;
-  var properties = {
+  const self = this;
+  const properties = {
     description: self.request.repoDescription,
     homepage: self.request.repoUrl,
     'private': self.request.repoVisibility == 'public' ? false : true,
     gitignore_template: self.request.gitignore_template,
   };
-  var org = self.org;
-  org.createRepository(self.request.repoName, properties, function (error, newRepoDetails) {
+  const organization = self.organization;
+  organization.createRepository(self.request.repoName, properties, function (error, newRepositoryInstance, newRepoDetails) {
     if (error) {
       error = utils.wrapError(error, `The GitHub API did not allow the creation of the new repo. ${error.message}`);
     }
@@ -112,11 +119,11 @@ repoWorkFlowEngine.performApprovalOperation = function (callback) {
   });
 };
 
-function createSetLegacyClaTask(org, repoName, legalEntity, claMail) {
+function createSetLegacyClaTask(organization, repoName, legalEntity, claMail) {
   'use strict';
   return function setLegacyClaTask(callback) {
-    const repo = org.repo(repoName);
-    repo.enableLegacyClaAutomation({
+    const repository = organization.repository(repoName);
+    repository.enableLegacyClaAutomation({
       emails: claMail,
       legalEntity: legalEntity,
     }, (enableClaError) => {
@@ -134,7 +141,7 @@ function createSetLegacyClaTask(org, repoName, legalEntity, claMail) {
   };
 }
 
-var createAddRepositoryTask = function createAddRepoTask(org, repoName, id, permission) {
+var createAddRepositoryTask = function createAddRepoTask(organization, repoName, id, permission) {
   return function (cb) {
     async.retry({
       times: 3,
@@ -142,47 +149,54 @@ var createAddRepositoryTask = function createAddRepoTask(org, repoName, id, perm
         return 500 * Math.pow(2, retryCount);
       }
     }, function (callback) {
-      org.team(id).addRepository(repoName, permission, function (error) {
-        if (error) {
-          return callback(error);
-        }
-        return callback();
-      });
+      organization.repository(repoName).setTeamPermission(id, permission, callback);
     }, function (error) {
       // Don't propagate as an error, just record the issue...
-      var message = `Successfully added the "${repoName}" repo to GitHub team ID "${id}" with permission level ${permission.toUpperCase()}.`;
+      let message = `Successfully added the "${repoName}" repo to GitHub team ID "${id}" with permission level ${permission.toUpperCase()}.`;
       if (error) {
         message = `The addition of the repo "${repoName}" to GitHub team ID "${id}" failed. The GitHub API returned an error: ${error.message}.`;
       }
-      var result = {
+      const result = {
         error: error,
         message: message,
       };
-      cb(null, result);
+      return cb(null, result);
     });
   };
 };
 
-function createAddTemplateFilesTask(org, repoName, templateName) {
+function createAddTemplateFilesTask(organization, repoName, templateName) {
   'use strict';
   const templatePath = path.join(__dirname, '../../data/templates/');
-  const userName = org.oss.configuration.github.user.initialCommit.username;
-  const token = org.oss.configuration.github.user.initialCommit.token;
-  const repo = org.repo(repoName);
+  const [, operations] = organization.getLegacySystemObjects();
+  const config = operations.config;
+  const userName = config.github.user.initialCommit.username;
+  const token = config.github.user.initialCommit.token;
+  const repository = organization.repository(repoName);
   let files = [];
   return (taskCallback) => {
     async.waterfall([
 
       function addCollaborator(callback) {
-        repo.addCollaborator(userName, 'push', callback);
+        repository.addCollaborator(userName, 'push', callback);
       },
 
-      function createDatasource(callback) {
-        fs.readdir(path.join(templatePath, templateName), (error, fileNames) => {
-          async.parallel(fileNames.map(fileName => {
-            return (cb) => {
-              fs.readFile(path.join(templatePath, templateName, fileName), 'utf8', (error, file) => {
-                cb(error, { path: fileName, content: file });
+      function createDatasource() {
+        const args = Array.prototype.slice.call(arguments);
+        const callback = args.pop();
+        const templateRoot = path.join(templatePath, templateName);
+        recursiveReadDirectory(templateRoot, (error, fileNames) => {
+          async.parallel(fileNames.map(absoluteFileName => {
+            const fileName = path.relative(templateRoot, absoluteFileName);
+            return next => {
+              fs.readFile(path.join(templatePath, templateName, fileName), (error, file) => {
+                const base64content = file.toString('base64');
+                // new Buffer(data).toString('base64')
+                next(error,
+                  {
+                    path: fileName,
+                    content: base64content,
+                  });
               });
             };
           }), callback);
@@ -192,8 +206,11 @@ function createAddTemplateFilesTask(org, repoName, templateName) {
       function addTemplateFiles(datasource, callback) {
         const message = 'Initial commit';
         async.series(datasource.map(item => {
-          return (cb) => {
-            repo.createContents(token, item.path, message, item.content, cb);
+          return next => {
+            const createFileOptions = {
+              alternateToken: token,
+            };
+            repository.createFile(item.path, item.content, message, createFileOptions, next);
           };
         }), (error, result) => {
           if (!error) {
@@ -206,14 +223,14 @@ function createAddTemplateFilesTask(org, repoName, templateName) {
       },
 
       function removeCollaborator(result, callback) {
-        repo.removeCollaborator(userName, callback);
+        repository.removeCollaborator(userName, callback);
       },
-    ], (error) => {
-      var message = `Initial commit of ${files.join(', ')} files to the ${repoName} repo succeeded.`;
+    ], error => {
+      let message = `Initial commit of ${files.join(', ')} files to the ${repoName} repo succeeded.`;
       if (error) {
         message = `Initial commit of template file(s) to the ${repoName} repo failed. An error: ${error.message}.`;
       }
-      var result = {
+      const result = {
         error: error,
         message: message,
       };

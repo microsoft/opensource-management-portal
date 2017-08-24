@@ -20,7 +20,9 @@ router.use((req, res, next) => {
   }
   const operations = req.app.settings.providers.operations;
   try {
-    req.organization = operations.getOrganization(orgName);
+    if (!req.organization) {
+      req.organization = operations.getOrganization(orgName);
+    }
   } catch (noOrganization) {
     return next(jsonError(new Error('This API endpoint is not configured for the provided organization name.')));
   }

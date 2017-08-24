@@ -5,6 +5,10 @@
 
 'use strict';
 
+// NOTE: this file at this time is Microsoft-specific and needs to be updated
+// and refactored to be useful by others. There are values stored in
+// configuration that can be used instead of the hardcoded values within.
+
 const _ = require('lodash');
 const async = require('async');
 const emailRender = require('../../lib/emailRender');
@@ -31,7 +35,7 @@ const hardcodedClaEntities = [
 ];
 
 function createRepo(req, res, convergedObject, token, callback, doNotCallbackForSuccess) {
-  if (!req.org) {
+  if (!req.organization) {
     return callback(jsonError(new Error('No organization available in the route.'), 400));
   }
   const operations = req.app.settings.operations;
@@ -120,7 +124,7 @@ function createRepo(req, res, convergedObject, token, callback, doNotCallbackFor
     return callback(jsonError('The provided CLA entity name is not supported', 422));
   }
 
-  parameters.org = req.org.name;
+  parameters.org = req.organization.name;
 
   const organization = operations.getOrganization(parameters.org);
 
@@ -149,7 +153,7 @@ function createRepo(req, res, convergedObject, token, callback, doNotCallbackFor
       active: false,
       license: msProperties.license,
       type: 'repo',
-      org: req.org.name.toLowerCase(),
+      org: req.organization.name.toLowerCase(),
       repoName: result.name,
       repoId: result.id,
       repoDescription: result.description,
@@ -188,7 +192,7 @@ function createRepo(req, res, convergedObject, token, callback, doNotCallbackFor
         return rollbackRepoError(req, res, callback, 'There was a problem recording information about the repo request', 500, insertRequestError);
       }
       req.approvalRequest['ms.approvalId'] = requestId;
-      const repoWorkflow = new RepoWorkflowEngine(null, req.org, { request: req.approvalRequest });
+      const repoWorkflow = new RepoWorkflowEngine(null, req.organization, { request: req.approvalRequest });
       repoWorkflow.generateSecondaryTasks(function (err, tasks) {
         async.series(tasks || [], function (taskErr, output) {
           if (taskErr) {
@@ -245,12 +249,12 @@ function rollbackRepoError(req, res, next, error, statusCode, errorToLog) {
       message: error && error.message ? error.message : error,
     });
   }
-  if (!req.org || !req.repoCreateResponse || !req.repoCreateResponse.name) {
+  if (!req.organization || !req.repoCreateResponse || !req.repoCreateResponse.name) {
     return next(err);
   }
-  const repo = req.org.repo(req.repoCreateResponse.name);
-  repo.delete(() => {
-    return next(err);
+  const repository = req.organization.repository(req.repoCreateResponse.name);
+  repository.delete(deleteError => {
+    return next(deleteError);
   });
 }
 

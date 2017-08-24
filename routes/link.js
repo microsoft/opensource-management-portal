@@ -15,29 +15,29 @@ const utils = require('../utils');
 const unlinkRoute = require('./unlink');
 
 router.get('/', function (req, res, next) {
-  const oss = req.oss;
-  if (!(oss.usernames.azure && oss.usernames.github)) {
+  const link = req.legacyUserContext.entities.link;
+  if (!(req.legacyUserContext.usernames.azure && req.legacyUserContext.usernames.github)) {
     req.insights.trackEvent('PortalSessionNeedsBothGitHubAndAadUsernames');
     return res.redirect('/?signin');
   }
-  if (!req.oss.entities.link) {
+  if (!link) {
     showLinkPage(req, res, next);
   } else {
     req.insights.trackEvent('LinkRouteLinkLocated');
-    return req.oss.render(req, res, 'linkConfirmed', 'You\'re already linked');
+    return req.legacyUserContext.render(req, res, 'linkConfirmed', 'You\'re already linked');
   }
 });
 
 function showLinkPage(req, res) {
   function render(options) {
-    req.oss.render(req, res, 'link', 'Link GitHub with corporate identity', options || {});
+    req.legacyUserContext.render(req, res, 'link', 'Link GitHub with corporate identity', options || {});
   }
   const config = req.app.settings.runtimeConfig;
   const graphProvider = req.app.settings.graphProvider;
   if (config.authentication.scheme !== 'aad' || !graphProvider){
     return render();
   }
-  const aadId = req.oss.id.aad;
+  const aadId = req.legacyUserContext.id.aad;
   graphProvider.getUserAndManagerById(aadId, (error, graphUser) => {
     // By design, we want to log the errors but do not want any individual
     // lookup problem to break the underlying experience of letting a user
@@ -173,8 +173,7 @@ function linkUser(req, res, next) {
             updateLinkError.original = insertError;
             return next(utils.wrapError(updateLinkError, 'We had trouble storing the corporate identity link information after 2 tries. Please file this issue and we will have an administrator take a look.'));
           }
-          req.oss.invalidateLinkCache(() => {
-            operations.fireLinkEvent(eventData);
+          req.legacyUserContext.invalidateLinkCache(() => {
             sendWelcomeMailThenRedirect(req, res, config, '/?onboarding=yes', linkObject, mailProvider, linkedAccountMail);
           });
         });
@@ -190,32 +189,32 @@ router.use('/remove', unlinkRoute);
 
 router.get('/reconnect', function (req, res, next) {
   const config = req.app.settings.runtimeConfig;
-  const oss = req.oss;
+  const legacyUserContext = req.legacyUserContext;
   if (config.authentication.scheme !== 'aad'){
     return next(utils.wrapError(null, 'Account reconnection is only needed for Active Directory authentication applications.', true));
   }
   // If the request comes back to the reconnect page, the authenticated app will
   // actually update the link the next time around.
-  if (req.user.github && req.user.github.id || !(oss && oss.entities && oss.entities.link && oss.entities.link.ghu && !oss.entities.link.ghtoken)) {
+  if (req.user.github && req.user.github.id || !(legacyUserContext && legacyUserContext.entities && legacyUserContext.entities.link && legacyUserContext.entities.link.ghu && !legacyUserContext.entities.link.ghtoken)) {
     req.insights.trackEvent('PortalUserReconnected');
     return res.redirect('/');
   }
   req.insights.trackEvent('PortalUserReconnectNeeded');
-  return oss.render(req, res, 'reconnectGitHub', 'Please sign in with GitHub', {
-    expectedUsername: oss.entities.link.ghu,
-    migratedOpenSourceHubUser: oss.entities.link.hubImport,
+  return req.legacyUserContext.render(req, res, 'reconnectGitHub', 'Please sign in with GitHub', {
+    expectedUsername: legacyUserContext.entities.link.ghu,
+    migratedOpenSourceHubUser: legacyUserContext.entities.link.hubImport,
   });
 });
 
 router.get('/update', function (req, res, next) {
   const config = req.app.settings.runtimeConfig;
-  const oss = req.oss;
+  const username = req.legacyUserContext.usernames.github;
   // TODO: A "change" experience might be slightly different for AAD
   if (config.authentication.scheme === 'aad') {
     return next(utils.wrapError(null, 'Changing a GitHub account is not yet supported.', true));
   }
-  if (!(oss.usernames.azure)) {
-    return oss.render(req, res, 'linkUpdate', `Update your account ${oss.usernames.github} by signing in with corporate credentials.`);
+  if (!(req.legacyUserContext.usernames.azure)) {
+    return req.legacyUserContext.render(req, res, 'linkUpdate', `Update your account ${username} by signing in with corporate credentials.`);
   }
   // TODO: NOTE: This will destroy link data not in the session for recreation. May be OK.
   const dc = req.app.settings.dataclient;
@@ -224,8 +223,8 @@ router.get('/update', function (req, res, next) {
       if (updateLinkError) {
         return next(utils.wrapError(updateLinkError, `We had trouble updating the link using a data store API: ${updateLinkError.message}`));
       }
-      oss.saveUserAlert(req, 'Your GitHub account is now associated with the corporate identity for ' + linkObject.aadupn + '.', 'Corporate Identity Link Updated', 'success');
-      oss.invalidateLinkCache(() => {
+      req.legacyUserContext.saveUserAlert(req, 'Your GitHub account is now associated with the corporate identity for ' + linkObject.aadupn + '.', 'Corporate Identity Link Updated', 'success');
+      req.legacyUserContext.invalidateLinkCache(() => {
         res.redirect('/');
       });
     });

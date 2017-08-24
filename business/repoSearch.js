@@ -94,7 +94,7 @@ repoSearch.prototype.sortByStars = function() {
 function repoMatchesPhrase(repo, phrase) {
   // Poor man's search, starting with just a raw includes search
   // Assumes that phrase is already lowercase to work
-  let string = ((repo.name || '') + (repo.description || '')).toLowerCase();
+  let string = ((repo.name || '') + (repo.description || '') + (repo.id || '')).toLowerCase();
   return string.includes(phrase);
 }
 

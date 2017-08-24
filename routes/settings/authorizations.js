@@ -9,14 +9,13 @@
 
 const async = require('async');
 const express = require('express');
-const github = require('octonode');
 const router = express.Router();
 
-function createGithubTokenValidator(link, token) {
+function createGithubTokenValidator(operations, link, token) {
   return (callback) => {
-    const me = github.client(token).me();
-    me.info((infoError, data, headers) => {
+    operations.getAuthenticatedAccount(token, (infoError, data) => {
       let valid = true;
+      let headers = data && data.extraFields ? data.extraFields.meta : null;
       let critical = false;
       let message = null;
       if (infoError) {
@@ -52,10 +51,11 @@ router.use((req, res, next) => {
   // This is a lightweight, temporary implementation of authorization management to help clear
   // stored session tokens for apps like GitHub, VSTS, etc.
   const link = req.link;
+  const operations = req.app.settings.providers.operations;
   const authorizations = [];
   if (link.githubToken) {
     authorizations.push({
-      validator: createGithubTokenValidator(link, link.githubToken),
+      validator: createGithubTokenValidator(operations, link, link.githubToken),
       property: 'githubToken',
       title: 'GitHub Application: Public App Token',
       text: 'A GitHub token, authorizing this site, is stored. This token only has rights to read your public profile and validate that you are the authorized user of the GitHub account.',
@@ -75,7 +75,7 @@ router.use((req, res, next) => {
   }
   if (link.githubTokenIncreasedScope) {
     authorizations.push({
-      validator: createGithubTokenValidator(link, link.githubTokenIncreasedScope),
+      validator: createGithubTokenValidator(operations, link, link.githubTokenIncreasedScope),
       property: 'githubTokenIncreasedScope',
       title: 'GitHub Application: Organization Read/Write Token',
       text: 'A GitHub token, authorizing this site, is stored. The token has a scope to read and write your organization membership. This token is used to automate organization invitation and joining functionality without requiring manual steps.',
@@ -93,23 +93,26 @@ router.use((req, res, next) => {
 });
 
 router.get('/', (req, res) => {
-  req.oss.render(req, res, 'settings/authorizations', 'Account authorizations', {
+  req.legacyUserContext.render(req, res, 'settings/authorizations', 'Account authorizations', {
     authorizations: req.authorizations,
   });
 });
 
 router.get('/github/clear', (req, res, next) => {
+  const dc = req.app.settings.providers.dataClient;
   const link = req.link;
   const linkAuthorizationsToDrop = ['githubToken', 'githubTokenIncreasedScope', 'githubTokenUpdated', 'githubTokenIncreasedScopeUpdated'];
   linkAuthorizationsToDrop.forEach((property) => {
     delete link[property];
   });
-  req.oss.modernUser().updateLink(link, (error) => {
+  const id = req.legacyUserContext.id.github;
+  const aadoid = link.aadoid;
+  dc.updateLink(id, link, error => {
     if (error) {
       return next(error);
     }
-    req.oss.saveUserAlert(req, 'The GitHub tokens stored for this account have been removed. You may be required to authorize access to your GitHub account again to continue using this portal.', 'GitHub tokens cleared', 'success');
-    req.oss.invalidateLinkCache(() => {
+    req.legacyUserContext.saveUserAlert(req, 'The GitHub tokens stored for this account have been removed. You may be required to authorize access to your GitHub account again to continue using this portal.', 'GitHub tokens cleared', 'success');
+    req.legacyUserContext.invalidateLinkCache(aadoid, () => {
       return res.redirect('/signout/github/');
     });
   });
@@ -136,7 +139,7 @@ router.get('/validate', (req, res, next) => {
     if (error) {
       return next(error);
     }
-    req.oss.render(req, res, 'settings/authorizations', 'Account authorizations', {
+    req.legacyUserContext.render(req, res, 'settings/authorizations', 'Account authorizations', {
       authorizations: req.authorizations,
     });
   });

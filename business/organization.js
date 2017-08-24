@@ -16,9 +16,12 @@ const OrganizationMember = require('./organizationMember');
 const Repository = require('./repository');
 const Team = require('./team');
 
+const legacyClaIntegration = require('./legacyClaIntegration');
+
 class Organization {
   constructor(operations, name, settings) {
     this.name = settings.name || name;
+    this.baseUrl = operations.baseUrl + this.name + '/';
 
     const privates = _private(this);
     privates.operations = operations;
@@ -76,12 +79,32 @@ class Organization {
     common.createInstancesCallback(this, this.repositoryFromEntity, callback)(null, repos);
   }
 
+  get legacyNotificationsRepository() {
+    const repoName = _private(this).settings.notificationRepo;
+    if (!repoName) {
+      throw new Error('No workflow/notification repository is defined for the organization.');
+    }
+    return this.repository(repoName);
+  }
+
   get priority() {
     return _private(this).settings.priority || 'primary';
   }
 
   get locked() {
     return _private(this).settings.locked || false;
+  }
+
+  get createRepositoriesOnGitHub() {
+    return _private(this).settings.createReposDirect || false;
+  }
+
+  get configuredOrganizationRepositoryTypes() {
+    return _private(this).settings.type || 'public';
+  }
+
+  get legacyTrainingResourcesLink() {
+    return _private(this).settings.trainingResources;
   }
 
   get privateEngineering() {
@@ -117,6 +140,30 @@ class Organization {
     return getSpecialTeam(this, 'teamAllMembers', 'everyone membership');
   }
 
+  get invitationTeam() {
+    const teams = this.broadAccessTeams;
+    if (teams.length > 1) {
+      throw new Error('Multiple invitation teams are not supported.');
+    }
+    return teams.length === 1 ? this.team(teams[0]) : null;
+  }
+
+  get repositoryApproversTeam() {
+    const teams = getSpecialTeam(this, 'teamRepoApprovers', 'organization repository approvers');
+    if (teams.length > 1) {
+      throw new Error('Multiple repository approval teams are not supported.');
+    }
+    return teams.length === 1 ? this.team(teams[0]) : null;
+  }
+
+  get systemSudoersTeam() {
+    const teams = getSpecialTeam(this, 'teamPortalSudoers', 'system sudoers');
+    if (teams.length > 1) {
+      throw new Error('Multiple system sudoer teams are not supported.');
+    }
+    return teams.length === 1 ? this.team(teams[0]) : null;
+  }
+
   get privateRepositoriesSupported() {
     return getSupportedRepositoryTypesByPriority(this).includes('private');
   }
@@ -124,7 +171,7 @@ class Organization {
   get sudoersTeam() {
     const teams = getSpecialTeam(this, 'teamSudoers', 'organization sudoers');
     if (teams.length > 1) {
-      throw new Error('Multiple sudoer teams are not currently supported.');
+      throw new Error('Multiple sudoer teams are not supported.');
     }
     return teams.length === 1 ? this.team(teams[0]) : null;
   }
@@ -216,6 +263,43 @@ class Organization {
   get legalEntityClaTeams() {
     const settings = _private(this).settings;
     return settings.cla;
+  }
+
+  getRepositoryCreateGitHubToken() {
+    // This method leaks/releases the owner token. In the future a more crisp
+    // way of accomplishing this without exposing the token should be created.
+    // The function name is specific to the intended use instead of a general-
+    // purpose token name.
+    return _private(this).getOwnerToken();
+  }
+
+  createRepository(repositoryName, options, callback) {
+    if (!callback && typeof(options) === 'function') {
+      callback = options;
+      options = {};
+    }
+
+    const self = this;
+    const token = _private(this).getOwnerToken();
+    const operations = _private(this).operations;
+
+    const orgName = this.name;
+
+    delete options.name;
+    delete options.org;
+
+    const parameters = Object.assign({
+      org: orgName,
+      name: repositoryName,
+    }, options);
+
+    return operations.github.post(token, 'repos.createForOrg', parameters, (error, details) => {
+      if (error) {
+        return callback(wrapError(error, `Could not create the repository ${orgName}/${repositoryName}`));
+      }
+      const newRepository = self.repositoryFromEntity(details);
+      return callback(null, newRepository, details);
+    });
   }
 
   getDetails(callback) {
@@ -353,6 +437,10 @@ class Organization {
     }
 
     sudoerTeam.getMembershipEfficiently(username, (getMembershipError, membership) => {
+      // The team for sudoers may have been deleted, which is not an error
+      if (getMembershipError && getMembershipError.code === 404) {
+        return callback(null, false);
+      }
       if (getMembershipError) {
         return callback(getMembershipError);
       }
@@ -367,7 +455,67 @@ class Organization {
     });
   }
 
+  acceptOrganizationInvitation(userToken, callback) {
+    const operations = _private(this).operations;
+    const parameters = {
+      org: this.name,
+      state: 'active',
+    };
+    return operations.github.post(userToken, 'users.editOrgMembership', parameters, (error, response) => {
+      if (error) {
+        return callback(wrapError(error, `Could not accept your invitation for the ${this.name} organization on GitHub`));
+      }
+      return callback(null, response);
+    });
+  }
+
   getMembership(username, options, callback) {
+    if (!callback && typeof (options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    options = options || {};
+    const orgName = this.name;
+    const parameters = {
+      username: username,
+      org: orgName,
+    };
+    const privates = _private(this);
+    const operations = privates.operations;
+    const token = privates.getOwnerToken();
+    return operations.github.call(token, 'orgs.getOrgMembership', parameters, (error, result) => {
+      if (error && error.code === 404) {
+        return callback(null, false);
+      }
+      if (error) {
+        const wrappedError = wrapError(error, `Trouble retrieving the membership for "${username}" in the ${this.name} organization`);
+        if (error.code) {
+          wrappedError.code = error.code;
+        }
+        return callback(wrappedError);
+      }
+      return callback(null, result);
+    });
+  }
+
+  getOperationalMembership(username, callback) {
+    if (!callback || !username) {
+      return callback(new Error('Username and a callback must be provided'));
+    }
+    // This is a specific version of the getMembership function that takes
+    // no options and never allows for caching [outside of the standard
+    // e-tag validation with the real-time GitHub API]
+    const options = {
+      backgroundRefresh: false,
+      maxAgeSeconds: -60,
+    };
+    return this.getMembership(username, options, callback);
+  }
+
+  checkPublicMembership(username, options, callback) {
+    // NOTE: This method is unable to be cached by the underlying
+    // system since there is no etag returned for status code-only
+    // results.
     if (!callback && typeof (options) === 'function') {
       callback = options;
       options = null;
@@ -380,11 +528,40 @@ class Organization {
     const privates = _private(this);
     const operations = privates.operations;
     const token = privates.getOwnerToken();
-    return operations.github.call(token, 'orgs.getOrgMembership', parameters, (error, result) => {
-      if (error) {
-        return callback(wrapError(error, `Trouble retrieving the membership for "${username}" in the ${this.name} organization`));
+    parameters.allowEmptyResponse = true;
+    return operations.github.post(token, 'orgs.checkPublicMembership', parameters, error => {
+      // The user either is not a member of the organization, or their membership is concealed
+      if (error && error.code === 404) {
+        return callback(null, false);
       }
-      return callback(null, result);
+      if (error) {
+        return callback(wrapError(error, `Trouble retrieving the public membership status for "${username}" in the ${this.name} organization`));
+      }
+      return callback(null, true);
+    });
+  }
+
+  concealMembership(login, userToken, callback) {
+    // This call required a provider user token with the expanded write:org scope
+    const operations = _private(this).operations;
+    const parameters = {
+      org: this.name,
+      username: login,
+    };
+    return operations.github.post(userToken, 'orgs.concealMembership', parameters, (error) => {
+      return error ? callback(wrapError(error, 'Could not conceal organization membership for ')) : callback();
+    });
+  }
+
+  publicizeMembership(login, userToken, callback) {
+    // This call required a provider user token with the expanded write:org scope
+    const operations = _private(this).operations;
+    const parameters = {
+      org: this.name,
+      username: login,
+    };
+    return operations.github.post(userToken, 'orgs.publicizeMembership', parameters, (error) => {
+      return error ? callback(wrapError(error, 'Could not publicize the organization membership for ')) : callback();
     });
   }
 
@@ -422,6 +599,38 @@ class Organization {
       parameters,
       caching,
       common.createInstancesCallback(this, this.memberFromEntity, callback));
+  }
+
+  getMembersWithoutTwoFactor(options, callback) {
+    if (!callback && typeof (options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    const clonedOptions = Object.assign({
+      filter: '2fa_disabled',
+    }, options || {});
+    return this.getMembers(clonedOptions, callback);
+  }
+
+  isMemberSingleFactor(username, options, callback) {
+    if (!callback && typeof (options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    const self = this;
+    self.getMembersWithoutTwoFactor(options, (getError, membersWithoutTwoFactor) => {
+      if (getError) {
+        return callback(getError);
+      }
+      const lowerCase = username.toLowerCase();
+      for (let i = 0; i < membersWithoutTwoFactor.length; i++) {
+        const lc = membersWithoutTwoFactor[i].login.toLowerCase();
+        if (lowerCase === lc) {
+          return callback(null, true);
+        }
+      }
+      return callback(null, false);
+    });
   }
 
   getTeams(options, callback) {
@@ -486,6 +695,34 @@ class Organization {
 
   repositoryFromEntity(entity) {
     return this.repository(entity.name, entity);
+  }
+
+  // ----------------------------------------------------------------------------
+  // Does this org support CLA features, and are they available?
+  // 3 possible return values: true, false, 'offline'.
+  // If the database is down or unavailable at startup, it should not take down
+  // the entire site. This can help display a message to a user.
+  // ----------------------------------------------------------------------------
+  isLegacyClaAutomationAvailable() {
+    const settings = _private(this).settings;
+    const operations = _private(this).operations;
+    return legacyClaIntegration.isAvailableForOrganization(operations, this, settings);
+  }
+
+  // ----------------------------------------------------------------------------
+  // Special Team: "CLA" write teams used for authoring the CLA user to create
+  // labels and other activities for the legacy CLA project.
+  // ----------------------------------------------------------------------------
+  getLegacyClaTeams(throwIfMissing) {
+    const settings = _private(this).settings;
+    const operations = _private(this).operations;
+    return legacyClaIntegration.getOrganizationTeams(operations, this, settings, throwIfMissing);
+  }
+
+  getLegacySystemObjects() {
+    const settings = _private(this).settings;
+    const operations = _private(this).operations;
+    return [settings, operations];
   }
 }
 

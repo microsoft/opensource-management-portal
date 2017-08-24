@@ -27,7 +27,7 @@ const utils = require('../utils');
 router.use(function (req, res, next) {
   const config = req.app.settings.runtimeConfig;
   const link = req.oss.entities.link;
-  if (link && link.ghu) {
+  if (link && link.ghid) {
     next();
   } else if (config.authentication.scheme !== 'aad') {
     const error = new Error('Not found (not a corporate authenticated user).');

@@ -15,18 +15,18 @@ block content
 
   .container
 
-    if team2
+    if team2 && team2.organization
       .nav
         ul.pager.zero-pad-bottom
           li.previous
-            a(href='/' + organization.name + '/teams/' + team2.slug)
+            a(href='/' + team2.organization.name + '/teams/' + team2.slug)
               span(aria-hidden=true) &larr;
               = ' Back to the ' + team2.name + ' team'
       if team2AddType
         h1 Add #{team2AddType}s to the #{team2.name} team
       else
         h1 People in the #{team2.name} team
-      h5= organization.name + ' organization'
+      h5= team2.organization.name + ' organization'
     else if organization
       h1
         | People
