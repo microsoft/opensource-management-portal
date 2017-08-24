@@ -8,6 +8,7 @@
 'use strict';
 
 const async = require('async');
+const request = require('requestretry');
 
 const Account = require('./account');
 const GraphManager = require('./graphManager');
@@ -346,6 +347,16 @@ class Operations {
     this.getOrganization(orgName).getMembers(combinedOptions, callback);
   }
 
+  // Eventually link/unlink should move from context into operations here to centralize more than just the events
+
+  fireLinkEvent(value, callback) {
+    fireEvent(this.config, 'link', value, callback);
+  }
+
+  fireUnlinkEvent(value, callback) {
+    fireEvent(this.config, 'unlink', value, callback);
+  }
+
   get systemAccountsByUsername() {
     return this.config.github && this.config.github.systemAccounts ? this.config.github.systemAccounts.logins : [];
   }
@@ -465,6 +476,43 @@ function getTeamDetailsById(self, id, options, callback) {
     cacheOptions.backgroundRefresh = options.backgroundRefresh;
   }
   return operations.github.call(token, 'orgs.getTeam', parameters, cacheOptions, callback);
+}
+
+function fireEvent(config, configurationName, value, callback) {
+  callback = callback || function () {};
+  if (!config || !config.github || !config.github.links || !config.github.links.events || !config.github.links.events) {
+    return callback();
+  }
+  const userAgent = config.userAgent || 'Unknown user agent';
+  const httpUrls = config.github.links.events.http;
+  if (!httpUrls || !httpUrls[configurationName]) {
+    return callback();
+  }
+  const urlOrUrls = httpUrls[configurationName];
+  let urls = Array.isArray(urlOrUrls) ? urlOrUrls : [urlOrUrls];
+  let results = [];
+  return async.eachLimit(urls, 1, (httpUrl, next) => {
+    request.post({
+      url: httpUrl,
+      json: true,
+      body: value,
+      headers: {
+        'User-Agent': userAgent,
+        'X-Repos-Event': configurationName,
+      },
+    }, (postError, response, body) => {
+      results.push({
+        url: httpUrl,
+        value: value,
+        error: postError,
+        response: response,
+        body: body,
+      });
+      return next();
+    });
+  }, asyncError => {
+    return callback(asyncError, results);
+  });
 }
 
 function getCentralOperationsToken(self) {

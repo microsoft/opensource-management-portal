@@ -1,0 +1,6 @@
+{
+  "http": {
+    "link": "env://GITHUB_LINKS_EVENTS_LINK_HOOK",
+    "unlink": "env://GITHUB_LINKS_EVENTS_UNLINK_HOOK"
+  }
+}

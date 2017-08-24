@@ -42,6 +42,7 @@ router.use((req, res, next) => {
     redisClient: req.app.settings.dataclient.cleanupInTheFuture.redisClient,
     redisHelper: req.app.settings.redisHelper,
     githubLibrary: req.app.settings.githubLibrary,
+    operations: req.app.settings.providers.operations,
     ossDbClient: req.app.settings.ossDbConnection,
     request: req,
     insights: req.insights,

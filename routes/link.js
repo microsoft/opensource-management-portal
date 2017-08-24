@@ -127,6 +127,7 @@ function linkUser(req, res, next) {
   const isServiceAccount = req.body.sa === '1';
   const serviceAccountMail = req.body.serviceAccountMail;
   const linkedAccountMail = req.body.sam;
+  const operations = req.app.settings.providers.operations;
   const mailProvider = req.app.settings.mailProvider;
   if (isServiceAccount && !isEmail(serviceAccountMail)) {
     return next(utils.wrapError(null, 'Please enter a valid e-mail address for the Service Account maintainer.', true));
@@ -143,6 +144,18 @@ function linkUser(req, res, next) {
       linkObject.serviceAccountMail = serviceAccountMail;
     }
     dc.insertLink(req.user.github.id, linkObject, function (insertError) {
+      const aadIdentity = {
+        preferredName: linkObject.aadname,
+        userPrincipalName: linkObject.aadupn,
+        id: linkObject.aadoid,
+      };
+      const eventData = {
+        github: {
+          id: linkObject.ghid,
+          login: linkObject.ghu,
+        },
+        aad: aadIdentity,
+      };
       req.insights.trackEvent('PortalUserLink');
       req.insights.trackMetric(metricName, 1);
       if (insertError) {
@@ -165,6 +178,7 @@ function linkUser(req, res, next) {
           });
         });
       } else {
+        operations.fireLinkEvent(eventData);
         sendWelcomeMailThenRedirect(req, res, config, '/?onboarding=yes', linkObject, mailProvider, linkedAccountMail);
       }
     });

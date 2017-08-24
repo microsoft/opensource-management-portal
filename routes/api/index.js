@@ -113,6 +113,7 @@ router.use('/:org', function (req, res, next) {
     dataClient: providers.dataclient,
     ossDbClient: providers.ossDbConnection,
     githubLibrary: providers.github,
+    operations: providers.operations,
   };
   new OpenSourceUser(options, function (error, instance) {
     req.legacyUserContext = instance;
