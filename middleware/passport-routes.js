@@ -185,6 +185,35 @@ module.exports = function configurePassport(app, passport, initialConfig) {
 
   app.post('/auth/azure/callback', aadMiddleware, authenticationCallback.bind(null, 'aad', 'azure'));
 
+  // HTTP GET at the callback URL is used for a warning for certain users who launch
+  // links from apps that temporarily prevent sessions. Technically this seems to
+  // impact Windows users who use Word to open links to the site. Collecting
+  // telemetry for now.
+  app.get('/auth/azure/callback', (req, res, next) => {
+    const insights = req.app.settings.providers.insights;
+    if (req.isAuthenticated()) {
+      if (insights) {
+        insights.trackEvent('PassportAzureADFailureInvalidStateRedirect', {
+          requestType: 'HTTP GET',
+          originalUrl: req.originalUrl,
+        });
+      }
+      return res.redirect('/');
+    }
+    if (insights) {
+      insights.trackEvent('PassportAzureADFailureInvalidStateFailure', {
+        requestType: 'HTTP GET',
+        originalUrl: req.originalUrl,
+      });
+    }
+    const messageError = new Error('Authentication failed, possibly due to a state problem. This can happen when certain tools or apps launch URLs. Try signing in again now.');
+    messageError.fancyLink = {
+      link: '/auth/azure',
+      title: 'Try signing in again',
+    };
+    return next(messageError);
+  });
+
   app.get('/signin/azure', function (req, res) {
     utils.storeReferrer(req, res, '/auth/azure', 'request for the /signin/azure page, need to authenticate');
   });
@@ -192,4 +221,3 @@ module.exports = function configurePassport(app, passport, initialConfig) {
   app.get('/signout/azure', processSignout.bind(null, 'aad', 'azure'));
 
 };
-

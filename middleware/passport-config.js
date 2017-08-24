@@ -92,6 +92,19 @@ module.exports = function (app, config) {
     validateIssuer: true,
   }, activeDirectorySubset);
 
+  // Patching the AAD strategy to intercept a specific state failure message and instead
+  // of providing a generic failure message, redirecting (HTTP GET) to the callback page
+  // where we can offer a more useful message
+  const originalFailWithLog = aadStrategy.failWithLog;
+  aadStrategy.failWithLog = function () {
+    const args = Array.prototype.slice.call(arguments);
+    const messageToIntercept = 'In collectInfoFromReq: invalid state received in the request';
+    if (args.length === 1 && typeof(args[0]) === 'string' && args[0] === messageToIntercept) {
+      return this.redirect('/auth/azure/callback?failure=invalid');
+    }
+    originalFailWithLog.call(this, args);
+  };
+
   // Validate the borrow some parameters from the GitHub passport library
   if (githubPassportStrategy._oauth2 && githubPassportStrategy._oauth2._authorizeUrl) {
     app.set('runtime/passport/github/authorizeUrl', githubPassportStrategy._oauth2._authorizeUrl);
