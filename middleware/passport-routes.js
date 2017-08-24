@@ -191,26 +191,38 @@ module.exports = function configurePassport(app, passport, initialConfig) {
   // telemetry for now.
   app.get('/auth/azure/callback', (req, res, next) => {
     const insights = req.app.settings.providers.insights;
-    if (req.isAuthenticated()) {
-      if (insights) {
-        insights.trackEvent('PassportAzureADFailureInvalidStateRedirect', {
-          requestType: 'HTTP GET',
-          originalUrl: req.originalUrl,
-        });
-      }
-      return res.redirect('/');
-    }
+    const isAuthenticated = req.isAuthenticated();
+    // if (req.isAuthenticated()) {
+    //   if (insights) {
+    //     insights.trackEvent('PassportAzureADFailureInvalidStateRedirect', {
+    //       requestType: 'HTTP GET',
+    //       originalUrl: req.originalUrl,
+    //     });
+    //   }
+    //   return res.redirect('/');
+    // }
     if (insights) {
       insights.trackEvent('PassportAzureADFailureInvalidStateFailure', {
         requestType: 'HTTP GET',
         originalUrl: req.originalUrl,
+        isAuthenticated: isAuthenticated,
       });
     }
-    const messageError = new Error('Authentication failed, possibly due to a state problem. This can happen when certain tools or apps launch URLs. Try signing in again now.');
-    messageError.fancyLink = {
-      link: '/auth/azure',
-      title: 'Try signing in again',
-    };
+    const messageError = new Error(
+      isAuthenticated ? 'Authentication initially failed, but you are good to go now.' : 'Authentication failed, possibly due to a state problem. This can happen when certain tools or apps launch URLs. Try signing in again now.');
+    if (isAuthenticated) {
+      messageError.skipOops = true;
+      messageError.detailed = 'Unfortunately we were not able to take you to the URL that you clicked on. If you go to that URL now, your request should work!';
+      messageError.fancyLink = {
+        link: '/',
+        title: 'Go to the site homepage',
+      };
+    } else {
+      messageError.fancyLink = {
+        link: '/auth/azure',
+        title: 'Try signing in again',
+      };
+    }
     return next(messageError);
   });
 
