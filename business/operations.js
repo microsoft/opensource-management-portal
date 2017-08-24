@@ -83,17 +83,16 @@ class Operations {
 
   getOnboardingOrganization(name) {
     // Specialized method to retrieve a new organization via the onboarding configuration collection, if any
-    name = name.toLowerCase();
-    const onboardingList = this.config.github.organizations.onboarding;
-    if (onboardingList) {
-      for (let i = 0; i < onboardingList.length; i++) {
-        const settings = onboardingList[i];
-        if (settings && settings.name && settings.name.toLowerCase() === name) {
-          return createOrganization(this, name, settings);
-        }
-      }
+    const value = getAlternateOrganization(this, name, 'onboarding');
+    if (value) {
+      return value;
     }
     throw new Error(`No onboarding organization settings configured for the ${name} organization`);
+  }
+
+  isIgnoredOrganization(name) {
+    const value = getAlternateOrganization(this, name, 'onboarding') || getAlternateOrganization(this, name, 'ignore');
+    return !!value;
   }
 
   getOrganizations(organizationList) {
@@ -552,6 +551,19 @@ function setRequiredProperties(self, properties, options) {
 }
 
 module.exports = Operations;
+
+function getAlternateOrganization(self, name, alternativeType) {
+  const lowercase = name.toLowerCase();
+  const list = self.config.github.organizations[alternativeType];
+  if (list) {
+    for (let i = 0; i < list.length; i++) {
+      const settings = list[i];
+      if (settings && settings.name && settings.name.toLowerCase() === lowercase) {
+        return createOrganization(self, lowercase, settings);
+      }
+    }
+  }
+}
 
 function crossOrganizationResults(operations, results, keyProperty) {
   keyProperty = keyProperty || 'id';

@@ -46,6 +46,7 @@ module.exports = (graphApi) => {
   const environmentInstances = environmentProvider ? environmentProvider.environmentInstances : null;
   const orgs = [];
   orgs.onboarding = [];
+  orgs.ignore = [];
   const defaultLegalEntities = arrayFromString(environmentProvider.get('GITHUB_ORGANIZATIONS_DEFAULT_LEGAL_ENTITIES'));
   const defaultTemplates = arrayFromString(environmentProvider.get('GITHUB_ORGANIZATIONS_DEFAULT_TEMPLATES'));
   const organizationsFile = environmentProvider.get(organizationsFileVariableName);
@@ -68,13 +69,20 @@ module.exports = (graphApi) => {
   if (contents) {
     contents.forEach((org) => {
       const isOnboarding = org.onboarding === true;
+      const ignore = org.ignore === true;
       if (!org.legalEntities && !org.cla) {
         org.legalEntities = defaultLegalEntities;
       }
       if (!org.templates) {
         org.templates = defaultTemplates;
       }
-      (isOnboarding ? orgs.onboarding : orgs).push(org);
+      let group = orgs;
+      if (isOnboarding) {
+        group = orgs.onboarding;
+      } else if (ignore) {
+        group = orgs.ignore;
+      }
+      group.push(org);
     });
   } else {
     console.warn('No GitHub organizations are configured. Set either GITHUB_ORGANIZATIONS_FILE or GITHUB_ORGANIZATIONS_ENVIRONMENT_NAME in order to load organizations');
@@ -82,6 +90,9 @@ module.exports = (graphApi) => {
 
   if (!orgs.onboarding.length) {
     delete orgs.onboarding;
+  }
+  if (!orgs.ignore.length) {
+    delete orgs.ignore;
   }
 
   return orgs;

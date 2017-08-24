@@ -176,14 +176,24 @@ module.exports = function runFirehoseTask(started, startedString, config) {
         acknowledgeEvent();
         return callback(new Error('No organization.login present in the event body'));
       }
+      const operations = app.settings.operations;
       try {
-        organization = app.settings.operations.getOrganization(orgName);
+        organization = operations.getOrganization(orgName);
       } catch (noOrganizationError) {
         acknowledgeEvent();
-        insights.trackException(noOrganizationError);
-        insights.trackEvent('JobFirehoseMissingOrganizationConfiguration', {
-          name: orgName,
-        });
+        const isKnownOrganization = operations.isIgnoredOrganization(orgName);
+        if (isKnownOrganization) {
+          // While we receive events for organizations being onboarded or known but ignored,
+          // these are not exceptional events, just events to skip.
+          insights.trackEvent('JobFirehoseKnownOrganizationIgnored', {
+            name: orgName,
+          });
+        } else {
+          insights.trackException(noOrganizationError);
+          insights.trackEvent('JobFirehoseMissingOrganizationConfiguration', {
+            name: orgName,
+          });
+        }
         return callback();
       }
       let data = {
