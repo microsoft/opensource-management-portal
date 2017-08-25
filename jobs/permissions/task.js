@@ -54,7 +54,9 @@ module.exports = function run(started, startedString, config) {
           maxAgeSeconds: 10 * 60 /* 10m */,
           backgroundRefresh: false,
         };
-        const [/*specialTeams*/, /*specials*/, specialTeamIds, specialTeamLevels] = automaticTeams.processOrgSpecialTeams(repo.organization);
+        const destructured = automaticTeams.processOrgSpecialTeams(repo.organization); // const [/*specialTeams*/, /*specials*/, specialTeamIds, specialTeamLevels] = automaticTeams.processOrgSpecialTeams(repo.organization);
+        const specialTeamIds = destructured[2];
+        const specialTeamLevels = destructured[3];
         repo.getTeamPermissions(cacheOptions, (getError, permissions) => {
           if (getError) {
             console.log(`There was a problem getting the permissions for the repo ${repo.name} from ${repo.organization.name}`);

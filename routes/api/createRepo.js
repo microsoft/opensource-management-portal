@@ -127,11 +127,7 @@ function createRepo(req, res, convergedObject, token, callback, doNotCallbackFor
   parameters.org = req.organization.name;
 
   const organization = operations.getOrganization(parameters.org);
-
-  // TODO: POST-1ES DAY REMOVE/FIX UNNEEDED CODE HERE
-  delete parameters.confirmedPolicyException;
-
-  operations.github.call(token, 'repos.createForOrg', parameters, (error, result) => {
+  operations.github.post(token, 'repos.createForOrg', parameters, (error, result) => {
     if (error) {
       // TODO: insights
       return callback(jsonError(error, error.code || 500));

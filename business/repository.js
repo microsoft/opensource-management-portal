@@ -187,11 +187,14 @@ class Repository {
   }
 
   addCollaborator(username, permission, callback) {
+    // BREAKING CHANGE in the GitHub API: as of August 2017, this is "inviteCollaborator", it does not automatically add
     if (typeof permission == 'function') {
       callback = permission;
       permission = 'pull';
     }
-    const [github, token] = getGitHubClient(this);
+    const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
+    const github = destructured[0];
+    const token = destructured[1];
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
@@ -202,8 +205,26 @@ class Repository {
     github.post(token, 'repos.addCollaborator', parameters, callback);
   }
 
+  acceptCollaborationInvite(invitationId, options, callback) {
+    // This could go in Account _or_ here in Repository
+    if (!callback && typeof (options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    options = options || {};
+    const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
+    const github = destructured[0];
+    const token = destructured[1];
+    const parameters = {
+      invitation_id: invitationId,
+    };
+    github.post(options.alternateToken || token, 'users.acceptRepoInvite', parameters, callback);
+  }
+
   removeCollaborator(username, callback) {
-    const [github, token] = getGitHubClient(this);
+    const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
+    const github = destructured[0];
+    const token = destructured[1];
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
@@ -213,7 +234,9 @@ class Repository {
   }
 
   delete(callback) {
-    const [github, token] = getGitHubClient(this);
+    const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
+    const github = destructured[0];
+    const token = destructured[1];
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
@@ -227,7 +250,9 @@ class Repository {
       options = null;
     }
     options = options || {};
-    const [github, token] = getGitHubClient(this);
+    const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
+    const github = destructured[0];
+    const token = destructured[1];
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
@@ -246,7 +271,11 @@ class Repository {
   }
 
   enableLegacyClaAutomation(options, callback) {
-    legacyClaIntegration.enable(this, options, callback);
+    try {
+      legacyClaIntegration.enable(this, options, callback);
+    } catch (error) {
+      return callback(error);
+    }
   }
 
   hasLegacyClaAutomation(callback) {
@@ -259,7 +288,9 @@ class Repository {
   }
 
   setTeamPermission(teamId, newPermission, callback) {
-    const [github, token] = getGitHubClient(this);
+    const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
+    const github = destructured[0];
+    const token = destructured[1];
     const options = {
       id: teamId,
       org: this.organization.name,
@@ -291,7 +322,9 @@ class Repository {
   }
 
   deleteWebhook(webhookId, callback) {
-    const [github, token] = getGitHubClient(this);
+    const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
+    const github = destructured[0];
+    const token = destructured[1];
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
@@ -301,7 +334,9 @@ class Repository {
   }
 
   createWebhook(options, callback) {
-    const [github, token] = getGitHubClient(this);
+    const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
+    const github = destructured[0];
+    const token = destructured[1];
 
     delete options.owner;
     delete options.repo;

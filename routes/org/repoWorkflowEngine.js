@@ -42,7 +42,8 @@ repoWorkFlowEngine.editGet = function (req, res) {
 
 repoWorkFlowEngine.editPost = function (req, res, next) {
   const self = this;
-  const [, operations] = this.organization.getLegacySystemObjects();
+  const destructured = this.organization.getLegacySystemObjects(); // const [, operations] =
+  const operations = destructured[1];
   const dc = operations.dataClient;
   const visibility = req.body.repoVisibility;
   if (!(visibility == 'public' || visibility == 'private')) {
@@ -168,22 +169,35 @@ var createAddRepositoryTask = function createAddRepoTask(organization, repoName,
 function createAddTemplateFilesTask(organization, repoName, templateName) {
   'use strict';
   const templatePath = path.join(__dirname, '../../data/templates/');
-  const [, operations] = organization.getLegacySystemObjects();
+  const destructured = organization.getLegacySystemObjects(); // const [, operations] =
+  const operations = destructured[1];
   const config = operations.config;
   const userName = config.github.user.initialCommit.username;
   const token = config.github.user.initialCommit.token;
+  const alternateTokenOptions = {
+    alternateToken: token,
+  };
   const repository = organization.repository(repoName);
   let files = [];
   return (taskCallback) => {
     async.waterfall([
 
-      function addCollaborator(callback) {
-        repository.addCollaborator(userName, 'push', callback);
+      function inviteCollaborator() {
+        const callback = Array.prototype.slice.call(arguments).pop();
+        repository.addCollaborator(userName, 'push', (invitationError, response) => {
+          if (invitationError) {
+            return callback(invitationError);
+          }
+          const invitationId = response.id;
+          if (!invitationId) {
+            return callback(new Error('No invitation was created for the repository'));
+          }
+          repository.acceptCollaborationInvite(invitationId, alternateTokenOptions, callback);
+        });
       },
 
       function createDatasource() {
-        const args = Array.prototype.slice.call(arguments);
-        const callback = args.pop();
+        const callback = Array.prototype.slice.call(arguments).pop();
         const templateRoot = path.join(templatePath, templateName);
         recursiveReadDirectory(templateRoot, (error, fileNames) => {
           async.parallel(fileNames.map(absoluteFileName => {
@@ -191,7 +205,6 @@ function createAddTemplateFilesTask(organization, repoName, templateName) {
             return next => {
               fs.readFile(path.join(templatePath, templateName, fileName), (error, file) => {
                 const base64content = file.toString('base64');
-                // new Buffer(data).toString('base64')
                 next(error,
                   {
                     path: fileName,
@@ -203,14 +216,12 @@ function createAddTemplateFilesTask(organization, repoName, templateName) {
         });
       },
 
-      function addTemplateFiles(datasource, callback) {
+      function addTemplateFiles(datasource) {
+        const callback = Array.prototype.slice.call(arguments).pop();
         const message = 'Initial commit';
         async.series(datasource.map(item => {
           return next => {
-            const createFileOptions = {
-              alternateToken: token,
-            };
-            repository.createFile(item.path, item.content, message, createFileOptions, next);
+            repository.createFile(item.path, item.content, message, alternateTokenOptions, next);
           };
         }), (error, result) => {
           if (!error) {
@@ -228,7 +239,7 @@ function createAddTemplateFilesTask(organization, repoName, templateName) {
     ], error => {
       let message = `Initial commit of ${files.join(', ')} files to the ${repoName} repo succeeded.`;
       if (error) {
-        message = `Initial commit of template file(s) to the ${repoName} repo failed. An error: ${error.message}.`;
+        message = `Initial commit of template file(s) to the ${repoName} repo failed. Error: ${error.message}.`;
       }
       const result = {
         error: error,

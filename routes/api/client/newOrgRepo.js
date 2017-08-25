@@ -240,6 +240,8 @@ function translateTeams(body) {
 function translateValue(object, fromKey, toKey) {
   if (object[fromKey]) {
     object[toKey] = object[fromKey];
+  }
+  if (object[fromKey] !== undefined) {
     delete object[fromKey];
   }
 }

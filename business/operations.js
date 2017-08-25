@@ -81,6 +81,13 @@ class Operations {
     return _private(this).organizations;
   }
 
+  get legalEntities() {
+    const config = this.config;
+    if (config.cla && config.cla.entities) {
+      return config.cla.entities;
+    }
+  }
+
   getOnboardingOrganization(name) {
     // Specialized method to retrieve a new organization via the onboarding configuration collection, if any
     const value = getAlternateOrganization(this, name, 'onboarding');

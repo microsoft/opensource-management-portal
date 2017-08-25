@@ -63,8 +63,9 @@ module.exports = {
   run: function (operations, organization, data, callback) {
     const eventType = data.properties.event;
     const eventAction = data.body.action;
-
-    const [/*specialTeams*/, /*specials*/, specialTeamIds, specialTeamLevels] = processOrgSpecialTeams(organization);
+    const destructured = processOrgSpecialTeams(organization); // const [/*specialTeams*/, /*specials*/, specialTeamIds, specialTeamLevels] = processOrgSpecialTeams(organization);
+    const specialTeamIds = destructured[2];
+    const specialTeamLevels = destructured[3];
     const preventLargeTeamPermissions = organization.preventLargeTeamPermissions;
     const recoveryTasks = [];
     const repositoryBody = data.body.repository;

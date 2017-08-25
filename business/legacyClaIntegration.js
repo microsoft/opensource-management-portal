@@ -32,7 +32,9 @@ function enable(repository, options, callback) {
   } else if (available === false) {
     return callback(new Error('This organization has not enabled CLA automation features.'));
   }
-  const [organizationSettings, operations] = repository.organization.getLegacySystemObjects();
+  const pair = repository.organization.getLegacySystemObjects();
+  const organizationSettings = pair[0];
+  const operations = pair[1];
   const insights = operations.insights;
   const legalEntity = options.legalEntity;
   const claTeams = repository.organization.getLegacyClaTeams(false /* do not throw if not configured */);
@@ -44,10 +46,10 @@ function enable(repository, options, callback) {
   if (!orgDbID) {
     return callback(new Error('No known OSS database ID!!!'));
   }
-  if (!organizationSettings.cla || !organizationSettings.cla.entities) {
-    return callback(new Error('No cla entities configured for the organization'));
+  const claEntities = operations.legalEntities;
+  if (!claEntities) {
+    return callback(new Error('No cla entities configured for the system'));
   }
-  const claEntities = organizationSettings.cla.entities;
   let claData = {
     repoName: repository.name,
     organizationName: repository.organization.name,
@@ -84,16 +86,19 @@ function enable(repository, options, callback) {
       });
     },
     function getClaTeam(callback) {
-      repository.organization.team(claTeam.id, callback);
+      const team = repository.organization.team(claTeam.id);
+      return callback(null, team);
     },
     function addRepoToClaTeam(team, callback) {
       insights.trackEvent('AddRepoToClaTeam', { repoName: repository.name, claTeamId: claTeam.id });
       repository.setTeamPermission(team.id, 'push', callback);
     },
-    function getRepoWebhooks(response, body, callback) {
+    function getRepoWebhooks() {
+      const callback = Array.prototype.slice.call(arguments).pop();
       repository.getWebhooks(callback);
     },
-    function findRepoWebhooksAndDeleteOtherClaWebhooks(webhooks, response, callback) {
+    function findRepoWebhooksAndDeleteOtherClaWebhooks(webhooks) {
+      const callback = Array.prototype.slice.call(arguments).pop();
       if (!webhooks || webhooks.length === 0) {
         return callback();
       }
@@ -120,7 +125,8 @@ function enable(repository, options, callback) {
         }
       }, callback);
     },
-    function addClaWebhook(callback) {
+    function addClaWebhook() {
+      const callback = Array.prototype.slice.call(arguments).pop();
       if (claData.webHookId) { // CLA web hook already exists
         return callback(null);
       }
@@ -134,7 +140,8 @@ function enable(repository, options, callback) {
         return callback(null);
       });
     },
-    function upsertClaReposDataInDb(callback) {
+    function upsertClaReposDataInDb() {
+      const callback = Array.prototype.slice.call(arguments).pop();
       insights.trackEvent('UpsertClaReposDataInDb', claData);
       const ossDbClient = operations.providers.ossDbConnection;
       ossManagementDb.upsertClaRepositoryData(ossDbClient, claData, callback);
