@@ -425,7 +425,6 @@ router.get('/:repoName/extensions/cla', function (req, res) {
 
 router.post('/:repoName/extensions/cla', (req, res, next) => {
   const repository = req.repository;
-  const legacyRepo = repository.legacyRepo;
   const emails = req.body.emails;
   const currentClaSettings = req.legalClaSettings;
   const repoRoot = '/' + repository.organization.name + '/repos/' + repository.name;
@@ -436,7 +435,7 @@ router.post('/:repoName/extensions/cla', (req, res, next) => {
   if (isUpdate) {
     legalEntity = currentClaSettings.legalEntity;
   }
-  legacyRepo.enableLegacyClaAutomation({
+  repository.enableLegacyClaAutomation({
     emails: emails,
     legalEntity: legalEntity,
   }, (error) => {
