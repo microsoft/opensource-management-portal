@@ -192,15 +192,6 @@ module.exports = function configurePassport(app, passport, initialConfig) {
   app.get('/auth/azure/callback', (req, res, next) => {
     const insights = req.app.settings.providers.insights;
     const isAuthenticated = req.isAuthenticated();
-    // if (req.isAuthenticated()) {
-    //   if (insights) {
-    //     insights.trackEvent('PassportAzureADFailureInvalidStateRedirect', {
-    //       requestType: 'HTTP GET',
-    //       originalUrl: req.originalUrl,
-    //     });
-    //   }
-    //   return res.redirect('/');
-    // }
     if (insights) {
       insights.trackEvent('PassportAzureADFailureInvalidStateFailure', {
         requestType: 'HTTP GET',
