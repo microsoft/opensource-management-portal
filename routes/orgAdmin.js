@@ -322,6 +322,7 @@ router.post('/whois/github/:username', function (req, res, next) {
       if (markAsServiceAccount || unmarkServiceAccount) {
         return modifyServiceAccount(dc, userInfoFinal, markAsServiceAccount, req, res, next);
       }
+      // TODO: restore pending unlink capability
       req.legacyUserContext.processPendingUnlink(userInfoFinal, (ignoredError, results) => {
         req.legacyUserContext.render(req, res, 'organization/whois/drop', `Dropped ${username}`, {
           results: results,

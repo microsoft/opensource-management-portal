@@ -136,34 +136,52 @@ class Account {
       return callback(new Error('No user id known'));
     }
     dataClient.removeLink(id, error => {
+      const history = [];
       if (error) {
+        const message = error.statusCode === 404 ? `The link for ID ${id} no longer exists: ${error}` : `The link for ID ${id} could not be removed: ${error}`;
+        history.push(message);
         return callback(error);
       }
       // CONSIDER: if there is a link service and a local
       // link cache, invalidate the local link for the user
+      history.push(`The link for ID ${id} has been removed from the link service`);
       callback();
     });
   }
 
-  terminate(callback) {
+  terminate(options, callback) {
     const self = this;
+    if (!callback && typeof(options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    options = options || {};
+    const reason = options.reason || 'account.terminate called';
+    const continueOnError = options.continueOnError || false;
     const insights = _private(self).operations.insights;
     if (insights) {
       insights.trackEvent('UserUnlinkStart', {
         id: self.id,
         login: self.login,
+        reason: reason,
+        continueOnError: continueOnError ? 'continue on errors' : 'halt on errors',
       });
     }
-    self.removeManagedOrganizationMemberships(error => {
+    self.removeManagedOrganizationMemberships((error, history) => {
       // If a removal error occurs, do not remove the link and throw an error,
       // so that the link data and information is still present until cleaned
       if (error && insights) {
         insights.trackException(error);
       }
-      if (error) {
-        return callback(error);
+      if (error && !continueOnError) {
+        return callback(error, history);
       }
-      self.removeLink(removeError => {
+      self.removeLink((removeError, removeHistory) => {
+        if (removeHistory && Array.isArray(removeHistory)) {
+          for (let i = 0; i < removeHistory.length; i++) {
+            history.push(removeHistory[i]);
+          }
+        }
         if (removeError && insights) {
           insights.trackException(removeError);
         }
@@ -173,7 +191,7 @@ class Account {
             login: self.login,
           });
         }
-        return callback(removeError);
+        return callback(removeError, history);
       });
     });
   }
@@ -210,16 +228,35 @@ class Account {
 
   removeManagedOrganizationMemberships(callback) {
     const self = this;
+    const history = [];
     self.getOperationalOrganizationMemberships((error, organizations) => {
       const username = self.login;
       if (error) {
         return callback(error);
       }
+      if (organizations.length > 1) {
+        const asText = organizations.join(', ');
+        history.push(`${username} is a member of the following organizations: ${asText}`);
+      } else {
+        history.push(`${username} is not a member of any managed organizations`);
+      }
+      let firstError = null;
       async.eachLimit(organizations, 1, (organization, next) => {
-        // CONSIDER: Should attempts be made to remove all no matter what, even
-        // if an error happens along the way?
-        organization.removeMember(username, next);
-      }, callback);
+        organization.removeMember(username, removeError => {
+          // We do not bubble up the error, keep going
+          if (removeError) {
+            history.push(`Error while removing ${username} from the ${organization.name} organization: ${removeError}`);
+          } else {
+            history.push(`Removed ${username} from the ${organization.name} organization`);
+          }
+          if (removeError && !firstError) {
+            firstError = removeError;
+          }
+          return next();
+        });
+      }, error => {
+        return callback(firstError || error, history);
+      });
     });
   }
 }

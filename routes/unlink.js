@@ -59,8 +59,18 @@ router.post('/', function (req, res, next) {
   const operations = req.app.settings.providers.operations;
   const account = operations.getAccount(id);
   const insights = req.insights;
-  account.terminate(error => {
-    insights.trackEvent('PortalUserUnlink');
+  const terminationOptions = { reason: 'User used the unlink function on the web site' };
+  account.terminate(terminationOptions, (error, history) => {
+    const hadErrors = error ? 'had errors' : 'no';
+    let eventData = {
+      id: id.toString(),
+      hadErrors: hadErrors,
+    };
+    for (let i = 0; i < history.length; i++) {
+      const historyKey = `log${i + 1}`;
+      eventData[historyKey] = history[i];
+    }
+    insights.trackEvent('PortalUserUnlink', eventData);
     // If the cache is bad, the storage entity will already be gone
     if (error && error.statusCode === 404) {
       insights.trackEvent('PortalUserUnlinkAlreadyUnlinked', error);
