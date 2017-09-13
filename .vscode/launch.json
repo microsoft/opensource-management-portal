@@ -18,6 +18,18 @@
     {
       "type": "node",
       "request": "launch",
+      "stopOnEntry": false,
+      "args": ["--recursive"],
+      "name": "Have a mocha",
+      "program": "${workspaceRoot}/node_modules/mocha/bin/_mocha",
+      "cwd": "${workspaceRoot}",
+      "env": {
+        "NODE_ENV": "testing"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Launch site (SUDO OFF)",
       "program": "${workspaceRoot}/bin/www",
       "cwd": "${workspaceRoot}",

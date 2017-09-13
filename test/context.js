@@ -11,7 +11,9 @@ const context = require('../lib/context');
 describe('context', () => {
   describe('insights', () => {
     it('does not require application insights', () => {
-      const options = {};
+      const options = {
+        operations: 'fake operations',
+      };
       new context(options, (error) => {
         expect(error).to.exist;
         expect(error).to.have.property('message', 'Could not initialize the context for the acting user.');
@@ -19,7 +21,9 @@ describe('context', () => {
     });
     it('mocks application insights as needed', () => {
       // Make sure we can always use insights without checking for its existance
-      const options = {};
+      const options = {
+        operations: 'fake operations',
+      };
       new context(options, (error, instance) => {
         expect(error).to.exist;
         expect(instance).to.exist;
