@@ -5,25 +5,35 @@
 
 /*eslint no-console: ["error", { allow: ["log", "warn"] }] */
 
-const debug = require('debug')('oss-initialize');
-const path = require('path');
-const favicon = require('serve-favicon');
 const bodyParser = require('body-parser');
 const compression = require('compression');
+const debug = require('debug')('oss-initialize');
+const favicon = require('serve-favicon');
+const path = require('path');
+const viewServices = require('ospo-pug-view-services');
+
+const campaign = require('./campaign');
 const memory = require('./memory');
 const officeHyperlinks = require('./officeHyperlinks');
 const rawBodyParser = require('./rawBodyParser');
 const uptime = require('./uptime');
-const viewServices = require('ospo-pug-view-services');
 
 module.exports = function initMiddleware(app, express, config, dirname, redisClient, initializationError) {
   config = config || {};
+  if (initializationError) {
+    providers.healthCheck.healthy = false;
+  }
   const web = !(config.skipModules && config.skipModules.has('web'));
   if (!initializationError) {
     if (!web) {
       /* No web routes */
+    } else if (config.containers && config.containers.deployment) {
+      console.log('Container deployment: HTTP: listening, HSTS: on');
+      app.use(require('./hsts'));
+    } else if (config.containers && config.containers.docker) {
+      console.log('Docker image: HTTP: listening, HSTS: off');
     } else if (config.webServer.allowHttp) {
-      console.warn('WARNING: Allowing HTTP for local debugging');
+      console.warn('WARNING: Development mode (DEBUG_ALLOW_HTTP): HTTP: listening, HSTS: off');
     } else {
       app.use(require('./sslify'));
       app.use(require('./hsts'));
@@ -33,6 +43,7 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
   app.set('views', path.join(dirname, 'views'));
   app.set('view engine', 'pug');
   app.set('view cache', false);
+  app.disable('x-powered-by');
 
   app.set('viewServices', viewServices);
   const providers = app.get('providers');
@@ -53,12 +64,16 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
     app.use(compression());
 
     app.use(express.static(path.join(dirname, 'public')));
-    app.use('/client/dist', express.static(path.join(dirname, 'client/dist')));
+
+    providers.campaign = campaign(app, config);
 
     var passport;
     if (!initializationError) {
       if (config.webServer.websiteSku && !config.webServer.allowHttp) {
         app.use(require('./requireSecureAppService'));
+      } else if (config.containers && config.containers.deployment) {
+        app.enable('trust proxy');
+        debug('proxy: trusting reverse proxy');
       }
       app.use(require('./session')(app, config, redisClient));
       try {
@@ -78,11 +93,14 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
         debug('Onboarding helper loaded');
         require('./onboarding')(app, config);
       }
-      require(officeHyperlinks);
+      app.use(officeHyperlinks);
     }
   }
 
   if (initializationError) {
+    providers.healthCheck.healthy = false;
     throw initializationError;
+  } else {
+    providers.healthCheck.ready = true; // Ready to accept traffic
   }
 };

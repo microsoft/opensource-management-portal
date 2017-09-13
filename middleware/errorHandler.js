@@ -74,7 +74,9 @@ module.exports = function (err, req, res, next) {
       if (errorStatus) {
         insightsProperties.statusCode = errorStatus.toString();
       }
-      req.insights.trackException(err, insightsProperties);
+      if (req.insights && req.insights.trackException) {
+        req.insights.trackException(err, insightsProperties);
+      }
     }
   }
   if (err !== undefined && err.skipLog !== true) {
