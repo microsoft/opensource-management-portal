@@ -67,7 +67,8 @@ module.exports = function addOrgPermissionsToRequest(req, res, next) {
             membershipStatus = false;
           }
           if (getMembershipError) {
-            return next(utils.wrapError(getMembershipError, `Unable to successfully validate whether you are already a member of the ${organization.name} organization on GitHub`));
+            const reason = getMembershipError.message;
+            return next(utils.wrapError(getMembershipError, `Unable to successfully validate whether you are already a member of the ${organization.name} organization on GitHub. ${reason}`));
           }
           if (membershipStatus && membershipStatus.state) {
             membershipStatus = membershipStatus.state;

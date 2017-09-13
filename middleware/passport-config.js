@@ -81,7 +81,7 @@ module.exports = function (app, config) {
   let githubPassportStrategy = new GitHubStrategy(githubOptions, githubResponseToSubset);
   let aadStrategy = new OIDCStrategy({
     redirectUrl: config.activeDirectory.redirectUrl,
-    allowHttpForRedirectUrl: config.webServer.allowHttp,
+    allowHttpForRedirectUrl: config.containers.docker || config.webServer.allowHttp,
     realm: config.activeDirectory.tenantId,
     clientID: config.activeDirectory.clientId,
     clientSecret: config.activeDirectory.clientSecret,

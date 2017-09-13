@@ -12,6 +12,7 @@ const appInsights = require('./appInsights');
 const DataClient = require('../data');
 const debug = require('debug')('oss-initialize');
 const keyVault = require('./keyVault');
+const healthCheck = require('./healthCheck');
 const redis = require('redis');
 const RedisHelper = require('../lib/redis');
 const sql = require('mssql');
@@ -24,6 +25,7 @@ const Operations = require('../business/operations');
 
 // Asynchronous initialization for the Express app, configuration and data stores.
 module.exports = function init(app, express, rootdir, config, configurationError, callback) {
+  app.set('started', new Date());
   if (configurationError) {
     // Once app insights is available, will try to log this exception; display for now.
     console.dir(configurationError);
@@ -36,6 +38,7 @@ module.exports = function init(app, express, rootdir, config, configurationError
   var dc;
   var redisClient;
   app.set('runtimeConfig', config);
+  providers.healthCheck = healthCheck(app, config);
   var finalizeInitialization = (error) => {
     if (dc) {
       app.set('dataclient', dc);
@@ -63,8 +66,13 @@ module.exports = function init(app, express, rootdir, config, configurationError
         };
       };
       if (appInsightsClient) {
-        appInsightsClient.trackException(error, { info: 'App crashed because of an initialization error.' });
-        appInsightsClient.sendPendingData(crash(error));
+        appInsightsClient.trackException(error, { info: 'App crashed while initializing' });
+        try {
+          appInsightsClient.sendPendingData(crash(error));
+        } catch (sendError) {
+          console.dir(sendError);
+          crash(error)();
+        }
       } else {
         crash(error)();
       }
@@ -118,7 +126,8 @@ module.exports = function init(app, express, rootdir, config, configurationError
     }
   });
 
-  if (config.optInModules && config.optInModules.has('witnessRedis') && config.witness && config.witness.redis) {
+  // 9/12/17: removing opt-in, making witness redis only dependent on having the configuration
+  if (/*config.optInModules && config.optInModules.has('witnessRedis') && */config.witness && config.witness.redis) {
     const wr = config.witness.redis;
     const witnessRedisOptions = {
       auth_pass: wr.key,
@@ -131,6 +140,7 @@ module.exports = function init(app, express, rootdir, config, configurationError
     }
     wr.port = wr.port || wr.tls ? 6380 : 6379;
     providers.witnessRedis = redis.createClient(port, wr.host || wr.tls, witnessRedisOptions);
+    providers.witnessRedisHelper = new RedisHelper(providers.witnessRedis);
   }
 
   async.parallel([
@@ -169,6 +179,7 @@ module.exports = function init(app, express, rootdir, config, configurationError
       const options = {
         config: config,
         redisClient: redisClient,
+        providers: providers,
       };
       mailAddressProvider(options, (providerInitError, provider) => {
         if (providerInitError) {

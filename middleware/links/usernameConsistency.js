@@ -97,7 +97,7 @@ module.exports = function (validateGitHubAccount) {
         updates: JSON.stringify(linkUpdates),
       });
       req.legacyUserContext.setPropertiesFromLink(link, () => {
-        next();
+        req.legacyUserContext.invalidateLinkCache(link.aadoid, next);
       });
     });
   }
@@ -125,7 +125,8 @@ module.exports = function (validateGitHubAccount) {
       if (account.avatar_url && account.avatar_url !== link.ghavatar) {
         link.ghavatar = account.avatar_url;
       }
-      user.updateLink(link, (error) => {
+
+      account.updateLink(link, (error) => {
         if (error) {
           req.insights.trackMetric('GitHubUserConsistencyFailures', 1);
           req.insights.trackEvent('GitHubUserConsistencyFailure', {
