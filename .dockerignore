@@ -1,0 +1,15 @@
+.DS_Store
+.git
+.vscode
+bower_components
+client
+node_modules
+resources
+test
+.deployment
+CONTRIBUTING.md
+npm-debug.log
+osscg-template.json
+README.md
+deploy.cmd
+web.config
