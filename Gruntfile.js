@@ -43,7 +43,7 @@ module.exports = function (grunt) {
           {
             expand: true,
             src: '**',
-            cwd: 'bower_components/bootstrap/dist/',
+            cwd: 'node_modules/bootstrap/dist/',
             dest: '<%= buildrootdir %>',
           },
         ]
@@ -53,7 +53,7 @@ module.exports = function (grunt) {
           {
             expand: true,
             src: '**',
-            cwd: 'bower_components/typeahead.js/dist/',
+            cwd: 'node_modules/typeahead.js/dist/',
             dest: '<%= buildscriptdir %>',
           },
         ]
@@ -63,7 +63,7 @@ module.exports = function (grunt) {
           {
             expand: true,
             src: '*.less',
-            cwd: 'bower_components/typeahead.js-bootstrap3.less/',
+            cwd: 'node_modules/typeahead.js-bootstrap3.less/',
             dest: 'resources/less/',
           },
         ]
@@ -83,7 +83,7 @@ module.exports = function (grunt) {
           {
             expand: true,
             src: '**',
-            cwd: 'bower_components/jQuery/dist/',
+            cwd: 'node_modules/jquery/dist/',
             dest: '<%= buildscriptdir %>',
           },
         ]
@@ -103,7 +103,7 @@ module.exports = function (grunt) {
           {
             expand: true,
             src: 'jquery.timeago.js',
-            cwd: 'bower_components/jquery-timeago/',
+            cwd: 'node_modules/timeago/',
             dest: '<%= buildscriptdir %>',
           },
         ]
@@ -113,7 +113,7 @@ module.exports = function (grunt) {
           {
             expand: true,
             src: 'jquery.uitablefilter.js',
-            cwd: 'bower_components/jquery-uitablefilter/',
+            cwd: 'node_modules/jquery-uitablefilter/',
             dest: '<%= buildscriptdir %>',
           },
         ]
@@ -123,7 +123,7 @@ module.exports = function (grunt) {
           {
             expand: true,
             src: 'd3.min.js',
-            cwd: 'bower_components/d3/',
+            cwd: 'node_modules/d3/',
             dest: '<%= buildscriptdir %>',
           },
         ]
@@ -133,13 +133,13 @@ module.exports = function (grunt) {
           {
             expand: true,
             src: 'c3.min.css',
-            cwd: 'bower_components/c3/',
+            cwd: 'node_modules/c3/',
             dest: '<%= builddir %>',
           },
           {
             expand: true,
             src: 'c3.min.js',
-            cwd: 'bower_components/c3/',
+            cwd: 'node_modules/c3/',
             dest: '<%= buildscriptdir %>',
           },
         ]

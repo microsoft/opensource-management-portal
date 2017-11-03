@@ -1,9 +1,12 @@
 .DS_Store
 .git
+.gitignore
+.certs
 .vscode
-bower_components
 client
 node_modules
+
+public
 resources
 test
 .deployment
@@ -13,3 +16,5 @@ osscg-template.json
 README.md
 deploy.cmd
 web.config
+*-compose*
+env.*.list
