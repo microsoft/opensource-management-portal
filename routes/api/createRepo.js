@@ -14,7 +14,7 @@ const async = require('async');
 const emailRender = require('../../lib/emailRender');
 const jsonError = require('./jsonError');
 
-const RepoWorkflowEngine = require('../org/RepoWorkflowEngine.js');
+const RepoWorkflowEngine = require('../org/repoWorkflowEngine.js');
 
 const supportedLicenseExpressions = [
   'mit',
