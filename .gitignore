@@ -8,7 +8,6 @@ registration/
 node_modules/
 
 # Client script
-bower_components/
 .sass-cache/
 
 # Static assets

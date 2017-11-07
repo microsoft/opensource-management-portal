@@ -53,7 +53,7 @@ $ npm install
 #### Suggested global NPM packages
 
 ```
-$ npm install -g eslint bower mocha grunt-cli ember-cli
+$ npm install -g eslint mocha grunt-cli ember-cli
 ```
 
 ### Build
@@ -65,10 +65,8 @@ $ npm run-script build
 Which is equivalent to running:
 
 ```
-$ bower install
 $ cd client
 $ npm install
-$ bower install
 $ cd ..
 $ grunt
 ```
