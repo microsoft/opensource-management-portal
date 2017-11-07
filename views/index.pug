@@ -107,26 +107,9 @@ block content
 
         if overview.teams.maintainer
           h1 Teams you maintain
-          script(type='text/javascript').
-            function initializeManageFilter() {
-              var inputManageFilter = $('#manage-filter');
-              if (inputManageFilter) {
-                inputManageFilter.keyup(function () {;
-                  $.uiTableFilter($('table#manage-table'), this.value, ['Title', 'Organization', 'GitHub name']);
-                });
-              }
-            }
-          //-div.container
           div
             table.table#manage-table
               thead
-                tr
-                  th(colspan='2')
-                    form#manage-filter-form
-                      input.form-control#manage-filter(name='filter', placeholder='Filter teams I manage', type='text')
-                  th
-                    p
-                      i.glyphicon.glyphicon-search
                 tr
                   th GitHub name
                   th Organization
@@ -146,24 +129,8 @@ block content
         if overview.teams && overview.teams.member && overview.teams.member.length
           h1 Team memberships
           p Here are teams that you are a member of but not a maintainer of.
-          script(type='text/javascript').
-            function initializeMembershipFilter() {
-              var inputMembershipFilter = $('#membership-filter');
-              if (inputMembershipFilter) {
-                inputMembershipFilter.keyup(function () {;
-                  $.uiTableFilter($('table#membership-table'), this.value, ['Team', 'Organization']);
-                });
-              }
-            }
           table.table#membership-table
             thead
-              tr
-                th(colspan='2')
-                  form#membership-filter-form
-                    input.form-control#membership-filter(name='filter', placeholder='Filter my teams', type='text')
-                th
-                  p
-                    i.glyphicon.glyphicon-search
               tr
                 th Team
                 th Organization
