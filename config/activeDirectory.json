@@ -4,5 +4,5 @@
   "tenantId": "env://AAD_TENANT_ID",
   "redirectUrl": "env://AAD_REDIRECT_URL",
   "issuer": "env://AAD_ISSUER",
-  "allowTenantGuests": "env://AAD_ALLOW_TENANT_GUESTS?trueIf=allow"
+  "blockGuestUserTypes": "env://AAD_BLOCK_GUEST_LINKING?trueIf=block"
 }
