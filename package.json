@@ -26,7 +26,7 @@
   "scripts": {
     "start": "node ./bin/www",
     "test": "mocha && npm run lint",
-    "build": "bower install && grunt",
+    "build": "grunt",
     "lint": "eslint ."
   },
   "engines": {
@@ -34,6 +34,7 @@
   },
   "dependencies": {
     "adal-node": "0.1.22",
+    "ajv": "^5.0.0",
     "applicationinsights": "0.21.0",
     "async": "2.5.0",
     "azure-keyvault": "1.0.0",
@@ -82,7 +83,9 @@
     "validator": "7.2.0"
   },
   "devDependencies": {
-    "bower": "^1.7.9",
+    "bootstrap": "^3.3.7",
+    "bootswatch": "^3.3.7",
+    "c3": "^0.4.11",
     "chai": "^3.5.0",
     "eslint": "^4.0.0",
     "grunt": "1.0.1",
@@ -91,8 +94,13 @@
     "grunt-contrib-copy": "^1.0.0",
     "grunt-contrib-less": "^1.4.0",
     "grunt-exec": "^2.0.0",
+    "jquery": "^3.1.0",
+    "jquery-uitablefilter": "git+https://github.com/RobCannon/jquery-uitablefilter.git",
     "load-grunt-tasks": "^3.5.2",
-    "mocha": "^3.0.1"
+    "mocha": "^3.0.1",
+    "timeago": "^1.5.3",
+    "typeahead.js": "^0.11.1",
+    "typeahead.js-bootstrap3.less": "git+https://github.com/hyspace/typeahead.js-bootstrap3.less.git"
   },
   "painlessConfigObjectPackages": [
     "./config"

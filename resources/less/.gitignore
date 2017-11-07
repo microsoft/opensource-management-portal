@@ -1,2 +1,2 @@
-# The typeahead patch file is brought in through bower + a grunt copy task
+# The typeahead patch file is brought in through npm + a grunt copy task
 typeahead.less
