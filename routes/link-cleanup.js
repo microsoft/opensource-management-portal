@@ -139,7 +139,7 @@ function unlink(req, link, callback) {
     link: link,
     insights: req.insights,
   };
-  new OpenSourceUserContext(options, function (contextError, unlinkContext) {
+  req.oss = new OpenSourceUserContext(options, function (contextError, unlinkContext) {
     if (contextError) {
       return callback(contextError);
     }
@@ -158,7 +158,7 @@ function invalidateCache(req, link, callback) {
     link: link,
     insights: req.insights,
   };
-  new OpenSourceUserContext(options, function (contextError, unlinkContext) {
+  req.oss = new OpenSourceUserContext(options, function (contextError, unlinkContext) {
     if (contextError) {
       return callback(contextError);
     }
