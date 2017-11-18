@@ -20,7 +20,7 @@ module.exports = function prepareUserContext(req, res, next) {
     request: req,
     insights: req.insights,
   };
-  new OpenSourceUserContext(options, (error, instance) => {
+  req.oss = new OpenSourceUserContext(options, (error, instance) => {
     req.legacyUserContext = instance;
     if (error && (error.tooManyLinks === true || error.anotherAccount === true)) {
       return next(jsonError(error, 400));

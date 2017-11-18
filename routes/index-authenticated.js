@@ -47,7 +47,7 @@ router.use((req, res, next) => {
     request: req,
     insights: req.insights,
   };
-  new OpenSourceUserContext(options, (error, instance) => {
+  req.oss = new OpenSourceUserContext(options, (error, instance) => {
     req.legacyUserContext = instance;
     if (error && (error.tooManyLinks === true || error.anotherAccount === true)) {
       // The only URL permitted in this state is the cleanup endpoint and special multiple-account endpoint
