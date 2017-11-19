@@ -149,8 +149,8 @@ router.get('/whois/aad/:upn', function (req, res, next) {
 });
 
 router.get('/bulkRepoDelete', (req, res) => {
-  const oss = req.oss;
-  oss.render(req, res, 'organization/bulkRepoDelete', 'Bulk repository delete');
+  const legacyUserContext = req.legacyUserContext;
+  legacyUserContext.render(req, res, 'organization/bulkRepoDelete', 'Bulk repository delete');
 });
 
 router.post('/bulkRepoDelete', (req, res, next) => {
