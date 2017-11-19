@@ -26,7 +26,7 @@ const utils = require('../utils');
 //-----------------------------------------------------------------------------
 router.use(function (req, res, next) {
   const config = req.app.settings.runtimeConfig;
-  const link = req.oss.entities.link;
+  const link = req.legacyUserContext.entities.link;
   if (link && link.ghid) {
     next();
   } else if (config.authentication.scheme !== 'aad') {
