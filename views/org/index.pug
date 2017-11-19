@@ -53,25 +53,9 @@ block content
             a.btn.btn-default(href='./approvals/') See all pending #{organization.name} approvals (#{accountInfo.pendingApprovals.length})
         if accountInfo.organizationOverview.teams.maintainer
           h2.capitalize #{organization.name} Teams You Maintain
-          script(type='text/javascript').
-            function initializeManageFilter() {
-              var inputManageFilter = $('#manage-filter');
-              if (inputManageFilter) {
-                inputManageFilter.keyup(function () {;
-                  $.uiTableFilter($('table#manage-table'), this.value, ['Title', 'Organization', 'GitHub Name']);
-                });
-              }
-            }
           div.container
             table.table#manage-table
               thead
-                tr
-                  th(colspan='1')
-                    form#manage-filter-form
-                      input.form-control#manage-filter(name='filter', placeholder='Filter teams I manage', type='text')
-                  th
-                    p
-                      i.glyphicon.glyphicon-search
                 tr
                   th GitHub Name
                   // th Organization
@@ -98,24 +82,8 @@ block content
         p Here are teams that you are a member of but do not maintain.
 
       if accountInfo.organizationOverview.teams.member && accountInfo.organizationOverview.teams.member.length
-        script(type='text/javascript').
-          function initializeMembershipFilter() {
-            var inputMembershipFilter = $('#membership-filter');
-            if (inputMembershipFilter) {
-              inputMembershipFilter.keyup(function () {;
-                $.uiTableFilter($('table#membership-table'), this.value, ['Team']);
-              });
-            }
-          }
         table.table#membership-table
           thead
-            tr
-              th(colspan='1')
-                form#membership-filter-form
-                  input.form-control#membership-filter(name='filter', placeholder='Filter my teams', type='text')
-                th
-                  p
-                    i.glyphicon.glyphicon-search
             tr
               th Team
               th.thirtypercent View

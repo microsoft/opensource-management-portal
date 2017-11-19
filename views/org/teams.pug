@@ -113,25 +113,8 @@ block content
       else
         h3 All teams across organizations
 
-      script(type='text/javascript').
-        function initializeTeamFilter() {
-          var inputManageFilter = $('#manage-filter');
-          if (inputManageFilter) {
-            inputManageFilter.keyup(function () {;
-              $.uiTableFilter($('table#teams-table'), this.value, ['Team', 'Organization', 'Description']);
-            });
-          }
-        }
-
       table.table#teams-table
         thead
-          tr
-            th(colspan=org ? '2' : '3')
-              form#manage-teams-filter-form
-                input.form-control#manage-filter(name='filter', placeholder='Filter teams', type='text')
-            th
-              p
-                i.glyphicon.glyphicon-search
           tr
             th.thirtypercent Team
             if !org

@@ -95,7 +95,6 @@
     "grunt-contrib-less": "^1.4.0",
     "grunt-exec": "^2.0.0",
     "jquery": "^3.1.0",
-    "jquery-uitablefilter": "git+https://github.com/RobCannon/jquery-uitablefilter.git",
     "load-grunt-tasks": "^3.5.2",
     "mocha": "^3.0.1",
     "timeago": "^1.5.3",

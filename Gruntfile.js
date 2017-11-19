@@ -108,16 +108,6 @@ module.exports = function (grunt) {
           },
         ]
       },
-      uitablefilter: {
-        files: [
-          {
-            expand: true,
-            src: 'jquery.uitablefilter.js',
-            cwd: 'node_modules/jquery-uitablefilter/',
-            dest: '<%= buildscriptdir %>',
-          },
-        ]
-      },
       d3: {
         files: [
           {
