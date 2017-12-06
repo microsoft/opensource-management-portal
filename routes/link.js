@@ -14,6 +14,54 @@ const router = express.Router();
 const utils = require('../utils');
 const unlinkRoute = require('./unlink');
 
+router.use((req, res, next) => {
+  const providers = req.app.settings.providers;
+  const operations = providers.operations;
+  const insights = providers.insights;
+  const config = operations.config;
+  let validateAndBlockGuests = false;
+  if (config && config.activeDirectory && config.activeDirectory.blockGuestUserTypes) {
+    validateAndBlockGuests = true;
+  }
+  if (!validateAndBlockGuests) {
+    return next();
+  }
+  const graphProvider = providers.graphProvider;
+  // REFACTOR: delegate the decision to the auth provider
+  if (!graphProvider || !graphProvider.getUserById) {
+    return next(new Error('User type validation cannot be performed because there is no graphProvider configured for this type of account'));
+  }
+  const aadId = req.legacyUserContext.id.aad;
+  insights.trackEvent('LinkValidateNotGuestStart', {
+    aadId: aadId,
+  });
+  graphProvider.getUserById(aadId, (graphError, details) => {
+    if (graphError) {
+      insights.trackException(graphError, {
+        aadId: aadId,
+        name: 'LinkValidateNotGuestGraphFailure',
+      });
+      return next(graphError);
+    }
+    const userType = details.userType;
+    const displayName = details.displayName;
+    const userPrincipalName = details.userPrincipalName;
+    const block = userType === 'Guest';
+    insights.trackEvent('LinkValidateNotGuestGraphSuccess' , {
+      aadId: aadId,
+      userType: userType,
+      displayName: displayName,
+      userPrincipalName: userPrincipalName,
+      blocked: block ? 'BLOCKED' : 'not blocked',
+    });
+    if (block) {
+      insights.trackMetric('LinksBlockedForGuests', 1);
+      return next(new Error(`This system is not available to guests. You are currently signed in as ${displayName} ${userPrincipalName}. Please sign out or try a private browser window.`));
+    }
+    return next();
+  });
+});
+
 router.get('/', function (req, res, next) {
   const link = req.legacyUserContext.entities.link;
   if (!(req.legacyUserContext.usernames.azure && req.legacyUserContext.usernames.github)) {
@@ -88,15 +136,16 @@ function sendWelcomeMailThenRedirect(req, res, config, url, linkObject, mailProv
   const mail = {
     to: to,
     subject: `${linkObject.aadupn} linked to ${linkObject.ghu}`,
+    correlationId: req.correlationId,
+    category: ['link', 'repos'],
+  };
+  const contentOptions = {
     reason: (`You are receiving this one-time e-mail because you have linked your account.
               To stop receiving these mails, you can unlink your account.
               This mail was sent to: ${toAsString}`),
     headline: `Welcome to GitHub, ${linkObject.ghu}`,
-    classification: 'information',
-    service: `${config.brand.companyName} GitHub`,
-    correlationId: req.correlationId,
-  };
-  const contentOptions = {
+    notification: 'information',
+    app: `${config.brand.companyName} GitHub`,
     correlationId: req.correlationId,
     link: linkObject,
   };
@@ -132,7 +181,7 @@ function linkUser(req, res, next) {
   if (isServiceAccount && !isEmail(serviceAccountMail)) {
     return next(utils.wrapError(null, 'Please enter a valid e-mail address for the Service Account maintainer.', true));
   }
-  req.insights.trackEvent(isServiceAccount ? 'PortalUserLinkingStart' : 'PortalUserLinkingServiceAccountStart');
+  req.insights.trackEvent(isServiceAccount ? 'PortalUserLinkingServiceAccountStart' : 'PortalUserLinkingStart');
   const metricName = isServiceAccount ? 'PortalServiceAccountLinks' : 'PortalUserLinks';
   const dc = req.app.settings.dataclient;
   dc.createLinkObjectFromRequest(req, function (createLinkError, linkObject) {
@@ -174,6 +223,7 @@ function linkUser(req, res, next) {
             return next(utils.wrapError(updateLinkError, 'We had trouble storing the corporate identity link information after 2 tries. Please file this issue and we will have an administrator take a look.'));
           }
           req.legacyUserContext.invalidateLinkCache(() => {
+            operations.fireLinkEvent(eventData);
             sendWelcomeMailThenRedirect(req, res, config, '/?onboarding=yes', linkObject, mailProvider, linkedAccountMail);
           });
         });

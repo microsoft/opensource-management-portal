@@ -215,6 +215,10 @@ class Organization {
         return callback(null, Array.from(administrators));
       }
       sudoTeam.getMembers((error, members) => {
+        if (error && error.code === 404) {
+          // The sudo team no longer exists, but we should still have administrator information
+          return callback(null, Array.from(administrators));
+        }
         if (error) {
           return callback(error);
         }
@@ -234,6 +238,13 @@ class Organization {
     const sudoTeamInstance = this.sudoersTeam;
     if (sudoTeamInstance) {
       teamIds.push(sudoTeamInstance.id);
+    }
+
+    const broadAccessTeams = this.broadAccessTeams;
+    if (broadAccessTeams) {
+      for (let i = 0; i < broadAccessTeams.length; i++) {
+        teamIds.push(broadAccessTeams[i]); // is the actual ID, not the team object
+      }
     }
 
     const specialTeams = this.specialRepositoryPermissionTeams;
@@ -488,7 +499,11 @@ class Organization {
         return callback(null, false);
       }
       if (error) {
-        const wrappedError = wrapError(error, `Trouble retrieving the membership for "${username}" in the ${this.name} organization`);
+        let reason = error.message;
+        if (error.code) {
+          reason += ' ' + error.code;
+        }
+        const wrappedError = wrapError(error, `Trouble retrieving the membership for "${username}" in the ${orgName} organization. ${reason}`);
         if (error.code) {
           wrappedError.code = error.code;
         }
@@ -797,7 +812,11 @@ function getSpecialTeam(self, propertyName, friendlyName, throwIfMissing) {
   }
   const value = settings[propertyName];
   if (value && Array.isArray(value)) {
-    return value;
+    const asNumbers = [];
+    for (let i = 0; i < value.length; i++) {
+      asNumbers.push(parseInt(value[i], 10));
+    }
+    return asNumbers;
   }
   const teams = [];
   if (value) {

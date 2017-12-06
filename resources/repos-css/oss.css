@@ -86,6 +86,7 @@ textarea#editor-body {
 footer {
   margin-top: 36px;
   bottom: 0;
+  background-color: #e6e6e6
 }
 
 .vertical-space, .vertical-space-top {
@@ -361,6 +362,22 @@ div.link-box {
 .ms-yellow a p, .ms-light-orange a p, .ms-light-magenta a p, .ms-light-purple a p, .ms-light-blue a p,
 .ms-light-teal a p, .ms-light-green a p, .ms-light-yellow a p, .ms-white a p, .ms-light-gray a p {
   color:#000;
+}
+
+@font-face {
+  font-family: "Bowtie";
+  src: url("/font/bowtie.woff") format('woff');
+}
+
+.bowtie {
+  font-family: "Bowtie";
+  font-size: larger;
+  margin-left: .5em;
+  line-height: 16px;
+}
+
+.bowtie::before {
+  content: "\ea60 ";
 }
 
 /* table width modifiers */

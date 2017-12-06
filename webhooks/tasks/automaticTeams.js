@@ -233,14 +233,15 @@ function emptyCallback(callback) {
 }
 
 function sendEmail(insights, basedir, mailProvider, to, body, callback) {
+  body.reason = `You are receiving this e-mail because you changed the permissions on the ${body.teamName} GitHub team, triggering this action.`;
+  body.headline = 'Team permission change reverted';
+  body.notification = 'warning';
+  body.app = 'Microsoft GitHub';
   const mail = {
     to: to,
     cc: 'jwilcox@microsoft.com',
     subject: `Team permission change for ${body.repository.full_name} repository reverted`,
-    reason: `You are receiving this e-mail because you changed the permissions on the ${body.teamName} GitHub team, triggering this action.`,
-    headline: 'Team permission change reverted',
-    classification: 'warning',
-    service: 'Microsoft GitHub',
+    category: ['error', 'repos'],
   };
   emailRender.render(basedir, 'largeTeamProtected', body, (renderError, mailContent) => {
     if (renderError) {

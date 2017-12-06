@@ -9,8 +9,11 @@ html(lang="en")
   body
     include alerts
     - var scheme = primaryAuthenticationScheme || (config ? config.authentication.scheme : null)
-    include nav
-    if reposContext && site === 'github'
+    if scheme === 'aad'
+      include nav2
+    else
+      include nav
+    if reposContext && (!reposContext.releaseTab) && site === 'github'
       include reposToolbar
     //-include breadcrumbs
 

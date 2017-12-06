@@ -12,6 +12,7 @@ const jsonError = require('./jsonError');
 const router = express.Router();
 
 const apiClient = require('./client');
+const apiExtension = require('./extension');
 const apiPeople = require('./people');
 const apiWebhook = require('./webhook');
 
@@ -20,6 +21,7 @@ const OpenSourceUser = require('../../lib/context');
 const createRepo = require('./createRepo');
 
 const hardcodedApiVersions = [
+  '2017-09-01',
   '2017-03-08',
   '2016-12-01',
 ];
@@ -64,25 +66,44 @@ router.use(function (req, res, next) {
       apiVersion: req.apiVersion,
       url: req.originalUrl || req.url,
     };
+    const eventName = 'ApiRequest' + (error ? 'Denied' : 'Approved');
     if (error) {
       apiEventProperties.failed = true;
       apiEventProperties.message = error.message;
       apiEventProperties.statusCode = error.statusCode;
     }
-    req.insights.trackEvent('ApiRequest', apiEventProperties);
+    req.insights.trackEvent(eventName, apiEventProperties);
     if (error) {
       req.insights.trackMetric('ApiInvalidKey', 1);
-      req.insights.trackException(error);
+      // req.insights.trackException(error);
+      error.skipLog = true;
       return next(jsonError(error.statusCode === 404 ? 'Key not authorized' : error.message, 401));
-    } else {
-      req.insights.trackMetric('ApiRequest', 1);
-      req.apiKeyRow = setting;
-      next();
     }
+
+    if (setting.active === false) {
+      error = new Error('A revoked key attempted to use an API');
+      req.insights.trackMetric('ApiRevokedKeyAttempt', 1);
+      return next(jsonError('Key revoked', 403));
+    }
+
+    if (setting.expires) {
+      const now = new Date();
+      const expires = new Date(setting.expires);
+      if (expires < now) {
+        error = new Error('A revoked key attempted to use an API');
+        req.insights.trackMetric('ApiExpiredKeyAttempt', 1);
+        return next(jsonError('Key expired', 403));
+      }
+    }
+
+    req.insights.trackMetric('ApiRequest', 1);
+    req.apiKeyRow = setting;
+    next();
   });
 });
 
 router.use('/people', apiPeople);
+router.use('/extension', apiExtension);
 
 router.use('/:org', function (req, res, next) {
   const orgName = req.params.org;

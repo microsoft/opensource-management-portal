@@ -1,0 +1,39 @@
+{{app-header title="Confirmation"}}
+<div class="container">
+  <div class="row">
+    <div class="col-md-8">
+      <h2>{{model.newRepoResponse.title}}</h2>
+      <h4>{{model.newRepoResponse.message}}</h4>
+      {{#if model.newRepoResponse.url}}
+        <div class="row">
+          <div class="col-sm-11 pull-right">
+            <p>Repository URL: <a href="{{model.newRepoResponse.url}}" target="_new">{{model.newRepoResponse.url}}</a></p>
+          </div>
+        </div>
+      {{/if}}
+      <div class="row">
+        {{#if model.newApprovalUrl}}
+          <div class="col-sm-11 pull-right">
+            <p>Release review: <a href="{{model.newApprovalUrl}}" target="_blank">{{model.newApprovalUrl}}</a></p>
+          </div>
+          <div class="col-sm-12">
+            <p>You cannot make your repository public until your release review has been completed.</p>
+          </div>
+        {{else}}
+          {{#unless flashMessages.queue}}
+            <div class="col-sm-12">
+              <p>This project does not require a new release registration based on the provided answers.</p>
+            </div>
+          {{/unless}}
+        {{/if}}
+      </div>
+      <p>&nbsp;</p>
+      <p>
+        {{#link-to "new-repo" class="btn btn-primary"}}Create another repo{{/link-to}}
+      </p>
+    </div>
+    <div class="col-md-4">
+      {{new-repo-steps step="congrats"}}
+    </div>
+  </div>
+</div>

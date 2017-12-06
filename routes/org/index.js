@@ -32,6 +32,16 @@ router.use(function (req, res, next) {
   next();
 });
 
+// Campaign-related redirect to take the user to GitHub
+router.get('/', (req, res, next) => {
+  if (!req.app.settings.providers || !req.app.settings.providers.campaign) {
+    return next();
+  }
+  return req.app.settings.providers.campaign.redirectGitHubMiddleware(req, res, next, () => {
+    return req.organization ? req.organization.name : null;
+  });
+});
+
 // Routes that do not require that the user be an org member
 router.use('/join', joinRoute);
 router.use('/repos', reposRoute);
@@ -55,7 +65,15 @@ router.use(orgPermissions, (req, res, next) => {
   if (membershipStatus === 'active') {
     return next();
   } else {
-    return res.redirect('/' + organization.name + '/join');
+    const context = req.legacyUserContext;
+    const aadId = context.id.aad;
+    const username = context.usernames.github;
+    organization.getOperationalMembership(username, () => {
+      // Clear their cache. They may have renamed their account.
+      return context.invalidateLinkCache(aadId, () => {
+        return res.redirect('/' + organization.name + '/join');
+      });
+    });
   }
 });
 

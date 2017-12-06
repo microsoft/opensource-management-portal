@@ -1,0 +1,20 @@
+{{app-header title="Releases"}}
+<div class="container">
+  <div class="row">
+    <div class="col-md-8">
+      {{#if model.approvalUrl}}
+        <h2>New release registration confirmation</h2>
+        <h4>Your new registration has been submitted. <a href="{{model.approvalUrl}}" target="_blank">Here is a link</a> to the request.</h4>
+      {{/if}}
+      {{#if model.isPolicyException}}
+        <h4>This project does not require a release registration based on the provided answers.</h4>
+      {{/if}}
+      {{#if model.isSmallLibTool}}
+        <h4>This project does not require a release registration based on the provided answers.</h4>
+      {{/if}}
+      <ul class="list-inline">
+        <li>{{#link-to "new-approval" class="btn btn-muted-more"}}Back{{/link-to}}</li>
+      </ul>
+    </div>
+  </div>
+</div>

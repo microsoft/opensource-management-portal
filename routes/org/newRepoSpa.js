@@ -11,7 +11,7 @@ const router = express.Router();
 router.get('/', function (req, res) {
   const organization = req.organization;
   const orgName = organization.name.toLowerCase();
-  req.legacyUserContext.render(req, res, 'org/newRepoSpa', 'New repository', {
+  req.legacyUserContext.render(req, res, 'emberApp', 'New repository', {
     orgName: orgName,
     organization: organization,
   });

@@ -2,5 +2,30 @@
 //- Copyright (c) Microsoft. All rights reserved.
 //-
 
-include body
-include footer
+//- Open Source Programs Office application and service HTML e-mail template
+//- Jade variables:
+//- - app: the name of the application or service, appears at the top of the e-mail or defaults to Microsoft Open Source
+//- - reason: the reason that the receipient has been sent the e-mail. Can be raw HTML including a mailto: link
+//- - subject: the subject of the e-mail
+//- - headline: the headline for the e-mail for standard communications, appears in H1
+//- - notification: if present, should be 'information', 'action', 'success' or 'warning'
+
+//- CDN Information
+//- The assets are served using HTTPS
+//- The assets are stored in the storage account 'ospomail', public blob container 'opensource'
+//- An Akamai CDN is used to serve the images, https://ospomail.azureedge.net points to the container
+
+- var logoBase = 'https://ospomail.azureedge.net/';
+- var logoImage = 'opensource.png'
+- var orgIdSize = 42
+- var iconSize = 60
+- var logo = logoBase + logoImage
+- var useIcon = notification === 'action' || notification === 'warning' || notification === 'information'
+- var icon = useIcon ? logoBase + 'inverted-' + notification + '.png' : null
+
+doctype html
+html(lang="en")
+  include head
+  body
+    include body
+    div.goodbye

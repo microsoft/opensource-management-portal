@@ -31,6 +31,13 @@ class Repository {
     privates.operations = operations;
   }
 
+  get vstsUrl() {
+    if (this.private) return;
+
+    return 'https://ospomirror.visualstudio.com/'
+      + this.organization.name + '-github-org/_git/' + this.name;
+  }
+
   getDetails(options, callback) {
     if (!callback && typeof(options) === 'function') {
       callback = options;
@@ -271,6 +278,10 @@ class Repository {
   }
 
   enableLegacyClaAutomation(options, callback) {
+    if (!this.supportsLegacyClaAutomation()) {
+      return callback(new Error('This organization does not support the legacy CLA system, so the legacy CLA cannot be enabled.'));
+    }
+
     try {
       legacyClaIntegration.enable(this, options, callback);
     } catch (error) {
@@ -280,6 +291,21 @@ class Repository {
 
   hasLegacyClaAutomation(callback) {
     legacyClaIntegration.has(this, callback);
+  }
+
+  supportsLegacyClaAutomation() {
+    // This code is specific to Microsoft at this time as part of the transition
+    // to a new CLA system in September/October 2017. This code can be removed
+    // along with all legacy CLA integration code after that launch, as it will
+    // not be useful to others.
+
+    const legalEntities = this.organization.legalEntities;
+    if (legalEntities && legalEntities.length > 0) {
+      const firstLegalEntity = legalEntities[0].toLowerCase();
+      return firstLegalEntity === '.net foundation'; // HARDCODED legal entity name
+    }
+
+    return false;
   }
 
   getLegacyClaSettings(callback) {

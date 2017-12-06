@@ -1,0 +1,18 @@
+<div class="panel panel-primary">
+  <div class="panel-heading">
+    <h3 class="panel-title">New repository steps</h3>
+  </div>
+  <div class="panel-body">
+    <ul>
+      {{#each currentWizardSteps as |wizardStep|}}
+        <li>
+          {{#if (is-equal wizardStep.value step)}}
+            <b>{{wizardStep.text}}</b>
+          {{else}}
+            {{wizardStep.text}}
+          {{/if}}
+        </li>
+      {{/each}}
+    </ul>
+  </div>
+</div>

@@ -2,22 +2,50 @@
 //- Copyright (c) Microsoft. All rights reserved.
 //-
 
-.appFooter
-  table(style='width:100%;', cellspacing=0, cellpadding=0)
-    tbody
-      tr
-        td(width='100%', colspan='2', style='height:28px')
-          p
-      tr
-        td(width='100%', colspan='2', style='height:12px)
-      tr
-        td
-        td
-          p.footer(style='text-align: right')
-            if version
-              | Repos #{version}
+.footer
+  .mailFooter
+    table(style='width:100%;', cellspacing=0, cellpadding=0)
+      tbody
+        tr
+          td(width='100%', colspan='2', style='height:28px')
+            p
+        tr
+          td(width='100%', colspan='2', style='height:12px;border-top: 1px solid #ddd;')
+        if reason
+          tr
+            td(width='100%', colspan='2')
+              p
+                small
+                  != reason
+        tr
+          td(width='100%', colspan='2')
+            p
+              small Learn more about the #[a(href='https://opensource.microsoft.com/resources/emailNotice') opensource.ms] top-level domain name used for Microsoft open source-related email notifications at https://opensource.microsoft.com/resources/emailNotice
+        if correlationId || view
+          tr
+            td(width='100%', colspan='2')
+              p
+                small
+                  if version
+                    | Repos #{version}
+                    br
+                  if correlationId
+                    | Correlation ID: #{correlationId}
+                  if correlationId && view
+                    br
+                  if view
+                    | Template: #{view}
+        tr
+          td
+            p.footer
+              | Microsoft Open Source Programs Office
               br
-            if correlationId
-              | Correlation ID: #{correlationId}
-            if view
-              | Template: #{view}
+              a(href='https://stackoverflow.microsoft.com/tags/opensource') StackOverflow@Microsoft
+              | &nbsp;&bull;&nbsp;
+              a(href='https://opensource.microsoft.com') Web
+              | &nbsp;&bull;&nbsp;
+              a(href='mailto:opensource@microsoft.com') Email
+
+          td(width='120', valign='middle')
+            img(align='right', valign='middle', src='https://ospomail.azureedge.net/microsoft.png', width='108', height='23', alt='Microsoft')
+

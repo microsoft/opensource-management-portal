@@ -1,0 +1,34 @@
+{{app-header title="Create a new repository"}}
+<div class="container">
+  <div class="row">
+    <div class="col-md-8">
+      <h2>Contributor License Agreement</h2>
+        <div class="form-group">
+        <label class="control-label">Legal entity</label>
+        {{#x-select value=model.repo.legalEntity class="form-control" disabled="true" action="selectEntity" as |xs|}}
+          {{#each model.metadata.legalEntities as |entity|}}
+            {{#xs.option value=entity}}{{entity}}{{/xs.option}}
+          {{/each}}
+        {{/x-select}}
+      </div>
+      {{#if model.metadata.supportsCla}}
+        <p>This repository will be onboarded with the corporate CLA system for the organization’s legal entity. If you believe this needs to be changed, please reach out to <a href="mailto:opensource@microsoft.com">opensource@microsoft.com</a> after creating your repository.</p>
+        <div class="form-group" style="display:none">
+          <label class="control-label">Optional notification email(s)</label>
+          {{input value=model.repo.legalEmails placeholder="Comma-separated list of e-mail addresses to set" class="form-control"}}
+          {{model-validator-error errors=model.repo.errors.legalEmails text="Notification email(s)"}}
+        </div>
+      {{/if}}
+      <div class="form-group">
+        <ul class="list-inline">
+          <li>{{#link-to "new-repo.read" class="btn btn-muted-more"}}Back{{/link-to}}</li>
+          <li><button {{action "next" model.repo}} class="btn btn-primary">Next</button></li>
+      </ul>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <br>
+      {{new-repo-steps step="legal"}}
+    </div>
+  </div>
+</div>

@@ -17,11 +17,12 @@ const utils = require('../../../utils');
 router.use((req, res, next) => {
   const login = req.legacyUserContext.usernames.github;
   const team2 = req.team2;
-  team2.getMembershipEfficiently(login, (getMembershipError, membership) => {
+  team2.getMembershipEfficiently(login, (getMembershipError, membership, state) => {
     if (getMembershipError) {
       return next(getMembershipError);
     }
     req.membershipStatus = membership;
+    req.membershipState = state;
     return next();
   });
 });
@@ -269,12 +270,6 @@ router.post('/join', function (req, res, next) {
       const mail = {
         to: approverMailAddresses,
         subject: `${personName} wants to join your ${team2.name} team in the ${team2.organization.name} GitHub org`,
-        reason: (`You are receiving this e-mail because you are a team maintainer for the GitHub team "${team2.name}" in the ${team2.organization.name} organization.
-                  To stop receiving these mails, you can remove your team maintainer status on GitHub.
-                  This mail was sent to: ${approversAsString}`),
-        headline: `${team2.name} permission request`,
-        classification: 'action',
-        service: 'Microsoft GitHub',
         correlationId: req.correlationId,
       };
       const contentOptions = {
@@ -331,14 +326,15 @@ router.post('/join', function (req, res, next) {
       const mail = {
         to: personMail,
         subject: `Your ${team2.organization.name} "${team2.name}" permission request has been submitted`,
+        correlationId: req.correlationId,
+        category: ['request', 'repos'],
+      };
+      const contentOptions = {
         reason: (`You are receiving this e-mail because you requested to join this team.
                   This mail was sent to: ${personMail}`),
         headline: 'Team request submitted',
-        classification: 'information',
-        service: 'Microsoft GitHub',
-        correlationId: req.correlationId,
-      };
-      const contentOptions = {
+        notification: 'information',
+        app: 'Microsoft GitHub',
         correlationId: req.correlationId,
         version: config.logging.version,
         actionUrl: approvalBaseUrl + requestId,
@@ -396,6 +392,7 @@ router.get('/', orgPermissions, (req, res, next) => {
   const id = req.legacyUserContext.id.github ? parseInt(req.legacyUserContext.id.github, 10) : null;
   const teamPermissions = req.teamPermissions;
   const membershipStatus = req.membershipStatus;
+  const membershipState = req.membershipState;
   const team2 = req.team2;
   const operations = req.app.settings.operations;
   const organization = req.organization;
@@ -430,6 +427,7 @@ router.get('/', orgPermissions, (req, res, next) => {
       // new values:
       teamPermissions: teamPermissions,
       membershipStatus: membershipStatus,
+      membershipState: membershipState,
       membersFirstPage: membersFirstPage,
       team2: team2,
       teamDetails: teamDetails,

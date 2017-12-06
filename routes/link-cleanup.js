@@ -129,13 +129,14 @@ router.post('/', (req, res, next) => {
 });
 
 function unlink(req, link, callback) {
+  const operations = req.app.settings.providers.operations;
   const options = {
     config: req.app.settings.runtimeConfig,
     dataClient: req.app.settings.dataclient,
     redisClient: req.app.settings.dataclient.cleanupInTheFuture.redisClient,
     redisHelper: req.app.settings.redisHelper,
     githubLibrary: req.app.settings.githubLibrary,
-    operations: req.app.settings.providers.operations,
+    operations: operations,
     link: link,
     insights: req.insights,
   };
@@ -143,7 +144,9 @@ function unlink(req, link, callback) {
     if (contextError) {
       return callback(contextError);
     }
-    unlinkContext.modernUser().unlinkAndDrop(callback);
+    const account = operations.getAccount(unlinkContext.id.github);
+    const reason = 'Link-cleanup, voluntary unlinking';
+    account.terminate({ reason: reason }, callback);
   });
 }
 

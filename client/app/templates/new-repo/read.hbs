@@ -1,0 +1,40 @@
+{{app-header title="Create a new repository"}}
+<div class="container">
+  <div class="row">
+    <div class="col-md-8">
+      <h2>Read permissions</h2>
+      <div class="form-group">
+        <h4>Your teams</h4>
+        {{#each personalizedReadTeams as |team|}}
+          <div title="{{team.description}}">
+            <label>{{input name=team.id type="checkbox" checked=team.isChecked disabled=team.isDisabled}} {{team.name}}</label>
+          </div>
+        {{/each}}
+      </div>
+      <div class="form-group">
+        <h4>Other teams</h4>
+        {{#each-in model.repo.selectedReadTeams as |teamId team|}}
+          <div title="{{team.description}}">
+            <label>{{input name=team.id type="checkbox" checked=team.isChecked disabled=team.isDisabled}} {{team.name}}</label>
+          </div>
+        {{/each-in}}
+        {{partial "new-repo/other-teams"}}
+      </div>
+      <div class="form-group">
+        <ul class="list-inline">
+          <li><button class="btn btn-muted-more" {{action "back" model.repo}}>Back</button></li>
+          <li><button class="btn btn-primary" {{action "next" model.repo}}>Next</button></li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <br>
+      {{new-repo-steps step="read"}}
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <div>If you need new teams, <a href={{concat "https://github.com/orgs/" orgName "/new-team"}} target="_new">create them in GitHub</a> before submitting this request.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

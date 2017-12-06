@@ -1,0 +1,7 @@
+{{#if errors}}
+  <div class="alert alert-danger" role="alert">
+    {{#each-in errors as |key error|}}
+      <div>{{text}} {{error.message}}</div>
+    {{/each-in}}
+  </div>
+{{/if}}

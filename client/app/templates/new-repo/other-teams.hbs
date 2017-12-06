@@ -1,0 +1,60 @@
+<br>
+<div class="panel panel-default">
+  <div class="panel-heading">
+    {{#if allTeams}}
+      <div class="row">
+        <div class="col-md-8">
+          {{input value=allTeamsFilter class="form-control" placeholder="Filter all teams"}}
+        </div>
+        <div class="col-md-4 text-right">
+          Filtering {{allTeamsFilteredCount}} out of {{allTeamsTotalCount}}
+        </div>
+      </div>
+      <br>
+      <div class="container">
+        {{#each paged as |team|}}
+          <div class="row" style="margin-bottom: 2px">
+            <div title="{{team.description}}">
+              <button class="btn btn-muted btn-xs" {{action "selectTeam" team model.repo}}>Add</button>
+              {{team.name}}
+            </div>
+          </div>
+        {{/each}}
+      </div>
+      <div class="row small">
+        <div class="col-md-2">
+          <button class="btn btn-muted btn-sm" style="margin-top: 20px" {{action "refreshAllTeams"}}>Refresh teams</button>
+        </div>
+        <div class="col-md-10 text-right">
+          <ul class="pagination small">
+            {{#if previousPage}}
+              <li><a {{action "updatePage" previousPage}}>&laquo;</a></li>
+            {{else}}
+              <li class="disabled"><a>&laquo;</a></li>
+            {{/if}}
+
+            {{#each pages as |n|}}
+              {{#if n}}
+                {{#if (is-equal n page)}}
+                  <li class="active"><a {{action "updatePage" n}}>{{n}}</a></li>
+                {{else}}
+                  <li><a {{action "updatePage" n}}>{{n}}</a></li>
+                {{/if}}
+              {{else}}
+                <li class="disabled"><a>&hellip;</a></li>
+              {{/if}}
+            {{/each}}
+
+            {{#if nextPage}}
+              <li><a {{action "updatePage" nextPage}}>&raquo;</a></li>
+            {{else}}
+              <li class="disabled"><a>&raquo;</a></li>
+            {{/if}}
+          </ul>
+        </div>
+      </div>
+    {{else}}
+      <button class="btn btn-muted btn-sm" {{action "loadAllTeams"}}>Show all teams</button>
+    {{/if}}
+  </div>
+</div>

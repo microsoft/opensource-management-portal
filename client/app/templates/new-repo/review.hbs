@@ -1,0 +1,87 @@
+{{app-header title="Create a new repository"}}
+<div class="container">
+  <div class="row">
+    <div class="col-md-8">
+      <h2>Review</h2>
+      <p>Please review request details prior to creating the repo:</p>
+      <p>
+        <h3 class="panel-title">GitHub repo</h3>
+        <div><a>https://github.com/{{orgName}}/{{model.repo.name}}</a></div>
+        <div>{{model.repo.description}}</div>
+        <div>{{capitalize-first-letter model.repo.visibility}} visibility</div>
+        <br>
+        {{#if model.repo.projectType}}
+          <h3 class="panel-title">Project type</h3>
+          <div>{{capitalize-first-letter model.repo.projectType}}</div>
+          <br>
+        {{/if}}
+        <h3 class="panel-title">Release registration</h3>
+        <div>
+          {{#if (is-equal model.repo.approvalType "New release registration")}}
+            New release review
+          {{else}}
+            {{model.repo.approvalType}}
+          {{/if}}
+        </div>
+        {{#if model.repo.approvalUrl}}
+          <div><a href="{{model.repo.approvalUrl}}" target="_blank">{{model.repo.approvalUrl}}</a></div>
+        {{/if}}
+        {{#if model.repo.justification}}
+          <div>{{model.repo.justification}}</div>
+        {{/if}}
+        <br>
+        <h3 class="panel-title">Contributor License Agreement</h3>
+        <div>{{model.repo.legalEntity}}</div>
+        {{#if model.repo.legalEmails}}
+          <div>Notification emails: {{model.repo.legalEmails}}</div>
+        {{/if}}
+        <br>
+        <h3 class="panel-title">Teams</h3>
+        <div>Administrators</div>
+        <ul>
+          {{#each-in model.repo.selectedPersonalizedAdminTeams as |teamId team|}}
+            <li>{{team.name}}</li>
+          {{/each-in}}
+          {{#each-in model.repo.selectedAdminTeams as |teamId team|}}
+            <li>{{team.name}}</li>
+          {{/each-in}}
+        </ul>
+        <div>Write permissions</div>
+        <ul>
+          {{#each-in model.repo.selectedPersonalizedWriteTeams as |teamId team|}}
+            <li>{{team.name}}</li>
+          {{/each-in}}
+          {{#each-in model.repo.selectedWriteTeams as |teamId team|}}
+            <li>{{team.name}}</li>
+          {{/each-in}}
+        </ul>
+        <div>Read permissions</div>
+        <ul>
+          {{#each-in model.repo.selectedPersonalizedReadTeams as |teamId team|}}
+            <li>{{team.name}}</li>
+          {{/each-in}}
+          {{#each-in model.repo.selectedReadTeams as |teamId team|}}
+            <li>{{team.name}}</li>
+          {{/each-in}}
+        </ul>
+        <br>
+        <h3 class="panel-title">Repo template</h3>
+        {{#each model.metadata.templates as |license|}}
+          {{#if (is-equal model.repo.license license.id)}}
+            {{license.name}}
+          {{/if}}
+        {{/each}}
+        <div>{{model.repo.gitIgnoreLanguage}}</div>
+      </p>
+      <div class="form-group">
+        <ul class="list-inline">
+          <li>{{#link-to "new-repo.contents" class="btn btn-muted-more"}}Back{{/link-to}}</li>
+          <li>{{#link-to "new-repo.congrats" class="btn btn-primary"}}Submit request{{/link-to}}</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-4">
+      {{new-repo-steps step="review"}}
+    </div>
+  </div>
+</div>

@@ -24,7 +24,7 @@ function MemberSearch(members, options) {
     }
     this.members = Array.from(members.values());
   }
-  translateMembers(this.members);
+  translateMembers(this.members, options.isOrganizationScoped, options.links);
   this.links = options.links;
   this.getCorporateProfile = options.getCorporateProfile;
   this.teamMembers = options.teamMembers;
@@ -36,15 +36,46 @@ function MemberSearch(members, options) {
   this.type = options.type;
 }
 
-function translateMembers(members) {
+function translateMembers(members, isOrganizationScoped, optionalLinks) {
+  // Support showing
+  const linkedNoOrg = new Map();
+  if (!isOrganizationScoped && optionalLinks) {
+    for (let i = 0; i < optionalLinks.length; i++) {
+      const link = optionalLinks[i];
+      if (link && link.ghu && link.ghid) {
+        const id = parseInt(link.ghid, 10);
+        linkedNoOrg.set(id, link);
+      }
+    }
+  }
   // A breaking change altered the projected format
   members.forEach(member => {
+    linkedNoOrg.delete(member.id);
     if (member.orgs && !member.account) {
       const orgNames = Object.getOwnPropertyNames(member.orgs);
       const firstOrganization = orgNames[0];
       member.account = member.orgs[firstOrganization];
     }
   });
+  // Locate linked users with no org memberships
+  if (linkedNoOrg.size) {
+    const noOrgs = Array.from(linkedNoOrg.values());
+    for (let i = 0; i < noOrgs.length; i++) {
+      const n = noOrgs[i];
+      const id = parseInt(n.ghid, 10);
+      const newMember = {
+        account: {
+          avatar_url: n.ghavatar,
+          id: id,
+          login: n.ghu ? n.ghu.toLowerCase() : null,
+        },
+        id: id,
+        orgs: {},
+      };
+      // Create a member entry
+      members.push(newMember);
+    }
+  }
 }
 
 MemberSearch.prototype.search = function search(page, sort) {

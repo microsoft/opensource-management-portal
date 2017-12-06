@@ -126,7 +126,7 @@ class UserContext {
     if (optionalRole) {
       options.role = optionalRole;
     }
-    options.maxAgeSeconds = 60 * 10;
+    options.maxAgeSeconds = 60 * 20;
     options.backgroundRefresh = true;
     operations.graphManager.getUserTeams(this.id, options, (error, teams) => {
       if (error) {

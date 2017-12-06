@@ -94,7 +94,8 @@ repoWorkFlowEngine.generateSecondaryTasks = function (callback) {
       tasks.push(createAddRepositoryTask(organization, repoName, teamId, permission));
     }
   }
-  if (pendingRequest.claEntity) {
+  const temporaryRepository = organization.repository(repoName);
+  if (temporaryRepository.supportsLegacyClaAutomation() && pendingRequest.claEntity) {
     tasks.push(createSetLegacyClaTask(organization, repoName, pendingRequest.claEntity, pendingRequest.claMail));
   }
   if (pendingRequest.template) {
@@ -124,6 +125,13 @@ function createSetLegacyClaTask(organization, repoName, legalEntity, claMail) {
   'use strict';
   return function setLegacyClaTask(callback) {
     const repository = organization.repository(repoName);
+    if (!repository.supportsLegacyClaAutomation()) {
+      // For now, return a basic message, nothing fancy, if called.
+      return callback({
+        message: 'The organization-level CLA system automatically includes this repository',
+      });
+    }
+
     repository.enableLegacyClaAutomation({
       emails: claMail,
       legalEntity: legalEntity,

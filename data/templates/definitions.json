@@ -1,2 +1,8 @@
 {
+  "mit": {
+    "spdx": "mit",
+    "name": "MIT",
+    "legalEntity": "Company Name",
+    "recommended": true
+  }
 }
