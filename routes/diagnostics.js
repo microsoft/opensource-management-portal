@@ -29,6 +29,17 @@ router.get('/', (req, res) => {
     }
     safeUserView.user.github = github;
   }
+  if (req.user && req.user.githubIncreasedScope) {
+    let githubIncreasedScope = {};
+    for (let key in req.user.githubIncreasedScope) {
+      let val = req.user.githubIncreasedScope[key];
+      if (key === 'accessToken') {
+        val = redacted;
+      }
+      githubIncreasedScope[key] = val;
+    }
+    safeUserView.user.githubIncreasedScope = githubIncreasedScope;
+  }
   if (req.user && req.user.azure) {
     let azure = {};
     for (let key in req.user.azure) {

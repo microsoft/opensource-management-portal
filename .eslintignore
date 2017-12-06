@@ -1,4 +1,4 @@
-# /node_modules/* ignored by default
+# /node_modules/* and /bower_components/* ignored by default
 
 public/*
 private/*

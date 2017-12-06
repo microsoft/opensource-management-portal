@@ -228,9 +228,13 @@ block content
                         value= 'Remove from ' + team2.name + ' team')
               .col-sm-2
                 if !organization && person.orgs
-                  ul.list-unstyled
-                    each values, _org_ in person.orgs
-                      li= _org_
+                  - var localOrgList = Object.getOwnPropertyNames(person.orgs)
+                  if localOrgList.length === 0
+                    p: small No organizations
+                  else
+                    ul.list-unstyled
+                      each values, _org_ in person.orgs
+                        li= _org_
 
               .col-sm-2
                 //- Temporary, adding a direct link; the user would still need to be a global sudoer to use the linked page

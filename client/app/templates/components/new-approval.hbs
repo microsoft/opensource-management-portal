@@ -1,0 +1,361 @@
+<h2>New release registration</h2>
+<div id="public-open-source" class="form-group">
+  <label class="control-label">Is this going to be a public open source project?</label>
+  <div>
+    {{#radio-button value="Yes" groupValue=approval.publicOpenSource}}<span> Yes</span>{{/radio-button}}
+  </div>
+  <div>
+    {{#radio-button value="No" groupValue=approval.publicOpenSource}}<span> No</span>{{/radio-button}}
+  </div>
+  {{model-validator-error errors=approval.errors.publicOpenSource text="This field"}}
+</div>
+{{#if (is-equal approval.publicOpenSource "No")}}
+  <div id="exemption-justification" class="form-group">
+    <label class="control-label">What type of project is this?</label>
+    {{#each policyExemptionJustifications as |exemptionJustification|}}
+      <div>
+        {{#radio-button
+          value=exemptionJustification
+          groupValue=approval.policyExemptionJustification}}
+          <span> {{exemptionJustification}}</span>
+        {{/radio-button}}
+      </div>
+    {{/each}}
+    {{model-validator-error errors=approval.errors.policyExemptionJustification text="This field"}}
+  </div>
+  {{#if approval.policyExemptionJustification}}
+    <div class="form-group">
+      <p>GitHub is only approved to host public open source and to stage private open source for 30 days before going public. It is not approved for private engineering or content.</p>
+      <p>If after reviewing the Microsoft GitHub Guidelines and Policies you believe your scenario is allowed, select the checkbox below to proceed.</p>
+    </div>
+    <div class="form-group">
+      {{input type="checkbox" id="policyCheckbox" checked=approval.confirmedPolicyException}}
+      <label for="policyCheckbox" style="font-weight: normal; display: inline">I confirm that I understand the <a href="https://aka.ms/githubguidelines" target="_blank">Microsoft GitHub Guidelines and Policies</a> and that I believe this exception is valid.</label>
+      {{model-validator-error errors=approval.errors.confirmedPolicyException text="Exception confirmation"}}
+    </div>
+  {{/if}}
+{{/if}}
+{{#if (is-equal approval.publicOpenSource "Yes")}}
+  <div id="project-type" class="form-group">
+    <label class="control-label">What type of project is this?</label>
+    {{#each projectTypes as |type|}}
+      <div>
+        {{#radio-button
+          value=type.id
+          groupValue=approval.projectType}}
+          <span> {{type.text}}</span>
+        {{/radio-button}}
+      </div>
+    {{/each}}
+    {{model-validator-error errors=approval.errors.projectType text="Project type"}}
+  </div>
+  <div id="license" class="form-group pop">
+    <label class="control-label">What license will you be releasing it under?</label>
+    <div>
+      {{#radio-button value="MIT" groupValue=approval.license}}<span> MIT</span>{{/radio-button}}
+    </div>
+    <div>
+      {{#radio-button value="Other" groupValue=approval.license}}<span> Other</span>{{/radio-button}}
+    </div>
+    <div id="license-popover" class="hidden">
+      MIT is Microsoft's preferred open source license unless a specific community requires a different license
+    </div>
+  </div>
+  <div id="3rdparty" class="form-group pop">
+    <label class="control-label">Have you copied any 1st- or 3rd-party source code, binaries, or other content into the project?</label>
+    <div>
+      {{#radio-button value="Yes" groupValue=approval.includes3rdparty}}<span> Yes</span>{{/radio-button}}
+    </div>
+    <div>
+      {{#radio-button value="No" groupValue=approval.includes3rdparty}}<span> No</span>{{/radio-button}}
+    </div>
+    {{model-validator-error errors=approval.errors.includes3rdparty text="This field"}}
+    <div id="3rdparty-popover" class="hidden">
+      Source code, binaries, and content (e.g. images, fonts, data) that wasn't created by your team may have special licensing considerations
+    </div>
+  </div>
+  {{#if (is-equal approval.includes3rdparty "Yes")}}
+  <div class="form-group">
+    <label class="control-label">Describe what you copied and from where:</label> {{textarea value=approval.includes3rdpartyDetails placeholder="Describe what you copied and from where" class="form-control" focus-out="validateIncludes3rdpartyDetails"}}
+    {{model-validator-error errors=approval.errors.includes3rdpartyDetails text="This field"}}
+  </div>
+  <div class="alert alert-info" role="alert">
+    You must register the usage of any open source copied into your project. For information on how to do this
+    <a href="https://www.1eswiki.com/wiki/Registering_use_of_components_with_OSS_CG" target="_blank" style="color: white; text-decoration: underline;">click here</a>.
+  </div>
+  <br>
+  {{/if}}
+  <div id="telemetry" class="form-group">
+    <label class="control-label">Does this project send any data or telemetry back to Microsoft?</label>
+    <div>
+      {{#radio-button value="Yes" groupValue=approval.sendsDataToMicrosoft}}<span> Yes</span>{{/radio-button}}
+    </div>
+    <div>
+      {{#radio-button value="No" groupValue=approval.sendsDataToMicrosoft}}<span> No</span>{{/radio-button}}
+    </div>
+    {{model-validator-error errors=approval.errors.sendsDataToMicrosoft text="This field"}}
+  </div>
+  {{#if shouldSizeQuestionBeAsked}}
+    <div id="small-project" class="form-group">
+      <label class="control-label">Is the project under 5,000 lines (including auto-generated code)?</label>
+      <div>
+        {{#radio-button value="Yes" groupValue=approval.smallProject}}<span> Yes</span>{{/radio-button}}
+      </div>
+      <div>
+        {{#radio-button value="No" groupValue=approval.smallProject}}<span> No</span>{{/radio-button}}
+      </div>
+      {{model-validator-error errors=approval.errors.smallProject text="This field"}}
+    </div>
+  {{/if}}
+  {{#if shouldDisplayRemainingQuestions}}
+    <div id="project" class="form-group pop">
+      <label class="control-label">Project name:</label>
+      {{input value=approval.projectName placeholder="Project name" class="form-control" focus-out="validateProjectName"}}
+      {{model-validator-error errors=approval.errors.projectName text="Project name"}}
+      <div id="project-popover" class="hidden">
+        Project name
+      </div>
+    </div>
+    <div id="version" class="form-group pop">
+      <label class="control-label">Version:</label>
+      {{input value=approval.projectVersion placeholder="Version" class="form-control" focus-out="validateProjectVersion"}}
+      {{model-validator-error errors=approval.errors.projectVersion text="Version"}}
+      <div id="version-popover" class="hidden">
+        Version
+      </div>
+    </div>
+    <div id="project-description" class="form-group pop">
+      <label class="control-label">Describe the project:</label>
+      {{textarea value=approval.projectDescription placeholder="Helps reviewers understand what the project does" class="form-control" focus-out="validateProjectDescription"}}
+      {{model-validator-error errors=approval.errors.projectDescription text="Project description"}}
+      <div id="project-description-popover" class="hidden">
+        Describe the project
+      </div>
+    </div>
+    <div id="business-goals" class="form-group pop">
+      <label class="control-label">What are your business goals for the project?</label>
+      {{textarea value=approval.businessGoals placeholder="Helps reviewers understand the benefits delivered by the project" class="form-control" focus-out="validateBusinessGoals"}}
+      {{model-validator-error errors=approval.errors.businessGoals text="Business goals"}}
+      <div id="business-goals-popover" class="hidden">
+        Helps reviewers understand the benefits delivered by the project
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="control-label">In what products or services will it be used?</label>
+      {{input value=approval.usage placeholder="Leave blank if not used in a Microsoft product or service" class="form-control" focus-out="validateUsage"}}
+      {{model-validator-error errors=approval.errors.usage text="Usage"}}
+    </div>
+    <div id="hosting" class="form-group pop">
+      <label class="control-label">Where will it be published?</label>
+      <div>
+        {{#radio-button value="github" groupValue=approval.hosting}}<span> GitHub</span>{{/radio-button}}
+      </div>
+      <div>
+        {{#radio-button value="other" groupValue=approval.hosting}}<span> Other</span>{{/radio-button}}
+      </div>
+      <div id="hosting-popover" class="hidden">
+        GitHub is Microsoft's preferred place to publish open source unless a specific community requires a different location
+      </div>
+    </div>
+
+    <h3>Patent questions</h3>
+    <p>If Microsoft ships an OSS component that implements some of our patents, our patent rights may be affected. Your answer should consider all the content from the component being released.</p>
+    <div id="modern-ui" class="pop">
+      <div class="form-group">
+        <label class="control-label">Does it include Modern UI features?</label>
+        <div>
+          {{#radio-button value="Yes" groupValue=approval.includesModernUI}}<span> Yes</span>{{/radio-button}}
+        </div>
+        <div>
+          {{#radio-button value="No" groupValue=approval.includesModernUI}}<span> No</span>{{/radio-button}}
+        </div>
+        <div>
+          {{#radio-button value="I don't know" groupValue=approval.includesModernUI}}<span> I don't know</span>{{/radio-button}}
+        </div>
+        {{model-validator-error errors=approval.errors.includesModernUI text="This field"}}
+      </div>
+      {{#if (is-equal approval.includesModernUI "Yes")}}
+      <div class="form-group">
+        <label class="control-label">Detail the Modern UI features included in this component:</label>
+        {{textarea value=approval.modernUIDetails placeholder="Detail the Modern UI features included in this component" class="form-control" focus-out="validateModernUIDetails"}}
+        {{model-validator-error errors=approval.errors.modernUIDetails text="Modern UI details"}}
+      </div>
+      {{/if}}
+      <div id="modern-ui-popover" class="hidden">
+        <ol type="1" style="margin-left:10px; padding:0px">
+          <li>Tiles
+            <ul style="margin-left:10px; padding:0px">
+              <li>Tile layout with gutter (the spacing of tiles similar to Windows Phone, Windows 8, Windows 10)</li>
+              <li>Start screen with user tile location</li>
+              <li>Palette of colors with preset combinations of colors for live tiles – inside the tile and outside the tile (background)
+              </li>
+              <li>Live tiles (with notification)</li>
+              <li>Aggregation tiles – aggregates information from multiple sources e.g. people tile in Win Phone 8</li>
+              <li>Animations (incl. parallax (ability of background to slide at a rate different from the foreground tiles)</li>
+            </ul>
+          </li>
+          <li>Semantic zoom</li>
+          <li>Finger or mouse swiping from edges</li>
+          <li>Charms (controls made visible by swiping from the edge of the screen)</li>
+          <li>App bar (e.g., a bar brought up with a touch or swipe to offer additional features not on the Start screen or application
+            screen)</li>
+          <li>Segoe font (i.e., are you distributing the font with your code?)</li>
+        </ol>
+      </div>
+    </div>
+
+    {{#if (is-equal approval.license "Other")}}
+      <div id="natural-UI" class="pop">
+        <div class="form-group">
+          <label class="control-label">Does it include Gesture or Natural UI features?</label>
+          <div>
+            {{#radio-button value="Yes" groupValue=approval.naturalUI}}<span> Yes</span>{{/radio-button}}
+          </div>
+          <div>
+            {{#radio-button value="No" groupValue=approval.naturalUI}}<span> No</span>{{/radio-button}}
+          </div>
+          <div>
+            {{#radio-button value="I don't know" groupValue=approval.naturalUI}}<span> I don't know</span>{{/radio-button}}
+          </div>
+          {{model-validator-error errors=approval.errors.naturalUI text="This field"}}
+        </div>
+        {{#if (is-equal approval.naturalUI "Yes")}}
+        <div class="form-group">
+          <label class="control-label">Detail the Gesture or Natural UI features included in this component:</label>
+          {{textarea value=approval.naturalUIDetails placeholder="Detail the Gesture and Natural UI features included in this component"
+            class="form-control" focus-out="validateNaturalUIDetails"}}
+          {{model-validator-error errors=approval.errors.naturalUIDetails text="Natural UI details"}}
+        </div>
+        {{/if}}
+        <div id="natural-UI-popover" class="hidden">
+          <div>Any gesture-based/NUI functionality that uses any image-capture functionality (including the use of data from an image-capture
+            device) to enable users through gestures to:</div>
+          <ul style="margin-left:20px; padding:0px">
+            <li>Manipulate content.</li>
+            <li>Control or provide input to a computing device.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="multi-media" class="pop">
+        <div class="form-group">
+          <label class="control-label">Does it include Multi-media Codec implementations?</label>
+          <div>
+            {{#radio-button value="Yes" groupValue=approval.multimediaCodecs}}<span> Yes</span>{{/radio-button}}
+          </div>
+          <div>
+            {{#radio-button value="No" groupValue=approval.multimediaCodecs}}<span> No</span>{{/radio-button}}
+          </div>
+          <div>
+            {{#radio-button value="I don't know" groupValue=approval.multimediaCodecs}}<span> I don't know</span>{{/radio-button}}
+          </div>
+          {{model-validator-error errors=approval.errors.multimediaCodecs text="This field"}}
+        </div>
+        {{#if (is-equal approval.multimediaCodecs "Yes")}}
+        <div class="form-group">
+          <label class="control-label">Detail the Multi-media Codec implementations included in this component:</label>
+          {{textarea value=approval.multimediaCodecDetails placeholder="Detail the Multi-media Codec implementations included in this component"
+            class="form-control" focus-out="validateMultimediaCodecDetails"}}
+          {{model-validator-error errors=approval.errors.multimediaCodecDetails text="Multi-media Codec details"}}
+        </div>
+        {{/if}}
+        <div id="multi-media-popover" class="hidden">
+          <ul style="margin-left:20px; padding:0px">
+            <li>Encoding/Decoding Video: VP8, VP9, H.264/AVC</li>
+            <li>Encoding/Decoding Audio: MPEG-4 AAC LC AAC, Dolby Digital, Dolby Digital Plus, Dolby TrueHD (MLP), DTS, DTS HD, DTS
+              Master Audio, DTS Express, Vorbis</li>
+            <li>Container: Google WEBM</li>
+            <li>Caption: WebVTT</li>
+            <li>Other: Chromcast</li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="back-end-search" class="pop">
+        <div class="form-group">
+          <label class="control-label">Does it include Back-end Search functionality?</label>
+          <div>
+            {{#radio-button value="Yes" groupValue=approval.backendSearch}}<span> Yes</span>{{/radio-button}}
+          </div>
+          <div>
+            {{#radio-button value="No" groupValue=approval.backendSearch}}<span> No</span>{{/radio-button}}
+          </div>
+          <div>
+            {{#radio-button value="I don't know" groupValue=approval.backendSearch}}<span> I don't know</span>{{/radio-button}}
+          </div>
+          {{model-validator-error errors=approval.errors.backendSearch text="This field"}}
+        </div>
+        {{#if (is-equal approval.backendSearch "Yes")}}
+        <div class="form-group">
+          <label class="control-label">Detail the Back-end Search functionality included in this component:</label>
+          {{textarea value=approval.backendSearchDetails placeholder="Detail the Back-end Search functionality included in this component"
+            class="form-control" focus-out="validateBackendSearchDetails"}}
+          {{model-validator-error errors=approval.errors.backendSearchDetails text="Back-end Search details"}}
+        </div>
+        {{/if}}
+        <div id="back-end-search-popover" class="hidden">
+          <ul style="margin-left:20px; padding:0px">
+            <li>Web crawling</li>
+            <li>Indexing</li>
+            <li>Ranking</li>
+            <li>Relevance</li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="connectivity-protocol" class="pop">
+        <div class="form-group">
+          <label class="control-label">Does it include Connectivity Protocol implementations?</label>
+          <div>
+            {{#radio-button value="Yes" groupValue=approval.connectivityProtocols}}<span> Yes</span>{{/radio-button}}
+          </div>
+          <div>
+            {{#radio-button value="No" groupValue=approval.connectivityProtocols}}<span> No</span>{{/radio-button}}
+          </div>
+          <div>
+            {{#radio-button value="I don't know" groupValue=approval.connectivityProtocols}}<span> I don't know</span>{{/radio-button}}
+          </div>
+          {{model-validator-error errors=approval.errors.connectivityProtocols text="This field"}}
+        </div>
+        {{#if (is-equal approval.connectivityProtocols "Yes")}}
+        <div class="form-group">
+          <label class="control-label">Detail the Connectivity Protocol implementations included in this component:</label>
+          {{textarea value=approval.protocolDetails placeholder="Detail the Connectivity Protocol implementations included in this component"
+            class="form-control" focus-out="validateProtocolDetails"}}
+          {{model-validator-error errors=approval.errors.protocolDetails text="Connectivity Protocol details"}}
+        </div>
+        {{/if}}
+        <div id="connectivity-protocol-popover" class="hidden">
+          <div>Such as:</div>
+          <ul style="margin-left:20px; padding:0px">
+            <li>Wi-fi</li>
+            <li>Bluetooth</li>
+            <li>Chromium OS</li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="technology-area" class="form-group pop">
+        <label class="control-label">What is the component's primary Technology Area?</label>
+        {{#x-select value=approval.technologyArea class="form-control" action="selectEntity" as |xs|}}
+          {{#xs.option value=""}}Select a technology area{{/xs.option}}
+          {{#each technologyAreas as |area|}}
+            {{#xs.option value=area}}{{area}}{{/xs.option}}
+          {{/each}}
+        {{/x-select}}
+        {{model-validator-error errors=approval.errors.technologyArea text="Technology area"}}
+        <div id="technology-area-popover" class="hidden">
+          Knowing the technology area that best relates to the component guides the Patent Review process. Please pick the one that
+          most accurately relates to this component.
+        </div>
+      </div>
+    {{/if}}
+  {{/if}}
+{{/if}}
+
+<ul class="list-inline">
+  {{yield}}
+  <li><button {{action "next" approval}} class="btn btn-primary">Next</button></li>
+</ul>
+
+{{bootstrap-popover}}

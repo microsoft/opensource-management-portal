@@ -1,0 +1,25 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//-
+
+if notification
+  table
+    tbody
+      tr
+        td(style='height:12px')
+  table(class='notification-' + notification)
+    tbody
+      tr
+        td(nowrap='nowrap')
+          h1(style='color:#fff;white-space:nowrap')= headline
+        if useIcon === true
+          td(width=12, height=iconSize)
+          td(valign='middle', width=iconSize, height=iconSize)
+            img(src=icon, width=iconSize, height=iconSize, alt=notification)
+          td(width=12, height=iconSize)
+  table
+    tbody
+      tr
+        td(style='height:12px')
+else if headline
+  h1= headline

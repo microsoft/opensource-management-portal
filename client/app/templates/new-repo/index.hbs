@@ -1,0 +1,24 @@
+{{app-header title="Create a new repository"}}
+<div class="container">
+  <div class="row">
+    <div class="col-md-8">
+      <h2 id="title">Release registration</h2>
+      {{#each model.approvalTypes as |approvalType|}}
+        <div>
+          {{#radio-button
+            value=approvalType
+            groupValue=model.repo.approvalType}}
+            <span> {{approvalType}}</span>
+          {{/radio-button}}
+        </div>
+      {{/each}}
+      <br>
+      <ul class="list-inline">
+        <li><button {{action "next" model.repo}} class="btn btn-primary">Next</button></li>
+      </ul>
+    </div>
+    <div class="col-md-4">
+      {{new-repo-steps step="index" approvalType=model.repo.approvalType}}
+    </div>
+  </div>
+</div>

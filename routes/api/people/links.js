@@ -127,6 +127,10 @@ function getAllUsers(apiVersion, operations, callback) {
             if (member.orgs) {
               entry.github.organizations = Object.getOwnPropertyNames(member.orgs);
             }
+            // '2017-09-01' added 'isServiceAccount'; so '2016-12-01' & '2017-03-08' do not have it
+            if (member.link && member.link.serviceAccount === true && apiVersion !== '2016-12-01' && apiVersion !== '2017-03-08') {
+              entry.isServiceAccount = true;
+            }
             if (member.corporate) {
               const corporatePropertyName = apiVersion === '2016-12-01' ? 'corporate' : 'aad'; // This was renamed to be provider name-based
               entry[corporatePropertyName] = {
@@ -156,7 +160,8 @@ router.get('/', (req, res, next) => {
       return next(error);
     }
     req.insights.trackMetric('ApiRequestLinks', 1);
-    res.json(results);
+    res.set('Content-Type', 'application/json');
+    res.send(JSON.stringify(results, undefined, 2));
   });
 });
 

@@ -10,4 +10,5 @@ module.exports = [
   require('./membership'),
   require('./organization'),
   require('./repository'),
+  require('./team'),
 ];

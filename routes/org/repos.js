@@ -172,7 +172,7 @@ function legacyClaExtension(operations, repository, callback) {
   const organization = repository.organization;
   cla.teams = organization.legalEntityClaTeams;
   const metadata = organization.getRepositoryCreateMetadata();
-  if (!metadata.supportsCla) {
+  if (!repository.supportsLegacyClaAutomation() || !metadata.supportsCla) {
     return callback(null, result);
   }
   cla.supported = true;

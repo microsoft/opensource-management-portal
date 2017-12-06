@@ -277,6 +277,11 @@ router.post('/', function (req, res, next) {
         decisionBy: username,
         decisionNote: bodyText,
         decisionEmail: req.legacyUserContext.modernUser().contactEmail(),
+        reason: (`You are receiving this e-mail because of a request that you created, and a decision has been made.
+                  This mail was sent to: ${pendingRequest.email}`),
+        headline: engine.getDecisionEmailHeadline(wasApproved, pendingRequest),
+        notification: wasApproved ? 'information' : 'warning',
+        service: 'Microsoft GitHub',
       };
       if (!engine.getDecisionEmailViewName || !engine.getDecisionEmailSubject) {
         return req.insights.trackException(new Error('No getDecisionEmailViewName available with the engine.'), Object.assign({
@@ -298,13 +303,9 @@ router.post('/', function (req, res, next) {
         const mail = {
           to: recipients,
           subject: engine.getDecisionEmailSubject(wasApproved, pendingRequest),
-          reason: (`You are receiving this e-mail because of a request that you created, and a decision has been made.
-                    This mail was sent to: ${pendingRequest.email}`),
           content: mailContent,
-          headline: engine.getDecisionEmailHeadline(wasApproved, pendingRequest),
-          classification: wasApproved ? 'information' : 'warning',
-          service: 'Microsoft GitHub',
           correlationId: req.correlationId,
+          category: ['decision', 'repos'],
         };
         mailProvider.sendMail(mail, (mailError, mailResult) => {
           var customData = Object.assign({

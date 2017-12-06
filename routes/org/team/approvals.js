@@ -48,7 +48,7 @@ PermissionWorkflowEngine.prototype.messageForAction = function (action) {
 PermissionWorkflowEngine.prototype.performApprovalOperation = function (callback) {
   var self = this;
   var team = self.team;
-  team.addMembership('member', this.request.ghu, function (error) {
+  team.addMembership(this.request.ghu, function (error) {
     if (error) {
       error = utils.wrapError(error, 'The GitHub API returned an error trying to add the user ' + this.request.ghu + ' to team ID ' + team.id + '.');
     }

@@ -1,0 +1,9 @@
+<div class="container">
+  <h3>{{title}}</h3>
+</div>
+<div class="container">
+  {{#each flashMessages.queue as |flash|}}
+    {{flash-message flash=flash}}
+    <br>
+  {{/each}}
+</div>

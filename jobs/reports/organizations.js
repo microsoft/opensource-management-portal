@@ -10,6 +10,7 @@
 const async = require('async');
 const Q = require('q');
 const qlimit = require('qlimit');
+const querystring = require('querystring');
 
 const providerName = 'organizations';
 const definitions = require('./organizationDefinitions.json');
@@ -112,6 +113,7 @@ function getOrganizationData(context) {
     if (!context.organizationData[orgName]) {
       context.organizationData[orgName] = {};
     }
+    console.log(`Organization: ${orgName}`);
     // Organization context
     const organizationContext = {
       organization: organization,
@@ -120,6 +122,27 @@ function getOrganizationData(context) {
     };
     const data = context.organizationData[orgName];
     data.organizationContext = organizationContext;
+    function githubDirectLink(content, prefix, suffix, query, alternateForOrgName) {
+      const reposUrl = context.config.microsoftOpenSource.repos;
+      const campaignSettings = context.settings.campaign;
+      const q = {
+        utm_source: campaignSettings.source,
+        utm_medium: campaignSettings.medium,
+        utm_campaign: campaignSettings.campaign,
+        utm_content: content,
+        go_github: null,
+      };
+      if (prefix) {
+        q.go_github_prefix = prefix;
+      }
+      if (suffix) {
+        q.go_github = suffix;
+      }
+      if (query) {
+        q.go_github_query = query;
+      }
+      return reposUrl + (alternateForOrgName || orgName) + '?' + querystring.stringify(q);
+    }
     return getOrganizationAdministrators(organization)
       .then(filterOrganizationAdministrators.bind(null, context, organizationContext))
       .then(admins => {
@@ -181,9 +204,11 @@ function getOrganizationData(context) {
         // Review owners
         const systemAccountOwnerUsernames = new Set(context.config && context.config.github && context.config.github.systemAccounts ? context.config.github.systemAccounts.logins : []);
         const standardOwners = owners.filter(owner => { return !systemAccountOwnerUsernames.has(owner.login); });
-        const systemAccountOwners = owners.filter(owner => { return systemAccountOwnerUsernames.has(owner.login); });
+        //const systemAccountOwners = owners.filter(owner => { return systemAccountOwnerUsernames.has(owner.login); });
         ownerBucket('reviewOwners', standardOwners);
-        ownerBucket('reviewSystemOwners', systemAccountOwners);
+        // commenting out to reduce the size of reports...
+        // CONSIDER: enable configuration in this space
+        // ownerBucket('reviewSystemOwners', systemAccountOwners);
 
         const tooMany = context.settings.tooManyOrgOwners || 5;
         if (standardOwners.length > tooMany) {
@@ -228,7 +253,7 @@ function getOrganizationData(context) {
               actions: [
                 {
                   text: 'Change role',
-                  link: `https://github.com/orgs/${orgName}/people?query=${ownerEntry.login}`,
+                  link: githubDirectLink('ownerChangeRole', 'orgs', 'people', 'query=' + ownerEntry.login),
                 },
               ],
             };
@@ -252,12 +277,12 @@ function getOrganizationData(context) {
               };
               corporateId = fullName;
               ownerEntry.actions.actions.push({
-                link: `https://github.com/${ownerEntry.login}`,
+                link:  githubDirectLink('ownerProfile', null, null, null, ownerEntry.login),
                 text: 'View profile',
               });
               ownerEntry.actions.actions.push({
                 text: 'Remove',
-                link: `https://github.com/orgs/${orgName}/people?query=${ownerEntry.login}`,
+                link:  githubDirectLink('ownerRemove', 'orgs', 'people', `query=${ownerEntry.login}`),
               });
               ownerEntry.actions.actions.push(createAskToLinkAction(ownerEntry));
             }
@@ -276,12 +301,12 @@ function getOrganizationData(context) {
             unlinked.actions = {
               actions: [
                 {
-                  link: `https://github.com/${unlinked.login}`,
+                  link:  githubDirectLink('unlinkedProfile', null, null, null, unlinked.login),
                   text: 'Review profile',
                 },
                 {
                   text: 'Remove',
-                  link: `https://github.com/orgs/${orgName}/people?query=${unlinked.login}`,
+                  link:  githubDirectLink('unlinkedRemove', 'orgs', 'people', `query=${unlinked.login}`),
                 },
                 createAskToLinkAction(unlinked),
               ],
@@ -295,19 +320,19 @@ function getOrganizationData(context) {
 
           const fixMemberPrivilegesActions = [
             {
-              link: `https://github.com/organizations/${orgName}/settings/member_privileges`,
+              link: githubDirectLink('reduceMemberPrivileges', 'organizations', 'settings/member_privileges'),
               text: 'Reduce member privileges',
             }
           ];
           const fixOrganizationProfileActions = [
             {
-              link: `https://github.com/organizations/${orgName}/settings/profile`,
+              link: githubDirectLink('editOrganizationProfile', 'organizations', 'settings/profile'),
               text: 'Edit organization profile',
             }
           ];
           const cleanupRepoActions = [
             {
-              link: `https://github.com/${orgName}`,
+              link: githubDirectLink('cleanupOldRepos'),
               text: 'Cleanup old repositories',
             }
           ];
@@ -420,6 +445,9 @@ function getUnlinkedOrganizationMembers(context, organization) {
 function getOrganizationAdministrators(organization) {
   const deferred = Q.defer();
   organization.getOrganizationAdministrators((error, admins) => {
+    if (error) {
+      error.orgName = organization.name;
+    }
     return error ? deferred.reject(error) : deferred.resolve(admins);
   });
   return deferred.promise;

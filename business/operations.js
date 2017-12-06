@@ -24,6 +24,7 @@ const defaults = {
   orgRepoCollaboratorStaleSeconds: 30 /* half minute */,
   orgRepoDetailsStaleSeconds: 60 * 5 /* 5m */,
   orgTeamsStaleSeconds: 60 * 5 /* 5m */,
+  orgTeamDetailsStaleSeconds: 60 * 30 /* 30m */,
   orgTeamsSlugLookupStaleSeconds: 30 /* half a minute */,
   orgMembersStaleSeconds: 60 * 30 /* 30m */,
   teamMaintainersStaleSeconds: 60 * 2 /* 2m */,

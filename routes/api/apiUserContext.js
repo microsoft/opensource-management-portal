@@ -9,6 +9,7 @@ const jsonError = require('./jsonError');
 const OpenSourceUserContext = require('../../lib/context');
 
 module.exports = function prepareUserContext(req, res, next) {
+  const incomingReq = req.userContextOverwriteRequest || req;
   const options = {
     config: req.app.settings.runtimeConfig,
     dataClient: req.app.settings.dataclient,
@@ -17,7 +18,7 @@ module.exports = function prepareUserContext(req, res, next) {
     githubLibrary: req.app.settings.githubLibrary,
     ossDbClient: req.app.settings.ossDbConnection,
     operations: req.app.settings.providers.operations,
-    request: req,
+    request: incomingReq,
     insights: req.insights,
   };
   new OpenSourceUserContext(options, (error, instance) => {

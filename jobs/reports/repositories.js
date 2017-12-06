@@ -12,6 +12,9 @@ const automaticTeams = require('../../webhooks/tasks/automaticTeams');
 const moment = require('moment');
 const Q = require('q');
 const qlimit = require('qlimit');
+const querystring = require('querystring');
+
+const projectPlaceholder = '[project]\\';
 
 const providerName = 'repositories';
 const definitions = require('./repositoryDefinitions.json');
@@ -23,10 +26,6 @@ for (let i = 0; i < definitions.length; i++) {
 }
 
 const simpleDateFormat = 'l';
-
-// TODO: Configuration over hardcoding
-const knownHardcodedClaWebhooks = new Set([
-]);
 
 function processRepositories(context) {
   return getRepos(context)
@@ -183,7 +182,8 @@ function gatherLinkData(repositoryContext, administrators) {
 }
 
 function processRepository(context, repository) {
-  console.log(context.processing.repos.remaining-- + ': ' + repository.full_name);
+  console.log('repository: ' + context.processing.repos.remaining-- + ': ' + repository.full_name);
+  const organization = repository.organization;
 
   // repo context
   const repositoryContext = {
@@ -198,6 +198,44 @@ function processRepository(context, repository) {
     countOfAdministratorCollaborators: 0,
     countOfAdministratorTeams: 0,
   };
+
+  const campaignSettings = context.settings.campaign;
+
+  function reposDirectLink(content, suffix, alternateForRepoFullPath) {
+    const reposUrl = context.config.microsoftOpenSource.repos;
+    const q = getCampaignData(content);
+    let fullPath = `${organization.name}/repos/${repository.name}`;
+    if (suffix) {
+      fullPath + '/' + suffix;
+    }
+    return reposUrl + (alternateForRepoFullPath || fullPath) + '?' + querystring.stringify(q);
+  }
+
+  function getCampaignData(content) {
+    return {
+      utm_source: campaignSettings.source,
+      utm_medium: campaignSettings.medium,
+      utm_campaign: campaignSettings.campaign,
+      utm_content: content,
+    };
+  }
+
+  function githubDirectLink(content, prefix, suffix, query, alternateForRepoFullName) {
+    const reposUrl = context.config.microsoftOpenSource.repos;
+    const repoFullName = repositoryContext.name; // full_name
+    const q = getCampaignData(content);
+    q.go_github = null;
+    if (prefix) {
+      q.go_github_prefix = prefix;
+    }
+    if (suffix) {
+      q.go_github = suffix;
+    }
+    if (query) {
+      q.go_github_query = query;
+    }
+    return reposUrl + (alternateForRepoFullName || repoFullName) + '?' + querystring.stringify(q);
+  }
 
   if (!context.repositoryData) {
     context.repositoryData = [];
@@ -218,7 +256,6 @@ function processRepository(context, repository) {
     .then(getActionableAdmins)
     .then(getUnlinkedAdmins)
     .then(() => {
-      const organization = repository.organization;
       const privateEngineering = organization.privateEngineering;
 
       const basicRepository = {
@@ -283,29 +320,33 @@ function processRepository(context, repository) {
           }
 
           const actionEditCollaborators = {
-            link: `https://github.com/${repository.full_name}/settings/collaboration`,
+            link: githubDirectLink('editRepoPermissions', null, 'settings/collaboration'),
             text: 'Permissions',
           };
           const actionDelete = {
-            link: `https://github.com/${repository.full_name}/settings`,
-            text: 'Delete',
+            link: githubDirectLink('repoDeleteOrTransfer', null, 'settings'),
+            text: 'Consider deleting or transferring',
           };
           const actionView = {
-            link: `https://github.com/${repository.full_name}`,
+            link: githubDirectLink('repoBrowse'),
             text: 'Open',
           };
           const actionShip = {
-            link: `https://github.com/${repository.full_name}/settings`,
+            link: githubDirectLink('repoShipIt', null, 'settings'),
             text: 'Ship it',
           };
           const actionViewInPortal = context.config.microsoftOpenSource ? {
-            link: `${context.config.microsoftOpenSource.repos}${organization.name}/repos/${repository.name}`,
+            link: reposDirectLink('repoDetails'),
             text: 'Details',
           } : null;
-          const actionConfigureCLA = context.config.microsoftOpenSource ? {
-            link: `${context.config.microsoftOpenSource.repos}${organization.name}/repos/${repository.name}/extensions/cla`,
-            text: 'Configure CLA',
-          } : null;
+          const actionTransfer = {
+            link: 'mailto:opensource@microsoft.com?subject=Please help transfer an old abandoned repo to an archive organization',
+            text: 'Archive',
+          };
+          // const actionConfigureCLA = context.config.microsoftOpenSource ? {
+          //   link: reposDirectLink('repoConfigureCla', 'extensions/cla'),
+          //   text: 'Configure CLA',
+          // } : null;
 
           if (repositoryContext.administratorsByType.linked.length === 0 || repositoryContext.actionableAdministrators.length === 0) {
             addEntityToIssueType(context, repositoryContext, 'noRepositoryAdministrators', basicRepository, actionEditCollaborators, actionViewInPortal);
@@ -367,11 +408,11 @@ function processRepository(context, repository) {
               addEntityToIssueType(context, repositoryContext, 'expiringPrivateEngineeringExemptions', basicRepository, actionShip, actionDelete);
             }
           } else if (!repository.private && mostRecentActivityMoment.isBefore(twoYearsAgo)) {
-            addEntityToIssueType(context, repositoryContext, 'abandonedPublicRepositories', basicRepository, actionDelete);
+            addEntityToIssueType(context, repositoryContext, 'abandonedPublicRepositories', basicRepository, actionView, actionDelete, actionTransfer);
           } else if (repository.private && mostRecentActivityMoment.isBefore(twoYearsAgo)) {
-            addEntityToIssueType(context, repositoryContext, 'twoYearOldPrivateRepositories', basicRepository, actionDelete);
+            addEntityToIssueType(context, repositoryContext, 'twoYearOldPrivateRepositories', basicRepository, actionView, actionDelete);
           } else if (repository.private && createdAt.isBefore(oneYearAgo) && !privateEngineering) {
-            addEntityToIssueType(context, repositoryContext, 'oneYearOldPrivateRepositories', basicRepository, actionDelete);
+            addEntityToIssueType(context, repositoryContext, 'oneYearOldPrivateRepositories', basicRepository, actionView, actionDelete);
           } else if (repository.private && createdAt.isBefore(thirtyDaysAgo) && !privateEngineering) {
             addEntityToIssueType(context, repositoryContext, 'privateRepositoriesLessThanOneYear', basicRepository, actionShip, actionDelete);
           } else if (createdAt.isAfter(thisWeek) && !privateEngineering) {
@@ -384,15 +425,16 @@ function processRepository(context, repository) {
             addEntityToIssueType(context, repositoryContext, 'NewReposWeek', repositoryForManagerAndLawyer, actionView, actionViewInPortal);
           }
 
-          // Alert on public repos missing CLA
-          if (!repository.private && !repositoryContext.hasCla) {
-            addEntityToIssueType(context, repositoryContext, 'reposWithoutCLA', basicRepository, actionConfigureCLA);
-          }
+          // Alert on public repos missing CLA (DISABLED as of Oct. 2017)
+          // if (!repository.private && !repositoryContext.hasCla) {
+          //   addEntityToIssueType(context, repositoryContext, 'reposWithoutCLA', basicRepository, actionConfigureCLA);
+          // }
 
           // Alert on too many administrators, excluding private engineering organizations at this time
-          if (!privateEngineering && repositoryContext.actionableAdministrators.length > context.settings.tooManyRepoAdministrators) {
-            addEntityToIssueType(context, repositoryContext, 'repositoryTooManyAdministrators', basicRepository, actionViewInPortal, actionEditCollaborators);
-          }
+          // NOTE: commenting out the "too many" notice for September 2017
+          //if (!privateEngineering && repositoryContext.actionableAdministrators.length > context.settings.tooManyRepoAdministrators) {
+            //addEntityToIssueType(context, repositoryContext, 'repositoryTooManyAdministrators', basicRepository, actionViewInPortal, actionEditCollaborators);
+          //}
 
           return Q.delay(context, context.settings.repoDelayAfter || 0);
         });
@@ -411,45 +453,47 @@ function shallowCloneWithAdditionalRecipients(basicRepository, additionalRecipie
   return clone;
 }
 
-function getRepositoryWebhooks(repository) {
-  const deferred = Q.defer();
-  repository.getWebhooks((error, webhooks) => {
-    return error ? deferred.reject(error) : deferred.resolve(webhooks);
-  });
-  return deferred.promise;
-}
+// function getRepositoryWebhooks(repository) {
+//   const deferred = Q.defer();
+//   repository.getWebhooks((error, webhooks) => {
+//     return error ? deferred.reject(error) : deferred.resolve(webhooks);
+//   });
+//   return deferred.promise;
+// }
 
-function identifyContributorLicenseAgreeementHooks(context, repositoryContext) {
-  const repository = repositoryContext.repository;
-  if (repository.private) {
-    // We are only interested in public repositories with CLAs at this time
-    return Q(context);
-  }
+function identifyContributorLicenseAgreeementHooks(context /*, repositoryContext*/) {
+  // October 2017: CLA is no longer done at the repo level, so not in the reports
+  return Q(context);
+  // const repository = repositoryContext.repository;
+  // if (repository.private) {
+  //   // We are only interested in public repositories with CLAs at this time
+  //   return Q(context);
+  // }
 
-  try {
-    const claLegalEntities = repository.organization.legalEntities;
-    if (!claLegalEntities || claLegalEntities.length === 0) {
-      return Q(context);
-    }
-  } catch (notConfigured) {
-    // This org does not have CLA configuration
-    return Q(context);
-  }
+  // try {
+  //   const claLegalEntities = repository.organization.legalEntities;
+  //   if (!claLegalEntities || claLegalEntities.length === 0) {
+  //     return Q(context);
+  //   }
+  // } catch (notConfigured) {
+  //   // This org does not have CLA configuration
+  //   return Q(context);
+  // }
 
-  return getRepositoryWebhooks(repository).then(webhooks => {
-    let hasCla = false;
-    for (let i = 0; i < webhooks.length; i++) {
-      const webhook = webhooks[i];
-      if (webhook && webhook.config && knownHardcodedClaWebhooks.has(webhook.config.url)) {
-        hasCla = true;
-        break;
-      }
-    }
-    repositoryContext.hasCla = hasCla;
-    return Q(context);
-  }, () => {
-    return Q(context);
-  });
+  // return getRepositoryWebhooks(repository).then(webhooks => {
+  //   let hasCla = false;
+  //   for (let i = 0; i < webhooks.length; i++) {
+  //     const webhook = webhooks[i];
+  //     if (webhook && webhook.config && knownHardcodedClaWebhooks.has(webhook.config.url)) {
+  //       hasCla = true;
+  //       break;
+  //     }
+  //   }
+  //   repositoryContext.hasCla = hasCla;
+  //   return Q(context);
+  // }, () => {
+  //   return Q(context);
+  // });
 }
 
 function getRepositoryApprovals(dataClient, repository, callback) {
@@ -497,7 +541,7 @@ function getNewRepoCreationInformation(context, repositoryContext, basicReposito
             if (approval.approvalType === id) {
               basicRepository.approvalTypeId = approval.approvalType;
               // Hard-coded specific to show justification text or approval links
-              if (id === 'ReleaseReview' && approval.approvalUrl) {
+              if ((id === 'NewReleaseReview' || id === 'ExistingReleaseReview') && approval.approvalUrl) {
                 basicRepository.approvalType = {
                   text: title,
                   link: approval.approvalUrl,
@@ -541,6 +585,10 @@ function augmentWithAdditionalRecipients(context, repositoryContext, createdByLi
   if (!createdByLink || !createdByLink.aadupn) {
     return Q(context);
   }
+  if (createdByLink.serviceAccount === true) {
+    // Service accounts do not have legal contacts
+    return Q(context);
+  }
   const upn = createdByLink.aadupn;
   const createdByName = createdByLink.aadname || upn;
   const operations = context.operations;
@@ -568,16 +616,20 @@ function augmentWithAdditionalRecipients(context, repositoryContext, createdByLi
     mailAddressProvider.getLegalContactInformationFromUpn(upn, (getLegalError, legalInformation) => {
       if (getLegalError) {
         console.warn(getLegalError);
-      } else if (legalInformation && legalInformation.legalContact && legalInformation.legalContact.userPrincipalName) {
-        const lc = legalInformation.legalContact;
-        const legalFriendlyName = lc.preferredName || lc.alias || lc.userPrincipalName;
+      } else if (legalInformation && legalInformation.legalContact && legalInformation.legalContact) {
+        let lc = legalInformation.legalContact;
+        let isVstsTeam = false;
+        if (lc && lc.startsWith(projectPlaceholder)) {
+          isVstsTeam = true;
+          lc = lc.replace(projectPlaceholder, '[Reviews]\\');
+        }
         const la = legalInformation.assignedTo;
         const assignedToFriendlyName = la.preferredName || la.alias || la.userPrincipalName;
         const why = la.userPrincipalName === upn ? ' who' : `'s org within which ${createdByName}`;
-        let legalReason = `${legalFriendlyName} is the legal contact assigned to ${assignedToFriendlyName}${why} created a new repository ${fullRepoName}`;
+        let legalReason = `${lc} is the legal contact assigned to ${assignedToFriendlyName}${why} created a new repository ${fullRepoName}`;
         additional.push({
-          type: 'upn',
-          value: legalInformation.legalContact.userPrincipalName,
+          type: isVstsTeam ? 'vststeam' : 'upn',
+          value: lc,
           reasons: [legalReason],
         });
       }

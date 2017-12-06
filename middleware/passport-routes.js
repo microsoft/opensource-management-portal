@@ -201,6 +201,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     }
     const messageError = new Error(
       isAuthenticated ? 'Authentication initially failed, but you are good to go now.' : 'Authentication failed, possibly due to a state problem. This can happen when certain tools or apps launch URLs. Try signing in again now.');
+    messageError.skipLog = true;
     if (isAuthenticated) {
       messageError.skipOops = true;
       messageError.detailed = 'Unfortunately we were not able to take you to the URL that you clicked on. If you go to that URL now, your request should work!';

@@ -1,0 +1,68 @@
+{{app-header title="Create a new repository"}}
+<div class="container">
+  <div class="row">
+    <div class="col-md-8">
+      <h2>Existing release review</h2>
+      <br> {{#if model.repo.approvalUrl}}
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <p>Currently selected release review:</p>
+          <button class="btn btn-muted btn-xs" {{action "selectEntity"}}>Remove</button>
+          {{approval.title}} <a href={{model.repo.approvalUrl}} target="_blank"><i>{{approval.state}}</i></a>
+        </div>
+      </div>
+      {{/if}}
+      <p>Please select an existing release review:</p>
+      <p>
+        {{model-validator-error errors=model.repo.errors.approvalUrl text="Approval"}} {{#if releaseApprovals}}
+        <br>
+        <div class="row">
+          <div class="col-md-8">
+            {{input value=allRecordsFilter class="form-control" placeholder="Filter all release reviews"}}
+          </div>
+          <div class="col-md-4 text-right">
+            Filtering {{allRecordsFilteredCount}} out of {{allRecordsTotalCount}}
+          </div>
+        </div>
+        <br>
+        <div class="container">
+          {{#each paged as |approval|}}
+          <div class="row" style="margin-bottom: 2px">
+            <button class="btn btn-muted btn-xs" {{action "selectEntity" approval}}>Select</button>
+            {{approval.title}} <a href={{approval.url}} target="_blank"><i>{{approval.state}}</i></a>
+          </div>
+          {{/each}}
+        </div>
+        <div class="row small">
+          <div class="col-md-12">
+            <ul class="pagination small">
+              {{#if previousPage}}
+              <li><a {{action "updatePage" previousPage}}>&laquo;</a></li>
+              {{else}}
+              <li class="disabled"><a>&laquo;</a></li>
+              {{/if}} {{#each pages as |n|}} {{#if n}} {{#if (is-equal n page)}}
+              <li class="active"><a {{action "updatePage" n}}>{{n}}</a></li>
+              {{else}}
+              <li><a {{action "updatePage" n}}>{{n}}</a></li>
+              {{/if}} {{else}}
+              <li class="disabled"><a>&hellip;</a></li>
+              {{/if}} {{/each}} {{#if nextPage}}
+              <li><a {{action "updatePage" nextPage}}>&raquo;</a></li>
+              {{else}}
+              <li class="disabled"><a>&raquo;</a></li>
+              {{/if}}
+            </ul>
+          </div>
+        </div>
+        {{/if}}
+      </p>
+      <ul class="list-inline">
+        <li>{{#link-to "new-repo" class="btn btn-muted-more"}}Back{{/link-to}}</li>
+        <li><button {{action "next" model}} class="btn btn-primary">Next</button></li>
+      </ul>
+    </div>
+    <div class="col-md-4">
+      {{new-repo-steps step="existing-approval"}}
+    </div>
+  </div>
+</div>

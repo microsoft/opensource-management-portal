@@ -21,9 +21,10 @@ const os = require('os');
 const path = require('path');
 const Q = require('q');
 
+const buildRecipientMap = require('./consolidated').buildRecipientMap;
 const organizationReports = require('./organizations');
 const repositoryReports = require('./repositories');
-const buildRecipientMap = require('./consolidated').buildRecipientMap;
+const teamReports = require('./teams');
 
 const fileCompression = require('./fileCompression');
 const mailer = require('./mailer');
@@ -37,6 +38,7 @@ const slice = undefined; // 250;
 const reportProviders = {
   organizations: organizationReports,
   repositories: repositoryReports,
+  teams: teamReports,
 };
 
 const reportGeneratedFormat = 'h:mm a dddd, MMMM Do YYYY';
@@ -47,7 +49,7 @@ function buildReport(context) {
     .then(buildReports)
     .then(consolidateReports)
     .then(storeReports)
-    .then(sendReports)
+    .then(sendReports.bind(null, context))
     .then(recordMetrics)
     .then(dataLakeUpload)
     .then(finalizeEvents);
@@ -99,6 +101,7 @@ module.exports = function run(started, startedString, config) {
         slice: slice || undefined,
         parallelRepoProcessing: 2,
         repoDelayAfter: 200, // 200ms to wait between repo actions, to help reduce GitHub load
+        teamDelayAfter: 200, // 200ms to wait between team actions, to help reduce GitHub load
         tooManyOrgOwners: 5,
         tooManyRepoAdministrators: 15,
         orgPercentAvailablePrivateRepos: 0.15,
@@ -108,6 +111,11 @@ module.exports = function run(started, startedString, config) {
         witnessEventReportsTimeToLiveMinutes: reportConfig.witnessEventReportsTimeToLiveMinutes,
         consolidatedSchemaVersion: '170503',
         fromAddress: reportConfig.mail.from,
+        campaign: {
+          source: 'administrator-digest',
+          medium: 'email',
+          campaign: 'github-digests',
+        },
       },
       reports: {
         reportRedisClient: reportRedisClient,

@@ -10,34 +10,40 @@
       "name": "Launch site",
       "program": "${workspaceRoot}/bin/www",
       "cwd": "${workspaceRoot}",
+      "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "appinsights,oss-github,oss-initialize,oss-redis-cross-org,appinsights,azureossportal"
+        "DEBUG": "appinsights,oss-redis,oss-github,oss-initialize,oss-redis-cross-org,appinsights,azureossportal,health",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
       }
     },
     {
       "type": "node",
       "request": "launch",
-      "stopOnEntry": false,
-      "args": ["--recursive"],
-      "name": "Have a mocha",
-      "program": "${workspaceRoot}/node_modules/mocha/bin/_mocha",
+      "name": "Launch site (SUDO FORCE)",
+      "program": "${workspaceRoot}/bin/www",
+      "console": "integratedTerminal",
       "cwd": "${workspaceRoot}",
       "env": {
-        "NODE_ENV": "testing"
+        "NODE_ENV": "development",
+        "DEBUG": "appinsights,oss-github,oss-initialize,oss-redis-cross-org,appinsights,azureossportal",
+        "DEBUG_GITHUB_PORTAL_SUDO_FORCE": "1",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
       }
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Launch site (SUDO OFF)",
+      "console": "integratedTerminal",
       "program": "${workspaceRoot}/bin/www",
       "cwd": "${workspaceRoot}",
       "env": {
         "NODE_ENV": "development",
         "DEBUG": "appinsights,oss-github,oss-initialize,oss-redis-cross-org,appinsights,azureossportal",
         "DEBUG_GITHUB_PORTAL_SUDO_OFF": "1",
-        "DEBUG_GITHUB_ORG_SUDO_OFF": "1"
+        "DEBUG_GITHUB_ORG_SUDO_OFF": "1",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
       }
     },
     {
@@ -46,9 +52,12 @@
       "name": "Reports",
       "program": "${workspaceRoot}/jobs/reports/index.js",
       "cwd": "${workspaceRoot}",
+      "runtimeArgs": [
+        "--max-old-space-size=4096"
+      ],
       "env": {
         "NODE_ENV": "localhost",
-        "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
+        "DEBUG": "oss-redis-off,oss-github-off,oss-initialize,appinsights"
       }
     },
     {

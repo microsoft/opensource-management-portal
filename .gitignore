@@ -1,13 +1,18 @@
 # Logs
 *.log
 
+# Ignoring npm 4 lock file for now
+package-lock.json
+
 # Component registration logs
 registration/
 
 # Node
 node_modules/
+node_modules.private/
 
 # Client script
+bower_components/
 .sass-cache/
 
 # Static assets

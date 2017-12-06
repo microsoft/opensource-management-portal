@@ -149,8 +149,7 @@ router.get('/whois/aad/:upn', function (req, res, next) {
 });
 
 router.get('/bulkRepoDelete', (req, res) => {
-  const legacyUserContext = req.legacyUserContext;
-  legacyUserContext.render(req, res, 'organization/bulkRepoDelete', 'Bulk repository delete');
+  req.legacyUserContext.render(req, res, 'organization/bulkRepoDelete', 'Bulk repository delete');
 });
 
 router.post('/bulkRepoDelete', (req, res, next) => {
@@ -322,8 +321,10 @@ router.post('/whois/github/:username', function (req, res, next) {
       if (markAsServiceAccount || unmarkServiceAccount) {
         return modifyServiceAccount(dc, userInfoFinal, markAsServiceAccount, req, res, next);
       }
-      // TODO: restore pending unlink capability
       req.legacyUserContext.processPendingUnlink(userInfoFinal, (ignoredError, results) => {
+        // Remove tokens
+        delete userInfoFinal.githubToken;
+        delete userInfoFinal.githubTokenIncreasedScope;
         req.legacyUserContext.render(req, res, 'organization/whois/drop', `Dropped ${username}`, {
           results: results,
           entity: userInfoFinal,

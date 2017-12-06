@@ -20,6 +20,12 @@ const os = require('os');
 
 var staticHostname = os.hostname().toString();
 
+const encryptionColumns = [
+  'githubToken',
+  'githubTokenIncreasedScope',
+  'localDataKey',
+];
+
 function DataClient(options, callback) {
   if (options.config === undefined) {
     return callback(new Error('Configuration must be provided to the data client.'));
@@ -48,7 +54,7 @@ function DataClient(options, callback) {
     encryption: options.config.github.links.table.encryption,
   };
   if (this.options.encryption === true) {
-    const encryptColumns = new Set(['githubToken', 'githubTokenIncreasedScope']);
+    const encryptColumns = new Set(encryptionColumns);
     const encryptionOptions = {
       keyEncryptionKeyId: options.config.github.links.table.encryptionKeyId,
       keyResolver: options.keyEncryptionKeyResolver,
@@ -626,6 +632,30 @@ DataClient.prototype.setSetting = function (partitionKey, rowKey, value, callbac
 
 DataClient.prototype.deleteSetting = function (partitionKey, rowKey, callback) {
   this.table.deleteEntity(this.options.settingsTableName, this.createEntity(partitionKey, rowKey), callback);
+};
+
+DataClient.prototype.replaceSetting = function (partitionKey, rowKey, mergeEntity, callback) {
+  var dc = this;
+  var entity = dc.createEntity(partitionKey, rowKey, mergeEntity);
+  dc.table.replaceEntity(dc.options.settingsTableName, entity, callback);
+};
+
+
+DataClient.prototype.getSettingByProperty = function (partitionKey, propertyName, value, callback) {
+  const query = new azure.TableQuery().where(propertyName + ' eq ?', value);
+  this.table.queryEntities(this.options.settingsTableName,
+    query,
+    null,
+    function (error, results) {
+      if (error) return callback(error);
+      const entries = [];
+      if (results && results.entries && results.entries.length) {
+        for (let i = 0; i < results.entries.length; i++) {
+          entries.push(reduceEntity(results.entries[i]));
+        }
+      }
+      callback(null, entries);
+    });
 };
 
 // pending approvals workflow

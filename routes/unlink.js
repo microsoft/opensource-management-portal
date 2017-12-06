@@ -39,14 +39,13 @@ router.get('/', function (req, res, next) {
   const id = req.legacyUserContext.id.github;
   const operations = req.app.settings.providers.operations;
   const account = operations.getAccount(id);
-  account.getManagedOrganizationMemberships((error, currentOrganizationMemberships) => {
+  account.getOperationalOrganizationMemberships((error, currentOrganizationMemberships) => {
     if (error) {
       return next(error);
     }
-    var link = req.legacyUserContext.entities.link;
     if (link && link.ghid) {
       return req.legacyUserContext.render(req, res, 'unlink', 'Remove corporate link and organization memberships', {
-        orgs: currentOrganizationMemberships,
+        organizations: currentOrganizationMemberships,
       });
     } else {
       return next(new Error('No link could be found.'));
@@ -82,6 +81,7 @@ router.post('/', function (req, res, next) {
       }
     });
     if (error) {
+      insights.trackException(error);
       return next(utils.wrapError(error, 'You were successfully removed from all of your organizations. However, a minor failure happened during a data housecleaning operation. Double check that you are happy with your current membership status on GitHub.com before continuing.'));
     }
     return res.redirect('/signout?unlink');

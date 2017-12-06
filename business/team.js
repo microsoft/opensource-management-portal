@@ -47,11 +47,23 @@ class Team {
     this.getDetails(callback);
   }
 
-  getDetails(callback) {
+  getDetails(options, callback) {
     const self = this;
+    if (!callback && typeof (options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    options = options || {};
+    const operations = _private(this).operations;
+    const cacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgTeamDetailsStaleSeconds,
+      backgroundRefresh: false,
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
     const privates = _private(this);
     const token = privates.getToken();
-    const operations = privates.operations;
     const id = this.id;
     if (!id) {
       return callback(new Error('No "id" property associated with the team instance to retrieve the details for.'));
@@ -63,9 +75,10 @@ class Team {
     const parameters = {
       id: id,
     };
-    return operations.github.call(token, 'orgs.getTeam', parameters, (error, entity) => {
+    return operations.github.call(token, 'orgs.getTeam', parameters, cacheOptions, (error, entity) => {
+      // CONSIDER: What if the team is gone? (404)
       if (error) {
-        return callback(wrapError(error, 'Could not get details about the team.'));
+        return callback(wrapError(error, 'Could not get details about the team'));
       }
       privates.detailsEntity = entity;
       common.assignKnownFields(self, entity, 'team', teamPrimaryProperties, teamSecondaryProperties);
@@ -170,13 +183,18 @@ class Team {
       id: this.id,
       username: username,
     };
+    // TODO: this should probably be a _post_ call and not _call_ as there is no cache with GitHub
     return operations.github.call(token, 'orgs.getTeamMembership', parameters, (error, result) => {
-      if (error.code === 404) {
+      if (error && error.code === 404) {
         result = false;
         error = null;
       }
       if (error) {
-        const wrappedError = wrapError(error, `Trouble retrieving the membership for "${username}" in team ${this.id}`);
+        let reason = error.message;
+        if (error.code) {
+          reason += ' ' + error.code;
+        }
+        const wrappedError = wrapError(error, `Trouble retrieving the membership for "${username}" in team ${this.id}. ${reason}`);
         if (error.code) {
           wrappedError.code = error.code;
         }
@@ -226,7 +244,7 @@ class Team {
           if (getMembershipError) {
             return callback(getMembershipError);
           }
-          return callback(null, result.role);
+          return callback(null, result.role, result.state);
         });
       });
     });
@@ -312,6 +330,7 @@ class Team {
     if (options.pageLimit) {
       parameters.pageLimit = options.pageLimit;
     }
+    // CONSIDER: Check the error object, if present, for error.code === 404 to alert/store telemetry on deleted teams
     return github.collections.getTeamMembers(
       token,
       parameters,
@@ -437,6 +456,28 @@ class Team {
 
   memberFromEntity(entity) {
     return this.member(entity.id, entity);
+  }
+
+  getApprovals(callback) {
+    const privates = _private(this);
+    const operations = privates.operations;
+    const dc = operations.dataClient;
+    dc.getPendingApprovals(this.id, function (error, pendingApprovals) {
+      if (error) {
+        return callback(wrapError(error, 'We were unable to retrieve the pending approvals list for this team. There may be a data store problem.'));
+      }
+      const pendingRequests = [];
+      async.each(pendingApprovals, function (approval, cb) {
+        if (approval.requested) {
+          var asInt = parseInt(approval.requested, 10);
+          approval.requestedTime = new Date(asInt);
+        }
+        pendingRequests.push(approval);
+        return cb();
+      }, error => {
+        return callback(error, pendingRequests);
+      });
+    });
   }
 }
 

@@ -1,0 +1,13 @@
+{{app-header title="Create a new repository"}}
+<div class="container">
+  <div class="row">
+    <div class="col-md-8">
+      {{#new-approval approval=model routeActionName="next"}}
+        <li>{{#link-to "new-repo" class="btn btn-muted-more"}}Back{{/link-to}}</li>
+      {{/new-approval}}
+    </div>
+    <div class="col-md-4">
+      {{new-repo-steps step="new-approval"}}
+    </div>
+  </div>
+</div>
