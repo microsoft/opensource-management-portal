@@ -3,8 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+/*eslint no-console: ["error", { allow: ["warn"] }] */
+
 'use strict';
 
+const _ = require('lodash');
 const async = require('async');
 
 const common = require('./common');
@@ -97,6 +100,37 @@ class Account {
     });
   }
 
+  updateLink(newLink, callback) {
+    const operations = _private(this).operations;
+
+    if (!callback && typeof(newLink) === 'function') {
+      callback = newLink;
+      newLink = null;
+    }
+
+    const updatedLink = newLink || this.link;
+    const linkWhenUpdatedStarted = this.link;
+    if (!updatedLink) {
+      return callback(new Error('No link available via call to updateLink(newLink) or account.link'));
+    }
+
+    const userId = updatedLink.ghid;
+    if (userId != this.id) {
+      console.warn(`Warning: update link IDs do not soft match ${userId} and ${this.id}`);
+    }
+
+    const dataClient = operations.dataClient;
+    dataClient.updateLink(userId, updatedLink, error => {
+      if (error) {
+        return callback(error);
+      }
+      if (linkWhenUpdatedStarted !== updatedLink) {
+        this.link = updatedLink;
+      }
+      return callback();
+    });
+  }
+
   getDetails(options, callback) {
     if (!callback && typeof(options) === 'function') {
       callback = options;
@@ -135,17 +169,47 @@ class Account {
     if (!id) {
       return callback(new Error('No user id known'));
     }
-    dataClient.removeLink(id, error => {
-      const history = [];
-      if (error) {
-        const message = error.statusCode === 404 ? `The link for ID ${id} no longer exists: ${error}` : `The link for ID ${id} could not be removed: ${error}`;
-        history.push(message);
-        return callback(error);
+    const self = this;
+    self.getDetailsAndLink(getDetailsError => {
+      // We ignore any error to make sure link removal always works
+      const insights = _private(self).operations.insights;
+      if (insights && getDetailsError) {
+        insights.trackException({
+          exception: getDetailsError,
+          properties: {
+            id: id,
+            location: 'account.removeLink',
+          },
+        });
       }
-      // CONSIDER: if there is a link service and a local
-      // link cache, invalidate the local link for the user
-      history.push(`The link for ID ${id} has been removed from the link service`);
-      callback();
+      let aadIdentity = undefined;
+      if (!getDetailsError && self.link) {
+        aadIdentity = {
+          preferredName: self.link.aadname,
+          userPrincipalName: self.link.aadupn,
+          id: self.link.aadoid,
+        };
+      }
+      const eventData = {
+        github: {
+          id: id,
+          login: self.login,
+        },
+        aad: aadIdentity,
+      };
+      dataClient.removeLink(id, error => {
+        operations.fireUnlinkEvent(eventData);
+        const history = [];
+        if (error) {
+          const message = error.statusCode === 404 ? `The link for ID ${id} no longer exists: ${error}` : `The link for ID ${id} could not be removed: ${error}`;
+          history.push(message);
+          return callback(error);
+        }
+        // CONSIDER: if there is a link service and a local
+        // link cache, invalidate the local link for the user
+        history.push(`The link for ID ${id} has been removed from the link service`);
+        callback();
+      });
     });
   }
 
@@ -160,18 +224,21 @@ class Account {
     const continueOnError = options.continueOnError || false;
     const insights = _private(self).operations.insights;
     if (insights) {
-      insights.trackEvent('UserUnlinkStart', {
-        id: self.id,
-        login: self.login,
-        reason: reason,
-        continueOnError: continueOnError ? 'continue on errors' : 'halt on errors',
+      insights.trackEvent({
+        name: 'UserUnlinkStart',
+        properties: {
+          id: self.id,
+          login: self.login,
+          reason: reason,
+          continueOnError: continueOnError ? 'continue on errors' : 'halt on errors',
+        },
       });
     }
     self.removeManagedOrganizationMemberships((error, history) => {
       // If a removal error occurs, do not remove the link and throw an error,
       // so that the link data and information is still present until cleaned
       if (error && insights) {
-        insights.trackException(error);
+        insights.trackException({ exception: error });
       }
       if (error && !continueOnError) {
         return callback(error, history);
@@ -183,12 +250,15 @@ class Account {
           }
         }
         if (removeError && insights) {
-          insights.trackException(removeError);
+          insights.trackException({ exception: removeError });
         }
         if (insights) {
-          insights.trackEvent('UserUnlink', {
-            id: self.id,
-            login: self.login,
+          insights.trackEvent({
+            name: 'UserUnlink',
+            properties: {
+              id: self.id,
+              login: self.login,
+            },
           });
         }
         return callback(removeError, history);
@@ -235,7 +305,7 @@ class Account {
         return callback(error);
       }
       if (organizations.length > 1) {
-        const asText = organizations.join(', ');
+        const asText = _.map(organizations, org => { return org.name; }).join(', ');
         history.push(`${username} is a member of the following organizations: ${asText}`);
       } else {
         history.push(`${username} is not a member of any managed organizations`);
