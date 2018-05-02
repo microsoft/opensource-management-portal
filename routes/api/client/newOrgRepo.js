@@ -8,7 +8,7 @@
 const _ = require('lodash');
 const apiUserContext = require('../apiUserContext');
 const express = require('express');
-const jsonError = require('../jsonError');
+const jsonError = require('../../../middleware/jsonError');
 const OpenSourceUser = require('../../../lib/context');
 const router = express.Router();
 
@@ -96,10 +96,13 @@ router.get('/repo/:repo', (req, res) => {
   req.organization.repository(repoName).getDetails((error) => {
     res.status(error ? 404 : 204);
     res.send();
-    req.app.settings.providers.insights.trackEvent('ApiClientNewRepoValidateAvailability', {
-      found: error ? true : false,
-      repoName: repoName,
-      org: req.organization.name,
+    req.app.settings.providers.insights.trackEvent({
+      name: 'ApiClientNewRepoValidateAvailability',
+      properties: {
+        found: error ? true : false,
+        repoName: repoName,
+        org: req.organization.name,
+      },
     });
   });
 });
@@ -136,6 +139,7 @@ router.post('/repo/:repo', discoverUserIdentities, (req, res, next) => {
   if (!body) {
     return next(jsonError('No body', 400));
   }
+  req.apiVersion = req.query['api-version'] || req.headers['api-version'] || '2017-07-27';
 
   const config = req.app.settings.runtimeConfig;
 
@@ -162,6 +166,7 @@ router.post('/repo/:repo', discoverUserIdentities, (req, res, next) => {
   translateValue(body, 'justification', 'ms.justification');
   translateValue(body, 'legalEntity', 'ms.cla-entity');
   translateValue(body, 'claMails', 'ms.cla-mail');
+  translateValue(body, 'projectType', 'ms.project-type');
 
   // Team permissions
   if (!body.selectedAdminTeams || !body.selectedAdminTeams.length) {
@@ -183,10 +188,8 @@ router.post('/repo/:repo', discoverUserIdentities, (req, res, next) => {
     body['ms.notify'] = req.knownRequesterMailAddress || config.brand.operationsMail || config.brand.supportMail;
   }
 
-  // these fields are currently ignored:   projectType, orgName, confirmPolicyException
-  delete body.projectType;
+  // these fields are currently ignored: orgName
   delete body.orgName;
-  delete body.confirmedPolicyException;
   delete body.claEntity;
 
   const token = req.organization.getRepositoryCreateGitHubToken();
@@ -198,9 +201,9 @@ router.post('/repo/:repo', discoverUserIdentities, (req, res, next) => {
       return next(error);
     }
 
-    success.title = 'Congrats';
+    success.title = 'Repository created';
     success.message = success.github ?
-      `Your new repo, ${success.github.name}, has been created and can be found at ${success.github.html_url}.` :
+      `Your new repo, ${success.github.name}, has been created:` :
       'Your repo request has been submitted.';
 
     // url

@@ -6,7 +6,7 @@
 'use strict';
 
 const express = require('express');
-const jsonError = require('../jsonError');
+const jsonError = require('../../../middleware/jsonError');
 const router = express.Router();
 
 router.use((req, res, next) => {
@@ -17,6 +17,7 @@ router.use((req, res, next) => {
 });
 
 router.use('/newRepo', require('./newRepo'));
+router.use('/releaseApprovals', require('./releaseApprovals'));
 router.use('/metrics', require('./metrics'));
 
 router.use((req, res, next) => {

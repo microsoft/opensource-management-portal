@@ -85,6 +85,11 @@ router.use((req, res, next) => {
           url: '/settings/authorizations/github/clear',
           mitigation: 'Clear GitHub tokens',
         },
+        {
+          title: 'Clear GitHub write token',
+          url: '/settings/authorizations/github/clear?onlyWriteToken=onlyWriteToken',
+          mitigation: 'Clear GitHub write token',
+        },
       ]
     });
   }
@@ -99,9 +104,17 @@ router.get('/', (req, res) => {
 });
 
 router.get('/github/clear', (req, res, next) => {
+  const onlyWriteToken = req.query.onlyWriteToken;
   const dc = req.app.settings.providers.dataClient;
   const link = req.link;
-  const linkAuthorizationsToDrop = ['githubToken', 'githubTokenIncreasedScope', 'githubTokenUpdated', 'githubTokenIncreasedScopeUpdated'];
+  const linkAuthorizationsToDrop = [
+    'githubTokenIncreasedScope',
+    'githubTokenIncreasedScopeUpdated'
+  ];
+  if (!onlyWriteToken) {
+    linkAuthorizationsToDrop.push('githubToken');
+    linkAuthorizationsToDrop.push('githubTokenUpdated');
+  }
   linkAuthorizationsToDrop.forEach((property) => {
     delete link[property];
   });
@@ -112,8 +125,15 @@ router.get('/github/clear', (req, res, next) => {
       return next(error);
     }
     req.legacyUserContext.saveUserAlert(req, 'The GitHub tokens stored for this account have been removed. You may be required to authorize access to your GitHub account again to continue using this portal.', 'GitHub tokens cleared', 'success');
-    req.legacyUserContext.invalidateLinkCache(aadoid, () => {
-      return res.redirect('/signout/github/');
+    delete req.user.githubIncreasedScope;
+    delete req.user.github;
+    req.login(req.user, () => {
+      req.legacyUserContext.invalidateLinkCache(aadoid, () => {
+        if (onlyWriteToken) {
+          return res.redirect('/settings/authorizations');
+        }
+        return res.redirect('/signout/github/');
+      });
     });
   });
 });

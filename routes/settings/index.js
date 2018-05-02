@@ -13,6 +13,7 @@ const router = express.Router();
 const authorizationsRoute = require('./authorizations');
 const digestReportsRoute = require('./digestReports');
 const npmRoute = require('./npm');
+const personalAccessTokensRoute = require('./personalAccessTokens');
 
 const addLinkToMiddleware = require('../../middleware/links/');
 
@@ -25,5 +26,6 @@ router.get('/', (req, res) => {
 router.use('/authorizations', authorizationsRoute);
 router.use('/digestReports', digestReportsRoute);
 router.use('/npm', npmRoute);
+router.use('/security/tokens', personalAccessTokensRoute);
 
 module.exports = router;

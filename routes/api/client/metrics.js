@@ -6,7 +6,7 @@
 'use strict';
 
 const express = require('express');
-const jsonError = require('../jsonError');
+const jsonError = require('../../../middleware/jsonError');
 const metrics = require('../../../business/metrics');
 const router = express.Router();
 

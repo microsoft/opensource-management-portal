@@ -5,21 +5,26 @@
 
 'use strict';
 
-const basicAuth = require('basic-auth');
-const crypto = require('crypto');
 const express = require('express');
-const jsonError = require('./jsonError');
+
+const jsonError = require('../../middleware/jsonError');
 const router = express.Router();
 
 const apiClient = require('./client');
+const apiExtension = require('./extension');
 const apiPeople = require('./people');
 const apiWebhook = require('./webhook');
+
+const apiReposAuth = require('../../middleware/apiReposAuth');
+const apiVstsAuth = require('../../middleware/apiVstsAuth');
+const supportMultipleAuthProviders = require('../../middleware/supportMultipleAuthProviders');
 
 const OpenSourceUser = require('../../lib/context');
 
 const createRepo = require('./createRepo');
 
 const hardcodedApiVersions = [
+  '2017-09-01',
   '2017-03-08',
   '2016-12-01',
 ];
@@ -43,46 +48,21 @@ router.use((req, res, next) => {
   return next();
 });
 
-router.use(function (req, res, next) {
-  const user = basicAuth(req);
-  const key = user? (user.pass || user.name) : null;
-  if (!key) {
-    return next(jsonError('No key supplied', 400));
-  }
-  const sha1 = crypto.createHash('sha1');
-  sha1.update(key);
-  const hashValue = sha1.digest('hex');
+//-----------------------------------------------------------------------------
+// AUTHENTICATION: VSTS or repos
+//-----------------------------------------------------------------------------
+const multipleProviders = supportMultipleAuthProviders([
+  apiVstsAuth,
+  apiReposAuth,
+]);
 
-  // { owner, description, orgs (comma-sep list) }
-  const dc = req.app.settings.dataclient;
-  const settingType = 'apiKey';
-  const partitionKey = settingType;
-  const rowKey = `${settingType}${hashValue}`;
-  dc.getSetting(partitionKey, rowKey, (error, setting) => {
-    const apiEventProperties = {
-      keyHash: hashValue,
-      apiVersion: req.apiVersion,
-      url: req.originalUrl || req.url,
-    };
-    if (error) {
-      apiEventProperties.failed = true;
-      apiEventProperties.message = error.message;
-      apiEventProperties.statusCode = error.statusCode;
-    }
-    req.insights.trackEvent('ApiRequest', apiEventProperties);
-    if (error) {
-      req.insights.trackMetric('ApiInvalidKey', 1);
-      req.insights.trackException(error);
-      return next(jsonError(error.statusCode === 404 ? 'Key not authorized' : error.message, 401));
-    } else {
-      req.insights.trackMetric('ApiRequest', 1);
-      req.apiKeyRow = setting;
-      next();
-    }
-  });
-});
+router.use('/people', multipleProviders, apiPeople);
+router.use('/extension', multipleProviders, apiExtension);
 
-router.use('/people', apiPeople);
+//-----------------------------------------------------------------------------
+// AUTHENTICATION: repos (specific to this app)
+//-----------------------------------------------------------------------------
+router.use(apiReposAuth);
 
 router.use('/:org', function (req, res, next) {
   const orgName = req.params.org;
@@ -131,7 +111,7 @@ router.use('/:org', function (req, res, next) {
 
 router.post('/:org/repos', function (req, res, next) {
   const convergedObject = Object.assign({}, req.headers);
-  req.insights.trackEvent('ApiRepoCreateRequest', convergedObject);
+  req.insights.trackEvent({ name: 'ApiRepoCreateRequest', properties: convergedObject });
   Object.assign(convergedObject, req.body);
   delete convergedObject.access_token;
   delete convergedObject.authorization;

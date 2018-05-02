@@ -258,7 +258,7 @@ router.post('/', function (req, res, next) {
             if (secondaryResult.error.headers) {
               Object.assign(extraInfo, secondaryResult.error.headers);
             }
-            req.insights.trackException(secondaryResult.error, extraInfo);
+            req.insights.trackException({ exception: secondaryResult.error, properties: extraInfo });
           } catch (unusedError) {
             // never want this to fail
           }
@@ -277,18 +277,25 @@ router.post('/', function (req, res, next) {
         decisionBy: username,
         decisionNote: bodyText,
         decisionEmail: req.legacyUserContext.modernUser().contactEmail(),
+        reason: (`You are receiving this e-mail because of a request that you created, and a decision has been made.
+                  This mail was sent to: ${pendingRequest.email}`),
+        headline: engine.getDecisionEmailHeadline(wasApproved, pendingRequest),
+        notification: wasApproved ? 'information' : 'warning',
+        service: 'Microsoft GitHub',
       };
       if (!engine.getDecisionEmailViewName || !engine.getDecisionEmailSubject) {
-        return req.insights.trackException(new Error('No getDecisionEmailViewName available with the engine.'), Object.assign({
-          eventName: 'ReposRequestDecisionMailRenderFailure',
-        }, contentOptions));
+        return req.insights.trackException({
+          exception: new Error('No getDecisionEmailViewName available with the engine.'),
+          properties: Object.assign({ eventName: 'ReposRequestDecisionMailRenderFailure' }, contentOptions),
+        });
       }
       const getDecisionEmailViewName = engine.getDecisionEmailViewName();
       emailRender.render(req.app.settings.basedir, getDecisionEmailViewName, contentOptions, (renderError, mailContent) => {
         if (renderError) {
-          return req.insights.trackException(renderError, Object.assign({
-            eventName: 'ReposRequestDecisionMailRenderFailure',
-          }, contentOptions));
+          return req.insights.trackException({
+            exception: renderError,
+            properties: Object.assign({ eventName: 'ReposRequestDecisionMailRenderFailure' }, contentOptions),
+          });
         }
         // TODO: remove spike: adding the GitHub admin alias if there is a secondary failure
         var recipients = [userMailAddress];
@@ -298,13 +305,9 @@ router.post('/', function (req, res, next) {
         const mail = {
           to: recipients,
           subject: engine.getDecisionEmailSubject(wasApproved, pendingRequest),
-          reason: (`You are receiving this e-mail because of a request that you created, and a decision has been made.
-                    This mail was sent to: ${pendingRequest.email}`),
           content: mailContent,
-          headline: engine.getDecisionEmailHeadline(wasApproved, pendingRequest),
-          classification: wasApproved ? 'information' : 'warning',
-          service: 'Microsoft GitHub',
           correlationId: req.correlationId,
+          category: ['decision', 'repos'],
         };
         mailProvider.sendMail(mail, (mailError, mailResult) => {
           var customData = Object.assign({
@@ -312,9 +315,9 @@ router.post('/', function (req, res, next) {
           }, contentOptions);
           if (mailError) {
             customData.eventName = 'ReposRequestDecisionMailFailure';
-            req.insights.trackException(mailError, customData);
+            req.insights.trackException({ exception: mailError, properties: customData });
           } else {
-            req.insights.trackEvent('ReposRequestDecisionMailSuccess', customData);
+            req.insights.trackEvent({ name: 'ReposRequestDecisionMailSuccess', properties: customData });
           }
         });
       });

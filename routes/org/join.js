@@ -118,11 +118,14 @@ function joinOrg(req, res, next) {
   const username = req.legacyUserContext.usernames.github;
   invitationTeam.addMembership(username, function (error) {
     if (error) {
-      req.insights.trackMetric('GitHubOrgInvitationFailures', 1);
-      req.insights.trackEvent('GitHubOrgInvitationFailure', {
-        organization: organization.name,
-        username: username,
-        error: error.message,
+      req.insights.trackMetric({ name: 'GitHubOrgInvitationFailures', value: 1 });
+      req.insights.trackEvent({
+        name: 'GitHubOrgInvitationFailure',
+        properties: {
+          organization: organization.name,
+          username: username,
+          error: error.message,
+        },
       });
       var specificMessage = error.message ? 'Error message: ' + error.message : 'Please try again later. If you continue to receive this message, please reach out for us to investigate.';
       if (error.code === 'ETIMEDOUT') {
@@ -130,10 +133,13 @@ function joinOrg(req, res, next) {
       }
       return next(utils.wrapError(error, `We had trouble sending you an invitation through GitHub to join the ${organization.name} organization. ${username} ${specificMessage}`));
     }
-    req.insights.trackMetric('GitHubOrgInvitationSuccesses', 1);
-    req.insights.trackEvent('GitHubOrgInvitationSuccess', {
-      organization: organization.name,
-      username: username,
+    req.insights.trackMetric({ name: 'GitHubOrgInvitationSuccesses', value: 1 });
+    req.insights.trackEvent({
+      name: 'GitHubOrgInvitationSuccess',
+      properties: {
+        organization: organization.name,
+        username: username,
+      },
     });
     res.redirect(organization.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name));
   });

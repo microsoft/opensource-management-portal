@@ -12,18 +12,20 @@
 const _ = require('lodash');
 const async = require('async');
 const emailRender = require('../../lib/emailRender');
-const jsonError = require('./jsonError');
+const jsonError = require('../../middleware/jsonError');
 
 const RepoWorkflowEngine = require('../org/repoWorkflowEngine.js');
 
 const supportedLicenseExpressions = [
   'mit',
   '(mit and cc-by-4.0)',
+  'cc-by-4.0',
   'other',
 ];
 
 const hardcodedApprovalTypes = [
-  'ReleaseReview',
+  'NewReleaseReview',
+  'ExistingReleaseReview',
   'SmallLibrariesToolsSamples',
   'Migrate',
   'Exempt',
@@ -53,6 +55,7 @@ function createRepo(req, res, convergedObject, token, callback, doNotCallbackFor
     'ms.notify',
     'ms.teams',
     'ms.template',
+    'ms.project-type',
   ];
   const properties = {};
   const parameters = req.body;
@@ -73,6 +76,7 @@ function createRepo(req, res, convergedObject, token, callback, doNotCallbackFor
     notify: properties['ms.notify'] || req.headers['ms-notify'],
     teams: properties['ms.teams'] || req.headers['ms-teams'],
     template: properties['ms.template'] || req.headers['ms-template'],
+    projectType: properties['ms.project-type'] || req.headers['ms-project-type'],
   };
 
   // Validate licenses
@@ -97,7 +101,8 @@ function createRepo(req, res, convergedObject, token, callback, doNotCallbackFor
 
   // Validate specifics of what is in the approval
   switch (msApprovalType) {
-  case 'ReleaseReview':
+  case 'NewReleaseReview':
+  case 'ExistingReleaseReview':
     if (!msProperties.approvalUrl) {
       return callback(jsonError('Approval URL for the release review is required when using the release review approval type', 422));
     }
@@ -128,6 +133,16 @@ function createRepo(req, res, convergedObject, token, callback, doNotCallbackFor
 
   const organization = operations.getOrganization(parameters.org);
   operations.github.post(token, 'repos.createForOrg', parameters, (error, result) => {
+    req.app.settings.providers.insights.trackEvent({
+      name: 'ApiRepoCreateForOrg',
+      properties: {
+        parameterName: parameters.name,
+        description: parameters.description,
+        private: parameters.private,
+        org: parameters.org,
+        result: JSON.stringify(result),
+      },
+    });
     if (error) {
       // TODO: insights
       return callback(jsonError(error, error.code || 500));
@@ -160,6 +175,7 @@ function createRepo(req, res, convergedObject, token, callback, doNotCallbackFor
       claMail: msProperties.claMail,
       claEntity: msProperties.claEntity,
       template: msProperties.template,
+      projectType: msProperties.projectType,
 
       // API-specific:
       apiVersion: req.apiVersion,
@@ -169,7 +185,7 @@ function createRepo(req, res, convergedObject, token, callback, doNotCallbackFor
 
     let teamNumber = 0;
     const teamTypes = ['pull', 'push', 'admin'];
-    downgradeBroadAccessTeams(organization, msProperties.teams);
+    downgradeBroadAccessTeams(organization, msProperties.teams || {});
     for (let i = 0; msProperties.teams && i < teamTypes.length; i++) {
       const teamType = teamTypes[i];
       const idList = msProperties.teams[teamType];
@@ -240,9 +256,12 @@ function downgradeBroadAccessTeams(organization, teams) {
 function rollbackRepoError(req, res, next, error, statusCode, errorToLog) {
   const err = jsonError(error, statusCode);
   if (errorToLog) {
-    req.insights.trackException(errorToLog, {
-      event: 'ApiRepoCreateRollbackError',
-      message: error && error.message ? error.message : error,
+    req.insights.trackException({
+      exception: errorToLog,
+      properties: {
+        event: 'ApiRepoCreateRollbackError',
+        message: error && error.message ? error.message : error,
+      },
     });
   }
   if (!req.organization || !req.repoCreateResponse || !req.repoCreateResponse.name) {
@@ -267,13 +286,14 @@ function sendEmail(req, mailProvider, apiKeyRow, correlationId, repoCreateResult
   const mail = {
     to: emails,
     subject: subject,
-    reason: `You are receiving this e-mail because an API request included the e-mail notification address(es) ${msProperties.notify} during the creation of a repo.`,
-    headline: headline,
-    classification: 'information',
-    service: 'Microsoft GitHub',
     correlationId: correlationId,
+    category: ['error', 'repos'],
   };
   const contentOptions = {
+    reason: `You are receiving this e-mail because an API request included the e-mail notification address(es) ${msProperties.notify} during the creation of a repo.`,
+    headline: headline,
+    notification: 'information',
+    app: 'Microsoft GitHub',
     correlationId: correlationId,
     approvalRequest: approvalRequest,
     results: repoCreateResults,
@@ -286,9 +306,12 @@ function sendEmail(req, mailProvider, apiKeyRow, correlationId, repoCreateResult
   };
   emailRender.render(req.app.settings.basedir, emailTemplate, contentOptions, (renderError, mailContent) => {
     if (renderError) {
-      req.insights.trackException(renderError, {
-        content: contentOptions,
-        eventName: 'ApiRepoCreateMailRenderFailure',
+      req.insights.trackException({
+        exception: renderError,
+        properties: {
+          content: contentOptions,
+          eventName: 'ApiRepoCreateMailRenderFailure',
+        },
       });
       return callback(renderError);
     }
@@ -300,10 +323,10 @@ function sendEmail(req, mailProvider, apiKeyRow, correlationId, repoCreateResult
       };
       if (mailError) {
         customData.eventName = 'ApiRepoCreateMailFailure';
-        req.insights.trackException(mailError, customData);
+        req.insights.trackException({ exception: mailError, properties: customData });
         return callback(mailError);
       }
-      req.insights.trackEvent('ApiRepoCreateMailSuccess', customData);
+      req.insights.trackEvent({ name: 'ApiRepoCreateMailSuccess', properties: customData });
       req.repoCreateResponse.notified = emails;
       callback();
     });

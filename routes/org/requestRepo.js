@@ -70,7 +70,7 @@ router.post('/', function (req, res, next) {
   }
   let orgHasCla = false;
   try {
-    const claTeams = org.getLegacyClaTeams(true);
+    const claTeams = org.getClaWriteTeams(true);
     orgHasCla = req.body.claEntity && claTeams[req.body.claEntity];
   } catch (noClaError) { /* ignored */ }
   if (!req.body.name || (req.body.name.length !== undefined && req.body.name.length === 0)) {
@@ -244,7 +244,7 @@ router.post('/', function (req, res, next) {
           }
           var randomMaintainer = maintainers[Math.floor(Math.random() * maintainers.length)];
           if (!randomMaintainer.link || !randomMaintainer.link.ghu) {
-            req.insights.trackEvent('RandomMaintainerFailure', randomMaintainer);
+            req.insights.trackEvent({ name: 'RandomMaintainerFailure', properties: randomMaintainer });
           }
           var assignTo = randomMaintainer && randomMaintainer.link && randomMaintainer.link.ghu ? randomMaintainer.link.ghu : '';
           var allMaintainers = [];
@@ -433,15 +433,16 @@ router.post('/', function (req, res, next) {
       const mail = {
         to: approverMailAddresses,
         subject: `New ${approvalRequest.org} repo ${approvalRequest.repoName} by ${userMailAddress}`,
+        correlationId: req.correlationId,
+        category: ['request', 'repos'],
+      };
+      const contentOptions = {
         reason: (`You are receiving this e-mail because you are a repo approver for this organization.
                   To stop receiving these mails, you can leave the repo approvals team on GitHub.
                   This mail was sent to: ${approversAsString}`),
         headline: `New ${approvalRequest.org} repo requested`,
-        classification: 'action',
-        service: 'Microsoft GitHub',
-        correlationId: req.correlationId,
-      };
-      const contentOptions = {
+        notification: 'action',
+        app: 'Microsoft GitHub',
         correlationId: req.correlationId,
         approvalRequest: approvalRequest,
         version: config.logging.version,
@@ -450,9 +451,12 @@ router.post('/', function (req, res, next) {
       };
       emailRender.render(req.app.settings.basedir, 'repoApprovals/pleaseApprove', contentOptions, (renderError, mailContent) => {
         if (renderError) {
-          req.insights.trackException(renderError, {
-            content: contentOptions,
-            eventName: 'ReposRequestPleaseApproveMailRenderFailure',
+          req.insights.trackException({
+            exception: renderError,
+            properties: {
+              content: contentOptions,
+              eventName: 'ReposRequestPleaseApproveMailRenderFailure',
+            },
           });
           return callback(renderError);
         }
@@ -464,10 +468,10 @@ router.post('/', function (req, res, next) {
           };
           if (mailError) {
             customData.eventName = 'ReposRequestPleaseApproveMailFailure';
-            req.insights.trackException(mailError, customData);
+            req.insights.trackException({ exception: mailError, properties: customData });
             return callback(mailError);
           }
-          req.insights.trackEvent('ReposRequestPleaseApproveMailSuccess', customData);
+          req.insights.trackEvent({ name: 'ReposRequestPleaseApproveMailSuccess', properties: customData });
           dc.updateApprovalRequest(generatedRequestId, {
             active: true,
             mailSentToApprovers: approversAsString,
@@ -487,14 +491,15 @@ router.post('/', function (req, res, next) {
       const mail = {
         to: userMailAddress,
         subject: subject,
+        correlationId: req.correlationId,
+        category: [isApprovalRequired ? 'request' : 'created', 'repos'],
+      };
+      const contentOptions = {
         reason: (`You are receiving this e-mail because you requested the creation of a repo.
                   This mail was sent to: ${userMailAddress}`),
         headline: headline,
-        classification: 'information',
-        service: 'Microsoft GitHub',
-        correlationId: req.correlationId,
-      };
-      const contentOptions = {
+        notification: 'information',
+        app: 'Microsoft GitHub',
         correlationId: req.correlationId,
         approvalRequest: approvalRequest,
         results: repoCreateResults,
@@ -503,9 +508,12 @@ router.post('/', function (req, res, next) {
       };
       emailRender.render(req.app.settings.basedir, emailTemplate, contentOptions, (renderError, mailContent) => {
         if (renderError) {
-          req.insights.trackException(renderError, {
-            content: contentOptions,
-            eventName: 'ReposRequestSubmittedMailRenderFailure',
+          req.insights.trackException({
+            exception: renderError,
+            properties: {
+              content: contentOptions,
+              eventName: 'ReposRequestSubmittedMailRenderFailure',
+            },
           });
           return callback(renderError);
         }
@@ -517,10 +525,10 @@ router.post('/', function (req, res, next) {
           };
           if (mailError) {
             customData.eventName = 'ReposRequestSubmittedMailFailure';
-            req.insights.trackException(mailError, customData);
+            req.insights.trackException({ exception: mailError, properties: customData });
             return callback(mailError);
           }
-          req.insights.trackEvent('ReposRequestSubmittedMailSuccess', customData);
+          req.insights.trackEvent({ name: 'ReposRequestSubmittedMailSuccess', properties: customData });
           callback(null, args);
         });
       });
@@ -594,7 +602,7 @@ router.get('/', function (req, res, next) {
     });
   }
   var claTeams = null;
-  var orgHasCla = organization.isLegacyClaAutomationAvailable();
+  var orgHasCla = false;
   try {
     claTeams = organization.getLegacyClaTeams(true);
   } catch (noClaError) { /* ignored */ }
@@ -644,14 +652,12 @@ router.get('/', function (req, res, next) {
 
         var typesConfig = org.inner.settings.approvalTypes || config.github.approvalTypes.fields.approvalTypes;
         var urlRequiredConfig = org.inner.settings.approvalUrlRequired || config.github.approvalTypes.fields.approvalUrlRequired ||  [];
-        var format = org.inner.settings.approvalUrlFormat || config.github.approvalTypes.fields.approvalUrlFormat;
         var exemptionDetailsConfig = org.inner.settings.exemptionDetailsRequired || config.github.approvalTypes.fields.exemptionDetailsRequired || [];
 
         for (var ctr = 0; ctr < typesConfig.length; ctr++) {
           approvalTypes.push({
             value: typesConfig[ctr],
             urlRequired: urlRequiredConfig.indexOf(typesConfig[ctr]) >= 0,
-            format: format,
             exemptionDetailsRequired: exemptionDetailsConfig.indexOf(typesConfig[ctr]) >= 0
           });
         }

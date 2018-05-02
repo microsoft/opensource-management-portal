@@ -17,11 +17,12 @@ const utils = require('../../../utils');
 router.use((req, res, next) => {
   const login = req.legacyUserContext.usernames.github;
   const team2 = req.team2;
-  team2.getMembershipEfficiently(login, (getMembershipError, membership) => {
+  team2.getMembershipEfficiently(login, (getMembershipError, membership, state) => {
     if (getMembershipError) {
       return next(getMembershipError);
     }
     req.membershipStatus = membership;
+    req.membershipState = state;
     return next();
   });
 });
@@ -89,17 +90,23 @@ router.post('/join', function (req, res, next) {
   if (broadAccessTeams.has(team2.id)) {
     return team2.addMembership(username, function (error) {
       if (error) {
-        req.insights.trackEvent('GitHubJoinAllMembersTeamFailure', {
-          organization: organization.name,
-          username: username,
-          error: error.message,
+        req.insights.trackEvent({
+          name: 'GitHubJoinAllMembersTeamFailure',
+          properties: {
+            organization: organization.name,
+            username: username,
+            error: error.message,
+          },
         });
         return next(utils.wrapError(error, `We had trouble adding you to the ${organization.name} organization. ${username}`));
       }
       req.legacyUserContext.saveUserAlert(req, `You have joined ${team2.name} team successfully`, 'Join Successfully', 'success');
-      req.insights.trackEvent('GitHubJoinAllMembersTeamSuccess', {
-        organization: organization.name,
-        username: username,
+      req.insights.trackEvent({
+        name: 'GitHubJoinAllMembersTeamSuccess',
+        properties: {
+          organization: organization.name,
+          username: username,
+        },
       });
       return res.redirect(`${organization.baseUrl}teams`);
     });
@@ -269,12 +276,6 @@ router.post('/join', function (req, res, next) {
       const mail = {
         to: approverMailAddresses,
         subject: `${personName} wants to join your ${team2.name} team in the ${team2.organization.name} GitHub org`,
-        reason: (`You are receiving this e-mail because you are a team maintainer for the GitHub team "${team2.name}" in the ${team2.organization.name} organization.
-                  To stop receiving these mails, you can remove your team maintainer status on GitHub.
-                  This mail was sent to: ${approversAsString}`),
-        headline: `${team2.name} permission request`,
-        classification: 'action',
-        service: 'Microsoft GitHub',
         correlationId: req.correlationId,
       };
       const contentOptions = {
@@ -297,9 +298,12 @@ router.post('/join', function (req, res, next) {
       };
       emailRender.render(req.app.settings.basedir, 'membershipApprovals/pleaseApprove', contentOptions, (renderError, mailContent) => {
         if (renderError) {
-          req.insights.trackException(renderError, {
-            content: contentOptions,
-            eventName: 'ReposTeamRequestPleaseApproveMailRenderFailure',
+          req.insights.trackException({
+            exception: renderError,
+            properties: {
+              content: contentOptions,
+              eventName: 'ReposTeamRequestPleaseApproveMailRenderFailure',
+            },
           });
           return callback(renderError);
         }
@@ -311,10 +315,10 @@ router.post('/join', function (req, res, next) {
           };
           if (mailError) {
             customData.eventName = 'ReposTeamRequestPleaseApproveMailFailure';
-            req.insights.trackException(mailError, customData);
+            req.insights.trackException({ exception: mailError, properties: customData });
             return callback(mailError);
           }
-          req.insights.trackEvent('ReposTeamRequestPleaseApproveMailSuccess', customData);
+          req.insights.trackEvent({ name: 'ReposTeamRequestPleaseApproveMailSuccess', properties: customData });
           dc.updateApprovalRequest(requestId, {
             mailSentToApprovers: approversAsString,
             mailSentTo: personMail,
@@ -331,14 +335,15 @@ router.post('/join', function (req, res, next) {
       const mail = {
         to: personMail,
         subject: `Your ${team2.organization.name} "${team2.name}" permission request has been submitted`,
+        correlationId: req.correlationId,
+        category: ['request', 'repos'],
+      };
+      const contentOptions = {
         reason: (`You are receiving this e-mail because you requested to join this team.
                   This mail was sent to: ${personMail}`),
         headline: 'Team request submitted',
-        classification: 'information',
-        service: 'Microsoft GitHub',
-        correlationId: req.correlationId,
-      };
-      const contentOptions = {
+        notification: 'information',
+        app: 'Microsoft GitHub',
         correlationId: req.correlationId,
         version: config.logging.version,
         actionUrl: approvalBaseUrl + requestId,
@@ -351,9 +356,12 @@ router.post('/join', function (req, res, next) {
       };
       emailRender.render(req.app.settings.basedir, 'membershipApprovals/requestSubmitted', contentOptions, (renderError, mailContent) => {
         if (renderError) {
-          req.insights.trackException(renderError, {
-            content: contentOptions,
-            eventName: 'ReposTeamRequestSubmittedMailRenderFailure',
+          req.insights.trackException({
+            exception: renderError,
+            properties: {
+              content: contentOptions,
+              eventName: 'ReposTeamRequestSubmittedMailRenderFailure',
+            },
           });
           return callback(renderError);
         }
@@ -365,10 +373,10 @@ router.post('/join', function (req, res, next) {
           };
           if (mailError) {
             customData.eventName = 'ReposTeamRequestSubmittedMailFailure';
-            req.insights.trackException(mailError, customData);
+            req.insights.trackException({ exception: mailError, properties: customData });
             return callback(mailError);
           }
-          req.insights.trackEvent('ReposTeamRequestSubmittedMailSuccess', customData);
+          req.insights.trackEvent({ name: 'ReposTeamRequestSubmittedMailSuccess', properties: customData });
           callback();
         });
       });
@@ -396,6 +404,7 @@ router.get('/', orgPermissions, (req, res, next) => {
   const id = req.legacyUserContext.id.github ? parseInt(req.legacyUserContext.id.github, 10) : null;
   const teamPermissions = req.teamPermissions;
   const membershipStatus = req.membershipStatus;
+  const membershipState = req.membershipState;
   const team2 = req.team2;
   const operations = req.app.settings.operations;
   const organization = req.organization;
@@ -430,6 +439,7 @@ router.get('/', orgPermissions, (req, res, next) => {
       // new values:
       teamPermissions: teamPermissions,
       membershipStatus: membershipStatus,
+      membershipState: membershipState,
       membersFirstPage: membersFirstPage,
       team2: team2,
       teamDetails: teamDetails,

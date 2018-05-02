@@ -94,9 +94,6 @@ repoWorkFlowEngine.generateSecondaryTasks = function (callback) {
       tasks.push(createAddRepositoryTask(organization, repoName, teamId, permission));
     }
   }
-  if (pendingRequest.claEntity) {
-    tasks.push(createSetLegacyClaTask(organization, repoName, pendingRequest.claEntity, pendingRequest.claMail));
-  }
   if (pendingRequest.template) {
     tasks.push(createAddTemplateFilesTask(organization, repoName, pendingRequest.template));
   }
@@ -119,28 +116,6 @@ repoWorkFlowEngine.performApprovalOperation = function (callback) {
     callback(error, newRepoDetails);
   });
 };
-
-function createSetLegacyClaTask(organization, repoName, legalEntity, claMail) {
-  'use strict';
-  return function setLegacyClaTask(callback) {
-    const repository = organization.repository(repoName);
-    repository.enableLegacyClaAutomation({
-      emails: claMail,
-      legalEntity: legalEntity,
-    }, (enableClaError) => {
-      // Don't propagate as an error, just record the issue...
-      let message = claMail ? `Successfully enabled the ${legalEntity} CLA for ${repoName}, notifying ${claMail}.` : `Successfully enabled the ${legalEntity} CLA for ${repoName}`;
-      if (enableClaError) {
-        message = `The CLA could not be enabled for the repo ${repoName} using the notification e-mail address(es) ${claMail} (${enableClaError})`;
-      }
-      const result = {
-        error: enableClaError,
-        message: message,
-      };
-      callback(undefined, result);
-    });
-  };
-}
 
 var createAddRepositoryTask = function createAddRepoTask(organization, repoName, id, permission) {
   return function (cb) {

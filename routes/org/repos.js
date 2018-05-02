@@ -158,50 +158,9 @@ function npmPublishingExtension(operations, repository, callback) {
   });
 }
 
-function legacyClaExtension(operations, repository, callback) {
-  let cla = {
-    supported: false,
-    enabled: null,
-    legalEntity: null,
-    mails: null,
-    webhookUrl: null,
-  };
-  const result = {
-    cla: cla,
-  };
-  const organization = repository.organization;
-  cla.teams = organization.legalEntityClaTeams;
-  const metadata = organization.getRepositoryCreateMetadata();
-  if (!metadata.supportsCla) {
-    return callback(null, result);
-  }
-  cla.supported = true;
-  repository.hasLegacyClaAutomation((legacyCheckError, enabled, webhookUrl, legalEntity, learnMoreUrl) => {
-    if (legacyCheckError) {
-      return callback(legacyCheckError);
-    }
-    cla.enabled = enabled;
-    cla.learnMoreUrl = learnMoreUrl;
-    if (enabled) {
-      cla.legalEntity = legalEntity;
-      cla.webhookUrl = webhookUrl;
-    }
-    repository.getLegacyClaSettings((getError, settings) => {
-      if (settings) {
-        cla.mails = settings.NotifierEmails;
-        if (settings.UpdatedOn) {
-          cla.updatedOn = moment.utc(settings.UpdatedOn);
-        }
-      }
-      return callback(null, result);
-    });
-  });
-}
-
 function getRepoExtensions(operations, repository, callback) {
   const extensions = {};
   const extensionTypes = [
-    legacyClaExtension,
     npmPublishingExtension,
   ];
   async.eachLimit(extensionTypes, 2, (extension, next) => {
@@ -373,79 +332,16 @@ function teamsToSet(teams) {
   return set;
 }
 
-function requireAdministration(req, res, next) {
-  const repoPermissions = req.repoPermissions;
-  if (!repoPermissions) {
-    return next(new Error('Not configured for repo permissions'));
-  }
-  if (repoPermissions.allowAdministration === true) {
-    return next();
-  }
-  return next(new Error('You are not authorized to administer this repository.'));
-}
-
-router.use('/:repoName/extensions/cla', requireAdministration, (req, res, next) => {
-  const operations = req.app.settings.operations;
-  const repository = req.repository;
-
-  legacyClaExtension(operations, repository, (getClaError, extensionData) => {
-    if (getClaError) {
-      return next(getClaError);
-    }
-    if (!extensionData || !extensionData.cla) {
-      return next(new Error('This organization\'s extension data is currently offline or not configured.'));
-    }
-    const claSettings = extensionData.cla;
-
-    if (!claSettings.supported) {
-      return next(new Error('This organization has not enabled CLA automation at this time.'));
-    }
-
-    req.legalClaSettings = claSettings;
-    return next();
-  });
-});
-
-router.get('/:repoName/extensions/cla', function (req, res) {
-  const repository = req.repository;
-  req.legacyUserContext.addBreadcrumb(req, 'CLA');
-  const claSettings = req.legalClaSettings;
-  req.legacyUserContext.render(req, res, 'repos/legacyCla', `CLA - ${repository.name}`, {
-    claSettings: claSettings,
-    repository: repository,
-    organization: repository.organization,
-
-    //repoLegacyClaUrl: req.teamReposUrl + repo.name + '/legacyCla',
-    //mayHaveLegacyCla: mayHaveLegacyCla,
-    //claTeams: req.claTeams,
-    //claWebHookUrl: claWebHookUrl,
-    //repo: repo,
-  });
-});
-
-router.post('/:repoName/extensions/cla', (req, res, next) => {
-  const repository = req.repository;
-  const emails = req.body.emails;
-  const currentClaSettings = req.legalClaSettings;
-  const repoRoot = '/' + repository.organization.name + '/repos/' + repository.name;
-
-  // If legal entity, it is new; otherwise, just updated the e-mail addresses
-  let legalEntity = req.body.legalEntity;
-  const isUpdate = !legalEntity;
-  if (isUpdate) {
-    legalEntity = currentClaSettings.legalEntity;
-  }
-  repository.enableLegacyClaAutomation({
-    emails: emails,
-    legalEntity: legalEntity,
-  }, (error) => {
-    if (error) {
-      return next(error);
-    }
-    req.legacyUserContext.saveUserAlert(req, `${legalEntity} CLA ${isUpdate ? 'updated' : 'configured'} and set to contact ${emails}.`, 'Contribution license agreements', 'success');
-    res.redirect(repoRoot);
-  });
-});
+// function requireAdministration(req, res, next) {
+//   const repoPermissions = req.repoPermissions;
+//   if (!repoPermissions) {
+//     return next(new Error('Not configured for repo permissions'));
+//   }
+//   if (repoPermissions.allowAdministration === true) {
+//     return next();
+//   }
+//   return next(new Error('You are not authorized to administer this repository.'));
+// }
 
 router.use('/:repoName/extensions', extensionsRoute);
 

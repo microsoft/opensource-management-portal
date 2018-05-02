@@ -6,7 +6,7 @@
 'use strict';
 
 const express = require('express');
-const jsonError = require('../jsonError');
+const jsonError = require('../../../middleware/jsonError');
 const router = express.Router();
 const wrapError = require('../../../utils').wrapError;
 
@@ -37,7 +37,7 @@ router.get('/github/:username', (req, res, next) => {
     for (let i = 0; i < results.length; i++) {
       const entry = results[i];
       if (entry && entry.github && entry.github.login.toLowerCase() === username) {
-        req.insights.trackMetric('ApiRequestLinkByGitHubUsername', 1);
+        req.insights.trackMetric({ name: 'ApiRequestLinkByGitHubUsername', value: 1 });
         return res.json(entry);
       }
     }
@@ -59,14 +59,17 @@ router.get('/aad/userPrincipalName/:upn', (req, res, next) => {
         r.push(entry);
       }
     }
-    req.insights.trackEvent('ApiRequestLinkByAadUpnResult', {
-      length: r.length.toString(),
-      userPrincipalName: upn,
+    req.insights.trackEvent({
+      name: 'ApiRequestLinkByAadUpnResult',
+      properties: {
+        length: r.length.toString(),
+        userPrincipalName: upn,
+      },
     });
     if (r.length === 0) {
       return next(jsonError('Could not find a link for the user', 404));
     }
-    req.insights.trackMetric('ApiRequestLinkByAadUpn', 1);
+    req.insights.trackMetric({ name: 'ApiRequestLinkByAadUpn', value: 1 });
     return res.json(r);
   });
 });
@@ -91,7 +94,7 @@ router.get('/aad/:id', (req, res, next) => {
     if (r.length === 0) {
       return next(jsonError('Could not find a link for the user', 404));
     }
-    req.insights.trackMetric('ApiRequestLinkByAadId', 1);
+    req.insights.trackMetric({ name: 'ApiRequestLinkByAadId', value: 1 });
     return res.json(r);
   });
 });
@@ -127,6 +130,10 @@ function getAllUsers(apiVersion, operations, callback) {
             if (member.orgs) {
               entry.github.organizations = Object.getOwnPropertyNames(member.orgs);
             }
+            // '2017-09-01' added 'isServiceAccount'; so '2016-12-01' & '2017-03-08' do not have it
+            if (member.link && member.link.serviceAccount === true && apiVersion !== '2016-12-01' && apiVersion !== '2017-03-08') {
+              entry.isServiceAccount = true;
+            }
             if (member.corporate) {
               const corporatePropertyName = apiVersion === '2016-12-01' ? 'corporate' : 'aad'; // This was renamed to be provider name-based
               entry[corporatePropertyName] = {
@@ -155,8 +162,9 @@ router.get('/', (req, res, next) => {
     if (error) {
       return next(error);
     }
-    req.insights.trackMetric('ApiRequestLinks', 1);
-    res.json(results);
+    req.insights.trackMetric({ name: 'ApiRequestLinks', value: 1 });
+    res.set('Content-Type', 'application/json');
+    res.send(JSON.stringify(results, undefined, 2));
   });
 });
 
