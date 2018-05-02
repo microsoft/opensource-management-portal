@@ -20,8 +20,9 @@ describe('encryption', () => {
     it('unencrypted entities can be processed', () => {
       let dynamicKeyId = uuid.v4();
       generate32bitKey((error, key) => {
-        let keyEncryptionKeys = {};
-        keyEncryptionKeys[dynamicKeyId] = key;
+        let keyEncryptionKeys = {
+          dynamicKeyId: key,
+        };
         let sampleEncryptionOptions = {
           keyEncryptionKeyId: dynamicKeyId,
           encryptedPropertyNames: ['secret'],
@@ -43,8 +44,9 @@ describe('encryption', () => {
     it('should have encryption metadata', () => {
       let dynamicKeyId = uuid.v4();
       generate32bitKey((error, key) => {
-        let keyEncryptionKeys = {};
-        keyEncryptionKeys[dynamicKeyId] = key;
+        let keyEncryptionKeys = {
+          dynamicKeyId: key,
+        };
         let sampleEncryptionOptions = {
           keyEncryptionKeyId: dynamicKeyId,
           encryptedPropertyNames: ['secret', 'superSecret'],
@@ -59,7 +61,6 @@ describe('encryption', () => {
         let partitionKey = 'partition' + uuid.v4();
         let rowKey = 'row' + uuid.v4();
         encryption.encryptEntity(partitionKey, rowKey, secretEntity, sampleEncryptionOptions, (error, encryptedEntity) => {
-          assert.isNotOk(error, 'Should be no error back from encryptEntity');
           assert.isDefined(encryptedEntity['_ClientEncryptionMetadata1'], 'defined encryption metadata');
           assert.isDefined(encryptedEntity['_ClientEncryptionMetadata2'], 'defined encrypted keys list entry');
         });
@@ -68,8 +69,9 @@ describe('encryption', () => {
     it('should be able to decrypt itself', () => {
       let dynamicKeyId = uuid.v4();
       generate32bitKey((error, key) => {
-        let keyEncryptionKeys = {};
-        keyEncryptionKeys[dynamicKeyId] = key;
+        let keyEncryptionKeys = {
+          dynamicKeyId: key,
+        };
         let sampleEncryptionOptions = {
           keyEncryptionKeyId: dynamicKeyId,
           encryptedPropertyNames: ['secret', 'superSecret'],
