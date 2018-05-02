@@ -11,7 +11,7 @@ const moment = require('moment');
 function everyMinute(insights, started) {
   const now = moment();
   const minutes = now.diff(started, 'minutes');
-  insights.trackMetric('NodeApplicationUptime', minutes);
+  insights.trackMetric({ name: 'NodeApplicationUptime', value: minutes });
 }
 
 function initialize(insights) {

@@ -50,15 +50,18 @@ module.exports = function initializeCampaigns(app) {
       return;
     }
 
-    insights.trackEvent('ReposCampaignInteraction', {
-      source: data.source,
-      campaign: data.campaign,
-      medium: data.medium,
-      content: data.content,
-      path: req.path,
+    insights.trackEvent({
+      name: 'ReposCampaignInteraction',
+      properties: {
+        source: data.source,
+        campaign: data.campaign,
+        medium: data.medium,
+        content: data.content,
+        path: req.path,
+      },
     });
 
-    insights.trackMetric('ReposCampaignInteractions', 1);
+    insights.trackMetric({ name: 'ReposCampaignInteractions', value: 1 });
   }
 
   function redirectGitHubMiddleware(req, res, next, getIdentity) {
@@ -100,8 +103,8 @@ module.exports = function initializeCampaigns(app) {
         }
         data.uri = uri;
         data.path = req.path;
-        insights.trackEvent('ReposCampaignGitHubRedirect', data);
-        insights.trackMetric('ReposCampaignGitHubRedirects', 1);
+        insights.trackEvent({ name: 'ReposCampaignGitHubRedirect', properties: data });
+        insights.trackMetric({ name: 'ReposCampaignGitHubRedirects', value: 1 });
       }
       return; // response already sent
     }

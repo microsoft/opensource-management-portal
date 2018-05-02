@@ -20,6 +20,7 @@ const uptime = require('./uptime');
 
 module.exports = function initMiddleware(app, express, config, dirname, redisClient, initializationError) {
   config = config || {};
+  const providers = app.get('providers');
   if (initializationError) {
     providers.healthCheck.healthy = false;
   }
@@ -46,7 +47,6 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
   app.disable('x-powered-by');
 
   app.set('viewServices', viewServices);
-  const providers = app.get('providers');
   providers.viewServices = viewServices;
 
   if (web) {

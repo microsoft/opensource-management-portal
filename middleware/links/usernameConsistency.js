@@ -85,16 +85,22 @@ module.exports = function (validateGitHubAccount) {
     const id = req.legacyUserContext.id.github;
     dataClient.updateLink(id, link, (mergeError) => {
       if (mergeError) {
-        req.insights.trackMetric('LinkConsistencyFailures', 1);
-        req.insights.trackEvent('LinkConsistencyFailure', {
-          updates: JSON.stringify(linkUpdates),
-          error: mergeError.message,
+        req.insights.trackMetric({ name: 'LinkConsistencyFailures', value: 1 });
+        req.insights.trackEvent({
+          name: 'LinkConsistencyFailure',
+          properties: {
+            updates: JSON.stringify(linkUpdates),
+            error: mergeError.message,
+          },
         });
         return next(mergeError);
       }
-      req.insights.trackMetric('LinkConsistencySuccesses', 1);
-      req.insights.trackEvent('LinkConsistencySuccess', {
-        updates: JSON.stringify(linkUpdates),
+      req.insights.trackMetric({ name: 'LinkConsistencySuccesses', value: 1 });
+      req.insights.trackEvent({
+        name: 'LinkConsistencySuccess',
+        properties: {
+          updates: JSON.stringify(linkUpdates),
+        },
       });
       req.legacyUserContext.setPropertiesFromLink(link, () => {
         req.legacyUserContext.invalidateLinkCache(link.aadoid, next);
@@ -128,20 +134,26 @@ module.exports = function (validateGitHubAccount) {
 
       account.updateLink(link, (error) => {
         if (error) {
-          req.insights.trackMetric('GitHubUserConsistencyFailures', 1);
-          req.insights.trackEvent('GitHubUserConsistencyFailure', {
-            oldLogin: oldLogin,
-            oid: link.aadoid,
-            login: account.login,
-            error: error.message,
+          req.insights.trackMetric({ name: 'GitHubUserConsistencyFailures', value: 1 });
+          req.insights.trackEvent({
+            name: 'GitHubUserConsistencyFailure',
+            properties: {
+              oldLogin: oldLogin,
+              oid: link.aadoid,
+              login: account.login,
+              error: error.message,
+            },
           });
           return next(wrapError(error, 'It looks like your GitHub username has changed, but we were not able to update our records. Please try again soon or report this error.'));
         }
-        req.insights.trackMetric('GitHubUserConsistencySuccesses', 1);
-        req.insights.trackEvent('GitHubUserConsistencySuccess', {
-          oldLogin: oldLogin,
-          oid: link.aadoid,
-          login: account.login,
+        req.insights.trackMetric({ name: 'GitHubUserConsistencySuccesses', value: 1 });
+        req.insights.trackEvent({
+          name: 'GitHubUserConsistencySuccess',
+          properties: {
+            oldLogin: oldLogin,
+            oid: link.aadoid,
+            login: account.login,
+          },
         });
         context.usernames.github = account.login;
         if (req.user.github) {

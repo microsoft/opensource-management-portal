@@ -7,6 +7,18 @@
 
 const insights = require('../lib/insights');
 
+function ignoreKubernetesProbes(envelope/* , context */) {
+  if ('RequestData' === envelope.data.baseType) {
+    const data = envelope.data;
+    if (data.baseData.name.startsWith && data.baseData.name.startsWith('GET /health/')) {
+      // Do not log any telemetry for k8s and health probes
+      return false;
+    }
+  }
+
+  return true;
+}
+
 module.exports = function initializeAppInsights(app, config) {
   let client = undefined;
   if (!config) {
@@ -18,6 +30,7 @@ module.exports = function initializeAppInsights(app, config) {
     const appInsights = require('applicationinsights');
     const instance = appInsights.setup(key).setAutoCollectDependencies(false);
     client = instance && instance.getClient ? instance.getClient(key) : appInsights.defaultClient;
+    client.addTelemetryProcessor(ignoreKubernetesProbes);
     instance.start();
   }
 

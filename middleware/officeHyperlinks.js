@@ -20,12 +20,15 @@ module.exports = function supportOfficeHyperlinks(req, res, next) {
   if (userAgent && userAgent.includes && !isAuthenticated && (userAgent.includes(GenericOfficeUserAgent) || userAgent.includes(WordUserAgent))) {
     const insights = req.insights || (req.app && req.app.settings && req.app.settings.providers ? req.app.settings.providers.insights : null);
     if (insights) {
-      insights.trackEvent('InterceptOfficeHyperlinkRequest', {
-        userAgent: userAgent,
-        isAuthenticated: isAuthenticated,
-        originalUrl: req.originalUrl,
-        httpMethod: req.method,
-        responseType: 200,
+      insights.trackEvent({
+        name: 'InterceptOfficeHyperlinkRequest',
+        properties: {
+          userAgent: userAgent,
+          isAuthenticated: isAuthenticated,
+          originalUrl: req.originalUrl,
+          httpMethod: req.method,
+          responseType: 200,
+        },
       });
     }
     return res.send(`When using Microsoft Office, you need to open the hyperlink in your browser to authenticate if needed ${req.originalUrl}`);

@@ -49,13 +49,13 @@ module.exports = function (err, req, res, next) {
   // When they offer a code that another GitHub auth server interprets as invalid,
   // the app should retry.
   if ((err.message === 'The code passed is incorrect or expired.' || (err.message === 'Failed to obtain access token' && err.oauthError.message === 'The code passed is incorrect or expired.')) && req.scrubbedUrl.startsWith('/auth/github/')) {
-    req.insights.trackMetric('GitHubInvalidExpiredCodeRedirect', 1);
-    req.insights.trackEvent('GitHubInvalidExpiredCodeRetry');
+    req.insights.trackMetric({ name: 'GitHubInvalidExpiredCodeRedirect', value: 1 });
+    req.insights.trackEvent({ name: 'GitHubInvalidExpiredCodeRetry' });
     return res.redirect(req.scrubbedUrl === '/auth/github/callback/increased-scope?code=*****' ? '/auth/github/increased-scope' : '/auth/github');
   }
   if (err.message && err.message.includes && err.message.includes('ETIMEDOUT') && (err.message.includes('192.30.253.116') || err.message.includes('192.30.253.117'))) {
-    req.insights.trackMetric('GitHubApiTimeout', 1);
-    req.insights.trackEvent('GitHubApiTimeout');
+    req.insights.trackMetric({ name: 'GitHubApiTimeout', value: 1 });
+    req.insights.trackEvent({ name: 'GitHubApiTimeout' });
     err = utils.wrapError(err, 'The GitHub API is temporarily down. Please try again soon.');
   }
   var primaryUserInstance = req.user ? req.user.github : null;
@@ -75,7 +75,7 @@ module.exports = function (err, req, res, next) {
         insightsProperties.statusCode = errorStatus.toString();
       }
       if (req.insights && req.insights.trackException) {
-        req.insights.trackException(err, insightsProperties);
+        req.insights.trackException({ exception: err, properties: insightsProperties });
       }
     }
   }

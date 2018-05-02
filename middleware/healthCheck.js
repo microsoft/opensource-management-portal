@@ -37,13 +37,13 @@ module.exports = function initializeHealthCheck(app, config) {
     return isHealthy;
   }
 
-  function containerHealthCheck(checkType, req, res, next) {
+  function containerHealthCheck(checkType, validateHeader, req, res, next) {
     const header = config.containers.healthCheck.expectedHeader;
-    if (!req.headers[header.name]) {
+    if (validateHeader && !req.headers[header.name]) {
       debug(`Container ${checkType} health check requested but the ${header.name} header was not present in the HTTP request`);
       return next();
     }
-    if (!req.headers[header.name] === header.value) {
+    if (validateHeader && !req.headers[header.name] === header.value) {
       debug(`Container ${checkType} health check requested but the ${header.name} header present in the HTTP request did not match the expected, configured value`);
       return next();
     }
@@ -68,8 +68,9 @@ module.exports = function initializeHealthCheck(app, config) {
     configuredHealthDelays.readiness = config.containers.healthCheck.delay.readiness;
     configuredHealthDelays.liveness = config.containers.healthCheck.delay.liveness;
 
-    app.get('/readiness', containerHealthCheck.bind(null, 'readiness'));
-    app.get('/liveness', containerHealthCheck.bind(null, 'liveness'));
+    app.get('/health/readiness', containerHealthCheck.bind(null, 'readiness', true));
+    app.get('/health/liveness', containerHealthCheck.bind(null, 'liveness', true));
+    app.get('/health/external', containerHealthCheck.bind(null, 'liveness', false /* do not validate a header, anyone can hit */));
   }
 
   return provider;

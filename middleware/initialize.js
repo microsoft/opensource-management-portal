@@ -11,11 +11,11 @@ const async = require('async');
 const appInsights = require('./appInsights');
 const DataClient = require('../data');
 const debug = require('debug')('oss-initialize');
+const DocumentDBClient = require('documentdb').DocumentClient;
 const keyVault = require('./keyVault');
 const healthCheck = require('./healthCheck');
 const redis = require('redis');
 const RedisHelper = require('../lib/redis');
-const sql = require('mssql');
 const graphProvider = require('../lib/graphProvider/');
 const keyVaultResolver = require('../lib/keyVaultResolver');
 const mailProvider = require('../lib/mailProvider/');
@@ -61,14 +61,22 @@ module.exports = function init(app, express, rootdir, config, configurationError
       const crash = (error) => {
         return () => {
           console.log('App crashed because of an initialization error.');
-          console.dir(error);
+          console.log(error.message);
+          if (error.stack) {
+            console.log(error.stack);
+          }
           process.exit(1);
         };
       };
       if (appInsightsClient) {
-        appInsightsClient.trackException(error, { info: 'App crashed while initializing' });
+        appInsightsClient.trackException({
+          exception: error,
+          properties: {
+            info: 'App crashed while initializing',
+          },
+        });
         try {
-          appInsightsClient.sendPendingData(crash(error));
+          appInsightsClient.flush({ isAppCrashing: true, callback: crash(error) });
         } catch (sendError) {
           console.dir(sendError);
           crash(error)();
@@ -200,6 +208,32 @@ module.exports = function init(app, express, rootdir, config, configurationError
         cb();
       });
     },
+    function initializeCosmosDB(next) {
+      // This is a short-term implementation of using CosmosDB, but as a root
+      // provider, this is messy. Should instead have specific providers that
+      // use the resource as needed.
+      if (config.github.cosmosdb && config.github.cosmosdb.key) {
+        const cosmosConfig = config.github.cosmosdb;
+        const temporaryDatabaseName =  cosmosConfig.database || 'opensource';
+        const cosmosClient = new DocumentDBClient(cosmosConfig.uri, {
+          masterKey: cosmosConfig.key,
+        });
+        cosmosClient.readDatabase(`dbs/${temporaryDatabaseName}`, function (readDatabaseError, database) {
+          if (readDatabaseError) {
+            return next(readDatabaseError);
+          }
+          debug(`connected to Cosmos DB: ${cosmosConfig.database} at ${cosmosConfig.uri}`);
+          providers.cosmosdb = {
+            client: cosmosClient,
+            database: database,
+            colNameTemp: cosmosConfig.collection,
+          };
+          return next();
+        });
+      } else {
+        return next();
+      }
+    },
     function createGraphProvider(cb) {
       // The graph provider is optional. A graph provider can connect to a
       // corporate directory to validate or lookup employees and other
@@ -212,33 +246,6 @@ module.exports = function init(app, express, rootdir, config, configurationError
           providers.graphProvider = provider;
         }
         return cb();
-      });
-    },
-    function createOssDbProvider(cb) {
-      if (config.skipModules && config.skipModules.has('ossDbProvider')) {
-        return cb();
-      }
-      const dbConfig = {
-        server: config.legacySqlDatabase.server,
-        user: config.legacySqlDatabase.username,
-        password: config.legacySqlDatabase.password,
-        database: config.legacySqlDatabase.database,
-        options: {
-          encrypt: true
-        }
-      };
-      const connection = new sql.Connection(dbConfig, (connectError) => {
-        const appInsightsClient = app.get('appInsightsClient');
-        if (connectError && appInsightsClient) {
-          appInsightsClient.trackException(connectError, { info: 'Could not connect to the legacy OSS management database.' });
-        } else if (connectError) {
-          console.dir(connectError);
-        } else {
-          app.set('ossDbConnection', connection);
-          providers.ossDbConnection = connection;
-          debug('connected to legacy oss management database');
-        }
-        cb();
       });
     },
   ], function (error) {

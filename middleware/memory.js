@@ -24,14 +24,14 @@ function everyMinute(insights) {
     osTotalMemory: fileSize(osTotalMemory).human(),
     osFreeMemory: fileSize(osFreeMemory).human(),
   };
-  insights.trackEvent('NodeApplicationMemoryUse', properties);
+  insights.trackEvent({ name: 'NodeApplicationMemoryUse', properties: properties });
 
-  insights.trackMetric('NodeApplicationMemoryUseResident', memoryUsage.rss);
-  insights.trackMetric('NodeApplicationMemoryUseHeapTotal', memoryUsage.heapTotal);
-  insights.trackMetric('NodeApplicationMemoryUseHeapUsed', memoryUsage.heapUsed);
-  insights.trackMetric('NodeApplicationMemoryUseExternal', memoryUsage.external);
-  insights.trackMetric('NodeApplicationMemoryUseOSTotal', osTotalMemory);
-  insights.trackMetric('NodeApplicationMemoryUseOSFree', osFreeMemory);
+  insights.trackMetric({ name: 'NodeApplicationMemoryUseResident', value: memoryUsage.rss });
+  insights.trackMetric({ name: 'NodeApplicationMemoryUseHeapTotal', value: memoryUsage.heapTotal });
+  insights.trackMetric({ name: 'NodeApplicationMemoryUseHeapUsed', value: memoryUsage.heapUsed });
+  insights.trackMetric({ name: 'NodeApplicationMemoryUseExternal', value: memoryUsage.external });
+  insights.trackMetric({ name: 'NodeApplicationMemoryUseOSTotal', value: osTotalMemory });
+  insights.trackMetric({ name: 'NodeApplicationMemoryUseOSFree', value: osFreeMemory });
 }
 
 function initialize(insights) {
