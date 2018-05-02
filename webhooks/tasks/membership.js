@@ -26,8 +26,9 @@ module.exports = {
       */
       console.log(`refreshing members in the team ${data.body.team.name} ${data.body.team.id} list`);
       const team = organization.team(data.body.team.id);
-      // TODO: get team members
-      team.getDetails();
+      team.getDetails(function () {
+        // No-op callback; makes sure the team details are relatively up-to-date
+      });
       team.getMembers({
         backgroundRefresh: false,
         maxAgeSeconds: 0.1,

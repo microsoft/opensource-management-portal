@@ -83,7 +83,7 @@ module.exports = {
       async.waterfall(recoveryTasks, (error) => {
         const insights = operations.insights;
         if (error) {
-          insights.trackException(error);
+          insights.trackException({ exception: error });
         }
         return callback(error);
       });
@@ -189,14 +189,17 @@ function addLargeTeamPermissionRevertTasks(recoveryTasks, operations, organizati
   const blockReason = `the permission was upgraded by ${whoChangedIt} but a large team permission prevention feature has reverted the change${specificReason}`;
   console.log(blockReason);
   const insights = operations.insights;
-  insights.trackMetric('JobAutomaticTeamsLargeTeamPermissionBlock', 1);
-  insights.trackEvent('JobAutomaticTeamsLargeTeamPermissionBlocked', {
-    specificReason: specificReason,
-    teamId: teamId,
-    organization: organization.name,
-    repository: repositoryBody.name,
-    whoChangedIt: whoChangedIt,
-    whoChangedItId: whoChangedItId,
+  insights.trackMetric({ name: 'JobAutomaticTeamsLargeTeamPermissionBlock', value: 1 });
+  insights.trackEvent({
+    name: 'JobAutomaticTeamsLargeTeamPermissionBlocked',
+    properties: {
+      specificReason: specificReason,
+      teamId: teamId,
+      organization: organization.name,
+      repository: repositoryBody.name,
+      whoChangedIt: whoChangedIt,
+      whoChangedItId: whoChangedItId,
+    },
   });
   recoveryTasks.push(createSetTeamPermissionTask(operations, organization, repositoryBody, teamId, 'pull', blockReason));
   const owner = repositoryBody.owner.login.toLowerCase(); // We do not want to notify for each fork, if the permissions bubble to the fork
@@ -233,20 +236,24 @@ function emptyCallback(callback) {
 }
 
 function sendEmail(insights, basedir, mailProvider, to, body, callback) {
+  body.reason = `You are receiving this e-mail because you changed the permissions on the ${body.teamName} GitHub team, triggering this action.`;
+  body.headline = 'Team permission change reverted';
+  body.notification = 'warning';
+  body.app = 'Microsoft GitHub';
   const mail = {
     to: to,
     cc: 'jwilcox@microsoft.com',
     subject: `Team permission change for ${body.repository.full_name} repository reverted`,
-    reason: `You are receiving this e-mail because you changed the permissions on the ${body.teamName} GitHub team, triggering this action.`,
-    headline: 'Team permission change reverted',
-    classification: 'warning',
-    service: 'Microsoft GitHub',
+    category: ['error', 'repos'],
   };
   emailRender.render(basedir, 'largeTeamProtected', body, (renderError, mailContent) => {
     if (renderError) {
-      insights.trackException(renderError, {
-        content: body,
-        eventName: 'JobAutomaticTeamsLargeTeamPermissionBlockMailRenderFailure',
+      insights.trackException({
+        exception: renderError,
+        properties: {
+          content: body,
+          eventName: 'JobAutomaticTeamsLargeTeamPermissionBlockMailRenderFailure',
+        },
       });
       return callback(renderError);
     }
@@ -258,10 +265,10 @@ function sendEmail(insights, basedir, mailProvider, to, body, callback) {
       };
       if (mailError) {
         customData.eventName = 'JobAutomaticTeamsLargeTeamPermissionBlockMailFailure';
-        insights.trackException(mailError, customData);
+        insights.trackException({ exception: mailError, properties: customData });
         return callback(mailError);
       }
-      insights.trackEvent('JobAutomaticTeamsLargeTeamPermissionBlockMailSuccess', customData);
+      insights.trackEvent({ name: 'JobAutomaticTeamsLargeTeamPermissionBlockMailSuccess', properties: customData });
       callback();
     });
   });
@@ -284,10 +291,13 @@ function createSetTeamPermissionTask(operations, organization, repositoryBody, t
         console.log(`${eventName} ${description}`);
       }
       if (insights) {
-        insights.trackEvent(eventName, {
-          success: !!error,
-          reason: reason,
-          description: description,
+        insights.trackEvent({
+          name: eventName,
+          properties: {
+            success: !!error,
+            reason: reason,
+            description: description,
+          },
         });
       }
       return callback(error);

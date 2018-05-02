@@ -6,8 +6,10 @@
 'use strict';
 
 module.exports = [
+  require('./auditLog'),
   require('./automaticTeams'),
   require('./membership'),
   require('./organization'),
   require('./repository'),
+  require('./team'),
 ];
