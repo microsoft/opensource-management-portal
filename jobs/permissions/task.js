@@ -37,30 +37,43 @@ module.exports = function run(started, startedString, config) {
     if (!insights) {
       throw new Error('No app insights client available');
     }
-    insights.trackEvent('JobPermissionsStarted', {
-      hostname: os.hostname(),
+    insights.trackEvent({
+      name: 'JobPermissionsStarted',
+      properties: {
+        hostname: os.hostname(),
+      },
     });
 
     const operations = app.settings.operations;
     operations.getRepos((error, repos) => {
       if (error) {
         console.dir(error);
-        insights.trackException(error);
+        insights.trackException({ exception: error });
         return process.exit(1);
       }
       console.log(`We have a lot of repos: ${repos.length}`);
+      let z = 0;
       async.eachLimit(repos, maxParallelism, (repo, next) => {
         const cacheOptions = {
           maxAgeSeconds: 10 * 60 /* 10m */,
           backgroundRefresh: false,
         };
+        ++z;
+        if (z % 250 === 1) {
+          console.log('. ' + z);
+        }
+
         const destructured = automaticTeams.processOrgSpecialTeams(repo.organization); // const [/*specialTeams*/, /*specials*/, specialTeamIds, specialTeamLevels] = automaticTeams.processOrgSpecialTeams(repo.organization);
         const specialTeamIds = destructured[2];
         const specialTeamLevels = destructured[3];
         repo.getTeamPermissions(cacheOptions, (getError, permissions) => {
           if (getError) {
-            console.log(`There was a problem getting the permissions for the repo ${repo.name} from ${repo.organization.name}`);
-            console.dir(getError);
+            if (getError.code === 404) {
+              console.log(`Repo gone: ${repo.organization.name}/${repo.name}`);
+            } else {
+              console.log(`There was a problem getting the permissions for the repo ${repo.name} from ${repo.organization.name}`);
+              console.dir(getError);
+            }
             return next(/* do not shortcut or error out */);
           }
           const currentPermissions = new Map();
@@ -98,7 +111,7 @@ module.exports = function run(started, startedString, config) {
       }, (error) => {
         if (error) {
           console.dir(error);
-          insights.trackException(error);
+          insights.trackException( { exception: error });
           return process.exit(1);
         }
         console.log('Processed all repos.');

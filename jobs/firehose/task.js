@@ -69,10 +69,13 @@ module.exports = function runFirehoseTask(started, startedString, config) {
           DefaultMessageTimeToLive: 'P7D',
         };
         return serviceBusService.createSubscription(serviceBusConfig.topic, serviceBusConfig.subscriptionName, subscriptionOptions, (createSubscriptionError) => {
-          insights.trackEvent('JobFirehoseCreatingSubscription', {
-            hostname: os.hostname(),
-            topic: serviceBusConfig.topic,
-            subscription: serviceBusConfig.subscriptionName,
+          insights.trackEvent({
+            name: 'JobFirehoseCreatingSubscription',
+            properties: {
+              hostname: os.hostname(),
+              topic: serviceBusConfig.topic,
+              subscription: serviceBusConfig.subscriptionName,
+            },
           });
           if (createSubscriptionError) {
             throw createSubscriptionError;
@@ -104,15 +107,18 @@ module.exports = function runFirehoseTask(started, startedString, config) {
     let parallelism = messagesInQueue > maxParallelism / 2 ? maxParallelism : Math.min(5, maxParallelism);
     console.log(`Parallelism for this run will be ${parallelism} logical threads`);
     const insights = app.settings.appInsightsClient;
-    insights.trackEvent('JobFirehoseStarted', {
-      hostname: os.hostname(),
-      topic: serviceBusConfig.topic,
-      subscription: serviceBusConfig.subscriptionName,
-      messagesInQueue: messagesInQueue.toString(),
-      deadLetters: deadLetters.toString(),
+    insights.trackEvent({
+      name: 'JobFirehoseStarted',
+      properties: {
+        hostname: os.hostname(),
+        topic: serviceBusConfig.topic,
+        subscription: serviceBusConfig.subscriptionName,
+        messagesInQueue: messagesInQueue.toString(),
+        deadLetters: deadLetters.toString(),
+      },
     });
-    insights.trackMetric('FirehoseMessagesInQueue', messagesInQueue);
-    insights.trackMetric('FirehoseDeadLetters', deadLetters);
+    insights.trackMetric({ name: 'FirehoseMessagesInQueue', value: messagesInQueue });
+    insights.trackMetric({ name: 'FirehoseDeadLetters', value: deadLetters });
     const tasks = [];
     for (let i = 0; i < parallelism; i++) {
       tasks.push(foreverExecutionThread.bind(null, app, serviceBusService, serviceBusConfig, firehoseConfig));
@@ -124,9 +130,12 @@ module.exports = function runFirehoseTask(started, startedString, config) {
     async.forever(performIteration.bind(null, app, serviceBusService, serviceBusConfig, firehoseConfig), error => {
       if (error) {
         const insights = app.settings.appInsightsClient;
-        insights.trackEception(error);
-        insights.trackEvent('JobFirehoseFatalError', {
-          message: error.message,
+        insights.trackEception({ exception: error });
+        insights.trackEvent({
+          name:'JobFirehoseFatalError',
+          properties: {
+            message: error.message,
+          },
         });
       }
     });
@@ -158,7 +167,7 @@ module.exports = function runFirehoseTask(started, startedString, config) {
         // const enqueued = lockedMessage && lockedMessage.brokerProperties ? lockedMessage.brokerProperties.EnqueuedTimeUtc : null;
         // const serviceBusDelay = moment.utc(enqueued, 'ddd, DD MMM YYYY HH:mm:ss'); // console.log('delays - bus delay: ' + serviceBusDelay.fromNow() + ', logic app to now: ' + logicAppStarted.fromNow() + ', total ms: ' + totalMs.toString());
         const totalSeconds = moment.utc().diff(logicAppStarted) / 1000;
-        insights.trackMetric('JobFirehoseQueueDelay', totalSeconds);
+        insights.trackMetric({ name: 'JobFirehoseQueueDelay', value: totalSeconds });
       }
       const acknowledgeEvent = function () {
         console.log(`[message ${lockedMessage.brokerProperties.MessageId}] acknowledged (deleted)`);
@@ -185,13 +194,19 @@ module.exports = function runFirehoseTask(started, startedString, config) {
         if (isKnownOrganization) {
           // While we receive events for organizations being onboarded or known but ignored,
           // these are not exceptional events, just events to skip.
-          insights.trackEvent('JobFirehoseKnownOrganizationIgnored', {
-            name: orgName,
+          insights.trackEvent({
+            name: 'JobFirehoseKnownOrganizationIgnored',
+            properties: {
+              orgName: orgName,
+            },
           });
         } else {
-          insights.trackException(noOrganizationError);
-          insights.trackEvent('JobFirehoseMissingOrganizationConfiguration', {
-            name: orgName,
+          insights.trackException({ exception: noOrganizationError });
+          insights.trackEvent({
+            name: 'JobFirehoseMissingOrganizationConfiguration',
+            properties: {
+              orgName: orgName,
+            },
           });
         }
         return callback();

@@ -5,9 +5,8 @@
 
 'use strict';
 
-// This JS file is shared between multiple projects/services.
-//
-// It helps take a minimum viable consolidated
+// This JS file is shared between ospo-witness-event & ospo-opensource-repos
+// where reports are generated. It helps take a minimum viable consolidated
 // report, containing issue type definitions and also the entities impacted
 // by that issue, and a simple recipient list, and explodes that into a set
 // of reports for a specific recipient.

@@ -21,9 +21,10 @@ const os = require('os');
 const path = require('path');
 const Q = require('q');
 
+const buildRecipientMap = require('./consolidated').buildRecipientMap;
 const organizationReports = require('./organizations');
 const repositoryReports = require('./repositories');
-const buildRecipientMap = require('./consolidated').buildRecipientMap;
+const teamReports = require('./teams');
 
 const fileCompression = require('./fileCompression');
 const mailer = require('./mailer');
@@ -37,6 +38,7 @@ const slice = undefined; // 250;
 const reportProviders = {
   organizations: organizationReports,
   repositories: repositoryReports,
+  teams: teamReports,
 };
 
 const reportGeneratedFormat = 'h:mm a dddd, MMMM Do YYYY';
@@ -47,7 +49,7 @@ function buildReport(context) {
     .then(buildReports)
     .then(consolidateReports)
     .then(storeReports)
-    .then(sendReports)
+    .then(sendReports.bind(null, context))
     .then(recordMetrics)
     .then(dataLakeUpload)
     .then(finalizeEvents);
@@ -70,8 +72,11 @@ module.exports = function run(started, startedString, config) {
     if (!insights) {
       throw new Error('No app insights client available');
     }
-    insights.trackEvent('JobReportsStarted', {
-      hostname: os.hostname(),
+    insights.trackEvent({
+      name: 'JobReportsStarted',
+      properties: {
+        hostname: os.hostname(),
+      },
     });
     const operations = app.settings.operations;
 
@@ -99,6 +104,7 @@ module.exports = function run(started, startedString, config) {
         slice: slice || undefined,
         parallelRepoProcessing: 2,
         repoDelayAfter: 200, // 200ms to wait between repo actions, to help reduce GitHub load
+        teamDelayAfter: 200, // 200ms to wait between team actions, to help reduce GitHub load
         tooManyOrgOwners: 5,
         tooManyRepoAdministrators: 15,
         orgPercentAvailablePrivateRepos: 0.15,
@@ -108,6 +114,11 @@ module.exports = function run(started, startedString, config) {
         witnessEventReportsTimeToLiveMinutes: reportConfig.witnessEventReportsTimeToLiveMinutes,
         consolidatedSchemaVersion: '170503',
         fromAddress: reportConfig.mail.from,
+        campaign: {
+          source: 'administrator-digest',
+          medium: 'email',
+          campaign: 'github-digests',
+        },
       },
       reports: {
         reportRedisClient: reportRedisClient,
@@ -195,7 +206,7 @@ function providerCall(context, method) {
 // ------------------------------------------------------------------
 
 function finalizeEvents(context) {
-  context.insights.trackEvent('JobReportsFinalizing');
+  context.insights.trackEvent({ name: 'JobReportsFinalizing' });
 
   return Q(context);
 }
@@ -203,10 +214,10 @@ function finalizeEvents(context) {
 function dataLakeUpload(context) {
   const insights = context.insights;
   if (!context.reports.dataLake) {
-    insights.trackEvent('JobReportsReportDataLakeSkipped');
+    insights.trackEvent({ name: 'JobReportsReportDataLakeSkipped' });
     return Q(context);
   }
-  insights.trackEvent('JobReportsReportDataLakeStarted');
+  insights.trackEvent({ name: 'JobReportsReportDataLakeStarted' });
 
   // specific properties used for each row
   // issueProviderName:
@@ -271,10 +282,10 @@ function dataLakeUpload(context) {
     }
   }
   if (dataLakeOutput.length) {
-    insights.trackEvent('JobReportsReportDataLakeSaving');
+    insights.trackEvent({ name: 'JobReportsReportDataLakeSaving' });
     return saveDataLakeOutput(context, dataLakeOutput);
   } else {
-    insights.trackEvent('JobReportsReportDataLakeEmptyReport');
+    insights.trackEvent({ name: 'JobReportsReportDataLakeEmptyReport' });
     return Q(context);
   }
 }
@@ -295,26 +306,29 @@ function saveDataLakeOutput(context, dataLakeOutput) {
   const containerName = dla.containerName;
   backupBlobService.createContainerIfNotExists(containerName, (createContainerError) => {
     if (createContainerError) {
-      insights.trackException(createContainerError);
+      insights.trackException({ exception: createContainerError });
       return deferred.reject(createContainerError);
     }
     const blobPrefix = dla.blobPrefix || 'consolidatedReports';
     const backupBlobName = `${blobPrefix}_${moment.utc().format('YYYY_MM_DD')}.json.gz`;
     fileCompression.writeDeflatedTextFile(text, (writeError, deflatedTempPath) => {
       if (writeError) {
-        insights.trackException(writeError);
+        insights.trackException({ exception: writeError });
         return deferred.reject(writeError);
       }
       backupBlobService.createBlockBlobFromLocalFile(containerName, backupBlobName, deflatedTempPath, cloudError => {
         if (cloudError) {
-          insights.trackException(cloudError);
+          insights.trackException({ exception: cloudError });
           return deferred.reject(cloudError);
         }
         // Successful
-        insights.trackEvent('JobReportsReportDataLakeBackup', {
-          filename: backupBlobName,
-          containerName: containerName,
-          account: dla.account,
+        insights.trackEvent({
+          name: 'JobReportsReportDataLakeBackup',
+          properties: {
+            filename: backupBlobName,
+            containerName: containerName,
+            account: dla.account,
+          },
         });
         return deferred.resolve(context);
       });
@@ -325,7 +339,7 @@ function saveDataLakeOutput(context, dataLakeOutput) {
 }
 
 function storeReports(context) {
-  context.insights.trackEvent('JobReportsReportStoringStarted');
+  context.insights.trackEvent({ name: 'JobReportsReportStoringStarted' });
 
   const report = Object.assign({}, context.consolidated);
   const consolidatedSchemaVersion = context.settings.consolidatedSchemaVersion;
@@ -341,14 +355,17 @@ function storeReports(context) {
   const localPromise = storeLocalReportPath? storeLocalReport(report, storeLocalReportPath, context) : Q(context);
   return localPromise.then(context => {
     if (!context.reports.store) {
-      context.insights.trackEvent('JobReportsReportStoringSkipped');
+      context.insights.trackEvent({ name: 'JobReportsReportStoringSkipped' });
       return Q(context);
     }
 
     const stringSizeUncompressed = fileSize(Buffer.byteLength(json, 'utf8')).human();
-    context.insights.trackEvent('JobReportsReportStoring', {
-      size: stringSizeUncompressed,
-      version: consolidatedSchemaVersion,
+    context.insights.trackEvent({
+      name: 'JobReportsReportStoring',
+      properties: {
+        size: stringSizeUncompressed,
+        version: consolidatedSchemaVersion,
+      },
     });
 
     const ttl = context.settings.witnessEventReportsTimeToLiveMinutes;
@@ -422,20 +439,23 @@ function recordMetrics(context) {
         const issueName = issueNameList[j];
         const count = countByIssue.get(issueName);
         const metricName = `${metricRoot}${issueName}`;
-        insights.trackMetric(metricName, count);
+        insights.trackMetric({ name: metricName, value: count });
         overallIssues += count;
       }
     }
   }
-  insights.trackMetric('JobRepoReportsIssuesOverall', overallIssues);
+  insights.trackMetric({
+    name: 'JobRepoReportsIssuesOverall',
+    properties: overallIssues,
+  });
   return Q(context);
 }
 
 function sendReports(context) {
   if (!context.reports.send) {
-    context.insights.trackEvent('JobReportsSendingSkipped');
+    context.insights.trackEvent({ name: 'JobReportsSendingSkipped' });
     return Q(context);
   }
-  context.insights.trackEvent('JobReportsReportSendingStarted');
+  context.insights.trackEvent({ name: 'JobReportsReportSendingStarted' });
   return mailer(context);
 }

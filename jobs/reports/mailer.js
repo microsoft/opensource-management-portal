@@ -120,10 +120,14 @@ function sendReport(context, mailProvider, reportsByRecipient, recipientKey) {
       return Q(context);
     }
     const isActionRequired = consolidatedActionRequired(report);
-    const classification = isActionRequired ? 'action' : 'information';
+    const notification = isActionRequired ? 'action' : 'information';
     const html = renderReport(context, report, address);
     const viewOptions = {
       html: html,
+      headline: isActionRequired ? 'Your GitHub updates' : 'GitHub updates',
+      app: 'Microsoft GitHub',
+      reason: 'This digest report is provided to all managed GitHub organization owners, repository admins, and team maintainers. This report was personalized and sent directly to ' + address,
+      notification: notification,
     };
     const basedir = path.resolve(__dirname, '../../');
     const deferred = Q.defer();
@@ -150,11 +154,8 @@ function sendReport(context, mailProvider, reportsByRecipient, recipientKey) {
         to: address,
         from: fromAddress,
         subject: `${actionSubject}GitHub digest for ${address}`,
-        classification: classification,
-        headline: isActionRequired ? 'Your GitHub updates' : 'GitHub updates',
-        service: 'Microsoft GitHub',
-        reason: 'This digest report is provided to all managed GitHub organization owners, repository admins, and team maintainers. This report was personalized and sent directly to ' + address,
         content: mailContent,
+        category: ['report', 'repos'],
       };
       mailProvider.sendMail(mailOptions, (mailError , mailResult) => {
         const customData = {
@@ -162,9 +163,15 @@ function sendReport(context, mailProvider, reportsByRecipient, recipientKey) {
         };
         customData.eventName = mailError ? 'JobReportSendFailed' : 'JobReportSendSuccess';
         if (mailError) {
-          context.insights.trackException(mailError, customData);
+          context.insights.trackException({
+            exception: mailError,
+            properties: customData,
+          });
         } else {
-          context.insights.trackEvent('JobMailProviderReportSent', customData);
+          context.insights.trackEvent({
+            name: 'JobMailProviderReportSent',
+            properties: customData,
+          });
         }
         return mailError ? deferred.reject(mailError) : deferred.resolve();
       });

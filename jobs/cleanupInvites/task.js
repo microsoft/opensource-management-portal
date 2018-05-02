@@ -42,9 +42,12 @@ module.exports = function run(started, startedString, config) {
 
     const maximumAgeMoment = moment().subtract(maximumInvitationAgeDays, 'days');
 
-    insights.trackEvent('JobOrganizationInvitationsCleanupStarted', {
-      hostname: os.hostname(),
-      maximumDays: maximumInvitationAgeDays.toString(),
+    insights.trackEvent({
+      name: 'JobOrganizationInvitationsCleanupStarted',
+      properties: {
+        hostname: os.hostname(),
+        maximumDays: maximumInvitationAgeDays.toString(),
+      },
     });
 
     const operations = app.settings.operations;
@@ -83,7 +86,10 @@ module.exports = function run(started, startedString, config) {
               emailInvited: invite.email,
             };
             const eventName = invite.login ? 'JobOrganizationInviteCleanupInvitationNeeded' : 'JobOrganizationInviteCleanupInvitationNotUser';
-            insights.trackEvent(eventName, data);
+            insights.trackEvent({
+              name: eventName,
+              properties: data,
+            });
           }
         }
 
@@ -95,10 +101,13 @@ module.exports = function run(started, startedString, config) {
         async.eachLimit(invitationsToRemove, 1, (login, nextInvite) => {
           organization.removeMember(login, removeError => {
             if (removeError) {
-              insights.trackException(removeError);
-              insights.trackEvent('JobOrganizationInvitationsCleanupInvitationFailed', {
-                login: login,
-                message: removeError.message,
+              insights.trackException({ exception: removeError });
+              insights.trackEvent({
+                name: 'JobOrganizationInvitationsCleanupInvitationFailed',
+                properties: {
+                  login: login,
+                  message: removeError.message,
+                },
               });
             }
             return nextInvite();
@@ -108,12 +117,12 @@ module.exports = function run(started, startedString, config) {
     }, error => {
       if (error) {
         console.dir(error);
-        insights.trackException(error);
+        insights.trackException({ exception: error });
         return process.exit(1);
       }
 
       console.log(`Job finished. Removed ${removedInvitations} expired invitations.`);
-      insights.trackMetric('JobOrganizationInvitationsExpired', removedInvitations);
+      insights.trackMetric({ name: 'JobOrganizationInvitationsExpired', value: removedInvitations });
       process.exit(0);
     });
   });
