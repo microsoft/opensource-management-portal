@@ -20,6 +20,18 @@ router.use(function (req, res, next) {
   next();
 });
 
+// Campaign-related redirect to take the user to GitHub
+router.get('/github/:login', (req, res, next) => {
+  if (!req.app.settings.providers || !req.app.settings.providers.campaign) {
+    return next();
+  }
+  return req.app.settings.providers.campaign.redirectGitHubMiddleware(req, res, next, () => {
+    const login = req.params.login;
+    return login ? login : null;
+  });
+});
+
+
 router.use(systemWidePermissionsMiddleware);
 
 router.use(peopleSearch);

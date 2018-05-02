@@ -100,6 +100,9 @@ router.get('/', lowercaser(['sort']), (req, res, next) => {
       // Used to filter team members in ./org/ORG/team/TEAM/members and other views
       teamMembers: teamMembers,
 
+      // Whether this view is specific to an org or not
+      isOrganizationScoped: !!org,
+
       // Used to enable the "add a member" or maintainer experience for teams
       team2AddType: req.team2AddType,
     });

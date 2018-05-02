@@ -15,6 +15,7 @@ const linkedUserRoute = require('./index-linked');
 const linkCleanupRoute = require('./link-cleanup');
 const placeholdersRoute = require('./placeholders');
 const settingsRoute = require('./settings');
+const releasesSpa = require('./releasesSpa');
 const usernameConsistency = require('../middleware/links/usernameConsistency');
 const utils = require('../utils');
 
@@ -36,6 +37,7 @@ router.use(function (req, res, next) {
 });
 
 router.use((req, res, next) => {
+  const insights = req.app.settings.providers.insights;
   var options = {
     config: req.app.settings.runtimeConfig,
     dataClient: req.app.settings.dataclient,
@@ -45,7 +47,7 @@ router.use((req, res, next) => {
     operations: req.app.settings.providers.operations,
     ossDbClient: req.app.settings.ossDbConnection,
     request: req,
-    insights: req.insights,
+    insights: insights,
   };
   new OpenSourceUserContext(options, (error, instance) => {
     req.legacyUserContext = instance;
@@ -54,6 +56,14 @@ router.use((req, res, next) => {
       if (req.url === '/link/cleanup' || req.url === '/link/enableMultipleAccounts' || req.url.startsWith('/placeholder')) {
         return next();
       }
+      insights.trackEvent({
+        name: 'LinkCleanupRedirect',
+        properties: {
+          message: error.toString(),
+          tooManyLinks: error.tooManyLinks === true ? 'too many' : 'no',
+          anotherAccount: error.anotherAccount === true ? 'another account' : 'no',
+        },
+      });
       return res.redirect('/link/cleanup');
     }
     instance.addBreadcrumb(req, 'Organizations');
@@ -68,6 +78,8 @@ router.use('/link/cleanup', linkCleanupRoute);
 router.use('/link', linkRoute);
 
 router.use('/settings', settingsRoute);
+
+router.use('/releases', releasesSpa);
 
 // Link cleanups
 router.use(usernameConsistency());
