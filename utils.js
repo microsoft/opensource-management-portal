@@ -28,7 +28,7 @@ exports.storeReferrer = function storeReferrer(req, res, redirect, optionalReaso
   if (redirect) {
     eventDetails.redirect = redirect;
     if (req.insights) {
-      req.insights.trackEvent('RedirectWithReferrer', eventDetails);
+      req.insights.trackEvent({ name: 'RedirectWithReferrer', properties: eventDetails });
     }
     res.redirect(redirect);
   }
@@ -49,7 +49,7 @@ exports.redirectToReferrer = function redirectToReferrer(req, res, url, optional
     reason: optionalReason || 'unknown reason',
   };
   if (req.insights) {
-    req.insights.trackEvent('RedirectToReferrer', eventDetails);
+    req.insights.trackEvent({ name: 'RedirectToReferrer', properties: eventDetails });
   }
   res.redirect(alternateUrl || url);
 };
@@ -66,7 +66,7 @@ function storeOriginalUrlAsVariable(req, res, variable, redirect, optionalReason
   }
   if (redirect) {
     if (req.insights) {
-      req.insights.trackEvent('RedirectFromOriginalUrl', eventDetails);
+      req.insights.trackEvent({ name: 'RedirectFromOriginalUrl', properties: eventDetails });
     }
     res.redirect(redirect);
   }
