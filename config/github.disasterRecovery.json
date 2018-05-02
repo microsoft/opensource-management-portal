@@ -1,0 +1,9 @@
+{
+  "vsts": {
+    "hostname": "env://GITHUB_VSTS_MIRROR_HOSTNAME",
+    "path": {
+      "organizationPrefix": "env://GITHUB_VSTS_MIRROR_ORGANIZATION_PATH_PREFIX",
+      "organizationSuffix": "env://GITHUB_VSTS_MIRROR_ORGANIZATION_PATH_SUFFIX"
+    }
+  }
+}

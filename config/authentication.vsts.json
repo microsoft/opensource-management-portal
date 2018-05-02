@@ -1,0 +1,4 @@
+{
+  "vstsCollectionUrl": "env://VSTS_WIT_API_URL",
+  "enabled": "env://API_LINKS_VSTS_AUTH_ENABLED?trueIf=enabled"
+}

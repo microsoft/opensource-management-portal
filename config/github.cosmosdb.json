@@ -1,0 +1,6 @@
+{
+  "uri": "env://REPOS_COSMOSDB_URI",
+  "key": "env://REPOS_COSMOSDB_KEY",
+  "database": "env://REPOS_COSMOSDB_DATABASE",
+  "collection": "env://REPOS_COSMOSDB_COLLECTION"
+}
