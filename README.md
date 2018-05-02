@@ -4,7 +4,6 @@ This Node.js application is a part of the suite of services provided by
 the Open Source Programs Office at Microsoft to enable large-scale GitHub
 management experiences.
 
-
 Key features center around opinionated takes on at-scale management, with an emphasis on _relentless automation_ and _delegation_:
 
 - __Linking__: the concept of associating a GitHub identity with an authenticated identity in another provider, for example an Azure Active Directory user
@@ -20,6 +19,22 @@ The app is a GitHub OAuth application; with the May 2017 release of
 GitHub Apps (formerly called Integrations), this app over time may be
 refactored to support the integration concept, removing the need to
 dedicate a user seat to a machine account.
+
+## May 2018 Status Update
+
+While this project is in use in production, it is in sore need of some love and
+refactoring.
+
+Of specific note and goals:
+
+- Await/Async
+- Rewrite of core logic
+- Consider TypeScript to help find issues sooner in interfaces, especially as we will continue to have providers specific to companies or users that may not be generally used (making it hard to test compilation)
+- Getting rid of `data.js`, moving to a better per-purpose provider model for data
+- Removing the dependency on Azure Table to use Cosmos DB or other systems like Postgres
+
+If you would like to talk about a plan or getting involved in this, please open
+an issue. I have some ideas and prototyped branches. - Jeff
 
 ## Node app
 
