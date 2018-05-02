@@ -72,7 +72,7 @@ function Strategy(options, verify) {
   var _oauth2_getOAuthAccessToken = this._oauth2.getOAuthAccessToken;
   this._oauth2.getOAuthAccessToken = function (code, params, callback) {
     if (options.appInsightsClient) {
-      options.appInsightsClient.trackEvent('PassportGitHubGetOAuthAccessTokenStart', params);
+      options.appInsightsClient.trackEvent({ name: 'PassportGitHubGetOAuthAccessTokenStart', properties: params });
     }
     _oauth2_getOAuthAccessToken.call(self._oauth2, code, params, function (err, accessToken, refreshToken, params) {
       if (options.appInsightsClient) {
@@ -80,17 +80,17 @@ function Strategy(options, verify) {
         if (paramsData.access_token) {
           paramsData.access_token = '** present **';
         }
-        options.appInsightsClient.trackEvent('PassportGitHubGetOAuthAccessTokenReturn', paramsData);
+        options.appInsightsClient.trackEvent({ name: 'PassportGitHubGetOAuthAccessTokenReturn', properties: paramsData });
       }
       if (err && options.appInsightsClient) {
-        options.appInsightsClient.trackEvent('PassportGitHubGetOAuthAccessTokenError', err);
-        options.appInsightsClient.trackException(err);
+        options.appInsightsClient.trackEvent({ name: 'PassportGitHubGetOAuthAccessTokenError', properties: err });
+        options.appInsightsClient.trackException({ exception: err });
       }
       if (err) { return callback(err); }
       if (!accessToken) {
         if (options.appInsightsClient) {
           const data = JSON.stringify(params);
-          options.appInsightsClient.trackEvent('PassportGitHubGetOAuthAccessTokenNoAccessToken', data);
+          options.appInsightsClient.trackEvent({ name: 'PassportGitHubGetOAuthAccessTokenNoAccessToken', properties: data });
         }
         return callback({
           statusCode: 400,
@@ -98,7 +98,7 @@ function Strategy(options, verify) {
         });
       } else {
         if (options.appInsightsClient) {
-          options.appInsightsClient.trackEvent('PassportGitHubGetOAuthAccessTokenOK');
+          options.appInsightsClient.trackEvent({ name: 'PassportGitHubGetOAuthAccessTokenOK' });
         }
       }
       callback(null, accessToken, refreshToken, params);
