@@ -25,7 +25,9 @@
       "slug",
       "description",
       "members_count",
-      "repos_count"
+      "repos_count",
+      "created_at",
+      "updated_at"
     ],
     "strip": [
       "privacy",

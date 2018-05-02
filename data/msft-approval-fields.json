@@ -1,0 +1,30 @@
+{
+  "approvalTypes": [
+    "New release registration",
+    "Existing release review",
+    "Exemption: small libraries, tools, and samples",
+    "Migrate project from CodePlex",
+    "Exemption: other"
+  ],
+  "approvalUrlRequired": [
+    "New release registration",
+    "Existing release review"
+  ],
+  "exemptionDetailsRequired": [
+    "Exemption: other"
+  ],
+  "approvalTypesToIds": {
+    "New release registration": "NewReleaseReview",
+    "Existing release review": "ExistingReleaseReview",
+    "Exemption: small libraries, tools, and samples": "SmallLibrariesToolsSamples",
+    "Migrate project from CodePlex": "Migrate",
+    "Exemption: other": "Exempt"
+  },
+  "approvalIdsToReleaseType": {
+    "NewReleaseReview": "Release approval",
+    "ExistingReleaseReview": "Release approval",
+    "SmallLibrariesToolsSamples": "Small library/tool/sample policy",
+    "Migrate": "Migrated from elsewhere",
+    "Exempt": "Exempt from corporate policy"
+  }
+}
