@@ -16,8 +16,6 @@ const OrganizationMember = require('./organizationMember');
 const Repository = require('./repository');
 const Team = require('./team');
 
-const legacyClaIntegration = require('./legacyClaIntegration');
-
 class Organization {
   constructor(operations, name, settings) {
     this.name = settings.name || name;
@@ -215,6 +213,10 @@ class Organization {
         return callback(null, Array.from(administrators));
       }
       sudoTeam.getMembers((error, members) => {
+        if (error && error.code === 404) {
+          // The sudo team no longer exists, but we should still have administrator information
+          return callback(null, Array.from(administrators));
+        }
         if (error) {
           return callback(error);
         }
@@ -234,6 +236,13 @@ class Organization {
     const sudoTeamInstance = this.sudoersTeam;
     if (sudoTeamInstance) {
       teamIds.push(sudoTeamInstance.id);
+    }
+
+    const broadAccessTeams = this.broadAccessTeams;
+    if (broadAccessTeams) {
+      for (let i = 0; i < broadAccessTeams.length; i++) {
+        teamIds.push(broadAccessTeams[i]); // is the actual ID, not the team object
+      }
     }
 
     const specialTeams = this.specialRepositoryPermissionTeams;
@@ -263,6 +272,20 @@ class Organization {
   get legalEntityClaTeams() {
     const settings = _private(this).settings;
     return settings.cla;
+  }
+
+  get disasterRecoveryVstsPath() {
+    const operations = _private(this).operations;
+    const disasterRecoveryConfiguration = operations.disasterRecoveryConfiguration;
+    if (!disasterRecoveryConfiguration || !disasterRecoveryConfiguration.vsts || !disasterRecoveryConfiguration.vsts.hostname) {
+      return null;
+    }
+
+    const vstsMirror = disasterRecoveryConfiguration.vsts;
+    const vstsPath = vstsMirror.path || {};
+    const orgPrefix = vstsPath.organizationPrefix || '';
+    const orgSuffix = vstsPath.organizationSuffix || '';
+    return `${vstsMirror.hostname}${orgPrefix}${this.name}${orgSuffix}`;
   }
 
   getRepositoryCreateGitHubToken() {
@@ -488,7 +511,11 @@ class Organization {
         return callback(null, false);
       }
       if (error) {
-        const wrappedError = wrapError(error, `Trouble retrieving the membership for "${username}" in the ${this.name} organization`);
+        let reason = error.message;
+        if (error.code) {
+          reason += ' ' + error.code;
+        }
+        const wrappedError = wrapError(error, `Trouble retrieving the membership for "${username}" in the ${orgName} organization. ${reason}`);
         if (error.code) {
           wrappedError.code = error.code;
         }
@@ -698,25 +725,29 @@ class Organization {
   }
 
   // ----------------------------------------------------------------------------
-  // Does this org support CLA features, and are they available?
-  // 3 possible return values: true, false, 'offline'.
-  // If the database is down or unavailable at startup, it should not take down
-  // the entire site. This can help display a message to a user.
-  // ----------------------------------------------------------------------------
-  isLegacyClaAutomationAvailable() {
-    const settings = _private(this).settings;
-    const operations = _private(this).operations;
-    return legacyClaIntegration.isAvailableForOrganization(operations, this, settings);
-  }
-
-  // ----------------------------------------------------------------------------
   // Special Team: "CLA" write teams used for authoring the CLA user to create
   // labels and other activities for the legacy CLA project.
   // ----------------------------------------------------------------------------
-  getLegacyClaTeams(throwIfMissing) {
+  getClaWriteTeams(throwIfMissing) {
     const settings = _private(this).settings;
-    const operations = _private(this).operations;
-    return legacyClaIntegration.getOrganizationTeams(operations, this, settings, throwIfMissing);
+    if (throwIfMissing === undefined) {
+      throwIfMissing = true;
+    }
+    let claSettings = settings.cla;
+    if (!claSettings) {
+      const message = `No CLA configurations defined for the ${this.name} org.`;
+      if (throwIfMissing === true) {
+        throw new Error(message);
+      } else {
+        console.warn(message);
+        return null;
+      }
+    }
+    let clas = {};
+    for (const key in claSettings) {
+      clas[key] = this.team(claSettings[key]);
+    }
+    return clas;
   }
 
   getLegacySystemObjects() {
@@ -797,7 +828,11 @@ function getSpecialTeam(self, propertyName, friendlyName, throwIfMissing) {
   }
   const value = settings[propertyName];
   if (value && Array.isArray(value)) {
-    return value;
+    const asNumbers = [];
+    for (let i = 0; i < value.length; i++) {
+      asNumbers.push(parseInt(value[i], 10));
+    }
+    return asNumbers;
   }
   const teams = [];
   if (value) {

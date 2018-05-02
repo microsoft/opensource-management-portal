@@ -24,6 +24,7 @@ const defaults = {
   orgRepoCollaboratorStaleSeconds: 30 /* half minute */,
   orgRepoDetailsStaleSeconds: 60 * 5 /* 5m */,
   orgTeamsStaleSeconds: 60 * 5 /* 5m */,
+  orgTeamDetailsStaleSeconds: 60 * 30 /* 30m */,
   orgTeamsSlugLookupStaleSeconds: 30 /* half a minute */,
   orgMembersStaleSeconds: 60 * 30 /* 30m */,
   teamMaintainersStaleSeconds: 60 * 2 /* 2m */,
@@ -365,6 +366,10 @@ class Operations {
 
   get systemAccountsByUsername() {
     return this.config.github && this.config.github.systemAccounts ? this.config.github.systemAccounts.logins : [];
+  }
+
+  get disasterRecoveryConfiguration() {
+    return this.config.github && this.config.github.disasterRecovery ? this.config.github.disasterRecovery : null;
   }
 
   isSystemAccountByUsername(username) {

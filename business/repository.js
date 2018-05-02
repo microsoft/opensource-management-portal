@@ -12,8 +12,6 @@ const Collaborator = require('./collaborator');
 const RepositoryPermission = require('./repositoryPermission');
 const TeamPermission = require('./teamPermission');
 
-const legacyClaIntegration = require('./legacyClaIntegration');
-
 const githubEntityClassification = require('../data/github-entity-classification.json');
 const repoPrimaryProperties = githubEntityClassification.repo.keep;
 const repoSecondaryProperties = githubEntityClassification.repo.strip;
@@ -29,6 +27,14 @@ class Repository {
     const privates = _private(this);
     privates.getToken = getToken;
     privates.operations = operations;
+  }
+
+  get disasterRecoveryRepositoryUrl() {
+    if (this.private) return;
+
+    if (this.organization.disasterRecoveryVstsPath) {
+      return `${this.organization.disasterRecoveryVstsPath}${this.name}`;
+    }
   }
 
   getDetails(options, callback) {
@@ -268,23 +274,6 @@ class Repository {
     }
     let createFileToken = options.alternateToken || token;
     github.post(createFileToken, 'repos.createFile', parameters, callback);
-  }
-
-  enableLegacyClaAutomation(options, callback) {
-    try {
-      legacyClaIntegration.enable(this, options, callback);
-    } catch (error) {
-      return callback(error);
-    }
-  }
-
-  hasLegacyClaAutomation(callback) {
-    legacyClaIntegration.has(this, callback);
-  }
-
-  getLegacyClaSettings(callback) {
-    const operations = _private(this).operations;
-    legacyClaIntegration.getCurrentSettings(operations, this, callback);
   }
 
   setTeamPermission(teamId, newPermission, callback) {
