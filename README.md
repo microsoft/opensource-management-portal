@@ -20,6 +20,24 @@ GitHub Apps (formerly called Integrations), this app over time may be
 refactored to support the integration concept, removing the need to
 dedicate a user seat to a machine account.
 
+## March 2019
+
+We have completely ported this portal in TypeScript as part of an effort to
+reduce issues while refactoring and to modernize the codebase.
+
+The goal of this was to enable the use of interfaces for providers such as
+the link data, with success being the ability to move production link data
+at Microsoft to being stored by _Postgres_ instead of _Azure table_, which
+was having scaling issues due to our relatively poor implementation (single
+partition) after about 5,000 employees being linked; now that we have over
+20,000 links, the scale issues helped us with this decision.
+
+Postgres was selected as a neutral and common ask for this project.
+
+As a result, ... don't adopt this current _develop_ branch! ... but
+reach out to `@jeffwilcox` on Twitter or e-mail to get an update on the
+release and backport of the TS work.
+
 ## May 2018 Status Update
 
 While this project is in use in production, it is in sore need of some love and
