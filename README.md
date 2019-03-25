@@ -38,22 +38,6 @@ As a result, ... don't adopt this current _develop_ branch! ... but
 reach out to `@jeffwilcox` on Twitter or e-mail to get an update on the
 release and backport of the TS work.
 
-## May 2018 Status Update
-
-While this project is in use in production, it is in sore need of some love and
-refactoring.
-
-Of specific note and goals:
-
-- Await/Async
-- Rewrite of core logic
-- Consider TypeScript to help find issues sooner in interfaces, especially as we will continue to have providers specific to companies or users that may not be generally used (making it hard to test compilation)
-- Getting rid of `data.js`, moving to a better per-purpose provider model for data
-- Removing the dependency on Azure Table to use Cosmos DB or other systems like Postgres
-
-If you would like to talk about a plan or getting involved in this, please open
-an issue. I have some ideas and prototyped branches. - Jeff
-
 ## Node app
 
 - Node.js LTS (v6.10+ as of 5/31/17)
