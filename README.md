@@ -51,22 +51,6 @@ release and backport of the TS work.
 
 ## Dev prep, build, deploy
 
-### Prereqs
-
-#### Install Node packages
-
-Make sure to include dev dependencies
-
-```
-$ npm install
-```
-
-#### Suggested global NPM packages
-
-```
-$ npm install -g eslint mocha grunt-cli ember-cli
-```
-
 ### Build
 
 ```
