@@ -38,12 +38,6 @@ As a result, ... don't adopt this current _develop_ branch! ... but
 reach out to `@jeffwilcox` on Twitter or e-mail to get an update on the
 release and backport of the TS work.
 
-## Node app
-
-- Node.js LTS (v6.10+ as of 5/31/17)
-- ES6
-- Mixed callback and Q promises at this time
-
 ## Service Dependencies
 
 - At least one of your own GitHub organizations
