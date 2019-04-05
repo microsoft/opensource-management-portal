@@ -1,11 +1,10 @@
 {
-  "name": "@ospo/site-assets",
-  "author": "Microsoft",
+  "name": "@local/site-assets",
+  "author": "Local Developer",
   "contributors": [
-    "Jeff Wilcox <jwilcox@microsoft.com>"
   ],
   "version": "1.1.0",
-  "license": "UNLICENSED",
+  "license": "mit",
   "scripts": {
     "build": "grunt",
     "prepublish": "grunt"
