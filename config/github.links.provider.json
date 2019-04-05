@@ -1,0 +1,4 @@
+{
+  "name": "env://REPOS_LINKS_PROVIDER_NAME",
+  "linkingOfflineMessage": "env://REPOS_LINKS_OFFLINE_MESSAGE"
+}

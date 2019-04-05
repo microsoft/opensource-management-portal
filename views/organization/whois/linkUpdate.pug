@@ -1,0 +1,21 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+block content
+  .container
+    h1 Link updated
+
+    if linkId
+      a.btn.btn-primary(href='/organization/whois/link/' + linkId) View updated link
+
+    if messages
+      h3 Results
+      ul
+        each result in messages
+          li= result
+    else
+      p No results. No operations were performed.

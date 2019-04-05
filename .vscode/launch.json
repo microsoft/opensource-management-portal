@@ -8,12 +8,15 @@
       "type": "node",
       "request": "launch",
       "name": "Launch site",
-      "program": "${workspaceRoot}/bin/www",
-      "cwd": "${workspaceRoot}",
+      "program": "${workspaceRoot}/dist/bin/www.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "appinsights,oss-redis,oss-github,oss-initialize,oss-redis-cross-org,appinsights,azureossportal,health",
+        "DEBUG": "appinsights,oss-initialize,oss-redis-cross-org,appinsights,azureossportal,health",
+        "MORE_DEBUG": "oss-redis,oss-github",
         "NODE_TLS_REJECT_UNAUTHORIZED": "0"
       }
     },
@@ -21,9 +24,11 @@
       "type": "node",
       "request": "launch",
       "name": "Launch site (SUDO FORCE)",
-      "program": "${workspaceRoot}/bin/www",
+      "program": "${workspaceRoot}/dist/bin/www",
       "console": "integratedTerminal",
-      "cwd": "${workspaceRoot}",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
       "env": {
         "NODE_ENV": "development",
         "DEBUG": "appinsights,oss-github,oss-initialize,oss-redis-cross-org,appinsights,azureossportal",
@@ -36,8 +41,10 @@
       "request": "launch",
       "name": "Launch site (SUDO OFF)",
       "console": "integratedTerminal",
-      "program": "${workspaceRoot}/bin/www",
-      "cwd": "${workspaceRoot}",
+      "program": "${workspaceRoot}/dist/bin/www",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
       "env": {
         "NODE_ENV": "development",
         "DEBUG": "appinsights,oss-github,oss-initialize,oss-redis-cross-org,appinsights,azureossportal",
@@ -49,9 +56,26 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Reports",
-      "program": "${workspaceRoot}/jobs/reports/index.js",
-      "cwd": "${workspaceRoot}",
+      "name": "Local environment",
+      "program": "${workspaceRoot}/dist/localEnvironment.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "localhost",
+        "DEBUG": "oss-initialize,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Build Repo Reports",
+      "program": "${workspaceRoot}/dist/jobs/reports/index.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
       "runtimeArgs": [
         "--max-old-space-size=4096"
       ],
@@ -64,8 +88,11 @@
       "type": "node",
       "request": "launch",
       "name": "Job: Firehose",
-      "program": "${workspaceRoot}/jobs/firehose/index.js",
-      "cwd": "${workspaceRoot}",
+      "program": "${workspaceRoot}/dist/jobs/firehose/index.js",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "cwd": "${workspaceRoot}/dist",
       "env": {
         "NODE_ENV": "development",
         "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
@@ -75,8 +102,25 @@
       "type": "node",
       "request": "launch",
       "name": "Job: Invitation Cleanup",
-      "program": "${workspaceRoot}/jobs/cleanupInvites/index.js",
-      "cwd": "${workspaceRoot}",
+      "program": "${workspaceRoot}/dist/jobs/cleanupInvites/index.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Migrate links",
+      "program": "${workspaceRoot}/dist/jobs/migrateLinks/index.js",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "cwd": "${workspaceRoot}/dist",
       "env": {
         "NODE_ENV": "development",
         "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
@@ -86,11 +130,30 @@
       "type": "node",
       "request": "launch",
       "name": "Job: Permissions",
-      "program": "${workspaceRoot}/jobs/permissions/index.js",
-      "cwd": "${workspaceRoot}",
+      "program": "${workspaceRoot}/dist/jobs/permissions/index.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
         "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch site prod Node env",
+      "program": "${workspaceRoot}/dist/bin/www.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "production",
+        "DEBUG": "oss-initialize,appinsights,azureossportal,health",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0",
+        "NOTE_FOR_PUBLIC_MEMORY_PROVIDER_USE": "In-memory providers should fail in production node env by design, this entry helps validate that"
       }
     },
     {

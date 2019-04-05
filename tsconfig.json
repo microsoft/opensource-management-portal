@@ -1,0 +1,42 @@
+{
+    "compilerOptions": {
+      "module": "commonjs",
+      "sourceMap": true,
+      "outDir": "./dist",
+      "incremental": true,
+      "allowJs": true,
+      "moduleResolution": "node",
+      "resolveJsonModule": true,
+      "esModuleInterop": false,
+      "target": "es2018",
+      "lib": [
+        "es2018"
+      ],
+      "types": [
+        "mocha"
+      ]
+    },
+    "exclude": [
+      "./routes/org/requestRepo.ts",
+      "./routes/org/requestRepo.js"
+    ],
+    "include": [
+      "./bin/**/*",
+      "./business/**/*",
+      "./config/**/*",
+      "./data/**/*",
+      "./jobs/reports/consolidated.ts",
+      "./lib/**/*",
+      "./middleware/**/*",
+      "./routes/**/*",
+      "./test/**/*",
+      "./thirdparty/**/*",
+      "./jobs/**/*",
+      "./webhooks/**/*",
+      "./app.ts",
+      "./data.ts",
+      "./localEnvironment.ts",
+      "./transitional.ts",
+      "./utils.ts"
+    ]
+}

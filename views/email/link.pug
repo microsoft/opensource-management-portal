@@ -3,10 +3,10 @@
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
-extends body
+extends email
 
 block content
-  if link.serviceAccount
+  if link.isServiceAccount
     h4 Service Account linked
 
   h3 Congratulations!
@@ -14,19 +14,19 @@ block content
 
   table
     tbody
-      if link.serviceAccount
+      if link.isServiceAccount
         tr
           td Service Account
-          td= link.aadupn
+          td= link.corporateUsername
         if link.serviceAccountMail
           td Contact e-mail
           td= link.serviceAccountMail
       tr
         td GitHub account
-        td= link.ghu
+        td= link.thirdPartyUsername
       tr
         td Corporate identity
-        td= link.aadupn
+        td= link.corporateUsername
 
   h3 Microsoft open source resources
   p.
@@ -35,3 +35,6 @@ block content
     li Common GitHub questions, policies and resources relating to releasing open source
     li Service account guidance
     li Contributor license agreement info
+
+  h3 Microsoft's GitHub is for open source
+  p GitHub is for building public open source communities and not for private engineering work at Microsoft. You can learn more about Microsoft's GitHub policies at #[a(href='https://aka.ms/githubguidelines') https://aka.ms/githubguidelines].

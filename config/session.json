@@ -1,5 +1,6 @@
 {
-  "salt": "env://SESSION_SALT?default=nilawc4vy8aeuthgna9w345",
+  "provider": "env://SESSION_PROVIDER?default=memory",
+  "salt": "env://SESSION_SALT?default=session-salt-not-set-warning",
   "name": "env://SESSION_NAME?default=sid",
   "domain": "env://SESSION_COOKIE_DOMAIN",
   "encryption": "env://SESSION_ENCRYPTION?trueIf=encrypt",

@@ -12,7 +12,7 @@ block additional_head
 
 block js_doc_ready
   include ../js/metrics.js
-  | displayRepoMetrics(#{repo.id}, #{organization.id});
+  | displayRepoMetrics(#{repo.id}, #{organization.id}, '#{config.brand.companyName}');
 
 mixin simplePersonView(account)
   - var shorthandName = account.login
@@ -144,6 +144,9 @@ block content
             li: a.btn.btn-sm.btn-muted-more(href='https://github.com/' + repo.full_name, target="_blank") HTTPS clone
           if sshUrl
             li: a.btn.btn-sm.btn-muted-more(href='https://github.com/' + repo.full_name, target="_blank") SSH clone
+          if repo.disasterRecoveryRepositoryUrl
+            li: a.btn.btn-sm.btn-muted-more(href=repo.disasterRecoveryRepositoryUrl, target="_blank", title='View ' + repo.full_name + '\'s backup mirror') Open VSTS mirror
+              span.bowtie
           if repo.homepage
             li: a.btn.btn-sm.btn-muted-more(href=repo.homepage, target='_new', title=repo.homepage) Homepage
 
@@ -169,7 +172,8 @@ block content
         if extensions
           //- Extensions
 
-          if extensions.cla
+          //- Disabling the CLA view for now, as we are in transition
+          if extensions.cla && false
             - var cla = extensions.cla
             hr
             h2 Contribution license agreements
@@ -249,19 +253,17 @@ block content
 
             ul.list-unstyled.list-vspace
 
-              if extensions.cla && extensions.cla.supported
+              if extensions.cla && extensions.cla.supported && cla && cla.legalEntity
                 li: a.btn.btn-sm.btn-muted-more(href='/' + repo.organization.name + '/repos/' + repo.name + '/extensions/cla') Configure the #{cla.legalEntity} CLA
-              if !repo.private && extensions.npm && extensions.npm.supported
-                li: a.btn.btn-sm.btn-muted-more(href='/' + repo.organization.name + '/repos/' + repo.name + '/extensions/npm') NPM publishing
 
     #metrics
       hr
       h3 Metrics
       .row
-        .col-md-6
+        .col-md-4
           ul.list-unstyled.list-vspace
             li
-              a(href='https://github.com/' + repo.full_name + '/graphs/contributors', target='_new')
+              a(href='https://github.com/' + repo.full_name + '/graphs/contributors', target='_new' title='Contributors to all branches')
                 != octicon('organization', 20)
                 = ' Contributors: '
                 span#contributors
@@ -271,7 +273,7 @@ block content
                 = ' Subscribers: '
                 span#subscribers
             li
-              a(href='https://github.com/' + repo.full_name + '/issues', target='_new')
+              a(href='https://github.com/' + repo.full_name + '/issues?q=sort%3Acreated-asc', target='_new')
                 != octicon('issue-opened', 20)
                 = ' Open issues: '
                 span#openIssues
@@ -280,20 +282,10 @@ block content
                 != octicon('issue-closed', 20)
                 = ' Closed issues: '
                 span#closedIssues
-            li Pull requests:&nbsp;
-              strong: span#pullRequests
-            li Closed pull requests:&nbsp;
-              strong: span#closedPullRequests
-            li Open pull requests:&nbsp;
-              strong: span#openPullRequests
-            li Average days taken to close pull requests:&nbsp;
-              strong: span#avgDaysToClosePRs
-            li Average days taken for first response to pull requests:&nbsp;
-              strong: span#avgDaysForFirstResponseToPRs
-            li Pull requests opened today:&nbsp;
-              strong: span#prsOpenedToday
-            li Pull requests closed today:&nbsp;
-              strong: span#prsClosedToday
+            li Assigned open issues:&nbsp;
+              strong: span#assignedOpenIssues
+            li Unassigned open issues:&nbsp;
+              strong: span#unassignedOpenIssues
             li Average days taken to close issues:&nbsp;
               strong: span#avgDaysToCloseIssues
             li Average days taken for first response to open issues:&nbsp;
@@ -302,8 +294,28 @@ block content
               strong: span#openedIssuesToday
             li Issues closed today:&nbsp;
               strong: span#closedIssuesToday
-            li Commits:&nbsp;
-              strong: span#commits
+            li
+              a(href='https://github.com/' + repo.full_name + '/pulls?q=sort%3Acreated-asc', target='_new')
+                != octicon('git-pull-request', 20)
+                = ' Pull requests: '
+                span#pullRequests
+            li Open pull requests:&nbsp;
+              strong: span#openPullRequests
+            li Closed pull requests:&nbsp;
+              strong: span#closedPullRequests
+            li Average days taken to close pull requests:&nbsp;
+              strong: span#avgDaysToClosePRs
+            li Average days taken for first response to pull requests:&nbsp;
+              strong: span#avgDaysForFirstResponseToPRs
+            li Pull requests opened today:&nbsp;
+              strong: span#prsOpenedToday
+            li Pull requests closed today:&nbsp;
+              strong: span#prsClosedToday
+            li
+              a(href='https://github.com/' + repo.full_name + '/commits', target='_new')
+                != octicon('git-commit', 20)
+                = ' Commits: '
+                span#commits
             li Lines committed:&nbsp;
               strong: span#linesCommitted
             li Commits made today:&nbsp;
@@ -311,7 +323,11 @@ block content
             li Lines committed today:&nbsp;
               strong: span#linesCommittedToday
         .col-md-6
-          #metricsChart
+          h4.text-center Average response times
+          #avgResponsesChart
+        .col-md-2
+          h4#contributorsChartTitle.text-center Contributors distribution
+          #contributorsChart
 
     .row: .col-md-12: hr
 

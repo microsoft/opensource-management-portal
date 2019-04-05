@@ -3,91 +3,97 @@
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
-extends layout.pug
+extends ../layout
 
 block append js_doc_ready
   if newKey
     | $('#newKey').select().focus();
 
 block content
-  h1 Personal access tokens
+  .container
+    .row
+      .col-md-3.col-lg-3
+        include ./menu
+      .col-md-7.col-lg-7
 
-  p.
-    Personal access tokens can be used instead of a password to
-    allow applications access to some of the resources stored in your account.
+        h1 Personal access tokens
 
-  if (newKey)
-    .alert.vertical-space.alert-gray
-      p.
-        #[strong Make sure you copy the token now.] We don't store it
-        and you won't be able to see it again.
-      input.vertical-space.form-control#newKey(type='text', value=newKey)
+        p.
+          Personal access tokens can be used instead of a password to
+          allow applications access to some of the resources stored in your account.
 
-
-  if personalAccessTokens && personalAccessTokens.length
-    .alert.alert-gray: p Your tokens are like passwords. Keep them secret.
-
-  form(method='post', action='/settings/security/tokens/delete')
-
-    if personalAccessTokens && personalAccessTokens.length
-
-      ul.list-inline.vertical-space
-        li: button.btn.btn-muted(
-          href='#',
-          name='revokeAll'
-          onclick='return confirm(\'Are you sure that you want to revoke all tokens?\');',
-          value='1'
-          )= 'Revoke all'
-
-      table.table
-        thead
-          tr
-            th Description
-            th Expiration
-            th API
-            th Status
-            th Actions
-        tbody
-          each row in personalAccessTokens
-            tr
-              td= row.description
-              td
-                if row.expires
-                  p= row.expires + ' UTC'
-                else
-                  p N/A
-              td
-                if row.apis
-                  ul.list-inline
-                    each api in row.apis
-                      li= api
-              td
-                if row.active === false
-                  p.text-danger Revoked
-                else if row.expired
-                  p.text-danger Expired
-                else
-                  p Active
-              td: ul.list-inline
-                li: button.btn.btn-sm.btn-muted-more(
-                  href='#',
-                  name='revoke',
-                  onclick='return confirm(\'Are you sure that you want to revoke this key?\');',
-                  value=row.identifier
-                  ): i.glyphicon.glyphicon-remove
+        if (newKey)
+          .alert.vertical-space.alert-gray
+            p.
+              #[strong Make sure you copy the token now.] We don't store it
+              and you won't be able to see it again.
+            input.vertical-space.form-control#newKey(type='text', value=newKey)
 
 
-    else
-      h5 You do not have any personal access tokens.
+        if personalAccessTokens && personalAccessTokens.length
+          .alert.alert-gray: p Your tokens are like passwords. Keep them secret.
 
-  if isPreviewUser === true
-    form(method='post', action='/settings/security/tokens/create')
+        form(method='post', action='/settings/security/tokens/delete')
 
-      hr
-      h4 Create a new personal access token
+          if personalAccessTokens && personalAccessTokens.length
 
-      ul.list-inline.vertical-space
-        li: input.form-control(type='text', name='description', placeholder='Description', style='width: 360px')
-        li: button.btn.btn-primary(name='add') Add
-  else
-    p: small The ability to create personal access tokens is currently restricted to approved preview feature users only.
+            ul.list-inline.vertical-space
+              li: button.btn.btn-muted(
+                href='#',
+                name='revokeAll'
+                onclick='return confirm(\'Are you sure that you want to revoke all tokens?\');',
+                value='1'
+                )= 'Revoke all'
+
+            table.table
+              thead
+                tr
+                  th Description
+                  th Expiration
+                  th API
+                  th Status
+                  th Actions
+              tbody
+                each row in personalAccessTokens
+                  tr
+                    td= row.description
+                    td
+                      if row.expires
+                        p= row.expires + ' UTC'
+                      else
+                        p N/A
+                    td
+                      if row.apis
+                        ul.list-inline
+                          each api in row.apis
+                            li= api
+                    td
+                      if row.active === false
+                        p.text-danger Revoked
+                      else if row.expired
+                        p.text-danger Expired
+                      else
+                        p Active
+                    td: ul.list-inline
+                      li: button.btn.btn-sm.btn-muted-more(
+                        href='#',
+                        name='revoke',
+                        onclick='return confirm(\'Are you sure that you want to revoke this key?\');',
+                        value=row.identifier
+                        ): i.glyphicon.glyphicon-remove
+
+
+          else
+            h5 You do not have any personal access tokens.
+
+        if isPreviewUser === true
+          form(method='post', action='/settings/security/tokens/create')
+
+            hr
+            h4 Create a new personal access token
+
+            ul.list-inline.vertical-space
+              li: input.form-control(type='text', name='description', placeholder='Description', style='width: 360px')
+              li: button.btn.btn-primary(name='add') Add
+        else
+          p: small The ability to create personal access tokens is currently restricted to approved preview feature users only.

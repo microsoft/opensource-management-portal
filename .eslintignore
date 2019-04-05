@@ -1,9 +1,0 @@
-# /node_modules/* ignored by default
-
-public/*
-private/*
-sync*.js
-thirdparty/*
-views/*
-client/*
-node_modules.private/*

@@ -16,22 +16,47 @@ block content
         h3 Renamed user
         p.lead= info.renamedUserMessage
 
-    if info && info.ghu && info.ghid
+    if query
+      h5 Query by:
+      h6= query.queryByType + ' ' + query.queryByValue
+      if query.link
+        h2 Linked corporate user
+        if query.link.id
+          h6= 'Link: ID=' + query.link.id
+        h5= 'Corporate: ID=' + query.link.corporateId + ', username=' + query.link.corporateUsername
+        h5= 'GitHub ID=' + query.link.thirdPartyId + ', login=' + query.link.thirdPartyUsername
+        if query.link.isServiceAccount
+          h5= 'YES, a service account'
+        else
+          h5= 'Not a Service Account'
+
+    if query && query.deletedGitHubUserOutcome
+      h2.text-danger WARNING: Deleted GitHub account
+      h4= query.deletedGitHubUserOutcome
+
+    if query && query.renamedGitHubUserOutcome
+      h2.text-danger WARNING: Renamed GitHub username in play
+      h4= 'GitHub Account: ' + query.renamedGitHubUserOutcome.username
+      p= query.renamedGitHubUserOutcome.message
+
+    if query && query.gitHubUserInfo
+      - var qg = query.gitHubUserInfo
 
       h1
-        = info.ghu
-        if info.serviceAccount
+        = qg.login
+        if query.link && query.link.isServiceAccount
           = ' '
           .label.label-warning Service account
 
-      p Here is the information we have on this user. This user has a #[strong link].
+      if query.link
+        p Here is the information we have on this user. This user has a #[strong link].
+      else
+        p Here is the information we have on this user. This user does not appear to be linked at this time.
 
-      if personEntry && personEntry.serviceAccount
-        .alert.alert-success
-          h3 Marked as a Service Account
+      - var rg = query.realtimeGraph
 
       .row
-        .col-md-6
+        //-.col-md-6
           h5 REDIS PEOPLE COLLECTION
           p
             small Daily snapshot from people feed
@@ -61,26 +86,26 @@ block content
           h5 REAL-TIME MICROSOFT GRAPH
           p
             small Includes service accounts
-          if realtimeGraph
+          if rg
             .alert.alert-success
               h3 Account exists by ID
-              if realtimeGraph.displayName
-                h4= realtimeGraph.displayName
+              if rg.displayName
+                h4= rg.displayName
               ul
-                li AAD ID: #{realtimeGraph.id}
-                if realtimeGraph.mail
-                  li Corporate mail: #{realtimeGraph.mail}
-                if realtimeGraph.userPrincipalName
-                  li UPN: #{realtimeGraph.userPrincipalName}
+                li AAD ID: #{rg.id}
+                if rg.mail
+                  li Corporate mail: #{rg.mail}
+                if rg.userPrincipalName
+                  li UPN: #{rg.userPrincipalName}
 
-            if realtimeGraph.manager
-              h4 Manager: #{realtimeGraph.manager.displayName}
+            if rg.manager
+              h4 Manager: #{rg.manager.displayName}
               ul
-                li AAD ID: #{realtimeGraph.manager.id}
-                if realtimeGraph.manager.mail
-                  li Corporate mail: #{realtimeGraph.manager.mail}
-                if realtimeGraph.manager.userPrincipalName
-                  li UPN: #{realtimeGraph.manager.userPrincipalName}
+                li AAD ID: #{rg.manager.id}
+                if rg.manager.mail
+                  li Corporate mail: #{rg.manager.mail}
+                if rg.manager.userPrincipalName
+                  li UPN: #{rg.manager.userPrincipalName}
             else if info && info.serviceAccount
               .alert.alert-success
                 h4 No manager in the graph
@@ -91,22 +116,16 @@ block content
                 p This account has no manager. It is likely a Service Account.
 
           else
-            p No results. The real-time lookup requires the following conditions:
 
-            if info && info.aadoid
-              .alert.alert-danger
-                h3 Former employee
-                h5 Known ID #{info.aadoid} is missing
+            if query.realtimeGraphError
+              h4 Graph lookup returned an error
+              if query.realtimeGraphError.status && query.realtimeGraphError.status == '404'
+                h5.text-danger The user could not be found in the directory graph by corporate user ID
+              else
+                h5.text-danger= query.realtimeGraphError.toString()
+
             else
-              .alert.alert-warning
-                h3 Potential former employee
-                h5 Validate whether they are still employed
-                p No AAD ID was previously known, so they never linked their account using the portal when we were able to retrieve their ID
-            ul
-              li That the account is linked
-              li That the linked account has an Active Directory ID (AAD ID). An account may not have the AAD ID if they have never used the portal while signed in.
-              if info && info.aadoid
-                li This account #[strong did] have an AAD ID that failed the lookup: #{info.aadoid}
+              p No graph results or ability to lookup.
 
       table.table
         thead
@@ -117,10 +136,10 @@ block content
           tr
             td
               p
-                a.btn.btn-muted-more.btn-sm(href='https://github.com/' + info.ghu, target='_new')= info.ghu
-            td= info.ghid
+                a.btn.btn-muted-more.btn-sm(href='https://github.com/' + query.gitHubUserInfo.login, target='_new')= query.gitHubUserInfo.login
+            td= query.gitHubUserInfo.id
 
-      if info.aadupn
+      if query.link && query.link.corporateUsername
         h2 #{config.brand.companyName} Directory
         table.table
           thead
@@ -129,72 +148,50 @@ block content
               th Email
           tbody
             tr
-              td= info.aadname
+              td= query.link.corporateDisplayName
               td
-                a.btn.btn-sm.btn-muted-more(href='mailto:' + info.aadupn)= info.aadupn
+                a.btn.btn-sm.btn-muted-more(href='mailto:' + query.link.corporateUsername)= query.link.corporateUsername
       hr
 
       //- not used
       if info.foundGitHubId
         pre= JSON.stringify(info.foundGitHubId, undefined, 2)
 
-    if info && info.orgs
+    if query && query.orgs
       h1 Active GitHub Organization Memberships
       .container
-        each org in info.orgs
-          .row
-            .col-md-4
-              p.lead= org.name
-            .col-md-4
-              p
-                a.btn.btn-sm.btn-muted(target='_new', href='https://github.com/orgs/' + org.name + '/people?utf8=%E2%9C%93&query=' + info.ghu) View #{info.ghu} in GitHub people list
+        if query.orgs.length <= 0
+          p No memberships.
+        else
+          each org in query.orgs
+            .row
+              .col-md-4
+                p.lead= org.name
+              .col-md-4
+                p
+                  a.btn.btn-sm.btn-muted(target='_new', href='https://github.com/orgs/' + org.name + '/people?utf8=%E2%9C%93&query=' + query.gitHubUserInfo.login) View #{query.gitHubUserInfo.login} in GitHub people list
 
-      - var ghLogin = info.ghu || (info.githubInfoButNoLink ? info.githubInfoButNoLink.login : 'UNKNOWN THIS IS A BUG')
+      - var ghLogin = (query.gitHubUserInfo ? query.gitHubUserInfo.login : null) || (info && info.githubInfoButNoLink ? info.githubInfoButNoLink.login : 'UNKNOWN THIS IS A BUG')
       form(method='post', action=postUrl || '/organization/whois/github/' + ghLogin)
-        if info.orgs.length && info.orgs.length > 0
+        if query.orgs.length && query.orgs.length > 0
           h1 Actions
           p.lead DANGER ZONE - NO CONFIRMATION
           ul.list-inline
             li
-              input.btn.btn-danger(type='submit', value=info.ghid && info.ghu ? 'Remove link + drop from ' + info.orgs.length + ' orgs' : 'Drop from ' + info.orgs.length + ' orgs', name='remove-all')
-            if info.aadupn && !info.serviceAccount
+              input.btn.btn-danger(type='submit', value=query.gitHubUserInfo && query.gitHubUserInfo.login ? 'Remove link + drop from ' + query.orgs.length + ' orgs' : 'Drop from ' + query.orgs.length + ' orgs', name='remove-all')
+            if query.link && !query.link.isServiceAccount
               li
                 input.btn.btn-default(type='submit', value='Mark as Service Account', name='mark-as-service-account')
-            if info.aadupn && info.serviceAccount
+            if query.link && query.link.isServiceAccount
               li
                 input.btn.btn-default(type='submit', value='Remove Service Account designation', name='unmark-service-account')
-        else if info.ghid && info.ghu
-          p <strong>NOTE:</strong> This user is not currently a member of any organizations. However, the "link" with their previous account still exists. Consider removing this.
+        else if query.link && query.link.thirdPartyId
+          p <strong>NOTE:</strong> This user is not currently a member of any organizations. However, the "link" with their previous account still exists.
           h1 Actions
           p.lead DANGER ZONE - NO CONFIRMATION
           p
             input.btn.btn-danger(type='submit', value='Remove link', name='remove-link-only')
 
-    if info && info.githubInfoButNoLink
-
-      h1 WHOIS #{info.githubInfoButNoLink.login}
-
-      p.lead We could not find a link for this user. This is a GitHub user.
-
-      p This person is not in any of the organizations managed by this site.
-
-      //-form(method='post', action=postUrl || '/organization/whois/github/' + info.ghu)
-        p
-          input.btn.btn-default(type='submit', value='Drop from org', name='remove-primary-org')
-
-      h3 GitHub Profile
-      ul
-        each value, property in info.githubInfoButNoLink
-          li
-            strong= property
-            | :&nbsp;
-            = value
-
-    else
-      if info && info.aadupn
-        p Their UPN was #{info.aadupn}
-      else
-        h1 We don't know who that is in relation to this system!
-        ul
-          li No "link" present currently
-          li Not a member of any of the official organizations at this time based on GitHub API data
+    if query && query.link
+      hr
+      include ./linkEditor

@@ -1,0 +1,13 @@
+# Node
+node_modules/
+
+# Client script
+.sass-cache/
+
+# Built assets
+public/
+resources/scss/build.scss
+resources/less/build.less
+
+# OS X
+.DS_Store

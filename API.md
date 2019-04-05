@@ -15,6 +15,7 @@ base path and also set headers.
 
 The following API versions are currently supported:
 
+- "2019-02-01": adds avatar and additional service account contact fields
 - "2016-12-01": supports creating repositories and also creating links
 - "2017-03-08": updates the shape of link responses to `aad.id` and `corporate` is renamed `aad`
 
@@ -58,6 +59,10 @@ To improve responsiveness, this API uses cached data. If your service is using
 the data for a batch process or job, do consider keeping your own cache of the
 data instead of calling this API exhaustively while performing work.
 
+__Optional query string parameters:__
+
+- The parameter `showOrganizations` (default implicitly to true) can be set to `false` or `0` to _not_ show users' GitHub organization memberships. This reduces the size of the link payload.
+
 ## Get all linked users
 
 > GET /api/people/links
@@ -82,7 +87,8 @@ Body
       "organizations": [
         "OrganizationName1",
         "OrganizationName2
-      ]
+      ],
+      "avatar": "url"
     },
     "aad": {
       "alias": "alias",
@@ -98,14 +104,15 @@ Body
       "login": "username2",
       "organizations": [
         "OrganizationName2"
-      ]
+      ],
+      "avatar": "url"
     },
+    "isServiceAccount" true,
+    "serviceAccountContact": "contact@domain.com",
     "aad": {
-      "alias": "alias2",
-      "preferredName": "Name Here",
-      "userPrincipalName": "user2@domain.com",
-      "id": "guid",
-      "emailAddress": "email@domain.com"
+      "preferredName": "serviceaccount2@domain.com",
+      "userPrincipalName": "serviceaccount2@domain.com",
+      "id": "guid"
     }
   },
   ...
@@ -402,3 +409,24 @@ Team permission (ms.teams) value:
 ```
 
 Always try and provide a minimum number of administrator teams, same goes for write teams (push), and encourage the standard Git workflow.
+
+# API
+
+Internal Microsoft-specific notes
+
+Microsoft-required fields and components:
+  - ms.license: either 'MIT' or '(MIT AND CC-BY-4.0)' are supported at this time, all others rejected
+  - ms.approval-type: as of 2016_12_01, there are 4 supported values as follows. Please select just one.
+    - ReleaseReview: the repo has been reviewed and approved for open source using the release tooling (Palamida, etc.) - the approval URL must be provided in a separate value when using this approval type
+    - SmallLibrariesToolsSamples: the repo meets the corporate standard for small libraries, tools, and samples
+    - Migrate: the repo is being migrated from an old public location such as CodePlex or SourceForge
+    - Exempt: the repo is exempt from needing an approval type. The justification will be required in a separate field.
+Other fields:
+  - ms.approval-url: If the provided `ms-approval-type` is 'ReleaseReview', this must be provided to provide the URL. This URL will be validated so it must point at a valid approval URL.
+  - ms.justification: Human-readable justification text, if the `ms-approval-type` is 'Exempt'
+  - ms.cla-entity: 'Microsoft' or '.NET Foundation', if the CLA is to be enabled (strongly recommended)
+  - ms.cla-mail: an e-mail address that can accept mail from outside Microsoft, in order to send CLA notifications to. Required if the 'ms.cla-entity' value is provided to enable CLA.
+  - ms.notify: a comman-separated list of e-mail address to notify about the creation of the repo if successful
+  - ms.onBehalfOf: the GitHub username this operation is performed on behalf of. Providing this is a good call as it will redirect questions about the repo to the individual if needed rather than the service account.
+  - ms.project-type: product code, sample code, documentation, sdk, utility library / tool, other (new as of apiVersion=2017-07-27)
+

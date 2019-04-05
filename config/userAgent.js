@@ -5,13 +5,14 @@
 
 'use strict';
 
+const pkg = require('../package.json');
+
 function set(config) {
   config.userAgent = 'env://REPOS_USER_AGENT';
 }
 
 set.evaluate = (config) => {
   if (!config.userAgent) {
-    const pkg = require('../package.json');
     config.userAgent = `${pkg.name}/${pkg.version}`;
   }
 };

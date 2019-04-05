@@ -1,6 +1,12 @@
 # Logs
 *.log
 
+# TypeScript output
+dist/
+
+# Ignore TypeScript things
+dist/
+
 # Component registration logs
 registration/
 
@@ -10,10 +16,6 @@ node_modules/
 # Client script
 .sass-cache/
 
-# Static assets
-public/
-resources/scss/build.scss
-resources/less/build.less
 
 # OS X
 .DS_Store
@@ -23,3 +25,4 @@ sync-*.js
 
 # Local development environment scripts
 app.yaml
+env.json

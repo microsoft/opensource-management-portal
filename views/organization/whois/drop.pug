@@ -19,4 +19,13 @@ block content
 
     if entity
       h3 Link information and/or GitHub user data
-      pre= JSON.stringify(entity, undefined, 2)
+      if entity.login
+        h4= 'Login: ' + entity.login
+      if entity.id
+        h4= 'ID: ' + entity.id
+
+    if messages
+      h2 Messages attached or errors:
+      ul
+        each message in messages
+          li= message

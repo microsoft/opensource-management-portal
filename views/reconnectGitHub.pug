@@ -12,16 +12,8 @@ extends layout
 
 block content
   div.container
-    if migratedOpenSourceHubUser !== undefined
-      h1 Welcome
-    else
-      h1 Please sign in with GitHub
-    if migratedOpenSourceHubUser !== undefined
-      p.lead Please sign in with GitHub
-      p Your account has been migrated from the Open Source Hub to the new GitHub management experience for Microsoft.
-      p Since this is the first time you are using this new app, we need you to authenticate with your "#{expectedUsername}" GitHub account.
-    else
-      p.lead This application needs to connect to your GitHub account to continue.
+    h1 Please sign in with GitHub
+    p.lead This application needs to connect to your GitHub account to continue.
     .vertical-space
       p
         a.btn.btn-lg.btn-primary(href='/signin/github') Authenticate with GitHub

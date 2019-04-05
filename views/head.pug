@@ -6,11 +6,11 @@
 head
   - var resourceVersion = '4a'
   meta(charset='utf-8')
-  //-title= (user && user.primaryUsername) ? title + ' - ' + user.primaryUsername : title
   title= title
   meta(http-equiv='X-UA-Compatible', content='IE=edge')
   meta(name='viewport', content='width=device-width, initial-scale=1.0')
   meta(name='author', content='Microsoft Open Source')
+  block meta
   link(href='/css/bootstrap.min.css?' + resourceVersion, rel='stylesheet')
   link(href='/repos-css/oss.css?' + resourceVersion, rel='stylesheet')
   link(href='/css/octicons.css?' + resourceVersion, rel='stylesheet')
@@ -25,6 +25,7 @@ head
     script(type='text/javascript', src='/js/jquery.min.js')
     script(type='text/javascript', src='/js/bootstrap.min.js')
     script(type='text/javascript', src='/js/jquery.timeago.js')
+    script(type='text/javascript', src='/js/jquery.uitablefilter.js')
   | <script type='text/javascript'>
   | $(document).ready(function() {
   block js_doc_ready

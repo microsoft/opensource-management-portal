@@ -3,7 +3,7 @@
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
-extends ../body
+extends ../email
 
 block content
   h1 #{approvalRequest.org}/#{approvalRequest.repoName}
@@ -21,7 +21,7 @@ block content
     p.
       Since the new repo is private, you may receive a 404 if you yourself are
       not a member of one of the teams that you requested have access. Let
-      github-admin@microsoft.com know if you need support.
+      github@microsoft.com know if you need support.
 
   if approvalRequest.license
     h3 License

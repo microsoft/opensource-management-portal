@@ -1,0 +1,3 @@
+{
+  "centralOperationsToken": "env://GITHUB_CENTRAL_OPERATIONS_TOKEN"
+}

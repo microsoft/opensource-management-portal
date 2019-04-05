@@ -1,6 +1,7 @@
 {
-  "companyName": "env://COMPANY_NAME?default=COMPANY_NAME",
-  "appName": "env://APP_NAME?default=Open Source Portal for GitHub",
+  "companyName": "env://COMPANY_NAME?default=your enterprise",
+  "companyLink": "env://COMPANY_LINK?default=about:blank",
+  "appName": "env://APP_NAME?default=Self-service GitHub Management",
   "supportMail": "env://PORTAL_ADMIN_EMAIL",
   "operationsMail": "env://GITHUB_OPERATIONS_EMAIL"
 }

@@ -1,0 +1,10 @@
+{
+  "host": "env://REPOS_POSTGRES_HOST",
+  "database": "env://REPOS_POSTGRES_DATABASE",
+  "user": "env://REPOS_POSTGRES_USER",
+  "password": "env://REPOS_POSTGRES_PASSWORD",
+  "ssl": "env://REPOS_POSTGRES_SSL?default=1&type=boolean&trueIf=1",
+  "port": "env://REPOS_POSTGRES_PORT?default=5432&type=integer",
+  "connectionTimeoutMillis": "env://REPOS_POSTGRES_POOL_TIMEOUT_MS?default=10000&type=integer",
+  "max": "env://REPOS_POSTGRES_POOL_MAX_CLIENTS?default=5&type=integer"
+}

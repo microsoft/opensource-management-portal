@@ -47,7 +47,7 @@ block content
       p.lead GitHub has sent an invitation to <em>#{organization.name}</em>.
       p
         | For security purposes, GitHub requires you to accept the invitation directly on their web site.&nbsp;
-        strong You must come back to this tab after accepting your invitation to continue setting up your open source teams and permissions.
+        strong You must come back to this tab after accepting your invitation to continue setting up your open source teams and permissions. You may need to allow the site to open pop-ups or other tabs, or right-click the invite and open it in another tab.
       div.row
         div.col-md-6.col-lg-6
           h3 Step 1: Accept your invite from GitHub
@@ -78,7 +78,20 @@ block content
       div.row
         div.col-md-8.col-lg-8
           h1 Want to join #{organization.name}?
-          if hasIncreasedScope
+          if organization && organization.pilot_program && organization.pilot_program === 'pilot'
+            //- Pilot program
+            //- Due to SAML, auto-invite and accept does not work
+            p.lead 1ES Engineering Pilot
+            ul
+              li An invitation will be sent to your GitHub account.
+              li You accept the invitation in on GitHub.com. Due to SAML (single Microsoft sign-on), you may need to authenticate again with Microsoft AAD.
+              li You come back to this site and continue onboarding.
+            p &nbsp;
+            form(method='post')
+              p
+                input.btn.btn-primary.btn-lg(type='submit', value='Join ' + organization.name)
+
+          else if hasIncreasedScope
             form(method='post')
               p(style='margin-top:24px')
                 input.btn.btn-primary.btn-huge(type='submit', value='Join ' + organization.name)
