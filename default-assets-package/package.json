@@ -1,0 +1,38 @@
+{
+  "name": "@ospo/site-assets",
+  "author": "Microsoft",
+  "contributors": [
+    "Jeff Wilcox <jwilcox@microsoft.com>"
+  ],
+  "version": "1.1.0",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "grunt",
+    "prepublish": "grunt"
+  },
+  "dependencies": {
+    "blockui": "^1.0.0",
+    "components-font-awesome": "^4.2.0",
+    "typeahead": "^0.2.2",
+    "typeahead.js": "^0.11.1"
+  },
+  "devDependencies": {
+    "bootstrap": "3.4.1",
+    "bootswatch": "3.4.1",
+    "c3": "0.4.14",
+    "grunt": "1.0.3",
+    "grunt-contrib-clean": "2.0.0",
+    "grunt-contrib-concat": "^1.0.1",
+    "grunt-contrib-copy": "^1.0.0",
+    "grunt-contrib-less": "^2.0.0",
+    "grunt-exec": "3.0.0",
+    "jquery": "^3.3.1",
+    "load-grunt-tasks": "^4.0.0",
+    "octicons": "4.4.0",
+    "timeago": "1.6.4"
+  },
+  "files": [
+    "index.js",
+    "public"
+  ]
+}

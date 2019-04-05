@@ -1,0 +1,31 @@
+//
+// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//
+
+/*eslint no-console: ["error", { allow: ["log", "error", "warn", "dir"] }] */
+
+'use strict';
+
+import appPackage = require('../package.json');
+
+const debug = require('debug')('oss-initialize');
+const favicon = require('serve-favicon');
+const path = require('path');
+
+const defaultPublicAssetsPackageName = '../../default-assets-package/';
+const staticAssetspackageName = appPackage['static-site-assets-package-name'] || defaultPublicAssetsPackageName;
+
+const ospoAssetsDistPath = require(staticAssetspackageName);
+const ospoAssetsPackage = require(`${staticAssetspackageName}/package.json`);
+
+export function StaticSiteAssets(app, express) {
+  // Serve/host the static site assets from our private NPM
+
+  debug(`Hosting site assets version ${ospoAssetsPackage.version} from ${ospoAssetsDistPath} on path '/'`);
+  app.use(express.static(ospoAssetsDistPath));
+};
+
+export function StaticSiteFavIcon(app) {
+  app.use(favicon(path.join(ospoAssetsDistPath, 'favicon.ico')));
+}

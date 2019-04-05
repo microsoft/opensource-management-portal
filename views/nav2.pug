@@ -1,0 +1,166 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+//- THIS PAGE IS MICROSOFT-SPECIFIC
+//- DO NOT MERGE THIS PAGE UP TO 'PUBLIC-DEVELOP'
+//- THIS PAGE ASSUMES AUTHENTICATION IS AAD-FIRST
+
+- var azureSignoutLink = azureSignout || '/signout/azure'
+- var githubSignoutLink = githubSignout || '/signout/github?redirect=github'
+- var scheme = primaryAuthenticationScheme || (config ? config.authentication.scheme : null)
+
+mixin userTile(username, displayName, link, linkTitle, actionLink, action)
+  if username
+    a.btn.btn-sm.btn-muted(href=link, target='_new', title=linkTitle)= username
+  if displayName
+    a.btn.btn-sm.btn-muted-more(href=link, target='_new', title=linkTitle)= displayName
+  if action
+    a.btn.btn-sm.btn-white(href=actionLink, style='margin-left:10px')= action
+
+mixin userGitHub
+  - var actionLink = scheme === 'github' || !ossLink ? githubSignoutLink : '/link/update'
+  - var action = scheme === 'github'|| !ossLink ? 'Sign Out' : 'Change'
+  if hideGitHubAccount === true
+    //- A few specific pages should not show the GitHub account user pane
+  else
+    h4 GitHub Account
+    if user && user.github
+      p
+        if user.github && user.github.avatarUrl
+          img(alt=user.github.displayName, src=user.github.avatarUrl + '&s=80', style='margin-right:10px;width:30px;height:30px', data-user=user.github.id)
+        if user.github
+          +userTile(user.github.username, user.github.displayName || user.github.username, 'https://github.com/settings/profile', 'Click to edit your public GitHub profile', actionLink, action)
+    else
+      if scheme === 'github'
+        p
+          small Sign in or create your GitHub.com account to manage your #{config && config.brand.companyName || 'corporate'} open source identity
+      p
+        a.btn.btn-sm.btn-primary(href='/signin/github') Sign In
+
+mixin userAzure
+  - var actionLink = scheme === 'github' ? '/link/update' : azureSignoutLink
+  - var action = scheme === 'github' ? 'Change' : 'Sign Out'
+  if user && user.azure
+    h4 #{config && config.brand.companyName ? config.brand.companyName : 'Corporate'} Identity
+    p
+      +userTile(user.azure.username, user.azure.displayName, '/settings', 'View your settings', actionLink, action)
+  else if scheme !== 'github'
+    h4 #{config && config.brand.companyName ? config.brand.companyName : 'Corporate'} Identity
+    p
+      small Sign in to manage your #{config && config.brand.companyName || 'corporate'} open source identity
+    p
+      a.btn.btn-sm.btn-primary(href='/signin') Sign In
+
+div.navbar.navbar-default(style=reposContext ? 'margin-bottom:0' : undefined)
+  div.container-fluid
+    //- glyphicon-menu-hamburger
+    // Brand and toggle get grouped for better mobile display
+    div.navbar-header
+      button.navbar-toggle.collapsed(type='button', data-toggle='collapse', data-target='#bs-example-navbar-collapse-1', aria-expanded='false')
+        span.sr-only Toggle navigation
+        span.icon-bar
+        span.icon-bar
+        span.icon-bar
+      a.navbar-brand(href=config.microsoftOpenSource.explore, style='font-size:16px;color:#333') Microsoft Open Source
+    // Collect the nav links, forms, and other content for toggling
+    div.collapse.navbar-collapse#bs-example-navbar-collapse-1
+      ul.nav.navbar-nav
+        li(class={ active: site === 'explore' })
+          a(href=config.microsoftOpenSource.explore) Explore
+        if config.microsoftOpenSource.docs
+          li: a(href=config.microsoftOpenSource.docs) Docs
+        li(class={ active: site === 'use' })
+          a(href=config.microsoftOpenSource.explore + 'use') Use
+        li(class={ active: (reposContext && reposContext.releaseTab) || site === 'release' })
+          a(href=config.microsoftOpenSource.explore + 'release') Release
+        li(class={ active: (reposContext && !reposContext.releaseTab) && site === 'github' })
+          a(
+            style=((reposContext && !reposContext.releaseTab) && site === 'github' && ossLink && reposContext) ? 'color:#fff;background-color:#0072C6' : undefined,
+            href='/') GitHub
+        li(class={ active: site === 'resources' })
+          a(href=config.microsoftOpenSource.explore + 'resources') About
+        //-form.navbar-form.navbar-right
+          div.form-group
+            input.form-control(type='text', placeholder='Search')
+          //- button.btn.btn-default(type='submit') Submit
+      ul.nav.navbar-nav.navbar-right
+        //-form.navbar-form.navbar-left(style='margin-right:32px')
+          div.form-group
+            input.form-control(type='text', placeholder='Search')
+          //-button.btn.btn-default(type='submit') Submit
+
+
+        if sudoMode
+          li
+            a(href='#', title='You are a sudoer and have additional administrative capabilities')
+              i.glyphicon.glyphicon-flash
+        li
+          a(href='mailto:opensource@microsoft.com?subject=Open%20Source%20Repos%20Feedback')
+            i.glyphicon.glyphicon-heart
+        //-li
+          a(href='#')
+            i.glyphicon.glyphicon-flag
+        li
+          a(href=config.microsoftOpenSource.explore)
+            i.glyphicon.glyphicon-question-sign
+        li
+          a(href='/settings', title='Settings')
+            i.glyphicon.glyphicon-option-vertical
+        //- User Account Menu
+        if user && user.azure
+          li.dropdown
+            a.dropbown-toggle(href='#', data-toggle='dropdown', role='button', aria-haspopup='true', aria-expanded='false')
+              if hideGitHubAccount === true
+                //- skip
+                if user.azure
+                  = user.azure.displayName || user.azure.username
+              else if user && user.github && user.github.avatarUrl
+                img.img-circle(alt=user.github.displayName, src=user.github.avatarUrl + '&s=80', style='width:34px;height:34px;margin-bottom:-10px;margin-top:-10px', data-user=user.github.id)
+              else
+                if user.azure
+                  = user.azure.displayName || user.azure.username
+              //-span.caret
+            ul.dropdown-menu
+              li
+                if user.azure
+                  ul.list-unstyled-dropdown-first
+                    h3= user.azure.displayName || user.azure.username
+                ul.list-unstyled-dropdown-first
+                  h4 #{config && config.brand.companyName ? config.brand.companyName : 'Corporate'}
+                  if user.azure && user.azure.username !== user.azure.displayName
+                    p= user.azure.username
+              if user && user.github && user.github.username
+                li
+                  ul.list-unstyled-dropdown-first
+                    h4 GitHub
+                    ul.list-unstyled-dropdown-first
+                    p= user.github.username
+                    ul.list-inline
+                      li
+                        a.btn.btn-sm.btn-muted(href='https://github.com/settings/profile', target='_new')
+                          | Open on GitHub
+                      li
+                        a.btn.btn-sm.btn-muted(href='/link/remove') Unlink
+                li
+                  ul.list-unstyled-dropdown.first
+                    h4 Repositories
+              else
+                li
+                  a(href='/signin/github') Sign in to GitHub
+              li
+                a(href='/signout') Sign out
+              if enableMultipleAccounts && enableMultipleAccounts === true
+                li.divider(role='separator')
+                li
+                  ul.list-unstyled-dropdown.first
+                    h4 Other accounts
+                li
+                  a(href='/link/cleanup') Select another account
+                li
+                  a(href='/link/enableMultipleAccounts') Link another account
+
+        else
+          li
+            a(href='/signin') Sign in

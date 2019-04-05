@@ -63,7 +63,8 @@ block content
         h3 You've successfully linked your #{config.brand.companyName} and GitHub accounts.
 
       - var currentPriority = ''
-      each o in overview.organizations.member
+      - var oom = overview && overview.organizations ? overview.organizations.member : []
+      each o in oom
           div.link-box
             a(href=o + onboardingPostfixUrl)
               h2: strong= o
@@ -99,17 +100,35 @@ block content
         p
           a.btn.btn-default(href='/organization') Organization Delegate Dashboard
 
-      if overview.teams.maintainer && overview.teams.maintainer.length
+      - var otm = overview && overview.teams ? overview.teams.maintainer : []
+      if otm
         if accountInfo.pendingApprovals && accountInfo.pendingApprovals.length && accountInfo.pendingApprovals.length > 0
           h1 Approvals: Please Review
           p
             a.btn.btn-default(href='/approvals/') See all pending approvals (#{accountInfo.pendingApprovals.length})
 
-        if overview.teams.maintainer
+        if overview && overview.teams && overview.teams.maintainer
           h1 Teams you maintain
+          script(type='text/javascript').
+            function initializeManageFilter() {
+              var inputManageFilter = $('#manage-filter');
+              if (inputManageFilter) {
+                inputManageFilter.keyup(function () {;
+                  $.uiTableFilter($('table#manage-table'), this.value, ['Title', 'Organization', 'GitHub name']);
+                });
+              }
+            }
+          //-div.container
           div
             table.table#manage-table
               thead
+                tr
+                  th(colspan='2')
+                    form#manage-filter-form
+                      input.form-control#manage-filter(name='filter', placeholder='Filter teams I manage', type='text')
+                  th
+                    p
+                      i.glyphicon.glyphicon-search
                 tr
                   th GitHub name
                   th Organization
@@ -126,11 +145,27 @@ block content
                         //-li: a.btn.btn-sm.btn-muted(href='https://github.com/orgs/' + team.organization.login + '/teams/' + team.slug, target='_new') GitHub
 
       if accountInfo.isLinkedUser && onboarding !== true
-        if overview.teams && overview.teams.member && overview.teams.member.length
+        if overview && overview.teams && overview.teams.member && overview.teams.member.length
           h1 Team memberships
           p Here are teams that you are a member of but not a maintainer of.
+          script(type='text/javascript').
+            function initializeMembershipFilter() {
+              var inputMembershipFilter = $('#membership-filter');
+              if (inputMembershipFilter) {
+                inputMembershipFilter.keyup(function () {;
+                  $.uiTableFilter($('table#membership-table'), this.value, ['Team', 'Organization']);
+                });
+              }
+            }
           table.table#membership-table
             thead
+              tr
+                th(colspan='2')
+                  form#membership-filter-form
+                    input.form-control#membership-filter(name='filter', placeholder='Filter my teams', type='text')
+                th
+                  p
+                    i.glyphicon.glyphicon-search
               tr
                 th Team
                 th Organization
@@ -159,7 +194,7 @@ block content
         else
           //-p You are not currently a member of any GitHub teams that grant you permission to specific repositories. Note that this display is cached and may not be up-to-date.
     div.col-md-4
-      if overview.organizations.available && overview.organizations.available.length
+      if overview && overview.organizations && overview.organizations.available && overview.organizations.available.length
         h2 Available #{config.brand.companyName} GitHub organizations
         .right
           if onboarding === true
@@ -178,7 +213,7 @@ block content
                   - currentPriority = o.priority
                   //-if currentPriority == 'secondary'
                 //-if o.locked === true // o.membershipStateTemporary !== 'active'
-                if o.locked === true
+                if o.locked === true || o.hidden === true
                   //- Do not show by invitation only orgs at this time
                 else
                   div.link-box

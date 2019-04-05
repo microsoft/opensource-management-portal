@@ -1,5 +1,7 @@
 # opensource-portal
 
+> Microsoft's GitHub-at-scale management portal
+
 This Node.js application is a part of the suite of services provided by
 the Open Source Programs Office at Microsoft to enable large-scale GitHub
 management experiences.
@@ -20,30 +22,18 @@ GitHub Apps (formerly called Integrations), this app over time may be
 refactored to support the integration concept, removing the need to
 dedicate a user seat to a machine account.
 
-## March 2019
+## Node app
 
-We have completely ported this portal in TypeScript as part of an effort to
-reduce issues while refactoring and to modernize the codebase.
-
-The goal of this was to enable the use of interfaces for providers such as
-the link data, with success being the ability to move production link data
-at Microsoft to being stored by _Postgres_ instead of _Azure table_, which
-was having scaling issues due to our relatively poor implementation (single
-partition) after about 5,000 employees being linked; now that we have over
-20,000 links, the scale issues helped us with this decision.
-
-Postgres was selected as a neutral and common ask for this project.
-
-As a result, ... don't adopt this current _develop_ branch! ... but
-reach out to `@jeffwilcox` on Twitter or e-mail to get an update on the
-release and backport of the TS work.
+- Node.js LTS (v10+)
+- TypeScript
+- Mixed callback and Q promises and async and whoa at this time
 
 ## Service Dependencies
 
 - At least one of your own GitHub organizations
 - Bring your own Redis server, or use Azure Redis Cache
 - Azure Active Directory, or hack your own Passport provider in
-- Azure Storage for table, `data.js` will need some refactoring to support other providers. _Other providers are being considered, including Azure Premium Table, for better performance. Help would be appreciated here!_
+- Data storage for links, etc.: either Azure Storage _or_ Postgres
 
 ## LICENSE
 
@@ -51,19 +41,28 @@ release and backport of the TS work.
 
 ## Dev prep, build, deploy
 
+### Prereqs
+
+#### Install Node packages
+
+Make sure to include dev dependencies
+
+```
+$ npm install
+```
+
 ### Build
 
 ```
 $ npm run-script build
 ```
 
-Which is equivalent to running:
+### Building the Docker image
+
+You need to set the NPM_TOKEN parameter to the NPM token to the private registry.
 
 ```
-$ cd client
-$ npm install
-$ cd ..
-$ grunt
+$ docker build --build-arg NPM_TOKEN="YOURTOKENHERE" .
 ```
 
 ### Test
@@ -78,7 +77,6 @@ Which is equivalent to running:
 
 ```
 $ mocha
-$ eslint .
 ```
 
 ## Contributions welcome
@@ -177,3 +175,83 @@ use.
 ### /repos search view
 
 - Add a `showids=1` query string parameter to have repository IDs show up next to repository names
+
+# new repo templates
+
+When a new repository is created, a template directory can be used to
+pre-populate that repo with any important files such as a standard LICENSE
+file, README, contribution information, issue templates for GitHub, etc.
+
+See also: `config/github.templates.js` which exports information from
+a template data JSON file, as well as determines where those templates
+live on the file system.
+
+The original location for templates was within the same repo in the
+`data/templates` folder; however, you can also use a public or private
+NPM package that contains the template content.
+
+# Static Site Assets
+
+To simplify the app build process, and also make it easier for us to open
+source a lot of the project without Microsoft-specific assets and content,
+the site pulls its static assets (favicon, graphics, client scripts) from
+an NPM package.
+
+Inside the app's `package.json`, a property can be set, `static-site-assets-package-name`,
+pointing to the name of an NPM package (public or private) that contains those assets.
+
+By default, this project contains a `default-assets-package` sub-folder NPM package
+with more generic Bootstrap content, Grunt build scripts, etc. It is used if this variable
+is not defined in the package JSON. Unfortunately you need to separately
+`npm install` and `grunt` to use it, or just point it at your own set of
+CSS files and other assets. Sorry, its not pretty.
+
+## Breaking changes with the TypeScript version
+
+- In-memory session and link providers enable an easier local development experience. As a result, you *must* configure a link provider type and a session type in settings.
+  - SESSION_PROVIDER should be explicitly set to `redis`
+
+### Removed features and functions
+
+- Issue-based approval workflow (backed by GitHub issues) removed for all approvals
+
+### Data quality issues
+
+_username casing_
+
+The original table store for usernames (GitHub users, etc.) was case sensitive
+for stored data. However, the newer Postgres system uses case insensitive
+indexes. As a result there may be latent bugs.
+
+_date/times_
+
+- Approval 'decisionTime' field was buggy in the past
+- Approval 'requested' field was buggy in the past
+
+Going forward these fields are ISO8601 date time fields. Existing data may
+continue to have poor formats, and may be an issue during data migration.
+
+### Migration of data
+
+The `localEnvironment` TypeScript file is intended to permit prototyping and
+local development hacks.
+
+A job, `migrateLinks`, is able to move links between providers when proper
+configuration is in place.
+
+### Bare minimum local development environment
+
+If you place a JSON file `env.json` above the directory of your cloned repo
+(to prevent committing secrets to your repo by accident or in your editor),
+you can configure the following extreme minimum working set to use the app.
+
+```
+
+```
+
+In this mode memory providers are used, including a mocked Redis client. Note
+that this does mean that a large GitHub organization configured with memory
+providers could become a token use nightmare, as each new execution of the app
+without a Redis Cache behind the scenes is going to have 100% cache misses for
+GitHub metadata. Consider configuring a development or local Redis server to
+keep cached data around.

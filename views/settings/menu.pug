@@ -1,0 +1,29 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+.panel.panel-default
+  .panel-heading Personal settings
+  .list-group
+    a.list-group-item(href='/settings', class={active: view === 'settings'}) Profile
+.panel.panel-default
+  .panel-heading Authorizations & accounts
+  .list-group
+    a.list-group-item(href='/settings/authorizations', class={active: view === 'settings/authorizations'}) GitHub accounts
+    //- Removing NPM publishing (result of 2FA enforcement restrictions)
+    //- a.list-group-item(href='/settings/npm', class={active: view === 'settings/npm'}) NPM
+.panel.panel-default
+  .panel-heading Requests & approvals
+  .list-group
+    a.list-group-item(href='/approvals', class={active: view === 'settings/approvals'}) Active requests
+.panel.panel-default
+  .panel-heading Reports
+  .list-group
+    a.list-group-item(href='/settings/digestReports', class={active: view === 'settings/digestReports'}) Administrator reports
+.panel.panel-default
+  .panel-heading Internal APIs
+  .list-group
+    a.list-group-item(href='/settings/security/tokens', class={active: view === 'settings/personalAccessTokens'}) Personal access tokens
+    if view === 'settings/extension'
+      a.list-group-item(href='/settings/security/tokens/extension', class={active: view === 'settings/extension'}) Install browser extension

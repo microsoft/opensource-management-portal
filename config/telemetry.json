@@ -1,4 +1,5 @@
 {
   "applicationInsightsKey": "env://APPINSIGHTS_INSTRUMENTATION_KEY",
+  "jobsApplicationInsightsKey": "env://JOBS_APPINSIGHTS_INSTRUMENTATION_KEY",
   "googleAnalyticsKey": "env://GOOGLE_ANALYTICS_KEY"
 }

@@ -1,0 +1,26 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+block content
+  div.container
+      h2 Link editor
+      form(method='post', action='/organization/whois/link/' + query.link.id)
+        p Link ID #{query.link.id}
+        p.text-danger Careful: this data is not validated on save
+        h6 Corporate ID
+        input.form-control(type='text', name='corporateId', value=query.link.corporateId)
+        h6 Corporate username
+        input.form-control(type='text', name='corporateUsername', value=query.link.corporateUsername)
+        h6 Corporate display name
+        input.form-control(type='text', name='corporateDisplayName', value=query.link.corporateDisplayName)
+        h6 GitHub username
+        input.form-control(type='text', name='thirdPartyUsername', value=query.link.thirdPartyUsername)
+        h6 GitHub user ID
+        input.form-control(type='text', name='thirdPartyId', value=query.link.thirdPartyId)
+        h6 GitHub user avatar
+        input.form-control(type='text', name='thirdPartyAvatar', value=query.link.thirdPartyAvatar)
+        p &nbsp;
+        p
+          input.btn.btn-default(type='submit', value='Save link', name='save-link')

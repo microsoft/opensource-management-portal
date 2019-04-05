@@ -59,7 +59,7 @@ module.exports = (graphApi) => {
   if (organizationsFile) {
     // This will resolve locally; in this we may want to be able to
     // discover through other mechanisms, too.
-    contents = require(`../data/${organizationsFile}`);
+    contents = require(`data/${organizationsFile}`);
   } else if (organizationsEnvironmentName && !environmentInstances) {
     throw new Error(`${organizationsEnvironmentVariableName} configured but no environment instances were loaded by the painless-config-as-code system`);
   } else if (organizationsEnvironmentName) {

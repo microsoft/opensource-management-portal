@@ -110,7 +110,10 @@ block content
             .label.label-warning.shrink66(
               title=teamPermissions.sudo ? 'As a sudo maintainer, you can administer team settings in this application but not directly on GitHub.com' : 'As a team maintainer you can administer team settings in this application and directly on GitHub.com'
             )= teamPermissions.sudo ? 'Sudo maintainer' : 'Team maintainer'
-        if membershipStatus === 'member'
+        if membershipStatus === 'member' && membershipState === 'pending'
+          = ' '
+          .label.label-muted.shrink66 Membership pending
+        else if membershipStatus === 'member'
           = ' '
           .label.label-muted.shrink66 Member
         if isSystemTeam
@@ -124,6 +127,19 @@ block content
     .row
       .col-md-8
 
+        //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        //- PENDING MEMBERSHIP
+        //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        if membershipStatus === 'member' && membershipState === 'pending'
+          .panel.panel-default
+            .panel-heading
+              h3.panel-title Your membership is pending
+            .panel-body
+              p Please check your e-mail for a message from GitHub asking you to accept your invitation to this team.
+              p You may also be able to accept your invitation on the team page at GitHub:
+              p: a.btn.btn-default.btn-sm(
+                href='https://github.com/orgs/' + organization.name + '/teams/' + team2.slug,
+                target="_blank") Open team on GitHub.com
         //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         //- JOIN
         //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

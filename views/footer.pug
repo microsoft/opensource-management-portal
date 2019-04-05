@@ -8,7 +8,7 @@ footer
   .container
     if config && config.debug && config.debug.showDebugFooter === true
       .clearfix
-      .row(style='padding:12px')
+      .row.alert-gray(style='padding:12px')
         h6 Instance Configuration
         .col-md-6.col-lg-6
           if correlationId
@@ -26,25 +26,43 @@ footer
           if config && config.github.links.table.encryption !== undefined
             h4
               | Table Encryption: #{config.github.links.table.encryption === true ? 'Encrypted' : 'Plain Text'}
-        .col-md-6.col-lg-6
+        .col-md-6.col-lg-6(style='background-color:white')
           if serverName
             h4 Hostname: #{serverName}
           if serverAddress
             h4 Server: #{serverAddress}
           if websiteHostname
             h4 Site: #{websiteHostname}
-          if config && config.github.links.table
+          if config && config.github && config.github.links
             h4
-              | Storage:&nbsp;
-              span.bg-danger(style='color:white;padding:2px')= config.github.links.table.account
-            h4
-              | Storage Prefix: #{config.github.links.table.prefix}
+              | Link Provider: #{config.github.links.provider.name}
           if config && config.redis
             h4
               | Redis:&nbsp;
               span.bg-danger(style='color:white;padding:2px')= config.redis.host || config.redis.tls
             h4
               | Redis Prefix: #{config.redis.prefix}
+          if config && config.github && config.github.cosmosdb
+            h4
+              | Cosmos URI: #{config.github.cosmosdb.uri}
+            h4
+              | Cosmos DB / Collection: #{config.github.cosmosdb.database} #{config.github.cosmosdb.collection}
+          if config && config.data && config.data.postgres && config.data.postgres.password
+            h4
+              | PGSQL Database: #{config.data.postgres.host}/#{config.data.postgres.database}
+            h4
+              | PGSQL User: #{config.data.postgres.user}
+            h4
+              | PGSQL Pool Size: #{config.data.postgres.max}
+          if config && config.github.links.postgres && config.github.links.postgres.tableName
+            h4
+              | PGSQL Links Table: #{config.github.links.postgres.tableName}
+          if config && config.github.links.table
+            h4
+              | Table:&nbsp;
+              span.bg-danger(style='color:white;padding:2px')= config.github.links.table.account
+            h4
+              | Table Prefix: #{config.github.links.table.prefix}
 
     .clearfix
     .row(style='margin-bottom:12px')
@@ -85,6 +103,9 @@ footer
           | Powered by <a href="/thanks">great open source</a>, Microsoft Azure, and the GitHub API
       .col-sm-6.col-md-6.col-lg-6
         .pull-right.text-right
+          a#microsoftFooterLogo(href=(config && config.brand ? config.brand.companyLink : 'about:blank'), title=(config && config.brand ? config.brand.companyName : ''))
+            img(src='/img/logo.png', alt=(config && config.brand ? config.brand.companyName : ''), style='max-height:23px')
+          br
           span &copy; #{config && config.brand.companyName ? config.brand.companyName : ''}
     .row
        div(style='margin-bottom: 30px')

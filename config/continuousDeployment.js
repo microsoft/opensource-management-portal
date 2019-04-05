@@ -5,11 +5,12 @@
 
 'use strict';
 
+const pkg = require('../package.json');
+
 module.exports = () => {
   // Useful information to help understand which CI/CD pipeline the app came from
-  const packageJson = require('../package.json');
-  const continuousDeployment = packageJson.continuousDeployment || {};
-  continuousDeployment.version = packageJson.version;
-  continuousDeployment.name = packageJson.name;
+  const continuousDeployment = pkg.continuousDeployment || {};
+  continuousDeployment.version = pkg.version;
+  continuousDeployment.name = pkg.name;
   return continuousDeployment;
 };

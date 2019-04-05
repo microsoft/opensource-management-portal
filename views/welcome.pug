@@ -38,9 +38,9 @@ block content
           p.lead Linking should take 2-10 minutes
           p The process has just a few steps depending on whether or not you already have a GitHub account and multi-factor authentication setup.
           ul
-            if config.authentication.scheme === 'github'
+            if config.authentication.scheme === 'github' && user && user.github && user.github.username
               li Validate the corporate account to link with #{user.github.username}.
-            if config.authentication.scheme === 'aad'
+            if config.authentication.scheme === 'aad' && user && user.azure && user.azure.username
               li Validate the GitHub account to link with #{user.azure.username}.
             li Verify and/or configure multi-factor authentication for your GitHub account.
             li [Optional] Join #{config.brand.companyName} GitHub organizations.

@@ -3,48 +3,67 @@
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
-extends layout
+extends ../layout
 
 block content
-  h1 Account authorizations
+  .container
+    .row
+      .col-md-3.col-lg-3
+        include ./menu
+      .col-md-7.col-lg-7
+          h1 Account authorizations
 
-  if authorizations.length === 0
-    p There are no services or accounts currently authorized and stored with your open source account.
+          if authorizations.length === 0
+            p There are no services or accounts currently authorized and stored with your open source account.
 
-  each authorization in authorizations
-    h2= authorization.title
-    if authorization.text
-      p.lead= authorization.text
+          each authorization in authorizations
+            h2= authorization.title
+            if authorization.text
+              p.lead= authorization.text
 
-    if authorization.valid
-      - var valid = authorization.valid
-      - var alert = valid.valid === true ? 'success' : valid.critical === true ? 'danger' : 'warning'
-      div.alert(class='alert-' + alert)
-        if valid.valid
-          h2 Valid Token
-        else
-          h2 Validation Failed
-        if valid.message && valid.valid
-          p= valid.message
-        else if valid.message
-          p
-            strong= valid.message
-        if valid.rateLimitRemaining
-          p
-            small= valid.rateLimitRemaining
+            if authorization.valid
+              - var valid = authorization.valid
+              - var alert = valid.valid === true ? 'success' : valid.critical === true ? 'danger' : 'warning'
+              div.alert(class='alert-' + alert)
+                if valid.valid
+                  h2 Valid Token
+                else
+                  h2 Validation Failed
+                if valid.message && valid.valid
+                  p= valid.message
+                else if valid.message
+                  p
+                    strong= valid.message
+                if valid.rateLimitRemaining
+                  p
+                    small= valid.rateLimitRemaining
 
-    each mitigation in authorization.mitigations
-      h5= mitigation.title
-      if mitigation.text
-        p= mitigation.text
-      if mitigation.url
-        p
-          a.btn.btn-default.btn-sm(href=mitigation.url)= mitigation.mitigation
+            each mitigation in authorization.mitigations
+              h5= mitigation.title
+              if mitigation.text
+                p= mitigation.text
+              if mitigation.url
+                p
+                  a.btn.btn-default.btn-sm(href=mitigation.url)= mitigation.mitigation
 
-  hr
+          if gitHubAccounts
 
-  h4 Validate tokens
+            hr
 
-  p If requested by support, you can use this function to validate the current tokens stored for your account.
+            h4 GitHub accounts
 
-  a.btn.btn-default.btn-sm(href='/settings/authorizations/validate') Validate authorizations
+            if gitHubAccounts.primary
+              h5: strong Primary GitHub identity
+              h5= gitHubAccounts.primary.username + ' (ID: ' + gitHubAccounts.primary.id + ')'
+
+            if gitHubAccounts.session
+              h5: strong Current Session GitHub identity
+              h5= gitHubAccounts.session.username + ' (ID: ' + gitHubAccounts.session.id + ')'
+
+          hr
+
+          h4 Validate tokens
+
+          p If requested by support, you can use this function to validate the current tokens stored for your account.
+
+          a.btn.btn-default.btn-sm(href='/settings/authorizations/validate') Validate authorizations

@@ -1,0 +1,68 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block append meta
+  link(rel='chrome-webstore-item', href='https://chrome.google.com/webstore/detail/clhagcojeonokenjgojakghlfigcidkj')
+
+block append js_doc_ready
+  | window.installChromeExtension = function () {
+  | chrome.webstore.install(
+  | 'https://chrome.google.com/webstore/detail/clhagcojeonokenjgojakghlfigcidkj',
+  | function success() { window.location = 'https://github.com/' },
+  | function failure(message) {
+  | document.getElementById('chromeExtensionHeading').innerText = (message || 'The extension was not installed');
+  | console.log('not good did not work ' + message)
+  | }
+  | )
+  | }
+  | const isExtensionInstalled = $('#corporate-github-extension-is-installed');
+  | if (isExtensionInstalled && isExtensionInstalled.length > 0) {
+  | console.log('the extension is installed!');
+  | document.getElementById('chrome-install-div').style.display = 'none';
+  | document.getElementById('chromeCreateToken').style.display = 'block';
+  | }
+
+block content
+  .container
+    .row
+      .col-md-3.col-lg-3
+        include ./menu
+      .col-md-7.col-lg-7
+
+        h2 Browser extension #[small: span.label.label-primary Preview]
+
+        p.vertical-space.
+          Thanks for your interest in the #[strong Corporate GitHub Extension], designed to
+          provide the most authentic experience for GitHub in a corporate environment by
+          enhancing and providing actionable information throughout GitHub.com.
+        p This is a #[em preview release] and is only authorized for a limit set of early adopters.
+        p Please share your feedback with #[a(href='mailto:opensource@microsoft.com') opensource@microsoft.com] and opt in to telemetry to help iron our any wrinkles or issues with the experience.
+
+        p#chrome-install-div
+          button.btn.btn-success.btn-large(onclick='window.installChromeExtension()' id='install-chrome-button') Add to Chrome
+
+        if (newKey)
+          .alert.vertical-space.alert-gray
+            p.
+              #[strong Make sure you copy the token now.] We don't store it
+              and you won't be able to see it again.
+            input.vertical-space.form-control#newKey(type='text', value=newKey)
+
+        div#chromeExtensionMessage
+          h1#chromeExtensionHeading
+          p#chromeExtensionContent
+
+        div#chromeCreateToken(style='display:none')
+          form(method='post', action='/settings/security/tokens/extension')
+
+            hr
+            h4 Configure the extension
+
+            input(type='hidden', name='description', value=newTokenDescription)
+
+            ul.list-inline.vertical-space
+              li: button.btn.btn-primary(name='add') Sign in to extension

@@ -3,13 +3,13 @@
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
-extends ../body
+extends ../email
 
 block content
 
   if wasApproved
     h1
-      | Welcome to #{pendingRequest.teamname} &nbsp;
+      | #{pendingRequest.teamname} &nbsp;
       small= org
     p.lead A team maintainer has approved your request to join the GitHub team.
   else

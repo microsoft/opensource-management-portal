@@ -1,0 +1,1 @@
+uitable: natinusala/jquery-uitablefilter (MIT, jQuery)
