@@ -54,7 +54,12 @@ $ npm install
 ### Build
 
 ```
-$ npm run-script build
+$ node ./node_modules/typescript/bin/tsc
+```
+
+### Running
+```
+$ npm start
 ```
 
 ### Building the Docker image
