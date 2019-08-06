@@ -35,6 +35,8 @@ import { Operations } from './operations';
 import { ICacheOptions } from '../transitional';
 import { TeamMember } from './teamMember';
 import { TeamRepositoryPermission } from './teamRepositoryPermission';
+import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';
+import { TeamJoinApprovalEntity } from '../entities/teamJoinApproval/teamJoinApproval';
 
 export class Team {
   public static PrimaryProperties = teamPrimaryProperties;
@@ -147,9 +149,9 @@ export class Team {
       return callback(null, this._detailsEntity);
     }
     const parameters = {
-      id: id,
+      team_id: id,
     };
-    return operations.github.call(token, 'orgs.getTeam', parameters, cacheOptions, (error, entity) => {
+    return operations.github.call(token, 'teams.get', parameters, cacheOptions, (error, entity) => {
       // CONSIDER: What if the team is gone? (404)
       if (error) {
         return callback(wrapError(error, 'Could not get details about the team'));
@@ -178,9 +180,9 @@ export class Team {
     const github = operations.github;
 
     const parameters = {
-      id: this._id,
+      team_id: this._id,
     };
-    github.post(token, 'orgs.deleteTeam', parameters, callback);
+    github.post(token, 'teams.delete', parameters, callback);
   }
 
   edit(patch, callback) {
@@ -189,12 +191,13 @@ export class Team {
     const github = operations.github;
 
     const parameters = {
-      id: this._id,
+      team_id: this._id,
     };
-    delete patch.id;
     Object.assign(parameters, patch);
+    delete parameters.team_id; // do not allow patch to have team_id
+    delete parameters['id']; // // do not allow patch to have id
 
-    github.post(token, 'orgs.editTeam', parameters, callback);
+    github.post(token, 'teams.update', parameters, callback);
   }
 
   removeMembership(username, callback) {
@@ -203,10 +206,21 @@ export class Team {
     const github = operations.github;
 
     const parameters = {
-      id: this._id,
+      team_id: this._id,
       username: username,
     };
-    github.post(token, 'orgs.removeTeamMembership', parameters, callback);
+    github.post(token, 'teams.removeMembership', parameters, callback);
+  }
+
+  addMembershipAsync(username, options?): Promise<any> {
+    // TODO: long-term, all methods should be async
+    return new Promise((resolve, reject) => {
+      this.addMembership(username, options, (err, data) => {
+        // TODO: PROMISE ASYNC: update return type to properly model these objects
+        // BREAKPOINT:
+        return err ? reject(err) : resolve(data);
+      });
+    });
   }
 
   addMembership(username, options, callback?) {
@@ -226,7 +240,7 @@ export class Team {
       username: username,
       role: role,
     };
-    github.post(token, 'orgs.addTeamMembership', parameters, callback);
+    github.post(token, 'teams.addOrUpdateMembership', parameters, callback);
   }
 
   addMaintainer(username, callback) {
@@ -258,19 +272,20 @@ export class Team {
       username: username,
     };
     // TODO: this should probably be a _post_ call and not _call_ as there is no cache with GitHub
-    return operations.github.call(token, 'orgs.getTeamMembership', parameters, (error, result) => {
-      if (error && error.code === 404) {
+    return operations.github.call(token, 'teams.getMembership', parameters, (error, result) => {
+      if (error && error.status == /* loose */ 404) {
         result = false;
         error = null;
       }
       if (error) {
         let reason = error.message;
-        if (error.code) {
-          reason += ' ' + error.code;
+        if (error.status) {
+          reason += ' ' + error.status;
         }
         const wrappedError = wrapError(error, `Trouble retrieving the membership for "${username}" in team ${this._id}. ${reason}`);
-        if (error.code) {
-          wrappedError['code'] = error.code;
+        if (error.status) {
+          wrappedError['code'] = error.status;
+          wrappedError['status'] = error.status;
         }
         return callback(wrappedError);
       }
@@ -326,6 +341,14 @@ export class Team {
 
   isMaintainer(username, options, callback) {
     return this.isMember(username, 'maintainer', options, callback);
+  }
+
+  async isMemberAsync(username: string, role?: string, options?: any): Promise<boolean> {
+    return new Promise<boolean>((resolve, reject) => {
+      this.isMember(username, role, options, (error, result) => {
+        return error ? reject(error) : resolve(result);
+      });
+    });
   }
 
   isMember(username, role, options, callback) {
@@ -388,7 +411,7 @@ export class Team {
     let github = operations.github;
 
     let parameters: IGetMembersParameters = {
-      id: this.id,
+      team_id: this.id,
       per_page: 100,
     };
     const caching: ICacheOptions = {
@@ -404,7 +427,7 @@ export class Team {
     if (options.pageLimit) {
       parameters.pageLimit = options.pageLimit;
     }
-    // CONSIDER: Check the error object, if present, for error.code === 404 to alert/store telemetry on deleted teams
+    // CONSIDER: Check the error object, if present, for error.status == /* loose */ 404 to alert/store telemetry on deleted teams
     return github.collections.getTeamMembers(
       token,
       parameters,
@@ -423,7 +446,7 @@ export class Team {
     let github = operations.github;
     const organizationName = options.organizationName || this.organization.name;
     const parameters: ICheckRepositoryPermissionParameters = {
-      id: this._id,
+      team_id: this._id,
       owner: organizationName,
       repo: repositoryName,
     };
@@ -437,7 +460,7 @@ export class Team {
       // Alternative response for additional information, including the permission level
       'Accept': 'application/vnd.github.v3.repository+json',
     };
-    return github.call(token, 'orgs.checkTeamRepo', parameters, cacheOptions, (error, details) => {
+    return github.call(token, 'teams.checkManagesRepo', parameters, cacheOptions, (error, details) => {
       if (error) {
         return callback(error);
       }
@@ -462,7 +485,7 @@ export class Team {
     }
 
     let parameters: IGetRepositoriesParameters = {
-      id: this._id,
+      team_id: this._id,
       per_page: 100,
     };
     const caching: ICacheOptions = {
@@ -488,6 +511,14 @@ export class Team {
         _.remove(entities, repo => { return repo.fork; });
         return commonCallback(null, entities);
       });
+  }
+
+  async getOfficialMaintainersAsync(): Promise<any[]> {
+    return new Promise<any[]>((resolve, reject) => {
+      return this.getOfficialMaintainers((error, maintainers) => {
+        return error ? reject(error) : resolve(maintainers as any[]);
+      });
+    });
   }
 
   getOfficialMaintainers(callback) {
@@ -530,15 +561,25 @@ export class Team {
     return this.member(entity.id, entity);
   }
 
+  getApprovalsAsync(): Promise<TeamJoinApprovalEntity[]> {
+    return new Promise((resolve, reject) => {
+      this.getApprovals((error, approvals: TeamJoinApprovalEntity[]) => {
+        return error ? reject(error) : resolve(approvals);
+      });
+    });
+  }
+
   getApprovals(callback) {
     const operations = this._operations;
-    const dc = operations.dataClient;
-    dc.getPendingApprovals(this.id, function (error, pendingApprovals) {
-      if (error) {
-        return callback(wrapError(error, 'We were unable to retrieve the pending approvals list for this team. There may be a data store problem.'));
-      }
+    const approvalProvider = operations.providers.approvalProvider as IApprovalProvider;
+    if (!approvalProvider) {
+      return callback(new Error('No approval provider instance available'));
+    }
+    approvalProvider.queryPendingApprovalsForTeam(this.id).catch(error => {
+      return callback(wrapError(error, 'We were unable to retrieve the pending approvals list for this team. There may be a data store problem.'));
+    }).then(pendingApprovals => {
       const pendingRequests = [];
-      async.each(pendingApprovals, function (approval, cb) {
+      async.each(pendingApprovals, function (approval: any, cb) {
         if (approval.requested) {
           var asInt = parseInt(approval.requested, 10);
           approval.requestedTime = new Date(asInt);
@@ -566,7 +607,7 @@ export class Team {
 }
 
 function resolveDirectLinks(people, callback) {
-  async.eachSeries(people, (member, next) => {
+  async.eachSeries(people, (member: TeamMember, next) => {
     return member.getMailAddress(next);
   }, error => {
     return callback(error ? error : null, error ? null : people);
@@ -584,21 +625,21 @@ function repositoryFromEntity(entity) {
 }
 
 interface IGetMembersParameters {
-  id: string;
+  team_id: string;
   per_page: number;
   role?: string;
   pageLimit?: any;
 }
 
 interface ICheckRepositoryPermissionParameters {
-  id: string;
+  team_id: string;
   owner: string;
   repo: string;
   headers?: any;
 }
 
 interface IGetRepositoriesParameters {
-  id: string;
+  team_id: string;
   per_page: number;
   pageLimit?: any;
 }

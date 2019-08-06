@@ -17,11 +17,11 @@ block content
             small Permission Request
           div.row
             div.col-md-5.col-lg-5
-              form(method='post', action='/' + entry._teamInstance.organization.name + '/teams/' + entry._teamInstance.name + '/approvals/' + entry.RowKey)
+              form(method='post', action='/' + entry._teamInstance.organization.name + '/teams/' + entry._teamInstance.slug + '/approvals/' + entry.RowKey)
                 p
                   //-if entry.issue
                   //- NOTE: Commenting out GitHub links with approval repos, since they have been deprecated
-                  a.btn.btn-sm.btn-muted(href='/' + entry._teamInstance.organization.name + '/teams/' + entry._teamInstance.name + '/approvals/' + entry.RowKey)
+                  a.btn.btn-sm.btn-muted(href='/' + entry._teamInstance.organization.name + '/teams/' + entry._teamInstance.slug + '/approvals/' + entry.RowKey)
                     i.glyphicon.glyphicon-zoom-in
                     | &nbsp;
                     | View Detailed Request Page
@@ -66,27 +66,11 @@ block content
             div.col-md-5.col-lg-5
               //-if myRequest._teamInstance && myRequest.issue
                 //- NOTE: Commenting out GitHub links with approval repos, since they are deprecated
-              form(method='post', action='/approvals/' + myRequest.RowKey + '/cancel')
+              form(method='post', action='/approvals/' + myRequest.approvalId + '/cancel')
                 p
                   input.btn.btn-sm.btn-default(type='submit', value='Cancel my request')
             div.col-md-7.col-lg-7
-              if myRequest.type == 'repo' && myRequest.repoName
-                h3 Repository Information
-                blockquote
-                  p
-                    strong Name
-                    br
-                    = myRequest.repoName
-                  p
-                    strong Organization
-                    br
-                    = myRequest.org
-                  if myRequest.repoVisibility !== undefined
-                    p
-                      strong Visibility
-                      br
-                      = (myRequest.repoVisibility == 'public' ? 'Public' : 'Private')
-              else if myRequest.type == 'joinTeam'
+              if myRequest.type == 'joinTeam'
                 h3 Request to join a team
                 h5 Organization
                 p= myRequest.org

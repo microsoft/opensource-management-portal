@@ -11,14 +11,10 @@ import { jsonError } from '../../../middleware/jsonError';
 import { MemberSearch } from '../../../business/memberSearch';
 import { ICorporateLink } from '../../../business/corporateLink';
 import { Operations } from '../../../business/operations';
+import { IApiRequest } from '../../../middleware/apiReposAuth';
 
 const router = express.Router();
 const wrapError = require('../../../utils').wrapError;
-
-interface ILinksApiRequest extends ReposAppRequest {
-  apiKeyRow?: any;
-  apiVersion?: string;
-}
 
 const unsupportedApiVersions = [
   '2016-12-01',
@@ -28,19 +24,18 @@ const extendedLinkApiVersions = [
   '2019-02-01',
 ];
 
-router.use(function (req: ILinksApiRequest, res, next) {
-  const apiKeyRow = req.apiKeyRow;
-  if (!apiKeyRow.apis) {
+router.use(function (req: IApiRequest, res, next) {
+  const token = req.apiKeyToken;
+  if (!token.scopes) {
     return next(jsonError('The key is not authorized for specific APIs', 401));
   }
-  const apis = apiKeyRow.apis.split(',');
-  if (apis.indexOf('links') < 0) {
-    return next(jsonError('The key is not authorized to use the get links API', 401));
+  if (!token.hasScope('links')) {
+  return next(jsonError('The key is not authorized to use the get links API', 401));
   }
   return next();
 });
 
-router.get('/', (req: ILinksApiRequest, res, next) => {
+router.get('/', (req: IApiRequest, res, next) => {
   const operations = req.app.settings.operations;
   const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
   const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
@@ -54,7 +49,7 @@ router.get('/', (req: ILinksApiRequest, res, next) => {
   });
 });
 
-router.get('/github/:username', (req: ILinksApiRequest, res, next) => {
+router.get('/github/:username', (req: IApiRequest, res, next) => {
   if (unsupportedApiVersions.includes(req.apiVersion)) {
     return next(jsonError('This API is not supported by the API version you are using.', 400));
   }
@@ -77,7 +72,7 @@ router.get('/github/:username', (req: ILinksApiRequest, res, next) => {
   });
 });
 
-router.get('/aad/userPrincipalName/:upn', (req: ILinksApiRequest, res, next) => {
+router.get('/aad/userPrincipalName/:upn', (req: IApiRequest, res, next) => {
   const upn = req.params.upn;
   const operations = req.app.settings.operations;
   const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
@@ -108,7 +103,7 @@ router.get('/aad/userPrincipalName/:upn', (req: ILinksApiRequest, res, next) => 
   });
 });
 
-router.get('/aad/:id', (req: ILinksApiRequest, res, next) => {
+router.get('/aad/:id', (req: IApiRequest, res, next) => {
   if (req.apiVersion == '2016-12-01') {
     return next(jsonError('This API is not supported by the API version you are using.', 400));
   }

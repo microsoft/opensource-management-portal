@@ -1,0 +1,4 @@
+{
+  "corporateId": "env://DEBUG_IMPERSONATION_CORPORATEID",
+  "githubId": "env://DEBUG_IMPERSONATION_GITHUBID"
+}

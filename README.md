@@ -131,6 +131,20 @@ present.
 As configuration, including secrets, is resolved at startup, any key rotation would need
 to include a restart of the app service.
 
+## Jobs
+
+Several jobs are available in the container or the `jobs/` folder. These can
+optionally provide useful operational and services support. Often a Kubernetes
+CronJob can help.
+
+- `cleanupInvites`: if configured for an org, cleanup old unaccepted invites
+- `firehose`: ongoing processing of GitHub events for keeping cache up-to-date
+- `managers`: cache the last-known manager for links, to use in notifications after a departure may remove someone from the graph
+- `migrateLinks`: a one-time migration script to help when moving link source of truth
+- `permissions`: updating permissions for all-write/all-read/all-admin teams when configured
+- `refreshUsernames`: keeping link data fresh with GitHub username renames, corporate username and display name updates, and removing links for deleted GitHub users who remove their accounts permanently from GitHub.com
+- `reports`: processing the building of report data about use, abandoned repos, etc.
+
 ## Application Insights
 
 When using Microsoft Application Insights, this library reports a number of metrics, events and
@@ -210,6 +224,10 @@ CSS files and other assets. Sorry, its not pretty.
 
 - In-memory session and link providers enable an easier local development experience. As a result, you *must* configure a link provider type and a session type in settings.
   - SESSION_PROVIDER should be explicitly set to `redis`
+
+## Breaking changes with historical repo metadata
+
+- Prior to late 2017, newly created repos stored metadata that included the org name and repo name requested but _not_ the repo ID of the repo when created. The current implementation tries to use the repo ID as an entity lookup value and so will fail on historical data.
 
 ### Removed features and functions
 

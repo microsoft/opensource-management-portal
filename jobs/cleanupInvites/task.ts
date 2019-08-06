@@ -9,6 +9,8 @@
 
 import async = require('async');
 import moment = require('moment');
+import { Organization } from '../../business/organization';
+import { Operations } from '../../business/operations';
 const os = require('os');
 
 // Organization invitations cleanup: remove any invitations that are older than a
@@ -49,12 +51,12 @@ module.exports = function run(started, startedString, config) {
       },
     });
 
-    const operations = app.settings.operations;
+    const operations = app.settings.operations as Operations;
     const organizations = operations.getOrganizations();
 
     let removedInvitations = 0;
 
-    async.eachLimit(organizations, maxParallelism, (organization, next) => {
+    async.eachLimit(organizations, maxParallelism, (organization: Organization, next) => {
       organization.getMembershipInvitations((getInvitationsError, invitations) => {
         if (getInvitationsError) {
           return next(getInvitationsError);

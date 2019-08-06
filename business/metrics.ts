@@ -6,7 +6,7 @@
 'use strict';
 
 import async = require('async');
-const azure = require('azure-storage');
+import azure from 'azure-storage';
 
 function retrieveFromAzureTable(config, type, id, callback) {
   const tableService = azure.createTableService(config.account, config.key);

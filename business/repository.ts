@@ -6,13 +6,18 @@
 'use strict';
 
 import { wrapError } from '../utils';
-import { Operations } from "./operations";
-import { Organization } from "./organization";
-import { ICacheOptions } from "../transitional";
+import { Operations } from './operations';
+import { Organization } from './organization';
+import { ICacheOptions } from '../transitional';
 import * as common from './common';
-import { RepositoryPermission } from "./repositoryPermission";
-import { Collaborator } from "./collaborator";
-import { TeamPermission } from "./teamPermission";
+import { RepositoryPermission } from './repositoryPermission';
+import { Collaborator } from './collaborator';
+import { TeamPermission } from './teamPermission';
+import { RepositoryMetadataEntity, GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
+
+export interface IGitHubCollaboratorInvitation {
+  id: string;
+}
 
 const repoPrimaryProperties = [
   'id',
@@ -180,7 +185,7 @@ export class Repository {
     }
   }
 
-  getDetails(options, callback) {
+  getDetails(options, callback?) {
     if (!callback && typeof(options) === 'function') {
       callback = options;
       options = null;
@@ -201,12 +206,21 @@ export class Repository {
     }
     return operations.github.call(token, 'repos.get', parameters, cacheOptions, (error, entity) => {
       if (error) {
-        const notFound = error.code && error.code === 404;
+        const notFound = error.status && error.status == /* loose */ 404;
         return callback(wrapError(error, notFound ? 'The repo could not be found.' : 'Could not get details about the repo.', notFound));
       }
       common.assignKnownFieldsPrefixed(self, entity, 'repository', repoPrimaryProperties, repoSecondaryProperties);
       callback(null, entity);
     });
+  }
+
+  async getRepositoryMetadata(): Promise<RepositoryMetadataEntity> {
+    const repositoryMetadataProvider = this._operations.providers.repositoryMetadataProvider;
+    try {
+      return await repositoryMetadataProvider.getRepositoryMetadata(this.id);
+    } catch (getMetadataError) {
+      return null;
+    }
   }
 
   getBranches(cacheOptions, callback) {
@@ -256,7 +270,7 @@ export class Repository {
     };
     const token = this._getToken();
     const operations = this._operations
-    return operations.github.call(token, 'repos.getContent', parameters, (error, content) => {
+    return operations.github.call(token, 'repos.getContents', parameters, (error, content) => {
       if (error) {
         return callback(error);
       }
@@ -290,7 +304,7 @@ export class Repository {
 
     Object.assign(parameters, cacheOptions);
 
-    return github.call(token, 'repos.reviewUserPermissionLevel', parameters, (error, userPermissionLevel) => {
+    return github.call(token, 'repos.getCollaboratorPermissionLevel', parameters, (error, userPermissionLevel) => {
       if (error) {
         return callback(error);
       }
@@ -332,7 +346,15 @@ export class Repository {
       common.createInstancesCallback(this, collaboratorPermissionFromEntity, callback));
   }
 
-  addCollaborator(username, permission, callback) {
+  addCollaboratorAsync(username: string, permission: GitHubRepositoryPermission): Promise<IGitHubCollaboratorInvitation> {
+    return new Promise((resolve, reject) => {
+      return this.addCollaborator(username, permission, (error, result) => {
+        return error ? reject(error) : resolve(result as IGitHubCollaboratorInvitation);
+      });
+    });
+  }
+
+  addCollaborator(username: string, permission, callback) {
     // BREAKING CHANGE in the GitHub API: as of August 2017, this is "inviteCollaborator', it does not automatically add
     if (typeof permission == 'function') {
       callback = permission;
@@ -350,7 +372,15 @@ export class Repository {
     github.post(token, 'repos.addCollaborator', parameters, callback);
   }
 
-  acceptCollaborationInvite(invitationId, options, callback) {
+  acceptCollaborationInviteAsync(invitationId: string, options): Promise<any> {
+    return new Promise((resolve, reject) => {
+      return this.acceptCollaborationInvite(invitationId, options, (error, result) => {
+        return error ? reject(error) : resolve(result);
+      });
+    });
+  }
+
+  acceptCollaborationInvite(invitationId: string, options, callback) {
     // This could go in Account _or_ here in Repository
     if (!callback && typeof (options) === 'function') {
       callback = options;
@@ -363,10 +393,18 @@ export class Repository {
     const parameters = {
       invitation_id: invitationId,
     };
-    github.post(options.alternateToken || token, 'users.acceptRepoInvite', parameters, callback);
+    github.post(options.alternateToken || token, 'repos.acceptInvitation', parameters, callback);
   }
 
-  removeCollaborator(username, callback) {
+  removeCollaboratorAsync(username: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      return this.removeCollaborator(username, (error, result) => {
+        return error ? reject(error) : resolve(result);
+      });
+    });
+  }
+
+  removeCollaborator(username: string, callback) {
     const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
     const github = destructured[0];
     const token = destructured[1];
@@ -387,6 +425,22 @@ export class Repository {
       repo: this.name,
     };
     github.post(token, 'repos.delete', parameters, callback);
+  }
+
+  deleteAsync(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      return this.delete(error => {
+        return error ? reject(error) : resolve();
+      });
+    });
+  }
+
+  createFileAsync(path: string, base64Content: string, commitMessage: string, options?): Promise<any> {
+    return new Promise((resolve, reject) => {
+      return this.createFile(path, base64Content, commitMessage, options || {}, (error, result) => {
+        return error ? reject(error) : resolve(result);
+      });
+    });
   }
 
   createFile(path, content, commitMessage, options, callback) {
@@ -415,17 +469,17 @@ export class Repository {
     github.post(createFileToken, 'repos.createFile', parameters, callback);
   }
 
-  setTeamPermission(teamId, newPermission, callback) {
+  setTeamPermission(teamId: string, newPermission: GitHubRepositoryPermission, callback) {
     const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
     const github = destructured[0];
     const token = destructured[1];
     const options = {
-      id: teamId,
-      org: this.organization.name,
+      team_id: teamId,
+      owner: this.organization.name,
       repo: this.name,
       permission: newPermission,
     };
-    github.post(token, 'orgs.addTeamRepo', options, callback);
+    github.post(token, 'teams.addOrUpdateRepo', options, callback);
   }
 
   getWebhooks(options, callback) {
@@ -446,7 +500,7 @@ export class Repository {
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
-    return operations.github.call(token, 'repos.getHooks', parameters, cacheOptions, callback);
+    return operations.github.call(token, 'repos.listHooks', parameters, cacheOptions, callback);
   }
 
   deleteWebhook(webhookId, callback) {
@@ -490,6 +544,31 @@ export class Repository {
     }
 
     github.post(token, 'repos.createHook', parameters, callback);
+  }
+
+  async editPublicPrivate(options): Promise<void> {
+    options = options || {};
+    return new Promise<void>((resolve, reject) => {
+      const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
+      const github = destructured[0];
+      const token = destructured[1];
+
+      if (options.private !== true && options.private !== false) {
+        return reject(new Error('editPublicPrivate.options requires private to be set to true or false'));
+      }
+
+      const parameters = Object.assign({
+        owner: this.organization.name,
+        repo: this.name,
+        name: this.name,
+      }, {
+        private: options.private,
+      });
+
+      github.post(token, 'repos.update', parameters, error => {
+        return error ? reject(error) : resolve();
+      });
+    });
   }
 
   getTeamPermissions(cacheOptions, callback?) {

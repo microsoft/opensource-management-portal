@@ -5,10 +5,12 @@
 
 'use strict';
 
-import express = require('express');
+import express from 'express';
 const router = express.Router();
-import async = require('async');
-import { ReposAppRequest } from '../../transitional';
+
+import async from 'async';
+
+import { ReposAppRequest, IProviders } from '../../transitional';
 
 const teamsRoute = require('./teams');
 const reposRoute = require('./repos');
@@ -83,9 +85,10 @@ router.use(orgPermissions, (req: ILocalOrgRequest, res, next) => {
 // Org membership required endpoints:
 
 router.get('/', function (req: ReposAppRequest, res, next) {
-  const operations = req.app.settings.providers.operations;
+  const providers = req.app.settings.providers as IProviders;
+  const operations = providers.operations;
+  const approvalProvider = providers.approvalProvider;
   const organization = req.organization;
-  const dc = req.app.settings.dataclient;
   const username = req.individualContext.getGitHubIdentity().username;
   const id = req.individualContext.getGitHubIdentity().id;
   async.parallel({
@@ -108,7 +111,7 @@ router.get('/', function (req: ReposAppRequest, res, next) {
         legacyUserContext.isAdministrator(callback);
     }*/
   },
-    function (error, results) {
+    function (error, results: any) {
       if (error) {
         return next(error);
       }
@@ -134,11 +137,11 @@ router.get('/', function (req: ReposAppRequest, res, next) {
           teamsMaintainedHash[teamsMaintained[i].id] = teamsMaintained[i];
         }
         results.teamsMaintainedHash = teamsMaintainedHash;
-        dc.getPendingApprovals(teamsMaintained, function (error, pendingApprovals) {
-          if (!error && pendingApprovals) {
-            results.pendingApprovals = pendingApprovals;
-          }
-          render(results);
+        approvalProvider.queryPendingApprovalsForTeams(teamsMaintained).then(pendingApprovals => {
+          results.pendingApprovals = pendingApprovals;
+          return render(results);
+        }).catch(errorIgnored => {
+          return render(results);
         });
       } else {
         render(results);

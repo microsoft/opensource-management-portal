@@ -5,48 +5,47 @@
 
 'use strict';
 
-import { IEntityMetadataProvider, IEntityMetadataProviderCreateOptions } from './entityMetadataProvider';
-import { IProviders } from '../../transitional';
+import { IEntityMetadataProvider } from './entityMetadataProvider';
+import { ITableEntityMetadataProviderOptions, TableEntityMetadataProvider } from './table';
+import { IPostgresEntityMetadataProviderOptions, PostgresEntityMetadataProvider } from './postgres';
+import { MemoryEntityMetadataProvider } from './memory';
 
 const providerTypes = [
   'memory',
-  // 'table',
-  // 'postgres',
+  'table',
+  'postgres',
 ];
 
-const defaultProviderName = 'memory';
+const defaultProviderName = 'table';
 
-export async function createAndInitializeEntityMetadataProviderInstance(app, config, providers: IProviders, overrideProviderType?: string): Promise<IEntityMetadataProvider> {
-  const providerOptions : IEntityMetadataProviderCreateOptions = {
-    providers,
-    config,
-  };
+export interface IEntityMetadataProvidersOptions {
+  tableOptions?: ITableEntityMetadataProviderOptions;
+  postgresOptions?: IPostgresEntityMetadataProviderOptions;
+  providerTypeName?: string;
+}
+
+export async function createAndInitializeEntityMetadataProviderInstance(app, config, options: IEntityMetadataProvidersOptions, overrideProviderType?: string): Promise<IEntityMetadataProvider> {
   if (overrideProviderType) {
-    providerOptions.overrideProviderType = overrideProviderType;
+    options.providerTypeName = overrideProviderType;
   }
-  const provider = createEntityMetadataProviderInstance(providerOptions);
+  const provider = createEntityMetadataProviderInstance(options);
   await provider.initialize();
   return provider;
 }
 
-export function createEntityMetadataProviderInstance(providerCreateOptions: IEntityMetadataProviderCreateOptions): IEntityMetadataProvider {
-  const config = providerCreateOptions.config;
-  const providers = providerCreateOptions.providers;
-  const provider = providerCreateOptions.overrideProviderType || config.github.approvals.provider.name || defaultProviderName;
-  let found = false;
-  let providerInstance: IEntityMetadataProvider = null;
-  providerTypes.forEach(supportedProvider => {
-    if (supportedProvider === provider) {
-      found = true;
-      try {
-        providerInstance = require(`./${supportedProvider}`)(providers, config);
-      } catch (createError) {
-        throw createError;
-      }
-    }
-  });
-  if (found === false) {
-    throw new Error(`The approval provider "${provider}" is not implemented or configured at this time.`);
+export function createEntityMetadataProviderInstance(options: IEntityMetadataProvidersOptions): IEntityMetadataProvider {
+  const providerName = options.providerTypeName || defaultProviderName; // config.github.approvals.provider.name
+  switch(providerName) {
+    case 'memory':
+      return new MemoryEntityMetadataProvider();
+
+    case 'postgres':
+      return new PostgresEntityMetadataProvider(options.postgresOptions);
+
+    case 'table':
+      return new TableEntityMetadataProvider(options.tableOptions);
+
+    default:
+      throw new Error(`${providerName} EntityMetadataProvider not implemented`);
   }
-  return providerInstance;
 };

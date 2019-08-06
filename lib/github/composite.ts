@@ -166,6 +166,11 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
     return shouldUseCache;
   }
 
+  optionalStripResponse(apiContext: ApiContext, response: any): any {
+    // Composite does not strip any results further before caching
+    return response;
+  }
+
   withResponseUpdateMetadata(apiContext: ApiContext, response: any) {
     return response;
   }

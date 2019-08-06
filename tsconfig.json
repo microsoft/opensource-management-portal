@@ -7,7 +7,7 @@
       "allowJs": true,
       "moduleResolution": "node",
       "resolveJsonModule": true,
-      "esModuleInterop": false,
+      "esModuleInterop": true,
       "target": "es2018",
       "lib": [
         "es2018"
@@ -37,6 +37,7 @@
       "./data.ts",
       "./localEnvironment.ts",
       "./transitional.ts",
-      "./utils.ts"
+      "./utils.ts",
+      "./entities/**/*"
     ]
 }

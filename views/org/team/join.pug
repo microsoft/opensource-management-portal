@@ -22,25 +22,37 @@ block content
         small= team.name
       if team.description
         p.lead= team.description
-      p This form will open a request to join the <em>#{team.name}</em> team. Keep in mind that with the <a href="https://guides.github.com/introduction/flow/" target="_new">GitHub fork and pull request workflow</a>, you may be able to successfully contribute to an effort with just read rights.
-      if teamMaintainers
-        h4 Team Maintainer#{teamMaintainers.length > 1 ? 's' : ''}
-        p Permission decisions are delegated to the following maintainer#{teamMaintainers.length > 1 ? 's' : ''} of the team:
-        p
-          for teamMember in teamMaintainers
-            span.person-tile
-              if teamMember.avatar()
-                img(alt=teamMember.login, src=teamMember.avatar(), style='margin-right:0px;width:34px;height:34px', width=20, height=20)
-              a.btn.btn-sm.btn-muted(href='https://github.com/' + teamMember.login, title=teamMember.id, target='_new')= teamMember.login
-              if teamMember.contactEmail
-                - var teamMemberMailValue = typeof(teamMember.contactEmail) === 'function' ? teamMember.contactEmail() : teamMember.contactEmail;
-                a.btn.btn-sm.btn-muted-more(href='mailto:' + teamMemberMailValue)= teamMemberMailValue
-      form(method='post')
-        h4 Context & Business Justification
-        p Please provide context for the approvers, including your business justification and any context they may need. Did someone suggest that you join the team?
-        p
-          textarea.form-control(rows=3, name='justification', placeholder='Required: Business Justification')
-        p
-          input.btn.btn-primary(type='submit', value='Submit Team Access Request')
-          | &nbsp;
-          a.btn.btn-default(href=team.organization.baseUrl + 'teams') Cancel
+      if existingTeamJoinRequest
+        p You have an existing request that is open to join this team.
+        if existingTeamJoinRequest.justification
+          h3 Business Justification
+          blockquote
+            =existingTeamJoinRequest.justification
+        form(method='post', action='/approvals/' + existingTeamJoinRequest.approvalId + '/cancel')
+          if team && team.baseUrl
+            input(type='hidden', name='returnUrl', value=team.baseUrl)
+          p
+            input.btn.btn-sm.btn-default(type='submit', value='Cancel my request')
+      else
+        p This form will open a request to join the <em>#{team.name}</em> team. Keep in mind that with the <a href="https://guides.github.com/introduction/flow/" target="_new">GitHub fork and pull request workflow</a>, you may be able to successfully contribute to an effort with just read rights.
+        if teamMaintainers
+          h4 Team Maintainer#{teamMaintainers.length > 1 ? 's' : ''}
+          p Permission decisions are delegated to the following maintainer#{teamMaintainers.length > 1 ? 's' : ''} of the team:
+          p
+            for teamMember in teamMaintainers
+              span.person-tile
+                if teamMember.avatar()
+                  img(alt=teamMember.login, src=teamMember.avatar(), style='margin-right:0px;width:34px;height:34px', width=20, height=20)
+                a.btn.btn-sm.btn-muted(href='https://github.com/' + teamMember.login, title=teamMember.id, target='_new')= teamMember.login
+                if teamMember.contactEmail
+                  - var teamMemberMailValue = typeof(teamMember.contactEmail) === 'function' ? teamMember.contactEmail() : teamMember.contactEmail;
+                  a.btn.btn-sm.btn-muted-more(href='mailto:' + teamMemberMailValue)= teamMemberMailValue
+        form(method='post')
+          h4 Context & Business Justification
+          p Please provide context for the approvers, including your business justification and any context they may need. Did someone suggest that you join the team?
+          p
+            textarea.form-control(rows=3, name='justification', placeholder='Required: Business Justification')
+          p
+            input.btn.btn-primary(type='submit', value='Submit Team Access Request')
+            | &nbsp;
+            a.btn.btn-default(href=team.organization.baseUrl + 'teams') Cancel

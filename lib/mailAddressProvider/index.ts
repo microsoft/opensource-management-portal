@@ -5,12 +5,18 @@
 
 'use strict';
 
-module.exports = function createMailAddressProviderInstance(options, callback) {
+import { ICallback } from '../../transitional';
+
+export interface IMailAddressProvider {
+  getAddressFromUpn(upn: string, callback: ICallback<string>);
+}
+
+export function createMailAddressProviderInstance(options: any, callback: ICallback<IMailAddressProvider>) {
   const config = options.config;
   const mailAddressesConfig = config.mailAddresses || {};
   const provider = mailAddressesConfig.provider || 'passthroughMailAddressProvider';
   if (!provider) {
-    return callback();
+    return callback(null);
   }
   let found = false;
   const supportedProviders = [
@@ -21,7 +27,7 @@ module.exports = function createMailAddressProviderInstance(options, callback) {
   supportedProviders.forEach((supportedProvider) => {
     if (supportedProvider === provider) {
       found = true;
-      let providerInstance = null;
+      let providerInstance: IMailAddressProvider = null;
       try {
         providerInstance = require(`./${supportedProvider}`)(options);
       }

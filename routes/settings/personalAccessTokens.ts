@@ -5,64 +5,68 @@
 
 'use strict';
 
-import async = require('async');
-const crypto = require('crypto');
+import async from 'async';
 import express = require('express');
-import { IRequestForSettingsPersonalAccessTokens, IReposError, IResponseForSettingsPersonalAccessTokens, ReposAppRequest } from '../../transitional';
+
+import { IResponseForSettingsPersonalAccessTokens, ReposAppRequest, IProviders } from '../../transitional';
+import { PersonalAccessToken } from '../../entities/token/token';
+
+interface IPersonalAccessTokenForDisplay {
+  active: boolean;
+  expired: boolean;
+  expires: string;
+  identifier: string;
+  description: string;
+  apis: string[];
+  tokenEntity: PersonalAccessToken;
+}
+
+export interface IRequestForSettingsPersonalAccessTokens extends ReposAppRequest {
+  personalAccessTokens?: IPersonalAccessTokenForDisplay[];
+}
 
 const router = express.Router();
 
-const settingType = 'apiKey';
 const serviceName = 'repos-pat';
-const tokenExpirationMs = 1000 * 60 * 60 * 24 * 180; // 180 days
+const tokenExpirationMs = 1000 * 60 * 60 * 24 * 365; // 365 days
 
-function translateTableToEntities(personalAccessTokens) {
-  const now = new Date();
-  if (personalAccessTokens && Array.isArray(personalAccessTokens)) {
-    personalAccessTokens.forEach(row => {
-      const original = Object.assign({}, row);
-      row._entity = original;
-      let expired = false;
-      if (row.expires) {
-        const expiration = new Date(row.expires);
-        row.expires = expiration.toDateString();
-        if (expiration < now) {
-          expired = true;
-        }
-      }
-      row.expired = expired;
-      if (row.apis) {
-        row.apis = row.apis.split(',');
-      }
-      // So that we do not share the hashed key with the user, we
-      // build a hash of that and the timestamp to offer a single-version
-      // tag to use for delete operations, etc.
-      const concat = row.Timestamp.getTime() + row.RowKey;
-      row.identifier = crypto.createHash('sha1').update(concat).digest('hex').substring(0, 10);
-    });
-  }
-  return personalAccessTokens;
-}
-
-function getPersonalAccessTokens(req: ReposAppRequest, res, next) {
-  const dc = req.app.settings.dataclient;
-  const aadId = req.individualContext.corporateIdentity.id;
-  dc.getSettingByProperty(settingType, 'owner', aadId, (error, personalAccessTokens) => {
-    if (error) {
-      return next(error);
-    }
-    req['personalAccessTokens'] = translateTableToEntities(personalAccessTokens);
-    return next();
+function translateTableToEntities(personalAccessTokens: PersonalAccessToken[]): IPersonalAccessTokenForDisplay[] {
+  return personalAccessTokens.map(pat => {
+    // So that we do not share the hashed key with the user, we
+    // build a hash of that and the timestamp to offer a single-version
+    // tag to use for delete operations, etc.
+    const displayToken: IPersonalAccessTokenForDisplay = {
+      active: pat.active,
+      expired: pat.isExpired(),
+      expires: pat.expires ? pat.expires.toDateString() : null,
+      description: pat.description,
+      apis: pat.scopes ? pat.scopes.split(',') : [],
+      identifier: pat.getIdentifier(),
+      tokenEntity: pat,
+    };
+    return displayToken;
   });
 }
 
-function view(req, res) {
+function getPersonalAccessTokens(req: ReposAppRequest, res, next) {
+  const providers = req.app.settings.providers as IProviders;
+  const tokenProvider = providers.tokenProvider;
+  const corporateId = req.individualContext.corporateIdentity.id;
+  tokenProvider.queryTokensForCorporateId(corporateId).then(tokens => {
+    req['personalAccessTokens'] = translateTableToEntities(tokens);
+    return next();
+  }).catch(error => {
+    return next(error);
+  });
+}
+
+function view(req: IRequestForSettingsPersonalAccessTokens, res) {
   const personalAccessTokens = req.personalAccessTokens;
   req.individualContext.webContext.render({
     view: 'settings/personalAccessTokens',
     title: 'Personal access tokens',
     state: {
-      personalAccessTokens: personalAccessTokens,
+      personalAccessTokens,
       newKey: res.newKey,
       isPreviewUser: true, //req.isPreviewUser,
     },
@@ -79,7 +83,7 @@ router.get('/extension', (req: IRequestForSettingsPersonalAccessTokens, res: IRe
     view: 'settings/extension',
     title: 'Install the browser extension (preview)',
     state: {
-      personalAccessTokens: personalAccessTokens,
+      personalAccessTokens,
       newKey: res.newKey,
       newTokenDescription: 'Extension ' + (new Date()).toDateString(),
     },
@@ -87,63 +91,50 @@ router.get('/extension', (req: IRequestForSettingsPersonalAccessTokens, res: IRe
 });
 
 function createToken(req: ReposAppRequest, res, next) {
+  const providers = req.app.settings.providers as IProviders;
+  const tokenProvider = providers.tokenProvider;
   const insights = req.insights;
-
   const description = req.body.description;
   if (!description) {
     return next(new Error('A description is required to create a new Personal Access Token'));
   }
-  const newKey = crypto.randomBytes(32).toString('base64');
-  const hash = crypto.createHash('sha1').update(newKey).digest('hex');
-
+  const corporateId = req.individualContext.corporateIdentity.id;
+  const token = PersonalAccessToken.CreateNewToken();
+  token.corporateId = corporateId;
+  token.description = description;
   const now = new Date();
-  const expiration = new Date(now.getTime() + tokenExpirationMs);
-
-  const dc = req.app.settings.dataclient;
-  const partitionKey = settingType;
-  const aadId = req.individualContext.corporateIdentity.id;
-  const rowKey = `${partitionKey}${hash}`;
-
+  token.expires = new Date(now.getTime() + tokenExpirationMs);
+  token.source = serviceName;
+  token.scopes = 'extension,links';
   insights.trackEvent({
     name: 'ReposCreateTokenStart',
     properties: {
-      id: aadId,
+      id: corporateId,
       description: description,
     },
   });
-
-  const row = {
-    description: description,
-    owner: aadId,
-    service: serviceName,
-    apis: 'extension,links',
-    expires: expiration.toISOString(),
-  };
-
-  dc.setSetting(partitionKey, rowKey, row, insertError => {
-    if (insertError) {
-      insights.trackEvent({
-        name: 'ReposCreateTokenFailure',
-        properties: {
-          id: aadId,
-          description: description,
-        },
-      });
-      return next(insertError);
-    }
-
-    getPersonalAccessTokens(req, res, () => {
-      insights.trackEvent({
-        name: 'ReposCreateTokenFinish',
-        properties: {
-          id: aadId,
-          description: description,
-        },
-      });
-
-      res.newKey = newKey;
-      return view(req, res);
+  tokenProvider.saveNewToken(token).then(ok => {
+    insights.trackEvent({
+      name: 'ReposCreateTokenFinish',
+      properties: {
+        id: corporateId,
+        description: description,
+      },
     });
+    const newKey = token.getPrivateKey();
+    getPersonalAccessTokens(req, res, () => {
+        res.newKey = newKey;
+        return view(req, res);
+      });
+  }).catch(insertError => {
+    insights.trackEvent({
+      name: 'ReposCreateTokenFailure',
+      properties: {
+        id: corporateId,
+        description: description,
+      },
+    });
+    return next(insertError);
   });
 }
 
@@ -151,18 +142,20 @@ router.post('/create', createToken);
 router.post('/extension', createToken);
 
 router.post('/delete', (req: IRequestForSettingsPersonalAccessTokens, res, next) => {
-  const dc = req.app.settings.dataclient;
+  const providers = req.app.settings.providers as IProviders;
+  const tokenProvider = providers.tokenProvider;
   const revokeAll = req.body.revokeAll === '1';
   const revokeIdentifier = req.body.revoke;
   const personalAccessTokens = req.personalAccessTokens;
-  async.eachLimit(personalAccessTokens, 1, (pat, callback) => {
+  async.eachLimit(personalAccessTokens, 1, (pat: IPersonalAccessTokenForDisplay, callback) => {
+    const token = pat.tokenEntity;
     if (revokeAll || pat.identifier === revokeIdentifier) {
-      const replacement = Object.assign({}, pat._entity);
-      replacement.active = false;
-      delete replacement.PartitionKey;
-      delete replacement.RowKey;
-      delete replacement.Timestamp;
-      return dc.replaceSetting(pat.PartitionKey, pat.RowKey, replacement, callback);
+      token.active = false;
+      return tokenProvider.updateToken(token).then(ok => {
+        return callback();
+      }).catch(error => {
+        return callback(error);
+      });
     }
     return callback();
   }, error => {

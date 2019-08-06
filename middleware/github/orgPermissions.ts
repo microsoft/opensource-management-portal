@@ -1,12 +1,12 @@
-import { ReposAppRequest } from "../../transitional";
-import { wrapError } from "../../utils";
-
 //
 // Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
+
+import { ReposAppRequest } from "../../transitional";
+import { wrapError } from "../../utils";
 
 const orgPermissionsCacheKeyName = 'orgPermissions';
 const orgOwnersCacheKeyName = 'orgOwners';
@@ -66,7 +66,7 @@ module.exports = function addOrgPermissionsToRequest(req: ReposAppRequest, res, 
           backgroundRefresh: false,
         };
         organization.getMembership(login, membershipCacheOptions, (getMembershipError, membershipStatus) => {
-          if (getMembershipError && getMembershipError.innerError && getMembershipError.innerError.code === 404) {
+          if (getMembershipError && getMembershipError.innerError && getMembershipError.innerError.status === 404) {
             getMembershipError = null;
             membershipStatus = false;
           }

@@ -8,20 +8,22 @@ const router = express.Router();
 import async = require('async');
 import { ReposAppRequest } from '../../transitional';
 import { wrapError } from '../../utils';
+import { Organization } from '../../business/organization';
+import { Operations } from '../../business/operations';
 
 interface ILocalLeaveRequest extends ReposAppRequest {
   orgLeave?: any;
 }
 
 router.use(function (req: ILocalLeaveRequest, res, next) {
-  const organization = req.organization;
-  const operations = req.app.settings.operations;
+  const organization = req.organization as Organization;
+  const operations = req.app.settings.operations as Operations;
   req.orgLeave = {
     state: null,
   };
   const username = req.individualContext.getGitHubIdentity().username;
   const memberOfOrgs = [];
-  async.each(operations.organizations, function (o, callback) {
+  async.each(operations.organizations.values(), function (o: Organization, callback) {
     o.getOperationalMembership(username, (error, result) => {
       let state = null;
       if (result && result.state) {

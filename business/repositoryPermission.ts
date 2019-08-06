@@ -22,6 +22,8 @@ export class RepositoryPermission {
   private _id: string;
   private _user: any;
 
+  private _permission: string;
+
   constructor(organization: Organization, entity, getToken, operations: Operations) {
     this._organization = organization;
 
@@ -35,4 +37,8 @@ export class RepositoryPermission {
     this._getToken = getToken;
     this._operations = operations;
   }
+
+  get id(): string { return this._id; }
+  get permission(): string { return this._permission; }
+  get user(): any { return this._user; }
 }

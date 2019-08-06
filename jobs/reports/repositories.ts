@@ -10,9 +10,11 @@
 const _ = require('lodash');
 const automaticTeams = require('../../webhooks/tasks/automaticTeams');
 import moment = require('moment');
-import * as Q from 'q';
+import Q from 'q';
 import { Repository } from '../../business/repository';
 import { requireJson } from '../../utils';
+import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
+import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
 const qlimit = require('qlimit');
 const querystring = require('querystring');
 
@@ -558,17 +560,13 @@ function identifyContributorLicenseAgreeementHooks(context /*, repositoryContext
   // });
 }
 
-function getRepositoryApprovals(dataClient, repository, callback) {
+function getRepositoryApprovals(provider: IRepositoryMetadataProvider, repository, callback) {
   // Only repositories created on or after 4/24/2017 have the repoId stored in
   // the approval request.
-  dataClient.getRepositoryApproval('repoId', repository.id, (byIdError, approvals) => {
-    if (byIdError) {
-      return callback(byIdError);
-    }
-    if (approvals && approvals.length > 0) {
-      return callback(null, approvals);
-    }
-    dataClient.getRepositoryApproval('repoName', repository.name, callback);
+  provider.getRepositoryMetadata(repository.id).then(approval => {
+    return callback(null, approval);
+  }).catch(noMetadata => {
+    return callback();
   });
 }
 
@@ -578,64 +576,61 @@ function getNewRepoCreationInformation(context, repositoryContext, basicReposito
   let createdAt = repository.created_at ? moment(repository.created_at) : null;
   let isBrandNew = createdAt.isAfter(thisWeek);
 
-  const dataClient = context.dataClient;
-  if (!isBrandNew || !dataClient) {
+  const repositoryMetadataProvider = context.repositoryMetadataProvider;
+  if (!isBrandNew || !repositoryMetadataProvider) {
     return Q(context);
   }
   const deferred = Q.defer();
   const releaseTypeMapping = context.config && context.config.github && context.config.github.approvalTypes && context.config.github.approvalTypes.fields ? context.config.github.approvalTypes.fields.approvalIdsToReleaseType : null;
-  getRepositoryApprovals(dataClient, repositoryContext.repository, (error, approvals) => {
-    if (error || !approvals || approvals.length === 0) {
+  getRepositoryApprovals(repositoryMetadataProvider, repositoryContext.repository, (error, approval: RepositoryMetadataEntity) => {
+    if (error || !approval) {
       return deferred.resolve(context);
     }
-    for (let i = 0; i < approvals.length; i++) {
-      const approval = approvals[i];
-      if (approval && (
-        (approval.repoId == repositoryContext.repository.id /* not strict equal, data client IDs are strings vs GitHub responses use numbers */) ||
-        (approval.org && approval.org.toLowerCase() === repositoryContext.repository.organization.name.toLowerCase()))) {
-        basicRepository.approvalLicense = approval.license;
-        basicRepository.approvalJustification = approval.justification;
-        if (approval.approvalType && releaseTypeMapping) {
-          const approvalTypes = Object.getOwnPropertyNames(releaseTypeMapping);
-          for (let j = 0; j < approvalTypes.length; j++) {
-            const id = approvalTypes[j];
-            const title = releaseTypeMapping[id];
-            if (approval.approvalType === id) {
-              basicRepository.approvalTypeId = approval.approvalType;
-              // Hard-coded specific to show justification text or approval links
-              if ((id === 'NewReleaseReview' || id === 'ExistingReleaseReview') && approval.approvalUrl) {
-                basicRepository.approvalType = {
-                  text: title,
-                  link: approval.approvalUrl,
-                };
-              } else if (id !== 'Exempt') {
-                basicRepository.approvalType = title;
-              } else {
-                basicRepository.approvalType = `${title}: ${approval.justification}`;
-              }
+    if (approval && (
+      (approval.repositoryId == repositoryContext.repository.id /* not strict equal, data client IDs are strings vs GitHub responses use numbers */) ||
+      (approval.organizationName && approval.organizationName.toLowerCase() === repositoryContext.repository.organization.name.toLowerCase()))) {
+      basicRepository.approvalLicense = approval.initialLicense;
+      basicRepository.approvalJustification = approval.releaseReviewJustification;
+      if (approval.releaseReviewType && releaseTypeMapping) {
+        const approvalTypes = Object.getOwnPropertyNames(releaseTypeMapping);
+        for (let j = 0; j < approvalTypes.length; j++) {
+          const id = approvalTypes[j];
+          const title = releaseTypeMapping[id];
+          if (approval.projectType === id) {
+            basicRepository.approvalTypeId = approval.projectType; // ?
+            // Hard-coded specific to show justification text or approval links
+            if ((id === 'NewReleaseReview' || id === 'ExistingReleaseReview') && approval.releaseReviewUrl) {
+              basicRepository.approvalType = {
+                text: title,
+                link: approval.releaseReviewUrl,
+              };
+            } else if (id !== 'Exempt') {
+              basicRepository.approvalType = title;
+            } else {
+              basicRepository.approvalType = `${title}: ${approval.releaseReviewJustification}`;
             }
           }
         }
-        if (!basicRepository.approvalType) {
-          basicRepository.approvalType = approval.approvalType; // Fallback if it's not configured in the system
-        }
-        const createdBy = approval.ghu;
-        if (!createdBy) {
-          return deferred.resolve(context);
-        } else {
-          basicRepository.createdBy = createdBy;
-          return deferred.resolve(getIdFromUsername(context, repositoryContext.repository.organization, createdBy).then(id => {
-            return getIndividualUserLink(context, id).then(link => {
-              basicRepository.createdBy = link.aadname || basicRepository.createdBy;
-              basicRepository.createdByUpn = link.aadupn;
-              basicRepository.createdByLink = basicRepository.createdByUpn ? {
-                link: `mailto:${basicRepository.createdByUpn}`,
-                text: basicRepository.createdBy,
-              } : basicRepository.createdBy;
-              return link.aadupn ? augmentWithAdditionalRecipients(context, repositoryContext, link) : Q(context);
-            });
-          }));
-        }
+      }
+      if (!basicRepository.approvalType) {
+        basicRepository.approvalType = approval.projectType; // Fallback if it's not configured in the system
+      }
+      const createdBy = approval.createdByThirdPartyUsername;
+      if (!createdBy) {
+        return deferred.resolve(context);
+      } else {
+        basicRepository.createdBy = createdBy;
+        return deferred.resolve(getIdFromUsername(context, repositoryContext.repository.organization, createdBy).then(id => {
+          return getIndividualUserLink(context, id).then(link => {
+            basicRepository.createdBy = link['aadname'] || basicRepository.createdBy;
+            basicRepository.createdByUpn = link['aadupn'];
+            basicRepository.createdByLink = basicRepository.createdByUpn ? {
+              link: `mailto:${basicRepository.createdByUpn}`,
+              text: basicRepository.createdBy,
+            } : basicRepository.createdBy;
+            return link['aadupn'] ? augmentWithAdditionalRecipients(context, repositoryContext, link) : Q(context);
+          });
+        }));
       }
     }
     return deferred.resolve(context);

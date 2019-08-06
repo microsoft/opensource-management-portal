@@ -154,6 +154,8 @@ block content
                   | You are not a member of this team
                 else if isBroadAccessTeam
                   | Become a team member now
+                else if existingTeamJoinRequest
+                  | Your request to join this team has not yet been approved
                 else
                   | Request to become a team member
             .panel-body
@@ -163,6 +165,17 @@ block content
                   to organization members.
               else if isSystemTeam
                 p As a system team, this team's membership is closed.
+              else if existingTeamJoinRequest
+                p You have an existing request that is open to join this team.
+                if existingTeamJoinRequest.justification
+                  h3 Business Justification
+                  blockquote
+                    =existingTeamJoinRequest.justification
+                form(method='post', action='/approvals/' + existingTeamJoinRequest.approvalId + '/cancel')
+                  if team && team.baseUrl
+                    input(type='hidden', name='returnUrl', value=team.baseUrl)
+                  p
+                    input.btn.btn-sm.btn-default(type='submit', value='Cancel my request')
               else
                 p.
                   You're not currently a member of this team. You can submit a request
@@ -170,7 +183,7 @@ block content
               p
                 if isSystemTeam
                   a.btn.btn-sm.btn-default(href='#', disabled=true) Membership is closed
-                else
+                else if !existingTeamJoinRequest
                   a.btn.btn-sm.btn-primary(href=teamUrl + 'join') Join this team
 
         //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -307,12 +320,12 @@ block content
         //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         if admin
 
-          if pendingApprovals && pendingApprovals.length && pendingApprovals.length > 0
+          if otherApprovals && otherApprovals.length
             h2 Permission requests
             p: a.btn.btn-sm.alert-danger(href=teamUrl + 'approvals/')
-              strong= pendingApprovals.length
+              strong= otherApprovals.length
               | &nbsp;
-              | Pending Approval#{pendingApprovals.length > 1 ? 's' : ''}
+              | Pending Approval#{otherApprovals.length > 1 ? 's' : ''}
 
           h3 Team management
 

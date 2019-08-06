@@ -5,7 +5,7 @@
 
 'use strict';
 
-import * as Q from 'q';
+import Q from 'q';
 import moment = require('moment');
 const querystring = require('querystring');
 

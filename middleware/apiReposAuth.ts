@@ -12,11 +12,21 @@
 // while validating the key.
 
 const basicAuth = require('basic-auth');
-const crypto = require('crypto');
+import crypto from 'crypto';
 
 import { jsonError } from './jsonError';
+import { IProviders, ReposAppRequest } from '../transitional';
+import { PersonalAccessToken } from '../entities/token/token';
 
-module.exports = function reposAuth (req, res, next) {
+export interface IApiRequest extends ReposAppRequest {
+  apiKeyToken: PersonalAccessToken;
+  apiKeyProviderName: string;
+  apiVersion?: string;
+
+  userContextOverwriteRequest?: any; // refactor?
+}
+
+export function ReposApiAuthentiction(req: IApiRequest, res, next) {
   const user = basicAuth(req);
   const key = user? (user.pass || user.name) : null;
   if (!key) {
@@ -27,56 +37,51 @@ module.exports = function reposAuth (req, res, next) {
   sha1.update(key);
   const hashValue = sha1.digest('hex');
 
-  // { owner, description, orgs (comma-sep list) }
-  const dc = req.app.settings.dataclient;
-  const settingType = 'apiKey';
-  const partitionKey = settingType;
-  const rowKey = `${settingType}${hashValue}`;
-  dc.getSetting(partitionKey, rowKey, (error, setting) => {
-    const apiEventProperties = {
-      keyHash: hashValue,
-      apiVersion: req.apiVersion,
-      url: req.originalUrl || req.url,
-      failed: undefined,
-      message: undefined,
-      statusCode: undefined,
-    };
-    const eventName = 'ApiRequest' + (error ? 'Denied' : 'Approved');
-    if (error) {
+  const providers = req.app.settings.providers as IProviders;
+  const tokenProvider = providers.tokenProvider;
+
+  const apiEventProperties = {
+    keyHash: hashValue,
+    apiVersion: req.apiVersion,
+    url: req.originalUrl || req.url,
+    failed: undefined,
+    message: undefined,
+    statusCode: undefined,
+  };
+  tokenProvider.getToken(hashValue).then((token: PersonalAccessToken) => {
+    return after(null, token);
+  }).catch(error => {
+    return after(error, null);
+  });
+
+  function after(tokenError: any, token: PersonalAccessToken) {
+    const eventName = 'ApiRequest' + (tokenError ? 'Denied' : 'Approved');
+    if (tokenError) {
       apiEventProperties.failed = true;
-      apiEventProperties.message = error.message;
-      apiEventProperties.statusCode = error.statusCode;
+      apiEventProperties.message = tokenError.message;
+      apiEventProperties.statusCode = tokenError.statusCode;
     }
     req.insights.trackEvent({ name: eventName, properties: apiEventProperties });
-    if (error) {
+    if (tokenError) {
       req.insights.trackMetric({ name: 'ApiInvalidKey', value: 1 });
-      // req.insights.trackException({ exception: error });
-      error.skipLog = true;
-      return next(jsonError(error.statusCode === 404 ? 'Key not authorized' : error.message, 401));
+      tokenError.skipLog = true;
+      return next(jsonError(tokenError.statusCode === 404 ? 'Key not authorized' : tokenError.message, 401));
     }
-
-    if (setting.active === false) {
-      error = new Error('A revoked key attempted to use an API');
-      error.authErrorMessage = error.message;
+    if (token.isRevoked()) {
+      tokenError = new Error('A revoked key attempted to use an API');
+      tokenError.authErrorMessage = tokenError.message;
       req.insights.trackMetric({ name: 'ApiRevokedKeyAttempt', value: 1 });
       return next(jsonError('Key revoked', 403));
     }
-
-    if (setting.expires) {
-      const now = new Date();
-      const expires = new Date(setting.expires);
-      if (expires < now) {
-        error = new Error('A revoked key attempted to use an API');
-        error.authErrorMessage = error.message;
-        req.insights.trackMetric({ name: 'ApiExpiredKeyAttempt', value: 1 });
-        return next(jsonError('Key expired', 403));
-      }
+    if (token.isExpired()) {
+      tokenError = new Error('A revoked key attempted to use an API');
+      tokenError.authErrorMessage = tokenError.message;
+      req.insights.trackMetric({ name: 'ApiExpiredKeyAttempt', value: 1 });
+      return next(jsonError('Key expired', 403));
     }
-
     req.insights.trackMetric({ name: 'ApiRequest', value: 1 });
-    req.apiKeyRow = setting;
-    req.apiKeyRowProvider = 'repos';
-    next();
-  });
-};
-
+    req.apiKeyToken = token;
+    req.apiKeyProviderName = 'repos';
+    return next();
+  }
+}

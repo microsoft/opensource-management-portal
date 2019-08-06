@@ -8,7 +8,7 @@
 const _ = require('lodash');
 
 import async = require('async');
-import * as Q from 'q';
+import Q from 'q';
 import { ICorporateLink } from './corporateLink';
 
 const earlyProfileFetchTypes = new Set(['former', 'active', 'serviceAccount', 'unknownAccount']);

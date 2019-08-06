@@ -11,17 +11,18 @@ import async = require('async');
 
 import { ReposAppRequest } from '../transitional';
 import { wrapError } from '../utils';
-import { Operations } from '../business/operations';
+import { Operations, UnlinkPurpose } from '../business/operations';
+import { Organization } from '../business/organization';
 
 router.use(function (req: ReposAppRequest, res, next) {
   const memberOfOrganizations = [];
-  const operations = req.app.settings.providers.operations;
+  const operations = req.app.settings.providers.operations as Operations;
   const ghi = req.individualContext.getGitHubIdentity();
   if (!ghi || !ghi.username) {
     return next(new Error('GitHub identity required'));
   }
   const username = req.individualContext.getGitHubIdentity().username;
-  async.each(operations.organizations, function (organization, callback) {
+  async.each(operations.organizations.values(), function (organization: Organization, callback) {
     organization.getMembership(username, function (error, result) {
       let state = null;
       if (result && result.state) {
@@ -73,8 +74,11 @@ router.post('/', function (req: ReposAppRequest, res, next) {
   const operations = req.app.settings.providers.operations as Operations;
   const account = operations.getAccount(id);
   const insights = req.insights;
-  const terminationOptions = { reason: 'User used the unlink function on the web site' };
-  account.terminate(terminationOptions, (error, history) => {
+  const terminationOptions = {
+    reason: 'User used the unlink function on the web site',
+    purpose: UnlinkPurpose.Self,
+  };
+  function complete(error: Error, history: string[]) {
     const hadErrors = error ? 'had errors' : 'no';
     let eventData = {
       id: id.toString(),
@@ -85,16 +89,17 @@ router.post('/', function (req: ReposAppRequest, res, next) {
       eventData[historyKey] = history[i];
     }
     insights.trackEvent({ name: 'PortalUserUnlink', properties: eventData });
-    // If the cache is bad, the storage entity will already be gone
-    if (error && error.statusCode === 404) {
-      insights.trackEvent({ name: 'PortalUserUnlinkAlreadyUnlinked', properties: error });
-      error = null;
-    }
     if (error) {
-      insights.trackException({ exception: error } );
       return next(wrapError(error, 'You were successfully removed from all of your organizations. However, a minor failure happened during a data housecleaning operation. Double check that you are happy with your current membership status on GitHub.com before continuing.'));
+    } else {
+      return res.redirect('/signout?unlink');
     }
-    return res.redirect('/signout?unlink');
+  }
+  operations.terminateLinkAndMemberships(id, terminationOptions).then(history => {
+    return complete(null, history);
+  }).catch(error => {
+    insights.trackException({ exception: error } );
+    return complete(error, []);
   });
 });
 

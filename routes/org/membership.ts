@@ -17,6 +17,7 @@ router.get('/', function (req: ReposAppRequest, res, next) {
   const onboarding = req.query.onboarding;
   const joining = req.query.joining;
   const username = req.individualContext.getGitHubIdentity().username;
+  const hasWriteToken = !! req.individualContext.webContext.tokens.gitHubWriteOrganizationToken;
   organization.checkPublicMembership(username, function (error, result) {
     let publicMembership = result === true;
     req.individualContext.webContext.pushBreadcrumb('Membership Visibility');
@@ -32,6 +33,7 @@ router.get('/', function (req: ReposAppRequest, res, next) {
         publicMembership: publicMembership,
         theirUsername: username,
         onboarding: onboarding,
+        hasWriteToken,
         joining: joining,
         teamPostfix: teamPostfix,
         showBreadcrumbs: onboarding === undefined,

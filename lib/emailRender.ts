@@ -7,7 +7,15 @@
 const path = require('path');
 const pug = require('pug');
 
-module.exports.render = function (basedir, viewName, options, callback) {
+export function RenderHtmlMail(basedir, viewName, options): Promise<string> {
+  return new Promise((resolve, reject) => {
+    return renderMailHtml(basedir, viewName, options, (error, html) => {
+      return error ? reject(error) : resolve(html);
+    });
+  });
+}
+
+function renderMailHtml(basedir, viewName, options, callback) {
   options = options || {};
   if (!viewName) {
     viewName = 'email';
@@ -26,3 +34,5 @@ module.exports.render = function (basedir, viewName, options, callback) {
   }
   return callback(null, html);
 };
+
+module.exports.render = renderMailHtml;

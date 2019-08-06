@@ -8,10 +8,11 @@
 'use strict';
 
 import async = require('async');
-import * as Q from 'q';
+import Q from 'q';
 import { Operations } from '../../business/operations';
 import { Organization } from '../../business/organization';
 import { requireJson } from '../../utils';
+import { OrganizationMember } from '../../business/organizationMember';
 const qlimit = require('qlimit');
 const querystring = require('querystring');
 
@@ -123,7 +124,7 @@ function getOrganizationData(context) {
   const limit = qlimit(1);
 
   return Q.all(names.map(limit(orgName => {
-    const organization = operations.organizations[orgName.toLowerCase()] as Organization;
+    const organization = operations.organizations.get(orgName.toLowerCase()) as Organization;
     if (!organization) {
       return Q.reject(new Error(`Cannot locate ${orgName} at runtime`));
     }
@@ -439,7 +440,7 @@ function createAskToLinkAction(entry) {
   }
 }
 
-function getUnlinkedOrganizationMembers(context, organization) {
+function getUnlinkedOrganizationMembers(context, organization: Organization) {
   const deferred = Q.defer();
   // const operations = context.operations;
   const unlinked = [];
@@ -447,7 +448,7 @@ function getUnlinkedOrganizationMembers(context, organization) {
     if (error) {
       return deferred.reject(error);
     }
-    async.eachLimit(members, 4, (member, next) => {
+    async.eachLimit(members, 4, (member: OrganizationMember, next) => {
       getIndividualUserLink(context, member.id).then(link => {
         if (!link) {
           unlinked.push(member);

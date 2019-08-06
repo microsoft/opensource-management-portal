@@ -26,18 +26,21 @@ export interface ILibraryContext {
   memoryCache?: any;
   breakingChangeGitHubPackageVersion?: any;
 
-  call?: any;
   hasNextPage?: any;
   hasPreviousPage?: any;
   hasLastPage?: any;
   hasFirstPage?: any;
 
   getNextPage?: any;
+  getNextPageExtended?: any;
   getPreviousPage?: any;
   getLastPage?: any;
   getFirstPage?: any;
 
+  call?: any;
+  request?: any;
   post?: any;
+
   collections?: any;
   links?: any;
   crossOrganization?: any;
@@ -110,6 +113,8 @@ function createLibraryContext(options): ILibraryContext {
   libraryContext.getLastPage = restApi.wrapCreatePage(libraryContext, github, 'last');
   libraryContext.getFirstPage = restApi.wrapCreatePage(libraryContext, github, 'first');
 
+  libraryContext.getNextPageExtended = restApi.wrapCreatePage(libraryContext, github, 'next', true);
+
   libraryContext.call = function callGithub(token, api, options, cacheOptions, callback) {
     if (!callback && typeof(cacheOptions) === 'function') {
       callback = cacheOptions;
@@ -122,7 +127,6 @@ function createLibraryContext(options): ILibraryContext {
       delete options.allowEmptyResponse;
       innerCallback = callback;
     }
-
 
     const apiContext = restApi.createFullContext(api, options, github, libraryContext);
     // const apiContext = restApi.create(api, options, github);
@@ -144,6 +148,12 @@ function createLibraryContext(options): ILibraryContext {
     // });
   };
 
+  libraryContext.request = function callOctokitRequest(token, restEndpoint, parameters: any, cacheOptions, callback) {
+    parameters = parameters || {};
+    parameters['octokitRequest'] = restEndpoint;
+    return libraryContext.call(token, 'request', parameters, cacheOptions, callback);
+  };
+
   // Post is a direct wrap around the GitHub library. It does not
   libraryContext.post = function callGitHubNoCache(token, api, options, callback) {
     const method = restApi.IntelligentGitHubEngine.findLibaryMethod(github, api);
@@ -153,9 +163,17 @@ function createLibraryContext(options): ILibraryContext {
     if (!options.headers.Authorization) {
       options.headers.Authorization = `token ${token}`;
     }
-    method.call(github, options, createCallbackFlattenDataOptionally((xxx, ppp) => {
-      return callback(xxx, ppp);
-    }));
+    try {
+      const legacyCallback = createCallbackFlattenDataOptionally(callback);
+      const promiseBack = method.call(github, options) as Promise<any>;
+      promiseBack.then(value => {
+        return legacyCallback(null, value);
+      }).catch(error => {
+        return legacyCallback(error, null);
+      });
+    } catch (missingOrMajorError) {
+      return callback(missingOrMajorError);
+    }
   };
 
   libraryContext.collections = collections(libraryContext, libraryContext.call);

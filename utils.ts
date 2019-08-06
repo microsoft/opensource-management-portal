@@ -7,6 +7,8 @@ import async = require('async');
 import fs = require('fs');
 import path = require('path');
 
+import { URL } from 'url';
+
 import { IReposError } from './transitional';
 
 export function requireJson(nameFromRoot: string): any {
@@ -32,6 +34,17 @@ export function requireJson(nameFromRoot: string): any {
 export function randomInteger(low, high) {
   return Math.floor(Math.random() * (high - low) + low);
 };
+
+export function safeLocalRedirectUrl(path: string) {
+  if (!path) {
+    return;
+  }
+  const url = new URL(path, 'http://localhost');
+  if (url.host !== 'localhost') {
+    return;
+  }
+  return url.search ? `${url.pathname}${url.search}` : url.pathname;
+}
 
 // ----------------------------------------------------------------------------
 // Session utility: Store the referral URL, if present, and redirect to a new
@@ -91,6 +104,7 @@ export function storeOriginalUrlAsVariable(req, res, variable, redirect, optiona
   };
   if (req.session && req.originalUrl) {
     req.session[variable] = req.originalUrl;
+    eventDetails['ou'] = req.originalUrl;
   }
   if (redirect) {
     if (req.insights) {
@@ -249,3 +263,9 @@ export function createSafeCallbackNoParams(cb) {
     exports.stackSafeCallback(cb);
   };
 };
+
+export function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    setTimeout(resolve, milliseconds);
+  });
+}

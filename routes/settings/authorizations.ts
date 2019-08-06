@@ -110,7 +110,7 @@ router.get('/', (req: IRequestWithAuthorizations, res) => {
 });
 
 router.get('/validate', (req: IRequestWithAuthorizations, res, next) => {
-  async.each(req.authorizations, (authorization, callback) => {
+  async.each(req.authorizations, (authorization: any, callback) => {
     const validator = authorization.validator;
     if (validator !== undefined && typeof validator === 'function') {
       validator((actualError, validationResult) => {

@@ -8,6 +8,7 @@
 'use strict';
 
 import async = require('async');
+import { Repository } from '../../business/repository';
 const os = require('os');
 
 const automaticTeams = require('../../webhooks/tasks/automaticTeams');
@@ -52,7 +53,7 @@ module.exports = function run(started, startedString, config) {
       }
       console.log(`We have a lot of repos: ${repos.length}`);
       let z = 0;
-      async.eachLimit(repos, maxParallelism, (repo, next) => {
+      async.eachLimit(repos, maxParallelism, (repo: Repository, next) => {
         const cacheOptions = {
           maxAgeSeconds: 10 * 60 /* 10m */,
           backgroundRefresh: false,
@@ -67,7 +68,7 @@ module.exports = function run(started, startedString, config) {
         const specialTeamLevels = destructured[3];
         repo.getTeamPermissions(cacheOptions, (getError, permissions) => {
           if (getError) {
-            if (getError.code === 404) {
+            if (getError.status == /* loose */ 404) {
               console.log(`Repo gone: ${repo.organization.name}/${repo.name}`);
             } else {
               console.log(`There was a problem getting the permissions for the repo ${repo.name} from ${repo.organization.name}`);
@@ -92,7 +93,7 @@ module.exports = function run(started, startedString, config) {
           });
           const setArray = Array.from(teamsToSet.values());
           if (setArray.length > 0) {
-            async.eachLimit(setArray, 1, (teamId, innerCallback) => {
+            async.eachLimit(setArray, 1, (teamId: string, innerCallback) => {
               const newPermission = specialTeamLevels.get(teamId);
               console.log(`adding ${teamId} team with permission ${newPermission} to the repo ${repo.name}`);
               repo.setTeamPermission(teamId, newPermission, innerCallback);

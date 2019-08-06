@@ -6,7 +6,7 @@
 'use strict';
 
 const _ = require('lodash');
-import * as Q from 'q';
+import Q from 'q';
 import { Operations } from '../operations';
 
 const LinkManager = require('./linkManager');
@@ -72,12 +72,19 @@ export class UserContext {
           member: promiseResultToObject(myTeams),
           maintainer: promiseResultToObject(myTeamMaintainers),
         },
+        teamCounts: {
+          member: 0,
+          maintainer: 0,
+        },
         repos: {
           byTeam: promiseResultToObject(repoTeams),
           byCollaboration: promiseResultToObject(repos),
         },
         errors: undefined,
       };
+
+      results.teamCounts.maintainer = results.teams.maintainer && Array.isArray(results.teams.maintainer) ? results.teams.maintainer.length : 0;
+      results.teamCounts.member = results.teams.member && Array.isArray(results.teams.member) ? results.teams.member.length : 0;
 
       // Available organizations
       if (results.organizations.member) {

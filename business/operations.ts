@@ -9,7 +9,7 @@
 
 import async = require('async');
 
-import { ICacheOptions, IMapPlusMetaCost } from '../transitional';
+import { ICacheOptions, IMapPlusMetaCost, IProviders } from '../transitional';
 
 import { Account } from './account';
 import { GraphManager } from './graphManager';
@@ -18,6 +18,8 @@ import { UserContext } from './user/context';
 import { ILinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
 
 const request = require('requestretry');
+
+const emailRender = require('../lib/emailRender');
 
 import { wrapError } from '../utils';
 import { ICorporateLink } from './corporateLink';
@@ -48,8 +50,27 @@ const defaults = {
   teamRepositoryPermissionStaleSeconds: 0 /* 0m */,
 };
 
+export const RedisPrefixManagerInfoCache = 'employeewithmanager:';
+
+export enum UnlinkPurpose {
+  Unknown = 'unknown',
+  Termination = 'termination', // no longer listed as an employee
+  Self = 'self', // the user self-service unlink themselves
+  Operations = 'operations', // operational support
+  Deleted = 'deleted', // the GitHub account has been deleted or does not exist
+};
+
+export interface ICachedEmployeeInformation {
+  id: string;
+  displayName: string;
+  userPrincipalName: string;
+  managerId: string;
+  managerDisplayName: string;
+  managerMail: string;
+}
+
 export class Operations {
-  private _providers: any;
+  private _providers: IProviders;
   private _baseUrl: string;
   private _linkProvider: ILinkProvider;
   private _mailAddressProvider: any;
@@ -57,12 +78,11 @@ export class Operations {
   private _graphManager: GraphManager;
   private _github: any;
   private _config: any;
-  private _dataClient: any;
   private _insights: any;
   private _redis: any;
   private _defaults: any;
   private _organizationNames: any;
-  private _organizations: any;
+  private _organizations: Map<string, Organization>;
   private _organizationOriginalNames: any;
   private _organizationNamesWithTokens: any;
 
@@ -70,12 +90,8 @@ export class Operations {
   private _userContext: any; // leaky
   // LEAK:END
 
-  get providers(): any {
+  get providers(): IProviders {
     return this._providers;
-  }
-
-  get dataClient(): any {
-    return this._dataClient;
   }
 
   get baseUrl(): string {
@@ -143,11 +159,11 @@ export class Operations {
 
   get organizations() {
     if (!this._organizations) {
-      const organizations = {};
+      const organizations = new Map<string, Organization>();
       const names = this.organizationNames;
       for (let i = 0; i < names.length; i++) {
         const organization = createOrganization(this, names[i]);
-        organizations[names[i]] = organization;
+        organizations.set(names[i], organization);
       }
       this._organizations = organizations;
     }
@@ -175,9 +191,9 @@ export class Operations {
     return !!value;
   }
 
-  getOrganizations(organizationList) {
+  getOrganizations(organizationList?: string[]): Organization[] {
     if (!organizationList) {
-      return this.organizations;
+      return Array.from(this.organizations.values());
     }
     const references = [];
     organizationList.forEach(orgName => {
@@ -223,37 +239,226 @@ export class Operations {
     return this._organizationNamesWithTokens;
   }
 
-  async terminateAccount(thirdPartyId, options?: any): Promise<void> {
-    // This is the equivalent to legacy processPendingUnlink
-    // Intent: common code path for unlinking whether self-service or by admins
-    // Missing: removing any cached link (since caching is being removed for now)
-    const self = this;
-    const redis = self._redis;
+  async getCachedEmployeeManagementInformation(corporateId: string): Promise<ICachedEmployeeInformation> {
+    const key = `${RedisPrefixManagerInfoCache}${corporateId}`;
+    const currentManagerIfAny = await this._redis.getObjectCompressedAsync(key);
+    return currentManagerIfAny;
+  }
+
+  async terminateLinkAndMemberships(thirdPartyId, options?: any): Promise<string[]> {
+    const insights = this.insights;
+
     options = options || {};
-    return new Promise<void>((resolve, reject) => {
-      const redisKey = 'pendingunlinks';
-      const fixedAuthScheme = 'aad';
-      const id = thirdPartyId;
-      const account = self.getAccount(id);
-      const reason = options.reason || 'Automated processPendingUnlink operation';
-      account.terminate({ reason: reason }, (error, history) => {
-        // TODO: removeSetMember by UPN
-        // history.push(`Removing pending unlink entry from Redis for ${upn}`);
-        // self.redis.removeSetMember(redisKey, upn, function (err) {
-        //   if (err) {
-        //     history.push(`Remove pending unlink set member error with Redis: ${err.message}`);
-        //     return callback(err, history);
-        //   }
-        //   callback(null, history);
-        // });
-        return error ? reject(error) : resolve(history);
+    let history: string[] = [];
+    const continueOnError = options.continueOnError || false;
+    let errors = 0;
+
+    const account: Account = this.getAccount(thirdPartyId);
+    const reason = options.reason || 'Automated processPendingUnlink operation';
+    const purpose = options.purpose as UnlinkPurpose || UnlinkPurpose.Unknown;
+
+    try {
+      // Uses an ID-based lookup on GitHub in case the user was renamed.
+      // Also retrieves the link into memory in the account instance.
+      await account.getDetailsAndDirectLinkAsync();
+    } catch (noDirectDetails) {
+      ++errors;
+      if (insights) {
+        insights.trackException({ exception: noDirectDetails });
+      }
+      // not a fatal error in this method however
+      history.push(noDirectDetails.toString());
+    }
+
+    if (insights) {
+      insights.trackEvent({
+        name: 'UserUnlinkStart',
+        properties: {
+          id: account.id,
+          login: account.login,
+          reason: reason,
+          purpose,
+          continueOnError: continueOnError ? 'continue on errors' : 'halt on errors',
+        },
       });
+    }
+
+    // GitHub memberships
+    try {
+      history.push(... await account.removeManagedOrganizationMembershipsAsync());
+    } catch (removeOrganizationsError) {
+      ++errors;
+      // If a removal error occurs, do not remove the link and throw and error
+      // so that the link data and information is still present until the issue
+      // can be cleared
+      if (insights) {
+        insights.trackException({ exception: removeOrganizationsError });
+      }
+      if (!continueOnError) {
+        throw removeOrganizationsError;
+      }
+      history.push(`Organization removal error: ${removeOrganizationsError.toString()}`);
+    }
+
+    // Link
+    try {
+      history.push(... await account.removeLinkAsync());
+    } catch (removeLinkError) {
+      ++errors;
+      if (insights) {
+        insights.trackException({ exception: removeLinkError });
+      }
+      if (account.id && !account.login) {
+        // If the account information could not be resolved through the
+        // GitHub API for this _id_, then the user deleted their account,
+        // or is using a different one now, etc., so try deleting the
+        // associated link still by searching for it by _ID_.
+
+        // TODO: Ported code from account.ts, remains unimp. It's OK.
+      }
+      if (!continueOnError) {
+        throw removeLinkError;
+      }
+      history.push(`Unlink error: ${removeLinkError.toString()}`);
+    }
+
+    // Notify
+    try {
+      await this.sendTerminatedAccountMail(account, purpose, history, errors);
+      history.push('Unlink e-mail sent to manager');
+    } catch (notifyTerminationMailError) {
+      if (insights) {
+        insights.trackException({ exception: notifyTerminationMailError });
+      }
+      // Notification should never throw
+      history.push('Unlink e-mail COULD NOT be sent to manager');
+    }
+
+    // Telemetry
+    if (insights) {
+      const historyAsString = JSON.stringify(history);
+      insights.trackEvent({
+        name: 'UserUnlink',
+        properties: {
+          id: account.id,
+          login: account.login,
+          reason: reason,
+          purpose,
+          continueOnError: continueOnError ? 'continue on errors' : 'halt on errors',
+          history: historyAsString,
+        },
+      });
+    }
+
+    return history;
+  }
+
+  private async sendTerminatedAccountMail(account: Account, purpose: UnlinkPurpose, details: string[], errorsCount: number): Promise<void> {
+    if (!this.providers.mailProvider || !account.link || !account.link.corporateId) {
+      return;
+    }
+
+    purpose = purpose || UnlinkPurpose.Unknown;
+
+    let errorMode = errorsCount > 0;
+
+    let operationsMail = this.config.brand ? (this.config.brand.unlinkOperationsMail || this.config.brand.operationsMail) : null;
+    if (!operationsMail && errorMode) {
+      return;
+    }
+    let operationsArray = operationsMail.split(',');
+
+    let cachedEmployeeManagementInfo: ICachedEmployeeInformation = null;
+    let displayName = account.link.corporateDisplayName || account.link.corporateUsername || account.link.corporateId;
+    let upn = account.link.corporateUsername || account.link.corporateId;
+    try {
+      cachedEmployeeManagementInfo = await this.getCachedEmployeeManagementInformation(account.link.corporateId);
+      if (!cachedEmployeeManagementInfo || !cachedEmployeeManagementInfo.managerMail) {
+        cachedEmployeeManagementInfo = {
+          id: account.link.corporateId,
+          displayName,
+          userPrincipalName: upn,
+          managerDisplayName: null,
+          managerId: null,
+          managerMail: null,
+        };
+        throw new Error(`No manager e-mail address or information retrieved from a previous cache for corporate user ID ${account.link.corporateId}`);
+      }
+      if (cachedEmployeeManagementInfo.displayName) {
+        displayName = cachedEmployeeManagementInfo.displayName;
+      }
+      if (cachedEmployeeManagementInfo.userPrincipalName) {
+        upn = cachedEmployeeManagementInfo.userPrincipalName;
+      }
+    } catch (getEmployeeInfoError) {
+      errorMode = true;
+      details.push(getEmployeeInfoError.toString());
+    }
+
+    const to: string[] = [];
+    if (errorMode) {
+      to.push(...operationsArray);
+    } else {
+      to.push(cachedEmployeeManagementInfo.managerMail);
+    }
+    const bcc = [];
+    if (!errorMode) {
+      bcc.push(...operationsArray);
+    }
+    const toAsString = to.join(', ');
+
+    let subjectPrefix = '';
+    let subjectSuffix = '';
+    let headline = `${displayName} has been unlinked from GitHub`;
+    switch (purpose) {
+      case UnlinkPurpose.Self:
+        headline = `${displayName} unlinked themselves from GitHub`;
+        subjectPrefix = 'FYI: ';
+        subjectSuffix = ' [self-service remove]';
+        break;
+      case UnlinkPurpose.Deleted:
+        subjectPrefix = 'FYI: ';
+        subjectSuffix = '[account deleted]';
+        headline = `${displayName} deleted their GitHub account`;
+        break;
+      case UnlinkPurpose.Operations:
+        subjectPrefix = 'FYI: ';
+        subjectSuffix = ' [corporate GitHub operations]';
+        break;
+      case UnlinkPurpose.Termination:
+        subjectPrefix = '[UNLINKED] ';
+        headline = `${displayName} may not be an active employee`;
+        break;
+      case UnlinkPurpose.Unknown:
+      default:
+        subjectSuffix = ' [unknown]';
+        break;
+    }
+    const mail = {
+      to,
+      bcc,
+      subject: `${subjectPrefix}${upn || displayName} unlinked from GitHub ${subjectSuffix}`.trim(),
+      category: ['link'],
+      content: undefined,
+    };
+    mail.content = await this.emailRender('managerunlink', {
+      reason: (`As a manager you receive one-time security-related messages regarding your direct reports who have linked their GitHub account to the company.
+                This mail was sent to: ${toAsString}`),
+      headline,
+      notification: 'information',
+      app: `${this.config.brand.companyName} GitHub`,
+      link: account.link,
+      managementInformation: cachedEmployeeManagementInfo,
+      purpose,
+      details,
     });
+
+    await this.sendMail(mail);
   }
 
   getOrganization(name: string, callback?) {
     const lc = name.toLowerCase();
-    const organization = this.organizations[lc];
+    const organization = this.organizations.get(lc);
     if (!organization) {
       throw new Error(`Could not find configuration for the "${name}" organization.`);
     }
@@ -288,11 +493,11 @@ export class Operations {
       maxAgeSeconds: this._defaults.crossOrgsReposStaleSecondsPerOrg,
     };
     // CONSIDER: Cross-org functionality might be best in the GitHub library itself
-    const orgs = this.organizations;
+    const orgs = this.organizations.values();
     async.eachLimit(
       orgs,
       this._defaults.crossOrgsReposParallelCalls,
-      (organization, next) => {
+      (organization: Organization, next) => {
         organization.getRepositories(cacheOptions, (getReposError, orgRepos) => {
           if (!getReposError) {
             for (let i = 0; i < orgRepos.length; i++) {
@@ -572,7 +777,7 @@ export class Operations {
     options = options || {};
     const github = this._github;
     const parameters = {};
-    return github.post(token, 'users.get', parameters, (error, entity) => {
+    return github.post(token, 'users.getAuthenticated', parameters, (error, entity) => {
       if (error) {
         return callback(wrapError(error, 'Could not get details about the authenticated account'));
       }
@@ -626,12 +831,44 @@ export class Operations {
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
-    return operations._github.call(token, 'users.getForUser', parameters, cacheOptions, (error, entity) => {
-      if (error) {
+    return operations._github.call(token, 'users.getByUsername', parameters, cacheOptions, (error, entity) => {
+      if (error && error.code && error.code === 404) {
+        error = new Error(`The GitHub username ${username} could not be found (or was deleted)`);
+        error.code = 404;
+        return callback(error);
+      } else if (error) {
         return callback(wrapError(error, `Could not get details about account "${username}".`));
       }
       const account = new Account(entity, this, getCentralOperationsToken.bind(null, this));
       return callback(null, account);
+    });
+  }
+
+  async sendMail(mail: any): Promise<any> {
+    const mailProvider = this.providers.mailProvider;
+    const insights = this.providers.insights;
+    return new Promise((resolve, reject) => {
+      mailProvider.sendMail(mail, (mailError, mailResult) => {
+        const customData = {
+          receipt: mailResult,
+          eventName: undefined,
+        };
+        if (mailError) {
+          customData.eventName = 'ManagerUnlinkMailFailure';
+          insights.trackException({ exception: mailError, properties: customData });
+        }
+        insights.trackEvent({ name: 'ManagerUnlinkMailSuccess', properties: customData });
+        return mailError ? reject(mailError) : resolve(mailResult);
+      });
+    });
+  }
+
+  async emailRender(emailViewName: string, contentOptions: any): Promise<string> {
+    const appDirectory = this.config.typescript.appDirectory;
+    return new Promise((resolve, reject) => {
+      emailRender.render(appDirectory, emailViewName, contentOptions, (renderError, mailContent) => {
+        return renderError ? reject(renderError) : resolve(mailContent);
+      });
     });
   }
 }
@@ -648,7 +885,7 @@ function getTeamDetailsById(self, id, options, callback) {
     return callback(new Error('Must provide a GitHub team ID to retrieve team information'));
   }
   const parameters = {
-    id: id,
+    team_id: id,
   };
   const cacheOptions: ICacheOptions = {
     maxAgeSeconds: options.maxAgeSeconds || operations.defaults.teamDetailStaleSeconds,
@@ -656,7 +893,7 @@ function getTeamDetailsById(self, id, options, callback) {
   if (options.backgroundRefresh !== undefined) {
     cacheOptions.backgroundRefresh = options.backgroundRefresh;
   }
-  return operations.github.call(token, 'orgs.getTeam', parameters, cacheOptions, callback);
+  return operations.github.call(token, 'teams.get', parameters, cacheOptions, callback);
 }
 
 function fireEvent(config, configurationName, value, callback?) {

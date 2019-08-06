@@ -5,125 +5,119 @@
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-import async = require('async');
+import async from 'async';
+import fs from 'fs';
+import path from 'path';
+
+import recursiveReadDirectory from 'recursive-readdir';
+
 import { wrapError } from '../../utils';
-import { Organization } from '../../business/organization';
+import { Organization, ICreateRepositoryResult } from '../../business/organization';
 import { Operations } from '../../business/operations';
-const fs = require('fs');
-const path = require('path');
-const recursiveReadDirectory = require('recursive-readdir');
+import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { Repository } from '../../business/repository';
 
-var repoWorkFlowEngine = RepoWorkflowEngine.prototype;
-
-function RepoWorkflowEngine(team, organization, approvalPackage) {
-  this.team = team;
-  this.request = approvalPackage.request;
-  this.user = approvalPackage.requestingUser;
-  this.id = approvalPackage.id;
-  this.organization = organization;
-  this.typeName = 'Repository Create';
+export interface IApprovalPackage {
+  id: string;
+  // requestingUser: string;
+  repositoryMetadata: RepositoryMetadataEntity;
 }
 
-repoWorkFlowEngine.messageForAction = function (action) {
-  var message = null;
-  if (action == 'deny') {
-    message = 'The repo was not approved at this time.';
-  } else if (action == 'approve') {
-    message = 'The repo has been created.';
-  }
-  return message;
-};
+export enum RepoWorkflowDecision {
+  Approve = 'approve',
+  Deny = 'deny',
+}
 
-repoWorkFlowEngine.editGet = function (req, res) {
-  req.individualContext.webContext.render({
-    view: 'org/team/approvals/editRepo',
-    title: 'Edit Repo Request',
-    state: {
-      entry: this.request,
-      teamUrl: req.teamUrl,
-      team: req.team,
-    },
-  });
-};
+export class RepoWorkflowEngine {
+  organization: Organization;
+  request: RepositoryMetadataEntity;
+  user: string;
+  id: string;
+  typeName: string;
 
-repoWorkFlowEngine.editPost = function (req, res, next) {
-  const self = this;
-  const destructured = this.organization.getLegacySystemObjects(); // const [, operations] =
-  const operations = destructured[1];
-  const dc = operations.dataClient;
-  const visibility = req.body.repoVisibility;
-  if (!(visibility == 'public' || visibility == 'private')) {
-    return next(new Error('Visibility for the repo request must be provided.'));
+  constructor(organization: Organization, approvalPackage: IApprovalPackage) {
+    this.request = approvalPackage.repositoryMetadata;
+    // this.user = approvalPackage.requestingUser;
+    this.id = approvalPackage.id;
+    this.organization = organization;
+    this.typeName = 'Repository Create';
   }
-  const updates = {
-    repoName: req.body.repoName,
-    repoVisibility: visibility,
-    repoUrl: req.body.repoUrl,
-    repoDescription: req.body.repoDescription,
-  };
-  dc.updateApprovalRequest(self.id, updates, function (error) {
-    if (error) {
+
+  editGet(req, res) {
+    req.individualContext.webContext.render({
+      view: 'org/team/approvals/editRepo',
+      title: 'Edit Repo Request',
+      state: {
+        entry: this.request,
+        teamUrl: req.teamUrl,
+        team: req.team,
+      },
+    });
+  }
+
+  editPost(req, res, next) {
+    const destructured = this.organization.getLegacySystemObjects();
+    const operations = destructured[1] as Operations;
+    const repositoryMetadataProvider = operations.providers.repositoryMetadataProvider;
+    const visibility = req.body.repoVisibility;
+    if (!(visibility == 'public' || visibility == 'private')) {
+      return next(new Error('Visibility for the repo request must be provided.'));
+    }
+    this.request.repositoryName = req.body.repoName;
+    this.request.initialRepositoryVisibility = visibility === 'public' ? GitHubRepositoryVisibility.Public : GitHubRepositoryVisibility.Private;
+    this.request.initialRepositoryDescription = req.body.repoDescription;
+    // this ... repoUrl = req.body.repoUrl
+    repositoryMetadataProvider.updateRepositoryMetadata(this.request).then(ok => {
+      return res.redirect(req.teamUrl + 'approvals/' + this.id);
+    }).catch(error => {
       return next(wrapError(error, 'There was a problem updating the request.'));
-    }
-    res.redirect(req.teamUrl + 'approvals/' + self.id);
-  });
-};
-
-repoWorkFlowEngine.getApprovedViewName = function () {
-  return 'org/team/repos/repoCreated';
-};
-
-repoWorkFlowEngine.getDecisionEmailViewName = function () {
-  return 'repoApprovals/decision';
-};
-
-repoWorkFlowEngine.getDecisionEmailSubject = function (approved, request) {
-  return approved ? `Your ${request.repoName} repo is ready` : `Your ${request.repoName} repo request was not approved`;
-};
-
-repoWorkFlowEngine.getDecisionEmailHeadline = function (approved/*, request*/) {
-  return approved ? 'Repo ready' : 'Request returned';
-};
-
-repoWorkFlowEngine.generateSecondaryTasks = function (callback) {
-  var self = this;
-  var pendingRequest = self.request;
-  var tasks = [];
-  var organization = self.organization;
-  var repoName = pendingRequest.repoName;
-  var teamsCount = Math.floor(pendingRequest.teamsCount);
-  for (var i = 0; i < teamsCount; i++) {
-    var key = 'teamid' + i;
-    var teamId = pendingRequest[key];
-    var permission = pendingRequest[key + 'p'];
-    if (teamId && permission) {
-      tasks.push(createAddRepositoryTask(organization, repoName, teamId, permission));
-    }
+    });
   }
-  if (pendingRequest.template) {
-    tasks.push(createAddTemplateFilesTask(organization, repoName, pendingRequest.template));
+
+  getApprovedViewName() {
+    return 'org/team/repos/repoCreated';
   }
-  callback(null, tasks);
-};
 
-repoWorkFlowEngine.performApprovalOperation = function (callback) {
-  const self = this;
-  const properties = {
-    description: self.request.repoDescription,
-    homepage: self.request.repoUrl,
-    'private': self.request.repoVisibility == 'public' ? false : true,
-    gitignore_template: self.request.gitignore_template,
-  };
-  const organization = self.organization;
-  organization.createRepository(self.request.repoName, properties, function (error, newRepositoryInstance, newRepoDetails) {
-    if (error) {
-      error = wrapError(error, `The GitHub API did not allow the creation of the new repo. ${error.message}`);
+  getDecisionEmailViewName() {
+    return 'repoApprovals/decision';
+  }
+
+  generateSecondaryTasks(callback) {
+    const pendingRequest = this.request;
+    const tasks = [];
+    const organization = this.organization;
+    const repoName = pendingRequest.repositoryName;
+    for (let i = 0; i < pendingRequest.initialTeamPermissions.length; i++) {
+      const { teamId, permission, teamName } = pendingRequest.initialTeamPermissions[i];
+      if (teamId && permission) {
+        tasks.push(createAddRepositoryTask(organization, repoName, teamId, teamName, permission));
+      }
     }
-    callback(error, newRepoDetails);
-  });
-};
+    if (pendingRequest.initialTemplate) {
+      tasks.push(createAddTemplateFilesTask(organization, repoName, pendingRequest.initialTemplate));
+    }
+    // TODO: NEW: WEBHOOK SUPPORT FOR DOCS TEAM
+    return callback(null, tasks);
+  }
 
-var createAddRepositoryTask = function createAddRepoTask(organization, repoName, id, permission) {
+  performApprovalOperation(callback) {
+    const properties = {
+      description: this.request.initialRepositoryDescription,
+      'private': this.request.initialRepositoryVisibility === GitHubRepositoryVisibility.Public ? false : true,
+      gitignore_template: this.request.initialGitIgnoreTemplate,
+    };
+    const organization = this.organization;
+    organization.createRepository(this.request.repositoryName, properties, function (error, result: ICreateRepositoryResult) {
+      const response = result.response;
+      if (error) {
+        error = wrapError(error, `The GitHub API did not allow the creation of the new repo ${this.request.repositoryName}. ${error.message}`);
+      }
+      callback(error, response);
+    });
+  }
+}
+
+function createAddRepositoryTask(organization: Organization, repoName: string, id: string, teamName: string, permission: GitHubRepositoryPermission) {
   return function (cb) {
     async.retry({
       times: 3,
@@ -134,9 +128,10 @@ var createAddRepositoryTask = function createAddRepoTask(organization, repoName,
       organization.repository(repoName).setTeamPermission(id, permission, callback);
     }, function (error) {
       // Don't propagate as an error, just record the issue...
-      let message = `Successfully added the "${repoName}" repo to GitHub team ID "${id}" with permission level ${permission.toUpperCase()}.`;
+      const teamIdentity = teamName ? `${teamName} (${id})` : `with the ID ${id}`;
+      let message = `Successfully added the ${repoName} repo to GitHub team ${teamIdentity} with ${permission.toUpperCase()} permissions.`;
       if (error) {
-        message = `The addition of the repo "${repoName}" to GitHub team ID "${id}" failed. The GitHub API returned an error: ${error.message}.`;
+        message = `The addition of the repo ${repoName} to GitHub team ${teamIdentity} failed. GitHub returned an error: ${error.message}.`;
       }
       const result = {
         error: error,
@@ -147,8 +142,46 @@ var createAddRepositoryTask = function createAddRepoTask(organization, repoName,
   };
 };
 
-function createAddTemplateFilesTask(organization: Organization, repoName, templateName) {
-  'use strict';
+async function getFileContents(templateRoot:string, templatePath: string, templateName: string, absoluteFileNames: string[]): Promise<IFileContents[]> {
+  const contents = [];
+  for (let i = 0; i < absoluteFileNames.length; i++) {
+    const absoluteFileName = absoluteFileNames[i];
+    const fileName = path.relative(templateRoot, absoluteFileName);
+    const fileContents = await readFileToBase64(templatePath, templateName, fileName);
+    contents.push(fileContents);
+  }
+  return contents;
+}
+
+interface IFileContents {
+  path: string;
+  content: string; // base 64 content
+}
+
+async function getTemplateFilenames(templateRoot: string): Promise<string[]> {
+  return new Promise((resolve, reject) => {
+    recursiveReadDirectory(templateRoot, (error, fileNames: string[]) => {
+      return error ? reject(error) : resolve(fileNames);
+    });
+  });
+}
+
+async function readFileToBase64(templatePath: string, templateName: string, fileName: string): Promise<IFileContents> {
+  return new Promise((resolve, reject) => {
+    fs.readFile(path.join(templatePath, templateName, fileName), (error, file) => {
+      if (error) {
+        return reject(error);
+      }
+      const base64content = file.toString('base64');
+      return resolve({
+        path: fileName,
+        content: base64content,
+      });
+    });
+  });
+}
+
+function createAddTemplateFilesTask(organization: Organization, repoName: string, templateName: string) {
   const destructured = organization.getLegacySystemObjects(); // const [, operations] =
   const operations = destructured[1] as Operations;
   const config = operations.config;
@@ -159,82 +192,78 @@ function createAddTemplateFilesTask(organization: Organization, repoName, templa
     alternateToken: token,
   };
   const repository = organization.repository(repoName);
-  let files = [];
   return (taskCallback) => {
-    async.waterfall([
-
-      function inviteCollaborator() {
-        const callback = Array.prototype.slice.call(arguments).pop();
-        repository.addCollaborator(userName, 'push', (invitationError, response) => {
-          if (invitationError) {
-            return callback(invitationError);
-          } else if (response === undefined || response === null) {
-            // The user already has permission to the repository
-            return callback();
-          }
-          const invitationId = response ? response.id : null;
-          if (!invitationId) {
-            return callback(new Error('No invitation was created for the repository'));
-          }
-          repository.acceptCollaborationInvite(invitationId, alternateTokenOptions, callback);
-        });
-      },
-
-      function createDatasource() {
-        const callback = Array.prototype.slice.call(arguments).pop();
-        const templateRoot = path.join(templatePath, templateName);
-        recursiveReadDirectory(templateRoot, (error, fileNames) => {
-          if (error) {
-            return callback(error);
-          }
-          async.parallel(fileNames.map(absoluteFileName => {
-            const fileName = path.relative(templateRoot, absoluteFileName);
-            return next => {
-              fs.readFile(path.join(templatePath, templateName, fileName), (error, file) => {
-                const base64content = file.toString('base64');
-                next(error,
-                  {
-                    path: fileName,
-                    content: base64content,
-                  });
-              });
-            };
-          }), callback);
-        });
-      },
-
-      function addTemplateFiles(datasource) {
-        const callback = Array.prototype.slice.call(arguments).pop();
-        const message = 'Initial commit';
-        async.series(datasource.map(item => {
-          return next => {
-            repository.createFile(item.path, item.content, message, alternateTokenOptions, next);
-          };
-        }), (error, result) => {
-          if (!error) {
-            files = datasource.map((item) => {
-              return item.path;
-            });
-          }
-          callback(error, result);
-        });
-      },
-
-      function removeCollaborator(result, callback) {
-        repository.removeCollaborator(userName, callback);
-      },
-    ], error => {
-      let message = `Initial commit of ${files.join(', ')} files to the ${repoName} repo succeeded.`;
-      if (error) {
-        message = `Initial commit of template file(s) to the ${repoName} repo failed. Error: ${error.message}.`;
-      }
-      const result = {
-        error: error,
-        message: message,
-      };
-      taskCallback(null, result);
+    createAddTemplateFilesTaskAsync({
+      repository,
+      templateGitHubCommitterUsername: userName,
+      alternateTokenOptions,
+      templatePath,
+      templateName,
+    }).then(templateUploadResults => {
+      return taskCallback(null, templateUploadResults);
+    }).catch(error => {
+      return taskCallback(error);
     });
   };
 }
 
-module.exports = RepoWorkflowEngine;
+async function authorizeTemplateCommitterAccount(repository: Repository, templateGitHubCommitterUsername: string, alternateTokenOptions): Promise<void> {
+  const invitation = await repository.addCollaboratorAsync(templateGitHubCommitterUsername, GitHubRepositoryPermission.Push);
+  if (invitation === undefined || invitation === null) {
+    // user already had permission
+    return;
+  }
+  if (!invitation.id) {
+    throw new Error(`The system account ${templateGitHubCommitterUsername} could not be invited to the ${repository.name} repository to apply the template.`);
+  }
+  const invitationId = invitation.id;
+  const blah = await repository.acceptCollaborationInviteAsync(invitationId, alternateTokenOptions);
+  console.log();
+}
+interface ITemplateUploadResult {
+  error?: any;
+  message: string;
+}
+
+async function createAddTemplateFilesTaskAsync({
+  repository,
+  templateGitHubCommitterUsername,
+  alternateTokenOptions,
+  templatePath,
+  templateName,
+}: {
+  repository: Repository,
+  templateGitHubCommitterUsername: string,
+  alternateTokenOptions,
+  templatePath: string,
+  templateName: string,
+}): Promise<ITemplateUploadResult> {
+  await authorizeTemplateCommitterAccount(repository, templateGitHubCommitterUsername, alternateTokenOptions);
+  const templateRoot = path.join(templatePath, templateName);
+  const fileNames = await getTemplateFilenames(templateRoot);
+  const fileContents = await getFileContents(templateRoot, templatePath, templateName, fileNames);
+  const message = 'Initial commit';
+  const uploadedFiles = [];
+  let result = {
+    error: null,
+    message: null,
+  };
+  try {
+    for (let i = 0; i < fileContents.length; i++) {
+      const item = fileContents[i];
+      await repository.createFileAsync(item.path, item.content, message, alternateTokenOptions);
+      uploadedFiles.push(item.path);
+    }
+    result.message = `Initial commit of ${uploadedFiles.join(', ')} template files to the ${repository.name} repo succeeded.`;
+  } catch (commitError) {
+    result.error = commitError;
+    const notUploaded = fileContents.map(fc => fc.path).filter(f => !uploadedFiles.includes(f));
+    if (uploadedFiles.length) {
+      result.message = `Initial commit of ${uploadedFiles.join(', ')} template files to the ${repository.name} repo partially succeeded. Not uploaded: ${notUploaded.join(', ')}. Error: ${commitError.message}`;
+    } else {
+      result.message = `Initial commit of template file(s) to the ${repository.name} repo failed. Not uploaded: ${notUploaded.join(', ')}. Error: ${commitError.message}.`;
+    }
+  }
+  await repository.removeCollaboratorAsync(templateGitHubCommitterUsername);
+  return result;
+}

@@ -107,7 +107,7 @@ block content
           p
             a.btn.btn-default(href='/approvals/') See all pending approvals (#{accountInfo.pendingApprovals.length})
 
-        if overview && overview.teams && overview.teams.maintainer
+        if overview && overview.teams && overview.teams.maintainer && overview.teamCounts.maintainer
           h1 Teams you maintain
           script(type='text/javascript').
             function initializeManageFilter() {

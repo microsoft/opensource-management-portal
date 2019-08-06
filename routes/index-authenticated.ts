@@ -5,13 +5,13 @@
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-const _ = require('lodash');
-import express = require('express');
+import _ from 'lodash';
+import async from 'async';
+import express from 'express';
+
 const router = express.Router();
 
-import async = require('async');
-
-import { ReposAppRequest } from '../transitional';
+import { ReposAppRequest, IProviders } from '../transitional';
 import { addLinkToRequest, RequireLinkMatchesGitHubSession } from '../middleware/links/';
 import { requireAuthenticatedUserOrSignIn, setIdentity } from '../middleware/business/authentication';
 
@@ -41,12 +41,13 @@ router.use(RequireLinkMatchesGitHubSession);
 
 // Dual-purpose homepage: if not linked, welcome; otherwise, show things
 router.get('/', function (req: ReposAppRequest, res, next) {
+  const onboarding = req.query.onboarding !== undefined;
+
   const individualContext = req.individualContext;
   const link = individualContext.link;
-
-  const operations = req.app.settings.providers.operations;
+  const providers = req.app.settings.providers as IProviders;
+  const operations = providers.operations;
   const config = req.app.settings.runtimeConfig;
-  const onboarding = req.query.onboarding !== undefined;
 
   if (!link) {
     if (!individualContext.getGitHubIdentity()) {
@@ -77,14 +78,14 @@ router.get('/', function (req: ReposAppRequest, res, next) {
     isAdministrator: function (callback) {
       callback(null, false);
       // legacyUserContext.isAdministrator(callback); // CONSIDER: Re-implement isAdministrator
+      // TODO: bring back sudoers
     }
-  },
-    function (error, results) {
+  }, function (error, results) {
       if (error) {
         return next(error);
       }
-      const overview = results.overview;
-      results.countOfOrgs = operations.organizations.length;
+      const overview = results.overview as any;
+      results.countOfOrgs = operations.organizations.size;
       let groupedAvailableOrganizations = null;
 
       // results may contains undefined returns because we skip some errors to make sure homepage always load successfully.

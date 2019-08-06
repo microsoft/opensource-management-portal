@@ -51,14 +51,14 @@ function queryEntitiesCallback(encryptionOptions, callback, error, results, head
   }
   const entities = results.entries;
   async.map(entities, (row, next) => {
-    if (row === undefined || row.PartitionKey === undefined || row.PartitionKey._ === undefined) {
+    if (row === undefined || row['PartitionKey'] === undefined || row['PartitionKey']._ === undefined) {
       return next(new Error('Entity does not have a PartitionKey.'));
     }
-    if (row === undefined || row.RowKey === undefined || row.RowKey._ === undefined) {
+    if (row === undefined || row['RowKey'] === undefined || row['RowKey']._ === undefined) {
       return next(new Error('Entity does not have a RowKey.'));
     }
-    const partitionKey = row.PartitionKey._;
-    const rowKey = row.RowKey._;
+    const partitionKey = row['PartitionKey']._;
+    const rowKey = row['RowKey']._;
     let reducedEntity = null;
     try {
       reducedEntity = encryptionOptions.tableDehydrator(row);

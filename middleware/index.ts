@@ -11,7 +11,15 @@ const debug = require('debug')('oss-initialize');
 import path = require('path');
 import { StaticClientApp } from './staticClientApp';
 import { StaticSiteFavIcon, StaticSiteAssets } from './staticSiteAssets';
-const viewServices = require('ospo-pug-view-services');
+
+let viewServices = null;
+try {
+  // TODO: for public project, improve to not have a try/catch, and go off of
+  // package presence instead?
+  viewServices = require('@ospo/pug-view-services');
+} catch (noPrivateNpmInstalled) {
+  viewServices = require('../lib/pugViewServices');
+}
 
 const campaign = require('./campaign');
 // const memory = require('./memory');

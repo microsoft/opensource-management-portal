@@ -10,6 +10,7 @@ import { ReposAppRequest } from '../../transitional';
 import { Team } from '../../business/team';
 import { IndividualContext } from '../../business/context2';
 import { storeOriginalUrlAsReferrer, wrapError } from '../../utils';
+import { Organization } from '../../business/organization';
 const router = express.Router();
 
 router.use(function (req: ReposAppRequest, res, next) {
@@ -44,7 +45,7 @@ router.get('/', function (req: ReposAppRequest, res, next) {
           return next(error);
         }
         const userDetails = details ? organization.memberFromEntity(details) : null;
-        userDetails.entity = details;
+        userDetails['entity'] /* adding to the object */ = details;
         var title = organization.name + ' Organization Membership ' + (state == 'pending' ? 'Pending' : 'Join');
         req.individualContext.webContext.render({
           view: 'org/pending',
@@ -114,38 +115,48 @@ function joinOrg(req, res, next) {
   const individualContext = req.individualContext as IndividualContext;
   const organization = req.organization;
   const onboarding = req.query.onboarding;
+  joinOrganization(individualContext, organization, req.insights, onboarding).then(val => {
+    res.redirect(organization.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name));
+
+  }).catch(next);
+}
+
+async function joinOrganization(individualContext: IndividualContext, organization: Organization, insights, isOnboarding: boolean): Promise<any> {
   const invitationTeam = organization.invitationTeam as Team;
   const username = individualContext.getGitHubIdentity().username;
   if (!username) {
-    return next(new Error('A GitHub username was not found in the user\'s link.'));
+    throw new Error('A GitHub username was not found in the user\'s link.');
   }
-  invitationTeam.addMembership(username, function (error) {
-    if (error) {
-      req.insights.trackMetric({ name: 'GitHubOrgInvitationFailures', value: 1 });
-      req.insights.trackEvent({
-        name: 'GitHubOrgInvitationFailure',
-        properties: {
-          organization: organization.name,
-          username: username,
-          error: error.message,
-        },
-      });
-      var specificMessage = error.message ? 'Error message: ' + error.message : 'Please try again later. If you continue to receive this message, please reach out for us to investigate.';
-      if (error.code === 'ETIMEDOUT') {
-        specificMessage = 'The GitHub API timed out.';
-      }
-      return next(wrapError(error, `We had trouble sending you an invitation through GitHub to join the ${organization.name} organization. ${username} ${specificMessage}`));
-    }
-    req.insights.trackMetric({ name: 'GitHubOrgInvitationSuccesses', value: 1 });
-    req.insights.trackEvent({
-      name: 'GitHubOrgInvitationSuccess',
+  let joinResult = null;
+  try {
+    joinResult = invitationTeam ? await invitationTeam.addMembershipAsync(username, null) : await organization.addMembershipAsync(username, null);
+  } catch (error) {
+    insights.trackMetric({ name: 'GitHubOrgInvitationFailures', value: 1 });
+    insights.trackEvent({
+      name: 'GitHubOrgInvitationFailure',
       properties: {
         organization: organization.name,
         username: username,
+        error: error.message,
       },
     });
-    res.redirect(organization.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name));
+    var specificMessage = error.message ? 'Error message: ' + error.message : 'Please try again later. If you continue to receive this message, please reach out for us to investigate.';
+    if (error.code === 'ETIMEDOUT') {
+      specificMessage = 'The GitHub API timed out.';
+    }
+    throw wrapError(error, `We had trouble sending you an invitation through GitHub to join the ${organization.name} organization. ${username} ${specificMessage}`);
+  }
+
+  insights.trackMetric({ name: 'GitHubOrgInvitationSuccesses', value: 1 });
+  insights.trackEvent({
+    name: 'GitHubOrgInvitationSuccess',
+    properties: {
+      organization: organization.name,
+      username: username,
+    },
   });
+
+  return joinResult;
 }
 
 router.post('/', joinOrg);

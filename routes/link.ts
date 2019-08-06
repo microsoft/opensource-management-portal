@@ -38,6 +38,16 @@ router.use((req: IRequestHacked, res, next) => {
   }
 });
 
+router.use('/', function (req: ReposAppRequest, res, next) {
+  // Make sure both account types are authenticated before showing the link pg [wi 12690]
+  const individualContext = req.individualContext;
+  if (!individualContext.corporateIdentity || !individualContext.getGitHubIdentity()) {
+    req.insights.trackEvent({ name: 'PortalSessionNeedsBothGitHubAndAadUsernames' });
+    return res.redirect('/?signin');
+  }
+  return next();
+});
+
 // TODO: graph provider non-guest check should be middleware and in the link business process
 
 router.use((req: IRequestHacked, res, next) => {

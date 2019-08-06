@@ -14,7 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const pug = require('pug');
-import * as Q from 'q';
+import Q from 'q';
 
 const qlimit = require('qlimit');
 

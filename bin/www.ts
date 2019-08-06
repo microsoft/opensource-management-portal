@@ -4,7 +4,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import * as Debug from 'debug';
+import Debug from 'debug';
 
 const debug = Debug('g:server');
 const debugInitialization = Debug('oss-initialize');

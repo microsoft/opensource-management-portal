@@ -7,13 +7,21 @@
 
 import express = require('express');
 const router = express.Router();
+
 import async = require('async');
-import { IReposError, ReposAppRequest } from '../transitional';
-import { IndividualContext } from '../business/context2';
+
+import { IReposError, ReposAppRequest, IProviders } from '../transitional';
+import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';
+import { TeamJoinApprovalEntity } from '../entities/teamJoinApproval/teamJoinApproval';
+import { safeLocalRedirectUrl } from '../utils';
 
 router.get('/', function (req: ReposAppRequest, res, next) {
-  const dc = req.app.settings.dataclient;
   const operations = req.app.settings.providers.operations;
+  const approvalProvider = req.app.settings.providers.approvalProvider as IApprovalProvider;
+  if (!approvalProvider) {
+    return next(new Error('No approval provider instance available'));
+  }
+
   req.individualContext.webContext.pushBreadcrumb('Requests');
   // CONSIDER: Requests on GitHub.com should be shown, too, now that that's integrated in many cases
   const id = req.individualContext.getGitHubIdentity().id;
@@ -25,11 +33,10 @@ router.get('/', function (req: ReposAppRequest, res, next) {
       ownedTeams: function (callback) {
         const ownedTeams = overview.teams.maintainer;
         if (ownedTeams && ownedTeams.length && ownedTeams.length > 0) {
-          dc.getPendingApprovals(ownedTeams, function (getPendingApprovalsError, appvs) {
-            if (getPendingApprovalsError) {
-              return callback(getPendingApprovalsError);
-            }
-            async.each(appvs, function (approval, cb) {
+          approvalProvider.queryPendingApprovalsForTeams(ownedTeams).catch(getPendingApprovalsError => {
+            return callback(getPendingApprovalsError);
+          }).then((appvs: any) => {
+            async.each(appvs, function (approval: any, cb) {
               const teamFromRequest = approval.teamid;
               if (teamFromRequest) {
                 const requestTeamId = parseInt(teamFromRequest, 10);
@@ -50,17 +57,21 @@ router.get('/', function (req: ReposAppRequest, res, next) {
       },
       requestsUserMade: function (callback) {
         // CONSIDER: Need to hydrate with _teamInstance just like above...
-        dc.getPendingApprovalsForUserId(id, callback);
+        approvalProvider.queryPendingApprovalsForThirdPartyId(id).catch(error => {
+          return callback(error);
+        }).then((approvals: any) => {
+          return callback(null, approvals);
+        });
       }
     }, function (error, results) {
       if (error) {
         return next(error);
       }
-      async.each(results.requestsUserMade, function (request, cb) {
-        var teamFromRequest = request.teamid;
+      async.each(results.requestsUserMade as any, function (request: TeamJoinApprovalEntity, cb) {
+        const teamFromRequest = request.teamId;
         if (teamFromRequest) {
           operations.getTeamById(teamFromRequest, (err, teamInstance) => {
-            request._teamInstance = teamInstance;
+            request['_teamInstance'] = teamInstance; // hack, directly storing instance on top
             cb(err);
           });
         } else {
@@ -84,23 +95,27 @@ router.get('/', function (req: ReposAppRequest, res, next) {
 });
 
 router.post('/:requestid/cancel', function (req: ReposAppRequest, res, next) {
-  const dc = req.app.settings.dataclient;
+  const operations = req.app.settings.providers.operations;
+  const approvalProvider = req.app.settings.providers.approvalProvider as IApprovalProvider;
+  if (!approvalProvider) {
+    return next(new Error('No approval provider instance available'));
+  }
+  const safeReturnUrl = safeLocalRedirectUrl(req.body.returnUrl || req.params.returnUrl);
   const requestid = req.params.requestid;
   const id = req.individualContext.getGitHubIdentity().id;
-  dc.getApprovalRequest(requestid, function (error, pendingRequest) {
-    if (error) {
-      return next(new Error('The pending request you are looking for does not seem to exist.'));
-    }
-    if (pendingRequest.ghid == id) {
-      dc.updateApprovalRequest(requestid, {
-        active: false,
-        decision: 'canceled-by-user',
-        decisionTime: (new Date().getTime()).toString()
-      }, function (error) {
+  approvalProvider.getApprovalEntity(requestid).catch(error => {
+    return next(new Error('The pending request you are looking for does not seem to exist.'));
+  }).then((pendingRequest: TeamJoinApprovalEntity) => {
+    if (pendingRequest.thirdPartyId == id) {
+      pendingRequest.active = false;
+      pendingRequest.decisionMessage = 'canceled-by-user';
+      pendingRequest.decisionTime = new Date(); // (new Date().getTime()).toString();
+      approvalProvider.updateTeamApprovalEntity(pendingRequest).catch(error => {
         if (error) {
           return next(error);
         }
-        return res.redirect('/approvals/');
+      }).then(unused => {
+        return res.redirect(safeReturnUrl || '/approvals/');
       });
     } else {
       return next(new Error('You are not authorized to cancel this request.'));
@@ -110,8 +125,9 @@ router.post('/:requestid/cancel', function (req: ReposAppRequest, res, next) {
 
 router.get('/:requestid', function (req: ReposAppRequest, res, next) {
   const requestid = req.params.requestid;
-  const operations = req.app.settings.providers.operations;
-  const dc = operations.dataClient;
+  const providers = req.app.settings.providers as IProviders;
+  const operations = providers.operations;
+  const approvalProvider = providers.approvalProvider;
   req.individualContext.webContext.pushBreadcrumb('Your Request');
   let isMaintainer = false;
   let pendingRequest = null;
@@ -122,7 +138,11 @@ router.get('/:requestid', function (req: ReposAppRequest, res, next) {
   let organization = null;
   async.waterfall([
     function (callback) {
-      dc.getApprovalRequest(requestid, callback);
+      approvalProvider.getApprovalEntity(requestid).then(entry => {
+        return callback(null, entry);
+      }).catch(error => {
+        return callback(error);
+      });
     },
     function (pendingRequestValue) {
       var callback = arguments[arguments.length - 1];
@@ -167,15 +187,14 @@ router.get('/:requestid', function (req: ReposAppRequest, res, next) {
       }
       callback();
     }
-  ], function (error) {
+  ], function (error: any) {
     if (error) {
       if (error.redirect) {
         return res.redirect(error.redirect);
       }
       // Edge case: the team no longer exists.
       if (error.innerError && error.innerError.innerError && error.innerError.innerError.statusCode == 404) {
-        let dc = req.app.settings.dataclient;
-        return closeOldRequest(dc, pendingRequest, req, res, next);
+        return closeOldRequest(pendingRequest, req, res, next);
       }
       return next(error);
     } else {
@@ -195,8 +214,9 @@ router.get('/:requestid', function (req: ReposAppRequest, res, next) {
   });
 });
 
-function closeOldRequest(dc, pendingRequest, req: ReposAppRequest, res, next) {
-  const operations = req.app.settings.providers.operations;
+function closeOldRequest(pendingRequest, req: ReposAppRequest, res, next) {
+  const providers = req.app.settings.providers as IProviders;
+  const operations = providers.operations;
   const organization = operations.getOrganization(pendingRequest.org);
   const config = req.app.settings.runtimeConfig;
   const repoApprovalTypesValues = config.github.approvalTypes.repo;
@@ -213,7 +233,8 @@ function closeOldRequest(dc, pendingRequest, req: ReposAppRequest, res, next) {
   if (pendingRequest.active === false) {
     return res.redirect('/');
   }
-  closeRequest(dc, pendingRequest.RowKey, 'Team no longer exists.', (closeError) => {
+  const approvalProvider = providers.approvalProvider;
+  closeRequest(approvalProvider, pendingRequest.RowKey, 'Team no longer exists.', (closeError) => {
     if (closeError) {
       return next(closeError);
     }
@@ -245,11 +266,16 @@ function closeOldRequest(dc, pendingRequest, req: ReposAppRequest, res, next) {
   });
 }
 
-function closeRequest(dc, rowKey, note, callback) {
-  dc.updateApprovalRequest(rowKey, {
-    active: false,
-    decisionNote: note,
-  }, callback);
+function closeRequest(approvalProvider: IApprovalProvider, requestid: string, note: string, callback) {
+  approvalProvider.getApprovalEntity(requestid).then(pendingRequest => {
+    pendingRequest.active = false;
+    pendingRequest.decisionMessage = note;
+    return approvalProvider.updateTeamApprovalEntity(pendingRequest).then(ok => {
+      return callback(null, ok);
+    });
+  }).catch(error => {
+    return callback(error);
+  });
 }
 
 module.exports = router;

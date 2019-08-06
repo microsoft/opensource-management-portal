@@ -28,9 +28,9 @@ module.exports = function (graphApi) {
   if (pkg && pkg[painlessConfigEnvPkgName] && environmentName) {
     try {
       resources = require(pkg[painlessConfigEnvPkgName])(environmentName, resourcesEnvironmentName);
-      debug(`resources and URL links loaded from painlessConfigEnvPkgName/${environmentName},${resourcesEnvironmentName}`);
+      debug(`resources and URL links loaded from ${painlessConfigEnvPkgName}/${environmentName},${resourcesEnvironmentName}`);
     } catch (painlessConfigError) {
-      debug(`attempted to load resources and URL links loaded from painlessConfigEnvPkgName/${environmentName},${resourcesEnvironmentName}`);
+      debug(`attempted to load resources and URL links loaded from ${painlessConfigEnvPkgName}/${environmentName},${resourcesEnvironmentName}`);
       console.warn(painlessConfigError);
       throw painlessConfigError;
     }

@@ -18,7 +18,7 @@ import async = require('async');
 // ----------------------------------------------------------------------------
 module.exports = function (app, config) {
   const operations = app.settings.providers.operations;
-  async.each(config.github.organizations.onboarding, function (orgEntry, callback) {
+  async.each(config.github.organizations.onboarding, function (orgEntry: any, callback) {
     if (orgEntry && orgEntry.name && orgEntry.ownerToken) {
       let s = 'Organization Onboarding Helper for "' + orgEntry.name + '":\n';
       for (var key in orgEntry) {

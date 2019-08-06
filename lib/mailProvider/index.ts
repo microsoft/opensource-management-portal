@@ -21,8 +21,26 @@ function patchOverride(provider, newToAddress, htmlOrNot) {
       mailOptions.content = '';
     }
     mailOptions.to = newToAddress;
+    if (mailOptions.cc) {
+      if (typeof mailOptions.cc === 'string') {
+        mailOptions.cc = [mailOptions.cc];
+      }
+      if (Array.isArray(mailOptions.cc) && mailOptions.cc.length) {
+        originalTo += ` (CC: ${mailOptions.cc.join(', ')})`;
+        mailOptions.cc = null;
+      }
+    }
+    if (mailOptions.bcc) {
+      if (typeof mailOptions.bcc === 'string') {
+        mailOptions.bcc = [mailOptions.bcc];
+      }
+      if (Array.isArray(mailOptions.bcc) && mailOptions.bcc.length) {
+        originalTo += ` (BCC: ${mailOptions.bcc.join(', ')})`;
+        mailOptions.bcc = null;
+      }
+    }
     const initialContent = mailOptions.content;
-    const redirectMessage = `This mail was intended for "${originalTo}" but was instead sent to "${newToAddress}" per a configuration override.\n`;
+    const redirectMessage = `This mail was intended for ${originalTo} but was instead sent to ${newToAddress} per a configuration override.\n`;
     mailOptions.content = htmlOrNot ? `<p><em>${redirectMessage}</em></p>\n${initialContent}` : `${redirectMessage}\n${initialContent}`;
     sendMail(mailOptions, callback);
   };

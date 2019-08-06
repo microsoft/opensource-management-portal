@@ -7,8 +7,9 @@
 
 'use strict';
 
-const _ = require('lodash');
-import async = require('async');
+import _ from 'lodash';
+import async from 'async';
+
 import { Operations } from './operations';
 import { ICacheOptions } from '../transitional';
 import * as common from './common';
@@ -16,6 +17,7 @@ import * as common from './common';
 import { wrapError } from '../utils';
 import { ILinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
 import { ICorporateLink } from './corporateLink';
+import { Organization } from './organization';
 
 const primaryAccountProperties = [
   'id',
@@ -36,11 +38,13 @@ export class Account {
   private _created_at?: any;
   private _updated_at?: any;
 
+  private _originalEntity?: any;
+
   public get id(): string {
     return this._id;
   }
 
-  public get link(): any {
+  public get link(): ICorporateLink {
     return this._link;
   }
 
@@ -60,8 +64,13 @@ export class Account {
     return this._created_at;
   }
 
+  public get company(): string {
+    return this._originalEntity ? this._originalEntity.company : undefined;
+  }
+
   constructor(entity, operations: Operations, getCentralOperationsToken) {
     common.assignKnownFieldsPrefixed(this, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
+    this._originalEntity = entity;
 
     this._operations = operations;
     this._getCentralOperationsToken = getCentralOperationsToken;
@@ -74,18 +83,23 @@ export class Account {
 
   contactName() {
     if (this._link) {
-      return this._link.corporateDisplayName || this._login;
+      return this.link.corporateDisplayName || this.link['aadname'] || this._login;
     }
     return this._login;
   }
 
   contactEmail() {
-    return this._link ? this._link.corporateDisplayName : null;
+    // NOTE: this field name is wrong, it is a UPN, not a mail address
+    if (this._link) {
+      return this.link.corporateUsername || this.link['aadupn'] || null;
+    }
+    return null;
   }
 
   corporateAlias() {
-    if (this._link && this._link.corporateUsername) {
-      var email = this._link.corporateUsername;
+    // NOTE: this is a hack
+    if (this.contactEmail()) {
+      var email = this.contactEmail();
       var i = email.indexOf('@');
       if (i >= 0) {
         return email.substring(0, i);
@@ -201,8 +215,12 @@ export class Account {
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
-    return operations.github.call(token, 'users.getById', parameters, cacheOptions, (error, entity) => {
-      if (error) {
+    return operations.github.request(token, 'GET /user/:id', parameters, cacheOptions, (error, entity) => {
+      if (error && error.code && error.code === 404) {
+        error = new Error(`The GitHub user ID ${id} could not be found (or was deleted)`);
+        error.code = 404;
+        return callback(error);
+      } else if (error) {
         return callback(wrapError(error, `Could not get details about account "${id}".`));
       }
       common.assignKnownFieldsPrefixed(self, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
@@ -294,93 +312,11 @@ export class Account {
     });
   }
 
-  // temporarily poor name going async
-  async terminateAsync(options): Promise<any> {
-    options = options || {};
-    const reason = options.reason || 'account.terminate called';
-    const continueOnError = options.continueOnError || false;
-    const insights = this._operations.insights;
-    if (insights) {
-      insights.trackEvent({
-        name: 'UserUnlinkStart',
-        properties: {
-          id: this._id,
-          login: this._login,
-          reason: reason,
-          continueOnError: continueOnError ? 'continue on errors' : 'halt on errors',
-        },
-      });
-    }
-
-    let history = null;
-    try {
-      history = await this.removeManagedOrganizationMembershipsAsync();
-    } catch (removeOrganizationsError) {
-      // If a removal error occurs, do not remove the link and throw an error,
-      // so that the link data and information is still present until cleaned
-      if (insights) {
-        insights.trackException({ exception: removeOrganizationsError });
-      }
-      if (!continueOnError) {
-        throw removeOrganizationsError;
-      }
-    }
-    if (!history) {
-      history = [];
-    }
-
-    let removeHistory = null;
-    try {
-      removeHistory = await this.removeLinkAsync();
-    } catch (removeLinkError) {
-      if (insights) {
-        insights.trackException({ exception: removeLinkError });
-
-        if (this.id && !this.login) {
-          // If the account information could not be resolved through the
-          // GitHub API for this _id_, then the user deleted their account,
-          // or is using a different one now, etc., so try deleting the
-          // associated link still by searching for it by _ID_.
-
-          // TODO: ... ?
-        }
-      }
-    }
-    if (removeHistory && Array.isArray(removeHistory)) {
-      for (let i = 0; i < removeHistory.length; i++) {
-        history.push(removeHistory[i]);
-      }
-    }
-    if (insights) {
-      insights.trackEvent({
-        name: 'UserUnlink',
-        properties: {
-          id: this._id,
-          login: this._login,
-        },
-      });
-    }
-
-    return history;
-  }
-
-  terminate(options, callback) {
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    this.terminateAsync(options).then(output => {
-      return callback(null, output);
-    }).catch(error => {
-      return callback(error);
-    });
-  }
-
   // TODO: implement getOrganizationMemberships, with caching; reuse below code
 
   getOperationalOrganizationMemberships(callback) {
     const self = this;
-    const operations = self._operations;
+    const operations = self._operations as Operations;
     const organizations = operations.organizations;
     // we want to make sure that we have an ID and username
     self.getDetails(getDetailsError => {
@@ -392,7 +328,7 @@ export class Account {
         return callback(new Error(`No GitHub username available for user ID ${self._id}`));
       }
       let currentOrganizationMemberships = [];
-      async.eachLimit(organizations, 2, (organization, next) => {
+      async.eachLimit(organizations.values(), 2, (organization: Organization, next) => {
         organization.getOperationalMembership(username, (getMembershipError, result) => {
           // getMembershipError is ignored - if there is no membership, that's fine
           if (result && result.state && (result.state === 'active' || result.state === 'pending')) {
@@ -412,8 +348,9 @@ export class Account {
     self.getOperationalOrganizationMemberships((error, organizations) => {
       const username = self._login;
       if (error && error.code == /* loose */ '404') {
-        history.push(`Could get not org membership information because: ${error.toString()}`);
+        history.push(error.toString());
       } else if (error) {
+        history.push(`Could get not org membership information because: ${error.toString()}`);
         return callback(error);
       }
       if (organizations && organizations.length > 1) {
@@ -423,7 +360,7 @@ export class Account {
         history.push(`${username} is not a member of any managed organizations`);
       }
       let firstError = null;
-      async.eachLimit(organizations, 1, (organization, next) => {
+      async.eachLimit(organizations, 1, (organization: Organization, next) => {
         organization.removeMember(username, removeError => {
           // We do not bubble up the error, keep going
           if (removeError) {

@@ -10,27 +10,33 @@ import express = require('express');
 import { ReposAppRequest } from '../../../transitional';
 import { jsonError } from '../../../middleware/jsonError';
 import { IndividualContext } from '../../../business/context2';
+import { Organization } from '../../../business/organization';
+import { CreateRepositoryCallback } from '../createRepo';
 
 const router = express.Router();
 
 const createRepo = require('../createRepo');
 
-interface IApiRequest extends ReposAppRequest {
+interface ILocalApiRequest extends ReposAppRequest {
   apiVersion?: string;
   organization?: any;
   knownRequesterMailAddress?: any;
 }
 
-router.get('/metadata', (req: IApiRequest, res, next) => {
+router.get('/metadata', (req: ILocalApiRequest, res, next) => {
   try {
-    const metadata = req.organization.getRepositoryCreateMetadata();
+    const options = {
+      projectType: req.query.projectType,
+    };
+    const organization = req.organization as Organization;
+    const metadata = organization.getRepositoryCreateMetadata(options);
     res.json(metadata);
   } catch (error) {
     return next(jsonError(error, 400));
   }
 });
 
-router.get('/personalizedTeams', (req: IApiRequest, res, next) => {
+router.get('/personalizedTeams', (req: ILocalApiRequest, res, next) => {
   const orgName = req.organization.name.toLowerCase();
   const operations = req.app.settings.providers.operations;
   const id = req.apiContext.getGitHubIdentity().id;
@@ -62,7 +68,7 @@ router.get('/personalizedTeams', (req: IApiRequest, res, next) => {
   });
 });
 
-router.get('/teams', (req: IApiRequest, res, next) => {
+router.get('/teams', (req: ILocalApiRequest, res, next) => {
   // By default, allow a 30-second old list of teams. If the cached
   // view is older, refresh this list in the background for use if
   // they refresh for a better user experience.
@@ -97,7 +103,7 @@ router.get('/teams', (req: IApiRequest, res, next) => {
   });
 });
 
-router.get('/repo/:repo', (req: IApiRequest, res) => {
+router.get('/repo/:repo', (req: ILocalApiRequest, res) => {
   const repoName = req.params.repo;
   req.organization.repository(repoName).getDetails((error, repo) => {
     error ? res.status(404).end() : res.json(repo);
@@ -125,7 +131,7 @@ function discoverUserIdentities(req: ReposAppRequest, res, next) {
   });
 }
 
-router.post('/repo/:repo', discoverUserIdentities, (req: IApiRequest, res, next) => {
+router.post('/repo/:repo', discoverUserIdentities, (req: ILocalApiRequest, res, next) => {
   const body = req.body;
   if (!body) {
     return next(jsonError('No body', 400));
@@ -183,7 +189,7 @@ router.post('/repo/:repo', discoverUserIdentities, (req: IApiRequest, res, next)
       body: JSON.stringify(req.body),
     },
   });
-  createRepo(req, res, body, token, (error, success) => {
+  CreateRepositoryCallback(req, res, body, token, (error, success) => {
     if (error) {
       if (!error.json) {
         error = jsonError(error, 400);
@@ -206,7 +212,7 @@ router.post('/repo/:repo', discoverUserIdentities, (req: IApiRequest, res, next)
     delete success.tasks;
 
     res.json(success);
-  }, false /* false means please callback to us with success */);
+  });
 });
 
 function translateTeams(body) {

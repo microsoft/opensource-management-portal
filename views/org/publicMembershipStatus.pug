@@ -18,7 +18,7 @@ block content
       p.lead Show your support for #{config.brand.companyName} open source!
       p Publicizing your organization memberships is great for building community and reputation. If you to make your membership public, GitHub shows the "#{organization.name}" avatar on <a href="https://github.com/#{user.github.username}" target="_new">your public GitHub profile</a> and shows you on the <a href="https://github.com/orgs/#{organization.name}/people" target="_new">members page for #{organization.name}</a>.
 
-    if user && user.github.increasedScope === true
+    if hasWriteToken
       p &nbsp;
       form(method='post')
         p

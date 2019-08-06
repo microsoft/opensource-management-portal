@@ -8,7 +8,7 @@
 'use strict';
 
 import async = require('async');
-import * as Q from 'q';
+import Q from 'q';
 import { IIntelligentCacheObjectResponse, IIntelligentCacheResponseArray, createCallbackFlattenData } from './core';
 import { CompositeApiContext } from './composite';
 import { ILibraryContext } from '.';
@@ -24,6 +24,7 @@ interface ICrossOrganizationDataResponse extends IIntelligentCacheObjectResponse
 interface ILocalOptionsParameters {
   per_page: number;
   id?: string;
+  team_id?: string;
   owner?: string;
   repo?: string;
 }
@@ -119,7 +120,7 @@ function createMethods(libraryContext: ILibraryContext, collectionsClient) {
         entities.headers = {};
         async.eachLimit(Object.getOwnPropertyNames(entitiesByOrg.orgs), 1, (orgName, nextOrg) => {
           const orgEntities = entitiesByOrg.orgs[orgName];
-          async.eachLimit(orgEntities, 1, (orgEntity, next) => {
+          async.eachLimit(orgEntities, 1, (orgEntity: any, next) => {
             const cloneTarget = optionalSetOrganizationLogin ? {
               organization: {
                 login: orgName,
@@ -131,7 +132,7 @@ function createMethods(libraryContext: ILibraryContext, collectionsClient) {
             };
             switch (innerKeyType) {
             case 'team':
-              localOptionsTarget.id = orgEntity.id;
+              localOptionsTarget.team_id = orgEntity.id;
               break;
             case 'repo':
               localOptionsTarget.owner = orgName;

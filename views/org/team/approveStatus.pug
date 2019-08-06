@@ -11,19 +11,19 @@ block content
     //- This can be used for local debugging if needed:
     //- pre= JSON.stringify(entry, undefined, 2)
 
-    if entry.type == 'repo'
-      if entry.repoVisibility == 'public'
-        h1 New public #{entry.org} Repository Request
+    if metadata.type == 'repo'
+      if metadata.initialRepositoryVisibility == 'public'
+        h1 New public #{metadata.organizationName} Repository Request
       else
-        h1 New private #{entry.org} Repository Request
+        h1 New private #{metadata.organizationName} Repository Request
     else
       h1 Open Source Access Request
 
-    if entry.active === true
-      if entry.type == 'repo'
-        p.lead Please review this repository creation request on behalf of the #{entry.org} organization.
+    if metadata.active === true
+      if metadata.type == 'repo'
+        p.lead Please review this repository creation request on behalf of the #{metadata.organizationName} organization.
         p Keep in mind ideal naming patterns and best practices for this organization. Feel free to take the time to communicate with other approvers over e-mail or modify the request prior to creating the repo.
-        if entry.repoVisibility == 'private'
+        if metadata.repoVisibility == 'private'
           p Private repositories count against our organization's private repo quota. Consider whether this repo and its business justification imply that the project is heading toward an open source release soon. You may recommend to the maintainer that instead they use a different corporate source control system until ready to go public, for example.
       else
         p.lead Please review this pending permission request
@@ -33,28 +33,28 @@ block content
         form(method='post')
           input.btn.btn-sm.btn-default(type='submit', name='reopen', value='Re-open')
 
-    if entry.requestedTime && entry.requestedTime.toISOString
+    if metadata.created && metadata.created.toISOString
       p
         | This request was opened by&nbsp;
-        a(href='https://github.com/' + entry.ghu, target='_new')= entry.ghu
+        a(href='https://github.com/' + metadata.thirdPartyUsername, target='_new')= metadata.thirdPartyUsername
         | &nbsp;
-        time(datetime=entry.requestedTime.toISOString())= entry.requestedTime.toDateString()
+        time(datetime=metadata.created.toISOString())= metadata.created.toDateString()
 
     p
-      form(method='post', action=teamUrl + 'approvals/' + entry.RowKey)
-        if entry.active === true
+      form(method='post', action=teamUrl + 'approvals/' + metadata.approvalId)
+        if metadata.active === true
           input.btn.btn-primary.btn-sm(type='submit', name='approve', value='Approve')
           | &nbsp;
           input.btn.btn-sm.btn-default(type='submit', name='approveWithComment', value='Approve with Comment...')
           | &nbsp;
           input.btn.btn-sm.btn-default(type='submit', name='deny', value='Deny...')
           | &nbsp;
-          if entry.type == 'repo'
-            a.btn.btn-sm.btn-muted(href=(teamUrl + 'approvals/' + entry.RowKey + '/edit')) Edit Request as an approver
+          if metadata.type == 'repo'
+            a.btn.btn-sm.btn-muted(href=(teamUrl + 'approvals/' + metadata.approvalId + '/edit')) Edit Request as an approver
           else
             // At this time, editing of standard permission requests is not implemented.
 
-    if entry.decision
+    if metadata.decision
       table.table.table-bordered
         thead
           tr
@@ -64,41 +64,41 @@ block content
         tbody
           tr
             td
-              if entry.decision
-                p= entry.decision.toUpperCase()
+              if metadata.decision
+                p= metadata.decision.toUpperCase()
             td
-              if entry.decisionTime
+              if metadata.decisionTime
                 p
-                  time(datetime=entry.decisionTime.toISOString())= entry.decisionTime.toDateString()
+                  time(datetime=metadata.decisionTime.toISOString())= metadata.decisionTime.toDateString()
               else
                 p Unknown
             td
               p
-                if entry.decisionBy && entry.decisionEmail
-                  a(href='mailto:' + entry.decisionEmail)= entry.decisionBy
+                if metadata.decisionThirdPartyUsername && metadata.decisionCorporateUsername
+                  a(href='mailto:' + metadata.decisionCorporateUsername)= metadata.decisionThirdPartyUsername
                 else
-                  = entry.decisionBy
+                  = metadata.decisionThirdPartyUsername
                   | &nbsp;
-                  = entry.decisionEmail
-          if entry.decisionNote
+                  = metadata.decisionCorporateUsername
+          if metadata.decisionMessage
             tr
               td(colspan='3')
                 p
                   strong Note by decision maker:
                   br
-                  = entry.decisionNote
+                  = metadata.decisionMessage
 
-    if entry.justification
+    if metadata.justification
       table.table.table-bordered
         thead
           tr
             th Justification provided by user
         tbody
           tr
-            td= entry.justification
+            td= metadata.justification
 
     //- REPO CREATE DETAILS
-    if entry.type == 'repo'
+    if metadata.type == 'repo'
       table.table.table-bordered
         thead
           tr
@@ -108,12 +108,12 @@ block content
         tbody
           tr
             td
-              p(style='font-size:225%')= entry.repoName
+              p(style='font-size:225%')= metadata.repositoryName
             td
-              p= entry.org
+              p= metadata.organizationName
             td
               p
-                if entry.repoVisibility == 'public'
+                if metadata.initialRepositoryVisibility == 'public'
                   strong(style='color:red') PUBLIC
                 else
                   | Private
@@ -124,43 +124,29 @@ block content
         tbody
           tr
             td
-              p= entry.repoDescription
-              if entry.repoUrl
+              if metadata.repoDescription
+                p= metadata.repoDescription
+              if metadata.repoUrl
                 p
                   small
-                    a(href=entry.repoUrl, target='_new')
-                      i= entry.repoUrl
-      if expandedTeamInfo
-        table.table.table-bordered
-          thead
-            tr
-              th(colspan='3') Team Permissions
-            tr
-              th Team ID
-              th Team Name
-              th Permission Level for Repository
-          tbody
-            each eti in expandedTeamInfo
-              tr
-                td= eti.id
-                td= eti.name
-                td.capitalize= eti._temporary_permission
+                    a(href=metadata.repoUrl, target='_new')
+                      i= metadata.repoUrl
 
     table.table.table-bordered
       thead
         tr
-          if entry.type !== 'repo'
+          if metadata.type !== 'repo'
             th Team Requested
-          //-if entry.issue
+          //-if metadata.issue
             //- NOTE: Commenting out GitHub links with approval repos, since they are being deprecated internally and this is a quick fix
             th GitHub Tracking Issue
       tbody
         tr
-          if entry.type !== 'repo'
+          if metadata.type !== 'repo'
             td
               p
-                a(href='https://github.com/orgs/' + entry.org + '/teams/' + entry.teamname, target='_new')= entry.teamname
-          //-if entry.issue
+                a(href='https://github.com/orgs/' + metadata.organizationName + '/teams/' + metadata.teamName, target='_new')= metadata.teamName
+          //-if metadata.issue
             //- NOTE: Commenting out GitHub links with approval repos, since they are deprecated
 
     table.table.table-bordered
@@ -172,8 +158,8 @@ block content
         tr
           td
             p
-              if requestingUser.avatar()
-                img(alt=requestingUser.login, src=requestingUser.avatar(80) + '&s=80', style='margin-right:10px;width:30px;height:30px')
+              //- if requestingUser.avatar()
+              //-   img(alt=requestingUser.login, src=requestingUser.avatar(80) + '&s=80', style='margin-right:10px;width:30px;height:30px')
               a.btn.btn-sm.btn-muted(href='https://github.com/' + requestingUser.login, target='_new')= requestingUser.login
           td
             p
@@ -189,5 +175,5 @@ block content
                 else
                   | UNKNOWN ALIAS
               | &nbsp;
-              if entry.email
-                a.btn.btn-sm.btn-default(href='mailto:' + entry.email) Send Mail
+              if metadata.email
+                a.btn.btn-sm.btn-default(href='mailto:' + metadata.email) Send Mail

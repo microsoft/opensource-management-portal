@@ -5,19 +5,26 @@
 
 'use strict';
 
-const _ = require('lodash');
-import async = require('async');
-import express = require('express');
+import _ from 'lodash';
+import async from 'async';
+import express from 'express';
+import moment from 'moment';
+
 const extensionsRoute = require('./extensions/');
 const lowercaser = require('../../middleware/lowercaser');
-import moment = require('moment');
 import { ReposAppRequest } from '../../transitional';
 import { Organization } from '../../business/organization';
 import { Repository } from '../../business/repository';
+import { Team } from '../../business/team';
+import { TeamMember } from '../../business/teamMember';
+import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { Operations } from '../../business/operations';
+
 const router = express.Router();
 
 interface ILocalRequest extends ReposAppRequest {
-  repository?: any;
+  repository?: Repository;
+  repositoryMetadata?: RepositoryMetadataEntity;
   repoPermissions?: any;
 }
 
@@ -84,9 +91,9 @@ function calculateRepoPermissions(organization: Organization, repository: Reposi
       }
       findRepoCollaboratorsExcludingTeams(repository, teamPermissions, owners, (getCollaboratorsError, collaborators, outsideCollaborators) => {
         // Get team members
-        async.eachLimit(teamPermissions, 2, (tp, next) => {
-          const team = tp.team;
-          team.getMembers((membersError, members) => {
+        async.eachLimit(teamPermissions, 2, (tp: any, next) => {
+          const team = tp.team as Team;
+          team.getMembers((membersError, members: TeamMember[]) => {
             if (!membersError) {
               tp.members = members;
             }
@@ -141,7 +148,12 @@ router.use('/:repoName', (req: ILocalRequest, res, next) => {
       return next(error);
     }
     req.repository = repository;
-    return next();
+    return repository.getRepositoryMetadata().then(metadata => {
+      req.repositoryMetadata = metadata;
+      return next();
+    }).catch(error => {
+      return next(error);
+    });
   });
 });
 
@@ -184,14 +196,40 @@ function getRepoExtensions(operations, repository, callback) {
   });
 }
 
+router.post('/:repoName', (req: ILocalRequest, res, next) => {
+  const repoPermissions = req.repoPermissions;
+  if (!repoPermissions.admin === true) {
+    return next(new Error('You do not have administrative permission on this repository'));
+  }
+  // only supporting the 'take public' operation now
+  const takePublic = req.body['make-repo-public'];
+  if (!takePublic) {
+    return next(new Error('Unsupported operation'));
+  }
+  const repository = req.repository as Repository;
+  repository.editPublicPrivate({ private: false }).then(() => {
+    req.individualContext.webContext.saveUserAlert(`${repository.full_name} is now public.`, 'Repository publish', 'success');
+    repository.getDetails({
+      backgroundRefresh: false,
+      maxAgeSeconds: -60, // force a refresh now
+    }, error => {
+      if (error) {
+        return next(error);
+      }
+      res.redirect(`/${repository.organization.name}/repos/${repository.name}?published`);
+    });
+  }).catch(next);
+});
+
 router.get('/:repoName', (req: ILocalRequest, res, next) => {
   const referer = req.headers.referer as string;
   const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
-  const operations = req.app.settings.operations;
+  const operations = req.app.settings.operations as Operations;
   const organization = req.organization;
   const repoPermissions = req.repoPermissions;
   const repository = req.repository;
   const gitHubId = req.individualContext.getGitHubIdentity().id;
+  const repositoryMetadataEntity = req.repositoryMetadata;
   const uc = operations.getUserContext(gitHubId);
   return uc.getAggregatedOverview((aggregateError, aggregate) => {
     repository.getDetails((error) => {
@@ -232,6 +270,7 @@ router.get('/:repoName', (req: ILocalRequest, res, next) => {
                 repoPermissions: repoPermissions,
                 teamBasedPermissions: teamBasedPermissions,
                 extensions,
+                repositoryMetadataEntity,
               },
             });
           });

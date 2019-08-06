@@ -5,6 +5,9 @@
 
 'use strict';
 
+import { IProviders } from "../transitional";
+import { Operations } from "../business/operations";
+
 const passport = require('passport');
 const OIDCStrategy = require('passport-azure-ad').OIDCStrategy;
 
@@ -14,7 +17,30 @@ const passportGitHub = require('passport-github');
 
 const GitHubStrategy = passportGitHub.Strategy;
 
-function githubResponseToSubset(accessToken, refreshToken, profile, done) {
+function githubResponseToSubset(app, accessToken, refreshToken, profile, done) {
+  const config = app.settings.runtimeConfig;
+  const providers = app.settings.providers as IProviders;
+  if (config && config.impersonation && config.impersonation.githubId) {
+    const operations = providers.operations as Operations;
+    const impersonationId = config.impersonation.githubId;
+
+    const account = operations.getAccount(impersonationId);
+    return account.getDetails({}, (err, details) => {
+      if (err) {
+        return done(err);
+      }
+      console.warn(`GITHUB IMPERSONATION: id=${impersonationId} login=${details.login} name=${details.name}`);
+      return done(null, {
+        github: {
+          accessToken: 'fakeaccesstoken',
+          displayName: details.name,
+          avatarUrl: details.avatar_url,
+          id: details.id.toString(),
+          username: details.login,
+        },
+      });
+    });
+  }
   let subset = {
     github: {
       accessToken: accessToken,
@@ -38,7 +64,7 @@ function githubResponseToIncreasedScopeSubset(accessToken, refreshToken, profile
   return done(null, subset);
 }
 
-function activeDirectorySubset(iss, sub, profile, done) {
+function activeDirectorySubset(app, iss, sub, profile, done) {
   // CONSIDER: TODO: Hybrid tenant checks.
   // Internal-only code:
   // ----------------------------------------------------------------
@@ -51,14 +77,33 @@ function activeDirectorySubset(iss, sub, profile, done) {
   // if (username && username.indexOf && username.indexOf('#') >= 0) {
   //   return next(new Error('Your hybrid tenant account, ' + username + ', is not permitted for this resource. Were you invited as an outside collaborator by accident? Please contact us if you have any questions.'));
   // }
-  let subset = {
+
+  const config = app.settings.runtimeConfig;
+  const providers = app.settings.providers as IProviders;
+  if (config && config.impersonation && config.impersonation.corporateId) {
+    const impersonationCorporateId = config.impersonation.corporateId;
+    return providers.graphProvider.getUserById(impersonationCorporateId, (err, impersonationResult) => {
+      if (err) {
+        return done(err);
+      }
+      console.warn(`IMPERSONATION: id=${impersonationResult.id} upn=${impersonationResult.userPrincipalName} name=${impersonationResult.displayName}`);
+      return done(null, {
+        azure: {
+          displayName: impersonationResult.displayName,
+          oid: impersonationResult.id,
+          username: impersonationResult.userPrincipalName,
+        },
+      });
+    });
+  }
+  const subset = {
     azure: {
       displayName: profile.displayName,
       oid: profile.oid,
       username: profile.upn,
     },
   };
-  done(null, subset);
+  return done(null, subset);
 }
 
 module.exports = function (app, config) {
@@ -77,7 +122,7 @@ module.exports = function (app, config) {
     scope: [],
     userAgent: 'passport-azure-oss-portal-for-github' // CONSIDER: User agent should be configured.
   };
-  let githubPassportStrategy = new GitHubStrategy(githubOptions, githubResponseToSubset);
+  let githubPassportStrategy = new GitHubStrategy(githubOptions, githubResponseToSubset.bind(null, app));
   let aadStrategy = new OIDCStrategy({
     redirectUrl: config.activeDirectory.redirectUrl,
     allowHttpForRedirectUrl: config.containers.docker || config.webServer.allowHttp,
@@ -89,7 +134,7 @@ module.exports = function (app, config) {
     responseType: 'id_token code',
     responseMode: 'form_post',
     validateIssuer: true,
-  }, activeDirectorySubset);
+  }, activeDirectorySubset.bind(null, app));
 
   // Patching the AAD strategy to intercept a specific state failure message and instead
   // of providing a generic failure message, redirecting (HTTP GET) to the callback page

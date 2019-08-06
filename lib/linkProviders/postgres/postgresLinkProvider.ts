@@ -30,6 +30,7 @@ import { InnerError } from "../../../transitional";
 import { ICorporateLinkProperties, ICorporateLink, ICorporateLinkExtended } from "../../../business/corporateLink";
 
 import { CorporateLinkPostgres } from './postgresLink';
+import { PostgresPoolQuery, PostgresPoolQuerySingleRow } from '../../postgresHelpers';
 
 const linkProviderInstantiationTypeProperty = '_i';
 
@@ -136,7 +137,7 @@ export class PostgresLinkProvider implements ILinkProvider {
 
   initialize(callback) {
     const self = this;
-    query(this, `
+    PostgresPoolQuery(this._pool, `
       SELECT
         COUNT(thirdpartyid) as thirdpartycount,
         COUNT(corporateid) as corporatecount
@@ -198,7 +199,7 @@ export class PostgresLinkProvider implements ILinkProvider {
     const internalThirdPartyTypeValue = this._internalThirdPartyTypeValue;
     // CONSIDER: the table provider sorts by aadupn and then ghu!
     // TODO: is an order by of interest here?
-    query(self, `
+    PostgresPoolQuery(self._pool, `
       SELECT
         ${coreColumnsList}
       FROM ${this._tableName}
@@ -237,7 +238,7 @@ export class PostgresLinkProvider implements ILinkProvider {
       return callback(new Error('Missing a required value'));
     }
     const created = new Date();
-    query(self, `
+    PostgresPoolQuery(self._pool, `
       INSERT INTO ${this._tableName}(
         linkid,
         thirdpartytype,
@@ -282,7 +283,7 @@ export class PostgresLinkProvider implements ILinkProvider {
     const sets = columns.map(columnName => {
       values.push(updates[columnName]);
       const index = values.length;
-      return `\n  ${columnName} = \$${index}`;
+      return `\n        ${columnName} = \$${index}`;
     }).join();
     let sql = `
       UPDATE ${this._tableName}
@@ -290,9 +291,7 @@ export class PostgresLinkProvider implements ILinkProvider {
       WHERE
         linkid = $1
     `;
-    console.log(sql);
-    console.dir(values);
-    query(self, sql, values, function (error, results) {
+    PostgresPoolQuery(self._pool, sql, values, function (error, results) {
       // TODO: how to validate updates?
       if (error) {
         return callback(error);
@@ -368,7 +367,7 @@ export class PostgresLinkProvider implements ILinkProvider {
     const self = this;
     let columnWrapperStart = columnIsLowercase ? 'lower(' : '';
     let columnWrapperFinish = columnIsLowercase ? ')' : '';
-    query(self, `
+    PostgresPoolQuery(self._pool, `
       SELECT
         ${coreColumnsList}
       FROM ${this._tableName}
@@ -395,39 +394,31 @@ export class PostgresLinkProvider implements ILinkProvider {
   }
 
   private _getSingleRow({columnName, columnValue, columnIsLowercase}, callback) {
-    const self = this;
     let columnWrapperStart = columnIsLowercase ? 'lower(' : '';
     let columnWrapperFinish = columnIsLowercase ? ')' : '';
-    query(self, `
+    const sql = `
       SELECT
         ${coreColumnsList}
       FROM ${this._tableName}
       WHERE
         thirdpartytype = $1 AND
         ${columnWrapperStart}${columnName}${columnWrapperFinish} = $2
-    `, [
-      self._internalThirdPartyTypeValue,
+    `;
+    const values = [
+      this._internalThirdPartyTypeValue,
       columnIsLowercase ? columnValue.toLowerCase() : columnValue,
-    ],
-    function (error, results) {
+    ];
+    PostgresPoolQuerySingleRow(this._pool, sql, values, (error, row) => {
       if (error) {
         return callback(error);
       }
-      const len = results.rowCount;
-      if (len === 1) {
-        return callback(null, createLinkInstanceFromRow(self, results.rows[0]));
-      } else if (len === 0) {
-        const notFoundError = new Error('No link was found');
-        notFoundError['status'] = 404;
-        return callback(notFoundError);
-      }
-      return callback(new Error(`Only one row should be returned; ${len} rows were returned`));
+      return callback(null, createLinkInstanceFromRow(this, row));
     });
   }
 
   private _deleteSingleRow({columnName, columnValue}, callback) {
     const self = this;
-    query(self, `
+    PostgresPoolQuery(self._pool, `
       DELETE
       FROM ${this._tableName}
       WHERE
@@ -460,36 +451,4 @@ function createLinkInstanceFromHydratedEntity(self, jsonObject) {
   const newLink = new CorporateLinkPostgres(linkInternalOptions, jsonObject);
   newLink[linkProviderInstantiationTypeProperty] = LinkInstantiatedType.Rehydrated; // in case this helps while debugging
   return newLink;
-}
-
-function query(self, sql, values, callback) {
-  if (!callback && typeof(values) === 'function') {
-    callback = values;
-    values = [];
-  }
-  const pool = self._pool;
-  pool.connect(function (connectError, client, release) {
-    if (connectError) {
-      return callback(connectError);
-    }
-    console.log(sql);
-    console.dir(values);
-    client.query(sql, values, function (queryError, results) {
-      release();
-      if (queryError) {
-        const err: InnerError = new Error(queryError.message /* Postgres provider never leaks SQL statements thankfully */ || 'There was an error querying a database');
-        err.inner = queryError;
-        if (queryError.position) {
-          err['position'] = queryError.position;
-        }
-        if (queryError.message) {
-          err['sqlMessage'] = queryError.message;
-          err['sqlStatement'] = sql;
-          err['sqlValues'] = values;
-        }
-        return callback(err);
-      }
-      return callback(null, results);
-    });
-  });
 }

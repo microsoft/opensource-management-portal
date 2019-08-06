@@ -102,7 +102,7 @@ router.post('/add', teamAdminRequired, (req: ILocalTeamRequest, res, next) => {
   // Validate that the user is a current org member
   organization.getMembership(username, orgOptions, (error, membership) => {
     if (error || !membership) {
-      if (error && error.innerError && error.innerError.code === 404) {
+      if (error && error.innerError && error.innerError.status === 404) {
         error = new Error(`${username} is not a member of the organization and so cannot be added to the team until they have joined the org.`);
       }
       if (!membership && !error) {

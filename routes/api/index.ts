@@ -8,25 +8,20 @@
 import express = require('express');
 const router = express.Router();
 
-import { ReposAppRequest } from '../../transitional';
+import { ReposAppRequest, IProviders } from '../../transitional';
 
 import { jsonError } from '../../middleware/jsonError';
+import { IApiRequest } from '../../middleware/apiReposAuth';
 
 const apiClient = require('./client');
 const apiExtension = require('./extension');
 const apiPeople = require('./people');
 const apiWebhook = require('./webhook');
 
-const apiReposAuth = require('../../middleware/apiReposAuth');
-const apiVstsAuth = require('../../middleware/apiVstsAuth');
+import { AzureDevOpsAuthenticationMiddleware } from '../../middleware/apiVstsAuth';
+import { ReposApiAuthentiction } from '../../middleware/apiReposAuth';
+import { CreateRepository, CreateRepositoryCallback } from './createRepo';
 const supportMultipleAuthProviders = require('../../middleware/supportMultipleAuthProviders');
-
-const createRepo = require('./createRepo');
-
-interface IApiRequest extends ReposAppRequest {
-  apiKeyRow?: any;
-  apiVersion?: string;
-}
 
 const hardcodedApiVersions = [
   '2019-02-01',
@@ -58,8 +53,8 @@ router.use((req: IApiRequest, res, next) => {
 // AUTHENTICATION: VSTS or repos
 //-----------------------------------------------------------------------------
 const multipleProviders = supportMultipleAuthProviders([
-  apiVstsAuth,
-  apiReposAuth,
+  AzureDevOpsAuthenticationMiddleware,
+  ReposApiAuthentiction,
 ]);
 
 router.use('/people', multipleProviders, apiPeople);
@@ -68,31 +63,25 @@ router.use('/extension', multipleProviders, apiExtension);
 //-----------------------------------------------------------------------------
 // AUTHENTICATION: repos (specific to this app)
 //-----------------------------------------------------------------------------
-router.use(apiReposAuth);
+router.use(ReposApiAuthentiction);
 
 router.use('/:org', function (req: IApiRequest, res, next) {
   const orgName = req.params.org;
-  const apiKeyRow = req.apiKeyRow;
-  if (!apiKeyRow.orgs) {
-    return next(jsonError('There is a problem with the key configuration', 412));
+  if (!req.apiKeyToken.organizationScopes) {
+    return next(jsonError('There is a problem with the key configuration (no organization scopes)', 412));
   }
   // '*'' is authorized for all organizations in this configuration environment
-  if (apiKeyRow.orgs !== '*') {
-    const orgList = apiKeyRow.orgs.toLowerCase().split(',');
-    if (orgList.indexOf(orgName.toLowerCase()) < 0) {
-      return next(jsonError('The key is not authorized for this organization', 401));
-    }
+  if (!req.apiKeyToken.hasOrganizationScope(orgName)) {
+    return next(jsonError('The key is not authorized for this organization', 401));
   }
-
-  if (!apiKeyRow.apis) {
-    return next(jsonError('The key is not authorized for specific APIs', 401));
+  if (!req.apiKeyToken.scopes) {
+    return next(jsonError('There is a problem with the key configuration (no specific API scopes)', 412));
   }
-  const apis = apiKeyRow.apis.split(',');
-  if (apis.indexOf('createRepo') < 0) {
+  if (!req.apiKeyToken.hasScope('createRepo')) {
     return next(jsonError('The key is not authorized to use the repo create APIs', 401));
   }
 
-  const providers = req.app.settings.providers;
+  const providers = req.app.settings.providers as IProviders;
   const operations = providers.operations;
   let organization = null;
   try {
@@ -112,7 +101,13 @@ router.post('/:org/repos', function (req: ReposAppRequest, res, next) {
   delete convergedObject.authorization;
 
   const token = req.organization.getRepositoryCreateGitHubToken();
-  createRepo(req, res, convergedObject, token, next, true /* send the response directly back without the callback */);
+  CreateRepositoryCallback(req, res, convergedObject, token, (error, repoCreateResponse) => {
+    if (error) {
+      return next(error);
+    }
+    res.status(201);
+    return res.json(repoCreateResponse);
+  });
 });
 
 module.exports = router;

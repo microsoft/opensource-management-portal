@@ -9,7 +9,7 @@
 
 const _ = require('lodash');
 import moment = require('moment');
-import * as Q from 'q';
+import Q from 'q';
 import { requireJson } from '../../utils';
 const qlimit = require('qlimit');
 
@@ -314,7 +314,7 @@ function processTeam(context, team) {
       return Q.delay(context, context.settings.teamDelayAfter || 0);
     }).catch(problem => {
       // Missing teams are not worth showing too much about
-      if (problem.code === 404) {
+      if (problem.status ==  /* loose */ 404) {
         throw problem;
       }
       console.warn(problem);

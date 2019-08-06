@@ -18,6 +18,13 @@ import { Team } from "./team";
 import { Repository } from "./repository";
 
 import { wrapError } from '../utils';
+import { StripGitHubEntity } from "../lib/github/restApi";
+import { GitHubResponseType } from "../lib/github/endpointEntities";
+
+export interface ICreateRepositoryResult {
+  response: any;
+  repository: Repository;
+}
 
 export class Organization {
   private _name: string;
@@ -26,6 +33,8 @@ export class Organization {
   private _operations: Operations;
   private _getOwnerToken: any;
   private _settings: any;
+
+  id: string;
 
   constructor(operations: Operations, name: string, settings: any) {
     this._name = settings.name || name;
@@ -44,7 +53,7 @@ export class Organization {
     return this._name;
   }
 
-  repository(name, optionalEntity?) {
+  repository(name: string, optionalEntity?) {
     let entity = optionalEntity || {};
     if (!optionalEntity) {
       entity.name = name;
@@ -244,7 +253,7 @@ export class Organization {
         return callback(null, Array.from(administrators));
       }
       sudoTeam.getMembers((error, members) => {
-        if (error && error.code === 404) {
+        if (error && error.status === 404) {
           // The sudo team no longer exists, but we should still have administrator information
           return callback(null, Array.from(administrators));
         }
@@ -327,6 +336,14 @@ export class Organization {
     return this._getOwnerToken();
   }
 
+  createRepositoryAsync(repositoryName: string, options: any): Promise<ICreateRepositoryResult> {
+    return new Promise((resolve, reject) => {
+      return this.createRepository(repositoryName, options, (error, result: ICreateRepositoryResult) => {
+        return error ? reject(error) : resolve(result);
+      });
+    });
+  }
+
   createRepository(repositoryName, options, callback) {
     if (!callback && typeof(options) === 'function') {
       callback = options;
@@ -347,12 +364,25 @@ export class Organization {
       name: repositoryName,
     }, options);
 
-    return operations.github.post(token, 'repos.createForOrg', parameters, (error, details) => {
+    return operations.github.post(token, 'repos.createInOrg', parameters, (error, details) => {
       if (error) {
-        return callback(wrapError(error, `Could not create the repository ${orgName}/${repositoryName}`));
+        let contextualError = '';
+        if (error.errors && Array.isArray(error.errors)) {
+          contextualError = error.errors.map(errorEntry => errorEntry.message).join(', ') + '. ';
+        }
+        const friendlyErrorMessage = `${contextualError}Could not create the repository ${orgName}/${repositoryName}`;
+        return callback(wrapError(error, friendlyErrorMessage));
       }
       const newRepository = self.repositoryFromEntity(details);
-      return callback(null, newRepository, details);
+      let response = details;
+      try {
+        response = StripGitHubEntity(GitHubResponseType.Repository, details, 'repos.createInOrg');
+      } catch (parseError) { }
+      const result: ICreateRepositoryResult = {
+        repository: newRepository,
+        response,
+      };
+      return callback(null, result);
     });
   }
 
@@ -370,7 +400,7 @@ export class Organization {
     });
   }
 
-  getRepositoryCreateMetadata() {
+  getRepositoryCreateMetadata(options?: any) {
     const operations = this._operations;
     const settings = this._settings;
     const config = operations.config;
@@ -384,13 +414,13 @@ export class Organization {
         languages: operations.config.github.gitignore.languages,
       },
       supportsCla: settings.cla && true,
-      templates: getRepositoryCreateTemplates(this, operations),
+      templates: getRepositoryCreateTemplates(this, operations, options || {}),
       visibilities: getSupportedRepositoryTypesByPriority(this),
     };
     return metadata;
   }
 
-  getTeamFromName(nameOrSlug, options, callback) {
+  getTeamFromName(nameOrSlug, options, callback?) {
     const operations = this._operations;
     if (!callback && typeof(options) === 'function') {
       callback = options;
@@ -492,7 +522,7 @@ export class Organization {
 
     sudoerTeam.getMembershipEfficiently(username, (getMembershipError, membership) => {
       // The team for sudoers may have been deleted, which is not an error
-      if (getMembershipError && getMembershipError.code === 404) {
+      if (getMembershipError && getMembershipError.status == /* loose */ 404) {
         return callback(null, false);
       }
       if (getMembershipError) {
@@ -515,7 +545,7 @@ export class Organization {
       org: this.name,
       state: 'active',
     };
-    return operations.github.post(userToken, 'users.editOrgMembership', parameters, (error, response) => {
+    return operations.github.post(userToken, 'orgs.updateMembership', parameters, (error, response) => {
       if (error) {
         return callback(wrapError(error, `Could not accept your invitation for the ${this.name} organization on GitHub`));
       }
@@ -523,7 +553,7 @@ export class Organization {
     });
   }
 
-  getMembership(username, options, callback) {
+  getMembership(username, options, callback?) {
     if (!callback && typeof (options) === 'function') {
       callback = options;
       options = null;
@@ -536,18 +566,19 @@ export class Organization {
     };
     const operations = this._operations;
     const token = this._getOwnerToken();
-    return operations.github.call(token, 'orgs.getOrgMembership', parameters, (error, result) => {
-      if (error && error.code === 404) {
+    return operations.github.call(token, 'orgs.getMembership', parameters, (error, result) => {
+      if (error && error.status == /* loose */ 404) {
         return callback(null, false);
       }
       if (error) {
         let reason = error.message;
-        if (error.code) {
-          reason += ' ' + error.code;
+        if (error.status) {
+          reason += ' ' + error.status;
         }
         const wrappedError = wrapError(error, `Trouble retrieving the membership for "${username}" in the ${orgName} organization. ${reason}`);
-        if (error.code) {
-          wrapError['code'] = error.code;
+        if (error.status) {
+          wrapError['code'] = error.status;
+          wrapError['status'] = error.status;
         }
         return callback(wrappedError);
       }
@@ -569,7 +600,36 @@ export class Organization {
     return this.getMembership(username, options, callback);
   }
 
-  checkPublicMembership(username, options, callback) {
+  addMembershipAsync(username, options): Promise<any> {
+    // TODO: long-term, all methods should be async
+    return new Promise((resolve, reject) => {
+      this.addMembership(username, options, (err, data) => {
+        return err ? reject(err) : resolve(data);
+      });
+    });
+  }
+
+  addMembership(username, options, callback?) {
+    const operations = this._operations;
+    const token = this._getOwnerToken();
+    const github = operations.github;
+    if (!callback && typeof(options) === 'function') {
+      callback = options;
+      options = null;
+    }
+    options = options || {};
+
+    const role = options.role || 'member';
+
+    const parameters = {
+      org: this.name,
+      username: username,
+      role: role,
+    };
+    github.post(token, 'orgs.addOrUpdateMembership', parameters, callback);
+  }
+
+  checkPublicMembership(username, options, callback?) {
     // NOTE: This method is unable to be cached by the underlying
     // system since there is no etag returned for status code-only
     // results.
@@ -587,7 +647,7 @@ export class Organization {
     parameters.allowEmptyResponse = true;
     return operations.github.post(token, 'orgs.checkPublicMembership', parameters, error => {
       // The user either is not a member of the organization, or their membership is concealed
-      if (error && error.code === 404) {
+      if (error && error.status == /* loose */ 404) {
         return callback(null, false);
       }
       if (error) {
@@ -621,7 +681,7 @@ export class Organization {
     });
   }
 
-  getMembers(options, callback) {
+  getMembers(options, callback?) {
     if (!callback && typeof (options) === 'function') {
       callback = options;
       options = null;
@@ -724,7 +784,7 @@ export class Organization {
       org: this.name,
       username: login,
     };
-    return operations.github.post(token, 'orgs.removeOrgMembership', parameters, (error) => {
+    return operations.github.post(token, 'orgs.removeMembership', parameters, (error) => {
       return error ? callback(wrapError(error, 'Could not remove the organization member')) : callback();
     });
   }
@@ -735,8 +795,8 @@ export class Organization {
     const parameters = {
       org: this.name,
     };
-    return operations.github.call(token, 'orgs.getPendingOrgInvites', parameters, (error, invitations) => {
-      return error && error.code !== 404 ? callback(wrapError(error, 'Could not retrieve organization invitations')) : callback(null, invitations);
+    return operations.github.call(token, 'orgs.listPendingInvitations', parameters, (error, invitations) => {
+      return error && error.status != /* loose */ 404 ? callback(wrapError(error, 'Could not retrieve organization invitations')) : callback(null, invitations);
     });
   }
 
@@ -817,7 +877,15 @@ function getOwnerToken() {
   return tok;
 }
 
-function getRepositoryCreateTemplates(self, operations) {
+function getRepositoryCreateTemplates(self, operations, options) {
+  options = options || {};
+  const projectType = options.projectType;
+  // projectType option:
+  // if any only if present in the request AND there is a 'forceForReleaseType'
+  // value set on at least one template, return only the set of 'forced'
+  // templates. the scenario enabled here is to allow sample code to always
+  // force one of the official sample code templates and not fallback to
+  // standard templates.
   const config = operations.config;
   const templates = [];
   const configuredTemplateRoot = config.github.templates || {};
@@ -826,6 +894,7 @@ function getRepositoryCreateTemplates(self, operations) {
   const allTemplateNames = Object.getOwnPropertyNames(templateDefinitions);
   const ts = self._settings.templates || allTemplateNames;
   const legalEntities = self.legalEntities;
+  const limitedTypeTemplates = [];
   ts.forEach(templateId => {
     const td = templateDefinitions[templateId];
     const candidateTemplate = Object.assign({id: templateId}, td);
@@ -844,8 +913,14 @@ function getRepositoryCreateTemplates(self, operations) {
     }
     if (template) {
       templates.push(template);
+      if (projectType && template.forceForReleaseType && template.forceForReleaseType == projectType) {
+        limitedTypeTemplates.push(template);
+      }
     }
   });
+  if (projectType && limitedTypeTemplates.length) {
+    return limitedTypeTemplates;
+  }
   return templates;
 }
 

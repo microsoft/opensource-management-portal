@@ -11,7 +11,7 @@ import { ReposAppRequest } from '../transitional';
 
 import { requirePortalAdministrationPermission } from '../middleware/business/administration';
 import { ILinkProvider, PostgresLinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
-import { Operations } from '../business/operations';
+import { Operations, UnlinkPurpose } from '../business/operations';
 import { ICorporateLink } from '../business/corporateLink';
 import { Organization } from '../business/organization';
 import { CorporateLinkPostgres } from '../lib/linkProviders/postgres/postgresLink';
@@ -204,7 +204,7 @@ async function loadInformation(operations: Operations, graphProvider: any, redis
       thirdPartyUsername = login;
     }
   } catch (ignoreGetAccountError) {
-    if (ignoreGetAccountError && ignoreGetAccountError.code === '404') {
+    if (ignoreGetAccountError && ignoreGetAccountError.code == /* loose compare */ '404') {
       thirdPartyUsername = query.link ? query.link.thirdPartyUsername : null;
       if (thirdPartyUsername) {
         let deletedAccountError = null;
@@ -212,7 +212,7 @@ async function loadInformation(operations: Operations, graphProvider: any, redis
         try {
           moreInfo = await getGitHubAccountInformationByLogin(operations, thirdPartyUsername);
         } catch (deletedAccountCatch) {
-          if (deletedAccountCatch && deletedAccountCatch.code === '404') {
+          if (deletedAccountCatch && deletedAccountCatch.code == /* loose compare */ '404') {
             deletedAccountError = deletedAccountCatch;
             query.deletedGitHubUserOutcome = `The GitHub account '${thirdPartyUsername}' (ID ${thirdPartyId}) has been deleted`;
           } else {
@@ -258,9 +258,9 @@ function getGitHubAccountInformationByLogin(operations: Operations, login: strin
 
 function getGitHubOrganizationMembershipInformation(operations: Operations, login: string) : Promise<Organization[]> {
   return new Promise((resolve, reject) => {
-    const orgsList = operations.organizations;
+    const orgsList = operations.organizations.values();
     const orgsUserIn = [];
-    async.each(orgsList, function (organization, next) {
+    async.each(orgsList, function (organization: Organization, next) {
       organization.getMembership(login, function (err, membership) {
         if (membership && membership.state) {
           orgsUserIn.push(organization);
@@ -362,6 +362,7 @@ router.get('/whois/link/:linkid', function (req: ReposAppRequest, res, next) {
 
 router.post('/whois/link/:linkid', function (req: ReposAppRequest, res, next) {
   const linkId = req.params.linkid;
+  const isLinkDelete = req.body['delete-link'];
   const keys = [
     'corporateId',
     'corporateUsername',
@@ -371,7 +372,7 @@ router.post('/whois/link/:linkid', function (req: ReposAppRequest, res, next) {
     'thirdPartyAvatar',
   ];
   for (const key of keys) {
-    if (!req.body[key]) {
+    if (!isLinkDelete && !req.body[key]) {
       return next(new Error(`Must provide a value for ${key}`));
     }
     break;
@@ -387,8 +388,8 @@ router.post('/whois/link/:linkid', function (req: ReposAppRequest, res, next) {
     ];
     let hadUpdates = false;
     for (const key of keys) {
-    // loose comparisons
-    if (link[key] != req.body[key]) {
+      // loose comparisons
+      if (!isLinkDelete && link[key] != req.body[key]) {
         messages.push(`${key}: value has been updated from "${link[key]}" to "${req.body[key]}"`);
         link[key] = req.body[key];
         hadUpdates = true;
@@ -404,7 +405,19 @@ router.post('/whois/link/:linkid', function (req: ReposAppRequest, res, next) {
         },
       });
     };
+    if (isLinkDelete) {
+      messages.push(`Deleting link ${linkId}`);
+      return linkProvider.deleteLink(link, error => {
+        if (error) {
+          messages.push(error.toString());
+        } else {
+          messages.push('Link deleted OK');
+        }
+        renderOutput();
+      });
+    }
     if (hadUpdates) {
+      messages.push('Updating values');
       return linkProvider.updateLink(link, updateError => {
         if (updateError) {
           return next(updateError);
@@ -554,7 +567,7 @@ async function destructiveLogic(operations: Operations, graphProvider, redisClie
     try {
       idInfo = await getGitHubAccountInformationById(operations, thirdPartyId);
     } catch (idInfoError) {
-      if (idInfoError.code === '404') {
+      if (idInfoError.status === '404') {
         state.messages.push(`The GitHub account was deleted by ID ${thirdPartyId}: ` + idInfoError.toString());
       } else {
         state.messages.push(`Could not get GitHub account information by ID ${thirdPartyId}: ` + idInfoError.toString());
@@ -590,7 +603,7 @@ async function destructiveLogic(operations: Operations, graphProvider, redisClie
 
   // Account termination
   if (linkQuery && linkQuery.link) {
-    state.results = await operations.terminateAccount(linkQuery.link.thirdPartyId);
+    state.results = await operations.terminateLinkAndMemberships(linkQuery.link.thirdPartyId, { purpose: UnlinkPurpose.Operations });
   } else {
     state.messages.push('Could not terminate the account, no link was found');
   }
@@ -625,7 +638,7 @@ router.post('/bulkRepoDelete', (req, res, next) => {
   }
   repositories = repositories.split('\n');
   const log = [];
-  async.eachLimit(repositories, 1, (repositoryName, next) => {
+  async.eachLimit(repositories, 1, (repositoryName: string, next) => {
     repositoryName = (repositoryName || '').trim();
     if (!repositoryName.length) {
       return next();

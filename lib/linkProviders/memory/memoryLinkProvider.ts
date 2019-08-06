@@ -106,7 +106,8 @@ export class MemoryLinkProvider implements ILinkProvider {
   }
 
   getAll(callback) {
-    const sorted = _.sortBy(this._entities.values(), [this.propertyMapping.corporateUsername, this.propertyMapping.thirdPartyUsername]);
+    const all = Array.from(this._entities.values());
+    const sorted = _.sortBy(all, [this.propertyMapping.corporateUsername, this.propertyMapping.thirdPartyUsername]);
     const links = createLinkInstancesFromMemoryEntityArray(this, sorted);
     return callback(null, links);
   }

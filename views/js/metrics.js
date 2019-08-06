@@ -23,12 +23,12 @@ function displayStats(repoData) {
   $('#pullRequests').text(Number(repoData.PullRequests).toLocaleString());
   $('#closedPullRequests').text(Number(repoData.ClosedPullRequests).toLocaleString());
   $('#openPullRequests').text(Number(repoData.OpenPullRequests).toLocaleString());
-  $('#avgDaysToClosePRs').text(repoData.AvgDaysToClosePullRequests ? repoData.AvgDaysToClosePullRequests.toFixed(1).toLocaleString() : 0);
-  $('#avgDaysForFirstResponseToPRs').text(repoData.AvgDaysForFirstResponseToPullRequests ? repoData.AvgDaysForFirstResponseToPullRequests.toFixed(1).toLocaleString() : 0);
+  $('#avgDaysToClosePRs').text(repoData.AvgDaysToClosePullRequests ? Number(repoData.AvgDaysToClosePullRequests).toFixed(1).toLocaleString() : 0);
+  $('#avgDaysForFirstResponseToPRs').text(repoData.AvgDaysForFirstResponseToPullRequests ? Number(repoData.AvgDaysForFirstResponseToPullRequests).toFixed(1).toLocaleString() : 0);
   $('#prsClosedToday').text(repoData.PullRequestsClosedToday);
   $('#prsOpenedToday').text(repoData.PullRequestsOpenedToday);
-  $('#avgDaysToCloseIssues').text(repoData.AvgDaysToCloseIssues ? repoData.AvgDaysToCloseIssues.toFixed(1).toLocaleString() : 0);
-  $('#avgDaysForFirstResponseToIssues').text(repoData.AvgDaysForFirstResponseToIssues ? repoData.AvgDaysForFirstResponseToIssues.toFixed(1).toLocaleString() : 0);
+  $('#avgDaysToCloseIssues').text(repoData.AvgDaysToCloseIssues ? Number(repoData.AvgDaysToCloseIssues).toFixed(1).toLocaleString() : 0);
+  $('#avgDaysForFirstResponseToIssues').text(repoData.AvgDaysForFirstResponseToIssues ? Number(repoData.AvgDaysForFirstResponseToIssues).toFixed(1).toLocaleString() : 0);
   $('#openedIssuesToday').text(repoData.OpenedIssuesToday);
   $('#closedIssuesToday').text(repoData.ClosedIssuesToday);
   $('#commits').text(Number(repoData.Commits).toLocaleString());
@@ -39,16 +39,16 @@ function displayStats(repoData) {
 
 function displayResponseTimesChart(repoData, orgData) {
   var repo = {
-    avgDaysToClosePRs: repoData.AvgDaysToClosePullRequests ? repoData.AvgDaysToClosePullRequests.toFixed(1).toLocaleString() : 0,
-    avgDaysForFirstResponseToPRs: repoData.AvgDaysForFirstResponseToPullRequests ? repoData.AvgDaysForFirstResponseToPullRequests.toFixed(1).toLocaleString() : 0,
-    avgDaysToCloseIssues: repoData.AvgDaysToCloseIssues ? repoData.AvgDaysToCloseIssues.toFixed(1).toLocaleString() : 0,
-    avgDaysForFirstResponseToIssues: repoData.AvgDaysForFirstResponseToIssues ? repoData.AvgDaysForFirstResponseToIssues.toFixed(1).toLocaleString() : 0
+    avgDaysToClosePRs: repoData.AvgDaysToClosePullRequests ? Number(repoData.AvgDaysToClosePullRequests).toFixed(1).toLocaleString() : 0,
+    avgDaysForFirstResponseToPRs: repoData.AvgDaysForFirstResponseToPullRequests ? Number(repoData.AvgDaysForFirstResponseToPullRequests).toFixed(1).toLocaleString() : 0,
+    avgDaysToCloseIssues: repoData.AvgDaysToCloseIssues ? Number(repoData.AvgDaysToCloseIssues).toFixed(1).toLocaleString() : 0,
+    avgDaysForFirstResponseToIssues: repoData.AvgDaysForFirstResponseToIssues ? Number(repoData.AvgDaysForFirstResponseToIssues).toFixed(1).toLocaleString() : 0
   };
   var org = {
-    avgDaysToClosePRs: orgData.AvgDaysToClosePullRequests ? orgData.AvgDaysToClosePullRequests.toFixed(1).toLocaleString() : 0,
-    avgDaysForFirstResponseToPRs: orgData.AvgDaysForFirstResponseToPullRequests ? orgData.AvgDaysForFirstResponseToPullRequests.toFixed(1).toLocaleString() : 0,
-    avgDaysToCloseIssues: orgData.AvgDaysToCloseIssues ? orgData.AvgDaysToCloseIssues.toFixed(1).toLocaleString() : 0,
-    avgDaysForFirstResponseToIssues: orgData.AvgDaysForFirstResponseToIssues ? orgData.AvgDaysForFirstResponseToIssues.toFixed(1).toLocaleString() : 0
+    avgDaysToClosePRs: orgData.AvgDaysToClosePullRequests ? Number(orgData.AvgDaysToClosePullRequests).toFixed(1).toLocaleString() : 0,
+    avgDaysForFirstResponseToPRs: orgData.AvgDaysForFirstResponseToPullRequests ? Number(orgData.AvgDaysForFirstResponseToPullRequests).toFixed(1).toLocaleString() : 0,
+    avgDaysToCloseIssues: orgData.AvgDaysToCloseIssues ? Number(orgData.AvgDaysToCloseIssues).toFixed(1).toLocaleString() : 0,
+    avgDaysForFirstResponseToIssues: orgData.AvgDaysForFirstResponseToIssues ? Number(orgData.AvgDaysForFirstResponseToIssues).toFixed(1).toLocaleString() : 0
   }
   var colors = {
     'This repo': '#0078d7'

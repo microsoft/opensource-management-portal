@@ -5,7 +5,8 @@
 
 'use strict';
 
-import express = require('express');
+import express from 'express';
+
 import { ReposAppRequest, IReposError } from '../transitional';
 import { IndividualContext } from '../business/context2';
 import { storeOriginalUrlAsVariable } from '../utils';
@@ -28,13 +29,10 @@ const unlinkRoute = require('./unlink');
 //-----------------------------------------------------------------------------
 router.use(function (req: ReposAppRequest, res, next) {
   const individualContext = req.individualContext as IndividualContext;
-  const config = req.app.settings.runtimeConfig;
   const link = individualContext.link;
-
   if (link && link.thirdPartyId) {
     return next();
   }
-
   storeOriginalUrlAsVariable(req, res, 'beforeLinkReferrer', '/', 'no linked github username');
 });
 // end security route

@@ -248,13 +248,74 @@ block content
               target='_blank'
             ) Webhooks
 
-          if extensions
+            if repoPermissions.admin && repo.private === true
+              ul.list-unstyled.list-vspace
+                li
+                  form(method='post')
+                    input.btn.btn-sm(
+                      type='submit',
+                      name='make-repo-public'
+                      class='btn-danger',
+                      value='Make repo public',
+                      onclick='return confirm(\'Are you sure that you want to make this repo public?\');'
+                      title='Click to toggle this repo from private to public')
+
+          //-if extensions
             h4 Services
 
             ul.list-unstyled.list-vspace
 
               if extensions.cla && extensions.cla.supported && cla && cla.legalEntity
                 li: a.btn.btn-sm.btn-muted-more(href='/' + repo.organization.name + '/repos/' + repo.name + '/extensions/cla') Configure the #{cla.legalEntity} CLA
+
+    if repositoryMetadataEntity && repositoryMetadataEntity.repositoryName && repositoryMetadataEntity.organizationName
+      #corporateMetadata
+        hr
+        h3 Corporate metadata
+        .row
+          if repositoryMetadataEntity.releaseReviewType || repositoryMetadataEntity.releaseReviewUrl || repositoryMetadataEntity.projectType
+          .col-md-4
+            if repositoryMetadataEntity.releaseReviewType
+              p
+                | Release review type
+                br
+                if repositoryMetadataEntity.releaseReviewType == 'SmallLibrariesToolsSamples'
+                  strong Small Code Exception
+                  //- TODO: provide a link to policy
+                else
+                  strong= repositoryMetadataEntity.releaseReviewType
+            if repositoryMetadataEntity.releaseReviewJustification
+              p
+                | Justification provided
+                br
+                strong= repositoryMetadataEntity.releaseReviewJustification
+            if repositoryMetadataEntity.releaseReviewUrl
+              p
+                | Release approval work item
+                br
+                strong: a(href=repositoryMetadataEntity.releaseReviewUrl, target='_new')= repositoryMetadataEntity.releaseReviewUrl
+            if repositoryMetadataEntity.projectType
+              p
+                | Release project type
+                br
+                strong= repositoryMetadataEntity.projectType
+          if repositoryMetadataEntity.initialRepositoryDescription
+            .col-md-4
+              if repositoryMetadataEntity.initialRepositoryDescription
+                p
+                  | Description
+                  br
+                  strong= repositoryMetadataEntity.initialRepositoryDescription
+          if repositoryMetadataEntity.createdByThirdPartyUsername
+            .col-md-4
+              if repositoryMetadataEntity.createdByThirdPartyUsername
+                p
+                  | Repository created by
+                  br
+                  strong= repositoryMetadataEntity.createdByThirdPartyUsername
+        //-.row
+          .col-md-12
+            pre= JSON.stringify(repositoryMetadataEntity, undefined, 2)
 
     #metrics
       hr

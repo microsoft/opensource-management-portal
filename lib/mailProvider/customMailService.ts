@@ -43,16 +43,23 @@ function sendMail(mailConfig, options, callback) {
   if (cc && typeof cc === 'string') {
     cc = [ cc ];
   }
+  let bcc = pop(options, 'bcc');
+  if (bcc && typeof bcc === 'string') {
+    bcc = [ bcc ];
+  }
   let category = pop(options, 'category');
   const correlationId = pop(options, 'correlationId');
+  cc = cc || [];
+  bcc = bcc || [];
   const customMailPost = {
     mail: {
-      to: to,
-      cc: cc,
-      from: from,
-      subject: subject,
+      to,
+      cc,
+      bcc,
+      from,
+      subject,
       html: content,
-      correlationId: correlationId,
+      correlationId,
     },
   };
   if (category) {

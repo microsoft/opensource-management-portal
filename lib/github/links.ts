@@ -7,7 +7,7 @@
 
 // NOTE: Technically this file should be separate from the GitHub library
 
-import * as Q from 'q';
+import Q from 'q';
 import { CompositeApiContext } from './composite';
 import { createCallbackFlattenData } from './core';
 import { ILinkProvider } from '../linkProviders/postgres/postgresLinkProvider';

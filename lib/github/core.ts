@@ -127,6 +127,7 @@ export abstract class IntelligentEngine {
   abstract withMetadataShouldCacheBeServed(apiContext: ApiContext, metadata: any): boolean | IShouldServeCache;
   abstract reduceMetadataToCacheFromResponse(apiContext: ApiContext, response: any): any;
   abstract getResponseMetadata(apiContext: ApiContext, response: any): any;
+  abstract optionalStripResponse(apiContext: ApiContext, response: any): any;
 
   protected async cacheResponseAsync(apiContext: ApiContext, response) {
     const kickoffAsyncWork = async () => {
@@ -341,8 +342,9 @@ export abstract class IntelligentEngine {
       debug(`API GET : ${displayKey}`);
       response = await this.callApi(apiContext);
     } catch (error) {
-      if (error && error.code && error.code === 304) {
+      if (error && error.status && error.status === 304) {
         // As of Octokit 14.0.0, 304 is exception/an error
+        // As of Octokit 16.0.1, code is now status
         const keysWanted = [
           'etag',
           'status',
@@ -381,7 +383,8 @@ export abstract class IntelligentEngine {
     ++apiContext.cost.github.usedApiTokens;
     return this.getResponseMetadata(apiContext, response).then((metadata) => {
       if (metadata) {
-        return this.cacheResponseAsync(apiContext, response); // callback will happen after caching
+        const responseToCache = this.optionalStripResponse(apiContext, response);
+        return this.cacheResponseAsync(apiContext, responseToCache); // callback will happen after caching
       } else {
         this.finish(apiContext);
         return this.finalizeResult(apiContext, response);

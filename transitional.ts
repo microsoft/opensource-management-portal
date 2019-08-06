@@ -9,12 +9,27 @@
 
 import { Application, Response, Request } from 'express';
 
+import redis = require('redis');
+import { Pool as PostgresPool } from 'pg';
+
 import { IndividualContext } from './business/context2';
 import { ICorporateLink } from './business/corporateLink';
 import { ILinkProvider } from './lib/linkProviders/postgres/postgresLinkProvider';
 import { IEntityMetadataProvider } from './lib/entityMetadataProvider/entityMetadataProvider';
-import { IApprovalProvider } from './lib/approvalProvider/approvalProvider';
-import { DataClient } from './data';
+import { IApprovalProvider } from './entities/teamJoinApproval/approvalProvider';
+import { Operations } from './business/operations';
+import { ITokenProvider } from './entities/token';
+import { IMailAddressProvider } from './lib/mailAddressProvider';
+import { IRepositoryMetadataProvider } from './entities/repositoryMetadata/repositoryMetadataProvider';
+import { RedisHelper } from './lib/redis';
+import { ILocalExtensionKeyProvider } from './entities/localExtensionKey';
+import { PersonalAccessToken } from './entities/token/token';
+import { Organization } from './business/organization';
+import { IGraphProvider } from './lib/graphProvider';
+
+export interface ICallback<T> {
+  (error: Error, result?: T): void;
+}
 
 export interface ICacheOptions {
   backgroundRefresh?: any | null | undefined;
@@ -47,22 +62,24 @@ export interface IProviders {
   basedir?: string;
   cosmosdb?: any;
   config?: any;
-  dataClient?: DataClient;
-  entityMetadata?: IEntityMetadataProvider;
+  // entityMetadata?: IEntityMetadataProvider;
   healthCheck?: any;
   keyEncryptionKeyResolver?: any;
   github?: any;
-  graphProvider?: any;
+  graphProvider?: IGraphProvider;
   insights?: any;
   linkProvider?: ILinkProvider;
-  mailAddressProvider?: any;
+  localExtensionKeyProvider?: ILocalExtensionKeyProvider;
+  mailAddressProvider?: IMailAddressProvider;
   mailProvider?: any;
-  operations?: any;
-  postgresPool?: any;
-  redis?: any;
-  redisClient?: any;
-  witnessRedis?: any;
-  witnessRedisHelper?: any;
+  operations?: Operations;
+  postgresPool?: PostgresPool;
+  redis?: RedisHelper;
+  redisClient?: redis.RedisClient;
+  repositoryMetadataProvider?: IRepositoryMetadataProvider;
+  witnessRedis?: redis.RedisClient;
+  witnessRedisHelper?: RedisHelper;
+  tokenProvider?: ITokenProvider;
 }
 
 export interface RedisOptions {
@@ -103,7 +120,7 @@ export interface IReposAppContext {
   section?: string;
   pivotDirectlyToOtherOrg?: string;
   releaseTab?: boolean;
-  organization?: any;
+  organization?: Organization;
 }
 
 export interface ReposAppRequest extends Request {
@@ -118,7 +135,7 @@ export interface ReposAppRequest extends Request {
   teamsPagerMode?: string;
   reposPagerMode?: string;
   link?: any; // not sure when this is set
-  organization?: any; // refactor?
+  organization?: Organization;
   correlationId?: string;
 
   // FUTURE:
@@ -140,10 +157,6 @@ export interface IRequestTeams extends ReposAppRequest {
 
 export interface RequestWithSystemwidePermissions extends ReposAppRequest {
   systemWidePermissions?: any;
-}
-
-export interface IRequestForSettingsPersonalAccessTokens extends ReposAppRequest {
-  personalAccessTokens?: any;
 }
 
 export interface IResponseForSettingsPersonalAccessTokens extends Response {

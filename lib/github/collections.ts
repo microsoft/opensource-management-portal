@@ -10,7 +10,7 @@
 const _ = require('lodash');
 import async = require('async');
 const debug = require('debug')('oss-github');
-import * as Q from 'q';
+import Q from 'q';
 
 const cost = require('./cost');
 import { createCallbackFlattenData } from './core';
@@ -49,7 +49,7 @@ const teamRepoPermissionsToCopy = [
 ];
 
 function createIntelligentMethods(libraryContext: ILibraryContext, githubCall) {
-  const getNextPage = libraryContext.getNextPage;
+  const getNextPageExtended = libraryContext.getNextPageExtended;
   const hasNextPage = libraryContext.hasNextPage;
 
   function getGithubCollection(token, methodName, options, callback) {
@@ -102,8 +102,13 @@ function createIntelligentMethods(libraryContext: ILibraryContext, githubCall) {
     async.whilst(
       () => { return !done; },
       (next) => {
-        let method = recentResult ? getNextPage : githubCall;
-        let args = [token];
+        let method = recentResult ? getNextPageExtended : githubCall;
+        let args = [];
+        if (recentResult) {
+          // Shares the original method name for use in cache optimizations
+          args.push({ methodName });
+        }
+        args.push(token);
         let cb = processResult.bind(null, next);
         recentResult ? args.push(recentResult) : args.push(methodName, options);
         args.push(cb);
@@ -225,30 +230,30 @@ function createIntelligentMethods(libraryContext: ILibraryContext, githubCall) {
 
   return {
     getOrgRepos: function getOrgRepos(token, options, cacheOptions, callback) {
-      return generalizedCollectionWithFilter('orgRepos', 'repos.getForOrg', repoDetailsToCopy, token, options, cacheOptions, callback);
+      return generalizedCollectionWithFilter('orgRepos', 'repos.listForOrg', repoDetailsToCopy, token, options, cacheOptions, callback);
     },
     getOrgTeams: function getOrgTeams(token, options, cacheOptions, callback) {
-      return generalizedCollectionWithFilter('orgTeams', 'orgs.getTeams', teamDetailsToCopy, token, options, cacheOptions, (xxx, eee) => {
+      return generalizedCollectionWithFilter('orgTeams', 'teams.list', teamDetailsToCopy, token, options, cacheOptions, (xxx, eee) => {
         return callback(xxx, eee);
       });
     },
     getOrgMembers: function getOrgMembers(token, options, cacheOptions, callback) {
-      return generalizedCollectionWithFilter('orgMembers', 'orgs.getMembers', memberDetailsToCopy, token, options, cacheOptions, callback);
+      return generalizedCollectionWithFilter('orgMembers', 'orgs.listMembers', memberDetailsToCopy, token, options, cacheOptions, callback);
     },
     getRepoTeams: function getRepoTeams(token, options, cacheOptions, callback) {
-      return generalizedCollectionWithFilter('repoTeamPermissions', 'repos.getTeams', teamPermissionsToCopy, token, options, cacheOptions, callback);
+      return generalizedCollectionWithFilter('repoTeamPermissions', 'repos.listTeams', teamPermissionsToCopy, token, options, cacheOptions, callback);
     },
     getRepoCollaborators: function getRepoCollaborators(token, options, cacheOptions, callback) {
-      return generalizedCollectionWithFilter('repoCollaborators', 'repos.getCollaborators', memberDetailsToCopy, token, options, cacheOptions, callback);
+      return generalizedCollectionWithFilter('repoCollaborators', 'repos.listCollaborators', memberDetailsToCopy, token, options, cacheOptions, callback);
     },
     getRepoBranches: function getRepoBranches(token, options, cacheOptions, callback) {
-      return generalizedCollectionWithFilter('repoBranches', 'repos.getBranches', branchDetailsToCopy, token, options, cacheOptions, callback);
+      return generalizedCollectionWithFilter('repoBranches', 'repos.listBranches', branchDetailsToCopy, token, options, cacheOptions, callback);
     },
     getTeamMembers: function getTeamMembers(token, options, cacheOptions, callback) {
-      return generalizedCollectionWithFilter('teamMembers', 'orgs.getTeamMembers', memberDetailsToCopy, token, options, cacheOptions, callback);
+      return generalizedCollectionWithFilter('teamMembers', 'teams.listMembers', memberDetailsToCopy, token, options, cacheOptions, callback);
     },
     getTeamRepos: function getTeamRepos(token, options, cacheOptions, callback) {
-      return generalizedCollectionWithFilter('teamRepos', 'orgs.getTeamRepos', teamRepoPermissionsToCopy, token, options, cacheOptions, callback);
+      return generalizedCollectionWithFilter('teamRepos', 'teams.listRepos', teamRepoPermissionsToCopy, token, options, cacheOptions, callback);
     },
   };
 }

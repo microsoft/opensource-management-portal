@@ -12,6 +12,7 @@ import { json404 } from '../../../middleware/jsonError';
 const router = express.Router();
 
 router.use('/links', require('./links'));
+router.use('/unlink', require('./unlink'));
 
 router.use(json404);
 
