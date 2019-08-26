@@ -15,6 +15,7 @@ import { Operations, UnlinkPurpose } from '../business/operations';
 import { ICorporateLink } from '../business/corporateLink';
 import { Organization } from '../business/organization';
 import { CorporateLinkPostgres } from '../lib/linkProviders/postgres/postgresLink';
+import { Account } from '../business/account';
 
 // - - - Middleware: require that the user isa portal administrator to continue
 router.use(requirePortalAdministrationPermission);
@@ -82,7 +83,7 @@ async function queryByGitHubLogin(operations: Operations, graphProvider: any, re
   const linkProvider = operations.linkProvider;
   let gitHubAccountInfo = null;
   try {
-    gitHubAccountInfo = await getGitHubAccountInformationByLogin(operations, login);
+    gitHubAccountInfo = await operations.getAccountByUsername(login);
   } catch (error) {
     // They may have renamed their GitHub username, but the ID is the same as it was before...
     if (error && error.statusCode === 404) {
@@ -210,7 +211,7 @@ async function loadInformation(operations: Operations, graphProvider: any, redis
         let deletedAccountError = null;
         let moreInfo = null;
         try {
-          moreInfo = await getGitHubAccountInformationByLogin(operations, thirdPartyUsername);
+          moreInfo = await operations.getAccountByUsername(thirdPartyUsername);
         } catch (deletedAccountCatch) {
           if (deletedAccountCatch && deletedAccountCatch.code == /* loose compare */ '404') {
             deletedAccountError = deletedAccountCatch;
@@ -239,38 +240,24 @@ async function loadInformation(operations: Operations, graphProvider: any, redis
   return query;
 }
 
-function getGitHubAccountInformationById(operations: Operations, id: string) : Promise<any> {
-  return new Promise((resolve, reject) => {
-    const account = operations.getAccount(id);
-    account.getDetails(getUsernameError => {
-      return getUsernameError ? reject(getUsernameError) : resolve(account);
-    });
-  });
+async function getGitHubAccountInformationById(operations: Operations, id: string) : Promise<Account> {
+  const account = operations.getAccount(id);
+  await account.getDetails();
+  return account;
 }
 
-function getGitHubAccountInformationByLogin(operations: Operations, login: string) : Promise<any> {
-  return new Promise((resolve, reject) => {
-    operations.getAccountByUsername(login, {}, (getError, accountInfo) => {
-      return getError ? reject(getError) : resolve(accountInfo);
-    });
-  });
-}
-
-function getGitHubOrganizationMembershipInformation(operations: Operations, login: string) : Promise<Organization[]> {
-  return new Promise((resolve, reject) => {
-    const orgsList = operations.organizations.values();
-    const orgsUserIn = [];
-    async.each(orgsList, function (organization: Organization, next) {
-      organization.getMembership(login, function (err, membership) {
-        if (membership && membership.state) {
-          orgsUserIn.push(organization);
-        }
-        return next();
-      });
-    }, function (/*expansionErrorIgnored*/) {
-      return resolve(orgsUserIn);
-    });
-  });
+async function getGitHubOrganizationMembershipInformation(operations: Operations, login: string) : Promise<Organization[]> {
+  const orgsList = operations.organizations.values();
+  const orgsUserIn: Organization[] = [];
+  for (let organization of orgsList) {
+    try {
+      const membership = await organization.getMembership(login);
+      if (membership && membership.state) {
+        orgsUserIn.push(organization);
+      }
+    } catch (ignoredError) { /* ignored */ }
+  }
+  return orgsUserIn;
 }
 
 function getPersonEntryByUpn(redisClient, upn: string) : Promise<any> {
@@ -550,7 +537,7 @@ async function destructiveLogic(operations: Operations, graphProvider, redisClie
     if (!thirdPartyUsername) {
       state.messages.push('Destruction operation not requested on a username');
     } else {
-      usernameInfo = await getGitHubAccountInformationByLogin(operations, thirdPartyUsername);
+      usernameInfo = await operations.getAccountByUsername(thirdPartyUsername);
       if (thirdPartyId && usernameInfo.id !== thirdPartyId) {
         state.messages.push(`The retrieved ID for the username was ${usernameInfo.id} instead of the expected ${thirdPartyId}`);
       } else if (!thirdPartyId && usernameInfo.id) {

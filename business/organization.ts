@@ -1,5 +1,5 @@
 import { Operations } from "./operations";
-import { IReposError } from "../transitional";
+import { IReposError, ICallback, ICacheOptions, IGetOwnerToken, IPagedCacheOptions } from "../transitional";
 
 //
 // Copyright (c) Microsoft. All rights reserved.
@@ -10,11 +10,11 @@ import { IReposError } from "../transitional";
 
 'use strict';
 
-const _ = require('lodash');
+import _ from 'lodash';
 
 import * as common from './common';
 import { OrganizationMember } from "./organizationMember";
-import { Team } from "./team";
+import { Team, GitHubTeamRole } from "./team";
 import { Repository } from "./repository";
 
 import { wrapError } from '../utils';
@@ -26,12 +26,75 @@ export interface ICreateRepositoryResult {
   repository: Repository;
 }
 
+export enum OrganizationMembershipState {
+  Active = 'active',
+  Pending = 'pending',
+}
+
+export enum OrganizationMembershipRole {
+  Member = 'member',
+  Admin = 'admin',
+}
+
+export enum OrganizationMembershipRoleQuery {
+  Member = 'member',
+  Admin = 'admin',
+  All = 'all',
+}
+
+export enum OrganizationMembershipTwoFactorFilter {
+  AllMembers = 'all',
+  TwoFactorOff = '2fa_disabled',
+}
+
+export interface IGetOrganizationMembersOptions extends IPagedCacheOptions {
+  filter?: OrganizationMembershipTwoFactorFilter;
+  role?: OrganizationMembershipRoleQuery;
+}
+
+export interface IAddOrganizationMembershipOptions extends ICacheOptions {
+  role?: OrganizationMembershipRole;
+}
+
+export interface IOrganizationMembership {
+  state: OrganizationMembershipState;
+  role: OrganizationMembershipRole;
+  organization: any;
+  user: any;
+}
+
+interface IGetMembersParameters {
+  org: string;
+  per_page: number;
+  filter?: string;
+  role?: string;
+}
+
+interface ICheckPublicMembershipParameters {
+  username: string;
+  org: string;
+  allowEmptyResponse?: boolean;
+}
+
+interface IRedirectError extends IReposError {
+  status?: number;
+  slug?: string;
+  team?: Team;
+}
+
+export interface IAdministratorBasics {
+  id: string;
+  login: string;
+  sudo: boolean;
+  owner: boolean;
+}
+
 export class Organization {
   private _name: string;
   private _baseUrl: string;
 
   private _operations: Operations;
-  private _getOwnerToken: any;
+  private _getOwnerToken: IGetOwnerToken;
   private _settings: any;
 
   id: string;
@@ -67,35 +130,31 @@ export class Organization {
     return repository;
   }
 
-  getRepositories(options, callback) {
-    if (!callback && typeof (options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    options = options || {};
-
-    let operations = this._operations;
-    let token = this._getOwnerToken();
-    let github = operations.github;
-
-    const parameters = {
-      org: this.name,
-      type: 'all',
-      per_page: 100,
-    };
-    const caching = {
-      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgReposStaleSeconds,
-      backgroundRefresh: true,
-    };
-    if (options && options.backgroundRefresh === false) {
-      caching.backgroundRefresh = false;
-    }
-
-    return github.collections.getOrgRepos(
-      token,
-      parameters,
-      caching,
-      common.createInstancesCallback(this, this.repositoryFromEntity, callback));
+  getRepositories(options?: IPagedCacheOptions): Promise<Repository[]> {
+    return new Promise((resolve, reject) => {
+      options = options || {};
+      const operations = this._operations;
+      const token = this._getOwnerToken();
+      const github = operations.github;
+      const parameters = {
+        org: this.name,
+        type: 'all',
+        per_page: operations.defaultPageSize,
+      };
+      const caching = {
+        maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgReposStaleSeconds,
+        backgroundRefresh: true,
+        pageRequestDelay: options.pageRequestDelay || null,
+      };
+      if (options && options.backgroundRefresh === false) {
+        caching.backgroundRefresh = false;
+      }
+      return github.collections.getOrgRepos(
+        token,
+        parameters,
+        caching,
+        common.createPromisedInstances<Repository>(this, this.repositoryFromEntity, resolve, reject));
+    });
   }
 
   createRepositoryInstances(repos, callback) {
@@ -110,15 +169,15 @@ export class Organization {
     return this.repository(repoName);
   }
 
-  get priority() {
+  get priority(): string {
     return this._settings.priority || 'primary';
   }
 
-  get locked() {
+  get locked(): boolean {
     return this._settings.locked || false;
   }
 
-  get hidden() {
+  get hidden(): boolean {
     return this._settings.hidden || false;
   }
 
@@ -134,11 +193,11 @@ export class Organization {
     return this._settings['overwriteRemainingPrivateRepos'];
   }
 
-  get createRepositoriesOnGitHub() {
+  get createRepositoriesOnGitHub(): boolean {
     return this._settings.createReposDirect || false;
   }
 
-  get configuredOrganizationRepositoryTypes() {
+  get configuredOrganizationRepositoryTypes(): string {
     return this._settings.type || 'public';
   }
 
@@ -146,39 +205,36 @@ export class Organization {
     return this._settings.trainingResources;
   }
 
-  get privateEngineering() {
+  get privateEngineering(): boolean {
     return this._settings.privateEngineering || false;
   }
 
-  get externalMembersPermitted() {
+  get externalMembersPermitted(): boolean {
     return this._settings.externalMembersPermitted || false;
   }
 
-  get preventLargeTeamPermissions() {
+  get preventLargeTeamPermissions(): boolean {
     return this._settings.preventLargeTeamPermissions || false;
   }
 
-  get description() {
+  get description(): string {
     return this._settings.description;
   }
 
-  get webhookSharedSecrets() {
+  get webhookSharedSecrets(): string[] {
     const orgSettings = this._settings;
-
     // Multiple shared can be specified at the organization level to allow for rotation
     let orgSpecificSecrets = orgSettings.hookSecrets || [];
-
     const systemwideConfig = this._operations.config;
     let systemwideSecrets = systemwideConfig.github && systemwideConfig.github.webhooks && systemwideConfig.github.webhooks.sharedSecret ? systemwideConfig.github.webhooks.sharedSecret : null;
-
     return _.concat([], orgSpecificSecrets, systemwideSecrets);
   }
 
-  get broadAccessTeams() {
-    return getSpecialTeam(this, 'teamAllMembers', 'everyone membership');
+  get broadAccessTeams(): number[] {
+    return this.getSpecialTeam('teamAllMembers', 'everyone membership');
   }
 
-  get invitationTeam() {
+  get invitationTeam(): Team {
     const teams = this.broadAccessTeams;
     if (teams.length > 1) {
       throw new Error('Multiple invitation teams are not supported.');
@@ -186,28 +242,28 @@ export class Organization {
     return teams.length === 1 ? this.team(teams[0]) : null;
   }
 
-  get repositoryApproversTeam() {
-    const teams = getSpecialTeam(this, 'teamRepoApprovers', 'organization repository approvers');
+  get repositoryApproversTeam(): Team {
+    const teams = this.getSpecialTeam('teamRepoApprovers', 'organization repository approvers');
     if (teams.length > 1) {
       throw new Error('Multiple repository approval teams are not supported.');
     }
     return teams.length === 1 ? this.team(teams[0]) : null;
   }
 
-  get systemSudoersTeam() {
-    const teams = getSpecialTeam(this, 'teamPortalSudoers', 'system sudoers');
+  get systemSudoersTeam(): Team {
+    const teams = this.getSpecialTeam('teamPortalSudoers', 'system sudoers');
     if (teams.length > 1) {
       throw new Error('Multiple system sudoer teams are not supported.');
     }
     return teams.length === 1 ? this.team(teams[0]) : null;
   }
 
-  get privateRepositoriesSupported() {
+  get privateRepositoriesSupported(): boolean {
     return getSupportedRepositoryTypesByPriority(this).includes('private');
   }
 
-  get sudoersTeam() {
-    const teams = getSpecialTeam(this, 'teamSudoers', 'organization sudoers');
+  get sudoersTeam(): Team {
+    const teams = this.getSpecialTeam('teamSudoers', 'organization sudoers');
     if (teams.length > 1) {
       throw new Error('Multiple sudoer teams are not supported.');
     }
@@ -216,22 +272,21 @@ export class Organization {
 
   get specialRepositoryPermissionTeams() {
     return {
-      read: getSpecialTeam(this, 'teamAllReposRead', 'read everything'),
-      write: getSpecialTeam(this, 'teamAllReposWrite', 'write everything'),
-      admin: getSpecialTeam(this, 'teamAllReposAdmin', 'administer everything'),
+      read: this.getSpecialTeam('teamAllReposRead', 'read everything'),
+      write: this.getSpecialTeam('teamAllReposWrite', 'write everything'),
+      admin: this.getSpecialTeam('teamAllReposAdmin', 'administer everything'),
     };
   }
 
-  getOrganizationAdministrators(callback) {
+  async getOrganizationAdministrators(): Promise<IAdministratorBasics[]> {
     // returns an array containing an ID and properties 'owner' and 'sudo' for each
-    const self = this;
-    const administrators = new Map();
-    function getAdministratorEntry(id, login) {
+    const administrators = new Map<string, IAdministratorBasics>();
+    function getAdministratorEntry(id: string, login: string) {
       let administrator = administrators.get(id);
       if (!administrator) {
         administrator = {
-          id: id,
-          login: login,
+          id,
+          login,
           sudo: false,
           owner: false,
         };
@@ -239,52 +294,45 @@ export class Organization {
       }
       return administrator;
     }
-    self.getOwners((error, owners) => {
-      if (error) {
-        return callback(error);
+    const owners = await this.getOwners();
+    for (let i = 0; i < owners.length; i++) {
+      const id = owners[i].id;
+      const login = owners[i].login;
+      getAdministratorEntry(id, login).owner = true;
+    }
+    const sudoTeam = this.sudoersTeam;
+    if (!sudoTeam) {
+      return Array.from(administrators.values());
+    }
+    try {
+      const members = await sudoTeam.getMembers();
+      for (let i = 0; i < members.length; i++) {
+        const id = members[i].id;
+        const login = members[i].login;
+        getAdministratorEntry(id, login).sudo = true;
       }
-      for (let i = 0; i < owners.length; i++) {
-        const id = owners[i].id;
-        const login = owners[i].login;
-        getAdministratorEntry(id, login).owner = true;
+      return Array.from(administrators.values());
+    } catch (error) {
+      if (error && error.status === 404) {
+        // The sudo team no longer exists, but we should still have administrator information
+        return Array.from(administrators.values());
       }
-      const sudoTeam = self.sudoersTeam;
-      if (!sudoTeam) {
-        return callback(null, Array.from(administrators));
-      }
-      sudoTeam.getMembers((error, members) => {
-        if (error && error.status === 404) {
-          // The sudo team no longer exists, but we should still have administrator information
-          return callback(null, Array.from(administrators));
-        }
-        if (error) {
-          return callback(error);
-        }
-        for (let i = 0; i < members.length; i++) {
-          const id = members[i].id;
-          const login = members[i].login;
-          getAdministratorEntry(id, login).sudo = true;
-        }
-        return callback(null, Array.from(administrators.values()));
-      });
-    });
+      throw error;
+    }
   }
 
   get systemTeamIds() {
     const teamIds = [];
-
     const sudoTeamInstance = this.sudoersTeam;
     if (sudoTeamInstance) {
       teamIds.push(sudoTeamInstance.id);
     }
-
     const broadAccessTeams = this.broadAccessTeams;
     if (broadAccessTeams) {
       for (let i = 0; i < broadAccessTeams.length; i++) {
         teamIds.push(broadAccessTeams[i]); // is the actual ID, not the team object
       }
     }
-
     const specialTeams = this.specialRepositoryPermissionTeams;
     const keys = Object.getOwnPropertyNames(specialTeams);
     keys.forEach(type => {
@@ -293,7 +341,6 @@ export class Organization {
         Array.prototype.push.apply(teamIds, values);
       }
     });
-
     return teamIds;
   }
 
@@ -320,7 +367,6 @@ export class Organization {
     if (!disasterRecoveryConfiguration || !disasterRecoveryConfiguration.vsts || !disasterRecoveryConfiguration.vsts.hostname) {
       return null;
     }
-
     const vstsMirror = disasterRecoveryConfiguration.vsts;
     const vstsPath = vstsMirror.path || {};
     const orgPrefix = vstsPath.organizationPrefix || '';
@@ -336,67 +382,57 @@ export class Organization {
     return this._getOwnerToken();
   }
 
-  createRepositoryAsync(repositoryName: string, options: any): Promise<ICreateRepositoryResult> {
+  createRepository(repositoryName: string, options): Promise<ICreateRepositoryResult> {
+    // TODO: create repository options interface
     return new Promise((resolve, reject) => {
-      return this.createRepository(repositoryName, options, (error, result: ICreateRepositoryResult) => {
-        return error ? reject(error) : resolve(result);
+      const token = this._getOwnerToken();
+      const operations = this._operations;
+      const orgName = this.name;
+      delete options.name;
+      delete options.org;
+      const parameters = Object.assign({
+        org: orgName,
+        name: repositoryName,
+      }, options);
+      return operations.github.post(token, 'repos.createInOrg', parameters, (error, details) => {
+        if (error) {
+          let contextualError = '';
+          if (error.errors && Array.isArray(error.errors)) {
+            contextualError = error.errors.map(errorEntry => errorEntry.message).join(', ') + '. ';
+          }
+          const friendlyErrorMessage = `${contextualError}Could not create the repository ${orgName}/${repositoryName}`;
+          return reject(wrapError(error, friendlyErrorMessage));
+        }
+        const newRepository = this.repositoryFromEntity(details);
+        let response = details;
+        try {
+          response = StripGitHubEntity(GitHubResponseType.Repository, details, 'repos.createInOrg');
+        } catch (parseError) { }
+        const result: ICreateRepositoryResult = {
+          repository: newRepository,
+          response,
+        };
+        return resolve(result);
       });
     });
   }
 
-  createRepository(repositoryName, options, callback) {
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = {};
-    }
-
-    const self = this;
-    const token = this._getOwnerToken();
-    const operations = this._operations;
-
-    const orgName = this.name;
-
-    delete options.name;
-    delete options.org;
-
-    const parameters = Object.assign({
-      org: orgName,
-      name: repositoryName,
-    }, options);
-
-    return operations.github.post(token, 'repos.createInOrg', parameters, (error, details) => {
-      if (error) {
-        let contextualError = '';
-        if (error.errors && Array.isArray(error.errors)) {
-          contextualError = error.errors.map(errorEntry => errorEntry.message).join(', ') + '. ';
-        }
-        const friendlyErrorMessage = `${contextualError}Could not create the repository ${orgName}/${repositoryName}`;
-        return callback(wrapError(error, friendlyErrorMessage));
-      }
-      const newRepository = self.repositoryFromEntity(details);
-      let response = details;
-      try {
-        response = StripGitHubEntity(GitHubResponseType.Repository, details, 'repos.createInOrg');
-      } catch (parseError) { }
-      const result: ICreateRepositoryResult = {
-        repository: newRepository,
-        response,
+  getDetails(): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const token = this._getOwnerToken();
+      const operations = this._operations;
+      const parameters = {
+        org: this.name,
       };
-      return callback(null, result);
-    });
-  }
-
-  getDetails(callback) {
-    const token = this._getOwnerToken();
-    const operations = this._operations;
-    const parameters = {
-      org: this.name,
-    };
-    return operations.github.call(token, 'orgs.get', parameters, (error, entity) => {
-      if (error) {
-        return callback(wrapError(error, 'Could not get details about the organization.'));
-      }
-      callback(null, entity);
+      return operations.github.call(token, 'orgs.get', parameters, (error, entity) => {
+        if (error) {
+          return reject(wrapError(error, `Could not get details about the ${this.name} organization: ${error.message}`));
+        }
+        if (entity && entity.id) {
+          this.id = entity.id;
+        }
+        return resolve(entity);
+      });
     });
   }
 
@@ -420,57 +456,53 @@ export class Organization {
     return metadata;
   }
 
-  getTeamFromName(nameOrSlug, options, callback?) {
+  async getTeamFromName(nameOrSlug: string, options?: ICacheOptions): Promise<Team> {
+    options = options || {};
     const operations = this._operations;
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = {};
-    }
     // Slightly more aggressive attempt to look for the latest team
     // information to help prevent downtime when a new team is created
     if (!options.maxAgeSeconds) {
       options.maxAgeSeconds = operations.defaults.orgTeamsSlugLookupStaleSeconds;
     }
     const expected = nameOrSlug.toLowerCase();
-    this.getTeams(options, (teamsError, teams) => {
-      if (teamsError) {
-        return callback(teamsError);
-      }
-      let alternativeCandidateById = null;
-      for (let i = 0; i < teams.length; i++) {
-        const team = teams[i];
-        const name = team.name.toLowerCase();
-        const slug = team.slug.toLowerCase();
-        // Considered a light error condition, this will callback with
-        // both a suggestion to redirect to the slug-based name, but
-        // also the team instance itself.
-        if (expected === name && name !== slug) {
-          const redirectError: IRedirectError = new Error(`The team is also available by "slug", ${slug}.`);
-          redirectError.status = 301;
-          redirectError.slug = slug;
-          return callback(redirectError, team);
-        }
-        if (team.id == expected) {
-          alternativeCandidateById = team;
-        }
-        if (expected === slug) {
-          return callback(null, team);
-        }
-      }
-      if (alternativeCandidateById) {
-        const redirectError: IRedirectError = new Error(`The team is also available by "slug", ${alternativeCandidateById.slug}.`);
+    const teams = await this.getTeams(options);
+    let alternativeCandidateById: Team = null;
+    for (let i = 0; i < teams.length; i++) {
+      const team = teams[i];
+      const name = team.name.toLowerCase();
+      const slug = team.slug.toLowerCase();
+      // Considered a light error condition, this will callback with
+      // both a suggestion to redirect to the slug-based name and
+      // a legitimate link to the team in the error;
+      // TODO: hook up this new change
+      if (expected === name && name !== slug) {
+        const redirectError: IRedirectError = new Error(`The team is also available by slug: ${slug}.`);
         redirectError.status = 301;
-        redirectError.slug = alternativeCandidateById.slug;
-        return callback(redirectError, alternativeCandidateById);
+        redirectError.slug = slug;
+        redirectError.team = team;
+        throw redirectError;
       }
-      const teamNotFoundError: IReposError = new Error('No team was found within the organization matching the provided name');
-      teamNotFoundError.status = 404;
-      teamNotFoundError.skipLog = true;
-      return callback(teamNotFoundError);
-    });
+      if (team.id == expected) {
+        alternativeCandidateById = team;
+      }
+      if (expected === slug) {
+        return team;
+      }
+    }
+    if (alternativeCandidateById) {
+      const redirectError: IRedirectError = new Error(`The team is also available by slug: ${alternativeCandidateById.slug}.`);
+      redirectError.status = 301;
+      redirectError.slug = alternativeCandidateById.slug;
+      redirectError.team = alternativeCandidateById;
+      throw alternativeCandidateById;
+    }
+    const teamNotFoundError: IReposError = new Error('No team was found within the organization matching the provided name');
+    teamNotFoundError.status = 404;
+    teamNotFoundError.skipLog = true;
+    throw teamNotFoundError;
   }
 
-  team(id, optionalEntity?) {
+  team(id, optionalEntity?): Team {
     let entity = optionalEntity || {};
     if (!optionalEntity) {
       entity.id = id;
@@ -484,7 +516,7 @@ export class Organization {
     return team;
   }
 
-  member(id, optionalEntity?) {
+  member(id, optionalEntity?): OrganizationMember {
     let entity = optionalEntity || {};
     if (!optionalEntity) {
       entity.id = id;
@@ -498,97 +530,95 @@ export class Organization {
     return member;
   }
 
-  getOwners(options, callback?) {
-    if (!callback && typeof (options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    options = options || {};
-    options.role = 'admin';
-    return this.getMembers(options, callback);
+  getOwners(options?: IPagedCacheOptions): Promise<OrganizationMember[] /* TODO: validate return type */> {
+    const memberOptions = Object.assign({}, options) as IGetOrganizationMembersOptions;
+    memberOptions.role = OrganizationMembershipRoleQuery.Admin;
+    return this.getMembers(memberOptions);
   }
 
-  isSudoer(username, callback) {
+  async isSudoer(username: string): Promise<boolean> {
     const sudoerTeam = this.sudoersTeam;
     if (!sudoerTeam) {
-      return callback(null, false);
+      return false;
     }
-
     const appConfig = this._operations.config;
     if (appConfig.github.debug && appConfig.github.debug.orgSudoOff) {
       console.warn('DEBUG WARNING: Organization sudo support is turned off in the current environment');
-      return callback(null, false);
+      return false;
     }
-
-    sudoerTeam.getMembershipEfficiently(username, (getMembershipError, membership) => {
+    let membership: GitHubTeamRole = null;
+    try {
+      const response = await sudoerTeam.getMembershipEfficiently(username);
+      if (response && response.role) {
+        membership = response.role;
+      }
+    } catch (getMembershipError) {
       // The team for sudoers may have been deleted, which is not an error
       if (getMembershipError && getMembershipError.status == /* loose */ 404) {
-        return callback(null, false);
+        return false;
       }
-      if (getMembershipError) {
-        return callback(getMembershipError);
-      }
-      const isKnownMembership = membership === 'member' || membership === 'maintainer';
-      if (membership && isKnownMembership) {
-        return callback(null, isKnownMembership);
-      } else if (membership) {
-        return callback(null, new Error(`Cannot determine sudo status for ${username}, unrecognized membership type: ${membership}`));
-      } else {
-        return callback(null, false);
-      }
-    });
-  }
-
-  acceptOrganizationInvitation(userToken, callback) {
-    const operations = this._operations;
-    const parameters = {
-      org: this.name,
-      state: 'active',
-    };
-    return operations.github.post(userToken, 'orgs.updateMembership', parameters, (error, response) => {
-      if (error) {
-        return callback(wrapError(error, `Could not accept your invitation for the ${this.name} organization on GitHub`));
-      }
-      return callback(null, response);
-    });
-  }
-
-  getMembership(username, options, callback?) {
-    if (!callback && typeof (options) === 'function') {
-      callback = options;
-      options = null;
+      throw getMembershipError;
     }
-    options = options || {};
-    const orgName = this.name;
-    const parameters = {
-      username: username,
-      org: orgName,
-    };
-    const operations = this._operations;
-    const token = this._getOwnerToken();
-    return operations.github.call(token, 'orgs.getMembership', parameters, (error, result) => {
-      if (error && error.status == /* loose */ 404) {
-        return callback(null, false);
-      }
-      if (error) {
-        let reason = error.message;
-        if (error.status) {
-          reason += ' ' + error.status;
+    const isKnownMembership = membership === GitHubTeamRole.Member || membership === GitHubTeamRole.Maintainer;
+    if (membership && isKnownMembership) {
+      return isKnownMembership;
+    } else if (membership) {
+      throw new Error(`Cannot determine sudo status for ${username}, unrecognized membership type: ${membership}`);
+    } else {
+      return false;
+    }
+  }
+
+  acceptOrganizationInvitation(userToken: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const operations = this._operations;
+      const parameters = {
+        org: this.name,
+        state: 'active',
+      };
+      return operations.github.post(userToken, 'orgs.updateMembership', parameters, (error, response) => {
+        if (error) {
+          return reject(wrapError(error, `Could not accept your invitation for the ${this.name} organization on GitHub`));
         }
-        const wrappedError = wrapError(error, `Trouble retrieving the membership for "${username}" in the ${orgName} organization. ${reason}`);
-        if (error.status) {
-          wrapError['code'] = error.status;
-          wrapError['status'] = error.status;
-        }
-        return callback(wrappedError);
-      }
-      return callback(null, result);
+        return resolve(response);
+      });
     });
   }
 
-  getOperationalMembership(username, callback) {
-    if (!callback || !username) {
-      return callback(new Error('Username and a callback must be provided'));
+  getMembership(username: string, options?: ICacheOptions): Promise<IOrganizationMembership> {
+    return new Promise((resolve, reject) => {
+      options = options || {};
+      const orgName = this.name;
+      const parameters = {
+        username: username,
+        org: orgName,
+      };
+      const operations = this._operations;
+      const token = this._getOwnerToken();
+      return operations.github.call(token, 'orgs.getMembership', parameters, (error, result) => {
+        if (error && error.status == /* loose */ 404) {
+          return resolve(null);
+        }
+        if (error) {
+          let reason = error.message;
+          if (error.status) {
+            reason += ' ' + error.status;
+          }
+          const wrappedError = wrapError(error, `Trouble retrieving the membership for "${username}" in the ${orgName} organization. ${reason}`);
+          if (error.status) {
+            wrapError['code'] = error.status;
+            wrapError['status'] = error.status;
+          }
+          return reject(wrappedError);
+        }
+        return resolve(result);
+      });
+    });
+  }
+
+  async getOperationalMembership(username: string): Promise<IOrganizationMembership> {
+    if (!username) {
+      throw new Error('username must be provided');
     }
     // This is a specific version of the getMembership function that takes
     // no options and never allows for caching [outside of the standard
@@ -597,218 +627,203 @@ export class Organization {
       backgroundRefresh: false,
       maxAgeSeconds: -60,
     };
-    return this.getMembership(username, options, callback);
+    return await this.getMembership(username, options);
   }
 
-  addMembershipAsync(username, options): Promise<any> {
-    // TODO: long-term, all methods should be async
+  addMembership(username: string, options?: IAddOrganizationMembershipOptions): Promise<any> {
     return new Promise((resolve, reject) => {
-      this.addMembership(username, options, (err, data) => {
-        return err ? reject(err) : resolve(data);
+      const operations = this._operations;
+      const token = this._getOwnerToken();
+      const github = operations.github;
+      options = options || {};
+      const role = options.role || 'member';
+      const parameters = {
+        org: this.name,
+        username: username,
+        role: role,
+      };
+      github.post(token, 'orgs.addOrUpdateMembership', parameters, (error, ok) => {
+        return error ? reject(error) : resolve(ok);
       });
     });
   }
 
-  addMembership(username, options, callback?) {
-    const operations = this._operations;
-    const token = this._getOwnerToken();
-    const github = operations.github;
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    options = options || {};
-
-    const role = options.role || 'member';
-
-    const parameters = {
-      org: this.name,
-      username: username,
-      role: role,
-    };
-    github.post(token, 'orgs.addOrUpdateMembership', parameters, callback);
-  }
-
-  checkPublicMembership(username, options, callback?) {
-    // NOTE: This method is unable to be cached by the underlying
-    // system since there is no etag returned for status code-only
-    // results.
-    if (!callback && typeof (options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    options = options || {};
-    const parameters: ICheckPublicMembershipParameters = {
-      username: username,
-      org: this.name,
-    };
-    const operations = this._operations;
-    const token = this._getOwnerToken();
-    parameters.allowEmptyResponse = true;
-    return operations.github.post(token, 'orgs.checkPublicMembership', parameters, error => {
-      // The user either is not a member of the organization, or their membership is concealed
-      if (error && error.status == /* loose */ 404) {
-        return callback(null, false);
-      }
-      if (error) {
-        return callback(wrapError(error, `Trouble retrieving the public membership status for "${username}" in the ${this.name} organization`));
-      }
-      return callback(null, true);
-    });
-  }
-
-  concealMembership(login, userToken, callback) {
-    // This call required a provider user token with the expanded write:org scope
-    const operations = this._operations;
-    const parameters = {
-      org: this.name,
-      username: login,
-    };
-    return operations.github.post(userToken, 'orgs.concealMembership', parameters, (error) => {
-      return error ? callback(wrapError(error, 'Could not conceal organization membership for ')) : callback();
-    });
-  }
-
-  publicizeMembership(login, userToken, callback) {
-    // This call required a provider user token with the expanded write:org scope
-    const operations = this._operations;
-    const parameters = {
-      org: this.name,
-      username: login,
-    };
-    return operations.github.post(userToken, 'orgs.publicizeMembership', parameters, (error) => {
-      return error ? callback(wrapError(error, 'Could not publicize the organization membership for ')) : callback();
-    });
-  }
-
-  getMembers(options, callback?) {
-    if (!callback && typeof (options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    options = options || {};
-
-    let operations = this._operations;
-    let token = this._getOwnerToken();
-    let github = operations.github;
-
-    let parameters: IGetMembersParameters = {
-      org: this.name,
-      per_page: 100,
-    };
-    if (options.filter) {
-      parameters.filter = options.filter;
-    }
-    if (options.role) {
-      parameters.role = options.role;
-    }
-    const caching = {
-      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgMembersStaleSeconds,
-      backgroundRefresh: true,
-    };
-    if (options && options.backgroundRefresh === false) {
-      caching.backgroundRefresh = false;
-    }
-    return github.collections.getOrgMembers(
-      token,
-      parameters,
-      caching,
-      common.createInstancesCallback(this, this.memberFromEntity, callback));
-  }
-
-  getMembersWithoutTwoFactor(options, callback) {
-    if (!callback && typeof (options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    const clonedOptions = Object.assign({
-      filter: '2fa_disabled',
-    }, options || {});
-    return this.getMembers(clonedOptions, callback);
-  }
-
-  isMemberSingleFactor(username, options, callback) {
-    if (!callback && typeof (options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    const self = this;
-    self.getMembersWithoutTwoFactor(options, (getError, membersWithoutTwoFactor) => {
-      if (getError) {
-        return callback(getError);
-      }
-      const lowerCase = username.toLowerCase();
-      for (let i = 0; i < membersWithoutTwoFactor.length; i++) {
-        const lc = membersWithoutTwoFactor[i].login.toLowerCase();
-        if (lowerCase === lc) {
-          return callback(null, true);
+  checkPublicMembership(username: string, options?: ICacheOptions): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      // NOTE: This method is unable to be cached by the underlying
+      // system since there is no etag returned for status code-only
+      // results.
+      options = options || {};
+      const parameters: ICheckPublicMembershipParameters = {
+        username: username,
+        org: this.name,
+      };
+      const operations = this._operations;
+      const token = this._getOwnerToken();
+      parameters.allowEmptyResponse = true;
+      return operations.github.post(token, 'orgs.checkPublicMembership', parameters, error => {
+        // The user either is not a member of the organization, or their membership is concealed
+        if (error && error.status == /* loose */ 404) {
+          return resolve(false);
         }
+        if (error) {
+          return reject(wrapError(error, `Trouble retrieving the public membership status for ${username} in the ${this.name} organization: ${error.message}`));
+        }
+        return resolve(true);
+      });
+    });
+  }
+
+  concealMembership(login: string, userToken: string, callback) {
+    return new Promise((resolve, reject) => {
+      // This call required a provider user token with the expanded write:org scope
+      const operations = this._operations;
+      const parameters = {
+        org: this.name,
+        username: login,
+      };
+      return operations.github.post(userToken, 'orgs.concealMembership', parameters, (error) => {
+        if (error) {
+          return reject(wrapError(error, `Could not conceal the ${this.name} organization membership for  ${login}: ${error.message}`));
+        }
+        return resolve();
+      });
+    });
+  }
+
+  publicizeMembership(login: string, userToken: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // This call required a provider user token with the expanded write:org scope
+      const operations = this._operations;
+      const parameters = {
+        org: this.name,
+        username: login,
+      };
+      return operations.github.post(userToken, 'orgs.publicizeMembership', parameters, (error) => {
+        if (error) {
+          return reject(wrapError(error, `Could not publicize the ${this.name} organization membership for  ${login}: ${error.message}`));
+        }
+        return resolve();
+      });
+    });
+  }
+
+  getMembers(options?: IGetOrganizationMembersOptions): Promise<OrganizationMember[] /*todo: validate*/> {
+    return new Promise((resolve, reject) => {
+      options = options || {};
+      const operations = this._operations;
+      const token = this._getOwnerToken();
+      const github = operations.github;
+      const parameters: IGetMembersParameters = {
+        org: this.name,
+        per_page: operations.defaultPageSize,
+      };
+      if (options.filter) {
+        parameters.filter = options.filter;
       }
-      return callback(null, false);
+      if (options.role) {
+        parameters.role = options.role;
+      }
+      const caching = {
+        maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgMembersStaleSeconds,
+        backgroundRefresh: true,
+        pageRequestDelay: options.pageRequestDelay,
+      };
+      if (options && options.backgroundRefresh === false) {
+        caching.backgroundRefresh = false;
+      }
+      return github.collections.getOrgMembers(
+        token,
+        parameters,
+        caching,
+        common.createPromisedInstances(this, this.memberFromEntity, resolve, reject));
     });
   }
 
-  getTeams(options, callback) {
-    if (!callback && typeof (options) === 'function') {
-      callback = options;
-      options = null;
+  getMembersWithoutTwoFactor(options?: IPagedCacheOptions): Promise<any> {
+    const clonedOptions: IGetOrganizationMembersOptions = Object.assign({}, options || {});
+    clonedOptions.filter = OrganizationMembershipTwoFactorFilter.TwoFactorOff;
+    return this.getMembers(clonedOptions);
+  }
+
+  async isMemberSingleFactor(username: string, options?: IPagedCacheOptions): Promise<boolean> {
+    const membersWithoutTwoFactor = await this.getMembersWithoutTwoFactor(options);
+    const lowerCase = username.toLowerCase();
+    for (let i = 0; i < membersWithoutTwoFactor.length; i++) {
+      const lc = membersWithoutTwoFactor[i].login.toLowerCase();
+      if (lowerCase === lc) {
+        return true;
+      }
     }
-    options = options || {};
-
-
-    let operations = this._operations;
-    let token = this._getOwnerToken();
-    let github = operations.github;
-
-    let parameters = {
-      org: this.name,
-      per_page: 100,
-    };
-    const caching = {
-      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgTeamsStaleSeconds,
-      backgroundRefresh: true,
-    };
-    caching.backgroundRefresh = options.backgroundRefresh;
-
-    return github.collections.getOrgTeams(
-      token,
-      parameters,
-      caching,
-      common.createInstancesCallback(this, this.teamFromEntity, callback));
+    return false;
   }
 
-  removeMember(login, callback) {
-    const token = this._getOwnerToken();
-    const operations = this._operations;
-    const parameters = {
-      org: this.name,
-      username: login,
-    };
-    return operations.github.post(token, 'orgs.removeMembership', parameters, (error) => {
-      return error ? callback(wrapError(error, 'Could not remove the organization member')) : callback();
+  getTeams(options?: IPagedCacheOptions): Promise<Team[]> {
+    return new Promise((resolve, reject) => {
+      options = options || {};
+      const operations = this._operations;
+      const token = this._getOwnerToken();
+      const github = operations.github;
+      const parameters = {
+        org: this.name,
+        per_page: operations.defaultPageSize,
+      };
+      const caching: IPagedCacheOptions = {
+        maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgTeamsStaleSeconds,
+        backgroundRefresh: true,
+        pageRequestDelay: options.pageRequestDelay || null,
+      };
+      caching.backgroundRefresh = options.backgroundRefresh;
+      return github.collections.getOrgTeams(
+        token,
+        parameters,
+        caching,
+        common.createPromisedInstances<Team>(this, this.teamFromEntity, resolve, reject));
     });
   }
 
-  getMembershipInvitations(callback) {
-    const token = this._getOwnerToken();
-    const operations = this._operations;
-    const parameters = {
-      org: this.name,
-    };
-    return operations.github.call(token, 'orgs.listPendingInvitations', parameters, (error, invitations) => {
-      return error && error.status != /* loose */ 404 ? callback(wrapError(error, 'Could not retrieve organization invitations')) : callback(null, invitations);
+  removeMember(login: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const token = this._getOwnerToken();
+      const operations = this._operations;
+      const parameters = {
+        org: this.name,
+        username: login,
+      };
+      return operations.github.post(token, 'orgs.removeMembership', parameters, error => {
+        if (error) {
+          return reject(wrapError(error, 'Could not remove the organization member ${login}'));
+        }
+        return resolve();
+      });
     });
   }
 
-  memberFromEntity(entity) {
+  getMembershipInvitations(): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const token = this._getOwnerToken();
+      const operations = this._operations;
+      const parameters = {
+        org: this.name,
+      };
+      return operations.github.call(token, 'orgs.listPendingInvitations', parameters, (error, invitations) => {
+        if (error && error.status != /* loose */ 404) {
+          return reject(wrapError(error, `Could not retrieve ${this.name} organization invitations: ${error.message}`));
+        }
+        return resolve(invitations);
+      });
+    });
+  }
+
+  memberFromEntity(entity): OrganizationMember {
     return this.member(entity.id, entity);
   }
 
-  teamFromEntity(entity) {
+  teamFromEntity(entity): Team {
     return this.team(entity.id, entity);
   }
 
-  repositoryFromEntity(entity) {
+  repositoryFromEntity(entity): Repository {
     return this.repository(entity.name, entity);
   }
 
@@ -843,6 +858,27 @@ export class Organization {
     const operations = this._operations;
     return [settings, operations];
   }
+
+  private getSpecialTeam(propertyName: string, friendlyName: string, throwIfMissing?: boolean): number[] {
+    const settings = this._settings;
+    if (!settings[propertyName] && throwIfMissing) {
+      throw new Error(`Missing configured organization "${this.name}" property ${propertyName} (special team ${friendlyName})`);
+    }
+    const value = settings[propertyName];
+    if (value && Array.isArray(value)) {
+      const asNumbers: number[] = [];
+      for (let i = 0; i < value.length; i++) {
+        asNumbers.push(parseInt(value[i], 10));
+      }
+      return asNumbers;
+    }
+    const teams: number[] = [];
+    if (value) {
+      teams.push(parseInt(value, 10));
+    }
+    return teams;
+  }
+
 }
 
 function getSupportedRepositoryTypesByPriority(self) {
@@ -872,7 +908,7 @@ function getSupportedRepositoryTypesByPriority(self) {
   return types;
 }
 
-function getOwnerToken() {
+function getOwnerToken(): string {
   let tok = this._settings.ownerToken;
   return tok;
 }
@@ -922,42 +958,4 @@ function getRepositoryCreateTemplates(self, operations, options) {
     return limitedTypeTemplates;
   }
   return templates;
-}
-
-function getSpecialTeam(self, propertyName, friendlyName, throwIfMissing?) {
-  const settings = self._settings;
-  if (!settings[propertyName] && throwIfMissing) {
-    throw new Error(`Missing configured organization "${self.name}" property ${propertyName} (special team ${friendlyName})`);
-  }
-  const value = settings[propertyName];
-  if (value && Array.isArray(value)) {
-    const asNumbers = [];
-    for (let i = 0; i < value.length; i++) {
-      asNumbers.push(parseInt(value[i], 10));
-    }
-    return asNumbers;
-  }
-  const teams = [];
-  if (value) {
-    teams.push(parseInt(value, 10));
-  }
-  return teams;
-}
-
-interface IGetMembersParameters {
-  org: string;
-  per_page: number;
-  filter?: string;
-  role?: string;
-}
-
-interface ICheckPublicMembershipParameters {
-  username: string;
-  org: string;
-  allowEmptyResponse?: boolean;
-}
-
-interface IRedirectError extends IReposError {
-  status?: number;
-  slug?: string;
 }

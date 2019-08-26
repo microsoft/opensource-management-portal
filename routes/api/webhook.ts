@@ -8,7 +8,7 @@
 import express = require('express');
 import { jsonError } from '../../middleware/jsonError';
 
-import moment = require('moment');
+import moment from 'moment';
 import { ReposAppRequest } from '../../transitional';
 const router = express.Router();
 

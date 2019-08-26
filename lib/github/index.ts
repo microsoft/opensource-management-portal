@@ -8,16 +8,18 @@
 const GitHubApi = require('@octokit/rest');
 const githubPackage = require('@octokit/rest/package.json');
 
-// const restApi = require('./restApi');
-const collections = require('./collections');
-// const core = require('./core');
-const crossOrganization = require('./crossOrganization');
-const links = require('./links');
-// import { IntelligentGitHubEngine, GitHubApiContext } from './restApi';
 import * as restApi from './restApi';
 import { createCallbackFlattenData, createCallbackFlattenDataOptionally } from './core';
 import { CompositeIntelligentEngine } from './composite';
+import { RestCollections } from './collections';
+import { CrossOrganizationCollator } from './crossOrganization';
 import { ILinkProvider } from '../linkProviders/postgres/postgresLinkProvider';
+import { LinkMethods } from './links';
+
+export enum CacheMode {
+  ValidateCache = 'ValidateCache',
+  BackgroundRefresh = 'BackgroundRefresh',
+}
 
 export interface ILibraryContext {
   redis?: any;
@@ -26,27 +28,23 @@ export interface ILibraryContext {
   memoryCache?: any;
   breakingChangeGitHubPackageVersion?: any;
 
-  hasNextPage?: any;
-  hasPreviousPage?: any;
-  hasLastPage?: any;
-  hasFirstPage?: any;
+  hasNextPage?: (any) => boolean;
 
-  getNextPage?: any;
-  getNextPageExtended?: any;
-  getPreviousPage?: any;
-  getLastPage?: any;
-  getFirstPage?: any;
+  // getNextPage?: any;
+  // getNextPageExtended?: any;
 
   call?: any;
   request?: any;
   post?: any;
 
-  collections?: any;
-  links?: any;
-  crossOrganization?: any;
+  collections?: RestCollections;
+  links?: LinkMethods;
+  crossOrganization?: CrossOrganizationCollator;
 
   githubEngine?: restApi.IntelligentGitHubEngine;
   compositeEngine?: CompositeIntelligentEngine;
+
+  defaultPageSize: number;
 }
 
 // With the introduction of a breaking change in the underlying schema, any cache objects
@@ -55,7 +53,7 @@ export interface ILibraryContext {
 // also trigger a discard.
 const breakingChangeGitHubPackageVersion = '6.0.0';
 
-function createLibraryContext(options): ILibraryContext {
+export function CreateRestLibraryContext(options): ILibraryContext {
   const redis = options.redis;
   if (!redis) {
     throw new Error('No Redis instance provided to the GitHub library context constructor.');
@@ -73,29 +71,26 @@ function createLibraryContext(options): ILibraryContext {
 
   let memoryCache = options.memoryCache || new Map();
 
-  const nodeGithubVersion = `node-github/${githubPackage.version}`;
+  const nodeGithubVersion = `${githubPackage.name}/${githubPackage.version}`;
   let userAgent = nodeGithubVersion;
   if (config && config.github && config.github.library && config.github.library.userAgent) {
-    userAgent = config.github.library.userAgent + ' ' + userAgent;
+    userAgent = config.github.library.userAgent;
   }
 
   let github = options.github;
   if (!github) {
     let githubApi = options.GitHubApi || GitHubApi;
     github = new githubApi({
-      headers: {
-        'user-agent': userAgent,
-      },
-      // Promise: Q.Promise,
+      userAgent,
     });
-    github.authenticate(); // turns off central auth
   }
 
   const libraryContext: ILibraryContext = {
-    redis: redis,
+    redis,
     insights: options.insights,
-    memoryCache: memoryCache,
+    memoryCache,
     linkProvider,
+    defaultPageSize: config && config.github && config.github.api && config.github.api.defaultPageSize ? config.github.api.defaultPageSize : 100,
 
     breakingChangeGitHubPackageVersion: breakingChangeGitHubPackageVersion,
   };
@@ -103,17 +98,10 @@ function createLibraryContext(options): ILibraryContext {
   libraryContext.githubEngine = new restApi.IntelligentGitHubEngine();
   libraryContext.compositeEngine = new CompositeIntelligentEngine();
 
-  libraryContext.hasNextPage = github.hasNextPage.bind(github);
-  libraryContext.hasPreviousPage = github.hasPreviousPage.bind(github);
-  libraryContext.hasLastPage = github.hasLastPage.bind(github);
-  libraryContext.hasFirstPage = github.hasFirstPage.bind(github);
+  libraryContext.hasNextPage = hasNextPage.bind(libraryContext);
 
-  libraryContext.getNextPage = restApi.wrapCreatePage(libraryContext, github, 'next');
-  libraryContext.getPreviousPage = restApi.wrapCreatePage(libraryContext, github, 'prev');
-  libraryContext.getLastPage = restApi.wrapCreatePage(libraryContext, github, 'last');
-  libraryContext.getFirstPage = restApi.wrapCreatePage(libraryContext, github, 'first');
-
-  libraryContext.getNextPageExtended = restApi.wrapCreatePage(libraryContext, github, 'next', true);
+  // libraryContext.getNextPage = restApi.wrapCreateNextPage(libraryContext, github);
+  // libraryContext.getNextPageExtended = restApi.wrapCreateNextPage(libraryContext, github, true);
 
   libraryContext.call = function callGithub(token, api, options, cacheOptions, callback) {
     if (!callback && typeof(cacheOptions) === 'function') {
@@ -129,10 +117,7 @@ function createLibraryContext(options): ILibraryContext {
     }
 
     const apiContext = restApi.createFullContext(api, options, github, libraryContext);
-    // const apiContext = restApi.create(api, options, github);
     apiContext.overrideToken(token);
-    // apiContext.token = token;
-    // apiContext.libraryContext = libraryContext;
 
     if (cacheOptions.maxAgeSeconds) {
       apiContext.maxAgeSeconds = cacheOptions.maxAgeSeconds;
@@ -143,9 +128,6 @@ function createLibraryContext(options): ILibraryContext {
     return libraryContext.githubEngine.execute(apiContext).then(result => {
       return innerCallback(null, result);
     }, innerCallback as (err: any) => any);
-    // return core.execute(apiContext, (erx, erp) => {
-    //   return innerCallback(erx, erp);
-    // });
   };
 
   libraryContext.request = function callOctokitRequest(token, restEndpoint, parameters: any, cacheOptions, callback) {
@@ -176,13 +158,28 @@ function createLibraryContext(options): ILibraryContext {
     }
   };
 
-  libraryContext.collections = collections(libraryContext, libraryContext.call);
+  libraryContext.collections = new RestCollections(libraryContext, libraryContext.call);
 
-  libraryContext.links = links(libraryContext, options.linkProvider);
+  libraryContext.links = new LinkMethods(libraryContext);
 
-  libraryContext.crossOrganization = crossOrganization(libraryContext, libraryContext.collections);
+  libraryContext.crossOrganization = new CrossOrganizationCollator(libraryContext, libraryContext.collections);
 
   return libraryContext;
 }
 
-module.exports = createLibraryContext;
+// follows: deprecated functions that parse links out of the response headers
+
+function getPageLinks (link: any): any {
+  link = link.link || link.headers.link || '';
+  const links = {};
+  // link format:
+  // '<https://api.github.com/users/aseemk/followers?page=2>; rel="next", <https://api.github.com/users/aseemk/followers?page=2>; rel="last"'
+  link.replace(/<([^>]*)>;\s*rel="([\w]*)"/g, (m, uri, type) => {
+    links[type] = uri
+  });
+  return links;
+}
+
+function hasNextPage (link): string {
+  return getPageLinks(link).next;
+}

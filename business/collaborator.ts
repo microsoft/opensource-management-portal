@@ -8,6 +8,7 @@
 import * as common from './common';
 import { Organization } from "./organization";
 import { Operations } from "./operations";
+import { IGetOwnerToken } from '../transitional';
 
 const memberPrimaryProperties = [
   'id',
@@ -21,20 +22,18 @@ export class Collaborator {
 
   private _organization: Organization;
   private _operations: Operations;
-  private _getToken: any;
+  private _getToken: IGetOwnerToken;
 
   private _avatar_url: string;
   private _id: string;
   private _login: string;
   private _permissions: any;
 
-  constructor(organization: Organization, entity, getToken, operations: Operations) {
+  constructor(organization: Organization, entity: any, getToken: IGetOwnerToken, operations: Operations) {
     this._organization = organization;
-
     if (entity) {
       common.assignKnownFieldsPrefixed(this, entity, 'member', memberPrimaryProperties);
     }
-
     this._getToken = getToken;
     this._operations = operations;
   }

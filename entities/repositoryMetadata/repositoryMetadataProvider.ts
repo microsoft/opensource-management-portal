@@ -5,10 +5,11 @@
 
 'use strict';
 
-import { EntityMetadataType, IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { RepositoryMetadataEntity, EnsureRepositoryMetadataDefinitionsAvailable, RepositoryMetadataFixedQueryAll, RepositoryMetadataFixedQueryByRepositoryId } from './repositoryMetadata';
+import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
+import { RepositoryMetadataEntity, RepositoryMetadataFixedQueryAll, RepositoryMetadataFixedQueryByRepositoryId } from './repositoryMetadata';
+import { EntityImplementation } from './repositoryMetadata';
 
-const thisProviderType = EntityMetadataType.Repository;
+const thisProviderType = EntityImplementation.Type;
 
 export interface IRepositoryMetadataCreateOptions extends IEntityMetadataBaseOptions {
 }
@@ -26,7 +27,7 @@ export interface IRepositoryMetadataProvider {
 export class RepositoryMetadataApprovalProvider extends EntityMetadataBase implements IRepositoryMetadataProvider {
   constructor(options: IRepositoryMetadataCreateOptions) {
     super(options);
-    EnsureRepositoryMetadataDefinitionsAvailable();
+    EntityImplementation.EnsureDefinitions();
   }
 
   async getRepositoryMetadata(repositoryId: string): Promise<RepositoryMetadataEntity> {

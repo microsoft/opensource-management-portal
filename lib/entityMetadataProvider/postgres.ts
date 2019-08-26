@@ -57,7 +57,7 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
       throw new Error('PostgresEntityMetadataProvider requires a Postgres pool')
     }
     this._entityTypeToTableNamesMapping = Object.assign(defaultTableNames(), (options.entityTypeToTableNamesMapping || {}));
-    this._entityTypeToColumnValuesMapping = Object.apply(defaultTypeColumnNames(), (options.entityTypeToColumnValuesMapping || {}));
+    this._entityTypeToColumnValuesMapping = Object.assign(defaultTypeColumnNames(), (options.entityTypeToColumnValuesMapping || {}));
   }
 
   async initialize(): Promise<void> {}
@@ -198,6 +198,7 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
       return tableName;
     }
     if (!tableName) {
+      // NOTE if you see an error here: are you sure that the entity metadata list includes your type?
       throw new Error(`No Postgres table name mapping provided for EntityMetadataType value ${type}`);
     }
   }
@@ -292,7 +293,7 @@ function defaultTypeColumnNames() {
       const column = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, true);
       defaults[type] = column;
     } catch (noDefaultTableNameError) {
-      throw new Error(`No default Postgres type column name iss defined for the type ${type}`);
+      throw new Error(`No default Postgres type column name is defined for the type ${type}`);
     }
   });
   return defaults;

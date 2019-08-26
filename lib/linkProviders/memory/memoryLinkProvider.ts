@@ -5,7 +5,7 @@
 
 'use strict';
 
-const _ = require('lodash');
+import _ from 'lodash';
 
 import { v4 as uuidV4 } from 'uuid';
 import { IReposError } from '../../../transitional';

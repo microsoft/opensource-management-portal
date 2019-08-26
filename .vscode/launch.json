@@ -15,7 +15,23 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "appinsights,oss-initialize,oss-redis-cross-org,appinsights,azureossportal,health",
+        "DEBUG": "pg,appinsights,oss-initialize,oss-redis-cross-org,appinsights",
+        "MORE_DEBUG": "oss-redis,oss-github",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch site (cache optimization work)",
+      "program": "${workspaceRoot}/dist/bin/www.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "appinsights,oss-initialize,oss-cache-optimization,oss-redis-cross-org,appinsights,health",
         "MORE_DEBUG": "oss-redis,oss-github",
         "NODE_TLS_REJECT_UNAUTHORIZED": "0"
       }
@@ -31,7 +47,7 @@
       "sourceMaps": true,
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "appinsights,oss-github,oss-initialize,oss-redis-cross-org,appinsights,azureossportal",
+        "DEBUG": "appinsights,oss-github,oss-initialize,oss-redis-cross-org,appinsights",
         "DEBUG_GITHUB_PORTAL_SUDO_FORCE": "1",
         "NODE_TLS_REJECT_UNAUTHORIZED": "0"
       }
@@ -47,7 +63,7 @@
       "sourceMaps": true,
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "appinsights,oss-github,oss-initialize,oss-redis-cross-org,appinsights,azureossportal",
+        "DEBUG": "appinsights,oss-github,oss-initialize,oss-redis-cross-org,appinsights",
         "DEBUG_GITHUB_PORTAL_SUDO_OFF": "1",
         "DEBUG_GITHUB_ORG_SUDO_OFF": "1",
         "NODE_TLS_REJECT_UNAUTHORIZED": "0"
@@ -64,7 +80,7 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "localhost",
-        "DEBUG": "oss-initialize,appinsights"
+        "DEBUG": "oss-initialize,appinsights,oss-redis,oss-github"
       }
     },
     {
@@ -115,8 +131,92 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Job: Cleanup Tokens",
+      "program": "${workspaceRoot}/dist/jobs/cleanupTokens/index.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Cleanup Extension Keys",
+      "program": "${workspaceRoot}/dist/jobs/cleanupKeys/index.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Refresh Usernames",
+      "program": "${workspaceRoot}/dist/jobs/refreshUsernames/index.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Refresh Query Cache",
+      "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "oss-initialize,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Refresh Managers",
+      "program": "${workspaceRoot}/dist/jobs/managers/index.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Job: Migrate links",
       "program": "${workspaceRoot}/dist/jobs/migrateLinks/index.js",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "cwd": "${workspaceRoot}/dist",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Migrate metadata",
+      "program": "${workspaceRoot}/dist/jobs/migrateMetadata/index.js",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
       "console": "integratedTerminal",
@@ -151,7 +251,7 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "production",
-        "DEBUG": "oss-initialize,appinsights,azureossportal,health",
+        "DEBUG": "oss-initialize,appinsights,health",
         "NODE_TLS_REJECT_UNAUTHORIZED": "0",
         "NOTE_FOR_PUBLIC_MEMORY_PROVIDER_USE": "In-memory providers should fail in production node env by design, this entry helps validate that"
       }

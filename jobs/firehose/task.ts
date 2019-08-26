@@ -10,7 +10,7 @@
 // Firehose processing specific to repos
 
 import async = require('async');
-import moment = require('moment');
+import moment from 'moment';
 import { Operations } from '../../business/operations';
 const os = require('os');
 const serviceBus = require('azure-sb');

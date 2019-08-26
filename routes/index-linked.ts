@@ -12,7 +12,6 @@ import { IndividualContext } from '../business/context2';
 import { storeOriginalUrlAsVariable } from '../utils';
 const router = express.Router();
 
-const approvalsSystem = require('./approvals');
 const orgsRoute = require('./orgs');
 const orgAdmin = require('./orgAdmin');
 const peopleRoute = require('./people');
@@ -42,7 +41,6 @@ router.use(function (req: ReposAppRequest, res, next) {
 router.use('/unlink', unlinkRoute);
 
 router.use('/teams', teamsRoute);
-router.use('/approvals', approvalsSystem);
 router.use('/organization', orgAdmin);
 router.use('/people', peopleRoute);
 router.use('/repos', reposRoute);

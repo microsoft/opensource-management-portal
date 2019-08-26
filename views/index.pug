@@ -105,7 +105,7 @@ block content
         if accountInfo.pendingApprovals && accountInfo.pendingApprovals.length && accountInfo.pendingApprovals.length > 0
           h1 Approvals: Please Review
           p
-            a.btn.btn-default(href='/approvals/') See all pending approvals (#{accountInfo.pendingApprovals.length})
+            a.btn.btn-default(href='/settings/approvals/') See all pending approvals (#{accountInfo.pendingApprovals.length})
 
         if overview && overview.teams && overview.teams.maintainer && overview.teamCounts.maintainer
           h1 Teams you maintain

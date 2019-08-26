@@ -11,7 +11,7 @@
 
 const debug = require('debug')('oss-github');
 import { v4 as uuidV4 } from 'uuid';
-import moment = require('moment');
+import moment from 'moment';
 const semver = require('semver');
 import { IShouldServeCache, ApiContext, IntelligentEngine, IApiContextRedisKeys, IApiContextCacheValues, ApiContextType } from './core';
 

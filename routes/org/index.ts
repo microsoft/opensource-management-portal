@@ -6,27 +6,29 @@
 'use strict';
 
 import express from 'express';
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
 import async from 'async';
 
 import { ReposAppRequest, IProviders } from '../../transitional';
+import { Team } from '../../business/team';
+import { IRequestOrganizationPermissions, AddOrganizationPermissionsToRequest } from '../../middleware/github/orgPermissions';
+import { OrganizationMembershipState } from '../../business/organization';
 
 const teamsRoute = require('./teams');
 const reposRoute = require('./repos');
 const membershipRoute = require('./membership');
 const joinRoute = require('./join');
 const leaveRoute = require('./leave');
-const orgPermissions = require('../../middleware/github/orgPermissions');
 const securityCheckRoute = require('./2fa');
 const profileReviewRoute = require('./profileReview');
-const approvalsSystem = require('../approvals');
 const newRepoSpa = require('./newRepoSpa');
 const peopleRoute = require('./people');
 
 interface ILocalOrgRequest extends ReposAppRequest {
-  sudoMode?: any;
-  orgPermissions?: any;
+  sudoMode?: boolean;
+  orgPermissions?: IRequestOrganizationPermissions;
 }
 
 router.use(function (req: ReposAppRequest, res, next) {
@@ -57,30 +59,27 @@ router.use('/people', peopleRoute);
 router.use('/teams', teamsRoute);
 
 // Org membership requirement middleware
-router.use(orgPermissions, (req: ILocalOrgRequest, res, next) => {
+router.use(asyncHandler(AddOrganizationPermissionsToRequest), asyncHandler(async (req: ILocalOrgRequest, res, next) => {
   const organization = req.organization;
   const orgPermissions = req.orgPermissions;
   if (!orgPermissions) {
     return next(new Error('Organization permissions are unavailable'));
   }
-
   // Decorate the route for the sudoer
   if (orgPermissions.sudo) {
     req.sudoMode = true;
   }
-
   const membershipStatus = orgPermissions.membershipStatus;
-  if (membershipStatus === 'active') {
+  if (membershipStatus === OrganizationMembershipState.Active) {
     return next();
   } else {
     const individualContext = req.individualContext;
-    const aadId = individualContext.corporateIdentity.id;
     const username = individualContext.getGitHubIdentity().username;
-    organization.getOperationalMembership(username, () => {
-      return res.redirect('/' + organization.name + '/join');
-    });
+
+    await organization.getOperationalMembership(username);
+    return res.redirect('/' + organization.name + '/join');
   }
-});
+}));
 
 // Org membership required endpoints:
 
@@ -94,15 +93,28 @@ router.get('/', function (req: ReposAppRequest, res, next) {
   async.parallel({
     organizationOverview: (callback) => {
       const uc = operations.getUserContext(id);
-      return uc.getAggregatedOrganizationOverview(organization.name, callback);
+      return uc.getAggregatedOrganizationOverview(organization.name).then(ok => {
+        return callback(null, ok);
+      }).catch(error => {
+        return callback(error);
+      });
     },
     isMembershipPublic: function (callback) {
-      organization.checkPublicMembership(username, callback);
+      organization.checkPublicMembership(username).then(membershipResult => {
+        return callback(null, membershipResult);
+      }).catch(error => {
+        return callback(error);
+      });
     },
     orgUser: function (callback) {
-      organization.getDetails(function (error, details) {
-        const userDetails = details ? organization.memberFromEntity(details) : null;
-        callback(error, userDetails);
+      organization.getDetails().then(details => {
+        if (details) {
+          return callback(null, organization.memberFromEntity(details));
+        } else {
+          return callback();
+        }
+      }).catch(error => {
+        return callback(error);
       });
     },
     /*
@@ -130,14 +142,14 @@ router.get('/', function (req: ReposAppRequest, res, next) {
         });
       };
       // Check for pending approvals
-      const teamsMaintained = results.organizationOverview.teams.maintainer;
+      const teamsMaintained = results.organizationOverview.teams.maintainer as Team[];
       if (teamsMaintained && teamsMaintained.length && teamsMaintained.length > 0) {
         const teamsMaintainedHash = {};
         for (let i = 0; i < teamsMaintained.length; i++) {
           teamsMaintainedHash[teamsMaintained[i].id] = teamsMaintained[i];
         }
         results.teamsMaintainedHash = teamsMaintainedHash;
-        approvalProvider.queryPendingApprovalsForTeams(teamsMaintained).then(pendingApprovals => {
+        approvalProvider.queryPendingApprovalsForTeams(teamsMaintained.map(team => team.id)).then(pendingApprovals => {
           results.pendingApprovals = pendingApprovals;
           return render(results);
         }).catch(errorIgnored => {
@@ -153,7 +165,6 @@ router.use('/membership', membershipRoute);
 router.use('/leave', leaveRoute);
 router.use('/security-check', securityCheckRoute);
 router.use('/profile-review', profileReviewRoute);
-router.use('/approvals', approvalsSystem);
 router.use('/new-repo', (req: ReposAppRequest, res) => {
   const organization = req.organization;
   res.redirect(organization.baseUrl + 'wizard');

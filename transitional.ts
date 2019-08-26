@@ -9,7 +9,7 @@
 
 import { Application, Response, Request } from 'express';
 
-import redis = require('redis');
+import redis from 'redis';
 import { Pool as PostgresPool } from 'pg';
 
 import { IndividualContext } from './business/context2';
@@ -26,15 +26,51 @@ import { ILocalExtensionKeyProvider } from './entities/localExtensionKey';
 import { PersonalAccessToken } from './entities/token/token';
 import { Organization } from './business/organization';
 import { IGraphProvider } from './lib/graphProvider';
+import { ILibraryContext } from './lib/github';
+import { Team } from './business/team';
+import { IRepositoryCacheProvider } from './entities/repositoryCache/repositoryCacheProvider';
+import { IRepositoryCollaboratorCacheProvider } from './entities/repositoryCollaboratorCache/repositoryCollaboratorCacheProvider';
+import { ITeamCacheProvider } from './entities/teamCache/teamCacheProvider';
+import { ITeamMemberCacheProvider } from './entities/teamMemberCache/teamMemberCacheProvider';
+import { IRepositoryTeamCacheProvider } from './entities/repositoryTeamCache/repositoryTeamCacheProvider';
+import { IOrganizationMemberCacheProvider } from './entities/organizationMemberCache/organizationMemberCacheProvider';
 
 export interface ICallback<T> {
-  (error: Error, result?: T): void;
+  (error: IReposError, result?: T): void;
+}
+
+export interface IGetOwnerToken {
+  (): string;
+}
+
+export interface PromiseResolve<T> {
+  (resolve: T[]): void;
+}
+
+export interface PromiseReject {
+  (reject?: any): void;
 }
 
 export interface ICacheOptions {
   backgroundRefresh?: any | null | undefined;
   maxAgeSeconds?: number | null | undefined;
+}
+
+export interface IPagedCacheOptions extends ICacheOptions {
+  pageRequestDelay?: number | null | undefined; // FUTURE: could be a function, too
+}
+
+export interface IPagedCrossOrganizationCacheOptions extends IPagedCacheOptions {
   individualMaxAgeSeconds?: number | null | undefined;
+  individualRequestDelay?: number | null | undefined; // FUTURE: could be a function, too
+}
+
+export interface ILocalCacheOptions extends ICacheOptions {
+  localMaxAgeSeconds?: number;
+}
+
+export interface ICacheOptionsPageLimiter extends ICacheOptions {
+  pageLimit?: number;
 }
 
 export interface IMapPlusMetaCost extends Map<any, any> {
@@ -65,7 +101,7 @@ export interface IProviders {
   // entityMetadata?: IEntityMetadataProvider;
   healthCheck?: any;
   keyEncryptionKeyResolver?: any;
-  github?: any;
+  github?: ILibraryContext;
   graphProvider?: IGraphProvider;
   insights?: any;
   linkProvider?: ILinkProvider;
@@ -73,10 +109,16 @@ export interface IProviders {
   mailAddressProvider?: IMailAddressProvider;
   mailProvider?: any;
   operations?: Operations;
+  organizationMemberCacheProvider?: IOrganizationMemberCacheProvider;
   postgresPool?: PostgresPool;
   redis?: RedisHelper;
   redisClient?: redis.RedisClient;
+  repositoryCacheProvider?: IRepositoryCacheProvider;
+  repositoryCollaboratorCacheProvider?: IRepositoryCollaboratorCacheProvider;
   repositoryMetadataProvider?: IRepositoryMetadataProvider;
+  repositoryTeamCacheProvider?: IRepositoryTeamCacheProvider;
+  teamCacheProvider?: ITeamCacheProvider;
+  teamMemberCacheProvider?: ITeamMemberCacheProvider;
   witnessRedis?: redis.RedisClient;
   witnessRedisHelper?: RedisHelper;
   tokenProvider?: ITokenProvider;
@@ -96,7 +138,8 @@ export interface InnerError extends Error {
 
 export interface IReposError extends Error {
   skipLog?: boolean;
-  status?: number;
+  status?: any; // status?: number;
+  code?: any; // not sure this is used any longer by libraries
   originalUrl?: any;
   detailed?: any;
   redirect?: string;
@@ -105,7 +148,7 @@ export interface IReposError extends Error {
     link: string;
     title: string;
   };
-  innerError?: Error;
+  innerError?: IReposError;
 }
 
 export interface Application extends Application {
@@ -121,6 +164,12 @@ export interface IReposAppContext {
   pivotDirectlyToOtherOrg?: string;
   releaseTab?: boolean;
   organization?: Organization;
+}
+
+export interface IReposAppWithTeam extends ReposAppRequest {
+  teamPermissions?: any;
+  team2?: Team;
+  teamUrl: string;
 }
 
 export interface ReposAppRequest extends Request {
@@ -206,4 +255,23 @@ function existingGitHubIdentityError(self, link, requestUser, callback) {
   anotherGitHubAccountError.link = link;
   anotherGitHubAccountError.skipLog = true;
   return callback(anotherGitHubAccountError, self);
+}
+
+export function SettleToStateValue<T>(promise: Promise<T>): Promise<ISettledValue<T>> {
+  return promise.then(value => {
+    return { value, state: SettledState.Fulfilled };
+  }, reason => {
+    return { reason, state: SettledState.Rejected };
+  });
+}
+
+export interface ISettledValue<T> {
+  reason?: any;
+  value?: T;
+  state: SettledState;
+}
+
+export enum SettledState {
+  Fulfilled = 'fulfilled',
+  Rejected = 'rejected',
 }

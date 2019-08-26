@@ -6,14 +6,10 @@
 'use strict';
 
 import { IApprovalProvider } from './approvalProvider';
-import {
-  IEntityMetadataProvider,
-  IEntityMetadataSerializationHelper,
-  IEntityMetadataDeserializationHelper } from '../../lib/entityMetadataProvider/entityMetadataProvider';
-import { EntityMetadataType, IEntityMetadataBaseOptions, EntityMetadataBase } from '../../lib/entityMetadataProvider/entityMetadata';
-import { TeamJoinApprovalEntity, TeamJoinRequestFixedQueryByTeam, TeamJoinRequestFixedQueryByTeams, TeamJoinRequestFixedQueryByThirdPartyUserId, TeamJoinRequestFixedQueryAll, EnsureTeamJoinRequestDefinitionsAvailable } from './teamJoinApproval';
+import { IEntityMetadataBaseOptions, EntityMetadataBase } from '../../lib/entityMetadataProvider/entityMetadata';
+import { TeamJoinApprovalEntity, TeamJoinRequestFixedQueryByTeam, TeamJoinRequestFixedQueryByTeams, TeamJoinRequestFixedQueryByThirdPartyUserId, TeamJoinRequestFixedQueryAll, EntityImplementation } from './teamJoinApproval';
 
-const thisProviderType = EntityMetadataType.TeamJoinRequest;
+const thisProviderType = EntityImplementation.Type;
 
 export interface ITeamJoinApprovalProviderOptions extends IEntityMetadataBaseOptions {
 }
@@ -21,7 +17,7 @@ export interface ITeamJoinApprovalProviderOptions extends IEntityMetadataBaseOpt
 export class TeamJoinApprovalProvider extends EntityMetadataBase implements IApprovalProvider {
   constructor(options: ITeamJoinApprovalProviderOptions) {
     super(options);
-    EnsureTeamJoinRequestDefinitionsAvailable();
+    EntityImplementation.EnsureDefinitions();
   }
 
   async getApprovalEntity(approvalId: string): Promise<TeamJoinApprovalEntity> {

@@ -79,7 +79,7 @@ async function refresh(config, app) : Promise<void> {
         maxAgeSeconds,
         backgroundRefresh: false,
       };
-      const details = await account.getDetailsAsync(refreshOptions);
+      const details = await account.getDetails(refreshOptions);
       let changed = false;
 
       if (details.login && link.thirdPartyUsername !== details.login) {

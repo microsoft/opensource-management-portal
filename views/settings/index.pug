@@ -12,6 +12,77 @@ block content
         include ./menu
       .col-md-7.col-lg-7
         div.container
-          h1 Profile
-          p You can edit your profile directly on GitHub.com.
-          p: a.btn.btn-sm.btn-primary(href='https://github.com/settings/profile', target='_new') Edit GitHub profile
+          if link
+            h1 Corporate link
+
+            table.table
+              thead
+                tr
+                  th Attribute
+                  th Value
+              tbody
+                if link.corporateId
+                  tr
+                    td Corporate ID
+                    td= link.corporateId
+                if link.corporateUsername
+                  tr
+                    td Corporate Username
+                    td= link.corporateUsername
+                if link.thirdPartyId
+                  tr
+                    td GitHub User ID
+                    td= link.thirdPartyId
+                if link.thirdPartyUsername
+                  tr
+                    td GitHub Username
+                    td= link.thirdPartyUsername
+
+            p
+              a.btn.btn-muted.btn-sm(href='/link/remove') Remove link
+
+          h1 Business profile
+
+          if !legalContactInformation
+            p No corporate profile information is available.
+
+          if legalContactInformation && legalContactInformation.legalContact
+            h4 Legal contact
+            p For legal advice you will want to refer to your team's primary legal contact:
+            p: strong: a(href='mailto:' + legalContactInformation.legalContact)= legalContactInformation.legalContact
+
+          if legalContactInformation && legalContactInformation.assignedTo
+            //- Additional information specific to Microsoft teams
+            - var info = legalContactInformation.assignedTo
+
+            if info.attorney && info.attorney !== legalContactInformation.legalContact
+              h4 Attorney
+              p: strong: a(href='mailto:' + info.attorney)= info.attorney
+
+            if info.highRiskBusiness || info.lowRiskBusiness
+              h4 Open source approval business reviewers
+              p.
+                Requests to release open source or to use certain components may
+                be subject to a business review. The reviewer(s) associated with
+                your corporate identity are:
+              if info.group
+                h5 Group
+                p= info.group
+              if info.lowRiskBusiness
+                h5 Reviewer
+                p= info.lowRiskBusiness
+              if info.highRiskBusiness
+                h5 High-risk reviewer
+                p= info.highRiskBusiness
+
+            if info.structure && info.structure.length > 1
+              h4 Approval organization structure
+
+              ul
+                for manager in info.structure
+                  if manager.alias === info.alias
+                    //- the person themselves
+                  else
+                    li= manager.preferredName || manager.userPrincipalName
+
+            //- pre= JSON.stringify(info, undefined, 2)

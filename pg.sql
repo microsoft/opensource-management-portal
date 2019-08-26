@@ -24,6 +24,48 @@ CREATE TABLE IF NOT EXISTS repositorymetadata (
   PRIMARY KEY(entitytype, entityid)
 );
 
+CREATE TABLE IF NOT EXISTS repositorycache (
+  entitytype text,
+  entityid text,
+  metadata jsonb,
+  PRIMARY KEY(entitytype, entityid)
+);
+
+CREATE TABLE IF NOT EXISTS repositorycollaboratorcache (
+  entitytype text,
+  entityid text,
+  metadata jsonb,
+  PRIMARY KEY(entitytype, entityid)
+);
+
+CREATE TABLE IF NOT EXISTS organizationmembercache (
+  entitytype text,
+  entityid text,
+  metadata jsonb,
+  PRIMARY KEY(entitytype, entityid)
+);
+
+CREATE TABLE IF NOT EXISTS teamcache (
+  entitytype text,
+  entityid text,
+  metadata jsonb,
+  PRIMARY KEY(entitytype, entityid)
+);
+
+CREATE TABLE IF NOT EXISTS teammembercache (
+  entitytype text,
+  entityid text,
+  metadata jsonb,
+  PRIMARY KEY(entitytype, entityid)
+);
+
+CREATE TABLE IF NOT EXISTS repositoryteamcache (
+  entitytype text,
+  entityid text,
+  metadata jsonb,
+  PRIMARY KEY(entitytype, entityid)
+);
+
 CREATE TABLE IF NOT EXISTS links (
 	linkid text,
 	thirdpartytype text NOT NULL,

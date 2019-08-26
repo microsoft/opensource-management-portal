@@ -171,7 +171,7 @@ block content
                   h3 Business Justification
                   blockquote
                     =existingTeamJoinRequest.justification
-                form(method='post', action='/approvals/' + existingTeamJoinRequest.approvalId + '/cancel')
+                form(method='post', action='/settings/approvals/' + existingTeamJoinRequest.approvalId + '/cancel')
                   if team && team.baseUrl
                     input(type='hidden', name='returnUrl', value=team.baseUrl)
                   p

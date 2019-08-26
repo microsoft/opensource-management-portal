@@ -235,22 +235,44 @@ export class TeamJoinRequestFixedQueryAll implements IEntityMetadataFixedQuery {
 
 export class TeamJoinRequestFixedQueryByTeams implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.ActiveTeamJoinApprovalsByTeams;
-  constructor(public ids: string[]) {
-    if (!this.ids || !Array.isArray(ids)) {
+  public ids: string[];
+  constructor(ids: string[]) {
+    if (!ids || !Array.isArray(ids)) {
       throw new Error('ids must be an array of team IDs');
     }
+    this.ids = ids.map(id => {
+      if (typeof(id) === 'number') {
+        id = (id as number).toString();
+      }
+      if (typeof(id) !== 'string') {
+        throw new Error(`TeamJoinRequestFixedQueryByTeams: team ID must be a string: ${id}`);
+      }
+      return id;
+    });
   }
 }
 
 export class TeamJoinRequestFixedQueryByTeam implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.ActiveTeamJoinApprovalsByTeam;
   constructor(public id: string) {
+    if (typeof(id) === 'number') {
+      id = (id as number).toString();
+    }
+    if (typeof(id) !== 'string') {
+      throw new Error(`TeamJoinRequestFixedQueryByTeam: team ID must be a string: ${id}`);
+    }
   }
 }
 
 export class TeamJoinRequestFixedQueryByThirdPartyUserId implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.ActiveTeamJoinApprovalsByThirdPartyId;
   constructor(public thirdPartyId: string) {
+    if (typeof(thirdPartyId) === 'number') {
+      thirdPartyId = (thirdPartyId as number).toString();
+    }
+    if (typeof(thirdPartyId) !== 'string') {
+      throw new Error(`TeamJoinRequestFixedQueryByThirdPartyUserId: thirdPartyId must be a string: ${thirdPartyId}`);
+    }
   }
 }
 
@@ -313,7 +335,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableQueries, (q
       return qtpid;
 
     default:
-      throw new Error('The fixed query type is not supported currently by this provider, or is of an unknown type');
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
   }
 });
 
@@ -411,7 +433,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
       return { sql, values };
 
     default:
-      throw new Error('The fixed query type is not supported currently by this provider, or is of an unknown type');
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
   }
 });
 
@@ -482,4 +504,7 @@ for (let i = 0; i < fieldNames.length; i++) {
   }
 }
 
-export function EnsureTeamJoinRequestDefinitionsAvailable() {}
+export const EntityImplementation = {
+  EnsureDefinitions: () => {},
+  Type: type,
+};

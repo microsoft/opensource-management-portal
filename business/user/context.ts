@@ -5,9 +5,9 @@
 
 'use strict';
 
-const _ = require('lodash');
-import Q from 'q';
+import _ from 'lodash';
 import { Operations } from '../operations';
+import { SettleToStateValue, ISettledValue, SettledState } from '../../transitional';
 
 const LinkManager = require('./linkManager');
 
@@ -15,9 +15,9 @@ export class UserContext {
   private _operations: Operations;
   private _linkManager: any;
 
-  public id: string;
+  public id: number;
 
-  constructor(operations, id) {
+  constructor(operations: Operations, id: string | number) {
     this.id = typeof(id) === 'string' ? parseInt(id, 10) : id;
 
     this._operations = operations;
@@ -34,106 +34,84 @@ export class UserContext {
   // These "views" may eventually need to be a little crisper/cleaner
   // --------------------------------------------------------------------------
 
-  getAggregatedOrganizationOverview(orgName, callback) {
-    this.getAggregatedOverview((error, results) => {
-      if (error) {
-        return callback(error);
-      }
-      const lco = orgName.toLowerCase();
-      const removeOtherTeams = team => {
-        return team.organization.login.toLowerCase() !== lco;
-      };
-      _.remove(results.teams.member, removeOtherTeams);
-      _.remove(results.teams.maintainer, removeOtherTeams);
-      // At this time it does not simplify or reduce repo lists or the general orgs list
-      return callback(null, results);
-    });
+  async getAggregatedOrganizationOverview(orgName: string): Promise<any> {
+    const results = await this.getAggregatedOverview();
+    const lco = orgName.toLowerCase();
+    const removeOtherTeams = team => {
+      return team.organization.login.toLowerCase() !== lco;
+    };
+    _.remove(results.teams.member, removeOtherTeams);
+    _.remove(results.teams.maintainer, removeOtherTeams);
+    // At this time it does not simplify or reduce repo lists or the general orgs list
+    return results;
   }
 
-  getAggregatedOverview(callback) {
-    Q.allSettled([
-      this.getOrganizationNames(),
-      this.getOrganizationStatuses(),
-      this.getOrganizationStatuses('admin'),
-      this.getTeamMemberships(),
-      this.getTeamMemberships('maintainer'),
-      Q(null), //this.getRepoCollaborators(),
-      this.getRepoTeams(),
-    ]).spread((orgNames, orgStatuses, orgOwners, myTeams, myTeamMaintainers, repos, repoTeams) => {
-      const errors = promisesToErrors(orgNames, orgStatuses, orgOwners, myTeams, myTeamMaintainers, repos, repoTeams);
-      orgNames = promiseResultToObject(orgNames);
-      const results = {
-        organizations: {
-          member: promiseResultToObject(orgStatuses),
-          owned: promiseResultToObject(orgOwners),
-          available: undefined,
-        },
-        teams: {
-          member: promiseResultToObject(myTeams),
-          maintainer: promiseResultToObject(myTeamMaintainers),
-        },
-        teamCounts: {
-          member: 0,
-          maintainer: 0,
-        },
-        repos: {
-          byTeam: promiseResultToObject(repoTeams),
-          byCollaboration: promiseResultToObject(repos),
-        },
-        errors: undefined,
-      };
+  async getAggregatedOverview(): Promise<any> {
+    let [ orgNames, orgStatuses, orgOwners, /*myTeams, myTeamMaintainers, repoTeams*/ ] = await Promise.all([
+      SettleToStateValue(this.getOrganizationNames()),
+      SettleToStateValue(this.getOrganizationStatuses()),
+      SettleToStateValue(this.getOrganizationStatuses('admin')),
+      // SettleToStateValue(this.getTeamMemberships()),
+      // SettleToStateValue(this.getTeamMemberships('maintainer')),
+      // SettleToStateValue(this.getRepoTeams()),
+    ]);
+    const errors = promisesToErrors(orgNames, orgStatuses, orgOwners, /*myTeams, myTeamMaintainers, repoTeams*/);
+    const organizationNames = promiseResultToObject(orgNames);
+    const results = {
+      organizations: {
+        member: promiseResultToObject(orgStatuses),
+        owned: promiseResultToObject(orgOwners),
+        available: undefined,
+      },
+      teams: {
+        member: null, // promiseResultToObject(myTeams),
+        maintainer: null, // promiseResultToObject(myTeamMaintainers),
+      },
+      teamCounts: {
+        member: 0,
+        maintainer: 0,
+      },
+      repos: {
+        byTeam: null, // promiseResultToObject(repoTeams),
+        byCollaboration: null, // too expensive to load; promiseResultToObject(repos),
+      },
+      errors: undefined,
+    };
 
-      results.teamCounts.maintainer = results.teams.maintainer && Array.isArray(results.teams.maintainer) ? results.teams.maintainer.length : 0;
-      results.teamCounts.member = results.teams.member && Array.isArray(results.teams.member) ? results.teams.member.length : 0;
+    results.teamCounts.maintainer = results.teams.maintainer && Array.isArray(results.teams.maintainer) ? results.teams.maintainer.length : 0;
+    results.teamCounts.member = results.teams.member && Array.isArray(results.teams.member) ? results.teams.member.length : 0;
 
-      // Available organizations
-      if (results.organizations.member) {
-        results.organizations.available = _.difference(orgNames, results.organizations.member);
-      }
+    // Available organizations
+    if (results.organizations.member) {
+      results.organizations.available = _.difference(organizationNames, results.organizations.member);
+    }
 
-      // Sort organization lists
-      insensitiveCaseArrayReplacement(results.organizations, 'available');
-      insensitiveCaseArrayReplacement(results.organizations, 'member');
-      insensitiveCaseArrayReplacement(results.organizations, 'owned');
+    // Sort organization lists
+    insensitiveCaseArrayReplacement(results.organizations, 'available');
+    insensitiveCaseArrayReplacement(results.organizations, 'member');
+    insensitiveCaseArrayReplacement(results.organizations, 'owned');
 
-      if (errors) {
-        results.errors = errors;
-      }
-      return results;
-    }, callback)
-    .then(results => {
-      return callback(null, results);
-    }, callback);
+    if (errors) {
+      results.errors = errors;
+    }
+    return results;
   }
 
-  getRepoCollaborators() {
-    const deferred = Q.defer();
+  async getRepoCollaborators(): Promise<any> {
     const operations = this._operations;
     const options = {};
-    operations.graphManager.getReposWithCollaborators(options, (error, repos) => {
-      if (error) {
-        return deferred.reject(error);
-      }
-      return deferred.resolve(repos);
-    });
-    return deferred.promise;
+    const repos = await operations.graphManager.getReposWithCollaborators(options);
+    return repos;
   }
 
-  getRepoTeams() {
-    const deferred = Q.defer();
+  async getRepoTeams(): Promise<any> {
     const operations = this._operations;
     const options = {};
-    operations.graphManager.getUserReposByTeamMemberships(this.id, options, (error, repos) => {
-      if (error) {
-        return deferred.reject(error);
-      }
-      return deferred.resolve(repos);
-    });
-    return deferred.promise;
+    const repos = await operations.graphManager.getUserReposByTeamMemberships(this.id, options);
+    return repos;
   }
 
-  getTeamMemberships(optionalRole?) {
-    const deferred = Q.defer();
+  async getTeamMemberships(optionalRole?): Promise<any> {
     const operations = this._operations;
     const options = { };
     if (optionalRole) {
@@ -141,34 +119,24 @@ export class UserContext {
     }
     options['maxAgeSeconds'] = 60 * 20;
     options['backgroundRefresh'] = true;
-    operations.graphManager.getUserTeams(this.id, options, (error, teams) => {
-      if (error) {
-        return deferred.reject(error);
-      }
-      return deferred.resolve(teams);
-    });
-    return deferred.promise;
+    const teams = await operations.graphManager.getUserTeams(this.id, options);
+    return teams;
   }
 
-  getOrganizationNames() {
-    return Q(this._operations.getOrganizationOriginalNames());
+  async getOrganizationNames(): Promise<string[]> {
+    return this._operations.getOrganizationOriginalNames();
   }
 
-  getOrganizationStatuses(optionalRole?) {
+  async getOrganizationStatuses(optionalRole?): Promise<any> {
     const operations = this._operations;
-    const deferred = Q.defer();
     const options = { };
+    // options['role'] is not typed, need to validate down the call chain to be clean
     if (optionalRole) {
       options['role'] = optionalRole;
     }
-    operations.graphManager.getMember(this.id, options, (error, member) => {
-      if (error) {
-        return deferred.reject(error);
-      }
-      const value = member && member.orgs ? member.orgs : [];
-      return deferred.resolve(value);
-    });
-    return deferred.promise;
+    const member = await operations.graphManager.getMember(this.id, options);
+    const value = member && member.orgs ? member.orgs : [];
+    return value;
   }
 
   // ------------------------------ End views ---------------------------------
@@ -183,18 +151,18 @@ function insensitiveCaseArrayReplacement(parent, key) {
   }
 }
 
-function promisesToErrors(...args: any[]) {
+function promisesToErrors(...args: ISettledValue<any>[]) {
   const errors = [];
   for (const promise of arguments) {
-    if (promise && promise.state !== 'fulfilled') {
+    if (promise && promise.state !== SettledState.Fulfilled) {
       errors.push(promise.reason.message || promise.reason);
     }
   }
   return errors.length > 0 ? errors : undefined;
 }
 
-function promiseResultToObject(promiseResult) {
-  if (promiseResult && promiseResult.state && promiseResult.state === 'fulfilled') {
+function promiseResultToObject<T>(promiseResult: ISettledValue<T>): T {
+  if (promiseResult && promiseResult.state && promiseResult.state === SettledState.Fulfilled) {
     return promiseResult.value;
   }
 }

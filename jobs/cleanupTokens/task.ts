@@ -14,11 +14,7 @@ import throat = require('throat');
 
 const expiredTokenDeleteThresholdDays = 30;
 
-import { createAndInitializeLinkProviderInstance } from '../../lib/linkProviders';
 import { IProviders } from '../../transitional';
-import { ILinkProvider } from '../../lib/linkProviders/postgres/postgresLinkProvider';
-import { ICorporateLink } from '../../business/corporateLink';
-import { Operations, UnlinkPurpose } from '../../business/operations';
 import { PersonalAccessToken } from '../../entities/token/token';
 import { sleep } from '../../utils';
 import { IGraphProvider } from '../../lib/graphProvider';

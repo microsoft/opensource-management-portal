@@ -6,8 +6,15 @@
 'use strict';
 
 import express = require('express');
-import { ReposAppRequest } from '../../../transitional';
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
+
+import { ReposAppRequest } from '../../../transitional';
+import { Team } from '../../../business/team';
+import { TeamMember } from '../../../business/teamMember';
+
+const PeopleSearch = require('../../peopleSearch')
+
 const teamAdminRequired = require('./teamAdminRequired');
 
 interface ILocalTeamRequest extends ReposAppRequest {
@@ -18,7 +25,7 @@ interface ILocalTeamRequest extends ReposAppRequest {
   team2RemoveType?: any;
 }
 
-function refreshMembers(team2, backgroundRefresh, maxSeconds, firstPageOnly, callback) {
+function refreshMembers(team2: Team, backgroundRefresh: boolean, maxSeconds: number, firstPageOnly: boolean): Promise<TeamMember[]> {
   const options = {
     maxAgeSeconds: maxSeconds || 60,
     backgroundRefresh: backgroundRefresh,
@@ -27,115 +34,87 @@ function refreshMembers(team2, backgroundRefresh, maxSeconds, firstPageOnly, cal
   if (firstPageOnly) {
     options.pageLimit = 1;
   }
-  team2.getMembers(options, callback);
+  return team2.getMembers(options);
 }
 
-function refreshMembersAndSummary(team2, when, callback) {
-  refreshMembers(team2, false /* immediately refresh */, when === 'now' ? -1 : null, true /* start with just the first page */, firstPageError => {
-    refreshMembers(team2, false /* immediate */, when === 'now' ? -1 : null, false /* refresh all pages */, allPagesError => {
-      return callback(firstPageError || allPagesError);
-    });
-  });
+async function refreshMembersAndSummary(team2: Team, when): Promise<void> {
+  await refreshMembers(team2, false /* immediately refresh */, when === 'now' ? -1 : null, true /* start with just the first page */);
+  await refreshMembers(team2, false /* immediate */, when === 'now' ? -1 : null, false /* refresh all pages */);
 }
 
-router.use((req: ILocalTeamRequest, res, next) => {
+router.use(asyncHandler(async (req: ILocalTeamRequest, res, next) => {
   // Always make sure to have a relatively up-to-date membership cache available
-  const team2 = req.team2;
-  refreshMembers(team2, true /* background refresh ok */, null, false /* refresh all pages */, (error, members) => {
-    req.refreshedMembers = members;
-    return next(error);
-  });
-});
+  const team2 = req.team2 as Team;
+  req.refreshedMembers = await refreshMembers(team2, true /* background refresh ok */, null, false /* refresh all pages */);
+  return next();
+}));
 
-router.get('/refresh', (req: ILocalTeamRequest, res, next) => {
+router.get('/refresh', asyncHandler(async (req: ILocalTeamRequest, res, next) => {
   // Refresh all the pages and also the cached single-page view shown on the team page
-  const team2 = req.team2;
-  refreshMembersAndSummary(team2, 'whenever', error => {
-    if (error) {
-      return next(error);
-    }
-    return res.redirect(req.teamUrl);
-  });
-});
+  const team2 = req.team2 as Team;
+  await refreshMembersAndSummary(team2, 'whenever');
+  return res.redirect(req.teamUrl);
+}));
 
 // Browse members
 router.use('/browse', (req: ILocalTeamRequest, res, next) => {
   req.team2RemoveType = 'member';
   return next();
-}, require('../../peopleSearch'));
+}, PeopleSearch);
 
 // Add org members to the team
 router.use('/add', teamAdminRequired, (req: ILocalTeamRequest, res, next) => {
   req.team2AddType = 'member';
   return next();
-}, require('../../peopleSearch'));
+}, PeopleSearch);
 
-router.post('/remove', teamAdminRequired, (req: ILocalTeamRequest, res, next) => {
+router.post('/remove', teamAdminRequired, asyncHandler(async (req: ILocalTeamRequest, res, next) => {
   const username = req.body.username;
-  const team2 = req.team2;
-  team2.removeMembership(username, removeError => {
-    if (removeError) {
-      return next(removeError);
-    }
-    req.individualContext.webContext.saveUserAlert(username + ' has been removed from the team ' + team2.name + '.', 'Team membership update', 'success');
-    refreshMembersAndSummary(team2, 'now', error => {
-      if (error) {
-        return next(error);
-      }
-      return res.redirect(req.teamUrl + 'members/browse/');
-    });
-  });
-});
+  const team2 = req.team2 as Team;
+  await team2.removeMembership(username);
+  req.individualContext.webContext.saveUserAlert(`${username} has been removed from the team ${team2.name}.`, 'Team membership update', 'success');
+  await refreshMembersAndSummary(team2, 'now');
+  return res.redirect(`${req.teamUrl}members/browse/`);
+}));
 
-router.post('/add', teamAdminRequired, (req: ILocalTeamRequest, res, next) => {
+router.post('/add', teamAdminRequired, asyncHandler(async (req: ILocalTeamRequest, res, next) => {
   const organization = req.organization;
   const team2 = req.team2;
   const refreshedMembers = req.refreshedMembers;
   const username = req.body.username;
-
   // Allow a one minute org cache for self-correcting validation
   const orgOptions = {
     maxAgeSeconds: 60,
     backgroundRefresh: true,
   };
-
   // Validate that the user is a current org member
-  organization.getMembership(username, orgOptions, (error, membership) => {
-    if (error || !membership) {
-      if (error && error.innerError && error.innerError.status === 404) {
-        error = new Error(`${username} is not a member of the organization and so cannot be added to the team until they have joined the org.`);
-      }
-      if (!membership && !error) {
-        error = new Error('No membership information available for the user');
-      }
-      return next(error);
+  try {
+    const membership = await organization.getMembership(username);
+    if (!membership) {
+      throw new Error(`Membership information in the ${organization.name} organization is unknown for ${username}`);
     }
     if (membership.state !== 'active') {
-      return next(new Error(`${username} has the organization state of ${membership.state}. The user is not an active member and so cannot be added to the team at this time.`));
+      throw new Error(`${username} has the organization state of ${membership.state}. The user is not an active member and so cannot be added to the team at this time.`);
     }
-
-    // Make sure they are not already a member
-    const lc = username.toLowerCase();
-    for (let i = 0; i < refreshedMembers.length; i++) {
-      const member = refreshedMembers[i];
-      if (member.login.toLowerCase() === lc) {
-        return next(new Error(`The user ${username} is already a member of the team.`));
-      }
+  } catch (error) {
+    if (error && error.innerError && error.innerError.status === 404) {
+      error = new Error(`${username} is not a member of the ${organization.name} organization and so cannot be added to the team until they have joined the org.`);
     }
+    return next(error);
+  }
 
-    team2.addMembership(username, error => {
-      if (error) {
-        return next(error);
-      }
-      req.individualContext.webContext.saveUserAlert(`Added ${username} to the ${team2.name} team.`, 'Team membership update', 'success');
-      refreshMembersAndSummary(team2, 'now', refreshError => {
-        if (refreshError) {
-          return next(refreshError);
-        }
-        return res.redirect(req.teamUrl + 'members/browse/');
-      });
-    });
-  });
-});
+  // Make sure they are not already a member
+  const lc = username.toLowerCase();
+  for (let i = 0; i < refreshedMembers.length; i++) {
+    const member = refreshedMembers[i];
+    if (member.login.toLowerCase() === lc) {
+      return next(new Error(`The user ${username} is already a member of the team.`));
+    }
+  }
+  await team2.addMembership(username);
+  req.individualContext.webContext.saveUserAlert(`Added ${username} to the ${team2.name} team.`, 'Team membership update', 'success');
+  await refreshMembersAndSummary(team2, 'now');
+  return res.redirect(req.teamUrl + 'members/browse/');
+}));
 
 module.exports = router;

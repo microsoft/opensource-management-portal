@@ -29,27 +29,27 @@ module.exports = {
       team.getDetails(function () {
         // No-op callback; makes sure the team details are relatively up-to-date
       });
-      team.getMembers({
-        backgroundRefresh: false,
-        maxAgeSeconds: 0.1,
-      }, (getMembersError, members) => {
-        let num = '';
-        if (!getMembersError && members && members.length) {
-          num = members.length;
-        }
-        console.log(`refreshed ${num} team members, getting maintainers`);
-        team.getMembers({
-          role: 'maintainer',
-          backgroundRefresh: false,
-          maxAgeSeconds: 0.1,
-        }, (getMaintainersError, maintainers) => {
-          let num2 = '';
-          if (!getMaintainersError && maintainers && maintainers.length) {
-            num2 = members.length;
-          }
-          console.log(`refreshed ${num2} team maintainers`);
-        });
-      });
+      // team.getMembers({
+      //   backgroundRefresh: false,
+      //   maxAgeSeconds: 0.1,
+      // }, (getMembersError, members) => {
+      //   let num = '';
+      //   if (!getMembersError && members && members.length) {
+      //     num = members.length;
+      //   }
+      //   console.log(`refreshed ${num} team members, getting maintainers`);
+      //   team.getMembers({
+      //     role: 'maintainer',
+      //     backgroundRefresh: false,
+      //     maxAgeSeconds: 0.1,
+      //   }, (getMaintainersError, maintainers) => {
+      //     let num2 = '';
+      //     if (!getMaintainersError && maintainers && maintainers.length) {
+      //       num2 = members.length;
+      //     }
+      //     console.log(`refreshed ${num2} team maintainers`);
+      //   });
+      // });
     } else {
       console.dir(data);
     }

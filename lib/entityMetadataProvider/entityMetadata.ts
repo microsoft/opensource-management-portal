@@ -6,11 +6,21 @@
 import { IEntityMetadataProvider, IEntityMetadataSerializationHelper, IEntityMetadataDeserializationHelper } from "./entityMetadataProvider";
 
 export enum EntityMetadataType {
-  // GitHub entities
+  // When adding new types, also add it to EntityMetadataTypes array below!
+
+  // GitHub entities METADATA
   Repository = 'Repository',
 
   // App-specific entities
   TeamJoinRequest = 'TeamJoinRequest',
+
+  // Fast query cache entities
+  OrganizationMemberCache = 'OrganizationMemberCache',
+  RepositoryCache = 'RepositoryCache',
+  RepositoryCollaboratorCache = 'RepositoryCollaboratorCache',
+  RepositoryTeamCache = 'RepositoryTeamCache',
+  TeamCache = 'TeamCache',
+  TeamMemberCache = 'TeamMemberCache',
 
   // Setting entities
   Token = 'Token',
@@ -22,6 +32,12 @@ export const EntityMetadataTypes = [
   EntityMetadataType.TeamJoinRequest,
   EntityMetadataType.Token,
   EntityMetadataType.LocalExtensionKey,
+  EntityMetadataType.OrganizationMemberCache,
+  EntityMetadataType.RepositoryCache,
+  EntityMetadataType.RepositoryCollaboratorCache,
+  EntityMetadataType.RepositoryTeamCache,
+  EntityMetadataType.TeamCache,
+  EntityMetadataType.TeamMemberCache,
 ];
 
 export interface IEntityMetadata {
@@ -30,7 +46,6 @@ export interface IEntityMetadata {
   entityFieldNames: string[];
   entityCreated?: Date;
 }
-
 
 export interface IEntityMetadataBaseOptions {
   entityMetadataProvider: IEntityMetadataProvider;

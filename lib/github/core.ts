@@ -7,10 +7,10 @@
 
 'use strict';
 
-const _ = require('lodash');
+import _ from 'lodash';
 const debug = require('debug')('oss-github');
 import { v4 as uuidV4 } from 'uuid';
-import moment = require('moment');
+import moment from 'moment';
 import { ILibraryContext } from '.';
 
 const cost = require('./cost');

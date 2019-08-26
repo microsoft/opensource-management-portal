@@ -26,7 +26,7 @@ function sendMail(mailConfig, options, callback) {
   let from = pop(options, 'from') || mailConfig.from;
   let to = pop(options, 'to');
   if (!to) {
-    return callback(new Error('The e-mail must have a receipient.'));
+    return callback(new Error('The e-mail must have a recipient.'));
   }
   if (typeof to === 'string') {
     to = [ to ];

@@ -15,13 +15,14 @@ import { Team } from '../../../business/team';
 import { IApprovalProvider } from '../../../entities/teamJoinApproval/approvalProvider';
 import { TeamJoinApprovalEntity } from '../../../entities/teamJoinApproval/teamJoinApproval';
 import { Operations } from '../../../business/operations';
+import { Account } from '../../../business/account';
 
 // Not a great place for these, should move into independent files eventually...
 
 interface IPermissionWorkflowApprovalPackage {
   request: TeamJoinApprovalEntity;
   id: string;
-  requestingUser: string;
+  requestingUser: Account; // ??  string;
 }
 
 enum PermissionWorkflowDecision {
@@ -32,7 +33,7 @@ enum PermissionWorkflowDecision {
 export class PermissionWorkflowEngine {
   public team: Team;
   public request: TeamJoinApprovalEntity;
-  public user: string;
+  public user: Account; // string;
   public id: string;
   public typeName: string;
 
@@ -72,11 +73,11 @@ export class PermissionWorkflowEngine {
   performApprovalOperation(callback) {
     const team = this.team;
     const username = this.request.thirdPartyUsername;
-    return team.addMembership(username, function (error) {
-      if (error) {
-        error = wrapError(error, `The GitHub API returned an error trying to add the user ${username} to team ID ${team.id}.`);
-      }
-      callback(error);
+    return team.addMembership(username).then(ok => {
+      return callback();
+    }).catch(error => {
+      error = wrapError(error, `The GitHub API returned an error trying to add the user ${username} to team ID ${team.id}.`);
+      return callback(error);
     });
   }
 }
@@ -90,7 +91,7 @@ router.use(function (req: ReposAppRequest, res, next) {
 
 router.get('/', asyncHandler(async (req: IRequestTeams, res, next) => {
   const team = req.team2 as Team;
-  const approvals = await team.getApprovalsAsync();
+  const approvals = await team.getApprovals();
   req.individualContext.webContext.render({
     view: 'org/team/approvals',
     title: 'Approvals for ' + team.name,
@@ -107,7 +108,7 @@ interface IRequestPlusApprovalEngine extends IRequestTeams {
   approvalEngine?: PermissionWorkflowEngine;
 }
 
-router.use('/:requestid', function (req: IRequestPlusApprovalEngine, res, next) {
+router.use('/:requestid', asyncHandler(async function (req: IRequestPlusApprovalEngine, res, next) {
   const team = req.team2 as Team;
   const requestid = req.params.requestid;
   const operations = req.app.settings.providers.operations as Operations;
@@ -115,25 +116,22 @@ router.use('/:requestid', function (req: IRequestPlusApprovalEngine, res, next) 
   if (!approvalProvider) {
     return next(new Error('No approval provider instance available'));
   }
-  approvalProvider.getApprovalEntity(requestid).catch(error => {
+  try {
+    const pendingRequest = await approvalProvider.getApprovalEntity(requestid);
+    const requestingUserAccount = await operations.getAccountWithDetailsAndLink(pendingRequest.thirdPartyId);
+    const approvalPackage = {
+      request: pendingRequest,
+      requestingUser: requestingUserAccount,
+      id: requestid,
+    };
+    const engine = new PermissionWorkflowEngine(team, approvalPackage);
+    req.individualContext.webContext.pushBreadcrumb(engine.typeName + ' Request');
+    req.approvalEngine = engine;
+    return next();
+  } catch (error) {
     return next(wrapError(error, 'The pending request you are looking for does not seem to exist.'));
-  }).then((pendingRequest: TeamJoinApprovalEntity) => {
-    operations.getAccountWithDetailsAndLink(pendingRequest.thirdPartyId, (getAccountError, requestingUserAccount) => {
-      if (getAccountError) {
-        return next(getAccountError);
-      }
-      const approvalPackage = {
-        request: pendingRequest,
-        requestingUser: requestingUserAccount,
-        id: requestid,
-      };
-      const engine = new PermissionWorkflowEngine(team, approvalPackage);
-      req.individualContext.webContext.pushBreadcrumb(engine.typeName + ' Request');
-      req.approvalEngine = engine;
-      next();
-    });
-  });
-});
+  }
+}));
 
 // Pass on to the context-specific routes.
 router.use('/:requestid', approvalRoute);

@@ -7,12 +7,15 @@
 
 'use strict';
 
+import { Operations } from "../../business/operations";
+import { Organization } from "../../business/organization";
+
 module.exports = {
   filter: function (data) {
     let eventType = data.properties.event;
     return eventType === 'organization';
   },
-  run: function (operations, organization, data, callback) {
+  run: function (operations: Operations, organization: Organization, data, callback) {
     const event = data.body;
     let refresh = false;
     if (event.action === 'member_invited') {
@@ -27,21 +30,21 @@ module.exports = {
       console.dir(data);
     }
     if (refresh) {
-      const orgName = organization.name;
-      console.log(`refreshing ${orgName} org members list`);
-      const immediateRefreshOptions = {
-        backgroundRefresh: false,
-        maxAgeSeconds: 0.01,
-      };
-      operations.getMembers(orgName, immediateRefreshOptions, () => {
-        console.log(`refreshed membership list for the org ${orgName}, will refresh x-org immediately`);
-        operations.getMembers(null, {
-          backgroundRefresh:  false,
-          maxAgeSeconds: 0.01,
-        }, () => {
-          console.log('refreshed x-org memberships');
-        });
-      });
+      // const orgName = organization.name;
+      // console.log(`refreshing ${orgName} org members list`);
+      // const immediateRefreshOptions = {
+      //   backgroundRefresh: false,
+      //   maxAgeSeconds: 0.01,
+      // };
+      // return organization.getMembers(immediateRefreshOptions).then(ok => {
+      //   console.log(`refreshed membership list for the org ${orgName}, will refresh x-org immediately`);
+      //   return operations.getMembers(immediateRefreshOptions).then(done => {
+      //     console.log('refreshed x-org memberships');
+      //   });
+      // }).catch(error => {
+      //   // ignore error
+      //   return callback();
+      // });
     }
     callback();
   },

@@ -5,7 +5,7 @@
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-const _ = require('lodash');
+import _ from 'lodash';
 
 import { ReposAppRequest } from '../../transitional';
 import { ICorporateIdentity, IGitHubIdentity, IndividualContext, GitHubIdentitySource } from '../../business/context2';

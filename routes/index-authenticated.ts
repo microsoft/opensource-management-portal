@@ -73,7 +73,11 @@ router.get('/', function (req: ReposAppRequest, res, next) {
         return callback();
       }
       const uc = operations.getUserContext(id);
-      return uc.getAggregatedOverview(callback);
+      return uc.getAggregatedOverview().then(overview => {
+        return callback(null, overview);
+      }).catch(error => {
+        return callback(error);
+      });
     },
     isAdministrator: function (callback) {
       callback(null, false);

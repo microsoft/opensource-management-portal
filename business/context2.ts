@@ -11,6 +11,7 @@ import { ICorporateLinkProperties, ICorporateLink, ICorporateLinkExtended, ICorp
 
 import { addBreadcrumb, wrapError } from '../utils';
 import { Operations } from "./operations";
+import { GitHubTeamRole } from "./team";
 
 const objectPath = require('object-path');
 
@@ -236,16 +237,16 @@ export class WebContext {
     } : null;
     let session = this._request['session'] || null;
     const obj = {
-      title: title,
-      config: config,
+      title,
+      config,
       serviceBanner: config.serviceMessage ? config.serviceMessage.banner : null,
-      user: user,
+      user,
       // DESTROY: CONFIRM once 'ossline' is gone this way
       ossLink: simulatedLegacyLink,
       showBreadcrumbs: true,
-      breadcrumbs: breadcrumbs,
+      breadcrumbs,
       sudoMode: this._request['sudoMode'],
-      view: view,
+      view,
       site: 'github',
       enableMultipleAccounts: session ? session['enableMultipleAccounts'] : false,
       reposContext: undefined,
@@ -389,22 +390,15 @@ export class IndividualContext {
   }
 
   async isPortalAdministrator(): Promise<boolean> {
-    const self = this;
     const operations = this._operations;
     const ghi = this.getGitHubIdentity().username;
-    return new Promise<boolean>((resolve, reject) => {
-      legacyCallbackIsPortalAdministrator(operations, ghi, (error, isAdmin: boolean) => {
-        if (error) {
-          return reject(error);
-        }
-        self._isPortalAdministrator = isAdmin;
-        return resolve(self._isPortalAdministrator);
-      });
-    });
+    const isAdmin = await legacyCallbackIsPortalAdministrator(operations, ghi);
+    this._isPortalAdministrator = isAdmin;
+    return this._isPortalAdministrator;
   }
 }
 
-function legacyCallbackIsPortalAdministrator(operations: Operations, gitHubUsername: string, callback) {
+async function legacyCallbackIsPortalAdministrator(operations: Operations, gitHubUsername: string): Promise<boolean> {
   const config = operations.config;
   // ----------------------------------------------------------------------------
   // SECURITY METHOD:
@@ -415,12 +409,12 @@ function legacyCallbackIsPortalAdministrator(operations: Operations, gitHubUsern
   // ----------------------------------------------------------------------------
   if (config.github.debug && config.github.debug.portalSudoOff) {
     console.warn('DEBUG WARNING: Portal sudo support is turned off in the current environment');
-    return callback(null, false);
+    return false;
   }
 
   if (config.github.debug && config.github.debug.portalSudoForce) {
     console.warn('DEBUG WARNING: Portal sudo is turned on for all users in the current environment');
-    return callback(null, true);
+    return true;
   }
 
   /*
@@ -436,12 +430,12 @@ function legacyCallbackIsPortalAdministrator(operations: Operations, gitHubUsern
   const primaryOrganization = operations.getOrganization(primaryName);
   const sudoTeam = primaryOrganization.systemSudoersTeam;
   if (!sudoTeam) {
-    return callback(null, false);
+    return false;
   }
-  sudoTeam.isMember(gitHubUsername, (error, isMember) => {
-    if (error) {
-      return callback(wrapError(error, 'We had trouble querying GitHub for important team management information. Please try again later or report this issue.'));
-    }
-    return callback(null, isMember === true || isMember === 'member');
-  });
+  try {
+    const isMember = await sudoTeam.isMember(gitHubUsername);
+    return (isMember === true || isMember === GitHubTeamRole.Member || isMember === GitHubTeamRole.Maintainer);
+  } catch (error) {
+    throw wrapError(error, 'We had trouble querying GitHub for important team management information. Please try again later or report this issue.');
+  }
 }

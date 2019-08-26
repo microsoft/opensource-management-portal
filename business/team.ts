@@ -28,24 +28,59 @@ const teamSecondaryProperties = [
   'repositories_url',
 ];
 
-const _ = require('lodash');
-import async = require('async');
+import _ from 'lodash';
+
 import { Organization } from './organization';
 import { Operations } from './operations';
-import { ICacheOptions } from '../transitional';
+import { ICacheOptions, ICallback, IGetOwnerToken, ICacheOptionsPageLimiter, IPagedCacheOptions } from '../transitional';
 import { TeamMember } from './teamMember';
 import { TeamRepositoryPermission } from './teamRepositoryPermission';
 import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';
 import { TeamJoinApprovalEntity } from '../entities/teamJoinApproval/teamJoinApproval';
+import { Repository } from './repository';
+
+export enum GitHubRepositoryType {
+  Sources = 'sources',
+}
+
+export interface ICheckRepositoryPermissionOptions extends ICacheOptions {
+  organizationName?: string;
+}
+
+export interface IGetTeamRepositoriesOptions extends ICacheOptionsPageLimiter {
+  type?: GitHubRepositoryType;
+}
+
+export interface ITeamMembershipRoleState {
+  role?: GitHubTeamRole;
+  state?: string;
+}
+
+export interface IIsMemberOptions extends ICacheOptions {
+  role?: GitHubTeamRole;
+}
+
+export interface IGetMembersOptions extends ICacheOptionsPageLimiter {
+  role?: GitHubTeamRole;
+}
+
+export enum GitHubTeamRole {
+  Member = 'member',
+  Maintainer = 'maintainer',
+}
+
+export interface IUpdateTeamMembershipOptions extends ICacheOptions {
+  role?: GitHubTeamRole;
+}
 
 export class Team {
   public static PrimaryProperties = teamPrimaryProperties;
 
   private _organization: Organization;
   private _operations: Operations;
-  private _getToken: any;
+  private _getToken: IGetOwnerToken;
 
-  private _id: string;
+  private _id: string; // CONSIDER: GitHub API teams always are numbers, not strings
 
   private _slug?: string;
   private _name?: string;
@@ -97,14 +132,13 @@ export class Team {
     return this._organization;
   }
 
-  constructor(organization: Organization, entity, getToken, operations: Operations) {
+  constructor(organization: Organization, entity, getToken: IGetOwnerToken, operations: Operations) {
     if (!entity || !entity.id) {
       throw new Error('Team instantiation requires an incoming entity, or minimum-set entity containing an id property.');
     }
-
     this._organization = organization;
+    // TODO: remove assignKnownFieldsPrefixed concept, use newer field definitions instead?
     common.assignKnownFieldsPrefixed(this, entity, 'team', teamPrimaryProperties, teamSecondaryProperties);
-
     this._getToken = getToken;
     this._operations = operations;
   }
@@ -117,430 +151,355 @@ export class Team {
     return operations.baseUrl + 'teams?q=' + this._id;
   }
 
-  ensureName(callback) {
+  async ensureName(): Promise<void> {
     if (this._name && this._slug) {
-      return callback();
+      return;
     }
-    this.getDetails(callback);
+    return await this.getDetails();
   }
 
-  getDetails(options, callback?) {
-    const self = this;
-    if (!callback && typeof (options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    options = options || {};
-    const operations = this._operations;
-    const cacheOptions = {
-      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgTeamDetailsStaleSeconds,
-      backgroundRefresh: false,
-    };
-    if (options.backgroundRefresh !== undefined) {
-      cacheOptions.backgroundRefresh = options.backgroundRefresh;
-    }
-    const token = this._getToken();
-    const id = this._id;
-    if (!id) {
-      return callback(new Error('No "id" property associated with the team instance to retrieve the details for.'));
-    }
-    // CONSIDER: Either a time-based cache or ability to override the local cached behavior
-    if (this._detailsEntity) {
-      return callback(null, this._detailsEntity);
-    }
-    const parameters = {
-      team_id: id,
-    };
-    return operations.github.call(token, 'teams.get', parameters, cacheOptions, (error, entity) => {
-      // CONSIDER: What if the team is gone? (404)
-      if (error) {
-        return callback(wrapError(error, 'Could not get details about the team'));
+  getDetails(options?: ICacheOptions): Promise<any> {
+    return new Promise((resolve, reject) => {
+      options = options || {};
+      const operations = this._operations;
+      const cacheOptions = {
+        maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgTeamDetailsStaleSeconds,
+        backgroundRefresh: false,
+      };
+      if (options.backgroundRefresh !== undefined) {
+        cacheOptions.backgroundRefresh = options.backgroundRefresh;
       }
-      this._detailsEntity = entity;
-      common.assignKnownFieldsPrefixed(self, entity, 'team', teamPrimaryProperties, teamSecondaryProperties);
-      callback(null, entity);
+      const token = this._getToken();
+      const id = this._id;
+      if (!id) {
+        return reject(new Error('team.id required to retrieve team details'));
+      }
+      // If the details already have been loaded, move along without refreshing
+      // CONSIDER: Either a time-based cache or ability to override the local cached behavior
+      if (this._detailsEntity) {
+        return resolve(this._detailsEntity);
+      }
+      const parameters = {
+        team_id: id,
+      };
+      return operations.github.call(token, 'teams.get', parameters, cacheOptions, (error, entity) => {
+        // CONSIDER: What if the team is gone? (404)
+        if (error) {
+          return reject(wrapError(error, `Could not get details about team ID ${this._id} in the GitHub organization ${this.organization.name}: ${error.message}`));
+        }
+        this._detailsEntity = entity;
+        // TODO: move beyond setting with this approach
+        common.assignKnownFieldsPrefixed(this, entity, 'team', teamPrimaryProperties, teamSecondaryProperties);
+        return resolve(entity);
+      });
     });
   }
 
-  get isBroadAccessTeam() {
+  get isBroadAccessTeam(): boolean {
     const teams = this._organization.broadAccessTeams;
-    const res = teams.indexOf(this._id);
+    // TODO: validating typing here - number or int?
+    const asNumber = parseInt(this._id, 10);
+    const res = teams.indexOf(asNumber);
     return res >= 0;
   }
 
-  get isSystemTeam() {
+  get isSystemTeam(): boolean {
     const systemTeams = this._organization.systemTeamIds;
     const res = systemTeams.indexOf(this._id);
     return res >= 0;
   }
 
-  delete(callback) {
-    const operations = this._operations;
-    const token = this._getToken();
-    const github = operations.github;
-
-    const parameters = {
-      team_id: this._id,
-    };
-    github.post(token, 'teams.delete', parameters, callback);
-  }
-
-  edit(patch, callback) {
-    const operations = this._operations;
-    const token = this._getToken();
-    const github = operations.github;
-
-    const parameters = {
-      team_id: this._id,
-    };
-    Object.assign(parameters, patch);
-    delete parameters.team_id; // do not allow patch to have team_id
-    delete parameters['id']; // // do not allow patch to have id
-
-    github.post(token, 'teams.update', parameters, callback);
-  }
-
-  removeMembership(username, callback) {
-    const operations = this._operations;
-    const token = this._getToken();
-    const github = operations.github;
-
-    const parameters = {
-      team_id: this._id,
-      username: username,
-    };
-    github.post(token, 'teams.removeMembership', parameters, callback);
-  }
-
-  addMembershipAsync(username, options?): Promise<any> {
-    // TODO: long-term, all methods should be async
+  delete(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.addMembership(username, options, (err, data) => {
-        // TODO: PROMISE ASYNC: update return type to properly model these objects
-        // BREAKPOINT:
-        return err ? reject(err) : resolve(data);
+      const operations = this._operations;
+      const token = this._getToken();
+      const github = operations.github;
+      const parameters = {
+        team_id: this._id,
+      };
+      github.post(token, 'teams.delete', parameters, error => {
+        return error ? reject(error) : resolve();
       });
     });
   }
 
-  addMembership(username, options, callback?) {
-    const operations = this._operations;
-    const token = this._getToken();
-    const github = operations.github;
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    options = options || {};
-
-    const role = options.role || 'member';
-
-    const parameters = {
-      team_id: this._id,
-      username: username,
-      role: role,
-    };
-    github.post(token, 'teams.addOrUpdateMembership', parameters, callback);
-  }
-
-  addMaintainer(username, callback) {
-    const options = {
-      role: 'maintainer',
-    };
-    this.addMembership(username, options, callback);
-  }
-
-  getMembership(username, options, callback) {
-    const operations = this._operations;
-    const token = this._getToken();
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    options = options || {};
-    if (!options.maxAgeSeconds) {
-      options.maxAgeSeconds = operations.defaults.orgMembershipDirectStaleSeconds;
-    }
-    // If a background refresh setting is not present, perform a live
-    // lookup with this call. This is the opposite of most of the library's
-    // general behavior.
-    if (options.backgroundRefresh === undefined) {
-      options.backgroundRefresh = false;
-    }
-    const parameters = {
-      team_id: this._id,
-      username: username,
-    };
-    // TODO: this should probably be a _post_ call and not _call_ as there is no cache with GitHub
-    return operations.github.call(token, 'teams.getMembership', parameters, (error, result) => {
-      if (error && error.status == /* loose */ 404) {
-        result = false;
-        error = null;
-      }
-      if (error) {
-        let reason = error.message;
-        if (error.status) {
-          reason += ' ' + error.status;
-        }
-        const wrappedError = wrapError(error, `Trouble retrieving the membership for "${username}" in team ${this._id}. ${reason}`);
-        if (error.status) {
-          wrappedError['code'] = error.status;
-          wrappedError['status'] = error.status;
-        }
-        return callback(wrappedError);
-      }
-      return callback(null, result);
+  edit(patch): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const operations = this._operations;
+      const token = this._getToken();
+      const github = operations.github;
+      const parameters = {
+        team_id: this._id,
+      };
+      Object.assign(parameters, patch);
+      delete parameters.team_id; // do not allow patch to have team_id
+      delete parameters['id']; // // do not allow patch to have id
+      github.post(token, 'teams.update', parameters, error => {
+        return error ? reject(error) : resolve();
+      });
     });
   }
 
-  getMembershipEfficiently(username, options, callback?) {
+  removeMembership(username: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const operations = this._operations;
+      const token = this._getToken();
+      const github = operations.github;
+      const parameters = {
+        team_id: this._id,
+        username: username,
+      };
+      github.post(token, 'teams.removeMembership', parameters, error => {
+        return error ? reject(error) : resolve();
+      });
+    });
+  }
+
+  addMembership(username: string, options?: IUpdateTeamMembershipOptions): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const operations = this._operations;
+      const token = this._getToken();
+      const github = operations.github;
+      options = options || {};
+      const role = options.role || GitHubTeamRole.Member;
+      const parameters = {
+        team_id: this._id,
+        username,
+        role,
+      };
+      github.post(token, 'teams.addOrUpdateMembership', parameters, (error, response) => {
+        return error ? reject(error) : resolve();
+      });
+    });
+  }
+
+  addMaintainer(username: string): Promise<void> {
+    return this.addMembership(username, { role: GitHubTeamRole.Maintainer });
+  }
+
+  getMembership(username: string, options: ICacheOptions): Promise<any> {
+    // TODO: proper return type
+    return new Promise((resolve, reject) => {
+      const operations = this._operations;
+      const token = this._getToken();
+      options = options || {};
+      if (!options.maxAgeSeconds) {
+        options.maxAgeSeconds = operations.defaults.orgMembershipDirectStaleSeconds;
+      }
+      // If a background refresh setting is not present, perform a live
+      // lookup with this call. This is the opposite of most of the library's
+      // general behavior.
+      if (options.backgroundRefresh === undefined) {
+        options.backgroundRefresh = false;
+      }
+      const parameters = {
+        team_id: this._id,
+        username,
+      };
+      // TODO: this should probably be a _post_ call and not _call_ as there is no cache with GitHub
+      return operations.github.call(token, 'teams.getMembership', parameters, (error, result) => {
+        if (error && error.status == /* loose */ 404) {
+          result = false;
+          error = null;
+        }
+        if (error) {
+          let reason = error.message;
+          if (error.status) {
+            reason += ' ' + error.status;
+          }
+          const wrappedError = wrapError(error, `Trouble retrieving the membership for ${username} in team ${this._id}. ${reason}`);
+          if (error.status) {
+            wrappedError['code'] = error.status;
+            wrappedError['status'] = error.status;
+          }
+          return reject(wrappedError);
+        }
+        return resolve(result);
+      });
+    });
+  }
+
+  async getMembershipEfficiently(username: string, options?: IIsMemberOptions): Promise<ITeamMembershipRoleState> {
     // Hybrid calls are used to check for membership. Since there is
     // often a relatively fresh cache available of all of the members
     // of a team, that data source is used first to avoid a unique
     // GitHub API call.
     const operations = this._operations;
-    const self = this;
     // A background cache is used that is slightly more aggressive
     // than the standard org members list to at least frontload a
     // refresh of the data.
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = null;
-    }
     options = options || {};
     if (!options.maxAgeSeconds) {
       options.maxAgeSeconds = operations.defaults.orgMembershipStaleSeconds;
     }
-    self.isMaintainer(username, options, (getMaintainerError, isMaintainer) => {
-      if (getMaintainerError) {
-        return callback(getMaintainerError);
-      }
-      if (isMaintainer) {
-        return callback(null, 'maintainer');
-      }
-      self.isMember(username, 'member', options, (getError, isMember) => {
-        if (getError) {
-          return callback(getError);
-        }
-        if (isMember) {
-          return callback(null, 'member');
-        }
-        // Fallback to the standard membership lookup
-        const membershipOptions = {
-          maxAgeSeconds: operations.defaults.orgMembershipDirectStaleSeconds,
-        };
-        self.getMembership(username, membershipOptions, (getMembershipError, result) => {
-          if (getMembershipError) {
-            return callback(getMembershipError);
-          }
-          return callback(null, result.role, result.state);
-        });
-      });
-    });
-  }
-
-  isMaintainer(username, options, callback) {
-    return this.isMember(username, 'maintainer', options, callback);
-  }
-
-  async isMemberAsync(username: string, role?: string, options?: any): Promise<boolean> {
-    return new Promise<boolean>((resolve, reject) => {
-      this.isMember(username, role, options, (error, result) => {
-        return error ? reject(error) : resolve(result);
-      });
-    });
-  }
-
-  isMember(username, role, options, callback) {
-    if (!callback && !options && typeof (role) === 'function') {
-      callback = role;
-      options = null;
-      role = null;
+    const isMaintainer = await this.isMaintainer(username, options);
+    if (isMaintainer) {
+      return { role: GitHubTeamRole.Maintainer };
     }
-    if (!callback && typeof (options) === 'function') {
-      callback = options;
-      options = null;
+    const isMember = await this.isMember(username);
+    if (isMember) {
+      return { role: GitHubTeamRole.Member };
     }
-    options = options || {};
+    // Fallback to the standard membership lookup
+    const membershipOptions = {
+      maxAgeSeconds: operations.defaults.orgMembershipDirectStaleSeconds,
+    };
+    const result = await this.getMembership(username, membershipOptions);
+    // TODO: used to respond with result.role, result.state. Is state used anywhere?
+    if (!result || !result.role) {
+      return result;
+    }
+    return { role: result.role, state: result.state };
+  }
+
+  async isMaintainer(username: string, options?: ICacheOptions): Promise<boolean> {
+    const isOptions: IIsMemberOptions = Object.assign({}, options);
+    isOptions.role = GitHubTeamRole.Maintainer;
+    const maintainer = await this.isMember(username, isOptions) as GitHubTeamRole;
+    return maintainer === GitHubTeamRole.Maintainer ? true : false;
+  }
+
+  async isMember(username: string, options?: IIsMemberOptions): Promise<GitHubTeamRole | boolean> {
     const operations = this._operations;
-    role = role || 'member';
     options = options || {};
     if (!options.maxAgeSeconds) {
       options.maxAgeSeconds = operations.defaults.orgMembershipStaleSeconds;
     }
-    this.getMembers(Object.assign({ role: role }, options), (getMembersError, members) => {
-      if (getMembersError) {
-        return callback(getMembersError);
+    const getMembersOptions: IGetMembersOptions = Object.assign({}, options);
+    if (!options.role) {
+      getMembersOptions.role = GitHubTeamRole.Member;
+    }
+    const members = await this.getMembers(getMembersOptions);
+    const expected = username.toLowerCase();
+    for (let i = 0; i < members.length; i++) {
+      const member = members[i];
+      if (member.login.toLowerCase() === expected) {
+        return getMembersOptions.role;
       }
-      const expected = username.toLowerCase();
-      for (let i = 0; i < members.length; i++) {
-        const member = members[i];
-        if (member.login.toLowerCase() === expected) {
-          return callback(null, role);
-        }
-      }
-      return callback(null, false);
-    });
+    }
+    return false;
   }
 
-  getMaintainers(options, callback?) {
-    if (!callback && typeof (options) === 'function') {
-      callback = options;
-      options = null;
-    }
+  getMaintainers(options?: ICacheOptionsPageLimiter): Promise<TeamMember[]> {
     options = options || {};
     if (!options.maxAgeSeconds) {
       options.maxAgeSeconds = this._operations.defaults.teamMaintainersStaleSeconds;
     }
-    const getMemberOptions = Object.assign({
-      role: 'maintainer',
-    }, options);
-    this.getMembers(getMemberOptions, callback);
+    const getMemberOptions: IGetMembersOptions = Object.assign({}, options || {});
+    getMemberOptions.role = GitHubTeamRole.Maintainer;
+    return this.getMembers(getMemberOptions);
   }
 
-  getMembers(options, callback?) {
-    if (!callback && typeof (options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    options = options || {};
-
-
-    let operations = this._operations;
-    let token = this._getToken();
-    let github = operations.github;
-
-    let parameters: IGetMembersParameters = {
-      team_id: this.id,
-      per_page: 100,
-    };
-    const caching: ICacheOptions = {
-      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgMembersStaleSeconds,
-      backgroundRefresh: true,
-    };
-    if (options && options.backgroundRefresh === false) {
-      caching.backgroundRefresh = false;
-    }
-    if (options.role) {
-      parameters.role = options.role;
-    }
-    if (options.pageLimit) {
-      parameters.pageLimit = options.pageLimit;
-    }
-    // CONSIDER: Check the error object, if present, for error.status == /* loose */ 404 to alert/store telemetry on deleted teams
-    return github.collections.getTeamMembers(
-      token,
-      parameters,
-      caching,
-      common.createInstancesCallback(this, this.memberFromEntity, callback));
-  }
-
-  checkRepositoryPermission(repositoryName: string, options, callback) {
-    if (!callback && typeof (options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    options = options || {};
-    let operations = this._operations;
-    let token = this._getToken();
-    let github = operations.github;
-    const organizationName = options.organizationName || this.organization.name;
-    const parameters: ICheckRepositoryPermissionParameters = {
-      team_id: this._id,
-      owner: organizationName,
-      repo: repositoryName,
-    };
-    const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.teamRepositoryPermissionStaleSeconds,
-    };
-    if (options.backgroundRefresh !== undefined) {
-      cacheOptions.backgroundRefresh = options.backgroundRefresh;
-    }
-    parameters.headers = {
-      // Alternative response for additional information, including the permission level
-      'Accept': 'application/vnd.github.v3.repository+json',
-    };
-    return github.call(token, 'teams.checkManagesRepo', parameters, cacheOptions, (error, details) => {
-      if (error) {
-        return callback(error);
+  getMembers(options?: IGetMembersOptions): Promise<TeamMember[]> {
+    return new Promise((resolve, reject) => {
+      options = options || {};
+      const operations = this._operations;
+      const token = this._getToken();
+      const github = operations.github;
+      const parameters: IGetMembersParameters = {
+        team_id: this.id,
+        per_page: operations.defaultPageSize,
+      };
+      const caching: IPagedCacheOptions = {
+        maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgMembersStaleSeconds,
+        backgroundRefresh: true,
+      };
+      if (options && options.backgroundRefresh === false) {
+        caching.backgroundRefresh = false;
       }
-      return callback(null, details && details.permissions ? details.permissions : null);
+      if (options.role) {
+        parameters.role = options.role;
+      }
+      if (options.pageLimit) {
+        parameters.pageLimit = options.pageLimit;
+      }
+      // CONSIDER: Check the error object, if present, for error.status == /* loose */ 404 to alert/store telemetry on deleted teams
+      return github.collections.getTeamMembers(
+        token,
+        parameters,
+        caching,
+        common.createPromisedInstances<TeamMember>(this, this.memberFromEntity, resolve, reject));
     });
   }
 
-  getRepositories(options, callback) {
-    if (!callback && typeof (options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    options = options || {};
-
-    let operations = this._operations;
-    let token = this._getToken();
-    let github = operations.github;
-
-    const customTypeFilteringParameter = options.type;
-    if (customTypeFilteringParameter && customTypeFilteringParameter !== 'sources') {
-      return callback(new Error('Custom \'type\' parameter is specified, but at this time only \'sources\' is a valid enum value'));
-    }
-
-    let parameters: IGetRepositoriesParameters = {
-      team_id: this._id,
-      per_page: 100,
-    };
-    const caching: ICacheOptions = {
-      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgMembersStaleSeconds,
-      backgroundRefresh: true,
-    };
-    if (options && options.backgroundRefresh === false) {
-      caching.backgroundRefresh = false;
-    }
-    if (options.pageLimit) {
-      parameters.pageLimit = options.pageLimit;
-    }
-    return github.collections.getTeamRepos(
-      token,
-      parameters,
-      caching,
-      (getTeamReposError, entities) => {
-        const commonCallback = common.createInstancesCallback(this, repositoryFromEntity, callback);
-        if (customTypeFilteringParameter !== 'sources') {
-          return commonCallback(null, entities);
-        }
-        // Remove forks (non-sources)
-        _.remove(entities, repo => { return repo.fork; });
-        return commonCallback(null, entities);
-      });
-  }
-
-  async getOfficialMaintainersAsync(): Promise<any[]> {
-    return new Promise<any[]>((resolve, reject) => {
-      return this.getOfficialMaintainers((error, maintainers) => {
-        return error ? reject(error) : resolve(maintainers as any[]);
+  checkRepositoryPermission(repositoryName: string, options?: ICheckRepositoryPermissionOptions): Promise<any> {
+    return new Promise((resolve, reject) => {
+      options = options || {};
+      let operations = this._operations;
+      let token = this._getToken();
+      let github = operations.github;
+      const organizationName = options.organizationName || this.organization.name;
+      const parameters: ICheckRepositoryPermissionParameters = {
+        team_id: this._id,
+        owner: organizationName,
+        repo: repositoryName,
+      };
+      const cacheOptions: ICacheOptions = {
+        maxAgeSeconds: options.maxAgeSeconds || operations.defaults.teamRepositoryPermissionStaleSeconds,
+      };
+      if (options.backgroundRefresh !== undefined) {
+        cacheOptions.backgroundRefresh = options.backgroundRefresh;
+      }
+      parameters.headers = {
+        // Alternative response for additional information, including the permission level
+        'Accept': 'application/vnd.github.v3.repository+json',
+      };
+      return github.call(token, 'teams.checkManagesRepo', parameters, cacheOptions, (error, details) => {
+        return error ? reject(error) : resolve(details && details.permissions ? details.permissions : null);
       });
     });
   }
 
-  getOfficialMaintainers(callback) {
-    this.getDetails(detailsError => {
-      if (detailsError) {
-        return callback(detailsError);
+  getRepositories(options?: IGetTeamRepositoriesOptions): Promise<Repository[]> {
+    return new Promise((resolve, reject) => {
+      options = options || {};
+      const operations = this._operations;
+      const token = this._getToken();
+      const github = operations.github;
+      // GitHub does not have a concept of filtering this out so we add it
+      const customTypeFilteringParameter = options.type;
+      if (customTypeFilteringParameter && customTypeFilteringParameter !== GitHubRepositoryType.Sources) {
+        return reject(new Error(`Custom \'type\' parameter is specified, but at this time only \'sources\' is a valid enum value. Value: ${customTypeFilteringParameter}`));
       }
-      this.getMaintainers((getMaintainersError, maintainers) => {
-        if (getMaintainersError) {
-          return callback(getMaintainersError);
-        }
-        if (maintainers.length > 0) {
-          return resolveDirectLinks(maintainers, callback);
-        }
-        this.organization.sudoersTeam.getMembers((getMembersError, members) => {
-          if (getMembersError) {
-            return callback(getMembersError);
+      const parameters: IGetRepositoriesParameters = {
+        team_id: this._id,
+        per_page: operations.defaultPageSize,
+      };
+      const caching: IPagedCacheOptions = {
+        maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgMembersStaleSeconds,
+        backgroundRefresh: true,
+      };
+      if (options && options.backgroundRefresh === false) {
+        caching.backgroundRefresh = false;
+      }
+      if (options.pageLimit) {
+        parameters.pageLimit = options.pageLimit;
+      }
+      return github.collections.getTeamRepos(
+        token,
+        parameters,
+        caching,
+        (getTeamReposError, entities) => {
+          if (getTeamReposError) {
+            return reject(getTeamReposError);
           }
-          return resolveDirectLinks(members, callback);
+          if (customTypeFilteringParameter === 'sources') {
+          // Remove forks (non-sources)
+          _.remove(entities, (repo: any) => { return repo.fork; });
+          }
+          return common.returnPromisedInstances<Repository>(this, repositoryFromEntity, resolve, reject, entities, getTeamReposError);
         });
       });
-    });
+  }
+
+  async getOfficialMaintainers(): Promise<TeamMember[]> {
+    await this.getDetails();
+    const maintainers = await this.getMaintainers();
+    if (maintainers.length > 0) {
+      return resolveDirectLinks(maintainers);
+    }
+    const members = await this.organization.sudoersTeam.getMembers();
+    return resolveDirectLinks(members);
   }
 
   member(id, optionalEntity?) {
@@ -561,40 +520,24 @@ export class Team {
     return this.member(entity.id, entity);
   }
 
-  getApprovalsAsync(): Promise<TeamJoinApprovalEntity[]> {
-    return new Promise((resolve, reject) => {
-      this.getApprovals((error, approvals: TeamJoinApprovalEntity[]) => {
-        return error ? reject(error) : resolve(approvals);
-      });
-    });
-  }
-
-  getApprovals(callback) {
+  async getApprovals(): Promise<TeamJoinApprovalEntity[]> {
     const operations = this._operations;
     const approvalProvider = operations.providers.approvalProvider as IApprovalProvider;
     if (!approvalProvider) {
-      return callback(new Error('No approval provider instance available'));
+      throw new Error('No approval provider instance available');
     }
-    approvalProvider.queryPendingApprovalsForTeam(this.id).catch(error => {
-      return callback(wrapError(error, 'We were unable to retrieve the pending approvals list for this team. There may be a data store problem.'));
-    }).then(pendingApprovals => {
-      const pendingRequests = [];
-      async.each(pendingApprovals, function (approval: any, cb) {
-        if (approval.requested) {
-          var asInt = parseInt(approval.requested, 10);
-          approval.requestedTime = new Date(asInt);
-        }
-        pendingRequests.push(approval);
-        return cb();
-      }, error => {
-        return callback(error, pendingRequests);
-      });
-    });
+    let pendingApprovals: TeamJoinApprovalEntity[] = null;
+    try {
+      pendingApprovals = await approvalProvider.queryPendingApprovalsForTeam(this.id);
+    } catch(error) {
+      throw wrapError(error, 'We were unable to retrieve the pending approvals list for this team. There may be a data store problem or temporary outage.');
+    }
+    return pendingApprovals;
   }
 
   toSimpleJsonObject() {
     return {
-      id: this.id,
+      id: typeof(this.id) === 'number' ? this.id : parseInt(this.id, 10),
       name: this.name,
       slug: this.slug,
       description: this.description,
@@ -606,12 +549,12 @@ export class Team {
   }
 }
 
-function resolveDirectLinks(people, callback) {
-  async.eachSeries(people, (member: TeamMember, next) => {
-    return member.getMailAddress(next);
-  }, error => {
-    return callback(error ? error : null, error ? null : people);
-  });
+async function resolveDirectLinks(people: TeamMember[]): Promise<TeamMember[]> {
+  for (let i = 0; i < people.length; i++) {
+    const member = people[i];
+    await member.getMailAddress();
+  }
+  return people;
 }
 
 function repositoryFromEntity(entity) {

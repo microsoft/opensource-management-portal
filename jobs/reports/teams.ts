@@ -7,8 +7,8 @@
 
 'use strict';
 
-const _ = require('lodash');
-import moment = require('moment');
+import _ from 'lodash';
+import moment from 'moment';
 import Q from 'q';
 import { requireJson } from '../../utils';
 const qlimit = require('qlimit');

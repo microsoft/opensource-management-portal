@@ -9,7 +9,7 @@
 // and refactored to be useful by others. There are values stored in
 // configuration that can be used instead of the hardcoded values within.
 
-const _ = require('lodash');
+import _ from 'lodash';
 import async = require('async');
 import { jsonError } from '../../middleware/jsonError';
 import { Operations } from '../../business/operations';
@@ -33,11 +33,6 @@ const hardcodedApprovalTypes = [
   'SmallLibrariesToolsSamples',
   'Migrate',
   'Exempt',
-];
-
-const hardcodedClaEntities = [
-  'Microsoft',
-  '.NET Foundation',
 ];
 
 interface ICreateRepositoryApiResult {
@@ -68,8 +63,6 @@ export async function CreateRepository(req, res, bodyOverride: any, token): Prom
     'ms.approval',
     'ms.approval-url',
     'ms.justification',
-    'ms.cla-entity',
-    'ms.cla-mail',
     'ms.notify',
     'ms.teams',
     'ms.template',
@@ -89,8 +82,6 @@ export async function CreateRepository(req, res, bodyOverride: any, token): Prom
     license: properties['ms.license'] || req.headers['ms-license'],
     approvalType: properties['ms.approval'] || req.headers['ms-approval'],
     approvalUrl: properties['ms.approval-url'] || req.headers['ms-approval-url'],
-    // claMail: properties['ms.cla-mail'] || req.headers['ms-cla-mail'],
-    // claEntity: properties['ms.cla-entity'] || req.headers['ms-cla-entity'],
     notify: properties['ms.notify'] || req.headers['ms-notify'],
     teams: properties['ms.teams'] || req.headers['ms-teams'],
     template: properties['ms.template'] || req.headers['ms-template'],
@@ -129,9 +120,6 @@ export async function CreateRepository(req, res, bodyOverride: any, token): Prom
   case 'SmallLibrariesToolsSamples':
     break;
 
-  case 'Migrate':
-    break;
-
   case 'Exempt':
     if (!msProperties.justification) {
       throw jsonError(new Error('Justification is required when using the exempted approval type'), 422);
@@ -156,9 +144,37 @@ export async function CreateRepository(req, res, bodyOverride: any, token): Prom
   });
   let createResult: ICreateRepositoryResult = null;
   try {
-    createResult = await organization.createRepositoryAsync(parameters.name, parameters);
+    createResult = await organization.createRepository(parameters.name, parameters);
   } catch (error) {
-    // TODO: insights
+    req.app.settings.providers.insights.trackEvent({
+      name: 'ApiRepoCreateForOrgGitHubFailure',
+      properties: {
+        parameterName: parameters.name,
+        private: parameters.private,
+        org: parameters.org,
+        parameters: JSON.stringify(parameters),
+      },
+    });
+    if (error && error.innerError) {
+      const inner = error.innerError;
+      req.insights.trackException({
+        exception: inner,
+        properties: {
+          event: 'ApiRepoCreateGitHubErrorInside',
+          message: inner && inner.message ? inner.message : inner,
+          code: inner && inner.code ? inner.code : '',
+          status: inner && inner.status ? inner.status : '',
+          statusCode: inner && inner.statusCode ? inner.statusCode : '',
+        },
+      });
+    }
+    req.insights.trackException({
+      exception: error,
+      properties: {
+        event: 'ApiRepoCreateGitHubError',
+        message: error && error.message ? error.message : error,
+      },
+    });
     throw jsonError(error, error.status || 500);
   }
   const { repository, response } = createResult;
@@ -183,36 +199,7 @@ export async function CreateRepository(req, res, bodyOverride: any, token): Prom
   };
   req.repoCreateResponse = repoCreateResponse;
 
-  // // TODO: remove and update views
-  // const approvalRequest = {
-  //   ghu: msProperties.onBehalfOf,
-  //   justification: msProperties.justification,
-  //   requested: ((new Date()).getTime()).toString(),
-  //   active: false,
-  //   license: msProperties.license,
-  //   type: 'repo',
-  //   org: req.organization.name.toLowerCase(),
-  //   repoName: response.name,
-  //   repoId: response.id,
-  //   repoDescription: response.description,
-  //   repoUrl: response.homepage,
-  //   repoVisibility: response.private ? 'private' : 'public',
-  //   approvalType: msProperties.approvalType,
-  //   approvalUrl: msProperties.approvalUrl,
-  //   claMail: msProperties.claMail,
-  //   claEntity: msProperties.claEntity,
-  //   template: msProperties.template,
-  //   projectType: msProperties.projectType,
-
-  //   // API-specific:
-  //   apiVersion: req.apiVersion,
-  //   api: true,
-  //   correlationId: req.correlationId,
-  // };
-  // req.approvalRequest = approvalRequest;
-
   // TODO: validate that created on behalf of is real? msProperties.onBehalfOf
-  // TODO: check insights for real-time traffic data from this
   const metadata = new RepositoryMetadataEntity();
   metadata.created = new Date();
   metadata.createdByThirdPartyUsername = msProperties.onBehalfOf;
@@ -264,7 +251,7 @@ export async function CreateRepository(req, res, bodyOverride: any, token): Prom
       throw insertRequestError; // if GitHub never returned
     }
     const newlyCreatedRepo = (req.organization as Organization).repository(repoCreateResponse.name);
-    await newlyCreatedRepo.deleteAsync();
+    await newlyCreatedRepo.delete();
     throw err;
   }
   // TODO: is this ever used?

@@ -5,7 +5,6 @@
 
 'use strict';
 
-import express = require('express');
-const router = express.Router();
+import { EntityMetadataType } from '../../lib/entityMetadataProvider/entityMetadata';
 
-module.exports = router;
+export const Type = EntityMetadataType.Token;

@@ -8,6 +8,7 @@
 import { Operations } from "./operations";
 import { Team } from "./team";
 import { Repository } from "./repository";
+import { IGetOwnerToken } from "../transitional";
 
 export class TeamRepositoryPermission {
   private _team: Team;
@@ -15,16 +16,16 @@ export class TeamRepositoryPermission {
   private _permissions: any;
   private _repository: Repository;
   private _id: string; // ? number
-  private _getToken: any;
+  private _getToken: IGetOwnerToken;
 
-  constructor(team: Team, entity, getToken, operations: Operations) {
+  constructor(team: Team, entity: any, getToken: IGetOwnerToken, operations: Operations) {
     this._team = team;
-
+    if (!entity) {
+      throw new Error('TeamRepositoryPermission: requires entity');
+    }
     this._permissions = entity.permissions;
     this._repository = team.organization.repositoryFromEntity(entity);
-
     this._id = this._repository.id;
-
     this._getToken = getToken;
     this._operations = operations;
   }

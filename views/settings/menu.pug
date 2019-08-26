@@ -4,26 +4,21 @@
 //-
 
 .panel.panel-default
-  .panel-heading Personal settings
+  .panel-heading Information
   .list-group
-    a.list-group-item(href='/settings', class={active: view === 'settings'}) Profile
+    a.list-group-item(href='/settings', class={active: view === 'settings'}) Corporate profile
+    a.list-group-item(href='https://github.com/settings/profile', target='_new', class={active: view === 'github-profile'}) GitHub Profile
 .panel.panel-default
   .panel-heading Authorizations & accounts
   .list-group
-    a.list-group-item(href='/settings/authorizations', class={active: view === 'settings/authorizations'}) GitHub accounts
+    a.list-group-item(href='/settings/authorizations', class={active: view === 'settings/authorizations'}) GitHub app
     //- Removing NPM publishing (result of 2FA enforcement restrictions)
     //- a.list-group-item(href='/settings/npm', class={active: view === 'settings/npm'}) NPM
 .panel.panel-default
-  .panel-heading Requests & approvals
+  .panel-heading Features
   .list-group
-    a.list-group-item(href='/approvals', class={active: view === 'settings/approvals'}) Active requests
-.panel.panel-default
-  .panel-heading Reports
-  .list-group
-    a.list-group-item(href='/settings/digestReports', class={active: view === 'settings/digestReports'}) Administrator reports
-.panel.panel-default
-  .panel-heading Internal APIs
-  .list-group
+    a.list-group-item(href='/settings/approvals', class={active: view === 'settings/approvals'}) Active requests
     a.list-group-item(href='/settings/security/tokens', class={active: view === 'settings/personalAccessTokens'}) Personal access tokens
+    a.list-group-item(href='/settings/digestReports', class={active: view === 'settings/digestReports'}) Administrator reports
     if view === 'settings/extension'
       a.list-group-item(href='/settings/security/tokens/extension', class={active: view === 'settings/extension'}) Install browser extension

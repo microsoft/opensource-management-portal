@@ -12,7 +12,7 @@ import {
   IObjectWithDefinedKeys } from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { MetadataMappingDefinition, EntityMetadataMappings } from '../../lib/entityMetadataProvider/declarations';
-import { IEntityMetadataFixedQuery } from '../../lib/entityMetadataProvider/query';
+import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 
 const type = EntityMetadataType.LocalExtensionKey;
 
@@ -90,6 +90,9 @@ EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.M
 
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableQueries, (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
   switch (query.fixedQueryType) {
+    case FixedQueryType.LocalExtensionKeysGetAll:
+        return new azure.TableQuery()
+          .where('PartitionKey eq ?', fixedPartitionKey);
     default:
       throw new Error(`The fixed query type ${query.fixedQueryType} is not supported currently by this ${type} provider`);
   }
@@ -97,6 +100,8 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableQueries, (q
 
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
   switch (query.fixedQueryType) {
+    case FixedQueryType.LocalExtensionKeysGetAll:
+      return allInTypeBin;
     default:
       throw new Error(`The fixed query type ${query.fixedQueryType} is not supported currently by this ${type} provider`);
   }
@@ -110,4 +115,7 @@ for (let i = 0; i < fieldNames.length; i++) {
   }
 }
 
-export function EnsureLocalExtensionKeyDefinitionsAvailable() {}
+export const EntityImplementation = {
+  EnsureDefinitions: () => {},
+  Type: type,
+};

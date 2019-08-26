@@ -4,6 +4,7 @@
 //
 
 import async = require('async');
+import express = require('express');
 import fs = require('fs');
 import path = require('path');
 
@@ -78,7 +79,7 @@ export function storeReferrer(req, res, redirect, optionalReason) {
 // ----------------------------------------------------------------------------
 // Session utility: store the original URL
 // ----------------------------------------------------------------------------
-export function storeOriginalUrlAsReferrer(req, res, redirect, optionalReason) {
+export function storeOriginalUrlAsReferrer(req: express.Request, res: express.Response, redirect: string, optionalReason?: string) {
   storeOriginalUrlAsVariable(req, res, 'referer', redirect, optionalReason);
 };
 
@@ -132,7 +133,7 @@ const errorPropertiesToClone = [
   'status',
 ];
 
-export function wrapError(error, message, userIntendedMessage?: boolean) {
+export function wrapError(error, message, userIntendedMessage?: boolean): IReposError {
   const err: IReposError = new Error(message);
   err.innerError = error;
   if (error) {

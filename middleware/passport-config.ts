@@ -25,10 +25,7 @@ function githubResponseToSubset(app, accessToken, refreshToken, profile, done) {
     const impersonationId = config.impersonation.githubId;
 
     const account = operations.getAccount(impersonationId);
-    return account.getDetails({}, (err, details) => {
-      if (err) {
-        return done(err);
-      }
+    return account.getDetails().then(details => {
       console.warn(`GITHUB IMPERSONATION: id=${impersonationId} login=${details.login} name=${details.name}`);
       return done(null, {
         github: {
@@ -39,6 +36,8 @@ function githubResponseToSubset(app, accessToken, refreshToken, profile, done) {
           username: details.login,
         },
       });
+    }).catch(err => {
+      return done(err);
     });
   }
   let subset = {

@@ -7,12 +7,20 @@
 
 import { ReposAppRequest } from "../../transitional";
 import { wrapError } from "../../utils";
+import { OrganizationMembershipState } from "../../business/organization";
 
 const orgPermissionsCacheKeyName = 'orgPermissions';
 const orgOwnersCacheKeyName = 'orgOwners';
 const orgOwnersSetCacheKeyName = 'orgOwnersSet';
 
-module.exports = function addOrgPermissionsToRequest(req: ReposAppRequest, res, next) {
+export interface IRequestOrganizationPermissions {
+  allowAdministration: boolean;
+  owner: boolean;
+  sudo: boolean;
+  membershipStatus: OrganizationMembershipState;
+}
+
+export async function AddOrganizationPermissionsToRequest(req: ReposAppRequest, res, next) {
   // Only compute once per request
   if (req[orgPermissionsCacheKeyName]) {
     return next();
@@ -21,69 +29,59 @@ module.exports = function addOrgPermissionsToRequest(req: ReposAppRequest, res, 
   const ghIdAsString = req.individualContext.getGitHubIdentity().id;
   const id = ghIdAsString ? parseInt(ghIdAsString, 10) : null;
   const organization = req.organization;
-  const orgPermissions = {
+  const orgPermissions: IRequestOrganizationPermissions = {
     allowAdministration: false,
     owner: false,
     sudo: false,
-    membershipStatus: undefined,
+    membershipStatus: null,
   };
   if (id && !login) {
     return next(new Error(`While your technical GitHub ID ${id} is known, your GitHub username is not currently known.`));
   }
   req[orgPermissionsCacheKeyName] = orgPermissions;
-  organization.isSudoer(login, (sudoCheckError, isSudoer) => {
-    req.individualContext.isPortalAdministrator().then(isPortalSudoer => {
-      // Indicate that the user is has sudo rights
-      if (isSudoer === true || isPortalSudoer === true) {
-        orgPermissions.sudo = true;
-      }
+  const isSudoer = await organization.isSudoer(login);
+  const isPortalSudoer = await req.individualContext.isPortalAdministrator();
 
-      // Get the organization owners
-      organization.getOwners((getOwnersError, owners) => {
-        if (getOwnersError) {
-          return next(getOwnersError);
-        }
+  // Indicate that the user is has sudo rights
+  if (isSudoer === true || isPortalSudoer === true) {
+    orgPermissions.sudo = true;
+  }
 
-        // +MIDDLEWARE: provide this later if it is needed elsewhere
-        req[orgOwnersCacheKeyName] = owners;
-        const set = new Set();
-        for (let i = 0; i < owners.length; i++) {
-          set.add(owners[i].id);
-        }
-        if (set.has(id)) {
-          orgPermissions.owner = true;
-        }
-        req[orgOwnersSetCacheKeyName] = set;
+  // Get the organization owners
+  const owners = await organization.getOwners();
 
-        // Make a permission decision
-        if (orgPermissions.owner || orgPermissions.sudo) {
-          orgPermissions.allowAdministration = true;
-        }
+  // +MIDDLEWARE: provide this later if it is needed elsewhere
+  req[orgOwnersCacheKeyName] = owners;
+  const set = new Set();
+  for (let i = 0; i < owners.length; i++) {
+    set.add(owners[i].id);
+  }
+  if (set.has(id)) {
+    orgPermissions.owner = true;
+  }
+  req[orgOwnersSetCacheKeyName] = set;
 
-        // Are they even an organization member?
-        const membershipCacheOptions = {
-          maxAgeSeconds: 30,
-          backgroundRefresh: false,
-        };
-        organization.getMembership(login, membershipCacheOptions, (getMembershipError, membershipStatus) => {
-          if (getMembershipError && getMembershipError.innerError && getMembershipError.innerError.status === 404) {
-            getMembershipError = null;
-            membershipStatus = false;
-          }
-          if (getMembershipError) {
-            const reason = getMembershipError.message;
-            return next(wrapError(getMembershipError, `Unable to successfully validate whether you are already a member of the ${organization.name} organization on GitHub. ${reason}`));
-          }
-          if (membershipStatus && membershipStatus.state) {
-            membershipStatus = membershipStatus.state;
-          }
-          orgPermissions.membershipStatus = membershipStatus;
+  // Make a permission decision
+  if (orgPermissions.owner || orgPermissions.sudo) {
+    orgPermissions.allowAdministration = true;
+  }
 
-          return next();
-        });
-      });
-    }).catch(portalSudoError => {
-      return next(portalSudoError);
-    });
-  });
-};
+  // Are they even an organization member?
+  const membershipCacheOptions = {
+    maxAgeSeconds: 30,
+    backgroundRefresh: false,
+  };
+
+  try {
+    const membershipStatus = await organization.getMembership(login, membershipCacheOptions);
+    orgPermissions.membershipStatus = membershipStatus && membershipStatus.state ? membershipStatus.state : null;
+    return next();
+  } catch (getMembershipError) {
+    // if (getMembershipError && getMembershipError.innerError && getMembershipError.innerError.status === 404) {
+    //   getMembershipError = null;
+    //   membershipStatus = null;
+    // }
+    const reason = getMembershipError.message;
+    return next(wrapError(getMembershipError, `Unable to successfully validate whether you are already a member of the ${organization.name} organization on GitHub. ${reason}`));
+  }
+}

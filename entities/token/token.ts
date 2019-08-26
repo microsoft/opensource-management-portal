@@ -15,8 +15,9 @@ import { MetadataMappingDefinition, EntityMetadataMappings } from '../../lib/ent
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { TokenGenerator } from './tokenGenerator';
 import { QueryTokensByCorporateID } from './tokenProvider';
+import { Type } from './type';
 
-const type = EntityMetadataType.Token;
+const type = Type;
 
 interface ITokenEntityProperties {
   token: any;
@@ -221,4 +222,7 @@ for (let i = 0; i < fieldNames.length; i++) {
   }
 }
 
-export function EnsureTokenDefinitionsAvailable() {}
+export const EntityImplementation = {
+  EnsureDefinitions: () => {},
+  Type: type,
+};

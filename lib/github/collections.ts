@@ -7,18 +7,21 @@
 
 'use strict';
 
-const _ = require('lodash');
-import async = require('async');
-const debug = require('debug')('oss-github');
+import _ from 'lodash';
+import async from 'async';
 import Q from 'q';
 
+const debug = require('debug')('oss-github');
+
 const cost = require('./cost');
+
 import { createCallbackFlattenData } from './core';
 import { ILibraryContext } from '.';
 import { CompositeApiContext } from './composite';
 import { Collaborator } from '../../business/collaborator';
 import { Repository } from '../../business/repository';
 import { Team } from '../../business/team';
+import { IPagedCacheOptions } from '../../transitional';
 
 const branchDetailsToCopy = [
   'name',
@@ -48,17 +51,61 @@ const teamRepoPermissionsToCopy = [
   'permissions',
 ];
 
-function createIntelligentMethods(libraryContext: ILibraryContext, githubCall) {
-  const getNextPageExtended = libraryContext.getNextPageExtended;
-  const hasNextPage = libraryContext.hasNextPage;
+export class RestCollections {
+  private libraryContext: ILibraryContext;
+  private githubCall: any;
 
-  function getGithubCollection(token, methodName, options, callback) {
+  constructor(libraryContext: ILibraryContext, githubCall: any) {
+    this.libraryContext = libraryContext;
+    this.githubCall = githubCall;
+  }
+  getOrgRepos(token: string, options, cacheOptions: IPagedCacheOptions, callback) {
+    return this.generalizedCollectionWithFilter('orgRepos', 'repos.listForOrg', repoDetailsToCopy, token, options, cacheOptions, callback);
+  }
+
+  getOrgTeams(token: string, options, cacheOptions: IPagedCacheOptions, callback) {
+    return this.generalizedCollectionWithFilter('orgTeams', 'teams.list', teamDetailsToCopy, token, options, cacheOptions, (xxx, eee) => {
+      return callback(xxx, eee);
+    });
+  }
+
+  getOrgMembers(token: string, options, cacheOptions: IPagedCacheOptions, callback) {
+    return this.generalizedCollectionWithFilter('orgMembers', 'orgs.listMembers', memberDetailsToCopy, token, options, cacheOptions, callback);
+  }
+
+  getRepoTeams(token: string, options, cacheOptions: IPagedCacheOptions, callback) {
+    return this.generalizedCollectionWithFilter('repoTeamPermissions', 'repos.listTeams', teamPermissionsToCopy, token, options, cacheOptions, callback);
+  }
+
+  getRepoCollaborators(token: string, options, cacheOptions: IPagedCacheOptions, callback) {
+    return this.generalizedCollectionWithFilter('repoCollaborators', 'repos.listCollaborators', memberDetailsToCopy, token, options, cacheOptions, callback);
+  }
+
+  getRepoBranches(token: string, options, cacheOptions: IPagedCacheOptions, callback) {
+    return this.generalizedCollectionWithFilter('repoBranches', 'repos.listBranches', branchDetailsToCopy, token, options, cacheOptions, callback);
+  }
+
+  getTeamMembers(token: string, options, cacheOptions: IPagedCacheOptions, callback) {
+    return this.generalizedCollectionWithFilter('teamMembers', 'teams.listMembers', memberDetailsToCopy, token, options, cacheOptions, callback);
+  }
+
+  getTeamRepos(token: string, options, cacheOptions: IPagedCacheOptions, callback) {
+    return this.generalizedCollectionWithFilter('teamRepos', 'teams.listRepos', teamRepoPermissionsToCopy, token, options, cacheOptions, callback);
+  }
+
+  private getGithubCollection(token: string, methodName, options, cacheOptions: IPagedCacheOptions, callback) {
+    const hasNextPage = this.libraryContext.hasNextPage;
+    // const getNextPageExtended = this.libraryContext.getNextPageExtended;
+    const githubCall = this.githubCall;
+
     let done = false;
     let results = [];
     let recentResult = null;
     let requests = [];
     let pages = 0;
-    const pageLimit = options.pageLimit || Number.MAX_VALUE;
+    let currentPage = 0;
+    const pageLimit = options.pageLimit || cacheOptions['pageLimit'] || Number.MAX_VALUE;
+    const pageRequestDelay = cacheOptions.pageRequestDelay || null;
     function processResult(next, error, result) {
       if (error) {
         done = true;
@@ -83,34 +130,49 @@ function createIntelligentMethods(libraryContext: ILibraryContext, githubCall) {
           });
         }
         try {
-          // if (!result.link || !result.headers) {
-            // result.link = '';
-          // }
           done = pages >= pageLimit || !hasNextPage(result);
         } catch (nextPageError) {
           error = nextPageError;
           done = true;
         }
       }
-      if (!done && !error && result.headers && result.headers['retry-after']) {
+      if (!done && !error && result.headers && result.headers['retry-after']) { // actual retry headers win
         const delaySeconds = result.headers['retry-after'];
         debug(`Retry-After header was present. Delaying before next page ${delaySeconds}s.`);
         return setTimeout(() => { next(); }, delaySeconds * 1000);
+      } else if (pageRequestDelay) {
+        const to = typeof(pageRequestDelay);
+        let evaluatedTime = 0;
+        if (to === 'number') {
+          evaluatedTime = pageRequestDelay as number;
+        } else if (to === 'function') {
+          evaluatedTime = (pageRequestDelay as unknown as any)();
+        } else {
+          return next(new Error(`Unsupported pageRequestDelay type: ${to}`));
+        }
+        return setTimeout(() => { next(error); }, evaluatedTime);
+      } else {
+        return next(error);
       }
-      next(error);
     }
     async.whilst(
       () => { return !done; },
       (next) => {
-        let method = recentResult ? getNextPageExtended : githubCall;
+        // let method = recentResult ? getNextPageExtended : githubCall;
+        let method = githubCall;
         let args = [];
-        if (recentResult) {
+        if (false && recentResult) {
           // Shares the original method name for use in cache optimizations
           args.push({ methodName });
         }
         args.push(token);
         let cb = processResult.bind(null, next);
-        recentResult ? args.push(recentResult) : args.push(methodName, options);
+        const clonedOptions = Object.assign({}, options);
+        if (++currentPage > 1) {
+          clonedOptions.page = currentPage;
+        }
+        args.push(methodName, clonedOptions);
+        // recentResult ? args.push(recentResult) : args.push(methodName, options);
         args.push(cb);
         method.apply(null, args);
       },
@@ -125,9 +187,9 @@ function createIntelligentMethods(libraryContext: ILibraryContext, githubCall) {
       });
   }
 
-  function getFilteredGithubCollection(token, methodName, options, propertiesToKeep, callback) {
+  private getFilteredGithubCollection(token: string, methodName, options, cacheOptions: IPagedCacheOptions, propertiesToKeep, callback) {
     const keepAll = !propertiesToKeep;
-    return getGithubCollection(token, methodName, options, (error, data, requests) => {
+    return this.getGithubCollection(token, methodName, options, cacheOptions, (error, data, requests) => {
       if (!error && !data) {
         return callback(new Error('No error, no object, no data'));
       }
@@ -158,9 +220,9 @@ function createIntelligentMethods(libraryContext: ILibraryContext, githubCall) {
     });
   }
 
-  function getFilteredGithubCollectionWithMetadataAnalysis(token, methodName, options, propertiesToKeep) {
+  private getFilteredGithubCollectionWithMetadataAnalysis(token: string, methodName, options, cacheOptions: IPagedCacheOptions, propertiesToKeep) {
     const deferred = Q.defer();
-    getFilteredGithubCollection(token, methodName, options, propertiesToKeep, (error, results, requests) => {
+    this.getFilteredGithubCollection(token, methodName, options, cacheOptions, propertiesToKeep, (error, results, requests) => {
       if (error) {
         return deferred.reject(error);
       }
@@ -200,62 +262,28 @@ function createIntelligentMethods(libraryContext: ILibraryContext, githubCall) {
     return deferred.promise;
   }
 
-  function generalizedCollectionMethod(token, apiName, method, options, cacheOptions, callback) {
-    if (callback === undefined && typeof (cacheOptions) === 'function') {
-      callback = cacheOptions;
-      cacheOptions = {};
-    }
+  private generalizedCollectionMethod(token: string, apiName: string, method, options, cacheOptions: IPagedCacheOptions, callback) {
     const apiContext = new CompositeApiContext(apiName, method, options);
     apiContext.maxAgeSeconds = cacheOptions.maxAgeSeconds || 600;
     apiContext.overrideToken(token);
-    apiContext.libraryContext = libraryContext;
+    apiContext.libraryContext = this.libraryContext;
     if (cacheOptions.backgroundRefresh) {
       apiContext.backgroundRefresh = true;
     }
-    const compositeEngine = libraryContext.compositeEngine;
+    const compositeEngine = this.libraryContext.compositeEngine;
     compositeEngine.execute(apiContext).then(ok => {
       return callback(null, ok);
     }, callback);
   }
 
-  function getCollectionAndFilter(token, options, githubClientMethod, propertiesToKeep) {
+  private getCollectionAndFilter(token: string, options, cacheOptions: IPagedCacheOptions, githubClientMethod, propertiesToKeep) {
+    const capturedThis = this;
     return function (token, options) {
-      return getFilteredGithubCollectionWithMetadataAnalysis(token, githubClientMethod, options, propertiesToKeep);
+      return capturedThis.getFilteredGithubCollectionWithMetadataAnalysis(token, githubClientMethod, options, cacheOptions, propertiesToKeep);
     };
   }
 
-  function generalizedCollectionWithFilter(name, githubClientMethod, propertiesToKeep, token, options, cacheOptions, callback) {
-    return generalizedCollectionMethod(token, name, getCollectionAndFilter(token, options, githubClientMethod, propertiesToKeep), options, cacheOptions, createCallbackFlattenData(callback));
+  private generalizedCollectionWithFilter(name, githubClientMethod, propertiesToKeep, token, options, cacheOptions: IPagedCacheOptions, callback) {
+    return this.generalizedCollectionMethod(token, name, this.getCollectionAndFilter(token, options, cacheOptions, githubClientMethod, propertiesToKeep), options, cacheOptions, createCallbackFlattenData(callback));
   }
-
-  return {
-    getOrgRepos: function getOrgRepos(token, options, cacheOptions, callback) {
-      return generalizedCollectionWithFilter('orgRepos', 'repos.listForOrg', repoDetailsToCopy, token, options, cacheOptions, callback);
-    },
-    getOrgTeams: function getOrgTeams(token, options, cacheOptions, callback) {
-      return generalizedCollectionWithFilter('orgTeams', 'teams.list', teamDetailsToCopy, token, options, cacheOptions, (xxx, eee) => {
-        return callback(xxx, eee);
-      });
-    },
-    getOrgMembers: function getOrgMembers(token, options, cacheOptions, callback) {
-      return generalizedCollectionWithFilter('orgMembers', 'orgs.listMembers', memberDetailsToCopy, token, options, cacheOptions, callback);
-    },
-    getRepoTeams: function getRepoTeams(token, options, cacheOptions, callback) {
-      return generalizedCollectionWithFilter('repoTeamPermissions', 'repos.listTeams', teamPermissionsToCopy, token, options, cacheOptions, callback);
-    },
-    getRepoCollaborators: function getRepoCollaborators(token, options, cacheOptions, callback) {
-      return generalizedCollectionWithFilter('repoCollaborators', 'repos.listCollaborators', memberDetailsToCopy, token, options, cacheOptions, callback);
-    },
-    getRepoBranches: function getRepoBranches(token, options, cacheOptions, callback) {
-      return generalizedCollectionWithFilter('repoBranches', 'repos.listBranches', branchDetailsToCopy, token, options, cacheOptions, callback);
-    },
-    getTeamMembers: function getTeamMembers(token, options, cacheOptions, callback) {
-      return generalizedCollectionWithFilter('teamMembers', 'teams.listMembers', memberDetailsToCopy, token, options, cacheOptions, callback);
-    },
-    getTeamRepos: function getTeamRepos(token, options, cacheOptions, callback) {
-      return generalizedCollectionWithFilter('teamRepos', 'teams.listRepos', teamRepoPermissionsToCopy, token, options, cacheOptions, callback);
-    },
-  };
 }
-
-module.exports = createIntelligentMethods;

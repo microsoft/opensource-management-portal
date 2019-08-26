@@ -85,15 +85,34 @@ footer
           h5(class='pull-right')
             a(href='#top', title=headSha) Back to top
 
+    if config && config.continuousDeployment
+      .row.small
+        .col-sm-6.col-md-6.col-lg-6
+          ul.list-inline(style='margin-top: 8px')
+            if config.continuousDeployment.version
+              li= 'v' + config.continuousDeployment.version
+            //- if config.continuousDeployment.commitId
+              li= config.continuousDeployment.commitId
+            if config.continuousDeployment.build
+              li= 'Build ' + config.continuousDeployment.build
+            if config.continuousDeployment.release
+              li= 'Release ' + config.continuousDeployment.release
+
+    if config && config.corporate && config.corporate.trainingResources && config.corporate.trainingResources['legal-notices']
+      - let notices = config.corporate.trainingResources['legal-notices']
+      .row.small
+        .col-sm-6.col-md-6.col-lg-6
+          ul.list-unstyled(style='margin-top: 8px')
+            each noticeEntry in notices
+              li: strong: a(href=noticeEntry.link)= noticeEntry.title
+
     .row.small
       .col-sm-6.col-md-6.col-lg-6
         .clearfix
-          ul.list-inline(style='margin-bottom: 0px')
-            if config && config.brand && config.brand.supportMail
-              li
-                a(href='mailto:' + config.brand.supportMail) Contact site administrator
-              li
-                a(href='https://github.com/microsoft/opensource-portal', target='_new') &nbsp;&nbsp;Contribute to this site on GitHub
+          if config && config.brand && config.brand.supportMail
+            ul.list-inline(style='margin-bottom: 0px')
+              li: a(href='mailto:' + config.brand.supportMail) Contact site administrator
+              li: a(href='https://github.com/microsoft/opensource-portal', target='_new') Contribute to this site on GitHub
         if serverName && correlationId
           | Powered by&nbsp;
           a(href='/thanks') great open source,&nbsp;

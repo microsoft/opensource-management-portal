@@ -18,6 +18,33 @@ export enum FixedQueryType {
   // Tokens
   TokensByCorporateId,
   TokensGetAll,
+  // Key extension keys
+  LocalExtensionKeysGetAll,
+  // Orgs
+  OrganizationMemberCacheGetAll,
+  OrganizationMemberCacheByOrganizationId,
+  OrganizationMemberCacheByUserId,
+  // Repo cache
+  RepositoryCacheGetAll,
+  RepositoryCacheGetByOrganizationId,
+  // Repo collaborator cache
+  RepositoryCollaboratorCacheGetAll,
+  RepositoryCollaboratorCacheByOrganizationId,
+  RepositoryCollaboratorCacheByRepositoryId,
+  RepositoryCollaboratorCacheByUserId,
+  // Repository team cache
+  RepositoryTeamCacheGetAll,
+  RepositoryTeamCacheByRepositoryId,
+  RepositoryTeamCacheByTeamId,
+  RepositoryTeamCacheByOrganizationId,
+  // Team cache
+  TeamCacheGetAll,
+  TeamCacheGetByOrganizationId,
+  // Team member cache
+  TeamMemberCacheGetAll,
+  TeamMemberCacheGetByOrganizationId,
+  TeamMemberCacheGetByUserId,
+  TeamMemberCacheGetByTeamId,
 }
 
 export interface IEntityMetadataFixedQuery {
