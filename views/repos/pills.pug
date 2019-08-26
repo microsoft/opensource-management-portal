@@ -1,0 +1,9 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+.row: .col-md-12(style='margin-bottom: 32px; margin-top: 16px')
+  ul.nav.nav-tabs
+    li(role='presentation', class={active: !reposSubView || reposSubView === 'default'}): a(href=repository.baseUrl) Overview
+    li(role='presentation', class={active: reposSubView === 'permissions'}): a(href=repository.baseUrl + 'permissions/') Permissions

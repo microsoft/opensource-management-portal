@@ -25,7 +25,7 @@
 const onlySupportedThirdPartyType = 'github';
 
 import { v4 as uuidV4 } from 'uuid';
-import { InnerError } from "../../../transitional";
+import { InnerError, ICallback } from "../../../transitional";
 
 import { ICorporateLinkProperties, ICorporateLink, ICorporateLinkExtended } from "../../../business/corporateLink";
 
@@ -89,7 +89,7 @@ export interface ILinkProvider {
   getByThirdPartyId(id: string, callback);
   queryByCorporateId(id: string, callback);
   queryByCorporateUsername(username: string, callback);
-  getAll(callback);
+  getAll(callback: ICallback<ICorporateLink[]>);
 
   createLink(link: ICorporateLink, callback: (error: any, newLinkId: string) => void): void;
   updateLink(linkInstance: ICorporateLink, callback);

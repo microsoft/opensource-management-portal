@@ -11,13 +11,18 @@ import _ from 'lodash';
 import async from 'async';
 
 import { Operations } from './operations';
-import { ICacheOptions } from '../transitional';
+import { ICacheOptions, IReposError } from '../transitional';
 import * as common from './common';
 
 import { wrapError } from '../utils';
 import { ILinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
 import { ICorporateLink } from './corporateLink';
-import { Organization } from './organization';
+import { Organization, OrganizationMembershipState } from './organization';
+
+interface IRemoveOrganizationMembershipsResult {
+  error?: IReposError;
+  history: string[];
+}
 
 const primaryAccountProperties = [
   'id',
@@ -133,29 +138,16 @@ export class Account {
 
   // End previous functions
 
-  getDetailsAndLink(options, callback?) {
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    this.getDetailsAndLinkAsync(options).then(empty => {
-      return callback ? callback(null, empty) : undefined;
-    }).catch(getDetailsError => {
-      return callback ? callback(getDetailsError) : undefined;
-    });
-  }
-
-  async getDetailsAndLinkAsync(options): Promise<Account> {
+  async getDetailsAndLink(options?: ICacheOptions): Promise<Account> {
     try {
-      await this.getDetailsAsync(options || {});
+      await this.getDetails(options || {});
     } catch (getDetailsError) {
       // If a GitHub account is deleted, this would fail
       console.dir(getDetailsError);
     }
-
     const operations = this._operations;
     try {
-      let link: ICorporateLink = await operations.getLinkWithOverheadAsync(this._id, options || {});
+      let link: ICorporateLink = await operations.getLinkWithOverhead(this._id, options || {});
       if (link) {
         this._link = link;
       }
@@ -166,17 +158,17 @@ export class Account {
     return this;
   }
 
-  async getDetailsAndDirectLinkAsync(): Promise<Account> {
+  async getDetailsAndDirectLink(): Promise<Account> {
     // Instead of using the 'overhead' method (essentially cached, but from all links),
     // this uses the provider directly to ensure an accurate immediate, but by-individual
     // call. Most useful for verified results or when terminating accounts.
     try {
-      await this.getDetailsAsync({});
+      await this.getDetails();
     } catch (getDetailsError) {
       // If a GitHub account is deleted, this would fail
+      // TODO: should this throw then?
       console.dir(getDetailsError);
     }
-
     const operations = this._operations;
     try {
       let link = await operations.getLinkByThirdPartyId(this._id);
@@ -191,64 +183,39 @@ export class Account {
     return this;
   }
 
-  // FYI: TODO: replace or reimplement removed former function: updateLink(newLink, callback)
-
-  getDetails(options, callback?) {
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    options = options || {};
-    const self = this;
-    const token = this._getCentralOperationsToken();
-    const operations = this._operations;
-    const id = this._id;
-    if (!id) {
-      return callback(new Error('Must provide a GitHub user ID to retrieve account information.'));
-    }
-    const parameters = {
-      id: id,
-    };
-    const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.accountDetailStaleSeconds,
-    };
-    if (options.backgroundRefresh !== undefined) {
-      cacheOptions.backgroundRefresh = options.backgroundRefresh;
-    }
-    return operations.github.request(token, 'GET /user/:id', parameters, cacheOptions, (error, entity) => {
-      if (error && error.code && error.code === 404) {
-        error = new Error(`The GitHub user ID ${id} could not be found (or was deleted)`);
-        error.code = 404;
-        return callback(error);
-      } else if (error) {
-        return callback(wrapError(error, `Could not get details about account "${id}".`));
-      }
-      common.assignKnownFieldsPrefixed(self, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
-      callback(null, entity);
-    });
-  }
-
-  getDetailsAsync(options): Promise<any> {
+  getDetails(options?: ICacheOptions): Promise<any> {
     return new Promise((resolve, reject) => {
-      this.getDetails(options, (error, entity) => {
-        return error ? reject(error) : resolve(entity);
+      options = options || {};
+      const token = this._getCentralOperationsToken();
+      const operations = this._operations;
+      const id = this._id;
+      if (!id) {
+        return reject(new Error('Must provide a GitHub user ID to retrieve account information.'));
+      }
+      const parameters = {
+        id,
+      };
+      const cacheOptions: ICacheOptions = {
+        maxAgeSeconds: options.maxAgeSeconds || operations.defaults.accountDetailStaleSeconds,
+      };
+      if (options.backgroundRefresh !== undefined) {
+        cacheOptions.backgroundRefresh = options.backgroundRefresh;
+      }
+      return operations.github.request(token, 'GET /user/:id', parameters, cacheOptions, (error, entity) => {
+        if (error && error.code && error.code === 404) {
+          error = new Error(`The GitHub user ID ${id} could not be found (or was deleted)`);
+          error.code = 404;
+          return reject(error);
+        } else if (error) {
+          return reject(wrapError(error, `Could not get details about account ID ${id}: ${error.message}`));
+        }
+        common.assignKnownFieldsPrefixed(this, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
+        return resolve(entity);
       });
     });
   }
 
-  removeLink(callback) {
-    const id = this._id;
-    if (!id) {
-      return callback(new Error('No user id known'));
-    }
-    this.removeLinkAsync().then(results => {
-      return callback(null, results);
-    }).catch(error => {
-      return callback(error);
-    });
-  }
-
-  async removeLinkAsync(): Promise<any> {
+  async removeLink(): Promise<any> {
     const operations = this._operations;
     const linkProvider = operations.linkProvider as ILinkProvider;
     if (!linkProvider) {
@@ -256,7 +223,7 @@ export class Account {
     }
     const id = this._id;
     try {
-      await this.getDetailsAndDirectLinkAsync();
+      await this.getDetailsAndDirectLink();
     } catch (getDetailsError) {
       // We ignore any error to make sure link removal always works
       const insights = this._operations.insights;
@@ -303,80 +270,62 @@ export class Account {
     return history;
   }
 
-  // temporarily poor name going async
-  removeManagedOrganizationMembershipsAsync(): Promise<any> {
-    return new Promise((resolve, reject) => {
-      this.removeManagedOrganizationMemberships((error, history) => {
-        return error ? reject(error) : resolve(history);
-      });
-    });
-  }
-
   // TODO: implement getOrganizationMemberships, with caching; reuse below code
 
-  getOperationalOrganizationMemberships(callback) {
-    const self = this;
-    const operations = self._operations as Operations;
-    const organizations = operations.organizations;
-    // we want to make sure that we have an ID and username
-    self.getDetails(getDetailsError => {
-      if (getDetailsError) {
-        return callback(getDetailsError);
-      }
-      const username = self._login;
-      if (!username) {
-        return callback(new Error(`No GitHub username available for user ID ${self._id}`));
-      }
-      let currentOrganizationMemberships = [];
-      async.eachLimit(organizations.values(), 2, (organization: Organization, next) => {
-        organization.getOperationalMembership(username, (getMembershipError, result) => {
-          // getMembershipError is ignored - if there is no membership, that's fine
-          if (result && result.state && (result.state === 'active' || result.state === 'pending')) {
-            currentOrganizationMemberships.push(organization);
-          }
-          return next(/* we do not pass the error */);
-        });
-      }, error => {
-        return callback(error ? error : null, error ? null : currentOrganizationMemberships);
-      });
-    });
+  async getOperationalOrganizationMemberships(): Promise<Organization[]> {
+    const operations = this._operations;
+    await this.getDetails();
+    const username = this._login; // we want to make sure that we have an ID and username
+    if (!username) {
+      throw new Error(`No GitHub username available for user ID ${this._id}`);
+    }
+    let currentOrganizationMemberships = [];
+    for (let organization of operations.organizations.values()) {
+      try {
+        const result = await organization.getOperationalMembership(username);
+        if (result && result.state && (result.state === OrganizationMembershipState.Active || result.state === OrganizationMembershipState.Pending)) {
+          currentOrganizationMemberships.push(organization);
+        }
+      } catch (ignoreErrors) {
+         // getMembershipError ignored: if there is no membership that's fine
+        }
+    }
+    return currentOrganizationMemberships;
   }
 
-  removeManagedOrganizationMemberships(callback) {
-    const self = this;
+  async removeManagedOrganizationMemberships(): Promise<IRemoveOrganizationMembershipsResult> {
     const history = [];
-    self.getOperationalOrganizationMemberships((error, organizations) => {
-      const username = self._login;
-      if (error && error.code == /* loose */ '404') {
-        history.push(error.toString());
-      } else if (error) {
-        history.push(`Could get not org membership information because: ${error.toString()}`);
-        return callback(error);
+    let error: IReposError = null;
+    let organizations: Organization[];
+    try {
+      organizations = await this.getOperationalOrganizationMemberships();
+    } catch (getMembershipError) {
+      if (getMembershipError && getMembershipError.code == /* loose */ '404') {
+        history.push(getMembershipError.toString());
+      } else if (getMembershipError) {
+        throw getMembershipError;
       }
-      if (organizations && organizations.length > 1) {
-        const asText = _.map(organizations, org => { return org.name; }).join(', ');
-        history.push(`${username} is a member of the following organizations: ${asText}`);
-      } else if (organizations) {
-        history.push(`${username} is not a member of any managed organizations`);
+    }
+    const username = this._login;
+    if (organizations && organizations.length > 1) {
+      const asText = _.map(organizations, org => { return org.name; }).join(', ');
+      history.push(`${username} is a member of the following organizations: ${asText}`);
+    } else if (organizations) {
+      history.push(`${username} is not a member of any managed organizations`);
+    }
+    for (let i = 0; i < organizations.length; i++) {
+      const organization = organizations[i];
+      try {
+        await organization.removeMember(username);
+        history.push(`Removed ${username} from the ${organization.name} organization`);
+      } catch (removeError) {
+        history.push(`Error while removing ${username} from the ${organization.name} organization: ${removeError}`);
+        if (!error) {
+          error = removeError;
+        }
       }
-      let firstError = null;
-      async.eachLimit(organizations, 1, (organization: Organization, next) => {
-        organization.removeMember(username, removeError => {
-          // We do not bubble up the error, keep going
-          if (removeError) {
-            history.push(`Error while removing ${username} from the ${organization.name} organization: ${removeError}`);
-          } else {
-            history.push(`Removed ${username} from the ${organization.name} organization`);
-          }
-          if (removeError && !firstError) {
-            firstError = removeError;
-          }
-          return next();
-        });
-      }, error => {
-        return callback(firstError || error, history);
-      });
-    });
+    }
+    return { history, error };
   }
 }
 

@@ -7,7 +7,7 @@
 
 'use strict';
 
-import moment = require('moment');
+import moment from 'moment';
 
 // When teams are added or removed on GitHub, refresh the organization's list of
 // teams as well as the cross-organization view of the teams.

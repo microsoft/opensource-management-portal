@@ -7,7 +7,7 @@
 
 'use strict';
 
-import moment = require('moment');
+import moment from 'moment';
 
 // Kill bit if this takes more than 90 minutes
 setTimeout(() => {

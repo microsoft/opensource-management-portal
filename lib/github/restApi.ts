@@ -7,10 +7,10 @@
 
 'use strict';
 
-const _ = require('lodash');
+import _ from 'lodash';
 const debug = require('debug')('oss-github');
 const debugCacheOptimization = require('debug')('oss-cache-optimization');
-import moment = require('moment');
+import moment from 'moment';
 
 const querystring = require('querystring');
 const semver = require('semver');
@@ -323,61 +323,6 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
 
 }
 
-export function wrapCreatePage(libraryContext, github, kind, isExtended: boolean = false) {
-  if (isExtended) {
-    return function(pageAwareTypeInformation, token, link, callback) {
-      getPage(libraryContext, github, token, link, kind, callback, pageAwareTypeInformation);
-    };
-  }
-  return function(token, link, callback) {
-    getPage(libraryContext, github, token, link, kind, callback);
-  };
-}
-
-function getPage(libraryContext: ILibraryContext, github, token: string, link, which: string, callback, pageAwareTypeInformation?: any) {
-  const url = getPageLink(github, link, which);
-  if (!url) {
-    return callback(new Error('No GitHub collection link was present in the response.'));
-  }
-  const apiContext = prepareApiContextForGithub(createApiContextFromLink(github, url), github);
-  apiContext.overrideToken(token);
-  apiContext.libraryContext = libraryContext;
-  if (pageAwareTypeInformation) {
-    apiContext.pageAwareTypeInformation = pageAwareTypeInformation;
-  }
-
-  const engine = libraryContext.githubEngine as IntelligentGitHubEngine;
-  if (!engine) {
-    return callback(new Error('No available GitHub engine'));
-  }
-  engine.execute(apiContext).then(ok => {
-    return callback(null, ok);
-  }, callback);
-}
-
-function getPageLink(github, link, which) {
-  let method = null;
-  switch (which) {
-  case 'next':
-    method = github.hasNextPage;
-    break;
-  case 'prev':
-    method = github.hasPreviousPage;
-    break;
-  case 'last':
-    method = github.hasLastPage;
-    break;
-  case 'first':
-    method = github.hasFirstPage;
-    break;
-  default:
-    return null;
-  }
-  if (method) {
-    return method.call(github, link);
-  }
-}
-
 export class GitHubApiContext extends ApiContext {
   private _apiMethod: any;
   private _redisKeys: IApiContextRedisKeys;
@@ -469,43 +414,6 @@ export function createFullContext(api: any, options: any, github: any, libraryCo
 
 function createApiContextForGithub(api: any, options: any): GitHubApiContext {
   const apiContext = new GitHubApiContext(api, options);
-  return apiContext;
-}
-
-function createApiContextFromLink(github, linkAddress) {
-  const api = 'getPage';
-  const link = url.parse(linkAddress);
-  const qs = querystring.parse(link.query);
-  const pathArray = _.compact(link.pathname.split('/'));
-
-  // Translate the path into key/value pairs
-  const options: IHackyOptions = {};
-  if (/* odd # */ pathArray.length % 2 !== 0) {
-    options.t = pathArray.pop();
-  }
-  while (pathArray.length > 0) {
-    const value = pathArray.pop();
-    const key = pathArray.pop();
-    options[key] = value;
-  }
-
-  // If an access_token is provided to the query string, then it is present in
-  // the link. The trouble is this would lead to the need to encrypt Redis,
-  // which is not great. Let's block this here and just use headers for auth.
-  if (qs.access_token) {
-    throw new Error('For security purposes this library was unable to process the provided link.');
-  }
-
-  // Merge query string pairs
-  Object.assign(options, qs);
-  const apiContext = createApiContextForGithub(api, options);
-  // Use a fake link to call into the GitHub library via the "next page"
-  const fakeLink = {
-    link: `<${linkAddress}>; rel="next"`,
-  };
-  apiContext.fakeLink = fakeLink;
-  github.getNextPage.thisInstance = github; // hack! - single instance only works
-  apiContext.overrideApiMethod(github.getNextPage);
   return apiContext;
 }
 

@@ -5,6 +5,8 @@
 
 'use strict';
 
+const debug = require('debug')('pg');
+
 import { InnerError } from "../transitional";
 
 export function PostgresPoolQuerySingleRow(pool, sql: string, values: any[], callback) {
@@ -50,8 +52,8 @@ export function PostgresPoolQuery(pool, sql: string, values: any[], callback) {
     if (connectError) {
       return callback(connectError);
     }
-    console.log(sql);
-    console.dir(values);
+    debug(sql);
+    debug(values);
     client.query(sql, values, function (queryError, results) {
       release();
       if (queryError) {

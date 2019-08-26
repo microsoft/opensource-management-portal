@@ -3,20 +3,20 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-// TODO: BEFORE PROD: this is out of date and still using legacy context
-
-import express = require('express');
+import express from 'express';
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import async = require('async');
+import async from 'async';
 
-import { IReposError, ReposAppRequest, IProviders } from '../transitional';
-import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';
-import { TeamJoinApprovalEntity } from '../entities/teamJoinApproval/teamJoinApproval';
-import { safeLocalRedirectUrl } from '../utils';
+import { IReposError, ReposAppRequest, IProviders } from '../../transitional';
+import { IApprovalProvider } from '../../entities/teamJoinApproval/approvalProvider';
+import { TeamJoinApprovalEntity } from '../../entities/teamJoinApproval/teamJoinApproval';
+import { safeLocalRedirectUrl } from '../../utils';
+import { Operations } from '../../business/operations';
 
-router.get('/', function (req: ReposAppRequest, res, next) {
-  const operations = req.app.settings.providers.operations;
+router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
+  const operations = req.app.settings.providers.operations as Operations;
   const approvalProvider = req.app.settings.providers.approvalProvider as IApprovalProvider;
   if (!approvalProvider) {
     return next(new Error('No approval provider instance available'));
@@ -25,74 +25,75 @@ router.get('/', function (req: ReposAppRequest, res, next) {
   req.individualContext.webContext.pushBreadcrumb('Requests');
   // CONSIDER: Requests on GitHub.com should be shown, too, now that that's integrated in many cases
   const id = req.individualContext.getGitHubIdentity().id;
-  operations.getUserContext(id).getAggregatedOverview((overviewWarning, overview) => {
-    if (overviewWarning) {
-      return next(overviewWarning);
-    }
-    async.parallel({
-      ownedTeams: function (callback) {
-        const ownedTeams = overview.teams.maintainer;
-        if (ownedTeams && ownedTeams.length && ownedTeams.length > 0) {
-          approvalProvider.queryPendingApprovalsForTeams(ownedTeams).catch(getPendingApprovalsError => {
-            return callback(getPendingApprovalsError);
-          }).then((appvs: any) => {
-            async.each(appvs, function (approval: any, cb) {
-              const teamFromRequest = approval.teamid;
-              if (teamFromRequest) {
-                const requestTeamId = parseInt(teamFromRequest, 10);
-                operations.getTeamById(requestTeamId, (getTeamError, teamInstance) => {
-                  approval._teamInstance = teamInstance;
-                  cb(getTeamError);
-                });
-              } else {
-                cb();
-              }
-            }, function (iterationError) {
-              callback(iterationError, appvs);
-            });
+  const overview = await operations.getUserContext(id).getAggregatedOverview();
+  async.parallel({
+    ownedTeams: function (callback) {
+      const ownedTeams = overview.teams.maintainer;
+      if (ownedTeams && ownedTeams.length && ownedTeams.length > 0) {
+        const ownedTeamIds = ownedTeams.map((teamEntity: any) => { return teamEntity.id; });
+        approvalProvider.queryPendingApprovalsForTeams(ownedTeamIds).catch(getPendingApprovalsError => {
+          return callback(getPendingApprovalsError);
+        }).then((appvs: any) => {
+          async.each(appvs, function (approval: any, cb) {
+            const teamFromRequest = approval.teamid;
+            if (teamFromRequest) {
+              const requestTeamId = parseInt(teamFromRequest, 10);
+              return operations.getTeamById(teamFromRequest).then(teamInstance => {
+                approval._teamInstance = teamInstance;
+                return callback();
+              }).catch(getTeamError => {
+                return cb(getTeamError);
+              });
+            } else {
+              return cb();
+            }
+          }, function (iterationError) {
+            callback(iterationError, appvs);
           });
-        } else {
-          callback();
-        }
-      },
-      requestsUserMade: function (callback) {
-        // CONSIDER: Need to hydrate with _teamInstance just like above...
-        approvalProvider.queryPendingApprovalsForThirdPartyId(id).catch(error => {
-          return callback(error);
-        }).then((approvals: any) => {
-          return callback(null, approvals);
         });
+      } else {
+        callback();
       }
-    }, function (error, results) {
+    },
+    requestsUserMade: function (callback) {
+      // CONSIDER: Need to hydrate with _teamInstance just like above...
+      approvalProvider.queryPendingApprovalsForThirdPartyId(id).catch(error => {
+        return callback(error);
+      }).then((approvals: any) => {
+        return callback(null, approvals);
+      });
+    }
+  }, function (error, results) {
+    if (error) {
+      return next(error);
+    }
+    async.each(results.requestsUserMade as any, function (request: TeamJoinApprovalEntity, cb) {
+      const teamFromRequest = request.teamId;
+      if (teamFromRequest) {
+        return operations.getTeamById(teamFromRequest).then(teamInstance => {
+          request['_teamInstance'] = teamInstance; // hack, directly storing instance on top
+          return cb();
+        }).catch(err => {
+          return cb(err);
+        });
+      } else {
+        return cb();
+      }
+    }, function (error) {
       if (error) {
         return next(error);
       }
-      async.each(results.requestsUserMade as any, function (request: TeamJoinApprovalEntity, cb) {
-        const teamFromRequest = request.teamId;
-        if (teamFromRequest) {
-          operations.getTeamById(teamFromRequest, (err, teamInstance) => {
-            request['_teamInstance'] = teamInstance; // hack, directly storing instance on top
-            cb(err);
-          });
-        } else {
-          cb();
-        }
-      }, function (error) {
-        if (error) {
-          return next(error);
-        }
-        req.individualContext.webContext.render({
-          view: 'org/approvals',
-          title: 'Review My Approvals',
-          state: {
-            teamResponsibilities: results.ownedTeams,
-            usersRequests: results.requestsUserMade,
-          },
-        });
+      req.individualContext.webContext.render({
+        view: 'settings/approvals',
+        title: 'Review My Approvals',
+        state: {
+          teamResponsibilities: results.ownedTeams,
+          usersRequests: results.requestsUserMade,
+        },
       });
     });
   });
-});
+}));
 
 router.post('/:requestid/cancel', function (req: ReposAppRequest, res, next) {
   const operations = req.app.settings.providers.operations;
@@ -115,7 +116,7 @@ router.post('/:requestid/cancel', function (req: ReposAppRequest, res, next) {
           return next(error);
         }
       }).then(unused => {
-        return res.redirect(safeReturnUrl || '/approvals/');
+        return res.redirect(safeReturnUrl || '/settings/approvals/');
       });
     } else {
       return next(new Error('You are not authorized to cancel this request.'));

@@ -5,21 +5,23 @@
 
 'use strict';
 
-const _ = require('lodash');
 import express = require('express');
-import { ReposAppRequest } from '../../../transitional';
+import asyncHandler from 'express-async-handler';
+
+import _ from 'lodash';
+import { ReposAppRequest, IProviders } from '../../../transitional';
 import { jsonError } from '../../../middleware/jsonError';
 import { IndividualContext } from '../../../business/context2';
 import { Organization } from '../../../business/organization';
 import { CreateRepositoryCallback } from '../createRepo';
+import { Team } from '../../../business/team';
+import { GetAddressFromUpnAsync } from '../../../lib/mailAddressProvider';
 
 const router = express.Router();
 
-const createRepo = require('../createRepo');
-
 interface ILocalApiRequest extends ReposAppRequest {
   apiVersion?: string;
-  organization?: any;
+  organization?: Organization;
   knownRequesterMailAddress?: any;
 }
 
@@ -41,17 +43,21 @@ router.get('/personalizedTeams', (req: ILocalApiRequest, res, next) => {
   const operations = req.app.settings.providers.operations;
   const id = req.apiContext.getGitHubIdentity().id;
   const uc = operations.getUserContext(id);
-  let maintainedTeams = new Set();
-  const broadTeams = new Set(req.organization.broadAccessTeams);
+  let maintainedTeams = new Set<string>(); // TODO: validaet whether number or string
+  const broadTeams = new Set<number>(req.organization.broadAccessTeams);
   uc.getTeamMemberships('maintainer').then(mt => {
     mt.forEach(maintainedTeam => {
       maintainedTeams.add(maintainedTeam.id);
     });
     return uc.getTeamMemberships();
   }).then(teams => {
-    _.remove(teams, team => {
-      return team.organization.login.toLowerCase() !== orgName;
+    _.remove(teams, (team: Team) => {
+      // TODO: verify if it is name or login
+      const oo = team.organization as any;
+      const ooName = oo.login || oo.name;
+      return ooName.toLowerCase() !== orgName; // return team.organization.login.toLowerCase() !== orgName;
     });
+    // TODO: is this ok to modify this way!?!?!?!?
     teams.forEach(team => {
       delete team.organization;
       delete team.slug;
@@ -68,7 +74,7 @@ router.get('/personalizedTeams', (req: ILocalApiRequest, res, next) => {
   });
 });
 
-router.get('/teams', (req: ILocalApiRequest, res, next) => {
+router.get('/teams', asyncHandler(async (req: ILocalApiRequest, res, next) => {
   // By default, allow a 30-second old list of teams. If the cached
   // view is older, refresh this list in the background for use if
   // they refresh for a better user experience.
@@ -85,67 +91,72 @@ router.get('/teams', (req: ILocalApiRequest, res, next) => {
     caching.maxAgeSeconds = 10;
   }
 
-  req.organization.getTeams((getTeamsError, teams) => {
-    if (getTeamsError) {
-      return next(jsonError(getTeamsError, 400));
-    }
+  try {
+    const teams = await req.organization.getTeams();
     const broadTeams = new Set(req.organization.broadAccessTeams);
     const simpleTeams = teams.map(team => {
       const t = team.toSimpleJsonObject();
       if (broadTeams.has(t.id)) {
-        t.broad = true;
+        t['broad'] = true;
       }
       return t;
     });
     res.json({
       teams: simpleTeams,
     });
-  });
-});
+  } catch (getTeamsError) {
+    return next(jsonError(getTeamsError, 400));
+  }
+}));
 
-router.get('/repo/:repo', (req: ILocalApiRequest, res) => {
+router.get('/repo/:repo', asyncHandler(async (req: ILocalApiRequest, res) => {
   const repoName = req.params.repo;
-  req.organization.repository(repoName).getDetails((error, repo) => {
-    error ? res.status(404).end() : res.json(repo);
-    req.app.settings.providers.insights.trackEvent({
-      name: 'ApiClientNewRepoValidateAvailability',
-      properties: {
-        found: error ? true : false,
-        repoName: repoName,
-        org: req.organization.name,
-      },
-    });
+  let error = null;
+  try {
+    const repo = await req.organization.repository(repoName).getDetails();
+    res.json(repo);
+  } catch (repoDetailsError) {
+    res.status(404).end();
+    error = repoDetailsError;
+  }
+  req.app.settings.providers.insights.trackEvent({
+    name: 'ApiClientNewRepoValidateAvailability',
+    properties: {
+      found: error ? true : false,
+      repoName,
+      org: req.organization.name,
+    },
   });
-});
+}));
 
-function discoverUserIdentities(req: ReposAppRequest, res, next) {
+async function discoverUserIdentities(req: ReposAppRequest, res, next) {
   const apiContext = req.apiContext as IndividualContext;
+  const providers = req.app.settings.providers as IProviders;
+  const mailAddressProvider = providers.mailAddressProvider;
   // Try and also learn if we know their e-mail address to send the new repo mail to
   const upn = apiContext.corporateIdentity.username;
-  const mailAddressProvider = req.app.settings.providers.mailAddressProvider;
-  mailAddressProvider.getAddressFromUpn(upn, (resolveError, mailAddress) => {
-    if (!resolveError && mailAddress) {
+  try {
+    const mailAddress = await GetAddressFromUpnAsync(mailAddressProvider, upn);
+    if (mailAddress) {
       req['knownRequesterMailAddress'] = mailAddress;
     }
-    return next();
-  });
+  } catch (ignoredError) { /* ignored */ }
+  return next();
 }
 
-router.post('/repo/:repo', discoverUserIdentities, (req: ILocalApiRequest, res, next) => {
+router.post('/repo/:repo', asyncHandler(discoverUserIdentities), (req: ILocalApiRequest, res, next) => {
+  const config = req.app.settings.runtimeConfig;
   const body = req.body;
   if (!body) {
     return next(jsonError('No body', 400));
   }
   req.apiVersion = req.query['api-version'] || req.headers['api-version'] || '2017-07-27';
 
-  const config = req.app.settings.runtimeConfig;
-
   if (req.apiContext && req.apiContext.getGitHubIdentity()) {
     body['ms.onBehalfOf'] = req.apiContext.getGitHubIdentity().username;
   }
 
   // these fields do not need translation: name, description, private
-
   const approvalTypesToIds = config.github.approvalTypes.fields.approvalTypesToIds;
   if (!approvalTypesToIds[body.approvalType]) {
     return next(jsonError('The approval type is not supported or approved at this time', 400));

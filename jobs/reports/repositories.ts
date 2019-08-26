@@ -7,14 +7,16 @@
 
 'use strict';
 
-const _ = require('lodash');
+import _ from 'lodash';
 const automaticTeams = require('../../webhooks/tasks/automaticTeams');
-import moment = require('moment');
+import moment from 'moment';
 import Q from 'q';
 import { Repository } from '../../business/repository';
 import { requireJson } from '../../utils';
 import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { Operations } from '../../business/operations';
+import { Organization } from '../../business/organization';
 const qlimit = require('qlimit');
 const querystring = require('querystring');
 
@@ -699,27 +701,11 @@ function augmentWithAdditionalRecipients(context, repositoryContext, createdByLi
   return deferred.promise;
 }
 
-function getIdFromUsername(context, organization, username) {
+async function getIdFromUsername(context, organization: Organization, username: string): Promise<string> {
   // Depends on this being a current member of an org
-  const operations = context.operations;
-  const deferred = Q.defer();
-  const cacheOptions = {
-    backgroundRefresh: true,
-    maxAgeSeconds: 60 * 60 * 24 * 7 /* 1 week */,
-  };
-  operations.getMembers(organization.name, cacheOptions, (error, members) => {
-    if (error) {
-      return deferred.reject(error);
-    }
-    const match = username.toLowerCase();
-    for (let i = 0; i < members.length; i++) {
-      if (members[i].login && members[i].login.toLowerCase() === match) {
-        return deferred.resolve(members[i].id);
-      }
-    }
-    return deferred.reject();
-  });
-  return deferred.promise;
+  const operations = context.operations as Operations;
+  const account = await operations.getAccountByUsername(username);
+  return account.id;
 }
 
 interface IReportEntry {
@@ -853,19 +839,13 @@ function getRepositoryDirectCollaborators(repository) {
   return deferred.promise;
 }
 
-function getRepos(context) {
-  const deferred = Q.defer();
-  const operations = context.operations;
-  operations.getRepos((error, repos) => {
-    if (error) {
-      return deferred.reject(error);
-    }
-    context.entities.repos = repos.sort((a, b) => {
-      return a.full_name.localeCompare(b.full_name, 'en', {'sensitivity': 'base'});
-    });
-    return deferred.resolve(context);
+async function getRepos(context): Promise<any> {
+  const operations = context.operations as Operations;
+  const repos = await operations.getRepos();
+  context.entities.repos = repos.sort((a, b) => {
+    return a.full_name.localeCompare(b.full_name, 'en', {'sensitivity': 'base'});
   });
-  return deferred.promise;
+  return context;
 }
 
 function createUserEntry(basics) {

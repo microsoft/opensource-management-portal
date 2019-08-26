@@ -53,7 +53,6 @@ router.use('/', function (req: ReposAppRequest, res, next) {
 router.use((req: IRequestHacked, res, next) => {
   const individualContext = req.individualContext as IndividualContext;
   const providers = req.app.settings.providers;
-  const operations = providers.operations;
   const insights = providers.insights;
   const config = providers.config;
   let validateAndBlockGuests = false;
@@ -329,10 +328,6 @@ router.get('/reconnect', function (req: ReposAppRequest, res, next) {
       expectedUsername: ghi.username,
     },
   });
-});
-
-router.get('/update', function (req: ReposAppRequest, res, next) {
-  return next(wrapError(null, 'This feature and experience is not longer available. Please report this to the support e-mail to understand your scenario better.', true));
 });
 
 module.exports = router;

@@ -50,7 +50,7 @@ block content
         if accountInfo.pendingApprovals && accountInfo.pendingApprovals.length && accountInfo.pendingApprovals.length > 0
           h2 Pending Approvals
           p
-            a.btn.btn-default(href='./approvals/') See all pending #{organization.name} approvals (#{accountInfo.pendingApprovals.length})
+            a.btn.btn-default(href='/settings/approvals/') See all pending #{organization.name} approvals (#{accountInfo.pendingApprovals.length})
         if accountInfo.organizationOverview.teams.maintainer
           h2.capitalize #{organization.name} Teams You Maintain
           script(type='text/javascript').

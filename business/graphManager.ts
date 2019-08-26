@@ -5,87 +5,72 @@
 
 'use strict';
 
-import moment = require('moment');
+import moment from 'moment';
+
 import { ICorporateLink } from './corporateLink';
+import { ICacheOptions, ILocalCacheOptions, IPagedCacheOptions, IPagedCrossOrganizationCacheOptions } from '../transitional';
+import { Operations } from './operations';
+
+interface ILocalLinksCache {
+  updated: moment.Moment;
+  map: Map<string, ICorporateLink>;
+}
 
 export class GraphManager {
-  private _operations: any;
-  private _linksCache: any;
+  private _operations: Operations;
+  private _linksCache: ILocalLinksCache;
 
-  constructor(operations, options) {
-    setRequiredProperties(this, ['github', 'config', 'redis', 'insights'], options);
+  constructor(operations) {
     this._operations = operations;
 
     return this;
   }
 
-  getCachedLink(githubId, options, callback?) {
+  async getCachedLink(githubId: string, options?: ILocalCacheOptions): Promise<ICorporateLink> {
     // Advice: this function is designed for efficiently at this time
     // and not ensuring a link, since it uses a cache system. For
     // making actual link calls, it would be best to use an alternate
     // call.
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = null;
-    }
     options = options || {};
-
     const localCacheMaxAgeSeconds = options.localMaxAgeSeconds || 30; // 30s
     const remoteCacheMaxAgeSeconds = options.maxAgeSeconds || 60; // 1m
     let backgroundRefresh = options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
-
-    getCachedLinksMap(this, localCacheMaxAgeSeconds, remoteCacheMaxAgeSeconds, backgroundRefresh, (error, map) => {
-      return error ? callback(error) : callback(null, map.get(githubId));
-    });
+    const map = await this.getCachedLinksMap(localCacheMaxAgeSeconds, remoteCacheMaxAgeSeconds, backgroundRefresh);
+    return map.get(githubId);
   }
 
-  getMember(githubId, options, callback) {
-    const self = this;
-    self.getMembers(options, (error, allMembers) => {
-      if (error) {
-        return callback(error);
-      }
-      githubId = typeof(githubId) === 'string' ? parseInt(githubId, 10) : githubId;
-      const member = raiseCrossOrganizationSingleResult(allMembers.get(githubId));
-      return callback(null, member);
-    });
+  async getMember(githubId: string | number, options?: ICacheOptions): Promise<any> {
+    const allMembers = await this.getMembers(options);
+    githubId = typeof(githubId) === 'string' ? parseInt(githubId, 10) : githubId;
+    const member = raiseCrossOrganizationSingleResult(allMembers.get(githubId));
+    return member;
   }
 
-  getUserTeams(githubId, options, callback) {
-    const self = this;
-    self.getTeamsWithMembers(options, (error, everything) => {
-      if (error) {
-        return callback(error);
-      }
-      githubId = typeof(githubId) === 'string' ? parseInt(githubId, 10) : githubId;
-      const teams = [];
-      for (let i = 0; i < everything.length; i++) {
-        const oneTeam = everything[i];
-        if (oneTeam && oneTeam.members) {
-          for (let j = 0; j < oneTeam.members.length; j++) {
-            if (githubId === oneTeam.members[j].id) {
-              const teamClone = Object.assign({}, oneTeam);
-              oneTeam.organization = {
-                login: oneTeam.organization.login,
-              };
-              delete teamClone.members;
-              teams.push(teamClone);
-              break;
-            }
+  async getUserTeams(githubId: string | number, options: ICacheOptions): Promise<any[]> {
+    const everything = await this.getTeamsWithMembers(options);
+    githubId = typeof(githubId) === 'string' ? parseInt(githubId, 10) : githubId;
+    const teams = [];
+    for (let i = 0; i < everything.length; i++) {
+      const oneTeam = everything[i];
+      if (oneTeam && oneTeam.members) {
+        for (let j = 0; j < oneTeam.members.length; j++) {
+          if (githubId === oneTeam.members[j].id) {
+            const teamClone = Object.assign({}, oneTeam);
+            oneTeam.organization = {
+              login: oneTeam.organization.login,
+            };
+            delete teamClone.members;
+            teams.push(teamClone);
+            break;
           }
         }
       }
-      return callback(null, teams);
-    });
+    }
+    return teams;
   }
 
-  getTeamsWithMembers(options, callback) {
-    if (typeof(options) === 'function' && !callback) {
-      callback = options;
-      options = null;
-    }
+  getTeamsWithMembers(options: IPagedCrossOrganizationCacheOptions): Promise<any[]> {
     options = options || {};
-
     if (!options.maxAgeSeconds) {
       options.maxAgeSeconds = 60 * 30 * 48 * 10 /* 2 WEEKS */ /* 2 DAYS */ /* 30m per-org full team members list OK */;
     }
@@ -93,68 +78,53 @@ export class GraphManager {
       options.backgroundRefresh = true;
     }
     options.individualMaxAgeSeconds = 7 * 24 * 60 * 60; // One week
-
-    this._operations.getTeamsWithMembers(null, options, callback);
+    return this._operations.getTeamsWithMembers(options);
   }
 
-  getUserReposByTeamMemberships(githubId, options, callback) {
-    const self = this;
-    self.getUserTeams(githubId, {}, (error, everything) => {
-      if (error) {
-        return callback(error);
-      }
-      const teams = new Set();
-      for (let i = 0; i < everything.length; i++) {
-        teams.add(everything[i].id);
-      }
-      self.getReposWithTeams(options, (getReposError, allRepos) => {
-        if (getReposError) {
-          return callback(getReposError);
-        }
-        const repos = [];
-        for (let i = 0; i < allRepos.length; i++) {
-          const repo = allRepos[i];
-          if (repo && repo.teams) {
-            const userTeams = [];
-            let bestPermission = null;
-            for (let j = 0; j < repo.teams.length; j++) {
-              const t = repo.teams[j];
-              if (teams.has(t.id)) {
-                if (repo.private === false && t.permission === 'pull') {
-                  // Public repos, ignore teams with pull access
-                } else {
-                  userTeams.push(t);
-                  if (isPermissionBetterThan(bestPermission, t.permission)) {
-                    bestPermission = t.permission;
-                  }
-                }
+  async getUserReposByTeamMemberships(githubId: string | number, options: ICacheOptions): Promise<any> {
+    const everything = await this.getUserTeams(githubId, {}); // TODO:CONFIRM: should this pass options down or not?
+    const teams = new Set();
+    for (let i = 0; i < everything.length; i++) {
+      teams.add(everything[i].id);
+    }
+    const allRepos = await this.getReposWithTeams(options);
+    const repos = [];
+    for (let i = 0; i < allRepos.length; i++) {
+      const repo = allRepos[i];
+      if (repo && repo.teams) {
+        const userTeams = [];
+        let bestPermission = null;
+        for (let j = 0; j < repo.teams.length; j++) {
+          const t = repo.teams[j];
+          if (teams.has(t.id)) {
+            if (repo.private === false && t.permission === 'pull') {
+              // Public repos, ignore teams with pull access
+            } else {
+              userTeams.push(t);
+              if (isPermissionBetterThan(bestPermission, t.permission)) {
+                bestPermission = t.permission;
               }
-            }
-            if (userTeams.length > 0) {
-              const personalizedRepo = {
-                personalized: {
-                  teams: userTeams,
-                  permission: bestPermission,
-                },
-              };
-              const repoClone = Object.assign(personalizedRepo, repo);
-              delete repoClone.teams;
-              repos.push(repoClone);
             }
           }
         }
-        return callback(null, repos);
-      });
-    });
+        if (userTeams.length > 0) {
+          const personalizedRepo = {
+            personalized: {
+              teams: userTeams,
+              permission: bestPermission,
+            },
+          };
+          const repoClone = Object.assign(personalizedRepo, repo);
+          delete repoClone.teams;
+          repos.push(repoClone);
+        }
+      }
+    }
+    return repos;
   }
 
-  getReposWithTeams(options, callback) {
-    if (typeof(options) === 'function' && !callback) {
-      callback = options;
-      options = null;
-    }
+  getReposWithTeams(options?: IPagedCrossOrganizationCacheOptions): Promise<any> {
     options = options || {};
-
     if (!options.maxAgeSeconds) {
       options.maxAgeSeconds = 60 * 20 /* 20m per-org collabs list OK */;
     }
@@ -162,17 +132,11 @@ export class GraphManager {
     if (options.backgroundRefresh === undefined) {
       options.backgroundRefresh = true;
     }
-
-    this._operations.getRepoTeams(null, options, callback);
+    return this._operations.getRepoTeams(options);
   }
 
-  getReposWithCollaborators(options, callback) {
-    if (typeof(options) === 'function' && !callback) {
-      callback = options;
-      options = null;
-    }
+  getReposWithCollaborators(options: IPagedCrossOrganizationCacheOptions): Promise<any> {
     options = options || {};
-
     if (!options.maxAgeSeconds) {
       options.maxAgeSeconds = 60 * 20 /* 20m per-org collabs list OK */;
     }
@@ -180,25 +144,63 @@ export class GraphManager {
     if (options.backgroundRefresh === undefined) {
       options.backgroundRefresh = true;
     }
-
-    this._operations.getRepoCollaborators(null, options, callback);
+    return this._operations.getRepoCollaborators(options);
   }
 
-  getMembers(options, callback) {
-    if (typeof(options) === 'function' && !callback) {
-      callback = options;
-      options = null;
-    }
+  getMembers(options: IPagedCrossOrganizationCacheOptions): Promise<any> {
     options = options || {};
-
     if (!options.maxAgeSeconds) {
       options.maxAgeSeconds = 60 * 10 /* 10m per-org members list OK */;
     }
     if (options.backgroundRefresh === undefined) {
       options.backgroundRefresh = true;
     }
+    return this._operations.getMembers(options);
+  }
 
-    this._operations.getMembers(null, options, callback);
+  private async getCachedLinksMap(
+    maxAgeSecondsLocal: number,
+    maxAgeSecondsRemote: number,
+    backgroundRefresh: boolean): Promise<Map<string, ICorporateLink>> {
+    const operations = this._operations;
+    if (!this._linksCache) {
+      this._linksCache = {
+        updated: null,
+        map: new Map(),
+      };
+    }
+    const linksCache = this._linksCache;
+    const now = moment();
+    const beforeNow = moment().subtract(maxAgeSecondsLocal, 'seconds');
+    let isCacheValid = linksCache.map && linksCache.updated && beforeNow.isAfter(linksCache.updated);
+    if (isCacheValid) {
+      return linksCache.map;
+    }
+    const remoteOptions = {
+      backgroundRefresh: backgroundRefresh,
+      maxAgeSeconds: maxAgeSecondsRemote,
+      // Include all available information
+      includeNames: true,
+      includeId: true,
+      includeServiceAccounts: true,
+    };
+    const links = await operations.getLinks(remoteOptions);
+    const map = new Map();
+    for (let i = 0; i < links.length; i++) {
+      const link = links[i] as ICorporateLink;
+      let id : string | number = link.thirdPartyId;
+      if (id) {
+        id = parseInt(id, 10);
+        map.set(id, links[i]);
+      }
+    }
+    if (linksCache.map && linksCache.updated && linksCache.updated.isAfter(now)) {
+      // Abandon this update, a newer update has already returned
+    } else {
+      linksCache.updated = now;
+      linksCache.map = map;
+    }
+    return linksCache.map;
   }
 }
 
@@ -259,51 +261,4 @@ function raiseCrossOrganizationSingleResult(result, keyProperty?: string) {
     clone.orgs.push(orgName);
   }
   return clone;
-}
-
-function getCachedLinksMap(self, maxAgeSecondsLocal, maxAgeSecondsRemote, backgroundRefresh, callback) {
-  const operations = self._operations;
-
-  if (!self._linksCache) {
-    self._linksCache = {};
-  }
-  let linksCache = self._linksCache;
-
-  const now = moment();
-  const beforeNow = moment().subtract(maxAgeSecondsLocal, 'seconds');
-  let isCacheValid = linksCache.map && linksCache.updated && beforeNow.isAfter(linksCache.updated);
-
-  if (isCacheValid) {
-    return callback(null, linksCache.map);
-  }
-
-  const remoteOptions = {
-    backgroundRefresh: backgroundRefresh,
-    maxAgeSeconds: maxAgeSecondsRemote,
-    // Include all available information
-    includeNames: true,
-    includeId: true,
-    includeServiceAccounts: true,
-  };
-  operations.getLinks(remoteOptions, (getLinksError, links) => {
-    if (getLinksError) {
-      return callback(getLinksError);
-    }
-    const map = new Map();
-    for (let i = 0; i < links.length; i++) {
-      const link = links[i] as ICorporateLink;
-      let id : string | number = link.thirdPartyId;
-      if (id) {
-        id = parseInt(id, 10);
-        map.set(id, links[i]);
-      }
-    }
-    if (linksCache.map && linksCache.updated.isAfter(now)) {
-      // Abandon this update, a newer update has already returned
-    } else {
-      linksCache.updated = now;
-      linksCache.map = map;
-    }
-    return callback(null, linksCache.map);
-  });
 }

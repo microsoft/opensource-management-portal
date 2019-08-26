@@ -8,11 +8,12 @@
 import azure from 'azure-storage';
 
 import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvider';
-import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
+import { IEntityMetadata, EntityMetadataType } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
+import { Type } from './type';
 
-const type = EntityMetadataType.Repository;
+const type = Type;
 
 export enum GitHubRepositoryPermission {
   Pull = 'pull',
@@ -341,7 +342,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
       return { sql, values };
 
     default:
-      throw new Error('The fixed query type is not supported currently by this provider, or is of an unknown type');
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
   }
 });
 
@@ -370,4 +371,7 @@ for (let i = 0; i < fieldNames.length; i++) {
   }
 }
 
-export function EnsureRepositoryMetadataDefinitionsAvailable() {}
+export const EntityImplementation = {
+  Type: type,
+  EnsureDefinitions: () => {},
+};

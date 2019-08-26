@@ -9,6 +9,15 @@ import { ICallback } from '../../transitional';
 
 export interface IMailAddressProvider {
   getAddressFromUpn(upn: string, callback: ICallback<string>);
+  getCorporateEntry?: any;
+}
+
+export function GetAddressFromUpnAsync(mailAddressProvider: IMailAddressProvider, upn: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    mailAddressProvider.getAddressFromUpn(upn, (error, address) => {
+      return error ? reject(error) : resolve(address);
+    });
+  });
 }
 
 export function createMailAddressProviderInstance(options: any, callback: ICallback<IMailAddressProvider>) {

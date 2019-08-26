@@ -11,18 +11,18 @@ import async = require('async');
 import { ReposAppRequest } from '../../../transitional';
 import { wrapError } from '../../../utils';
 import { ICorporateLink } from '../../../business/corporateLink';
-import { Team } from '../../../business/team';
+import { Team, GitHubRepositoryType } from '../../../business/team';
 import { Organization } from '../../../business/organization';
 import { IMailAddressProvider } from '../../../lib/mailAddressProvider';
 import { IApprovalProvider } from '../../../entities/teamJoinApproval/approvalProvider';
 import { Operations } from '../../../business/operations';
 import { TeamJoinApprovalEntity } from '../../../entities/teamJoinApproval/teamJoinApproval';
+import { AddTeamPermissionsToRequest } from '../../../middleware/github/teamPermissions';
+import { AddOrganizationPermissionsToRequest } from '../../../middleware/github/orgPermissions';
 
 const emailRender = require('../../../lib/emailRender');
 const lowercaser = require('../../../middleware/lowercaser');
-const orgPermissions = require('../../../middleware/github/orgPermissions');
 const teamMaintainerRoute = require('./index-maintainer');
-const teamPermissionsMiddleware = require('../../../middleware/github/teamPermissions');
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: any;
@@ -38,18 +38,14 @@ interface ILocalRequest extends ReposAppRequest {
   otherApprovals?: TeamJoinApprovalEntity[];
 }
 
-router.use((req: ILocalRequest, res, next) => {
+router.use(asyncHandler(async (req: ILocalRequest, res, next) => {
   const login = req.individualContext.getGitHubIdentity().username;
-  const team2 = req.team2;
-  team2.getMembershipEfficiently(login, (getMembershipError, membership, state) => {
-    if (getMembershipError) {
-      return next(getMembershipError);
-    }
-    req.membershipStatus = membership;
-    req.membershipState = state;
-    return next();
-  });
-});
+  const team2 = req.team2 as Team;
+  const statusResult = await team2.getMembershipEfficiently(login);
+  req.membershipStatus = statusResult && statusResult.role ? statusResult.role : null;
+  req.membershipState = statusResult && statusResult.state ? statusResult.state : null;
+  return next();
+}));
 
 router.use(asyncHandler(async (req: ILocalRequest, res, next) => {
   const approvalProvider = req.app.settings.providers.approvalProvider as IApprovalProvider;
@@ -71,7 +67,7 @@ router.use(asyncHandler(async (req: ILocalRequest, res, next) => {
   return next();
 }));
 
-router.use('/join', orgPermissions, (req: ILocalRequest, res, next) => {
+router.use('/join', asyncHandler(AddOrganizationPermissionsToRequest), (req: ILocalRequest, res, next) => {
   const organization = req.organization;
   const team2 = req.team2;
   const orgPermissions = req.orgPermissions;
@@ -99,14 +95,14 @@ router.use('/join', orgPermissions, (req: ILocalRequest, res, next) => {
   return next(error);
 });
 
-router.get('/join', function (req: ILocalRequest, res, next) {
-  const team2 = req.team2;
-  const organization = req.organization;
-
+router.get('/join', asyncHandler(async function (req: ILocalRequest, res, next) {
+  const team2 = req.team2 as Team;
+  const organization = req.organization as Organization;
   // The broad access "all members" team is always open for automatic joining without
   // approval. This short circuit is to show that option.
   const broadAccessTeams = new Set(organization.broadAccessTeams);
-  if (broadAccessTeams.has(team2.id)) {
+  const teamAsNumber = parseInt(team2.id, 10);
+  if (broadAccessTeams.has(teamAsNumber)) {
     req.individualContext.webContext.render({
       view: 'org/team/join',
       title: `Join ${team2.name}`,
@@ -116,22 +112,17 @@ router.get('/join', function (req: ILocalRequest, res, next) {
         },
     });
   }
-
-  team2.getOfficialMaintainers((getMaintainersError, maintainers) => {
-    if (getMaintainersError) {
-      return next(getMaintainersError);
-    }
-    req.individualContext.webContext.render({
-      view: 'org/team/join',
-      title: `Join ${team2.name}`,
-      state: {
-        existingTeamJoinRequest: req.existingRequest,
-        team: team2,
-        teamMaintainers: maintainers,
-      },
-    });
+  const maintainers = await team2.getOfficialMaintainers();
+  req.individualContext.webContext.render({
+    view: 'org/team/join',
+    title: `Join ${team2.name}`,
+    state: {
+      existingTeamJoinRequest: req.existingRequest,
+      team: team2,
+      teamMaintainers: maintainers,
+    },
   });
-});
+}));
 
 router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
   if (req.existingRequest) {
@@ -147,9 +138,11 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
     return next(new Error('No approval provider instance available'));
   }
   const username = req.individualContext.getGitHubIdentity().username;
-  if (broadAccessTeams.has(team2.id)) {
+  const team2AsNumber = parseInt(team2.id, 10);
+  // TODO: validating types and all that jazz
+  if (broadAccessTeams.has(team2AsNumber)) {
     try {
-      await team2.addMembershipAsync(username);
+      await team2.addMembership(username);
     } catch (error) {
       req.insights.trackEvent({
         name: 'GitHubJoinAllMembersTeamFailure',
@@ -215,12 +208,12 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
     const upn = req.individualContext.corporateIdentity.username;
     personMail = await mailAddressProviderGetAddressFromUpn(mailAddressProvider, upn);
 
-    const isMember = await team2.isMemberAsync(username);
+    const isMember = await team2.isMember(username);
     if (isMember === true) {
       return next(wrapError(null, 'You are already a member of the team ' + team2.name, true));
     }
 
-    const maintainers = (await team2.getOfficialMaintainersAsync()).filter(maintainer => {
+    const maintainers = (await team2.getOfficialMaintainers()).filter(maintainer => {
       maintainer && maintainer['login'] && maintainer['link']
     });
 
@@ -288,6 +281,12 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
         personMail: personMail,
       };
       try {
+        req.insights.trackEvent({
+          eventName: 'ReposTeamRequestMailRenderData',
+          properties: {
+            data: JSON.stringify(contentOptions),
+          },
+        });
         mail.content = await operations.emailRender('membershipApprovals/pleaseApprove', contentOptions);
       } catch (renderError) {
         req.insights.trackException({
@@ -301,18 +300,23 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
       }
       let customData: any = {};
       try {
+        req.insights.trackEvent({
+          eventName: 'ReposTeamRequestMailSendStart',
+          properties: {
+            mail: JSON.stringify(mail),
+          },
+        });
         const mailResult = await operations.sendMail(mail);
         customData = {
           content: contentOptions,
           receipt: mailResult,
           eventName: undefined,
         };
+        req.insights.trackEvent({ name: 'ReposTeamRequestPleaseApproveMailSuccess', properties: customData });
       } catch (mailError) {
         customData.eventName = 'ReposTeamRequestPleaseApproveMailFailure';
         req.insights.trackException({ exception: mailError, properties: customData });
-        throw mailError;
       }
-      req.insights.trackEvent({ name: 'ReposTeamRequestPleaseApproveMailSuccess', properties: customData });
 
       // Add to the approval to log who was sent the mail
       const approval = await approvalProvider.getApprovalEntity(requestId);
@@ -347,6 +351,12 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
         personMail: personMail,
       };
       try {
+        req.insights.trackEvent({
+          eventName: 'ReposTeamRequestedMailRenderData',
+          properties: {
+            data: JSON.stringify(contentOptions),
+          },
+        });
         mail.content = await operations.emailRender('membershipApprovals/requestSubmitted', contentOptions);
       } catch (renderError) {
         req.insights.trackException({
@@ -360,18 +370,24 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
       }
       let customData: any = {};
       try {
+        req.insights.trackEvent({
+          eventName: 'ReposTeamRequestedMailSendStart',
+          properties: {
+            mail: JSON.stringify(mail),
+          },
+        });
         const mailResult = await operations.sendMail(mail);
         customData = {
           content: contentOptions,
           receipt: mailResult,
           eventName: undefined,
-        }
+        };
+        req.insights.trackEvent({ name: 'ReposTeamRequestSubmittedMailSuccess', properties: customData });
       } catch (mailError) {
         customData.eventName = 'ReposTeamRequestSubmittedMailFailure';
         req.insights.trackException({ exception: mailError, properties: customData });
-        throw mailError;
+        // throw mailError;
       }
-      req.insights.trackEvent({ name: 'ReposTeamRequestSubmittedMailSuccess', properties: customData });
     }
   } catch (error) {
     return next(error);
@@ -381,7 +397,7 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
 }));
 
 // Adds "req.teamPermissions", "req.teamMaintainers" middleware
-router.use(teamPermissionsMiddleware);
+router.use(asyncHandler(AddTeamPermissionsToRequest));
 
 // The view uses this information today to show the sudo banner
 router.use((req: ILocalRequest, res, next) => {
@@ -391,15 +407,15 @@ router.use((req: ILocalRequest, res, next) => {
   return next();
 });
 
-router.get('/', orgPermissions, (req: ILocalRequest, res, next) => {
+router.get('/', asyncHandler(AddOrganizationPermissionsToRequest), async (req: ILocalRequest, res, next) => {
   const idAsString = req.individualContext.getGitHubIdentity().id;
   const id = idAsString ? parseInt(idAsString, 10) : null;
   const teamPermissions = req.teamPermissions;
   const membershipStatus = req.membershipStatus;
   const membershipState = req.membershipState;
-  const team2 = req.team2;
-  const operations = req.app.settings.operations;
-  const organization = req.organization;
+  const team2 = req.team2 as Team;
+  const operations = req.app.settings.operations as Operations;
+  const organization = req.organization as Organization;
 
   const teamMaintainers = req.teamMaintainers;
   const maintainersSet = new Set();
@@ -457,57 +473,39 @@ router.get('/', orgPermissions, (req: ILocalRequest, res, next) => {
     backgroundRefresh: true,
     maxAgeSeconds: 60,
   };
-  team2.getMembers(firstPageOptions, (getMembersError, membersSubset) => {
-    if (getMembersError) {
-      return next(getMembersError);
+  const membersSubset = await team2.getMembers(firstPageOptions);
+  membersFirstPage = membersSubset;
+  const details = await team2.getDetails();
+  teamDetails = details;
+
+  const onlySourceRepositories = {
+    type: GitHubRepositoryType.Sources,
+  };
+  const reposWithPermissions = await team2.getRepositories(onlySourceRepositories);
+  repositories = reposWithPermissions.sort(sortByNameCaseInsensitive);
+  const links = await operations.getLinks();
+  const map = new Map();
+  for (let i = 0; i < links.length; i++) {
+    const id = links[i].thirdPartyId;
+    if (id) {
+      map.set(parseInt(id, 10), links[i]);
     }
-    membersFirstPage = membersSubset;
+  }
 
-    team2.getDetails((detailsError, details) => {
-      if (detailsError) {
-        return next(detailsError);
-      }
-      teamDetails = details;
-
-      const onlySourceRepositories = {
-        type: 'sources',
-      };
-      team2.getRepositories(onlySourceRepositories, (reposError, reposWithPermissions) => {
-        if (reposError) {
-          return next(reposError);
-        }
-        repositories = reposWithPermissions.sort(sortByNameCaseInsensitive);
-
-        operations.getLinks((getLinksError, links) => {
-          if (getLinksError) {
-            return next(getLinksError);
-          }
-          const map = new Map();
-          for (let i = 0; i < links.length; i++) {
-            const id = links[i].ghid;
-            if (id) {
-              map.set(parseInt(id, 10), links[i]);
-            }
-          }
-
-          async.parallel([
-            callback => {
-              addLinkToList(teamMaintainers, map);
-              return resolveMailAddresses(operations, teamMaintainers, callback);
-            },
-            callback => {
-              addLinkToList(membersFirstPage, map);
-              return resolveMailAddresses(operations, membersFirstPage, callback);
-            },
-          ], (parallelError) => {
-            if (parallelError) {
-              return next(parallelError);
-            }
-            return renderPage();
-          });
-        });
-      });
-    });
+  async.parallel([
+    callback => {
+      addLinkToList(teamMaintainers, map);
+      return resolveMailAddresses(operations, teamMaintainers, callback);
+    },
+    callback => {
+      addLinkToList(membersFirstPage, map);
+      return resolveMailAddresses(operations, membersFirstPage, callback);
+    },
+  ], (parallelError) => {
+    if (parallelError) {
+      return next(parallelError);
+    }
+    return renderPage();
   });
 });
 

@@ -9,7 +9,7 @@
 
 import async = require('async');
 
-import { ICacheOptions, IMapPlusMetaCost, IProviders } from '../transitional';
+import { ICacheOptions, IMapPlusMetaCost, IProviders, IPagedCrossOrganizationCacheOptions } from '../transitional';
 
 import { Account } from './account';
 import { GraphManager } from './graphManager';
@@ -23,9 +23,40 @@ const emailRender = require('../lib/emailRender');
 
 import { wrapError } from '../utils';
 import { ICorporateLink } from './corporateLink';
+import { Repository } from './repository';
+import { ILibraryContext } from '../lib/github';
+import { RedisHelper } from '../lib/redis';
+import { IMailAddressProvider } from '../lib/mailAddressProvider';
+import { Team } from './team';
+import { OrganizationMember } from './organizationMember';
+
+interface ICacheDefaultTimes {
+  orgReposStaleSeconds: number;
+  orgRepoTeamsStaleSeconds: number;
+  orgRepoCollaboratorsStaleSeconds: number;
+  orgRepoCollaboratorStaleSeconds: number;
+  orgRepoDetailsStaleSeconds: number;
+  orgTeamsStaleSeconds: number;
+  orgTeamDetailsStaleSeconds: number;
+  orgTeamsSlugLookupStaleSeconds: number;
+  orgMembersStaleSeconds: number;
+  teamMaintainersStaleSeconds: number;
+  orgMembershipStaleSeconds: number;
+  orgMembershipDirectStaleSeconds: number;
+  crossOrgsReposStaleSecondsPerOrg: number;
+  crossOrgsReposParallelCalls: number;
+  crossOrgsMembersStaleSecondsPerOrg: number;
+  crossOrgsMembersParallelCalls: number;
+  corporateLinksStaleSeconds: number;
+  repoBranchesStaleSeconds: number;
+  accountDetailStaleSeconds: number;
+  teamDetailStaleSeconds: number;
+  orgRepoWebhooksStaleSeconds: number;
+  teamRepositoryPermissionStaleSeconds: number;
+}
 
 // defaults could move to configuration alternatively
-const defaults = {
+const defaults: ICacheDefaultTimes = {
   orgReposStaleSeconds: 60 * 15 /* 15m */,
   orgRepoTeamsStaleSeconds: 60 * 3 /* 3m */,
   orgRepoCollaboratorsStaleSeconds: 60 * 30 /* 30m */,
@@ -52,6 +83,8 @@ const defaults = {
 
 export const RedisPrefixManagerInfoCache = 'employeewithmanager:';
 
+const defaultGitHubPageSize = 100;
+
 export enum UnlinkPurpose {
   Unknown = 'unknown',
   Termination = 'termination', // no longer listed as an employee
@@ -59,6 +92,19 @@ export enum UnlinkPurpose {
   Operations = 'operations', // operational support
   Deleted = 'deleted', // the GitHub account has been deleted or does not exist
 };
+
+export interface ICrossOrganizationMembershipBasics {
+  id: string;
+  login: string;
+  avatar_url: string;
+}
+
+export interface ICrossOrganizationMembershipByOrganization {
+  id: number; // ?
+  orgs: any; // object[orgName] = theirGitHubaccount entity avatar_url, id, login : ICrossOrganizationMembershipBasics
+}
+
+export interface ICrossOrganizationMembersResult extends Map<number, ICrossOrganizationMembershipByOrganization> {}
 
 export interface ICachedEmployeeInformation {
   id: string;
@@ -73,21 +119,22 @@ export class Operations {
   private _providers: IProviders;
   private _baseUrl: string;
   private _linkProvider: ILinkProvider;
-  private _mailAddressProvider: any;
+  private _mailAddressProvider: IMailAddressProvider;
   private _mailProvider: any;
   private _graphManager: GraphManager;
-  private _github: any;
+  private _github: ILibraryContext;
   private _config: any;
   private _insights: any;
-  private _redis: any;
-  private _defaults: any;
+  private _redis: RedisHelper;
+  private _defaults: ICacheDefaultTimes;
   private _organizationNames: any;
   private _organizations: Map<string, Organization>;
   private _organizationOriginalNames: any;
   private _organizationNamesWithTokens: any;
+  private _defaultPageSize: number;
 
   // LEAK:START
-  private _userContext: any; // leaky
+  private _userContext: Map<string, UserContext>; // leaky
   // LEAK:END
 
   get providers(): IProviders {
@@ -98,7 +145,7 @@ export class Operations {
     return this._baseUrl;
   }
 
-  get mailAddressProvider(): any {
+  get mailAddressProvider(): IMailAddressProvider {
     return this._mailAddressProvider;
   }
 
@@ -114,11 +161,11 @@ export class Operations {
     return this._graphManager;
   }
 
-  get github(): any {
+  get github(): ILibraryContext  {
     return this._github;
   }
 
-  get defaults(): any {
+  get defaults(): ICacheDefaultTimes {
     return this._defaults;
   }
 
@@ -128,6 +175,10 @@ export class Operations {
 
   get insights(): any {
     return this._insights;
+  }
+
+  get defaultPageSize(): number {
+    return this._defaultPageSize;
   }
 
   constructor(options) {
@@ -141,7 +192,9 @@ export class Operations {
     this._mailProvider = options.mailProvider;
     this._linkProvider = options.linkProvider as ILinkProvider;
 
-    this._graphManager = new GraphManager(this, options);
+    this._graphManager = new GraphManager(this);
+
+    this._defaultPageSize = this.config && this.config.github && this.config.github.api && this.config.github.api.defaultPageSize ? this.config.github.api.defaultPageSize : defaultGitHubPageSize;
 
     return this;
   }
@@ -177,7 +230,7 @@ export class Operations {
     }
   }
 
-  getOnboardingOrganization(name) {
+  getOnboardingOrganization(name: string) {
     // Specialized method to retrieve a new organization via the onboarding configuration collection, if any
     const value = getAlternateOrganization(this, name, 'onboarding');
     if (value) {
@@ -186,7 +239,7 @@ export class Operations {
     throw new Error(`No onboarding organization settings configured for the ${name} organization`);
   }
 
-  isIgnoredOrganization(name) {
+  isIgnoredOrganization(name: string): boolean {
     const value = getAlternateOrganization(this, name, 'onboarding') || getAlternateOrganization(this, name, 'ignore');
     return !!value;
   }
@@ -203,9 +256,9 @@ export class Operations {
     return references;
   }
 
-  getOrganizationOriginalNames() {
+  getOrganizationOriginalNames(): string[] {
     if (!this._organizationOriginalNames) {
-      const names = [];
+      const names: string[] = [];
       for (let i = 0; i < this._config.github.organizations.length; i++) {
         names.push(this._config.github.organizations[i].name);
       }
@@ -242,7 +295,7 @@ export class Operations {
   async getCachedEmployeeManagementInformation(corporateId: string): Promise<ICachedEmployeeInformation> {
     const key = `${RedisPrefixManagerInfoCache}${corporateId}`;
     const currentManagerIfAny = await this._redis.getObjectCompressedAsync(key);
-    return currentManagerIfAny;
+    return currentManagerIfAny as ICachedEmployeeInformation;
   }
 
   async terminateLinkAndMemberships(thirdPartyId, options?: any): Promise<string[]> {
@@ -260,7 +313,7 @@ export class Operations {
     try {
       // Uses an ID-based lookup on GitHub in case the user was renamed.
       // Also retrieves the link into memory in the account instance.
-      await account.getDetailsAndDirectLinkAsync();
+      await account.getDetailsAndDirectLink();
     } catch (noDirectDetails) {
       ++errors;
       if (insights) {
@@ -285,7 +338,11 @@ export class Operations {
 
     // GitHub memberships
     try {
-      history.push(... await account.removeManagedOrganizationMembershipsAsync());
+      const removal = await account.removeManagedOrganizationMemberships();
+      history.push(... removal.history);
+      if (removal.error) {
+        throw removal.error; // unclear if this is actually ideal
+      }
     } catch (removeOrganizationsError) {
       ++errors;
       // If a removal error occurs, do not remove the link and throw and error
@@ -302,7 +359,7 @@ export class Operations {
 
     // Link
     try {
-      history.push(... await account.removeLinkAsync());
+      history.push(... await account.removeLink());
     } catch (removeLinkError) {
       ++errors;
       if (insights) {
@@ -456,69 +513,51 @@ export class Operations {
     await this.sendMail(mail);
   }
 
-  getOrganization(name: string, callback?) {
+  getOrganization(name: string): Organization {
+    if (!name) {
+      throw new Error('getOrganization: name required');
+    }
     const lc = name.toLowerCase();
     const organization = this.organizations.get(lc);
     if (!organization) {
       throw new Error(`Could not find configuration for the "${name}" organization.`);
     }
-    if (callback) {
-      return callback(null, organization);
-    }
     return organization;
   }
 
-  getUserContext(userId) {
+  getUserContext(userId: string | number): UserContext {
     // This will leak per user for the app runtime. Can use a LRU or limiting cache in the future if needed.
+    // CONSIDER: improve here to remove leak
+    const id = (typeof(userId) === 'string' ? parseInt(userId, 10) : userId as unknown as string) as string;
     if (!this._userContext) {
-      this._userContext = new Map();
+      this._userContext = new Map<string, UserContext>();
     }
-    userId = typeof(userId) === 'string' ? parseInt(userId, 10) : userId;
     const contexts = this._userContext;
-    let user = contexts.get(userId);
+    let user = contexts.get(id);
     if (!user) {
-      user = new UserContext(this, userId);
-      contexts.set(userId, user);
+      user = new UserContext(this, id);
+      contexts.set(id, user);
     }
     return user;
   }
 
-  getRepos(options, callback) {
-    const repos = [];
-    if (!callback && typeof (options) === 'function') {
-      callback = options;
-      options = null;
-    }
+  async getRepos(options?: ICacheOptions): Promise<Repository[]> {
+    const repos: Repository[] = [];
     const cacheOptions = options || {
       maxAgeSeconds: this._defaults.crossOrgsReposStaleSecondsPerOrg,
     };
     // CONSIDER: Cross-org functionality might be best in the GitHub library itself
     const orgs = this.organizations.values();
-    async.eachLimit(
-      orgs,
-      this._defaults.crossOrgsReposParallelCalls,
-      (organization: Organization, next) => {
-        organization.getRepositories(cacheOptions, (getReposError, orgRepos) => {
-          if (!getReposError) {
-            for (let i = 0; i < orgRepos.length; i++) {
-              repos.push(orgRepos[i]);
-            }
-          }
-          return next(getReposError);
-        });
-      },
-      (error) => {
-        return callback(error ? error : null, error ? null : repos);
-      });
+    for (let organization of orgs) {
+      const organizationRepos = await organization.getRepositories(cacheOptions);
+      repos.push(... organizationRepos);
+    }
+    return repos;
   }
 
-  getLinks(options, callback) {
+  getLinks(options?: any): Promise<ICorporateLink[]> {
     // Design change in the TypeScript version: this returns true link objects now,
     // but caches hydrated links behind the scenes
-    if (!callback && typeof (options) === 'function') {
-      callback = options;
-      options = null;
-    }
     options = options || {
       includeNames: true,
       includeId: true,
@@ -532,44 +571,26 @@ export class Operations {
     delete options.backgroundRefresh;
     const linkProvider = this._linkProvider;
     options.lp = linkProvider.serializationIdentifierVersion;
-    const getPromisedLinks = function() {
-      return new Promise((resolve, reject) => {
-        // TODO: consider looking at the options as to how to include/exclude properties etc.
-        // today (TypeScript update with PGSQL) the 'options' have zero impact on what is actually returned...
-        linkProvider.getAll((error, links) => {
-          if (error) {
-            return reject(error);
+    return new Promise((resolve, reject) => {
+      return this._github.links.getCachedLinks(
+        getPromisedLinks.bind(null, linkProvider),
+        options,
+        caching,
+        (ee, ll) => {
+          let rehydratedLinks = null;
+          if (!ee) {
+            try {
+              rehydratedLinks = linkProvider.rehydrateLinks(ll);
+            } catch (rehydrationError) {
+              ee = rehydrationError;
+            }
           }
-          const jsonLinks = linkProvider.dehydrateLinks(links);
-          const dataObject = {
-            headers: {
-              'type': 'links',
-            },
-            data: jsonLinks,
-          };
-          return resolve(dataObject);
+          if (ee) {
+            return reject(ee);
+          }
+          return resolve(rehydratedLinks);
         });
-      });
-    };
-    return this._github.links.getCachedLinks(
-      getPromisedLinks,
-      options,
-      caching,
-      (ee, ll) => {
-        let rehydratedLinks = null;
-        if (!ee) {
-          try {
-            rehydratedLinks = linkProvider.rehydrateLinks(ll);
-          } catch (rehydrationError) {
-            ee = rehydrationError;
-          }
-        }
-        if (ee) {
-          return callback(ee);
-        }
-        callback(null, rehydratedLinks);
-      });
-//      callback);
+    });
   }
 
   getLinkByThirdPartyId(thirdPartyId: string) : Promise<ICorporateLink> {
@@ -590,85 +611,74 @@ export class Operations {
     });
   }
 
-  getLinkWithOverheadAsync(id, options): Promise<ICorporateLink> {
-    return new Promise((resolve, reject) => {
-      this.getLinkWithOverhead(id, options, (error, link) => {
-        return error ? reject(error) : resolve(link as ICorporateLink);
-      });
-    });
-  }
-
-  getLinkWithOverhead(id, options, callback?) {
+  async getLinkWithOverhead(id: string, options?): Promise<ICorporateLink> {
+    // TODO: remove function?
     console.log('* * * * * * * * * * * * /sd/sd/sd/sd/sd/sd getLinkWithOverhead * * * * * * * * * * * * * * * * * * * * ');
     // This literally retrieves the cache of all links. Which is silly, but quick and easy for now.
-    if (!callback && typeof (options) === 'function') {
-      callback = options;
-      options = null;
+    const links = await this.getLinks(options);
+    const reduced = links.filter(link => {
+      // was 'ghid' in the prior implementation before link interfaces
+      return link && link.thirdPartyId == id /* allow string comparisons */;
+    });
+    if (reduced.length > 1) {
+      throw new Error(`Multiple links were present for the same GitHub user ${id}`);
     }
-    const self = this;
-    self.getLinks(options, (getLinksError, links) => {
-      if (getLinksError) {
-        return callback(getLinksError);
-      }
-      const reduced = links.filter(link => {
-        // was 'ghid' in the prior implementation before link interfaces
-        return link && link.thirdPartyId == id /* allow string comparisons */;
+    return reduced.length === 1 ? reduced[0] : null;
+    // TODO: return value went from false to null, is that new falsy ok?
+  }
+
+  getTeamsWithMembers(options?: IPagedCrossOrganizationCacheOptions): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const cacheOptions: IPagedCrossOrganizationCacheOptions = {};
+      options = options || {};
+      cacheOptions.backgroundRefresh = options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
+      cacheOptions.maxAgeSeconds = options.maxAgeSeconds || 60 * 10;
+      cacheOptions.individualMaxAgeSeconds = options.individualMaxAgeSeconds;
+      delete options.backgroundRefresh;
+      delete options.maxAgeSeconds;
+      delete options.individualMaxAgeSeconds;
+
+      this._github.crossOrganization.teamMembers(this.organizationNamesWithTokens, options, cacheOptions, (error, ok) => {
+        return error ? reject(error) : resolve(ok);
       });
-      if (reduced.length > 1) {
-        return callback(new Error('Multiple links were present for the same GitHub user'));
-      }
-      return callback(null, reduced.length === 1 ? reduced[0] : false);
     });
   }
 
-  getTeamsWithMembers(orgName, options, callback) {
-    const cacheOptions: ICacheOptions = {};
-    options = options || {};
-    cacheOptions.backgroundRefresh = options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
-    cacheOptions.maxAgeSeconds = options.maxAgeSeconds || 60 * 10;
-    cacheOptions.individualMaxAgeSeconds = options.individualMaxAgeSeconds;
-    delete options.backgroundRefresh;
-    delete options.maxAgeSeconds;
-    delete options.individualMaxAgeSeconds;
+  getRepoCollaborators(options: IPagedCrossOrganizationCacheOptions): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const cacheOptions: IPagedCrossOrganizationCacheOptions = {};
+      options = options || {};
+      cacheOptions.backgroundRefresh = options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
+      cacheOptions.maxAgeSeconds = options.maxAgeSeconds || 60 * 10;
+      cacheOptions.individualMaxAgeSeconds = options.individualMaxAgeSeconds;
+      delete options.backgroundRefresh;
+      delete options.maxAgeSeconds;
+      delete options.individualMaxAgeSeconds;
 
-    this._github.crossOrganization.teamMembers(this.organizationNamesWithTokens, options, cacheOptions, callback);
+      this._github.crossOrganization.repoCollaborators(this.organizationNamesWithTokens, options, cacheOptions, (error, ok) => {
+        return error ? reject(error) : resolve(ok);
+      });
+    });
   }
 
-  getRepoCollaborators(orgName, options, callback) {
-    const cacheOptions: ICacheOptions = {};
-    options = options || {};
-    cacheOptions.backgroundRefresh = options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
-    cacheOptions.maxAgeSeconds = options.maxAgeSeconds || 60 * 10;
-    cacheOptions.individualMaxAgeSeconds = options.individualMaxAgeSeconds;
-    delete options.backgroundRefresh;
-    delete options.maxAgeSeconds;
-    delete options.individualMaxAgeSeconds;
+  getRepoTeams(options: IPagedCrossOrganizationCacheOptions): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const cacheOptions: IPagedCrossOrganizationCacheOptions = {};
+      options = options || {};
+      cacheOptions.backgroundRefresh = options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
+      cacheOptions.maxAgeSeconds = options.maxAgeSeconds || 60 * 10;
+      cacheOptions.individualMaxAgeSeconds = options.individualMaxAgeSeconds;
+      delete options.backgroundRefresh;
+      delete options.maxAgeSeconds;
+      delete options.individualMaxAgeSeconds;
 
-    this._github.crossOrganization.repoCollaborators(this.organizationNamesWithTokens, options, cacheOptions, callback);
+      this._github.crossOrganization.repoTeams(this.organizationNamesWithTokens, options, cacheOptions, (error, ok) => {
+        return error ? reject(error) : resolve(ok);
+      });
+    });
   }
 
-  getRepoTeams(orgName, options, callback) {
-    const cacheOptions: ICacheOptions = {};
-    options = options || {};
-    cacheOptions.backgroundRefresh = options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
-    cacheOptions.maxAgeSeconds = options.maxAgeSeconds || 60 * 10;
-    cacheOptions.individualMaxAgeSeconds = options.individualMaxAgeSeconds;
-    delete options.backgroundRefresh;
-    delete options.maxAgeSeconds;
-    delete options.individualMaxAgeSeconds;
-
-    this._github.crossOrganization.repoTeams(this.organizationNamesWithTokens, options, cacheOptions, callback);
-  }
-
-  getTeams(orgName, options, callback) {
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = {};
-    } else if (!callback && !options && typeof(orgName) === 'function') {
-      callback = orgName;
-      options = {};
-      orgName = null;
-    }
+  getCrossOrganizationTeams(options?: any): Promise<ICrossOrganizationMembersResult> {
     if (!options.maxAgeSeconds) {
       options.maxAgeSeconds = this._defaults.crossOrgsMembersStaleSecondsPerOrg;
     }
@@ -681,52 +691,46 @@ export class Operations {
     };
     delete options.maxAgeSeconds;
     delete options.backgroundRefresh;
-    if (!orgName) {
+    return new Promise((resolve, reject) => {
       return this._github.crossOrganization.teams(
         this.organizationNamesWithTokens,
         options,
         cacheOptions,
         (error, values) => {
-          return callback(error ? error : null, error ? null : crossOrganizationResults(this, values, 'id'));
+          if (error) {
+            return reject(error);
+          }
+          const results = crossOrganizationResults(this, values, 'id');
+          return resolve(results);
         });
-    }
-    this.getOrganization(orgName).getTeams(cacheOptions, callback);
+      });
   }
 
-  getMembers(orgName, options, callback) {
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = {};
-    } else if (!callback && !options && typeof(orgName) === 'function') {
-      callback = orgName;
-      options = {};
-      orgName = null;
-    }
+  getMembers(options?: ICacheOptions): Promise<ICrossOrganizationMembersResult> {
+    options = options || {};
     if (!options.maxAgeSeconds) {
       options.maxAgeSeconds = this._defaults.crossOrgsMembersStaleSecondsPerOrg;
     }
     if (options.backgroundRefresh === undefined) {
       options.backgroundRefresh = true;
     }
-
     const cacheOptions = {
       maxAgeSeconds: options.maxAgeSeconds,
       backgroundRefresh: options.backgroundRefresh,
     };
     delete options.maxAgeSeconds;
     delete options.backgroundRefresh;
-
-    if (!orgName) {
+    return new Promise((resolve, reject) => {
       return this._github.crossOrganization.orgMembers(
-        this.organizationNamesWithTokens,
-        options,
-        cacheOptions,
-        (error, values) => {
-          return callback(error ? error : null, error ? null : crossOrganizationResults(this, values, 'id'));
-        });
-    }
-    const combinedOptions = Object.assign(options, cacheOptions);
-    this.getOrganization(orgName).getMembers(combinedOptions, callback);
+      this.organizationNamesWithTokens,
+      options,
+      cacheOptions,
+      (error, values) => {
+        // TODO: refactor cross org return results?
+        const crossOrgReturn = crossOrganizationResults(this, values, 'id') as any as ICrossOrganizationMembersResult;
+        return error ? reject(error) : resolve(crossOrgReturn);
+      });
+    });
   }
 
   // Eventually link/unlink should move from context into operations here to centralize more than just the events
@@ -739,7 +743,7 @@ export class Operations {
     fireEvent(this._config, 'unlink', value, callback);
   }
 
-  get systemAccountsByUsername() {
+  get systemAccountsByUsername(): string[] {
     return this._config.github && this._config.github.systemAccounts ? this._config.github.systemAccounts.logins : [];
   }
 
@@ -747,7 +751,7 @@ export class Operations {
     return this._config.github && this._config.github.disasterRecovery ? this._config.github.disasterRecovery : null;
   }
 
-  isSystemAccountByUsername(username) {
+  isSystemAccountByUsername(username: string): boolean {
     const lc = username.toLowerCase();
     const usernames = this.systemAccountsByUsername;
     for (let i = 0; i < usernames.length; i++) {
@@ -758,89 +762,83 @@ export class Operations {
     return false;
   }
 
-  getAccount(id) {
+  getAccount(id: string) {
     // TODO: Centralized "accounts" local store
-    const entity = { id: id };
+    const entity = { id };
     return new Account(entity, this, getCentralOperationsToken.bind(null, this));
   }
 
-  getAccountWithDetailsAndLink(id, callback) {
+  async getAccountWithDetailsAndLink(id: string): Promise<Account> {
     const account = this.getAccount(id);
-    return account.getDetailsAndLink(callback);
+    return await account.getDetailsAndLink();
   }
 
-  getAuthenticatedAccount(token, options, callback) {
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    options = options || {};
-    const github = this._github;
-    const parameters = {};
-    return github.post(token, 'users.getAuthenticated', parameters, (error, entity) => {
-      if (error) {
-        return callback(wrapError(error, 'Could not get details about the authenticated account'));
-      }
-      const account = new Account(entity, this, getCentralOperationsToken.bind(null, this));
-      return callback(null, account);
+  getAuthenticatedAccount(token: string): Promise<Account> {
+    return new Promise((resolve, reject) => {
+      const github = this._github;
+      const parameters = {};
+      return github.post(token, 'users.getAuthenticated', parameters, (error, entity) => {
+        if (error) {
+          return reject(wrapError(error, 'Could not get details about the authenticated account'));
+        }
+        const account = new Account(entity, this, getCentralOperationsToken.bind(null, this));
+        return resolve(account);
+      });
     });
   }
 
-  getTeamById(id, options, callback) {
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = null;
-    }
+  async getTeamById(id: string, options?: ICacheOptions): Promise<Team> {
     options = options || {};
     const self = this;
-    getTeamDetailsById(this, id, options, (error, entity) => {
-      if (entity && !entity.organization) {
-        error = new Error(`Team ${id} response did not have an associated organization`);
-      }
-      const organizationName = entity.organization.login;
-      let organization = null;
-      try {
-        organization = self.getOrganization(organizationName);
-      } catch (er) {
-        error = er;
-      }
-      if (error) {
-        return callback(error);
-      }
-      return callback(null, organization.teamFromEntity(entity));
-    });
+    if (typeof(id) === 'number') {
+      throw new Error(`should not be a number: ${id}`);
+    }
+    const entity = await this.getTeamDetailsById(id, options);
+    let error = null;
+    if (entity && !entity.organization) {
+      error = new Error(`Team ${id} response did not have an associated organization`);
+    }
+    const organizationName = entity.organization.login;
+    let organization: Organization = null;
+    try {
+      organization = self.getOrganization(organizationName);
+    } catch (er) {
+      error = er;
+    }
+    if (error) {
+      throw error;
+    }
+    return organization.teamFromEntity(entity);
   }
 
-  getAccountByUsername(username, options, callback) {
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    options = options || {};
-    const token = getCentralOperationsToken(this);
-    const operations = this;
-    if (!username) {
-      return callback(new Error('Must provide a GitHub username to retrieve account information.'));
-    }
-    const parameters = {
-      username: username,
-    };
-    const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: options.maxAgeSeconds || operations._defaults.accountDetailStaleSeconds,
-    };
-    if (options.backgroundRefresh !== undefined) {
-      cacheOptions.backgroundRefresh = options.backgroundRefresh;
-    }
-    return operations._github.call(token, 'users.getByUsername', parameters, cacheOptions, (error, entity) => {
-      if (error && error.code && error.code === 404) {
-        error = new Error(`The GitHub username ${username} could not be found (or was deleted)`);
-        error.code = 404;
-        return callback(error);
-      } else if (error) {
-        return callback(wrapError(error, `Could not get details about account "${username}".`));
+  getAccountByUsername(username: string, options?: ICacheOptions): Promise<Account> {
+    return new Promise((resolve, reject) => {
+      options = options || {};
+      const token = getCentralOperationsToken(this);
+      const operations = this;
+      if (!username) {
+        return reject(Error('Must provide a GitHub username to retrieve account information.'));
       }
-      const account = new Account(entity, this, getCentralOperationsToken.bind(null, this));
-      return callback(null, account);
+      const parameters = {
+        username: username,
+      };
+      const cacheOptions: ICacheOptions = {
+        maxAgeSeconds: options.maxAgeSeconds || operations._defaults.accountDetailStaleSeconds,
+      };
+      if (options.backgroundRefresh !== undefined) {
+        cacheOptions.backgroundRefresh = options.backgroundRefresh;
+      }
+      return operations._github.call(token, 'users.getByUsername', parameters, cacheOptions, (error, entity) => {
+        if (error && error.code && error.code === 404) {
+          error = new Error(`The GitHub username ${username} could not be found (or was deleted)`);
+          error.code = 404;
+          return reject(error);
+        } else if (error) {
+          return reject(wrapError(error, `Could not get details about account ${username}: ${error.message}`));
+        }
+        const account = new Account(entity, this, getCentralOperationsToken.bind(null, this));
+        return resolve(account);
+      });
     });
   }
 
@@ -871,29 +869,29 @@ export class Operations {
       });
     });
   }
-}
 
-function getTeamDetailsById(self, id, options, callback) {
-  if (!callback && typeof(options) === 'function') {
-    callback = options;
-    options = null;
+
+  private getTeamDetailsById(id: string, options: ICacheOptions): Promise<any> {
+    return new Promise((resolve, reject) => {
+      options = options || {};
+      const token = getCentralOperationsToken(this);
+      if (!id) {
+        return reject(new Error('Must provide a GitHub team ID to retrieve team information'));
+      }
+      const parameters = {
+        team_id: id,
+      };
+      const cacheOptions: ICacheOptions = {
+        maxAgeSeconds: options.maxAgeSeconds || this.defaults.teamDetailStaleSeconds,
+      };
+      if (options.backgroundRefresh !== undefined) {
+        cacheOptions.backgroundRefresh = options.backgroundRefresh;
+      }
+      return this.github.call(token, 'teams.get', parameters, cacheOptions, (error, ok) => {
+        return error ? reject(error) : resolve(ok);
+      });
+    });
   }
-  options = options || {};
-  const token = getCentralOperationsToken(self);
-  const operations = self;
-  if (!id) {
-    return callback(new Error('Must provide a GitHub team ID to retrieve team information'));
-  }
-  const parameters = {
-    team_id: id,
-  };
-  const cacheOptions: ICacheOptions = {
-    maxAgeSeconds: options.maxAgeSeconds || operations.defaults.teamDetailStaleSeconds,
-  };
-  if (options.backgroundRefresh !== undefined) {
-    cacheOptions.backgroundRefresh = options.backgroundRefresh;
-  }
-  return operations.github.call(token, 'teams.get', parameters, cacheOptions, callback);
 }
 
 function fireEvent(config, configurationName, value, callback?) {
@@ -945,7 +943,7 @@ function getCentralOperationsToken(self) {
   return firstOrganization.ownerToken;
 }
 
-function createOrganization(self, name, settings?) {
+function createOrganization(self: Operations, name: string, settings?): Organization {
   name = name.toLowerCase();
   if (!settings) {
     const group = self.config.github.organizations;
@@ -986,12 +984,8 @@ function getAlternateOrganization(self, name, alternativeType) {
   }
 }
 
-function crossOrganizationResults(operations, results, keyProperty) {
+function crossOrganizationResults(operations: Operations, results, keyProperty) {
   keyProperty = keyProperty || 'id';
-  if (results && results.data) {
-    // This debug aid can be removed anytime in Sept. 2017
-    console.warn('results.data present in cross-organization results (SHOULD be flattened instead)');
-  }
   const map: IMapPlusMetaCost = new Map();
   operations.translateOrganizationNamesFromLowercase(results.orgs);
   for (const orgName of Object.getOwnPropertyNames(results.orgs)) {
@@ -1017,3 +1011,23 @@ function crossOrganizationResults(operations, results, keyProperty) {
   map.cost = results.cost;
   return map;
 }
+
+function getPromisedLinks(linkProvider: ILinkProvider) {
+  return new Promise((resolve, reject) => {
+    // TODO: consider looking at the options as to how to include/exclude properties etc.
+    // today (TypeScript update with PGSQL) the 'options' have zero impact on what is actually returned...
+    linkProvider.getAll((error, links) => {
+      if (error) {
+        return reject(error);
+      }
+      const jsonLinks = linkProvider.dehydrateLinks(links);
+      const dataObject = {
+        headers: {
+          'type': 'links',
+        },
+        data: jsonLinks,
+      };
+      return resolve(dataObject);
+    });
+  });
+};

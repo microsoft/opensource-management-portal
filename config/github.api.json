@@ -1,0 +1,3 @@
+{
+  "defaultPageSize": "env://GITHUB_DEFAULT_PAGE_SIZE?default=100&type=integer"
+}

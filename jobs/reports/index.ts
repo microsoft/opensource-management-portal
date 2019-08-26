@@ -19,7 +19,7 @@ setTimeout(() => {
   process.exit(0);
 }, 1000 * 60 * 90);
 
-import moment = require('moment');
+import moment from 'moment';
 
 const started = moment().utc();
 const startedString = started.format();

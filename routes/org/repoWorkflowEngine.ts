@@ -95,8 +95,8 @@ export class RepoWorkflowEngine {
     }
     if (pendingRequest.initialTemplate) {
       tasks.push(createAddTemplateFilesTask(organization, repoName, pendingRequest.initialTemplate));
+      tasks.push(createAddTemplateWebHookTask(organization, repoName, pendingRequest.initialTemplate));
     }
-    // TODO: NEW: WEBHOOK SUPPORT FOR DOCS TEAM
     return callback(null, tasks);
   }
 
@@ -107,12 +107,11 @@ export class RepoWorkflowEngine {
       gitignore_template: this.request.initialGitIgnoreTemplate,
     };
     const organization = this.organization;
-    organization.createRepository(this.request.repositoryName, properties, function (error, result: ICreateRepositoryResult) {
-      const response = result.response;
-      if (error) {
-        error = wrapError(error, `The GitHub API did not allow the creation of the new repo ${this.request.repositoryName}. ${error.message}`);
-      }
-      callback(error, response);
+    return organization.createRepository(this.request.repositoryName, properties).then((result: ICreateRepositoryResult) => {
+      return callback(null, result);
+    }).catch(error => {
+      error = wrapError(error, `The GitHub API did not allow the creation of the new repo ${this.request.repositoryName}. ${error.message}`);
+      return callback(error);
     });
   }
 }
@@ -125,7 +124,11 @@ function createAddRepositoryTask(organization: Organization, repoName: string, i
         return 500 * Math.pow(2, retryCount);
       }
     }, function (callback) {
-      organization.repository(repoName).setTeamPermission(id, permission, callback);
+      organization.repository(repoName).setTeamPermission(id, permission).then(ok => {
+        return callback();
+      }).catch(error => {
+        return callback(error);
+      });
     }, function (error) {
       // Don't propagate as an error, just record the issue...
       const teamIdentity = teamName ? `${teamName} (${id})` : `with the ID ${id}`;
@@ -181,6 +184,72 @@ async function readFileToBase64(templatePath: string, templateName: string, file
   });
 }
 
+function createAddTemplateWebHookTask(organization: Organization, repositoryName: string, templateName: string) {
+  const destructured = organization.getLegacySystemObjects(); // const [, operations] =
+  const operations = destructured[1] as Operations;
+  const config = operations.config;
+  const definitions = config.github.templates.definitions;
+  const templateData = definitions ? definitions[templateName] : null;
+  if (templateData && templateData.webhook) {
+    const repository = organization.repository(repositoryName);
+    return (taskCallback) => {
+      createAddTemplateWebHookTaskAsync({
+        webhook: templateData.webhook,
+        webhookSharedSecret: templateData.webhookSharedSecret,
+        webhookEvents: templateData.webhookEvents,
+        webhookFriendlyName: templateData.webhookFriendlyName,
+        repository,
+        templateName,
+      }).then(templateWebhookResults => {
+        return taskCallback(null, templateWebhookResults);
+      }).catch(error => {
+        return taskCallback(error);
+      });
+    };
+  } else {
+    return (taskCallback) => { taskCallback(); };
+  }
+}
+
+async function createAddTemplateWebHookTaskAsync({
+  webhook,
+  webhookSharedSecret,
+  webhookEvents,
+  webhookFriendlyName,
+  templateName,
+  repository,
+}: {
+  repository: Repository,
+  webhook: string,
+  webhookEvents?: string[],
+  webhookSharedSecret: string,
+  webhookFriendlyName?: string,
+  templateName: string,
+}): Promise<ITemplateUploadResult> {
+  let error = null;
+  let message = null;
+  const friendlyName = webhookFriendlyName || webhook;
+  try {
+    const webhookConnected = await repository.createWebhook({
+      config: {
+        url: webhook,
+        content_type: 'json',
+        secret: webhookSharedSecret,
+        insecure_ssl: '0',
+      },
+      events: webhookEvents || ['push'],
+    });
+    message = `${friendlyName} webhook added to the repository.`;
+  } catch (webhookCreateError) {
+    error = new Error(`The template ${templateName} defines a webhook ${friendlyName}. Adding the webhook failed. ${webhookCreateError.message()}`);
+    error.inner = webhookCreateError;
+  }
+  return {
+    error,
+    message,
+  };
+}
+
 function createAddTemplateFilesTask(organization: Organization, repoName: string, templateName: string) {
   const destructured = organization.getLegacySystemObjects(); // const [, operations] =
   const operations = destructured[1] as Operations;
@@ -208,7 +277,7 @@ function createAddTemplateFilesTask(organization: Organization, repoName: string
 }
 
 async function authorizeTemplateCommitterAccount(repository: Repository, templateGitHubCommitterUsername: string, alternateTokenOptions): Promise<void> {
-  const invitation = await repository.addCollaboratorAsync(templateGitHubCommitterUsername, GitHubRepositoryPermission.Push);
+  const invitation = await repository.addCollaborator(templateGitHubCommitterUsername, GitHubRepositoryPermission.Push);
   if (invitation === undefined || invitation === null) {
     // user already had permission
     return;
@@ -217,7 +286,7 @@ async function authorizeTemplateCommitterAccount(repository: Repository, templat
     throw new Error(`The system account ${templateGitHubCommitterUsername} could not be invited to the ${repository.name} repository to apply the template.`);
   }
   const invitationId = invitation.id;
-  const blah = await repository.acceptCollaborationInviteAsync(invitationId, alternateTokenOptions);
+  const blah = await repository.acceptCollaborationInvite(invitationId, alternateTokenOptions);
   console.log();
 }
 interface ITemplateUploadResult {
@@ -251,7 +320,7 @@ async function createAddTemplateFilesTaskAsync({
   try {
     for (let i = 0; i < fileContents.length; i++) {
       const item = fileContents[i];
-      await repository.createFileAsync(item.path, item.content, message, alternateTokenOptions);
+      await repository.createFile(item.path, item.content, message, alternateTokenOptions);
       uploadedFiles.push(item.path);
     }
     result.message = `Initial commit of ${uploadedFiles.join(', ')} template files to the ${repository.name} repo succeeded.`;
@@ -264,6 +333,6 @@ async function createAddTemplateFilesTaskAsync({
       result.message = `Initial commit of template file(s) to the ${repository.name} repo failed. Not uploaded: ${notUploaded.join(', ')}. Error: ${commitError.message}.`;
     }
   }
-  await repository.removeCollaboratorAsync(templateGitHubCommitterUsername);
+  await repository.removeCollaborator(templateGitHubCommitterUsername);
   return result;
 }

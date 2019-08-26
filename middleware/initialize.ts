@@ -24,6 +24,7 @@ import { Pool as PostgresPool } from 'pg';
 
 const redisMock = require('redis-mock');
 const debug = require('debug')('oss-initialize');
+const pgDebug = require('debug')('pgpool');
 const DocumentDBClient = require('documentdb').DocumentClient;
 
 const appInsights = require('./appInsights');
@@ -38,7 +39,13 @@ import { CreateGraphProviderInstance, IGraphProvider } from '../lib/graphProvide
 
 const keyVaultResolver = require('../lib/keyVaultResolver');
 const mailProvider = require('../lib/mailProvider/');
-const githubProvider = require('../lib/github');
+import { CreateRestLibraryContext, ILibraryContext } from '../lib/github';
+import { CreateRepositoryCacheProviderInstance } from '../entities/repositoryCache';
+import { CreateRepositoryCollaboratorCacheProviderInstance } from '../entities/repositoryCollaboratorCache';
+import { CreateTeamCacheProviderInstance } from '../entities/teamCache';
+import { CreateTeamMemberCacheProviderInstance } from '../entities/teamMemberCache';
+import { CreateRepositoryTeamCacheProviderInstance } from '../entities/repositoryTeamCache';
+import { CreateOrganizationMemberCacheProviderInstance } from '../entities/organizationMemberCache';
 
 async function initialize(app: Application, express, rootdir: string, config, earlyInitError: any): Promise<void> {
   const providers = app.get('providers') as IProviders;
@@ -76,11 +83,23 @@ async function initialize(app: Application, express, rootdir: string, config, ea
     config,
     emOptions,
     'postgres');
-  // providers.entityMetadata = await createAndInitializeEntityMetadataProviderInstance(app, config, providers);
+  const memoryEntityMetadataProvider = await createAndInitializeEntityMetadataProviderInstance(
+      app,
+      config,
+      emOptions,
+      'memory');
+
+    // providers.entityMetadata = await createAndInitializeEntityMetadataProviderInstance(app, config, providers);
   providers.approvalProvider = await createAndInitializeApprovalProviderInstance({ entityMetadataProvider: tableEntityMetadataProvider });
   providers.repositoryMetadataProvider = await createAndInitializeRepositoryMetadataProviderInstance({ entityMetadataProvider: tableEntityMetadataProvider });
   providers.tokenProvider = await createTokenProvider({ entityMetadataProvider: tableEntityMetadataProvider });
   providers.localExtensionKeyProvider = await CreateLocalExtensionKeyProvider({ entityMetadataProvider: tableEntityMetadataProvider });
+  providers.organizationMemberCacheProvider = await CreateOrganizationMemberCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
+  providers.repositoryCacheProvider = await CreateRepositoryCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
+  providers.repositoryCollaboratorCacheProvider = await CreateRepositoryCollaboratorCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
+  providers.repositoryTeamCacheProvider = await CreateRepositoryTeamCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
+  providers.teamCacheProvider = await CreateTeamCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
+  providers.teamMemberCacheProvider = await CreateTeamMemberCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
 
   try {
     if (!earlyInitError) {
@@ -95,17 +114,14 @@ async function initialize(app: Application, express, rootdir: string, config, ea
   debug('*');
 }
 
-async function configureGitHubLibrary(app, redis, linkProvider: ILinkProvider, config): Promise<any> {
-  return new Promise<any>((resolve, reject) => {
-    const options = {
-      config,
-      redis,
-      insights: app.get('appInsightsClient'),
-      linkProvider,
-    };
-    const libraryContext = githubProvider(options);
-    return resolve(libraryContext);
+function configureGitHubLibrary(app, redis, linkProvider: ILinkProvider, config): ILibraryContext {
+  const libraryContext = CreateRestLibraryContext({
+    config,
+    redis,
+    insights: app.get('appInsightsClient'),
+    linkProvider,
   });
+  return libraryContext;
 }
 
 async function configureOptionalMailProvider(config): Promise<any> {
@@ -178,13 +194,15 @@ module.exports = function init(app: Application, express, rootdir, config, confi
     require('./error-routes')(app, error);
     callback(null, app);
   };
+  if (!configurationError && (!config || !config.activeDirectory)) {
+    configurationError = `config.activeDirectory.clientId and config.activeDirectory.clientSecret are required to initialize KeyVault`;
+  }
   if (configurationError) {
     return finalizeInitialization(configurationError);
   }
-
   const kvConfig = {
-    clientId: config.activeDirectory.clientId,
-    clientSecret: config.activeDirectory.clientSecret,
+    clientId: config && config.activeDirectory ? config.activeDirectory.clientId : null,
+    clientSecret: config && config.activeDirectory ? config.activeDirectory.clientSecret : null,
   };
   providers.config = config;
   let keyEncryptionKeyResolver = null;
@@ -284,18 +302,17 @@ module.exports = function init(app: Application, express, rootdir, config, confi
           const pool = new PostgresPool(config.data.postgres);
           // central
           pool.on('error', (err, client) => {
-            console.error('POSTGRES POOL ERROR:');
-            console.dir(err);
-            // ?
+            pgDebug('POSTGRES POOL ERROR:');
+            pgDebug(err);
           });
           pool.on('connect', (client) => {
-            debug(`Pool connecting a new client (pool: ${pool.totalCount} clients, ${pool.idleCount} idle, ${pool.waitingCount} waiting)`);
+            pgDebug(`Pool connecting a new client (pool: ${pool.totalCount} clients, ${pool.idleCount} idle, ${pool.waitingCount} waiting)`);
           });
           pool.on('acquire', client => {
-            debug(`Postgres client being checked out (pool: ${pool.totalCount} clients, ${pool.idleCount} idle, ${pool.waitingCount} waiting)`);
+            pgDebug(`Postgres client being checked out (pool: ${pool.totalCount} clients, ${pool.idleCount} idle, ${pool.waitingCount} waiting)`);
           });
           pool.on('remove', client => {
-            debug(`Postgres client checked back in (pool: ${pool.totalCount} clients, ${pool.idleCount} idle, ${pool.waitingCount} waiting)`);
+            pgDebug(`Postgres client checked back in (pool: ${pool.totalCount} clients, ${pool.idleCount} idle, ${pool.waitingCount} waiting)`);
           });
           // try connecting
           pool.connect((err, client, release) => {

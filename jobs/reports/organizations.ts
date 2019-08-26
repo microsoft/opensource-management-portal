@@ -10,7 +10,7 @@
 import async = require('async');
 import Q from 'q';
 import { Operations } from '../../business/operations';
-import { Organization } from '../../business/organization';
+import { Organization, IAdministratorBasics } from '../../business/organization';
 import { requireJson } from '../../utils';
 import { OrganizationMember } from '../../business/organizationMember';
 const qlimit = require('qlimit');
@@ -418,12 +418,8 @@ function getOrganizationData(context) {
   });
 }
 
-function getOrganizationDetails(organization: Organization): Q.Promise<any> {
-  const deferred = Q.defer();
-  organization.getDetails((error, details) => {
-    return error ? deferred.reject(error) : deferred.resolve(details);
-  });
-  return deferred.promise;
+function getOrganizationDetails(organization: Organization): Promise<any> {
+  return organization.getDetails();
 }
 
 function createAskToLinkAction(entry) {
@@ -440,37 +436,34 @@ function createAskToLinkAction(entry) {
   }
 }
 
-function getUnlinkedOrganizationMembers(context, organization: Organization) {
-  const deferred = Q.defer();
-  // const operations = context.operations;
-  const unlinked = [];
-  organization.getMembers((error, members) => {
-    if (error) {
-      return deferred.reject(error);
-    }
-    async.eachLimit(members, 4, (member: OrganizationMember, next) => {
-      getIndividualUserLink(context, member.id).then(link => {
-        if (!link) {
-          unlinked.push(member);
-        }
-        return next();
-      }, next);
-    }, error => {
-      return error ? deferred.reject(error) : deferred.resolve(unlinked);
+function getUnlinkedOrganizationMembers(context, organization: Organization): Promise<any> {
+  return new Promise((resolve, reject) => {
+    // const operations = context.operations;
+    const unlinked = [];
+    organization.getMembers().then(members => {
+      async.eachLimit(members, 4, (member: OrganizationMember, next) => {
+        getIndividualUserLink(context, member.id).then(link => {
+          if (!link) {
+            unlinked.push(member);
+          }
+          return next();
+        }, next);
+      }, error => {
+        return error ? reject(error) : resolve(unlinked);
+      });
+    }).catch(error => {
+      return reject(error);
     });
   });
-  return deferred.promise;
 }
 
-function getOrganizationAdministrators(organization: Organization) {
-  const deferred = Q.defer();
-  organization.getOrganizationAdministrators((error, admins) => {
-    if (error) {
-      error.orgName = organization.name;
-    }
-    return error ? deferred.reject(error) : deferred.resolve(admins);
-  });
-  return deferred.promise;
+async function getOrganizationAdministrators(organization: Organization): Promise<IAdministratorBasics[]> {
+  try {
+    return await organization.getOrganizationAdministrators();
+  } catch (error) {
+    error.orgName = organization.name;
+    throw error;
+  }
 }
 
 function addOrganizationWarning(context, organizationContext, warning) {

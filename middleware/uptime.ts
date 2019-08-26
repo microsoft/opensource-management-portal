@@ -6,7 +6,7 @@
 // Every minute, send an application insights metric indicating how long this
 // has been running.
 
-import moment = require('moment');
+import moment from 'moment';
 
 function everyMinute(insights, started) {
   const now = moment();

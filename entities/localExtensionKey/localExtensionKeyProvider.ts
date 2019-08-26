@@ -5,22 +5,30 @@
 
 'use strict';
 
-import { EntityMetadataType, EntityMetadataBase } from '../../lib/entityMetadataProvider/entityMetadata';
-import { LocalExtensionKey, EnsureLocalExtensionKeyDefinitionsAvailable } from './localExtensionKey';
+import { EntityMetadataBase } from '../../lib/entityMetadataProvider/entityMetadata';
+import { LocalExtensionKey, EntityImplementation } from './localExtensionKey';
 import { ILocalExtensionKeyProvider, ILocalExtensionKeyProviderOptions } from '.';
+import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 
-const thisProviderType = EntityMetadataType.LocalExtensionKey;
+const thisProviderType = EntityImplementation.Type;
 
 export class LocalExtensionKeyProvider extends EntityMetadataBase implements ILocalExtensionKeyProvider {
   constructor(options: ILocalExtensionKeyProviderOptions) {
     super(options);
-    EnsureLocalExtensionKeyDefinitionsAvailable();
+    EntityImplementation.EnsureDefinitions();
   }
 
   async getForCorporateId(corporateId: string): Promise<LocalExtensionKey> {
     this.ensureHelpers(thisProviderType);
     const metadata = await this._entities.getMetadata(thisProviderType, corporateId);
     return this.deserialize<LocalExtensionKey>(thisProviderType, metadata);
+  }
+
+  async getAllKeys(): Promise<LocalExtensionKey[]> {
+    const query = new QueryLocalExtensionKeysGetAll();
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<LocalExtensionKey>(thisProviderType, metadatas);
+    return results;
   }
 
   async createNewForCorporateId(localExtensionKey: LocalExtensionKey): Promise<void> {
@@ -37,4 +45,8 @@ export class LocalExtensionKeyProvider extends EntityMetadataBase implements ILo
     const entity = this.serialize(thisProviderType, localExtensionKey);
     return await this._entities.deleteMetadata(entity);
   }
+}
+
+export class QueryLocalExtensionKeysGetAll implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.LocalExtensionKeysGetAll;
 }

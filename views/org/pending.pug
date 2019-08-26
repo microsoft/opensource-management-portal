@@ -115,6 +115,37 @@ block content
               p
                 input.btn.btn-muted-more.btn-lg(type='submit', value='Manually Join ' + organization.name)
 
+          if link
+            p &nbsp;
+            p &nbsp;
+            h4 Your linked GitHub account
+
+            if hasIncreasedScope
+              p An invitation will be sent to your GitHub account #[strong #[a(href='https://github.com/' + link.thirdPartyUsername, target='_new') #{link.thirdPartyUsername}]] and automatically accepted as part of the one-click join experience.
+            else
+              p An invitation will be sent to your GitHub account #[strong #[a(href='https://github.com/' + link.thirdPartyUsername, target='_new') #{link.thirdPartyUsername}]] for you to accept.
+
+            if accountDetails
+              - var moment = viewServices.moment
+              table.table
+                thead
+                  tr
+                    th GitHub Username
+                    th User ID
+                    if accountDetails.created_at
+                      th Account created
+                tbody
+                  tr
+                    td= accountDetails.login
+                    td= accountDetails.id
+                    if accountDetails.created_at
+                      td= moment(accountDetails.created_at).fromNow()
+
+            p &nbsp;
+            p &nbsp;
+            p: small Not the account you are using?
+            p: small: a.btn.btn-muted.btn-sm(href='/settings') Review or remove your link
+
           if onboarding
             p &nbsp;
             hr
@@ -141,12 +172,20 @@ block content
             - var orgUser = orgAccount.organizationProfile
             p
               img.img-thumbnail.img-responsive(src=orgAccount.avatar(400), alt=(orgUser.name || orgUser.login))
-            h3= orgUser.name
-            h4= orgUser.login
-            p(style='margin-top:18px')
-              a.btn.btn-sm.btn-muted(href='https://github.com/' + organization.name, target='_new')
-                | Open on GitHub
-            hr
+            if orgUser.name
+              h3= orgUser.name
+            if orgUser.login
+              h4
+                = orgUser.login
+                = ' '
+                if orgUser.is_verified == true
+                  small: span.label.label-success Verified
+                else
+                  small: span.label.label-danger Not verified
+            if organization.name
+              p(style='margin-top:18px')
+                a.btn.btn-sm.btn-muted(href='https://github.com/' + organization.name, target='_new')
+                  | Open organization on GitHub
 
             div.row
               div.col-md-6.col-lg-6
@@ -163,15 +202,14 @@ block content
                   h6 On the Web
                   p
                     a(href=orgUser.blog, target='_new')= orgUser.blog
-                if orgAccount.getProfileCreatedDate && orgAccount.getProfileCreatedDate()
+                if orgUser.created_at
                   h6 Created
                   p
-                    time(datetime=orgAccount.getProfileCreatedDate().toISOString())= orgAccount.getProfileCreatedDate().toDateString()
-                if orgAccount.getProfileUpdatedDate && orgAccount.getProfileUpdatedDate()
+                    time(datetime=orgUser.created_at)= orgUser.created_at
+                if orgUser.updated_at
                   h6 Updated
                   p
-                    time(datetime=orgAccount.getProfileUpdatedDate().toISOString())= orgAccount.getProfileUpdatedDate().toDateString()
-                hr
+                    time(datetime=orgUser.updated_at)= orgUser.updated_at
                 if organization.configuredOrganizationRepositoryTypes
                   h6 Supported Repository Types
                   ul.list-unstyled
@@ -191,14 +229,28 @@ block content
                     small Private
 
                 hr
-                h6 Remaining Repositories
-                if orgUser.plan && orgUser.plan.private_repos
+                if orgUser.plan && orgUser.plan.name == 'enterprise'
+                  h4
+                    | Enterprise Cloud
+                    small= ' Plan'
+                  if orgUser.plan.filled_seats
+                    h4
+                      = orgUser.plan.filled_seats
+                      small= ' Filled Seats'
+                  if orgUser.plan.seats
+                    h4
+                      = orgUser.plan.seats
+                      small= ' Seats'
+
+                else
+                  h6 Remaining Repositories
+                  if orgUser.plan && orgUser.plan.private_repos
+                    h2
+                      = orgUser.plan.name + ' '
+                      small Plan
+                    h2
+                        = (orgUser.plan.private_repos - orgUser.total_private_repos) + ' '
+                        small Private
                   h2
-                    = orgUser.plan.name + ' '
-                    small Plan
-                  h2
-                      = (orgUser.plan.private_repos - orgUser.total_private_repos) + ' '
-                      small Private
-                h2
-                  | &infin;&nbsp;
-                  small Public
+                    | &infin;&nbsp;
+                    small Public

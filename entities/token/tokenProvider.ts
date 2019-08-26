@@ -5,17 +5,18 @@
 
 'use strict';
 
-import { EntityMetadataType, EntityMetadataBase } from '../../lib/entityMetadataProvider/entityMetadata';
-import { PersonalAccessToken, EnsureTokenDefinitionsAvailable } from './token';
+import { EntityMetadataBase } from '../../lib/entityMetadataProvider/entityMetadata';
+import { PersonalAccessToken, EntityImplementation } from './token';
 import { ITokenProvider, ITokenProviderCreateOptions } from '.';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
+import { Type } from './type';
 
-const thisProviderType = EntityMetadataType.Token;
+const thisProviderType = Type;
 
 export class TokenProvider extends EntityMetadataBase implements ITokenProvider {
   constructor(options: ITokenProviderCreateOptions) {
     super(options);
-    EnsureTokenDefinitionsAvailable();
+    EntityImplementation.EnsureDefinitions();
   }
 
   async getToken(token: string): Promise<PersonalAccessToken> {

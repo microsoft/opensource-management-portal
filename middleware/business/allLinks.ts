@@ -3,29 +3,25 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express = require('express');
-
 import { ReposAppRequest } from '../../transitional';
 import { wrapError } from '../../utils';
 import { Operations } from '../../business/operations';
 
 const cachedLinksRequestKeyName = 'cachedLinks';
 
-export function ensureAllLinksInMemory(req: ReposAppRequest, res, next) {
+export async function ensureAllLinksInMemory(req: ReposAppRequest, res, next) {
   if (req[cachedLinksRequestKeyName]) {
     return next();
   }
-
   const operations = req.app.settings.operations as Operations;
-  operations.getLinks({}, (linksError, links) => {
-    if (linksError) {
-      linksError = wrapError(linksError, 'There was a problem retrieving the set of links');
-      return next(linksError);
-    }
-
+  try {
+    const links = await operations.getLinks();
     req[cachedLinksRequestKeyName] = links;
     return next();
-  });
+    } catch (linksError) {
+    linksError = wrapError(linksError, 'There was a problem retrieving the set of links');
+    return next(linksError);
+  }
 }
 
 export function getAllLinksFromRequest(req: ReposAppRequest) {

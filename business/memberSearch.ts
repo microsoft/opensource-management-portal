@@ -5,11 +5,13 @@
 
 'use strict';
 
-const _ = require('lodash');
+import _ from 'lodash';
 
 import async = require('async');
 import Q from 'q';
 import { ICorporateLink } from './corporateLink';
+import { OrganizationMember } from './organizationMember';
+import { ICrossOrganizationMembersResult } from './operations';
 
 const earlyProfileFetchTypes = new Set(['former', 'active', 'serviceAccount', 'unknownAccount']);
 
@@ -31,7 +33,7 @@ export class MemberSearch {
   public pageFirstItem: number;
   public pageLastItem: number;
 
-  constructor(members: Map<string, any> | any[], options) {
+  constructor(members: ICrossOrganizationMembersResult | OrganizationMember[], options) {
     options = options || {};
     // must be a Map from ID to object with { orgs, memberships, account }
     if (Array.isArray(members)) {

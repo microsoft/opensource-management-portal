@@ -693,7 +693,7 @@ function defaultTableNames() {
       const tableName = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.TableDefaultTableName, true);
       defaults[type] = tableName;
     } catch (error) {
-      throw new Error(`No default Azure table name defined for type ${type}`);
+      throw new Error(`No default Azure table name defined for type ${type} (${error})`);
     }
   });
   return defaults;

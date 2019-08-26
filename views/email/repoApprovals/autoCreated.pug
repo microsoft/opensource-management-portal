@@ -9,7 +9,7 @@ block content
   h1 #{approvalRequest.organizationName}/#{approvalRequest.repositoryName}
   p
     | Repo URL:&nbsp;
-    a(href='https://github.com/' + approvalRequest.organizationName + '/' + approvalRequest.repositoryName, target='_new') https://github.com/#{approvalRequest.org}/#{approvalRequest.repositoryName}
+    a(href='https://github.com/' + approvalRequest.organizationName + '/' + approvalRequest.repositoryName, target='_new') https://github.com/#{approvalRequest.organizationName}/#{approvalRequest.repositoryName}
   if api && service
     p.lead #{approvalRequest.repositoryName} was created by #{service}
   else if api
@@ -67,4 +67,5 @@ block content
     h3 Operations performed
     ul
       each result in results
-        li(style=result.error ? 'color:red' : undefined)= result.message
+        if result && (result.error || result.message)
+          li(style=result.error ? 'color:red' : undefined)= result.message

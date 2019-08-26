@@ -12,6 +12,7 @@ import { IEntityMetadataProvider } from '../../lib/entityMetadataProvider/entity
 export interface ILocalExtensionKeyProvider {
   initialize(): Promise<void>;
 
+  getAllKeys(): Promise<LocalExtensionKey[]>;
   getForCorporateId(corporateId: string): Promise<LocalExtensionKey>;
   createNewForCorporateId(localExtensionKey: LocalExtensionKey): Promise<void>;
   updateForCorporateId(localExtensionKey: LocalExtensionKey): Promise<void>;

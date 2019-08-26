@@ -7,7 +7,7 @@
 
 'use strict';
 
-import moment = require('moment');
+import moment from 'moment';
 
 interface IAuditDocument
 {
@@ -61,7 +61,7 @@ async function getCollection(client, database, name) {
         return reject(error);
       }
       return resolve(col);
-    }); 
+    });
   });
 }
 
@@ -131,7 +131,7 @@ async function runAsync(operations, organization, data) {
       login: body.organization.login,
     };
   }
-  
+
   if (body.repository) {
     document.repository = {
       id: body.repository.id,

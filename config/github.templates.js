@@ -16,7 +16,7 @@ const typescriptConfig = require('./typescript');
 
 module.exports = graphApi => {
   const environmentProvider = graphApi.environment;
-
+  const configurationEnvironmentName = environmentProvider.get('CONFIGURATION_ENVIRONMENT');
   const defaultDirectory = path.join('data', 'templates');
 
   // 'npm' or 'fs'
@@ -63,6 +63,20 @@ module.exports = graphApi => {
       combinedError.innerError = templatesNpmLoadError;
       throw combinedError;
     }
+  }
+
+  if (templates.definitions) {
+    const clonedDefinitions = Object.assign({}, templates.definitions);
+    const names = Object.getOwnPropertyNames(clonedDefinitions);
+    for (let i = 0; i < names.length; i++) {
+      const definition = clonedDefinitions[names[i]];
+      if (!definition.environments || definition.environments.includes(configurationEnvironmentName)) {
+        // keep this template around
+      } else {
+        delete clonedDefinitions[names[i]];
+      }
+    }
+    templates.definitions = clonedDefinitions;
   }
 
   return templates;
