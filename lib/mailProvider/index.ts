@@ -60,6 +60,7 @@ module.exports = function createMailProviderInstance(config, callback) {
   const supportedProviders: string[] = [
     'customMailService',
     'mockMailService',
+    'smtpMailService'
   ];
   supportedProviders.forEach((supportedProvider) => {
     if (supportedProvider === provider) {
