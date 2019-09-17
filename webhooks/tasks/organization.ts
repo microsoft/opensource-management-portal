@@ -30,21 +30,21 @@ module.exports = {
       console.dir(data);
     }
     if (refresh) {
-      // const orgName = organization.name;
-      // console.log(`refreshing ${orgName} org members list`);
-      // const immediateRefreshOptions = {
-      //   backgroundRefresh: false,
-      //   maxAgeSeconds: 0.01,
-      // };
-      // return organization.getMembers(immediateRefreshOptions).then(ok => {
-      //   console.log(`refreshed membership list for the org ${orgName}, will refresh x-org immediately`);
-      //   return operations.getMembers(immediateRefreshOptions).then(done => {
-      //     console.log('refreshed x-org memberships');
-      //   });
-      // }).catch(error => {
-      //   // ignore error
-      //   return callback();
-      // });
+      const orgName = organization.name;
+      console.log(`refreshing ${orgName} org members list`);
+      const immediateRefreshOptions = {
+        backgroundRefresh: false,
+        maxAgeSeconds: 0.01,
+      };
+      return organization.getMembers(immediateRefreshOptions).then(ok => {
+        console.log(`refreshed membership list for the org ${orgName}, will refresh x-org immediately`);
+        return operations.getMembers(immediateRefreshOptions).then(done => {
+          console.log('refreshed x-org memberships');
+        });
+      }).catch(error => {
+        // ignore error
+        return callback();
+      });
     }
     callback();
   },

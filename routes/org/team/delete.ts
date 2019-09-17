@@ -14,16 +14,16 @@ interface ILocalRequest extends ReposAppRequest {
   team2?: any;
 }
 
-router.post('/', teamAdminRequired, (req: ILocalRequest, res, next) => {
+router.post('/', teamAdminRequired, async (req: ILocalRequest, res, next) => {
   const organization = req.organization;
   const team2 = req.team2;
-  team2.delete(error => {
-    if (error) {
-      return next(error);
-    }
+  try {
+    await team2.delete(); // returns now promise
     req.individualContext.webContext.saveUserAlert(`${team2.name} team deleted`, 'Delete', 'success');
-    res.redirect('/' + organization.name + '/teams');
-  });
+    return res.redirect('/' + organization.name + '/teams');
+  } catch (error) {
+    return next(error);
+  }
 });
 
 module.exports = router;

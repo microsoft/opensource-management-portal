@@ -21,7 +21,8 @@
   "scripts": {
     "start": "node ./dist/bin/www",
     "start-in-container": "node ./bin/www",
-    "test": "echo WARN TESTS ARE OFF"
+    "test": "echo WARN TESTS ARE OFF",
+    "build": "./node_modules/typescript/bin/tsc"
   },
   "_begin_app_configuration_": 0,
   "//": "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -",

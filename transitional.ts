@@ -125,7 +125,7 @@ export interface IProviders {
 }
 
 export interface RedisOptions {
-  auth_pass: string;
+  auth_pass?: string;
   detect_buffers: boolean;
   tls?: {
     servername: string;

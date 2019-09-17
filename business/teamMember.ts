@@ -100,7 +100,8 @@ export class TeamMember {
     if (!providers.mailAddressProvider) {
       throw new Error('No mailAddressProvider is available in this application instance');
     }
-    const mailAddress = await GetAddressFromUpnAsync(providers.mailAddressProvider, link.corporateUsername);
+    //Preventing a crash when trying to send a mail to an unlinked account
+    const mailAddress = link ? await GetAddressFromUpnAsync(providers.mailAddressProvider, link.corporateUsername) : null;
     this._mailAddress = mailAddress;
     return mailAddress;
   }

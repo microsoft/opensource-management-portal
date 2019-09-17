@@ -65,7 +65,7 @@ router.post('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
     const result = await organization[req.body.conceal ? 'concealMembership' : 'publicizeMembership'].call(organization, username, writeToken);
     // TODO: validate this works, since it is blindly calling now!
   } catch (error) {
-    return next(wrapError(error, `We had trouble ' + message1 + ' your membership. Did you authorize the increased scope of access with GitHub? ${error.message}`));
+    return next(wrapError(error, `We had trouble ${message1} your membership. Did you authorize the increased scope of access with GitHub? ${error.message}`));
   }
   req.individualContext.webContext.saveUserAlert('Your ' + organization.name + ' membership is now ' + message2 + '!', organization.name, 'success');
   const url = organization.baseUrl + ((onboarding || joining) ? '/teams' : '');

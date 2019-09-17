@@ -7,8 +7,10 @@
 
 import express = require('express');
 import { ReposAppRequest } from '../../../transitional';
+import { ILocalTeamRequest } from './members';
 const router = express.Router();
 const teamAdminRequired = require('./teamAdminRequired');
+const PeopleSearch = require('../../peopleSearch')
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: any;
@@ -17,32 +19,35 @@ interface ILocalRequest extends ReposAppRequest {
   team2AddType?: any;
 }
 
-function refreshMaintainers(team2, callback) {
+function refreshMaintainers(team2) {
   const options = {
-    maxAgeSeconds: -1,
+    maxAgeSeconds: 1,
     backgroundRefresh: false,
   };
-  team2.getMaintainers(options, callback);
+  return team2.getMaintainers(options);
 }
 
-router.use((req: ILocalRequest, res, next) => {
+router.use(async (req: ILocalRequest, res, next) => {
   // Get the latest maintainers with every request
   const team2 = req.team2;
-  refreshMaintainers(team2, (error, maintainers) => {
+  try {
+    const maintainers = await refreshMaintainers(team2); // returns now promise
     if (maintainers) {
       req.verifiedCurrentMaintainers = maintainers;
-    }
+    };
+    return next();
+  } catch (error) {
     return next(error);
-  });
+  };
 });
 
-router.get('/refresh', (req: ILocalRequest, res) => {
+router.get('/refresh', async (req: ILocalRequest, res) => {
   // Since the views are cached, this can help resolve support situations before they start
-  res.redirect(req.teamUrl);
+  await refreshMaintainers(req.team2); // returns now promise
+  return res.redirect(req.teamUrl);
 });
 
-
-router.post('/:id/downgrade', teamAdminRequired, (req: ILocalRequest, res, next) => {
+router.post('/:id/downgrade', teamAdminRequired, async (req: ILocalRequest, res, next) => {
   const team2 = req.team2;
   const id = req.params.id;
   const verifiedCurrentMaintainers = req.verifiedCurrentMaintainers;
@@ -58,42 +63,32 @@ router.post('/:id/downgrade', teamAdminRequired, (req: ILocalRequest, res, next)
     return next(new Error(`The GitHub user with ID ${id} is not currently a maintainer of the team, so cannot be downgraded.`));
   }
   const username = maintainer.login;
-  team2.addMembership(username, changeMembershipError => {
-    if (changeMembershipError) {
-      return next(changeMembershipError);
-    }
+  try {
+    await team2.addMembership(username); // returns now promise
     req.individualContext.webContext.saveUserAlert(`Downgraded ${username} from a team maintainer to a team member`, team2.name + ' membership updated', 'success');
-    refreshMaintainers(team2, refreshError => {
-      if (refreshError) {
-        return next(refreshError);
-      }
-      res.redirect(req.teamUrl);
-    });
-  });
+    await refreshMaintainers(team2); // returns now promise
+    return res.redirect(req.teamUrl);
+  } catch (err) {
+    return next(err);
+  };
 });
 
-router.use('/add', teamAdminRequired, (req: ILocalRequest, res, next) => {
+router.use('/add', teamAdminRequired, (req: ILocalTeamRequest, res, next) => {
   req.team2AddType = 'maintainer';
   return next();
-});
+}, PeopleSearch);
 
-router.post('/add', teamAdminRequired, function (req: ILocalRequest, res, next) {
+router.post('/add', teamAdminRequired, async function (req: ILocalRequest, res, next) {
   const team2 = req.team2;
   const login = req.body.username;
-  team2.addMaintainer(login, (addMaintainerError) => {
-    if (addMaintainerError) {
-      return next(addMaintainerError);
-    }
+  try {
+    await team2.addMaintainer(login); // returns now promise
     req.individualContext.webContext.saveUserAlert(`Added ${login} as a team maintainer`, team2.name + ' membership updated', 'success');
-    refreshMaintainers(team2, refreshError => {
-      if (refreshError) {
-        return next(refreshError);
-      }
-      return res.redirect(req.teamUrl);
-    });
-  });
+    await refreshMaintainers(team2); // returns now promise
+    return res.redirect(req.teamUrl);
+  } catch (err) {
+    return next(err);
+  };
 });
-
-router.use('/add', require('../../peopleSearch'));
 
 module.exports = router;

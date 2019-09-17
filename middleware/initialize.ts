@@ -59,13 +59,14 @@ async function initialize(app: Application, express, rootdir: string, config, ea
   providers.github = await configureGitHubLibrary(app, redisHelper, providers.linkProvider, config);
   app.set('github', providers.github);
 
+  // always check if config exists to prevent crashing because of trying to access an undefined object
   const emOptions: IEntityMetadataProvidersOptions = {
     tableOptions: {
-      account: config.github.links.table.account,
-      key: config.github.links.table.key,
-      prefix: config.github.links.table.prefix,
+      account: config.github.links.table ? config.github.links.table.account : null,
+      key: config.github.links.table ? config.github.links.table.key: null,
+      prefix: config.github.links.table ? config.github.links.table.prefix : null,
       encryption: {
-        keyEncryptionKeyId: config.github.links.table.encryptionKeyId,
+        keyEncryptionKeyId: config.github.links.table ? config.github.links.table.encryptionKeyId : null,
         keyResolver: providers.keyEncryptionKeyResolver,
       },
     },
@@ -73,39 +74,59 @@ async function initialize(app: Application, express, rootdir: string, config, ea
       pool: providers.postgresPool,
     },
   };
-  const tableEntityMetadataProvider = await createAndInitializeEntityMetadataProviderInstance(
-    app,
-    config,
-    emOptions,
-    'table');
-  const pgEntityMetadataProvider = await createAndInitializeEntityMetadataProviderInstance(
-    app,
-    config,
-    emOptions,
-    'postgres');
-  const memoryEntityMetadataProvider = await createAndInitializeEntityMetadataProviderInstance(
-      app,
-      config,
-      emOptions,
-      'memory');
 
-    // providers.entityMetadata = await createAndInitializeEntityMetadataProviderInstance(app, config, providers);
-  providers.approvalProvider = await createAndInitializeApprovalProviderInstance({ entityMetadataProvider: tableEntityMetadataProvider });
-  providers.repositoryMetadataProvider = await createAndInitializeRepositoryMetadataProviderInstance({ entityMetadataProvider: tableEntityMetadataProvider });
-  providers.tokenProvider = await createTokenProvider({ entityMetadataProvider: tableEntityMetadataProvider });
-  providers.localExtensionKeyProvider = await CreateLocalExtensionKeyProvider({ entityMetadataProvider: tableEntityMetadataProvider });
-  providers.organizationMemberCacheProvider = await CreateOrganizationMemberCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
-  providers.repositoryCacheProvider = await CreateRepositoryCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
-  providers.repositoryCollaboratorCacheProvider = await CreateRepositoryCollaboratorCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
-  providers.repositoryTeamCacheProvider = await CreateRepositoryTeamCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
-  providers.teamCacheProvider = await CreateTeamCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
-  providers.teamMemberCacheProvider = await CreateTeamMemberCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
+  // only create tableEntityMetadataProvider when azure tables is configured
+  let tableEntityMetadataProvider;
+  if (config.github.links.table && config.github.links.table.account) {
+    tableEntityMetadataProvider = await createAndInitializeEntityMetadataProviderInstance(
+      app, 
+      config, 
+      emOptions, 
+      'table'
+    );
+  };
+
+  // only create pgEntityMetadataProvider when postgres is configured
+  let pgEntityMetadataProvider;
+  if (config.data.postgres && config.data.postgres.host) {
+    pgEntityMetadataProvider = await createAndInitializeEntityMetadataProviderInstance(
+      app, 
+      config, 
+      emOptions, 
+      'postgres'
+    );
+  };
+
+  const memoryEntityMetadataProvider = await createAndInitializeEntityMetadataProviderInstance(
+    app, 
+    config, 
+    emOptions, 
+    'memory'
+  );
+
+  // fallbacks to postgres or memory provider when the other providers aren't configured
+  const standardProvider = tableEntityMetadataProvider || pgEntityMetadataProvider || memoryEntityMetadataProvider;
+  const standardCacheProvider = pgEntityMetadataProvider || memoryEntityMetadataProvider;
+
+  // providers.entityMetadata = await createAndInitializeEntityMetadataProviderInstance(app, config, providers);
+  providers.approvalProvider = await createAndInitializeApprovalProviderInstance({ entityMetadataProvider: standardProvider });
+  providers.repositoryMetadataProvider = await  createAndInitializeRepositoryMetadataProviderInstance({ entityMetadataProvider: standardProvider });
+  providers.tokenProvider = await createTokenProvider({ entityMetadataProvider: standardProvider });
+  providers.localExtensionKeyProvider = await CreateLocalExtensionKeyProvider({ entityMetadataProvider: standardProvider });
+  providers.organizationMemberCacheProvider = await  CreateOrganizationMemberCacheProviderInstance({ entityMetadataProvider: standardCacheProvider });
+  providers.repositoryCacheProvider = await CreateRepositoryCacheProviderInstance({ entityMetadataProvider: standardCacheProvider });
+  providers.repositoryCollaboratorCacheProvider = await  CreateRepositoryCollaboratorCacheProviderInstance({ entityMetadataProvider: standardCacheProvider });
+  providers.repositoryTeamCacheProvider = await CreateRepositoryTeamCacheProviderInstance({ entityMetadataProvider: standardCacheProvider });
+  providers.teamCacheProvider = await CreateTeamCacheProviderInstance({ entityMetadataProvider: standardCacheProvider });
+  providers.teamMemberCacheProvider =  await CreateTeamMemberCacheProviderInstance({ entityMetadataProvider: standardCacheProvider });
 
   try {
     if (!earlyInitError) {
       const operations = new Operations(providers);
       app.set('operations', operations);
       providers.operations = operations;
+    } else {
+      console.dir(earlyInitError);
     }
   } catch (ignoredError2) {
     console.dir(ignoredError2);
@@ -215,11 +236,11 @@ module.exports = function init(app: Application, express, rootdir, config, confi
   } catch (noKeyVault) {
     debug('configuration resolved');
   }
-  var redisFirstCallback;
-  var redisOptions : RedisOptions = {
-    auth_pass: config.redis.key,
+  let redisFirstCallback;
+  let redisOptions : RedisOptions = {
     detect_buffers: true,
   };
+  if (config.redis.key) redisOptions.auth_pass = config.redis.key;
   if (config.redis.tls) {
     redisOptions.tls = {
       servername: config.redis.tls,
@@ -260,7 +281,7 @@ module.exports = function init(app: Application, express, rootdir, config, confi
         servername: wr.tls,
       };
     }
-    wr.port = wr.port || wr.tls ? 6380 : 6379;
+    wr.port = wr.port || (wr.tls ? 6380 : 6379);
     if (!wr.host && !wr.tls) {
       if (nodeEnvironment === 'production') {
         console.warn('Redis host or TLS host must be provided in production environments');
@@ -278,8 +299,13 @@ module.exports = function init(app: Application, express, rootdir, config, confi
   async.parallel([
     function (cb) {
       redisFirstCallback = cb;
-      redisClient.auth(config.redis.key);
-      debug('authenticated to Redis');
+      // only authenticate when credentials are configured
+      if (config.redis.key) {
+        redisClient.auth(config.redis.key);
+        debug('authenticated to Redis');
+      } else {
+        debug('redis.key not set. Skipping auth');
+      };
     },
     function createMailAddressProvider(next) {
       const options = {

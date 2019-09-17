@@ -427,7 +427,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
       values = [
         entityTypeValue, {
           'active': true,
-          'githubid': stringOrNumberAsString(thirdPartyId),
+          'thirdpartyid': stringOrNumberAsString(thirdPartyId),
         },
       ];
       return { sql, values };

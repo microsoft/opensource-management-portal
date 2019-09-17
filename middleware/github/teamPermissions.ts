@@ -15,8 +15,7 @@ export async function AddTeamPermissionsToRequest(req: ReposAppRequest, res, nex
     return next();
   }
   const login = req.individualContext.getGitHubIdentity().username;
-  const idAsString = req.individualContext.getGitHubIdentity().id;
-  const id = idAsString ? parseInt(idAsString, 10) : null;
+  const id = req.individualContext.getGitHubIdentity().id;
   const organization = req.organization;
   const teamPermissions = {
     allowAdministration: false,
@@ -39,9 +38,8 @@ export async function AddTeamPermissionsToRequest(req: ReposAppRequest, res, nex
   // +MIDDLEWARE: providing this later to speed up getting this data
   req['teamMaintainers'] = maintainers;
 
-  const idString = id.toString(); // TODO: this inconsistency is painful
   for (let i = 0; i < maintainers.length; i++) {
-    if (maintainers[i].id === idString) {
+    if (String(maintainers[i].id) === id) {
       teamPermissions.maintainer = true;
       break;
     }

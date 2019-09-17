@@ -47,15 +47,15 @@ export class UserContext {
   }
 
   async getAggregatedOverview(): Promise<any> {
-    let [ orgNames, orgStatuses, orgOwners, /*myTeams, myTeamMaintainers, repoTeams*/ ] = await Promise.all([
+    let [ orgNames, orgStatuses, orgOwners, myTeams, myTeamMaintainers, repoTeams ] = await Promise.all([
       SettleToStateValue(this.getOrganizationNames()),
       SettleToStateValue(this.getOrganizationStatuses()),
       SettleToStateValue(this.getOrganizationStatuses('admin')),
-      // SettleToStateValue(this.getTeamMemberships()),
-      // SettleToStateValue(this.getTeamMemberships('maintainer')),
-      // SettleToStateValue(this.getRepoTeams()),
+      SettleToStateValue(this.getTeamMemberships()),
+      SettleToStateValue(this.getTeamMemberships('maintainer')),
+      SettleToStateValue(this.getRepoTeams()),
     ]);
-    const errors = promisesToErrors(orgNames, orgStatuses, orgOwners, /*myTeams, myTeamMaintainers, repoTeams*/);
+    const errors = promisesToErrors(orgNames, orgStatuses, orgOwners, myTeams, myTeamMaintainers, repoTeams);
     const organizationNames = promiseResultToObject(orgNames);
     const results = {
       organizations: {
@@ -64,15 +64,15 @@ export class UserContext {
         available: undefined,
       },
       teams: {
-        member: null, // promiseResultToObject(myTeams),
-        maintainer: null, // promiseResultToObject(myTeamMaintainers),
+        member: promiseResultToObject(myTeams),
+        maintainer: promiseResultToObject(myTeamMaintainers),
       },
       teamCounts: {
         member: 0,
         maintainer: 0,
       },
       repos: {
-        byTeam: null, // promiseResultToObject(repoTeams),
+        byTeam: promiseResultToObject(repoTeams),
         byCollaboration: null, // too expensive to load; promiseResultToObject(repos),
       },
       errors: undefined,

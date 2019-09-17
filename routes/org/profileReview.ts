@@ -14,16 +14,14 @@ interface IUserProfileWarnings {
   email?: string;
 }
 
-router.get('/', function (req: ReposAppRequest, res, next) {
+router.get('/', async function (req: ReposAppRequest, res, next) {
   const organization = req.organization;
   const operations = req.app.settings.operations;
   const config = operations.config;
   const onboarding = req.query.onboarding;
   const login = req.individualContext.getGitHubIdentity().username;
-  operations.getAccountByUsername(login, (getAccountError, detailed) => {
-    if (getAccountError) {
-      return next(getAccountError);
-    }
+  try {
+    const detailed = await operations.getAccountByUsername(login); // returns now promise
     const userProfileWarnings: IUserProfileWarnings = {};
     if (!detailed.company || (detailed.company && detailed.company.toLowerCase().indexOf(config.brand.companyName.toLowerCase()) < 0)) {
       userProfileWarnings.company = 'color:red';
@@ -43,7 +41,9 @@ router.get('/', function (req: ReposAppRequest, res, next) {
         showBreadcrumbs: onboarding === undefined,
       },
     });
-  });
+  } catch (getAccountError) {
+    return next(getAccountError);
+  };
 });
 
 module.exports = router;

@@ -51,10 +51,10 @@ async function getTeamsData(id, singleOrganizationName: string | null, operation
 
   const yourTeamsMap = new Map();
   const overview = await operations.getUserContext(id).getAggregatedOverview();
-  if (overview.teams && overview.teams.length) {
-    reduceTeams(overview.teams, 'member', yourTeamsMap);
-    reduceTeams(overview.teams, 'maintainer', yourTeamsMap);
-  }
+  
+  reduceTeams(overview.teams, 'member', yourTeamsMap);
+  reduceTeams(overview.teams, 'maintainer', yourTeamsMap);
+
   return {
     teams: list,
     yourTeamsMap,

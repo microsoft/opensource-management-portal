@@ -17,7 +17,7 @@ const PeopleSearch = require('../../peopleSearch')
 
 const teamAdminRequired = require('./teamAdminRequired');
 
-interface ILocalTeamRequest extends ReposAppRequest {
+export interface ILocalTeamRequest extends ReposAppRequest {
   team2?: any;
   refreshedMembers?: any;
   teamUrl?: any;
