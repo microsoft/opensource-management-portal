@@ -69,7 +69,7 @@ module.exports = asyncHandler(async function(req: IReposAppWithTeam, res: expres
   const gitHubId = req.individualContext.getGitHubIdentity().id;
   const { reposData, repoPermissions, userRepos, specificTeamRepos /*, ageInformation */ } = await getReposAndOptionalTeamPermissions(orgName, operations, gitHubId, teamsType, team2, specificTeamId);
 
-  const page = req.query.page_number ? req.query.page_number : 1;
+  const page = req.query.page_number ? parseInt(req.query.page_number) : 1;
 
   let phrase = req.query.q;
 
