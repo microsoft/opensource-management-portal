@@ -210,7 +210,8 @@ router.post('/', function (req: ILocalRequest, res, next) {
                   This mail was sent to: ${pendingRequest.corporateUsername}`),
         headline: engine.getDecisionEmailHeadline(wasApproved),
         notification: wasApproved ? 'information' : 'warning',
-        service: 'Microsoft GitHub',
+        service: config.brand.companyName + ' GitHub',
+        companyName: config.brand.companyName
       };
       if (!engine.getDecisionEmailViewName || !engine.getDecisionEmailSubject) {
         return req.insights.trackException({

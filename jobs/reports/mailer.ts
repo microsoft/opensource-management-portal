@@ -19,6 +19,7 @@ import Q from 'q';
 const qlimit = require('qlimit');
 
 const emailRender = require('../../lib/emailRender');
+const app = require('../../app');
 
 function sendReports(context) {
   const mailProvider = context.operations.providers.mailProvider;
@@ -136,7 +137,8 @@ function sendReport(context, mailProvider, reportsByRecipient, recipientKey) {
     const viewOptions = {
       html: html,
       headline: isActionRequired ? 'Your GitHub updates' : 'GitHub updates',
-      app: 'Microsoft GitHub',
+      app: app.config.brand.companyName + ' GitHub',
+      companyName: app.config.brand.companyName,
       reason: 'This digest report is provided to all managed GitHub organization owners, repository admins, and team maintainers. This report was personalized and sent directly to ' + address,
       notification: notification,
     };

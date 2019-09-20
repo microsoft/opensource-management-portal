@@ -9,11 +9,11 @@
 
 mixin userTile(username, displayName, link, linkTitle, actionLink, action)
   if username
-    a.btn.btn-sm.btn-muted(href=link, target='_new', title=linkTitle)= username
+    a.btn.btn-sm.btn-muted.button(href=link, target='_new', title=linkTitle)= username
   if displayName
-    a.btn.btn-sm.btn-muted-more(href=link, target='_new', title=linkTitle)= displayName
+    a.btn.btn-sm.btn-muted-more.button(href=link, target='_new', title=linkTitle)= displayName
   if action
-    a.btn.btn-sm.btn-white(href=actionLink, style='margin-left:10px')= action
+    a.btn.btn-sm.btn-white.button(href=actionLink, style='margin-left:10px')= action
 
 mixin userGitHub
   - var actionLink = scheme === 'github' || !ossLink ? githubSignoutLink : '/link/update'
@@ -62,12 +62,12 @@ div.navbar.navbar-default.second-row-nav
     nav(role='navigation')
       div.container(style='margin-top:24px;margin-bottom:12px')
         div.row(style=(user && !error && ossLink) ? 'margin-left:0' : 'margin-left:-30px')
-          div.col-md-6
+          div.col-md-6.override-white
             if scheme === 'github'
               +userGitHub
             else
               +userAzure
-          div.col-md-6
+          div.col-md-6.override-white
             unless error
               if scheme === 'github'
                 +userAzure

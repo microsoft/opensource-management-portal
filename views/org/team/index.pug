@@ -350,6 +350,11 @@ block content
           li: a.btn.btn-muted-more.btn-sm(href=teamUrl + 'join/', title='This URL can be shared for a linked user to join') Request to join this team
           li: a.btn.btn-muted-more.btn-sm(href=teamUrl, title='This URL can be shared for anyone in the system to learn about what the team is and does') Get team information
 
+    if membershipStatus && !isSystemTeam
+      hr
+      p
+        form(method='post', action=teamUrl + 'leave')
+          button.btn.btn-default(type='submit') Leave #{team2.slug}
     hr
     small
       ul.list-unstyled

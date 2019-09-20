@@ -221,6 +221,8 @@ function sendWelcomeMailThenRedirect(req: ReposAppRequest, res, config, url, lin
     headline: `Welcome to GitHub, ${linkObject.thirdPartyUsername}`,
     notification: 'information',
     app: `${config.brand.companyName} GitHub`,
+    companyName: config.brand.companyName,
+    docs: config.microsoftOpenSource.docs,
     correlationId: req.correlationId,
     link: linkObject,
   };

@@ -27,9 +27,12 @@ router.use(function (req: ReposAppRequest, res, next) {
   next(err);
 });
 
-function clearAuditListAndRedirect(res: express.Response, organization: Organization, onboarding: boolean) {
+function clearAuditListAndRedirect(res: express.Response, organization: Organization, onboarding: boolean, state?: OrganizationMembershipState, req?: ReposAppRequest) {
   // Behavior change, only important to those not using GitHub's 2FA enforcement feature; no longer clearing the cache
   const url = organization.baseUrl + 'security-check' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name);
+  if (state === OrganizationMembershipState.Active && req) {
+    req.individualContext.webContext.saveUserAlert(`You successfully joined the ${organization.name} organization!`, organization.name, 'success');
+  }
   return res.redirect(url);
 }
 
@@ -49,7 +52,7 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res: express.
   const result = await organization.getOperationalMembership(username);
   let state = result && result.state ? result.state : false;
   if (state === OrganizationMembershipState.Active) {
-    return clearAuditListAndRedirect(res, organization, onboarding);
+    return clearAuditListAndRedirect(res, organization, onboarding, state, req);
   } else if (state === 'pending' && userIncreasedScopeToken) {
     let updatedState;
     try {
@@ -119,11 +122,11 @@ async function joinOrg(req: ReposAppRequest, res: express.Response, next: expres
   const individualContext = req.individualContext as IndividualContext;
   const organization = req.organization;
   const onboarding = req.query.onboarding as boolean;
-  await joinOrganization(individualContext, organization, req.insights, onboarding);
+  await joinOrganization(individualContext, organization, req.insights, req);
   return res.redirect(organization.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name));
 }
 
-async function joinOrganization(individualContext: IndividualContext, organization: Organization, insights, isOnboarding: boolean): Promise<any> {
+async function joinOrganization(individualContext: IndividualContext, organization: Organization, insights, req?: ReposAppRequest): Promise<any> {
   const invitationTeam = organization.invitationTeam as Team;
   const username = individualContext.getGitHubIdentity().username;
   if (!username) {
@@ -132,6 +135,7 @@ async function joinOrganization(individualContext: IndividualContext, organizati
   let joinResult = null;
   try {
     joinResult = invitationTeam ? await invitationTeam.addMembership(username, null) : await organization.addMembership(username, null);
+    req.individualContext.webContext.saveUserAlert(`You successfully joined the ${organization.name} organization!`, organization.name, 'success');
   } catch (error) {
     insights.trackMetric({ name: 'GitHubOrgInvitationFailures', value: 1 });
     insights.trackEvent({

@@ -145,7 +145,7 @@ block content
                         //-li: a.btn.btn-sm.btn-muted(href='https://github.com/orgs/' + team.organization.login + '/teams/' + team.slug, target='_new') GitHub
 
       if accountInfo.isLinkedUser && onboarding !== true
-        if overview && overview.teams && overview.teams.member && overview.teams.member.length
+        if overview && overview.teams && overview.teams.member && overview.teams.member.length > 0
           h1 Team memberships
           p Here are teams that you are a member of but not a maintainer of.
           script(type='text/javascript').

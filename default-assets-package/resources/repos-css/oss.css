@@ -5,6 +5,20 @@
 //
 */
 
+/* style-adjustments for SAP OSPO Self-Service Portal */
+
+.override-white {
+  color: #fff !important
+}
+
+.list-unstyled-dropdown-first {
+  color: #fff;
+  padding-inline-start: 20px;
+  padding-inline-end: 20px
+}
+
+/*----------------------------------------------------*/
+
 body {
   position: relative;
 }
@@ -126,6 +140,14 @@ ul.list-vspace > li, ul.list-vertical-space {
 
 code {
     color: #333;
+}
+
+.button:hover{
+  color: lightgray;
+}
+
+.invisible{
+  visibility: hidden;
 }
 
 .alert-gray {

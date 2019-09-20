@@ -14,6 +14,7 @@ import async = require('async');
 import { Operations } from '../../business/operations';
 
 const emailRender = require('../../lib/emailRender');
+const app = require('../../app');
 
 interface IAutomaticTeamsMail {
   to: string;
@@ -241,6 +242,7 @@ function createLargeTeamPermissionPreventionWarningMailTask(operations: Operatio
         repository: repositoryBody,
         whoChangedIt: whoChangedIt,
         teamName: teamName,
+        companyName: app.config.brand.companyName,
         reason: reason,
       }, callback);
     });
@@ -255,7 +257,7 @@ function sendEmail(insights, basedir, mailProvider, to, body, callback) {
   body.reason = `You are receiving this e-mail because you changed the permissions on the ${body.teamName} GitHub team, triggering this action.`;
   body.headline = 'Team permission change reverted';
   body.notification = 'warning';
-  body.app = 'Microsoft GitHub';
+  body.app = app.settings.operations.config.brand.companyName + ' GitHub';
   const mail: IAutomaticTeamsMail = {
     to: to,
     cc: 'jwilcox@microsoft.com',

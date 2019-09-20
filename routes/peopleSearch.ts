@@ -123,6 +123,17 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
   });
 
   await search.search(page, req.query.sort);
+
+  var maillist = ""; 
+  search.members.forEach(function(element) {
+    if (maillist != "" && element.link != undefined) {
+      maillist = maillist + ", "
+    }
+    try {
+      maillist = maillist + (element.link.corporateUsername ? element.link.corporateUsername : "");
+    } catch (error) {}
+  });
+
   req.individualContext.webContext.render({
     view: 'people/',
     title: 'People',
@@ -142,6 +153,7 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
       team2RemoveType: req.team2RemoveType,
       teamUrl: req.teamUrl,
       specificTeamPermissions: req.teamPermissions,
+      maillist,
     },
   });
 }));
