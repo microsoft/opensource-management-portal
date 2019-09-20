@@ -24,7 +24,7 @@ async function sendMail(mailConfig, mailOptions: IMailOptions, callback) {
     return callback(new Error("SMTP Mail configuration not given, mail sending failed"));
   };
 
-  const transporter = nodemailer.createTransport(mailConfig.customSmtpService);
+  const transporter = nodemailer.createTransport(mailConfig.smtpMailService);
   try {
     const info = await transporter.sendMail({
       to: mailOptions.to,

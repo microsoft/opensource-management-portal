@@ -7,7 +7,7 @@
     "apiKey": "env://MAIL_CUSTOMSERVICE_KEY",
     "version": "env://MAIL_CUSTOMSERVICE_VERSION"
   }, 
-  "customSmtpService": {
+  "smtpMailService": {
     "host": "env://MAIL_SMTP_HOST",
     "port": "env://MAIL_SMTP_PORT",
     "auth": {
