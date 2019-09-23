@@ -556,7 +556,6 @@ router.get('/repos', lowercaser(['sort', 'language', 'type', 'tt']), require('..
 router.use('/delete', require('./delete'));
 router.use('/properties', require('./properties'));
 router.use('/maintainers', require('./maintainers'));
-router.use('/leave', require('./leave'));
 
 router.use(teamMaintainerRoute);
 

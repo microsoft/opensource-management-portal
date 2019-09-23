@@ -110,7 +110,7 @@ block content
                       a(href=href='?page_number=' + (search.page) + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (search.type ? '&type=' + search.type : '') + ('&twoFactor=off') + (query.phrase ? '&q=' + query.phrase : '')) 2FA off
 
             a.pull-right.btn.btn-sm.btn-muted-more(href='mailto:' + maillist)
-              = 'Mail to all linked Members'
+              = 'Mail to all linked Members (on this page)'
 
         if filters.length > 0
           p(style='margin-top:24px')

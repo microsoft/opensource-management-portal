@@ -129,9 +129,7 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
     if (maillist != "" && element.link != undefined) {
       maillist = maillist + ", "
     }
-    try {
-      maillist = maillist + (element.link.corporateUsername ? element.link.corporateUsername : "");
-    } catch (error) {}
+    maillist += element.link && element.link.corporateUsername || ""
   });
 
   req.individualContext.webContext.render({
