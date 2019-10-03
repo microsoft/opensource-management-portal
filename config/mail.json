@@ -6,5 +6,13 @@
     "url": "env://MAIL_CUSTOMSERVICE_URL",
     "apiKey": "env://MAIL_CUSTOMSERVICE_KEY",
     "version": "env://MAIL_CUSTOMSERVICE_VERSION"
+  }, 
+  "smtpMailService": {
+    "host": "env://MAIL_SMTP_HOST",
+    "port": "env://MAIL_SMTP_PORT",
+    "auth": {
+      "user": "env://MAIL_SMTP_USER",
+      "pass": "env://MAIL_SMTP_PASS"
+    }
   }
 }

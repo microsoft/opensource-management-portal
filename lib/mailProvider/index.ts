@@ -7,12 +7,17 @@
 
 import MockMailService from './mockMailService';
 import IrisMailService from './customMailService';
+import SmtpMailService from './smtpMailService';
 
 export interface IMail {
+  from?: string;
   to: string | string[];
   cc?: string | string[];
   bcc?: string | string[];
   content?: any;
+  subject?: string;
+  category?: string[];
+  correlationId?: string;
 }
 
 export interface IMailProvider {
@@ -72,6 +77,10 @@ export default function createMailProviderInstance(config): IMailProvider {
   switch (provider) {
     case 'customMailService': {
       mailProvider = new IrisMailService(config);
+      break;
+    }
+    case 'smtpMailService': {
+      mailProvider = new SmtpMailService(config);
       break;
     }
     case 'mockMailService': {
