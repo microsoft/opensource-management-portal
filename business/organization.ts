@@ -856,7 +856,7 @@ export class Organization {
   // Specialized features, opt-in only
 
   isNewRepositoryLockdownSystemEnabled() {
-    return this._operations.allowUnauthorizedNewRepositoryLockdownSystemFeature() && true; // && this._settings.hasFeature('new-repository-lockdown-system');
+    return this._operations.allowUnauthorizedNewRepositoryLockdownSystemFeature() && this._settings.hasFeature('new-repository-lockdown-system');
   }
 
   // Helper functions
