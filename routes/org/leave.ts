@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -7,7 +7,7 @@ import express = require('express');
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest } from '../../transitional';
+import { ReposAppRequest, IProviders } from '../../transitional';
 import { wrapError } from '../../utils';
 import { Organization, OrganizationMembershipState } from '../../business/organization';
 import { Operations } from '../../business/operations';
@@ -32,16 +32,9 @@ router.use(asyncHandler(async (req: ILocalLeaveRequest, res, next) => {
   };
   const username = req.individualContext.getGitHubIdentity().username;
   const memberOfOrgs: IOrganizationMembershipState[] = [];
-  for (let org of operations.organizations.values()) {
-    const stateResult = await org.getOperationalMembership(username);
-    const state = stateResult ? stateResult.state : null;
-    if (org.name === organization.name) {
-      req.orgLeave.state = state; // This specific org...
-    }
-    if (state == OrganizationMembershipState.Active || state == OrganizationMembershipState.Pending) {
-      memberOfOrgs.push({ state, org });
-    }
-  }
+  const stateResult = await organization.getOperationalMembership(username);
+  const state = stateResult ? stateResult.state : null;
+  req.orgLeave.state = state;
   if (!req.orgLeave.state) {
     return res.redirect('/');
   } else {
@@ -53,25 +46,25 @@ router.use(asyncHandler(async (req: ILocalLeaveRequest, res, next) => {
 
 router.get('/', function (req: ILocalLeaveRequest, res) {
   const organization = req.organization;
-  const organizations = req.orgLeave.memberOfOrgs;
   req.individualContext.webContext.render({
     view: 'org/leave',
     title: 'Leave ' + organization.name,
     state: {
-      org: organization,
-      orgs: organizations,
+      organization,
     },
   });
 });
 
 router.post('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const organization = req.organization;
-  const operations = req.app.settings.providers.operations;
+  const providers = req.app.settings.providers as IProviders;
+  const operations = providers.operations;
   const username = req.individualContext.getGitHubIdentity().username;
+  const id = req.individualContext.getGitHubIdentity().id;
   try {
-    await organization.removeMember(username);
+    await organization.removeMember(username, id);
     req.individualContext.webContext.saveUserAlert(`You have been removed from the ${organization.name} and are no longer a member.`, organization.name, 'success');
-    res.redirect(operations.baseUrl || '/');
+    return res.redirect(operations.baseUrl || '/');
   } catch (error) {
     return next(wrapError(error, `We received an error code back from GitHub when trying to remove your membership from ${organization.name}.`));
   }

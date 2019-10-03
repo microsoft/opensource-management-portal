@@ -1,12 +1,12 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
 import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { RepositoryTeamCacheEntity, EntityImplementation, RepositoryTeamCacheFixedQueryAll, RepositoryTeamCacheFixedQueryByOrganizationId, RepositoryTeamCacheFixedQueryByTeamId, RepositoryTeamCacheFixedQueryByRepositoryId } from './repositoryTeamCache';
+import { RepositoryTeamCacheEntity, EntityImplementation, RepositoryTeamCacheFixedQueryAll, RepositoryTeamCacheFixedQueryByOrganizationId, RepositoryTeamCacheFixedQueryByTeamId, RepositoryTeamCacheFixedQueryByRepositoryId, RepositoryTeamCacheFixedQueryByTeamIds } from './repositoryTeamCache';
 
 const thisProviderType = EntityImplementation.Type;
 
@@ -22,6 +22,9 @@ export interface IRepositoryTeamCacheProvider {
   updateRepositoryTeamCache(metadata: RepositoryTeamCacheEntity): Promise<void>;
   deleteRepositoryTeamCache(metadata: RepositoryTeamCacheEntity): Promise<void>;
   queryAllTeams(): Promise<RepositoryTeamCacheEntity[]>;
+  queryByRepositoryId(repositoryId: string): Promise<RepositoryTeamCacheEntity[]>;
+  queryByTeamId(teamId: string): Promise<RepositoryTeamCacheEntity[]>;
+  queryByTeamIds(teamIds: string[]): Promise<RepositoryTeamCacheEntity[]>;
 }
 
 export class RepositoryTeamCacheProvider extends EntityMetadataBase implements IRepositoryTeamCacheProvider {
@@ -44,7 +47,7 @@ export class RepositoryTeamCacheProvider extends EntityMetadataBase implements I
     }
     if (!metadata) {
       const error = new Error(`No metadata available for Team with unique ID ${uniqueId}`);
-      error['code'] = 404;
+      error['status'] = 404;
       throw error;
     }
     return this.deserialize<RepositoryTeamCacheEntity>(thisProviderType, metadata);
@@ -52,6 +55,27 @@ export class RepositoryTeamCacheProvider extends EntityMetadataBase implements I
 
   async queryAllTeams(): Promise<RepositoryTeamCacheEntity[]> {
     const query = new RepositoryTeamCacheFixedQueryAll();
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<RepositoryTeamCacheEntity>(thisProviderType, metadatas);
+    return results;
+  }
+
+  async queryByRepositoryId(repositoryId: string): Promise<RepositoryTeamCacheEntity[]> {
+    const query = new RepositoryTeamCacheFixedQueryByRepositoryId(repositoryId);
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<RepositoryTeamCacheEntity>(thisProviderType, metadatas);
+    return results;
+  }
+
+  async queryByTeamId(teamId: string): Promise<RepositoryTeamCacheEntity[]> {
+    const query = new RepositoryTeamCacheFixedQueryByTeamId(teamId);
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<RepositoryTeamCacheEntity>(thisProviderType, metadatas);
+    return results;
+  }
+
+  async queryByTeamIds(teamIds: string[]): Promise<RepositoryTeamCacheEntity[]> {
+    const query = new RepositoryTeamCacheFixedQueryByTeamIds(teamIds);
     const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
     const results = this.deserializeArray<RepositoryTeamCacheEntity>(thisProviderType, metadatas);
     return results;

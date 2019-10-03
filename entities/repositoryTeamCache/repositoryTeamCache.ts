@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -10,6 +10,8 @@ import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataPro
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
 import { GitHubRepositoryPermission } from '../repositoryMetadata/repositoryMetadata';
+import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresJsonEntityQueryMultiple } from '../../lib/entityMetadataProvider/postgres';
+import { stringOrNumberAsString } from '../../utils';
 
 const type = EntityMetadataType.RepositoryTeamCache;
 
@@ -20,6 +22,7 @@ interface IRepositoryTeamCacheProperties {
 
   organizationId: any;
   repositoryId: any;
+  repositoryName: any;
   teamId: any;
 
   permission: any;
@@ -31,6 +34,7 @@ const Field: IRepositoryTeamCacheProperties = {
 
   organizationId: 'organizationId',
   repositoryId: 'repositoryId',
+  repositoryName: 'repositoryName',
   teamId: 'teamId',
   permission: 'permission',
 }
@@ -43,6 +47,7 @@ export class RepositoryTeamCacheEntity implements IRepositoryTeamCacheProperties
 
   organizationId: string;
   repositoryId: string;
+  repositoryName: string;
   teamId: string;
 
   permission: GitHubRepositoryPermission;
@@ -87,6 +92,16 @@ export class RepositoryTeamCacheFixedQueryByTeamId implements IEntityMetadataFix
   }
 }
 
+export class RepositoryTeamCacheFixedQueryByTeamIds implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryTeamCacheByTeamIds;
+  constructor(public teamIds: string[]) {
+    if (!Array.isArray(this.teamIds)) {
+      throw new Error(`teamIds must be an array`);
+    }
+    // should also make sure the array is of strings, not numbers
+  }
+}
+
 export class RepositoryTeamCacheFixedQueryByRepositoryId implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryTeamCacheByRepositoryId;
   constructor(public repositoryId: string) {
@@ -106,6 +121,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, n
   [Field.repositoryId, 'repoid'],
   [Field.uniqueId, 'unique'],
   [Field.teamId, 'teamId'],
+  [Field.repositoryName, 'repositoryName'],
 ]));
 EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.MemoryMapping, fieldNames, []);
 
@@ -116,6 +132,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping,
   [Field.organizationId, (Field.organizationId as string).toLowerCase()], // net new
   [Field.permission, (Field.permission as string).toLowerCase()],
   [Field.repositoryId, (Field.repositoryId as string).toLowerCase()],
+  [Field.repositoryName, (Field.repositoryName as string).toLowerCase()],
   [Field.uniqueId, (Field.uniqueId as string).toLowerCase()],
   [Field.teamId, (Field.teamId as string).toLowerCase()],
 ]));
@@ -123,40 +140,51 @@ EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.P
 
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
   const entityTypeColumn = mapMetadataPropertiesToFields[EntityField.Type];
-  // const entityIdColumn = mapMetadataPropertiesToFields[EntityField.ID];
-  const orgIdColumn = mapMetadataPropertiesToFields[Field.organizationId];
   const entityTypeValue = getEntityTypeColumnValue(type);
-  let sql = '', values = [];
   switch (query.fixedQueryType) {
     case FixedQueryType.RepositoryTeamCacheGetAll:
-      sql = `
-        SELECT *
-        FROM ${tableName}
-        WHERE
-          ${entityTypeColumn} = $1
-      `;
-      values = [
-        entityTypeValue,
-      ];
-      return { sql, values };
-    case FixedQueryType.RepositoryTeamCacheByOrganizationId:
+      return PostgresGetAllEntities(tableName, entityTypeColumn, entityTypeValue);
+    case FixedQueryType.RepositoryTeamCacheByOrganizationId: {
       const { organizationId } = query as RepositoryTeamCacheFixedQueryByOrganizationId;
       if (!organizationId) {
         throw new Error('organizationId required');
       }
-      sql = `
-        SELECT *
-        FROM ${tableName}
-        WHERE
-          ${entityTypeColumn} = $1 AND
-          ${orgIdColumn} = $2
-      `;
-      values = [
-        entityTypeValue,
-        organizationId,
-      ];
-      return { sql, values };
-
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        organizationid: stringOrNumberAsString(organizationId),
+      });
+    }
+    case FixedQueryType.RepositoryTeamCacheByRepositoryId: {
+      const { repositoryId } = query as RepositoryTeamCacheFixedQueryByRepositoryId;
+      if (!repositoryId) {
+        throw new Error('repositoryId required');
+      }
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        repositoryid: stringOrNumberAsString(repositoryId),
+      });
+    }
+    case FixedQueryType.RepositoryTeamCacheByTeamId: {
+      const { teamId } = query as RepositoryTeamCacheFixedQueryByTeamId;
+      if (!teamId) {
+        throw new Error('teamId required');
+      }
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        teamid: stringOrNumberAsString(teamId),
+      });
+    }
+    case FixedQueryType.RepositoryTeamCacheByTeamIds: {
+      const { teamIds } = query as RepositoryTeamCacheFixedQueryByTeamIds;
+      if (!teamIds) {
+        throw new Error('teamIds required');
+      }
+      if (teamIds.length === 0) {
+        throw new Error('teamIds must have at least 1 team ID');
+      }
+      return PostgresJsonEntityQueryMultiple(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, teamIds.map(teamId => {
+        return {
+          teamid: stringOrNumberAsString(teamId),
+        };
+      }));
+    }
     default:
       throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
   }

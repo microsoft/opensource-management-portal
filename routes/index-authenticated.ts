@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -7,13 +7,16 @@
 
 import _ from 'lodash';
 import async from 'async';
-import express from 'express';
 
+import express from 'express';
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
 import { ReposAppRequest, IProviders } from '../transitional';
 import { addLinkToRequest, RequireLinkMatchesGitHubSession } from '../middleware/links/';
 import { requireAuthenticatedUserOrSignIn, setIdentity } from '../middleware/business/authentication';
+import QueryCache from '../business/queryCache';
+import { Organization } from '../business/organization';
 
 const linkRoute = require('./link');
 const linkedUserRoute = require('./index-linked');
@@ -72,7 +75,7 @@ router.get('/', function (req: ReposAppRequest, res, next) {
       if (!id) {
         return callback();
       }
-      const uc = operations.getUserContext(id);
+      const uc = individualContext.aggregations;
       return uc.getAggregatedOverview().then(overview => {
         return callback(null, overview);
       }).catch(error => {
@@ -102,7 +105,8 @@ router.get('/', function (req: ReposAppRequest, res, next) {
           }
         }
         if (overview.organizations.available) {
-          groupedAvailableOrganizations = _.groupBy(operations.getOrganizations(overview.organizations.available), 'priority');
+          const availableNames = overview.organizations.available.map((org: Organization) => { return org.name; });
+          groupedAvailableOrganizations = _.groupBy(operations.getOrganizations(availableNames), 'priority');
         }
       }
 

@@ -34,7 +34,6 @@ block content
             a.btn.btn-default.btn-lg(href=organization.baseUrl) Cancel
 
     else
-      p.lead Quick way: Authorize us to publish on your behalf
       p.
         Temporarily authorize this site to have
         <a href="https://developer.github.com/v3/oauth/#scopes" target="_new"><code>write:org</code></a>
@@ -46,9 +45,9 @@ block content
           a.btn.btn-default(href=organization.baseUrl) Cancel
 
       if onboarding || joining
-        p.lead Manual way: Follow this process
+        p.lead Manual way
         ul
-          li Head over to the <a href="https://github.com/orgs/#{organization.name}/people">#{organization.name} list of people</a>.
+          li Go to the <a href="https://github.com/orgs/#{organization.name}/people">#{organization.name} list of people</a>.
           li Find yourself in the list and change the Public/Private setting.
         p
           a.btn.btn-default.btn-lg(href=organization.baseUrl + 'teams' + (onboarding ? '?onboarding=' + onboarding : '')) Continue without publishing

@@ -1,0 +1,7 @@
+{
+  "appId": "env://GITHUB_APP_DATA_APP_ID",
+  "appKey": "env://GITHUB_APP_DATA_KEY",
+  "webhookSecret": "",
+  "slug": "env://GITHUB_APP_DATA_SLUG",
+  "description": "GitHub Data"
+}

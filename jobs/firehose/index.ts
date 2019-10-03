@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -15,7 +15,9 @@ if (process.env.WEBJOB_REPOS_FIREHOSE_SKIP == '1' /* loose */) {
   process.exit(0);
 }
 
-process.env.DEBUG = 'oss-redis,oss-github';
+if (!process.env.DEBUG) {
+  process.env.DEBUG = 'redis,restapi,querycache';
+}
 
 const started = moment().utc();
 const startedString = started.format();

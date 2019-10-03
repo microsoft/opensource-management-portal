@@ -28,6 +28,7 @@
       "./jobs/reports/consolidated.ts",
       "./lib/**/*",
       "./middleware/**/*",
+      "./github/**/*",
       "./routes/**/*",
       "./test/**/*",
       "./thirdparty/**/*",

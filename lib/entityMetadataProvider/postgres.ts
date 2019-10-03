@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -22,6 +22,55 @@ import { EntityMetadataMappings, MetadataMappingDefinition } from './declaration
 
 interface IPostgresGetQueries {
   (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue: any): any;
+}
+
+export interface IPostgresQuery {
+  sql: string;
+  values: any;
+}
+
+export function PostgresGetAllEntities(tableName: string, entityTypeColumn: string, entityTypeValue: string): IPostgresQuery {
+  const sql = `
+    SELECT * FROM ${tableName} WHERE
+      ${entityTypeColumn} = $1`;
+  const values = [
+    entityTypeValue,
+  ];
+  return { sql, values };
+}
+
+export function PostgresGetByID(tableName: string, entityTypeColumn: string, entityTypeValue: string, entityIdColumn: string, idValue: string): IPostgresQuery {
+  const sql = `
+    SELECT * FROM ${tableName} WHERE
+      ${entityTypeColumn} = $1 AND
+      ${entityIdColumn} = $2`;
+  const values = [
+    entityTypeValue,
+    idValue,
+  ];
+  return { sql, values };
+}
+
+export function PostgresJsonEntityQuery(tableName: string, entityTypeColumn: string, entityTypeValue: string, metadataColumnName: string, jsonQueryObject: any): IPostgresQuery {
+  const sql = `SELECT * FROM ${tableName} WHERE ${entityTypeColumn} = $1 AND
+      ${metadataColumnName} @> $2`;
+  const values = [ entityTypeValue, jsonQueryObject ];
+  return { sql, values };
+}
+
+export function PostgresJsonEntityQueryMultiple(tableName: string, entityTypeColumn: string, entityTypeValue: string, metadataColumnName: string, jsonQueryObjects: any[]): IPostgresQuery {
+  if (jsonQueryObjects.length <= 0) {
+    throw new Error('Multi-entity value queries in Postgres require at least 1 query object');
+  }
+  const values = [ entityTypeValue ];
+  const sqlSet = [];
+  for (let i = 0; i < jsonQueryObjects.length; i++) {
+    sqlSet.push(`${metadataColumnName} @> $${i + 2}`);
+    values.push(jsonQueryObjects[i]);
+  }
+  const sqlGroup = sqlSet.join(' OR ');
+  let sql = `SELECT * FROM ${tableName} WHERE ${entityTypeColumn} = $1 AND ( ${sqlGroup} )`;
+  return { sql, values };
 }
 
 const MapMetadataPropertiesToFields: any = {
@@ -173,11 +222,19 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
       return null;
     }
     const idFieldName = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.EntityIdColumnName, true);
+    const dateColumnNames = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.PostgresDateColumns, false) as string[];
+    const dateColumns = new Set(dateColumnNames || []);
     return function postgresEntityToObject(entity: IEntityMetadata): any {
       const approval = EntityMetadataMappings.InstantiateObject(type);
       const toSet = DeserializeEntityMetadataToObjectSetCollection(entity, idFieldName, mapObjectToPostgresFields);
       for (const property in toSet) {
         approval[property] = toSet[property];
+        if (dateColumns.has(property) && approval[property] && typeof(approval[property]) === 'string') {
+          try {
+            const dateParsed = new Date(approval[property]);
+            approval[property] = dateParsed;
+          } catch (ignored) { /* ignored */ }
+        }
       }
       return approval;
     };

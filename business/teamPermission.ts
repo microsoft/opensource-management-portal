@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -14,7 +14,6 @@ import { TeamMember } from "./teamMember";
 export class TeamPermission {
   private _organization: Organization;
   private _operations: Operations;
-  private _getToken: IGetOwnerToken;
 
   private _team: Team;
 
@@ -35,7 +34,7 @@ export class TeamPermission {
     return this._team;
   }
 
-  constructor(organization: Organization, entity: any, getToken: IGetOwnerToken, operations: Operations) {
+  constructor(organization: Organization, entity: any, operations: Operations) {
     this._organization = organization;
 
     this._permission = entity.permission;
@@ -47,7 +46,6 @@ export class TeamPermission {
     const id = entity.id;
     this._team = organization.team(id, entity);
 
-    this._getToken = getToken;
     this._operations = operations;
   }
 

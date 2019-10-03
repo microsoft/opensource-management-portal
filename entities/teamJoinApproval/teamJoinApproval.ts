@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -12,6 +12,8 @@ import { IObjectWithDefinedKeys } from '../../lib/entityMetadataProvider/entityM
 import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { MetadataMappingDefinition, EntityMetadataMappings } from '../../lib/entityMetadataProvider/declarations';
 import { FixedQueryType, IEntityMetadataFixedQuery } from '../../lib/entityMetadataProvider/query';
+import { stringOrNumberAsString, stringOrNumberArrayAsStringArray } from '../../utils';
+import { PostgresGetAllEntities, PostgresJsonEntityQuery } from '../../lib/entityMetadataProvider/postgres';
 
 const type = EntityMetadataType.TeamJoinRequest;
 
@@ -365,73 +367,32 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
         { active: true },
       ];
       return { sql, values };
-
     case FixedQueryType.AllTeamJoinApprovals:
-      sql = `
-        SELECT *
-        FROM ${tableName}
-        WHERE
-          ${entityTypeColumn} = $1
-      `;
-      values = [
-        entityTypeValue,
-      ];
-      return { sql, values };
-
+      return PostgresGetAllEntities(tableName, entityTypeColumn, entityTypeValue);
     case FixedQueryType.AllActiveTeamJoinApprovals:
-      sql = `
-        SELECT *
-        FROM ${tableName}
-        WHERE
-          ${entityTypeColumn} = $1 AND
-          ${metadataColumnName} @> $2
-      `;
-      values = [
-        entityTypeValue,
-        { active: true },
-      ];
-      return { sql, values };
-
-    case FixedQueryType.ActiveTeamJoinApprovalsByTeam:
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        active: true,
+      });
+    case FixedQueryType.ActiveTeamJoinApprovalsByTeam: {
       const { id } = query as TeamJoinRequestFixedQueryByTeam;
       if (!id) {
         throw new Error('id required');
       }
-      sql = `
-        SELECT *
-        FROM ${tableName}
-        WHERE
-          ${entityTypeColumn} = $1 AND
-          ${metadataColumnName} @> $2
-      `;
-      values = [
-        entityTypeValue, {
-          'active': true,
-          'teamid': stringOrNumberAsString(id),
-        },
-      ];
-      return { sql, values };
-
-    case FixedQueryType.ActiveTeamJoinApprovalsByThirdPartyId:
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        'active': true,
+        'teamid': stringOrNumberAsString(id),
+      });
+    }
+    case FixedQueryType.ActiveTeamJoinApprovalsByThirdPartyId: {
       const { thirdPartyId } = query as TeamJoinRequestFixedQueryByThirdPartyUserId;
       if (!thirdPartyId) {
         throw new Error('thirdPartyId required');
       }
-      sql = `
-        SELECT *
-        FROM ${tableName}
-        WHERE
-          ${entityTypeColumn} = $1 AND
-          ${metadataColumnName} @> $2
-      `;
-      values = [
-        entityTypeValue, {
-          'active': true,
-          'githubid': stringOrNumberAsString(thirdPartyId),
-        },
-      ];
-      return { sql, values };
-
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        'active': true,
+        'githubid': stringOrNumberAsString(thirdPartyId),
+      });
+    }
     default:
       throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
   }
@@ -481,20 +442,6 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryQueries, (
       throw new Error('fixed query type not implemented in the memory provider');
   }
 });
-
-function stringOrNumberAsString(value: any) {
-  if (typeof(value) === 'number') {
-    return (value as number).toString();
-  } else if (typeof(value) === 'string') {
-    return value;
-  }
-  const typeName = typeof(value);
-  throw new Error(`Unsupported type ${typeName} for value ${value} (stringOrNumberAsString)`);
-}
-
-function stringOrNumberArrayAsStringArray(values: any[]) {
-  return values.map(val => stringOrNumberAsString(val));
-}
 
 // Runtime validation of FieldNames
 for (let i = 0; i < fieldNames.length; i++) {

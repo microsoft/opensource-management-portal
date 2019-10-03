@@ -1,13 +1,13 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 import redis = require('redis');
 import Q from 'q';
 
-const debug = require('debug')('oss-redis');
-const debugCrossOrganization = require('debug')('oss-redis-cross-org');
+const debug = require('debug')('redis');
+const debugCrossOrganization = require('debug')('redis-cross-org');
 
 const zlib = require('zlib');
 

@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -14,6 +14,7 @@ import { IProviders } from '../../transitional';
 import { ILinkProvider } from '../../lib/linkProviders/postgres/postgresLinkProvider';
 import { ICorporateLink } from '../../business/corporateLink';
 import { Operations, UnlinkPurpose } from '../../business/operations';
+import { GitHubTokenManager } from '../../github/tokenManager';
 
 let insights;
 
@@ -31,6 +32,7 @@ module.exports = function run(config) {
     if (!insights) {
       throw new Error('No app insights client available');
     }
+    GitHubTokenManager.IsBackgroundJob();
     refresh(config, app).then(done => {
       console.log('done');
       process.exit(0);
@@ -119,7 +121,7 @@ async function refresh(config, app) : Promise<void> {
         ++updates;
       }
     } catch (getDetailsError) {
-      if (getDetailsError.code == /* loose compare */ '404') {
+      if (getDetailsError.status == /* loose compare */ '404') {
         ++notFoundErrors;
         insights.trackEvent({ name: 'JobRefreshUsernamesNotFound', properties: { githubid: id, error: getDetailsError.message } });
         try {

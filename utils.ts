@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -11,6 +11,30 @@ import path = require('path');
 import { URL } from 'url';
 
 import { IReposError } from './transitional';
+
+export function asNumber(value: any) {
+  if (typeof(value) === 'number') {
+    return value;
+  } else if (typeof(value) === 'string') {
+    return parseInt(value, 10);
+  }
+  const typeName = typeof(value);
+  throw new Error(`Unsupported type ${typeName} for value ${value} (asNumber)`);
+}
+
+export function stringOrNumberAsString(value: any) {
+  if (typeof(value) === 'number') {
+    return (value as number).toString();
+  } else if (typeof(value) === 'string') {
+    return value;
+  }
+  const typeName = typeof(value);
+  throw new Error(`Unsupported type ${typeName} for value ${value} (stringOrNumberAsString)`);
+}
+
+export function stringOrNumberArrayAsStringArray(values: any[]) {
+  return values.map(val => stringOrNumberAsString(val));
+}
 
 export function requireJson(nameFromRoot: string): any {
   // In some situations TypeScript can load from JSON, but for the transition this is better to reach outside the out directory
@@ -76,6 +100,18 @@ export function storeReferrer(req, res, redirect, optionalReason) {
   }
 };
 
+export function sortByCaseInsensitive(a: string, b: string) {
+  let nameA = a.toLowerCase();
+  let nameB = b.toLowerCase();
+  if (nameA < nameB) {
+    return -1;
+  }
+  if (nameA > nameB) {
+    return 1;
+  }
+  return 0;
+}
+
 // ----------------------------------------------------------------------------
 // Session utility: store the original URL
 // ----------------------------------------------------------------------------
@@ -129,7 +165,6 @@ export function popSessionVariable(req, res, variableName) {
 // ----------------------------------------------------------------------------
 const errorPropertiesToClone = [
   'stack',
-  'code',
   'status',
 ];
 

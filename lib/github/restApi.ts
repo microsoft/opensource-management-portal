@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -8,13 +8,11 @@
 'use strict';
 
 import _ from 'lodash';
-const debug = require('debug')('oss-github');
+const debug = require('debug')('restapi');
 const debugCacheOptimization = require('debug')('oss-cache-optimization');
 import moment from 'moment';
 
-const querystring = require('querystring');
 const semver = require('semver');
-const url = require('url');
 
 const debugShowStandardBehavior = false;
 const debugOutputUnregisteredEntityApis = true;
@@ -23,7 +21,7 @@ import { IShouldServeCache, IntelligentEngine, ApiContext, IApiContextCacheValue
 import { getEntityDefinitions, GitHubResponseType, ResponseBodyType } from './endpointEntities';
 
 import appPackage = require('../../package.json');
-import { ILibraryContext } from '.';
+import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../transitional';
 const appVersion = appPackage.version;
 
 const longtermMetadataMinutes = 60 * 24 * 14; // assumed to be a long time
@@ -74,10 +72,42 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
 
   // were previously in the pipeline and context:
 
-  async callApi(apiContext: GitHubApiContext): Promise<any> {
+  async callApi(apiContext: GitHubApiContext, optionalMessage?: string): Promise<any> {
     const token = apiContext.token;
+    // CONSIDER: rename apiContext.token *to* something like apiContext.authorization
+    if (typeof(token) === 'string' && (!(token as string).startsWith('token ') && !(token as string).startsWith('bearer '))) {
+      if (optionalMessage) {
+        debug(optionalMessage);
+      }
+      const warning = `API context api=${apiContext.api} does not have a token that starts with 'token [REDACTED]' or 'bearer [REDACTED], investigate this breakpoint`;
+      throw new Error(warning);
+    }
+    let authorizationHeaderValue = typeof(token) === 'string' ? token as string : null;
+    if (!authorizationHeaderValue) {
+      if (typeof(token) === 'function') {
+        const response = await token();
+        if (typeof(response) === 'string') {
+          // happens when it isn't a more modern GitHub app response
+          authorizationHeaderValue = response;
+        } else {
+          const value = response['value'];
+          if (!value) {
+            throw new Error('No value');
+          }
+          authorizationHeaderValue = value;
+          apiContext.tokenSource = response;
+        }
+      }
+    }
+    if (optionalMessage) {
+      let apiTypeSuffix = apiContext.tokenSource && apiContext.tokenSource.purpose ? ' [' + apiContext.tokenSource.purpose + ']' : '';
+      if (!apiTypeSuffix && apiContext.tokenSource && apiContext.tokenSource.source) {
+        apiTypeSuffix = ` [token source=${apiContext.tokenSource.source}]`;
+      }
+      debug(`${optionalMessage}${apiTypeSuffix}`);
+    }
     const headers = {
-      Authorization: `token ${token}`,
+      Authorization: authorizationHeaderValue,
     };
     if (apiContext.options.headers) {
       apiContext.headers = apiContext.options.headers;
@@ -96,6 +126,9 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
       if (argOptions.octokitRequest) {
         args.push(argOptions.octokitRequest);
         delete argOptions.octokitRequest;
+      }
+      if (argOptions.additionalDifferentiationParameters) {
+        delete argOptions.additionalDifferentiationParameters;
       }
       argOptions.headers = headers;
       args.push(argOptions);
@@ -251,7 +284,11 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     let cacheOk = false;
     if (statusCode === 304) {
       const displayInfo = apiContext.redisKey ? apiContext.redisKey.root : '';
-      debug(`304: Use existing cache ${displayInfo}`);
+      let appPurposeSuffix = apiContext.tokenSource && apiContext.tokenSource.purpose ? ` [${apiContext.tokenSource.purpose}]` : '';
+      if (apiContext.tokenSource && !apiContext.tokenSource.purpose && apiContext.tokenSource.source) {
+        appPurposeSuffix = ` [token source=${apiContext.tokenSource.source}]`;
+      }
+      debug(`304:               ${displayInfo} ${appPurposeSuffix}`);
       ++apiContext.cost.github.cacheHits;
       cacheOk = true;
     } else if (statusCode < 200 || statusCode >= 300) {
@@ -286,7 +323,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
         shouldServeCache = true;
         shouldServeCache = {
           cache: true,
-          remaining: 'expires in ' + moment(updatedIso).add(maxAgeSeconds, 'seconds').fromNow(),
+          remaining: 'expires ' + moment(updatedIso).add(maxAgeSeconds, 'seconds').fromNow(),
         };
         // debug('cache OK to serve as last updated was ' + updated);
       } else if (apiContext.backgroundRefresh) {
@@ -313,9 +350,9 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
       }
     } else {
       if (!metadata) {
-        debug('api: empty/no metadata ' + apiContext.redisKey.metadata);
+        debug(`NO_METADATA:       ${apiContext.redisKey.metadata} [empty]`);
       } else {
-        debug('api: no updated ' + apiContext.redisKey.metadata);
+        debug(`NO_CHANGE:         ${apiContext.redisKey.metadata} ${metadata.etag ? '[etag: ' + metadata.etag + ']' : ''}`);
       }
     }
     return shouldServeCache;
@@ -327,7 +364,7 @@ export class GitHubApiContext extends ApiContext {
   private _apiMethod: any;
   private _redisKeys: IApiContextRedisKeys;
   private _cacheValues: IApiContextCacheValues;
-  private _token: string;
+  private _token: string | IGetAuthorizationHeader | IAuthorizationHeaderValue;
 
   public fakeLink?: IGitHubLink;
 
@@ -351,7 +388,7 @@ export class GitHubApiContext extends ApiContext {
     };
   }
 
-  get token(): string {
+  get token(): string | IGetAuthorizationHeader | IAuthorizationHeaderValue {
     return this._token;
   }
 
@@ -390,8 +427,16 @@ export class GitHubApiContext extends ApiContext {
     this.libraryContext = libraryContext;
   }
 
-  overrideToken(token: string) {
-    this._token = token;
+  overrideToken(token: string | IGetAuthorizationHeader | IAuthorizationHeaderValue) {
+    if (token && token['value']) {
+      const asPair = token as IAuthorizationHeaderValue;
+      this._token = asPair.value;
+      this.tokenSource = asPair;
+    } else if (typeof(token) === 'string') {
+      this._token = token as string;
+    } else {
+      this._token = token;
+    }
   }
 
   overrideApiMethod(method: any) {

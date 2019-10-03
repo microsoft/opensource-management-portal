@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -8,13 +8,15 @@
 import express from 'express';
 
 import { ReposAppRequest, IReposError } from '../transitional';
-import { IndividualContext } from '../business/context2';
+import { IndividualContext } from '../user';
 import { storeOriginalUrlAsVariable } from '../utils';
+import { AuthorizeOnlyCorporateAdministrators } from '../middleware/business/corporateAdministrators';
 const router = express.Router();
 
 const orgsRoute = require('./orgs');
 const orgAdmin = require('./orgAdmin');
 const peopleRoute = require('./people');
+const setupRoute = require('./administration');
 const reposRoute = require('./repos');
 const teamsRoute = require('./teams');
 const unlinkRoute = require('./unlink');
@@ -44,6 +46,7 @@ router.use('/teams', teamsRoute);
 router.use('/organization', orgAdmin);
 router.use('/people', peopleRoute);
 router.use('/repos', reposRoute);
+router.use('/administration', AuthorizeOnlyCorporateAdministrators, setupRoute);
 router.use('/', orgsRoute);
 
 module.exports = router;

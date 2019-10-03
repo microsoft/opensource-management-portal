@@ -1,21 +1,17 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
-const currentRepositoryMetadataSchema = 'rm1.0';
+import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 
-export enum RepositoryMetadataPermission {
-  Pull = 'pull',
-  Push = 'push',
-  Admin = 'admin',
-}
+const currentRepositoryMetadataSchema = 'rm1.0';
 
 export interface IRepositoryMetadataPermissionPair {
   id: string;
-  permission: RepositoryMetadataPermission;
+  permission: GitHubRepositoryPermission;
 }
 
 export interface IRepositoryMetadata {
@@ -124,11 +120,11 @@ class RepositoryMetadataLegacySchema implements IRepositoryMetadata {
       const permissionFieldName = `${idFieldName}p`;
       const id = this._fields[idFieldName];
       const permissionStringValue = this._fields[permissionFieldName];
-      let permission: RepositoryMetadataPermission = RepositoryMetadataPermission.Pull;
+      let permission: GitHubRepositoryPermission = GitHubRepositoryPermission.Pull;
       if (permissionStringValue === 'push') {
-        permission = RepositoryMetadataPermission.Push;
+        permission = GitHubRepositoryPermission.Push;
       } else if (permissionStringValue === 'admin') {
-        permission = RepositoryMetadataPermission.Admin;
+        permission = GitHubRepositoryPermission.Admin;
       }
       data.push({
         id,

@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -9,26 +9,35 @@
 
 import async = require('async');
 
-import { ICacheOptions, IMapPlusMetaCost, IProviders, IPagedCrossOrganizationCacheOptions } from '../transitional';
+import { ICacheOptions, IMapPlusMetaCost, IProviders, IPagedCrossOrganizationCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IAuthorizationHeaderValue } from '../transitional';
 
 import { Account } from './account';
 import { GraphManager } from './graphManager';
 import { Organization } from './organization';
-import { UserContext } from './user/context';
+import GitHubApplication from './application';
 import { ILinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
+import { GitHubTokenManager } from '../github/tokenManager';
 
 const request = require('requestretry');
 
 const emailRender = require('../lib/emailRender');
 
-import { wrapError } from '../utils';
+import { wrapError, sortByCaseInsensitive, asNumber } from '../utils';
 import { ICorporateLink } from './corporateLink';
 import { Repository } from './repository';
-import { ILibraryContext } from '../lib/github';
+import { RestLibrary } from '../lib/github';
 import { RedisHelper } from '../lib/redis';
 import { IMailAddressProvider } from '../lib/mailAddressProvider';
-import { Team } from './team';
-import { OrganizationMember } from './organizationMember';
+import { Team, ICrossOrganizationTeamMembership } from './team';
+import { AppPurpose, GitHubAppAuthenticationType } from '../github';
+import { getGitHubAppConfigurationOptions } from '../middleware/passport-config';
+import { OrganizationSetting } from '../entities/organizationSettings/organizationSetting';
+import { OrganizationSettingProvider } from '../entities/organizationSettings/organizationSettingProvider';
+
+const throwIfOrganizationIdsMissing = true;
+
+const SecondsBetweenOrganizationSettingUpdatesCheck = 60 * 2; // every 2 minutes, check for dynamic app updates
+let DynamicRestartCheckHandle = null;
 
 interface ICacheDefaultTimes {
   orgReposStaleSeconds: number;
@@ -122,7 +131,7 @@ export class Operations {
   private _mailAddressProvider: IMailAddressProvider;
   private _mailProvider: any;
   private _graphManager: GraphManager;
-  private _github: ILibraryContext;
+  private _github: RestLibrary;
   private _config: any;
   private _insights: any;
   private _redis: RedisHelper;
@@ -130,12 +139,18 @@ export class Operations {
   private _organizationNames: any;
   private _organizations: Map<string, Organization>;
   private _organizationOriginalNames: any;
-  private _organizationNamesWithTokens: any;
+  private _organizationNamesWithWithAuthorizationHeaders: any;
   private _defaultPageSize: number;
+  private _tokenManager: GitHubTokenManager;
+  private _organizationIds: Map<number, Organization>;
+  private _applicationIds: Map<number, GitHubApplication>;
+  private _initialized: Date;
+  private _dynamicOrganizationSettings: OrganizationSetting[];
+  private _dynamicOrganizationIds: Set<number>;
 
-  // LEAK:START
-  private _userContext: Map<string, UserContext>; // leaky
-  // LEAK:END
+  get initialized(): Date {
+    return this._initialized;
+  }
 
   get providers(): IProviders {
     return this._providers;
@@ -161,7 +176,7 @@ export class Operations {
     return this._graphManager;
   }
 
-  get github(): ILibraryContext  {
+  get github(): RestLibrary  {
     return this._github;
   }
 
@@ -183,64 +198,241 @@ export class Operations {
 
   constructor(options) {
     setRequiredProperties(this, ['github', 'config', 'insights', 'redis'], options);
-
     this._providers = options;
     this._baseUrl = '/';
-
     this._defaults = Object.assign({}, defaults);
+    this._applicationIds = new Map();
     this._mailAddressProvider = options.mailAddressProvider;
     this._mailProvider = options.mailProvider;
     this._linkProvider = options.linkProvider as ILinkProvider;
-
     this._graphManager = new GraphManager(this);
-
     this._defaultPageSize = this.config && this.config.github && this.config.github.api && this.config.github.api.defaultPageSize ? this.config.github.api.defaultPageSize : defaultGitHubPageSize;
+    const hasModernGitHubApps = options.config.github && options.config.github.app;
+    this._tokenManager = new GitHubTokenManager({
+      customerFacingApp: hasModernGitHubApps ? options.config.github.app.ui : null,
+      operationsApp: hasModernGitHubApps? options.config.github.app.operations : null,
+      dataApp: hasModernGitHubApps? options.config.github.app.data : null,
+      backgroundJobs: hasModernGitHubApps ? options.config.github.app.jobs : null,
+    });
+    this._dynamicOrganizationIds = new Set();
+    this._dynamicOrganizationSettings = [];
+  }
 
+  async initialize(): Promise<Operations> {
+    const hasModernGitHubApps = this.config.github && this.config.github.app;
+    // const hasConfiguredOrganizations = this.config.github.organizations && this.config.github.organizations.length;
+    const organizationSettingsProvider = this.providers.organizationSettingsProvider;
+    if (hasModernGitHubApps && organizationSettingsProvider) {
+      const dynamicOrganizations = (await organizationSettingsProvider.queryAllOrganizations()).filter(dynamicOrg => dynamicOrg.active === true);
+      this._dynamicOrganizationSettings = dynamicOrganizations;
+      this._dynamicOrganizationIds = new Set(dynamicOrganizations.map(org => asNumber(org.organizationId)));
+    }
+    this._tokenManager.getAppIds().map(appId => {
+      const { friendlyName } = this._tokenManager.getAppById(appId);
+      const slug = this._tokenManager.getSlugById(appId);
+      const app = new GitHubApplication(this, appId, slug, friendlyName, this.getAppAuthorizationHeader.bind(this, this._tokenManager, appId));
+      this._applicationIds.set(appId, app);
+    });
+    this._initialized = new Date();
+    if (this._dynamicOrganizationSettings && organizationSettingsProvider) {
+      DynamicRestartCheckHandle = setInterval(restartAfterDynamicConfigurationUpdate.bind(null, 10, 120, this._initialized, organizationSettingsProvider), 1000 * SecondsBetweenOrganizationSettingUpdatesCheck);
+    }
+    if (throwIfOrganizationIdsMissing) {
+      this.getOrganizationIds();
+    }
     return this;
+  }
+
+  getApplicationById(appId: number): GitHubApplication {
+    return this._applicationIds.get(appId);
+  }
+
+  getApplications(): GitHubApplication[] {
+    return Array.from(this._applicationIds.values());
   }
 
   get organizationNames() {
     if (!this._organizationNames) {
       const names = [];
-      for (let i = 0; i < this._config.github.organizations.length; i++) {
-        names.push(this._config.github.organizations[i].name.toLowerCase());
+      const processed = new Set<string>();
+      for (const dynamic of this._dynamicOrganizationSettings) {
+        const lowercase = dynamic.organizationName.toLowerCase();
+        processed.add(lowercase);
+        names.push(lowercase);
       }
-      this._organizationNames = names;
+      for (let i = 0; i < this._config.github.organizations.length; i++) {
+        const lowercase = this._config.github.organizations[i].name.toLowerCase();
+        if (!processed.has(lowercase)) {
+          names.push(lowercase);
+          processed.add(lowercase);
+        }
+      }
+      this._organizationNames = names.sort(sortByCaseInsensitive);
     }
     return this._organizationNames;
+  }
+
+  get supportsAcceptingOrganizationInvitationsUserToServer(): boolean {
+    const { modernAppInUse } = getGitHubAppConfigurationOptions(this._config);
+    // GitHub Apps also have an OAuth2 client ID and secret, unfortunately,
+    // there are bugs on the GitHub side where the user does not seem to have
+    // enough permission to actually call the 'write your org membership' API
+    // in these cases as of September 2019. While I have reported this to GitHub
+    // this will take some time. In the interim, this means that if the OAuth
+    // experience users are using is provided by a *modern GitHub app*, the
+    // nicer 'express' join experience is not available, and so the manual
+    // invite flow will need to be followed.
+    return !modernAppInUse;
+  }
+
+  getOrganizationIds(): number[] {
+    if (!this._organizationIds) {
+      const organizations = this.organizations;
+      this._organizationIds = new Map();
+      this._dynamicOrganizationSettings.map(entry => {
+        if (entry.active) {
+          const org = this.getOrganization(entry.organizationName.toLowerCase());
+          this._organizationIds.set(asNumber(entry.organizationId), org);
+        }
+      });
+      // This check only runs on _static_ configuration entries, since adopted
+      // GitHub App organizations must always have an organization ID.
+      for (let i = 0; i < this._config.github.organizations.length; i++) {
+        const organizationConfiguration = this._config.github.organizations[i];
+        const organization = organizations.get(organizationConfiguration.name.toLowerCase());
+        if (!organization) {
+          throw new Error(`Missing organization configuration ${organizationConfiguration.name}`);
+        }
+        if (!organizationConfiguration.id) {
+          if (throwIfOrganizationIdsMissing) {
+            throw new Error(`Organization ${organization.name} is not configured with an 'id' which can lead to issues if the organization is renamed. throwIfOrganizationIdsMissing is true: id is required`);
+          } else {
+            console.warn(`Organization ${organization.name} is not configured with an 'id' which can lead to issues if the organization is renamed.`);
+          }
+        } else if (!this._organizationIds.has(organizationConfiguration.id)) {
+          this._organizationIds.set(organizationConfiguration.id, organization);
+        }
+      }
+    }
+    return Array.from(this._organizationIds.keys());
+  }
+
+  private createOrganization(name: string, settings: OrganizationSetting, centralOperationsFallbackToken: string, appAuthenticationType: GitHubAppAuthenticationType): Organization {
+    name = name.toLowerCase();
+    let ownerToken = null;
+    if (!settings) {
+      let staticSettings = null;
+      const group = this.config.github.organizations;
+      for (let i = 0; i < group.length; i++) {
+        if (group[i].name && group[i].name.toLowerCase() === name) {
+          const staticOrganizationSettings = group[i];
+          if (staticOrganizationSettings.ownerToken) {
+            ownerToken = staticOrganizationSettings.ownerToken;
+          }
+          staticSettings = staticOrganizationSettings;
+          break;
+        }
+      }
+      try {
+        settings = OrganizationSetting.CreateFromStaticSettings(staticSettings);
+        settings.active = true;
+      } catch (translateStaticSettingsError) {
+        throw new Error(`This application is not able to translate the static configuration for the ${name} organization. Specific error: ${translateStaticSettingsError.message}`);
+      }
+    }
+    if (!settings) {
+      throw new Error(`This application is not configured for the ${name} organization`);
+    }
+    const hasDynamicSettings = this._dynamicOrganizationIds && settings.organizationId && this._dynamicOrganizationIds.has(asNumber(settings.organizationId));
+    return new Organization(this, name, settings, this.getAuthorizationHeader.bind(this, name, settings, ownerToken, centralOperationsFallbackToken, appAuthenticationType), hasDynamicSettings);
+  }
+
+  private async getAppAuthorizationHeader(tokenManager: GitHubTokenManager, appId: number): Promise<string> {
+    const jwt = tokenManager.getAppById(appId).getSignedJsonWebToken();
+    const value = `bearer ${jwt}`;
+    return value;
+  }
+
+  private async getAuthorizationHeader(
+    organizationName: string,
+    organizationSettings: OrganizationSetting,
+    legacyOwnerToken: string,
+    centralOperationsFallbackToken: string,
+    appAuthenticationType: GitHubAppAuthenticationType,
+    purpose: AppPurpose): Promise<IAuthorizationHeaderValue> {
+    if (!this._tokenManager.organizationSupportsAnyPurpose(organizationName, organizationSettings)) {
+      const legacyTokenValue = legacyOwnerToken || centralOperationsFallbackToken;
+      if (!legacyTokenValue) {
+        throw new Error(`Organization ${organizationName} is not configured with a GitHub app, Personal Access Token ownerToken configuration value, or a fallback central operations token`);
+      }
+      return { value: `token ${legacyTokenValue}`, purpose: null, source: legacyOwnerToken ? 'legacyOwnerToken' : 'centralOperationsFallbackToken' };
+    }
+    if (!purpose) {
+      purpose = AppPurpose.Data;
+      console.log(`TODO: consider investigating the callback here as to why the getAuthorizationHeader call was not provided a purpose for the ${organizationName} org. falling back to: purpose=${purpose}`);
+    }
+    return this._tokenManager.getOrganizationAuthorizationHeader(organizationName, purpose, organizationSettings, appAuthenticationType);
   }
 
   get organizations() {
     if (!this._organizations) {
       const organizations = new Map<string, Organization>();
       const names = this.organizationNames;
+      const centralOperationsToken = this.config.github.operations.centralOperationsToken;
       for (let i = 0; i < names.length; i++) {
-        const organization = createOrganization(this, names[i]);
-        organizations.set(names[i], organization);
+        const name = names[i];
+        let dynamicSettings: OrganizationSetting = null;
+        this._dynamicOrganizationSettings.map(dos => {
+          if (dos.active && dos.organizationName.toLowerCase() === name.toLowerCase()) {
+            dynamicSettings = dos;
+          }
+        });
+        const organization = this.createOrganization(name, dynamicSettings, centralOperationsToken, GitHubAppAuthenticationType.BestAvailable);
+        organizations.set(name, organization);
       }
       this._organizations = organizations;
     }
     return this._organizations;
   }
 
-  get legalEntities() {
-    const config = this._config;
-    if (config.cla && config.cla.entities) {
-      return config.cla.entities;
+  // get legalEntities(): string[] {
+  //   const config = this._config;
+  //   if (config.legalEntities && config.legalEntities.entities) {
+  //     return config.legalEntities.entities;
+  //   }
+  // }
+
+  private getAlternateOrganization(name: string, alternativeType) {
+    // An 'alternate' organization is one whose static settings come from a
+    // different location within the github.organizations config file.
+    const lowercase = name.toLowerCase();
+    const list = this.config.github.organizations[alternativeType];
+    if (list) {
+      for (let i = 0; i < list.length; i++) {
+        const settings = list[i];
+        if (settings && settings.name && settings.name.toLowerCase() === lowercase) {
+          const centralOperationsToken = this.config.github.operations.centralOperationsToken;
+          return this.createOrganization(lowercase, settings, centralOperationsToken, GitHubAppAuthenticationType.BestAvailable);
+        }
+      }
     }
   }
 
   getOnboardingOrganization(name: string) {
     // Specialized method to retrieve a new organization via the onboarding configuration collection, if any
-    const value = getAlternateOrganization(this, name, 'onboarding');
+    const value = this.getAlternateOrganization(name, 'onboarding');
     if (value) {
       return value;
     }
     throw new Error(`No onboarding organization settings configured for the ${name} organization`);
   }
 
+  getUnconfiguredOrganization(settings: OrganizationSetting): Organization {
+    return this.createOrganization(settings.organizationName.toLowerCase(), settings, null, GitHubAppAuthenticationType.ForceSpecificInstallation);
+  }
+
   isIgnoredOrganization(name: string): boolean {
-    const value = getAlternateOrganization(this, name, 'onboarding') || getAlternateOrganization(this, name, 'ignore');
+    const value = this.getAlternateOrganization(name, 'onboarding') || this.getAlternateOrganization(name, 'ignore');
     return !!value;
   }
 
@@ -256,13 +448,34 @@ export class Operations {
     return references;
   }
 
+  getPrimaryOrganizationName(): string {
+    const id = this.config.github && this.config.github.operations && this.config.github.operations.primaryOrganizationId ? this.config.github.operations.primaryOrganizationId : null;
+    if (id) {
+      return this.getOrganizationById(asNumber(id)).name;
+    }
+    return this.getOrganizationOriginalNames()[0];
+  }
+
   getOrganizationOriginalNames(): string[] {
     if (!this._organizationOriginalNames) {
       const names: string[] = [];
-      for (let i = 0; i < this._config.github.organizations.length; i++) {
-        names.push(this._config.github.organizations[i].name);
+      const visited = new Set<string>();
+      for (const entry of this._dynamicOrganizationSettings) {
+        if (entry.active) {
+          names.push(entry.organizationName);
+          const lowercase = entry.organizationName.toLowerCase();
+          visited.add(lowercase);
+        }
       }
-      this._organizationOriginalNames = names;
+      for (let i = 0; i < this._config.github.organizations.length; i++) {
+        const original = this._config.github.organizations[i].name;
+        const lowercase = original.toLowerCase();
+        if (!visited.has(lowercase)) {
+          names.push(original);
+          visited.add(lowercase);
+        }
+      }
+      this._organizationOriginalNames = names.sort(sortByCaseInsensitive);
     }
     return this._organizationOriginalNames;
   }
@@ -279,17 +492,32 @@ export class Operations {
     return object;
   }
 
-  get organizationNamesWithTokens() {
-    if (!this._organizationNamesWithTokens) {
+  get organizationNamesWithWithAuthorizationHeaders() {
+    if (!this._organizationNamesWithWithAuthorizationHeaders) {
       const tokens = {};
+      const visited = new Set<string>();
+      for (const entry of this._dynamicOrganizationSettings) {
+        const lowercase = entry.organizationName.toLowerCase();
+        if (entry.active && !visited.has(lowercase)) {
+          visited.add(lowercase);
+          const orgInstance = this.getOrganization(lowercase);
+          const token = orgInstance.getAuthorizationHeader();
+          tokens[lowercase] = token;
+        }
+      }
       for (let i = 0; i < this._config.github.organizations.length; i++) {
         const name = this._config.github.organizations[i].name.toLowerCase();
-        const token = this._config.github.organizations[i].ownerToken;
+        if (visited.has(name)) {
+          continue;
+        }
+        visited.add(name);
+        const orgInstance = this.getOrganization(name);
+        const token = orgInstance.getAuthorizationHeader();
         tokens[name] = token;
       }
-      this._organizationNamesWithTokens = tokens;
+      this._organizationNamesWithWithAuthorizationHeaders = tokens;
     }
-    return this._organizationNamesWithTokens;
+    return this._organizationNamesWithWithAuthorizationHeaders;
   }
 
   async getCachedEmployeeManagementInformation(corporateId: string): Promise<ICachedEmployeeInformation> {
@@ -513,6 +741,20 @@ export class Operations {
     await this.sendMail(mail);
   }
 
+  getDefaultRepositoryTemplateNames(): string[] {
+    if (this._config.github && this._config.github.templates && this._config.github.templates.defaultTemplates && this._config.github.templates.defaultTemplates.length > 0) {
+      return this._config.github.templates.defaultTemplates as string[];
+    }
+    return null;
+  }
+
+  getDefaultLegalEntities(): string[] {
+    if (this._config.legalEntities && this._config.legalEntities.defaultOrganizationEntities && this._config.legalEntities.defaultOrganizationEntities.length > 0) {
+      return this._config.legalEntities.defaultOrganizationEntities as string[];
+    }
+    return null;
+  }
+
   getOrganization(name: string): Organization {
     if (!name) {
       throw new Error('getOrganization: name required');
@@ -525,20 +767,19 @@ export class Operations {
     return organization;
   }
 
-  getUserContext(userId: string | number): UserContext {
-    // This will leak per user for the app runtime. Can use a LRU or limiting cache in the future if needed.
-    // CONSIDER: improve here to remove leak
-    const id = (typeof(userId) === 'string' ? parseInt(userId, 10) : userId as unknown as string) as string;
-    if (!this._userContext) {
-      this._userContext = new Map<string, UserContext>();
+  getOrganizationById(organizationId: number): Organization {
+    if (typeof(organizationId) === 'string') {
+      organizationId = parseInt(organizationId, 10);
+      console.warn(`getOrganizationById: organizationId must be a number`);
     }
-    const contexts = this._userContext;
-    let user = contexts.get(id);
-    if (!user) {
-      user = new UserContext(this, id);
-      contexts.set(id, user);
+    if (!this._organizationIds) {
+      this.getOrganizationIds();
     }
-    return user;
+    const org = this._organizationIds.get(organizationId);
+    if (!org) {
+      throw new Error(`getOrganizationById: no configured ID for an organization with ID ${organizationId}`);
+    }
+    return org;
   }
 
   async getRepos(options?: ICacheOptions): Promise<Repository[]> {
@@ -627,58 +868,46 @@ export class Operations {
     // TODO: return value went from false to null, is that new falsy ok?
   }
 
-  getTeamsWithMembers(options?: IPagedCrossOrganizationCacheOptions): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const cacheOptions: IPagedCrossOrganizationCacheOptions = {};
-      options = options || {};
-      cacheOptions.backgroundRefresh = options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
-      cacheOptions.maxAgeSeconds = options.maxAgeSeconds || 60 * 10;
-      cacheOptions.individualMaxAgeSeconds = options.individualMaxAgeSeconds;
-      delete options.backgroundRefresh;
-      delete options.maxAgeSeconds;
-      delete options.individualMaxAgeSeconds;
+  getTeamsWithMembers(options?: ICrossOrganizationTeamMembership): Promise<any> {
+    const cacheOptions: IPagedCrossOrganizationCacheOptions = {};
+    options = options || {};
+    cacheOptions.backgroundRefresh = options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
+    cacheOptions.maxAgeSeconds = options.maxAgeSeconds || 60 * 10;
+    cacheOptions.individualMaxAgeSeconds = options.individualMaxAgeSeconds;
+    delete options.backgroundRefresh;
+    delete options.maxAgeSeconds;
+    delete options.individualMaxAgeSeconds;
 
-      this._github.crossOrganization.teamMembers(this.organizationNamesWithTokens, options, cacheOptions, (error, ok) => {
-        return error ? reject(error) : resolve(ok);
-      });
-    });
+    return this._github.crossOrganization.teamMembers(this._organizationNamesWithWithAuthorizationHeaders, options, cacheOptions);
   }
 
   getRepoCollaborators(options: IPagedCrossOrganizationCacheOptions): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const cacheOptions: IPagedCrossOrganizationCacheOptions = {};
-      options = options || {};
-      cacheOptions.backgroundRefresh = options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
-      cacheOptions.maxAgeSeconds = options.maxAgeSeconds || 60 * 10;
-      cacheOptions.individualMaxAgeSeconds = options.individualMaxAgeSeconds;
-      delete options.backgroundRefresh;
-      delete options.maxAgeSeconds;
-      delete options.individualMaxAgeSeconds;
+    const cacheOptions: IPagedCrossOrganizationCacheOptions = {};
+    options = options || {};
+    cacheOptions.backgroundRefresh = options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
+    cacheOptions.maxAgeSeconds = options.maxAgeSeconds || 60 * 10;
+    cacheOptions.individualMaxAgeSeconds = options.individualMaxAgeSeconds;
+    delete options.backgroundRefresh;
+    delete options.maxAgeSeconds;
+    delete options.individualMaxAgeSeconds;
 
-      this._github.crossOrganization.repoCollaborators(this.organizationNamesWithTokens, options, cacheOptions, (error, ok) => {
-        return error ? reject(error) : resolve(ok);
-      });
-    });
+    return this._github.crossOrganization.repoCollaborators(this.organizationNamesWithWithAuthorizationHeaders, options, cacheOptions);
   }
 
   getRepoTeams(options: IPagedCrossOrganizationCacheOptions): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const cacheOptions: IPagedCrossOrganizationCacheOptions = {};
-      options = options || {};
-      cacheOptions.backgroundRefresh = options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
-      cacheOptions.maxAgeSeconds = options.maxAgeSeconds || 60 * 10;
-      cacheOptions.individualMaxAgeSeconds = options.individualMaxAgeSeconds;
-      delete options.backgroundRefresh;
-      delete options.maxAgeSeconds;
-      delete options.individualMaxAgeSeconds;
+    const cacheOptions: IPagedCrossOrganizationCacheOptions = {};
+    options = options || {};
+    cacheOptions.backgroundRefresh = options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
+    cacheOptions.maxAgeSeconds = options.maxAgeSeconds || 60 * 10;
+    cacheOptions.individualMaxAgeSeconds = options.individualMaxAgeSeconds;
+    delete options.backgroundRefresh;
+    delete options.maxAgeSeconds;
+    delete options.individualMaxAgeSeconds;
 
-      this._github.crossOrganization.repoTeams(this.organizationNamesWithTokens, options, cacheOptions, (error, ok) => {
-        return error ? reject(error) : resolve(ok);
-      });
-    });
+    return this._github.crossOrganization.repoTeams(this.organizationNamesWithWithAuthorizationHeaders, options, cacheOptions);
   }
 
-  getCrossOrganizationTeams(options?: any): Promise<ICrossOrganizationMembersResult> {
+  async getCrossOrganizationTeams(options?: any): Promise<ICrossOrganizationMembersResult> {
     if (!options.maxAgeSeconds) {
       options.maxAgeSeconds = this._defaults.crossOrgsMembersStaleSecondsPerOrg;
     }
@@ -691,22 +920,12 @@ export class Operations {
     };
     delete options.maxAgeSeconds;
     delete options.backgroundRefresh;
-    return new Promise((resolve, reject) => {
-      return this._github.crossOrganization.teams(
-        this.organizationNamesWithTokens,
-        options,
-        cacheOptions,
-        (error, values) => {
-          if (error) {
-            return reject(error);
-          }
-          const results = crossOrganizationResults(this, values, 'id');
-          return resolve(results);
-        });
-      });
+    const values = await this._github.crossOrganization.teams(this.organizationNamesWithWithAuthorizationHeaders, options, cacheOptions);
+    const results = crossOrganizationResults(this, values, 'id');
+    return results;
   }
 
-  getMembers(options?: ICacheOptions): Promise<ICrossOrganizationMembersResult> {
+  async getMembers(options?: ICacheOptions): Promise<ICrossOrganizationMembersResult> {
     options = options || {};
     if (!options.maxAgeSeconds) {
       options.maxAgeSeconds = this._defaults.crossOrgsMembersStaleSecondsPerOrg;
@@ -720,17 +939,9 @@ export class Operations {
     };
     delete options.maxAgeSeconds;
     delete options.backgroundRefresh;
-    return new Promise((resolve, reject) => {
-      return this._github.crossOrganization.orgMembers(
-      this.organizationNamesWithTokens,
-      options,
-      cacheOptions,
-      (error, values) => {
-        // TODO: refactor cross org return results?
-        const crossOrgReturn = crossOrganizationResults(this, values, 'id') as any as ICrossOrganizationMembersResult;
-        return error ? reject(error) : resolve(crossOrgReturn);
-      });
-    });
+    const values = await this._github.crossOrganization.orgMembers(this.organizationNamesWithWithAuthorizationHeaders, options, cacheOptions);
+    const crossOrgReturn = crossOrganizationResults(this, values, 'id') as any as ICrossOrganizationMembersResult;
+    return crossOrgReturn;
   }
 
   // Eventually link/unlink should move from context into operations here to centralize more than just the events
@@ -747,10 +958,6 @@ export class Operations {
     return this._config.github && this._config.github.systemAccounts ? this._config.github.systemAccounts.logins : [];
   }
 
-  get disasterRecoveryConfiguration() {
-    return this._config.github && this._config.github.disasterRecovery ? this._config.github.disasterRecovery : null;
-  }
-
   isSystemAccountByUsername(username: string): boolean {
     const lc = username.toLowerCase();
     const usernames = this.systemAccountsByUsername;
@@ -762,10 +969,15 @@ export class Operations {
     return false;
   }
 
+  authorizeCentralOperationsToken(): IGetAuthorizationHeader {
+    const func = getCentralOperationsAuthorizationHeader.bind(null, this) as IGetAuthorizationHeader;
+    return func;
+  }
+
   getAccount(id: string) {
     // TODO: Centralized "accounts" local store
     const entity = { id };
-    return new Account(entity, this, getCentralOperationsToken.bind(null, this));
+    return new Account(entity, this, getCentralOperationsAuthorizationHeader.bind(null, this)); // getCentralOperationsToken.bind(null, this));
   }
 
   async getAccountWithDetailsAndLink(id: string): Promise<Account> {
@@ -773,92 +985,78 @@ export class Operations {
     return await account.getDetailsAndLink();
   }
 
-  getAuthenticatedAccount(token: string): Promise<Account> {
-    return new Promise((resolve, reject) => {
-      const github = this._github;
-      const parameters = {};
-      return github.post(token, 'users.getAuthenticated', parameters, (error, entity) => {
-        if (error) {
-          return reject(wrapError(error, 'Could not get details about the authenticated account'));
-        }
-        const account = new Account(entity, this, getCentralOperationsToken.bind(null, this));
-        return resolve(account);
-      });
-    });
-  }
-
-  async getTeamById(id: string, options?: ICacheOptions): Promise<Team> {
-    options = options || {};
-    const self = this;
-    if (typeof(id) === 'number') {
-      throw new Error(`should not be a number: ${id}`);
-    }
-    const entity = await this.getTeamDetailsById(id, options);
-    let error = null;
-    if (entity && !entity.organization) {
-      error = new Error(`Team ${id} response did not have an associated organization`);
-    }
-    const organizationName = entity.organization.login;
-    let organization: Organization = null;
+  async getAuthenticatedAccount(token: string): Promise<Account> {
+    const github = this._github;
+    const parameters = {};
     try {
-      organization = self.getOrganization(organizationName);
-    } catch (er) {
-      error = er;
+      const entity = await github.post(`token ${token}`, 'users.getAuthenticated', parameters);
+      const account = new Account(entity, this, getCentralOperationsAuthorizationHeader.bind(null, this)); // getCentralOperationsToken.bind(null, this));
+      // const account = new Account(entity, this,  getCentralOperationsToken.bind(null, this));
+      return account;
+    } catch (error) {
+      throw wrapError(error, 'Could not get details about the authenticated account');
     }
-    if (error) {
-      throw error;
-    }
-    return organization.teamFromEntity(entity);
   }
 
-  getAccountByUsername(username: string, options?: ICacheOptions): Promise<Account> {
-    return new Promise((resolve, reject) => {
-      options = options || {};
-      const token = getCentralOperationsToken(this);
-      const operations = this;
-      if (!username) {
-        return reject(Error('Must provide a GitHub username to retrieve account information.'));
+  getTeamByIdWithOrganization(id: number, organizationName: string, entity?: any): Team {
+    const organization = this.getOrganization(organizationName);
+    return organization.team(id, entity);
+  }
+
+  getRepositoryWithOrganization(name: string, organizationName: string, entity?: any): Repository {
+    const organization = this.getOrganization(organizationName);
+    return organization.repository(name, entity);
+  }
+
+  async getAccountByUsername(username: string, options?: ICacheOptions): Promise<Account> {
+    options = options || {};
+    const operations = this;
+    if (!username) {
+      throw new Error('Must provide a GitHub username to retrieve account information.');
+    }
+    const parameters = {
+      username: username,
+    };
+    const cacheOptions: ICacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations._defaults.accountDetailStaleSeconds,
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    try {
+      const getHeaderFunction = getCentralOperationsAuthorizationHeader(this);
+      const authorizationHeader = await getHeaderFunction(AppPurpose.Data);
+      const entity = await operations._github.call(authorizationHeader, 'users.getByUsername', parameters, cacheOptions);
+      const account = new Account(entity, this, getCentralOperationsAuthorizationHeader.bind(null, this));
+      return account;
+    } catch (error) {
+      if (error.status && error.status == /* loose */ 404) {
+        error = new Error(`The GitHub username ${username} could not be found (or was deleted)`);
+        error.status = 404;
+        throw error;
+      } else if (error) {
+        throw wrapError(error, `Could not get details about account ${username}: ${error.message}`);
       }
-      const parameters = {
-        username: username,
-      };
-      const cacheOptions: ICacheOptions = {
-        maxAgeSeconds: options.maxAgeSeconds || operations._defaults.accountDetailStaleSeconds,
-      };
-      if (options.backgroundRefresh !== undefined) {
-        cacheOptions.backgroundRefresh = options.backgroundRefresh;
-      }
-      return operations._github.call(token, 'users.getByUsername', parameters, cacheOptions, (error, entity) => {
-        if (error && error.code && error.code === 404) {
-          error = new Error(`The GitHub username ${username} could not be found (or was deleted)`);
-          error.code = 404;
-          return reject(error);
-        } else if (error) {
-          return reject(wrapError(error, `Could not get details about account ${username}: ${error.message}`));
-        }
-        const account = new Account(entity, this, getCentralOperationsToken.bind(null, this));
-        return resolve(account);
-      });
-    });
+    }
   }
 
   async sendMail(mail: any): Promise<any> {
     const mailProvider = this.providers.mailProvider;
     const insights = this.providers.insights;
-    return new Promise((resolve, reject) => {
-      mailProvider.sendMail(mail, (mailError, mailResult) => {
-        const customData = {
-          receipt: mailResult,
-          eventName: undefined,
-        };
-        if (mailError) {
-          customData.eventName = 'ManagerUnlinkMailFailure';
-          insights.trackException({ exception: mailError, properties: customData });
-        }
-        insights.trackEvent({ name: 'ManagerUnlinkMailSuccess', properties: customData });
-        return mailError ? reject(mailError) : resolve(mailResult);
-      });
-    });
+    const customData = {
+      receipt: null,
+      eventName: undefined,
+    };
+    try {
+      const mailResult = await mailProvider.sendMail(mail);
+      customData.receipt = mailResult;
+      insights.trackEvent({ name: 'ManagerUnlinkMailSuccess', properties: customData });
+      return mailResult;
+    } catch (mailError) {
+      customData.eventName = 'ManagerUnlinkMailFailure';
+      insights.trackException({ exception: mailError, properties: customData });
+      throw mailError;
+    }
   }
 
   async emailRender(emailViewName: string, contentOptions: any): Promise<string> {
@@ -866,29 +1064,6 @@ export class Operations {
     return new Promise((resolve, reject) => {
       emailRender.render(appDirectory, emailViewName, contentOptions, (renderError, mailContent) => {
         return renderError ? reject(renderError) : resolve(mailContent);
-      });
-    });
-  }
-
-
-  private getTeamDetailsById(id: string, options: ICacheOptions): Promise<any> {
-    return new Promise((resolve, reject) => {
-      options = options || {};
-      const token = getCentralOperationsToken(this);
-      if (!id) {
-        return reject(new Error('Must provide a GitHub team ID to retrieve team information'));
-      }
-      const parameters = {
-        team_id: id,
-      };
-      const cacheOptions: ICacheOptions = {
-        maxAgeSeconds: options.maxAgeSeconds || this.defaults.teamDetailStaleSeconds,
-      };
-      if (options.backgroundRefresh !== undefined) {
-        cacheOptions.backgroundRefresh = options.backgroundRefresh;
-      }
-      return this.github.call(token, 'teams.get', parameters, cacheOptions, (error, ok) => {
-        return error ? reject(error) : resolve(ok);
       });
     });
   }
@@ -931,33 +1106,24 @@ function fireEvent(config, configurationName, value, callback?) {
   });
 }
 
-function getCentralOperationsToken(self) {
-  const s = self || this;
+function getCentralOperationsAuthorizationHeader(self: Operations): IPurposefulGetAuthorizationHeader {
+  const s = (self || this) as Operations;
   if (s.config.github && s.config.github.operations && s.config.github.operations.centralOperationsToken) {
-    return s.config.github.operations.centralOperationsToken;
-  } else if (s.config.github.organizations.length <= 0) {
+    const capturedToken = s.config.github.operations.centralOperationsToken;
+    return async () => {
+      return {
+        value: `token ${capturedToken}`,
+        purpose: null, // legacy
+        source: 'central operations token',
+      };
+    };
+  } else if (s.getOrganizations.length === 0) {
     throw new Error('No central operations token nor any organizations configured.');
   }
   // Fallback to the first configured organization as a convenience
-  const firstOrganization = s.config.github.organizations[0];
-  return firstOrganization.ownerToken;
-}
-
-function createOrganization(self: Operations, name: string, settings?): Organization {
-  name = name.toLowerCase();
-  if (!settings) {
-    const group = self.config.github.organizations;
-    for (let i = 0; i < group.length; i++) {
-      if (group[i].name && group[i].name.toLowerCase() === name) {
-        settings = group[i];
-        break;
-      }
-    }
-  }
-  if (!settings) {
-    throw new Error(`This application is not configured for the ${name} organization`);
-  }
-  return new Organization(self, name, settings);
+  // CONSIDER: would randomizing the organization be better, or a priority based on known-rate limit remaining?
+  const firstOrganization = s.getOrganizations()[0];
+  return firstOrganization.getAuthorizationHeader();
 }
 
 function setRequiredProperties(self, properties, options) {
@@ -968,19 +1134,6 @@ function setRequiredProperties(self, properties, options) {
     }
     const privateKey = `_${key}`;
     self[privateKey] = options[key];
-  }
-}
-
-function getAlternateOrganization(self, name, alternativeType) {
-  const lowercase = name.toLowerCase();
-  const list = self.config.github.organizations[alternativeType];
-  if (list) {
-    for (let i = 0; i < list.length; i++) {
-      const settings = list[i];
-      if (settings && settings.name && settings.name.toLowerCase() === lowercase) {
-        return createOrganization(self, lowercase, settings);
-      }
-    }
   }
 }
 
@@ -1031,3 +1184,37 @@ function getPromisedLinks(linkProvider: ILinkProvider) {
     });
   });
 };
+
+function restartAfterDynamicConfigurationUpdate(minimumSeconds: number, maximumSeconds: number, appInitialized: Date, organizationSettingsProvider: OrganizationSettingProvider) {
+  didDynamicConfigurationUpdate(appInitialized, organizationSettingsProvider).then(changed => {
+    if (changed) {
+      const randomSeconds = Math.floor(Math.random() * (maximumSeconds - minimumSeconds + 1) + minimumSeconds);
+      console.log(`changes to dynamic configuration detected since ${appInitialized}, restarting in ${randomSeconds}s`);
+      setInterval(() => {
+        console.log(`shutting down process due to dynamic configuration changes being detected at least ${randomSeconds} seconds ago...`);
+        return process.exit(0);
+      }, randomSeconds * 1000);
+      if (DynamicRestartCheckHandle) {
+        clearInterval(DynamicRestartCheckHandle);
+      }
+    }
+  }).catch(error => {
+    console.dir(error);
+  });
+}
+
+async function didDynamicConfigurationUpdate(appInitialized: Date, organizationSettingsProvider: OrganizationSettingProvider): Promise<boolean> {
+  try {
+    const allOrganizations = await organizationSettingsProvider.queryAllOrganizations();
+    const activeOrganizations = allOrganizations.filter(org => org.active);
+    for (const organization of activeOrganizations) {
+      if (organization.updated > appInitialized) {
+        console.log(`organization ${organization.organizationName} was updated ${organization.updated} vs app started time of ${appInitialized}`);
+        return true;
+      }
+    }
+  } catch (updateOrganizationsError) {
+    console.dir(updateOrganizationsError);
+  }
+  return false;
+}

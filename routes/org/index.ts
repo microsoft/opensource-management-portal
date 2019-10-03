@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -15,6 +15,9 @@ import { ReposAppRequest, IProviders } from '../../transitional';
 import { Team } from '../../business/team';
 import { IRequestOrganizationPermissions, AddOrganizationPermissionsToRequest } from '../../middleware/github/orgPermissions';
 import { OrganizationMembershipState } from '../../business/organization';
+import { asNumber } from '../../utils';
+import { IAggregateUserSummary } from '../../user/aggregate';
+import { TeamJoinApprovalEntity } from '../../entities/teamJoinApproval/teamJoinApproval';
 
 const teamsRoute = require('./teams');
 const reposRoute = require('./repos');
@@ -83,83 +86,41 @@ router.use(asyncHandler(AddOrganizationPermissionsToRequest), asyncHandler(async
 
 // Org membership required endpoints:
 
-router.get('/', function (req: ReposAppRequest, res, next) {
+router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const providers = req.app.settings.providers as IProviders;
-  const operations = providers.operations;
   const approvalProvider = providers.approvalProvider;
   const organization = req.organization;
   const username = req.individualContext.getGitHubIdentity().username;
-  const id = req.individualContext.getGitHubIdentity().id;
-  async.parallel({
-    organizationOverview: (callback) => {
-      const uc = operations.getUserContext(id);
-      return uc.getAggregatedOrganizationOverview(organization.name).then(ok => {
-        return callback(null, ok);
-      }).catch(error => {
-        return callback(error);
-      });
+  const individualContext = req.individualContext;
+  const results = {
+    orgUser: organization.memberFromEntity(await organization.getDetails()),
+    isMembershipPublic: await organization.checkPublicMembership(username),
+    organizationOverview: null as IAggregateUserSummary,
+    isAdministrator: false, // CONSIDER: UPDATE ORG SUDOERS SYSTEM UI... ... legacyUserContext.isAdministrator(callback);
+    isSudoer: false, // if (results.isAdministrator && results.isAdministrator === true) { results.isSudoer = true;
+    teamsMaintainedHash: null,
+    pendingApprovals: null as TeamJoinApprovalEntity[],
+  };
+  results.organizationOverview = await individualContext.aggregations.getAggregatedOrganizationOverview(organization);
+  // Check for pending approvals
+  const teamsMaintained = results.organizationOverview.teams.maintainer as Team[];
+  if (teamsMaintained && teamsMaintained.length && teamsMaintained.length > 0) {
+    const teamsMaintainedHash = {};
+    for (let i = 0; i < teamsMaintained.length; i++) {
+      teamsMaintainedHash[teamsMaintained[i].id] = teamsMaintained[i];
+    }
+    results.teamsMaintainedHash = teamsMaintainedHash;
+    results.pendingApprovals = await approvalProvider.queryPendingApprovalsForTeams(teamsMaintained.map(team => team.id.toString()));
+  }
+  req.individualContext.webContext.render({
+    view: 'org/index',
+    title: organization.name,
+    state: {
+      accountInfo: results,
+      organization,
     },
-    isMembershipPublic: function (callback) {
-      organization.checkPublicMembership(username).then(membershipResult => {
-        return callback(null, membershipResult);
-      }).catch(error => {
-        return callback(error);
-      });
-    },
-    orgUser: function (callback) {
-      organization.getDetails().then(details => {
-        if (details) {
-          return callback(null, organization.memberFromEntity(details));
-        } else {
-          return callback();
-        }
-      }).catch(error => {
-        return callback(error);
-      });
-    },
-    /*
-    CONSIDER: UPDATE ORG SUDOERS SYSTEM UI...
-    isAdministrator: function (callback) {
-        legacyUserContext.isAdministrator(callback);
-    }*/
-  },
-    function (error, results: any) {
-      if (error) {
-        return next(error);
-      }
-      if (results.isAdministrator && results.isAdministrator === true) {
-        results.isSudoer = true;
-      }
-      const render = function (results) {
-        req.individualContext.webContext.render({
-          view: 'org/index',
-          title: organization.name,
-          state: {
-            accountInfo: results,
-            organization: organization,
-            overwriteRemainingPrivateRepos: organization.overwriteRemainingPrivateRepos,
-          },
-        });
-      };
-      // Check for pending approvals
-      const teamsMaintained = results.organizationOverview.teams.maintainer as Team[];
-      if (teamsMaintained && teamsMaintained.length && teamsMaintained.length > 0) {
-        const teamsMaintainedHash = {};
-        for (let i = 0; i < teamsMaintained.length; i++) {
-          teamsMaintainedHash[teamsMaintained[i].id] = teamsMaintained[i];
-        }
-        results.teamsMaintainedHash = teamsMaintainedHash;
-        approvalProvider.queryPendingApprovalsForTeams(teamsMaintained.map(team => team.id)).then(pendingApprovals => {
-          results.pendingApprovals = pendingApprovals;
-          return render(results);
-        }).catch(errorIgnored => {
-          return render(results);
-        });
-      } else {
-        render(results);
-      }
-    });
-});
+  });
+}));
 
 router.use('/membership', membershipRoute);
 router.use('/leave', leaveRoute);

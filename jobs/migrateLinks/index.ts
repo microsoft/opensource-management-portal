@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -7,7 +7,7 @@
 
 'use strict';
 
-process.env.DEBUG = 'oss-redis,oss-github';
+process.env.DEBUG = 'redis,restapi';
 
 require('painless-config-resolver')().resolve((configurationError, config) => {
   if (configurationError) {

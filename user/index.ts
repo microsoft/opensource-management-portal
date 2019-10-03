@@ -1,17 +1,18 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
-import { InnerError, ReposAppRequest, IReposAppResponse } from "../transitional";
+import { ReposAppRequest, IReposAppResponse } from "../transitional";
 
-import { ICorporateLinkProperties, ICorporateLink, ICorporateLinkExtended, ICorporateLinkExtendedDirectMethods } from './corporateLink';
+import { ICorporateLink } from '../business/corporateLink';
 
-import { addBreadcrumb, wrapError } from '../utils';
-import { Operations } from "./operations";
-import { GitHubTeamRole } from "./team";
+import { addBreadcrumb, wrapError, asNumber } from '../utils';
+import { Operations } from "../business/operations";
+import { GitHubTeamRole } from "../business/team";
+import { UserContext } from "./aggregate";
 
 const objectPath = require('object-path');
 
@@ -107,6 +108,14 @@ class ReposGitHubTokensSessionAdapter implements IReposGitHubTokens {
   }
 
   get gitHubWriteOrganizationToken(): string {
+    const githubModernScope = this._sessionUserProperties.getValue('github.scope');
+    // The newer GitHub App model supports user-to-server requests that should
+    // be equivalent [once GitHub fixes some bugs]. Since GitHub App OAuth
+    // does not have a scope, the user's primary token is the only thing to
+    // return here.
+    if (githubModernScope && githubModernScope === 'githubapp') {
+      return this.gitHubReadToken;
+    }
     return this._sessionUserProperties.getValue('githubIncreasedScope.accessToken');
   }
 }
@@ -304,6 +313,7 @@ export class IndividualContext {
   private _webContext: WebContext;
   private _isPortalAdministrator: boolean | null;
   private _operations: Operations;
+  private _aggregations: UserContext;
 
   constructor(options: IIndividualContextOptions) {
     this._isPortalAdministrator = null;
@@ -341,6 +351,14 @@ export class IndividualContext {
 
   hasGitHubOrganizationWriteToken() : boolean {
     return false;
+  }
+
+  get aggregations(): UserContext {
+    if (this._aggregations) {
+      return this._aggregations;
+    }
+    this._aggregations = new UserContext(this._operations, this._operations.providers.queryCache, asNumber(this.getGitHubIdentity().id));
+    return this._aggregations;
   }
 
   getGitHubIdentity(): IGitHubIdentity {
@@ -426,7 +444,7 @@ async function legacyCallbackIsPortalAdministrator(operations: Operations, gitHu
       }
   }
   */
-  const primaryName = operations.getOrganizationOriginalNames()[0];
+  const primaryName = operations.getPrimaryOrganizationName();
   const primaryOrganization = operations.getOrganization(primaryName);
   const sudoTeam = primaryOrganization.systemSudoersTeam;
   if (!sudoTeam) {
