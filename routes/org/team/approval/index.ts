@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -65,8 +65,6 @@ router.post('/', function (req: ILocalRequest, res, next) {
   const engine = req.approvalEngine as PermissionWorkflowEngine;
   const approvalRequest = req.approvalEngine.request;
   const requestid = engine.id;
-  const team = engine.team;
-  const organization = req.organization;
   const providers = req.app.settings.providers as IProviders;
   const teamJoinApprovalProvider = providers.approvalProvider;
   const config = req.app.settings.runtimeConfig;
@@ -89,8 +87,7 @@ router.post('/', function (req: ILocalRequest, res, next) {
   }
   const repoApprovalTypes = new Set(repoApprovalTypesValues);
   const mailProviderInUse = repoApprovalTypes.has('mail');
-  var issueProviderInUse = repoApprovalTypes.has('github');
-  if (!mailProviderInUse && !issueProviderInUse) {
+  if (!mailProviderInUse) {
     return next(new Error('No configured approval providers configured.'));
   }
   const mailProvider = req.app.settings.mailProvider;
@@ -108,19 +105,7 @@ router.post('/', function (req: ILocalRequest, res, next) {
   const username = req.individualContext.getGitHubIdentity().username;
   var friendlyErrorMessage = 'Whoa? What happened?';
   var pendingRequest = engine.request;
-  let notificationRepo = null;
-  let issueId = pendingRequest['issue']; // does not exist now that the issue capability is gone (for now)
   let userMailAddress = null;
-  try {
-    if (issueId) {
-      notificationRepo = organization.legacyNotificationsRepository;
-    }
-  } catch (noWorkflowRepoError) {
-    // No provider configured
-    issueId = undefined;
-    issueProviderInUse = false;
-  }
-  let issue = null;
   async.waterfall([
     function getMailAddressForUser(callback) {
       const upn = pendingRequest.corporateUsername;

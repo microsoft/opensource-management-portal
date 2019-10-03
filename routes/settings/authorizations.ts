@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -29,7 +29,7 @@ function createValidator(operations: Operations, link: ICorporateLink, token: st
     try {
       data = await operations.getAuthenticatedAccount(token);
       // NOTE: We use strings while GitHub does not
-      if (data.id != link.thirdPartyId) {
+      if (data.id != /* loose */ link.thirdPartyId) {
         critical = true;
         valid = false;
         message = `This token is for a different user, "${data.login}", instead of "${link.thirdPartyUsername}".`;

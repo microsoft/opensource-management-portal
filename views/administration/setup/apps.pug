@@ -1,0 +1,61 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+block content
+  div.container
+
+    if orgNames.length > 0 && apps.length > 0
+      h2 By organization
+
+      table.table
+        thead
+          tr
+            th Organization
+            th Status
+            each app in apps
+              th= app.friendlyName
+        tbody
+          each orgName in orgNames
+            - var entry = orgs.get(orgName)
+            tr
+              td= orgName
+              td= entry.status
+              each app in apps
+                - var install = entry.appInstallations.get(app.id)
+                if install && entry.configuredInstallations.includes(install.installationId)
+                  td: a.btn.btn-sm.btn-muted-more(href='/administration/app/' + app.id + '/installations/' + install.installationId) OK
+                else if install
+                  td: a.btn.btn-sm.btn-danger(href='/administration/app/' + app.id + '/installations/' + install.installationId) Setup required
+                else
+                  if app.slug
+                    td: a.btn.btn-sm.btn-muted(href='https://github.com/apps/' + app.slug + '/installations/new/permissions?target_id=' + entry.id, target='_new') Install
+                  else
+                    td N/A
+
+    else if orgNames.length === 0 && apps.length > 0
+      p No organizaitons have installed the configured GitHub apps yet.
+    else
+      p No organizations have installed the GitHub app yet, and this site is not configured with any app identities.
+
+    h2 Applications
+    if apps.length > 0
+      table.table
+        thead
+          tr
+            th App ID
+            th GitHub App
+            th Purpose
+            th Manage
+        tbody
+          each app in apps
+            tr
+              td= app.id
+              td= app.slug
+              td= app.friendlyName
+              td: a.btn.btn-sm.btn-default(href=`./app/${app.id}`) Manage
+    else
+      p No apps configured.

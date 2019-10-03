@@ -5,15 +5,6 @@
 
 extends ../layout
 
-block additional_head
-  link(href='/css/c3.min.css', rel='stylesheet')
-  script(src='/js/d3.min.js')
-  script(src='/js/c3.min.js')
-
-block js_doc_ready
-  include ../js/metrics.js
-  | displayRepoMetrics(#{repo.id}, #{organization.id}, '#{config.brand.companyName}');
-
 mixin simplePersonView(account)
   - var shorthandName = account.login
   div.horizontal-space-right.vertical-space.pull-left(style='width:36px;height:36px;display:block;vertical-align:middle')
@@ -147,9 +138,6 @@ block content
             li: a.btn.btn-sm.btn-muted-more(href='https://github.com/' + repo.full_name, target="_blank") HTTPS clone
           if sshUrl
             li: a.btn.btn-sm.btn-muted-more(href='https://github.com/' + repo.full_name, target="_blank") SSH clone
-          if repo.disasterRecoveryRepositoryUrl
-            li: a.btn.btn-sm.btn-muted-more(href=repo.disasterRecoveryRepositoryUrl, target="_blank", title='View ' + repo.full_name + '\'s backup mirror') Open VSTS mirror
-              span.bowtie
           if repo.homepage
             li: a.btn.btn-sm.btn-muted-more(href=repo.homepage, target='_new', title=repo.homepage) Homepage
 
@@ -205,7 +193,7 @@ block content
               target='_blank'
             ) Webhooks
 
-            if repoPermissions.admin && repo.private === true
+            if repoPermissions.allowAdministration && repo.private === true
               ul.list-unstyled.list-vspace
                 li
                   form(method='post')
@@ -216,14 +204,6 @@ block content
                       value='Make repo public',
                       onclick='return confirm(\'Are you sure that you want to make this repo public?\');'
                       title='Click to toggle this repo from private to public')
-
-          //-if extensions
-            h4 Services
-
-            ul.list-unstyled.list-vspace
-
-              if extensions.cla && extensions.cla.supported && cla && cla.legalEntity
-                li: a.btn.btn-sm.btn-muted-more(href='/' + repo.organization.name + '/repos/' + repo.name + '/extensions/cla') Configure the #{cla.legalEntity} CLA
 
     if repositoryMetadataEntity && repositoryMetadataEntity.repositoryName && repositoryMetadataEntity.organizationName
       #corporateMetadata
@@ -274,78 +254,14 @@ block content
           .col-md-12
             pre= JSON.stringify(repositoryMetadataEntity, undefined, 2)
 
-    #metrics
-      hr
-      h3 Metrics
-      .row
-        .col-md-4
-          ul.list-unstyled.list-vspace
-            li
-              a(href='https://github.com/' + repo.full_name + '/graphs/contributors', target='_new' title='Contributors to all branches')
-                != octicon('organization', 20)
-                = ' Contributors: '
-                span#contributors
-            li
-              a(href='https://github.com/' + repo.full_name + '/watchers', target='_new')
-                != octicon('eye', 20)
-                = ' Subscribers: '
-                span#subscribers
-            li
-              a(href='https://github.com/' + repo.full_name + '/issues?q=sort%3Acreated-asc', target='_new')
-                != octicon('issue-opened', 20)
-                = ' Open issues: '
-                span#openIssues
-            li
-              a(href='https://github.com/' + repo.full_name + '/issues?q=is%3Aissue+is%3Aclosed', target='_new')
-                != octicon('issue-closed', 20)
-                = ' Closed issues: '
-                span#closedIssues
-            li Assigned open issues:&nbsp;
-              strong: span#assignedOpenIssues
-            li Unassigned open issues:&nbsp;
-              strong: span#unassignedOpenIssues
-            li Average days taken to close issues:&nbsp;
-              strong: span#avgDaysToCloseIssues
-            li Average days taken for first response to open issues:&nbsp;
-              strong: span#avgDaysForFirstResponseToIssues
-            li Issues opened today:&nbsp;
-              strong: span#openedIssuesToday
-            li Issues closed today:&nbsp;
-              strong: span#closedIssuesToday
-            li
-              a(href='https://github.com/' + repo.full_name + '/pulls?q=sort%3Acreated-asc', target='_new')
-                != octicon('git-pull-request', 20)
-                = ' Pull requests: '
-                span#pullRequests
-            li Open pull requests:&nbsp;
-              strong: span#openPullRequests
-            li Closed pull requests:&nbsp;
-              strong: span#closedPullRequests
-            li Average days taken to close pull requests:&nbsp;
-              strong: span#avgDaysToClosePRs
-            li Average days taken for first response to pull requests:&nbsp;
-              strong: span#avgDaysForFirstResponseToPRs
-            li Pull requests opened today:&nbsp;
-              strong: span#prsOpenedToday
-            li Pull requests closed today:&nbsp;
-              strong: span#prsClosedToday
-            li
-              a(href='https://github.com/' + repo.full_name + '/commits', target='_new')
-                != octicon('git-commit', 20)
-                = ' Commits: '
-                span#commits
-            li Lines committed:&nbsp;
-              strong: span#linesCommitted
-            li Commits made today:&nbsp;
-              strong: span#commitsToday
-            li Lines committed today:&nbsp;
-              strong: span#linesCommittedToday
-        .col-md-6
-          h4.text-center Average response times
-          #avgResponsesChart
-        .col-md-2
-          h4#contributorsChartTitle.text-center Contributors distribution
-          #contributorsChart
+    if config && config.microsoftOpenSource && config.microsoftOpenSource.githubInsights
+      h4 Metrics
+      p.
+        Explore GitHub data, gain insights, build your community by learning to
+        query the
+        #[a(href=config.microsoftOpenSource.githubInsights, target='_new') GitHub Insights]
+        data provided ghcrawler and CloudMine.
+        #[a(href=config.microsoftOpenSource.githubInsights, target='_new') Learn more...]
 
     if reposDataAgeInformation
       p.text-primary(style='margin-bottom:24px')

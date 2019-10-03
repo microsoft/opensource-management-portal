@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -42,7 +42,7 @@ export class TeamCacheProvider extends EntityMetadataBase implements ITeamCacheP
     }
     if (!metadata) {
       const error = new Error(`No metadata available for team ${teamId}`);
-      error['code'] = 404;
+      error['status'] = 404;
       throw error;
     }
     return this.deserialize<TeamCacheEntity>(thisProviderType, metadata);

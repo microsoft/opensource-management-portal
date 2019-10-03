@@ -1,0 +1,51 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+block content
+  div.container
+    p: a.btn.btn-sm.btn-muted-more(href='/administration/apps') All Apps...
+    if app
+      h2= app.friendlyName
+      h4= 'App #' + app.id
+
+    if installations
+
+      if installations.valid.length
+        h3 Organization installations
+        table.table
+          thead
+            tr
+              th Organization name
+              th Organization ID
+              th Installation ID
+              th Manage
+          tbody
+            each install in installations.valid
+              tr
+                td= install.account.login
+                td= install.account.id
+                td= install.id
+                td: a.btn.btn-sm.btn-default(href=`./${app.id}/installations/${install.id}`) Manage
+
+      if installations.invalid.length
+        h3 Invalid installations
+        table.table
+          thead
+            tr
+              th Target type
+              th Target name
+              th Target ID
+              th Installation ID
+              th Manage
+          tbody
+            each install in installations.invalid
+              tr
+                td= install.target_type
+                td= install.account.login
+                td= install.account.id
+                td= install.id
+                td: a.btn.btn-sm.btn-default(href=`./${app.id}/installations/${install.id}`) Manage

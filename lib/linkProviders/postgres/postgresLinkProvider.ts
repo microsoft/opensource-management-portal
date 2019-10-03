@@ -1,11 +1,10 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 // need to determine how to setup the table/s initially
 
-// from the cosmosdb fork provider:
 // Provides a one-to-many mapping of links, where a single third-party username is
 // associated with at most one corporate identity. A corporate identity may be associated
 // with multiple third-party identities. The instance of the provider is able to also

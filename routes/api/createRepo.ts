@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -10,15 +10,14 @@
 // configuration that can be used instead of the hardcoded values within.
 
 import _ from 'lodash';
-import async = require('async');
 import { jsonError } from '../../middleware/jsonError';
-import { Operations } from '../../business/operations';
 import { IProviders } from '../../transitional';
 import { ICreateRepositoryResult, Organization } from '../../business/organization';
 import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { RenderHtmlMail } from '../../lib/emailRender';
 
-import { RepoWorkflowEngine } from '../org/repoWorkflowEngine';
+import { RepoWorkflowEngine, IRepositoryWorkflowOutput } from '../org/repoWorkflowEngine';
+import { IMailProvider } from '../../lib/mailProvider';
 
 const supportedLicenseExpressions = [
   'mit',
@@ -35,20 +34,13 @@ const hardcodedApprovalTypes = [
   'Exempt',
 ];
 
-interface ICreateRepositoryApiResult {
+export interface ICreateRepositoryApiResult {
   github: any;
   name: string;
 }
 
-export function CreateRepositoryCallback(req, res, bodyOverride: any, token, callback) {
-  CreateRepository(req, res, bodyOverride, token).then(result => {
-    return callback(null, result);
-  }).catch(error => {
-    return callback(error);
-  });
-}
-
-export async function CreateRepository(req, res, bodyOverride: any, token): Promise<ICreateRepositoryApiResult> {
+export async function CreateRepository(req, bodyOverride: unknown): Promise<ICreateRepositoryApiResult> {
+  console.log('CreateRepository CreateRepository CreateRepository CreateRepository CreateRepository');
   if (!req.organization) {
     throw jsonError(new Error('No organization available in the route.'), 400);
   }
@@ -56,7 +48,6 @@ export async function CreateRepository(req, res, bodyOverride: any, token): Prom
   const operations = providers.operations;
   const mailProvider = req.app.settings.mailProvider;
   const repositoryMetadataProvider = providers.repositoryMetadataProvider;
-
   const ourFields = [
     'ms.onBehalfOf',
     'ms.license',
@@ -87,18 +78,15 @@ export async function CreateRepository(req, res, bodyOverride: any, token): Prom
     template: properties['ms.template'] || req.headers['ms-template'],
     projectType: properties['ms.project-type'] || req.headers['ms-project-type'],
   };
-
   // Validate licenses
   let msLicense = msProperties.license;
   if (!msLicense) {
     throw jsonError(new Error('Missing Microsoft license information'), 422);
   }
   msLicense = msLicense.toLowerCase();
-
   if (supportedLicenseExpressions.indexOf(msLicense) < 0) {
     throw jsonError(new Error('The provided license expression is not currently supported'), 422);
   }
-
   // Validate approval types
   const msApprovalType = msProperties.approvalType;
   if (!msApprovalType) {
@@ -107,31 +95,25 @@ export async function CreateRepository(req, res, bodyOverride: any, token): Prom
   if (hardcodedApprovalTypes.indexOf(msApprovalType) < 0) {
     throw jsonError(new Error('The provided approval type is not supported'), 422);
   }
-
   // Validate specifics of what is in the approval
   switch (msApprovalType) {
-  case 'NewReleaseReview':
-  case 'ExistingReleaseReview':
-    if (!msProperties.approvalUrl) {
-      throw jsonError(new Error('Approval URL for the release review is required when using the release review approval type'), 422);
-    }
-    break;
-
-  case 'SmallLibrariesToolsSamples':
-    break;
-
-  case 'Exempt':
-    if (!msProperties.justification) {
-      throw jsonError(new Error('Justification is required when using the exempted approval type'), 422);
-    }
-    break;
-
-  default:
-    throw jsonError(new Error('The requested approval type is not currently supported.'), 422);
+    case 'NewReleaseReview':
+    case 'ExistingReleaseReview':
+      if (!msProperties.approvalUrl) {
+        throw jsonError(new Error('Approval URL for the release review is required when using the release review approval type'), 422);
+      }
+      break;
+    case 'SmallLibrariesToolsSamples':
+      break;
+    case 'Exempt':
+      if (!msProperties.justification) {
+        throw jsonError(new Error('Justification is required when using the exempted approval type'), 422);
+      }
+      break;
+    default:
+      throw jsonError(new Error('The requested approval type is not currently supported.'), 422);
   }
-
   parameters.org = req.organization.name;
-
   const organization = operations.getOrganization(parameters.org);
   req.app.settings.providers.insights.trackEvent({
     name: 'ApiRepoTryCreateForOrg',
@@ -162,7 +144,6 @@ export async function CreateRepository(req, res, bodyOverride: any, token): Prom
         properties: {
           event: 'ApiRepoCreateGitHubErrorInside',
           message: inner && inner.message ? inner.message : inner,
-          code: inner && inner.code ? inner.code : '',
           status: inner && inner.status ? inner.status : '',
           statusCode: inner && inner.statusCode ? inner.statusCode : '',
         },
@@ -188,26 +169,38 @@ export async function CreateRepository(req, res, bodyOverride: any, token): Prom
       result: JSON.stringify(response),
     },
   });
-
   // strip an internal "cost" part off our response object
   delete response.cost;
-
     // from this point on any errors should roll back
   const repoCreateResponse: ICreateRepositoryApiResult = {
     github: response,
     name: response && response.name ? response.name : undefined,
   };
   req.repoCreateResponse = repoCreateResponse;
-
-  // TODO: validate that created on behalf of is real? msProperties.onBehalfOf
+  // Store create metadata
   const metadata = new RepositoryMetadataEntity();
   metadata.created = new Date();
   metadata.createdByThirdPartyUsername = msProperties.onBehalfOf;
-  // TODO: consider adding the id for the username
+  // TODO: we also want to store corporate information when present
+  try {
+    const account = await operations.getAccountByUsername(metadata.createdByThirdPartyUsername);
+    metadata.createdByThirdPartyId = account.id.toString();
+  } catch (noAvailableUsername) {
+    req.app.settings.providers.insights.trackEvent({
+      name: 'ApiRepoCreateInvalidUsername',
+      properties: {
+        username: metadata.createdByThirdPartyUsername,
+        error: noAvailableUsername.message,
+        encodedError: JSON.stringify(noAvailableUsername),
+      },
+    });
+  }
   metadata.releaseReviewJustification = msProperties.justification;
   metadata.initialLicense = msProperties.license;
   metadata.organizationName = req.organization.name.toLowerCase();
-  // TODO: organizationId
+  if (organization.id) {
+    metadata.organizationId = organization.id.toString();
+  }
   metadata.repositoryName = response.name;
   metadata.repositoryId = response.id;
   metadata.initialRepositoryDescription = response.description;
@@ -254,21 +247,19 @@ export async function CreateRepository(req, res, bodyOverride: any, token): Prom
     await newlyCreatedRepo.delete();
     throw err;
   }
-  // TODO: is this ever used?
-  // req.approvalRequest['ms.approvalId'] = requestId;
-
+    // req.approvalRequest['ms.approvalId'] = requestId; // TODO: is this ever used?
   const repoWorkflow = new RepoWorkflowEngine(req.organization as Organization, {
     id: entityId,
     repositoryMetadata: metadata,
+    createResponse: response,
   });
   let output = [];
   try {
     output = await generateAndRunSecondaryTasks(repoWorkflow);
   } catch (rollbackNeededError) {
-
+    console.dir(rollbackNeededError);
   }
   req.repoCreateResponse.tasks = output;
-
   if (msProperties.notify && mailProvider) {
     try {
     await sendEmail(req, mailProvider, req.apiKeyRow, req.correlationId, output, repoWorkflow.request, msProperties);
@@ -276,18 +267,13 @@ export async function CreateRepository(req, res, bodyOverride: any, token): Prom
       console.dir(mailSendError);
     }
   }
-
   return req.repoCreateResponse;
 }
 
-function generateAndRunSecondaryTasks(repoWorkflow: RepoWorkflowEngine): Promise<string[]> {
-  return new Promise<string[]>((resolve, reject) => {
-    repoWorkflow.generateSecondaryTasks(function (err, tasks) {
-      async.series(tasks || [], function (taskErr, output: string[]) {
-        return taskErr ? reject(taskErr) : resolve(output);
-      });
-    });
-  });
+async function generateAndRunSecondaryTasks(repoWorkflow: RepoWorkflowEngine): Promise<IRepositoryWorkflowOutput[]> {
+  const results = await repoWorkflow.executeNewRepositoryChores();
+  // NOTE: no longer failing with any errors
+  return results;
 }
 
 function downgradeBroadAccessTeams(organization, teams) {
@@ -309,7 +295,7 @@ function downgradeBroadAccessTeams(organization, teams) {
   }
 }
 
-async function sendEmail(req, mailProvider, apiKeyRow, correlationId: string, repoCreateResults, approvalRequest: RepositoryMetadataEntity, msProperties): Promise<void> {
+async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlationId: string, repoCreateResults, approvalRequest: RepositoryMetadataEntity, msProperties): Promise<void> {
   const config = req.app.settings.runtimeConfig;
   const emails = msProperties.notify.split(',');
   const headline = 'Repo ready';
@@ -360,7 +346,7 @@ async function sendEmail(req, mailProvider, apiKeyRow, correlationId: string, re
     eventName: undefined,
   };
   try {
-    customData.receipt = await sendMail(mailProvider, contentOptions, mail);
+    customData.receipt = await mailProvider.sendMail(mail);
     req.insights.trackEvent({ name: 'ApiRepoCreateMailSuccess', properties: customData });
     req.repoCreateResponse.notified = emails;
     } catch (mailError) {
@@ -368,12 +354,4 @@ async function sendEmail(req, mailProvider, apiKeyRow, correlationId: string, re
     req.insights.trackException({ exception: mailError, properties: customData });
     // no longer a fatal error if the mail is not sent
   }
-}
-
-function sendMail(mailProvider, contentOptions, mail): Promise<any> {
-  return new Promise((resolve, reject) => {
-    mailProvider.sendMail(mail, (mailError, mailResult) => {
-      return mailError ? reject(mailError) : resolve(mailResult);
-    });
-  });
 }

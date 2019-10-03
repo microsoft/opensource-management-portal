@@ -1,24 +1,22 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
-import { Operations } from "./operations";
-import { Team } from "./team";
-import { Repository } from "./repository";
-import { IGetOwnerToken } from "../transitional";
+import { Operations } from './operations';
+import { Team } from './team';
+import { Repository } from './repository';
 
 export class TeamRepositoryPermission {
   private _team: Team;
   private _operations: Operations;
   private _permissions: any;
   private _repository: Repository;
-  private _id: string; // ? number
-  private _getToken: IGetOwnerToken;
+  private _id: number;
 
-  constructor(team: Team, entity: any, getToken: IGetOwnerToken, operations: Operations) {
+  constructor(team: Team, entity: any, operations: Operations) {
     this._team = team;
     if (!entity) {
       throw new Error('TeamRepositoryPermission: requires entity');
@@ -26,7 +24,6 @@ export class TeamRepositoryPermission {
     this._permissions = entity.permissions;
     this._repository = team.organization.repositoryFromEntity(entity);
     this._id = this._repository.id;
-    this._getToken = getToken;
     this._operations = operations;
   }
 
@@ -38,7 +35,7 @@ export class TeamRepositoryPermission {
     return this._repository;
   }
 
-  get id(): string {
+  get id(): number {
     return this._id;
   }
 

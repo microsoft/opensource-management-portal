@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -25,7 +25,6 @@ import { Pool as PostgresPool } from 'pg';
 const redisMock = require('redis-mock');
 const debug = require('debug')('oss-initialize');
 const pgDebug = require('debug')('pgpool');
-const DocumentDBClient = require('documentdb').DocumentClient;
 
 const appInsights = require('./appInsights');
 const keyVault = require('./keyVault');
@@ -38,21 +37,24 @@ import { CreateLocalExtensionKeyProvider } from '../entities/localExtensionKey';
 import { CreateGraphProviderInstance, IGraphProvider } from '../lib/graphProvider/';
 
 const keyVaultResolver = require('../lib/keyVaultResolver');
-const mailProvider = require('../lib/mailProvider/');
-import { CreateRestLibraryContext, ILibraryContext } from '../lib/github';
+import CreateMailProviderInstance, { IMailProvider } from '../lib/mailProvider/';
+import { RestLibrary } from '../lib/github';
 import { CreateRepositoryCacheProviderInstance } from '../entities/repositoryCache';
 import { CreateRepositoryCollaboratorCacheProviderInstance } from '../entities/repositoryCollaboratorCache';
 import { CreateTeamCacheProviderInstance } from '../entities/teamCache';
 import { CreateTeamMemberCacheProviderInstance } from '../entities/teamMemberCache';
 import { CreateRepositoryTeamCacheProviderInstance } from '../entities/repositoryTeamCache';
 import { CreateOrganizationMemberCacheProviderInstance } from '../entities/organizationMemberCache';
+import QueryCache from '../business/queryCache';
+import { createAndInitializeOrganizationSettingProviderInstance } from '../entities/organizationSettings';
+import { IEntityMetadataProvider } from '../lib/entityMetadataProvider/entityMetadataProvider';
 
 async function initialize(app: Application, express, rootdir: string, config, earlyInitError: any): Promise<void> {
   const providers = app.get('providers') as IProviders;
 
   providers.linkProvider = await createAndInitializeLinkProviderInstance(providers, config);
 
-  providers.mailProvider = await configureOptionalMailProvider(config);
+  providers.mailProvider = CreateMailProviderInstance(config);
   app.set('mailProvider', providers.mailProvider); // necessry anymore? hopefully not!
 
   const redisHelper = providers.redis;
@@ -73,63 +75,72 @@ async function initialize(app: Application, express, rootdir: string, config, ea
       pool: providers.postgresPool,
     },
   };
-  const tableEntityMetadataProvider = await createAndInitializeEntityMetadataProviderInstance(
+  let tableProviderEnabled = true && emOptions.tableOptions && emOptions.tableOptions.account && emOptions.tableOptions.key;
+  let postgresProviderEnabled = true && emOptions.postgresOptions && emOptions.postgresOptions.pool;
+  const tableEntityMetadataProvider = tableProviderEnabled ? await createAndInitializeEntityMetadataProviderInstance(
     app,
     config,
     emOptions,
-    'table');
-  const pgEntityMetadataProvider = await createAndInitializeEntityMetadataProviderInstance(
+    'table') : null;
+  const pgEntityMetadataProvider = postgresProviderEnabled ? await createAndInitializeEntityMetadataProviderInstance(
     app,
     config,
     emOptions,
-    'postgres');
+    'postgres') : null;
   const memoryEntityMetadataProvider = await createAndInitializeEntityMetadataProviderInstance(
       app,
       config,
       emOptions,
       'memory');
-
-    // providers.entityMetadata = await createAndInitializeEntityMetadataProviderInstance(app, config, providers);
-  providers.approvalProvider = await createAndInitializeApprovalProviderInstance({ entityMetadataProvider: tableEntityMetadataProvider });
-  providers.repositoryMetadataProvider = await createAndInitializeRepositoryMetadataProviderInstance({ entityMetadataProvider: tableEntityMetadataProvider });
-  providers.tokenProvider = await createTokenProvider({ entityMetadataProvider: tableEntityMetadataProvider });
-  providers.localExtensionKeyProvider = await CreateLocalExtensionKeyProvider({ entityMetadataProvider: tableEntityMetadataProvider });
-  providers.organizationMemberCacheProvider = await CreateOrganizationMemberCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
-  providers.repositoryCacheProvider = await CreateRepositoryCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
-  providers.repositoryCollaboratorCacheProvider = await CreateRepositoryCollaboratorCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
-  providers.repositoryTeamCacheProvider = await CreateRepositoryTeamCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
-  providers.teamCacheProvider = await CreateTeamCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
-  providers.teamMemberCacheProvider = await CreateTeamMemberCacheProviderInstance({ entityMetadataProvider: pgEntityMetadataProvider });
-
+  const defaultProvider = memoryEntityMetadataProvider || pgEntityMetadataProvider || tableEntityMetadataProvider;
+  function providerNameToInstance(value: string): IEntityMetadataProvider {
+    switch (value) {
+      case 'firstconfigured':
+        return defaultProvider;
+      case 'postgres':
+        return pgEntityMetadataProvider;
+      case 'table':
+        return tableEntityMetadataProvider;
+      case 'memory':
+        return memoryEntityMetadataProvider;
+      default:
+        return null;
+    }
+  }
+  // providers.entityMetadata = await createAndInitializeEntityMetadataProviderInstance(app, config, providers);
+  providers.approvalProvider = await createAndInitializeApprovalProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.teamjoin) });
+  providers.repositoryMetadataProvider = await createAndInitializeRepositoryMetadataProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.repositorymetadata) });
+  providers.tokenProvider = await createTokenProvider({ entityMetadataProvider: providerNameToInstance(config.entityProviders.tokens) });
+  providers.localExtensionKeyProvider = await CreateLocalExtensionKeyProvider({ entityMetadataProvider: providerNameToInstance(config.entityProviders.localextensionkey) });
+  providers.organizationMemberCacheProvider = await CreateOrganizationMemberCacheProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.organizationmembercache) });
+  providers.organizationSettingsProvider = await createAndInitializeOrganizationSettingProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.organizationsettings) });
+  providers.repositoryCacheProvider = await CreateRepositoryCacheProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.repositorycache) });
+  providers.repositoryCollaboratorCacheProvider = await CreateRepositoryCollaboratorCacheProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.repositorycollaboratorcache) });
+  providers.repositoryTeamCacheProvider = await CreateRepositoryTeamCacheProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.repositoryteamcache) });
+  providers.teamCacheProvider = await CreateTeamCacheProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.teamcache) });
+  providers.teamMemberCacheProvider = await CreateTeamMemberCacheProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.teammembercache) });
+  providers.queryCache = new QueryCache(providers);
   try {
     if (!earlyInitError) {
-      const operations = new Operations(providers);
+      const operations = await (new Operations(providers)).initialize();
       app.set('operations', operations);
       providers.operations = operations;
     }
   } catch (ignoredError2) {
     console.dir(ignoredError2);
+    throw ignoredError2;
   }
-
   debug('*');
 }
 
-function configureGitHubLibrary(app, redis, linkProvider: ILinkProvider, config): ILibraryContext {
-  const libraryContext = CreateRestLibraryContext({
+function configureGitHubLibrary(app, redis, linkProvider: ILinkProvider, config): RestLibrary {
+  const libraryContext = new RestLibrary({
     config,
     redis,
     insights: app.get('appInsightsClient'),
     linkProvider,
   });
   return libraryContext;
-}
-
-async function configureOptionalMailProvider(config): Promise<any> {
-  return new Promise<any>((resolve, reject) => {
-    mailProvider(config, (providerInitError, provider) => {
-      return providerInitError ? reject(providerInitError) : resolve(provider);
-    });
-  });
 }
 
 // Asynchronous initialization for the Express app, configuration and data stores.
@@ -340,32 +351,6 @@ module.exports = function init(app: Application, express, rootdir, config, confi
         return next(failProblem);
       }
     },
-    function initializeCosmosDB(next) {
-      // This is a short-term implementation of using CosmosDB, but as a root
-      // provider, this is messy. Should instead have specific providers that
-      // use the resource as needed.
-      if (config.github.cosmosdb && config.github.cosmosdb.key) {
-        const cosmosConfig = config.github.cosmosdb;
-        const temporaryDatabaseName =  cosmosConfig.database || 'opensource';
-        const cosmosClient = new DocumentDBClient(cosmosConfig.uri, {
-          masterKey: cosmosConfig.key,
-        });
-        cosmosClient.readDatabase(`dbs/${temporaryDatabaseName}`, function (readDatabaseError, database) {
-          if (readDatabaseError) {
-            return next(readDatabaseError);
-          }
-          debug(`connected to Cosmos DB: ${cosmosConfig.database} at ${cosmosConfig.uri}`);
-          providers.cosmosdb = {
-            client: cosmosClient,
-            database: database,
-            colNameTemp: cosmosConfig.collection,
-          };
-          return next();
-        });
-      } else {
-        return next();
-      }
-    },
     function createGraphProvider(cb) {
       // The graph provider is optional. A graph provider can connect to a
       // corporate directory to validate or lookup employees and other
@@ -387,7 +372,7 @@ module.exports = function init(app: Application, express, rootdir, config, confi
     }, (failure: Error) => {
       console.dir(failure);
       debug(`Initialization failure: ${failure.message}`);
-      finalizeInitialization(error);
+      finalizeInitialization(error || failure);
     });
   });
 };

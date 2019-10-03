@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -47,7 +47,7 @@ export class RepositoryCollaboratorCacheProvider extends EntityMetadataBase impl
     }
     if (!metadata) {
       const error = new Error(`No metadata available for collaborator with unique ID ${uniqueId}`);
-      error['code'] = 404;
+      error['status'] = 404;
       throw error;
     }
     return this.deserialize<RepositoryCollaboratorCacheEntity>(thisProviderType, metadata);

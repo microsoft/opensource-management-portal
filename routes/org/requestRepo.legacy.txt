@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -73,16 +73,8 @@ router.post('/', function (req: ILocalRequestExpanded, res, next) {
     };
     return next(directError);
   }
-  let orgHasCla = false;
-  try {
-    const claTeams = org.getClaWriteTeams(true);
-    orgHasCla = req.body.claEntity && claTeams[req.body.claEntity];
-  } catch (noClaError) { /* ignored */ }
   if (!req.body.name || (req.body.name.length !== undefined && req.body.name.length === 0)) {
     return next(wrapError(null, 'Please provide a repo name.', true));
-  }
-  if (orgHasCla && req.body.claEntity && (!req.body.claMail || (req.body.claMail.length !== undefined && req.body.claMail.length === 0))) {
-    return next(wrapError(null, 'Please provide an e-mail address to receive CLA notifications.', true));
   }
   if (req.body.name.indexOf(' ') >= 0) {
     return next(wrapError(null, 'Repos cannot have spaces in their name. Consider a dash.', true));
@@ -105,8 +97,7 @@ router.post('/', function (req: ILocalRequestExpanded, res, next) {
   }
   const repoApprovalTypes = new Set(repoApprovalTypesValues);
   const mailProviderInUse = repoApprovalTypes.has('mail');
-  var issueProviderInUse = repoApprovalTypes.has('github');
-  if (!mailProviderInUse && !issueProviderInUse) {
+  if (!mailProviderInUse) {
     return next(new Error('No configured approval providers configured.'));
   }
 
@@ -156,7 +147,7 @@ router.post('/', function (req: ILocalRequestExpanded, res, next) {
     return next(wrapError(null, 'You must select an admin team so that the repo can be written to and managed.', true));
   }
   const dc = req.app.settings.dataclient;
-  const team2 = organization.repositoryApproversTeam;
+  const team2 = organization.repositoryApproversTeam; // no longer supported
   let template = 'other';
   if (req.body.license && req.body.license.toLowerCase() === 'mit') {
     template = 'mit';
@@ -185,10 +176,6 @@ router.post('/', function (req: ILocalRequestExpanded, res, next) {
     gitignore_template: req.body.language,
     template: template,
   };
-  if (orgHasCla && req.body.claEntity) {
-    approvalRequest.claMail = req.body.claMail;
-    approvalRequest.claEntity = req.body.claEntity;
-  }
   approvalRequest.teamsCount = teamsRequested.length;
   for (i = 0; i < teamsRequested.length; i++) {
     approvalRequest['teamid' + i] = teamsRequested[i].id;
@@ -607,7 +594,6 @@ router.get('/', function (req, res, next) {
     });
   }
   var claTeams = null;
-  var orgHasCla = false;
   try {
     claTeams = organization.getLegacyClaTeams(true);
   } catch (noClaError) { /* ignored */ }
@@ -615,7 +601,7 @@ router.get('/', function (req, res, next) {
     if (error) {
       return next(wrapError(error, 'Could not read the entire list of read (pull) teams from GitHub. Please try again later or report this error if you continue seeing it.'));
     }
-    const team2 = organization.repositoryApproversTeam;
+    const team2 = organization.repositoryApproversTeam; // no longer supported
     getApproverMembers(team, function (error, approvers) {
       if (error) {
         return next(new Error('Could not retrieve the repo approvers for ' + orgName));
@@ -673,7 +659,6 @@ router.get('/', function (req, res, next) {
         orgConfig: org.inner.settings,
         allowPrivateRepos: allowPrivateRepos,
         allowPublicRepos: allowPublicRepos,
-        orgHasCla: orgHasCla,
         claTeams: claTeams,
         approvers: approvers,
         teams: teams,

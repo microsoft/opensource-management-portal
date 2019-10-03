@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -104,7 +104,7 @@ async function calculateRepoPermissions(organization: Organization, repository: 
 }
 
 async function findRepoCollaboratorsExcludingOwners(repository: Repository, owners: OrganizationMember[]): Promise<IFindRepoCollaboratorsExcludingTeamsResult> {
-  const ownersMap = new Map<string, OrganizationMember>();
+  const ownersMap = new Map<number, OrganizationMember>();
   for (let i = 0; i < owners.length; i++) {
     ownersMap.set(owners[i].id, owners[i]);
   }
@@ -129,7 +129,7 @@ router.use('/:repoName', asyncHandler(async function(req: ILocalRequest, res, ne
 
 router.post('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function(req: ILocalRequest, res, next) {
   const repoPermissions = req.repoPermissions;
-  if (!repoPermissions.admin === true) {
+  if (!repoPermissions.allowAdministration) {
     return next(new Error('You do not have administrative permission on this repository'));
   }
   // only supporting the 'take public' operation now
@@ -189,13 +189,11 @@ router.get('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncH
 router.get('/:repoName/permissions', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: ILocalRequest, res, next) {
   const referer = req.headers.referer as string;
   const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
-  const operations = req.app.settings.operations as Operations;
   const organization = req.organization;
   const repoPermissions = req.repoPermissions;
   const repository = req.repository;
-  const gitHubId = req.individualContext.getGitHubIdentity().id;
   const repositoryMetadataEntity = req.repositoryMetadata;
-  const uc = operations.getUserContext(gitHubId);
+  const uc = req.individualContext.aggregations;
   const aggregate = await uc.getAggregatedOverview();
   await repository.getDetails();
   const { permissions, collaborators, outsideCollaborators } = await calculateRepoPermissions(organization, repository);

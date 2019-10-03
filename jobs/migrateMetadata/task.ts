@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -9,12 +9,9 @@
 // implementation (including serialization/deserialization) and can be used to move
 // and validate data between stores.
 
-// Also requires migration environment variables:
-// METADATA_MIGRATION_SOURCE_TYPE
-// METADATA_MIGRATION_DESTINATION_TYPE
-// METADATA_MIGRATION_OVERWRITE  values : 'overwrite', 'skip'
-
 'use strict';
+
+const circuitBreakerOverrideClearingDestination = process.env.CIRCUIT_BREAKER_OVERRIDE === 'migrate-data-clear-ok';
 
 import throat = require('throat');
 
@@ -50,10 +47,19 @@ module.exports = function run(config) {
 
 async function migration(config, app) : Promise<void> {
   const providers = app.settings.providers as IProviders;
-
   const emOptions: IEntityMetadataProvidersOptions = {
-    tableOptions: null,
-    postgresOptions: null,
+    tableOptions: {
+      account: config.github.links.table.account,
+      key: config.github.links.table.key,
+      prefix: config.github.links.table.prefix,
+      encryption: {
+        keyEncryptionKeyId: config.github.links.table.encryptionKeyId,
+        keyResolver: providers.keyEncryptionKeyResolver,
+      },
+    },
+    postgresOptions: {
+      pool: providers.postgresPool,
+    },
   };
   const sourceOverrideType = 'table';
   const sourceEntityMetadataProvider = await createAndInitializeEntityMetadataProviderInstance(
@@ -74,12 +80,19 @@ async function migration(config, app) : Promise<void> {
   const destinationTeamJoinApprovalProvider = await createAndInitializeApprovalProviderInstance({ entityMetadataProvider: destinationEntityMetadataProvider });
   const destinationRepoMetadataProvider = await createAndInitializeRepositoryMetadataProviderInstance({ entityMetadataProvider: destinationEntityMetadataProvider });
 
-  // SCARY:
-  await destinationRepoMetadataProvider.clearAllRepositoryMetadatas();
-
   console.log('Migrating: Repository Metadata');
   const sourceRepositoryMetadata = await sourceRepoMetadataProvider.queryAllRepositoryMetadatas();
   console.log(`migrating ${sourceRepositoryMetadata.length} metadata entries for repositories...`);
+
+  // SCARY:
+  const destinationMetadataEntries = await destinationRepoMetadataProvider.queryAllRepositoryMetadatas();
+  console.log(`destination entries already: ${destinationMetadataEntries.length}`);
+  const clearDestination = circuitBreakerOverrideClearingDestination;
+  if (destinationMetadataEntries.length > 0 && !clearDestination) {
+    throw new Error('Destination repo metadatas are not empty');
+  }
+  await destinationRepoMetadataProvider.clearAllRepositoryMetadatas();
+
   let errors = 0;
   let errorList = [];
   let i = 0;
@@ -88,8 +101,11 @@ async function migration(config, app) : Promise<void> {
       console.log(`${i++}: Migrating: ${repo.repositoryId}: ${repo.organizationName}/${repo.repositoryName}`);
       await destinationRepoMetadataProvider.createRepositoryMetadata(stripAzureTableDataIfPresent(repo));
     } catch (migrationError) {
+      console.log(`error with entry: ${repo.repositoryId}`);
       console.dir(migrationError);
-      throw migrationError;
+      errorList.push(migrationError);
+      ++errors;
+      // throw migrationError;
     }
     return '';
   }, parallelMigrations)));
@@ -101,12 +117,19 @@ async function migration(config, app) : Promise<void> {
   errors = 0;
   errorList = [];
 
-  // SCARY:
-  await destinationTeamJoinApprovalProvider.deleteAllRequests();
-
   console.log('Migrating: Team Requests Metadata');
   const sourceTeamJoinApprovals = await sourceTeamJoinApprovalProvider.queryAllApprovals();
   console.log(`migrating ${sourceTeamJoinApprovals.length} team join requests...`);
+
+  // SCARY:
+  const destinationTeamEntries = await destinationTeamJoinApprovalProvider.queryAllApprovals();
+  console.log(`destination entries already: ${destinationMetadataEntries.length}`);
+  const clearDestination2 = circuitBreakerOverrideClearingDestination;
+  if (destinationTeamEntries.length > 0 && !clearDestination2) {
+    throw new Error('Destination team joins are not empty');
+  }
+  await destinationTeamJoinApprovalProvider.deleteAllRequests();
+
   i = 0;
   await Promise.all(sourceTeamJoinApprovals.map(throat<string, (tj: TeamJoinApprovalEntity) => Promise<string>>(async request => {
     try {
@@ -114,7 +137,9 @@ async function migration(config, app) : Promise<void> {
       await destinationTeamJoinApprovalProvider.createTeamJoinApprovalEntity(stripAzureTableDataIfPresent(request));
     } catch (migrationError) {
       console.dir(migrationError);
-      throw migrationError;
+      // throw migrationError;
+      ++errors;
+      errorList.push(migrationError);
     }
     return '';
   }, parallelMigrations)));

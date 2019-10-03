@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -81,7 +81,7 @@ module.exports = (graphApi) => {
     contents.forEach((org) => {
       const isOnboarding = org.onboarding === true;
       const ignore = org.ignore === true;
-      if (!org.legalEntities && !org.cla) {
+      if (!org.legalEntities) {
         org.legalEntities = defaultLegalEntities;
       }
       if (!org.templates) {

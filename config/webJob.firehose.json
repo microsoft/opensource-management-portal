@@ -6,7 +6,6 @@
   "sharedSecret": "env://WEBJOB_REPOS_FIREHOSE_HOOK_SECRET",
   "serviceBus": {
     "connectionString": "env://WEBJOB_REPOS_FIREHOSE_SERVICEBUS_CONNECTIONSTRING",
-    "topic": "env://WEBJOB_REPOS_FIREHOSE_SERVICEBUS_TOPIC",
-    "subscriptionName": "env://WEBJOB_REPOS_FIREHOSE_SERVICEBUS_SUBSCRIPTION"
+    "queue": "env://WEBJOB_REPOS_FIREHOSE_SERVICEBUS_QUEUE"
   }
 }

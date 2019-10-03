@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -9,42 +9,22 @@ const GitHubApi = require('@octokit/rest');
 const githubPackage = require('@octokit/rest/package.json');
 
 import * as restApi from './restApi';
-import { createCallbackFlattenData, createCallbackFlattenDataOptionally } from './core';
+import { flattenData } from './core';
 import { CompositeIntelligentEngine } from './composite';
 import { RestCollections } from './collections';
 import { CrossOrganizationCollator } from './crossOrganization';
 import { ILinkProvider } from '../linkProviders/postgres/postgresLinkProvider';
 import { LinkMethods } from './links';
+import { RedisHelper } from '../redis';
+import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../transitional';
 
 export enum CacheMode {
   ValidateCache = 'ValidateCache',
   BackgroundRefresh = 'BackgroundRefresh',
 }
 
-export interface ILibraryContext {
-  redis?: any;
-  insights?: any;
-  linkProvider: ILinkProvider;
-  memoryCache?: any;
-  breakingChangeGitHubPackageVersion?: any;
-
-  hasNextPage?: (any) => boolean;
-
-  // getNextPage?: any;
-  // getNextPageExtended?: any;
-
-  call?: any;
-  request?: any;
-  post?: any;
-
-  collections?: RestCollections;
-  links?: LinkMethods;
-  crossOrganization?: CrossOrganizationCollator;
-
-  githubEngine?: restApi.IntelligentGitHubEngine;
-  compositeEngine?: CompositeIntelligentEngine;
-
-  defaultPageSize: number;
+export interface IGitHubPostFunction {
+  (awaitToken: IGetAuthorizationHeader, api: string, parameters: any): Promise<any>;
 }
 
 // With the introduction of a breaking change in the underlying schema, any cache objects
@@ -53,118 +33,180 @@ export interface ILibraryContext {
 // also trigger a discard.
 const breakingChangeGitHubPackageVersion = '6.0.0';
 
-export function CreateRestLibraryContext(options): ILibraryContext {
-  const redis = options.redis;
-  if (!redis) {
-    throw new Error('No Redis instance provided to the GitHub library context constructor.');
-  }
+export class RestLibrary {
+  public redis: RedisHelper; // TODO: confirm RedisClient is correct
+  private insights?: any;
+  private linkProvider: ILinkProvider;
+  private github: any;
 
-  const linkProvider = options.linkProvider as ILinkProvider;
-  if (!linkProvider) {
-    throw new Error('No link provider included in the options to the library context constructor');
-  }
+  public memoryCache?: any;
+  private _collections: RestCollections;
+  private _links: LinkMethods;
+  private _crossOrganization: CrossOrganizationCollator;
+  private githubEngine?: restApi.IntelligentGitHubEngine;
 
-  let config = options.config;
-  if (!config) {
-    throw new Error('No runtime configuration instance provided to the library context constructor');
-  }
+  defaultPageSize: number;
 
-  let memoryCache = options.memoryCache || new Map();
+  public breakingChangeGitHubPackageVersion: string;
+  public compositeEngine?: CompositeIntelligentEngine;
 
-  const nodeGithubVersion = `${githubPackage.name}/${githubPackage.version}`;
-  let userAgent = nodeGithubVersion;
-  if (config && config.github && config.github.library && config.github.library.userAgent) {
-    userAgent = config.github.library.userAgent;
-  }
-
-  let github = options.github;
-  if (!github) {
-    let githubApi = options.GitHubApi || GitHubApi;
-    github = new githubApi({
-      userAgent,
-    });
-  }
-
-  const libraryContext: ILibraryContext = {
-    redis,
-    insights: options.insights,
-    memoryCache,
-    linkProvider,
-    defaultPageSize: config && config.github && config.github.api && config.github.api.defaultPageSize ? config.github.api.defaultPageSize : 100,
-
-    breakingChangeGitHubPackageVersion: breakingChangeGitHubPackageVersion,
-  };
-
-  libraryContext.githubEngine = new restApi.IntelligentGitHubEngine();
-  libraryContext.compositeEngine = new CompositeIntelligentEngine();
-
-  libraryContext.hasNextPage = hasNextPage.bind(libraryContext);
-
-  // libraryContext.getNextPage = restApi.wrapCreateNextPage(libraryContext, github);
-  // libraryContext.getNextPageExtended = restApi.wrapCreateNextPage(libraryContext, github, true);
-
-  libraryContext.call = function callGithub(token, api, options, cacheOptions, callback) {
-    if (!callback && typeof(cacheOptions) === 'function') {
-      callback = cacheOptions;
-      cacheOptions = null;
+  constructor(options) {
+    const redis = options.redis;
+    if (!redis) {
+      throw new Error('No Redis instance provided to the GitHub library context constructor.');
     }
-    cacheOptions = cacheOptions || {};
+    this.redis = redis;
 
-    let innerCallback = createCallbackFlattenData(callback);
+    const linkProvider = options.linkProvider as ILinkProvider;
+    if (!linkProvider) {
+      throw new Error('No link provider included in the options to the library context constructor');
+    }
+    this.linkProvider = linkProvider;
+
+    let config = options.config;
+    if (!config) {
+      throw new Error('No runtime configuration instance provided to the library context constructor');
+    }
+
+    let memoryCache = options.memoryCache || new Map();
+
+    const nodeGithubVersion = `${githubPackage.name}/${githubPackage.version}`;
+    let userAgent = nodeGithubVersion;
+    if (config && config.github && config.github.library && config.github.library.userAgent) {
+      userAgent = config.github.library.userAgent;
+    }
+    let github = options.github;
+    if (!github) {
+      let githubApi = options.GitHubApi || GitHubApi;
+      github = new githubApi({
+        userAgent,
+      });
+    }
+    this.github = github;
+
+    this.defaultPageSize = config && config.github && config.github.api && config.github.api.defaultPageSize ? config.github.api.defaultPageSize : 100,
+    this.breakingChangeGitHubPackageVersion = breakingChangeGitHubPackageVersion;
+
+    this.githubEngine = new restApi.IntelligentGitHubEngine();
+    this.compositeEngine = new CompositeIntelligentEngine();
+
+    this.hasNextPage = hasNextPage.bind(this);
+
+    this.memoryCache = memoryCache;
+
+    this.call = this.call.bind(this);
+    this.post = this.post.bind(this);
+    this.request = this.request.bind(this);
+  }
+
+  get collections(): RestCollections {
+    if (!this._collections) {
+      this._collections = new RestCollections(this, this.call);
+    }
+    return this._collections;
+  }
+
+  get links(): LinkMethods {
+    if (!this._links) {
+      this._links = new LinkMethods(this);
+    }
+    return this._links;
+  }
+
+  get crossOrganization(): CrossOrganizationCollator {
+    if (!this._crossOrganization) {
+      this._crossOrganization = new CrossOrganizationCollator(this, this.collections);
+    }
+    return this._crossOrganization;
+  }
+
+  hasNextPage?: (any) => boolean;
+
+  private async resolveAuthorizationHeader(authorizationHeader: IGetAuthorizationHeader | IAuthorizationHeaderValue | string): Promise<string | IAuthorizationHeaderValue> {
+    let authorizationValue = null;
+    try {
+      if (typeof(authorizationHeader) === 'string') {
+        authorizationValue = authorizationHeader as string;
+      } else if (typeof(authorizationHeader) === 'function') {
+        let asFunc = authorizationHeader as IGetAuthorizationHeader;
+        let resolved = asFunc.call(null) as Promise<IAuthorizationHeaderValue | string>;
+        authorizationValue = await resolved;
+        if (typeof(resolved) === 'function') {
+          asFunc = resolved as IGetAuthorizationHeader;
+          resolved = asFunc.call(null) as Promise<IAuthorizationHeaderValue | string>;
+          authorizationValue = await resolved;
+        }
+      } else if (authorizationHeader && authorizationHeader['value']) {
+        authorizationValue = authorizationHeader as IAuthorizationHeaderValue;
+      } else {
+        throw new Error('Invalid resolveAuthorizationHeader');
+      }
+    } catch (getTokenError) {
+      console.dir(getTokenError);
+      throw getTokenError;
+    }
+    return authorizationValue;
+  }
+
+  async call(awaitToken: IGetAuthorizationHeader | IAuthorizationHeaderValue | string, api: string, options, cacheOptions = null): Promise<any> {
+    cacheOptions = cacheOptions || {};
+    let massageData = (data) => flattenData(data);
     if (options.allowEmptyResponse) {
       delete options.allowEmptyResponse;
-      innerCallback = callback;
+      massageData = (data) => data;
     }
-
-    const apiContext = restApi.createFullContext(api, options, github, libraryContext);
-    apiContext.overrideToken(token);
-
+    const apiContext = restApi.createFullContext(api, options, this.github, this);
+    // CONSIDER: technically, callApi can wait to resolve the token by passing it into the context as-is
+    apiContext.overrideToken(await this.resolveAuthorizationHeader(awaitToken));
     if (cacheOptions.maxAgeSeconds) {
       apiContext.maxAgeSeconds = cacheOptions.maxAgeSeconds;
     }
     if (cacheOptions.backgroundRefresh !== undefined) {
       apiContext.backgroundRefresh = cacheOptions.backgroundRefresh;
     }
-    return libraryContext.githubEngine.execute(apiContext).then(result => {
-      return innerCallback(null, result);
-    }, innerCallback as (err: any) => any);
-  };
+    const data = await this.githubEngine.execute(apiContext);
+    const result = massageData(data);
+    return result;
+  }
 
-  libraryContext.request = function callOctokitRequest(token, restEndpoint, parameters: any, cacheOptions, callback) {
+  request(token, restEndpoint, parameters: any, cacheOptions): Promise<any> {
     parameters = parameters || {};
     parameters['octokitRequest'] = restEndpoint;
-    return libraryContext.call(token, 'request', parameters, cacheOptions, callback);
-  };
+    return this.call(token, 'request', parameters, cacheOptions);
+  }
 
-  // Post is a direct wrap around the GitHub library. It does not
-  libraryContext.post = function callGitHubNoCache(token, api, options, callback) {
-    const method = restApi.IntelligentGitHubEngine.findLibaryMethod(github, api);
+  async post(awaitToken: IGetAuthorizationHeader | string, api: string, options: any): Promise<any> {
+    const method = restApi.IntelligentGitHubEngine.findLibaryMethod(this.github, api);
     if (!options.headers) {
       options.headers = {};
     }
-    if (!options.headers.Authorization) {
-      options.headers.Authorization = `token ${token}`;
+    let massageData = (data) => flattenData(data);
+    if (options.allowEmptyResponse) {
+      delete options.allowEmptyResponse;
+      massageData = (data) => data;
+    }
+    if (!options.headers.authorization) {
+      const value = await this.resolveAuthorizationHeader(awaitToken);
+      options.headers.authorization = typeof(value) === 'string' ? value as string : (value as IAuthorizationHeaderValue).value;
     }
     try {
-      const legacyCallback = createCallbackFlattenDataOptionally(callback);
-      const promiseBack = method.call(github, options) as Promise<any>;
-      promiseBack.then(value => {
-        return legacyCallback(null, value);
-      }).catch(error => {
-        return legacyCallback(error, null);
-      });
-    } catch (missingOrMajorError) {
-      return callback(missingOrMajorError);
+      const value = await method.call(this.github, options) as Promise<any>;
+      const finalized = massageData(value);
+      return finalized;
+    } catch (error) {
+      console.log(error.message);
+      if (error.status) {
+        console.log(`Status: ${error.status}`);
+      }
+      if (error.headers && error.headers['x-ratelimit-remaining']) {
+        console.log(`Rate limit remaining: ${error.headers['x-ratelimit-remaining']}`);
+      }
+      if (error.request) {
+        console.dir(error.request);
+      }
+      throw error;
     }
-  };
-
-  libraryContext.collections = new RestCollections(libraryContext, libraryContext.call);
-
-  libraryContext.links = new LinkMethods(libraryContext);
-
-  libraryContext.crossOrganization = new CrossOrganizationCollator(libraryContext, libraryContext.collections);
-
-  return libraryContext;
+  }
 }
 
 // follows: deprecated functions that parse links out of the response headers

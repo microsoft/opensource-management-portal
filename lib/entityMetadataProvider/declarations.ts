@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -27,6 +27,7 @@ export enum MetadataMappingDefinition {
   PostgresQueries = 'PostgresQueries',
   PostgresDefaultTableName = 'PostgresDefaultTableName',
   PostgresDefaultTypeColumnName = 'PostgresDefaultTypeColumnName',
+  PostgresDateColumns = 'PostgresDateColumns',
 
   MemoryMapping = 'MemoryMapping',
   MemoryQueries = 'MemoryQueries',

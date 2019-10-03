@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -8,14 +8,28 @@
 import moment from 'moment';
 
 import { ICorporateLink } from './corporateLink';
-import { ICacheOptions, ILocalCacheOptions, IPagedCacheOptions, IPagedCrossOrganizationCacheOptions } from '../transitional';
+import { ICacheOptions, ILocalCacheOptions, IPagedCrossOrganizationCacheOptions, isPermissionBetterThan } from '../transitional';
 import { Operations } from './operations';
+import { IGetOrganizationMembersOptions, OrganizationMembershipRoleQuery } from './organization';
+import { ICrossOrganizationTeamMembership, GitHubTeamRole } from './team';
+import { Repository } from './repository';
+import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
+import { TeamRepositoryPermission } from './teamRepositoryPermission';
 
 interface ILocalLinksCache {
   updated: moment.Moment;
   map: Map<string, ICorporateLink>;
 }
 
+export interface IPersonalizedUserAggregateRepositoryPermission {
+  repository: Repository;
+  bestComputedPermission: GitHubRepositoryPermission;
+
+  collaboratorPermission: GitHubRepositoryPermission;
+  teamPermissions: TeamRepositoryPermission[];
+}
+
+// TODO: rename to CachedCrossOrganizationProxy
 export class GraphManager {
   private _operations: Operations;
   private _linksCache: ILocalLinksCache;
@@ -26,27 +40,36 @@ export class GraphManager {
     return this;
   }
 
-  async getCachedLink(githubId: string, options?: ILocalCacheOptions): Promise<ICorporateLink> {
-    // Advice: this function is designed for efficiently at this time
-    // and not ensuring a link, since it uses a cache system. For
-    // making actual link calls, it would be best to use an alternate
-    // call.
-    options = options || {};
-    const localCacheMaxAgeSeconds = options.localMaxAgeSeconds || 30; // 30s
-    const remoteCacheMaxAgeSeconds = options.maxAgeSeconds || 60; // 1m
-    let backgroundRefresh = options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
-    const map = await this.getCachedLinksMap(localCacheMaxAgeSeconds, remoteCacheMaxAgeSeconds, backgroundRefresh);
-    return map.get(githubId);
-  }
-
-  async getMember(githubId: string | number, options?: ICacheOptions): Promise<any> {
-    const allMembers = await this.getMembers(options);
+  async getAllOrganizationMember(githubId: string | number, options?: IGetOrganizationMembersOptions): Promise<any> {
+    const allMembers = await this._operations.getMembers(options);
     githubId = typeof(githubId) === 'string' ? parseInt(githubId, 10) : githubId;
     const member = raiseCrossOrganizationSingleResult(allMembers.get(githubId));
     return member;
   }
 
-  async getUserTeams(githubId: string | number, options: ICacheOptions): Promise<any[]> {
+  async getOrganizationStatusesByName(id: number, optionalRole?: OrganizationMembershipRoleQuery): Promise<any> {
+    const options: IGetOrganizationMembersOptions = {};
+    // options['role'] is not typed, need to validate down the call chain to be clean
+    if (optionalRole) {
+      options.role = optionalRole;
+    }
+    const member = await this.getAllOrganizationMember(id, options);
+    const value = member && member.orgs ? member.orgs : [];
+    return value;
+  }
+
+  async getTeamMemberships(id: number, optionalRole?: GitHubTeamRole): Promise<any> {
+    const options: ICrossOrganizationTeamMembership = { };
+    if (optionalRole) {
+      options.role = optionalRole;
+    }
+    options.maxAgeSeconds = 60 * 20;
+    options.backgroundRefresh = true;
+    const teams = await this.getUserTeams(id, options);
+    return teams;
+  }
+
+  async getUserTeams(githubId: string | number, options: ICrossOrganizationTeamMembership): Promise<any[]> {
     const everything = await this.getTeamsWithMembers(options);
     githubId = typeof(githubId) === 'string' ? parseInt(githubId, 10) : githubId;
     const teams = [];
@@ -69,7 +92,7 @@ export class GraphManager {
     return teams;
   }
 
-  getTeamsWithMembers(options: IPagedCrossOrganizationCacheOptions): Promise<any[]> {
+  getTeamsWithMembers(options: ICrossOrganizationTeamMembership): Promise<any[]> {
     options = options || {};
     if (!options.maxAgeSeconds) {
       options.maxAgeSeconds = 60 * 30 * 48 * 10 /* 2 WEEKS */ /* 2 DAYS */ /* 30m per-org full team members list OK */;
@@ -81,46 +104,60 @@ export class GraphManager {
     return this._operations.getTeamsWithMembers(options);
   }
 
-  async getUserReposByTeamMemberships(githubId: string | number, options: ICacheOptions): Promise<any> {
+  async getUserReposByTeamMemberships(githubId: string | number, options: ICacheOptions): Promise<IPersonalizedUserAggregateRepositoryPermission[]> {
+    // This is an expensive Redis and refresh user if the app is not deployed
+    // with the QueryCache: it reads _all_ the teams for the user by the
+    // membership APIs. Do not recommend. Did not scale past 5,000 repos well.
+    // This version never takes into account repository direct collaborator
+    // permissions, as that is too expensive to compute and coordinate in the
+    // traditional proxy cache.
     const everything = await this.getUserTeams(githubId, {}); // TODO:CONFIRM: should this pass options down or not?
-    const teams = new Set();
+    const userTeams = new Set();
     for (let i = 0; i < everything.length; i++) {
-      teams.add(everything[i].id);
+      userTeams.add(everything[i].id);
     }
     const allRepos = await this.getReposWithTeams(options);
-    const repos = [];
+    const personalizedResults: IPersonalizedUserAggregateRepositoryPermission[] = [];
     for (let i = 0; i < allRepos.length; i++) {
-      const repo = allRepos[i];
-      if (repo && repo.teams) {
-        const userTeams = [];
-        let bestPermission = null;
-        for (let j = 0; j < repo.teams.length; j++) {
-          const t = repo.teams[j];
-          if (teams.has(t.id)) {
-            if (repo.private === false && t.permission === 'pull') {
-              // Public repos, ignore teams with pull access
-            } else {
-              userTeams.push(t);
-              if (isPermissionBetterThan(bestPermission, t.permission)) {
-                bestPermission = t.permission;
+      try {
+        const repo = allRepos[i];
+        const organizationName = repo.organization.login;
+        const organization = this._operations.getOrganization(organizationName);
+        if (repo && repo.teams) {
+          const userTeamPermissions: TeamRepositoryPermission[] = [];
+          let bestPermission = null;
+          for (let j = 0; j < repo.teams.length; j++) {
+            const t = repo.teams[j]; // technicall a GET /repos/:owner/:repo/teams team permission response
+            if (userTeams.has(t.id)) {
+              if (repo.private === false && t.permission === 'pull') {
+                // Public repos, ignore teams with pull access
+              } else {
+                const team = organization.team(t.id, t);
+                const teamPermission = new TeamRepositoryPermission(team, t, this._operations);
+                userTeamPermissions.push(teamPermission);
+                if (isPermissionBetterThan(bestPermission, t.permission)) {
+                  bestPermission = t.permission;
+                }
               }
             }
           }
+          if (userTeamPermissions.length > 0) {
+            const repository = organization.repository(repo.name, repo);
+            const personalizedRepositoryPermission: IPersonalizedUserAggregateRepositoryPermission = {
+              repository,
+              collaboratorPermission: null,
+              bestComputedPermission: bestPermission as GitHubRepositoryPermission,
+              teamPermissions: userTeamPermissions,
+            };
+            personalizedResults.push(personalizedRepositoryPermission);
+          }
         }
-        if (userTeams.length > 0) {
-          const personalizedRepo = {
-            personalized: {
-              teams: userTeams,
-              permission: bestPermission,
-            },
-          };
-          const repoClone = Object.assign(personalizedRepo, repo);
-          delete repoClone.teams;
-          repos.push(repoClone);
-        }
+      } catch (individualRepoError) {
+        // organization may not be configured for this environment
+        console.dir(individualRepoError);
       }
     }
-    return repos;
+    return personalizedResults;
   }
 
   getReposWithTeams(options?: IPagedCrossOrganizationCacheOptions): Promise<any> {
@@ -145,17 +182,6 @@ export class GraphManager {
       options.backgroundRefresh = true;
     }
     return this._operations.getRepoCollaborators(options);
-  }
-
-  getMembers(options: IPagedCrossOrganizationCacheOptions): Promise<any> {
-    options = options || {};
-    if (!options.maxAgeSeconds) {
-      options.maxAgeSeconds = 60 * 10 /* 10m per-org members list OK */;
-    }
-    if (options.backgroundRefresh === undefined) {
-      options.backgroundRefresh = true;
-    }
-    return this._operations.getMembers(options);
   }
 
   private async getCachedLinksMap(
@@ -202,36 +228,6 @@ export class GraphManager {
     }
     return linksCache.map;
   }
-}
-
-function setRequiredProperties(self, properties, options) {
-  for (let i = 0; i < properties.length; i++) {
-    const key = properties[i];
-    if (!options[key]) {
-      throw new Error(`Required option with key "${key}" was not provided.`);
-    }
-    self[key] = options[key];
-  }
-}
-
-function isPermissionBetterThan(currentBest, newConsideration) {
-  switch (newConsideration) {
-  case 'admin':
-    return true;
-  case 'push':
-    if (currentBest !== 'admin') {
-      return true;
-    }
-    break;
-  case 'pull':
-    if (currentBest === null) {
-      return true;
-    }
-    break;
-  default:
-    throw new Error(`Invalid permission type ${newConsideration}`);
-  }
-  return false;
 }
 
 function raiseCrossOrganizationSingleResult(result, keyProperty?: string) {

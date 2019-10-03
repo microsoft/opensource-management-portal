@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -7,10 +7,10 @@
 
 'use strict';
 
-import async = require('async');
 import moment from 'moment';
-import { Organization } from '../../business/organization';
 import { Operations } from '../../business/operations';
+import { GitHubTokenManager } from '../../github/tokenManager';
+
 const os = require('os');
 
 // Organization invitations cleanup: remove any invitations that are older than a
@@ -31,6 +31,7 @@ module.exports = function run(started, startedString, config) {
     if (error) {
       throw error;
     }
+    GitHubTokenManager.IsBackgroundJob();
     const insights = app.settings.appInsightsClient;
     if (!insights) {
       throw new Error('No app insights client available');

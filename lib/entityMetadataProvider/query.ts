@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -36,6 +36,7 @@ export enum FixedQueryType {
   RepositoryTeamCacheGetAll,
   RepositoryTeamCacheByRepositoryId,
   RepositoryTeamCacheByTeamId,
+  RepositoryTeamCacheByTeamIds,
   RepositoryTeamCacheByOrganizationId,
   // Team cache
   TeamCacheGetAll,
@@ -45,6 +46,10 @@ export enum FixedQueryType {
   TeamMemberCacheGetByOrganizationId,
   TeamMemberCacheGetByUserId,
   TeamMemberCacheGetByTeamId,
+  TeamMemberCacheGetByOrganizationIdAndUserId,
+  // Organization settings
+  OrganizationSettingsGetAll,
+  OrganizationSettingsGetMostRecentlyUpdatedActive,
 }
 
 export interface IEntityMetadataFixedQuery {

@@ -1,16 +1,22 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 /*eslint no-console: ["error", { allow: ["dir", "log"] }] */
 
+// AUDIT LOG: this capability is offline since the original data store was not ideal.
+// This should be rewritten to use the entity concept, and integrate with the newer
+// GitHub Enterprise Cloud capability of using GraphQL to hit the official audit log
+// for organizations, and also to import JSON-based audit export files.
+
 'use strict';
 
-import moment from 'moment';
+import { WebhookProcessor } from '../organizationProcessor';
+import { Operations } from '../../business/operations';
+import { Organization } from '../../business/organization';
 
-interface IAuditDocument
-{
+interface IAuditDocument {
   pk: string;
   type: string;
   provider: string;
@@ -29,11 +35,6 @@ interface IAuditDocument
   repository?: any;
 }
 
-interface ICreatedDocument
-{
-  _self?: string;
-}
-
 const eventTypes = new Set([
   'membership',
   'member',
@@ -42,125 +43,74 @@ const eventTypes = new Set([
   'team',
 ]);
 
-async function saveDocument(client, collection, document: IAuditDocument) {
-  return new Promise(function (resolve, reject) {
-    client.createDocument(collection._self, document, (createError, docInfo) => {
-      if (createError) {
-        return reject(createError);
-      }
-      return resolve(docInfo);
-    });
-  });
-}
-
-async function getCollection(client, database, name) {
-  return new Promise(function (resolve, reject) {
-    const link = `/dbs/${database.id}/${database._colls}${name}`;
-    client.readCollection(link, (error, col) => {
-      if (error) {
-        return reject(error);
-      }
-      return resolve(col);
-    });
-  });
-}
-
-async function runAsync(operations, organization, data) {
-  const cosmos = operations.providers.cosmosdb;
-
+async function runAsync(operations: Operations, organization: Organization, data: any) {
   const properties = data.properties;
   const body = data.body;
-
-  const collectionName = cosmos.colNameTemp;
-  const collection = await getCollection(cosmos.client, cosmos.database, collectionName);
-
-  const partition = moment().utc().format('MMDD');
-
-  const document : IAuditDocument = {
-    pk: partition, // we always set the partitionKey for now
-    type: 'event',
-    provider: 'github',
-    service: 'repos',
-    id: properties.delivery,
-    action: body.action,
-    event: properties.event,
-    actor: {
-      id: body.sender.id,
-      login: body.sender.login,
-    },
-  };
-
-  if (body.scope) {
-    document.scope = body.scope;
-  }
-
-  if (body.membership) {
-    document.membership = {
-      state: body.membership.state,
-      role: body.membership.role,
-      user: {
-        id: body.membership.user.id,
-        login: body.membership.user.login,
-      },
-    };
-  }
-
-  if (body.member) {
-    document.member = {
-      id: body.member.id,
-      login: body.member.login,
-    };
-  }
-
-  if (body.team) {
-    document.team = {
-      id: body.team.id,
-      name: body.team.name,
-    };
-  }
-
-  if (body.changes) {
-    document.changes = body.changes;
-  }
-
-  document.timestamp = properties.started;
-
-  if (body.organization) {
-    document.organization = {
-      id: body.organization.id,
-      login: body.organization.login,
-    };
-  }
-
-  if (body.repository) {
-    document.repository = {
-      id: body.repository.id,
-      name: body.repository.name,
-    };
-  }
-
-  return await saveDocument(cosmos.client, collection, document);
+  // const document : IAuditDocument = {
+  //   type: 'event',
+  //   provider: 'github',
+  //   service: 'repos',
+  //   id: properties.delivery,
+  //   action: body.action,
+  //   event: properties.event,
+  //   actor: {
+  //     id: body.sender.id,
+  //     login: body.sender.login,
+  //   },
+  // };
+  // if (body.scope) {
+  //   document.scope = body.scope;
+  // }
+  // if (body.membership) {
+  //   document.membership = {
+  //     state: body.membership.state,
+  //     role: body.membership.role,
+  //     user: {
+  //       id: body.membership.user.id,
+  //       login: body.membership.user.login,
+  //     },
+  //   };
+  // }
+  // if (body.member) {
+  //   document.member = {
+  //     id: body.member.id,
+  //     login: body.member.login,
+  //   };
+  // }
+  // if (body.team) {
+  //   document.team = {
+  //     id: body.team.id,
+  //     name: body.team.name,
+  //   };
+  // }
+  // if (body.changes) {
+  //   document.changes = body.changes;
+  // }
+  // document.timestamp = properties.started;
+  // if (body.organization) {
+  //   document.organization = {
+  //     id: body.organization.id,
+  //     login: body.organization.login,
+  //   };
+  // }
+  // if (body.repository) {
+  //   document.repository = {
+  //     id: body.repository.id,
+  //     name: body.repository.name,
+  //   };
+  // }
 }
 
-module.exports = {
-  filter: function (data) {
+export default class AuditLogRecorderWebhookProcessor implements WebhookProcessor {
+  filter(data: any) {
     let eventType = data.properties.event;
     console.log(eventType);
     // console.dir(data);
     return eventTypes.has(eventType);
-  },
-  run: function (operations, organization, data, callback) {
-    if (!operations.providers.cosmosdb) {
-      return callback();
-    }
+  }
 
-    runAsync(operations, organization, data)
-      .then((result) => {
-        console.log((result as ICreatedDocument)._self);
-        callback();
-      })
-      .catch(error => {
-        return callback(error);
-      });
-  },
-};
+  async run(operations: Operations, organization: Organization, data: any): Promise<boolean> {
+    const result = await runAsync(operations, organization, data);
+    return true;
+  }
+}

@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS approvals (
 
 CREATE INDEX metadata_active ON approvals ((metadata->>'active'));
 CREATE INDEX metadata_teamid ON approvals ((metadata->>'teamid'));
+CREATE INDEX approvals_gin ON approvals USING gin (metadata jsonb_path_ops);
 
 CREATE TABLE IF NOT EXISTS repositorymetadata (
   entitytype text,
@@ -23,6 +24,7 @@ CREATE TABLE IF NOT EXISTS repositorymetadata (
   metadata jsonb,
   PRIMARY KEY(entitytype, entityid)
 );
+CREATE INDEX repositorymetadata_gin ON repositorymetadata USING gin (metadata jsonb_path_ops);
 
 CREATE TABLE IF NOT EXISTS repositorycache (
   entitytype text,
@@ -30,6 +32,17 @@ CREATE TABLE IF NOT EXISTS repositorycache (
   metadata jsonb,
   PRIMARY KEY(entitytype, entityid)
 );
+CREATE INDEX repositorycache_gin ON repositorycache USING gin (metadata jsonb_path_ops);
+
+CREATE TABLE IF NOT EXISTS organizationsettings (
+  entitytype text,
+  entityid text,
+  metadata jsonb,
+  PRIMARY KEY(entitytype, entityid)
+);
+
+CREATE INDEX organizationsettings_active ON organizationsettings ((metadata->>'active'));
+CREATE INDEX organizationsettings_organizationid ON organizationsettings ((metadata->>'organizationid'));
 
 CREATE TABLE IF NOT EXISTS repositorycollaboratorcache (
   entitytype text,
@@ -37,6 +50,7 @@ CREATE TABLE IF NOT EXISTS repositorycollaboratorcache (
   metadata jsonb,
   PRIMARY KEY(entitytype, entityid)
 );
+CREATE INDEX repositorycollaboratorcache_gin ON repositorycollaboratorcache USING gin (metadata jsonb_path_ops);
 
 CREATE TABLE IF NOT EXISTS organizationmembercache (
   entitytype text,
@@ -44,6 +58,7 @@ CREATE TABLE IF NOT EXISTS organizationmembercache (
   metadata jsonb,
   PRIMARY KEY(entitytype, entityid)
 );
+CREATE INDEX organizationmembercache_gin ON organizationmembercache USING gin (metadata jsonb_path_ops);
 
 CREATE TABLE IF NOT EXISTS teamcache (
   entitytype text,
@@ -51,6 +66,7 @@ CREATE TABLE IF NOT EXISTS teamcache (
   metadata jsonb,
   PRIMARY KEY(entitytype, entityid)
 );
+CREATE INDEX teamcache_gin ON teamcache USING gin (metadata jsonb_path_ops);
 
 CREATE TABLE IF NOT EXISTS teammembercache (
   entitytype text,
@@ -58,6 +74,7 @@ CREATE TABLE IF NOT EXISTS teammembercache (
   metadata jsonb,
   PRIMARY KEY(entitytype, entityid)
 );
+CREATE INDEX teammembercache_gin ON teammembercache USING gin (metadata jsonb_path_ops);
 
 CREATE TABLE IF NOT EXISTS repositoryteamcache (
   entitytype text,
@@ -65,6 +82,7 @@ CREATE TABLE IF NOT EXISTS repositoryteamcache (
   metadata jsonb,
   PRIMARY KEY(entitytype, entityid)
 );
+CREATE INDEX repositoryteamcache_gin ON repositoryteamcache USING gin (metadata jsonb_path_ops);
 
 CREATE TABLE IF NOT EXISTS links (
 	linkid text,

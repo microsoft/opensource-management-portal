@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -11,6 +11,7 @@ const debug = require('debug')('oss-initialize');
 import path = require('path');
 import { StaticClientApp } from './staticClientApp';
 import { StaticSiteFavIcon, StaticSiteAssets } from './staticSiteAssets';
+import passportConfig from './passport-config';
 
 let viewServices = null;
 try {
@@ -86,7 +87,7 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
       }
       app.use(require('./session')(app, config, redisClient));
       try {
-        passport = require('./passport-config')(app, config);
+        passport = passportConfig(app, config);
       } catch (passportError) {
         initializationError = passportError;
       }

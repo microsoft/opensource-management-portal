@@ -1,14 +1,14 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
 import _ from 'lodash';
-
+const debug = require('debug')('user');
 import { ReposAppRequest } from '../../transitional';
-import { ICorporateIdentity, IGitHubIdentity, IndividualContext, GitHubIdentitySource } from '../../business/context2';
+import { ICorporateIdentity, IGitHubIdentity, IndividualContext, GitHubIdentitySource } from '../../user';
 import { storeOriginalUrlAsReferrer } from '../../utils';
 
 export function requireAuthenticatedUserOrSignIn(req: ReposAppRequest, res, next) {
@@ -48,11 +48,10 @@ export function setIdentity(req: ReposAppRequest, res, next) {
 
   let corporateIdentity: ICorporateIdentity = null;
   let gitHubIdentity: IGitHubIdentity = null;
-  // temp
+
   let s = `${contextName} ${sourceText}: `;
   const user = requestForAuthentication.user;
 
-  console.log();
   if (user.github) {
     s += `github(id=${user.github.id}, username=${user.github.username}) `;
     gitHubIdentity = {
@@ -71,8 +70,7 @@ export function setIdentity(req: ReposAppRequest, res, next) {
       displayName: user.azure.displayName,
     };
   }
-  console.log(s);
-  // end temp
+  debug(s);
 
   // const insights = req.app.settings.providers.insights;
 

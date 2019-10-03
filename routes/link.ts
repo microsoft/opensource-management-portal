@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -10,7 +10,7 @@
 const emailRender = require('../lib/emailRender');
 import express = require('express');
 import { ReposAppRequest } from '../transitional';
-import { IndividualContext } from '../business/context2';
+import { IndividualContext } from '../user';
 import { ILinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
 import { storeOriginalUrlAsReferrer, wrapError } from '../utils';
 import { ICorporateLink } from '../business/corporateLink';

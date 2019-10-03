@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -9,7 +9,7 @@ import express = require('express');
 import { RequestWithSystemwidePermissions } from '../../transitional';
 
 import { buildConsolidatedMap as buildRecipientMap } from '../../jobs/reports/consolidated';
-import { IndividualContext } from '../../business/context2';
+import { IndividualContext } from '../../user';
 
 // const buildRecipientMap = require('../../jobs/reports/consolidated').buildRecipientMap;
 import { RedisHelper } from '../../lib/redis';

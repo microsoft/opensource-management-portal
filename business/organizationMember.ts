@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -22,16 +22,15 @@ const memberSecondaryProperties = [];
 export class OrganizationMember {
   private _organization: Organization;
   private _operations: Operations;
-  private _getToken: IGetOwnerToken;
   private _organizationProfile: any;
-  private _id: string;
+  private _id: number;
   private _login: string;
   private _updated_at;
   private _created_at;
   private _avatar_url;
   private _permissions;
 
-  constructor(organization: Organization, entity: any, getToken: IGetOwnerToken, operations: Operations) {
+  constructor(organization: Organization, entity: any, operations: Operations) {
     this._organization = organization;
     if (entity) {
       common.assignKnownFieldsPrefixed(this, entity, 'member', memberPrimaryProperties, memberSecondaryProperties);
@@ -40,7 +39,6 @@ export class OrganizationMember {
     if (entity && entity.plan) {
       this._organizationProfile = entity;
     }
-    this._getToken = getToken;
     this._operations = operations;
   }
 
@@ -62,7 +60,7 @@ export class OrganizationMember {
     return this._organizationProfile;
   }
 
-  get id(): string {
+  get id(): number {
     return this._id;
   }
 
@@ -96,7 +94,7 @@ export class OrganizationMember {
     if (!this._id) {
       throw new Error('No organization member ID');
     }
-    const link = await this._operations.graphManager.getCachedLink(this._id);
+    const link = await this._operations.getLinkByThirdPartyId(this._id.toString());
     if (!link || !link.corporateId) {
       throw new Error(`Organization member ID ${this._id} is not linked.`);
     }

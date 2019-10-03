@@ -1,12 +1,13 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 import { IEntityMetadataProvider, IEntityMetadataSerializationHelper, IEntityMetadataDeserializationHelper } from "./entityMetadataProvider";
 
 export enum EntityMetadataType {
-  // When adding new types, also add it to EntityMetadataTypes array below!
+  // READ THIS:
+  // IMPORTANT: When adding new types, also add it to EntityMetadataTypes array below!
 
   // GitHub entities METADATA
   Repository = 'Repository',
@@ -25,6 +26,7 @@ export enum EntityMetadataType {
   // Setting entities
   Token = 'Token',
   LocalExtensionKey = 'LocalExtensionKey',
+  OrganizationSetting = 'OrganizationSetting',
 }
 
 export const EntityMetadataTypes = [
@@ -33,6 +35,7 @@ export const EntityMetadataTypes = [
   EntityMetadataType.Token,
   EntityMetadataType.LocalExtensionKey,
   EntityMetadataType.OrganizationMemberCache,
+  EntityMetadataType.OrganizationSetting,
   EntityMetadataType.RepositoryCache,
   EntityMetadataType.RepositoryCollaboratorCache,
   EntityMetadataType.RepositoryTeamCache,
