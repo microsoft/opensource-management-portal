@@ -5,48 +5,44 @@
 
 'use strict';
 
+import { IMailProvider, IMail } from ".";
+
 const nodemailer = require('nodemailer');
 
-interface IMailOptions {
-  from?: string;
-  to: string[];
-  cc?: string[];
-  bcc?: string[];
-  subject: string;
-  content: string;
-  category?: string[];
-  correlationId?: string;
-};
+export default class SmtpMailService implements IMailProvider {
+  private _config: any;
 
-async function sendMail(mailConfig, mailOptions: IMailOptions, callback) {
+  html: true;
+  info: 'SMTP mail service';
 
-  if (!mailConfig.customSmtpService) {
-    return callback(new Error("SMTP Mail configuration not given, mail sending failed"));
-  };
+  constructor(config: any) {
+    this._config = config;
+  }
 
-  const transporter = nodemailer.createTransport(mailConfig.smtpMailService);
-  try {
-    const info = await transporter.sendMail({
-      to: mailOptions.to,
-      cc: mailOptions.cc,
-      bcc: mailOptions.bcc,
-      from: mailOptions.from || mailConfig.from,
-      subject: mailOptions.subject,
-      html: mailOptions.content
-    });
-    if (info.rejected.length > 0) {
-      console.warn("Following reciepient addresses were rejected by the server:\n" + info.rejected)
+  getSentMessages() {
+    return []; // this provider does not support mocks
+  }
+
+  async sendMail(mail: IMail): Promise<any> {
+    if (!this._config.customSmtpService) {
+      throw new Error('SMTP Mail configuration not given, mail sending failed');
+    }
+    const transporter = nodemailer.createTransport(this._config.smtpMailService);
+    try {
+      const info = await transporter.sendMail({
+        to: mail.to,
+        cc: mail.cc,
+        bcc: mail.bcc,
+        from: mail.from || this._config.from,
+        subject: mail.subject,
+        html: mail.content
+      });
+      if (info.rejected.length > 0) {
+        console.warn(`Following reciepient addresses were rejected by the server:\n${info.rejected}`);
+      };
+      return info.response ? info.response : null;
+    } catch (err) {
+      throw err;
     };
-    return callback(null, info.response ? info.response : null);
-  } catch (err) {
-    return callback(err);
-  };
-};
-
-module.exports = function createSmtpMailService(config) {
-  return {
-    info: "SMTP mail service",
-    sendMail: sendMail.bind(undefined, config.mail),
-    html: true,
-  };
-};
+  }
+}

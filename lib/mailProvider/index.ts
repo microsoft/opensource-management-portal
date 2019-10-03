@@ -10,10 +10,14 @@ import IrisMailService from './customMailService';
 import SmtpMailService from './smtpMailService';
 
 export interface IMail {
+  from?: string;
   to: string | string[];
   cc?: string | string[];
   bcc?: string | string[];
   content?: any;
+  subject?: string;
+  category?: string[];
+  correlationId?: string;
 }
 
 export interface IMailProvider {
