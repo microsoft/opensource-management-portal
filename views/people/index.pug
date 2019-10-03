@@ -33,7 +33,7 @@ block content
         small= ' in the ' + organization.name + ' GitHub organization'
     else
       h1 People
-      p.lead Members of officially managed Microsoft organizations
+      p.lead Members of officially managed #{config.brand.companyName} organizations
 
     if reposDataAgeInformation
       p.text-primary(style='margin-bottom:24px')
@@ -65,7 +65,7 @@ block content
                   style='max-width:400px')
                 span.input-group-btn
                   button(
-                    class='btn btn-muted'
+                    class='btn btn-muted ms-light-gray'
                     type='submit'
                     style='border-width: 1px') Search
             .col-md-6
@@ -145,19 +145,22 @@ block content
                 p.lead No people match across all managed organizations.
 
         else
+          - var previous_possible = search.page > 1 //check for a previous page
+          - var next_possible = search.page < search.totalPages //check for a following page
+
           nav(style='margin-bottom:48px')
             ul.pager
-              li.previous(class=(search.page > 1 ? '' : 'disabled'))
-                a(href='?page_number=' + (search.page-1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
-                  span(aria-hidden="true") &larr; Previous
+              li.previous(class=(previous_possible ? '' : 'invisible'))
+                  a(href='?page_number=' + (search.page-1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                    span(aria-hidden="true") &larr; Previous
               li
                 if search.totalItems == 1
                   | One member
                 else
                   | #{search.pageFirstItem.toLocaleString()} - #{search.pageLastItem.toLocaleString()} of #{search.totalItems.toLocaleString()} #{itemType}
-              li.next(class=(search.page < search.totalPages ? '' : 'disabled'))
-                a(href='?page_number=' + (search.page+1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
-                  span(aria-hidden="true") Next &rarr;
+              li.next(class=(next_possible ? '' : 'invisible'))
+                  a(href='?page_number=' + (search.page+1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                    span(aria-hidden="true") Next &rarr;
 
           .row.vertical-pad-bottom
             .col-sm-8
@@ -243,15 +246,15 @@ block content
 
           nav
             ul.pager
-              li.previous(class=(search.page > 1 ? '' : 'disabled'))
-                a(href='?page_number=' + (search.page-1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
-                  span(aria-hidden="true") &larr; Previous
+              li.previous(class=(previous_possible ? '' : 'invisible'))
+                  a(href='?page_number=' + (search.page-1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                    span(aria-hidden="true") &larr; Previous
               li
                 h4(style="display:inline")
                   | Page #{search.page} of #{search.totalPages}
-              li.next(class=(search.page < search.totalPages ? '' : 'disabled'))
-                a(href='?page_number=' + (search.page+1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
-                  span(aria-hidden="true") Next &rarr;
+              li.next(class=(next_possible ? '' : 'invisible'))
+                  a(href='?page_number=' + (search.page+1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                    span(aria-hidden="true") Next &rarr;
 
         hr
         p The presence of people in this list does not imply that they are an employee.
