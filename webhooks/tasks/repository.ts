@@ -10,6 +10,7 @@
 import { WebhookProcessor } from "../organizationProcessor";
 import { Operations } from "../../business/operations";
 import { Organization } from "../../business/organization";
+import NewRepositoryLockdownSystem from "../../features/newRepositoryLockdown";
 
 export default class RepositoryWebhookProcessor implements WebhookProcessor {
   filter(data: any) {
@@ -86,7 +87,22 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
       //   });
       // });
     }
-    // Immediately, to help delete the ticket
+    if (event.action === 'created' && event.sender.login && event.sender.id && organization.isNewRepositoryLockdownSystemEnabled()) {
+      try {
+        const repository = organization.repository(event.repository.name, event.repository);
+        const repositoryMetadataProvider = operations.providers.repositoryMetadataProvider;
+        const lockdownSystem = new NewRepositoryLockdownSystem({ operations, organization, repository, repositoryMetadataProvider });
+        const wasLockedDown = await lockdownSystem.lockdownIfNecessary(event.sender.login, event.sender.id);
+        console.log(wasLockedDown ?
+          `${organization.name} uses the new repository lockdown system and the new ${repository.name} repository created by ${event.sender.login} was LOCKED DOWN` :
+          `No lockdown on new repository ${repository.name}, created by ${event.sender.login}, even though the organization ${organization.name} supports and has enabled the system`);
+      } catch (lockdownSystemError) {
+        console.warn('lockdownSystemError:');
+        console.dir(lockdownSystemError);
+      }
+    }
+
+    // Immediately delete the ticket
     return true;
   }
 }

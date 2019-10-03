@@ -319,3 +319,21 @@ For performance reasons, a partitioned/purpose-intended app model is
 being designed that will fallback to the one configured app installation,
 if any. If there is no modern GitHub app, the GitHub PAT for an org will
 be used.
+
+# Feature flags
+
+Under development, configuration values in `config/features.json` map
+explicit opt-in environment variables to features and functions for
+the monolithic site.
+
+This was, organizations can choose which specific features they may
+want to have exposed by the app.
+
+Most features can be opted in to by simply setting the environment
+variable value to `1`.
+
+- allowUnauthorizedNewRepositoryLockdownSystem
+
+  - Variable: `FEATURE_FLAG_ALLOW_UNAUTHORIZED_NEW_REPOSITORY_LOCKDOWN_SYSTEM`
+  - Purpose: Allows the "unauthorized new repository lockdown system" to be _available_ as an organization feature flag. It does not turn this system on by default in any case.
+  - Requirements: the event firehose must be used (there is no equivalent job, to make sure to not accidentially destroy permissions across existing repos)

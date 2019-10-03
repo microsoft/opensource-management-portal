@@ -1,0 +1,3 @@
+{
+  "allowUnauthorizedNewRepositoryLockdownSystem": "env://FEATURE_FLAG_ALLOW_UNAUTHORIZED_NEW_REPOSITORY_LOCKDOWN_SYSTEM?trueIf=1"
+}
