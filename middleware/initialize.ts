@@ -92,7 +92,7 @@ async function initialize(app: Application, express, rootdir: string, config, ea
       config,
       emOptions,
       'memory');
-  const defaultProvider = memoryEntityMetadataProvider || pgEntityMetadataProvider || tableEntityMetadataProvider;
+  const defaultProvider = pgEntityMetadataProvider || tableEntityMetadataProvider || memoryEntityMetadataProvider;
   function providerNameToInstance(value: string): IEntityMetadataProvider {
     switch (value) {
       case 'firstconfigured':
