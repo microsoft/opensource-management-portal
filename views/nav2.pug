@@ -139,13 +139,11 @@ div.navbar.navbar-default(style=reposContext ? 'margin-bottom:0' : undefined)
                     p= user.github.username
                     ul.list-inline
                       li
-                        a.btn.btn-sm.btn-muted(href='https://github.com/settings/profile', target='_new')
+                        a.btn.btn-sm.btn-muted.button(href='https://github.com/settings/profile', target='_new')
                           | Open on GitHub
                       li
-                        a.btn.btn-sm.btn-muted(href='/link/remove') Unlink
-                li
-                  ul.list-unstyled-dropdown.first
-                    h4 Repositories
+                        a.btn.btn-sm.btn-muted.button(href='/link/remove') Unlink
+
               else
                 li
                   a(href='/signin/github') Sign in to GitHub

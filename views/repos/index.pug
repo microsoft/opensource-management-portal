@@ -108,7 +108,7 @@ block content
                   style='max-width:400px')
                 span.input-group-btn
                   button(
-                    class='btn btn-muted'
+                    class='btn btn-muted ms-light-gray'
                     type='submit'
                     style='border-width: 1px') Search
             .col-md-7
@@ -203,14 +203,17 @@ block content
                 p.lead No repositories match across all Microsoft organizations.
 
         else
+          - var previous_possible = search.page > 1 //check for a previous page
+          - var next_possible = search.page < search.totalPages //check for a following page
+
           nav(style='margin-bottom:48px')
             ul.pager
-              li.previous(class=(search.page > 1 ? '' : 'disabled'))
+              li.previous(class=(previous_possible ? '' : 'invisible'))
                 a(href='?page_number=' + (search.page-1) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (query.tt ? '&tt=' + query.tt : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
                   span(aria-hidden="true") &larr; Previous
               li
                 | #{search.pageFirstRepo.toLocaleString()} - #{search.pageLastRepo.toLocaleString()} of #{search.totalRepos.toLocaleString()}
-              li.next(class=(search.page < search.totalPages ? '' : 'disabled'))
+              li.next(class=(next_possible ? '' : 'invisible'))
                 a(href='?page_number=' + (search.page+1) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (query.tt ? '&tt=' + query.tt : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
                   span(aria-hidden="true") Next &rarr;
 
@@ -285,13 +288,13 @@ block content
 
           nav
             ul.pager
-              li.previous(class=(search.page > 1 ? '' : 'disabled'))
+              li.previous(class=(previous_possible ? '' : 'invisible'))
                 a(href='?page_number=' + (search.page-1) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (query.tt ? '&tt=' + query.tt : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
                   span(aria-hidden="true") &larr; Previous
               li
                 h4(style="display:inline")
                   | Page #{search.page} of #{search.totalPages}
-              li.next(class=(search.page < search.totalPages ? '' : 'disabled'))
+              li.next(class=(next_possible ? '' : 'invisible'))
                 a(href='?page_number=' + (search.page+1) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (query.tt ? '&tt=' + query.tt : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
                   span(aria-hidden="true") Next &rarr;
 
