@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -44,10 +44,11 @@ router.get('/', (req: IRequestWithSession, res) => {
     }
     safeUserView.user.github = github;
   }
-  if (req.user && req.user.githubIncreasedScope) {
+  if ((req.user && req.user.githubIncreasedScope) || (req.user.github && req.user.github['scope'] === 'githubapp')) {
     let githubIncreasedScope = {};
-    for (let key in req.user.githubIncreasedScope) {
-      let val = req.user.githubIncreasedScope[key];
+    const source = req.user.github && req.user.github['scope'] === 'githubapp' ? req.user.github : req.user.githubIncreasedScope;
+    for (let key in source) {
+      let val = source[key];
       if (key === 'accessToken') {
         val = redacted;
       }

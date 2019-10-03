@@ -1,7 +1,0 @@
-{
-  "azureStorage": {
-    "account": "env://GITHUB_METRICS_STORAGE_ACCOUNT_NAME",
-    "key": "env://GITHUB_METRICS_STORAGE_ACCOUNT_KEY",
-    "tableName": "metrics"
-  }
-}

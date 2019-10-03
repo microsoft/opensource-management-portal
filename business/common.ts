@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -49,6 +49,11 @@ export function createPromisedInstances<T>(self, createMethod, resolve: PromiseR
     let wrap = createMethod.bind(self);
     return resolve(_.map(entities, wrap));
   };
+}
+
+export function createInstances<T>(self, createMethod, entities: T[]): T[] {
+  let wrap = createMethod.bind(self);
+  return _.map(entities, wrap) as any as T[];
 }
 
 export function returnPromisedInstances<T>(self, createMethod, resolve: PromiseResolve<T>, reject: PromiseReject, entities, error) {

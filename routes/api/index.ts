@@ -1,11 +1,12 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
 import express = require('express');
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
 import { ReposAppRequest, IProviders } from '../../transitional';
@@ -20,7 +21,8 @@ const apiWebhook = require('./webhook');
 
 import { AzureDevOpsAuthenticationMiddleware } from '../../middleware/apiVstsAuth';
 import { ReposApiAuthentiction } from '../../middleware/apiReposAuth';
-import { CreateRepository, CreateRepositoryCallback } from './createRepo';
+import { CreateRepository } from './createRepo';
+import { Organization } from '../../business/organization';
 const supportMultipleAuthProviders = require('../../middleware/supportMultipleAuthProviders');
 
 const hardcodedApiVersions = [
@@ -93,21 +95,27 @@ router.use('/:org', function (req: IApiRequest, res, next) {
   return next();
 });
 
-router.post('/:org/repos', function (req: ReposAppRequest, res, next) {
+router.post('/:org/repos', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const convergedObject = Object.assign({}, req.headers);
   req.insights.trackEvent({ name: 'ApiRepoCreateRequest', properties: convergedObject });
   Object.assign(convergedObject, req.body);
   delete convergedObject.access_token;
   delete convergedObject.authorization;
-
-  const token = req.organization.getRepositoryCreateGitHubToken();
-  CreateRepositoryCallback(req, res, convergedObject, token, (error, repoCreateResponse) => {
-    if (error) {
-      return next(error);
-    }
+  try {
+    const repoCreateResponse = await CreateRepository(req, convergedObject);
     res.status(201);
+    req.insights.trackEvent({ name: 'ApiRepoCreateRequestSuccess', properties: {
+      request: JSON.stringify(convergedObject),
+      response: JSON.stringify(repoCreateResponse),
+    }});
     return res.json(repoCreateResponse);
-  });
-});
+  } catch (error) {
+    const data = {...convergedObject};
+    data.error = error.message;
+    data.encodedError = JSON.stringify(error);
+    req.insights.trackEvent({ name: 'ApiRepoCreateFailed', properties: data });
+    return next(error);
+  }
+}));
 
 module.exports = router;

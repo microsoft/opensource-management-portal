@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -9,8 +9,10 @@ import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvi
 import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
-import { TeamMemberCacheFixedQueryByOrganizationId } from '.';
+import { TeamMemberCacheFixedQueryByOrganizationId, TeamMemberCacheFixedQueryByUserId, TeamMemberCacheFixedQueryByTeamId, TeamMemberCacheFixedQueryByOrganizationIdAndUserId } from '.';
 import { GitHubTeamRole } from '../../business/team';
+import { PostgresGetAllEntities, PostgresJsonEntityQuery } from '../../lib/entityMetadataProvider/postgres';
+import { stringOrNumberAsString } from '../../utils';
 
 const type = EntityMetadataType.TeamMemberCache;
 
@@ -101,39 +103,50 @@ EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.P
 
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
   const entityTypeColumn = mapMetadataPropertiesToFields[EntityField.Type];
-  const orgIdColumn = mapMetadataPropertiesToFields[Field.organizationId];
   const entityTypeValue = getEntityTypeColumnValue(type);
-  let sql = '', values = [];
   switch (query.fixedQueryType) {
     case FixedQueryType.TeamMemberCacheGetAll:
-      sql = `
-        SELECT *
-        FROM ${tableName}
-        WHERE
-          ${entityTypeColumn} = $1
-      `;
-      values = [
-        entityTypeValue,
-      ];
-      return { sql, values };
-    case FixedQueryType.TeamMemberCacheGetByOrganizationId:
+      return PostgresGetAllEntities(tableName, entityTypeColumn, entityTypeValue);
+    case FixedQueryType.TeamMemberCacheGetByOrganizationId: {
       const { organizationId } = query as TeamMemberCacheFixedQueryByOrganizationId;
       if (!organizationId) {
         throw new Error('organizationId required');
       }
-      sql = `
-        SELECT *
-        FROM ${tableName}
-        WHERE
-          ${entityTypeColumn} = $1 AND
-          ${orgIdColumn} = $2
-      `;
-      values = [
-        entityTypeValue,
-        organizationId,
-      ];
-      return { sql, values };
-
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        organizationid: stringOrNumberAsString(organizationId),
+      });
+    }
+    case FixedQueryType.TeamMemberCacheGetByUserId: {
+      const { userId } = query as TeamMemberCacheFixedQueryByUserId;
+      if (!userId) {
+        throw new Error('userId required');
+      }
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        userid: stringOrNumberAsString(userId),
+      });
+    }
+    case FixedQueryType.TeamMemberCacheGetByTeamId: {
+      const { teamId } = query as TeamMemberCacheFixedQueryByTeamId;
+      if (!teamId) {
+        throw new Error('teamId required');
+      }
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        teamid: stringOrNumberAsString(teamId),
+      });
+    }
+    case FixedQueryType.TeamMemberCacheGetByOrganizationIdAndUserId: {
+      const { organizationId, userId } = query as TeamMemberCacheFixedQueryByOrganizationIdAndUserId;
+      if (!organizationId) {
+        throw new Error('organizationId required');
+      }
+      if (!userId) {
+        throw new Error('userId required');
+      }
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        organizationid: stringOrNumberAsString(organizationId),
+        userid: stringOrNumberAsString(userId),
+      });
+    }
     default:
       throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }

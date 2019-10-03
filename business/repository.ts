@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -8,13 +8,14 @@
 import { wrapError } from '../utils';
 import { Operations } from './operations';
 import { Organization } from './organization';
-import { ICacheOptions, IGetOwnerToken, IPagedCacheOptions } from '../transitional';
+import { ICacheOptions, IGetOwnerToken, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader } from '../transitional';
 import * as common from './common';
 import { RepositoryPermission } from './repositoryPermission';
 import { Collaborator } from './collaborator';
 import { TeamPermission } from './teamPermission';
 import { RepositoryMetadataEntity, GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 import moment from 'moment';
+import { AppPurpose } from '../github';
 
 export interface IGitHubCollaboratorInvitation {
   id: string;
@@ -71,6 +72,12 @@ interface ICreateFileParameters {
   branch?: string;
   committer?: any;
 
+  alternateToken?: string;
+}
+
+interface ICreateFileOptions {
+  branch?: string;
+  committer?: any;
   alternateToken?: string;
 }
 
@@ -177,12 +184,12 @@ export class Repository {
 
   private _baseUrl: string;
 
-  private _getToken: IGetOwnerToken;
+  private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
   private _operations: Operations;
 
   private _organization: Organization;
 
-  private _id: string;
+  private _id: number;
   private _name: string;
   private _full_name: string;
   private _private: boolean;
@@ -212,7 +219,7 @@ export class Repository {
 
   private _moments: IRepositoryMoments;
 
-  get id(): string { return this._id; }
+  get id(): number { return this._id; }
   get name(): string { return this._name; }
   get full_name(): string { return this._full_name; }
   get private(): boolean { return this._private; }
@@ -248,22 +255,14 @@ export class Repository {
     return this._baseUrl;
   }
 
-  constructor(organization: Organization, entity: any, getToken: IGetOwnerToken, operations: Operations) {
+  constructor(organization: Organization, entity: any, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, operations: Operations) {
     this._organization = organization;
     if (entity) {
       common.assignKnownFieldsPrefixed(this, entity, 'repository', repoPrimaryProperties, repoSecondaryProperties);
     }
     this._baseUrl = organization.baseUrl + 'repos/' + this.name + '/';
-    this._getToken = getToken;
+    this._getAuthorizationHeader = getAuthorizationHeader;
     this._operations = operations;
-  }
-
-  get disasterRecoveryRepositoryUrl(): string {
-    if (this.private) return;
-
-    if (this.organization.disasterRecoveryVstsPath) {
-      return `${this.organization.disasterRecoveryVstsPath}${this.name}`;
-    }
   }
 
   get moment(): IRepositoryMoments {
@@ -286,390 +285,357 @@ export class Repository {
     };
   }
 
-  getDetails(options?: ICacheOptions): Promise<any> {
-    return new Promise((resolve, reject) => {
-      options = options || {};
-      const token = this._getToken();
-      const operations = this._operations;
-      const parameters = {
-        owner: this.organization.name,
-        repo: this.name,
-      };
-      const cacheOptions: ICacheOptions = {
-        maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgRepoDetailsStaleSeconds,
-      };
-      if (options.backgroundRefresh !== undefined) {
-        cacheOptions.backgroundRefresh = options.backgroundRefresh;
+  async isDeleted(options?: ICacheOptions): Promise<boolean> {
+    try {
+      await this.getDetails(options);
+    } catch (maybeDeletedError) {
+      if (maybeDeletedError && maybeDeletedError.status && maybeDeletedError.status === 404) {
+        return true;
       }
-      return operations.github.call(token, 'repos.get', parameters, cacheOptions, (error, entity) => {
-        if (error) {
-          const notFound = error.status && error.status == /* loose */ 404;
-          return reject(wrapError(error, notFound ? 'The repo could not be found.' : 'Could not get details about the repo.', notFound));
-        }
-        common.assignKnownFieldsPrefixed(this, entity, 'repository', repoPrimaryProperties, repoSecondaryProperties);
-        return resolve(entity);
-      });
-    });
+    }
+    return false;
+  }
+
+  async getDetails(options?: ICacheOptions): Promise<any> {
+    options = options || {};
+    const operations = this._operations;
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+    };
+    const cacheOptions: ICacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgRepoDetailsStaleSeconds,
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    try {
+      const entity = await operations.github.call(this.authorize(AppPurpose.Data), 'repos.get', parameters, cacheOptions);
+      common.assignKnownFieldsPrefixed(this, entity, 'repository', repoPrimaryProperties, repoSecondaryProperties);
+      return entity;
+    } catch (error) {
+      const notFound = error.status && error.status == /* loose */ 404;
+      error = wrapError(error, notFound ? 'The repo could not be found.' : 'Could not get details about the repo.', notFound);
+      if (notFound) {
+        error.status = 404;
+      }
+      throw error;
+    }
   }
 
   async getRepositoryMetadata(): Promise<RepositoryMetadataEntity> {
     const repositoryMetadataProvider = this._operations.providers.repositoryMetadataProvider;
     try {
-      return await repositoryMetadataProvider.getRepositoryMetadata(this.id);
+      return await repositoryMetadataProvider.getRepositoryMetadata(this.id.toString());
     } catch (getMetadataError) {
       return null;
     }
   }
 
-  getBranches(cacheOptions: IGetBranchesOptions): Promise<any> {
-    return new Promise((resolve, reject) => {
-      cacheOptions = cacheOptions || {};
-      const operations = this._operations;
-      const token = this._getToken();
-      const github = operations.github;
-      const parameters: IGetBranchesParameters = {
-        owner: this.organization.name,
-        repo: this.name,
-        per_page: operations.defaultPageSize,
-      };
-      if (cacheOptions.protected !== undefined) {
-        parameters.protected = cacheOptions.protected;
-      }
-      delete cacheOptions.protected;
-      if (!cacheOptions.maxAgeSeconds) {
-        cacheOptions.maxAgeSeconds = operations.defaults.repoBranchesStaleSeconds;
-      }
-      if (cacheOptions.backgroundRefresh === undefined) {
-        cacheOptions.backgroundRefresh = true;
-      }
-      return github.collections.getRepoBranches(
-        token,
-        parameters,
-        cacheOptions,
-        (error, branches) => {
-          return error ? reject(error) : resolve(branches);
-        });
-    });
+  async getBranches(cacheOptions: IGetBranchesOptions): Promise<any> {
+    cacheOptions = cacheOptions || {};
+    const operations = this._operations;
+    const github = operations.github;
+    const parameters: IGetBranchesParameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      per_page: operations.defaultPageSize,
+    };
+    if (cacheOptions.protected !== undefined) {
+      parameters.protected = cacheOptions.protected;
+    }
+    delete cacheOptions.protected;
+    if (!cacheOptions.maxAgeSeconds) {
+      cacheOptions.maxAgeSeconds = operations.defaults.repoBranchesStaleSeconds;
+    }
+    if (cacheOptions.backgroundRefresh === undefined) {
+      cacheOptions.backgroundRefresh = true;
+    }
+    return github.collections.getRepoBranches(this.authorize(AppPurpose.Data), parameters, cacheOptions);
   }
 
-  getContent(path: string, options?: IGetContentOptions): Promise<any> {
-    return new Promise((resolve, reject) => {
-      options = options || {};
-      const ref = options.branch || options.tag || options.ref || 'master';
-      const parameters = {
-        owner: this.organization.name,
-        repo: this.name,
-        path: path,
-        ref: ref,
-      };
-      const token = this._getToken();
-      const operations = this._operations
-      return operations.github.call(token, 'repos.getContents', parameters, (error, content) => {
-        return error ? reject(error) : resolve(content);
-      });
-    });
+  async getContent(path: string, options?: IGetContentOptions): Promise<any> {
+    options = options || {};
+    const ref = options.branch || options.tag || options.ref || 'master';
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      path: path,
+      ref: ref,
+    };
+    const operations = this._operations
+    return operations.github.call(this.authorize(AppPurpose.Data), 'repos.getContents', parameters);
   }
 
-  getCollaborator(username: string, cacheOptions?: ICacheOptions): Promise<RepositoryPermission> {
-    return new Promise((resolve, reject) => {
-      cacheOptions = cacheOptions || {};
-      const operations = this._operations;
-      const token = this._getToken();
-      const github = operations.github;
-      const parameters = {
-        owner: this.organization.name,
-        repo: this.name,
-        username: username,
-      };
-      if (!cacheOptions.maxAgeSeconds) {
-        //cacheOptions.maxAgeSeconds = operations.defaults.orgRepoCollaboratorStaleSeconds;
+  async checkCollaborator(username: string, cacheOptions?: ICacheOptions): Promise<boolean> {
+    cacheOptions = cacheOptions || {};
+    const operations = this._operations;
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      username,
+
+      allowEmptyResponse: true,
+    };
+    if (!cacheOptions.maxAgeSeconds) {
+      cacheOptions.maxAgeSeconds = operations.defaults.orgRepoTeamsStaleSeconds;
+    }
+    if (cacheOptions.backgroundRefresh === undefined) {
+      cacheOptions.backgroundRefresh = true;
+    }
+    try {
+      const ok = await operations.github.post(this.authorize(AppPurpose.Data), 'repos.checkCollaborator', parameters);
+      return true;
+    } catch (error) {
+      if (error && error.status == /* loose */ 404) {
+        return false;
       }
-      if (cacheOptions.backgroundRefresh === undefined) {
-        //cacheOptions.backgroundRefresh = true;
-      }
-      Object.assign(parameters, cacheOptions);
-      return github.call(token, 'repos.getCollaboratorPermissionLevel', parameters, (error, userPermissionLevel) => {
-        if (error) {
-          return reject(error);
-        }
-        return resolve(new RepositoryPermission(this.organization, userPermissionLevel, this._getToken, operations));
-      });
-    });
+      throw wrapError(error, `Could not verify the collaborator level for user ${username} in the repo ${this.organization.name}/${this.name}`);
+    }
   }
 
-  getCollaborators(cacheOptions?: IGetCollaboratorsOptions): Promise<Collaborator[]> {
-    return new Promise((resolve, reject) => {
-      cacheOptions = cacheOptions || {};
-      const operations = this._operations;
-      const token = this._getToken();
-      const github = operations.github;
-      const parameters = {
-        owner: this.organization.name,
-        repo: this.name,
-        per_page: operations.defaultPageSize,
-        affiliation: cacheOptions.affiliation || GitHubCollaboratorAffiliationQuery.All,
-      };
-      delete cacheOptions.affiliation;
-      if (!cacheOptions.maxAgeSeconds) {
-        cacheOptions.maxAgeSeconds = operations.defaults.orgRepoCollaboratorsStaleSeconds;
-      }
-      if (cacheOptions.backgroundRefresh === undefined) {
-        cacheOptions.backgroundRefresh = true;
-      }
-      return github.collections.getRepoCollaborators(
-        token,
-        parameters,
-        cacheOptions,
-        common.createPromisedInstances<Collaborator>(this, collaboratorPermissionFromEntity, resolve, reject));
-    });
+  async getCollaborator(username: string, cacheOptions?: ICacheOptions): Promise<RepositoryPermission> {
+    // This call is used in customer-facing sites by permissions middleware
+    cacheOptions = cacheOptions || {};
+    const operations = this._operations;
+    const github = operations.github;
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      username: username,
+    };
+    if (!cacheOptions.maxAgeSeconds) {
+      //cacheOptions.maxAgeSeconds = operations.defaults.orgRepoCollaboratorStaleSeconds;
+    }
+    if (cacheOptions.backgroundRefresh === undefined) {
+      //cacheOptions.backgroundRefresh = true;
+    }
+    Object.assign(parameters, cacheOptions);
+    const userPermissionLevel = await github.call(this.authorize(AppPurpose.CustomerFacing), 'repos.getCollaboratorPermissionLevel', parameters);
+    return new RepositoryPermission(userPermissionLevel);
   }
 
-  addCollaborator(username: string, permission: GitHubRepositoryPermission): Promise<IGitHubCollaboratorInvitation> {
+  async getCollaborators(cacheOptions?: IGetCollaboratorsOptions): Promise<Collaborator[]> {
+    cacheOptions = cacheOptions || {};
+    const operations = this._operations;
+    const github = operations.github;
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      per_page: operations.defaultPageSize,
+      affiliation: cacheOptions.affiliation || GitHubCollaboratorAffiliationQuery.All,
+    };
+    delete cacheOptions.affiliation;
+    if (!cacheOptions.maxAgeSeconds) {
+      cacheOptions.maxAgeSeconds = operations.defaults.orgRepoCollaboratorsStaleSeconds;
+    }
+    if (cacheOptions.backgroundRefresh === undefined) {
+      cacheOptions.backgroundRefresh = true;
+    }
+    const collaboratorEntities = await github.collections.getRepoCollaborators(this.authorize(AppPurpose.Data), parameters, cacheOptions);
+    const collaborators = common.createInstances<Collaborator>(this, collaboratorPermissionFromEntity, collaboratorEntities);
+    return collaborators;
+  }
+
+  async addCollaborator(username: string, permission: GitHubRepositoryPermission): Promise<IGitHubCollaboratorInvitation> {
     // BREAKING CHANGE in the GitHub API: as of August 2017, this is "inviteCollaborator', it does not automatically add
-    return new Promise((resolve, reject) => {
-      const github = this._operations.github;
-      const token = this._getToken();
-      const parameters = {
-        owner: this.organization.name,
-        repo: this.name,
-        username: username,
-        permission: permission,
-      };
-      // CONSIDER: If status code 404 on return, the username does not exist on GitHub as entered
-      github.post(token, 'repos.addCollaborator', parameters, (error, response) => {
-        return error ? reject(error) : resolve(response as IGitHubCollaboratorInvitation);
-      });
-    });
+    const github = this._operations.github;
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      username: username,
+      permission: permission,
+    };
+    // CONSIDER: If status code 404 on return, the username does not exist on GitHub as entered
+    const response = await github.post(this.authorize(AppPurpose.Operations), 'repos.addCollaborator', parameters);
+    return response as IGitHubCollaboratorInvitation;
   }
 
-  acceptCollaborationInvite(invitationId: string, options: IAlternateTokenRequiredOptions): Promise<any> {
-    return new Promise((resolve, reject) => {
-      // This could go in Account _or_ here in Repository
-      if (!options) {
-        return reject(new Error('acceptCollaborationInvite requires options.alternateToken'));
-      }
-      const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
-      const github = destructured[0];
-      const token = destructured[1];
-      const parameters = {
-        invitation_id: invitationId,
-      };
-      github.post(options.alternateToken || token, 'repos.acceptInvitation', parameters, (error, response) => {
-        return error ? reject(error) : resolve(response);
-      });
-    });
+  async acceptCollaborationInvite(invitationId: string, options: IAlternateTokenRequiredOptions): Promise<any> {
+    // This could go in Account _or_ here in Repository
+    if (!options || !options.alternateToken) {
+      throw new Error('acceptCollaborationInvite requires options.alternateToken');
+    }
+    const alternateTokenHeader = `token ${options.alternateToken}`;
+    const parameters = {
+      invitation_id: invitationId,
+    };
+    return this._operations.github.post(alternateTokenHeader, 'repos.acceptInvitation', parameters);
   }
 
   removeCollaborator(username: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
-      const github = destructured[0];
-      const token = destructured[1];
-      const parameters = {
-        owner: this.organization.name,
-        repo: this.name,
-        username: username,
-      };
-      github.post(token, 'repos.removeCollaborator', parameters, (error, response) => {
-        return error ? reject(error) : resolve(response);
-      });
-    });
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      username: username,
+    };
+    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.removeCollaborator', parameters);
   }
 
   delete(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
-      const github = destructured[0];
-      const token = destructured[1];
-      const parameters = {
-        owner: this.organization.name,
-        repo: this.name,
-      };
-      github.post(token, 'repos.delete', parameters, (error, response) => {
-        return error ? reject(error) : resolve(response);
-      });
-    });
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+    };
+    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.delete', parameters);
   }
 
-  createFile(path: string, base64Content: string, commitMessage: string, options?: ICreateFileParameters): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
-      const github = destructured[0];
-      const token = destructured[1];
-      const parameters: ICreateFileParameters = Object.assign({
-        owner: this.organization.name,
-        repo: this.name,
-        path,
-        message: commitMessage,
-        content: base64Content,
-      }, options);
-      if (options.branch) {
-        parameters.branch = options.branch;
-      }
-      if (options.committer) {
-        parameters.committer = options.committer;
-      }
-      let createFileToken = options.alternateToken || token;
-      github.post(createFileToken, 'repos.createOrUpdateFile', parameters, (error, response) => {
-        return error ? reject(error) : resolve(response);
-      });
-    });
+  createFile(path: string, base64Content: string, commitMessage: string, options?: ICreateFileOptions): Promise<any> {
+    const parameters: ICreateFileParameters = Object.assign({
+      owner: this.organization.name,
+      repo: this.name,
+      path,
+      message: commitMessage,
+      content: base64Content,
+    }, options);
+    if (options.branch) {
+      parameters.branch = options.branch;
+    }
+    if (options.committer) {
+      parameters.committer = options.committer;
+    }
+    const alternateHeader = options.alternateToken ? `token ${options.alternateToken}` : null;
+    return this._operations.github.post(alternateHeader || this.authorize(AppPurpose.Operations), 'repos.createOrUpdateFile', parameters);
   }
 
-  setTeamPermission(teamId: string, newPermission: GitHubRepositoryPermission): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
-      const github = destructured[0];
-      const token = destructured[1];
-      const options = {
-        team_id: teamId,
-        owner: this.organization.name,
-        repo: this.name,
-        permission: newPermission,
-      };
-      github.post(token, 'teams.addOrUpdateRepo', options, (error, response) => {
-        return error ? reject(error) : resolve(response);
-      });
-    });
+  setTeamPermission(teamId: number, newPermission: GitHubRepositoryPermission): Promise<any> {
+    const options = {
+      team_id: teamId,
+      owner: this.organization.name,
+      repo: this.name,
+      permission: newPermission,
+    };
+    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'teams.addOrUpdateRepo', options);
   }
 
-  getWebhooks(options?: ICacheOptions): Promise<any> {
-    return new Promise((resolve, reject) => {
-      options = options || {};
-      const token = this._getToken();
-      const operations = this._operations
-      const parameters = {
-        owner: this.organization.name,
-        repo: this.name,
-      };
-      const cacheOptions: ICacheOptions = {
-        maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgRepoWebhooksStaleSeconds,
-      };
-      if (options.backgroundRefresh !== undefined) {
-        cacheOptions.backgroundRefresh = options.backgroundRefresh;
-      }
-      return operations.github.call(token, 'repos.listHooks', parameters, cacheOptions, (error, response) => {
-        return error ? reject(error) : resolve(response);
-      });
-    });
+  async getWebhooks(options?: ICacheOptions): Promise<any> {
+    options = options || {};
+    const operations = this._operations
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+    };
+    const cacheOptions: ICacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgRepoWebhooksStaleSeconds,
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    return operations.github.call(this.authorize(AppPurpose.Data), 'repos.listHooks', parameters, cacheOptions);
   }
 
   deleteWebhook(webhookId: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
-      const github = destructured[0];
-      const token = destructured[1];
-      const parameters = {
-        owner: this.organization.name,
-        repo: this.name,
-        id: webhookId,
-      };
-      github.post(token, 'repos.deleteHook', parameters, (error, response) => {
-        return error ? reject(error) : resolve(response);
-      });
-    });
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      id: webhookId,
+    };
+    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.deleteHook', parameters);
   }
 
   createWebhook(options: ICreateWebhookOptions): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
-    const github = destructured[0];
-      const token = destructured[1];
-      delete options['owner'];
-      delete options['repo'];
-      const parameters = Object.assign({
-        owner: this.organization.name,
-        repo: this.name,
-      }, options);
-      // Smart defaults: create an active JSON web hook to the 'url' option
-      if (!options.name) {
-        parameters.name = 'web';
-      }
-      if (options.active === undefined) {
-        parameters.active = true;
-      }
-      if (options.url && !options.config) {
-        delete parameters.url;
-        parameters.config = {
-          url: options.url,
-          content_type: 'json',
-        };
-      }
-      github.post(token, 'repos.createHook', parameters, (error, response) => {
-        return error ? reject(error) : resolve(response);
-      });
-    });
+    delete options['owner'];
+    delete options['repo'];
+    const parameters = Object.assign({
+      owner: this.organization.name,
+      repo: this.name,
+    }, options);
+    // Smart defaults: create an active JSON web hook to the 'url' option
+    if (!options.name) {
+      parameters.name = 'web';
+    }
+    if (options.active === undefined) {
+      parameters.active = true;
+    }
+    if (options.url && !options.config) {
+      delete parameters.url;
+      parameters.config = {
+        url: options.url,
+        content_type: 'json',
+      };
+    }
+    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.createHook', parameters);
   }
 
   async editPublicPrivate(options): Promise<void> {
     options = options || {};
-    return new Promise<void>((resolve, reject) => {
-      const destructured = getGitHubClient(this); // const [github, token] = getGitHubClient(this);
-      const github = destructured[0];
-      const token = destructured[1];
-
-      if (options.private !== true && options.private !== false) {
-        return reject(new Error('editPublicPrivate.options requires private to be set to true or false'));
-      }
-
-      const parameters = Object.assign({
-        owner: this.organization.name,
-        repo: this.name,
-      }, {
-        private: options.private,
-      });
-
-      github.post(token, 'repos.update', parameters, error => {
-        return error ? reject(error) : resolve();
-      });
+    if (options.private !== true && options.private !== false) {
+      throw new Error('editPublicPrivate.options requires private to be set to true or false');
+    }
+    const parameters = Object.assign({
+      owner: this.organization.name,
+      repo: this.name,
+    }, {
+      private: options.private,
     });
+    // BUG: GitHub Apps do not work with locking down no repository permissions as documented here: https://github.community/t5/GitHub-API-Development-and/GitHub-App-cannot-patch-repo-visibility-in-org-with-repo/m-p/33448#M3150
+    const token = this._operations.authorizeCentralOperationsToken();
+    return this._operations.github.post(token, 'repos.update', parameters);
+    // return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
   }
 
-  getTeamPermissions(cacheOptions?: IPagedCacheOptions): Promise<TeamPermission[]> {
-    return new Promise((resolve, reject) => {
-      cacheOptions = cacheOptions || {};
-      const operations = this._operations;
-      const token = this._getToken();
-      const github = operations.github;
-      const parameters = {
-        owner: this.organization.name,
-        repo: this.name,
-        per_page: operations.defaultPageSize,
-      };
-      if (!cacheOptions.maxAgeSeconds) {
-        cacheOptions.maxAgeSeconds = operations.defaults.orgRepoTeamsStaleSeconds;
+  async getTeamPermissions(cacheOptions?: IPagedCacheOptions): Promise<TeamPermission[]> {
+    cacheOptions = cacheOptions || {};
+    const operations = this._operations;
+    const github = operations.github;
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      per_page: operations.defaultPageSize,
+    };
+    if (!cacheOptions.maxAgeSeconds) {
+      cacheOptions.maxAgeSeconds = operations.defaults.orgRepoTeamsStaleSeconds;
+    }
+    if (cacheOptions.backgroundRefresh === undefined) {
+      cacheOptions.backgroundRefresh = true;
+    }
+    const permissionEntities = await github.collections.getRepoTeams(this.authorize(AppPurpose.Data), parameters, cacheOptions);
+    const teamPermissions = common.createInstances<TeamPermission>(this, teamPermissionFromEntity, permissionEntities);
+    return teamPermissions;
+  }
+
+  async checkTeamManages(teamId: string, cacheOptions?: ICacheOptions): Promise<boolean> {
+    cacheOptions = cacheOptions || {};
+    const operations = this._operations;
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      team_id: teamId,
+
+      allowEmptyResponse: true,
+    };
+    if (!cacheOptions.maxAgeSeconds) {
+      cacheOptions.maxAgeSeconds = operations.defaults.orgRepoTeamsStaleSeconds;
+    }
+    if (cacheOptions.backgroundRefresh === undefined) {
+      cacheOptions.backgroundRefresh = true;
+    }
+    try {
+      const ok = await operations.github.post(this.authorize(AppPurpose.Data), 'teams.addOrUpdateRepo', parameters);
+      return true;
+    } catch (error) {
+      if (error && error.status == /* loose */ 404) {
+        return false;
       }
-      if (cacheOptions.backgroundRefresh === undefined) {
-        cacheOptions.backgroundRefresh = true;
-      }
-      return github.collections.getRepoTeams(
-        token,
-        parameters,
-        cacheOptions,
-        common.createPromisedInstances<TeamPermission>(this, teamPermissionFromEntity, resolve, reject));
-      });
+      throw wrapError(error, `Could not verify the team management permissions of the repo ${this.organization.name}/${this.name} for team ${teamId}`);
+    }
+  }
+
+  private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as IGetAuthorizationHeader;
+    return getAuthorizationHeader;
   }
 }
 
 function teamPermissionFromEntity(entity) {
   // 'this' is bound for this function to be a private method
   const operations = this._operations;
-  const getToken = this._getToken;
-  const permission = new TeamPermission(this.organization, entity, getToken, operations);
+  const permission = new TeamPermission(this.organization, entity, operations);
   return permission;
 }
 
 function collaboratorPermissionFromEntity(entity) {
   // 'this' is bound for this function to be a private method
-  const operations = this._operations;
-  const getToken = this._getToken;
-  const permission = new Collaborator(this.organization, entity, getToken, operations);
+  const permission = new Collaborator(entity);
   return permission;
-}
-
-function getGitHubClient(self) {
-  const operations = self._operations;
-  const token = self._getToken();
-  const github = operations.github;
-  return [github, token];
 }

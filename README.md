@@ -263,8 +263,21 @@ If you place a JSON file `env.json` above the directory of your cloned repo
 (to prevent committing secrets to your repo by accident or in your editor),
 you can configure the following extreme minimum working set to use the app.
 
-```
+The central operations token is a personal access token that is a **org owner**
+of the GitHub org(s) being managed.
 
+```
+  "DEBUG_ALLOW_HTTP": "1",
+  "GITHUB_CENTRAL_OPERATIONS_TOKEN": "a github token for the app",
+  "GITHUB_ORGANIZATIONS_FILE": "../../env-orgs.json",
+  "GITHUB_CLIENT_ID" : "your client id",
+  "GITHUB_CLIENT_SECRET" : "your client secret",
+  "GITHUB_CALLBACK_URL" : "http://localhost:3000/auth/github/callback",
+  "AAD_CLIENT_ID": "your corporate app id",
+  "AAD_REDIRECT_URL" : "http://localhost:3000/auth/azure/callback",
+  "AAD_CLIENT_SECRET" : "a secret for the corporate app",
+  "AAD_TENANT_ID" : "your tenant id",
+  "AAD_ISSUER": "https://sts.windows.net/your tenant id/",
 ```
 
 In this mode memory providers are used, including a mocked Redis client. Note
@@ -273,3 +286,36 @@ providers could become a token use nightmare, as each new execution of the app
 without a Redis Cache behind the scenes is going to have 100% cache misses for
 GitHub metadata. Consider configuring a development or local Redis server to
 keep cached data around.
+
+# How the app authenticates with GitHub
+
+The service as a monolith is able to partition keys and authentication for
+GitHub resources at the organization level.
+
+## GitHub org owner Personal Access Token
+
+There is a 'central operations token' supported to make it easy for the
+simple case. That central token is used if an org does not have a token
+defined, or in resolving cross-org assets - namely **teams by ID** and
+**accounts by ID**.
+
+In lieu of a central ops token, the first configured organization's token
+is used in the current design.
+
+Individual orgs can have their own token(s) defined from their own
+account(s).
+
+## Traditional GitHub OAuth app
+
+An OAuth app is used to authenticate the GitHub users. This app needs to
+be approved as a third-party app in all your GitHub apps currently.
+
+## Modern GitHub App
+
+Work in progress: supporting modern GitHub apps. Will require configuring
+the installation ID for a given organization.
+
+For performance reasons, a partitioned/purpose-intended app model is
+being designed that will fallback to the one configured app installation,
+if any. If there is no modern GitHub app, the GitHub PAT for an org will
+be used.

@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -20,6 +20,7 @@ import { MemberSearch } from '../business/memberSearch';
 import { Team } from '../business/team';
 import { TeamMember } from '../business/teamMember';
 import { OrganizationMember } from '../business/organizationMember';
+import { asNumber } from '../utils';
 
 interface IPeopleSearchRequest extends RequestWithSystemwidePermissions {
   organization?: any;
@@ -73,7 +74,7 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
     options.filter = '2fa_disabled';
   }
   const { members, teamMembers } = await getPeople(operations, org, options, team2);
-  const page = req.query.page_number ? req.query.page_number : 1;
+  const page = req.query.page_number ? asNumber(req.query.page_number) : 1;
   let phrase = req.query.q;
   let type = req.query.type;
   if (type !== 'linked' && type!== 'active' && type !== 'unlinked' && type !== 'former' && type !== 'serviceAccount' && type !== 'unknownAccount') {

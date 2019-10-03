@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -12,6 +12,7 @@ import { IEntityMetadata, EntityMetadataType } from '../../lib/entityMetadataPro
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
 import { Type } from './type';
+import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresGetByID } from '../../lib/entityMetadataProvider/postgres';
 
 const type = Type;
 
@@ -20,6 +21,12 @@ export enum GitHubRepositoryPermission {
   Push = 'push',
   Admin = 'admin',
 }
+
+export const GitHubRepositoryPermissions = [
+  GitHubRepositoryPermission.Pull,
+  GitHubRepositoryPermission.Push,
+  GitHubRepositoryPermission.Admin,
+];
 
 export interface IInitialTeamPermission {
   permission: GitHubRepositoryPermission;
@@ -308,39 +315,19 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableQueries, (q
 
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
   const entityTypeColumn = mapMetadataPropertiesToFields[EntityField.Type];
-  const entityIdColumn = mapMetadataPropertiesToFields[EntityField.ID];
+  const entityIDColumn = mapMetadataPropertiesToFields[EntityField.ID];
   const entityTypeValue = getEntityTypeColumnValue(type);
-  let sql = '', values = [];
   switch (query.fixedQueryType) {
-    case FixedQueryType.AllRepositoryMetadata:
-      sql = `
-        SELECT *
-        FROM ${tableName}
-        WHERE
-          ${entityTypeColumn} = $1
-      `;
-      values = [
-        entityTypeValue,
-      ];
-      return { sql, values };
-    case FixedQueryType.RepositoryMetadataByRepositoryId:
+    case FixedQueryType.AllRepositoryMetadata: {
+      return PostgresGetAllEntities(tableName, entityTypeColumn, entityTypeValue);
+    }
+    case FixedQueryType.RepositoryMetadataByRepositoryId: {
       const { repositoryId } = query as RepositoryMetadataFixedQueryByRepositoryId;
       if (!repositoryId) {
         throw new Error('repositoryId required');
       }
-      sql = `
-        SELECT *
-        FROM ${tableName}
-        WHERE
-          ${entityTypeColumn} = $1 AND
-          ${entityIdColumn} = $2
-      `;
-      values = [
-        entityTypeValue,
-        repositoryId,
-      ];
-      return { sql, values };
-
+      return PostgresGetByID(tableName, entityTypeColumn, entityTypeValue, entityIDColumn, repositoryId);
+    }
     default:
       throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
   }

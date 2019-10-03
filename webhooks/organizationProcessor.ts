@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -9,39 +9,78 @@
 
 import _= require('lodash');
 import async = require('async');
+import { Operations } from '../business/operations';
+import { Organization } from '../business/organization';
 const crypto = require('crypto');
 const secureCompare = require('secure-compare');
 
-const tasks = require('./tasks/');
+import Tasks from './tasks';
 
 interface IValidationError extends Error {
   statusCode?: number;
   computedHash?: string;
 }
 
-module.exports = function (options, callback) {
+export abstract class WebhookProcessor {
+  abstract filter(data: any): boolean;
+  abstract run(operations: Operations, organization: Organization, data: any): Promise<boolean>;
+}
+
+export interface IOrganizationWebhookEvent {
+  body: any;
+  rawBody?: any;
+  properties: IGitHubWebhookProperties;
+}
+
+export interface IGitHubWebhookProperties {
+  delivery: string;
+  signature: string;
+  event: string;
+  started: string; // Date UTC string
+}
+
+export interface IProcessOrganizationWebhookOptions {
+  operations: Operations;
+  organization: Organization;
+  event: IOrganizationWebhookEvent;
+  acknowledgeValidEvent?: any;
+}
+
+export default async function ProcessOrganizationWebhook(options: IProcessOrganizationWebhookOptions): Promise<any> {
   const operations = options.operations;
   if (!operations) {
-    return callback(new Error('No operations instance provided'));
+    throw new Error('No operations instance provided');
   }
   const organization = options.organization;
   const event = options.event;
   if (!organization || !organization.name) {
-    return callback(new Error('Missing organization instance'));
+    throw new Error('Missing organization instance');
+  }
+  if (!organization.active) {
+    console.log(`inactive or unadopted organization ${organization.name}`);
+    if (options.acknowledgeValidEvent) {
+      options.acknowledgeValidEvent();
+    }
+    return;
   }
   if (!event) {
-    return callback(new Error('Missing event'));
+    throw new Error('Missing event');
   }
   if (!event.body) {
-    return callback(new Error('Missing event body'));
+    throw new Error('Missing event body');
   }
   const body = event.body;
   const rawBody = event.rawBody || JSON.stringify(body);
   const properties = event.properties;
   if (!properties || !properties.delivery || !properties.signature || !properties.event) {
-    return callback(new Error('Missing event properties - delivery, signature, and/or event'));
+    if (options.acknowledgeValidEvent) {
+      options.acknowledgeValidEvent();
+    }
+    throw new Error('Missing event properties - delivery, signature, and/or event');
   }
-  verifySignatures(properties.signature, organization.webhookSharedSecrets, rawBody, (validationError) => {
+  // try {
+  //   await verifySignatures(properties.signature, organization.webhookSharedSecrets, rawBody);
+  // } catch (validationError) {
     // NO LONGER VALIDATING SIG
     // if (validationError) {
     //   if (operations && operations.insights) {
@@ -62,46 +101,43 @@ module.exports = function (options, callback) {
     //   }
     //   return callback(validationError);
     // }
+  //}
 
-    // In a bus scenario, if a short timeout window is used for queue
-    // visibility, a client may want to acknowledge this being a valid
-    // event at this time. After this point however there is no
-    // guarantee of successful execution.
-    if (options.acknowledgeValidEvent) {
-      options.acknowledgeValidEvent();
-    }
-    let interestingEvents = 0;
-    const work = _.filter(tasks, (processor) => {
-      return processor.filter(event);
-    });
-    if (work.length > 0) {
-      ++interestingEvents;
-      console.log(`[* interesting event found: ${event.properties.event} (${work.length} interested tasks)]`);
-    } else {
-      console.log(`[skipping event: ${event.properties.event}]`);
-    }
-    async.eachSeries(work, (processor, next) => {
-      try {
-        processor.run(operations, organization, event, next);
-      } catch (processInitializationError) {
-        console.log('Processor ran into an error with an event:');
-        console.dir(processInitializationError);
-        return next(processInitializationError);
-      }
-    }, (error) => {
-      return callback(error, interestingEvents);
-    });
-  });
-};
+  // In a bus scenario, if a short timeout window is used for queue
+  // visibility, a client may want to acknowledge this being a valid
+  // event at this time. After this point however there is no
+  // guarantee of successful execution.
+  if (options.acknowledgeValidEvent) {
+    options.acknowledgeValidEvent();
+  }
+  let interestingEvents = 0;
+  const work = Tasks.filter(task => task.filter(event));
+  if (work.length > 0) {
+    ++interestingEvents;
+    console.log(`[* interesting event found: ${event.properties.event} (${work.length} interested tasks)]`);
+  } else {
+    console.log(`[skipping event: ${event.properties.event}]`);
+  }
 
-function verifySignatures(signature, hookSecrets, rawBody, callback) {
+  for (let processor of work) {
+    try {
+      await processor.run(operations, organization, event);
+    } catch (processInitializationError) {
+      console.log('Processor ran into an error with an event:');
+      console.dir(processInitializationError);
+    }
+  }
+  return interestingEvents;
+}
+
+async function verifySignatures(signature, hookSecrets: string[], rawBody): Promise<void> {
   // To ease local development and simple scenarios, if no shared secrets are
   // configured, they are not required.
   if (!hookSecrets || !hookSecrets.length) {
-    return callback();
+    return;
   }
   if (!signature) {
-    return callback(new Error('No event signature was provided'));
+    throw new Error('No event signature was provided');
   }
   const computedSignatures = [];
   for (let i = 0; i < hookSecrets.length; i++) {
@@ -110,12 +146,12 @@ function verifySignatures(signature, hookSecrets, rawBody, callback) {
     sha1.update(rawBody, 'utf8');
     const computedHash = 'sha1=' + sha1.digest('hex');
     if (secureCompare(computedHash, signature)) {
-      return callback();
+      return;
     }
     computedSignatures.push(computedHash);
   }
   const validationError: IValidationError = new Error('The signature could not be verified');
   validationError.statusCode = 401;
   validationError.computedHash = computedSignatures.join(', ');
-  return callback(validationError);
+  throw validationError;
 }

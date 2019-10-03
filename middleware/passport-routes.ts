@@ -1,7 +1,7 @@
 import { IReposError } from "../transitional";
 
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -10,6 +10,7 @@ import { IReposError } from "../transitional";
 const querystring = require('querystring');
 
 import { redirectToReferrer, storeReferrer } from '../utils';
+import { getGitHubAppConfigurationOptions } from "./passport-config";
 
 module.exports = function configurePassport(app, passport, initialConfig) {
   app.get('/signin', function (req, res) {
@@ -165,15 +166,26 @@ module.exports = function configurePassport(app, passport, initialConfig) {
   // ----------------------------------------------------------------------------
   // Expanded GitHub auth scope routes
   // ----------------------------------------------------------------------------
-  app.get('/signin/github/increased-scope', function (req, res) {
+
+  function blockIncreasedScopeForModernApps(req, res, next) {
+    const config = req.app.settings.runtimeConfig;
+    const { modernAppInUse } = getGitHubAppConfigurationOptions(config);
+    if (modernAppInUse) {
+      return next(new Error('This site is using the newer GitHub App model and so the increased-scope routes are no longer applicable to it'));
+    }
+    return next();
+  }
+
+  app.get('/signin/github/increased-scope', blockIncreasedScopeForModernApps, function (req, res) {
     storeReferrer(req, res, '/auth/github/increased-scope', 'request for the /signin/github/increased-scope page to go auth with more GitHub scope');
   });
 
-  app.get('/auth/github/increased-scope', passport.authorize('expanded-github-scope'));
+  app.get('/auth/github/increased-scope', blockIncreasedScopeForModernApps, passport.authorize('expanded-github-scope'));
 
   // TODO: Validate that the increased scope user ID === the actual user ID
 
   app.get('/auth/github/callback/increased-scope',
+    blockIncreasedScopeForModernApps,
     passport.authorize('expanded-github-scope', {
       failureRedirect: '/auth/github/increased-scope',
     }),

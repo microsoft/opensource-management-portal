@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -19,13 +19,13 @@ export function PostgresPoolQuerySingleRow(pool, sql: string, values: any[], cal
       return callback(null, results.rows[0]);
     } else if (len === 0) {
       const notFoundError = new Error('The query did not return a result');
-      notFoundError['status'] = notFoundError['code'] = 404;
+      notFoundError['status'] = 404;
       notFoundError['sqlStatement'] = sql;
       notFoundError['sqlValues'] = values;
       return callback(notFoundError);
     }
     const tooManyRows = new Error(`Only one row should be returned; ${len} rows were returned`);
-    tooManyRows['status'] = tooManyRows['code'] = 412;
+    tooManyRows['status'] = 412;
     tooManyRows['sqlStatement'] = sql;
     tooManyRows['sqlValues'] = values;
     return callback(tooManyRows);
@@ -77,6 +77,9 @@ export function PostgresPoolQuery(pool, sql: string, values: any[], callback) {
 export function PostgresPoolQueryAsync(pool, sql: string, values: any[]): Promise<any[]> {
   return new Promise((resolve, reject) => {
     PostgresPoolQuery(pool, sql, values, (error, results) => {
+      if (results && results['rows'] && results['rows'].length !== undefined) {
+        debug(`rows: ${results['rows'].length}`);
+      }
       return error ? reject(error) : resolve(results);
     });
   });

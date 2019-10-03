@@ -1,0 +1,9 @@
+{
+  "clientId": "env://GITHUB_APP_UI_OAUTH_CLIENT_ID",
+  "clientSecret": "env://GITHUB_APP_UI_OAUTH_CLIENT_SECRET",
+  "appId": "env://GITHUB_APP_UI_APP_ID",
+  "appKey": "env://GITHUB_APP_UI_KEY",
+  "webhookSecret": "",
+  "slug": "env://GITHUB_APP_UI_SLUG",
+  "description": "Customer-facing User Interface"
+}

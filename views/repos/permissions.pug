@@ -5,15 +5,6 @@
 
 extends ../layout
 
-block additional_head
-  link(href='/css/c3.min.css', rel='stylesheet')
-  script(src='/js/d3.min.js')
-  script(src='/js/c3.min.js')
-
-block js_doc_ready
-  include ../js/metrics.js
-  | displayRepoMetrics(#{repo.id}, #{organization.id}, '#{config.brand.companyName}');
-
 mixin simplePersonView(account)
   - var shorthandName = account.login
   div.horizontal-space-right.vertical-space.pull-left(style='width:36px;height:36px;display:block;vertical-align:middle')
@@ -284,9 +275,6 @@ block content
         small
           if repo.id
             = 'GitHub repository ID: ' + repo.id
-          if repoMetrics
-            br
-            | This page contains historical metrics that may be delayed
 
     if reposDataAgeInformation
       p.text-primary(style='margin-bottom:24px')

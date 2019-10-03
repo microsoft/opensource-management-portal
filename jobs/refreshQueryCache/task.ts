@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -9,34 +9,40 @@
 
 import throat = require('throat');
 
-import { IProviders, ICacheOptions, IPagedCacheOptions } from '../../transitional';
+import { IProviders, ICacheOptions, IPagedCacheOptions, permissionsObjectToValue } from '../../transitional';
 import { Operations } from '../../business/operations';
-import { Organization, IGetOrganizationMembersOptions, OrganizationMembershipRoleQuery, OrganizationMembershipRole } from '../../business/organization';
+import { Organization, OrganizationMembershipRoleQuery, OrganizationMembershipRole } from '../../business/organization';
 import { Team, GitHubTeamRole } from '../../business/team';
 import { TeamMember } from '../../business/teamMember';
-import { RepositoryCacheProvider, IRepositoryCacheProvider } from '../../entities/repositoryCache/repositoryCacheProvider';
-import { RepositoryCacheEntity } from '../../entities/repositoryCache/repositoryCache';
 import { Repository, IGetCollaboratorsOptions, GitHubCollaboratorAffiliationQuery, GitHubCollaboratorType } from '../../business/repository';
-import { IRepositoryCollaboratorCacheProvider } from '../../entities/repositoryCollaboratorCache/repositoryCollaboratorCacheProvider';
 import { Collaborator } from '../../business/collaborator';
-import { RepositoryCollaboratorCacheEntity } from '../../entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
-import { GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
-import { ITeamCacheProvider } from '../../entities/teamCache/teamCacheProvider';
-import { TeamCacheEntity } from '../../entities/teamCache/teamCache';
-import { ITeamMemberCacheProvider, TeamMemberCacheProvider } from '../../entities/teamMemberCache/teamMemberCacheProvider';
-import { TeamMemberCacheEntity } from '../../entities/teamMemberCache/teamMemberCache';
-import { IRepositoryTeamCacheProvider } from '../../entities/repositoryTeamCache/repositoryTeamCacheProvider';
 import { TeamPermission } from '../../business/teamPermission';
-import { RepositoryTeamCacheEntity } from '../../entities/repositoryTeamCache/repositoryTeamCache';
-import { IOrganizationMemberCacheProvider } from '../../entities/organizationMemberCache/organizationMemberCacheProvider';
 import { OrganizationMember } from '../../business/organizationMember';
-import { OrganizationMemberCacheEntity } from '../../entities/organizationMemberCache/organizationMemberCache';
 import { sleep } from '../../utils';
+import moment from 'moment';
+import QueryCache, { IQueryCacheOrganizationMembership, IQueryCacheTeam, IQueryCacheRepository, IQueryCacheTeamRepositoryPermission, IQueryCacheRepositoryCollaborator, QueryCacheOperation, IQueryCacheTeamMembership } from '../../business/queryCache';
+import { GitHubTokenManager } from '../../github/tokenManager';
+
+const killBitHours = 48;
+
+interface IConsistencyStats {
+  'new': number;
+  'update': number;
+  'delete': number;
+}
+
+interface IRefreshOrganizationResults {
+  organizationName: string;
+  refreshSet: string;
+  started: Date;
+  finished: Date;
+  consistencyStats: IConsistencyStats;
+}
 
 const slowRequestCacheOptions: IPagedCacheOptions = {
   maxAgeSeconds: 60, // 1m
   backgroundRefresh: false,
-  pageRequestDelay: 900, // almost a second
+  pageRequestDelay: 1050, // just over a second
 };
 
 const minuteAgoCache: ICacheOptions = {
@@ -44,14 +50,14 @@ const minuteAgoCache: ICacheOptions = {
   backgroundRefresh: false,
 };
 
-const sleepBetweenSteps = 2000;
+const sleepBetweenSteps = 150; // mostly impacts repo collaborator views
 
 // TODO: we mark when the slow walk starts for the process, use it to set the max age value when requesting entities (?)
 // TODO: make max age seconds accept a function that could make it dynamic and functional
 
 let insights;
 
-module.exports = function run(config) {
+module.exports = function run(config, args) {
   const app = require('../../app');
   config.skipModules = new Set([
     'web',
@@ -66,363 +72,418 @@ module.exports = function run(config) {
     if (!insights) {
       throw new Error('No app insights client available');
     }
-    refresh(config, app).then(done => {
-      console.log('done');
-      process.exit(0);
+
+    // Only use Background Job app for all calls here
+    GitHubTokenManager.IsBackgroundJob();
+
+    const jobStarted = moment();
+
+    // Kill bit if this takes way too long
+    const asMinutes = killBitHours * 60;
+    setTimeout(() => {
+      console.log(`Kill bit at ${killBitHours}h, shutting down process in 1m`);
+      if (insights) {
+        insights.trackEvent({ name: 'JobRefreshQueryCacheTimeout', properties: { } });
+        insights.trackMetric({ name: 'JobRefreshQueryCacheTimeouts', value: 1 });
+      }
+      return quitInAMinute(false);
+    }, 1000 * 60 * asMinutes);
+
+    refresh(config, app, args).then(done => {
+      const completed = moment();
+      const minutes = completed.diff(jobStarted, 'minutes');
+      console.log(`done after ${minutes} minutes`);
+      if (insights) {
+        insights.trackMetric({ name: 'JobRefreshQueryCacheMinutes', value: minutes });
+      }
+      return quitInAMinute(true);
     }).catch(error => {
       console.dir(error);
       if (insights) {
         insights.trackException({ exception: error, properties: { name: 'JobRefreshQueryCacheFailure' } });
+        const completed = moment();
+        const minutes = jobStarted.diff(completed, 'minutes');
+        console.log(`failed after ${minutes} minutes`);
+        insights.trackMetric({ name: 'JobRefreshQueryCacheFailedMinutes', value: minutes });
       }
-      process.exit(1);
+      return quitInAMinute(false);
     });
   });
 };
 
-interface IRefreshOrganizationResults {
-
+function quitInAMinute(successful: boolean) {
+  return setTimeout(() => {
+    process.exit(successful ? 0 : 1);
+  }, 1000 * 60 /* 1 minute later */);
 }
 
 async function refreshOrganization(
-  organizationMemberCacheProvider: IOrganizationMemberCacheProvider,
-  teamCacheProvider: ITeamCacheProvider,
-  teamMemberCacheProvider: ITeamMemberCacheProvider,
-  repositoryCacheProvider: IRepositoryCacheProvider,
-  repositoryCollaboratorCacheProvider: IRepositoryCollaboratorCacheProvider,
-  repositoryTeamCacheProvider: IRepositoryTeamCacheProvider,
+  organizationIndex: number,
+  operations: Operations,
+  refreshSet: string,
+  queryCache: QueryCache,
   organization: Organization): Promise<IRefreshOrganizationResults> {
   const result: IRefreshOrganizationResults = {
-
+    organizationName: organization.name,
+    refreshSet: refreshSet,
+    started: new Date(),
+    finished: null,
+    consistencyStats: {
+      'delete': 0,
+      'new': 0,
+      'update': 0,
+    },
   };
 
   const organizationDetails = await organization.getDetails();
-  const organizationId = organizationDetails.id;
-  console.log(`refreshing ${organization.name} (id=${organizationId}) organization members, teams, repos and more...`);
+  const organizationId = organizationDetails.id.toString();
+  console.log(`refreshing ${organization.name} (id=${organizationId}) organization...`);
 
-  const organizationAdmins = await organization.getMembers({...slowRequestCacheOptions, role: OrganizationMembershipRoleQuery.Admin });
-  await cacheOrganizationMembers(organizationMemberCacheProvider, organizationId, organizationAdmins, OrganizationMembershipRole.Admin);
-  await sleep(sleepBetweenSteps);
-
-  const organizationMembers = await organization.getMembers({...slowRequestCacheOptions, role: OrganizationMembershipRoleQuery.Member });
-  console.log(`organization ${organization.name} has ${organizationAdmins.length} admins and ${organizationMembers.length} members`);
-  await cacheOrganizationMembers(organizationMemberCacheProvider, organizationId, organizationMembers, OrganizationMembershipRole.Member);
-  await sleep(sleepBetweenSteps);
-
-  const teams = await organization.getTeams(slowRequestCacheOptions);
-  console.log(`organization ${organization.name} has ${teams.length} teams`);
-  await sleep(sleepBetweenSteps);
-
-  for (let i = 0; i < teams.length; i++) {
+  if (refreshSet === 'all' || refreshSet === 'organizations') {
     try {
-      const team = teams[i];
-      const teamDetailsData = await team.getDetails(minuteAgoCache);
-      await cacheTeamDetails(teamCacheProvider, organizationId, team, teamDetailsData);
-      const teamMaintainers = await team.getMaintainers(slowRequestCacheOptions);
-      const maintainers = new Set<string>(teamMaintainers.map(maintainer => maintainer.id ));
-      await cacheTeamMembers(teamMemberCacheProvider, organizationId, team, teamMaintainers, GitHubTeamRole.Maintainer);
-      const teamMembers = await team.getMembers(slowRequestCacheOptions);
-      const nonMaintainerMembers = teamMembers.filter(member => !maintainers.has(member.id));
-      await cacheTeamMembers(teamMemberCacheProvider, organizationId, team, nonMaintainerMembers, GitHubTeamRole.Member);
-      console.log(`team ${i}/${teams.length}: ${team.name} from org ${organization.name} has ${teamMaintainers.length} maintainers and ${nonMaintainerMembers.length} members`);
+      const organizationAdmins = await organization.getMembers({...slowRequestCacheOptions, role: OrganizationMembershipRoleQuery.Admin });
+      updateConsistencyStats(result.consistencyStats,
+        await cacheOrganizationMembers(queryCache, organizationId, organizationAdmins, OrganizationMembershipRole.Admin));
+      const memberIds = new Set<string>(organizationAdmins.map(admin => admin.id.toString()));
       await sleep(sleepBetweenSteps);
-    } catch (teamError) {
-      console.dir(teamError);
+
+      const organizationMembers = await organization.getMembers({...slowRequestCacheOptions, role: OrganizationMembershipRoleQuery.Member });
+      console.log(`${organizationIndex}: organization ${organization.name} has ${organizationAdmins.length} admins and ${organizationMembers.length} members`);
+      updateConsistencyStats(result.consistencyStats,
+        await cacheOrganizationMembers(queryCache, organizationId, organizationMembers, OrganizationMembershipRole.Member));
+      organizationMembers.map(member => memberIds.add(member.id.toString()));
       await sleep(sleepBetweenSteps);
+
+      // Cleanup any former members
+      const cachedMembers = await queryCache.organizationMembers(organizationId);
+      const potentialFormerMembers: IQueryCacheOrganizationMembership[] = [];
+      cachedMembers.map(cm => {
+        if (!memberIds.has(cm.userId)) {
+          potentialFormerMembers.push(cm);
+        }
+      });
+      updateConsistencyStats(result.consistencyStats,
+        await cleanupFormerMembers(operations, queryCache, organization, potentialFormerMembers));
+    } catch (orgMembersError) {
+      console.log(`refresh for organization ${organization.name} members was interrupted by an error`);
+      console.dir(orgMembersError);
     }
   }
 
-  const repositories = await organization.getRepositories(slowRequestCacheOptions);
-  console.log(`${repositories.length} repositories in ${organization.name}`);
-
-  for (let i = 0; i < repositories.length; i++) {
+  if (refreshSet === 'all' || refreshSet === 'teams') {
     try {
-      const repository = repositories[i];
-      const repoDetailsData = await repository.getDetails(minuteAgoCache);
-      await cacheRepositoryData(repositoryCacheProvider, repository, repoDetailsData, organizationId);
+      const teams = await organization.getTeams(slowRequestCacheOptions);
+      console.log(`${organizationIndex}: organization ${organization.name} has ${teams.length} teams`);
+      const knownTeams = new Set(teams.map(team => team.id.toString()));
       await sleep(sleepBetweenSteps);
 
-      const repoTeamPermissions = await repository.getTeamPermissions(slowRequestCacheOptions);
-      await cacheRepositoryTeams(repositoryTeamCacheProvider, repository, repoTeamPermissions, organizationId);
-      await sleep(sleepBetweenSteps);
+      for (let i = 0; i < teams.length; i++) {
+        try {
+          const team = teams[i];
+          const teamDetailsData = await team.getDetails(minuteAgoCache);
+          updateConsistencyStats(result.consistencyStats,
+            await queryCache.addOrUpdateTeam(organizationId, team.id.toString(), teamDetailsData));
 
-      const outsideOptions: IGetCollaboratorsOptions = {...slowRequestCacheOptions, affiliation: GitHubCollaboratorAffiliationQuery.Outside };
-      const outsideRepoCollaborators = await repository.getCollaborators(outsideOptions);
-      await cacheRepositoryCollaborators(repositoryCollaboratorCacheProvider, organizationId, repository, outsideRepoCollaborators, GitHubCollaboratorType.Outside);
-      await sleep(sleepBetweenSteps);
+          const teamMaintainers = await team.getMaintainers(slowRequestCacheOptions);
+          const maintainers = new Set<number>(teamMaintainers.map(maintainer => maintainer.id ));
+          updateConsistencyStats(result.consistencyStats,
+            await cacheTeamMembers(queryCache, organizationId, team, teamMaintainers, GitHubTeamRole.Maintainer));
 
-      const outsideSet = new Set<string>(outsideRepoCollaborators.map(outsider => outsider.id ));
-      const directOptions: IGetCollaboratorsOptions = {...slowRequestCacheOptions, affiliation: GitHubCollaboratorAffiliationQuery.Direct };
-      const directRepoCollaborators = await repository.getCollaborators(directOptions);
-      const insideDirectCollaborators = directRepoCollaborators.filter(collaborator => !outsideSet.has(collaborator.id));
-      await cacheRepositoryCollaborators(repositoryCollaboratorCacheProvider, organizationId, repository, insideDirectCollaborators, GitHubCollaboratorType.Direct); // technically 'direct' is just those that are not outside collaborators
+          const teamMembers = await team.getMembers(slowRequestCacheOptions);
+          const knownTeamMembers = new Set(teamMembers.map(member => member.id.toString()));
+          const nonMaintainerMembers = teamMembers.filter(member => !maintainers.has(member.id));
+          updateConsistencyStats(result.consistencyStats,
+            await cacheTeamMembers(queryCache, organizationId, team, nonMaintainerMembers, GitHubTeamRole.Member));
+          console.log(`${organizationIndex}: team ${i + 1}/${teams.length}: ${team.name} from org ${organization.name} has ${teamMaintainers.length} maintainers and ${nonMaintainerMembers.length} members`);
 
-      console.log(`repository ${i}/${repositories.length}: ${repository.full_name} repository has ${repoTeamPermissions.length} team permissions entries and ${directRepoCollaborators.length} direct collaborators and ${outsideRepoCollaborators.length} outside collaborators`);
-      await sleep(sleepBetweenSteps);
-    } catch (refreshRepositoryError) {
-      console.dir(refreshRepositoryError);
-      await sleep(sleepBetweenSteps);
+          // Cleanup any removed team members
+          const cachedTeamMembers = await queryCache.teamMembers(team.id.toString());
+          const removedMembers: IQueryCacheTeamMembership[] = [];
+          cachedTeamMembers.map(ctm => {
+            if (!knownTeamMembers.has(ctm.userId)) {
+              removedMembers.push(ctm);
+            }
+          });
+          updateConsistencyStats(result.consistencyStats,
+            await cleanupRemovedTeamMembers(queryCache, team, removedMembers));
+          await sleep(sleepBetweenSteps);
+        } catch (teamError) {
+          console.log(`issue processing team ${teams[i].id} in org ${organization.name}`);
+          console.dir(teamError);
+          await sleep(sleepBetweenSteps);
+        }
+      }
+
+      // Cleanup any removed teams
+      const cachedTeams = await queryCache.organizationTeams(organizationId);
+      const potentialFormerTeams: IQueryCacheTeam[] = [];
+      cachedTeams.map(ct => {
+        if (!knownTeams.has(ct.team.id.toString())) {
+          potentialFormerTeams.push(ct);
+        }
+      });
+      updateConsistencyStats(result.consistencyStats,
+        await cleanupFormerTeams(queryCache, organization, potentialFormerTeams));
+    } catch(refreshTeamsError) {
+      console.log(`error while refreshing teams in ${organization.name} org`);
+      console.dir(refreshTeamsError);
     }
   }
 
+  if (refreshSet === 'all' || refreshSet === 'collaborators' || refreshSet === 'permissions') {
+    const repositories = await organization.getRepositories(slowRequestCacheOptions);
+    console.log(`${organizationIndex}: ${repositories.length} repositories in ${organization.name}`);
+    const repoIds = new Set(repositories.map(repo => repo.id.toString()));
+
+    for (let i = 0; i < repositories.length; i++) {
+      try {
+        const repository = repositories[i];
+        const repoDetailsData = await repository.getDetails(minuteAgoCache);
+        updateConsistencyStats(result.consistencyStats,
+          await queryCache.addOrUpdateRepository(organizationId, repository.id.toString(), repoDetailsData));
+        await sleep(sleepBetweenSteps);
+
+        if (refreshSet === 'all' || refreshSet === 'permissions') {
+          const repoTeamPermissions = await repository.getTeamPermissions(slowRequestCacheOptions);
+          updateConsistencyStats(result.consistencyStats,
+            await cacheRepositoryTeams(queryCache, repository, repoTeamPermissions));
+          const knownTeamPermissions = new Set(repoTeamPermissions.map(rtp => rtp.team.id.toString()));
+          await sleep(sleepBetweenSteps);
+          // Cleanup any removed team permissions
+          const cachedTeamPermissions = await queryCache.repositoryTeamPermissions(repository.id.toString());
+          const removedPermissions: IQueryCacheTeamRepositoryPermission[] = [];
+          cachedTeamPermissions.map(ctp => {
+            if (!knownTeamPermissions.has(ctp.team.id.toString())) {
+              removedPermissions.push(ctp);
+            }
+          });
+          updateConsistencyStats(result.consistencyStats,
+            await cleanupRemovedTeamPermissions(queryCache, repository, removedPermissions));
+        }
+
+        if (refreshSet === 'all' || refreshSet === 'collaborators') {
+          const outsideOptions: IGetCollaboratorsOptions = {...slowRequestCacheOptions, affiliation: GitHubCollaboratorAffiliationQuery.Outside };
+          const outsideRepoCollaborators = await repository.getCollaborators(outsideOptions);
+          const collaboratorIds = new Set(outsideRepoCollaborators.map(orc => orc.id.toString()));
+          updateConsistencyStats(result.consistencyStats,
+            await cacheRepositoryCollaborators(queryCache, organizationId, repository, outsideRepoCollaborators, GitHubCollaboratorType.Outside));
+          const outsideSet = new Set<number>(outsideRepoCollaborators.map(outsider => outsider.id ));
+          const directOptions: IGetCollaboratorsOptions = {...slowRequestCacheOptions, affiliation: GitHubCollaboratorAffiliationQuery.Direct };
+          const directRepoCollaborators = await repository.getCollaborators(directOptions);
+          directRepoCollaborators.map(drc => collaboratorIds.add(drc.id.toString()));
+          const insideDirectCollaborators = directRepoCollaborators.filter(collaborator => !outsideSet.has(collaborator.id));
+          // technically 'direct' is just those that are not outside collaborators
+          updateConsistencyStats(result.consistencyStats,
+            await cacheRepositoryCollaborators(queryCache, organizationId, repository, insideDirectCollaborators, GitHubCollaboratorType.Direct));
+          const cachedRepositoryCollaborators = await queryCache.repositoryCollaborators(repository.id.toString());
+          const formerCollaborators: IQueryCacheRepositoryCollaborator[] = [];
+          cachedRepositoryCollaborators.map(crc => {
+            if (!collaboratorIds.has(crc.userId)) {
+              formerCollaborators.push(crc);
+            }
+          });
+          updateConsistencyStats(result.consistencyStats,
+            await cleanupFormerCollaborators(queryCache, repository, formerCollaborators));
+          await sleep(sleepBetweenSteps);
+        }
+        console.log(`${organizationIndex}: repository ${i + 1}/${repositories.length}: ${repository.full_name} repository`);
+      } catch (refreshRepositoryError) {
+        console.dir(refreshRepositoryError);
+        await sleep(sleepBetweenSteps);
+      }
+    }
+    // Cleanup any deleted repos
+    const cachedRepositories = await queryCache.organizationRepositories(organizationId);
+    const deletedRepositories: IQueryCacheRepository[] = [];
+    cachedRepositories.map(r => {
+      if (!repoIds.has(r.repository.id.toString())) {
+        deletedRepositories.push(r);
+      }
+    });
+    updateConsistencyStats(result.consistencyStats,
+      await cleanupDeletedRepositories(queryCache, organization, deletedRepositories));
+  }
+  result.finished = new Date();
   return result;
 }
 
-async function cacheRepositoryTeams(repositoryTeamCacheProvider: IRepositoryTeamCacheProvider, repository: Repository, repoTeamPermissions: TeamPermission[], organizationId: string): Promise<void> {
-  const repositoryId = repository.id;
+async function cacheRepositoryTeams(queryCache: QueryCache, repository: Repository, repoTeamPermissions: TeamPermission[]): Promise<QueryCacheOperation[]> {
+  const ops = [];
+  const organizationId = repository.organization.id.toString();
+  const repositoryId = repository.id.toString();
   for (let teamPermission of repoTeamPermissions) {
-    const teamId = teamPermission.team.id;
-    const permission = teamPermission.permission; // permissionsObjectToValue(collaborator.permissions);
-
-    let cache: RepositoryTeamCacheEntity = null;
-    try {
-      cache = await repositoryTeamCacheProvider.getRepositoryTeamCacheByTeamId(organizationId, repositoryId, teamId);
-    } catch (error) {
-      if (!error.code || error.code !== 404) {
-        throw error;
-      }
-    }
-    if (cache) {
-      const update = cache.permission !== permission;
-      if (update) {
-        cache.cacheUpdated = new Date();
-        await repositoryTeamCacheProvider.updateRepositoryTeamCache(cache);
-      }
-    } else {
-      cache = new RepositoryTeamCacheEntity();
-      cache.uniqueId = RepositoryTeamCacheEntity.GenerateIdentifier(organizationId, repositoryId, teamId);
-      cache.organizationId = organizationId;
-      cache.repositoryId = repositoryId;
-      cache.teamId = teamId;
-      cache.permission = permission;
-      await repositoryTeamCacheProvider.createRepositoryTeamCache(cache);
-    }
-    console.log(`Saved repo ${repository.full_name} permission ${permission} to team ${teamPermission.team.id}`);
+    const teamId = teamPermission.team.id.toString();
+    const permission = teamPermission.permission;
+    ops.push(await queryCache.addOrUpdateTeamsPermission(organizationId, repositoryId, repository.name, teamId, permission));
   }
+  return ops.filter(exists => exists);
 }
 
-const teamFieldsToCache = [
-  'privacy',
-  'created_at',
-  'updated_at',
-  'repos_count',
-  'members_count',
-];
+async function cacheTeamMembers(queryCache: QueryCache, organizationId: string, team: Team, members: TeamMember[], typeOfRole: GitHubTeamRole): Promise<QueryCacheOperation[]> {
+  const ops = [];
+  const teamId = team.id.toString();
+  for (let member of members) {
+    const userId = member.id.toString();
+    const login = member.login;
+    const avatar = member.avatar_url;
+    ops.push(await queryCache.addOrUpdateTeamMember(organizationId, teamId, userId, typeOfRole, login, avatar));
+  }
+  return ops.filter(exists => exists);
+}
 
-async function cacheTeamDetails(teamCacheProvider: ITeamCacheProvider, organizationId: string, team: Team, teamDetailsData: any): Promise<void> {
-  const clonedDetails = {};
-  teamFieldsToCache.forEach(key => clonedDetails[key] = teamDetailsData[key]);
+async function cacheOrganizationMembers(queryCache: QueryCache, organizationId: string, members: OrganizationMember[], memberRole: OrganizationMembershipRole): Promise<QueryCacheOperation[]> {
+  const ops = [];
+  for (let member of members) {
+    const userId = member.id.toString();
+    ops.push(await queryCache.addOrUpdateOrganizationMember(organizationId, memberRole, userId));
+  }
+  return ops.filter(exists => exists);
+}
 
-  let teamCache: TeamCacheEntity = null;
+async function cleanupRemovedTeamMembers(queryCache: QueryCache, team: Team, removedMembers: IQueryCacheTeamMembership[]): Promise<QueryCacheOperation[]> {
+  const ops = [];
+  for (const { team, userId, login } of removedMembers) {
+    try {
+      const userInTeam = await team.getMembership(login, minuteAgoCache);
+      if (!userInTeam) {
+        ops.push(await queryCache.removeTeamMember(team.organization.id.toString(), team.id.toString(), userId));
+        console.log(`permission for user login=${login} user id=${userId} to team ${team.id} removed from query cache`);
+      }
+    } catch (removalError) {
+      console.log(`error while trying to cleanup potential former team members from ${team.organization.name} org`);
+      console.dir(removalError);
+    }
+  }
+  return ops.filter(real => real);
+}
+
+async function cleanupRemovedTeamPermissions(queryCache: QueryCache, repository: Repository, removedPermissions: IQueryCacheTeamRepositoryPermission[]): Promise<QueryCacheOperation[]> {
+  const ops = [];
+  for (const { team, repository } of removedPermissions) {
+    try {
+      const teamManagesRepository = await repository.checkTeamManages(team.id.toString(), minuteAgoCache);
+      if (!teamManagesRepository) {
+        ops.push(await queryCache.removeRepositoryTeam(repository.organization.id.toString(), repository.id.toString(), team.id.toString()));
+        console.log(`permission for team ${team.id} removed from repository id=${repository.id} query cache`);
+      }
+    } catch (removalError) {
+      console.log(`error while trying to cleanup potential former repo permissions from ${repository.organization.name} org`);
+      console.dir(removalError);
+    }
+  }
+  return ops.filter(real => real);
+}
+
+async function cleanupDeletedRepositories(queryCache: QueryCache, organization: Organization, deletedRepositories: IQueryCacheRepository[]): Promise<QueryCacheOperation[]> {
+  const ops = [];
+  const organizationId = organization.id.toString();
   try {
-    teamCache = await teamCacheProvider.getTeam(team.id);
-  } catch (error) {
-    if (!error.code || error.code !== 404) {
-      throw error;
+    for (const { repository } of deletedRepositories) {
+      if (await repository.isDeleted()) {
+        ops.push(await queryCache.removeRepository(organizationId, repository.id.toString()));
+        console.log(`former organization=${organizationId} repository id=${repository.id} removed from query cache`);
+      }
     }
+  } catch (removingDeletedRepositoryError) {
+    console.log(`error while trying to cleanup potential former repos from ${organization.name} org`);
+    console.dir(removingDeletedRepositoryError);
   }
-  if (teamCache) {
-    const update = (!teamCache.teamDetails || !teamCache.teamDetails.updated_at || teamCache.teamDetails.updated_at !== teamDetailsData.updated_at);
-    if (update) {
-      teamCache.cacheUpdated = new Date();
-      teamCache.teamDescription = teamDetailsData.description;
-      teamCache.teamName = teamDetailsData.name;
-      teamCache.teamSlug = teamDetailsData.slug;
-      teamCache.teamDetails = clonedDetails;
-      await teamCacheProvider.updateTeamCache(teamCache);
-      console.log(`team: updated cache for ${teamCache.teamSlug}`);
-    }
-  } else {
-    teamCache = new TeamCacheEntity();
-    teamCache.teamId = team.id;
-    teamCache.organizationId = organizationId;
-    teamCache.teamDescription = teamDetailsData.description;
-    teamCache.teamName = teamDetailsData.name;
-    teamCache.teamSlug = teamDetailsData.slug;
-    teamCache.teamDetails = clonedDetails;
-    await teamCacheProvider.createTeamCache(teamCache);
-    console.log(`team: new cache for ${teamCache.teamSlug}`);
-  }
+  return ops.filter(real => real);
 }
 
-async function cacheTeamMembers(teamMemberCacheProvider: ITeamMemberCacheProvider, organizationId: string, team: Team, members: TeamMember[], typeOfRole: GitHubTeamRole): Promise<void> {
-  const teamId = team.id;
-
-  for (let member of members) {
-    const userId = member.id;
-
-    let memberCache: TeamMemberCacheEntity = null;
+async function cleanupFormerCollaborators(queryCache: QueryCache, repository: Repository, formerCollaborators: IQueryCacheRepositoryCollaborator[]): Promise<QueryCacheOperation[]> {
+  const ops = [];
+  const repositoryId = repository.id.toString();
+  for (const { userId, cacheEntity } of formerCollaborators) {
     try {
-      memberCache = await teamMemberCacheProvider.getTeamMemberCacheByUserId(organizationId, teamId, userId);
-    } catch (error) {
-      if (!error.code || error.code !== 404) {
-        throw error;
+      const login = cacheEntity.login;
+      const isCollaborator = await repository.checkCollaborator(login, minuteAgoCache);
+      if (!isCollaborator) {
+        ops.push(await queryCache.removeRepositoryCollaborator(repository.organization.id.toString(), repositoryId, userId));
+        console.log(`removed collaborator ${login} from repository id=${repository.id} query cache`);
       }
-    }
-    if (memberCache) {
-      const update = memberCache.teamRole !== typeOfRole || memberCache.avatar !== member.avatar_url || memberCache.login !== member.login;
-      if (update) {
-        memberCache.cacheUpdated = new Date();
-        await teamMemberCacheProvider.updateTeamMemberCache(memberCache);
-        console.log(`Updated team member id=${member.id} login=${member.login} with role=${typeOfRole} for team=${teamId}`);
-      }
-    } else {
-      memberCache = new TeamMemberCacheEntity();
-      memberCache.uniqueId = TeamMemberCacheEntity.GenerateIdentifier(organizationId, teamId, userId);
-      memberCache.organizationId = organizationId;
-      memberCache.userId = userId;
-      memberCache.teamId = teamId;
-      memberCache.teamRole = typeOfRole;
-      memberCache.login = member.login;
-      memberCache.avatar = member.avatar_url;
-      await teamMemberCacheProvider.createTeamMemberCache(memberCache);
-      console.log(`Saved team member id=${member.id} login=${member.login} with role=${typeOfRole} for team=${teamId}`);
+    } catch (removalError) {
+      console.log(`error while trying to cleanup potential former collaborators from ${repository.name} in ${repository.organization.name} org`);
+      console.dir(removalError);
     }
   }
+  return ops.filter(real => real);
 }
 
-async function cacheOrganizationMembers(organizationMemberCacheProvider: IOrganizationMemberCacheProvider, organizationId: string, members: OrganizationMember[], memberRole: OrganizationMembershipRole): Promise<void> {
-  for (let member of members) {
-    const userId = member.id;
-
-    let cache: OrganizationMemberCacheEntity = null;
-    try {
-      cache = await organizationMemberCacheProvider.getOrganizationMemberCacheByUserId(organizationId, userId);
-    } catch (error) {
-      if (!error.code || error.code !== 404) {
-        throw error;
+async function cleanupFormerTeams(queryCache: QueryCache, organization: Organization, potentialFormerTeams: IQueryCacheTeam[]): Promise<QueryCacheOperation[]> {
+  const ops = [];
+  const organizationId = organization.id.toString();
+  try {
+    for (const { team } of potentialFormerTeams) {
+      if (await team.isDeleted()) {
+        ops.push(await queryCache.removeOrganizationTeam(organizationId, team.id.toString()));
+        console.log(`former organization=${organizationId} team id=${team.id} removed from query cache`);
       }
     }
-    if (cache) {
-      const update = cache.role !== memberRole;
-      if (update) {
-        cache.role = memberRole;
-        cache.cacheUpdated = new Date();
-        await organizationMemberCacheProvider.updateOrganizationMemberCache(cache);
-        console.log(`Updated organization member login=${member.login} id=${member.id} to role=${memberRole}`);
-      }
-    } else {
-      cache = new OrganizationMemberCacheEntity();
-      cache.organizationId = organizationId;
-      cache.userId = userId;
-      cache.uniqueId = OrganizationMemberCacheEntity.GenerateIdentifier(organizationId, userId);
-      cache.role = memberRole;
-      await organizationMemberCacheProvider.createOrganizationMemberCache(cache);
-      console.log(`Saved organization member login=${member.login} id=${member.id} with role=${memberRole}`);
-    }
+  } catch (removingFormerTeamsError) {
+    console.log(`error while trying to cleanup potential former teams from ${organization.name} org teams`);
+    console.dir(removingFormerTeamsError);
   }
-  console.log();
+  return ops.filter(real => real);
 }
 
-async function cacheRepositoryCollaborators(repositoryCollaboratorCacheProvider: IRepositoryCollaboratorCacheProvider, organizationId: string, repository: Repository, repoCollaborators: Collaborator[], typeOfCollaborator: GitHubCollaboratorType): Promise<void> {
-  const repositoryId = repository.id;
+async function cleanupFormerMembers(operations: Operations, queryCache: QueryCache, organization: Organization, potentialFormerMembers: IQueryCacheOrganizationMembership[]): Promise<QueryCacheOperation[]> {
+  const ops = [];
+  const organizationId = organization.id.toString();
+  try {
+    for (const { userId } of potentialFormerMembers) {
+      const account = operations.getAccount(userId);
+      let confirmedFormer = false;
+      if ((await account.isDeleted()) === true) {
+        confirmedFormer = true;
+      } else {
+        const login = account.login;
+        const operationalMembership = await organization.getOperationalMembership(login);
+        if (!operationalMembership) {
+          confirmedFormer = true;
+        } else {
+          console.log(`while looking to cleanup a former member ID ${userId} with login ${login}, operational membership indicated a status of ${operationalMembership}, it will be kept`);
+        }
+      }
+      if (confirmedFormer) {
+        ops.push(await queryCache.removeOrganizationMember(organizationId, userId));
+        console.log(`former organization=${organizationId} member id=${userId} removed from query cache`);
+      }
+    }
+  } catch (removingFormerMembersError) {
+    console.log(`error while trying to cleanup potential former members from ${organization.name} org members`);
+    console.dir(removingFormerMembersError);
+  }
+  return ops.filter(real => real);
+};
+
+async function cacheRepositoryCollaborators(queryCache: QueryCache, organizationId: string, repository: Repository, repoCollaborators: Collaborator[], typeOfCollaborator: GitHubCollaboratorType): Promise<QueryCacheOperation[]> {
+  const operations = [];
+  const repositoryId = repository.id.toString();
   for (let collaborator of repoCollaborators) {
-    const userId = collaborator.id;
     const permission = permissionsObjectToValue(collaborator.permissions);
-
-    let collaboratorCache: RepositoryCollaboratorCacheEntity = null;
-    try {
-      collaboratorCache = await repositoryCollaboratorCacheProvider.getRepositoryCollaboratorCacheByUserId(organizationId, repositoryId, userId);
-    } catch (error) {
-      if (!error.code || error.code !== 404) {
-        throw error;
-      }
-    }
-    if (collaboratorCache) {
-      const update = collaboratorCache.avatar !== collaborator.avatar_url || collaboratorCache.collaboratorType !== typeOfCollaborator || collaboratorCache.login !== collaborator.login || collaboratorCache.permission !== permission;
-      if (update) {
-        collaboratorCache.cacheUpdated = new Date();
-        await repositoryCollaboratorCacheProvider.updateRepositoryCollaboratorCache(collaboratorCache);
-      }
-    } else {
-      collaboratorCache = new RepositoryCollaboratorCacheEntity();
-      collaboratorCache.repositoryId = repositoryId;
-      collaboratorCache.organizationId = organizationId;
-      collaboratorCache.userId = userId;
-      collaboratorCache.uniqueId = RepositoryCollaboratorCacheEntity.GenerateIdentifier(organizationId, repositoryId, userId);
-      collaboratorCache.avatar = collaborator.avatar_url;
-      collaboratorCache.collaboratorType = typeOfCollaborator;
-      collaboratorCache.login = collaborator.login;
-      collaboratorCache.permission = permission;
-      await repositoryCollaboratorCacheProvider.createRepositoryCollaboratorCache(collaboratorCache);
-    }
-    console.log(`Saved collaborator login=${collaborator.login} id=${collaborator.id} with type=${typeOfCollaborator}`);
+    operations.push(await queryCache.addOrUpdateCollaborator(
+      organizationId,
+      repositoryId,
+      repository.name,
+      collaborator.id.toString(),
+      collaborator.login,
+      collaborator.avatar_url,
+      permission,
+      typeOfCollaborator));
   }
+  return operations.filter(real => real);
 }
 
-function permissionsObjectToValue(permissions): GitHubRepositoryPermission {
-  if (permissions.admin === true) {
-    return GitHubRepositoryPermission.Admin;
-  } else if (permissions.push === true) {
-    return GitHubRepositoryPermission.Push;
-  } else if (permissions.pull === true) {
-    return GitHubRepositoryPermission.Pull;
-  }
-  throw new Error(`Unsupported GitHubRepositoryPermission value inside permissions`);
-}
-
-const repositoryFieldsToCache = [
-  'name',
-  'private',
-  'description',
-  'fork',
-  'created_at',
-  'updated_at',
-  'pushed_at',
-  'homepage',
-  'size',
-  'stargazers_count',
-  'watchers_count',
-  'language',
-  'forks_count',
-  'archived',
-  'disabled',
-  'open_issues_count',
-  'license',
-  'forks',
-  'watchers',
-  'network_count',
-  'subscribers_count',
-];
-
-async function cacheRepositoryData(repositoryCacheProvider: IRepositoryCacheProvider, repository: Repository, repoDetailsData: any, organizationId: string): Promise<void> {
-  const clonedDetails = {};
-  repositoryFieldsToCache.forEach(key => clonedDetails[key] = repoDetailsData[key]);
-
-  let repositoryCache: RepositoryCacheEntity = null;
-  try {
-    repositoryCache = await repositoryCacheProvider.getRepository(repository.id);
-  } catch (error) {
-    if (!error.code || error.code !== 404) {
-      throw error;
-    }
-  }
-  if (repositoryCache) {
-    const update = (!repositoryCache.repositoryDetails || !repositoryCache.repositoryDetails.updated_at || repositoryCache.repositoryDetails.updated_at !== repoDetailsData.updated_at);
-    if (update) {
-      repositoryCache.cacheUpdated = new Date();
-      repositoryCache.repositoryName = repoDetailsData.name;
-      repositoryCache.repositoryDetails = clonedDetails;
-      await repositoryCacheProvider.updateRepositoryCache(repositoryCache);
-    }
-  } else {
-    repositoryCache = new RepositoryCacheEntity();
-    repositoryCache.repositoryId = repository.id;
-    repositoryCache.organizationId = organizationId;
-    repositoryCache.repositoryName = repository.name;
-    repositoryCache.repositoryDetails = clonedDetails;
-    await repositoryCacheProvider.createRepositoryCache(repositoryCache);
-  }
-}
-
-async function refresh(config, app) : Promise<void> {
+async function refresh(config, app, args: string[]) : Promise<void> {
   const providers = app.settings.providers as IProviders;
   const operations = providers.operations as Operations;
   const repositoryCacheProvider = providers.repositoryCacheProvider;
+  const queryCache = providers.queryCache;
   const teamCacheProvider = providers.teamCacheProvider;
   const teamMemberCacheProvider = providers.teamMemberCacheProvider;
   const repositoryCollaboratorCacheProvider = providers.repositoryCollaboratorCacheProvider;
   const repositoryTeamCacheProvider = providers.repositoryTeamCacheProvider;
-  const organizationMemberCacheProvider = providers.organizationMemberCacheProvider;
 
   if (!repositoryCacheProvider) {
     throw new Error('repositoryCacheProvider required');
@@ -439,19 +500,97 @@ async function refresh(config, app) : Promise<void> {
   if (!repositoryTeamCacheProvider) {
     throw new Error('repositoryTeamCacheProvider required');
   }
-  if (!organizationMemberCacheProvider) {
-    throw new Error('organizationMemberCacheProvider required');
+
+  let refreshSet = 'all';
+  if (args.length > 0) {
+    switch (args[0]) {
+      case 'teams':
+        refreshSet = 'teams';
+        break;
+      case 'collaborators':
+        refreshSet = 'collaborators';
+        break;
+      case 'permissions':
+        refreshSet = 'permissions';
+        break;
+      case 'organizations':
+        refreshSet = 'organizations';
+        break;
+      case 'all':
+        refreshSet = 'all';
+        break;
+      default:
+        throw new Error(`unsupported mode ${args[0]}`);
+    }
   }
 
   const parallelWorkCount = 1;
   const orgs = Array.from(operations.organizations.values());
 
   let organizationWorkerCount = 0;
-  await Promise.all(orgs.map(throat<void, (org: Organization) => Promise<void>>(async organization => {
+  const allUpStats: IConsistencyStats = {
+    'delete': 0,
+    'new': 0,
+    'update': 0,
+  };
+  const staticOrgs = orgs.filter(org => org.hasDynamicSettings === false);
+  const dynamicOrgs = orgs.filter(org => org.hasDynamicSettings === true);
+  async function organizationProcessed(organization: Organization): Promise<void> {
     await sleep(sleepBetweenSteps);
     console.log(`organization ${++organizationWorkerCount}/${orgs.length}: refreshing ${organization.name}`);
-    await refreshOrganization(organizationMemberCacheProvider, teamCacheProvider, teamMemberCacheProvider, repositoryCacheProvider, repositoryCollaboratorCacheProvider, repositoryTeamCacheProvider, organization);
-  }, parallelWorkCount)));
+    const orgResult = await refreshOrganization(organizationWorkerCount, operations, refreshSet, queryCache, organization);
+    const resultsAsLog = {...orgResult, ...orgResult.consistencyStats};
+    delete resultsAsLog.consistencyStats;
+    allUpStats['delete'] += orgResult.consistencyStats['delete'];
+    allUpStats['update'] += orgResult.consistencyStats['update'];
+    allUpStats['new'] += orgResult.consistencyStats['new'];
+    insights.trackEvent({ name: 'QueryCacheOrganizationConsistencyResults', properties: resultsAsLog });
 
-  insights.trackEvent({ name: 'JobRefreshQueryCacheSuccess', properties: { } });
+    console.log('--------------------------------------------------');
+    console.log(`${organization.name} processed - eventual consistency`)
+    console.log(`Added: ${orgResult.consistencyStats['new']}`);
+    console.log(`Removed: ${orgResult.consistencyStats['delete']}`);
+    console.log(`Updated: ${orgResult.consistencyStats['update']}`);
+    console.log('--------------------------------------------------');
+  }
+  const parallelDynamicCount = 5;
+  console.log(`processing ${dynamicOrgs.length} dynamic orgs, ${parallelDynamicCount} at a time`);
+  await Promise.all(dynamicOrgs.map(throat<void, (org: Organization) => Promise<void>>(organizationProcessed, parallelDynamicCount)));
+  console.log(`processing ${staticOrgs.length} static orgs, ${parallelWorkCount} at a time to avoid rate-limiting`);
+  await Promise.all(staticOrgs.map(throat<void, (org: Organization) => Promise<void>>(organizationProcessed, parallelWorkCount)));
+
+  // TODO: CLEANUP: if an organization is removed from the app...
+  console.log('--------------------------------------------------');
+  console.log('All organizations processed, all-up results:');
+  console.log(`Added: ${allUpStats['new']}`);
+  console.log(`Removed: ${allUpStats['delete']}`);
+  console.log(`Updated: ${allUpStats['update']}`);
+  console.log('--------------------------------------------------');
+  insights.trackEvent({ name: 'JobRefreshQueryCacheSuccess', properties: {
+    allUpNew: allUpStats['new'].toString(),
+    allUpDelete: allUpStats['delete'].toString(),
+    allUpUpdate: allUpStats['update'].toString(),
+  }});
+  insights.trackMetric({ name: 'QueryCacheConsistencyAdds', value: allUpStats['new']});
+  insights.trackMetric({ name: 'QueryCacheConsistencyDeletes', value: allUpStats['delete']});
+  insights.trackMetric({ name: 'QueryCacheConsistencyUpdates', value: allUpStats['update']});
+}
+
+function updateConsistencyStats(stats: IConsistencyStats, outcomes: QueryCacheOperation | QueryCacheOperation[]): void {
+  let array: QueryCacheOperation[] = null;
+  if (Array.isArray(outcomes)) {
+    array = outcomes as QueryCacheOperation[];
+  } else {
+    array = [outcomes as QueryCacheOperation];
+  }
+  array.forEach(outcome => {
+    if (outcome === null) {
+      return;
+    }
+    const stringKey = outcome as string;
+    if (stats[stringKey] === undefined || typeof(stats[stringKey]) !== 'number') {
+      throw new Error(`invalid outcome ${stringKey}`);
+    }
+    ++stats[stringKey];
+  });
 }

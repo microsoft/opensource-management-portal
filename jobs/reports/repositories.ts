@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -92,8 +92,7 @@ function teamMembers(cacheOptions, administrators, teams) {
 }
 
 function identifyActionableAdmins(repositoryContext, repository, administrators) {
-  const data = automaticTeams.processOrgSpecialTeams(repository.organization);
-  const specialTeamIds = data[2];
+  const { specialTeamIds } = automaticTeams.processOrgSpecialTeams(repository.organization);
   const actionableAdministrators = [];
   const adminIds = Array.from(administrators.keys());
   for (let i = 0; i < adminIds.length; i++) {
@@ -701,7 +700,7 @@ function augmentWithAdditionalRecipients(context, repositoryContext, createdByLi
   return deferred.promise;
 }
 
-async function getIdFromUsername(context, organization: Organization, username: string): Promise<string> {
+async function getIdFromUsername(context, organization: Organization, username: string): Promise<number> {
   // Depends on this being a current member of an org
   const operations = context.operations as Operations;
   const account = await operations.getAccountByUsername(username);

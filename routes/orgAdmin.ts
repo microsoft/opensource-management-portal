@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -205,7 +205,7 @@ async function loadInformation(operations: Operations, graphProvider: any, redis
       thirdPartyUsername = login;
     }
   } catch (ignoreGetAccountError) {
-    if (ignoreGetAccountError && ignoreGetAccountError.code == /* loose compare */ '404') {
+    if (ignoreGetAccountError && ignoreGetAccountError.status == /* loose compare */ '404') {
       thirdPartyUsername = query.link ? query.link.thirdPartyUsername : null;
       if (thirdPartyUsername) {
         let deletedAccountError = null;
@@ -213,7 +213,7 @@ async function loadInformation(operations: Operations, graphProvider: any, redis
         try {
           moreInfo = await operations.getAccountByUsername(thirdPartyUsername);
         } catch (deletedAccountCatch) {
-          if (deletedAccountCatch && deletedAccountCatch.code == /* loose compare */ '404') {
+          if (deletedAccountCatch && deletedAccountCatch.status == /* loose compare */ '404') {
             deletedAccountError = deletedAccountCatch;
             query.deletedGitHubUserOutcome = `The GitHub account '${thirdPartyUsername}' (ID ${thirdPartyId}) has been deleted`;
           } else {

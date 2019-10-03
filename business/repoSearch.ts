@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -8,10 +8,26 @@
 import moment from 'moment';
 import querystring from 'querystring';
 
-import { GraphManager } from './graphManager';
 import { Repository } from './repository';
+import { IPersonalizedUserAggregateRepositoryPermission, GraphManager } from './graphManager';
+import { IRequestTeamPermissions } from '../middleware/github/teamPermissions';
+import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
+import { asNumber } from '../utils';
 
 const defaultPageSize = 20; // GitHub.com seems to use a value around 33
+
+export interface IRepositorySearchOptions {
+  pageSize?: number;
+  phrase?: string;
+  type?: string;
+  language?: string;
+  userRepos?: IPersonalizedUserAggregateRepositoryPermission[];
+  teamsType?: string; // ?
+  teamsSubType?: string; // ?
+  specificTeamRepos?: Repository[];
+  specificTeamPermissions?: IRequestTeamPermissions;
+  graphManager?: GraphManager;
+}
 
 export class RepositorySearch {
   repos: Repository[];
@@ -25,8 +41,8 @@ export class RepositorySearch {
 
   teamsType: string;
   teamsSubType: string;
-  repoPermissions: any;
-  userRepos: any;
+  // repoPermissions: any;
+  userRepos: IPersonalizedUserAggregateRepositoryPermission[];
 
   page: number;
   tags: any;
@@ -37,11 +53,9 @@ export class RepositorySearch {
   pageFirstRepo: number;
   pageLastRepo: number;
 
-  private graphManager: GraphManager;
-  private specificTeamRepos: any;
-  private specificTeamPermissions: any;
+  private specificTeamRepos: Repository[];
 
-  constructor(repos: Repository[], options) {
+  constructor(repos: Repository[], options: IRepositorySearchOptions) {
     options = options || {};
     this.repos = repos; // is repoStore in opensource.microsoft.com, this is different by design
     this.pageSize = options.pageSize || defaultPageSize;
@@ -53,17 +67,14 @@ export class RepositorySearch {
     this.type = options.type;
     this.language = options.language;
 
-    this.graphManager = options.graphManager as GraphManager;
-
-    if (options.specificTeamRepos && options.specificTeamPermissions) {
+    if (options.specificTeamRepos) {
       this.specificTeamRepos = options.specificTeamRepos;
-      this.specificTeamPermissions = options.specificTeamPermissions;
     }
 
-    if (options.teamsType && options.repoPermissions) {
+    if (options.teamsType && options.userRepos) { // options.repoPermissions) {
       this.teamsType = options.teamsType;
       this.teamsSubType = options.teamsSubType;
-      this.repoPermissions = options.repoPermissions;
+      // this.repoPermissions = options.repoPermissions;
       this.userRepos = options.userRepos;
     }
   }
@@ -148,45 +159,34 @@ export class RepositorySearch {
   }
 
   filterByTeams(teamsType: string): RepositorySearch {
-    if (teamsType === 'teamless' || teamsType === 'my') {
-      const repoPermissions = this.repoPermissions;
-      if (!repoPermissions) {
-        throw new Error('Missing team and repo permissions instances to help filter by teams');
+    if (teamsType === 'my') {
+      const userRepos = this.userRepos;
+      if (!userRepos) {
+        throw new Error('Missing team and repo permissions to filter by teams');
       }
-      const repos = new Set();
+      const repos = new Set<number>();
       switch (teamsType) {
-
-      case 'my': {
-        const subType = this.teamsSubType;
-        this.userRepos.forEach(repo => {
-          const myPermission = repo.personalized.permission;
-          let ok = false;
-          if (subType === 'admin' && myPermission === 'admin') {
-            ok = true;
-          } else if (subType === 'write' && (myPermission === 'admin' || myPermission === 'write')) {
-            ok = true;
-          } else if (subType === 'read') {
-            ok = true;
-          }
-          if (ok) {
-            repos.add(repo.id);
-          }
-        });
-        break;
-      }
-
-      case 'teamless': {
-        repoPermissions.forEach(repo => {
-          if (!repo.teams || repo.teams.length === 0) {
-            repos.add(repo.id);
-          }
-        });
-        break;
-      }
-
+        case 'my': {
+          const subType = this.teamsSubType;
+          userRepos.forEach(personalized => {
+            const myPermission = personalized.bestComputedPermission;
+            let ok = false;
+            if (subType === 'admin' && myPermission === GitHubRepositoryPermission.Admin) {
+              ok = true;
+            } else if (subType === 'write' && (myPermission === 'admin' || myPermission === GitHubRepositoryPermission.Push)) {
+              ok = true;
+            } else if (subType === 'read') {
+              ok = true;
+            }
+            if (ok) {
+              repos.add(asNumber(personalized.repository.id));
+            }
+          });
+          break;
+        }
       }
       this.repos = this.repos.filter(repo => {
-        return repos.has(repo.id);
+        return repos.has(asNumber(repo.id));
       });
     }
     return this;

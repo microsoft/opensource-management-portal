@@ -27,7 +27,7 @@ block content
                       | Detailed Request
                     if metadata.created
                       | &nbsp; &nbsp;
-                      time(datetime=metadata.created.toISOString())= metadata.created.toDateString()
+                      time(datetime=metadata.created)= metadata.created
                   if metadata.active === true
                     h5 ACTIONS
                     p

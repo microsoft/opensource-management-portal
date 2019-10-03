@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -28,7 +28,6 @@ router.use(addLinkToRequest);
 
 router.use('/newRepo', require('./newRepo'));
 router.use('/releaseApprovals', require('./releaseApprovals'));
-router.use('/metrics', require('./metrics'));
 
 router.use((req, res, next) => {
   return next(jsonError('The resource or endpoint you are looking for is not there', 404));

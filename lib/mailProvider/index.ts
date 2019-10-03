@@ -1,18 +1,31 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
-// Providers contract:
-// - sendMail function(message, callback): sends mail
-// - html property: whether or not the provider sends HTML mail
-// - info property: version and name info to use in any logging
+import MockMailService from './mockMailService';
+import IrisMailService from './customMailService';
+import SmtpMailService from './smtpMailService';
+
+export interface IMail {
+  to: string | string[];
+  cc?: string | string[];
+  bcc?: string | string[];
+  content?: any;
+}
+
+export interface IMailProvider {
+  info: string;
+  sendMail(mail: IMail): Promise<any>;
+  html: boolean;
+  getSentMessages(): any[];
+}
 
 function patchOverride(provider, newToAddress, htmlOrNot) {
-  const sendMail = provider.sendMail;
-  provider.sendMail = (mailOptions, callback) => {
+  const sendMail = provider.sendMail.bind(provider);
+  provider.sendMail = (mailOptions: IMail): Promise<any> => {
     let originalTo = mailOptions.to;
     if (typeof originalTo !== 'string' && originalTo.join) {
       originalTo = originalTo.join(', ');
@@ -42,37 +55,40 @@ function patchOverride(provider, newToAddress, htmlOrNot) {
     const initialContent = mailOptions.content;
     const redirectMessage = `This mail was intended for ${originalTo} but was instead sent to ${newToAddress} per a configuration override.\n`;
     mailOptions.content = htmlOrNot ? `<p><em>${redirectMessage}</em></p>\n${initialContent}` : `${redirectMessage}\n${initialContent}`;
-    sendMail(mailOptions, callback);
+    return sendMail(mailOptions);
   };
   return provider;
 }
 
-module.exports = function createMailProviderInstance(config, callback) {
+export default function createMailProviderInstance(config): IMailProvider {
   const mailConfig = config.mail;
   if (mailConfig === undefined) {
-    return callback();
+    return;
   }
   const provider = mailConfig.provider;
   if (!provider) {
-    return callback();
+    return;
   }
-  let found = false;
-  const supportedProviders: string[] = [
-    'customMailService',
-    'mockMailService',
-    'smtpMailService'
-  ];
-  supportedProviders.forEach((supportedProvider) => {
-    if (supportedProvider === provider) {
-      found = true;
-      const providerInstance = require(`./${supportedProvider}`)(config);
-      if (mailConfig.overrideRecipient) {
-        patchOverride(providerInstance, mailConfig.overrideRecipient, providerInstance.html);
-      }
-      return callback(null, providerInstance);
+  let mailProvider: IMailProvider = null;
+  switch (provider) {
+    case 'customMailService': {
+      mailProvider = new IrisMailService(config);
+      break;
     }
-  });
-  if (found === false) {
-    return callback(new Error(`The mail provider "${mailConfig.provider}" is not implemented or configured at this time.`));
+    case 'smtpMailService': {
+      mailProvider = new SmtpMailService(config);
+      break;
+    }
+    case 'mockMailService': {
+      mailProvider = new MockMailService(config);
+      break;
+    }
+    default: {
+      throw new Error(`The mail provider "${mailConfig.provider}" is not implemented or configured at this time.`);
+    }
   }
-};
+  if (mailConfig.overrideRecipient) {
+    patchOverride(mailProvider, mailConfig.overrideRecipient, mailProvider.html);
+  }
+  return mailProvider;
+}

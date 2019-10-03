@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -17,7 +17,7 @@ import { IMailAddressProvider } from '../../../lib/mailAddressProvider';
 import { IApprovalProvider } from '../../../entities/teamJoinApproval/approvalProvider';
 import { Operations } from '../../../business/operations';
 import { TeamJoinApprovalEntity } from '../../../entities/teamJoinApproval/teamJoinApproval';
-import { AddTeamPermissionsToRequest } from '../../../middleware/github/teamPermissions';
+import { AddTeamPermissionsToRequest, IRequestTeamPermissions } from '../../../middleware/github/teamPermissions';
 import { AddOrganizationPermissionsToRequest } from '../../../middleware/github/orgPermissions';
 
 const emailRender = require('../../../lib/emailRender');
@@ -53,7 +53,7 @@ router.use(asyncHandler(async (req: ILocalRequest, res, next) => {
   if (!approvalProvider) {
     return next(new Error('No approval provider instance available'));
   }
-  const pendingApprovals = await approvalProvider.queryPendingApprovalsForTeam(team2.id);
+  const pendingApprovals = await approvalProvider.queryPendingApprovalsForTeam(team2.id.toString());
   const id = req.individualContext.getGitHubIdentity().id;
   req.otherApprovals = [];
   for (let i = 0; i < pendingApprovals.length; i++) {
@@ -101,8 +101,7 @@ router.get('/join', asyncHandler(async function (req: ILocalRequest, res, next) 
   // The broad access "all members" team is always open for automatic joining without
   // approval. This short circuit is to show that option.
   const broadAccessTeams = new Set(organization.broadAccessTeams);
-  const teamAsNumber = parseInt(team2.id, 10);
-  if (broadAccessTeams.has(teamAsNumber)) {
+  if (broadAccessTeams.has(team2.id)) {
     req.individualContext.webContext.render({
       view: 'org/team/join',
       title: `Join ${team2.name}`,
@@ -112,7 +111,9 @@ router.get('/join', asyncHandler(async function (req: ILocalRequest, res, next) 
         },
     });
   }
-  const maintainers = await team2.getOfficialMaintainers();
+  const maintainers = (await team2.getOfficialMaintainers()).filter(maintainer => {
+    return maintainer && maintainer.login && maintainer.link;
+  });
   req.individualContext.webContext.render({
     view: 'org/team/join',
     title: `Join ${team2.name}`,
@@ -138,9 +139,8 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
     return next(new Error('No approval provider instance available'));
   }
   const username = req.individualContext.getGitHubIdentity().username;
-  const team2AsNumber = parseInt(team2.id, 10);
   // TODO: validating types and all that jazz
-  if (broadAccessTeams.has(team2AsNumber)) {
+  if (broadAccessTeams.has(team2.id)) {
     try {
       await team2.addMembership(username);
     } catch (error) {
@@ -175,8 +175,7 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
   }
   const approvalTypes = new Set(approvalTypesValues);
   const mailProviderInUse = approvalTypes.has('mail');
-  let issueProviderInUse = approvalTypes.has('github');
-  if (!mailProviderInUse && !issueProviderInUse) {
+  if (!mailProviderInUse) {
     return next(new Error('No configured approval providers configured.'));
   }
   const mailProvider = req.app.settings.mailProvider;
@@ -185,52 +184,38 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
     return next(wrapError(null, 'No mail provider is enabled, yet this application is configured to use a mail provider.'));
   }
   const mailAddressProvider = req.app.settings.mailAddressProvider;
-  let notificationsRepo = null;
-  try {
-    notificationsRepo = issueProviderInUse ? organization.legacyNotificationsRepository : null;
-  } catch (noWorkflowRepo) {
-    notificationsRepo = false;
-    issueProviderInUse = false;
-  }
   const displayHostname = req.hostname;
   const approvalScheme = displayHostname === 'localhost' && config.webServer.allowHttp === true ? 'http' : 'https';
   const reposSiteBaseUrl = `${approvalScheme}://${displayHostname}/`;
   const approvalBaseUrl = `${reposSiteBaseUrl}approvals/`;
   const personName = req.individualContext.corporateIdentity.displayName || req.individualContext.corporateIdentity.username;
   let personMail = null;
-  let assignTo = null;
   let requestId = null;
-  let allMaintainers = null;
-  let issueNumber = null;
   let approvalRequest = new TeamJoinApprovalEntity();
-
   try {
     const upn = req.individualContext.corporateIdentity.username;
     personMail = await mailAddressProviderGetAddressFromUpn(mailAddressProvider, upn);
-
     const isMember = await team2.isMember(username);
     if (isMember === true) {
       return next(wrapError(null, 'You are already a member of the team ' + team2.name, true));
     }
-
     const maintainers = (await team2.getOfficialMaintainers()).filter(maintainer => {
-      maintainer && maintainer['login'] && maintainer['link']
+      return maintainer && maintainer.login && maintainer.link;
     });
-
     approvalRequest.thirdPartyUsername = req.individualContext.getGitHubIdentity().username;
     approvalRequest.thirdPartyId = req.individualContext.getGitHubIdentity().id;
     approvalRequest.justification = req.body.justification;
     approvalRequest.created = new Date();
     approvalRequest.active = true;
     approvalRequest.organizationName = team2.organization.name;
-    approvalRequest.teamId = team2.id;
+    approvalRequest.teamId = team2.id.toString();
     approvalRequest.teamName = team2.name;
     approvalRequest.corporateUsername = req.individualContext.corporateIdentity.username;
     approvalRequest.corporateDisplayName = req.individualContext.corporateIdentity.displayName;
     approvalRequest.corporateId = req.individualContext.corporateIdentity.id;
 
     const randomMaintainer = maintainers[Math.floor(Math.random() * maintainers.length)];
-    assignTo = randomMaintainer ? randomMaintainer.login : '';
+    //assignTo = randomMaintainer ? randomMaintainer.login : '';
     const mnt = [];
     for (let i = 0; i < maintainers.length; i++) {
       const maintainer = maintainers[i];
@@ -244,7 +229,7 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
         }
       }
     }
-    allMaintainers = mnt.join(', ');
+    //allMaintainers = mnt.join(', ');
 
     //dc.insertApprovalRequest(team2.id, approvalRequest, callback);
     const newRequestId = await approvalProvider.createTeamJoinApprovalEntity(approvalRequest);
@@ -410,7 +395,7 @@ router.use((req: ILocalRequest, res, next) => {
 router.get('/', asyncHandler(AddOrganizationPermissionsToRequest), async (req: ILocalRequest, res, next) => {
   const idAsString = req.individualContext.getGitHubIdentity().id;
   const id = idAsString ? parseInt(idAsString, 10) : null;
-  const teamPermissions = req.teamPermissions;
+  const teamPermissions = req.teamPermissions as IRequestTeamPermissions;
   const membershipStatus = req.membershipStatus;
   const membershipState = req.membershipState;
   const team2 = req.team2 as Team;

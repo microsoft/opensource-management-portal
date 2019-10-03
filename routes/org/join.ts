@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -9,12 +9,13 @@ import express = require('express');
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest } from '../../transitional';
+import { ReposAppRequest, IProviders } from '../../transitional';
 import { Team } from '../../business/team';
-import { IndividualContext } from '../../business/context2';
+import { IndividualContext } from '../../user';
 import { storeOriginalUrlAsReferrer, wrapError } from '../../utils';
-import { Organization, OrganizationMembershipState } from '../../business/organization';
+import { Organization, OrganizationMembershipState, OrganizationMembershipRole } from '../../business/organization';
 import { Operations } from '../../business/operations';
+import QueryCache from '../../business/queryCache';
 
 router.use(function (req: ReposAppRequest, res, next) {
   const organization = req.organization;
@@ -35,6 +36,7 @@ function clearAuditListAndRedirect(res: express.Response, organization: Organiza
 
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res: express.Response, next: express.NextFunction) {
   const operations = req.app.settings.operations as Operations;
+  const providers = req.app.settings.providers as IProviders;
   const organization = req.organization;
   const username = req.individualContext.getGitHubIdentity().username;
   const id = req.individualContext.getGitHubIdentity().id;
@@ -43,18 +45,21 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res: express.
   const link = req.individualContext.link;
   const userIncreasedScopeToken = req.individualContext.webContext.tokens.gitHubWriteOrganizationToken;
   let onboarding = req.query.onboarding;
+  const supportsExpressJoinExperience = operations.supportsAcceptingOrganizationInvitationsUserToServer;
   let showTwoFactorWarning = false;
   let showApplicationPermissionWarning = false;
   let writeOrgFailureMessage = null;
   const result = await organization.getOperationalMembership(username);
   let state = result && result.state ? result.state : false;
   if (state === OrganizationMembershipState.Active) {
+    await addMemberToOrganizationCache(providers.queryCache, organization, id);
     return clearAuditListAndRedirect(res, organization, onboarding);
-  } else if (state === 'pending' && userIncreasedScopeToken) {
+  } else if (state === 'pending' && userIncreasedScopeToken && supportsExpressJoinExperience) {
     let updatedState;
     try {
       updatedState = await organization.acceptOrganizationInvitation(userIncreasedScopeToken);
       if (updatedState && updatedState.state === OrganizationMembershipState.Active) {
+        await addMemberToOrganizationCache(providers.queryCache, organization, id);
         return clearAuditListAndRedirect(res, organization, onboarding);
       }
     } catch (error) {
@@ -81,6 +86,7 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res: express.
     state: {
       result,
       state,
+      supportsExpressJoinExperience,
       hasIncreasedScope: userIncreasedScopeToken ? true : false,
       organization,
       orgAccount: userDetails,
@@ -98,13 +104,29 @@ function redirectToIncreaseScopeExperience(req, res, optionalReason) {
   storeOriginalUrlAsReferrer(req, res, '/auth/github/increased-scope', optionalReason);
 }
 
+async function addMemberToOrganizationCache(queryCache: QueryCache, organization: Organization, userId: string): Promise<void> {
+  if (queryCache && queryCache.supportsOrganizationMembership) {
+    try {
+      await queryCache.addOrUpdateOrganizationMember(organization.id.toString(), OrganizationMembershipRole.Member, userId);
+    } catch (ignored) {}
+  }
+}
+
 router.get('/express', asyncHandler(async function (req: ReposAppRequest, res: express.Response, next: express.NextFunction) {
+  const providers = req.app.settings.providers as IProviders;
+  if (!providers.operations.supportsAcceptingOrganizationInvitationsUserToServer) {
+    return next(new Error('As configured, this application does not support express join operations and a manual invitation must be sent instead'));
+  }
   const organization = req.organization;
   const onboarding = req.query.onboarding as boolean;
   const username = req.individualContext.getGitHubIdentity().username;
+  const id = req.individualContext.getGitHubIdentity().id;
   const result = await organization.getOperationalMembership(username);
   // CONSIDER: in the callback era the error was never thrown or returned. Was that on purpose?
   const state = result && result.state ? result.state : false;
+  if (state === OrganizationMembershipState.Active) {
+    await addMemberToOrganizationCache(providers.queryCache, organization, id);
+  }
   if (state === OrganizationMembershipState.Active || state === OrganizationMembershipState.Pending) {
     res.redirect(organization.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name));
   } else if (req.individualContext.webContext.tokens.gitHubWriteOrganizationToken) {
@@ -117,7 +139,7 @@ router.get('/express', asyncHandler(async function (req: ReposAppRequest, res: e
 
 async function joinOrg(req: ReposAppRequest, res: express.Response, next: express.NextFunction) {
   const individualContext = req.individualContext as IndividualContext;
-  const organization = req.organization;
+  const organization = req.organization as Organization;
   const onboarding = req.query.onboarding as boolean;
   await joinOrganization(individualContext, organization, req.insights, onboarding);
   return res.redirect(organization.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name));
@@ -142,7 +164,7 @@ async function joinOrganization(individualContext: IndividualContext, organizati
         error: error.message,
       },
     });
-    var specificMessage = error.message ? 'Error message: ' + error.message : 'Please try again later. If you continue to receive this message, please reach out for us to investigate.';
+    let specificMessage = error.message ? 'Error message: ' + error.message : 'Please try again later. If you continue to receive this message, please reach out for us to investigate.';
     if (error.code === 'ETIMEDOUT') {
       specificMessage = 'The GitHub API timed out.';
     }

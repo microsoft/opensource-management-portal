@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -171,7 +171,6 @@ function getSanitizedOrganizations(operations) {
     const basics = {
       locked: organization.locked,
       createRepositoriesOnGitHub: organization.createRepositoriesOnGitHub,
-      legacyTrainingResourcesLink: organization.legacyTrainingResourcesLink,
       privateEngineering: organization.privateEngineering,
       externalMembersPermitted: organization.externalMembersPermitted,
       description: organization.description,
@@ -210,7 +209,7 @@ async function getLocalEncryptionKey(localExtensionKeyProvider: ILocalExtensionK
     }
     await localExtensionKeyProvider.delete(localEncryptionKey);
   } catch (error) {
-    if (error && error.code === 404) {
+    if (error && ((error.statusCode && error.statusCode === 404) || (error.status && error.status === 404))) {
       return null;
     }
     throw error;
