@@ -1,0 +1,79 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends email
+
+block content
+
+  if isMailToCreator
+    p.
+      Hi,#[br]
+      You just created a new GitHub repository, #{lockdownMailContent.repository.name}. Complete the setup wizard to configure the repo permissions and release information.
+
+    if lockdownMailContent.repository && lockdownMailContent.repository.private
+      p
+        strong PRIVATE REPOSITORY NOTE:
+        br
+        | You created a new private repository. Your access to the repository will be restored once you complete the new repository wizard. Until then you will see a 404 Not Found HTTP error message.
+
+    h3 Gain access to your new repository
+    p
+      a(href=lockdownMailContent.linkToClassifyRepository, target='_new', style='font-size: 36px') Finish setting up #{lockdownMailContent.repository.name}
+      br
+      small
+        | Direct setup wizard link:
+        a(href=lockdownMailContent.linkToClassifyRepository, target='_new', style='font-size: 10px')= lockdownMailContent.linkToClassifyRepository
+
+    h4 Repository
+    p
+      a(href='https://github.com/' + lockdownMailContent.organization.name + '/' + lockdownMailContent.repository.name)= 'https://github.com/' + lockdownMailContent.organization.name + '/' + lockdownMailContent.repository.name
+      if lockdownMailContent.repository.private
+        br
+        | WARNING: This is a private repository and you will not be able to access it until you complete the setup process.
+
+    h4 GitHub user
+    if lockdownMailContent.link
+      table
+        tbody
+          tr
+            td GitHub account
+            td= lockdownMailContent.link.thirdPartyUsername
+          tr
+            td Corporate identity
+            td= lockdownMailContent.link.corporateUsername
+
+  else if isMailToOperations
+    p A repository was created directly on GitHub.com. The repository has been locked down pending the user's completion of the new repository wizard.
+
+    if mailSentToCreator
+      p A mail was sent to the person who created the repo to continue the process.
+    else
+      h2: strong WARNING no mail was sent to the creator.
+
+    h3 Created by #{lockdownMailContent.username}
+      p: a(href='https://github.com/' + lockdownMailContent.username)= 'https://github.com/' + lockdownMailContent.username
+    if lockdownMailContent.link
+      table
+        tbody
+          tr
+            td GitHub account
+            td= lockdownMailContent.link.thirdPartyUsername
+          tr
+            td Corporate identity
+            td= lockdownMailContent.link.corporateUsername
+
+    if lockdownMailContent.mailAddress
+      p
+        | Mail address of the user that created the account:&nbsp;
+        a(href='mailto:' + lockdownMailContent.mailAddress)= lockdownMailContent.mailAddress
+    else
+      p: strong An e-mail was NOT sent. No e-mail address was available for the username.
+
+    if lockdownMailContent.log
+      h3 Operations log
+      p The following lockdown operations log represents changes made from when the repo was created.
+      ul
+        each det in lockdownMailContent.log
+          li= det

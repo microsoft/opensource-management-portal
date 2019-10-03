@@ -508,6 +508,15 @@ export class Repository {
     return this._operations.github.post(this.authorize(AppPurpose.Operations), 'teams.addOrUpdateRepo', options);
   }
 
+  removeTeamPermission(teamId: number): Promise<any> {
+    const options = {
+      team_id: teamId,
+      owner: this.organization.name,
+      repo: this.name,
+    };
+    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'teams.removeRepo', options);
+  }
+
   async getWebhooks(options?: ICacheOptions): Promise<any> {
     options = options || {};
     const operations = this._operations

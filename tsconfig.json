@@ -32,6 +32,8 @@
       "./routes/**/*",
       "./test/**/*",
       "./thirdparty/**/*",
+      "./github/**/*",
+      "./features/**/*",
       "./jobs/**/*",
       "./webhooks/**/*",
       "./app.ts",

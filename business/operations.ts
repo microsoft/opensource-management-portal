@@ -27,12 +27,13 @@ import { ICorporateLink } from './corporateLink';
 import { Repository } from './repository';
 import { RestLibrary } from '../lib/github';
 import { RedisHelper } from '../lib/redis';
-import { IMailAddressProvider } from '../lib/mailAddressProvider';
+import { IMailAddressProvider, GetAddressFromUpnAsync } from '../lib/mailAddressProvider';
 import { Team, ICrossOrganizationTeamMembership } from './team';
 import { AppPurpose, GitHubAppAuthenticationType } from '../github';
 import { getGitHubAppConfigurationOptions } from '../middleware/passport-config';
 import { OrganizationSetting } from '../entities/organizationSettings/organizationSetting';
 import { OrganizationSettingProvider } from '../entities/organizationSettings/organizationSettingProvider';
+import { IMail } from '../lib/mailProvider';
 
 const throwIfOrganizationIdsMissing = true;
 
@@ -638,6 +639,10 @@ export class Operations {
     return history;
   }
 
+  getOperationsMailAddress(): string {
+    return this.config.brand.operationsMail;
+  }
+
   private async sendTerminatedAccountMail(account: Account, purpose: UnlinkPurpose, details: string[], errorsCount: number): Promise<void> {
     if (!this.providers.mailProvider || !account.link || !account.link.corporateId) {
       return;
@@ -852,6 +857,13 @@ export class Operations {
     });
   }
 
+  getMailAddressFromCorporateUsername(corporateUsername: string): Promise<string> {
+    if (!this.mailAddressProvider) {
+      throw new Error('No mailAddressProvider available');
+    }
+    return GetAddressFromUpnAsync(this.mailAddressProvider, corporateUsername);
+  }
+
   async getLinkWithOverhead(id: string, options?): Promise<ICorporateLink> {
     // TODO: remove function?
     console.log('* * * * * * * * * * * * /sd/sd/sd/sd/sd/sd getLinkWithOverhead * * * * * * * * * * * * * * * * * * * * ');
@@ -942,6 +954,12 @@ export class Operations {
     const values = await this._github.crossOrganization.orgMembers(this.organizationNamesWithWithAuthorizationHeaders, options, cacheOptions);
     const crossOrgReturn = crossOrganizationResults(this, values, 'id') as any as ICrossOrganizationMembersResult;
     return crossOrgReturn;
+  }
+
+  // Feature flags
+
+  allowUnauthorizedNewRepositoryLockdownSystemFeature() {
+    return this._config && this._config.features && this._config.features.allowUnauthorizedNewRepositoryLockdownSystem === true;
   }
 
   // Eventually link/unlink should move from context into operations here to centralize more than just the events
@@ -1040,7 +1058,7 @@ export class Operations {
     }
   }
 
-  async sendMail(mail: any): Promise<any> {
+  async sendMail(mail: IMail): Promise<any> {
     const mailProvider = this.providers.mailProvider;
     const insights = this.providers.insights;
     const customData = {
@@ -1050,10 +1068,10 @@ export class Operations {
     try {
       const mailResult = await mailProvider.sendMail(mail);
       customData.receipt = mailResult;
-      insights.trackEvent({ name: 'ManagerUnlinkMailSuccess', properties: customData });
+      insights.trackEvent({ name: 'MailSuccess', properties: customData });
       return mailResult;
     } catch (mailError) {
-      customData.eventName = 'ManagerUnlinkMailFailure';
+      customData.eventName = 'MailFailure';
       insights.trackException({ exception: mailError, properties: customData });
       throw mailError;
     }
