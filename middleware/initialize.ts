@@ -75,8 +75,8 @@ async function initialize(app: Application, express, rootdir: string, config, ea
       pool: providers.postgresPool,
     },
   };
-  let tableProviderEnabled = true && emOptions.tableOptions && emOptions.tableOptions.account && emOptions.tableOptions.key;
-  let postgresProviderEnabled = true && emOptions.postgresOptions && emOptions.postgresOptions.pool;
+  let tableProviderEnabled = emOptions.tableOptions && emOptions.tableOptions.account && emOptions.tableOptions.key;
+  let postgresProviderEnabled = emOptions.postgresOptions && emOptions.postgresOptions.pool;
   const tableEntityMetadataProvider = tableProviderEnabled ? await createAndInitializeEntityMetadataProviderInstance(
     app,
     config,
