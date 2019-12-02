@@ -271,7 +271,7 @@ module.exports = function init(app: Application, express, rootdir, config, confi
         servername: wr.tls,
       };
     }
-    wr.port = wr.port || wr.tls ? 6380 : 6379;
+    wr.port = wr.port || (wr.tls ? 6380 : 6379);
     if (!wr.host && !wr.tls) {
       if (nodeEnvironment === 'production') {
         console.warn('Redis host or TLS host must be provided in production environments');
