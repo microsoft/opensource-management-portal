@@ -3,24 +3,22 @@ FROM node:10-alpine AS build
 ARG NPM_TOKEN
 
 # Make Git available for NPM and rsync in the build image
-RUN apk add --update git rsync && \
-  rm -rf /tmp/* /var/cache/apk/*
+RUN apk add --update git && rm -rf /var/cache/apk/*
 
-COPY . /tmp/
+WORKDIR /build
+COPY . .
 
 # Only if needed, copy .npmrc files into the container
-# COPY Dockerfile.npmrc /tmp/.npmrc
-# COPY .npmrc /tmp/.npmrc
+# COPY Dockerfile.npmrc /build/.npmrc
+# COPY .npmrc /build/.npmrc
 
-RUN cd /tmp && npm install --production --verbose
-RUN rsync -azhqi /tmp/node_modules/ /tmp/production_node_modules
+RUN npm install --production --verbose && mv node_modules production_node_modules
 
 # Dev dependencies
-RUN cd /tmp && npm install --verbose
-RUN rm -rf /tmp/.npmrc
+RUN npm install --verbose && rm -rf .npmrc
 
 # TypeScript build
-RUN cd /tmp && npm run-script build
+RUN npm run-script build
 
 FROM node:10-alpine AS run
 
@@ -32,24 +30,22 @@ ENV APPDIR=/usr/src/repos \
 
 EXPOSE ${PORT}
 
-RUN mkdir -p "${APPDIR}"
-
 # Production Node.js modules
-COPY --from=build /tmp/production_node_modules "${APPDIR}/node_modules"
+COPY --from=build /build/production_node_modules "${APPDIR}/node_modules"
 
 # Assets that people not using painless config may need
-COPY --from=build /tmp/data "${APPDIR}/data"
+COPY --from=build /build/data "${APPDIR}/data"
 
 # Copy built assets, app, config map
-COPY --from=build /tmp/dist "${APPDIR}"
-COPY --from=build /tmp/config "${APPDIR}/config"
-COPY --from=build /tmp/views "${APPDIR}/views"
-COPY --from=build /tmp/package.json "${APPDIR}/package.json"
-COPY --from=build /tmp/jobs/reports/exemptRepositories.json "${APPDIR}/jobs/reports/"
-COPY --from=build /tmp/jobs/reports/organizationDefinitions.json "${APPDIR}/jobs/reports/"
-COPY --from=build /tmp/jobs/reports/repositoryDefinitions.json "${APPDIR}/jobs/reports/"
-COPY --from=build /tmp/jobs/reports/teamDefinitions.json "${APPDIR}/jobs/reports/"
-COPY --from=build /tmp/jobs/reports/views "${APPDIR}/jobs/reports/views"
+COPY --from=build /build/dist "${APPDIR}"
+COPY --from=build /build/config "${APPDIR}/config"
+COPY --from=build /build/views "${APPDIR}/views"
+COPY --from=build /build/package.json "${APPDIR}/package.json"
+COPY --from=build /build/jobs/reports/exemptRepositories.json "${APPDIR}/jobs/reports/"
+COPY --from=build /build/jobs/reports/organizationDefinitions.json "${APPDIR}/jobs/reports/"
+COPY --from=build /build/jobs/reports/repositoryDefinitions.json "${APPDIR}/jobs/reports/"
+COPY --from=build /build/jobs/reports/teamDefinitions.json "${APPDIR}/jobs/reports/"
+COPY --from=build /build/jobs/reports/views "${APPDIR}/jobs/reports/views"
 
 WORKDIR /usr/src/repos
 
@@ -59,7 +55,7 @@ WORKDIR /usr/src/repos
 # COPY public "${APPDIR}/public"
 
 RUN addgroup oss && adduser -D -G oss oss \
- && chown -R oss:oss "${APPDIR}"
+ && chown -R oss:oss .
 USER oss
 
 CMD ["npm", "run-script", "start-in-container"]
