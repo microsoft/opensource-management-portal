@@ -20,6 +20,8 @@ RUN npm install --verbose && rm -rf .npmrc
 # TypeScript build
 RUN npm run-script build
 
+RUN cd default-assets-package && npm install && npm run build
+
 FROM node:10-alpine AS run
 
 ENV IS_DOCKER=1 \
@@ -41,6 +43,7 @@ COPY --from=build --chown=oss:oss /build/data ./data
 
 # Copy built assets, app, config map
 COPY --from=build --chown=oss:oss /build/dist ./
+COPY --from=build --chown=oss:oss /build/default-assets-package ../default-assets-package
 COPY --from=build --chown=oss:oss /build/config ./config
 COPY --from=build --chown=oss:oss /build/views ./views
 COPY --from=build --chown=oss:oss /build/package.json ./package.json
