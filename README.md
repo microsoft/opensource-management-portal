@@ -65,6 +65,21 @@ You need to set the NPM_TOKEN parameter to the NPM token to the private registry
 $ docker build --build-arg NPM_TOKEN="YOURTOKENHERE" .
 ```
 
+#### Troubleshooting
+
+If the docker image doesn't start you can debug the image using an interactive shell session. This allows you to browse the folders, update the files to test things and run the portal.
+
+```bash
+$ docker run --rm -it opensource-portal sh
+/usr/src/repos $ ls
+app.js                   data                     lib                      package.json             tsconfig.tsbuildinfo     webhooks
+app.js.map               entities                 localEnvironment.js      routes                   user
+bin                      features                 localEnvironment.js.map  test                     utils.js
+business                 github                   middleware               transitional.js          utils.js.map
+config                   jobs                     node_modules             transitional.js.map      views
+/usr/src/repos $ npm run start-in-container
+```
+
 ### Test
 
 This project is starting to get improved testability. But it will be a long slog.
