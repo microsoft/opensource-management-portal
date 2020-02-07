@@ -23,7 +23,14 @@ RUN rm -rf /tmp/.npmrc
 RUN cd /tmp && npm run-script build
 
 FROM node:10-alpine AS run
-ENV APPDIR=/usr/src/repos
+
+ENV APPDIR=/usr/src/repos \
+    IS_DOCKER=1 \
+    DEBUG=oss-initialize \
+    NPM_CONFIG_LOGLEVEL=warn \
+    PORT=3000
+
+EXPOSE ${PORT}
 
 RUN mkdir -p "${APPDIR}"
 
@@ -50,14 +57,6 @@ WORKDIR /usr/src/repos
 # COPY views "${APPDIR}/views"
 # COPY dist "${APPDIR}"
 # COPY public "${APPDIR}/public"
-
-ENV IS_DOCKER=1
-ENV DEBUG=oss-initialize
-
-ENV NPM_CONFIG_LOGLEVEL=warn
-
-ENV PORT 3000
-EXPOSE 3000
 
 RUN addgroup oss && adduser -D -G oss oss \
  && chown -R oss:oss "${APPDIR}"
