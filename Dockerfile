@@ -63,4 +63,4 @@ RUN addgroup oss && adduser -D -G oss oss \
  && chown -R oss:oss "${APPDIR}"
 USER oss
 
-ENTRYPOINT ["npm", "run-script", "start-in-container"]
+CMD ["npm", "run-script", "start-in-container"]
