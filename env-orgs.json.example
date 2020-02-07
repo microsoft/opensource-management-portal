@@ -1,0 +1,7 @@
+[
+  {
+    "name" : "contoso",
+    "id" : "your-github-user-id e.g. 123456789",
+    "ownerToken" : "your github owner token"
+  }
+]

@@ -53,9 +53,9 @@ npm install
 
 ```
 npm run build
-``` 
+```
 
-You need to rebuild the default-assets-package if you change something. [see Static Site Assets](#static-site-assets)  
+You need to rebuild the default-assets-package if you change something. [see Static Site Assets](#static-site-assets)
 
 ### Building the Docker image
 
@@ -63,13 +63,39 @@ You need to rebuild the default-assets-package if you change something. [see Sta
 $ docker build .
 ```
 
+#### Run
+
+The most easy way to run is by using the docker-compose setup. This will bootup the postgres and redis components as well. The docker-compose setup depends on 2 environment files and 1 json file:
+
+- .docker.env
+- .secrets.env
+- env-orgs.json
+
+Make sure to copy the .secrets.env.example and env-orgs.json.example files and provide the configuration values.
+
+```bash
+cp .secrets.env.example .secrets.env
+cp env-orgs.json.example env-orgs.json
+# provide configuration values for .secrets.env and env-orgs.json
+docker-compose up
+```
+
+If you desire to run all on your local machine (redis, postgres) you might want to use following approach.
+
+```bash
+# ensure redis and postgres is running on localhost
+source .secrets.env
+source .local.env
+npm run start
+```
+
 #### Troubleshooting
 
-If the docker image doesn't start you can debug the image using an interactive shell session. This allows 
+If the docker image doesn't start you can debug the image using an interactive shell session. This allows
 you to browse the folders, update the files to test things and run the portal.
 
 ```bash
-$ docker run --entrypoint /bin/sh -it opensource-portal
+$ docker run --rm -it --env-file .secrets.env --env-file .docker.env --entrypoint /bin/sh opensource-portal
 /usr/src/repos $ ls
 app.js                   data                     lib                      package.json             tsconfig.tsbuildinfo     webhooks
 app.js.map               entities                 localEnvironment.js      routes                   user
@@ -219,7 +245,7 @@ without a Redis Cache behind the scenes is going to have 100% cache misses for
 GitHub metadata. Consider configuring a development or local Redis server to
 keep cached data around.
 
-For authentication, the opensource-portal uses Azure Active Directory (AD) for corporate authentication 
+For authentication, the opensource-portal uses Azure Active Directory (AD) for corporate authentication
 and GitHub OAuth2 for the GitHub authentication.
 
 ### Azure Active Directory Configuration

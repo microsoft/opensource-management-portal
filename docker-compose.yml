@@ -1,0 +1,41 @@
+version: '3.7'
+
+services:
+  portal:
+    image: opensource-portal
+    build: .
+    ports:
+      - "3000:3000"
+    networks:
+      - portal
+    env_file:
+      - .secrets.env
+      - .docker.env
+    volumes:
+      - "${PWD}/env-orgs.json:/usr/src/env-orgs.json"
+    depends_on:
+      - portal-cache
+      - portal-db
+
+  portal-cache:
+    image: redis
+    networks:
+      - portal
+
+  portal-db:
+    image: postgres
+    networks:
+      - portal
+    volumes:
+      - portal_postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: portal-repos
+      POSTGRES_USER: portal
+      POSTGRES_PWD: latrop
+
+networks:
+  portal:
+
+volumes:
+  portal_postgres_data:
+    driver: local
