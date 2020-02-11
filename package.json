@@ -2,8 +2,7 @@
   "name": "opensource-portal",
   "author": "Microsoft Corporation",
   "contributors": [
-    "Jeff Wilcox <jwilcox@microsoft.com>",
-    "Marco Franssen <marco.franssen@gmail.com>"
+    "Jeff Wilcox <jwilcox@microsoft.com>"
   ],
   "version": "6.0.0",
   "license": "MIT",
@@ -22,7 +21,6 @@
   "scripts": {
     "start": "node ./dist/bin/www",
     "start-in-container": "node ./bin/www",
-    "build": "tsc",
     "test": "echo WARN TESTS ARE OFF"
   },
   "_begin_app_configuration_": 0,

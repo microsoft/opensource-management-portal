@@ -20,7 +20,7 @@ RUN cd /tmp && npm install --verbose
 RUN rm -rf /tmp/.npmrc
 
 # TypeScript build
-RUN cd /tmp && npm run-script build
+RUN cd /tmp && node ./node_modules/typescript/bin/tsc
 
 FROM node:10-alpine AS run
 ENV APPDIR=/usr/src/repos
