@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -7,11 +7,12 @@
 
 'use strict';
 
-import async = require('async');
-import * as Q from 'q';
-import { IIntelligentCacheObjectResponse, IIntelligentCacheResponseArray, createCallbackFlattenData } from './core';
+import { IIntelligentCacheObjectResponse, IIntelligentCacheResponseArray, createCallbackFlattenData, flattenData } from './core';
 import { CompositeApiContext } from './composite';
-import { ILibraryContext } from '.';
+import { RestLibrary } from '.';
+import { RestCollections } from './collections';
+import { OrganizationMembershipRoleQuery, IGetOrganizationMembersOptions } from '../../business/organization';
+import { ITeamMembershipOptions } from '../../business/team';
 
 interface IOrganizationsResponse extends IIntelligentCacheObjectResponse {
   orgs?: any;
@@ -24,114 +25,168 @@ interface ICrossOrganizationDataResponse extends IIntelligentCacheObjectResponse
 interface ILocalOptionsParameters {
   per_page: number;
   id?: string;
+  team_id?: string;
   owner?: string;
   repo?: string;
 }
 
-function createMethods(libraryContext: ILibraryContext, collectionsClient) {
-  function generalizedCollectionMethod(token, apiName, method, options, cacheOptions, callback) {
-    if (callback === undefined && typeof (cacheOptions) === 'function') {
-      callback = cacheOptions;
-      cacheOptions = {};
-    }
+export class CrossOrganizationCollator {
+  public libraryContext: RestLibrary;
+  public collectionsClient: RestCollections;
+
+  constructor(libraryContext: RestLibrary, collectionsClient: RestCollections) {
+    this.libraryContext = libraryContext;
+    this.collectionsClient = collectionsClient;
+  }
+
+  async orgMembers(orgsAndTokens, options: IGetOrganizationMembersOptions, cacheOptions): Promise<any> {
+    options['apiTypePrefix'] = 'github.x#';
+    const data = await this.getCrossOrganizationMethod(orgsAndTokens, 'orgMembers', 'getOrgMembers', options, cacheOptions);
+    return flattenData(data);
+  }
+
+  async teams(orgsAndTokens, options, cacheOptions) {
+    const allTeams = await this.getAllTeams(orgsAndTokens, options, cacheOptions);
+    return flattenData(allTeams);
+  }
+
+  async teamMembers(orgsAndTokens, options: ITeamMembershipOptions, cacheOptions): Promise<any> {
+    options['apiTypePrefix'] = 'github.x#';
+    const capturedThis = this;
+    const generalizedData = await this.generalizedCollectionMethod(
+      orgsAndTokens,
+      'teamMembers',
+      capturedThis.crossOrganizationCollection(capturedThis, orgsAndTokens, options, cacheOptions, 'team', capturedThis.getAllTeams, 'getTeamMembers', 'members', true),
+      options,
+      cacheOptions);
+    return flattenData(generalizedData);
+  }
+
+  async repos(orgsAndTokens, options, cacheOptions): Promise<any> {
+    const allRepos = await this.getAllRepos(orgsAndTokens, options, cacheOptions);
+    return flattenData(allRepos);
+  }
+
+  async repoCollaborators(orgsAndTokens, options, cacheOptions): Promise<any> {
+    options.apiTypePrefix = 'github.x#';
+    const capturedThis =  this;
+    const generalizedData = await this.generalizedCollectionMethod(
+      orgsAndTokens,
+      'repoCollaborators',
+      capturedThis.crossOrganizationCollection(capturedThis, orgsAndTokens, options, cacheOptions, 'repo', capturedThis.getAllRepos, 'getRepoCollaborators', 'collaborators', true),
+      options,
+      cacheOptions);
+    return flattenData(generalizedData);
+  }
+
+  async repoTeams(orgsAndTokens, options, cacheOptions): Promise<any> {
+    options.apiTypePrefix = 'github.x#';
+    const capturedThis =  this;
+    const generalizedData = await this.generalizedCollectionMethod(
+      orgsAndTokens,
+      'repoTeams',
+      capturedThis.crossOrganizationCollection(capturedThis, orgsAndTokens, options, cacheOptions, 'repo', capturedThis.getAllRepos, 'getRepoTeams', 'teams', true),
+      options,
+      cacheOptions);
+    return flattenData(generalizedData);
+  }
+
+  private generalizedCollectionMethod(token, apiName, method, options, cacheOptions?): Promise<any> { // IIntelligentEngineResponse
+    cacheOptions = cacheOptions || {};
     const apiContext = new CompositeApiContext(apiName, method, options);
     apiContext.maxAgeSeconds = cacheOptions.maxAgeSeconds || 600;
     apiContext.overrideToken(token);
-    apiContext.libraryContext = libraryContext;
+    apiContext.libraryContext = this.libraryContext;
     if (cacheOptions.backgroundRefresh) {
       apiContext.backgroundRefresh = true;
     }
-    return libraryContext.compositeEngine.execute(apiContext).then(ok => {
-      return callback(null, ok);
-    }, callback);
+    return this.libraryContext.compositeEngine.execute(apiContext);
   }
 
-  function getCrossOrganizationMethod(orgsAndTokens, apiName, methodName, options, cacheOptions, callback) {
-    const method = collectionsClient[methodName];
+  private async getCrossOrganizationMethod(orgsAndTokens, apiName: string, methodName: string, options, cacheOptions): Promise<any> {
+    const method = this.collectionsClient[methodName];
     if (!method) {
       throw new Error(`No method called ${method} defined in the collections client.`);
     }
-    const crossOrgMethod = function actualCrossOrgMethod() {
+    const capturedThis = this;
+    const crossOrgMethod = async function actualCrossOrgMethod(): Promise<any> {
       const values: IOrganizationsResponse = {};
       values.headers = {};
       values.orgs = {};
-      const deferred = Q.defer();
-      async.eachOfLimit(orgsAndTokens, 1, (token, orgName, next) => {
+      for (let orgName in orgsAndTokens) {
+        const token = orgsAndTokens[orgName];
         const localOptions = Object.assign({}, options);
         localOptions.org = orgName;
         if (!localOptions.per_page) {
-          localOptions.per_page = 100;
+          localOptions.per_page = capturedThis.libraryContext.defaultPageSize;
         }
         const localCacheOptions = Object.assign({}, cacheOptions);
         if (localCacheOptions.individualMaxAgeSeconds) {
           localCacheOptions.maxAgeSeconds = localCacheOptions.individualMaxAgeSeconds;
         }
-        method(token, localOptions, localCacheOptions, (orgError, orgValues) => {
-          if (orgError) {
-            return next(orgError);
-          }
+        try {
+          const orgValues = await method.call(capturedThis.collectionsClient, token, localOptions, localCacheOptions);
           if (!orgValues) {
-            return next(new Error('No result'));
+            throw new Error('No result');
           }
           if (orgValues && orgValues.data) {
             console.warn(`${apiName} ${methodName} result has data that is being used instead of the parent object`);
             values.orgs[orgName] = orgValues.data;
-            return next();
+          } else {
+            values.orgs[orgName] = orgValues;
           }
-          values.orgs[orgName] = orgValues;
-          return next();
-        });
-      }, (error) => {
-        if (error) {
-          return deferred.reject(error);
+        } catch (orgError) {
+          throw orgError;
         }
-        const dataObject = {
-          data: values,
-          headers: values.headers,
-        };
-        delete values.headers;
-        deferred.resolve(dataObject);
-      });
-      return deferred.promise;
+      }
+      const dataObject = {
+        data: values,
+        headers: values.headers,
+      };
+      delete values.headers;
+      return dataObject;
     };
-    return generalizedCollectionMethod(orgsAndTokens, apiName, crossOrgMethod, options, cacheOptions, callback);
+    return this.generalizedCollectionMethod(orgsAndTokens, apiName, crossOrgMethod, options, cacheOptions);
   }
 
-  function crossOrganizationCollection(orgsAndTokens, options, cacheOptions, innerKeyType, outerFunction, collectionMethodName, collectionKey, optionalSetOrganizationLogin) {
-    return () => {
-      const deferred = Q.defer();
+  private crossOrganizationCollection(capturedThis: CrossOrganizationCollator, orgsAndTokens, options, cacheOptions, innerKeyType, outerFunction, collectionMethodName: string, collectionKey, optionalSetOrganizationLogin) {
+    return async (): Promise<any> => {
       const entities: IIntelligentCacheResponseArray = [];
       entities.headers = {};
-      outerFunction(orgsAndTokens, {}, cacheOptions, (outerError, data) => {
-        let entitiesByOrg = null;
-        if (!outerError && data && !data.data) {
-          outerError = new Error('crossOrganizationCollection inner outerFunction returned an entity but no entity.data property was present');
-        } else if (!outerError && data && data.data) {
-          entitiesByOrg = data.data;
-        }
-        if (outerError) {
-          return deferred.reject(outerError);
-        }
-        const localCacheOptions = Object.assign({}, cacheOptions);
-        if (localCacheOptions.individualMaxAgeSeconds) {
-          localCacheOptions.maxAgeSeconds = localCacheOptions.individualMaxAgeSeconds;
-        }
-        entities.headers = {};
-        async.eachLimit(Object.getOwnPropertyNames(entitiesByOrg.orgs), 1, (orgName, nextOrg) => {
-          const orgEntities = entitiesByOrg.orgs[orgName];
-          async.eachLimit(orgEntities, 1, (orgEntity, next) => {
-            const cloneTarget = optionalSetOrganizationLogin ? {
-              organization: {
-                login: orgName,
-              }
-            } : {};
-            const entityClone = Object.assign(cloneTarget, orgEntity);
-            const localOptionsTarget: ILocalOptionsParameters = {
-              per_page: 100,
-            };
-            switch (innerKeyType) {
+      let data = null;
+      try {
+        data = await outerFunction.call(capturedThis, orgsAndTokens, {}, cacheOptions);
+      } catch (outerError) {
+        throw outerError;
+      }
+      let entitiesByOrg = null;
+      if (data && !data.data) {
+        throw new Error('crossOrganizationCollection inner outerFunction returned an entity but no entity.data property was present');
+      } else if (data && data.data) {
+        entitiesByOrg = data.data;
+      }
+      const localCacheOptions = Object.assign({}, cacheOptions);
+      if (localCacheOptions.individualMaxAgeSeconds) {
+        localCacheOptions.maxAgeSeconds = localCacheOptions.individualMaxAgeSeconds;
+      }
+      entities.headers = {};
+      const orgNames = Object.getOwnPropertyNames(entitiesByOrg.orgs);
+      for (let i = 0; i < orgNames.length; i++) {
+        const orgName = orgNames[i];
+        const orgEntities = entitiesByOrg.orgs[orgName];
+        for (const orgEntity of orgEntities) {
+          const cloneTarget = optionalSetOrganizationLogin ? {
+            organization: {
+              login: orgName,
+            }
+          } : {};
+          const entityClone = Object.assign(cloneTarget, orgEntity);
+          const localOptionsTarget: ILocalOptionsParameters = {
+            per_page: capturedThis.libraryContext.defaultPageSize,
+          };
+          switch (innerKeyType) {
             case 'team':
-              localOptionsTarget.id = orgEntity.id;
+              localOptionsTarget.team_id = orgEntity.id;
               break;
             case 'repo':
               localOptionsTarget.owner = orgName;
@@ -139,143 +194,57 @@ function createMethods(libraryContext: ILibraryContext, collectionsClient) {
               break;
             default:
               throw new Error(`Unsupported inner key type ${innerKeyType}`);
-            }
-            const localOptions = Object.assign(localOptionsTarget, options);
-            delete localOptions.maxAgeSeconds;
-            delete localOptions.backgroundRefresh;
-            const token = orgsAndTokens[orgName.toLowerCase()];
-            if (!token) {
-              return next(new Error(`No token available for the org "${orgName}"`));
-            }
-            collectionsClient[collectionMethodName](token, localOptions, localCacheOptions, (collectionsError, innerEntities) => {
-              if (!collectionsError && innerEntities && innerEntities.data) {
-                collectionsError = new Error(`innerEntities.data set from the ${collectionMethodName} collection method call`);
-              }
-              // This is a silent error for now, because there
-              // are valid scenarios, i.e. team deletion, to consider.
-              // In the future, get smarter here.
-              if (collectionsError) {
-                return next();
-              }
-              entityClone[collectionKey] = innerEntities;
-              entities.push(entityClone);
-              return next();
-            });
-          }, nextOrg);
-        }, (error) => {
-          const projectedToDataEntity: ICrossOrganizationDataResponse = {
-            data: entities,
-          };
-          if (entities.cost) {
-            projectedToDataEntity.cost = entities.cost;
-            delete entities.cost;
           }
-          if (entities.headers) {
-            projectedToDataEntity.headers = entities.headers;
-            delete entities.headers;
+          const localOptions = Object.assign(localOptionsTarget, options);
+          delete localOptions.maxAgeSeconds;
+          delete localOptions.backgroundRefresh;
+          const token = orgsAndTokens[orgName.toLowerCase()];
+          if (!token) {
+            throw new Error(`No token available for the organization ${orgName}`);
           }
-          return error ? deferred.reject(error) : deferred.resolve(projectedToDataEntity);
-        });
-      });
-      return deferred.promise;
-    };
+          let innerEntities = null;
+          let collectionsError = null;
+          try {
+            innerEntities = await this.collectionsClient[collectionMethodName](token, localOptions, localCacheOptions);
+          } catch (error) {
+            // This is a silent error for now, because there
+            // are valid scenarios, i.e. team deletion, to consider.
+            // In the future, get smarter here.
+            collectionsError = error;
+          }
+          if (!collectionsError && innerEntities && innerEntities.data) {
+            collectionsError = new Error(`innerEntities.data set from the ${collectionMethodName} collection method call`);
+          }
+          if (!collectionsError) {
+            entityClone[collectionKey] = innerEntities;
+            entities.push(entityClone);
+          }
+        }
+      }
+      const projectedToDataEntity: ICrossOrganizationDataResponse = {
+        data: entities,
+      };
+      if (entities.cost) {
+        projectedToDataEntity.cost = entities.cost;
+        delete entities.cost;
+      }
+      if (entities.headers) {
+        projectedToDataEntity.headers = entities.headers;
+        delete entities.headers;
+      }
+      return projectedToDataEntity;
+    }
   }
 
-  function wrapToFlatten(method) {
-    return function wrappedMethod(orgsAndTokens, options, cacheOptions, callback) {
-      return method(orgsAndTokens, options, cacheOptions, createCallbackFlattenData(callback));
-    };
-  }
-
-  function getAllTeams(orgsAndTokens, options, cacheOptions, callback) {
+  private async getAllTeams(orgsAndTokens, options, cacheOptions): Promise<any> {
     options.apiTypePrefix = 'github.x#';
-    return getCrossOrganizationMethod(
-      orgsAndTokens,
-      'teams',
-      'getOrgTeams',
-      options,
-      cacheOptions,
-      callback);
-  }
-  function getAllRepos(orgsAndTokens, options, cacheOptions, callback) {
-    options.apiTypePrefix = 'github.x#';
-    return getCrossOrganizationMethod(
-      orgsAndTokens,
-      'repos',
-      'getOrgRepos',
-      options,
-      cacheOptions,
-      callback);
+    const data = await this.getCrossOrganizationMethod(orgsAndTokens, 'teams', 'getOrgTeams', options, cacheOptions);
+    return data;
   }
 
-  return {
-    orgMembers: function getAllMembers(orgsAndTokens, options, cacheOptions, callback) {
-      options.apiTypePrefix = 'github.x#';
-      return getCrossOrganizationMethod(
-        orgsAndTokens,
-        'orgMembers',
-        'getOrgMembers',
-        options,
-        cacheOptions,
-        createCallbackFlattenData(callback));
-    },
-    teams: wrapToFlatten(getAllTeams),
-    teamMembers: function getAllTeamMembers(orgsAndTokens, options, cacheOptions, callback) {
-      options.apiTypePrefix = 'github.x#';
-      return generalizedCollectionMethod(
-        orgsAndTokens,
-        'teamMembers',
-        crossOrganizationCollection(
-          orgsAndTokens,
-          options,
-          cacheOptions,
-          'team',
-          getAllTeams,
-          'getTeamMembers',
-          'members',
-          true),
-      options,
-      cacheOptions,
-      createCallbackFlattenData(callback));
-    },
-    repos: wrapToFlatten(getAllRepos),
-    repoCollaborators: function getAllRepoCollaborators(orgsAndTokens, options, cacheOptions, callback) {
-      options.apiTypePrefix = 'github.x#';
-      return generalizedCollectionMethod(
-        orgsAndTokens,
-        'repoCollaborators',
-        crossOrganizationCollection(
-          orgsAndTokens,
-          options,
-          cacheOptions,
-          'repo',
-          getAllRepos,
-          'getRepoCollaborators',
-          'collaborators',
-          true),
-      options,
-      cacheOptions,
-      createCallbackFlattenData(callback));
-    },
-    repoTeams: function getAllRepoTeams(orgsAndTokens, options, cacheOptions, callback) {
-      options.apiTypePrefix = 'github.x#';
-      return generalizedCollectionMethod(
-        orgsAndTokens,
-        'repoTeams',
-        crossOrganizationCollection(
-          orgsAndTokens,
-          options,
-          cacheOptions,
-          'repo',
-          getAllRepos,
-          'getRepoTeams',
-          'teams',
-          true),
-        options,
-        cacheOptions,
-        createCallbackFlattenData(callback));
-    },
-  };
+  private async getAllRepos(orgsAndTokens, options, cacheOptions): Promise<any> {
+    options.apiTypePrefix = 'github.x#';
+    const data = await this.getCrossOrganizationMethod(orgsAndTokens, 'repos', 'getOrgRepos', options, cacheOptions);
+    return data;
+  }
 }
-
-module.exports = createMethods;

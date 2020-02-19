@@ -1,19 +1,22 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-const _ = require('lodash');
-import express = require('express');
+import _ from 'lodash';
+import async from 'async';
+
+import express from 'express';
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import async = require('async');
-
-import { ReposAppRequest } from '../transitional';
+import { ReposAppRequest, IProviders } from '../transitional';
 import { addLinkToRequest, RequireLinkMatchesGitHubSession } from '../middleware/links/';
 import { requireAuthenticatedUserOrSignIn, setIdentity } from '../middleware/business/authentication';
+import QueryCache from '../business/queryCache';
+import { Organization } from '../business/organization';
 
 const linkRoute = require('./link');
 const linkedUserRoute = require('./index-linked');
@@ -41,12 +44,13 @@ router.use(RequireLinkMatchesGitHubSession);
 
 // Dual-purpose homepage: if not linked, welcome; otherwise, show things
 router.get('/', function (req: ReposAppRequest, res, next) {
+  const onboarding = req.query.onboarding !== undefined;
+
   const individualContext = req.individualContext;
   const link = individualContext.link;
-
-  const operations = req.app.settings.providers.operations;
+  const providers = req.app.settings.providers as IProviders;
+  const operations = providers.operations;
   const config = req.app.settings.runtimeConfig;
-  const onboarding = req.query.onboarding !== undefined;
 
   if (!link) {
     if (!individualContext.getGitHubIdentity()) {
@@ -71,20 +75,24 @@ router.get('/', function (req: ReposAppRequest, res, next) {
       if (!id) {
         return callback();
       }
-      const uc = operations.getUserContext(id);
-      return uc.getAggregatedOverview(callback);
+      const uc = individualContext.aggregations;
+      return uc.getAggregatedOverview().then(overview => {
+        return callback(null, overview);
+      }).catch(error => {
+        return callback(error);
+      });
     },
     isAdministrator: function (callback) {
       callback(null, false);
       // legacyUserContext.isAdministrator(callback); // CONSIDER: Re-implement isAdministrator
+      // TODO: bring back sudoers
     }
-  },
-    function (error, results) {
+  }, function (error, results) {
       if (error) {
         return next(error);
       }
-      const overview = results.overview;
-      results.countOfOrgs = operations.organizations.length;
+      const overview = results.overview as any;
+      results.countOfOrgs = operations.organizations.size;
       let groupedAvailableOrganizations = null;
 
       // results may contains undefined returns because we skip some errors to make sure homepage always load successfully.
@@ -97,7 +105,8 @@ router.get('/', function (req: ReposAppRequest, res, next) {
           }
         }
         if (overview.organizations.available) {
-          groupedAvailableOrganizations = _.groupBy(operations.getOrganizations(overview.organizations.available), 'priority');
+          const availableNames = overview.organizations.available.map((org: Organization) => { return org.name; });
+          groupedAvailableOrganizations = _.groupBy(operations.getOrganizations(availableNames), 'priority');
         }
       }
 

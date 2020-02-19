@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -8,6 +8,7 @@
 import express = require('express');
 import { ReposAppRequest } from '../transitional';
 const router = express.Router();
+
 const lowercaser = require('../middleware/lowercaser');
 
 router.use(function (req: ReposAppRequest, res, next) {

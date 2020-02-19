@@ -1,11 +1,11 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
-import * as Q from 'q';
+import Q from 'q';
 
 const defaultPageSize = 20; // GitHub.com seems to use a value around 33
 

@@ -1,40 +1,42 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
 import express = require('express');
-import { ReposAppRequest } from '../../../transitional';
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
+
+import { ReposAppRequest } from '../../../transitional';
+import { Team } from '../../../business/team';
+import { TeamMember } from '../../../business/teamMember';
 const teamAdminRequired = require('./teamAdminRequired');
 
 interface ILocalRequest extends ReposAppRequest {
-  team2?: any;
+  team2?: Team;
   verifiedCurrentMaintainers?: any;
   teamUrl?: any;
   team2AddType?: any;
 }
 
-function refreshMaintainers(team2, callback) {
-  const options = {
+router.use(asyncHandler(async (req: ILocalRequest, res, next) => {
+  // Get the latest maintainers, forced, with every request
+  const team2 = req.team2 as Team;
+  const maintainers = await refreshMaintainers(team2);
+  if (maintainers) {
+    req.verifiedCurrentMaintainers = maintainers;
+  }
+  return next();
+}));
+
+async function refreshMaintainers(team2: Team): Promise<TeamMember[]> {
+  return team2.getMaintainers({
     maxAgeSeconds: -1,
     backgroundRefresh: false,
-  };
-  team2.getMaintainers(options, callback);
-}
-
-router.use((req: ILocalRequest, res, next) => {
-  // Get the latest maintainers with every request
-  const team2 = req.team2;
-  refreshMaintainers(team2, (error, maintainers) => {
-    if (maintainers) {
-      req.verifiedCurrentMaintainers = maintainers;
-    }
-    return next(error);
   });
-});
+}
 
 router.get('/refresh', (req: ILocalRequest, res) => {
   // Since the views are cached, this can help resolve support situations before they start
@@ -42,8 +44,8 @@ router.get('/refresh', (req: ILocalRequest, res) => {
 });
 
 
-router.post('/:id/downgrade', teamAdminRequired, (req: ILocalRequest, res, next) => {
-  const team2 = req.team2;
+router.post('/:id/downgrade', teamAdminRequired, asyncHandler(async (req: ILocalRequest, res, next) => {
+  const team2 = req.team2 as Team;
   const id = req.params.id;
   const verifiedCurrentMaintainers = req.verifiedCurrentMaintainers;
 
@@ -58,41 +60,25 @@ router.post('/:id/downgrade', teamAdminRequired, (req: ILocalRequest, res, next)
     return next(new Error(`The GitHub user with ID ${id} is not currently a maintainer of the team, so cannot be downgraded.`));
   }
   const username = maintainer.login;
-  team2.addMembership(username, changeMembershipError => {
-    if (changeMembershipError) {
-      return next(changeMembershipError);
-    }
-    req.individualContext.webContext.saveUserAlert(`Downgraded ${username} from a team maintainer to a team member`, team2.name + ' membership updated', 'success');
-    refreshMaintainers(team2, refreshError => {
-      if (refreshError) {
-        return next(refreshError);
-      }
-      res.redirect(req.teamUrl);
-    });
-  });
-});
+  await team2.addMembership(username);
+  req.individualContext.webContext.saveUserAlert(`Downgraded ${username} from a team maintainer to a team member`, team2.name + ' membership updated', 'success');
+  const maintainers = await refreshMaintainers(team2);
+  res.redirect(req.teamUrl);
+}));
 
 router.use('/add', teamAdminRequired, (req: ILocalRequest, res, next) => {
   req.team2AddType = 'maintainer';
   return next();
 });
 
-router.post('/add', teamAdminRequired, function (req: ILocalRequest, res, next) {
-  const team2 = req.team2;
+router.post('/add', teamAdminRequired, asyncHandler(async function (req: ILocalRequest, res, next) {
+  const team2 = req.team2 as Team;
   const login = req.body.username;
-  team2.addMaintainer(login, (addMaintainerError) => {
-    if (addMaintainerError) {
-      return next(addMaintainerError);
-    }
-    req.individualContext.webContext.saveUserAlert(`Added ${login} as a team maintainer`, team2.name + ' membership updated', 'success');
-    refreshMaintainers(team2, refreshError => {
-      if (refreshError) {
-        return next(refreshError);
-      }
-      return res.redirect(req.teamUrl);
-    });
-  });
-});
+  await team2.addMaintainer(login);
+  req.individualContext.webContext.saveUserAlert(`Added ${login} as a team maintainer`, team2.name + ' membership updated', 'success');
+  const maintainers = await refreshMaintainers(team2);
+  return res.redirect(req.teamUrl);
+}));
 
 router.use('/add', require('../../peopleSearch'));
 

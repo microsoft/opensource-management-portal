@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -12,6 +12,7 @@ import { json404 } from '../../../middleware/jsonError';
 const router = express.Router();
 
 router.use('/links', require('./links'));
+router.use('/unlink', require('./unlink'));
 
 router.use(json404);
 

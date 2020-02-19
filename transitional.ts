@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -9,22 +9,112 @@
 
 import { Application, Response, Request } from 'express';
 
-import { IndividualContext } from './business/context2';
+import redis from 'redis';
+import { Pool as PostgresPool } from 'pg';
+
+import { IndividualContext } from './user';
 import { ICorporateLink } from './business/corporateLink';
 import { ILinkProvider } from './lib/linkProviders/postgres/postgresLinkProvider';
 import { IEntityMetadataProvider } from './lib/entityMetadataProvider/entityMetadataProvider';
-import { IApprovalProvider } from './lib/approvalProvider/approvalProvider';
-import { DataClient } from './data';
+import { IApprovalProvider } from './entities/teamJoinApproval/approvalProvider';
+import { Operations } from './business/operations';
+import { ITokenProvider } from './entities/token';
+import { IMailAddressProvider } from './lib/mailAddressProvider';
+import { IRepositoryMetadataProvider } from './entities/repositoryMetadata/repositoryMetadataProvider';
+import { RedisHelper } from './lib/redis';
+import { ILocalExtensionKeyProvider } from './entities/localExtensionKey';
+import { PersonalAccessToken } from './entities/token/token';
+import { Organization } from './business/organization';
+import { IGraphProvider } from './lib/graphProvider';
+import { RestLibrary } from './lib/github';
+import { Team } from './business/team';
+import { IRepositoryCacheProvider } from './entities/repositoryCache/repositoryCacheProvider';
+import { IRepositoryCollaboratorCacheProvider } from './entities/repositoryCollaboratorCache/repositoryCollaboratorCacheProvider';
+import { ITeamCacheProvider } from './entities/teamCache/teamCacheProvider';
+import { ITeamMemberCacheProvider } from './entities/teamMemberCache/teamMemberCacheProvider';
+import { IRepositoryTeamCacheProvider } from './entities/repositoryTeamCache/repositoryTeamCacheProvider';
+import { IOrganizationMemberCacheProvider } from './entities/organizationMemberCache/organizationMemberCacheProvider';
+import { AppPurpose } from './github';
+import QueryCache from './business/queryCache';
+import { IMailProvider } from './lib/mailProvider';
+import { GitHubRepositoryPermission } from './entities/repositoryMetadata/repositoryMetadata';
+import { IOrganizationSettingProvider } from './entities/organizationSettings/organizationSettingProvider';
+
+export interface ICallback<T> {
+  (error: IReposError, result?: T): void;
+}
+
+export interface IGetOwnerToken {
+  (): string;
+}
+
+export interface IPurposefulGetAuthorizationHeader {
+  (purpose: AppPurpose): Promise<IAuthorizationHeaderValue>;
+}
+
+export interface IAuthorizationHeaderValue {
+  value: string;
+  purpose: AppPurpose;
+  source?: string;
+}
+
+export interface IGetAuthorizationHeader {
+  (): Promise<IAuthorizationHeaderValue>;
+}
+
+export interface PromiseResolve<T> {
+  (resolve: T[]): void;
+}
+
+export interface PromiseReject {
+  (reject?: any): void;
+}
 
 export interface ICacheOptions {
   backgroundRefresh?: any | null | undefined;
   maxAgeSeconds?: number | null | undefined;
+}
+
+export interface IPagedCacheOptions extends ICacheOptions {
+  pageRequestDelay?: number | null | undefined; // FUTURE: could be a function, too
+}
+
+export interface IPagedCrossOrganizationCacheOptions extends IPagedCacheOptions {
   individualMaxAgeSeconds?: number | null | undefined;
+  individualRequestDelay?: number | null | undefined; // FUTURE: could be a function, too
+}
+
+export interface ILocalCacheOptions extends ICacheOptions {
+  localMaxAgeSeconds?: number;
+}
+
+export interface ICacheOptionsPageLimiter extends ICacheOptions {
+  pageLimit?: number;
 }
 
 export interface IMapPlusMetaCost extends Map<any, any> {
   headers?: any;
-  cost?: any;
+  cost?: IReposRestRedisCacheCost;
+}
+
+export interface IReposRestRedisCacheCost {
+  github: {
+    cacheHits: number;
+    remainingApiTokens: string;
+    restApiCalls: number;
+    usedApiTokens: number;
+  };
+  local: {
+    cacheHits: number;
+    cacheMisses: number;
+  };
+  redis: {
+    cacheHits: number;
+    cacheMisses: number;
+    expireCalls: number;
+    getCalls: number;
+    setCalls: number;
+  };
 }
 
 export interface IClassicLink {
@@ -45,24 +135,33 @@ export interface IClassicLink {
 export interface IProviders {
   approvalProvider?: IApprovalProvider;
   basedir?: string;
-  cosmosdb?: any;
   config?: any;
-  dataClient?: DataClient;
-  entityMetadata?: IEntityMetadataProvider;
+  // entityMetadata?: IEntityMetadataProvider;
   healthCheck?: any;
   keyEncryptionKeyResolver?: any;
-  github?: any;
-  graphProvider?: any;
+  github?: RestLibrary;
+  graphProvider?: IGraphProvider;
   insights?: any;
   linkProvider?: ILinkProvider;
-  mailAddressProvider?: any;
-  mailProvider?: any;
-  operations?: any;
-  postgresPool?: any;
-  redis?: any;
-  redisClient?: any;
-  witnessRedis?: any;
-  witnessRedisHelper?: any;
+  localExtensionKeyProvider?: ILocalExtensionKeyProvider;
+  mailAddressProvider?: IMailAddressProvider;
+  mailProvider?: IMailProvider;
+  operations?: Operations;
+  organizationMemberCacheProvider?: IOrganizationMemberCacheProvider;
+  organizationSettingsProvider?: IOrganizationSettingProvider;
+  postgresPool?: PostgresPool;
+  queryCache?: QueryCache;
+  redis?: RedisHelper;
+  redisClient?: redis.RedisClient;
+  repositoryCacheProvider?: IRepositoryCacheProvider;
+  repositoryCollaboratorCacheProvider?: IRepositoryCollaboratorCacheProvider;
+  repositoryMetadataProvider?: IRepositoryMetadataProvider;
+  repositoryTeamCacheProvider?: IRepositoryTeamCacheProvider;
+  teamCacheProvider?: ITeamCacheProvider;
+  teamMemberCacheProvider?: ITeamMemberCacheProvider;
+  witnessRedis?: redis.RedisClient;
+  witnessRedisHelper?: RedisHelper;
+  tokenProvider?: ITokenProvider;
 }
 
 export interface RedisOptions {
@@ -79,7 +178,8 @@ export interface InnerError extends Error {
 
 export interface IReposError extends Error {
   skipLog?: boolean;
-  status?: number;
+  status?: any; // status?: number;
+  code?: any; // not sure this is used any longer by libraries
   originalUrl?: any;
   detailed?: any;
   redirect?: string;
@@ -88,7 +188,7 @@ export interface IReposError extends Error {
     link: string;
     title: string;
   };
-  innerError?: Error;
+  innerError?: IReposError;
 }
 
 export interface Application extends Application {
@@ -103,7 +203,13 @@ export interface IReposAppContext {
   section?: string;
   pivotDirectlyToOtherOrg?: string;
   releaseTab?: boolean;
-  organization?: any;
+  organization?: Organization;
+}
+
+export interface IReposAppWithTeam extends ReposAppRequest {
+  teamPermissions?: any;
+  team2?: Team;
+  teamUrl: string;
 }
 
 export interface ReposAppRequest extends Request {
@@ -118,7 +224,7 @@ export interface ReposAppRequest extends Request {
   teamsPagerMode?: string;
   reposPagerMode?: string;
   link?: any; // not sure when this is set
-  organization?: any; // refactor?
+  organization?: Organization;
   correlationId?: string;
 
   // FUTURE:
@@ -140,10 +246,6 @@ export interface IRequestTeams extends ReposAppRequest {
 
 export interface RequestWithSystemwidePermissions extends ReposAppRequest {
   systemWidePermissions?: any;
-}
-
-export interface IRequestForSettingsPersonalAccessTokens extends ReposAppRequest {
-  personalAccessTokens?: any;
 }
 
 export interface IResponseForSettingsPersonalAccessTokens extends Response {
@@ -193,4 +295,71 @@ function existingGitHubIdentityError(self, link, requestUser, callback) {
   anotherGitHubAccountError.link = link;
   anotherGitHubAccountError.skipLog = true;
   return callback(anotherGitHubAccountError, self);
+}
+
+export function SettleToStateValue<T>(promise: Promise<T>): Promise<ISettledValue<T>> {
+  return promise.then(value => {
+    return { value, state: SettledState.Fulfilled };
+  }, reason => {
+    return { reason, state: SettledState.Rejected };
+  });
+}
+
+export function permissionsObjectToValue(permissions): GitHubRepositoryPermission {
+  if (permissions.admin === true) {
+    return GitHubRepositoryPermission.Admin;
+  } else if (permissions.push === true) {
+    return GitHubRepositoryPermission.Push;
+  } else if (permissions.pull === true) {
+    return GitHubRepositoryPermission.Pull;
+  }
+  throw new Error(`Unsupported GitHubRepositoryPermission value inside permissions`);
+}
+
+export function isPermissionBetterThan(currentBest, newConsideration) {
+  switch (newConsideration) {
+  case 'admin':
+    return true;
+  case 'push':
+    if (currentBest !== 'admin') {
+      return true;
+    }
+    break;
+  case 'pull':
+    if (currentBest === null) {
+      return true;
+    }
+    break;
+  default:
+    throw new Error(`Invalid permission type ${newConsideration}`);
+  }
+  return false;
+}
+
+export function MassagePermissionsToGitHubRepositoryPermission(value: string): GitHubRepositoryPermission {
+  // collaborator level APIs return a more generic read/write value, lead to some bad caches in the past...
+  // TODO: support new collaboration values as they come online for Enterprise Cloud!
+  switch (value) {
+    case 'write':
+    case 'push':
+      return GitHubRepositoryPermission.Push;
+    case 'admin':
+      return GitHubRepositoryPermission.Admin;
+    case 'pull':
+    case 'read':
+        return GitHubRepositoryPermission.Pull;
+    default:
+      throw new Error(`Invalid ${value} GitHub repository permission [massagePermissionsToGitHubRepositoryPermission]`);
+  }
+}
+
+export interface ISettledValue<T> {
+  reason?: any;
+  value?: T;
+  state: SettledState;
+}
+
+export enum SettledState {
+  Fulfilled = 'fulfilled',
+  Rejected = 'rejected',
 }

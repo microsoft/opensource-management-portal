@@ -1,21 +1,28 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 import express = require('express');
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
 import async = require('async');
 import { ReposAppRequest } from '../../../transitional';
-import { EDESTADDRREQ } from 'constants';
 import { wrapError } from '../../../utils';
 import { ICorporateLink } from '../../../business/corporateLink';
+import { Team, GitHubRepositoryType } from '../../../business/team';
+import { Organization } from '../../../business/organization';
+import { IMailAddressProvider } from '../../../lib/mailAddressProvider';
+import { IApprovalProvider } from '../../../entities/teamJoinApproval/approvalProvider';
+import { Operations } from '../../../business/operations';
+import { TeamJoinApprovalEntity } from '../../../entities/teamJoinApproval/teamJoinApproval';
+import { AddTeamPermissionsToRequest, IRequestTeamPermissions } from '../../../middleware/github/teamPermissions';
+import { AddOrganizationPermissionsToRequest } from '../../../middleware/github/orgPermissions';
+
 const emailRender = require('../../../lib/emailRender');
 const lowercaser = require('../../../middleware/lowercaser');
-const orgPermissions = require('../../../middleware/github/orgPermissions');
 const teamMaintainerRoute = require('./index-maintainer');
-const teamPermissionsMiddleware = require('../../../middleware/github/teamPermissions');
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: any;
@@ -27,22 +34,40 @@ interface ILocalRequest extends ReposAppRequest {
   teamUrl?: any;
   orgOwnersSet?: any;
   teamMaintainers?: any;
+  existingRequest?: TeamJoinApprovalEntity;
+  otherApprovals?: TeamJoinApprovalEntity[];
 }
 
-router.use((req: ILocalRequest, res, next) => {
+router.use(asyncHandler(async (req: ILocalRequest, res, next) => {
   const login = req.individualContext.getGitHubIdentity().username;
-  const team2 = req.team2;
-  team2.getMembershipEfficiently(login, (getMembershipError, membership, state) => {
-    if (getMembershipError) {
-      return next(getMembershipError);
-    }
-    req.membershipStatus = membership;
-    req.membershipState = state;
-    return next();
-  });
-});
+  const team2 = req.team2 as Team;
+  const statusResult = await team2.getMembershipEfficiently(login);
+  req.membershipStatus = statusResult && statusResult.role ? statusResult.role : null;
+  req.membershipState = statusResult && statusResult.state ? statusResult.state : null;
+  return next();
+}));
 
-router.use('/join', orgPermissions, (req: ILocalRequest, res, next) => {
+router.use(asyncHandler(async (req: ILocalRequest, res, next) => {
+  const approvalProvider = req.app.settings.providers.approvalProvider as IApprovalProvider;
+  const team2 = req.team2 as Team;
+  if (!approvalProvider) {
+    return next(new Error('No approval provider instance available'));
+  }
+  const pendingApprovals = await approvalProvider.queryPendingApprovalsForTeam(team2.id.toString());
+  const id = req.individualContext.getGitHubIdentity().id;
+  req.otherApprovals = [];
+  for (let i = 0; i < pendingApprovals.length; i++) {
+    const approval = pendingApprovals[i];
+    if (approval.thirdPartyId === id) {
+      req.existingRequest = approval;
+    } else {
+      req.otherApprovals.push(approval);
+    }
+  }
+  return next();
+}));
+
+router.use('/join', asyncHandler(AddOrganizationPermissionsToRequest), (req: ILocalRequest, res, next) => {
   const organization = req.organization;
   const team2 = req.team2;
   const orgPermissions = req.orgPermissions;
@@ -70,10 +95,9 @@ router.use('/join', orgPermissions, (req: ILocalRequest, res, next) => {
   return next(error);
 });
 
-router.get('/join', function (req: ILocalRequest, res, next) {
-  const team2 = req.team2;
-  const organization = req.organization;
-
+router.get('/join', asyncHandler(async function (req: ILocalRequest, res, next) {
+  const team2 = req.team2 as Team;
+  const organization = req.organization as Organization;
   // The broad access "all members" team is always open for automatic joining without
   // approval. This short circuit is to show that option.
   const broadAccessTeams = new Set(organization.broadAccessTeams);
@@ -87,52 +111,58 @@ router.get('/join', function (req: ILocalRequest, res, next) {
         },
     });
   }
-
-  team2.getOfficialMaintainers((getMaintainersError, maintainers) => {
-    if (getMaintainersError) {
-      return next(getMaintainersError);
-    }
-    req.individualContext.webContext.render({
-      view: 'org/team/join',
-      title: `Join ${team2.name}`,
-      state: {
-        team: team2,
-        teamMaintainers: maintainers,
-      },
-    });
+  const maintainers = (await team2.getOfficialMaintainers()).filter(maintainer => {
+    return maintainer && maintainer.login && maintainer.link;
   });
-});
+  req.individualContext.webContext.render({
+    view: 'org/team/join',
+    title: `Join ${team2.name}`,
+    state: {
+      existingTeamJoinRequest: req.existingRequest,
+      team: team2,
+      teamMaintainers: maintainers,
+    },
+  });
+}));
 
-router.post('/join', function (req: ILocalRequest, res, next) {
+router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
+  if (req.existingRequest) {
+    throw new Error('You have already created a team join request that is pending a decision.');
+  }
   const config = req.app.settings.runtimeConfig;
-  const dc = req.app.settings.dataclient;
-  const organization = req.organization;
-  const team2 = req.team2;
+  const organization = req.organization as Organization;
+  const operations = req.app.settings.providers.operations as Operations;
+  const team2 = req.team2 as Team;
   const broadAccessTeams = new Set(organization.broadAccessTeams);
+  const approvalProvider = req.app.settings.providers.approvalProvider as IApprovalProvider;
+  if (!approvalProvider) {
+    return next(new Error('No approval provider instance available'));
+  }
   const username = req.individualContext.getGitHubIdentity().username;
+  // TODO: validating types and all that jazz
   if (broadAccessTeams.has(team2.id)) {
-    return team2.addMembership(username, function (error) {
-      if (error) {
-        req.insights.trackEvent({
-          name: 'GitHubJoinAllMembersTeamFailure',
-          properties: {
-            organization: organization.name,
-            username: username,
-            error: error.message,
-          },
-        });
-        return next(wrapError(error, `We had trouble adding you to the ${organization.name} organization. ${username}`));
-      }
-      req.individualContext.webContext.saveUserAlert(`You have joined ${team2.name} team successfully`, 'Join Successfully', 'success');
+    try {
+      await team2.addMembership(username);
+    } catch (error) {
       req.insights.trackEvent({
-        name: 'GitHubJoinAllMembersTeamSuccess',
+        name: 'GitHubJoinAllMembersTeamFailure',
         properties: {
           organization: organization.name,
           username: username,
+          error: error.message,
         },
       });
-      return res.redirect(`${organization.baseUrl}teams`);
+      return next(wrapError(error, `We had trouble adding you to the ${organization.name} organization. ${username}`));
+    }
+    req.individualContext.webContext.saveUserAlert(`You have joined ${team2.name} team successfully`, 'Join Successfully', 'success');
+    req.insights.trackEvent({
+      name: 'GitHubJoinAllMembersTeamSuccess',
+      properties: {
+        organization: organization.name,
+        username: username,
+      },
     });
+    return res.redirect(`${organization.baseUrl}teams`);
   }
 
   const justification = req.body.justification;
@@ -145,8 +175,7 @@ router.post('/join', function (req: ILocalRequest, res, next) {
   }
   const approvalTypes = new Set(approvalTypesValues);
   const mailProviderInUse = approvalTypes.has('mail');
-  let issueProviderInUse = approvalTypes.has('github');
-  if (!mailProviderInUse && !issueProviderInUse) {
+  if (!mailProviderInUse) {
     return next(new Error('No configured approval providers configured.'));
   }
   const mailProvider = req.app.settings.mailProvider;
@@ -155,148 +184,62 @@ router.post('/join', function (req: ILocalRequest, res, next) {
     return next(wrapError(null, 'No mail provider is enabled, yet this application is configured to use a mail provider.'));
   }
   const mailAddressProvider = req.app.settings.mailAddressProvider;
-  let notificationsRepo = null;
-  try {
-    notificationsRepo = issueProviderInUse ? organization.legacyNotificationsRepository : null;
-  } catch (noWorkflowRepo) {
-    notificationsRepo = false;
-    issueProviderInUse = false;
-  }
   const displayHostname = req.hostname;
   const approvalScheme = displayHostname === 'localhost' && config.webServer.allowHttp === true ? 'http' : 'https';
   const reposSiteBaseUrl = `${approvalScheme}://${displayHostname}/`;
   const approvalBaseUrl = `${reposSiteBaseUrl}approvals/`;
   const personName = req.individualContext.corporateIdentity.displayName || req.individualContext.corporateIdentity.username;
   let personMail = null;
-  let assignTo = null;
   let requestId = null;
-  let allMaintainers = null;
-  let issueNumber = null;
-  let approvalRequest = null;
-  async.waterfall([
-    function getRequesterEmailAddress(callback) {
-      const upn = req.individualContext.corporateIdentity.username;
-      mailAddressProvider.getAddressFromUpn(upn, (resolveError, mailAddress) => {
-        if (resolveError) {
-          return callback(resolveError);
-        }
-        personMail = mailAddress;
-        callback();
-      });
-    },
-    function (callback) {
-      team2.isMember(username, callback);
-    },
-    function (isMember, callback) {
-      if (isMember === true) {
-        return next(wrapError(null, 'You are already a member of the team ' + team2.name, true));
-      }
-      team2.getOfficialMaintainers(callback);
-    },
-    (maintainers, callback) => {
-      async.filter(maintainers, (maintainer, filterCallback) => {
-        filterCallback(null, maintainer && maintainer.login && maintainer.link);
-      }, callback);
-    },
-    function (maintainers, callback) {
-      approvalRequest = {
-        ghu: req.individualContext.getGitHubIdentity().username,
-        ghid: req.individualContext.getGitHubIdentity().id,
-        justification: req.body.justification,
-        requested: ((new Date()).getTime()).toString(),
-        active: false,
-        type: 'joinTeam',
-        org: team2.organization.name,
-        teamid: team2.id,
-        teamname: team2.name,
-        email: req.individualContext.corporateIdentity.username,
-        name: req.individualContext.corporateIdentity.displayName,
-      };
-      const randomMaintainer = maintainers[Math.floor(Math.random() * maintainers.length)];
-      assignTo = randomMaintainer ? randomMaintainer.login : '';
-      const mnt = [];
-      async.each(maintainers, (maintainer, next) => {
-        mnt.push('@' + maintainer.login);
-        const ml = maintainer ? maintainer.link as ICorporateLink : null;
-        const approverUpn = ml && ml.corporateUsername ? ml.corporateUsername : null;
-        if (approverUpn) {
-          mailAddressProvider.getAddressFromUpn(approverUpn, (getAddressError, mailAddress) => {
-            if (getAddressError) {
-              return next(getAddressError);
-            }
-            approverMailAddresses.push(mailAddress);
-            next();
-          });
-        } else {
-          next();
-        }
-      }, (addressResolutionError) => {
-        if (addressResolutionError) {
-          return callback(addressResolutionError);
-        }
-        allMaintainers = mnt.join(', ');
-        dc.insertApprovalRequest(team2.id, approvalRequest, callback);
-      });
-    },
-    function (newRequestId) {
-      const callback = arguments[arguments.length - 1];
-      requestId = newRequestId;
-      if (!issueProviderInUse) {
-        return callback();
-      }
-      const body = 'A team join request has been submitted by ' + (req.individualContext.corporateIdentity.displayName || req.individualContext.corporateIdentity.username) + ' (' +
-        req.individualContext.corporateIdentity.username + ', [' + req.individualContext.getGitHubIdentity().username + '](' +
-        'https://github.com/' + req.individualContext.getGitHubIdentity().username + ')) to join your "' +
-        team2.name + '" team ' + 'in the "' + team2.organization.name + '" organization.' + '\n\n' +
-        allMaintainers + ': Can a team maintainer [review this request now](' +
-        'https://' + req.hostname + '/approvals/' + requestId + ')?\n\n' +
-        '<em>If you use this issue to comment with the team maintainers, please understand that your comment will be visible by all members of the organization.</em>';
-      notificationsRepo.createIssue({
-        title: 'Request to join team "' + team2.organization.name + '/' + team2.name + '" by ' + req.individualContext.getGitHubIdentity().username,
-        body: body,
-      }, callback);
-    },
-    function (issue) {
-      const callback = arguments[arguments.length - 1];
-      const itemUpdates = {
-        active: true,
-        issueid: undefined,
-        issue: undefined,
-      };
-      if (issueProviderInUse) {
-        if (issue.id && issue.number) {
-          issueNumber = issue.number;
-          itemUpdates.issueid = issue.id.toString();
-          itemUpdates.issue = issue.number.toString();
-        } else {
-          return callback(new Error('An issue could not be created. The response object representing the issue was malformed.'));
+  let approvalRequest = new TeamJoinApprovalEntity();
+  try {
+    const upn = req.individualContext.corporateIdentity.username;
+    personMail = await mailAddressProviderGetAddressFromUpn(mailAddressProvider, upn);
+    const isMember = await team2.isMember(username);
+    if (isMember === true) {
+      return next(wrapError(null, 'You are already a member of the team ' + team2.name, true));
+    }
+    const maintainers = (await team2.getOfficialMaintainers()).filter(maintainer => {
+      return maintainer && maintainer.login && maintainer.link;
+    });
+    approvalRequest.thirdPartyUsername = req.individualContext.getGitHubIdentity().username;
+    approvalRequest.thirdPartyId = req.individualContext.getGitHubIdentity().id;
+    approvalRequest.justification = req.body.justification;
+    approvalRequest.created = new Date();
+    approvalRequest.active = true;
+    approvalRequest.organizationName = team2.organization.name;
+    approvalRequest.teamId = team2.id.toString();
+    approvalRequest.teamName = team2.name;
+    approvalRequest.corporateUsername = req.individualContext.corporateIdentity.username;
+    approvalRequest.corporateDisplayName = req.individualContext.corporateIdentity.displayName;
+    approvalRequest.corporateId = req.individualContext.corporateIdentity.id;
+
+    const randomMaintainer = maintainers[Math.floor(Math.random() * maintainers.length)];
+    //assignTo = randomMaintainer ? randomMaintainer.login : '';
+    const mnt = [];
+    for (let i = 0; i < maintainers.length; i++) {
+      const maintainer = maintainers[i];
+      mnt.push('@' + maintainer.login);
+      const ml = maintainer ? maintainer.link as ICorporateLink : null;
+      const approverUpn = ml && ml.corporateUsername ? ml.corporateUsername : null;
+      if (approverUpn) {
+        const mailAddress = await mailAddressProviderGetAddressFromUpn(mailAddressProvider, approverUpn);
+        if (mailAddress) {
+          approverMailAddresses.push(mailAddress);
         }
       }
-      dc.updateApprovalRequest(requestId, itemUpdates, callback);
-    },
-    function setAssignee() {
-      req.individualContext.webContext.saveUserAlert('Your request to join ' + team2.name + ' has been submitted and will be reviewed by a team maintainer.', 'Permission Request', 'success');
-      const callback = arguments[arguments.length - 1];
-      if (!issueProviderInUse) {
-        return callback();
-      }
-      notificationsRepo.updateIssue(issueNumber, {
-        assignee: assignTo,
-      }, function (error) {
-        if (error) {
-          // CONSIDER: Log. This error condition hits when a user has
-          // been added to the org outside of the portal. Since they
-          // are not associated with the workflow repo, they cannot
-          // be assigned by GitHub - which throws a validation error.
-        }
-        callback();
-      });
-    },
-    function sendApproverMail() {
-      const callback = arguments[arguments.length - 1];
-      if (!mailProviderInUse) {
-        return callback();
-      }
+    }
+    //allMaintainers = mnt.join(', ');
+
+    //dc.insertApprovalRequest(team2.id, approvalRequest, callback);
+    const newRequestId = await approvalProvider.createTeamJoinApprovalEntity(approvalRequest);
+    requestId = newRequestId;
+
+    // BREAKING CHANGE
+    // (Removed capability): GitHub issue-based tracking of requests
+
+    if (mailProviderInUse) {
+      // Send approver mail
       const approversAsString = approverMailAddresses.join(', ');
       const mail = {
         to: approverMailAddresses,
@@ -322,43 +265,53 @@ router.post('/join', function (req: ILocalRequest, res, next) {
         personName: personName,
         personMail: personMail,
       };
-      emailRender.render(req.app.settings.runtimeConfig.typescript.appDirectory, 'membershipApprovals/pleaseApprove', contentOptions, (renderError, mailContent) => {
-        if (renderError) {
-          req.insights.trackException({
-            exception: renderError,
-            properties: {
-              content: contentOptions,
-              eventName: 'ReposTeamRequestPleaseApproveMailRenderFailure',
-            },
-          });
-          return callback(renderError);
-        }
-        mail.content = mailContent;
-        mailProvider.sendMail(mail, (mailError, mailResult) => {
-          const customData = {
-            content: contentOptions,
-            receipt: mailResult,
-            eventName: undefined,
-          };
-          if (mailError) {
-            customData.eventName = 'ReposTeamRequestPleaseApproveMailFailure';
-            req.insights.trackException({ exception: mailError, properties: customData });
-            return callback(mailError);
-          }
-          req.insights.trackEvent({ name: 'ReposTeamRequestPleaseApproveMailSuccess', properties: customData });
-          dc.updateApprovalRequest(requestId, {
-            mailSentToApprovers: approversAsString,
-            mailSentTo: personMail,
-          }, callback);
+      try {
+        req.insights.trackEvent({
+          eventName: 'ReposTeamRequestMailRenderData',
+          properties: {
+            data: JSON.stringify(contentOptions),
+          },
         });
-      });
-    },
-    function sendRequesterMail() {
-      const callback = arguments[arguments.length - 1];
-      if (!mailProviderInUse) {
-        return callback();
+        mail.content = await operations.emailRender('membershipApprovals/pleaseApprove', contentOptions);
+      } catch (renderError) {
+        req.insights.trackException({
+          exception: renderError,
+          properties: {
+            content: contentOptions,
+            eventName: 'ReposTeamRequestPleaseApproveMailRenderFailure',
+          },
+        });
+        throw renderError;
       }
-      // Let's send e-mail to the requester about this action
+      let customData: any = {};
+      try {
+        req.insights.trackEvent({
+          eventName: 'ReposTeamRequestMailSendStart',
+          properties: {
+            mail: JSON.stringify(mail),
+          },
+        });
+        const mailResult = await operations.sendMail(mail);
+        customData = {
+          content: contentOptions,
+          receipt: mailResult,
+          eventName: undefined,
+        };
+        req.insights.trackEvent({ name: 'ReposTeamRequestPleaseApproveMailSuccess', properties: customData });
+      } catch (mailError) {
+        customData.eventName = 'ReposTeamRequestPleaseApproveMailFailure';
+        req.insights.trackException({ exception: mailError, properties: customData });
+      }
+
+      // Add to the approval to log who was sent the mail
+      const approval = await approvalProvider.getApprovalEntity(requestId);
+      approval.mailSentToApprovers = approversAsString;
+      // approval.mailSentTo = personMail;
+      await approvalProvider.updateTeamApprovalEntity(approval);
+    }
+
+    if (mailProviderInUse) {
+      // Send requester mail
       const mail = {
         to: personMail,
         subject: `Your ${team2.organization.name} "${team2.name}" permission request has been submitted`,
@@ -382,44 +335,54 @@ router.post('/join', function (req: ILocalRequest, res, next) {
         personName: personName,
         personMail: personMail,
       };
-      emailRender.render(req.app.settings.runtimeConfig.typescript.appDirectory, 'membershipApprovals/requestSubmitted', contentOptions, (renderError, mailContent) => {
-        if (renderError) {
-          req.insights.trackException({
-            exception: renderError,
-            properties: {
-              content: contentOptions,
-              eventName: 'ReposTeamRequestSubmittedMailRenderFailure',
-            },
-          });
-          return callback(renderError);
-        }
-        mail.content = mailContent;
-        mailProvider.sendMail(mail, (mailError, mailResult) => {
-          const customData = {
-            content: contentOptions,
-            receipt: mailResult,
-            eventName: undefined,
-          };
-          if (mailError) {
-            customData.eventName = 'ReposTeamRequestSubmittedMailFailure';
-            req.insights.trackException({ exception: mailError, properties: customData });
-            return callback(mailError);
-          }
-          req.insights.trackEvent({ name: 'ReposTeamRequestSubmittedMailSuccess', properties: customData });
-          callback();
+      try {
+        req.insights.trackEvent({
+          eventName: 'ReposTeamRequestedMailRenderData',
+          properties: {
+            data: JSON.stringify(contentOptions),
+          },
         });
-      });
-    },
-  ], function (error) {
-    if (error) {
-      return next(error);
+        mail.content = await operations.emailRender('membershipApprovals/requestSubmitted', contentOptions);
+      } catch (renderError) {
+        req.insights.trackException({
+          exception: renderError,
+          properties: {
+            content: contentOptions,
+            eventName: 'ReposTeamRequestSubmittedMailRenderFailure',
+          },
+        });
+        throw renderError;
+      }
+      let customData: any = {};
+      try {
+        req.insights.trackEvent({
+          eventName: 'ReposTeamRequestedMailSendStart',
+          properties: {
+            mail: JSON.stringify(mail),
+          },
+        });
+        const mailResult = await operations.sendMail(mail);
+        customData = {
+          content: contentOptions,
+          receipt: mailResult,
+          eventName: undefined,
+        };
+        req.insights.trackEvent({ name: 'ReposTeamRequestSubmittedMailSuccess', properties: customData });
+      } catch (mailError) {
+        customData.eventName = 'ReposTeamRequestSubmittedMailFailure';
+        req.insights.trackException({ exception: mailError, properties: customData });
+        // throw mailError;
+      }
     }
-    res.redirect(team2.organization.baseUrl);
-  });
-});
+  } catch (error) {
+    return next(error);
+  }
+
+  return res.redirect(team2.baseUrl);
+}));
 
 // Adds "req.teamPermissions", "req.teamMaintainers" middleware
-router.use(teamPermissionsMiddleware);
+router.use(asyncHandler(AddTeamPermissionsToRequest));
 
 // The view uses this information today to show the sudo banner
 router.use((req: ILocalRequest, res, next) => {
@@ -429,15 +392,15 @@ router.use((req: ILocalRequest, res, next) => {
   return next();
 });
 
-router.get('/', orgPermissions, (req: ILocalRequest, res, next) => {
+router.get('/', asyncHandler(AddOrganizationPermissionsToRequest), async (req: ILocalRequest, res, next) => {
   const idAsString = req.individualContext.getGitHubIdentity().id;
   const id = idAsString ? parseInt(idAsString, 10) : null;
-  const teamPermissions = req.teamPermissions;
+  const teamPermissions = req.teamPermissions as IRequestTeamPermissions;
   const membershipStatus = req.membershipStatus;
   const membershipState = req.membershipState;
-  const team2 = req.team2;
-  const operations = req.app.settings.operations;
-  const organization = req.organization;
+  const team2 = req.team2 as Team;
+  const operations = req.app.settings.operations as Operations;
+  const organization = req.organization as Organization;
 
   const teamMaintainers = req.teamMaintainers;
   const maintainersSet = new Set();
@@ -463,7 +426,7 @@ router.get('/', orgPermissions, (req: ILocalRequest, res, next) => {
         team: team2,
         teamUrl: req.teamUrl, // ?
         employees: [], // data.employees,
-        pendingApprovals: [], // data.pendingApprovals,
+        otherApprovals: req.otherApprovals,
 
         // changed implementation:
         maintainers: teamMaintainers,
@@ -482,6 +445,9 @@ router.get('/', orgPermissions, (req: ILocalRequest, res, next) => {
         repositories: repositories,
         isOrgOwner: isOrgOwner,
         orgOwnersSet: orgOwnersSet,
+
+        // provider refactoring additions
+        existingTeamJoinRequest: req.existingRequest,
       },
     });
   }
@@ -492,57 +458,39 @@ router.get('/', orgPermissions, (req: ILocalRequest, res, next) => {
     backgroundRefresh: true,
     maxAgeSeconds: 60,
   };
-  team2.getMembers(firstPageOptions, (getMembersError, membersSubset) => {
-    if (getMembersError) {
-      return next(getMembersError);
+  const membersSubset = await team2.getMembers(firstPageOptions);
+  membersFirstPage = membersSubset;
+  const details = await team2.getDetails();
+  teamDetails = details;
+
+  const onlySourceRepositories = {
+    type: GitHubRepositoryType.Sources,
+  };
+  const reposWithPermissions = await team2.getRepositories(onlySourceRepositories);
+  repositories = reposWithPermissions.sort(sortByNameCaseInsensitive);
+  const links = await operations.getLinks();
+  const map = new Map();
+  for (let i = 0; i < links.length; i++) {
+    const id = links[i].thirdPartyId;
+    if (id) {
+      map.set(parseInt(id, 10), links[i]);
     }
-    membersFirstPage = membersSubset;
+  }
 
-    team2.getDetails((detailsError, details) => {
-      if (detailsError) {
-        return next(detailsError);
-      }
-      teamDetails = details;
-
-      const onlySourceRepositories = {
-        type: 'sources',
-      };
-      team2.getRepositories(onlySourceRepositories, (reposError, reposWithPermissions) => {
-        if (reposError) {
-          return next(reposError);
-        }
-        repositories = reposWithPermissions.sort(sortByNameCaseInsensitive);
-
-        operations.getLinks((getLinksError, links) => {
-          if (getLinksError) {
-            return next(getLinksError);
-          }
-          const map = new Map();
-          for (let i = 0; i < links.length; i++) {
-            const id = links[i].ghid;
-            if (id) {
-              map.set(parseInt(id, 10), links[i]);
-            }
-          }
-
-          async.parallel([
-            callback => {
-              addLinkToList(teamMaintainers, map);
-              return resolveMailAddresses(operations, teamMaintainers, callback);
-            },
-            callback => {
-              addLinkToList(membersFirstPage, map);
-              return resolveMailAddresses(operations, membersFirstPage, callback);
-            },
-          ], (parallelError) => {
-            if (parallelError) {
-              return next(parallelError);
-            }
-            return renderPage();
-          });
-        });
-      });
-    });
+  async.parallel([
+    callback => {
+      addLinkToList(teamMaintainers, map);
+      return resolveMailAddresses(operations, teamMaintainers, callback);
+    },
+    callback => {
+      addLinkToList(membersFirstPage, map);
+      return resolveMailAddresses(operations, membersFirstPage, callback);
+    },
+  ], (parallelError) => {
+    if (parallelError) {
+      return next(parallelError);
+    }
+    return renderPage();
   });
 });
 
@@ -562,7 +510,7 @@ function resolveMailAddresses(operations, array, callback) {
     return callback();
   }
 
-  async.eachLimit(array, 5, (entry, next) => {
+  async.eachLimit(array, 5, (entry: any, next) => {
     const upn = entry && entry.link ? entry.link.aadupn : null;
     if (!upn) {
       return next();
@@ -593,7 +541,16 @@ router.get('/repos', lowercaser(['sort', 'language', 'type', 'tt']), require('..
 router.use('/delete', require('./delete'));
 router.use('/properties', require('./properties'));
 router.use('/maintainers', require('./maintainers'));
+router.use('/leave', require('./leave'));
 
 router.use(teamMaintainerRoute);
+
+async function mailAddressProviderGetAddressFromUpn(mailAddressProvider: IMailAddressProvider, upn: string): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    mailAddressProvider.getAddressFromUpn(upn, (resolveError, mailAddress) => {
+      return resolveError ? reject(resolveError) : resolve(mailAddress);
+    });
+  });
+}
 
 module.exports = router;

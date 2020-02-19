@@ -1,30 +1,25 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
-const crypto = require('crypto');
 import express = require('express');
-import { ReposAppRequest } from '../../transitional';
-import { setIdentity } from '../../middleware/business/authentication';
-import { addLinkToRequest } from '../../middleware/links';
-
-import { jsonError } from '../../middleware/jsonError';
-import { apiContextMiddleware } from '../../middleware/business/setContext';
-
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-const settingType = 'localExtensionKey';
-const tokenExpirationMs = 1000 * 60 * 60 * 24 * 14; // 14 days
+import { IProviders } from '../../transitional';
+import { setIdentity } from '../../middleware/business/authentication';
+import { addLinkToRequest } from '../../middleware/links';
+import { jsonError } from '../../middleware/jsonError';
+import { apiContextMiddleware } from '../../middleware/business/setContext';
+import { ILocalExtensionKeyProvider } from '../../entities/localExtensionKey';
+import { LocalExtensionKey } from '../../entities/localExtensionKey/localExtensionKey';
+import { IApiRequest } from '../../middleware/apiReposAuth';
+import { PersonalAccessToken } from '../../entities/token/token';
 
 const thisApiScopeName = 'extension';
-
-interface IExtensionRequest extends ReposAppRequest {
-  apiKeyRow?: any;
-  apiKeyRowProvider?: any;
-}
 
 interface IExtensionResponse extends express.Response {
   localKey?: any;
@@ -36,28 +31,27 @@ interface IConnectionInformation {
   auth?: any;
 }
 
-router.use(function (req: IExtensionRequest, res, next) {
-  const apiKeyRow = req.apiKeyRow;
-  if (!apiKeyRow.apis) {
+router.use(function (req: IApiRequest, res, next) {
+  const token = req.apiKeyToken;
+  if (!token.scopes) {
     return next(jsonError('The key is not authorized for specific APIs', 403));
   }
-  const apis = apiKeyRow.apis.split(',');
-  if (apis.indexOf(thisApiScopeName) < 0) {
+  if (!token.hasScope(thisApiScopeName)) {
     return next(jsonError('The key is not authorized to use the extension API', 403));
   }
   return next();
 });
 
-function overwriteUserContext(req, res, next) {
-  const apiKeyRow = req.apiKeyRow;
-  const aadId = apiKeyRow.owner;
-  if (!aadId) {
+function overwriteUserContext(req: IApiRequest, res, next) {
+  const token = req.apiKeyToken;
+  const corporateId = token.corporateId;
+  if (!corporateId) {
     return next(jsonError('No key owner', 403));
   }
   req.userContextOverwriteRequest = {
     user: {
       azure: {
-        oid: aadId,
+        oid: corporateId,
       },
     },
   };
@@ -73,7 +67,7 @@ router.use(setIdentity);
 router.use(addLinkToRequest);
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-router.get('/', (req: IExtensionRequest, res) => {
+router.get('/', (req: IApiRequest, res) => {
   const operations = req.app.settings.providers.operations;
 
   // Basic info route, used to validate new users
@@ -89,8 +83,8 @@ router.get('/', (req: IExtensionRequest, res) => {
   let displayUpn = link && link.corporateUsername ? link.corporateUsername : null;
 
   // vsts provider
-  if (!displayUpn && req.apiKeyRow && req.apiKeyRow.upn) {
-    displayUpn = req.apiKeyRow.upn;
+  if (!displayUpn && req.apiKeyToken && req.apiKeyToken.displayUsername) {
+    displayUpn = req.apiKeyToken.displayUsername;
   }
 
   const config = operations.config;
@@ -115,10 +109,10 @@ router.get('/', (req: IExtensionRequest, res) => {
   connectionInformation.operations = config.brand;
 
   // auth info
-  if (req.apiKeyRowProvider && req.apiKeyRow) {
+  if (req.apiKeyProviderName && req.apiKeyToken) {
     connectionInformation.auth = {
-      provider: req.apiKeyRowProvider,
-      id: req.apiKeyRow.owner,
+      provider: req.apiKeyProviderName,
+      id: req.apiKeyToken.corporateId,
       upn: displayUpn,
     };
   }
@@ -126,7 +120,7 @@ router.get('/', (req: IExtensionRequest, res) => {
   return res.json(connectionInformation);
 });
 
-router.get('/metadata', getLocalEncryptionKeyMiddleware, (req: IExtensionRequest, res: IExtensionResponse) => {
+router.get('/metadata', asyncHandler(getLocalEncryptionKeyMiddleware), (req: IApiRequest, res: IExtensionResponse) => {
   const apiContext = req.apiContext;
 
   const localKey = res.localKey;
@@ -177,7 +171,6 @@ function getSanitizedOrganizations(operations) {
     const basics = {
       locked: organization.locked,
       createRepositoriesOnGitHub: organization.createRepositoriesOnGitHub,
-      legacyTrainingResourcesLink: organization.legacyTrainingResourcesLink,
       privateEngineering: organization.privateEngineering,
       externalMembersPermitted: organization.externalMembersPermitted,
       description: organization.description,
@@ -191,68 +184,57 @@ function getSanitizedOrganizations(operations) {
   return value;
 }
 
-function getLocalEncryptionKeyMiddleware(req, res, next) {
-  const dc = req.app.settings.dataclient;
-  const apiKeyRow = req.apiKeyRow;
+async function getLocalEncryptionKeyMiddleware(req: IApiRequest, res, next): Promise<void> {
+  const providers = req.app.settings.providers as IProviders;
+  const localExtensionKeyProvider = providers.localExtensionKeyProvider;
+  const apiKeyToken = req.apiKeyToken;
   const insights = req.insights;
-  getOrCreateLocalEncryptionKey(insights, dc, apiKeyRow, (error, key) => {
+  try {
+    const key = await getOrCreateLocalEncryptionKey(insights, localExtensionKeyProvider, apiKeyToken);
     if (!key) {
-      error = new Error('No key could be generated');
-    }
-    if (error) {
-      return next(jsonError(error, 500));
+      throw new Error('No local extension key could be generated');
     }
     res.localKey = key;
-    return next();
-  });
-}
-
-function getLocalEncryptionKey(dc, userId, callback) {
-  const rowKey = userId;
-  dc.getSetting(settingType, rowKey, (error, localRow) => {
-    if (error && error.statusCode === 404) {
-      return callback();
-    }
-    const now = new Date();
-    const expires = new Date(localRow.Timestamp.getTime() + tokenExpirationMs);
-    if (expires < now || !localRow.localDataKey) {
-      return dc.deleteSetting(settingType, rowKey, () => {
-        return callback();
-      });
-    }
-    return callback(error ? error : null, error ? null : localRow.localDataKey);
-  });
-}
-
-function createLocalEncryptionKey(insights, dc, ownerId, callback) {
-  const localDataKey = crypto.randomBytes(32).toString('base64');
-  const row = {
-    localDataKey: localDataKey, // this known column will be encrypted in table
-  };
-  dc.setSetting(settingType, ownerId, row, error => {
-    if (error) {
-      return callback(error);
-    }
-    insights.trackEvent({ name: 'ExtensionNewLocalKeyGenerated' });
-    insights.trackMetric({ name: 'ExtensionNewLocalKeys', value: 1 });
-    return callback(null, localDataKey);
-  });
-}
-
-function getOrCreateLocalEncryptionKey(insights, dc, apiKeyRow, callback) {
-  const ownerId = apiKeyRow.RowKey || apiKeyRow.owner;
-  if (!ownerId) {
-    return callback(new Error('Owner identity required'));
+  } catch (error) {
+    return next(jsonError(error, 500));
   }
-  getLocalEncryptionKey(dc, ownerId, (getKeyError, key) => {
-    if (getKeyError) {
-      return callback(getKeyError);
+  return next();
+}
+
+async function getLocalEncryptionKey(localExtensionKeyProvider: ILocalExtensionKeyProvider, corporateId: string): Promise<string> {
+  try {
+    const localEncryptionKey = await localExtensionKeyProvider.getForCorporateId(corporateId);
+    if (localEncryptionKey.isValidNow()) {
+      return localEncryptionKey.localDataKey;
     }
-    if (key) {
-      return callback(null, key);
+    await localExtensionKeyProvider.delete(localEncryptionKey);
+  } catch (error) {
+    if (error && ((error.statusCode && error.statusCode === 404) || (error.status && error.status === 404))) {
+      return null;
     }
-    return createLocalEncryptionKey(insights, dc, ownerId, callback);
-  });
+    throw error;
+  }
+  return null;
+}
+
+async function createLocalEncryptionKey(insights, localExtensionKeyProvider: ILocalExtensionKeyProvider, corporateId: string): Promise<string> {
+  const localEncryptionKey = LocalExtensionKey.CreateNewLocalExtensionKey(corporateId);
+  await localExtensionKeyProvider.createNewForCorporateId(localEncryptionKey);
+  insights.trackEvent({ name: 'ExtensionNewLocalKeyGenerated' });
+  insights.trackMetric({ name: 'ExtensionNewLocalKeys', value: 1 });
+  return localEncryptionKey.localDataKey;
+}
+
+async function getOrCreateLocalEncryptionKey(insights, localExtensionKeyProvider: ILocalExtensionKeyProvider, apiKeyToken: PersonalAccessToken): Promise<string> {
+  const corporateId = apiKeyToken.corporateId; // apiKeyRow.RowKey || apiKeyRow.owner;
+  if (!corporateId) {
+    throw new Error('Owner identity required');
+  }
+  const localDataKey = await getLocalEncryptionKey(localExtensionKeyProvider, corporateId);
+  if (localDataKey) {
+    return localDataKey;
+  }
+  return await createLocalEncryptionKey(insights, localExtensionKeyProvider, corporateId);
 }
 
 router.use('*', (req, res, next) => {

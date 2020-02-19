@@ -1,241 +1,85 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express = require('express');
+import express from 'express';
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
+
 const approvalRoute = require('./approval/');
-import async = require('async');
+
 import { IRequestTeams, ReposAppRequest } from '../../../transitional';
 import { wrapError } from '../../../utils';
+import { Team } from '../../../business/team';
+import { IApprovalProvider } from '../../../entities/teamJoinApproval/approvalProvider';
+import { TeamJoinApprovalEntity } from '../../../entities/teamJoinApproval/teamJoinApproval';
+import { Operations } from '../../../business/operations';
+import { Account } from '../../../business/account';
 
 // Not a great place for these, should move into independent files eventually...
 
-function PermissionWorkflowEngine(team, approvalPackage) {
-  this.team = team;
-  if (!team) {
-    throw new Error('No team instance');
-  }
-  this.request = approvalPackage.request;
-  this.user = approvalPackage.requestingUser;
-  this.id = approvalPackage.id;
-  this.typeName = 'Team Join';
+interface IPermissionWorkflowApprovalPackage {
+  request: TeamJoinApprovalEntity;
+  id: string;
+  requestingUser: Account; // ??  string;
 }
 
-PermissionWorkflowEngine.prototype.getDecisionEmailViewName = function () {
-  return 'membershipApprovals/decision';
-};
-
-PermissionWorkflowEngine.prototype.getDecisionEmailSubject = function (approved, request) {
-  return approved ? `Welcome to the ${request.teamname} ${request.org} GitHub team` : `Your ${request.teamname} permission request was not approved`;
-};
-
-PermissionWorkflowEngine.prototype.getDecisionEmailHeadline = function (approved/*, request*/) {
-  return approved ? 'Welcome' : 'Sorry';
-};
-
-
-PermissionWorkflowEngine.prototype.messageForAction = function (action) {
-  var message = null;
-  if (action == 'deny') {
-    message = 'This team join request has not been approved at this time.';
-  } else if (action == 'approve') {
-    message = 'Permission request approved.';
-  }
-  return message;
-};
-
-PermissionWorkflowEngine.prototype.performApprovalOperation = function (callback) {
-  var self = this;
-  var team = self.team;
-  team.addMembership(this.request.ghu, function (error) {
-    if (error) {
-      error = wrapError(error, 'The GitHub API returned an error trying to add the user ' + this.request.ghu + ' to team ID ' + team.id + '.');
-    }
-    callback(error);
-  });
-};
-
-// ---
-
-function RepoWorkflowEngine(team, approvalPackage) {
-  this.team = team;
-  this.request = approvalPackage.request;
-  this.user = approvalPackage.requestingUser;
-  this.id = approvalPackage.id;
-  this.typeName = 'Repository Create';
+enum PermissionWorkflowDecision {
+  Approve = 'approve',
+  Deny = 'deny',
 }
 
-RepoWorkflowEngine.prototype.messageForAction = function (action) {
-  var message = null;
-  if (action == 'deny') {
-    message = 'The repo was not approved at this time.';
-  } else if (action == 'approve') {
-    message = 'The repo has been created.';
-  }
-  return message;
-};
+export class PermissionWorkflowEngine {
+  public team: Team;
+  public request: TeamJoinApprovalEntity;
+  public user: Account; // string;
+  public id: string;
+  public typeName: string;
 
-RepoWorkflowEngine.prototype.editGet = function (req, res) {
-  req.individualContext.webContext.render({
-    view: 'org/team/approvals/editRepo',
-    title: 'Edit Repo Request',
-    state: {
-      entry: this.request,
-      teamUrl: req.teamUrl,
-      team: req.team,
-    },
-  });
-};
-
-RepoWorkflowEngine.prototype.editPost = function (req, res, next) {
-  const self = this;
-  const dc = req.app.settings.providers.dataClient;
-  const visibility = req.body.repoVisibility;
-  if (!(visibility == 'public' || visibility == 'private')) {
-    return next(new Error('Visibility for the repo request must be provided.'));
-  }
-  const updates = {
-    repoName: req.body.repoName,
-    repoVisibility: visibility,
-    repoUrl: req.body.repoUrl,
-    repoDescription: req.body.repoDescription,
-  };
-  dc.updateApprovalRequest(self.id, updates, function (error) {
-    if (error) {
-      return next(wrapError(error, 'There was a problem updating the request.'));
+  constructor(team: Team, approvalPackage: IPermissionWorkflowApprovalPackage) {
+    this.team = team;
+    if (!team) {
+      throw new Error('No team instance');
     }
-    res.redirect(req.teamUrl + 'approvals/' + self.id);
-  });
-};
+    this.request = approvalPackage.request;
+    this.user = approvalPackage.requestingUser;
+    this.id = approvalPackage.id;
+    this.typeName = 'Team Join';
+  }
 
-RepoWorkflowEngine.prototype.getApprovedViewName = function () {
-  return 'org/team/repos/repoCreated';
-};
+  getDecisionEmailViewName() {
+    return 'membershipApprovals/decision';
+  }
 
-RepoWorkflowEngine.prototype.getDecisionEmailViewName = function () {
-  return 'repoApprovals/decision';
-};
+  getDecisionEmailSubject(approved, request: TeamJoinApprovalEntity) {
+    return approved ? `Welcome to the ${request.teamName} ${request.organizationName} GitHub team` : `Your ${request.teamName} permission request was not approved`;
+  }
 
-RepoWorkflowEngine.prototype.getDecisionEmailSubject = function (approved, request) {
-  return approved ? `Your new repo, ${request.repoName}, is ready` : `Your ${request.repoName} repo request was not approved`;
-};
+  getDecisionEmailHeadline(approved/*, request*/) {
+    return approved ? 'Welcome' : 'Sorry';
+  }
 
-RepoWorkflowEngine.prototype.getDecisionEmailHeadline = function (approved/*, request*/) {
-  return approved ? 'Repo ready' : 'Request returned';
-};
-
-function createSetLegacyClaTask(org, repoName, legalEntity, claMail) {
-  'use strict';
-  return function setLegacyClaTask(callback) {
-    const repo = org.repo(repoName);
-    repo.enableLegacyClaAutomation({
-      emails: claMail,
-      legalEntity: legalEntity,
-    }, (enableClaError) => {
-      // Don't propagate as an error, just record the issue...
-      let message = `Successfully enabled the ${legalEntity} CLA for ${repoName}, notifying ${claMail}.`;
-      if (enableClaError) {
-        message = `The ${legalEntity} CLA could not be enabled for the repo ${repoName} using the notification e-mail address(es) ${claMail}`;
-      }
-      const result = {
-        error: enableClaError,
-        message: message,
-      };
-      callback(null, result);
-    });
-  };
-}
-
-var createAddRepositoryTask = function createAddRepoTask(org, repoName, id, permission) {
-  return function (cb) {
-    async.retry({
-      times: 3,
-      interval: function (retryCount) {
-        return 500 * Math.pow(2, retryCount);
-      }
-    }, function (callback) {
-      org.team(id).addRepository(repoName, permission, function (error) {
-        if (error) {
-          return callback(error);
-        }
-        return callback();
-      });
-    }, function (error) {
-      // Don't propagate as an error, just record the issue...
-      var message = `Successfully added the "${repoName}" repo to GitHub team ID "${id}" with permission level ${permission.toUpperCase()}.`;
-      if (error) {
-        message = `The addition of the repo "${repoName}" to GitHub team ID "${id}" failed. The GitHub API returned an error: ${error.message}.`;
-      }
-      var result = {
-        error: error,
-        message: message,
-      };
-      cb(null, result);
-    });
-  };
-};
-
-RepoWorkflowEngine.prototype.generateSecondaryTasks = function (callback) {
-  var self = this;
-  var pendingRequest = self.request;
-  var tasks = [];
-  var org = self.team.org;
-  var repoName = pendingRequest.repoName;
-  var teamsCount = Math.floor(pendingRequest.teamsCount);
-  for (var i = 0; i < teamsCount; i++) {
-    var key = 'teamid' + i;
-    var teamId = pendingRequest[key];
-    var permission = pendingRequest[key + 'p'];
-    if (teamId && permission) {
-      tasks.push(createAddRepositoryTask(org, repoName, teamId, permission));
+  messageForAction(action: PermissionWorkflowDecision) {
+    let message = null;
+    if (action === PermissionWorkflowDecision.Deny) {
+      message = 'This team join request has not been approved at this time.';
+    } else if (action === PermissionWorkflowDecision.Approve) {
+      message = 'Permission request approved.';
     }
+    return message;
   }
-  if (pendingRequest.claMail && pendingRequest.claEntity) {
-    tasks.push(createSetLegacyClaTask(org, repoName, pendingRequest.claEntity, pendingRequest.claMail));
-  }
-  callback(null, tasks);
-};
 
-RepoWorkflowEngine.prototype.performApprovalOperation = function (callback) {
-  var self = this;
-  var properties = {
-    description: self.request.repoDescription,
-    homepage: self.request.repoUrl,
-    'private': self.request.repoVisibility == 'public' ? false : true,
-  };
-  var org = self.team.org;
-  org.createRepository(self.request.repoName, properties, function (error, newRepoDetails) {
-    if (error) {
-      error = wrapError(error, `The GitHub API did not allow the creation of the new repo. ${error.message}`);
+  performApprovalOperation(callback) {
+    const team = this.team;
+    const username = this.request.thirdPartyUsername;
+    return team.addMembership(username).then(ok => {
+      return callback();
+    }).catch(error => {
+      error = wrapError(error, `The GitHub API returned an error trying to add the user ${username} to team ID ${team.id}.`);
       return callback(error);
-    }
-    // Adding a 3-second delay to see if this fixes the underlying GH issues or not
-    setTimeout(() => {
-      callback(null, newRepoDetails);
-    }, 3000);
-  });
-};
-
-// ---
-
-function createRequestEngine(team, approvalPackage, callback) {
-  var engine = null;
-  var rt = approvalPackage.request.type;
-  switch (rt) {
-  case 'repo':
-    engine = new RepoWorkflowEngine(team, approvalPackage);
-    break;
-  default:
-  case 'joinTeam':
-    engine = new PermissionWorkflowEngine(team, approvalPackage);
-    break;
+    });
   }
-  if (!engine) {
-    return callback(new Error('No request engine is supported for requests of type "' + rt + '".'));
-  }
-  callback(null, engine);
 }
 
 // Find the request and assign the workflow engine
@@ -245,57 +89,49 @@ router.use(function (req: ReposAppRequest, res, next) {
   next();
 });
 
-router.get('/', function (req: IRequestTeams, res, next) {
-  var team = req.team2;
-  team.getApprovals(function (error, approvals) {
-    if (error) {
-      return next(error);
-    }
-    req.individualContext.webContext.render({
-      view: 'org/team/approvals',
-      title: 'Approvals for ' + team.name,
-      state: {
-        team: team,
-        pendingApprovals: approvals,
-        teamUrl: req.teamUrl,
-      },
-    });
+router.get('/', asyncHandler(async (req: IRequestTeams, res, next) => {
+  const team = req.team2 as Team;
+  const approvals = await team.getApprovals();
+  req.individualContext.webContext.render({
+    view: 'org/team/approvals',
+    title: 'Approvals for ' + team.name,
+    state: {
+      team: team,
+      pendingApprovals: approvals,
+      teamUrl: req.teamUrl,
+    },
   });
-});
+}));
+
 
 interface IRequestPlusApprovalEngine extends IRequestTeams {
-  approvalEngine?: any;
+  approvalEngine?: PermissionWorkflowEngine;
 }
 
-router.use('/:requestid', function (req: IRequestPlusApprovalEngine, res, next) {
-  var team = req.team2;
-  var requestid = req.params.requestid;
-  var dc = req.app.settings.dataclient;
-  const operations = req.app.settings.providers.operations;
-  dc.getApprovalRequest(requestid, function (error, pendingRequest) {
-    if (error) {
-      return next(wrapError(error, 'The pending request you are looking for does not seem to exist.'));
-    }
-    operations.getAccountWithDetailsAndLink(pendingRequest.ghid, (getAccountError, requestingUserAccount) => {
-      if (getAccountError) {
-        return next(getAccountError);
-      }
-      const approvalPackage = {
-        request: pendingRequest,
-        requestingUser: requestingUserAccount,
-        id: requestid,
-      };
-      createRequestEngine(team, approvalPackage, function (error, engine) {
-        if (error) {
-          return next(error);
-        }
-        req.individualContext.webContext.pushBreadcrumb(engine.typeName + ' Request');
-        req.approvalEngine = engine;
-        next();
-      });
-    });
-  });
-});
+router.use('/:requestid', asyncHandler(async function (req: IRequestPlusApprovalEngine, res, next) {
+  const team = req.team2 as Team;
+  const requestid = req.params.requestid;
+  const operations = req.app.settings.providers.operations as Operations;
+  const approvalProvider = req.app.settings.providers.approvalProvider as IApprovalProvider;
+  if (!approvalProvider) {
+    return next(new Error('No approval provider instance available'));
+  }
+  try {
+    const pendingRequest = await approvalProvider.getApprovalEntity(requestid);
+    const requestingUserAccount = await operations.getAccountWithDetailsAndLink(pendingRequest.thirdPartyId);
+    const approvalPackage = {
+      request: pendingRequest,
+      requestingUser: requestingUserAccount,
+      id: requestid,
+    };
+    const engine = new PermissionWorkflowEngine(team, approvalPackage);
+    req.individualContext.webContext.pushBreadcrumb(engine.typeName + ' Request');
+    req.approvalEngine = engine;
+    return next();
+  } catch (error) {
+    return next(wrapError(error, 'The pending request you are looking for does not seem to exist.'));
+  }
+}));
 
 // Pass on to the context-specific routes.
 router.use('/:requestid', approvalRoute);

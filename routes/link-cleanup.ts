@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -150,7 +150,6 @@ router.use((req: ReposAppRequest, res, next) => {
 //   const operations = req.app.settings.providers.operations;
 //   const options = {
 //     config: req.app.settings.runtimeConfig,
-//     dataClient: req.app.settings.dataclient,
 //     redisClient: req.app.settings.providers.redisClient,
 //     redisHelper: req.app.settings.redisHelper,
 //     githubLibrary: req.app.settings.githubLibrary,
@@ -171,7 +170,6 @@ router.use((req: ReposAppRequest, res, next) => {
 // function invalidateCache(req, link, callback) {
 //   const options = {
 //     config: req.app.settings.runtimeConfig,
-//     dataClient: req.app.settings.dataclient,
 //     redisClient: req.app.settings.providers.redisClient,
 //     redisHelper: req.app.settings.redisHelper,
 //     githubLibrary: req.app.settings.githubLibrary,

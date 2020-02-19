@@ -1,30 +1,32 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
 import express = require('express');
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
-import moment = require('moment');
+
+import moment from 'moment';
+
 import { ReposAppRequest } from '../../transitional';
 import { wrapError } from '../../utils';
 
-router.get('/', function (req: ReposAppRequest, res, next) {
+router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const organization = req.organization;
   const onboarding = req.query.onboarding;
   const joining = req.query.joining;
+
   req.individualContext.webContext.pushBreadcrumb('Multi-factor authentication check');
   const username = req.individualContext.getGitHubIdentity().username;
   const cacheOptions = /* never use the cache */ {
     backgroundRefresh: false,
     maxAgeSeconds: -60,
   };
-  organization.isMemberSingleFactor(username, cacheOptions, (error, state) => {
-    if (error) {
-      return next(wrapError(error, `We were unable to validate your security settings with GitHub. The error GitHub gave us: ${error.message || error}`));
-    }
+  try {
+    const state = await organization.isMemberSingleFactor(username, cacheOptions);
     if (state === false && (req.body.validate || onboarding || joining)) {
       let url = organization.baseUrl;
       if (onboarding || joining) {
@@ -45,7 +47,9 @@ router.get('/', function (req: ReposAppRequest, res, next) {
         nowString: moment().format('MMMM Do YYYY, h:mm:ss a'),
       },
     });
-  });
-});
+  } catch (error) {
+    return next(wrapError(error, `We were unable to validate your security settings with GitHub. The error GitHub returned: ${error.message || error}`));
+  }
+}));
 
 module.exports = router;

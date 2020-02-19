@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -9,14 +9,17 @@ const fs = require('fs');
 const path = require('path');
 
 const typescriptConfig = require('./typescript');
+const arrayFromString = require('./utils/arrayFromString');
 
 // GITHUB_ORGANIZATIONS_TEMPLATES_TYPE: 'npm' or 'fs', 'fs' default
 // GITHUB_ORGANIZATIONS_TEMPLATES_RELATIVE_DIRECTORY: relative to app dir, defaults to 'data/templates'
 // GITHUB_ORGANIZATIONS_TEMPLATES_PACKAGE_NAME: npm package name if type mode is 'npm', no default
 
+// GITHUB_ORGANIZATIONS_DEFAULT_TEMPLATES
+
 module.exports = graphApi => {
   const environmentProvider = graphApi.environment;
-
+  const configurationEnvironmentName = environmentProvider.get('CONFIGURATION_ENVIRONMENT');
   const defaultDirectory = path.join('data', 'templates');
 
   // 'npm' or 'fs'
@@ -29,6 +32,7 @@ module.exports = graphApi => {
   let templates = {
     directory: templateSourceType === 'fs' ? (environmentProvider.get('GITHUB_ORGANIZATIONS_TEMPLATES_RELATIVE_DIRECTORY') || defaultDirectory) : null,
     definitions: null,
+    defaultTemplates: arrayFromString(environmentProvider.get('GITHUB_ORGANIZATIONS_DEFAULT_TEMPLATES') || ''),
   };
 
   if (templateSourceType === 'fs') {
@@ -63,6 +67,20 @@ module.exports = graphApi => {
       combinedError.innerError = templatesNpmLoadError;
       throw combinedError;
     }
+  }
+
+  if (templates.definitions) {
+    const clonedDefinitions = Object.assign({}, templates.definitions);
+    const names = Object.getOwnPropertyNames(clonedDefinitions);
+    for (let i = 0; i < names.length; i++) {
+      const definition = clonedDefinitions[names[i]];
+      if (!definition.environments || definition.environments.includes(configurationEnvironmentName)) {
+        // keep this template around
+      } else {
+        delete clonedDefinitions[names[i]];
+      }
+    }
+    templates.definitions = clonedDefinitions;
   }
 
   return templates;

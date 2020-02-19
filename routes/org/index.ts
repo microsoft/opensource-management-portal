@@ -1,30 +1,37 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
-import express = require('express');
+import express from 'express';
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
-import async = require('async');
-import { ReposAppRequest } from '../../transitional';
+
+import async from 'async';
+
+import { ReposAppRequest, IProviders } from '../../transitional';
+import { Team } from '../../business/team';
+import { IRequestOrganizationPermissions, AddOrganizationPermissionsToRequest } from '../../middleware/github/orgPermissions';
+import { OrganizationMembershipState } from '../../business/organization';
+import { asNumber } from '../../utils';
+import { IAggregateUserSummary } from '../../user/aggregate';
+import { TeamJoinApprovalEntity } from '../../entities/teamJoinApproval/teamJoinApproval';
 
 const teamsRoute = require('./teams');
 const reposRoute = require('./repos');
 const membershipRoute = require('./membership');
 const joinRoute = require('./join');
 const leaveRoute = require('./leave');
-const orgPermissions = require('../../middleware/github/orgPermissions');
 const securityCheckRoute = require('./2fa');
 const profileReviewRoute = require('./profileReview');
-const approvalsSystem = require('../approvals');
 const newRepoSpa = require('./newRepoSpa');
 const peopleRoute = require('./people');
 
 interface ILocalOrgRequest extends ReposAppRequest {
-  sudoMode?: any;
-  orgPermissions?: any;
+  sudoMode?: boolean;
+  orgPermissions?: IRequestOrganizationPermissions;
 }
 
 router.use(function (req: ReposAppRequest, res, next) {
@@ -55,102 +62,70 @@ router.use('/people', peopleRoute);
 router.use('/teams', teamsRoute);
 
 // Org membership requirement middleware
-router.use(orgPermissions, (req: ILocalOrgRequest, res, next) => {
+router.use(asyncHandler(AddOrganizationPermissionsToRequest), asyncHandler(async (req: ILocalOrgRequest, res, next) => {
   const organization = req.organization;
   const orgPermissions = req.orgPermissions;
   if (!orgPermissions) {
     return next(new Error('Organization permissions are unavailable'));
   }
-
   // Decorate the route for the sudoer
   if (orgPermissions.sudo) {
     req.sudoMode = true;
   }
-
   const membershipStatus = orgPermissions.membershipStatus;
-  if (membershipStatus === 'active') {
+  if (membershipStatus === OrganizationMembershipState.Active) {
     return next();
   } else {
     const individualContext = req.individualContext;
-    const aadId = individualContext.corporateIdentity.id;
     const username = individualContext.getGitHubIdentity().username;
-    organization.getOperationalMembership(username, () => {
-      return res.redirect('/' + organization.name + '/join');
-    });
+
+    await organization.getOperationalMembership(username);
+    return res.redirect('/' + organization.name + '/join');
   }
-});
+}));
 
 // Org membership required endpoints:
 
-router.get('/', function (req: ReposAppRequest, res, next) {
-  const operations = req.app.settings.providers.operations;
+router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
+  const providers = req.app.settings.providers as IProviders;
+  const approvalProvider = providers.approvalProvider;
   const organization = req.organization;
-  const dc = req.app.settings.dataclient;
   const username = req.individualContext.getGitHubIdentity().username;
-  const id = req.individualContext.getGitHubIdentity().id;
-  async.parallel({
-    organizationOverview: (callback) => {
-      const uc = operations.getUserContext(id);
-      return uc.getAggregatedOrganizationOverview(organization.name, callback);
+  const individualContext = req.individualContext;
+  const results = {
+    orgUser: organization.memberFromEntity(await organization.getDetails()),
+    isMembershipPublic: await organization.checkPublicMembership(username),
+    organizationOverview: null as IAggregateUserSummary,
+    isAdministrator: false, // CONSIDER: UPDATE ORG SUDOERS SYSTEM UI... ... legacyUserContext.isAdministrator(callback);
+    isSudoer: false, // if (results.isAdministrator && results.isAdministrator === true) { results.isSudoer = true;
+    teamsMaintainedHash: null,
+    pendingApprovals: null as TeamJoinApprovalEntity[],
+  };
+  results.organizationOverview = await individualContext.aggregations.getAggregatedOrganizationOverview(organization);
+  // Check for pending approvals
+  const teamsMaintained = results.organizationOverview.teams.maintainer as Team[];
+  if (teamsMaintained && teamsMaintained.length && teamsMaintained.length > 0) {
+    const teamsMaintainedHash = {};
+    for (let i = 0; i < teamsMaintained.length; i++) {
+      teamsMaintainedHash[teamsMaintained[i].id] = teamsMaintained[i];
+    }
+    results.teamsMaintainedHash = teamsMaintainedHash;
+    results.pendingApprovals = await approvalProvider.queryPendingApprovalsForTeams(teamsMaintained.map(team => team.id.toString()));
+  }
+  req.individualContext.webContext.render({
+    view: 'org/index',
+    title: organization.name,
+    state: {
+      accountInfo: results,
+      organization,
     },
-    isMembershipPublic: function (callback) {
-      organization.checkPublicMembership(username, callback);
-    },
-    orgUser: function (callback) {
-      organization.getDetails(function (error, details) {
-        const userDetails = details ? organization.memberFromEntity(details) : null;
-        callback(error, userDetails);
-      });
-    },
-    /*
-    CONSIDER: UPDATE ORG SUDOERS SYSTEM UI...
-    isAdministrator: function (callback) {
-        legacyUserContext.isAdministrator(callback);
-    }*/
-  },
-    function (error, results) {
-      if (error) {
-        return next(error);
-      }
-      if (results.isAdministrator && results.isAdministrator === true) {
-        results.isSudoer = true;
-      }
-      const render = function (results) {
-        req.individualContext.webContext.render({
-          view: 'org/index',
-          title: organization.name,
-          state: {
-            accountInfo: results,
-            organization: organization,
-            overwriteRemainingPrivateRepos: organization.overwriteRemainingPrivateRepos,
-          },
-        });
-      };
-      // Check for pending approvals
-      const teamsMaintained = results.organizationOverview.teams.maintainer;
-      if (teamsMaintained && teamsMaintained.length && teamsMaintained.length > 0) {
-        const teamsMaintainedHash = {};
-        for (let i = 0; i < teamsMaintained.length; i++) {
-          teamsMaintainedHash[teamsMaintained[i].id] = teamsMaintained[i];
-        }
-        results.teamsMaintainedHash = teamsMaintainedHash;
-        dc.getPendingApprovals(teamsMaintained, function (error, pendingApprovals) {
-          if (!error && pendingApprovals) {
-            results.pendingApprovals = pendingApprovals;
-          }
-          render(results);
-        });
-      } else {
-        render(results);
-      }
-    });
-});
+  });
+}));
 
 router.use('/membership', membershipRoute);
 router.use('/leave', leaveRoute);
 router.use('/security-check', securityCheckRoute);
 router.use('/profile-review', profileReviewRoute);
-router.use('/approvals', approvalsSystem);
 router.use('/new-repo', (req: ReposAppRequest, res) => {
   const organization = req.organization;
   res.redirect(organization.baseUrl + 'wizard');

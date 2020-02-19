@@ -56,7 +56,7 @@ block content
                         h3 2-factor auth
                         p PROTECTED
 
-      if onboarding !== true && overview && overview.organizations.member && overview.organizations.member.length
+      if onboarding !== true && overview && overview.organizations && overview.organizations.member && overview.organizations.member.length
         h1
           a.a-unstyled(name='orgs') Your #{config.brand.companyName} GitHub organizations
       else
@@ -66,14 +66,13 @@ block content
       - var oom = overview && overview.organizations ? overview.organizations.member : []
       each o in oom
           div.link-box
-            a(href=o + onboardingPostfixUrl)
-              h2: strong= o
+            a(href=o.name + onboardingPostfixUrl)
+              h2: strong= o.name
                 //-else if o.membershipStateTemporary === 'pending'
                   small
                     span.label.label-danger Membership pending
-              - var oo = getOrg(o)
-              if oo.description
-                p.lead= oo.description
+              if o.description
+                p.lead= o.description
 
       if onboarding === true
         h3 Your onboarding progress
@@ -105,9 +104,9 @@ block content
         if accountInfo.pendingApprovals && accountInfo.pendingApprovals.length && accountInfo.pendingApprovals.length > 0
           h1 Approvals: Please Review
           p
-            a.btn.btn-default(href='/approvals/') See all pending approvals (#{accountInfo.pendingApprovals.length})
+            a.btn.btn-default(href='/settings/approvals/') See all pending approvals (#{accountInfo.pendingApprovals.length})
 
-        if overview && overview.teams && overview.teams.maintainer
+        if overview && overview.teams && overview.teams.maintainer && overview.teams.maintainer.length
           h1 Teams you maintain
           script(type='text/javascript').
             function initializeManageFilter() {
@@ -137,12 +136,12 @@ block content
                 each team in overview.teams.maintainer
                   tr
                     td
-                      a.btn.btn-sm.btn-muted(href='/' + team.organization.login + '/teams/' + team.slug)= team.name
-                    td.twentypercent= team.organization.login
+                      a.btn.btn-sm.btn-muted(href='/' + team.organization.name + '/teams/' + team.slug)= team.name
+                    td.twentypercent= team.organization.name
                     td.thirtypercent
                       ul.list-unstyled
-                        li: a.btn.btn-sm.btn-default(href='/' + team.organization.login + '/teams/' + team.slug) Manage
-                        //-li: a.btn.btn-sm.btn-muted(href='https://github.com/orgs/' + team.organization.login + '/teams/' + team.slug, target='_new') GitHub
+                        li: a.btn.btn-sm.btn-default(href='/' + team.organization.name + '/teams/' + team.slug) Manage
+                        //-li: a.btn.btn-sm.btn-muted(href='https://github.com/orgs/' + team.organization.name + '/teams/' + team.slug, target='_new') GitHub
 
       if accountInfo.isLinkedUser && onboarding !== true
         if overview && overview.teams && overview.teams.member && overview.teams.member.length
@@ -177,16 +176,16 @@ block content
                 else
                   tr
                     td
-                      a.btn.btn-sm.btn-muted(href='/' + team.organization.login + '/teams/' + team.slug, target='_new')= team.name
-                      //-a.btn.btn-sm.btn-muted(href='https://github.com/orgs/' + team.organization.login + '/teams/' + team.slug, target='_new')= team.name
-                    td.twentypercent= team.organization.login
+                      a.btn.btn-sm.btn-muted(href='/' + team.organization.name + '/teams/' + team.slug, target='_new')= team.name
+                      //-a.btn.btn-sm.btn-muted(href='https://github.com/orgs/' + team.organization.name + '/teams/' + team.slug, target='_new')= team.name
+                    td.twentypercent= team.organization.name
                     td.twentypercent
                       p
                         if config.github.teamEveryoneId == team.id
-                          a.btn.btn-default.btn-sm(href='/' + team.organization.login + '/leave') Leave Organization
+                          a.btn.btn-default.btn-sm(href='/' + team.organization.name + '/leave') Leave Organization
                         else
-                          //-a.btn.btn-default.btn-sm(href='https://github.com/orgs/' + team.organization.login + '/teams/' + team.slug, target='_new')
-                          a.btn.btn-default.btn-sm(href='/' + team.organization.login + '/teams/' + team.slug, target='_new')
+                          //-a.btn.btn-default.btn-sm(href='https://github.com/orgs/' + team.organization.name + '/teams/' + team.slug, target='_new')
+                          a.btn.btn-default.btn-sm(href='/' + team.organization.name + '/teams/' + team.slug, target='_new')
                             | Open on GitHub
           //- The user will get a better experience joining teams if they go through the organization onboarding first.
           //-p

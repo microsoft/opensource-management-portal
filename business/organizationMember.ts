@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -8,6 +8,8 @@
 import * as common from './common';
 import { Organization } from "./organization";
 import { Operations } from "./operations";
+import { IGetOwnerToken } from '../transitional';
+import { GetAddressFromUpnAsync } from '../lib/mailAddressProvider';
 
 const memberPrimaryProperties = [
   'id',
@@ -20,39 +22,34 @@ const memberSecondaryProperties = [];
 export class OrganizationMember {
   private _organization: Organization;
   private _operations: Operations;
-  private _getToken: any;
   private _organizationProfile: any;
-  private _id;
-  private _login;
+  private _id: number;
+  private _login: string;
   private _updated_at;
   private _created_at;
   private _avatar_url;
   private _permissions;
 
-  constructor(organization: Organization, entity, getToken, operations: Operations) {
+  constructor(organization: Organization, entity: any, operations: Operations) {
     this._organization = organization;
-
     if (entity) {
       common.assignKnownFieldsPrefixed(this, entity, 'member', memberPrimaryProperties, memberSecondaryProperties);
     }
-
     // Organization accounts have a plan
     if (entity && entity.plan) {
       this._organizationProfile = entity;
     }
-
-    this._getToken = getToken;
     this._operations = operations;
   }
 
-  getProfileCreatedDate() {
+  getProfileCreatedDate(): Date {
     // legacy method that should probably be removed
     if (this._created_at) {
       return new Date(this._created_at);
     }
   }
 
-  getProfileUpdatedDate() {
+  getProfileUpdatedDate(): Date {
     // legacy method that should probably be removed
     if (this._updated_at) {
       return new Date(this._updated_at);
@@ -63,19 +60,19 @@ export class OrganizationMember {
     return this._organizationProfile;
   }
 
-  get id() {
+  get id(): number {
     return this._id;
   }
 
-  get login() {
+  get login(): string {
     return this._login;
   }
 
-  get avatar_url() {
+  get avatar_url(): string {
     return this._avatar_url;
   }
 
-  get permissions() {
+  get permissions(): any {
     return this._permissions;
   }
 
@@ -92,21 +89,22 @@ export class OrganizationMember {
     }
   }
 
-  getMailAddress(callback) {
+  async getMailAddress(): Promise<string> {
     // duplicated code in organizationMember and teamMember
     if (!this._id) {
-      return callback(new Error('No organization member ID'));
+      throw new Error('No organization member ID');
     }
-    const operations = this._operations;
-    operations.graphManager.getCachedLink(this._id, (getLinkError, link) => {
-      if (getLinkError || !link || !link.aadupn) {
-        return callback(getLinkError);
-      }
-      const providers = operations.providers;
-      if (!providers.mailAddressProvider) {
-        return callback(new Error('No mailAddressProvider is available in this application instance'));
-      }
-      providers.mailAddressProvider.getAddressFromUpn(link.aadupn, callback);
-    });
+    const link = await this._operations.getLinkByThirdPartyId(this._id.toString());
+    if (!link || !link.corporateId) {
+      throw new Error(`Organization member ID ${this._id} is not linked.`);
+    }
+    if (!link.corporateUsername) {
+      throw new Error(`Organization member ID ${this._id} is linked to corporate ID ${link.corporateId} but does not have a corporate username.`);
+    }
+    const providers = this._operations.providers;
+    if (!providers.mailAddressProvider) {
+      throw new Error('No mailAddressProvider is available in this application instance');
+    }
+    return GetAddressFromUpnAsync(providers.mailAddressProvider, link.corporateUsername);
   }
 }

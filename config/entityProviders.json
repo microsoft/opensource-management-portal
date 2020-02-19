@@ -1,0 +1,14 @@
+{
+    "teamjoin": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
+    "repositorymetadata": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
+    "organizationmembercache": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
+    "organizationsettings": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
+    "repositorycache": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
+    "repositorycollaboratorcache": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
+    "repositoryteamcache": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
+    "teamcache": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
+    "teammembercache": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
+
+    "tokens": "env://ENTITY_PROVIDER_TEAMJOIN?default=table",
+    "localextensionkey": "env://ENTITY_PROVIDER_TEAMJOIN?default=table"
+}

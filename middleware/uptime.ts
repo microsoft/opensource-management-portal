@@ -1,12 +1,12 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 // Every minute, send an application insights metric indicating how long this
 // has been running.
 
-import moment = require('moment');
+import moment from 'moment';
 
 function everyMinute(insights, started) {
   const now = moment();

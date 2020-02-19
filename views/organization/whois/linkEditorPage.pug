@@ -8,3 +8,9 @@ extends ../../layout
 block content
   div.container
     include ./linkEditor
+    hr
+    h2 Direct link delete
+    p Note that this will leave any org memberships intact
+    form(method='post', action='/organization/whois/link/' + query.link.id)
+      p
+        input.btn.btn-default(type='submit', value='Delete link', name='delete-link')

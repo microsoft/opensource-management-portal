@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -77,7 +77,7 @@ function deserializeEntity(options, entityName, entity, callback) {
   }
   const keyResolver = options.keyResolver;
   if (keyResolver === undefined) {
-    return callback(new Error('A key resolver must be supplied to use encryption.'));
+    return callback(new Error('A key resolver must be supplied to encrypt/decrypt.'));
   }
   const encryptionOptions = {
     keyResolver: keyResolver,

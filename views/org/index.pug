@@ -50,7 +50,7 @@ block content
         if accountInfo.pendingApprovals && accountInfo.pendingApprovals.length && accountInfo.pendingApprovals.length > 0
           h2 Pending Approvals
           p
-            a.btn.btn-default(href='./approvals/') See all pending #{organization.name} approvals (#{accountInfo.pendingApprovals.length})
+            a.btn.btn-default(href='/settings/approvals/') See all pending #{organization.name} approvals (#{accountInfo.pendingApprovals.length})
         if accountInfo.organizationOverview.teams.maintainer
           h2.capitalize #{organization.name} Teams You Maintain
           script(type='text/javascript').
@@ -127,10 +127,10 @@ block content
               else
                 tr
                   td
-                    a.capitalize.btn.btn-sm.btn-muted(href='/' + team.organization.login + '/teams/' + team.slug, target='_new')= team.name
+                    a.capitalize.btn.btn-sm.btn-muted(href='/' + team.organization.name + '/teams/' + team.slug, target='_new')= team.name
                   td.thirtypercent
                     p
-                      a.btn.btn-default.btn-sm(href='/' + team.organization.login + '/teams/' + team.slug, target='_new')
+                      a.btn.btn-default.btn-sm(href='/' + team.organization.name + '/teams/' + team.slug, target='_new')
                         | Open on GitHub
       else
         //-p You are not currently a member of any GitHub teams that grant you permission to specific repositories. You may be pre-approved to join teams.
@@ -196,37 +196,23 @@ block content
                     small Private
 
                 hr
-                h6 Remaining Repositories
-                if overwriteRemainingPrivateRepos
-                  h2
-                    = overwriteRemainingPrivateRepos + ' '
-                    small Private
-                else if orgUser.plan && orgUser.plan.private_repos
+                - var isEnterpriseCloud = orgUser && orgUser.plan && orgUser.plan.name == 'enterprise'
+                if isEnterpriseCloud
+                  h6 &infin; Repositories
+                else
+                  h6 Remaining Repositories
+                if orgUser.plan && orgUser.plan.private_repos
                   h2.capitalize
                     = orgUser.plan.name + ' '
                     small Plan
+                  if !isEnterpriseCloud
+                    h2
+                      = (orgUser.plan.private_repos - orgUser.total_private_repos) + ' '
+                      small Private
+                if !isEnterpriseCloud
                   h2
-                    = (orgUser.plan.private_repos - orgUser.total_private_repos) + ' '
-                    small Private
-                h2
-                  | &infin;&nbsp;
-                  small Public
-
-      if organization.legacyTrainingResourcesLink
-        - var tr = organization.legacyTrainingResourcesLink
-        if tr.organization && tr.organization.length && tr.organization.length > 0
-          hr
-          h3 Organization Resource#{tr.organization.length > 1 ? 's' : ''}
-          ul.list-unstyled
-            each resource in tr.organization
-              li
-                p
-                  a(href=resource.link, target='_new')
-                    = resource.title + ' '
-                    i.glyphicon.glyphicon-share-alt
-                  if resource.text
-                    br
-                    small= resource.text
+                    | &infin;&nbsp;
+                    small Public
 
       hr
       p

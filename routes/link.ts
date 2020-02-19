@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -10,7 +10,7 @@
 const emailRender = require('../lib/emailRender');
 import express = require('express');
 import { ReposAppRequest } from '../transitional';
-import { IndividualContext } from '../business/context2';
+import { IndividualContext } from '../user';
 import { ILinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
 import { storeOriginalUrlAsReferrer, wrapError } from '../utils';
 import { ICorporateLink } from '../business/corporateLink';
@@ -38,12 +38,21 @@ router.use((req: IRequestHacked, res, next) => {
   }
 });
 
+router.use('/', function (req: ReposAppRequest, res, next) {
+  // Make sure both account types are authenticated before showing the link pg [wi 12690]
+  const individualContext = req.individualContext;
+  if (!individualContext.corporateIdentity || !individualContext.getGitHubIdentity()) {
+    req.insights.trackEvent({ name: 'PortalSessionNeedsBothGitHubAndAadUsernames' });
+    return res.redirect('/?signin');
+  }
+  return next();
+});
+
 // TODO: graph provider non-guest check should be middleware and in the link business process
 
 router.use((req: IRequestHacked, res, next) => {
   const individualContext = req.individualContext as IndividualContext;
   const providers = req.app.settings.providers;
-  const operations = providers.operations;
   const insights = providers.insights;
   const config = providers.config;
   let validateAndBlockGuests = false;
@@ -319,10 +328,6 @@ router.get('/reconnect', function (req: ReposAppRequest, res, next) {
       expectedUsername: ghi.username,
     },
   });
-});
-
-router.get('/update', function (req: ReposAppRequest, res, next) {
-  return next(wrapError(null, 'This feature and experience is not longer available. Please report this to the support e-mail to understand your scenario better.', true));
 });
 
 module.exports = router;

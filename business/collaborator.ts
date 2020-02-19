@@ -1,13 +1,11 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
 import * as common from './common';
-import { Organization } from "./organization";
-import { Operations } from "./operations";
 
 const memberPrimaryProperties = [
   'id',
@@ -19,31 +17,22 @@ const memberPrimaryProperties = [
 export class Collaborator {
   public static PrimaryProperties = memberPrimaryProperties;
 
-  private _organization: Organization;
-  private _operations: Operations;
-  private _getToken: any;
-
   private _avatar_url: string;
-  private _id: string;
+  private _id: number;
   private _login: string;
   private _permissions: any;
 
-  constructor(organization: Organization, entity, getToken, operations: Operations) {
-    this._organization = organization;
-
+  constructor(entity: unknown) {
     if (entity) {
       common.assignKnownFieldsPrefixed(this, entity, 'member', memberPrimaryProperties);
     }
-
-    this._getToken = getToken;
-    this._operations = operations;
   }
 
   get permissions(): any {
     return this._permissions;
   }
 
-  get id(): string {
+  get id(): number {
     return this._id;
   }
 

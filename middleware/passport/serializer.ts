@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -14,15 +14,15 @@ function createSerializer() {
     }
     return serializer[serializerKey];
   }
-  
+
   function createSerialize(options) {
     return ensureSerializer(options.config).serialize.bind(null, options);
   }
-  
+
   function createDeserialize(options) {
     return ensureSerializer(options.config).deserialize.bind(null, options);
   }
-  
+
   function initialize(options, app) {
     const serializerInstance = ensureSerializer(options.config);
     const initializer = serializerInstance.initialize;
@@ -31,7 +31,7 @@ function createSerializer() {
       initializer(options, app, serializerInstance);
     }
   }
-  
+
   return {
     initialize: initialize,
     serialize: createSerialize,

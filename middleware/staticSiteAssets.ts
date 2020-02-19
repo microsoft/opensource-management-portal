@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -27,5 +27,10 @@ export function StaticSiteAssets(app, express) {
 };
 
 export function StaticSiteFavIcon(app) {
-  app.use(favicon(path.join(ospoAssetsDistPath, 'favicon.ico')));
+  try {
+    app.use(favicon(path.join(ospoAssetsDistPath, 'favicon.ico')));
+  } catch (nofavicon) {
+    console.error(`The static site assets in "${ospoAssetsDistPath}" does not include a favicon. You may need to run 'npm install' in the package folder first.`);
+    throw nofavicon;
+  }
 }

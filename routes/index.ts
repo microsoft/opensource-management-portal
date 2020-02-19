@@ -1,9 +1,9 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-const express = require('express');
+import express from 'express';
 const router = express.Router();
 
 import { webContextMiddleware } from '../middleware/business/setContext';
@@ -15,6 +15,7 @@ router.use(webContextMiddleware);
 router.use('/thanks', require('./thanks'));
 router.use('/myinfo', require('./diagnostics'));
 router.use('/explore', require('./explore'));
+router.use('/approvals', require('./approvals'));
 
 router.use(require('./index-authenticated'));
 

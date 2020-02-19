@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -7,84 +7,38 @@ import express = require('express');
 const router = express.Router();
 
 import async = require('async');
-import { ReposAppRequest } from '../../../../transitional';
+
+import { ReposAppRequest, IProviders } from '../../../../transitional';
 import { wrapError } from '../../../../utils';
+import { Operations } from '../../../../business/operations';
+import { Team } from '../../../../business/team';
+import { PermissionWorkflowEngine } from '../approvals';
 const emailRender = require('../../../../lib/emailRender');
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: any;
-  approvalEngine?: any;
+  approvalEngine?: PermissionWorkflowEngine;
   teamUrl?: any;
 }
 
-function teamsInfoFromRequest(operations, team2, approvalRequest, callback) {
-  if (approvalRequest.teamsCount) {
-    var count = parseInt(approvalRequest.teamsCount, 10);
-    var detailedTeams = [];
-    for (var i = 0; i < count; i++) {
-      var key = 'teamid' + i;
-      if (approvalRequest[key] && approvalRequest[key + 'p']) {
-        detailedTeams.push({
-          id: approvalRequest[key],
-          permission: approvalRequest[key + 'p'],
-        });
-      }
-    }
-    async.map(detailedTeams, function (basic, cb) {
-      var permission = basic.permission;
-      operations.getTeamById(basic.id, function (error, teamInstance) {
-        if (teamInstance) {
-          teamInstance._temporary_permission = permission;
-        }
-        cb(error, teamInstance);
-      });
-    }, callback);
-  } else {
-    callback();
-  }
-}
-
 router.get('/', function (req: ILocalRequest, res) {
-  var approvalRequest = req.approvalEngine.request;
-  const team2 = req.team2;
-  const operations = req.app.settings.providers.operations;
-  teamsInfoFromRequest(operations, team2, approvalRequest, function (error, expandedTeamInfo) {
-    // Ignoring any errors for now.
-    if (approvalRequest.requested) {
-      var asInt = parseInt(approvalRequest.requested, 10);
-      approvalRequest.requestedTime = new Date(asInt);
-    }
-    if (approvalRequest.decisionTime) {
-      approvalRequest.decisionTime = new Date(parseInt(approvalRequest.decisionTime, 10));
-    }
-    req.individualContext.webContext.render({
-      view: 'org/team/approveStatus',
-      title: 'Request Status',
-      state: {
-        entry: approvalRequest,
-        requestingUser: req.approvalEngine.user,
-        expandedTeamInfo: expandedTeamInfo,
-        team: team2,
-        teamUrl: req.teamUrl,
-      },
-    });
+  const approvalRequest = req.approvalEngine.request;
+  const team2 = req.team2 as Team;
+  // Ignoring any errors for now.
+  if (approvalRequest.created) {
+    // legacy compat, can remove with a view update
+    approvalRequest['requestedTime'] = approvalRequest.created;
+  }
+  req.individualContext.webContext.render({
+    view: 'org/team/approveStatus',
+    title: 'Request Status',
+    state: {
+      metadata: approvalRequest,
+      requestingUser: req.approvalEngine.user,
+      team: team2,
+      teamUrl: req.teamUrl,
+    },
   });
-});
-
-router.get('/edit', function (req: ILocalRequest, res, next) {
-  var approvalEngine = req.approvalEngine;
-  if (approvalEngine.editGet) {
-    return approvalEngine.editGet(req, res, next);
-  }
-  next(new Error('Editing is not supported for this request type.'));
-});
-
-router.post('/edit', function (req: ILocalRequest, res, next) {
-  var approvalEngine = req.approvalEngine;
-  if (approvalEngine.editPost) {
-    return approvalEngine.editPost(req, res, next);
-  }
-  next(new Error('Editing is not supported for this request type.'));
 });
 
 router.get('/setNote/:action', function (req: ILocalRequest, res) {
@@ -98,7 +52,7 @@ router.get('/setNote/:action', function (req: ILocalRequest, res) {
     view: 'org/team/approveStatusWithNote',
     title: 'Record your comment for request ' + engine.id + ' (' + action + ')',
     state: {
-      entry: engine.request,
+      metadata: engine.request,
       action: action,
       requestingUser: engine.user,
       team: team2,
@@ -108,20 +62,19 @@ router.get('/setNote/:action', function (req: ILocalRequest, res) {
 });
 
 router.post('/', function (req: ILocalRequest, res, next) {
-  var engine = req.approvalEngine;
-  var requestid = engine.id;
-  var team = engine.team;
-  const organization = req.organization;
-  var dc = req.app.settings.dataclient;
+  const engine = req.approvalEngine as PermissionWorkflowEngine;
+  const approvalRequest = req.approvalEngine.request;
+  const requestid = engine.id;
+  const providers = req.app.settings.providers as IProviders;
+  const teamJoinApprovalProvider = providers.approvalProvider;
   const config = req.app.settings.runtimeConfig;
   if (!req.body.text && req.body.deny) {
     return res.redirect(req.teamUrl + 'approvals/' + requestid + '/setNote/deny');
   }
   if (req.body.reopen) {
-    req.individualContext.webContext.saveUserAlert('Request re-opened.', engine.typeName, 'success');
-    return dc.updateApprovalRequest(requestid, {
-      active: true
-    }, function () {
+    approvalRequest.active = true;
+    teamJoinApprovalProvider.updateTeamApprovalEntity(approvalRequest).then(ok => {
+      req.individualContext.webContext.saveUserAlert('Request re-opened.', engine.typeName, 'success');
       res.redirect(req.teamUrl + 'approvals/' + requestid);
     });
   }
@@ -134,8 +87,7 @@ router.post('/', function (req: ILocalRequest, res, next) {
   }
   const repoApprovalTypes = new Set(repoApprovalTypesValues);
   const mailProviderInUse = repoApprovalTypes.has('mail');
-  var issueProviderInUse = repoApprovalTypes.has('github');
-  if (!mailProviderInUse && !issueProviderInUse) {
+  if (!mailProviderInUse) {
     return next(new Error('No configured approval providers configured.'));
   }
   const mailProvider = req.app.settings.mailProvider;
@@ -153,22 +105,10 @@ router.post('/', function (req: ILocalRequest, res, next) {
   const username = req.individualContext.getGitHubIdentity().username;
   var friendlyErrorMessage = 'Whoa? What happened?';
   var pendingRequest = engine.request;
-  var notificationRepo = null;
-  var issueId = pendingRequest.issue;
-  var userMailAddress = null;
-  try {
-    if (issueId) {
-      notificationRepo = organization.legacyNotificationsRepository;
-    }
-  } catch (noWorkflowRepoError) {
-    // No provider configured
-    issueId = undefined;
-    issueProviderInUse = false;
-  }
-  var issue = null;
+  let userMailAddress = null;
   async.waterfall([
     function getMailAddressForUser(callback) {
-      const upn = pendingRequest.email;
+      const upn = pendingRequest.corporateUsername;
       mailAddressProvider.getAddressFromUpn(upn, (resolveError, mailAddress) => {
         if (resolveError) {
           return callback(resolveError);
@@ -177,81 +117,40 @@ router.post('/', function (req: ILocalRequest, res, next) {
         callback();
       });
     },
-    function commentOnIssue(callback) {
-      if (!issueId) {
+    function updateRequest() {
+      const callback = arguments[arguments.length - 1];
+
+      pendingRequest.decision = action,
+      pendingRequest.active = false;
+      pendingRequest.decisionTime = new Date();
+      pendingRequest.decisionThirdPartyUsername = username;
+      pendingRequest.decisionThirdPartyId = req.individualContext.getGitHubIdentity().id;
+      pendingRequest.decisionMessage = bodyText;
+      pendingRequest.decisionCorporateUsername = req.individualContext.corporateIdentity.username;
+      pendingRequest.decisionCorporateId = req.individualContext.corporateIdentity.id;
+
+      friendlyErrorMessage = 'The approval request information could not be updated, indicating a data store problem potentially. The decision may not have been recorded.';
+
+      teamJoinApprovalProvider.updateTeamApprovalEntity(pendingRequest).then(ok => {
         return callback();
-      }
-      issue = notificationRepo.issue(issueId);
-      var bodyAddition = engine.messageForAction(action);
-      if (bodyText !== undefined) {
-        bodyAddition += '\n\nA note was included with the decision and can be viewed by team maintainers and the requesting user.';
-      }
-      var comment = bodyAddition + '\n\n<small>This was generated by the Open Source Portal on behalf of ' +
-        username + '.</small>';
-      if (pendingRequest.ghu) {
-        comment += '\n\n' + 'FYI, @' + pendingRequest.ghu + '\n';
-      }
-      friendlyErrorMessage = 'While trying to comment on issue #' + issue.number + ', an error occurred.';
-      issue.createComment(comment, (commentError) => {
-        if (commentError && mailProviderInUse) {
-          issue = null;
-          issueProviderInUse = false;
-        }
-        callback(commentError);
+      }).catch(error => {
+        return callback(error);
       });
     },
-    function updateRequest() {
-      var callback = arguments[arguments.length - 1];
-      var requestUpdates = {
-        decision: action,
-        active: false,
-        decisionTime: (new Date().getTime()).toString(),
-        decisionBy: username,
-        decisionNote: bodyText,
-        decisionEmail: req.individualContext.corporateIdentity.username,
-      };
-      var updatedRequest = Object.assign({}, pendingRequest);
-      Object.assign(updatedRequest, requestUpdates);
-      friendlyErrorMessage = 'The approval request information could not be updated, indicating a data store problem potentially. The decision may not have been recorded.';
-      dc.replaceApprovalRequest(requestid, updatedRequest, callback);
-    },
     function performApprovalOperations() {
-      var callback = arguments[arguments.length - 1];
+      const callback = arguments[arguments.length - 1];
       if (action == 'approve') {
         engine.performApprovalOperation(callback);
       } else {
         callback();
       }
     },
-    function closeIssue() {
-      var callback = arguments[arguments.length - 1];
-      if (!issue) {
-        return callback();
-      }
-      friendlyErrorMessage = 'The issue #' + issue.number + ' that tracks the request could not be closed.';
-      issue.close(callback);
-    },
     function () {
       friendlyErrorMessage = null;
-      var callback = arguments[arguments.length - 1];
-      if (action == 'approve' && engine.generateSecondaryTasks) {
-        engine.generateSecondaryTasks(callback);
-      } else {
-        callback();
-      }
+      const callback = arguments[arguments.length - 1];
+      return callback();
     },
-    // Secondary tasks run after the primary and in general will not
-    // fail the approval operation. By sending an empty error callback
-    // but then an object with an error property set, the operation
-    // that failed can report status. Whether an error or not, a
-    // message property will be shown for each task result.
-    function () {
-      friendlyErrorMessage = null;
-      var tasks = arguments.length > 1 ? arguments[0] : [];
-      var callback = arguments[arguments.length - 1];
-      async.series(tasks, callback);
-    },
-  ], function (error, output) {
+  ], function (error, output: string[]) {
     if (error) {
       if (friendlyErrorMessage) {
         error = wrapError(error, friendlyErrorMessage);
@@ -260,7 +159,7 @@ router.post('/', function (req: ILocalRequest, res, next) {
     }
     var secondaryErrors = false;
     if (output && output.length) {
-      output.forEach((secondaryResult) => {
+      output.forEach((secondaryResult: any) => {
         if (secondaryResult.error) {
           secondaryErrors = true;
           try {
@@ -280,7 +179,7 @@ router.post('/', function (req: ILocalRequest, res, next) {
         }
       });
     }
-    req.individualContext.webContext.saveUserAlert('Thanks for processing the request with your ' + action.toUpperCase() + ' decision.', engine.typeName, 'success');
+    req.individualContext.webContext.saveUserAlert('Thanks for your ' + action.toUpperCase() + ' decision.', engine.typeName, 'success');
     function sendDecisionMail() {
       const wasApproved = action == 'approve';
       const contentOptions = {
@@ -293,8 +192,8 @@ router.post('/', function (req: ILocalRequest, res, next) {
         decisionNote: bodyText,
         decisionEmail: req.individualContext.corporateIdentity.username,
         reason: (`You are receiving this e-mail because of a request that you created, and a decision has been made.
-                  This mail was sent to: ${pendingRequest.email}`),
-        headline: engine.getDecisionEmailHeadline(wasApproved, pendingRequest),
+                  This mail was sent to: ${pendingRequest.corporateUsername}`),
+        headline: engine.getDecisionEmailHeadline(wasApproved),
         notification: wasApproved ? 'information' : 'warning',
         service: 'Microsoft GitHub',
       };
@@ -341,19 +240,7 @@ router.post('/', function (req: ILocalRequest, res, next) {
     if (mailProviderInUse) {
       sendDecisionMail();
     }
-    if (action !== 'approve' || !engine.getApprovedViewName) {
-      return res.redirect(req.teamUrl);
-    }
-    req.individualContext.webContext.render({
-      view: engine.getApprovedViewName(),
-      title: 'Approved',
-      state: {
-        pendingRequest: pendingRequest,
-        results: output,
-        team: team,
-        teamUrl: req.teamUrl,
-      },
-    });
+    return res.redirect(req.teamUrl);
   });
 });
 

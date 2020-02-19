@@ -28,7 +28,7 @@ block content
       blockquote= entry.justification
     if entry.active === true
       h4 ACTIONS
-      form(method='post', action='/approvals/' + entry.RowKey + '/cancel')
+      form(method='post', action='/settings/approvals/' + entry.RowKey + '/cancel')
         input.btn.btn-primary.btn-sm(type='submit', value='Cancel My Request')
 
     else

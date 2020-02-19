@@ -8,56 +8,56 @@ extends ../../layout
 block content
   div.container
 
-    if entry.type == 'joinTeam'
+    if metadata.type !== 'repo'
       h1
         | Request to join
         | &nbsp;
-        small.capitalize= entry.teamname
-    else if entry.type == 'repo'
+        small.capitalize= metadata.teamName
+    else if metadata.type == 'repo'
       h1.capitalize
-        | New #{entry.org} Repo Request
+        | New #{metadata.org} Repo Request
         | &nbsp;
-        small.capitalize= entry.repoName
+        small.capitalize= metadata.repositoryName
 
-    if entry.type == 'repo' && entry.repoVisibility == 'public'
+    if metadata.type == 'repo' && metadata.initialRepositoryVisibility == 'public'
       p
         strong Warning: this is a request for a new public repo which could be immediately visible for the world, journalists, bloggers and more.
 
     // CONSIDER: Integrate with directory lookup options...
-    if entry.email
+    if metadata.corporateUsername
       p
-        a.btn.btn-sm.btn-default(href='mailto:' + entry.email) Send Mail to #{entry.email}
+        a.btn.btn-sm.btn-default(href='mailto:' + metadata.corporateUsername) Send Mail to #{metadata.corporateUsername}
 
     table.table
       thead
         tr
           th GitHub User
           th Identity
-          if entry.type == 'joinTeam'
+          if metadata.type !== 'repo'
             th Team to join
-          else if entry.type == 'repo'
+          else if metadata.type == 'repo'
             th Repo to create
       tbody
         tr
           td
             p
-              a.btn.btn-muted.btn-sm(href='https://github.com/' + entry.ghu, target='_new')= entry.ghu
+              a.btn.btn-muted.btn-sm(href='https://github.com/' + metadata.thirdPartyUsername, target='_new')= metadata.thirdPartyUsername
           td
-            if requestingUser.contactEmail
+            if metadata.corporateUsername
               p
-                a.btn.btn-muted.btn-sm(href='mailto:' + requestingUser.contactEmail())= requestingUser.contactEmail()
-          if entry.type == 'joinTeam'
+                a.btn.btn-muted.btn-sm(href='mailto:' + metadata.corporateUsername)= metadata.corporateUsername
+          if metadata.type !== 'repo'
             td
               p
                 if team
                   a(href=team.baseUrl, target='_new')= team.name
-          else if entry.type == 'repo'
+          else if metadata.type == 'repo'
             td
-              p= entry.repoName
+              p= metadata.repoName
 
-    if entry.justification
+    if metadata.justification
       h5 BUSINESS JUSTIFICATION & CONTEXT
-      blockquote= entry.justification
+      blockquote= metadata.justification
 
     h5 ACTIONS
 
@@ -66,7 +66,7 @@ block content
     else
       p To help keep the record straight, please consider noting why this request is being denied. This will be visible to the user who has requested permission, but not recorded in the associated GitHub issue tied to this request.
 
-    form(method='post', action=teamUrl + 'approvals/' + entry.RowKey)
+    form(method='post', action=teamUrl + 'approvals/' + metadata.approvalId)
       p
         textarea.form-control(name='text', rows='3', placeholder='Historical note by ' + user.github.username)
       p
@@ -75,9 +75,9 @@ block content
         else
           input.btn.btn-primary(type='submit', name='deny', value='Deny')
         | &nbsp;
-        a.btn.btn-default(href='/team/' + entry.teamid + '/approvals/' + entry.RowKey) Cancel
+        a.btn.btn-default(href='/team/' + metadata.teamId + '/approvals/' + metadata.approvalId) Cancel
 
     hr
 
     p
-      small Request ID: #{entry.RowKey}
+      small Request ID: #{metadata.approvalId}

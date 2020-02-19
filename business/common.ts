@@ -1,11 +1,13 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-const _ = require('lodash');
+import _ from 'lodash';
+
+import { ICallback, PromiseResolve, PromiseReject } from '../transitional';
 
 export function assignKnownFieldsPrefixed(self, entity, type, primaryProperties, secondaryProperties?, prefix?: string) {
   prefix = prefix || '_';
@@ -39,7 +41,30 @@ export function assignKnownFieldsPrefixed(self, entity, type, primaryProperties,
   }
 }
 
-export function createInstancesCallback(self, createMethod, callback) {
+export function createPromisedInstances<T>(self, createMethod, resolve: PromiseResolve<T>, reject: PromiseReject) {
+  return function (error, entities) {
+    if (error) {
+      return reject(error);
+    }
+    let wrap = createMethod.bind(self);
+    return resolve(_.map(entities, wrap));
+  };
+}
+
+export function createInstances<T>(self, createMethod, entities: T[]): T[] {
+  let wrap = createMethod.bind(self);
+  return _.map(entities, wrap) as any as T[];
+}
+
+export function returnPromisedInstances<T>(self, createMethod, resolve: PromiseResolve<T>, reject: PromiseReject, entities, error) {
+  if (error) {
+    return reject(error);
+  }
+  let wrap = createMethod.bind(self);
+  return resolve(_.map(entities, wrap));
+}
+
+export function createInstancesCallback<T>(self, createMethod, callback: ICallback<T[]>) {
   return function (error, entities) {
     if (error) {
       return callback(error);
@@ -48,4 +73,3 @@ export function createInstancesCallback(self, createMethod, callback) {
     callback(null, _.map(entities, wrap));
   };
 }
-

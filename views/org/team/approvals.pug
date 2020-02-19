@@ -13,67 +13,58 @@ block content
     if pendingApprovals && pendingApprovals.length && pendingApprovals.length > 0
       div
         div.container
-          each entry in pendingApprovals
-            h3(style='padding-bottom: 16px')
-              =entry.type === 'repo' ? 'New Repository' : 'Join team'
+          each metadata in pendingApprovals
+            h3(style='padding-bottom: 16px') Permission requests
             div.row
               div.col-md-4.col-lg-4
-                form(method='post', action=teamUrl + 'approvals/' + entry.RowKey)
+                form(method='post', action=teamUrl + 'approvals/' + metadata.approvalId)
                   p
-                    //-if entry.issue
+                    //-if metadata.issue
                       //- NOTE: Commenting out GitHub links with approval repos, since they are deprecated
-                    a.btn.btn-sm.btn-muted(href=teamUrl + 'approvals/' + entry.RowKey)
+                    a.btn.btn-sm.btn-muted(href=teamUrl + 'approvals/' + metadata.approvalId)
                       i.glyphicon.glyphicon-zoom-in
                       | &nbsp;
                       | Detailed Request
-                    if entry.requestedTime
+                    if metadata.created
                       | &nbsp; &nbsp;
-                      time(datetime=entry.requestedTime.toISOString())= entry.requestedTime.toDateString()
-                  if entry.active === true
+                      time(datetime=metadata.created)= metadata.created
+                  if metadata.active === true
                     h5 ACTIONS
                     p
                       input.btn.btn-sm.btn-default(type='submit', name='approve', value='Approve')
-                    if entry.type != 'repo'
-                      p
-                        input.btn.btn-sm.btn-primary(type='submit', name='approveWithComment', value='Approve with Comment...')
+                    p
+                      input.btn.btn-sm.btn-primary(type='submit', name='approveWithComment', value='Approve with Comment...')
                     p
                       input.btn.btn-sm.btn-default(type='submit', name='deny', value='Deny...')
               div.col-md-4.col-lg-4
-                if entry.type === 'repo'
-                  h5 REPO
-                  p= entry.repoName
-                  h5 PERMISSIONS
-                  p
-                    small Open the "Detailed Request" view to see permissions and other info for the repo request.
-                else if entry.type === 'joinTeam'
+                if metadata.teamName
                   h5 TEAM NAME
                   p
-                    a(href='https://github.com/orgs/' + entry.org + '/teams/' + entry.teamname, target='_new')= entry.teamname
-                if entry.justification
+                    a(href='https://github.com/orgs/' + metadata.organizationName + '/teams/' + metadata.teamName, target='_new')= metadata.teamName
+                if metadata.justification
                   h5 BUSINESS JUSTIFICATION
                   blockquote
-                    =entry.justification
+                    =metadata.justification
               div.col-md-4.col-lg-4
-                if entry.completeRequestingUser && entry.completeRequestingUser.corporateAlias()
+                if metadata.corporateUsername
                   h5 CORPORATE IDENTITY
                   p
-                    - var corporateUser = entry.completeRequestingUser
-                    if corporateUser.link
-                      if corporateUser.link.aadname
-                        a.btn.btn-sm.btn-muted(href=corporateUser.corporateProfileUrl(), target='_new')= corporateUser.link.aadname
-                      if corporateUser.corporateAlias()
-                        a.btn.btn-sm.btn-muted-more(href=corporateUser.corporateProfileUrl(), target='_new')
-                          = corporateUser.corporateAlias() + ' '
-                          i.glyphicon.glyphicon-share-alt
-                if entry.ghu
+                    if metadata.corporateUsername
+                      a.btn.btn-sm.btn-muted(href='about:blank', target='_new')= metadata.corporateUsername
+                    if metadata.corporateDisplayName
+                      a.btn.btn-sm.btn-muted-more(href='about:blank', target='_new')
+                        = metadata.corporateDisplayName + ' '
+                        i.glyphicon.glyphicon-share-alt
+                if metadata.thirdPartyUsername
                   h5 GITHUB PROFILE
                   p
-                    a.btn.btn-sm.btn-muted(href='https://github.com/' + entry.ghu, target='_new')= entry.ghu
-                if entry.email
+                    a.btn.btn-sm.btn-muted(href='https://github.com/' + metadata.thirdPartyUsername, target='_new')= metadata.thirdPartyUsername
+                if metadata.email
                   h5 EMAIL
+                  //- TODO: This is actually a upn not email
                   p
-                    a.btn.btn-sm.btn-muted-more(href='mailto:' + entry.email)= entry.email ? entry.email : 'Unknown'
+                    a.btn.btn-sm.btn-muted-more(href='mailto:' + metadata.corporateUsername)= metadata.corporateUsername ? metadata.corporateUsername : 'Unknown'
                     | &nbsp;
-                    a.btn.btn-sm.btn-default(href='mailto:' + entry.email) Send Mail
+                    a.btn.btn-sm.btn-default(href='mailto:' + metadata.corporateUsername) Send Mail
     else
       p No pending approvals. Nice work!

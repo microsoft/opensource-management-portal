@@ -1,0 +1,288 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+mixin simplePersonView(account)
+  - var shorthandName = account.login
+  div.horizontal-space-right.vertical-space.pull-left(style='width:36px;height:36px;display:block;vertical-align:middle')
+    if account.avatar_url
+      img(src=account.avatar_url + '&s=96', style='width:36px;height:36px', title='Avatar of ' + shorthandName)
+  div(style='display:block;vertical-align:middle')
+    h4
+      a(href='/people?q=' + account.login)= shorthandName
+    //-ul.list-inline
+      if shorthandName && shorthandName !== account.login
+        li
+          span(title=account.login + ' is the GitHub username for ' + shorthandName)= account.login
+      if corporateIdentity
+        if link && !corporate
+          li.text-warning!= octicon('link', 16)
+          li
+            span(title=link.aadoid)= link.aadupn
+        else
+          li!= octicon('link', 16)
+          li
+            span(title=corporateIdentity + ' is the corporate identity for ' + shorthandName)= corporateIdentity
+        //- just corporate e-mails here, not user emails
+        if email
+          li
+            a(href='mailto:' + email, title='Send corporate email to ' + email)
+              != octicon('mail', 16)
+      if serviceAccount
+        li!= octicon('hubot', 16)
+        li Service account
+
+mixin teamsList(teams, hideJoinOption)
+  if teams && teams.length > 0
+    table(style='width:100%')
+      tbody
+        each permission in teams
+          - var team = permission.team
+          tr
+            td
+              ul.list-inline
+                - var isMember = teamSets && teamSets.member.has(team.id)
+                //- formerly: permission.relativeJoinLink
+                if hideJoinOption
+                  li
+                    ul.list-unstyled
+                      li: strong= team.name
+                      li: p= team.description
+                else
+                  li
+                    a.btn.btn-sm.btn-muted-more(href=permission.relativePortalLink, title=team.description)= team.name
+                if teamSets && teamSets.maintained.has(team.id)
+                  li.text-primary You're a maintainer
+                else if teamSets && teamSets.member.has(team.id)
+                  li.text-primary You're a member
+              if team.description && !hideJoinOption
+                p= team.description
+  else
+    p No teams with this permission.
+
+block content
+
+  //- Services
+  - var languageColor = viewServices.languageColor
+  - var octicon = viewServices.octicon
+  - var fileSize = viewServices.fileSize
+
+  //- View constants
+  - var maxReaders = 10
+
+  //- Variables
+  - var githubUrl = 'https://github.com/' + repo.full_name
+  - var cloneUrl = repo.clone_url || repo.otherFields.clone_url
+  - var sshUrl = repo.ssh_url || repo.otherFields.ssh_url
+  - var admin = repoPermissions && repoPermissions.allowAdministration
+
+  .container
+    .row: .col-md-12
+        if fromReposPage
+          .nav
+            ul.pager.zero-pad-bottom
+              li.previous
+                a(href='javascript:window.history.back()')
+                  span(aria-hidden=true) &larr;
+                  = ' Back'
+        - var hugeHeading = repo.name.length < 33
+        h1(class={huge: hugeHeading})
+          a(href='https://github.com/' + repo.full_name, target="_blank")= repo.name
+          if repo.private === true
+            | &nbsp;
+            .label.label-warning(class={shrink66: !hugeHeading, shrink50: hugeHeading}) Private
+        h6= repo.full_name.replace('/' + repo.name, '') + ' organization'
+        if repo.description
+          p.lead=repo.description
+
+    include ./pills
+
+    if permissions
+      - var zeroTeams = !permissions.pull && !permissions.push && !permissions.admin
+      .row: .col-md-12
+        h2 Team permissions
+        if zeroTeams
+          p.
+            #[span.text-danger There are no teams defined for this repo.] Teams are the
+            GitHub-recommended way to manage repository permissions for organizations. Please
+            work with your administrators to define a team experience for this repo.
+      .row
+        if permissions.pull
+          .col-md-4
+            h4 Read #[small Pull]
+            //-if repo.private
+              p This is a private repository, so only the following teams have read access.
+            +teamsList(permissions.pull)
+        if permissions.push
+          .col-md-4
+            h4 Write #[small Accept pull requests]
+            +teamsList(permissions.push)
+        if !zeroTeams
+          .col-md-4
+              h4 Admin #[small Manage settings]
+              if permissions.admin
+                +teamsList(permissions.admin)
+              else
+                p.text-danger This repository has no admin teams defined.
+    if teamBasedPermissions
+      .row: .col-md-12: h2 Users granted permissions by teams
+      .row
+        if teamBasedPermissions.readers && teamBasedPermissions.readers.length
+          .col-md-4
+            h3 Readers #[span.badge=teamBasedPermissions.readers.length.toLocaleString()]
+            if teamBasedPermissions.readers.length > maxReaders
+              p.
+                Accounts that can clone and view the repository.
+                #[span.text-muted Only #{maxReaders} of #{teamBasedPermissions.readers.length.toLocaleString()} accounts with read access are being displayed]
+            ul.list-unstyled
+              - var k = 0
+              each readerCollaborator in teamBasedPermissions.readers
+                - k++
+                if k < maxReaders
+                  li
+                    div.clearfix
+                      +simplePersonView(readerCollaborator.user)
+        if teamBasedPermissions.writers && teamBasedPermissions.writers.length
+          .col-md-4
+            h3 Writers #[span.badge=teamBasedPermissions.writers.length.toLocaleString()]
+            p These accounts have the ability to accept pull requests and directly commit to the repo
+            ul.list-unstyled
+              each writerCollaborator in teamBasedPermissions.writers
+                li
+                  div.clearfix
+                    +simplePersonView(writerCollaborator.user)
+        if teamBasedPermissions.administrators && teamBasedPermissions.administrators.length
+          .col-md-4
+            h3 Administrators #[span.badge=teamBasedPermissions.administrators.length.toLocaleString()]
+            p Owners of the repo, able to manage repo and team settings
+            ul.list-unstyled
+              each adminCollaborator in teamBasedPermissions.administrators
+                li
+                  div.clearfix
+                    +simplePersonView(adminCollaborator.user)
+
+    if outsideCollaborators && outsideCollaborators.length
+      .row: .col-md-12: h2 Outside collaborators
+      .row
+        if outsideCollaboratorsSlice.administrators && outsideCollaboratorsSlice.administrators.length
+          .col-md-4
+            h3 Administrators #[span.badge=outsideCollaboratorsSlice.administrators.length.toLocaleString()]
+            p Owners of the repo, able to manage repo and team settings
+            ul.list-unstyled
+              each adminCollaborator in outsideCollaboratorsSlice.administrators
+                li
+                  div.clearfix
+                    +simplePersonView(adminCollaborator)
+        if outsideCollaboratorsSlice.writers && outsideCollaboratorsSlice.writers.length
+          .col-md-4
+            h3 Writers #[span.badge=outsideCollaboratorsSlice.writers.length.toLocaleString()]
+            p These accounts have the ability to accept pull requests and directly commit to the repo
+            ul.list-unstyled
+              each writerCollaborator in outsideCollaboratorsSlice.writers
+                li
+                  div.clearfix
+                    +simplePersonView(writerCollaborator)
+        //- We ignore outsideCollaboratorsSlice.readers for this view
+        if outsideCollaboratorsSlice.readers && outsideCollaboratorsSlice.readers.length
+          .col-md-4
+            h3 Readers #[span.badge=outsideCollaboratorsSlice.readers.length.toLocaleString()]
+            if outsideCollaboratorsSlice.readers.length > maxReaders
+              p.
+                Accounts that can clone and view the repository.
+                #[span.text-muted Only #{maxReaders} of #{outsideCollaboratorsSlice.readers.length.toLocaleString()} accounts with read access are being displayed]
+            ul.list-unstyled
+              - var k = 0
+              each readerCollaborator in outsideCollaboratorsSlice.readers
+                - k++
+                if k < maxReaders
+                  li
+                    div.clearfix
+                      +simplePersonView(readerCollaborator)
+    if collaboratorsArray && collaboratorsArray.length
+      .row
+        .col-md-12
+          h2 Individual permissions
+          p.
+            These are collaborators that have been directly added to this repository. For open source
+            projects, Outside Collaborators are the GitHub-recommended way to grant contributor
+            rights to repositories.
+          p.
+            In general, members of the organization should not be added as collaborators, as teams
+            on GitHub are much more flexible.
+
+      .row
+        if collaborators.administrators && collaborators.administrators.length
+          .col-md-4
+            h3 Administrators #[span.badge=collaborators.administrators.length.toLocaleString()]
+            p Owners of the repo, able to manage repo and team settings
+            ul.list-unstyled
+              each adminCollaborator in collaborators.administrators
+                li
+                  div.clearfix
+                    +simplePersonView(adminCollaborator)
+        if collaborators.writers && collaborators.writers.length
+          .col-md-4
+            h3 Writers #[span.badge=collaborators.writers.length.toLocaleString()]
+            p These accounts have the ability to accept pull requests and directly commit to the repo
+            ul.list-unstyled
+              each writerCollaborator in collaborators.writers
+                li
+                  div.clearfix
+                    +simplePersonView(writerCollaborator)
+        //- We ignore collaborators.readers for this view
+        if collaborators.readers && collaborators.readers.length
+          .col-md-4
+            h3 Readers #[span.badge=collaborators.readers.length.toLocaleString()]
+            if collaborators.readers.length > maxReaders
+              p.
+                Accounts that can clone and view the repository.
+                #[span.text-muted Only #{maxReaders} of #{collaborators.readers.length.toLocaleString()} accounts with read access are being displayed]
+            ul.list-unstyled
+              - var k = 0
+              each readerCollaborator in collaborators.readers
+                - k++
+                if k < maxReaders
+                  li
+                    div.clearfix
+                      +simplePersonView(readerCollaborator)
+    if systemPermissions && (systemPermissions.pull || systemPermissions.push || systemPermissions.admin)
+      .row: .col-md-12
+        h2 System team permissions
+        p.
+          System teams are used by corporate open source automation systems including
+          Contribution License Agreements and compliance needs.
+          These teams are not intended for general use but are provided here to help repo admins
+          understand how GitHub permissions are configured.
+      .row
+        if systemPermissions.pull
+          .col-md-4
+            h4 Read
+            +teamsList(systemPermissions.pull, true)
+        if systemPermissions.push
+          .col-md-4
+            h4 Write
+            +teamsList(systemPermissions.push, true)
+        if systemPermissions.admin
+          .col-md-4
+            h4 Admin
+            +teamsList(systemPermissions.admin, true)
+    hr
+    if repo.id
+      p
+        small
+          if repo.id
+            = 'GitHub repository ID: ' + repo.id
+
+    if reposDataAgeInformation
+      p.text-primary(style='margin-bottom:24px')
+        if reposDataAgeInformation.changed
+          = 'Updated ' + reposDataAgeInformation.changed
+        if reposDataAgeInformation.updated && reposDataAgeInformation.changed
+          |, refreshed
+        else
+          | Refreshed
+        if reposDataAgeInformation.updated
+          = ' ' + reposDataAgeInformation.updated

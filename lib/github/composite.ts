@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -9,13 +9,14 @@
 
 // Composite method/filter/call memoization
 
-const debug = require('debug')('oss-github');
+const debug = require('debug')('restapi');
 import { v4 as uuidV4 } from 'uuid';
-import moment = require('moment');
+import moment from 'moment';
 const semver = require('semver');
 import { IShouldServeCache, ApiContext, IntelligentEngine, IApiContextRedisKeys, IApiContextCacheValues, ApiContextType } from './core';
 
 import appPackage = require('../../package.json');
+import { IGetAuthorizationHeader } from '../../transitional';
 
 const appVersion = appPackage.version;
 
@@ -25,7 +26,7 @@ const acceleratedExpirationMinutes = 60; // 1 hour
 export class CompositeApiContext extends ApiContext {
   private _apiMethod: any;
   private _apiTypePrefix: string;
-  private _token: string;
+  private _token: string | IGetAuthorizationHeader;
   private _cacheValues: IApiContextCacheValues;
   private _redisKeys: IApiContextRedisKeys;
 
@@ -63,11 +64,11 @@ export class CompositeApiContext extends ApiContext {
     return this._cacheValues;
   }
 
-  get token(): string {
+  get token(): string | IGetAuthorizationHeader {
     return this._token;
   }
 
-  overrideToken(token: string) {
+  overrideToken(token: string | IGetAuthorizationHeader) {
     this._token = token;
   }
 
@@ -107,7 +108,7 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
         shouldServeCache = true;
         shouldServeCache = {
           cache: true,
-          remaining: 'expires in ' + moment(updatedIso).add(maxAgeSeconds, 'seconds').fromNow(),
+          remaining: 'expires ' + moment(updatedIso).add(maxAgeSeconds, 'seconds').fromNow(),
         };
         // debug('cache OK to serve as last updated was ' + updated);
       } else if (apiContext.backgroundRefresh) {
@@ -164,6 +165,11 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
     }
 
     return shouldUseCache;
+  }
+
+  optionalStripResponse(apiContext: ApiContext, response: any): any {
+    // Composite does not strip any results further before caching
+    return response;
   }
 
   withResponseUpdateMetadata(apiContext: ApiContext, response: any) {

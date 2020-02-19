@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -8,11 +8,13 @@
 import request = require('requestretry');
 
 import { jsonError } from './jsonError';
+import { IApiRequest } from './apiReposAuth';
+import { PersonalAccessToken } from '../entities/token/token';
 
 // TODO: consider better caching
 const localMemoryCacheVstsToAadId = new Map();
 
-module.exports = function vstsAuthMiddleware(req, res, next) {
+export function AzureDevOpsAuthenticationMiddleware(req: IApiRequest, res, next) {
   const config = req.app.settings.runtimeConfig;
   if (!config) {
     return next(new Error('Missing configuration for the application'));
@@ -87,15 +89,15 @@ module.exports = function vstsAuthMiddleware(req, res, next) {
         }
         // IMPORTANT: for our use in the extension, apiKeyRow.owner is an AAD ID and is
         // the primary way to make sure things are good for now...
-        req.apiKeyRow = {
-          owner: id,
-          service: 'vsts-pat',
-          description: `VSTS Personal Access Token for ${displayName}`,
-          displayName: displayName,
-          upn: upn,
-          apis: 'extension,links', // only access to these APIs for now
-        };
-        req.apiKeyRowProvider = 'vsts';
+        const token = PersonalAccessToken.CreateFromAzureDevOpsTokenAuthorization({
+          corporateId: id,
+          source: 'vsts-pat',
+          description: `Azure DevOps Personal Access Token for ${displayName}`,
+          displayUsername: upn,
+          scopes: 'extension,links',
+        });
+        req.apiKeyToken = token;
+        req.apiKeyProviderName = 'vsts';
         return next();
       });
     } else {

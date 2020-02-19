@@ -1,7 +1,7 @@
 import { wrapError } from "../utils";
 
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -44,7 +44,6 @@ function containsNewlinesNotHtml(error) {
 const exceptionFieldsOfInterest = [
   'status',
   'statusCode',
-  'code',
   'innerMessage',
 ];
 
@@ -71,13 +70,12 @@ module.exports = function (err, req, res, next) {
     err = wrapError(err, 'The GitHub API is temporarily down. Please try again soon.', false);
   }
   var primaryUserInstance = req.user ? req.user.github : null;
-  if (req && req.app && req.app.settings && req.app.settings.dataclient && req.app.settings.runtimeConfig) {
+  if (req && req.app && req.app.settings && req.app.settings.runtimeConfig) {
     config = req.app.settings.runtimeConfig;
     if (config.authentication.scheme !== 'github') {
       primaryUserInstance = req.user ? req.user.azure : null;
     }
     var version = config && config.logging && config.logging.version ? config.logging.version : '?';
-    var dc = req.app.settings.dataclient;
     if (config.logging.errors && err.status !== 403 && err.skipLog !== true) {
       let appSource = 'unknown';
       if (process.argv.length > 1) {
@@ -183,7 +181,7 @@ module.exports = function (err, req, res, next) {
   if (err.status) {
     errStatusAsNumber = parseInt(err.status);
   }
-  const resCode = errStatusAsNumber || (err.code && typeof(err.code) === 'number' ? err.code : false) || err.statusCode || 500;
+  const resCode = errStatusAsNumber || (err.status && typeof(err.status) === 'number' ? err.status : false) || err.statusCode || 500;
   res.status(resCode);
 
   // Support JSON-based error display for the API route, showing just a small

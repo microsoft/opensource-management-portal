@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -7,9 +7,9 @@
 
 'use strict';
 
-const _ = require('lodash');
-import moment = require('moment');
-import * as Q from 'q';
+import _ from 'lodash';
+import moment from 'moment';
+import Q from 'q';
 import { requireJson } from '../../utils';
 const qlimit = require('qlimit');
 
@@ -314,7 +314,7 @@ function processTeam(context, team) {
       return Q.delay(context, context.settings.teamDelayAfter || 0);
     }).catch(problem => {
       // Missing teams are not worth showing too much about
-      if (problem.code === 404) {
+      if (problem.status ==  /* loose */ 404) {
         throw problem;
       }
       console.warn(problem);

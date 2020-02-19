@@ -1,32 +1,29 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
 import express = require('express');
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest } from '../../transitional';
+import { ReposAppRequest, IProviders } from '../../transitional';
 
 import { jsonError } from '../../middleware/jsonError';
+import { IApiRequest } from '../../middleware/apiReposAuth';
 
 const apiClient = require('./client');
 const apiExtension = require('./extension');
 const apiPeople = require('./people');
 const apiWebhook = require('./webhook');
 
-const apiReposAuth = require('../../middleware/apiReposAuth');
-const apiVstsAuth = require('../../middleware/apiVstsAuth');
+import { AzureDevOpsAuthenticationMiddleware } from '../../middleware/apiVstsAuth';
+import { ReposApiAuthentiction } from '../../middleware/apiReposAuth';
+import { CreateRepository } from './createRepo';
+import { Organization } from '../../business/organization';
 const supportMultipleAuthProviders = require('../../middleware/supportMultipleAuthProviders');
-
-const createRepo = require('./createRepo');
-
-interface IApiRequest extends ReposAppRequest {
-  apiKeyRow?: any;
-  apiVersion?: string;
-}
 
 const hardcodedApiVersions = [
   '2019-02-01',
@@ -58,8 +55,8 @@ router.use((req: IApiRequest, res, next) => {
 // AUTHENTICATION: VSTS or repos
 //-----------------------------------------------------------------------------
 const multipleProviders = supportMultipleAuthProviders([
-  apiVstsAuth,
-  apiReposAuth,
+  AzureDevOpsAuthenticationMiddleware,
+  ReposApiAuthentiction,
 ]);
 
 router.use('/people', multipleProviders, apiPeople);
@@ -68,31 +65,25 @@ router.use('/extension', multipleProviders, apiExtension);
 //-----------------------------------------------------------------------------
 // AUTHENTICATION: repos (specific to this app)
 //-----------------------------------------------------------------------------
-router.use(apiReposAuth);
+router.use(ReposApiAuthentiction);
 
 router.use('/:org', function (req: IApiRequest, res, next) {
   const orgName = req.params.org;
-  const apiKeyRow = req.apiKeyRow;
-  if (!apiKeyRow.orgs) {
-    return next(jsonError('There is a problem with the key configuration', 412));
+  if (!req.apiKeyToken.organizationScopes) {
+    return next(jsonError('There is a problem with the key configuration (no organization scopes)', 412));
   }
   // '*'' is authorized for all organizations in this configuration environment
-  if (apiKeyRow.orgs !== '*') {
-    const orgList = apiKeyRow.orgs.toLowerCase().split(',');
-    if (orgList.indexOf(orgName.toLowerCase()) < 0) {
-      return next(jsonError('The key is not authorized for this organization', 401));
-    }
+  if (!req.apiKeyToken.hasOrganizationScope(orgName)) {
+    return next(jsonError('The key is not authorized for this organization', 401));
   }
-
-  if (!apiKeyRow.apis) {
-    return next(jsonError('The key is not authorized for specific APIs', 401));
+  if (!req.apiKeyToken.scopes) {
+    return next(jsonError('There is a problem with the key configuration (no specific API scopes)', 412));
   }
-  const apis = apiKeyRow.apis.split(',');
-  if (apis.indexOf('createRepo') < 0) {
+  if (!req.apiKeyToken.hasScope('createRepo')) {
     return next(jsonError('The key is not authorized to use the repo create APIs', 401));
   }
 
-  const providers = req.app.settings.providers;
+  const providers = req.app.settings.providers as IProviders;
   const operations = providers.operations;
   let organization = null;
   try {
@@ -104,15 +95,27 @@ router.use('/:org', function (req: IApiRequest, res, next) {
   return next();
 });
 
-router.post('/:org/repos', function (req: ReposAppRequest, res, next) {
+router.post('/:org/repos', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const convergedObject = Object.assign({}, req.headers);
   req.insights.trackEvent({ name: 'ApiRepoCreateRequest', properties: convergedObject });
   Object.assign(convergedObject, req.body);
   delete convergedObject.access_token;
   delete convergedObject.authorization;
-
-  const token = req.organization.getRepositoryCreateGitHubToken();
-  createRepo(req, res, convergedObject, token, next, true /* send the response directly back without the callback */);
-});
+  try {
+    const repoCreateResponse = await CreateRepository(req, convergedObject);
+    res.status(201);
+    req.insights.trackEvent({ name: 'ApiRepoCreateRequestSuccess', properties: {
+      request: JSON.stringify(convergedObject),
+      response: JSON.stringify(repoCreateResponse),
+    }});
+    return res.json(repoCreateResponse);
+  } catch (error) {
+    const data = {...convergedObject};
+    data.error = error.message;
+    data.encodedError = JSON.stringify(error);
+    req.insights.trackEvent({ name: 'ApiRepoCreateFailed', properties: data });
+    return next(error);
+  }
+}));
 
 module.exports = router;

@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -7,11 +7,12 @@
 
 'use strict';
 
-const _ = require('lodash');
-const debug = require('debug')('oss-github');
+import _ from 'lodash';
+const debug = require('debug')('restapi');
 import { v4 as uuidV4 } from 'uuid';
-import moment = require('moment');
-import { ILibraryContext } from '.';
+import moment from 'moment';
+import { RestLibrary } from '.';
+import { IAuthorizationHeaderValue } from '../../transitional';
 
 const cost = require('./cost');
 
@@ -51,8 +52,9 @@ export abstract class ApiContext {
   private _calledTime: moment.Moment;
   private _cost: any;
 
-  libraryContext: ILibraryContext;
+  libraryContext: RestLibrary;
   etag?: string;
+  tokenSource: IAuthorizationHeaderValue;
 
   abstract get apiTypePrefix(): string;
   abstract get cacheValues(): IApiContextCacheValues;
@@ -120,13 +122,14 @@ export abstract class IntelligentEngine {
 
   // was in api context:
   abstract async processMetadataBeforeCall(apiContext: ApiContext, metadata: any);
-  abstract async callApi(apiContext: ApiContext): Promise<any>;
+  abstract async callApi(apiContext: ApiContext, optionalMessage?: string): Promise<any>;
   abstract async withResponseUpdateMetadata(apiContext: ApiContext, response: any);
 
   abstract withResponseShouldCacheBeServed(apiContext: ApiContext, response: any) : boolean | IShouldServeCache;
   abstract withMetadataShouldCacheBeServed(apiContext: ApiContext, metadata: any): boolean | IShouldServeCache;
   abstract reduceMetadataToCacheFromResponse(apiContext: ApiContext, response: any): any;
   abstract getResponseMetadata(apiContext: ApiContext, response: any): any;
+  abstract optionalStripResponse(apiContext: ApiContext, response: any): any;
 
   protected async cacheResponseAsync(apiContext: ApiContext, response) {
     const kickoffAsyncWork = async () => {
@@ -338,11 +341,11 @@ export abstract class IntelligentEngine {
 
     let response;
     try {
-      debug(`API GET : ${displayKey}`);
-      response = await this.callApi(apiContext);
+      response = await this.callApi(apiContext, `GET:               ${displayKey}`);
     } catch (error) {
-      if (error && error.code && error.code === 304) {
+      if (error && error.status && error.status === 304) {
         // As of Octokit 14.0.0, 304 is exception/an error
+        // As of Octokit 16.0.1, code is now status
         const keysWanted = [
           'etag',
           'status',
@@ -381,7 +384,8 @@ export abstract class IntelligentEngine {
     ++apiContext.cost.github.usedApiTokens;
     return this.getResponseMetadata(apiContext, response).then((metadata) => {
       if (metadata) {
-        return this.cacheResponseAsync(apiContext, response); // callback will happen after caching
+        const responseToCache = this.optionalStripResponse(apiContext, response);
+        return this.cacheResponseAsync(apiContext, responseToCache); // callback will happen after caching
       } else {
         this.finish(apiContext);
         return this.finalizeResult(apiContext, response);
@@ -413,10 +417,18 @@ function normalizedOptionsString(options) {
   if (!options) {
     return '';
   }
-  const sortedkeys = _.keys(options).sort();
+  let additional = null;
+  if (options.additionalDifferentiationParameters) {
+    additional = options.additionalDifferentiationParameters;
+  }
+  let opts = {...options, ...additional};
+  if (opts.additionalDifferentiationParameters) {
+    delete opts.additionalDifferentiationParameters;
+  }
+  const sortedkeys = _.keys(opts).sort();
   let normalized = [];
   sortedkeys.forEach((key) => {
-    let value = options[key];
+    let value = opts[key];
     const typeOf = typeof (value);
     if (typeOf === 'undefined') {
       return;
@@ -442,6 +454,18 @@ function projectFlatObjectWithData(entity) {
   if (flat && entity.headers) {
     flat.headers = entity.headers;
   }
+  return flat;
+}
+
+export function flattenData(entity: any): any {
+  if (!entity) {
+    return entity;
+  }
+  if (entity.data !== undefined && !entity.data) {
+    // If it's an empty string, or false, etc., return the value directly
+    return entity.data;
+  }
+  const flat = projectFlatObjectWithData(entity);
   return flat;
 }
 

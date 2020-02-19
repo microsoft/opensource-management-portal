@@ -7,7 +7,7 @@
       "allowJs": true,
       "moduleResolution": "node",
       "resolveJsonModule": true,
-      "esModuleInterop": false,
+      "esModuleInterop": true,
       "target": "es2018",
       "lib": [
         "es2018"
@@ -28,15 +28,19 @@
       "./jobs/reports/consolidated.ts",
       "./lib/**/*",
       "./middleware/**/*",
+      "./github/**/*",
       "./routes/**/*",
       "./test/**/*",
       "./thirdparty/**/*",
+      "./github/**/*",
+      "./features/**/*",
       "./jobs/**/*",
       "./webhooks/**/*",
       "./app.ts",
       "./data.ts",
       "./localEnvironment.ts",
       "./transitional.ts",
-      "./utils.ts"
+      "./utils.ts",
+      "./entities/**/*"
     ]
 }

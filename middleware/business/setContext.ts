@@ -1,11 +1,11 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
-import { IndividualContext, IIndividualContextOptions, IWebContextOptions, WebContext, SessionUserProperties, WebApiContext } from '../../business/context2';
+import { IndividualContext, IIndividualContextOptions, IWebContextOptions, WebContext, SessionUserProperties, WebApiContext } from '../../user';
 import { Operations } from '../../business/operations';
 
 export function webContextMiddleware(req, res, next) {

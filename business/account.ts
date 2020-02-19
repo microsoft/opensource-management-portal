@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -7,15 +7,23 @@
 
 'use strict';
 
-const _ = require('lodash');
-import async = require('async');
+import _ from 'lodash';
+import async from 'async';
+
 import { Operations } from './operations';
-import { ICacheOptions } from '../transitional';
+import { ICacheOptions, IReposError, IGetAuthorizationHeader } from '../transitional';
 import * as common from './common';
 
 import { wrapError } from '../utils';
 import { ILinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
 import { ICorporateLink } from './corporateLink';
+import { Organization, OrganizationMembershipState } from './organization';
+import { AppPurpose } from '../github';
+
+interface IRemoveOrganizationMembershipsResult {
+  error?: IReposError;
+  history: string[];
+}
 
 const primaryAccountProperties = [
   'id',
@@ -26,21 +34,23 @@ const secondaryAccountProperties = [];
 
 export class Account {
   private _operations: Operations;
-  private _getCentralOperationsToken: any;
+  private _getAuthorizationHeader: IGetAuthorizationHeader;
 
   private _link: ICorporateLink;
-  private _id: string;
+  private _id: number;
 
   private _login: string;
   private _avatar_url?: string;
   private _created_at?: any;
   private _updated_at?: any;
 
-  public get id(): string {
+  private _originalEntity?: any;
+
+  public get id(): number {
     return this._id;
   }
 
-  public get link(): any {
+  public get link(): ICorporateLink {
     return this._link;
   }
 
@@ -60,11 +70,15 @@ export class Account {
     return this._created_at;
   }
 
-  constructor(entity, operations: Operations, getCentralOperationsToken) {
-    common.assignKnownFieldsPrefixed(this, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
+  public get company(): string {
+    return this._originalEntity ? this._originalEntity.company : undefined;
+  }
 
+  constructor(entity, operations: Operations, getAuthorizationHeader: IGetAuthorizationHeader) {
+    common.assignKnownFieldsPrefixed(this, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
+    this._originalEntity = entity;
     this._operations = operations;
-    this._getCentralOperationsToken = getCentralOperationsToken;
+    this._getAuthorizationHeader = getAuthorizationHeader;
   }
 
   // TODO: looks like we need to be able to resolve the link in here, too, to set instance.link
@@ -74,18 +88,23 @@ export class Account {
 
   contactName() {
     if (this._link) {
-      return this._link.corporateDisplayName || this._login;
+      return this.link.corporateDisplayName || this.link['aadname'] || this._login;
     }
     return this._login;
   }
 
   contactEmail() {
-    return this._link ? this._link.corporateDisplayName : null;
+    // NOTE: this field name is wrong, it is a UPN, not a mail address
+    if (this._link) {
+      return this.link.corporateUsername || this.link['aadupn'] || null;
+    }
+    return null;
   }
 
   corporateAlias() {
-    if (this._link && this._link.corporateUsername) {
-      var email = this._link.corporateUsername;
+    // NOTE: this is a hack
+    if (this.contactEmail()) {
+      var email = this.contactEmail();
       var i = email.indexOf('@');
       if (i >= 0) {
         return email.substring(0, i);
@@ -119,29 +138,16 @@ export class Account {
 
   // End previous functions
 
-  getDetailsAndLink(options, callback?) {
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    this.getDetailsAndLinkAsync(options).then(empty => {
-      return callback ? callback(null, empty) : undefined;
-    }).catch(getDetailsError => {
-      return callback ? callback(getDetailsError) : undefined;
-    });
-  }
-
-  async getDetailsAndLinkAsync(options): Promise<Account> {
+  async getDetailsAndLink(options?: ICacheOptions): Promise<Account> {
     try {
-      await this.getDetailsAsync(options || {});
+      await this.getDetails(options || {});
     } catch (getDetailsError) {
       // If a GitHub account is deleted, this would fail
       console.dir(getDetailsError);
     }
-
     const operations = this._operations;
     try {
-      let link: ICorporateLink = await operations.getLinkWithOverheadAsync(this._id, options || {});
+      let link: ICorporateLink = await operations.getLinkWithOverhead(this._id.toString(), options || {});
       if (link) {
         this._link = link;
       }
@@ -152,20 +158,20 @@ export class Account {
     return this;
   }
 
-  async getDetailsAndDirectLinkAsync(): Promise<Account> {
+  async getDetailsAndDirectLink(): Promise<Account> {
     // Instead of using the 'overhead' method (essentially cached, but from all links),
     // this uses the provider directly to ensure an accurate immediate, but by-individual
     // call. Most useful for verified results or when terminating accounts.
     try {
-      await this.getDetailsAsync({});
+      await this.getDetails();
     } catch (getDetailsError) {
       // If a GitHub account is deleted, this would fail
+      // TODO: should this throw then?
       console.dir(getDetailsError);
     }
-
     const operations = this._operations;
     try {
-      let link = await operations.getLinkByThirdPartyId(this._id);
+      let link = await operations.getLinkByThirdPartyId(this._id.toString());
       if (link) {
         this._link = link;
       }
@@ -177,23 +183,26 @@ export class Account {
     return this;
   }
 
-  // FYI: TODO: replace or reimplement removed former function: updateLink(newLink, callback)
-
-  getDetails(options, callback?) {
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = null;
+  async isDeleted(options?: ICacheOptions): Promise<boolean> {
+    try {
+      await this.getDetails(options);
+    } catch (maybeDeletedError) {
+      if (maybeDeletedError && maybeDeletedError.status && maybeDeletedError.status === 404) {
+        return true;
+      }
     }
+    return false;
+  }
+
+  async getDetails(options?: ICacheOptions): Promise<any> {
     options = options || {};
-    const self = this;
-    const token = this._getCentralOperationsToken();
     const operations = this._operations;
     const id = this._id;
     if (!id) {
-      return callback(new Error('Must provide a GitHub user ID to retrieve account information.'));
+      throw new Error('Must provide a GitHub user ID to retrieve account information.');
     }
     const parameters = {
-      id: id,
+      id,
     };
     const cacheOptions: ICacheOptions = {
       maxAgeSeconds: options.maxAgeSeconds || operations.defaults.accountDetailStaleSeconds,
@@ -201,36 +210,21 @@ export class Account {
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
-    return operations.github.call(token, 'users.getById', parameters, cacheOptions, (error, entity) => {
-      if (error) {
-        return callback(wrapError(error, `Could not get details about account "${id}".`));
+    try {
+      const entity = await operations.github.request(this.authorize(AppPurpose.Data), 'GET /user/:id', parameters, cacheOptions);
+      common.assignKnownFieldsPrefixed(this, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
+      return entity;
+    } catch (error) {
+      if (error.status && error.status === 404) {
+        error = new Error(`The GitHub user ID ${id} could not be found (or was deleted)`);
+        error.status = 404;
+        throw error;
       }
-      common.assignKnownFieldsPrefixed(self, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
-      callback(null, entity);
-    });
-  }
-
-  getDetailsAsync(options): Promise<any> {
-    return new Promise((resolve, reject) => {
-      this.getDetails(options, (error, entity) => {
-        return error ? reject(error) : resolve(entity);
-      });
-    });
-  }
-
-  removeLink(callback) {
-    const id = this._id;
-    if (!id) {
-      return callback(new Error('No user id known'));
+      throw wrapError(error, `Could not get details about account ID ${id}: ${error.message}`);
     }
-    this.removeLinkAsync().then(results => {
-      return callback(null, results);
-    }).catch(error => {
-      return callback(error);
-    });
   }
 
-  async removeLinkAsync(): Promise<any> {
+  async removeLink(): Promise<any> {
     const operations = this._operations;
     const linkProvider = operations.linkProvider as ILinkProvider;
     if (!linkProvider) {
@@ -238,7 +232,7 @@ export class Account {
     }
     const id = this._id;
     try {
-      await this.getDetailsAndDirectLinkAsync();
+      await this.getDetailsAndDirectLink();
     } catch (getDetailsError) {
       // We ignore any error to make sure link removal always works
       const insights = this._operations.insights;
@@ -285,161 +279,67 @@ export class Account {
     return history;
   }
 
-  // temporarily poor name going async
-  removeManagedOrganizationMembershipsAsync(): Promise<any> {
-    return new Promise((resolve, reject) => {
-      this.removeManagedOrganizationMemberships((error, history) => {
-        return error ? reject(error) : resolve(history);
-      });
-    });
+  // TODO: implement getOrganizationMemberships, with caching; reuse below code
+
+  async getOperationalOrganizationMemberships(): Promise<Organization[]> {
+    const operations = this._operations;
+    await this.getDetails();
+    const username = this._login; // we want to make sure that we have an ID and username
+    if (!username) {
+      throw new Error(`No GitHub username available for user ID ${this._id}`);
+    }
+    let currentOrganizationMemberships = [];
+    for (let organization of operations.organizations.values()) {
+      try {
+        const result = await organization.getOperationalMembership(username);
+        if (result && result.state && (result.state === OrganizationMembershipState.Active || result.state === OrganizationMembershipState.Pending)) {
+          currentOrganizationMemberships.push(organization);
+        }
+      } catch (ignoreErrors) {
+         // getMembershipError ignored: if there is no membership that's fine
+        }
+    }
+    return currentOrganizationMemberships;
   }
 
-  // temporarily poor name going async
-  async terminateAsync(options): Promise<any> {
-    options = options || {};
-    const reason = options.reason || 'account.terminate called';
-    const continueOnError = options.continueOnError || false;
-    const insights = this._operations.insights;
-    if (insights) {
-      insights.trackEvent({
-        name: 'UserUnlinkStart',
-        properties: {
-          id: this._id,
-          login: this._login,
-          reason: reason,
-          continueOnError: continueOnError ? 'continue on errors' : 'halt on errors',
-        },
-      });
-    }
-
-    let history = null;
+  async removeManagedOrganizationMemberships(): Promise<IRemoveOrganizationMembershipsResult> {
+    const history = [];
+    let error: IReposError = null;
+    let organizations: Organization[];
     try {
-      history = await this.removeManagedOrganizationMembershipsAsync();
-    } catch (removeOrganizationsError) {
-      // If a removal error occurs, do not remove the link and throw an error,
-      // so that the link data and information is still present until cleaned
-      if (insights) {
-        insights.trackException({ exception: removeOrganizationsError });
-      }
-      if (!continueOnError) {
-        throw removeOrganizationsError;
+      organizations = await this.getOperationalOrganizationMemberships();
+    } catch (getMembershipError) {
+      if (getMembershipError && getMembershipError.status == /* loose */ '404') {
+        history.push(getMembershipError.toString());
+      } else if (getMembershipError) {
+        throw getMembershipError;
       }
     }
-    if (!history) {
-      history = [];
+    const username = this._login;
+    if (organizations && organizations.length > 1) {
+      const asText = _.map(organizations, org => { return org.name; }).join(', ');
+      history.push(`${username} is a member of the following organizations: ${asText}`);
+    } else if (organizations) {
+      history.push(`${username} is not a member of any managed organizations`);
     }
-
-    let removeHistory = null;
-    try {
-      removeHistory = await this.removeLinkAsync();
-    } catch (removeLinkError) {
-      if (insights) {
-        insights.trackException({ exception: removeLinkError });
-
-        if (this.id && !this.login) {
-          // If the account information could not be resolved through the
-          // GitHub API for this _id_, then the user deleted their account,
-          // or is using a different one now, etc., so try deleting the
-          // associated link still by searching for it by _ID_.
-
-          // TODO: ... ?
+    for (let i = 0; i < organizations.length; i++) {
+      const organization = organizations[i];
+      try {
+        await organization.removeMember(username);
+        history.push(`Removed ${username} from the ${organization.name} organization`);
+      } catch (removeError) {
+        history.push(`Error while removing ${username} from the ${organization.name} organization: ${removeError}`);
+        if (!error) {
+          error = removeError;
         }
       }
     }
-    if (removeHistory && Array.isArray(removeHistory)) {
-      for (let i = 0; i < removeHistory.length; i++) {
-        history.push(removeHistory[i]);
-      }
-    }
-    if (insights) {
-      insights.trackEvent({
-        name: 'UserUnlink',
-        properties: {
-          id: this._id,
-          login: this._login,
-        },
-      });
-    }
-
-    return history;
+    return { history, error };
   }
 
-  terminate(options, callback) {
-    if (!callback && typeof(options) === 'function') {
-      callback = options;
-      options = null;
-    }
-    this.terminateAsync(options).then(output => {
-      return callback(null, output);
-    }).catch(error => {
-      return callback(error);
-    });
-  }
-
-  // TODO: implement getOrganizationMemberships, with caching; reuse below code
-
-  getOperationalOrganizationMemberships(callback) {
-    const self = this;
-    const operations = self._operations;
-    const organizations = operations.organizations;
-    // we want to make sure that we have an ID and username
-    self.getDetails(getDetailsError => {
-      if (getDetailsError) {
-        return callback(getDetailsError);
-      }
-      const username = self._login;
-      if (!username) {
-        return callback(new Error(`No GitHub username available for user ID ${self._id}`));
-      }
-      let currentOrganizationMemberships = [];
-      async.eachLimit(organizations, 2, (organization, next) => {
-        organization.getOperationalMembership(username, (getMembershipError, result) => {
-          // getMembershipError is ignored - if there is no membership, that's fine
-          if (result && result.state && (result.state === 'active' || result.state === 'pending')) {
-            currentOrganizationMemberships.push(organization);
-          }
-          return next(/* we do not pass the error */);
-        });
-      }, error => {
-        return callback(error ? error : null, error ? null : currentOrganizationMemberships);
-      });
-    });
-  }
-
-  removeManagedOrganizationMemberships(callback) {
-    const self = this;
-    const history = [];
-    self.getOperationalOrganizationMemberships((error, organizations) => {
-      const username = self._login;
-      if (error && error.code == /* loose */ '404') {
-        history.push(`Could get not org membership information because: ${error.toString()}`);
-      } else if (error) {
-        return callback(error);
-      }
-      if (organizations && organizations.length > 1) {
-        const asText = _.map(organizations, org => { return org.name; }).join(', ');
-        history.push(`${username} is a member of the following organizations: ${asText}`);
-      } else if (organizations) {
-        history.push(`${username} is not a member of any managed organizations`);
-      }
-      let firstError = null;
-      async.eachLimit(organizations, 1, (organization, next) => {
-        organization.removeMember(username, removeError => {
-          // We do not bubble up the error, keep going
-          if (removeError) {
-            history.push(`Error while removing ${username} from the ${organization.name} organization: ${removeError}`);
-          } else {
-            history.push(`Removed ${username} from the ${organization.name} organization`);
-          }
-          if (removeError && !firstError) {
-            firstError = removeError;
-          }
-          return next();
-        });
-      }, error => {
-        return callback(firstError || error, history);
-      });
-    });
+  private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as IGetAuthorizationHeader;
+    return getAuthorizationHeader;
   }
 }
 

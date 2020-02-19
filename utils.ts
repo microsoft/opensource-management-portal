@@ -1,13 +1,40 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 import async = require('async');
+import express = require('express');
 import fs = require('fs');
 import path = require('path');
 
+import { URL } from 'url';
+
 import { IReposError } from './transitional';
+
+export function asNumber(value: any) {
+  if (typeof(value) === 'number') {
+    return value;
+  } else if (typeof(value) === 'string') {
+    return parseInt(value, 10);
+  }
+  const typeName = typeof(value);
+  throw new Error(`Unsupported type ${typeName} for value ${value} (asNumber)`);
+}
+
+export function stringOrNumberAsString(value: any) {
+  if (typeof(value) === 'number') {
+    return (value as number).toString();
+  } else if (typeof(value) === 'string') {
+    return value;
+  }
+  const typeName = typeof(value);
+  throw new Error(`Unsupported type ${typeName} for value ${value} (stringOrNumberAsString)`);
+}
+
+export function stringOrNumberArrayAsStringArray(values: any[]) {
+  return values.map(val => stringOrNumberAsString(val));
+}
 
 export function requireJson(nameFromRoot: string): any {
   // In some situations TypeScript can load from JSON, but for the transition this is better to reach outside the out directory
@@ -32,6 +59,17 @@ export function requireJson(nameFromRoot: string): any {
 export function randomInteger(low, high) {
   return Math.floor(Math.random() * (high - low) + low);
 };
+
+export function safeLocalRedirectUrl(path: string) {
+  if (!path) {
+    return;
+  }
+  const url = new URL(path, 'http://localhost');
+  if (url.host !== 'localhost') {
+    return;
+  }
+  return url.search ? `${url.pathname}${url.search}` : url.pathname;
+}
 
 // ----------------------------------------------------------------------------
 // Session utility: Store the referral URL, if present, and redirect to a new
@@ -62,10 +100,22 @@ export function storeReferrer(req, res, redirect, optionalReason) {
   }
 };
 
+export function sortByCaseInsensitive(a: string, b: string) {
+  let nameA = a.toLowerCase();
+  let nameB = b.toLowerCase();
+  if (nameA < nameB) {
+    return -1;
+  }
+  if (nameA > nameB) {
+    return 1;
+  }
+  return 0;
+}
+
 // ----------------------------------------------------------------------------
 // Session utility: store the original URL
 // ----------------------------------------------------------------------------
-export function storeOriginalUrlAsReferrer(req, res, redirect, optionalReason) {
+export function storeOriginalUrlAsReferrer(req: express.Request, res: express.Response, redirect: string, optionalReason?: string) {
   storeOriginalUrlAsVariable(req, res, 'referer', redirect, optionalReason);
 };
 
@@ -91,6 +141,7 @@ export function storeOriginalUrlAsVariable(req, res, variable, redirect, optiona
   };
   if (req.session && req.originalUrl) {
     req.session[variable] = req.originalUrl;
+    eventDetails['ou'] = req.originalUrl;
   }
   if (redirect) {
     if (req.insights) {
@@ -114,11 +165,10 @@ export function popSessionVariable(req, res, variableName) {
 // ----------------------------------------------------------------------------
 const errorPropertiesToClone = [
   'stack',
-  'code',
   'status',
 ];
 
-export function wrapError(error, message, userIntendedMessage?: boolean) {
+export function wrapError(error, message, userIntendedMessage?: boolean): IReposError {
   const err: IReposError = new Error(message);
   err.innerError = error;
   if (error) {
@@ -249,3 +299,9 @@ export function createSafeCallbackNoParams(cb) {
     exports.stackSafeCallback(cb);
   };
 };
+
+export function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    setTimeout(resolve, milliseconds);
+  });
+}

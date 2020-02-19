@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -11,7 +11,16 @@ const debug = require('debug')('oss-initialize');
 import path = require('path');
 import { StaticClientApp } from './staticClientApp';
 import { StaticSiteFavIcon, StaticSiteAssets } from './staticSiteAssets';
-const viewServices = require('ospo-pug-view-services');
+import passportConfig from './passport-config';
+
+let viewServices = null;
+try {
+  // TODO: for public project, improve to not have a try/catch, and go off of
+  // package presence instead?
+  viewServices = require('@ospo/pug-view-services');
+} catch (noPrivateNpmInstalled) {
+  viewServices = require('../lib/pugViewServices');
+}
 
 const campaign = require('./campaign');
 // const memory = require('./memory');
@@ -78,7 +87,7 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
       }
       app.use(require('./session')(app, config, redisClient));
       try {
-        passport = require('./passport-config')(app, config);
+        passport = passportConfig(app, config);
       } catch (passportError) {
         initializationError = passportError;
       }

@@ -1,24 +1,41 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
-const _ = require('lodash');
-import async = require('async');
-import express = require('express');
-const extensionsRoute = require('./extensions/');
+import _ from 'lodash';
+import asyncHandler from 'express-async-handler';
+import express from 'express';
+import moment from 'moment';
+
 const lowercaser = require('../../middleware/lowercaser');
-import moment = require('moment');
 import { ReposAppRequest } from '../../transitional';
 import { Organization } from '../../business/organization';
-import { Repository } from '../../business/repository';
+import { Repository, GitHubCollaboratorAffiliationQuery } from '../../business/repository';
+import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { Operations } from '../../business/operations';
+import { TeamPermission } from '../../business/teamPermission';
+import { Collaborator } from '../../business/collaborator';
+import { OrganizationMember } from '../../business/organizationMember';
+import { AddRepositoryPermissionsToRequest } from '../../middleware/github/repoPermissions';
+
 const router = express.Router();
 
 interface ILocalRequest extends ReposAppRequest {
-  repository?: any;
+  repository?: Repository;
+  repositoryMetadata?: RepositoryMetadataEntity;
   repoPermissions?: any;
+}
+
+interface IFindRepoCollaboratorsExcludingTeamsResult {
+  collaborators: Collaborator[];
+  outsideCollaborators: Collaborator[];
+}
+
+interface ICalculateRepoPermissionsResult extends IFindRepoCollaboratorsExcludingTeamsResult {
+  permissions: TeamPermission[];
 }
 
 const teamsFilterType = {
@@ -73,173 +90,141 @@ function slicePermissionsForView(permissions) {
   return perms;
 }
 
-function calculateRepoPermissions(organization: Organization, repository: Repository, callback) {
-  repository.getTeamPermissions((getTeamPermissionsError, teamPermissions) => {
-    if (getTeamPermissionsError) {
-      return callback(getTeamPermissionsError);
-    }
-    organization.getOwners((getOwnersError, owners) => {
-      if (getOwnersError) {
-        return callback(getOwnersError);
-      }
-      findRepoCollaboratorsExcludingTeams(repository, teamPermissions, owners, (getCollaboratorsError, collaborators, outsideCollaborators) => {
-        // Get team members
-        async.eachLimit(teamPermissions, 2, (tp, next) => {
-          const team = tp.team;
-          team.getMembers((membersError, members) => {
-            if (!membersError) {
-              tp.members = members;
-            }
-            return next();
-          });
-        }, error => {
-          if (error) {
-            return callback(error);
-          }
-          return callback(getCollaboratorsError, teamPermissions, collaborators, outsideCollaborators);
-        });
-      });
-    });
-  });
+
+async function calculateRepoPermissions(organization: Organization, repository: Repository): Promise<ICalculateRepoPermissionsResult> {
+  const teamPermissions = await repository.getTeamPermissions();
+  const owners = await organization.getOwners();
+  const { collaborators, outsideCollaborators } = await findRepoCollaboratorsExcludingOwners(repository, owners);
+  for (let teamPermission of teamPermissions) {
+    try {
+    teamPermission.resolveTeamMembers();
+    } catch (ignoredError) { /* ignored */ }
+  }
+  return { permissions: teamPermissions, collaborators, outsideCollaborators };
 }
 
-function findRepoCollaboratorsExcludingTeams(repository, teamPermissions, owners, callback) {
-  const ownersMap = new Map();
+async function findRepoCollaboratorsExcludingOwners(repository: Repository, owners: OrganizationMember[]): Promise<IFindRepoCollaboratorsExcludingTeamsResult> {
+  const ownersMap = new Map<number, OrganizationMember>();
   for (let i = 0; i < owners.length; i++) {
     ownersMap.set(owners[i].id, owners[i]);
   }
-  const directCollaboratorOptions = {
-    affiliation: 'direct',
-  };
-  repository.getCollaborators(directCollaboratorOptions, (error, collaborators) => {
-    if (error) {
-      return callback(error);
-    }
-
-    const outsideCollaboratorOptions = {
-      affiliation: 'outside',
-    };
-    repository.getCollaborators(outsideCollaboratorOptions, (error, outsideCollaborators) => {
-      if (error) {
-        return callback(error);
-      }
-      function filterOutOwners(collaborator) {
-        const id = collaborator.id;
-        return !ownersMap.has(id);
-      }
-      callback(null, _.filter(collaborators, filterOutOwners), outsideCollaborators);
-    });
-  });
+  const collaborators = await repository.getCollaborators({ affiliation: GitHubCollaboratorAffiliationQuery.Direct });
+  const outsideCollaborators = await repository.getCollaborators({ affiliation: GitHubCollaboratorAffiliationQuery.Outside });
+  function filterOutOwners(collaborator: Collaborator) {
+    const id = collaborator.id;
+    return !ownersMap.has(id);
+  }
+  return { collaborators: _.filter(collaborators, filterOutOwners), outsideCollaborators };
 }
 
-router.use('/:repoName', (req: ILocalRequest, res, next) => {
+router.use('/:repoName', asyncHandler(async function(req: ILocalRequest, res, next) {
   const repoName = req.params.repoName;
   const organization = req.organization;
   const repository = organization.repository(repoName);
-  repository.getDetails(error => {
-    if (error) {
-      return next(error);
-    }
-    req.repository = repository;
-    return next();
-  });
-});
+  await repository.getDetails();
+  req.repository = repository;
+  req.repositoryMetadata = await repository.getRepositoryMetadata();
+  return next();
+}));
 
-router.use('/:repoName', require('../../middleware/github/repoPermissions'));
-
-function npmPublishingExtension(operations, repository, callback) {
-  let data = {
-    supported: false,
-  };
-  const result = {
-    npm: data,
-  };
-  const config = operations.config;
-  if (!config || !config.npm || !config.npm.publishing || !config.npm.publishing.token) {
-    return callback(null, result);
+router.post('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function(req: ILocalRequest, res, next) {
+  const repoPermissions = req.repoPermissions;
+  if (!repoPermissions.allowAdministration) {
+    return next(new Error('You do not have administrative permission on this repository'));
   }
-  repository.getContent('package.json', (getContentError) => {
-    if (!getContentError) {
-      data.supported = true;
-    }
-    return callback(null, result);
+  // only supporting the 'take public' operation now
+  const takePublic = req.body['make-repo-public'];
+  if (!takePublic) {
+    return next(new Error('Unsupported operation'));
+  }
+  const repository = req.repository as Repository;
+  await repository.editPublicPrivate({ private: false });
+  req.individualContext.webContext.saveUserAlert(`${repository.full_name} is now public.`, 'Repository publish', 'success');
+  await repository.getDetails({
+    backgroundRefresh: false,
+    maxAgeSeconds: -60, // force a refresh now
   });
-}
+  return res.redirect(`/${repository.organization.name}/repos/${repository.name}?published`);
+}));
 
-function getRepoExtensions(operations, repository, callback) {
-  const extensions = {};
-  const extensionTypes = [
-    npmPublishingExtension,
-  ];
-  async.eachLimit(extensionTypes, 2, (extension, next) => {
-    extension(operations, repository, (error, result) => {
-      if (error) {
-        return next(error);
-      }
-      Object.assign(extensions, result);
-      return next();
-    });
-  }, error => {
-    return callback(error, extensions);
-  });
-}
-
-router.get('/:repoName', (req: ILocalRequest, res, next) => {
+router.get('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: ILocalRequest, res, next) {
+  const repoPermissions = req.repoPermissions;
   const referer = req.headers.referer as string;
   const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
-  const operations = req.app.settings.operations;
+  const operations = req.app.settings.operations as Operations;
+  const organization = req.organization;
+  const repository = req.repository;
+  const gitHubId = req.individualContext.getGitHubIdentity().id;
+  const repositoryMetadataEntity = req.repositoryMetadata;
+  const repo = decorateRepoForView(await repository.getDetails());
+  // const { permissions, collaborators, outsideCollaborators } = await calculateRepoPermissions(organization, repository);
+  // const systemTeams = combineAllTeams(organization.specialRepositoryPermissionTeams);
+  // const teamBasedPermissions = consolidateTeamPermissions(permissions, systemTeams);
+  const title = `${repository.name} - Repository`;
+  const details = await repository.organization.getDetails();
+  organization.id = details.id;
+  req.individualContext.webContext.render({
+    view: 'repos/repo',
+    title,
+    state: {
+      organization,
+      reposSubView: 'default',
+      repoPermissions,
+      repo, // : decorateRepoForView(repository),
+      repository,
+      // permissions: slicePermissionsForView(filterSystemTeams(teamsFilterType.systemTeamsExcluded, systemTeams, permissions)),
+      // systemPermissions: slicePermissionsForView(filterSystemTeams(teamsFilterType.systemTeamsOnly, systemTeams, permissions)),
+      // collaborators: sliceCollaboratorsForView(collaborators),
+      // collaboratorsArray: collaborators,
+      // outsideCollaboratorsSlice: sliceCollaboratorsForView(outsideCollaborators),
+      // outsideCollaborators: outsideCollaborators,
+      // reposDataAgeInformation: ageInformation ? ageInformation : undefined,
+      fromReposPage,
+      // teamBasedPermissions,
+      repositoryMetadataEntity,
+    },
+  });
+}));
+
+router.get('/:repoName/permissions', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: ILocalRequest, res, next) {
+  const referer = req.headers.referer as string;
+  const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
   const organization = req.organization;
   const repoPermissions = req.repoPermissions;
   const repository = req.repository;
-  const gitHubId = req.individualContext.getGitHubIdentity().id;
-  const uc = operations.getUserContext(gitHubId);
-  return uc.getAggregatedOverview((aggregateError, aggregate) => {
-    repository.getDetails((error) => {
-      if (aggregateError || error) {
-        return next(aggregateError || error);
-      }
-      calculateRepoPermissions(organization, repository, (getPermissionsError, permissions, collaborators, outsideCollaborators) => {
-        if (getPermissionsError) {
-          return next(getPermissionsError);
-        }
-        const systemTeams = combineAllTeams(organization.specialRepositoryPermissionTeams);
-        const teamBasedPermissions = consolidateTeamPermissions(permissions, systemTeams);
-        const title = `${repository.name} - Repository`;
-        getRepoExtensions(operations, repository, (extensionError, extensions) => {
-          if (extensionError) {
-            return next(extensionError);
-          }
-          repository.organization.getDetails((error, details) => {
-            if (error) {
-              return next(error);
-            }
-            organization.id = details.id;
-            req.individualContext.webContext.render({
-              view: 'repos/repo',
-              title,
-              state: {
-                organization: organization,
-                repo: decorateRepoForView(repository),
-                permissions: slicePermissionsForView(filterSystemTeams(teamsFilterType.systemTeamsExcluded, systemTeams, permissions)),
-                systemPermissions: slicePermissionsForView(filterSystemTeams(teamsFilterType.systemTeamsOnly, systemTeams, permissions)),
-                collaborators: sliceCollaboratorsForView(collaborators),
-                collaboratorsArray: collaborators,
-                outsideCollaboratorsSlice: sliceCollaboratorsForView(outsideCollaborators),
-                outsideCollaborators: outsideCollaborators,
-                // reposDataAgeInformation: ageInformation ? ageInformation : undefined,
-                fromReposPage: fromReposPage,
-                teamSets: aggregateTeamsToSets(aggregate.teams),
-                repoPermissions: repoPermissions,
-                teamBasedPermissions: teamBasedPermissions,
-                extensions,
-              },
-            });
-          });
-        });
-      });
-    });
+  const repositoryMetadataEntity = req.repositoryMetadata;
+  const uc = req.individualContext.aggregations;
+  const aggregate = await uc.getAggregatedOverview();
+  await repository.getDetails();
+  const { permissions, collaborators, outsideCollaborators } = await calculateRepoPermissions(organization, repository);
+  const systemTeams = combineAllTeams(organization.specialRepositoryPermissionTeams);
+  const teamBasedPermissions = consolidateTeamPermissions(permissions, systemTeams);
+  const title = `${repository.name} - Repository`;
+  const details = await repository.organization.getDetails();
+  organization.id = details.id;
+  req.individualContext.webContext.render({
+    view: 'repos/permissions',
+    title,
+    state: {
+      organization,
+      repo: decorateRepoForView(repository),
+      reposSubView: 'permissions',
+      repository,
+      permissions: slicePermissionsForView(filterSystemTeams(teamsFilterType.systemTeamsExcluded, systemTeams, permissions)),
+      systemPermissions: slicePermissionsForView(filterSystemTeams(teamsFilterType.systemTeamsOnly, systemTeams, permissions)),
+      collaborators: sliceCollaboratorsForView(collaborators),
+      collaboratorsArray: collaborators,
+      outsideCollaboratorsSlice: sliceCollaboratorsForView(outsideCollaborators),
+      outsideCollaborators: outsideCollaborators,
+      // reposDataAgeInformation: ageInformation ? ageInformation : undefined,
+      fromReposPage,
+      teamSets: aggregateTeamsToSets(aggregate.teams),
+      repoPermissions: repoPermissions,
+      teamBasedPermissions,
+      repositoryMetadataEntity,
+    },
   });
-});
+}));
 
 function consolidateTeamPermissions(permissions, systemTeams) {
   const systemTeamsSet = new Set(systemTeams);
@@ -358,7 +343,5 @@ function teamsToSet(teams) {
 //   }
 //   return next(new Error('You are not authorized to administer this repository.'));
 // }
-
-router.use('/:repoName/extensions', extensionsRoute);
 
 module.exports = router;

@@ -1,9 +1,20 @@
 /*
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 */
+
+/* Set color for user dropdown */
+
+
+.list-unstyled-dropdown-first {
+  color: #fff;
+  padding-inline-start: 20px;
+  padding-inline-end: 20px
+}
+
+/*----------------------------------------------------*/
 
 body {
   position: relative;
@@ -47,6 +58,10 @@ div.flex-center {
   padding-top: 2px;
 }
 */
+
+.invisible {
+  visibility: hidden;
+}
 
 h1.huge {
     font-size: 68px;
@@ -126,6 +141,10 @@ ul.list-vspace > li, ul.list-vertical-space {
 
 code {
     color: #333;
+}
+
+.button:hover{
+  color: lightgray;
 }
 
 .alert-gray {

@@ -1,0 +1,57 @@
+//-
+//- Copyright (c) Microsoft. All rights reserved.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends email
+
+block content
+
+  h3 NO ACTION REQUIRED
+  p Your direct report is no longer linked or a member of the official GitHub organizations.
+
+  if purpose == 'self'
+    p Your report unlinked themselves. No action is required from you at this time.
+
+  if purpose == 'operations'
+    p Your report was unlinked by corporate GitHub account operations, possibly working through a support issue. Please reach out if you have any questions.
+
+  if purpose == 'termination'
+    p This person is no longer listed as a Microsoft employee in 1ES information systems. This mail should provide you the confidence to know that your former employee no longer has access to private repos and that they are no longer a member of any official company GitHub orgs.
+
+  if purpose == 'deleted'
+    p The GitHub account was deleted.
+
+  if managementInformation
+    h3 Employee
+    table
+      tbody
+        if managementInformation.displayName
+          tr
+            td Employee
+            td= managementInformation.displayName
+        if managementInformation.userPrincipalName
+          tr
+            td UPN
+            td= managementInformation.userPrincipalName
+        if managementInformation.managerDisplayName
+          tr
+            td Manager
+            td= managementInformation.managerDisplayName
+
+  h3 Removed GitHub account
+  table
+    tbody
+      tr
+        td GitHub account
+        td= link.thirdPartyUsername
+      tr
+        td Corporate identity
+        td= link.corporateUsername
+
+  if details
+    h3 Operations
+    p Log of operations performed with GitHub and other operational open source systems. These may be helpful if there are additional questions for support.
+    ul
+      each det in details
+        li= det

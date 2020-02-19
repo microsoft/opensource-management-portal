@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -9,11 +9,11 @@
 
 'use strict';
 
-const _ = require('lodash');
-const azure = require('azure-storage');
-
-import async = require('async');
+import _ from 'lodash';
+import azure from 'azure-storage';
+import async from 'async';
 import { v4 as uuidV4 } from 'uuid';
+
 import { IReposError } from '../../../transitional';
 import { ILinkProvider } from '../postgres/postgresLinkProvider';
 import { ICorporateLinkProperties, ICorporateLink, ICorporateLinkExtended, CorporatePropertyNames } from '../../../business/corporateLink';
@@ -90,7 +90,7 @@ const coreColumns = [
 export class TableLinkProvider implements ILinkProvider {
   private _tableName: string;
   private _tableNamePrefix: string;
-  private _table: any;
+  private _table: azure.TableService;
   private _providers: any;
   private _entityGenerator: any;
   private _options: any;
@@ -193,7 +193,7 @@ export class TableLinkProvider implements ILinkProvider {
 
     const tableName = this._tableName;
 
-    this._table.retrieveEntity(tableName, partitionKey, id, (getError, fullEntity) => {
+    this._table.retrieveEntity(tableName, partitionKey, id, (getError: any, fullEntity) => {
       if (getError && getError.statusCode === 404) {
         return callback(null, false);
       }
@@ -270,7 +270,7 @@ export class TableLinkProvider implements ILinkProvider {
     } catch (processingError) {
       return callback(processingError, null);
     }
-    return this._table.insertEntity(tableName, entity, (insertError, inserted) => {
+    return this._table.insertEntity(tableName, entity, (insertError: any, inserted) => {
       if (insertError && insertError.code === 'EntityAlreadyExists') {
         const error: IAlreadyLinkedError = new Error('This user is already linked');
         error.alreadyLinked = true;
@@ -466,7 +466,7 @@ function getTableName(self) {
   return self._tableName;
 }
 
-function getTableService(self) {
+function getTableService(self): azure.TableService {
   // setup during init
   return self._table;
 }
@@ -497,7 +497,7 @@ function queryLinksTable(self, options, callback) {
     },
     next => {
       const tableService = getTableService(self);
-      tableService.queryEntities(tableName, buildQuery(options), continuationToken, (queryError, results) => {
+      tableService.queryEntities(tableName, buildQuery(options), continuationToken, (queryError, results: azure.TableService.QueryEntitiesResult<any>) => {
         if (queryError) {
           done = true;
           return next(queryError);
@@ -516,7 +516,7 @@ function queryLinksTable(self, options, callback) {
           rows.push(tableEntity.reduce(entries[i]));
         }
 
-        return next(null, rows);
+        return next(null);
       });
     },
     error => {

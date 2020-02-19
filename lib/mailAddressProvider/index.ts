@@ -1,16 +1,31 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
-module.exports = function createMailAddressProviderInstance(options, callback) {
+import { ICallback } from '../../transitional';
+
+export interface IMailAddressProvider {
+  getAddressFromUpn(upn: string, callback: ICallback<string>);
+  getCorporateEntry?: any;
+}
+
+export function GetAddressFromUpnAsync(mailAddressProvider: IMailAddressProvider, upn: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    mailAddressProvider.getAddressFromUpn(upn, (error, address) => {
+      return error ? reject(error) : resolve(address);
+    });
+  });
+}
+
+export function createMailAddressProviderInstance(options: any, callback: ICallback<IMailAddressProvider>) {
   const config = options.config;
   const mailAddressesConfig = config.mailAddresses || {};
   const provider = mailAddressesConfig.provider || 'passthroughMailAddressProvider';
   if (!provider) {
-    return callback();
+    return callback(null);
   }
   let found = false;
   const supportedProviders = [
@@ -21,7 +36,7 @@ module.exports = function createMailAddressProviderInstance(options, callback) {
   supportedProviders.forEach((supportedProvider) => {
     if (supportedProvider === provider) {
       found = true;
-      let providerInstance = null;
+      let providerInstance: IMailAddressProvider = null;
       try {
         providerInstance = require(`./${supportedProvider}`)(options);
       }

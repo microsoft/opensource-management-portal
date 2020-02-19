@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -14,7 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const pug = require('pug');
-import * as Q from 'q';
+import Q from 'q';
 
 const qlimit = require('qlimit');
 

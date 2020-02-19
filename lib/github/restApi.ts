@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -7,23 +7,29 @@
 
 'use strict';
 
-const _ = require('lodash');
-const debug = require('debug')('oss-github');
-import moment = require('moment');
+import _ from 'lodash';
+const debug = require('debug')('restapi');
+const debugCacheOptimization = require('debug')('oss-cache-optimization');
+import moment from 'moment';
 
-const querystring = require('querystring');
 const semver = require('semver');
-const url = require('url');
+
+const debugShowStandardBehavior = false;
+const debugOutputUnregisteredEntityApis = true;
 
 import { IShouldServeCache, IntelligentEngine, ApiContext, IApiContextCacheValues, IApiContextRedisKeys, ApiContextType } from './core';
+import { getEntityDefinitions, GitHubResponseType, ResponseBodyType } from './endpointEntities';
 
 import appPackage = require('../../package.json');
-import { ILibraryContext } from '.';
+import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../transitional';
 const appVersion = appPackage.version;
 
 const longtermMetadataMinutes = 60 * 24 * 14; // assumed to be a long time
 const longtermResponseMinutes = 60 * 24 * 7; // a week, sliding
 const acceleratedExpirationMinutes = 10; // quick cleanup
+
+const entityData = getEntityDefinitions();
+const emptySet = new Set<string>();
 
 interface IReducedGitHubMetadata {
   etag: string;
@@ -66,10 +72,42 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
 
   // were previously in the pipeline and context:
 
-  async callApi(apiContext: GitHubApiContext): Promise<any> {
+  async callApi(apiContext: GitHubApiContext, optionalMessage?: string): Promise<any> {
     const token = apiContext.token;
+    // CONSIDER: rename apiContext.token *to* something like apiContext.authorization
+    if (typeof(token) === 'string' && (!(token as string).startsWith('token ') && !(token as string).startsWith('bearer '))) {
+      if (optionalMessage) {
+        debug(optionalMessage);
+      }
+      const warning = `API context api=${apiContext.api} does not have a token that starts with 'token [REDACTED]' or 'bearer [REDACTED], investigate this breakpoint`;
+      throw new Error(warning);
+    }
+    let authorizationHeaderValue = typeof(token) === 'string' ? token as string : null;
+    if (!authorizationHeaderValue) {
+      if (typeof(token) === 'function') {
+        const response = await token();
+        if (typeof(response) === 'string') {
+          // happens when it isn't a more modern GitHub app response
+          authorizationHeaderValue = response;
+        } else {
+          const value = response['value'];
+          if (!value) {
+            throw new Error('No value');
+          }
+          authorizationHeaderValue = value;
+          apiContext.tokenSource = response;
+        }
+      }
+    }
+    if (optionalMessage) {
+      let apiTypeSuffix = apiContext.tokenSource && apiContext.tokenSource.purpose ? ' [' + apiContext.tokenSource.purpose + ']' : '';
+      if (!apiTypeSuffix && apiContext.tokenSource && apiContext.tokenSource.source) {
+        apiTypeSuffix = ` [token source=${apiContext.tokenSource.source}]`;
+      }
+      debug(`${optionalMessage}${apiTypeSuffix}`);
+    }
     const headers = {
-      Authorization: `token ${token}`,
+      Authorization: authorizationHeaderValue,
     };
     if (apiContext.options.headers) {
       apiContext.headers = apiContext.options.headers;
@@ -85,6 +123,13 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
       args.push(apiContext.fakeLink, headers);
     } else {
       const argOptions = Object.assign({}, apiContext.options);
+      if (argOptions.octokitRequest) {
+        args.push(argOptions.octokitRequest);
+        delete argOptions.octokitRequest;
+      }
+      if (argOptions.additionalDifferentiationParameters) {
+        delete argOptions.additionalDifferentiationParameters;
+      }
       argOptions.headers = headers;
       args.push(argOptions);
     }
@@ -112,26 +157,99 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     return response;
   }
 
+  optionalStripResponse(apiContext: ApiContext, response: any): any {
+    delete response.meta;
+    const clonedResponse = Object.assign({}, response);
+
+    if (response.headers) {
+      let clonedHeaders = StripGitHubEntity(GitHubResponseType.Headers, response.headers, 'response.headers');
+      if (clonedHeaders) {
+        clonedResponse.headers = clonedHeaders;
+        if (debugShowStandardBehavior) {
+          debugCacheOptimization('using stripped headers');
+        }
+      }
+    }
+    if (response.data) {
+      let apiCall = apiContext.api as string;
+      if ((apiContext as GitHubApiContext).pageAwareTypeInformation) {
+        const pageAwareTypeInformation = (apiContext as GitHubApiContext).pageAwareTypeInformation;
+        if (pageAwareTypeInformation && pageAwareTypeInformation.methodName) {
+          apiCall = pageAwareTypeInformation.methodName;
+        }
+      }
+      const knownEntityType = entityData.apiToEntityType.get(apiCall);
+      const knownResponseBodyType = entityData.apiToEntityResponseType.get(apiCall);
+      if (!knownEntityType) {
+        if (debugOutputUnregisteredEntityApis) {
+          debugCacheOptimization(apiCall);
+          debugCacheOptimization(JSON.stringify(response.data, undefined, 2));
+        }
+        debugCacheOptimization(`Cache Optimization WARNING: the API call ${apiCall} has no known entity response type, so data will not be optimized for caching`);
+      } else if (Array.isArray(response.data) && knownResponseBodyType !== ResponseBodyType.Array) {
+        if (debugOutputUnregisteredEntityApis) {
+          debugCacheOptimization(apiCall);
+          debugCacheOptimization(JSON.stringify(response.data, undefined, 2));
+        }
+        debugCacheOptimization(`Cache Optimization WARNING: the API call ${apiCall} is not registered to return an array, but it did.. NO optimization being performed.`);
+      } else if (knownResponseBodyType === ResponseBodyType.Array && Array.isArray(response.data)) {
+        let arrayClone = [];
+        const remainingKeys = new Set(Object.getOwnPropertyNames(response.data));
+        remainingKeys.delete('length');
+        for (let i = 0; i < response.data.length; i++) {
+          const entity = response.data[i];
+          const entityClone = StripGitHubEntity(knownEntityType, entity, 'response.data[' + i + ']');
+          arrayClone.push(entityClone ? entityClone : entity);
+          remainingKeys.delete(i.toString());
+        }
+        if (remainingKeys.size) {
+          const names = Array.from(remainingKeys.keys()).join(', ');
+          throw new Error(`This entity simplification function assumes that there are no additional keys appended to the response data array. The following keys remain: ${names}`);
+        }
+        if (arrayClone.length) {
+          clonedResponse.data = arrayClone;
+          if (debugShowStandardBehavior) {
+            debugCacheOptimization(`using reduced response array body for ${arrayClone.length} entities`);
+          }
+        }
+      } else if (knownResponseBodyType === ResponseBodyType.Array) {
+        if (debugOutputUnregisteredEntityApis) {
+          debugCacheOptimization(apiCall);
+          debugCacheOptimization(JSON.stringify(response.data, undefined, 2));
+        }
+        debugCacheOptimization(`Cache Optimization WARNING: the API call ${apiCall} is registered to return an array, but it did not.. NO optimization being performed.`);
+      } else {
+        const strippedBody = StripGitHubEntity(knownEntityType, response.data, 'response.data');
+        if (strippedBody) {
+          clonedResponse.data = strippedBody;
+          if (debugShowStandardBehavior) {
+            debugCacheOptimization(`reduced response body for entity ${knownEntityType} used`);
+          }
+        } else {
+          if (debugShowStandardBehavior) {
+            debugCacheOptimization(`nothing could be reduced from the response.data for ${knownEntityType}`);
+          }
+        }
+      }
+    }
+    return clonedResponse;
+  }
+
   reduceMetadataToCacheFromResponse(apiContext: any, response: any): any {
+    if (response) {
+      delete response.meta; // this is to avoid deprecation messages from the library
+    }
     const headers = response ? response.headers : null;
     if (headers && headers.etag) {
       let reduced: IReducedGitHubMetadata = {
         etag: headers.etag,
         av: appVersion, // added in app v5.0.1
       };
-      // console.log(`+ ${appVersion} storing app version to REST API caching metadata *NEW* ${apiContext.redisKey.metadata}`);
       if (headers.link) {
         reduced.link = headers.link;
       }
-      /*
-      let requestId = metadata['x-github-request-id'];
-      if (requestId) {
-        reduced['x-github-request-id'] = requestId;
-      }
-      */
       // CONSIDER: can parse last-modified and store it as 'changed' UTC
-
-      let calledTime = apiContext.calledTime ? apiContext.calledTime.format() : moment().utc().format();
+      const calledTime = apiContext.calledTime ? apiContext.calledTime.format() : moment().utc().format();
       reduced.updated = calledTime;
       return reduced;
     }
@@ -166,7 +284,11 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     let cacheOk = false;
     if (statusCode === 304) {
       const displayInfo = apiContext.redisKey ? apiContext.redisKey.root : '';
-      debug(`304: Use existing cache ${displayInfo}`);
+      let appPurposeSuffix = apiContext.tokenSource && apiContext.tokenSource.purpose ? ` [${apiContext.tokenSource.purpose}]` : '';
+      if (apiContext.tokenSource && !apiContext.tokenSource.purpose && apiContext.tokenSource.source) {
+        appPurposeSuffix = ` [token source=${apiContext.tokenSource.source}]`;
+      }
+      debug(`304:               ${displayInfo} ${appPurposeSuffix}`);
       ++apiContext.cost.github.cacheHits;
       cacheOk = true;
     } else if (statusCode < 200 || statusCode >= 300) {
@@ -201,7 +323,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
         shouldServeCache = true;
         shouldServeCache = {
           cache: true,
-          remaining: 'expires in ' + moment(updatedIso).add(maxAgeSeconds, 'seconds').fromNow(),
+          remaining: 'expires ' + moment(updatedIso).add(maxAgeSeconds, 'seconds').fromNow(),
         };
         // debug('cache OK to serve as last updated was ' + updated);
       } else if (apiContext.backgroundRefresh) {
@@ -228,9 +350,9 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
       }
     } else {
       if (!metadata) {
-        debug('api: empty/no metadata ' + apiContext.redisKey.metadata);
+        debug(`NO_METADATA:       ${apiContext.redisKey.metadata} [empty]`);
       } else {
-        debug('api: no updated ' + apiContext.redisKey.metadata);
+        debug(`NO_CHANGE:         ${apiContext.redisKey.metadata} ${metadata.etag ? '[etag: ' + metadata.etag + ']' : ''}`);
       }
     }
     return shouldServeCache;
@@ -238,62 +360,17 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
 
 }
 
-export function wrapCreatePage(libraryContext, github, kind) {
-  return function(token, link, callback) {
-    getPage(libraryContext, github, token, link, kind, callback);
-  };
-}
-
-function getPage(libraryContext: ILibraryContext, github, token: string, link, which: string, callback) {
-  const url = getPageLink(github, link, which);
-  if (!url) {
-    return callback(new Error('No GitHub collection link was present in the response.'));
-  }
-  const apiContext = prepareApiContextForGithub(createApiContextFromLink(github, url), github);
-  apiContext.overrideToken(token);
-  apiContext.libraryContext = libraryContext;
-
-  const engine = libraryContext.githubEngine as IntelligentGitHubEngine;
-  if (!engine) {
-    return callback(new Error('No available GitHub engine'));
-  }
-  engine.execute(apiContext).then(ok => {
-    return callback(null, ok);
-  }, callback);
-}
-
-function getPageLink(github, link, which) {
-  let method = null;
-  switch (which) {
-  case 'next':
-    method = github.hasNextPage;
-    break;
-  case 'prev':
-    method = github.hasPreviousPage;
-    break;
-  case 'last':
-    method = github.hasLastPage;
-    break;
-  case 'first':
-    method = github.hasFirstPage;
-    break;
-  default:
-    return null;
-  }
-  if (method) {
-    return method.call(github, link);
-  }
-}
-
 export class GitHubApiContext extends ApiContext {
   private _apiMethod: any;
   private _redisKeys: IApiContextRedisKeys;
   private _cacheValues: IApiContextCacheValues;
-  private _token: string;
+  private _token: string | IGetAuthorizationHeader | IAuthorizationHeaderValue;
 
   public fakeLink?: IGitHubLink;
 
   public headers?: any;
+
+  public pageAwareTypeInformation?: any; // used for extended cache options
 
   constructor(api: any, options: any) {
     super(api, options);
@@ -311,7 +388,7 @@ export class GitHubApiContext extends ApiContext {
     };
   }
 
-  get token(): string {
+  get token(): string | IGetAuthorizationHeader | IAuthorizationHeaderValue {
     return this._token;
   }
 
@@ -350,8 +427,16 @@ export class GitHubApiContext extends ApiContext {
     this.libraryContext = libraryContext;
   }
 
-  overrideToken(token: string) {
-    this._token = token;
+  overrideToken(token: string | IGetAuthorizationHeader | IAuthorizationHeaderValue) {
+    if (token && token['value']) {
+      const asPair = token as IAuthorizationHeaderValue;
+      this._token = asPair.value;
+      this.tokenSource = asPair;
+    } else if (typeof(token) === 'string') {
+      this._token = token as string;
+    } else {
+      this._token = token;
+    }
   }
 
   overrideApiMethod(method: any) {
@@ -377,39 +462,53 @@ function createApiContextForGithub(api: any, options: any): GitHubApiContext {
   return apiContext;
 }
 
-function createApiContextFromLink(github, linkAddress) {
-  const api = 'getPage';
-  const link = url.parse(linkAddress);
-  const qs = querystring.parse(link.query);
-  const pathArray = _.compact(link.pathname.split('/'));
-
-  // Translate the path into key/value pairs
-  const options: IHackyOptions = {};
-  if (/* odd # */ pathArray.length % 2 !== 0) {
-    options.t = pathArray.pop();
+export function StripGitHubEntity(entityType: GitHubResponseType, incomingEntity: any, keyOrName: string): any | null {
+  let entityClone = null;
+  if (!incomingEntity || typeof(incomingEntity) !== 'object') {
+    return; // no change
   }
-  while (pathArray.length > 0) {
-    const value = pathArray.pop();
-    const key = pathArray.pop();
-    options[key] = value;
+  const keepers = entityData.entityPropertiesToKeep.get(entityType) || emptySet;
+  const droppers = entityData.entityPropertiesToDrop.get(entityType) || emptySet;
+  const objects = entityData.entityPropertiesSubsets.get(entityType);
+  const entityKeys = Object.getOwnPropertyNames(incomingEntity);
+  for (let j = 0; j < entityKeys.length; j++) {
+    const fieldName = entityKeys[j];
+    const fieldObjectType = objects ? objects.get(fieldName) : null;
+    if (keepers.has(fieldName)) {
+      // Safe known field to keep
+    } else if (droppers.has(fieldName)) {
+      if (!entityClone) {
+        entityClone = Object.assign({}, incomingEntity);
+        if (debugShowStandardBehavior) {
+          debugCacheOptimization(`stripping from response ${keyOrName} of type ${entityType}: (clone)`);
+        }
+      }
+      delete entityClone[fieldName];
+      if (debugShowStandardBehavior) {
+        debugCacheOptimization(`field strip: ${fieldName} from ${keyOrName} entity (${entityType})`);
+      }
+    } else if (fieldObjectType) {
+      // this property itself is a sub-object that might want to get parsed
+      if (!entityClone) {
+        entityClone = Object.assign({}, incomingEntity);
+        if (debugShowStandardBehavior) {
+          debugCacheOptimization(`stripping from response ${keyOrName} of type ${entityType}: (clone)`);
+        }
+      }
+      const newSubObject = StripGitHubEntity(fieldObjectType, entityClone[fieldName], `${keyOrName}.${fieldName}`);
+      if (newSubObject) {
+        entityClone[fieldName] = newSubObject;
+        if (debugShowStandardBehavior) {
+          debugCacheOptimization(`replacing ${keyOrName}.${fieldName} sub-entity with a subset object (${entityType})`);
+        }
+      } else {
+        if (debugShowStandardBehavior) {
+          debugCacheOptimization(`no subset required for sub-entity ${keyOrName}.${fieldName} (${entityType})`);
+        }
+      }
+    } else {
+      debugCacheOptimization(`*NOT* stripping ${keyOrName}.${fieldName} (type ${entityType}) (not a registered field)`);
+    }
   }
-
-  // If an access_token is provided to the query string, then it is present in
-  // the link. The trouble is this would lead to the need to encrypt Redis,
-  // which is not great. Let's block this here and just use headers for auth.
-  if (qs.access_token) {
-    throw new Error('For security purposes this library was unable to process the provided link.');
-  }
-
-  // Merge query string pairs
-  Object.assign(options, qs);
-  const apiContext = createApiContextForGithub(api, options);
-  // Use a fake link to call into the GitHub library via the "next page"
-  const fakeLink = {
-    link: `<${linkAddress}>; rel="next"`,
-  };
-  apiContext.fakeLink = fakeLink;
-  github.getNextPage.thisInstance = github; // hack! - single instance only works
-  apiContext.overrideApiMethod(github.getNextPage);
-  return apiContext;
+  return entityClone;
 }

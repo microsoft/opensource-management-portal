@@ -136,6 +136,20 @@ present.
 As configuration, including secrets, is resolved at startup, any key rotation would need
 to include a restart of the app service.
 
+## Jobs
+
+Several jobs are available in the container or the `jobs/` folder. These can
+optionally provide useful operational and services support. Often a Kubernetes
+CronJob can help.
+
+- `cleanupInvites`: if configured for an org, cleanup old unaccepted invites
+- `firehose`: ongoing processing of GitHub events for keeping cache up-to-date
+- `managers`: cache the last-known manager for links, to use in notifications after a departure may remove someone from the graph
+- `migrateLinks`: a one-time migration script to help when moving link source of truth
+- `permissions`: updating permissions for all-write/all-read/all-admin teams when configured
+- `refreshUsernames`: keeping link data fresh with GitHub username renames, corporate username and display name updates, and removing links for deleted GitHub users who remove their accounts permanently from GitHub.com
+- `reports`: processing the building of report data about use, abandoned repos, etc.
+
 ## Application Insights
 
 When using Microsoft Application Insights, this library reports a number of metrics, events and
@@ -216,6 +230,10 @@ CSS files and other assets. Sorry, its not pretty.
 - In-memory session and link providers enable an easier local development experience. As a result, you *must* configure a link provider type and a session type in settings.
   - SESSION_PROVIDER should be explicitly set to `redis`
 
+## Breaking changes with historical repo metadata
+
+- Prior to late 2017, newly created repos stored metadata that included the org name and repo name requested but _not_ the repo ID of the repo when created. The current implementation tries to use the repo ID as an entity lookup value and so will fail on historical data.
+
 ### Removed features and functions
 
 - Issue-based approval workflow (backed by GitHub issues) removed for all approvals
@@ -250,8 +268,21 @@ If you place a JSON file `env.json` above the directory of your cloned repo
 (to prevent committing secrets to your repo by accident or in your editor),
 you can configure the following extreme minimum working set to use the app.
 
-```
+The central operations token is a personal access token that is a **org owner**
+of the GitHub org(s) being managed.
 
+```
+  "DEBUG_ALLOW_HTTP": "1",
+  "GITHUB_CENTRAL_OPERATIONS_TOKEN": "a github token for the app",
+  "GITHUB_ORGANIZATIONS_FILE": "../../env-orgs.json",
+  "GITHUB_CLIENT_ID" : "your client id",
+  "GITHUB_CLIENT_SECRET" : "your client secret",
+  "GITHUB_CALLBACK_URL" : "http://localhost:3000/auth/github/callback",
+  "AAD_CLIENT_ID": "your corporate app id",
+  "AAD_REDIRECT_URL" : "http://localhost:3000/auth/azure/callback",
+  "AAD_CLIENT_SECRET" : "a secret for the corporate app",
+  "AAD_TENANT_ID" : "your tenant id",
+  "AAD_ISSUER": "https://sts.windows.net/your tenant id/",
 ```
 
 In this mode memory providers are used, including a mocked Redis client. Note
@@ -260,3 +291,54 @@ providers could become a token use nightmare, as each new execution of the app
 without a Redis Cache behind the scenes is going to have 100% cache misses for
 GitHub metadata. Consider configuring a development or local Redis server to
 keep cached data around.
+
+# How the app authenticates with GitHub
+
+The service as a monolith is able to partition keys and authentication for
+GitHub resources at the organization level.
+
+## GitHub org owner Personal Access Token
+
+There is a 'central operations token' supported to make it easy for the
+simple case. That central token is used if an org does not have a token
+defined, or in resolving cross-org assets - namely **teams by ID** and
+**accounts by ID**.
+
+In lieu of a central ops token, the first configured organization's token
+is used in the current design.
+
+Individual orgs can have their own token(s) defined from their own
+account(s).
+
+## Traditional GitHub OAuth app
+
+An OAuth app is used to authenticate the GitHub users. This app needs to
+be approved as a third-party app in all your GitHub apps currently.
+
+## Modern GitHub App
+
+Work in progress: supporting modern GitHub apps. Will require configuring
+the installation ID for a given organization.
+
+For performance reasons, a partitioned/purpose-intended app model is
+being designed that will fallback to the one configured app installation,
+if any. If there is no modern GitHub app, the GitHub PAT for an org will
+be used.
+
+# Feature flags
+
+Under development, configuration values in `config/features.json` map
+explicit opt-in environment variables to features and functions for
+the monolithic site.
+
+This was, organizations can choose which specific features they may
+want to have exposed by the app.
+
+Most features can be opted in to by simply setting the environment
+variable value to `1`.
+
+- allowUnauthorizedNewRepositoryLockdownSystem
+
+  - Variable: `FEATURE_FLAG_ALLOW_UNAUTHORIZED_NEW_REPOSITORY_LOCKDOWN_SYSTEM`
+  - Purpose: Allows the "unauthorized new repository lockdown system" to be _available_ as an organization feature flag. It does not turn this system on by default in any case.
+  - Requirements: the event firehose must be used (there is no equivalent job, to make sure to not accidentially destroy permissions across existing repos)

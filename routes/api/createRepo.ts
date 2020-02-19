@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -9,12 +9,15 @@
 // and refactored to be useful by others. There are values stored in
 // configuration that can be used instead of the hardcoded values within.
 
-const _ = require('lodash');
-import async = require('async');
+import _ from 'lodash';
 import { jsonError } from '../../middleware/jsonError';
-const emailRender = require('../../lib/emailRender');
+import { IProviders } from '../../transitional';
+import { ICreateRepositoryResult, Organization } from '../../business/organization';
+import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { RenderHtmlMail } from '../../lib/emailRender';
 
-const RepoWorkflowEngine = require('../org/repoWorkflowEngine.js');
+import { RepoWorkflowEngine, IRepositoryWorkflowOutput } from '../org/repoWorkflowEngine';
+import { IMailProvider } from '../../lib/mailProvider';
 
 const supportedLicenseExpressions = [
   'mit',
@@ -31,34 +34,33 @@ const hardcodedApprovalTypes = [
   'Exempt',
 ];
 
-const hardcodedClaEntities = [
-  'Microsoft',
-  '.NET Foundation',
-];
+export interface ICreateRepositoryApiResult {
+  github: any;
+  name: string;
+}
 
-function createRepo(req, res, convergedObject, token, callback, doNotCallbackForSuccess) {
+export async function CreateRepository(req, bodyOverride: unknown): Promise<ICreateRepositoryApiResult> {
+  console.log('CreateRepository CreateRepository CreateRepository CreateRepository CreateRepository');
   if (!req.organization) {
-    return callback(jsonError(new Error('No organization available in the route.'), 400));
+    throw jsonError(new Error('No organization available in the route.'), 400);
   }
-  const operations = req.app.settings.operations;
-  const dc = req.app.settings.dataclient;
+  const providers = req.app.settings.providers as IProviders;
+  const operations = providers.operations;
   const mailProvider = req.app.settings.mailProvider;
-
+  const repositoryMetadataProvider = providers.repositoryMetadataProvider;
   const ourFields = [
     'ms.onBehalfOf',
     'ms.license',
     'ms.approval',
     'ms.approval-url',
     'ms.justification',
-    'ms.cla-entity',
-    'ms.cla-mail',
     'ms.notify',
     'ms.teams',
     'ms.template',
     'ms.project-type',
   ];
   const properties = {};
-  const parameters = req.body;
+  const parameters = bodyOverride || req.body;
   ourFields.forEach((fieldName) => {
     if (parameters[fieldName] !== undefined) {
       properties[fieldName] = parameters[fieldName];
@@ -71,167 +73,207 @@ function createRepo(req, res, convergedObject, token, callback, doNotCallbackFor
     license: properties['ms.license'] || req.headers['ms-license'],
     approvalType: properties['ms.approval'] || req.headers['ms-approval'],
     approvalUrl: properties['ms.approval-url'] || req.headers['ms-approval-url'],
-    claMail: properties['ms.cla-mail'] || req.headers['ms-cla-mail'],
-    claEntity: properties['ms.cla-entity'] || req.headers['ms-cla-entity'],
     notify: properties['ms.notify'] || req.headers['ms-notify'],
     teams: properties['ms.teams'] || req.headers['ms-teams'],
     template: properties['ms.template'] || req.headers['ms-template'],
     projectType: properties['ms.project-type'] || req.headers['ms-project-type'],
   };
-
   // Validate licenses
   let msLicense = msProperties.license;
   if (!msLicense) {
-    return callback(jsonError('Missing Microsoft license information', 422));
+    throw jsonError(new Error('Missing Microsoft license information'), 422);
   }
   msLicense = msLicense.toLowerCase();
-
   if (supportedLicenseExpressions.indexOf(msLicense) < 0) {
-    return callback(jsonError('The provided license expression is not currently supported', 422));
+    throw jsonError(new Error('The provided license expression is not currently supported'), 422);
   }
-
   // Validate approval types
   const msApprovalType = msProperties.approvalType;
   if (!msApprovalType) {
-    return callback(jsonError('Missing Microsoft approval type information', 422));
+    throw jsonError(new Error('Missing Microsoft approval type information'), 422);
   }
   if (hardcodedApprovalTypes.indexOf(msApprovalType) < 0) {
-    return callback(jsonError('The provided approval type is not supported', 422));
+    throw jsonError(new Error('The provided approval type is not supported'), 422);
   }
-
   // Validate specifics of what is in the approval
   switch (msApprovalType) {
-  case 'NewReleaseReview':
-  case 'ExistingReleaseReview':
-    if (!msProperties.approvalUrl) {
-      return callback(jsonError('Approval URL for the release review is required when using the release review approval type', 422));
-    }
-    break;
-
-  case 'SmallLibrariesToolsSamples':
-    break;
-
-  case 'Migrate':
-    break;
-
-  case 'Exempt':
-    if (!msProperties.justification) {
-      return callback(jsonError('Justification is required when using the exempted approval type', 422));
-    }
-    break;
-
-  default:
-    return callback(jsonError('The requested approval type is not currently supported.', 422));
+    case 'NewReleaseReview':
+    case 'ExistingReleaseReview':
+      if (!msProperties.approvalUrl) {
+        throw jsonError(new Error('Approval URL for the release review is required when using the release review approval type'), 422);
+      }
+      break;
+    case 'SmallLibrariesToolsSamples':
+      break;
+    case 'Exempt':
+      if (!msProperties.justification) {
+        throw jsonError(new Error('Justification is required when using the exempted approval type'), 422);
+      }
+      break;
+    default:
+      throw jsonError(new Error('The requested approval type is not currently supported.'), 422);
   }
-
-  // Validate CLA entity
-  if (msProperties.claEntity && hardcodedClaEntities.indexOf(msProperties.claEntity) < 0) {
-    return callback(jsonError('The provided CLA entity name is not supported', 422));
-  }
-
   parameters.org = req.organization.name;
-
   const organization = operations.getOrganization(parameters.org);
-  operations.github.post(token, 'repos.createForOrg', parameters, (error, result) => {
+  req.app.settings.providers.insights.trackEvent({
+    name: 'ApiRepoTryCreateForOrg',
+    properties: {
+      parameterName: parameters.name,
+      description: parameters.description,
+      private: parameters.private,
+      org: parameters.org,
+    },
+  });
+  let createResult: ICreateRepositoryResult = null;
+  try {
+    createResult = await organization.createRepository(parameters.name, parameters);
+  } catch (error) {
     req.app.settings.providers.insights.trackEvent({
-      name: 'ApiRepoCreateForOrg',
+      name: 'ApiRepoCreateForOrgGitHubFailure',
       properties: {
         parameterName: parameters.name,
-        description: parameters.description,
         private: parameters.private,
         org: parameters.org,
-        result: JSON.stringify(result),
+        parameters: JSON.stringify(parameters),
       },
     });
-    if (error) {
-      // TODO: insights
-      return callback(jsonError(error, error.code || 500));
-    }
-
-    // strip an internal "cost" part off our response object
-    delete result.cost;
-
-    // from this point on any errors should roll back
-    req.repoCreateResponse = {
-      github: result,
-      name: result && result.name ? result.name : undefined,
-    };
-
-    req.approvalRequest = {
-      ghu: msProperties.onBehalfOf,
-      justification: msProperties.justification,
-      requested: ((new Date()).getTime()).toString(),
-      active: false,
-      license: msProperties.license,
-      type: 'repo',
-      org: req.organization.name.toLowerCase(),
-      repoName: result.name,
-      repoId: result.id,
-      repoDescription: result.description,
-      repoUrl: result.homepage,
-      repoVisibility: result.private ? 'private' : 'public',
-      approvalType: msProperties.approvalType,
-      approvalUrl: msProperties.approvalUrl,
-      claMail: msProperties.claMail,
-      claEntity: msProperties.claEntity,
-      template: msProperties.template,
-      projectType: msProperties.projectType,
-
-      // API-specific:
-      apiVersion: req.apiVersion,
-      api: true,
-      correlationId: req.correlationId,
-    };
-
-    let teamNumber = 0;
-    const teamTypes = ['pull', 'push', 'admin'];
-    downgradeBroadAccessTeams(organization, msProperties.teams || {});
-    for (let i = 0; msProperties.teams && i < teamTypes.length; i++) {
-      const teamType = teamTypes[i];
-      const idList = msProperties.teams[teamType];
-      if (idList && idList.length) {
-        for (let j = 0; j < idList.length; j++) {
-          const num = teamNumber++;
-          const prefix = 'teamid' + num;
-          req.approvalRequest[prefix] = idList[j];
-          req.approvalRequest[prefix + 'p'] = teamType;
-        }
-      }
-    }
-    req.approvalRequest.teamsCount = teamNumber;
-    dc.insertGeneralApprovalRequest('repo', req.approvalRequest, (insertRequestError, requestId) => {
-      if (insertRequestError) {
-        return rollbackRepoError(req, res, callback, 'There was a problem recording information about the repo request', 500, insertRequestError);
-      }
-      req.approvalRequest['ms.approvalId'] = requestId;
-      const repoWorkflow = new RepoWorkflowEngine(null, req.organization, { request: req.approvalRequest });
-      repoWorkflow.generateSecondaryTasks(function (err, tasks) {
-        async.series(tasks || [], function (taskErr, output) {
-          if (taskErr) {
-            return rollbackRepoError(req, res, callback, 'There was a problem with secondary tasks associated with the repo request', 500, taskErr);
-          }
-          if (output) {
-            req.repoCreateResponse.tasks = output;
-          }
-          function done() {
-            if (doNotCallbackForSuccess) {
-              res.status(201);
-              return res.json(req.repoCreateResponse);
-            } else {
-              return callback(null, req.repoCreateResponse);
-            }
-          }
-          if (msProperties.notify && mailProvider) {
-            sendEmail(req, mailProvider, req.apiKeyRow, req.correlationId, output, req.approvalRequest, msProperties, () => {
-              done();
-            });
-          } else {
-            done();
-          }
-        });
+    if (error && error.innerError) {
+      const inner = error.innerError;
+      req.insights.trackException({
+        exception: inner,
+        properties: {
+          event: 'ApiRepoCreateGitHubErrorInside',
+          message: inner && inner.message ? inner.message : inner,
+          status: inner && inner.status ? inner.status : '',
+          statusCode: inner && inner.statusCode ? inner.statusCode : '',
+        },
       });
+    }
+    req.insights.trackException({
+      exception: error,
+      properties: {
+        event: 'ApiRepoCreateGitHubError',
+        message: error && error.message ? error.message : error,
+      },
     });
+    throw jsonError(error, error.status || 500);
+  }
+  const { repository, response } = createResult;
+  req.app.settings.providers.insights.trackEvent({
+    name: 'ApiRepoCreateForOrg',
+    properties: {
+      parameterName: parameters.name,
+      description: parameters.description,
+      private: parameters.private,
+      org: parameters.org,
+      result: JSON.stringify(response),
+    },
   });
+  // strip an internal "cost" part off our response object
+  delete response.cost;
+    // from this point on any errors should roll back
+  const repoCreateResponse: ICreateRepositoryApiResult = {
+    github: response,
+    name: response && response.name ? response.name : undefined,
+  };
+  req.repoCreateResponse = repoCreateResponse;
+  // Store create metadata
+  const metadata = new RepositoryMetadataEntity();
+  metadata.created = new Date();
+  metadata.createdByThirdPartyUsername = msProperties.onBehalfOf;
+  // TODO: we also want to store corporate information when present
+  try {
+    const account = await operations.getAccountByUsername(metadata.createdByThirdPartyUsername);
+    metadata.createdByThirdPartyId = account.id.toString();
+  } catch (noAvailableUsername) {
+    req.app.settings.providers.insights.trackEvent({
+      name: 'ApiRepoCreateInvalidUsername',
+      properties: {
+        username: metadata.createdByThirdPartyUsername,
+        error: noAvailableUsername.message,
+        encodedError: JSON.stringify(noAvailableUsername),
+      },
+    });
+  }
+  metadata.releaseReviewJustification = msProperties.justification;
+  metadata.initialLicense = msProperties.license;
+  metadata.organizationName = req.organization.name.toLowerCase();
+  if (organization.id) {
+    metadata.organizationId = organization.id.toString();
+  }
+  metadata.repositoryName = response.name;
+  metadata.repositoryId = response.id;
+  metadata.initialRepositoryDescription = response.description;
+  metadata.initialRepositoryVisibility = response.private ? GitHubRepositoryVisibility.Private : GitHubRepositoryVisibility.Public;
+  metadata.releaseReviewType = msProperties.approvalType;
+  metadata.releaseReviewUrl = msProperties.approvalUrl;
+  metadata.initialTemplate = msProperties.template;
+  metadata.projectType = msProperties.projectType;
+  metadata.initialCorrelationId = req.correlationId;
+
+  const teamTypes = ['pull', 'push', 'admin'];
+  const typeValues = [GitHubRepositoryPermission.Pull, GitHubRepositoryPermission.Push, GitHubRepositoryPermission.Admin];
+  downgradeBroadAccessTeams(organization, msProperties.teams || {});
+  for (let i = 0; msProperties.teams && i < teamTypes.length; i++) {
+    const teamType = teamTypes[i];
+    const enumValue = typeValues[i];
+    const idList = msProperties.teams[teamType];
+    if (idList && idList.length) {
+      for (let j = 0; j < idList.length; j++) {
+        metadata.initialTeamPermissions.push({
+          permission: enumValue,
+          teamId: idList[j],
+        });
+      }
+    }
+  }
+
+  let entityId = null;
+  try {
+    entityId = await repositoryMetadataProvider.createRepositoryMetadata(metadata);
+  } catch (insertRequestError) {
+    const err = jsonError(new Error(`Rolling back, problems creating repo metadata for ${metadata.repositoryName} and repo ${metadata.repositoryId}`), 500);
+    req.insights.trackException({
+      exception: insertRequestError,
+      properties: {
+        event: 'ApiRepoCreateRollbackError',
+        message: insertRequestError && insertRequestError.message ? insertRequestError.message : insertRequestError,
+      },
+    });
+    if (!req.organization || !repoCreateResponse || !repoCreateResponse.name) {
+      throw insertRequestError; // if GitHub never returned
+    }
+    const newlyCreatedRepo = (req.organization as Organization).repository(repoCreateResponse.name);
+    await newlyCreatedRepo.delete();
+    throw err;
+  }
+    // req.approvalRequest['ms.approvalId'] = requestId; // TODO: is this ever used?
+  const repoWorkflow = new RepoWorkflowEngine(req.organization as Organization, {
+    id: entityId,
+    repositoryMetadata: metadata,
+    createResponse: response,
+  });
+  let output = [];
+  try {
+    output = await generateAndRunSecondaryTasks(repoWorkflow);
+  } catch (rollbackNeededError) {
+    console.dir(rollbackNeededError);
+  }
+  req.repoCreateResponse.tasks = output;
+  if (msProperties.notify && mailProvider) {
+    try {
+    await sendEmail(req, mailProvider, req.apiKeyRow, req.correlationId, output, repoWorkflow.request, msProperties);
+    } catch (mailSendError) {
+      console.dir(mailSendError);
+    }
+  }
+  return req.repoCreateResponse;
+}
+
+async function generateAndRunSecondaryTasks(repoWorkflow: RepoWorkflowEngine): Promise<IRepositoryWorkflowOutput[]> {
+  const results = await repoWorkflow.executeNewRepositoryChores();
+  // NOTE: no longer failing with any errors
+  return results;
 }
 
 function downgradeBroadAccessTeams(organization, teams) {
@@ -253,32 +295,12 @@ function downgradeBroadAccessTeams(organization, teams) {
   }
 }
 
-function rollbackRepoError(req, res, next, error, statusCode, errorToLog) {
-  const err = jsonError(error, statusCode);
-  if (errorToLog) {
-    req.insights.trackException({
-      exception: errorToLog,
-      properties: {
-        event: 'ApiRepoCreateRollbackError',
-        message: error && error.message ? error.message : error,
-      },
-    });
-  }
-  if (!req.organization || !req.repoCreateResponse || !req.repoCreateResponse.name) {
-    return next(err);
-  }
-  const repository = req.organization.repository(req.repoCreateResponse.name);
-  repository.delete(deleteError => {
-    return next(deleteError);
-  });
-}
-
-function sendEmail(req, mailProvider, apiKeyRow, correlationId, repoCreateResults, approvalRequest, msProperties, callback) {
+async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlationId: string, repoCreateResults, approvalRequest: RepositoryMetadataEntity, msProperties): Promise<void> {
   const config = req.app.settings.runtimeConfig;
   const emails = msProperties.notify.split(',');
   const headline = 'Repo ready';
   const serviceShortName = apiKeyRow && apiKeyRow.service ? apiKeyRow.service : undefined;
-  const subject = serviceShortName ? `${approvalRequest.repoName} repo created by ${serviceShortName}` : `${approvalRequest.repoName} repo created`;
+  const subject = serviceShortName ? `${approvalRequest.repositoryName} repo created by ${serviceShortName}` : `${approvalRequest.repositoryName} repo created`;
   const emailTemplate = 'repoApprovals/autoCreated';
   const displayHostname = req.hostname;
   const approvalScheme = displayHostname === 'localhost' && config.webServer.allowHttp === true ? 'http' : 'https';
@@ -300,39 +322,36 @@ function sendEmail(req, mailProvider, apiKeyRow, correlationId, repoCreateResult
     results: repoCreateResults,
     version: config.logging.version,
     reposSiteUrl: reposSiteBaseUrl,
+    liveReposSiteUrl: config.microsoftOpenSource ? config.microsoftOpenSource.repos : null,
     api: serviceShortName, // when used by the client single-page app, this is not considered an API call
     service: serviceShortName,
     serviceOwner: apiKeyRow ? apiKeyRow.owner : undefined,
     serviceDescription: apiKeyRow ? apiKeyRow.description : undefined,
   };
-  emailRender.render(req.app.settings.runtimeConfig.typescript.appDirectory, emailTemplate, contentOptions, (renderError, mailContent) => {
-    if (renderError) {
-      req.insights.trackException({
-        exception: renderError,
-        properties: {
-          content: contentOptions,
-          eventName: 'ApiRepoCreateMailRenderFailure',
-        },
-      });
-      return callback(renderError);
-    }
-    mail.content = mailContent;
-    mailProvider.sendMail(mail, (mailError, mailResult) => {
-      const customData = {
+  try {
+    mail.content = await RenderHtmlMail(req.app.settings.runtimeConfig.typescript.appDirectory, emailTemplate, contentOptions);
+  } catch (renderError) {
+    req.insights.trackException({
+      exception: renderError,
+      properties: {
         content: contentOptions,
-        receipt: mailResult,
-        eventName: undefined,
-      };
-      if (mailError) {
-        customData.eventName = 'ApiRepoCreateMailFailure';
-        req.insights.trackException({ exception: mailError, properties: customData });
-        return callback(/* no longer a fatal error */);
-      }
-      req.insights.trackEvent({ name: 'ApiRepoCreateMailSuccess', properties: customData });
-      req.repoCreateResponse.notified = emails;
-      callback();
+        eventName: 'ApiRepoCreateMailRenderFailure',
+      },
     });
-  });
+    throw renderError;
+  }
+  const customData = {
+    content: contentOptions,
+    receipt: null,
+    eventName: undefined,
+  };
+  try {
+    customData.receipt = await mailProvider.sendMail(mail);
+    req.insights.trackEvent({ name: 'ApiRepoCreateMailSuccess', properties: customData });
+    req.repoCreateResponse.notified = emails;
+    } catch (mailError) {
+    customData.eventName = 'ApiRepoCreateMailFailure';
+    req.insights.trackException({ exception: mailError, properties: customData });
+    // no longer a fatal error if the mail is not sent
+  }
 }
-
-module.exports = createRepo;

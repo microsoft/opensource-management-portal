@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -9,7 +9,7 @@
 
 import { ILinkProvider } from "../../lib/linkProviders/postgres/postgresLinkProvider";
 
-import { IndividualContext, IIndividualContextOptions, GitHubIdentitySource } from '../../business/context2';
+import { IndividualContext, IIndividualContextOptions, GitHubIdentitySource } from '../../user';
 import { ReposAppRequest, IReposError } from "../../transitional";
 import { wrapError } from "../../utils";
 

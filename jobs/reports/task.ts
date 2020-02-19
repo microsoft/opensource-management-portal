@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -13,13 +13,14 @@
 // collected before its execution.
 
 import async = require('async');
-const azure = require('azure-storage');
+import azure from 'azure-storage';
+
 const fileSize = require('file-size');
 const fs = require('fs');
 const moment = require('moment-timezone');
 const os = require('os');
 const path = require('path');
-import * as Q from 'q';
+import Q from 'q';
 import { buildConsolidatedMap as buildRecipientMap } from './consolidated';
 
 const organizationReports = require('./organizations');
@@ -28,7 +29,8 @@ const teamReports = require('./teams');
 
 const fileCompression = require('./fileCompression');
 const mailer = require('./mailer');
-const RedisHelper = require('../../lib/redis');
+
+import { RedisHelper } from '../../lib/redis';
 
 // Debug-related values for convienience
 const fakeSend = false;
@@ -42,6 +44,14 @@ const reportProviders = {
 };
 
 const reportGeneratedFormat = 'h:mm a dddd, MMMM Do YYYY';
+
+interface ILocalContext {
+  insights?: any;
+  reports?: any;
+  settings?: any;
+  started?: any;
+  consolidated?: any;
+}
 
 function buildReport(context) {
   return Q(context)
@@ -89,7 +99,6 @@ module.exports = function run(started, startedString, config) {
 
     const context = {
       operations: operations,
-      dataClient: providers.dataClient,
       insights: insights,
       entities: {},
       processing: {},
@@ -340,7 +349,7 @@ function saveDataLakeOutput(context, dataLakeOutput) {
   return deferred.promise;
 }
 
-function storeReports(context) {
+function storeReports(context: ILocalContext) {
   context.insights.trackEvent({ name: 'JobReportsReportStoringStarted' });
 
   const report = Object.assign({}, context.consolidated);
@@ -355,7 +364,7 @@ function storeReports(context) {
 
   const storeLocalReportPath = context.settings.storeLocalReportPath;
   const localPromise = storeLocalReportPath? storeLocalReport(report, storeLocalReportPath, context) : Q(context);
-  return localPromise.then(context => {
+  return localPromise.then((context: ILocalContext) => {
     if (!context.reports.store) {
       context.insights.trackEvent({ name: 'JobReportsReportStoringSkipped' });
       return Q(context);

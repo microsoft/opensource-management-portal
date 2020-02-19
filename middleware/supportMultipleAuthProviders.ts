@@ -1,11 +1,12 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
 import { jsonError } from './jsonError';
+import { IApiRequest } from './apiReposAuth';
 
 // We have made a decision to not use Passport for the API routes, which is why this
 // performs some passport-like functionality...
@@ -24,7 +25,7 @@ module.exports = function returnCombinedMiddleware(supportedProviders) {
   if (totalProviders <= 0) {
     throw new Error('supportedProviders must provide at least one provider to use for auth');
   }
-  return function middleware(req, res, next) {
+  return function middleware(req: IApiRequest, res, next) {
     const insights = req.app.settings.appInsightsClient;
     let i = 0;
 
@@ -33,8 +34,8 @@ module.exports = function returnCombinedMiddleware(supportedProviders) {
     function wrappedNext(error) {
       if (!error) {
         // No error but also now API use information
-        if (!req.apiKeyRow) {
-          error = jsonError(new Error('No apiKeyRow was set by the authentication provider'), 500);
+        if (!req.apiKeyToken) {
+          error = jsonError(new Error('No API token was provided by the authentication provider'), 500);
           return next(error);
         }
 

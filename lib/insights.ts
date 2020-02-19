@@ -1,11 +1,11 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 'use strict';
 
-import * as Debug from 'debug';
+import Debug from 'debug';
 const debug = Debug('appinsights');
 
 // This file was originally designed to wrap the pre-1.0.0 version of applicationinsights,
@@ -33,7 +33,14 @@ function createWrappedClient(propertiesToInsert, client) {
 
 const consoleHandler = (eventNameOrProperties) => {
   eventNameOrProperties = eventNameOrProperties || { name: 'Unknown event, may be from pre-v1.0.0 applicationinsights' };
-  debug(typeof(eventNameOrProperties) === 'string' ? eventNameOrProperties : eventNameOrProperties.name);
+  let props = '';
+  if (eventNameOrProperties && eventNameOrProperties.properties) {
+    props = ' ';
+    for (let [key, value] of Object.entries(eventNameOrProperties.properties)) {
+      props += `${key}=${value} `;
+    }
+  }
+  debug((typeof(eventNameOrProperties) === 'string' ? eventNameOrProperties : eventNameOrProperties.name) + props);
 };
 const consoleMetric = (eventNameOrProperties) => {
   if (typeof(eventNameOrProperties) === 'string') {

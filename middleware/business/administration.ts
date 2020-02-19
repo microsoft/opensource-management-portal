@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -7,7 +7,7 @@ import express = require('express');
 const router = express.Router();
 
 import { ReposAppRequest } from '../../transitional';
-import { IndividualContext } from '../../business/context2';
+import { IndividualContext } from '../../user';
 
 import { wrapError } from '../../utils';
 

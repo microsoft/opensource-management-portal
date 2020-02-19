@@ -7,7 +7,10 @@ RUN apk add --update git rsync && \
   rm -rf /tmp/* /var/cache/apk/*
 
 COPY . /tmp/
-COPY Dockerfile.npmrc /tmp/.npmrc
+
+# Only if needed, copy .npmrc files into the container
+# COPY Dockerfile.npmrc /tmp/.npmrc
+# COPY .npmrc /tmp/.npmrc
 
 RUN cd /tmp && npm install --production --verbose
 RUN rsync -azhqi /tmp/node_modules/ /tmp/production_node_modules
@@ -17,7 +20,7 @@ RUN cd /tmp && npm install --verbose
 RUN rm -rf /tmp/.npmrc
 
 # TypeScript build
-RUN cd /tmp && node ./node_modules/typescript/bin/tsc
+RUN cd /tmp && npm run-script build
 
 FROM node:10-alpine AS run
 ENV APPDIR=/usr/src/repos
@@ -28,7 +31,7 @@ RUN mkdir -p "${APPDIR}"
 COPY --from=build /tmp/production_node_modules "${APPDIR}/node_modules"
 
 # Assets that people not using painless config may need
-#COPY --from=build /tmp/data "${APPDIR}/data"
+COPY --from=build /tmp/data "${APPDIR}/data"
 
 # Copy built assets, app, config map
 COPY --from=build /tmp/dist "${APPDIR}"
