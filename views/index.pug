@@ -1,5 +1,5 @@
 //-
-//- Copyright (c) Microsoft. All rights reserved.
+//- Copyright (c) Microsoft.
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
@@ -23,7 +23,7 @@ block content
       //h1
         | Open Source Portal&nbsp;
         small for GitHub
-    div.col-md-8
+    div.col-md-7
       if accountInfo && onboarding !== true
         if accountInfo.isLinkedUser !== false && accountInfo.twoFactorOn === true
           // No longer showing this UI on the homepage for good states
@@ -58,7 +58,7 @@ block content
 
       if onboarding !== true && overview && overview.organizations && overview.organizations.member && overview.organizations.member.length
         h1
-          a.a-unstyled(name='orgs') Your #{config.brand.companyName} GitHub organizations
+          a.a-unstyled(name='orgs') Your #{config.brand.companyName} GitHub organization memberships
       else
         h3 You've successfully linked your #{config.brand.companyName} and GitHub accounts.
 
@@ -102,11 +102,13 @@ block content
       - var otm = overview && overview.teams ? overview.teams.maintainer : []
       if otm
         if accountInfo.pendingApprovals && accountInfo.pendingApprovals.length && accountInfo.pendingApprovals.length > 0
+          hr
           h1 Approvals: Please Review
           p
             a.btn.btn-default(href='/settings/approvals/') See all pending approvals (#{accountInfo.pendingApprovals.length})
 
         if overview && overview.teams && overview.teams.maintainer && overview.teams.maintainer.length
+          hr
           h1 Teams you maintain
           script(type='text/javascript').
             function initializeManageFilter() {
@@ -145,6 +147,7 @@ block content
 
       if accountInfo.isLinkedUser && onboarding !== true
         if overview && overview.teams && overview.teams.member && overview.teams.member.length
+          hr
           h1 Team memberships
           p Here are teams that you are a member of but not a maintainer of.
           script(type='text/javascript').
@@ -192,9 +195,12 @@ block content
             a.btn.btn-default(href='/teams')= (accountInfo.userTeamMemberships && accountInfo.userTeamMemberships.length && accountInfo.userTeamMemberships.length > 0) ? 'Join another team' : 'Join a team'
         else
           //-p You are not currently a member of any GitHub teams that grant you permission to specific repositories. Note that this display is cached and may not be up-to-date.
-    div.col-md-4
+
       if overview && overview.organizations && overview.organizations.available && overview.organizations.available.length
+        hr
         h2 Available #{config.brand.companyName} GitHub organizations
+        p These are GitHub organizations that you have not yet joined.
+
         .right
           if onboarding === true
             p Join these #{config.brand.companyName} organizations to see private repos and get elevated privileges.
@@ -227,3 +233,29 @@ block content
                           = o.name + ' '
                           small: span.label.label-primary Join
                         p.small(style='color:#333')= o.description
+
+    div.col-md-5
+
+      if config && config.news && config.news.homepage && Array.isArray(config.news.homepage) && config.news.homepage.length
+        h2 What's New?
+        each story in config.news.homepage
+          if story.link
+            h3: a(href=story.link)= story.title
+          else
+            h3= story.title
+          if story.subtitle
+            h4= story.subtitle
+          if story.paragraphs
+            each paragraph in story.paragraphs
+              p= paragraph
+          if story.actions
+            ul.list-unstyled
+              each action in story.actions
+                if action.link
+                  li: a(href=action.link)= action.text
+                else
+                  li= action.text
+
+        if config.news.all && config.news.all.length > config.news.homepage.length
+          hr
+          p: a(href='/news') More news...

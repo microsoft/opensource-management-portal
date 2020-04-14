@@ -1,5 +1,5 @@
 //-
-//- Copyright (c) Microsoft. All rights reserved.
+//- Copyright (c) Microsoft.
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
@@ -10,6 +10,10 @@ block js_doc_ready
   | if (typeof initializeMembershipFilter == 'function') { initializeMembershipFilter(); }
 
 block content
+  - var fileSize = viewServices.fileSize
+  - var moment = viewServices.moment
+  - var octicon = viewServices.octicon
+
   div.container
 
     h1
@@ -19,10 +23,22 @@ block content
     div.container
       div.row(style='margin-top:16px')
         div.col-md-3.col-lg-3
-          div.metro-box.ms-dark-blue
-            a(href=organization.baseUrl + 'new-repo')
-              h3 Create a repo
-              p NEW REPO
+          if organization.createRepositoriesOnGitHub
+            if organizationEntity && organizationEntity.members_can_create_repositories === false
+              div.metro-box.ms-dark-gray
+                a(href='https://github.com/organizations/' + organization.name + '/repositories/new')
+                  h3 Create repos
+                  p ORG OWNERS ONLY
+            else
+              div.metro-box.ms-dark-blue
+                a(href='https://github.com/organizations/' + organization.name + '/repositories/new')
+                  h3 Create a repo
+                  p ON GITHUB.COM
+          else
+            div.metro-box.ms-dark-blue
+              a(href=organization.baseUrl + 'new-repo')
+                h3 Create a repo
+                p NEW REPO
         div.col-md-3.col-lg-3
           div.metro-box.ms-blue
             a(href=organization.baseUrl + 'teams?set=available')
@@ -183,6 +199,40 @@ block content
                     li Public
                     if organization.configuredOrganizationRepositoryTypes == 'publicprivate' || organization.configuredOrganizationRepositoryTypes == 'private'
                       li Private
+                if organizationEntity
+                  hr
+
+                  if organizationEntity.created_at
+                    h6 CREATED
+                    ul.list-unstyled: li= moment(organizationEntity.created_at).fromNow()
+
+                  if organizationEntity.disk_usage
+                    h6 STORAGE USED
+                    ul.list-unstyled: li
+                      != octicon('database', 13)
+                      = ' ' + fileSize(organizationEntity.disk_usage * 1024)
+
+                  if organizationEntity.default_repository_permission
+                    h6 DEFAULT REPOSITORY PERMISSION
+                    ul.list-unstyled: li
+                      if organizationEntity.default_repository_permission == 'none'
+                        | Private repos are only visible to members with read permission
+                      else
+                        = organizationEntity.default_repository_permission
+
+                  if organizationEntity.members_can_create_repositories !== undefined
+                    h6 REPOSITORY CREATE PERMISSIONS
+                    if organizationEntity.members_can_create_repositories
+                      ul.list-unstyled: li Members can create repositories directly on GitHub.com.
+                    else
+                      ul.list-unstyled: li Members cannot directly create repositories on GitHub.com.
+
+                  if organizationEntity.two_factor_requirement_enabled !== undefined
+                    h6 TWO-FACTOR REQUIREMENTS
+                    if organizationEntity.two_factor_requirement_enabled
+                      ul.list-unstyled: li Two-factor authentication required
+                    else
+                      ul.list-unstyled: li.text-danger Not required
 
               div.col-md-6.col-lg-h6
                 h6 Repositories

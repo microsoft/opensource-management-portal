@@ -1,5 +1,5 @@
 //-
-//- Copyright (c) Microsoft. All rights reserved.
+//- Copyright (c) Microsoft.
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
@@ -14,11 +14,33 @@ block content
 
     p You have linked your corporate identity, #{ossLink.aadupn}, with your GitHub username, #{ossLink.ghu}.
 
-    a.btn.btn-huge.btn-success(href='/') Link OK
+    a.btn.btn-lg.btn-success(href='/') Link OK
+
+    if organizations && organizations.member && organizations.member.length
+      h3 Your memberships
+      p You are a member of the following official organizations:
+      ul.list-inline
+        each org in organizations.member
+          li
+            a.btn.btn-sm.btn-muted-more(href=org.baseUrl)= org.name
+            | &nbsp;
+    else
+      p.text-danger You are not a member of any official organizations.
+
+    if organizations && organizations.available && organizations.available.length
+      h3 Join an organization
+      p You are not a member of any of following organizations. Please select the organization you would like to join:
+      ul.list-inline
+        each org in organizations.available
+          if org.priority && org.priority == 'primary'
+            li(style='margin-top: 6px')
+              a.btn.btn-sm.btn-muted-more(href=org.baseUrl)= org.name
+              | &nbsp;
+        li(style='margin-top: 6px'): a.btn.btn-primary.btn-sm(href='/') See all available organizations
 
     hr(style='margin-top:50px')
 
     div(style='margin-bottom:150px')
       h3 No longer need GitHub.com access?
       p You can remove your link. You will also be removed from any of your corporate GitHub.com organization memberships.
-      p: a.btn.btn-sm.btn-danger(href='/link/remove') Unlink your accounts
+      p: a.btn.btn-sm.btn-danger(href='/link/remove') Unlink your account

@@ -70,15 +70,13 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
         installationId: vi.id,
       });
       o.id = asNumber(vi.target_id);
-      if (o.status === OrgStatus.NotAdopted) {
-        o.status = OrgStatus.Adopted;
-      }
       if (!o.dynamicSettings && vi.target_type === 'Organization') {
         try {
           o.dynamicSettings = await organizationSettingsProvider.getOrganizationSetting(vi.target_id.toString());
         } catch (ignore) { /* ignored */ }
         if (o.dynamicSettings) {
           o.configuredInstallations = o.dynamicSettings.installations.map(install => install.installationId);
+          o.status = OrgStatus.Adopted;
         }
         if (o.dynamicSettings && o.dynamicSettings.active === true) {
           o.status = OrgStatus.Active;

@@ -3,12 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { AppPurpose, IGitHubAppConfiguration, IGitHubAppsOptions, GitHubAppAuthenticationType } from '.';
 import { GitHubAppTokens } from './appTokens';
 import { IAuthorizationHeaderValue } from '../transitional';
 import { OrganizationSetting } from '../entities/organizationSettings/organizationSetting';
+import { readFileToText } from '../utils';
 
 const fallbackPurposePriorities = [
   AppPurpose.Data,
@@ -19,6 +18,9 @@ const fallbackPurposePriorities = [
 
 const fallbackBackgroundJobPriorities = [
   AppPurpose.BackgroundJobs,
+  AppPurpose.Data,
+  AppPurpose.CustomerFacing,
+  AppPurpose.Operations,
 ];
 
 // Installation redirect format:
@@ -34,6 +36,7 @@ interface InstallationIdPurposePair {
 }
 
 export class GitHubTokenManager {
+  #options: any;
   private static _isBackgroundJob: boolean;
   // private _appConfiguration = new Map<AppPurpose, IGitHubAppConfiguration>();
   private _apps = new Map<AppPurpose, GitHubAppTokens>();
@@ -45,10 +48,14 @@ export class GitHubTokenManager {
     if (!options) {
       throw new Error('options required');
     }
-    this.initializeApp(AppPurpose.CustomerFacing, options.customerFacingApp);
-    this.initializeApp(AppPurpose.Operations, options.operationsApp);
-    this.initializeApp(AppPurpose.Data, options.dataApp);
-    this.initializeApp(AppPurpose.BackgroundJobs, options.backgroundJobs);
+    this.#options = options;
+  }
+
+  async initialize() {
+    await this.initializeApp(AppPurpose.CustomerFacing, this.#options.customerFacingApp);
+    await this.initializeApp(AppPurpose.Operations, this.#options.operationsApp);
+    await this.initializeApp(AppPurpose.Data, this.#options.dataApp);
+    await this.initializeApp(AppPurpose.BackgroundJobs, this.#options.backgroundJobs);
   }
 
   static IsBackgroundJob() {
@@ -99,7 +106,7 @@ export class GitHubTokenManager {
     if (!organizationSettings) {
       return null;
     }
-    const order = GitHubTokenManager._isBackgroundJob === true ? fallbackBackgroundJobPriorities  : [preferredPurpose, ...fallbackPurposePriorities];
+    const order = GitHubTokenManager._isBackgroundJob === true ? fallbackBackgroundJobPriorities : [preferredPurpose, ...fallbackPurposePriorities];
     for (const purpose of order) {
       if (organizationSettings && organizationSettings.installations) {
         for (const { appId, installationId } of organizationSettings.installations) {
@@ -109,16 +116,10 @@ export class GitHubTokenManager {
           }
         }
       }
-      // CONSIDER: fallback if there is no background job installation?
-      
-      // if (organizationConfiguration && organizationConfiguration[purpose] && organizationConfiguration[purpose].installationId && this._apps.has(purpose)) {
-      //   const installationId = organizationConfiguration[purpose].installationId as number;
-      //   return { installationId, purpose };
-      // }
     }
   }
 
-  private initializeApp(purpose: AppPurpose, appConfig: IGitHubAppConfiguration) {
+  private async initializeApp(purpose: AppPurpose, appConfig: IGitHubAppConfiguration) {
     if (!appConfig || !appConfig.appId) {
       return;
     }
@@ -126,11 +127,17 @@ export class GitHubTokenManager {
     if (this._appsById.has(appId)) {
       return;
     }
-    if (!appConfig.appKey) {
-      throw new Error(`appKey required for ${purpose} GitHub App configuration`);
+    let key = appConfig.appKey;
+    let fromLocalFile = false;
+    if (appConfig.appKeyFile) {
+      key = await readFileToText(appConfig.appKeyFile);
+      fromLocalFile = true;
+    }
+    if (!key) {
+      throw new Error(`appKey or appKeyFile required for ${purpose} GitHub App configuration`);
     }
     const friendlyName = appConfig.description || 'Unknown';
-    const app = GitHubAppTokens.CreateFromBase64EncodedFileString(purpose, friendlyName, appId, appConfig.appKey);
+    const app = fromLocalFile ? GitHubAppTokens.CreateFromString(purpose, friendlyName, appId, key) : GitHubAppTokens.CreateFromBase64EncodedFileString(purpose, friendlyName, appId, key);
     this._apps.set(purpose, app);
     this._appsById.set(appId, app);
     this._appSlugs.set(appId, appConfig.slug);

@@ -9,7 +9,7 @@
 
 import appPackage = require('../package.json');
 
-const debug = require('debug')('oss-initialize');
+const debug = require('debug')('startup');
 const favicon = require('serve-favicon');
 const path = require('path');
 

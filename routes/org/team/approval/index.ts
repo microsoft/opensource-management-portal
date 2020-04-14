@@ -10,10 +10,12 @@ import async = require('async');
 
 import { ReposAppRequest, IProviders } from '../../../../transitional';
 import { wrapError } from '../../../../utils';
-import { Operations } from '../../../../business/operations';
 import { Team } from '../../../../business/team';
 import { PermissionWorkflowEngine } from '../approvals';
-const emailRender = require('../../../../lib/emailRender');
+
+import RenderHtmlMail from '../../../../lib/emailRender';
+import { IMailAddressProvider } from '../../../../lib/mailAddressProvider';
+import { IMailProvider } from '../../../../lib/mailProvider';
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: any;
@@ -90,11 +92,11 @@ router.post('/', function (req: ILocalRequest, res, next) {
   if (!mailProviderInUse) {
     return next(new Error('No configured approval providers configured.'));
   }
-  const mailProvider = req.app.settings.mailProvider;
+  const mailProvider = req.app.settings.mailProvider as IMailProvider;
   if (!mailProvider) {
     return next(new Error('A mail provider has been requested but a provider instance could not be found.'));
   }
-  const mailAddressProvider = req.app.settings.mailAddressProvider;
+  const mailAddressProvider = req.app.settings.mailAddressProvider as IMailAddressProvider;
   // Approval workflow note: although the configuration may specify just a mail
   // provider today, there may actually be an issue that was opened at the time
   // of the request. So we will attempt to close any issues if the request has
@@ -204,36 +206,34 @@ router.post('/', function (req: ILocalRequest, res, next) {
         });
       }
       const getDecisionEmailViewName = engine.getDecisionEmailViewName();
-      emailRender.render(req.app.settings.runtimeConfig.typescript.appDirectory, getDecisionEmailViewName, contentOptions, (renderError, mailContent) => {
-        if (renderError) {
-          return req.insights.trackException({
+      RenderHtmlMail(req.app.settings.runtimeConfig.typescript.appDirectory, getDecisionEmailViewName, contentOptions).catch(renderError => {
+        req.insights.trackException({
             exception: renderError,
             properties: Object.assign({ eventName: 'ReposRequestDecisionMailRenderFailure' }, contentOptions),
           });
-        }
+      }).then(content => {
         // TODO: remove spike: adding the GitHub admin alias if there is a secondary failure
-        var recipients = [userMailAddress];
+        const recipients = [userMailAddress];
         if (secondaryErrors) {
           recipients.push('github-admin@microsoft.com');
         }
         const mail = {
           to: recipients,
           subject: engine.getDecisionEmailSubject(wasApproved, pendingRequest),
-          content: mailContent,
+          content,
           correlationId: req.correlationId,
           category: ['decision', 'repos'],
         };
-        mailProvider.sendMail(mail, (mailError, mailResult) => {
-          var customData = Object.assign({
+        mailProvider.sendMail(mail).then(mailResult => {
+          const customData = Object.assign({
             receipt: mailResult,
-            eventName: undefined,
           }, contentOptions);
-          if (mailError) {
-            customData.eventName = 'ReposRequestDecisionMailFailure';
-            req.insights.trackException({ exception: mailError, properties: customData });
-          } else {
-            req.insights.trackEvent({ name: 'ReposRequestDecisionMailSuccess', properties: customData });
-          }
+          req.insights.trackEvent({ name: 'ReposRequestDecisionMailSuccess', properties: customData });
+        }).catch(mailError => {
+          const customData = Object.assign({
+            eventName: 'ReposRequestDecisionMailFailure',
+          }, contentOptions);
+          req.insights.trackException({ exception: mailError, properties: customData });
         });
       });
     }

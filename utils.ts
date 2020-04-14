@@ -11,6 +11,26 @@ import path = require('path');
 import { URL } from 'url';
 
 import { IReposError } from './transitional';
+import { DateTime } from 'luxon';
+
+const zlib = require('zlib');
+
+const compressionOptions = {
+  type: 'gzip',
+  params: {
+    level: zlib.Z_BEST_SPEED,
+  },
+};
+
+const hardcodedCorporateTimezone = 'America/Los_Angeles';
+
+export function getOffsetMonthRange(offsetMonths?: number) {
+  offsetMonths = offsetMonths || 0;
+  const now = new Date();
+  const start = DateTime.fromObject({ year: now.getFullYear(), month: 1 + offsetMonths + now.getMonth(), zone: hardcodedCorporateTimezone });
+  const end = start.plus({ months: 1 });
+  return { start: start.toJSDate(), end: end.toJSDate() };
+}
 
 export function asNumber(value: any) {
   if (typeof(value) === 'number') {
@@ -20,6 +40,10 @@ export function asNumber(value: any) {
   }
   const typeName = typeof(value);
   throw new Error(`Unsupported type ${typeName} for value ${value} (asNumber)`);
+}
+
+export function daysInMilliseconds(days: number): number {
+  return 1000 * 60 * 60 * 24 * days;
 }
 
 export function stringOrNumberAsString(value: any) {
@@ -87,7 +111,7 @@ export function storeReferrer(req, res, redirect, optionalReason) {
     method: 'storeReferrer',
     reason: optionalReason || 'unknown reason',
   };
-  if (req.session && req.headers && req.headers.referer && req.session.referer !== undefined && !req.headers.referer.includes('/signout')) {
+  if (req.session && req.headers && req.headers.referer && req.session.referer !== undefined && !req.headers.referer.includes('/signout') && !req.session.referer) {
     req.session.referer = req.headers.referer;
     eventDetails.referer = req.headers.referer;
   }
@@ -302,6 +326,82 @@ export function createSafeCallbackNoParams(cb) {
 
 export function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve, reject) => {
-    setTimeout(resolve, milliseconds);
+    setTimeout(() => {
+      process.nextTick(resolve);
+    }, milliseconds);
+  });
+}
+
+export function ParseReleaseReviewWorkItemId(uri: string): string {
+  const safeUrl = new URL(uri);
+  const id = safeUrl.searchParams.get('id');
+  if (id) {
+    return id;
+  }
+  const pathname = safeUrl.pathname;
+  const editIndex = pathname.indexOf('edit/');
+  if (editIndex >= 0) {
+    return pathname.substr(editIndex + 5);
+  }
+  if (safeUrl.host === 'osstool.microsoft.com') {
+    return null; // Very legacy
+  }
+  throw new Error(`Unable to parse work item information from: ${uri}`);
+}
+
+export function readFileToText(filename: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    return fs.readFile(filename, 'utf8', (error, data) => {
+      return error ? reject(error) : resolve(data);
+    });
+  });
+}
+
+export function writeTextToFile(filename: string, stringContent: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    return fs.writeFile(filename, stringContent, 'utf8', error => {
+      if (error) {
+        console.warn(`Trouble writing ${filename} ${error}`);
+      } else {
+        console.log(`Wrote ${filename}`);
+      }
+      return error ? reject(error) : resolve();
+    });
+  });
+}
+
+export function quitInAMinute(successful: boolean) {
+  console.log(`Quitting process in one minute... exit code=${successful ? 0 : 1}`);
+  return setTimeout(() => {
+    process.exit(successful ? 0 : 1);
+  }, 1000 * 60 /* 1 minute later */);
+}
+
+export function gzipString(value: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const val = Buffer.from(value);
+    zlib.gzip(val, compressionOptions, (gzipError, compressed: Buffer) => {
+      return gzipError ? reject(gzipError) : resolve(compressed);
+    });
+  });
+}
+
+export function gunzipBuffer(buffer: Buffer): Promise<string> {
+  return new Promise((resolve, reject) => {
+    zlib.gunzip(buffer, (unzipError, unzipped) => {
+      // Fallback if there is a data error (i.e. it's not compressed)
+      if (unzipError && unzipError.errno === zlib.Z_DATA_ERROR) {
+        const originalValue = buffer.toString();
+        return resolve(originalValue);
+      } else if (unzipError) {
+        return reject(unzipError);
+      }
+      try {
+        const unzippedValue = unzipped.toString();
+        return resolve(unzippedValue);
+      } catch (otherError) {
+        return reject(otherError);
+      }
+    });
   });
 }

@@ -20,6 +20,10 @@ export interface IRequestOrganizationPermissions {
   membershipStatus: OrganizationMembershipState;
 }
 
+export function GetOrganizationPermissionsFromRequest(req: ReposAppRequest) {
+  return req[orgPermissionsCacheKeyName];
+}
+
 export async function AddOrganizationPermissionsToRequest(req: ReposAppRequest, res, next) {
   // Only compute once per request
   if (req[orgPermissionsCacheKeyName]) {

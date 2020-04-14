@@ -7,10 +7,11 @@
 
 const bodyParser = require('body-parser');
 const compression = require('compression');
-const debug = require('debug')('oss-initialize');
+const debug = require('debug')('startup');
 import path = require('path');
 import { StaticClientApp } from './staticClientApp';
 import { StaticSiteFavIcon, StaticSiteAssets } from './staticSiteAssets';
+import ConnectSession from './session';
 import passportConfig from './passport-config';
 
 let viewServices = null;
@@ -23,10 +24,8 @@ try {
 }
 
 const campaign = require('./campaign');
-// const memory = require('./memory');
 const officeHyperlinks = require('./officeHyperlinks');
 const rawBodyParser = require('./rawBodyParser');
-const uptime = require('./uptime');
 
 module.exports = function initMiddleware(app, express, config, dirname, redisClient, initializationError) {
   config = config || {};
@@ -61,12 +60,6 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
   providers.viewServices = viewServices;
 
   if (web) {
-    const insights = app.settings.providers.insights;
-    if (insights) {
-      uptime.initialize(insights);
-      // memory.initialize(insights);
-    }
-
     StaticSiteFavIcon(app);
 
     app.use(rawBodyParser);
@@ -85,7 +78,7 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
         app.enable('trust proxy');
         debug('proxy: trusting reverse proxy');
       }
-      app.use(require('./session')(app, config, redisClient));
+      app.use(ConnectSession(app, config, providers));
       try {
         passport = passportConfig(app, config);
       } catch (passportError) {

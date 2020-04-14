@@ -1,0 +1,4 @@
+{
+  "url": "https://identity-service.prod.opensource.ms",
+  "pat": "env://WITNESS_AUTH_TOKEN"
+}

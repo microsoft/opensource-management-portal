@@ -390,7 +390,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
       }
       return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
         'active': true,
-        'githubid': stringOrNumberAsString(thirdPartyId),
+        'thirdpartyid': stringOrNumberAsString(thirdPartyId),
       });
     }
     default:

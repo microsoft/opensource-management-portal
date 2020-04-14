@@ -1,0 +1,12 @@
+{
+  "provider": "env://CAMPAIGN_STATE_PROVIDER",
+
+  "groups": "env://CAMPAIGN_GROUPS",
+
+  "cosmosdb": {
+    "endpoint": "env://CAMPAIGN_STATE_COSMOSDB_ENDPOINT",
+    "key": "env://CAMPAIGN_STATE_COSMOSDB_KEY",
+    "database": "env://CAMPAIGN_STATE_COSMOSDB_DATABASE",
+    "collection": "env://CAMPAIGN_STATE_COSMOSDB_COLLECTION"
+  }
+}

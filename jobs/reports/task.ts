@@ -5,14 +5,11 @@
 
 /* eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
-'use strict';
-
 // The reporting system in use here is best described as a "hairball" or snowball design
 // as an initial approach. A large, informative set of contextual data is built by the
 // report providers. It is OK for a provider in the pipeline to depend on the data
 // collected before its execution.
 
-import async = require('async');
 import azure from 'azure-storage';
 
 const fileSize = require('file-size');
@@ -20,54 +17,142 @@ const fs = require('fs');
 const moment = require('moment-timezone');
 const os = require('os');
 const path = require('path');
-import Q from 'q';
+
 import { buildConsolidatedMap as buildRecipientMap } from './consolidated';
 
-const organizationReports = require('./organizations');
-const repositoryReports = require('./repositories');
-const teamReports = require('./teams');
+import { build as organizationsBuild, consolidate as organizationsConsoldate, process as organizationsProcess } from './organizations';
+import { build as repositoriesBuild, consolidate as repositoriesConsolidate, process as repositoriesProcess } from './repositories';
+import { build as teamsBuild, consolidate as teamsConsolidate, process as teamsProcess, IReportsTeamContext } from './teams';
 
 const fileCompression = require('./fileCompression');
-const mailer = require('./mailer');
 
-import { RedisHelper } from '../../lib/redis';
+import mailer from './mailer';
+
+import { Operations } from '../../business/operations';
+import { ICacheHelper } from '../../lib/caching';
+import { ICorporateLink } from '../../business/corporateLink';
+import { writeTextToFile } from '../../utils';
+import { Repository } from '../../business/repository';
+import { Team } from '../../business/team';
 
 // Debug-related values for convienience
 const fakeSend = false;
 const skipStore = false;
 const slice = undefined; // 250;
 
-const reportProviders = {
-  organizations: organizationReports,
-  repositories: repositoryReports,
-  teams: teamReports,
-};
-
 const reportGeneratedFormat = 'h:mm a dddd, MMMM Do YYYY';
 
-interface ILocalContext {
-  insights?: any;
-  reports?: any;
-  settings?: any;
-  started?: any;
+const providerNames = [
+  'organizations',
+  'repositories',
+  'teams',
+];
+
+export interface IReportsContext {
+  operations: Operations;
+  insights: any;
+  entities?: {
+    repos?: Repository[];
+    teams?: Team[];
+  };
+  processing: any;
+  reportsBy: {
+    upn: Map<string, any>;
+    email: Map<string, any>;
+  };
+  providers: any;
+  started: string;
+  organizationData: any;
+  teamData?: IReportsTeamContext[];
+  reports: {
+    reportRedisClient: ICacheHelper;
+    send: boolean;
+    store: boolean;
+    dataLake: boolean;
+  };
   consolidated?: any;
+  visitedDefinitions: any;
+  config: any;
+  app: any;
+  linkData?: Map<number, ICorporateLink>;
+  repositoryData?: any[];
+  reportsByRecipient?: Map<string, any>;
+  settings: {
+    basedir: string;
+    slice?: any;
+    parallelRepoProcessing: number;
+    repoDelayAfter: number;
+    teamDelayAfter: number;
+    tooManyOrgOwners: number;
+    tooManyRepoAdministrators: number;
+    orgPercentAvailablePrivateRepos: number;
+    fakeSend?: string;
+    storeLocalReportPath?: string;
+    witnessEventKey: string;
+    witnessEventReportsTimeToLiveMinutes: any; // ?
+    consolidatedSchemaVersion: string;
+    fromAddress: string;
+    dataLakeAccount?: any; // ?
+    campaign: {
+      source: 'administrator-digest';
+      medium: 'email';
+      campaign: 'github-digests';
+    };
+  };
 }
 
-function buildReport(context) {
-  return Q(context)
-    .then(processReports)
-    .then(buildReports)
-    .then(consolidateReports)
-    .then(storeReports)
-    .then(sendReports.bind(null, context))
-    .then(recordMetrics)
-    .then(dataLakeUpload)
-    .then(finalizeEvents);
+async function buildReport(context): Promise<void> {
+  try {
+    await processReports(context);
+  } catch (error) { 
+    console.dir(error);
+  }
+  try {
+    await buildReports(context);
+  } catch (error) { 
+    console.dir(error);
+  }
+  try {
+    await consolidateReports(context);
+  } catch (error) { 
+    console.dir(error);
+  }
+  try {
+    await storeReports(context);
+  } catch (error) { 
+    console.dir(error);
+  }
+  try {
+    await sendReports(context);
+  } catch (error) { 
+    console.dir(error); 
+  }
+  try {
+    await recordMetrics(context);
+  } catch (error) { 
+    console.dir(error);
+  }
+  try {
+    await dataLakeUpload(context);
+  } catch (error) { 
+    console.dir(error);
+  }
+  try {
+    await finalizeEvents(context);
+  } catch (error) { 
+    console.dir(error);
+  }
 }
 
 module.exports = function run(started, startedString, config) {
   console.log(`Report run started ${startedString}`);
-  const app = require('../../app');
+  let app = null;
+  try {
+    app = require('../../app');
+  } catch (loadAppError) {
+    console.dir(loadAppError);
+    throw loadAppError;
+  }
   config.skipModules = new Set([
     'web',
   ]);
@@ -88,25 +173,23 @@ module.exports = function run(started, startedString, config) {
         hostname: os.hostname(),
       },
     });
-    const operations = app.settings.operations;
-
+    const operations = app.settings.operations as Operations;
     if (!operations.mailProvider) {
       throw new Error('No mail provider available');
     }
     const providers = operations.providers;
-    const reportRedisClient = providers.witnessRedis ? new RedisHelper(providers.witnessRedis) : null;
+    // const reportRedisClient = providers.witnessRedis ? new RedisHelper(providers.witnessRedis) : null;
     const reportConfig = config && config.github && config.github.jobs ? config.github.jobs.reports : {};
-
-    const context = {
-      operations: operations,
-      insights: insights,
+    const context: IReportsContext = {
+      providers,
+      operations,
+      insights,
       entities: {},
       processing: {},
       reportsBy: {
         upn: new Map(),
         email: new Map(),
       },
-      providers: reportProviders,
       started: moment().format(),
       organizationData: {},
       settings: {
@@ -132,35 +215,19 @@ module.exports = function run(started, startedString, config) {
         },
       },
       reports: {
-        reportRedisClient: reportRedisClient,
+        reportRedisClient: null, // reportRedisClient,
         send: true && (fakeSend || reportConfig.mail && reportConfig.mail.enabled),
         store: true && !skipStore,
         dataLake: true && !skipStore && reportConfig.dataLake && reportConfig.dataLake.enabled,
       },
       visitedDefinitions: {},
       consolidated: {},
-      config: config,
-      app: app,
+      config,
+      app,
     };
-
     if (context.reports.dataLake === true && reportConfig.dataLake && reportConfig.dataLake.azureStorage && reportConfig.dataLake.azureStorage.key) {
       context.settings.dataLakeAccount = reportConfig.dataLake.azureStorage;
     }
-
-    // context.getReports = (typeOfIndex, indexValue) => {
-    //   const reportsBy = context.reportsBy;
-    //   const type = reportsBy[typeOfIndex];
-    //   if (!type) {
-    //     throw new Error(`No such issues-by set of type ${typeOfIndex}`);
-    //   }
-    //   let reports = type.get(indexValue);
-    //   if (!reports) {
-    //     reports = {};
-    //     type.set(indexValue, reports);
-    //   }
-    //   return reports;
-    // };
-
     return buildReport(context).then(() => {
       console.log('reporting done');
     }).catch(error => {
@@ -168,65 +235,88 @@ module.exports = function run(started, startedString, config) {
     }).finally(() => {
       // Allow updates and other actions
       console.log('Will close in 30 seconds');
-      setTimeout(() => {
-        process.exit(0);
-      }, 1000 * 30);
-    }).done();
+      closeInHalfMinute();
+    });
   });
 };
 
-// ------------------------------------------------------------------
-
-function buildReports(context) {
-  return providerCall(context, 'build');
-}
-
-function processReports(context) {
-  return providerCall(context, 'process');
-}
-
-function consolidateReports(context) {
-  return providerCall(context, 'consolidate').then(() => {
-    context.reportsByRecipient = buildRecipientMap(context.consolidated);
-    return Q(context);
-  });
-}
-
-function providerCall(context, method) {
-  const deferred = Q.defer();
-  async.eachOfSeries(reportProviders, (provider, name, next) => {
-    if (!provider[method]) {
-      console.warn(`provider ${name} does not implement the method ${method}`);
-      return next();
-      // return deferred.resolve(context);
-    }
-    provider[method](context).then(() => {
-      return next();
-    }, error => {
-      // There was an error with the individual processor, but we want to move along
-      console.warn(`was an error with the ${name} provider running the method named ${method}`);
-      console.warn(error);
-      return next();
-    });
-  }, () => {
-    return deferred.resolve(context);
-  });
-  return deferred.promise;
+function closeInHalfMinute() {
+  setTimeout(() => {
+    process.exit(0);
+  }, 1000 * 30);  
 }
 
 // ------------------------------------------------------------------
 
-function finalizeEvents(context) {
+async function buildReports(context) {
+  try {
+    await organizationsBuild(context);
+  } catch (globalBuildError) {
+    console.dir(globalBuildError);
+  }
+  try {
+    await repositoriesBuild(context);
+  } catch (globalBuildError) {
+    console.dir(globalBuildError);
+  }
+  try {
+    await teamsBuild(context);
+  } catch (globalBuildError) {
+    console.dir(globalBuildError);
+  }
+  return context;
+}
+
+async function processReports(context) {
+  try {
+    await organizationsProcess(context);
+  } catch (globalProcessError) {
+    console.dir(globalProcessError);
+  }
+  try {
+    await repositoriesProcess(context);
+  } catch (globalProcessError) {
+    console.dir(globalProcessError);
+  }
+  try {
+    await teamsProcess(context);
+  } catch (globalProcessError) {
+    console.dir(globalProcessError);
+  }
+    return context;
+}
+
+async function consolidateReports(context: IReportsContext): Promise<IReportsContext> {
+  try {
+    await organizationsConsoldate(context);
+  } catch (globalConsolidationError) {
+    console.dir(globalConsolidationError);
+  }
+  try {
+    await repositoriesConsolidate(context);
+  } catch (globalConsolidationError) {
+    console.dir(globalConsolidationError);
+  }
+  try {
+    await teamsConsolidate(context);
+  } catch (globalConsolidationError) {
+    console.dir(globalConsolidationError);
+  }
+  return context;
+}
+
+// ------------------------------------------------------------------
+
+async function finalizeEvents(context: IReportsContext) {
   context.insights.trackEvent({ name: 'JobReportsFinalizing' });
-
-  return Q(context);
+  return context;
 }
 
-function dataLakeUpload(context) {
+async function dataLakeUpload(context: IReportsContext) {
   const insights = context.insights;
   if (!context.reports.dataLake) {
     insights.trackEvent({ name: 'JobReportsReportDataLakeSkipped' });
-    return Q(context);
+    return context;
   }
   insights.trackEvent({ name: 'JobReportsReportDataLakeStarted' });
 
@@ -239,7 +329,6 @@ function dataLakeUpload(context) {
 
   const started = context.started;
   const consolidated = context.consolidated;
-  const providerNames = Object.getOwnPropertyNames(reportProviders);
   for (let i = 0; i < providerNames.length; i++) {
     const providerName = providerNames[i];
     const root = consolidated[providerName];
@@ -297,61 +386,56 @@ function dataLakeUpload(context) {
     return saveDataLakeOutput(context, dataLakeOutput);
   } else {
     insights.trackEvent({ name: 'JobReportsReportDataLakeEmptyReport' });
-    return Q(context);
+    return context;
   }
 }
 
-function saveDataLakeOutput(context, dataLakeOutput) {
+function saveDataLakeOutput(context: IReportsContext, dataLakeOutput: string[]): Promise<IReportsContext> {
   // Each line of the file is its own independent JSON object
   const text = dataLakeOutput.join('\r\n');
   const insights = context.insights;
-
   const dla = context.settings.dataLakeAccount;
   if (!dla) {
-    throw new Error('Missing Azure Data Lake / Azure Storage Account information');
+    return Promise.reject(new Error('Missing Azure Data Lake / Azure Storage Account information'));
   }
-
-  const deferred = Q.defer();
-
-  const backupBlobService = azure.createBlobService(dla.account, dla.key);
-  const containerName = dla.containerName;
-  backupBlobService.createContainerIfNotExists(containerName, (createContainerError) => {
-    if (createContainerError) {
-      insights.trackException({ exception: createContainerError });
-      return deferred.reject(createContainerError);
-    }
-    const blobPrefix = dla.blobPrefix || 'consolidatedReports';
-    const backupBlobName = `${blobPrefix}_${moment.utc().format('YYYY_MM_DD')}.json.gz`;
-    fileCompression.writeDeflatedTextFile(text, (writeError, deflatedTempPath) => {
-      if (writeError) {
-        insights.trackException({ exception: writeError });
-        return deferred.reject(writeError);
+  return new Promise((resolve, reject) => {
+    const backupBlobService = azure.createBlobService(dla.account, dla.key);
+    const containerName = dla.containerName;
+    backupBlobService.createContainerIfNotExists(containerName, (createContainerError) => {
+      if (createContainerError) {
+        insights.trackException({ exception: createContainerError });
+        return reject(createContainerError);
       }
-      backupBlobService.createBlockBlobFromLocalFile(containerName, backupBlobName, deflatedTempPath, cloudError => {
-        if (cloudError) {
-          insights.trackException({ exception: cloudError });
-          return deferred.reject(cloudError);
+      const blobPrefix = dla.blobPrefix || 'consolidatedReports';
+      const backupBlobName = `${blobPrefix}_${moment.utc().format('YYYY_MM_DD')}.json.gz`;
+      fileCompression.writeDeflatedTextFile(text, (writeError, deflatedTempPath) => {
+        if (writeError) {
+          insights.trackException({ exception: writeError });
+          return reject(writeError);
         }
-        // Successful
-        insights.trackEvent({
-          name: 'JobReportsReportDataLakeBackup',
-          properties: {
-            filename: backupBlobName,
-            containerName: containerName,
-            account: dla.account,
-          },
+        backupBlobService.createBlockBlobFromLocalFile(containerName, backupBlobName, deflatedTempPath, cloudError => {
+          if (cloudError) {
+            insights.trackException({ exception: cloudError });
+            return reject(cloudError);
+          }
+          // Successful
+          insights.trackEvent({
+            name: 'JobReportsReportDataLakeBackup',
+            properties: {
+              filename: backupBlobName,
+              containerName: containerName,
+              account: dla.account,
+            },
+          });
+          return resolve(context);
         });
-        return deferred.resolve(context);
       });
     });
   });
-
-  return deferred.promise;
 }
 
-function storeReports(context: ILocalContext) {
+async function storeReports(context: IReportsContext): Promise<IReportsContext> {
   context.insights.trackEvent({ name: 'JobReportsReportStoringStarted' });
-
   const report = Object.assign({}, context.consolidated);
   const consolidatedSchemaVersion = context.settings.consolidatedSchemaVersion;
   report.metadata = {
@@ -361,51 +445,43 @@ function storeReports(context: ILocalContext) {
     version: consolidatedSchemaVersion,
   };
   const json = JSON.stringify(report);
-
   const storeLocalReportPath = context.settings.storeLocalReportPath;
-  const localPromise = storeLocalReportPath? storeLocalReport(report, storeLocalReportPath, context) : Q(context);
-  return localPromise.then((context: ILocalContext) => {
-    if (!context.reports.store) {
-      context.insights.trackEvent({ name: 'JobReportsReportStoringSkipped' });
-      return Q(context);
-    }
-
-    const stringSizeUncompressed = fileSize(Buffer.byteLength(json, 'utf8')).human();
-    context.insights.trackEvent({
-      name: 'JobReportsReportStoring',
-      properties: {
-        size: stringSizeUncompressed,
-        version: consolidatedSchemaVersion,
-      },
-    });
-
-    const ttl = context.settings.witnessEventReportsTimeToLiveMinutes;
-    if (!ttl) {
-      throw new Error('No witnessEventReportsTimeToLiveMinutes configuration value defined for the report TTL. To make efficient use of Redis memory, a TTL must be provided.');
-    }
-
-    const reportingRedis = context.reports.reportRedisClient;
-    const reportingKey = context.settings.witnessEventKey;
-    return reportingRedis && reportingKey ? reportingRedis.setCompressedWithExpireAsync(reportingKey, json, ttl) : Q(context);
+  if (storeLocalReportPath) {
+    await storeLocalReport(report, storeLocalReportPath, context);
+  }
+  if (!context.reports.store) {
+    context.insights.trackEvent({ name: 'JobReportsReportStoringSkipped' });
+    return context;
+  }
+  const stringSizeUncompressed = fileSize(Buffer.byteLength(json, 'utf8')).human();
+  context.insights.trackEvent({
+    name: 'JobReportsReportStoring',
+    properties: {
+      size: stringSizeUncompressed,
+      version: consolidatedSchemaVersion,
+    },
   });
+  const ttl = context.settings.witnessEventReportsTimeToLiveMinutes;
+  if (!ttl) {
+    throw new Error('No witnessEventReportsTimeToLiveMinutes configuration value defined for the report TTL. To make efficient use of Redis memory, a TTL must be provided.');
+  }
+  const reportingRedis = context.reports.reportRedisClient;
+  const reportingKey = context.settings.witnessEventKey;
+  if (reportingRedis && reportingKey) {
+    reportingRedis.setCompressedWithExpire(reportingKey, json, ttl) 
+  }
+  return context;
 }
 
-function storeLocalReport(report, storeLocalReportPath, context) {
-  const deferred = Q.defer();
+async function storeLocalReport(report, storeLocalReportPath, context: IReportsContext): Promise<IReportsContext> {
   const prettyFile = JSON.stringify(report, undefined, 2);
-  fs.writeFile(storeLocalReportPath, prettyFile, 'utf8', error => {
-    if (error) {
-      console.warn(error);
-    }
-    return deferred.resolve(context);
-  });
-  return deferred.promise;
+  writeTextToFile(storeLocalReportPath, prettyFile);
+  return context;
 }
 
-function recordMetrics(context) {
+async function recordMetrics(context: IReportsContext): Promise<IReportsContext> {
   const insights = context.insights;
   const consolidated = context.consolidated;
-  const providerNames = Object.getOwnPropertyNames(reportProviders);
   let overallIssues = 0;
   for (let i = 0; i < providerNames.length; i++) {
     const providerName = providerNames[i];
@@ -459,14 +535,15 @@ function recordMetrics(context) {
     name: 'JobRepoReportsIssuesOverall',
     properties: overallIssues,
   });
-  return Q(context);
+  return context;
 }
 
-function sendReports(context) {
+async function sendReports(context: IReportsContext): Promise<IReportsContext> {
   if (!context.reports.send) {
     context.insights.trackEvent({ name: 'JobReportsSendingSkipped' });
-    return Q(context);
+    return context;
   }
   context.insights.trackEvent({ name: 'JobReportsReportSendingStarted' });
-  return mailer(context);
+  await mailer(context);
+  return context;
 }

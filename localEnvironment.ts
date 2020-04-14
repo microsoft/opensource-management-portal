@@ -24,6 +24,11 @@ async function localEnvironment(app, config): Promise<void> {
   // Local environment script
   // ---------------------------------------------------------------------------
 
+  // const contosoOrg = providers.operations.getOrganization('azure');
+  // const s = contosoOrg.getDynamicSettings();
+  // s.features.push('new-repository-lockdown-system');
+  // await providers.organizationSettingsProvider.updateOrganizationSetting(s);
+
   return;
 }
 
@@ -32,7 +37,18 @@ async function localEnvironment(app, config): Promise<void> {
 // Initialization
 // -----------------------------------------------------------------------------
 console.log('Initializing the local environment...');
-require('painless-config-resolver')().resolve((configurationError, config) => {
+
+
+let painlessConfigResolver = null;
+try {
+  painlessConfigResolver = require('painless-config-resolver')();
+} catch (error) {
+  console.log('Painless config resolver initialization error:');
+  console.dir(error);
+  throw error;
+}
+
+painlessConfigResolver.resolve((configurationError, config) => {
   if (configurationError) {
     throw configurationError;
   }

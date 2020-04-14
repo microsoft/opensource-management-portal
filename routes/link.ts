@@ -7,17 +7,20 @@
 
 'use strict';
 
-const emailRender = require('../lib/emailRender');
 import express = require('express');
-import { ReposAppRequest } from '../transitional';
+import asyncHandler from 'express-async-handler';
+const router = express.Router();
+
+import emailRender from '../lib/emailRender';
+
+import { ReposAppRequest, IProviders } from '../transitional';
 import { IndividualContext } from '../user';
-import { ILinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
 import { storeOriginalUrlAsReferrer, wrapError } from '../utils';
 import { ICorporateLink } from '../business/corporateLink';
+import { ILinkProvider } from '../lib/linkProviders';
+import { Operations, LinkOperationSource, SupportedLinkType } from '../business/operations';
 
 const isEmail = require('validator/lib/isEmail');
-
-const router = express.Router();
 
 const unlinkRoute = require('./unlink');
 
@@ -118,7 +121,7 @@ router.use((req: IRequestHacked, res, next) => {
   });
 });
 
-router.get('/', function (req: ReposAppRequest, res, next) {
+router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const individualContext = req.individualContext;
   const link = individualContext.link;
   if (!individualContext.corporateIdentity && !individualContext.getGitHubIdentity()) {
@@ -130,17 +133,26 @@ router.get('/', function (req: ReposAppRequest, res, next) {
     return res.redirect('/signin/github/');
   }
   if (!link) {
-    showLinkPage(req, res);
+    return await showLinkPage(req, res);
   } else {
     req.insights.trackEvent({ name: 'LinkRouteLinkLocated' });
+    let organizations = null;
+    try {
+      organizations = await individualContext.aggregations.organizations();
+    } catch (ignoredError) {
+      /* ignore */
+    }
     return individualContext.webContext.render({
       view: 'linkConfirmed',
       title: 'You\'re already linked',
+      state: {
+        organizations,
+      }
     });
   }
-});
+}));
 
-function showLinkPage(req, res) {
+async function showLinkPage(req, res) {
   const individualContext = req.individualContext as IndividualContext;
   function render(options) {
     individualContext.webContext.render({
@@ -155,25 +167,15 @@ function showLinkPage(req, res) {
     return render(null);
   }
   const aadId = individualContext.corporateIdentity.id;
-  graphProvider.getUserAndManagerById(aadId, (error, graphUser) => {
-    // By design, we want to log the errors but do not want any individual
-    // lookup problem to break the underlying experience of letting a user
-    // link. This is important if someone is new in the company, they may
-    // not be in the graph fully yet.
-    if (error) {
-      req.insights.trackException({
-        exception: error,
-        properties: {
-          event: 'PortalLinkInformationGraphLookupError',
-        },
-      });
-    } else if (graphUser) {
-      req.insights.trackEvent({ name: graphUser.manager ? 'PortalLinkInformationGraphLookupUser' : 'PortalLinkInformationGraphLookupServiceAccount' });
-    }
-    render({
-      graphUser: graphUser,
-      isServiceAccountCandidate: graphUser && !graphUser.manager,
-    });
+  const operations = req.app.settings.operations as Operations;
+  // By design, we want to log the errors but do not want any individual
+  // lookup problem to break the underlying experience of letting a user
+  // link. This is important if someone is new in the company, they may
+  // not be in the graph fully yet.
+  const userLinkData = await operations.validateCorporateAccountCanLink(aadId);
+  render({
+    graphUser: userLinkData.graphEntry,
+    isServiceAccountCandidate: userLinkData.type === SupportedLinkType.ServiceAccount,
   });
 }
 
@@ -188,121 +190,37 @@ router.get('/enableMultipleAccounts', function (req: IRequestWithSession, res) {
   storeOriginalUrlAsReferrer(req, res, '/auth/github', 'multiple accounts enabled need to auth with GitHub again now');
 });
 
-router.post('/', linkUser);
+router.post('/', asyncHandler(linkUser));
 
-function sendWelcomeMailThenRedirect(req: ReposAppRequest, res, config, url, linkObject: ICorporateLink, mailProvider, linkedAccountMail) {
-  res.redirect(url);
-
-  if (!mailProvider || !linkedAccountMail) {
-    return;
-  }
-
-  const to = [
-    linkedAccountMail,
-  ];
-  const toAsString = to.join(', ');
-
-  const cc = [];
-  if (config.brand && config.brand.operationsEmail && linkObject.isServiceAccount) {
-    cc.push(config.brand.operationsEmail);
-  }
-
-  const mail = {
-    to: to,
-    subject: `${linkObject.corporateUsername} linked to ${linkObject.thirdPartyUsername}`,
-    correlationId: req.correlationId,
-    category: ['link', 'repos'],
-    content: undefined,
-  };
-  const contentOptions = {
-    reason: (`You are receiving this one-time e-mail because you have linked your account.
-              To stop receiving these mails, you can unlink your account.
-              This mail was sent to: ${toAsString}`),
-    headline: `Welcome to GitHub, ${linkObject.thirdPartyUsername}`,
-    notification: 'information',
-    app: `${config.brand.companyName} GitHub`,
-    correlationId: req.correlationId,
-    link: linkObject,
-  };
-  emailRender.render(req.app.settings.runtimeConfig.typescript.appDirectory, 'link', contentOptions, (renderError, mailContent) => {
-    if (renderError) {
-      return req.insights.trackException({
-        exception: renderError,
-        properties: {
-          content: contentOptions,
-          eventName: 'LinkMailRenderFailure',
-        },
-      });
-    }
-    mail.content = mailContent;
-    mailProvider.sendMail(mail, (mailError, mailResult) => {
-      const customData = {
-        content: contentOptions,
-        receipt: mailResult,
-        eventName: undefined,
-      };
-      if (mailError) {
-        customData.eventName = 'LinkMailFailure';
-        return req.insights.trackException({ exception: mailError, properties: customData });
-      }
-      return req.insights.trackEvent({ name: 'LinkMailSuccess', properties: customData });
-    });
-  });
-}
-
-function linkUser(req, res, next) {
+async function linkUser(req, res, next) {
   const individualContext = req.individualContext as IndividualContext;
-
-  // TODO: a business object should actually handle creating links with the provider
-  const linkProvider = req.app.settings.providers.linkProvider as ILinkProvider;
-  if (!linkProvider) {
-    return next(new Error('No link provider'));
-  }
-
-  const config = req.app.settings.runtimeConfig;
   const isServiceAccount = req.body.sa === '1';
   const serviceAccountMail = req.body.serviceAccountMail;
-  const linkedAccountMail = req.body.sam;
-  const operations = req.app.settings.providers.operations;
-  const mailProvider = req.app.settings.mailProvider;
+  const operations = req.app.settings.providers.operations as Operations;
   if (isServiceAccount && !isEmail(serviceAccountMail)) {
     return next(wrapError(null, 'Please enter a valid e-mail address for the Service Account maintainer.', true));
   }
-  req.insights.trackEvent({ name: isServiceAccount ? 'PortalUserLinkingServiceAccountStart' : 'PortalUserLinkingStart' });
-  const metricName = isServiceAccount ? 'PortalServiceAccountLinks' : 'PortalUserLinks';
-
   let newLinkObject: ICorporateLink = null;
   try {
     newLinkObject = individualContext.createGitHubLinkObject();
   } catch (missingInformationError) {
     return next(missingInformationError);
   }
-
   if (isServiceAccount) {
     newLinkObject.isServiceAccount = true;
     newLinkObject.serviceAccountMail = serviceAccountMail;
   }
-
-  linkProvider.createLink(newLinkObject, (createError, linkId) => {
-    if (createError) {
-      req.insights.trackException({
-        exception: createError,
-        properties: {
-          event: 'PortalUserLinkInsertLinkError',
-        },
-      });
-      return next(wrapError(createError, `We had trouble linking your corporate and GitHub accounts: ${createError.message}`));
-    }
-    const eventData = newLinkObject;
-    eventData['linkId'] = linkId;
-
-    req.insights.trackEvent({ name: 'PortalUserLink' });
-    req.insights.trackMetric({ name: metricName, value: 1 });
-
-    // TODO: fireLinkEvent may need to recognize the new format!
-    operations.fireLinkEvent(eventData);
-    sendWelcomeMailThenRedirect(req, res, config, '/?onboarding=yes', newLinkObject, mailProvider, linkedAccountMail);
-  });
+  try {
+    await operations.linkAccounts({
+      link: newLinkObject,
+      operationSource: LinkOperationSource.Portal,
+      correlationId: individualContext.webContext.correlationId,
+      skipGitHubValidation: true, // already has been verified in the recent session
+     });
+    return res.redirect('/?onboarding=yes');
+  } catch (createError) {
+    return next(wrapError(createError, `We had trouble linking your corporate and GitHub accounts: ${createError.message}`));
+  }
 }
 
 router.use('/remove', unlinkRoute);

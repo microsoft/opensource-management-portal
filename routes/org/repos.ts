@@ -11,7 +11,7 @@ import express from 'express';
 import moment from 'moment';
 
 const lowercaser = require('../../middleware/lowercaser');
-import { ReposAppRequest } from '../../transitional';
+import { ReposAppRequest, IProviders } from '../../transitional';
 import { Organization } from '../../business/organization';
 import { Repository, GitHubCollaboratorAffiliationQuery } from '../../business/repository';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
@@ -20,6 +20,12 @@ import { TeamPermission } from '../../business/teamPermission';
 import { Collaborator } from '../../business/collaborator';
 import { OrganizationMember } from '../../business/organizationMember';
 import { AddRepositoryPermissionsToRequest } from '../../middleware/github/repoPermissions';
+
+import routeAdministrativeLock from './repoAdministrativeLock';
+import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
+import { daysInMilliseconds, ParseReleaseReviewWorkItemId } from '../../utils';
+import { ICorporateLink } from '../../business/corporateLink';
+import { getReviewService } from '../api/client/reviewService';
 
 const router = express.Router();
 
@@ -127,6 +133,47 @@ router.use('/:repoName', asyncHandler(async function(req: ILocalRequest, res, ne
   return next();
 }));
 
+router.use('/:repoName/administrativeLock', routeAdministrativeLock);
+
+router.use('/:repoName/delete', asyncHandler(async function(req: ILocalRequest, res, next) {
+  const individualContext = req.individualContext;
+  const repository = req.repository;
+  const organization = req.organization;
+  if (!organization.isNewRepositoryLockdownSystemEnabled) {
+    return next(new Error('This endpoint is not available as configured in this app.'));
+  }
+  const daysAfterCreateToAllowSelfDelete = 21; // could be a config setting if anyone cares
+  try {
+    const metadata = await repository.getRepositoryMetadata();
+    await NewRepositoryLockdownSystem.ValidateUserCanSelfDeleteRepository(repository, metadata, individualContext, daysAfterCreateToAllowSelfDelete);
+  } catch (noExistingMetadata) {
+    if (noExistingMetadata.status === 404) {
+      throw new Error('This repository does not have any metadata available regarding who can setup it up. No further actions available.');
+    }
+    throw noExistingMetadata;
+  }
+  return next();
+}));
+
+router.get('/:repoName/delete', asyncHandler(async function(req: ILocalRequest, res, next) {
+  return req.individualContext.webContext.render({
+    title: 'Delete the repo you created',
+    view: 'repos/delete',
+    state: {
+      repo: req.repository,
+    },
+  })
+}));
+
+router.post('/:repoName/delete', asyncHandler(async function(req: ILocalRequest, res, next) {
+  const { operations, repositoryMetadataProvider } = req.app.settings.providers as IProviders;
+  const { organization, repository } = req;
+  const lockdownSystem = new NewRepositoryLockdownSystem({ operations, organization, repository, repositoryMetadataProvider });
+  await lockdownSystem.deleteLockedRepository(false /* delete for any reason */, true /* deleted by the original user instead of ops */);
+  req.individualContext.webContext.saveUserAlert(`You deleted your repo, ${repository.full_name}.`, 'Repo deleted', 'success');
+  return res.redirect(organization.baseUrl);
+}));
+
 router.post('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function(req: ILocalRequest, res, next) {
   const repoPermissions = req.repoPermissions;
   if (!repoPermissions.allowAdministration) {
@@ -148,28 +195,78 @@ router.post('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), async
 }));
 
 router.get('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: ILocalRequest, res, next) {
+  const { linkProvider, config } = req.app.settings.providers as IProviders;
   const repoPermissions = req.repoPermissions;
   const referer = req.headers.referer as string;
   const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
-  const operations = req.app.settings.operations as Operations;
   const organization = req.organization;
   const repository = req.repository;
-  const gitHubId = req.individualContext.getGitHubIdentity().id;
   const repositoryMetadataEntity = req.repositoryMetadata;
-  const repo = decorateRepoForView(await repository.getDetails());
+  let repo = null;
+  try {
+    repo = decorateRepoForView(await repository.getDetails());
+  } catch (repoDetailsError) {
+    console.dir(repoDetailsError);
+    throw repoDetailsError;
+  }
+  let releaseReviewObject = null, releaseReviewWorkItemId = null;
+  try {
+    if (repositoryMetadataEntity && repositoryMetadataEntity.releaseReviewUrl) {
+      releaseReviewWorkItemId = ParseReleaseReviewWorkItemId(repositoryMetadataEntity.releaseReviewUrl);
+      if (releaseReviewWorkItemId) {
+        const reviewService = getReviewService(config);
+        releaseReviewObject = await reviewService.getReviewByUri(`wit:${releaseReviewWorkItemId}`);
+      }
+    }
+  }
+  catch (releaseQueryError) {
+    console.dir(releaseQueryError);
+  }
   // const { permissions, collaborators, outsideCollaborators } = await calculateRepoPermissions(organization, repository);
   // const systemTeams = combineAllTeams(organization.specialRepositoryPermissionTeams);
   // const teamBasedPermissions = consolidateTeamPermissions(permissions, systemTeams);
   const title = `${repository.name} - Repository`;
   const details = await repository.organization.getDetails();
   organization.id = details.id;
+  const activeUserCorporateId = req.individualContext.corporateIdentity.id;
+  let createdUserLink: ICorporateLink = null;
+  const createdByThirdPartyId = repositoryMetadataEntity && repositoryMetadataEntity.createdByThirdPartyId ? repositoryMetadataEntity.createdByThirdPartyId : null;
+  if (createdByThirdPartyId) {
+    try {
+      createdUserLink = await linkProvider.getByThirdPartyId(createdByThirdPartyId);
+    } catch (linkError) {
+      console.dir(linkError);
+    }
+  }
+  const createdByCorporateId = repositoryMetadataEntity && repositoryMetadataEntity.createdByCorporateId ? repositoryMetadataEntity.createdByCorporateId : null;
+  if (!createdUserLink && createdByCorporateId) {
+    try {
+      const results = await linkProvider.queryByCorporateId(createdByCorporateId);
+      if (results && results.length === 1) {
+        createdUserLink = results[0];
+      }
+    } catch (linkError) {
+      console.dir(linkError);
+    }
+  }
+  const createdByThirdPartyUsername = repositoryMetadataEntity && repositoryMetadataEntity.createdByThirdPartyUsername ? repositoryMetadataEntity.createdByThirdPartyUsername : null;
+  if (!createdUserLink && createdByThirdPartyUsername) {
+    try {
+      createdUserLink = await linkProvider.getByThirdPartyUsername(createdByThirdPartyUsername);
+    } catch (linkError) {
+      console.dir(linkError);
+    }
+  }
   req.individualContext.webContext.render({
     view: 'repos/repo',
     title,
     state: {
+      activeUserCorporateId,
+      createdUserLink,
       organization,
       reposSubView: 'default',
       repoPermissions,
+      entity: repository.getEntity(),
       repo, // : decorateRepoForView(repository),
       repository,
       // permissions: slicePermissionsForView(filterSystemTeams(teamsFilterType.systemTeamsExcluded, systemTeams, permissions)),
@@ -182,6 +279,8 @@ router.get('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncH
       fromReposPage,
       // teamBasedPermissions,
       repositoryMetadataEntity,
+      releaseReviewObject: sanitizeReviewObject(releaseReviewObject),
+      releaseReviewWorkItemId,
     },
   });
 }));
@@ -222,6 +321,31 @@ router.get('/:repoName/permissions', asyncHandler(AddRepositoryPermissionsToRequ
       repoPermissions: repoPermissions,
       teamBasedPermissions,
       repositoryMetadataEntity,
+    },
+  });
+}));
+
+router.get('/:repoName/history', asyncHandler(async function (req: ILocalRequest, res, next) {
+  const { auditLogRecordProvider } = req.app.settings.providers as IProviders;
+  const referer = req.headers.referer as string;
+  const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
+  const organization = req.organization;
+  const repository = req.repository;
+  const repositoryMetadataEntity = req.repositoryMetadata;
+  await repository.getDetails();
+  const history = await auditLogRecordProvider.queryAuditLogForRepositoryOperations(repository.id.toString());
+  const title = `${repository.name} - History`;
+  req.individualContext.webContext.render({
+    view: 'repos/history',
+    title,
+    state: {
+      organization,
+      repo: decorateRepoForView(repository),
+      reposSubView: 'history',
+      repository,
+      fromReposPage,
+      repositoryMetadataEntity,
+      history,
     },
   });
 }));
@@ -296,6 +420,37 @@ function decorateRepoForView(repo) {
   // This should just be a view service of its own at some point
   fromNow(repo, ['created_at', 'updated_at', 'pushed_at']);
   return repo;
+}
+
+function sanitizeReviewObject(review) {
+  if (!review) {
+    return;
+  }
+  const clean = {...review};
+  if (clean.assignedTo) {
+    clean.assignedTo = sanitizeReviewer(clean.assignedTo);
+  }
+  const reviewerRoles = clean.reviewers ? Object.getOwnPropertyNames(clean.reviewers) : [];
+  for (const role of reviewerRoles) {
+    clean.reviewers[role] = sanitizeReviewer(clean.reviewers[role]);
+  }
+  return clean;
+}
+
+function sanitizeReviewer(entry) {
+  if (entry && entry.displayName) {
+    let name = entry.displayName as string;
+    const projectNameEnd = name.indexOf(']\\');
+    if (projectNameEnd >= 0) {
+      name = name.substr(projectNameEnd + 2);
+    }
+    const idIndex = name.indexOf(' <');
+    if (idIndex >= 0) {
+      name = name.substr(0, idIndex);
+    }
+    entry.displayName = name;
+  }
+  return entry;
 }
 
 function fromNow(object, property) {

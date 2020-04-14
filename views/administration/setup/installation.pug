@@ -1,11 +1,11 @@
 //-
-//- Copyright (c) Microsoft. All rights reserved.
+//- Copyright (c) Microsoft.
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
 extends ../../layout
 
-mixin displayConfiguration(proposedDynamicSettings)
+mixin displayConfiguration(proposedDynamicSettings, allowEdit)
 
       h6 ESSENTIALS
       ul.list-unstyled
@@ -41,11 +41,22 @@ mixin displayConfiguration(proposedDynamicSettings)
       else
         p No feature flags configured.
 
+      if allowEdit
+        ul.list-inline
+          li: input.form-control(placeholder='Additional feature flag', name='add-feature-flag')
+          li: input.btn.btn-sm.btn-default(type='submit', name='update', value='Add')
+
       h6 PROPERTIES
       if proposedDynamicSettings.properties
         ul
           each v, k in proposedDynamicSettings.properties
             li= k + ': ' + v
+
+      if allowEdit
+        ul.list-inline
+          li: Add a new feature or change an existing value
+          li: input.form-control(placeholder='key:value', name='change-property')
+          li: input.btn.btn-sm.btn-default(type='submit', name='update', value='Save')
 
       h6 SPECIAL TEAMS
       if proposedDynamicSettings.specialTeams && Array.isArray(proposedDynamicSettings.specialTeams) && proposedDynamicSettings.specialTeams.length
@@ -120,8 +131,8 @@ block content
               p: string This additional application needs to be added to the dynamic configuration for the organization.
               input.btn.btn-primary(type='submit', name='configure', value='Add this installation to configuration')
 
-      h4 Dynamic Configuration
-      +displayConfiguration(dynamicSettings)
+        h4 Dynamic Configuration
+        +displayConfiguration(dynamicSettings, true)
 
     if installation
       hr

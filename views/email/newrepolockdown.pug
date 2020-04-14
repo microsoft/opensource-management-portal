@@ -1,5 +1,5 @@
 //-
-//- Copyright (c) Microsoft. All rights reserved.
+//- Copyright (c) Microsoft.
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
@@ -7,29 +7,68 @@ extends email
 
 block content
 
+  - var isFork = lockdownMailContent.repository.fork
+  - var isNewRepo = action == 'created';
+  - var isTransfer = action == 'transferred';
+  - var targetType = isFork ? 'Fork' : 'Repo'
+
   if isMailToCreator
-    p.
-      Hi,#[br]
-      You just created a new GitHub repository, #{lockdownMailContent.repository.name}. Complete the setup wizard to configure the repo permissions and release information.
+    if isForkAdministratorLocked
+      p.
+        Hi,#[br]
+        You just forked a GitHub repo, #{lockdownMailContent.repository.name}, into the official #{lockdownMailContent.organization.name} GitHub org. To contribute to an upstream project, typically you should fork the repo directly into your individual GitHub account.
+      if operationsMail
+        h3 Please contact operations with more information
+        p: strong Action required: you must e-mail #[a(href='mailto:' + operationsMail)= operationsMail] and provide more information to unlock this fork
+      p Please provide the following information to open source GitHub operations:
+      ul
+        li Why an official fork is being created
+        li Information including prior communications with the upstream open source community where the idea of forking was socialized
+        li Information about how you will support this fork long-term, including responding to contributions through pull requests and issues
+        li Whether there are plans to eventually contribute the forked changes upstream and delete this fork
+        li Acknowledgement that you will help govern this fork and work with any others in this GitHub org who would also like to maintain this fork
+        li Other useful information including your business goals relating to this project
+    else
+      p.
+        Hi,#[br]
+        You just #{action} a GitHub repository, #{lockdownMailContent.repository.name}. Complete the setup wizard to configure the repo permissions and release information.
 
     if lockdownMailContent.repository && lockdownMailContent.repository.private
       p
-        strong PRIVATE REPOSITORY NOTE:
+        strong Private repository:
         br
-        | You created a new private repository. Your access to the repository will be restored once you complete the new repository wizard. Until then you will see a 404 Not Found HTTP error message.
+        | Your access to the repository will be restored once you complete the new repository wizard. Until then you will see a 404 Not Found HTTP error message.
 
-    h3 Gain access to your new repository
-    p
-      a(href=lockdownMailContent.linkToClassifyRepository, target='_new', style='font-size: 36px') Finish setting up #{lockdownMailContent.repository.name}
-      br
-      small
-        | Direct setup wizard link:
-        a(href=lockdownMailContent.linkToClassifyRepository, target='_new', style='font-size: 10px')= lockdownMailContent.linkToClassifyRepository
+    if isTransfer && transferSourceRepositoryLogin
+      h3 Incoming transfer from #{transferSourceRepositoryLogin}
+
+    if lockdownMailContent.repository && lockdownMailContent.repository.fork
+      h3 Fork
+      p This repository was forked. A fork into an official organization can be confusing with an active upstream open source community. Please verify that the individual creating this repo intends for their business to maintain this new forked open source community. If this is just a fork to contribute, engineers should contribute from their own individual account fork.
+
+    if !isForkAdministratorLocked
+      h3 Gain access to your new repository
+      p
+        a(href=lockdownMailContent.linkToClassifyRepository, target='_new', style='font-size: 36px') Finish setting up #{lockdownMailContent.repository.name}
+        br
+        small
+          | Direct link to complete setup:&nbsp;
+          a(href=lockdownMailContent.linkToClassifyRepository, target='_new', style='font-size: 10px')= lockdownMailContent.linkToClassifyRepository
+
+    if lockdownMailContent.linkToDeleteRepository
+      h3 Delete the #{targetType.toLowerCase()}
+      p If you no longer need this repo, or this was an accident, click below to delete the repo. The page will ask for your confirmation first.
+      p
+        a(href=lockdownMailContent.linkToDeleteRepository, target='_new') Delete #{targetType.toLowerCase()} #{lockdownMailContent.repository.name}
+        br
+        small
+          | Link to delete:&nbsp;
+          a(href=lockdownMailContent.linkToDeleteRepository, target='_new', style='font-size: 10px')= lockdownMailContent.linkToDeleteRepository
 
     h4 Repository
     p
       a(href='https://github.com/' + lockdownMailContent.organization.name + '/' + lockdownMailContent.repository.name)= 'https://github.com/' + lockdownMailContent.organization.name + '/' + lockdownMailContent.repository.name
-      if lockdownMailContent.repository.private
+      if lockdownMailContent.repository.private && isForkAdministratorLocked
         br
         | WARNING: This is a private repository and you will not be able to access it until you complete the setup process.
 
@@ -44,8 +83,15 @@ block content
             td Corporate identity
             td= lockdownMailContent.link.corporateUsername
 
+    if isForkAdministratorLocked
+      h4 For operations use
+      p When ready to manage this request, please use the following URL: #[a(href=lockdownMailContent.repository.absoluteBaseUrl + 'administrativeLock')= lockdownMailContent.repository.absoluteBaseUrl + 'administrativeLock'].
+
   else if isMailToOperations
-    p A repository was created directly on GitHub.com. The repository has been locked down pending the user's completion of the new repository wizard.
+    if isForkAdministratorLocked
+      p A repository was forked directly into an official org. It has been locked pending your administrative decision.
+    else
+      p A repository was created directly on GitHub.com. The repository has been locked down pending the user's completion of the new repository wizard.
 
     if mailSentToCreator
       p A mail was sent to the person who created the repo to continue the process.
@@ -66,10 +112,25 @@ block content
 
     if lockdownMailContent.mailAddress
       p
-        | Mail address of the user that created the account:&nbsp;
+        | Mail address of the user that created the repo:&nbsp;
         a(href='mailto:' + lockdownMailContent.mailAddress)= lockdownMailContent.mailAddress
     else
       p: strong An e-mail was NOT sent. No e-mail address was available for the username.
+
+    h4 Repository
+    p
+      a(href='https://github.com/' + lockdownMailContent.organization.name + '/' + lockdownMailContent.repository.name)= 'https://github.com/' + lockdownMailContent.organization.name + '/' + lockdownMailContent.repository.name
+      if lockdownMailContent.repository.private
+        br
+        | WARNING: This is a private repository
+
+    if lockdownMailContent.repository && lockdownMailContent.repository.fork
+      h3 FORK
+      p This repository was forked. A fork into an official Microsoft organization is a very big deal and can cause confusion with the upstream open source community. Please verify that the individual creating this repo intends for their business to maintain this new forked open source community. If this is just a fork to contribute, engineers should contribute from their own individual account fork.
+
+    if isForkAdministratorLocked
+      h4 For operations use
+      p When ready to manage this request, please use the following URL: #[a(href=lockdownMailContent.repository.absoluteBaseUrl + 'administrativeLock')= lockdownMailContent.repository.absoluteBaseUrl + 'administrativeLock'].
 
     if lockdownMailContent.log
       h3 Operations log

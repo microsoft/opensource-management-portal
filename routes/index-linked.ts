@@ -20,6 +20,8 @@ const setupRoute = require('./administration');
 const reposRoute = require('./repos');
 const teamsRoute = require('./teams');
 const unlinkRoute = require('./unlink');
+const undoRoute = require('./undo');
+const contributionsRoute = require('./contributions');
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -46,7 +48,19 @@ router.use('/teams', teamsRoute);
 router.use('/organization', orgAdmin);
 router.use('/people', peopleRoute);
 router.use('/repos', reposRoute);
+router.use('/undo', undoRoute);
+router.use('/contributions', contributionsRoute);
 router.use('/administration', AuthorizeOnlyCorporateAdministrators, setupRoute);
+
+router.use('/https?*github.com/:org/:repo', (req, res, next) => {
+  // Helper method to allow pasting a GitHub URL into the app to go to a repo
+  const { org, repo } = req.params;
+  if (org && repo) {
+    return res.redirect(`/${org}/repos/${repo}`);
+  }
+  return next();
+});
+
 router.use('/', orgsRoute);
 
 module.exports = router;

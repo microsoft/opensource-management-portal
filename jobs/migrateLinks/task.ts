@@ -15,23 +15,19 @@
 // LINK_MIGRATION_DESTINATION_TYPE
 // LINK_MIGRATION_OVERWRITE  values : 'overwrite', 'skip'
 
-'use strict';
-
 // import async = require('async');
 import throat = require('throat');
 
-import { createAndInitializeLinkProviderInstance } from '../../lib/linkProviders';
+import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../../lib/linkProviders';
 import { IProviders } from '../../transitional';
-import { ILinkProvider } from '../../lib/linkProviders/postgres/postgresLinkProvider';
 import { ICorporateLink } from '../../business/corporateLink';
 
-module.exports = function run(config) {
+export default function Task(config) {
   const app = require('../../app');
   config.skipModules = new Set([
     'web',
   ]);
-
-  app.initializeApplication(config, null, error => {
+  app.initializeJob(config, null, error => {
     if (error) {
       throw error;
     }
@@ -111,17 +107,14 @@ async function migration(config, app) : Promise<void> {
 }
 
 async function getThirdPartyLink(linkProvider: ILinkProvider, thirdPartyId: string) : Promise<ICorporateLink> {
-  return new Promise<ICorporateLink>((resolve, reject) => {
-    linkProvider.getByThirdPartyId(thirdPartyId, (error, link: ICorporateLink) => {
-      if (error && error['status'] === 404) {
-        error = null;
-      }
-      if (error) {
-        return reject(error);
-      }
-      return resolve(link);
-    });
-  });
+  try {
+    return await linkProvider.getByThirdPartyId(thirdPartyId);
+  } catch (error) {
+    if (error && error['status'] === 404) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 async function getUserIdByUpn(graphProvider, upn: string) : Promise<string> {
@@ -140,35 +133,14 @@ async function getUserIdByUpn(graphProvider, upn: string) : Promise<string> {
   });
 }
 
-async function createNewLink(linkProvider: ILinkProvider, link: ICorporateLink) : Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    linkProvider.createLink(link, (error, linkId: string) => {
-      if (error) {
-        return reject(error);
-      }
-      return resolve(linkId);
-    });
-  });
+function createNewLink(linkProvider: ILinkProvider, link: ICorporateLink) : Promise<string> {
+  return linkProvider.createLink(link);
 }
 
 async function deleteLink(linkProvider: ILinkProvider, link: ICorporateLink) : Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    linkProvider.deleteLink(link, (error, wasDeleted: boolean) => {
-      if (error) {
-        return reject(error);
-      }
-      return resolve();
-    });
-  });
+  return linkProvider.deleteLink(link);
 }
 
 async function getAllLinks(linkProvider: ILinkProvider) : Promise<ICorporateLink[]> {
-  return new Promise<ICorporateLink[]>((resolve, reject) => {
-    linkProvider.getAll((error, links: ICorporateLink[]) => {
-      if (error) {
-        return reject(error);
-      }
-      return resolve(links);
-    });
-  });
+  return linkProvider.getAll();
 }

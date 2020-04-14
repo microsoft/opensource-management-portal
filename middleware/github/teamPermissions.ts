@@ -21,8 +21,7 @@ export async function AddTeamPermissionsToRequest(req: ReposAppRequest, res, nex
     return next();
   }
   const login = req.individualContext.getGitHubIdentity().username;
-  const idAsString = req.individualContext.getGitHubIdentity().id;
-  const id = idAsString ? parseInt(idAsString, 10) : null;
+  const id = req.individualContext.getGitHubIdentity().id;
   const organization = req.organization;
   const teamPermissions: IRequestTeamPermissions = {
     allowAdministration: false,
@@ -46,7 +45,7 @@ export async function AddTeamPermissionsToRequest(req: ReposAppRequest, res, nex
   req['teamMaintainers'] = maintainers;
 
   for (let i = 0; i < maintainers.length; i++) {
-    if (maintainers[i].id === id) {
+    if (String(maintainers[i].id) === id) {
       teamPermissions.maintainer = true;
       break;
     }

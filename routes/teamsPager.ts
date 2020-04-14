@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import _ from 'lodash';
 import asyncHandler from 'express-async-handler';
 import express from 'express';
@@ -15,7 +13,7 @@ import { Team } from '../business/team';
 import { UserContext } from '../user/aggregate';
 import { asNumber } from '../utils';
 
-const TeamSearch = require('../business/teamSearch');
+import TeamSearch from '../business/teamSearch';
 
 function sortOrgs(orgs) {
   return _.sortBy(orgs, ['name']);

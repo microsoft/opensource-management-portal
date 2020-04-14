@@ -13,11 +13,15 @@ import _ from 'lodash';
 import { jsonError } from '../../middleware/jsonError';
 import { IProviders } from '../../transitional';
 import { ICreateRepositoryResult, Organization } from '../../business/organization';
-import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
-import { RenderHtmlMail } from '../../lib/emailRender';
+import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission, RepositoryLockdownState } from '../../entities/repositoryMetadata/repositoryMetadata';
+import RenderHtmlMail from '../../lib/emailRender';
 
 import { RepoWorkflowEngine, IRepositoryWorkflowOutput } from '../org/repoWorkflowEngine';
 import { IMailProvider } from '../../lib/mailProvider';
+import { asNumber } from '../../utils';
+import { IndividualContext } from '../../user';
+import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
+import { Operations } from '../../business/operations';
 
 const supportedLicenseExpressions = [
   'mit',
@@ -39,8 +43,7 @@ export interface ICreateRepositoryApiResult {
   name: string;
 }
 
-export async function CreateRepository(req, bodyOverride: unknown): Promise<ICreateRepositoryApiResult> {
-  console.log('CreateRepository CreateRepository CreateRepository CreateRepository CreateRepository');
+export async function CreateRepository(req, bodyOverride: unknown, individualContext?: IndividualContext): Promise<ICreateRepositoryApiResult> {
   if (!req.organization) {
     throw jsonError(new Error('No organization available in the route.'), 400);
   }
@@ -115,102 +118,138 @@ export async function CreateRepository(req, bodyOverride: unknown): Promise<ICre
   }
   parameters.org = req.organization.name;
   const organization = operations.getOrganization(parameters.org);
-  req.app.settings.providers.insights.trackEvent({
-    name: 'ApiRepoTryCreateForOrg',
-    properties: {
-      parameterName: parameters.name,
-      description: parameters.description,
-      private: parameters.private,
-      org: parameters.org,
-    },
-  });
-  let createResult: ICreateRepositoryResult = null;
-  try {
-    createResult = await organization.createRepository(parameters.name, parameters);
-  } catch (error) {
+  const existingRepoId = req.body.existingrepoid;
+  let metadata: RepositoryMetadataEntity
+  let response: any = null;
+  if (existingRepoId && !organization.isNewRepositoryLockdownSystemEnabled()) {
+    throw jsonError(new Error(`Repository ID ${existingRepoId} provided for a repository within the ${organization.name} org that is not configured for existing repository classification`), 422);
+  }
+  if (!existingRepoId) {
     req.app.settings.providers.insights.trackEvent({
-      name: 'ApiRepoCreateForOrgGitHubFailure',
+      name: 'ApiRepoTryCreateForOrg',
       properties: {
         parameterName: parameters.name,
+        description: parameters.description,
         private: parameters.private,
         org: parameters.org,
-        parameters: JSON.stringify(parameters),
       },
     });
-    if (error && error.innerError) {
-      const inner = error.innerError;
-      req.insights.trackException({
-        exception: inner,
+    let createResult: ICreateRepositoryResult = null;
+    try {
+      createResult = await organization.createRepository(parameters.name, parameters);
+    } catch (error) {
+      req.app.settings.providers.insights.trackEvent({
+        name: 'ApiRepoCreateForOrgGitHubFailure',
         properties: {
-          event: 'ApiRepoCreateGitHubErrorInside',
-          message: inner && inner.message ? inner.message : inner,
-          status: inner && inner.status ? inner.status : '',
-          statusCode: inner && inner.statusCode ? inner.statusCode : '',
+          parameterName: parameters.name,
+          private: parameters.private,
+          org: parameters.org,
+          parameters: JSON.stringify(parameters),
+        },
+      });
+      if (error && error.innerError) {
+        const inner = error.innerError;
+        req.insights.trackException({
+          exception: inner,
+          properties: {
+            event: 'ApiRepoCreateGitHubErrorInside',
+            message: inner && inner.message ? inner.message : inner,
+            status: inner && inner.status ? inner.status : '',
+            statusCode: inner && inner.statusCode ? inner.statusCode : '',
+          },
+        });
+      }
+      req.insights.trackException({
+        exception: error,
+        properties: {
+          event: 'ApiRepoCreateGitHubError',
+          message: error && error.message ? error.message : error,
+        },
+      });
+      throw jsonError(error, error.status || 500);
+    }
+    response = createResult.response;
+    req.app.settings.providers.insights.trackEvent({
+      name: 'ApiRepoCreateForOrg',
+      properties: {
+        parameterName: parameters.name,
+        description: parameters.description,
+        private: parameters.private,
+        org: parameters.org,
+        result: JSON.stringify(response),
+      },
+    });
+    // strip an internal "cost" part off our response object
+    delete response.cost;
+      // from this point on any errors should roll back
+    const repoCreateResponse: ICreateRepositoryApiResult = {
+      github: response,
+      name: response && response.name ? response.name : undefined,
+    };
+    req.repoCreateResponse = repoCreateResponse;
+    metadata = new RepositoryMetadataEntity();
+    // Store create metadata
+    metadata.created = new Date();
+    metadata.createdByThirdPartyUsername = msProperties.onBehalfOf;
+    // TODO: we also want to store corporate information when present
+    try {
+      const account = await operations.getAccountByUsername(metadata.createdByThirdPartyUsername);
+      metadata.createdByThirdPartyId = account.id.toString();
+    } catch (noAvailableUsername) {
+      req.app.settings.providers.insights.trackEvent({
+        name: 'ApiRepoCreateInvalidUsername',
+        properties: {
+          username: metadata.createdByThirdPartyUsername,
+          error: noAvailableUsername.message,
+          encodedError: JSON.stringify(noAvailableUsername),
         },
       });
     }
-    req.insights.trackException({
-      exception: error,
-      properties: {
-        event: 'ApiRepoCreateGitHubError',
-        message: error && error.message ? error.message : error,
-      },
-    });
-    throw jsonError(error, error.status || 500);
-  }
-  const { repository, response } = createResult;
-  req.app.settings.providers.insights.trackEvent({
-    name: 'ApiRepoCreateForOrg',
-    properties: {
-      parameterName: parameters.name,
-      description: parameters.description,
-      private: parameters.private,
-      org: parameters.org,
-      result: JSON.stringify(response),
-    },
-  });
-  // strip an internal "cost" part off our response object
-  delete response.cost;
-    // from this point on any errors should roll back
-  const repoCreateResponse: ICreateRepositoryApiResult = {
-    github: response,
-    name: response && response.name ? response.name : undefined,
-  };
-  req.repoCreateResponse = repoCreateResponse;
-  // Store create metadata
-  const metadata = new RepositoryMetadataEntity();
-  metadata.created = new Date();
-  metadata.createdByThirdPartyUsername = msProperties.onBehalfOf;
-  // TODO: we also want to store corporate information when present
-  try {
-    const account = await operations.getAccountByUsername(metadata.createdByThirdPartyUsername);
-    metadata.createdByThirdPartyId = account.id.toString();
-  } catch (noAvailableUsername) {
-    req.app.settings.providers.insights.trackEvent({
-      name: 'ApiRepoCreateInvalidUsername',
-      properties: {
-        username: metadata.createdByThirdPartyUsername,
-        error: noAvailableUsername.message,
-        encodedError: JSON.stringify(noAvailableUsername),
-      },
-    });
+    metadata.repositoryName = response.name;
+    metadata.repositoryId = response.id;
+    metadata.initialRepositoryDescription = response.description;
+    metadata.initialRepositoryVisibility = response.private ? GitHubRepositoryVisibility.Private : GitHubRepositoryVisibility.Public;
+    metadata.organizationName = req.organization.name.toLowerCase();
+    if (organization.id) {
+      metadata.organizationId = organization.id.toString();
+    }
+  } else {
+    // Locked down new repo, this is a classification call
+    try {
+      metadata = await repositoryMetadataProvider.getRepositoryMetadata(existingRepoId);
+    } catch (existingError) {
+      if (existingError.status && existingError.status === 404) {
+        throw new Error(`The existing repository with id=${existingRepoId} cannot be classified as it was not processed as a new repository`);
+      } else {
+        throw existingError;
+      }
+    }
+    // Verify that the active user is the same person who created it
+    if (!individualContext) {
+      throw new Error('Existing repository reclassification requires an authenticated identity');
+    }
+    NewRepositoryLockdownSystem.ValidateUserCanConfigureRepository(metadata, individualContext);
+    // CONSIDER: or a org sudo user or a portal administrator
+    const repositoryByName = await organization.repository(metadata.repositoryName);
+    const response = await repositoryByName.getDetails();
+    if (response.id != /* loose */ existingRepoId) {
+      throw new Error(`The ID of the repo ${metadata.repositoryName} does not match ${existingRepoId}`);
+    }
+    metadata.lockdownState = RepositoryLockdownState.Unlocked;
+    const repoCreateResponse: ICreateRepositoryApiResult = {
+      github: response,
+      name: response && response.name ? response.name : undefined,
+    };
+    req.repoCreateResponse = repoCreateResponse;
   }
   metadata.releaseReviewJustification = msProperties.justification;
   metadata.initialLicense = msProperties.license;
-  metadata.organizationName = req.organization.name.toLowerCase();
-  if (organization.id) {
-    metadata.organizationId = organization.id.toString();
-  }
-  metadata.repositoryName = response.name;
-  metadata.repositoryId = response.id;
-  metadata.initialRepositoryDescription = response.description;
-  metadata.initialRepositoryVisibility = response.private ? GitHubRepositoryVisibility.Private : GitHubRepositoryVisibility.Public;
   metadata.releaseReviewType = msProperties.approvalType;
   metadata.releaseReviewUrl = msProperties.approvalUrl;
   metadata.initialTemplate = msProperties.template;
   metadata.projectType = msProperties.projectType;
   metadata.initialCorrelationId = req.correlationId;
-
+  // team permissions
   const teamTypes = ['pull', 'push', 'admin'];
   const typeValues = [GitHubRepositoryPermission.Pull, GitHubRepositoryPermission.Push, GitHubRepositoryPermission.Admin];
   downgradeBroadAccessTeams(organization, msProperties.teams || {});
@@ -227,10 +266,11 @@ export async function CreateRepository(req, bodyOverride: unknown): Promise<ICre
       }
     }
   }
-
-  let entityId = null;
+  let entityId = existingRepoId || null;
   try {
-    entityId = await repositoryMetadataProvider.createRepositoryMetadata(metadata);
+    if (!entityId) {
+      entityId = await repositoryMetadataProvider.createRepositoryMetadata(metadata);
+    }
   } catch (insertRequestError) {
     const err = jsonError(new Error(`Rolling back, problems creating repo metadata for ${metadata.repositoryName} and repo ${metadata.repositoryId}`), 500);
     req.insights.trackException({
@@ -240,18 +280,28 @@ export async function CreateRepository(req, bodyOverride: unknown): Promise<ICre
         message: insertRequestError && insertRequestError.message ? insertRequestError.message : insertRequestError,
       },
     });
-    if (!req.organization || !repoCreateResponse || !repoCreateResponse.name) {
+    if (!req.organization || !metadata || !metadata.repositoryName) {
       throw insertRequestError; // if GitHub never returned
     }
-    const newlyCreatedRepo = (req.organization as Organization).repository(repoCreateResponse.name);
+    const newlyCreatedRepo = (req.organization as Organization).repository(metadata.repositoryName);
     await newlyCreatedRepo.delete();
     throw err;
   }
-    // req.approvalRequest['ms.approvalId'] = requestId; // TODO: is this ever used?
+  if (existingRepoId) {
+    try {
+      await repositoryMetadataProvider.updateRepositoryMetadata(metadata);
+    } catch (updateError) {
+      throw updateError;
+    }
+  }
+  // req.approvalRequest['ms.approvalId'] = requestId; // TODO: is this ever used?
   const repoWorkflow = new RepoWorkflowEngine(req.organization as Organization, {
     id: entityId,
     repositoryMetadata: metadata,
     createResponse: response,
+    isUnlockingExistingRepository: existingRepoId,
+    isFork: response ? response.fork : false,
+    isTransfer: metadata && metadata.transferSource ? true : false,
   });
   let output = [];
   try {
@@ -259,10 +309,13 @@ export async function CreateRepository(req, bodyOverride: unknown): Promise<ICre
   } catch (rollbackNeededError) {
     console.dir(rollbackNeededError);
   }
+  if (!req.repoCreateResponse) {
+    req.repoCreateResponse = { tasks: null };
+  }
   req.repoCreateResponse.tasks = output;
   if (msProperties.notify && mailProvider) {
     try {
-    await sendEmail(req, mailProvider, req.apiKeyRow, req.correlationId, output, repoWorkflow.request, msProperties);
+    await sendEmail(req, mailProvider, req.apiKeyRow, req.correlationId, output, repoWorkflow.request, msProperties, existingRepoId);
     } catch (mailSendError) {
       console.dir(mailSendError);
     }
@@ -295,19 +348,27 @@ function downgradeBroadAccessTeams(organization, teams) {
   }
 }
 
-async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlationId: string, repoCreateResults, approvalRequest: RepositoryMetadataEntity, msProperties): Promise<void> {
+async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlationId: string, repoCreateResults, approvalRequest: RepositoryMetadataEntity, msProperties, existingRepoId: any): Promise<void> {
   const config = req.app.settings.runtimeConfig;
+  const operations = req.app.settings.providers.operations as Operations;
   const emails = msProperties.notify.split(',');
-  const headline = 'Repo ready';
+  let targetType = repoCreateResults.fork ? 'Fork' : 'Repo';
+  if (!repoCreateResults.fork && approvalRequest.transferSource) {
+    targetType = 'Transfer';
+  }
+  let headline = `${targetType} ready`;
   const serviceShortName = apiKeyRow && apiKeyRow.service ? apiKeyRow.service : undefined;
-  const subject = serviceShortName ? `${approvalRequest.repositoryName} repo created by ${serviceShortName}` : `${approvalRequest.repositoryName} repo created`;
+  let subject = serviceShortName ? `${approvalRequest.repositoryName} ${targetType.toLowerCase()} created by ${serviceShortName}` : `${approvalRequest.repositoryName} ${targetType.toLowerCase()} created`;
+  if (existingRepoId) {
+    subject = `${approvalRequest.repositoryName} ${targetType.toLowerCase()} ready`;
+  }
   const emailTemplate = 'repoApprovals/autoCreated';
   const displayHostname = req.hostname;
   const approvalScheme = displayHostname === 'localhost' && config.webServer.allowHttp === true ? 'http' : 'https';
   const reposSiteBaseUrl = `${approvalScheme}://${displayHostname}/`;
   const mail = {
     to: emails,
-    subject: subject,
+    subject,
     correlationId: correlationId,
     category: ['error', 'repos'],
     content: undefined,
@@ -319,6 +380,7 @@ async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlatio
     app: 'Microsoft GitHub',
     correlationId: correlationId,
     approvalRequest: approvalRequest,
+    existingRepoId,
     results: repoCreateResults,
     version: config.logging.version,
     reposSiteUrl: reposSiteBaseUrl,
@@ -345,6 +407,7 @@ async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlatio
     receipt: null,
     eventName: undefined,
   };
+  const additionalMail = {...mail};
   try {
     customData.receipt = await mailProvider.sendMail(mail);
     req.insights.trackEvent({ name: 'ApiRepoCreateMailSuccess', properties: customData });
@@ -352,6 +415,23 @@ async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlatio
     } catch (mailError) {
     customData.eventName = 'ApiRepoCreateMailFailure';
     req.insights.trackException({ exception: mailError, properties: customData });
-    // no longer a fatal error if the mail is not sent
+  }
+  // send to operations, too
+  const operationsMails = operations.getExtendedOperationsMailAddresses();
+  if (operationsMails && operationsMails.length) {
+    additionalMail.to = operationsMails;
+    contentOptions.reason = `You are receiving this e-mail as the operations contact address(es) ${operationsMails.join(', ')}. A repo has been created or classified.`;
+    try {
+      additionalMail.content = await RenderHtmlMail(req.app.settings.runtimeConfig.typescript.appDirectory, emailTemplate, contentOptions);
+    } catch (renderError) {
+      console.dir(renderError);
+      return;
+    }
+    try {
+      await mailProvider.sendMail(additionalMail);
+    } catch (ignoredError) {
+      console.dir(ignoredError);
+      return;
+    }
   }
 }

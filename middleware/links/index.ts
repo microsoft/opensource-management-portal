@@ -7,11 +7,10 @@
 
 // Within the context, tries to resolve a link if it _can_. It does not force that a user is linked!
 
-import { ILinkProvider } from "../../lib/linkProviders/postgres/postgresLinkProvider";
-
-import { IndividualContext, IIndividualContextOptions, GitHubIdentitySource } from '../../user';
+import { IndividualContext } from '../../user';
 import { ReposAppRequest, IReposError } from "../../transitional";
 import { wrapError } from "../../utils";
+import { ILinkProvider } from '../../lib/linkProviders';
 
 export function RequireLinkMatchesGitHubSession(req: ReposAppRequest, res, next) {
   // trying to be equivalent to legacy code in ./usernameConsistency (lightweight)
@@ -45,7 +44,7 @@ export function RequireLinkMatchesGitHubSession(req: ReposAppRequest, res, next)
   return next(securityError);
 }
 
-export function addLinkToRequest(req, res, next) {
+export async function AddLinkToRequest(req, res, next) {
   // TODO: BEFORE MERGE TO PROD:
   // Link cleanup logic and routes which may or may not be important
   // Important: link cleanup needs, if any
@@ -68,46 +67,34 @@ export function addLinkToRequest(req, res, next) {
 
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const contextName = req.individualContext ? 'Individual User Context' : 'API Context';
-
   if (!activeContext) {
     return next(new Error('The middleware requires a context'));
   }
-
   if (!activeContext.corporateIdentity) {
     return next();
   }
-
   if (activeContext.link) {
     return next();
   }
-
   const corporateId = activeContext.corporateIdentity.id;
   if (!corporateId) {
     return next(new Error('No corporate user information'));
   }
-
   const linkProvider = req.app.settings.providers.linkProvider as ILinkProvider;
   if (!linkProvider) {
     return next(new Error('No link provider'));
   }
-  linkProvider.queryByCorporateId(corporateId, (error, links) => {
-    if (error) {
-      return next(error);
-    }
-    if (links.length === 0) {
-      return next();
-    }
-    if (links.length > 1) {
-      // TODO: are multiple links selected through a session or web context setting, or ?
-      return next(new Error('Multiple links are not currently implemented or supported'));
-    }
-
-    const selectedLink = links[0];
-    activeContext.link = selectedLink;
-
+  const links = await linkProvider.queryByCorporateId(corporateId);
+  if (links.length === 0) {
     return next();
-  });
-
+  }
+  if (links.length > 1) {
+    // TODO: are multiple links selected through a session or web context setting, or ?
+    return next(new Error('You cannot have multiple GitHub accounts'));
+  }
+  const selectedLink = links[0];
+  activeContext.link = selectedLink;
+  return next();
   // const user = req.legacyUserContext.modernUser();
   // if (!user) {
   //   return res.redirect('/');

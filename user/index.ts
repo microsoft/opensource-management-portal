@@ -149,6 +149,18 @@ export class WebContext {
     return this._tokens;
   }
 
+  get correlationId(): string {
+    const correlationId = this._request.correlationId;
+    return correlationId;
+  }
+
+  getAbsoluteUrl(relative: string): string {
+    const displayHostname = this._request.hostname;
+    const approvalScheme = displayHostname === 'localhost' ? 'http' : 'https';
+    const slashPrefix = relative.startsWith('/') ? '' : '/';
+    return `${approvalScheme}://${displayHostname}${slashPrefix}${relative}`;
+  }
+
   pushBreadcrumb(title: string, optionalLink?: string | boolean): void {
     const req = this._request;
     addBreadcrumb(req, title, optionalLink);
@@ -156,7 +168,7 @@ export class WebContext {
 
   // NOTE: This function is direct from the legacy provider... it could move to
   // a dedicated alert provider or something else in the future.
-  saveUserAlert(message, title, context, optionalLink?, optionalCaption?) {
+  saveUserAlert(message: string, title, context, optionalLink?, optionalCaption?) {
     if (typeof (message) !== 'string') {
       console.warn('First parameter message should be a string, not an object. Was the request object passed through by accident?');
       throw new Error('First parameter message should be a string, not an object. Was the request object passed through by accident?');

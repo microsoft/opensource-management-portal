@@ -12,7 +12,7 @@ const router = express.Router();
 import { IProviders, ReposAppRequest } from '../../transitional';
 import { asNumber } from '../../utils';
 import GitHubApplication, { IGitHubAppInstallation } from '../../business/application';
-import { OrganizationSetting, IBasicGitHubAppInstallation, SpecialTeam } from '../../entities/organizationSettings/organizationSetting';
+import { OrganizationSetting, IBasicGitHubAppInstallation, SpecialTeam, ISpecialTeam } from '../../entities/organizationSettings/organizationSetting';
 import { IndividualContext } from '../../user';
 import { Operations } from '../../business/operations';
 
@@ -147,12 +147,13 @@ router.post('/:appId/installations/:installationId', asyncHandler(async function
   const hasImportButtonClicked = req.body['adopt-import-settings'];
   const hasCreateButtonClicked = req.body['adopt-new-org'];
   const forceDeleteConfig = req.body['force-delete-config'];
+  const updateConfig = req.body['update'];
   const activate = req.body['activate'];
   const deactivate = req.body['deactivate'];
   const removeConfiguration = req.body['remove-configuration'];
   const addConfiguration = req.body['configure'];
   let isCreatingNew = hasImportButtonClicked || hasCreateButtonClicked;
-  if (!hasImportButtonClicked && !forceDeleteConfig && !hasCreateButtonClicked && !activate && !deactivate && !removeConfiguration && !addConfiguration) {
+  if (!hasImportButtonClicked && !forceDeleteConfig && !hasCreateButtonClicked && !activate && !deactivate && !removeConfiguration && !addConfiguration && !updateConfig) {
     return next(new Error('No supported POST parameters present'));
   }
   const providers = req.app.settings.providers as IProviders;
@@ -201,6 +202,74 @@ router.post('/:appId/installations/:installationId', asyncHandler(async function
       }
       ds.installations = ds.installations.filter(install => install.installationId !== installation.id);
       goUpdate = true;
+    } else if (updateConfig) {
+      const newFeatureFlag = req.body['add-feature-flag'] as string;
+      const changeProperty = req.body['change-property'] as string;
+      if (newFeatureFlag) {
+        if (ds.features.includes(newFeatureFlag)) {
+          throw new Error(`The feature flag ${newFeatureFlag} already is added to this organization`);
+        }
+        const isBang = newFeatureFlag.startsWith('!');
+        if (isBang) {
+          const actualKey = newFeatureFlag.substr(1);
+          ds.features = ds.features.filter(val => val !== actualKey);
+        } else {
+          ds.features.push(newFeatureFlag);
+        }
+        goUpdate = true;
+      } else if (changeProperty) {
+        const i = changeProperty.indexOf(':');
+        if (i < 0) {
+          throw new Error('Must fit format key:value');
+        }
+        const removeTeamMoniker = '!team:';
+        const addTeamMoniker = 'team:';
+        if (changeProperty.startsWith(removeTeamMoniker) || changeProperty.startsWith(addTeamMoniker)) {
+          const isTeamAdd = changeProperty.startsWith(addTeamMoniker);
+          let changeTeamPropertyValue = isTeamAdd ? '+' + changeProperty : changeProperty;
+          changeTeamPropertyValue = changeTeamPropertyValue.substr(removeTeamMoniker.length);
+          const colonIndex = changeTeamPropertyValue.indexOf(':');
+          const teamType = changeTeamPropertyValue.substr(0, colonIndex);
+          const teamId = changeTeamPropertyValue.substr(colonIndex + 1);
+          if (!['systemAdmin', 'systemWrite', 'systemRead', 'sudo'].includes(teamType)) {
+            // explicitly now allowing globalSudo to be set here
+            throw new Error(`Unsupported team type: ${teamType}`);
+          }
+          let specialTeamType: SpecialTeam = null;
+          switch (teamType) {
+            case 'systemAdmin':
+              specialTeamType = SpecialTeam.SystemAdmin;
+              break;
+            case 'systemWrite':
+              specialTeamType = SpecialTeam.SystemWrite;
+              break;
+            case 'systemRead':
+              specialTeamType = SpecialTeam.SystemRead;
+              break;
+            case 'sudo':
+              specialTeamType = SpecialTeam.Sudo;
+              break;
+            // case 'globalSudo':
+              // specialTeamType = SpecialTeam.GlobalSudo;
+              // explicitly now allowing globalSudo to be set here
+              // break;
+            default:
+              throw new Error('Unsupported team type');
+          }
+          ds.specialTeams = ds.specialTeams.filter(notThisTeam => notThisTeam.teamId !== asNumber(teamId));
+          if (isTeamAdd) {
+            ds.specialTeams.push({ teamId: asNumber(teamId), specialTeam: specialTeamType });
+          }
+        }
+        const key = changeProperty.substr(0, i).trim();
+        const value = changeProperty.substr(i + 1).trim();
+        if (value.length) {
+          ds.properties[key] = value;
+        } else {
+          delete ds.properties[key];
+        }
+        goUpdate = true;
+      }
     }
     if (goUpdate) {
       dynamicSettings.updated = new Date();

@@ -5,8 +5,6 @@
 
 /*eslint no-console: ["error", { allow: ["log"] }] */
 
-'use strict';
-
 import _ from 'lodash';
 const debug = require('debug')('restapi');
 const debugCacheOptimization = require('debug')('oss-cache-optimization');
@@ -261,9 +259,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
       throw new Error('The response was undefined and unable to process.');
     }
     if (!response.headers) {
-      console.warn('As of Octokit 15.8.0, responses must have headers on the response');
-      // return Q(false);
-      throw new Error('no response.headers!!!!');
+      throw new Error('As of Octokit 15.8.0, responses must have headers on the response');
     }
     const headers = response.headers;
     let retryAfter = headers['retry-after'];

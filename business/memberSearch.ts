@@ -3,24 +3,31 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import _ from 'lodash';
 
-import async = require('async');
-import Q from 'q';
 import { ICorporateLink } from './corporateLink';
 import { OrganizationMember } from './organizationMember';
 import { ICrossOrganizationMembersResult } from './operations';
+import { IProviders } from '../transitional';
 
 const earlyProfileFetchTypes = new Set(['former', 'active', 'serviceAccount', 'unknownAccount']);
 
 const defaultPageSize = 33; // GitHub.com seems to use a value around 33
+const earlyFetchPageBreak = 200;
+
+interface ICorporateProfile {
+  corporateDisplayName?: string;
+  corporateId?: string;
+  corporateUsername?: string;
+  alias?: string;
+  emailAddress?: string;
+}
 
 export class MemberSearch {
+  #providers: IProviders;
+
   public members: any[];
   public links: ICorporateLink[];
-  public getCorporateProfile: any;
   public teamMembers: any;
   public team2AddType: any;
   public pageSize: number;
@@ -46,7 +53,7 @@ export class MemberSearch {
     }
     translateMembers(this.members, options.isOrganizationScoped, options.links);
     this.links = options.links;
-    this.getCorporateProfile = options.getCorporateProfile;
+    this.#providers = options.providers as IProviders;
     this.teamMembers = options.teamMembers;
     this.team2AddType = options.team2AddType;
 
@@ -56,23 +63,21 @@ export class MemberSearch {
     this.type = options.type;
   }
 
-  search(page, sort?: string) {
-    const self = this;
-    self.page = parseInt(page);
-    self.sort = sort ? sort.charAt(0).toUpperCase() + sort.slice(1) : 'Alphabet';
+  async search(page, sort?: string): Promise<void> {
+    this.page = parseInt(page);
+    this.sort = sort ? sort.charAt(0).toUpperCase() + sort.slice(1) : 'Alphabet';
 
-    return Q.all(
-      self.filterByTeamMembers()
-          .associateLinks()
-          .getCorporateProfilesEarly(self.type)
-          .then(() => {
-            return self.filterByType(self.type)
-                      .filterByPhrase(self.phrase)
-                      .determinePages()['sortBy' + self.sort]()
-                      .getPage(self.page)
-                      .sortOrganizations()
-                      .getCorporateProfiles();
-          }));
+    await this
+      .filterByTeamMembers()
+      .associateLinks()
+      .getCorporateProfilesEarly(this.type);
+    return this
+      .filterByType(this.type)
+      .filterByPhrase(this.phrase)
+      .determinePages()['sortBy' + this.sort]()
+      .getPage(this.page)
+      .sortOrganizations()
+      .getCorporateProfiles();
   }
 
   filterByTeamMembers() {
@@ -96,14 +101,14 @@ export class MemberSearch {
     return this;
   }
 
-  getCorporateProfilesEarly(type) {
+  async getCorporateProfilesEarly(type): Promise<MemberSearch> {
     // This will make a Redis call for every single member, if not cached,
     // so the early mode is only used in a specific type of view this early.
     // The default just resolves for a single page of people.
-    if (!earlyProfileFetchTypes.has(type)) {
-      return Q(this);
+    if (this.pageSize > earlyFetchPageBreak || earlyProfileFetchTypes.has(type)) {
+      return await this.getCorporateProfiles();
     }
-    return this.getCorporateProfiles();
+    return this;
   }
 
   associateLinks() {
@@ -130,17 +135,47 @@ export class MemberSearch {
     return this;
   }
 
-  getCorporateProfiles() {
-    if (this.getCorporateProfile) {
-      const resolveProfiles = [];
-      this.members.forEach(member => {
-        resolveProfiles.push(getProfile(this.type, this.getCorporateProfile, member));
-      });
-      return Q.all(resolveProfiles).then(values => {
-        return Q(this);
-      });
+  async getCorporateProfiles(): Promise<MemberSearch> {
+    if (this.#providers && this.#providers.corporateContactProvider) {
+      const corporateContactProvider = this.#providers.corporateContactProvider;
+      let bulk = new Map();
+      if (this.pageSize > earlyFetchPageBreak) {
+        try {
+          bulk = await corporateContactProvider.getBulkCachedContacts();
+        } catch (bulkReadError) {
+          console.warn(bulkReadError);
+        }
+      }
+      const projectLinkAsCorporateProfile = this.type !== 'former';
+      for (const member of this.members) {
+        if (member.corporate) {
+          continue;
+        }
+        const link = member.link as ICorporateLink;
+        const corporateUsername = link ? link.corporateUsername : null;
+        if (!corporateUsername) {
+          continue;
+        }
+        try {
+          const contacts = bulk.get(corporateUsername) || await corporateContactProvider.lookupContacts(corporateUsername);
+          if (contacts) {
+            const profile: ICorporateProfile = {
+              corporateDisplayName: link?.corporateDisplayName,
+              corporateId: link?.corporateId,
+              corporateUsername: link?.corporateUsername,
+              alias: contacts.alias,
+              emailAddress: contacts.emailAddress,
+            };
+            member.corporate = profile;
+          } else if (projectLinkAsCorporateProfile) {
+            member.corporate = link;
+          }
+        } catch (lookupError) {
+          console.dir(lookupError);
+        }
+      }
     }
-    return Q(this);
+    return this;
   }
 
   determinePages() {
@@ -183,7 +218,7 @@ export class MemberSearch {
       filter = r => { return r.link && r.link.thirdPartyId && r.link.corporateId && !r.link.serviceAccount && r.corporate && r.corporate.userPrincipalName; };
       break;
     case 'serviceAccount':
-      filter = r => { return r.link && r.link.serviceAccount; };
+      filter = r => { return r.link && r.link.isServiceAccount; };
       break;
     }
     if (filter) {
@@ -249,82 +284,9 @@ function translateMembers(members, isOrganizationScoped, optionalLinks) {
   }
 }
 
-function tryGetCorporateProfile(upn, oid, getCorporateProfile, callback) {
-  let profile = null;
-  function getCorporateProfileByMethod(hashKey, field, next) {
-    getCorporateProfile(hashKey, field, hashKey === 'upns' /* JSON */, (error, p) => {
-      if (error) {
-        error = null; // ignore any issue with the specific lookup
-      } else if (p && hashKey !== 'upns') {
-        const newUpn = p;
-        return getCorporateProfileByMethod('upns', newUpn, next);
-      } else if (p) {
-        profile = p;
-        error = true; // shortcut the waterfall
-      }
-      next(error);
-    });
-  }
-  function getByOid(next) {
-    getCorporateProfileByMethod('aadIds', oid, next);
-  }
-  function getByUpn(next) {
-    getCorporateProfileByMethod('upns', upn, next);
-  }
-  function getByUpnWithEmail(next) {
-    getCorporateProfileByMethod('emailAddresses', upn, next);
-  }
-  const tasks = [];
-  if (upn) {
-    tasks.push(getByUpn); // most efficient
-  }
-  if (oid) {
-    tasks.push(getByOid); // most accurate
-  }
-  if (upn) {
-    tasks.push(getByUpnWithEmail); // common fallback
-  }
-  async.waterfall(tasks, () => {
-    return callback(null, profile);
-  });
-}
-
-function getProfile(filterType, getCorporateProfile, member) {
-  const deferred = Q.defer();
-  const projectLinkAsCorporateProfile = filterType !== 'former';
-  const link = member.link as ICorporateLink;
-  const upn = link ? link.corporateUsername : null;
-  const oid = link ? link.corporateId : null;
-  if (!upn && !oid) {
-    deferred.resolve();
-  } else {
-    if (member.corporate) {
-      deferred.resolve(member.corporate);
-    } else {
-      tryGetCorporateProfile(upn, oid, getCorporateProfile, (error, profile) => {
-        if (error) {
-          return deferred.reject(error);
-        }
-        if (!profile && projectLinkAsCorporateProfile) {
-          profile = {
-            preferredName: (member.link as ICorporateLink).corporateUsername,
-            userPrincipalName: upn,
-            aadId: oid,
-          };
-        }
-        if (profile) {
-          member.corporate = profile;
-        }
-        deferred.resolve();
-      });
-    }
-  }
-  return deferred.promise;
-}
-
 function memberMatchesPhrase(member, phrase) {
   const link = member.link as ICorporateLink;
-  let linkIdentity = link ? `${link.corporateUsername} ${link.corporateDisplayName} ${link.thirdPartyUsername} ${link.thirdPartyId} ` : '';
+  let linkIdentity = link ? `${link.corporateUsername} ${link.corporateDisplayName} ${link.corporateId} ${link.thirdPartyUsername} ${link.thirdPartyId} ` : '';
   let accountIdentity = member.login ? member.login.toLowerCase() : member.account.login.toLowerCase();
   let combined = (linkIdentity + accountIdentity).toLowerCase();
   return combined.includes(phrase);

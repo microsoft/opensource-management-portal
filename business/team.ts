@@ -3,11 +3,21 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import * as common from './common';
 
 import { wrapError } from '../utils';
+
+import _ from 'lodash';
+
+import { Organization, OrganizationMembershipState } from './organization';
+import { Operations } from './operations';
+import { ICacheOptions, ICallback, IGetOwnerToken, ICacheOptionsPageLimiter, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IPagedCrossOrganizationCacheOptions } from '../transitional';
+import { TeamMember } from './teamMember';
+import { TeamRepositoryPermission } from './teamRepositoryPermission';
+import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';
+import { TeamJoinApprovalEntity } from '../entities/teamJoinApproval/teamJoinApproval';
+import { Repository } from './repository';
+import { AppPurpose } from '../github';
 
 const teamPrimaryProperties = [
   'id',
@@ -28,18 +38,6 @@ const teamSecondaryProperties = [
   'repositories_url',
 ];
 
-import _ from 'lodash';
-
-import { Organization } from './organization';
-import { Operations } from './operations';
-import { ICacheOptions, ICallback, IGetOwnerToken, ICacheOptionsPageLimiter, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IPagedCrossOrganizationCacheOptions } from '../transitional';
-import { TeamMember } from './teamMember';
-import { TeamRepositoryPermission } from './teamRepositoryPermission';
-import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';
-import { TeamJoinApprovalEntity } from '../entities/teamJoinApproval/teamJoinApproval';
-import { Repository } from './repository';
-import { AppPurpose } from '../github';
-
 export enum GitHubRepositoryType {
   Sources = 'sources',
 }
@@ -54,7 +52,7 @@ export interface IGetTeamRepositoriesOptions extends ICacheOptionsPageLimiter {
 
 export interface ITeamMembershipRoleState {
   role?: GitHubTeamRole;
-  state?: string;
+  state?: OrganizationMembershipState;
 }
 
 export interface IIsMemberOptions extends ICacheOptions {
@@ -80,6 +78,21 @@ export interface ITeamMembershipOptions {
 
 export interface IUpdateTeamMembershipOptions extends ICacheOptions {
   role?: GitHubTeamRole;
+}
+
+interface IGetMembersParameters {
+  team_slug: string;
+  org: string;
+  per_page: number;
+  role?: string;
+  pageLimit?: any;
+}
+
+interface IGetRepositoriesParameters {
+  org: string;
+  team_slug: string;
+  per_page: number;
+  pageLimit?: any;
 }
 
 export class Team {
@@ -200,17 +213,20 @@ export class Team {
       return this._detailsEntity;
     }
     const parameters = {
+      org_id: this.organization.id,
       team_id: id,
     };
     try {
-      const entity = await operations.github.call(this.authorize(AppPurpose.Data), 'teams.get', parameters, cacheOptions);
+      const entity = await operations.github.request(
+        this.authorize(AppPurpose.Data),
+        'GET /organizations/:org_id/team/:team_id', parameters, cacheOptions);
       this._detailsEntity = entity;
       // TODO: move beyond setting with this approach
       common.assignKnownFieldsPrefixed(this, entity, 'team', teamPrimaryProperties, teamSecondaryProperties);
       return entity;
     } catch (error) {
       if (error.status && error.status === 404) {
-        error = new Error(`The GitHub team ID ${id} could not be found or has been deleted`);
+        error = new Error(`The GitHub team ID ${id} could not be found`);
         error.status = 404;
         throw error;
       }
@@ -238,52 +254,59 @@ export class Team {
     const operations = this._operations;
     const github = operations.github;
     const parameters = {
+      org_id: this.organization.id,
       team_id: this._id,
     };
-    return github.post(this.authorize(AppPurpose.Operations), 'teams.delete', parameters);
+    // alternate of teams.deleteInOrg
+    return github.requestAsPost(this.authorize(AppPurpose.Operations), 'DELETE /organizations/:org_id/team/:team_id', parameters);
   }
 
   edit(patch: unknown): Promise<void> {
     const operations = this._operations;
     const github = operations.github;
     const parameters = {
+      org_id: this.organization.id,
       team_id: this._id,
     };
-    Object.assign(parameters, patch);
-    delete parameters.team_id; // do not allow patch to have team_id
-    delete parameters['id']; // // do not allow patch to have id
-    return github.post(this.authorize(AppPurpose.Operations), 'teams.update', parameters);
+    Object.assign({}, patch, parameters);
+    // alternate of teams.editInOrg
+    return github.requestAsPost(this.authorize(AppPurpose.Operations), 'PATCH /organizations/:org_id/team/:team_id', parameters);
   }
 
   removeMembership(username: string): Promise<void> {
     const operations = this._operations;
     const github = operations.github;
     const parameters = {
+      org_id: this.organization.id,
       team_id: this._id,
       username: username,
     };
-    return github.post(this.authorize(AppPurpose.Operations), 'teams.removeMembership', parameters);
+    return github.requestAsPost(this.authorize(AppPurpose.Operations), 'DELETE /organizations/:org_id/team/:team_id/memberships/:username', parameters);
   }
 
-  addMembership(username: string, options?: IUpdateTeamMembershipOptions): Promise<void> {
+  async addMembership(username: string, options?: IUpdateTeamMembershipOptions): Promise<any> {
     const operations = this._operations;
     const github = operations.github;
     options = options || {};
     const role = options.role || GitHubTeamRole.Member;
+    if (!this.slug) {
+      await this.getDetails();
+    }
     const parameters = {
-      team_id: this._id,
+      org: this.organization.name,
+      team_slug: this.slug,
       username,
       role,
     };
-    return github.post(this.authorize(AppPurpose.CustomerFacing), 'teams.addOrUpdateMembership', parameters);
+    const ok = await github.post(this.authorize(AppPurpose.CustomerFacing), 'teams.addOrUpdateMembershipInOrg', parameters);
+    return ok;
   }
 
   addMaintainer(username: string): Promise<void> {
     return this.addMembership(username, { role: GitHubTeamRole.Maintainer });
   }
 
-  async getMembership(username: string, options: ICacheOptions): Promise<any> {
-    // TODO: proper return type for the GitHub entity. is it 'role' or?
+  async getMembership(username: string, options: ICacheOptions): Promise<ITeamMembershipRoleState | boolean> {
     const operations = this._operations;
     options = options || {};
     if (!options.maxAgeSeconds) {
@@ -296,11 +319,16 @@ export class Team {
       options.backgroundRefresh = false;
     }
     const parameters = {
+      org_id: this.organization.id,
       team_id: this._id,
       username,
     };
     try {
-      const result = await operations.github.post(this.authorize(AppPurpose.CustomerFacing), 'teams.getMembership', parameters);
+      const result = await operations.github.request(
+        this.authorize(AppPurpose.CustomerFacing),
+        'GET /organizations/:org_id/team/:team_id/memberships/:username',
+        parameters,
+        options);
       return result;
     } catch (error) {
       if (error.status == /* loose */ 404) {
@@ -318,7 +346,7 @@ export class Team {
     }
   }
 
-  async getMembershipEfficiently(username: string, options?: IIsMemberOptions): Promise<ITeamMembershipRoleState> {
+  async getMembershipEfficiently(username: string, options?: IIsMemberOptions): Promise<ITeamMembershipRoleState | boolean> {
     // Hybrid calls are used to check for membership. Since there is
     // often a relatively fresh cache available of all of the members
     // of a team, that data source is used first to avoid a unique
@@ -333,22 +361,27 @@ export class Team {
     }
     const isMaintainer = await this.isMaintainer(username, options);
     if (isMaintainer) {
-      return { role: GitHubTeamRole.Maintainer };
+      return {
+        role: GitHubTeamRole.Maintainer,
+        state: OrganizationMembershipState.Active,
+      };
     }
     const isMember = await this.isMember(username);
     if (isMember) {
-      return { role: GitHubTeamRole.Member };
+      return {
+        role: GitHubTeamRole.Member,
+        state: OrganizationMembershipState.Active,
+      };
     }
     // Fallback to the standard membership lookup
     const membershipOptions = {
       maxAgeSeconds: operations.defaults.orgMembershipDirectStaleSeconds,
     };
     const result = await this.getMembership(username, membershipOptions);
-    // TODO: used to respond with result.role, result.state. Is state used anywhere?
-    if (!result || !result.role) {
-      return result;
+    if (result === false || (result as ITeamMembershipRoleState).role) {
+      return false;
     }
-    return { role: result.role, state: result.state };
+    return result;
   }
 
   async isMaintainer(username: string, options?: ICacheOptions): Promise<boolean> {
@@ -393,8 +426,13 @@ export class Team {
     options = options || {};
     const operations = this._operations;
     const github = operations.github;
+    if (!this.slug) {
+      console.log('WARN: team.getMembers had to slowly retrieve a slug to perform the call');
+      await this.getDetails(); // octokit rest v17 requires slug or custom endpoint requests
+    }
     const parameters: IGetMembersParameters = {
-      team_id: this.id,
+      team_slug: this.slug,
+      org: this.organization.name,
       per_page: operations.defaultPageSize,
     };
     const caching: IPagedCacheOptions = {
@@ -425,8 +463,13 @@ export class Team {
     if (customTypeFilteringParameter && customTypeFilteringParameter !== GitHubRepositoryType.Sources) {
       throw new Error(`Custom \'type\' parameter is specified, but at this time only \'sources\' is a valid enum value. Value: ${customTypeFilteringParameter}`);
     }
+    if (!this.slug) {
+      console.log('WARN: had to request team.slug slowly');
+      await this.getDetails();
+    }
     const parameters: IGetRepositoriesParameters = {
-      team_id: this._id,
+      org: this.organization.name,
+      team_slug: this.slug,
       per_page: operations.defaultPageSize,
     };
     const caching: IPagedCacheOptions = {
@@ -506,38 +549,6 @@ export class Team {
     const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as IGetAuthorizationHeader;
     return getAuthorizationHeader;
   }
-
-  // COMMENTED OUT: this interfaced is used by the commented out function below
-  // interface ICheckRepositoryPermissionParameters {
-  //   team_id: string;
-  //   owner: string;
-  //   repo: string;
-  //   headers?: any;
-  // }
-  // COMMENTED OUT: this function is no longer used
-  // async checkRepositoryPermission(repositoryName: string, options?: ICheckRepositoryPermissionOptions): Promise<any> {
-  //   options = options || {};
-  //   let operations = this._operations;
-  //   let github = operations.github;
-  //   const organizationName = options.organizationName || this.organization.name;
-  //   const parameters: ICheckRepositoryPermissionParameters = {
-  //     team_id: this._id,
-  //     owner: organizationName,
-  //     repo: repositoryName,
-  //   };
-  //   const cacheOptions: ICacheOptions = {
-  //     maxAgeSeconds: options.maxAgeSeconds || operations.defaults.teamRepositoryPermissionStaleSeconds,
-  //   };
-  //   if (options.backgroundRefresh !== undefined) {
-  //     cacheOptions.backgroundRefresh = options.backgroundRefresh;
-  //   }
-  //   parameters.headers = {
-  //     // Alternative response for additional information, including the permission level
-  //     'Accept': 'application/vnd.github.v3.repository+json',
-  //   };
-  //   const details = await github.call(this.authorize(AppPurpose.Data), 'teams.checkManagesRepo', parameters, cacheOptions);
-  //   return details && details.permissions ? details.permissions : null;
-  // }
 }
 
 async function resolveDirectLinks(people: TeamMember[]): Promise<TeamMember[]> {
@@ -555,17 +566,4 @@ function repositoryFromEntity(entity) {
     entity,
     this._operations);
   return instance;
-}
-
-interface IGetMembersParameters {
-  team_id: number;
-  per_page: number;
-  role?: string;
-  pageLimit?: any;
-}
-
-interface IGetRepositoriesParameters {
-  team_id: number;
-  per_page: number;
-  pageLimit?: any;
 }

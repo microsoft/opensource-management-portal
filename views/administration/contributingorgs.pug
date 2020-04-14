@@ -1,0 +1,28 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block content
+  .container
+    .row
+      .col-md-3.col-lg-3
+        include ./menu
+      .col-md-7.col-lg-7
+        div.container
+
+          h2 Contributions to orgs
+          p Based on recent contributions, linked members have contributed to these organizations.
+
+          ul.list
+            each name in names
+              if name
+                - var isOfficial = officialNames.has(name.toLowerCase())
+                li
+                  if isOfficial
+                    strong= name
+                    = ' (company official organization)'
+                  else
+                    a(href='https://github.com/' + name, target='_new')= name

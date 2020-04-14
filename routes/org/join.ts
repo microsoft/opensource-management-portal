@@ -16,6 +16,7 @@ import { storeOriginalUrlAsReferrer, wrapError } from '../../utils';
 import { Organization, OrganizationMembershipState, OrganizationMembershipRole } from '../../business/organization';
 import { Operations } from '../../business/operations';
 import QueryCache from '../../business/queryCache';
+import RequireActiveGitHubSession from '../../middleware/github/requireActiveSession';
 
 router.use(function (req: ReposAppRequest, res, next) {
   const organization = req.organization;
@@ -27,6 +28,8 @@ router.use(function (req: ReposAppRequest, res, next) {
   }
   next(err);
 });
+
+router.use(RequireActiveGitHubSession);
 
 function clearAuditListAndRedirect(res: express.Response, organization: Organization, onboarding: boolean) {
   // Behavior change, only important to those not using GitHub's 2FA enforcement feature; no longer clearing the cache
@@ -45,7 +48,6 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res: express.
   const link = req.individualContext.link;
   const userIncreasedScopeToken = req.individualContext.webContext.tokens.gitHubWriteOrganizationToken;
   let onboarding = req.query.onboarding;
-  const supportsExpressJoinExperience = operations.supportsAcceptingOrganizationInvitationsUserToServer;
   let showTwoFactorWarning = false;
   let showApplicationPermissionWarning = false;
   let writeOrgFailureMessage = null;
@@ -54,7 +56,7 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res: express.
   if (state === OrganizationMembershipState.Active) {
     await addMemberToOrganizationCache(providers.queryCache, organization, id);
     return clearAuditListAndRedirect(res, organization, onboarding);
-  } else if (state === 'pending' && userIncreasedScopeToken && supportsExpressJoinExperience) {
+  } else if (state === 'pending' && userIncreasedScopeToken) {
     let updatedState;
     try {
       updatedState = await organization.acceptOrganizationInvitation(userIncreasedScopeToken);
@@ -86,7 +88,7 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res: express.
     state: {
       result,
       state,
-      supportsExpressJoinExperience,
+      supportsExpressJoinExperience: true,
       hasIncreasedScope: userIncreasedScopeToken ? true : false,
       organization,
       orgAccount: userDetails,
@@ -114,9 +116,6 @@ async function addMemberToOrganizationCache(queryCache: QueryCache, organization
 
 router.get('/express', asyncHandler(async function (req: ReposAppRequest, res: express.Response, next: express.NextFunction) {
   const providers = req.app.settings.providers as IProviders;
-  if (!providers.operations.supportsAcceptingOrganizationInvitationsUserToServer) {
-    return next(new Error('As configured, this application does not support express join operations and a manual invitation must be sent instead'));
-  }
   const organization = req.organization;
   const onboarding = req.query.onboarding as boolean;
   const username = req.individualContext.getGitHubIdentity().username;
@@ -146,11 +145,12 @@ async function joinOrg(req: ReposAppRequest, res: express.Response, next: expres
 }
 
 async function joinOrganization(individualContext: IndividualContext, organization: Organization, insights, isOnboarding: boolean): Promise<any> {
-  const invitationTeam = organization.invitationTeam as Team;
+  let invitationTeam = organization.invitationTeam as Team;
   const username = individualContext.getGitHubIdentity().username;
   if (!username) {
     throw new Error('A GitHub username was not found in the user\'s link.');
   }
+  // invitationTeam = null; // xxx
   let joinResult = null;
   try {
     joinResult = invitationTeam ? await invitationTeam.addMembership(username, null) : await organization.addMembership(username, null);

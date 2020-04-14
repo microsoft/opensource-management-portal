@@ -1,0 +1,92 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends layout
+
+block content
+  - var moment = viewServices.moment
+
+  .container
+    h1
+      | Undo
+      | &nbsp;
+      small: span.label.label-default self-service
+
+    p.
+      Accidents happen. This page lists recent actions that you took on GitHub
+      that may have removed your ability to administer repositories or teams.
+
+    p: strong THIS IS A PILOT. Please let #[a(href='mailto:opensource@microsoft.com') opensource@microsoft.com] know about your experience and if this helps you recover your situation.
+
+    if !undoOperations || undoOperations.length === 0
+      p: string There are no undo operations to review for your account at this time.
+
+    else
+      p If you'd like to undo an event, please select it and hit next to continue.
+
+      each entry in undoOperations
+        - var operation = entry.operation
+
+        if entry !== undoOperations[0]
+          hr
+
+        if !entry.supported || !operation || !operation.recordId
+          if entry.notSupportedMessage
+            p= entry.notSupportedMessage
+          else
+            p
+              | An action of type #[strong=(operation && operation.action ? operation && operation.action : 'UNKNOWN')] was discovered, but this type of action is not currently supported by this app.
+              small Feel free to contact support for this site for more information.
+
+          //- for debugging and development purposes only...
+          pre= JSON.stringify(entry, undefined, 2)
+
+        else
+          form(method='post')
+            input(type='hidden', name='id', value=operation.recordId)
+            if entry.title
+              h2= entry.title
+            else
+              h2 GitHub event
+
+            ul.list-unstyled
+
+              if operation.created
+                li: h5 OPERATION TIME
+                li= moment(operation.created).format('dddd, MMMM Do YYYY, h:mm:ss a')
+
+              if entry.eventDescription
+                li: h5 CHANGE DESCRIPTION
+                li= entry.eventDescription
+
+              if entry.undoDescription
+                li: h5 UNDO ACTION
+                li= entry.undoDescription
+
+              if operation.actorUsername
+                li: h5 GITHUB ACCOUNT THAT PERFORMED THIS EVENT
+                li: a(href='https://github.com/' + operation.actorUsername, target='_new')= operation.actorUsername
+
+              if operation.organizationName
+                li: h5 GITHUB ORGANIZATION
+                li= operation.organizationName
+
+              if operation.repositoryName
+                li: h5 IMPACTED REPOSITORY
+                li= operation.repositoryName
+
+              if operation.teamName
+                li: h5 IMPACTED TEAM
+                li= operation.teamName
+
+              if operation.actorCorporateUsername
+                li: h5 LINKED CORPORATE ACCOUNT THAT CONTROLS THIS GITHUB ACCOUNT
+                li= operation.actorCorporateUsername
+
+              li: h5 EVENT ID
+              li= operation.recordId
+
+
+              p: input.btn.btn-primary(type='submit', value='Undo operation')

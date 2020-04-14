@@ -1,5 +1,5 @@
 //-
-//- Copyright (c) Microsoft. All rights reserved.
+//- Copyright (c) Microsoft.
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
@@ -75,8 +75,8 @@ block content
 
   //- Variables
   - var githubUrl = 'https://github.com/' + repo.full_name
-  - var cloneUrl = repo.clone_url || repo.otherFields.clone_url
-  - var sshUrl = repo.ssh_url || repo.otherFields.ssh_url
+  - var cloneUrl = repo.clone_url
+  - var sshUrl = repo.ssh_url
   - var admin = repoPermissions && repoPermissions.allowAdministration
 
   .container
@@ -127,6 +127,13 @@ block content
                 +teamsList(permissions.admin)
               else
                 p.text-danger This repository has no admin teams defined.
+              div.alert.alert-gray(style='margin-top:16px')
+                p
+                  strong Have you lost admin access?
+                  br
+                  | The GitHub user interface can make accidental downgrade of admin access for a team a little too easy.
+                p Please try visiting #[a(href='/undo') the permission "undo" page] before contact #{config.brand.companyName} GitHub administrators for support. 
+              
     if teamBasedPermissions
       .row: .col-md-12: h2 Users granted permissions by teams
       .row

@@ -6,6 +6,8 @@
 'use strict';
 
 import express = require('express');
+import asyncHandler from 'express-async-handler';
+
 import { ReposAppRequest } from '../../../transitional';
 import { jsonError } from '../../../middleware/jsonError';
 import { ICorporateLink } from '../../../business/corporateLink';
@@ -29,21 +31,21 @@ router.use(function (req: ILinksApiRequestWithUnlink, res, next) {
   return next();
 });
 
-router.use('/github/id/:id', (req: ILinksApiRequestWithUnlink, res, next) => {
+router.use('/github/id/:id', asyncHandler(async (req: ILinksApiRequestWithUnlink, res, next) => {
   const id = req.params.id;
 
   const operations = req.app.settings.operations as Operations;
-  return operations.linkProvider.getByThirdPartyId(id, (error, link) => {
-    if (!link && !error) {
-      error = new Error(`Could not locate a link for GitHub user ID ${id}`);
-    }
-    if (error) {
-      return next(jsonError(error));
+  try {
+    const link = await operations.linkProvider.getByThirdPartyId(id);
+    if (!link) {
+      throw new Error(`Could not locate a link for GitHub user ID ${id}`);
     }
     req.unlink = link;
     return next();
-  });
-});
+  } catch (error) {
+    return next(jsonError(error));
+  }
+}));
 
 router.use('*', (req: ILinksApiRequestWithUnlink, res, next) => {
   return next(req.unlink ? undefined : jsonError('No link available for operation', 404));

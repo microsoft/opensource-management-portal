@@ -220,7 +220,6 @@ block content
           each repo in search.repos
             - var repoOrgName = repo.organization.name
             - var localOrgName = organization ? organization.name : repoOrgName
-
             .repo(id=repo.name, style='padding-bottom:36px;display:block')
               h3
                 if showIds
@@ -237,6 +236,11 @@ block content
                     .label.label-warning.shrink66(title='The ' + specificTeam.name + ' team grants permission to commit directly to the repo and accept pull requests') Write
                   else if repo.permissions.pull
                     .label.label-success.shrink66(title='The ' + specificTeam.name + ' team grants permission to clone/read/see the repo') Read
+              if repo.fork
+                p: small
+                  | Forked&nbsp;
+                  if repo.parent
+                    | from #[a(href='https://github.com/' + repo.parent.full_name, target='_new')= repo.parent.full_name]
               if repo.description
                 p=repo.description
               small

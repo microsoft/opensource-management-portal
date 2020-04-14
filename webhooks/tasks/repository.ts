@@ -21,17 +21,20 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
   async run(operations: Operations, organization: Organization, data: any): Promise<boolean> {
     const event = data.body;
     const queryCache = operations.providers.queryCache;
-    const immediateRefreshOptions = {
-      backgroundRefresh: false,
-      maxAgeSeconds: 0.01,
-    };
     let update = false;
     let addOrUpdateRepositoryQueryCache = false;
-    if (event.action === 'created') {
-      console.log(`repo created: ${event.repository.full_name} ${event.repository.private === 'private' ? 'private' : 'public'} by ${event.sender.login}`);
+    let isNewOrTransferred = false;
+    let transferSourceLogin: string = null;
+    const action = event.action;
+    if (action === 'created' || action === 'transferred') {
+      console.log(`repo ${action}: ${event.repository.full_name} ${event.repository.private === 'private' ? 'private' : 'public'} by ${event.sender.login}`);
       addOrUpdateRepositoryQueryCache = true;
+      isNewOrTransferred = true;
       update = true;
-    } else if (event.action === 'deleted') {
+      if (action === 'transferred') {
+        transferSourceLogin = (event?.changes?.owner?.from?.user?.login) || (event?.changes?.owner?.from?.organization?.login);
+      }
+    } else if (action === 'deleted') {
       console.log(`repo DELETED: ${event.repository.full_name} ${event.repository.private === 'private' ? 'private' : 'public'} by ${event.sender.login}`);
       update = true;
       const repositoryIdAsString = event.repository.id.toString();
@@ -44,21 +47,21 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
       } catch (queryCacheError) {
         console.dir(queryCacheError);
       }
-    } else if (event.action === 'publicized') {
+    } else if (action === 'publicized') {
       console.log('a repo went public!');
       addOrUpdateRepositoryQueryCache = true;
-    } else if (event.action === 'privatized') {
+    } else if (action === 'privatized') {
       addOrUpdateRepositoryQueryCache = true;
-    } else if (event.action === 'edited') {
+    } else if (action === 'edited') {
       addOrUpdateRepositoryQueryCache = true;
-    } else if (event.action === 'renamed') {
+    } else if (action === 'renamed') {
       addOrUpdateRepositoryQueryCache = true;
-    } else if (event.action === 'archived') {
+    } else if (action === 'archived') {
       addOrUpdateRepositoryQueryCache = true;
-    } else if (event.action === 'unarchived') {
+    } else if (action === 'unarchived') {
       addOrUpdateRepositoryQueryCache = true;
     } else {
-      console.log(`repository event not being intercepted: ${event.action}`);
+      console.log(`repository event not being intercepted: ${action}`);
     }
     if (addOrUpdateRepositoryQueryCache) {
       const repositoryIdAsString = event.repository.id.toString();
@@ -87,15 +90,15 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
       //   });
       // });
     }
-    if (event.action === 'created' && event.sender.login && event.sender.id && organization.isNewRepositoryLockdownSystemEnabled()) {
+    if (isNewOrTransferred && event.sender.login && event.sender.id && organization.isNewRepositoryLockdownSystemEnabled()) {
       try {
         const repository = organization.repository(event.repository.name, event.repository);
         const repositoryMetadataProvider = operations.providers.repositoryMetadataProvider;
         const lockdownSystem = new NewRepositoryLockdownSystem({ operations, organization, repository, repositoryMetadataProvider });
-        const wasLockedDown = await lockdownSystem.lockdownIfNecessary(event.sender.login, event.sender.id);
+        const wasLockedDown = await lockdownSystem.lockdownIfNecessary(action, event.sender.login, event.sender.id, transferSourceLogin);
         console.log(wasLockedDown ?
-          `${organization.name} uses the new repository lockdown system and the new ${repository.name} repository created by ${event.sender.login} was LOCKED DOWN` :
-          `No lockdown on new repository ${repository.name}, created by ${event.sender.login}, even though the organization ${organization.name} supports and has enabled the system`);
+          `${organization.name} uses the new repository lockdown system and the new ${repository.name} repository ${action} by ${event.sender.login} was locked down` :
+          `No lockdown on new repository ${repository.name}, ${action} by ${event.sender.login}, even though the organization ${organization.name} supports and has enabled the system`);
       } catch (lockdownSystemError) {
         console.warn('lockdownSystemError:');
         console.dir(lockdownSystemError);

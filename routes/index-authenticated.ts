@@ -13,7 +13,7 @@ import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
 import { ReposAppRequest, IProviders } from '../transitional';
-import { addLinkToRequest, RequireLinkMatchesGitHubSession } from '../middleware/links/';
+import { AddLinkToRequest, RequireLinkMatchesGitHubSession } from '../middleware/links/';
 import { requireAuthenticatedUserOrSignIn, setIdentity } from '../middleware/business/authentication';
 import QueryCache from '../business/queryCache';
 import { Organization } from '../business/organization';
@@ -30,7 +30,7 @@ router.use(requireAuthenticatedUserOrSignIn);
 // - - - Middleware: set the identities we have authenticated  - - -
 router.use(setIdentity);
 // - - - Middleware: resolve whether the corporate user has a link - - -
-router.use(addLinkToRequest);
+router.use(asyncHandler(AddLinkToRequest));
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 router.use('/placeholder', placeholdersRoute);
@@ -41,6 +41,18 @@ router.use('/releases', releasesSpa);
 
 // Link cleanups and check their signed-in username vs their link
 router.use(RequireLinkMatchesGitHubSession);
+
+router.get('/news', (req: ReposAppRequest, res, next) => {
+  const config = req.app.settings.runtimeConfig;
+  if (config && config.news && config.news.all && config.news.all.length) {
+    return req.individualContext.webContext.render({
+      view: 'news',
+      title: 'What\'s New',
+    });
+  } else {
+    return next(); // only attach this route if there are any static stories
+  }
+});
 
 // Dual-purpose homepage: if not linked, welcome; otherwise, show things
 router.get('/', function (req: ReposAppRequest, res, next) {

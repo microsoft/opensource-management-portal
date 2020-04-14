@@ -8,7 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const debug = require('debug')('oss-initialize');
+const debug = require('debug')('startup');
 
 const pkg = require('../package.json');
 

@@ -23,12 +23,7 @@
 //
 //-----------------------------------------------------------------------------
 
-import async = require('async');
-const emailRender = require('../../lib/emailRender');
 const RepoWorkflowEngine = require('./RepoWorkflowEngine.js');
-import express = require('express');
-import { ReposAppRequest } from '../../transitional';
-const router = express.Router();
 
 //-----------------------------------------------------------------------------
 //

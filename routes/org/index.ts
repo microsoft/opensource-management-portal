@@ -3,19 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
-
-import async from 'async';
 
 import { ReposAppRequest, IProviders } from '../../transitional';
 import { Team } from '../../business/team';
 import { IRequestOrganizationPermissions, AddOrganizationPermissionsToRequest } from '../../middleware/github/orgPermissions';
 import { OrganizationMembershipState } from '../../business/organization';
-import { asNumber } from '../../utils';
 import { IAggregateUserSummary } from '../../user/aggregate';
 import { TeamJoinApprovalEntity } from '../../entities/teamJoinApproval/teamJoinApproval';
 
@@ -62,7 +57,10 @@ router.use('/people', peopleRoute);
 router.use('/teams', teamsRoute);
 
 // Org membership requirement middleware
-router.use(asyncHandler(AddOrganizationPermissionsToRequest), asyncHandler(async (req: ILocalOrgRequest, res, next) => {
+router.use(asyncHandler(AddOrganizationPermissionsToRequest));
+
+router.use(asyncHandler(async (req: ILocalOrgRequest, res, next) => {
+  console.log('---------------------------------------------------- xxx');
   const organization = req.organization;
   const orgPermissions = req.orgPermissions;
   if (!orgPermissions) {
@@ -112,12 +110,14 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
     results.teamsMaintainedHash = teamsMaintainedHash;
     results.pendingApprovals = await approvalProvider.queryPendingApprovalsForTeams(teamsMaintained.map(team => team.id.toString()));
   }
+  let organizationEntity = results && results.orgUser ? results.orgUser.getEntity() : null;
   req.individualContext.webContext.render({
     view: 'org/index',
     title: organization.name,
     state: {
       accountInfo: results,
       organization,
+      organizationEntity,
     },
   });
 }));
@@ -131,5 +131,18 @@ router.use('/new-repo', (req: ReposAppRequest, res) => {
   res.redirect(organization.baseUrl + 'wizard');
 });
 router.use('/wizard', newRepoSpa);
+
+router.use('/:repoName', asyncHandler(async (req: ReposAppRequest, res, next) => {
+  const repoName = req.params.repoName;
+  const organization = req.organization;
+  const attemptedRepository = organization.repository(repoName);
+  try {
+    const details = await attemptedRepository.getDetails();
+    const correctUrl = `${organization.baseUrl}repos/${details.name}`;
+    return res.redirect(correctUrl);
+  } catch (error) {
+    return next();
+  }
+}));
 
 module.exports = router;

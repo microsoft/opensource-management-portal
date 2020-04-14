@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import * as common from './common';
 import { Operations } from "./operations";
 import { Team } from "./team";
@@ -87,6 +85,10 @@ export class TeamMember {
     return this._link ? this._link.corporateUsername : undefined;
   }
 
+  get mailAddress() {
+    return this._mailAddress;
+  }
+
   async getMailAddress(): Promise<string> {
     if (this._mailAddress) {
       return this._mailAddress;
@@ -100,7 +102,7 @@ export class TeamMember {
     if (!providers.mailAddressProvider) {
       throw new Error('No mailAddressProvider is available in this application instance');
     }
-    const mailAddress = await GetAddressFromUpnAsync(providers.mailAddressProvider, link.corporateUsername);
+    const mailAddress = link ? await GetAddressFromUpnAsync(providers.mailAddressProvider, link.corporateUsername) : null;
     this._mailAddress = mailAddress;
     return mailAddress;
   }

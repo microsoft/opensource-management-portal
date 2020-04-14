@@ -21,11 +21,6 @@ interface IInstallationToken {
   headerValue: string;
 }
 
-enum TokenValidity {
-  Valid,
-  Invalid,
-}
-
 export class GitHubAppTokens {
   public purpose: AppPurpose;
 
@@ -37,8 +32,12 @@ export class GitHubAppTokens {
     return new GitHubAppTokens(purpose, friendlyName, applicationId, keyContents);
   }
 
+  static CreateFromString(purpose: AppPurpose, friendlyName: string, applicationId: number, value: string): GitHubAppTokens {
+    return new GitHubAppTokens(purpose, friendlyName, applicationId, value);
+  }
+
   constructor(purpose: AppPurpose, public friendlyName: string, applicationId: number, privateKey: string) {
-    this._app = new GitHubApp({ id: applicationId, privateKey });
+    this._app = new GitHubApp({ id: applicationId, privateKey, cache: alwaysEmptyCache() });
     this.purpose = purpose;
   }
 
@@ -78,11 +77,12 @@ export class GitHubAppTokens {
   }
 
   private getLatestValidToken(installationId: number, timeTokenMustBeValid: Date): IInstallationToken {
-    let tokens = this
-      .getInstallationTokens(installationId)
-      .filter(tokenValidFilter.bind(null, TokenValidity.Valid,timeTokenMustBeValid ))
-      .sort(sortByLatestToken);
-    this.replaceInstallationTokens(installationId, tokens);
+    let tokens = this.getInstallationTokens(installationId);
+    const count = tokens.length;
+    tokens = tokens.filter(tokenValidFilter.bind(null, timeTokenMustBeValid )).sort(sortByLatestToken);
+    if (tokens.length !== count) {
+      this.replaceInstallationTokens(installationId, tokens);  
+    }
     return tokens.length > 0 ? tokens[0] : null;
   }
 
@@ -109,12 +109,21 @@ function sortByLatestToken(a: IInstallationToken, b: IInstallationToken) {
   return 0;
 }
 
-function tokenValidFilter(validity: TokenValidity, timeTokenMustBeValid: Date, token: IInstallationToken) {
+function tokenValidFilter(timeTokenMustBeValid: Date, token: IInstallationToken) {
   const isValid = token.expires > timeTokenMustBeValid;
   if (!isValid) {
-    // TEMP
-    console.log(`invalid or expired token`);
+    console.log(`invalid or expired token being removed: expires=${token.expires} install_id=${token.installationId} org=${token.organizationName}`);
+    return false;
   }
-  const expected = validity === TokenValidity.Valid;
-  return expected === isValid;
+  return true;
+}
+
+function alwaysEmptyCache() {
+  return {
+    get: function() {
+      return null;
+    },
+    set: function () {
+    },
+  };
 }

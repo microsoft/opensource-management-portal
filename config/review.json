@@ -1,0 +1,4 @@
+{
+  "aadAppIdUri": "env://REVIEW_SERVICE_AAD_APP_ID_URI",
+  "serviceUrl": "env://REVIEW_SERVICE_URL"
+}

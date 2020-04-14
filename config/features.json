@@ -1,3 +1,6 @@
 {
-  "allowUnauthorizedNewRepositoryLockdownSystem": "env://FEATURE_FLAG_ALLOW_UNAUTHORIZED_NEW_REPOSITORY_LOCKDOWN_SYSTEM?trueIf=1"
+  "allowUnauthorizedNewRepositoryLockdownSystem": "env://FEATURE_FLAG_ALLOW_UNAUTHORIZED_NEW_REPOSITORY_LOCKDOWN_SYSTEM?trueIf=1",
+  "allowUnauthorizedForkLockdownSystem": "env://FEATURE_FLAG_ALLOW_UNAUTHORIZED_FORK_LOCKDOWN_SYSTEM?trueIf=1",
+  "allowUnauthorizedTransferLockdownSystem": "env://FEATURE_FLAG_ALLOW_UNAUTHORIZED_TRANSFER_LOCKDOWN_SYSTEM?trueIf=1",
+  "allowUndoSystem": "env://FEATURE_FLAG_ALLOW_UNDO_SYSTEM?trueIf=1"
 }

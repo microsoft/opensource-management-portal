@@ -1,6 +1,7 @@
 {
   "appId": "env://GITHUB_APP_OPERATIONS_APP_ID",
   "appKey": "env://GITHUB_APP_OPERATIONS_KEY",
+  "appKeyFile": "env://GITHUB_APP_OPERATIONS_KEY_FILE",
   "webhookSecret": "",
   "slug": "env://GITHUB_APP_OPERATIONS_SLUG",
   "description": "GitHub Operations"

@@ -1,0 +1,67 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends email
+
+block content
+
+  if isMailToCreator
+    p.
+      Hi,#[br]
+      Your GitHub repository has been approved by an administrator and is almost ready. Please complete the setup wizard for the #{lockdownMailContent.repository.name} repo to configure permissions and other settings.
+
+    if lockdownMailContent.repository && lockdownMailContent.repository.private
+      p
+        strong PRIVATE REPO NOTE:
+        br
+        | The repository is private. Your access to the repository will be restored once you complete the repository setup wizard. Until then you will see a 404 Not Found HTTP error message.
+
+    h3 Gain access to the repo
+    p
+      a(href=lockdownMailContent.linkToClassifyRepository, target='_new', style='font-size: 36px') Finish setting up #{lockdownMailContent.repository.name}
+      br
+      small
+        | Direct setup wizard link:&nbsp;
+        a(href=lockdownMailContent.linkToClassifyRepository, target='_new', style='font-size: 10px')= lockdownMailContent.linkToClassifyRepository
+
+    if lockdownMailContent.repository && lockdownMailContent.repository.fork
+      h3 Legal Considerations
+      p Legal issues often arise out of forked projects. In the general case:
+      ul
+        li
+          strong Licensing.
+          | Do not remove any copyright headers or license information. Do not change the license from the forked project without the permission of #[a(href='mailto:OSSStandardsLegal@service.microsoft.com') OSS CELA].
+        li
+          strong Modifications.
+          | If you are modifying the project, follow our #[a(href='https://docs.opensource.microsoft.com/content/index.html') register] workflow for business/CELA approval.
+        li
+          strong Making a Fork Microsoft's.
+          | If you are making a "hard" fork that you plan on supporting as its own Microsoft project, follow our #[a(href='https://docs.opensource.microsoft.com/content/releasing/index.html') release] workflow for business/CELA approval.
+          ul: li
+            strong Note:
+            | the exception to this workflow for a fork is that the license must remain the same as the upstream fork. Contact #[a(href='mailto:OSSStandardsLegal@service.microsoft.com') OSS CELA] with questions.
+        li
+          strong Trademarks.
+          | If you are making a "hard" fork of the project, there could be trademark implications around the continued use of the upstream project name. Contact #[a(href='mailto:OSSStandardsLegal@service.microsoft.com') OSS CELA] to discuss.
+
+  else if isMailToOperations
+    h3 Repo approved by an administrator
+    if lockdownMailContent.mailAddress
+      p
+        | Mail address of the user that created the repo:&nbsp;
+        a(href='mailto:' + lockdownMailContent.mailAddress)= lockdownMailContent.mailAddress
+    else
+      p: strong An e-mail was NOT sent. No e-mail address was available for the username.
+
+    h4 Repository
+    p
+      a(href='https://github.com/' + lockdownMailContent.organization.name + '/' + lockdownMailContent.repository.name)= 'https://github.com/' + lockdownMailContent.organization.name + '/' + lockdownMailContent.repository.name
+      if lockdownMailContent.repository.private
+        br
+        | WARNING: This is a private repository
+
+    if lockdownMailContent.repository && lockdownMailContent.repository.fork
+      h3 FORK
+      p This repository was forked.

@@ -9,8 +9,6 @@
 // implementation (including serialization/deserialization) and can be used to move
 // and validate data between stores.
 
-'use strict';
-
 const circuitBreakerOverrideClearingDestination = process.env.CIRCUIT_BREAKER_OVERRIDE === 'migrate-data-clear-ok';
 
 import throat = require('throat');
@@ -25,7 +23,7 @@ import { createAndInitializeApprovalProviderInstance } from '../../entities/team
 
 const parallelMigrations = 1;
 
-module.exports = function run(config) {
+export default function Task(config) {
   const app = require('../../app');
   config.skipModules = new Set([
     'web',

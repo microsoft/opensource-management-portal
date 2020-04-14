@@ -19,4 +19,4 @@ router.use('/approvals', require('./approvals'));
 
 router.use(require('./index-authenticated'));
 
-module.exports = router;
+export default router;

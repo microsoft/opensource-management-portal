@@ -112,7 +112,11 @@ module.exports = function (err, req, res, next) {
             properties: insightsProperties,
           });
         } else {
-          req.insights.trackException({ exception: err, properties: insightsProperties });
+          if (err && err['json']) {
+            // not tracking jsonErrors for now, they pollute app insights
+          } else {
+            req.insights.trackException({ exception: err, properties: insightsProperties });
+          }
         }
       }
     }
@@ -146,7 +150,6 @@ module.exports = function (err, req, res, next) {
   // Don't leak the Redis connection information.
   if (err && err.message && err.message.indexOf('Redis connection') >= 0 && err.message.indexOf('ETIMEDOUT')) {
     err.message = 'The session store was temporarily unavailable. Please try again.';
-    err.detailed = 'Azure Redis Cache';
   }
   if (res.headersSent) {
     console.error('Headers were already sent.');

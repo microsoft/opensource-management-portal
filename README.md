@@ -31,7 +31,7 @@ dedicate a user seat to a machine account.
 ## Service Dependencies
 
 - At least one of your own GitHub organizations
-- Bring your own Redis server, or use Azure Redis Cache
+- Bring your own Redis server, or use a hosted Redis provider
 - Azure Active Directory, or hack your own Passport provider in
 - Data storage for links, etc.: either Azure Storage _or_ Postgres
 
@@ -54,12 +54,7 @@ $ npm install
 ### Build
 
 ```
-$ node ./node_modules/typescript/bin/tsc
-```
-
-### Running
-```
-$ npm start
+$ npm run-script build
 ```
 
 ### Building the Docker image
@@ -96,6 +91,19 @@ For more information see the [Code of Conduct
 FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com)
 with any additional questions or comments.
+
+# Work to be done
+
+- Documenting refresh/cache-based views vs event bus
+- Getting started guide including baremin configuration
+- Continuing to refactor out Microsoft-specific things when possible
+- Tests
+- Proper model/view/API system
+- Front-end UI
+
+# If you are starting fresh
+
+- Consider using Postgres instead of Azure Table in all circumstances
 
 # Implementation Details
 
@@ -342,3 +350,9 @@ variable value to `1`.
   - Variable: `FEATURE_FLAG_ALLOW_UNAUTHORIZED_NEW_REPOSITORY_LOCKDOWN_SYSTEM`
   - Purpose: Allows the "unauthorized new repository lockdown system" to be _available_ as an organization feature flag. It does not turn this system on by default in any case.
   - Requirements: the event firehose must be used (there is no equivalent job, to make sure to not accidentially destroy permissions across existing repos)
+
+- allowUnauthorizedForkLockdownSystem
+
+  - Variable: `FEATURE_FLAG_ALLOW_UNAUTHORIZED_FORK_LOCKDOWN_SYSTEM`
+  - Purpose: Locks repositories that are forks until they are approved by an administrator
+  - Requirements: depends on the new repo lockdown system already being enabled and in use

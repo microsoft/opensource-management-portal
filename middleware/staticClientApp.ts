@@ -10,7 +10,7 @@
 import appPackage = require('../package.json');
 const packageVariableName = 'static-client-package-name';
 
-const debug = require('debug')('oss-initialize');
+const debug = require('debug')('startup');
 
 export function StaticClientApp (app, express) {
   // Serve/host the static client app from the location reported by the private

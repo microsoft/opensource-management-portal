@@ -5,11 +5,10 @@
 
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
-'use strict';
-
 import throat = require('throat');
+import { shuffle } from 'lodash';
 
-import { IProviders, ICacheOptions, IPagedCacheOptions, permissionsObjectToValue } from '../../transitional';
+import { IProviders, ICacheOptions, IPagedCacheOptions, permissionsObjectToValue, ErrorHelper } from '../../transitional';
 import { Operations } from '../../business/operations';
 import { Organization, OrganizationMembershipRoleQuery, OrganizationMembershipRole } from '../../business/organization';
 import { Team, GitHubTeamRole } from '../../business/team';
@@ -18,7 +17,7 @@ import { Repository, IGetCollaboratorsOptions, GitHubCollaboratorAffiliationQuer
 import { Collaborator } from '../../business/collaborator';
 import { TeamPermission } from '../../business/teamPermission';
 import { OrganizationMember } from '../../business/organizationMember';
-import { sleep } from '../../utils';
+import { sleep, quitInAMinute } from '../../utils';
 import moment from 'moment';
 import QueryCache, { IQueryCacheOrganizationMembership, IQueryCacheTeam, IQueryCacheRepository, IQueryCacheTeamRepositoryPermission, IQueryCacheRepositoryCollaborator, QueryCacheOperation, IQueryCacheTeamMembership } from '../../business/queryCache';
 import { GitHubTokenManager } from '../../github/tokenManager';
@@ -50,20 +49,20 @@ const minuteAgoCache: ICacheOptions = {
   backgroundRefresh: false,
 };
 
-const sleepBetweenSteps = 150; // mostly impacts repo collaborator views
+const sleepBetweenSteps = 100; // mostly impacts repo collaborator views
 
 // TODO: we mark when the slow walk starts for the process, use it to set the max age value when requesting entities (?)
 // TODO: make max age seconds accept a function that could make it dynamic and functional
 
 let insights;
 
-module.exports = function run(config, args) {
+export default function Task(config, args) {
   const app = require('../../app');
   config.skipModules = new Set([
     'web',
   ]);
 
-  app.initializeApplication(config, null, error => {
+  app.initializeJob(config, null, error => {
     if (error) {
       throw error;
     }
@@ -111,12 +110,6 @@ module.exports = function run(config, args) {
   });
 };
 
-function quitInAMinute(successful: boolean) {
-  return setTimeout(() => {
-    process.exit(successful ? 0 : 1);
-  }, 1000 * 60 /* 1 minute later */);
-}
-
 async function refreshOrganization(
   organizationIndex: number,
   operations: Operations,
@@ -135,7 +128,14 @@ async function refreshOrganization(
     },
   };
 
-  const organizationDetails = await organization.getDetails();
+  let organizationDetails = null;
+  try {
+    organizationDetails = await organization.getDetails();
+  } catch (organizationError) {
+    console.log(`Organization get details error: ${organizationError} for org ${organization.name}`);
+    console.dir(organizationError);
+    return;
+  }
   const organizationId = organizationDetails.id.toString();
   console.log(`refreshing ${organization.name} (id=${organizationId}) organization...`);
 
@@ -293,15 +293,20 @@ async function refreshOrganization(
       }
     }
     // Cleanup any deleted repos
-    const cachedRepositories = await queryCache.organizationRepositories(organizationId);
-    const deletedRepositories: IQueryCacheRepository[] = [];
-    cachedRepositories.map(r => {
-      if (!repoIds.has(r.repository.id.toString())) {
-        deletedRepositories.push(r);
-      }
-    });
-    updateConsistencyStats(result.consistencyStats,
-      await cleanupDeletedRepositories(queryCache, organization, deletedRepositories));
+    try {
+      const cachedRepositories = await queryCache.organizationRepositories(organizationId);
+      const deletedRepositories: IQueryCacheRepository[] = [];
+      cachedRepositories.map(r => {
+        if (!repoIds.has(r.repository.id.toString())) {
+          deletedRepositories.push(r);
+        }
+      });
+      updateConsistencyStats(result.consistencyStats,
+        await cleanupDeletedRepositories(queryCache, organization, deletedRepositories));
+    } catch (cleanError) {
+      console.dir(cleanError);
+      await sleep(sleepBetweenSteps);
+    }
   }
   result.finished = new Date();
   return result;
@@ -361,13 +366,16 @@ async function cleanupRemovedTeamPermissions(queryCache: QueryCache, repository:
   const ops = [];
   for (const { team, repository } of removedPermissions) {
     try {
+      if (!repository.name) {
+        await repository.getDetails(); // make sure the repo name is known
+      }
       const teamManagesRepository = await repository.checkTeamManages(team.id.toString(), minuteAgoCache);
       if (!teamManagesRepository) {
         ops.push(await queryCache.removeRepositoryTeam(repository.organization.id.toString(), repository.id.toString(), team.id.toString()));
         console.log(`permission for team ${team.id} removed from repository id=${repository.id} query cache`);
       }
     } catch (removalError) {
-      console.log(`error while trying to cleanup potential former repo permissions from ${repository.organization.name} org`);
+      console.log(`error while trying to cleanup potential former repo permissions from ${repository.organization.name} org -> ${removalError}`);
       console.dir(removalError);
     }
   }
@@ -525,7 +533,7 @@ async function refresh(config, app, args: string[]) : Promise<void> {
   }
 
   const parallelWorkCount = 1;
-  const orgs = Array.from(operations.organizations.values());
+  const orgs = shuffle(Array.from(operations.organizations.values()));
 
   let organizationWorkerCount = 0;
   const allUpStats: IConsistencyStats = {
@@ -533,31 +541,47 @@ async function refresh(config, app, args: string[]) : Promise<void> {
     'new': 0,
     'update': 0,
   };
+  let processedOrgs = 0;
   const staticOrgs = orgs.filter(org => org.hasDynamicSettings === false);
-  const dynamicOrgs = orgs.filter(org => org.hasDynamicSettings === true);
+  const dynamicOrgs =  orgs.filter(org => org.hasDynamicSettings === true);
   async function organizationProcessed(organization: Organization): Promise<void> {
     await sleep(sleepBetweenSteps);
     console.log(`organization ${++organizationWorkerCount}/${orgs.length}: refreshing ${organization.name}`);
     const orgResult = await refreshOrganization(organizationWorkerCount, operations, refreshSet, queryCache, organization);
-    const resultsAsLog = {...orgResult, ...orgResult.consistencyStats};
-    delete resultsAsLog.consistencyStats;
-    allUpStats['delete'] += orgResult.consistencyStats['delete'];
-    allUpStats['update'] += orgResult.consistencyStats['update'];
-    allUpStats['new'] += orgResult.consistencyStats['new'];
-    insights.trackEvent({ name: 'QueryCacheOrganizationConsistencyResults', properties: resultsAsLog });
-
-    console.log('--------------------------------------------------');
-    console.log(`${organization.name} processed - eventual consistency`)
-    console.log(`Added: ${orgResult.consistencyStats['new']}`);
-    console.log(`Removed: ${orgResult.consistencyStats['delete']}`);
-    console.log(`Updated: ${orgResult.consistencyStats['update']}`);
-    console.log('--------------------------------------------------');
+    if (orgResult) {
+      const resultsAsLog = {...orgResult, ...orgResult.consistencyStats};
+      delete resultsAsLog.consistencyStats;
+      allUpStats['delete'] += orgResult.consistencyStats['delete'];
+      allUpStats['update'] += orgResult.consistencyStats['update'];
+      allUpStats['new'] += orgResult.consistencyStats['new'];
+      insights.trackEvent({ name: 'QueryCacheOrganizationConsistencyResults', properties: resultsAsLog });
+  
+      console.log('--------------------------------------------------');
+      console.log(`${organization.name} processed - eventual consistency`)
+      console.log(`${++processedOrgs} organizations visited in this group`);
+      console.log(`Added: ${orgResult.consistencyStats['new']}`);
+      console.log(`Removed: ${orgResult.consistencyStats['delete']}`);
+      console.log(`Updated: ${orgResult.consistencyStats['update']}`);
+      console.log('--------------------------------------------------');
+    } else {
+      console.log('--------------------------------------------------');
+      console.log(`${organization.name} failed processing`)
+      console.log(`${++processedOrgs} organizations visited in this group`);
+      console.log('--------------------------------------------------');
+    }
   }
-  const parallelDynamicCount = 5;
-  console.log(`processing ${dynamicOrgs.length} dynamic orgs, ${parallelDynamicCount} at a time`);
-  await Promise.all(dynamicOrgs.map(throat<void, (org: Organization) => Promise<void>>(organizationProcessed, parallelDynamicCount)));
-  console.log(`processing ${staticOrgs.length} static orgs, ${parallelWorkCount} at a time to avoid rate-limiting`);
-  await Promise.all(staticOrgs.map(throat<void, (org: Organization) => Promise<void>>(organizationProcessed, parallelWorkCount)));
+  const isFastOK = refreshSet === 'teams' || refreshSet === 'organizations';
+  const parallelDynamicCount = isFastOK ? (dynamicOrgs.length / 2) : 5;
+  console.log(`Parallel dynamic organization count: ${parallelDynamicCount} for ${dynamicOrgs.length} configured dynamic orgs`);
+  try {
+    console.log(`processing ${dynamicOrgs.length} dynamic orgs, ${parallelDynamicCount} at a time`);
+    await Promise.all(dynamicOrgs.map(throat<void, (org: Organization) => Promise<void>>(organizationProcessed, parallelDynamicCount)));
+    processedOrgs = 0;
+    console.log(`processing ${staticOrgs.length} static orgs, ${parallelWorkCount} at a time to avoid rate-limiting`);
+    await Promise.all(staticOrgs.map(throat<void, (org: Organization) => Promise<void>>(organizationProcessed, parallelWorkCount)));
+  } catch (dynamicError) {
+    console.dir(dynamicError);
+  }
 
   // TODO: CLEANUP: if an organization is removed from the app...
   console.log('--------------------------------------------------');

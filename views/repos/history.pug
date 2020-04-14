@@ -1,0 +1,97 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block content
+
+  //- Services
+  - var languageColor = viewServices.languageColor
+  - var octicon = viewServices.octicon
+  - var fileSize = viewServices.fileSize
+  - var moment = viewServices.moment
+
+  //- Variables
+  - var githubUrl = 'https://github.com/' + repo.full_name
+  - var cloneUrl = repo.clone_url
+  - var sshUrl = repo.ssh_url
+  - var admin = repoPermissions && repoPermissions.allowAdministration
+
+  .container
+    .row: .col-md-12
+        if fromReposPage
+          .nav
+            ul.pager.zero-pad-bottom
+              li.previous
+                a(href='javascript:window.history.back()')
+                  span(aria-hidden=true) &larr;
+                  = ' Back'
+        - var hugeHeading = repo.name.length < 33
+        h1(class={huge: hugeHeading})
+          a(href='https://github.com/' + repo.full_name, target="_blank")= repo.name
+          if repo.private === true
+            | &nbsp;
+            .label.label-warning(class={shrink66: !hugeHeading, shrink50: hugeHeading}) Private
+        h6= repo.full_name.replace('/' + repo.name, '') + ' organization'
+        if repo.description
+          p.lead=repo.description
+
+    include ./pills
+
+    if history && history.length
+
+      //- TODO: consider pagination
+
+      each event in history
+        .row
+          //-.col-md-1
+          .col-md-12
+            ul.list-unstyled
+              li: ul.list-inline
+                if event.actorUsername.includes('[bot]')
+                  li= event.actorUsername
+                else
+                  li: strong: a(href='https://github.com/' + event.actorUsername, target='_new')= event.actorUsername
+                  li &bull;
+                li: strong= event.action
+              if event.teamName
+                li= 'Team ' + event.teamName
+              if event.repositoryName
+                li= 'Repository ' + event.repositoryName
+              if event.additionalData
+                - var ad = event.additionalData
+                if ad.changes && ad.changes.repository && ad.changes.repository.permissions && ad.changes.repository.permissions.from
+                  if ad.changes.repository.permissions.from.admin === true
+                    li= 'Removed administrative permission'
+                  else if ad.changes.repository.permissions.from.push === true
+                    li= 'Removed write permission'
+                  else if ad.changes.repository.permissions.from.pull === true
+                    li= 'Removed read permission'
+              if event.userUsername
+                li= 'User ' + event.userUsername
+              if event.created
+                li= moment(event.created).fromNow()
+              //-li: small: pre= JSON.stringify(event, null, 2)
+          
+    else
+      p No history is available for this repository.
+
+    hr
+    if repo.id
+      p
+        small
+          if repo.id
+            = 'GitHub repository ID: ' + repo.id
+
+    if reposDataAgeInformation
+      p.text-primary(style='margin-bottom:24px')
+        if reposDataAgeInformation.changed
+          = 'Updated ' + reposDataAgeInformation.changed
+        if reposDataAgeInformation.updated && reposDataAgeInformation.changed
+          |, refreshed
+        else
+          | Refreshed
+        if reposDataAgeInformation.updated
+          = ' ' + reposDataAgeInformation.updated

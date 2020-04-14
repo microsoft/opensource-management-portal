@@ -11,7 +11,7 @@ const router = express.Router();
 
 import { IProviders } from '../../transitional';
 import { setIdentity } from '../../middleware/business/authentication';
-import { addLinkToRequest } from '../../middleware/links';
+import { AddLinkToRequest } from '../../middleware/links';
 import { jsonError } from '../../middleware/jsonError';
 import { apiContextMiddleware } from '../../middleware/business/setContext';
 import { ILocalExtensionKeyProvider } from '../../entities/localExtensionKey';
@@ -64,7 +64,7 @@ router.use(apiContextMiddleware);
 // - - - Middleware: set the identities we have authenticated  - - -
 router.use(setIdentity);
 // - - - Middleware: resolve whether the corporate user has a link - - -
-router.use(addLinkToRequest);
+router.use(asyncHandler(AddLinkToRequest));
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 router.get('/', (req: IApiRequest, res) => {

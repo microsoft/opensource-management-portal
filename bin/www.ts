@@ -7,11 +7,18 @@
 import Debug from 'debug';
 
 const debug = Debug('g:server');
-const debugInitialization = Debug('oss-initialize');
+const debugInitialization = Debug('startup');
 
 const app = require('../app');
-const pcr = require('painless-config-resolver');
-const painlessConfigResolver = pcr();
+
+let painlessConfigResolver = null;
+try {
+  painlessConfigResolver = require('painless-config-resolver')();
+} catch (error) {
+  console.log('Painless config resolver initialization error:');
+  console.dir(error);
+  throw error;
+}
 
 const http = require('http');
 
@@ -36,7 +43,7 @@ app.set('port', port);
 
 debugInitialization('initializing app & configuration');
 
-painlessConfigResolver.resolve((configurationError, config) => {
+function resolvedConfiguration(configurationError: Error, config: any) {
   app.initializeApplication(config, configurationError, function (error) {
     if (configurationError) {
       console.warn(configurationError);
@@ -81,4 +88,6 @@ painlessConfigResolver.resolve((configurationError, config) => {
         debug('Listening on ' + bind);
     }
   });
-});
+}
+
+painlessConfigResolver.resolve(resolvedConfiguration);

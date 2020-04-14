@@ -7,20 +7,19 @@ import express = require('express');
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import async = require('async');
-import { ReposAppRequest } from '../../../transitional';
+import { ReposAppRequest, IProviders } from '../../../transitional';
 import { wrapError } from '../../../utils';
 import { ICorporateLink } from '../../../business/corporateLink';
-import { Team, GitHubRepositoryType } from '../../../business/team';
+import { Team, GitHubRepositoryType, ITeamMembershipRoleState } from '../../../business/team';
 import { Organization } from '../../../business/organization';
-import { IMailAddressProvider } from '../../../lib/mailAddressProvider';
+import { IMailAddressProvider, GetAddressFromUpnAsync } from '../../../lib/mailAddressProvider';
 import { IApprovalProvider } from '../../../entities/teamJoinApproval/approvalProvider';
 import { Operations } from '../../../business/operations';
 import { TeamJoinApprovalEntity } from '../../../entities/teamJoinApproval/teamJoinApproval';
 import { AddTeamPermissionsToRequest, IRequestTeamPermissions } from '../../../middleware/github/teamPermissions';
-import { AddOrganizationPermissionsToRequest } from '../../../middleware/github/orgPermissions';
+import { AddOrganizationPermissionsToRequest, GetOrganizationPermissionsFromRequest } from '../../../middleware/github/orgPermissions';
+import { TeamMember } from '../../../business/teamMember';
 
-const emailRender = require('../../../lib/emailRender');
 const lowercaser = require('../../../middleware/lowercaser');
 const teamMaintainerRoute = require('./index-maintainer');
 
@@ -41,9 +40,13 @@ interface ILocalRequest extends ReposAppRequest {
 router.use(asyncHandler(async (req: ILocalRequest, res, next) => {
   const login = req.individualContext.getGitHubIdentity().username;
   const team2 = req.team2 as Team;
-  const statusResult = await team2.getMembershipEfficiently(login);
-  req.membershipStatus = statusResult && statusResult.role ? statusResult.role : null;
-  req.membershipState = statusResult && statusResult.state ? statusResult.state : null;
+  try {
+    const statusResult = await team2.getMembershipEfficiently(login);
+    req.membershipStatus = statusResult && (statusResult as ITeamMembershipRoleState).role ? (statusResult as ITeamMembershipRoleState).role : null;
+    req.membershipState = statusResult && (statusResult as ITeamMembershipRoleState).state ? (statusResult as ITeamMembershipRoleState).state : null;
+  } catch (problem) {
+    console.dir(problem);
+  }
   return next();
 }));
 
@@ -392,7 +395,15 @@ router.use((req: ILocalRequest, res, next) => {
   return next();
 });
 
-router.get('/', asyncHandler(AddOrganizationPermissionsToRequest), async (req: ILocalRequest, res, next) => {
+enum BasicTeamViewPage {
+  Default = 'default',
+  Repositories = 'repositories',
+  History = 'history',
+}
+
+async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
+  const providers = req.app.settings.providers as IProviders;
+  
   const idAsString = req.individualContext.getGitHubIdentity().id;
   const id = idAsString ? parseInt(idAsString, 10) : null;
   const teamPermissions = req.teamPermissions as IRequestTeamPermissions;
@@ -418,83 +429,116 @@ router.get('/', asyncHandler(AddOrganizationPermissionsToRequest), async (req: I
   const orgOwnersSet = req.orgOwnersSet;
   let isOrgOwner = orgOwnersSet ? orgOwnersSet.has(id) : false;
 
-  function renderPage() {
-    req.individualContext.webContext.render({
-      view: 'org/team/index',
-      title: team2.name,
-      state: {
-        team: team2,
-        teamUrl: req.teamUrl, // ?
-        employees: [], // data.employees,
-        otherApprovals: req.otherApprovals,
-
-        // changed implementation:
-        maintainers: teamMaintainers,
-        maintainersSet: maintainersSet,
-
-        // new values:
-        teamPermissions: teamPermissions,
-        membershipStatus: membershipStatus,
-        membershipState: membershipState,
-        membersFirstPage: membersFirstPage,
-        team2: team2,
-        teamDetails: teamDetails,
-        organization: organization,
-        isBroadAccessTeam: isBroadAccessTeam,
-        isSystemTeam: isSystemTeam,
-        repositories: repositories,
-        isOrgOwner: isOrgOwner,
-        orgOwnersSet: orgOwnersSet,
-
-        // provider refactoring additions
-        existingTeamJoinRequest: req.existingRequest,
-      },
-    });
+  // Get the first page (by 100) of members, we only show a subset
+  if (display === BasicTeamViewPage.Default) {
+    const firstPageOptions = {
+      pageLimit: 1,
+      backgroundRefresh: true,
+      maxAgeSeconds: 60,
+    };
+    const membersSubset = await team2.getMembers(firstPageOptions);
+    membersFirstPage = membersSubset;
   }
 
-  // Get the first page (by 100) of members, we only show a subset
-  const firstPageOptions = {
-    pageLimit: 1,
-    backgroundRefresh: true,
-    maxAgeSeconds: 60,
-  };
-  const membersSubset = await team2.getMembers(firstPageOptions);
-  membersFirstPage = membersSubset;
   const details = await team2.getDetails();
   teamDetails = details;
 
-  const onlySourceRepositories = {
-    type: GitHubRepositoryType.Sources,
-  };
-  const reposWithPermissions = await team2.getRepositories(onlySourceRepositories);
-  repositories = reposWithPermissions.sort(sortByNameCaseInsensitive);
+  if (display === BasicTeamViewPage.Repositories) {
+    const onlySourceRepositories = {
+      type: GitHubRepositoryType.Sources,
+    };
+    let reposWithPermissions = null;
+    try {
+      if (display === BasicTeamViewPage.Repositories) {
+        reposWithPermissions = await team2.getRepositories(onlySourceRepositories);
+        repositories = reposWithPermissions.sort(sortByNameCaseInsensitive);
+      }
+    } catch (ignoredError) {
+      console.dir(ignoredError);
+    }
+  }
+
   const links = await operations.getLinks();
-  const map = new Map();
+  const map = new Map<number, ICorporateLink>();
   for (let i = 0; i < links.length; i++) {
     const id = links[i].thirdPartyId;
     if (id) {
       map.set(parseInt(id, 10), links[i]);
     }
   }
+  addLinkToList(teamMaintainers, map);
+  await resolveMailAddresses(operations, teamMaintainers);
 
-  async.parallel([
-    callback => {
-      addLinkToList(teamMaintainers, map);
-      return resolveMailAddresses(operations, teamMaintainers, callback);
+  if (display === BasicTeamViewPage.Default) {
+    addLinkToList(membersFirstPage, map);
+    await resolveMailAddresses(operations, membersFirstPage);
+  }
+
+  const organizationPermissions = GetOrganizationPermissionsFromRequest(req);
+
+  let history = null;
+  if (display === BasicTeamViewPage.History && providers.auditLogRecordProvider) {
+    const { auditLogRecordProvider } = providers;
+    history = await auditLogRecordProvider.queryAuditLogForTeamOperations(team2.id.toString());
+  }
+
+  let title = team2.name;
+  if (display === BasicTeamViewPage.Repositories) {
+    title = `Repositories - ${team2.name}`;
+  } else if (display === BasicTeamViewPage.History) {
+    title = `History - ${team2.name}`;
+  }
+
+  return req.individualContext.webContext.render({
+    view: 'org/team/index',
+    title,
+    state: {
+      display,
+      team: team2,
+      teamUrl: req.teamUrl, // ?
+      employees: [], // data.employees,
+      otherApprovals: req.otherApprovals,
+
+      // changed implementation:
+      maintainers: teamMaintainers,
+      maintainersSet,
+
+      history,
+
+      // new values:
+      teamPermissions,
+      membershipStatus,
+      membershipState,
+      membersFirstPage,
+      team2,
+      teamDetails,
+      organization,
+      isBroadAccessTeam,
+      isSystemTeam,
+      repositories,
+      isOrgOwner,
+      orgOwnersSet,
+      organizationPermissions,
+
+      // provider refactoring additions
+      existingTeamJoinRequest: req.existingRequest,
     },
-    callback => {
-      addLinkToList(membersFirstPage, map);
-      return resolveMailAddresses(operations, membersFirstPage, callback);
-    },
-  ], (parallelError) => {
-    if (parallelError) {
-      return next(parallelError);
-    }
-    return renderPage();
   });
+}
+
+router.get('/', asyncHandler(AddOrganizationPermissionsToRequest), async (req: ILocalRequest, res, next) => {
+  await basicTeamsView(req, BasicTeamViewPage.Default);
 });
 
-function addLinkToList(array, linksMap) {
+router.get('/history', asyncHandler(AddOrganizationPermissionsToRequest), async (req: ILocalRequest, res, next) => {
+  await basicTeamsView(req, BasicTeamViewPage.History);
+});
+
+router.get('/repositories', asyncHandler(AddOrganizationPermissionsToRequest), async (req: ILocalRequest, res, next) => {
+  await basicTeamsView(req, BasicTeamViewPage.Repositories);
+});
+
+function addLinkToList(array: TeamMember[], linksMap: Map<number, ICorporateLink>) {
   for (let i = 0; i < array.length; i++) {
     const entry = array[i];
     const link = linksMap.get(entry.id);
@@ -504,24 +548,15 @@ function addLinkToList(array, linksMap) {
   }
 }
 
-function resolveMailAddresses(operations, array, callback) {
+async function resolveMailAddresses(operations: Operations, array: TeamMember[]): Promise<void> {
   const mailAddressProvider = operations.mailAddressProvider;
   if (!mailAddressProvider) {
-    return callback();
+    return;
   }
-
-  async.eachLimit(array, 5, (entry: any, next) => {
-    const upn = entry && entry.link ? entry.link.aadupn : null;
-    if (!upn) {
-      return next();
-    }
-    mailAddressProvider.getAddressFromUpn(upn, (resolveError, mailAddress) => {
-      if (!resolveError && mailAddress) {
-        entry.mailAddress = mailAddress;
-      }
-      return next();
-    });
-  }, callback);
+  // PERF: used by be parallel, might be a good idea...
+  for (const entry of array) {
+    await entry.getMailAddress();
+  }
 }
 
 function sortByNameCaseInsensitive(a, b) {

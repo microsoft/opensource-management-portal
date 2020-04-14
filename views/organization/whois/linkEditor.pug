@@ -1,5 +1,5 @@
 //-
-//- Copyright (c) Microsoft. All rights reserved.
+//- Copyright (c) Microsoft.
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
@@ -21,6 +21,10 @@ block content
         input.form-control(type='text', name='thirdPartyId', value=query.link.thirdPartyId)
         h6 GitHub user avatar
         input.form-control(type='text', name='thirdPartyAvatar', value=query.link.thirdPartyAvatar)
+        h6 Service account designation
+        input.form-control(type='checkbox', name='isServiceAccount', value='yes', checked=query.link.isServiceAccount)
+        h6 Service account mail
+        input.form-control(type='text', name='serviceAccountMail', value=query.link.serviceAccountMail)
         p &nbsp;
         p
           input.btn.btn-default(type='submit', value='Save link', name='save-link')

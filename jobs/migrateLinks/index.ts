@@ -5,13 +5,24 @@
 
 /*eslint no-console: ["error", { allow: ["log"] }] */
 
-'use strict';
+import Task from './task';
 
-process.env.DEBUG = 'redis,restapi';
+if (!process.env.DEBUG) {
+  process.env.DEBUG = 'redis,restapi';
+}
 
-require('painless-config-resolver')().resolve((configurationError, config) => {
+let painlessConfigResolver;
+try {
+  painlessConfigResolver = require('painless-config-resolver')();
+} catch (error) {
+  console.log('Painless config resolver initialization error:');
+  console.dir(error);
+  throw error;
+}
+
+painlessConfigResolver.resolve((configurationError, config) => {
   if (configurationError) {
     throw configurationError;
   }
-  require('./task')(config);
+  Task(config);
 });

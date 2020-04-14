@@ -3,14 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import async = require('async');
+
 const fs = require('fs');
 const tmp = require('tmp');
 const zlib = require('zlib');
 
-function deflateFile(inputFilename, outputFilename, callback) {
+export function deflateFile(inputFilename: string, outputFilename: string, callback) {
   const gzip = zlib.createGzip();
   const input = fs.createReadStream(inputFilename);
   const output = fs.createWriteStream(outputFilename);
@@ -38,7 +37,7 @@ function getTempFilenames(count, callback) {
     });
 }
 
-module.exports.writeDeflatedTextFile = function writeDeflatedText(text, callback) {
+export function writeDeflatedTextFile(text, callback) {
   // The callback will be the deflated temporary filename, removed after the process exits.
   getTempFilenames(2, (tempFilesError, filenames) => {
     if (tempFilesError) {
@@ -60,5 +59,3 @@ module.exports.writeDeflatedTextFile = function writeDeflatedText(text, callback
     });
   });
 };
-
-module.exports.deflateFile = deflateFile;

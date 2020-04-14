@@ -22,6 +22,7 @@ export interface IGitHubAppConfiguration {
   clientSecret?: string;
   appId?: number;
   appKey?: string;
+  appKeyFile?: string;
   webhookSecret?: string;
   slug?: string;
   description?: string;

@@ -3,12 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { Organization } from "./organization";
 import { Operations } from "./operations";
 import { Team } from "./team";
-import { IGetOwnerToken, ICacheOptions } from "../transitional";
+import { ICacheOptions } from "../transitional";
 import { TeamMember } from "./teamMember";
 
 export class TeamPermission {
