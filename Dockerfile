@@ -20,7 +20,7 @@ RUN cd /tmp && npm install --verbose
 RUN rm -rf /tmp/.npmrc
 
 # TypeScript build
-RUN cd /tmp && npm run-script build
+RUN cd /tmp && node ./node_modules/typescript/bin/tsc
 
 FROM node:10-alpine AS run
 ENV APPDIR=/usr/src/repos
@@ -52,7 +52,7 @@ WORKDIR /usr/src/repos
 # COPY public "${APPDIR}/public"
 
 ENV IS_DOCKER=1
-ENV DEBUG=oss-initialize
+ENV DEBUG=startup
 
 ENV NPM_CONFIG_LOGLEVEL=warn
 

@@ -151,7 +151,6 @@ router.use((req: ReposAppRequest, res, next) => {
 //   const options = {
 //     config: req.app.settings.runtimeConfig,
 //     redisClient: req.app.settings.providers.redisClient,
-//     redisHelper: req.app.settings.redisHelper,
 //     githubLibrary: req.app.settings.githubLibrary,
 //     operations: operations,
 //     link: link,
@@ -171,7 +170,6 @@ router.use((req: ReposAppRequest, res, next) => {
 //   const options = {
 //     config: req.app.settings.runtimeConfig,
 //     redisClient: req.app.settings.providers.redisClient,
-//     redisHelper: req.app.settings.redisHelper,
 //     githubLibrary: req.app.settings.githubLibrary,
 //     operations: req.app.settings.providers.operations,
 //     link: link,

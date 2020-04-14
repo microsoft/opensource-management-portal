@@ -12,7 +12,6 @@ import recursiveReadDirectory from 'recursive-readdir';
 
 import { wrapError, sleep, asNumber } from '../../utils';
 import { Organization } from '../../business/organization';
-import { Operations } from '../../business/operations';
 import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission, GitHubRepositoryPermissions } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { Repository } from '../../business/repository';
 
@@ -21,6 +20,9 @@ export interface IApprovalPackage {
   // requestingUser: string;
   repositoryMetadata: RepositoryMetadataEntity;
   createResponse: unknown;
+  isUnlockingExistingRepository: number | string | boolean | null | undefined;
+  isFork: boolean;
+  isTransfer: boolean;
 }
 
 export enum RepoWorkflowDecision {
@@ -40,6 +42,9 @@ export class RepoWorkflowEngine {
   id: string;
   typeName: string;
   private createResponse?: unknown;
+  private isUnlockingExistingRepository: boolean;
+  private isFork: boolean;
+  private isTransfer: boolean;
 
   constructor(organization: Organization, approvalPackage: IApprovalPackage) {
     this.request = approvalPackage.repositoryMetadata;
@@ -48,6 +53,9 @@ export class RepoWorkflowEngine {
     this.organization = organization;
     this.typeName = 'Repository Create';
     this.createResponse = approvalPackage.createResponse;
+    this.isUnlockingExistingRepository = !!approvalPackage.isUnlockingExistingRepository;
+    this.isFork = approvalPackage.isFork;
+    this.isTransfer = approvalPackage.isTransfer;
   }
 
   editGet(req, res) {
@@ -110,7 +118,7 @@ export class RepoWorkflowEngine {
     }
     if (request.initialTemplate) {
       try {
-        output.push(await createAddTemplateFilesTask(organization, repoName, request.initialTemplate));
+        output.push(await createAddTemplateFilesTask(organization, repoName, request.initialTemplate, this.isUnlockingExistingRepository, this.isFork, this.isTransfer));
         output.push(await addTemplateWebHook(organization, repoName, request.initialTemplate));
         output.push(await addTemplateCollaborators(organization, repoName, request.initialTemplate));
       } catch (outerError) {
@@ -221,6 +229,10 @@ async function addTemplateWebHook(organization: Organization, repositoryName: st
 
 async function removeOrganizationCollaboratorTask(organization: Organization, createResponse: any): Promise<IRepositoryWorkflowOutput> {
   const result = null;
+  if (organization.usesApp) {
+    // If a GitHub App created the repo, it is not present as a collaborator.
+    return;
+  }
   try {
     const createAccount = await organization.getAuthorizedOperationsAccount();
     const repositoryName = createResponse.name;
@@ -230,7 +242,7 @@ async function removeOrganizationCollaboratorTask(organization: Organization, cr
   return result;
 }
 
-async function createAddTemplateFilesTask(organization: Organization, repoName: string, templateName: string): Promise<IRepositoryWorkflowOutput> {
+async function createAddTemplateFilesTask(organization: Organization, repoName: string, templateName: string, isUnlockingExistingRepository: boolean, isFork: boolean, isTransfer: boolean): Promise<IRepositoryWorkflowOutput> {
   const { operations } = organization.getLegacySystemObjects();
   const config = operations.config;
   const templatePath = config.github.templates.directory;
@@ -246,16 +258,37 @@ async function createAddTemplateFilesTask(organization: Organization, repoName: 
     const templateRoot = path.join(templatePath, templateName);
     const fileNames = await getTemplateFilenames(templateRoot);
     const fileContents = await getFileContents(templateRoot, templatePath, templateName, fileNames);
-    const message = 'Initial commit';
     const uploadedFiles = [];
     let result = {
       error: null,
       message: null,
     };
+    if (isFork || isTransfer) {
+      const subMessage = isFork ? 'is a fork' : 'was transferred';
+      result.message = `Repository ${subMessage}, template files will not be committed. Please check the LICENSE and other files to understand existing obligations.`;
+      return result;
+    }
     try {
       for (let i = 0; i < fileContents.length; i++) {
         const item = fileContents[i];
-        await repository.createFile(item.path, item.content, message, alternateTokenOptions);
+        let sha = null;
+        if (isUnlockingExistingRepository) {
+          try {
+            const fileDescription = await repository.getFile(item.path);
+            if (fileDescription && fileDescription.sha) {
+              sha = fileDescription.sha;
+            }
+          } catch (getFileError) {
+            if (getFileError.status === 404) {
+              // often the file will not exist, that's great.
+            } else {
+              throw getFileError;
+            }
+          }
+        }
+        const fileOptions = sha ? {...alternateTokenOptions, sha} : alternateTokenOptions;
+        const message = sha ? `Updating ${item.path} to template content` : `Initial ${item.path} commit`;
+        await repository.createFile(item.path, item.content, message, fileOptions);
         uploadedFiles.push(item.path);
       }
       result.message = `Initial commit of ${uploadedFiles.join(', ')} template files to the ${repository.name} repo succeeded.`;

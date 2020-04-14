@@ -12,7 +12,7 @@ import { buildConsolidatedMap as buildRecipientMap } from '../../jobs/reports/co
 import { IndividualContext } from '../../user';
 
 // const buildRecipientMap = require('../../jobs/reports/consolidated').buildRecipientMap;
-import { RedisHelper } from '../../lib/redis';
+import RedisHelper from '../../lib/caching/redis';
 const router = express.Router();
 const systemWidePermissionsMiddleware = require('../../middleware/github/systemWidePermissions');
 

@@ -1,0 +1,10 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+.row: .col-md-12(style='margin-bottom: 32px; margin-top: 16px')
+  ul.nav.nav-tabs
+    li(role='presentation', class={active: !display || display === 'default'}): a(href=team.baseUrl) Overview
+    li(role='presentation', class={active: display === 'repositories'}): a(href=team.baseUrl + 'repositories/') Repositories
+    li(role='presentation', class={active: display === 'history'}): a(href=team.baseUrl + 'history/') History

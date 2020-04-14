@@ -5,7 +5,7 @@
 
 'use strict';
 
-const GitHubApi = require('@octokit/rest');
+import { Octokit } from '@octokit/rest';
 const githubPackage = require('@octokit/rest/package.json');
 
 import * as restApi from './restApi';
@@ -13,10 +13,10 @@ import { flattenData } from './core';
 import { CompositeIntelligentEngine } from './composite';
 import { RestCollections } from './collections';
 import { CrossOrganizationCollator } from './crossOrganization';
-import { ILinkProvider } from '../linkProviders/postgres/postgresLinkProvider';
 import { LinkMethods } from './links';
-import { RedisHelper } from '../redis';
+import RedisHelper from '../caching/redis';
 import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../transitional';
+import { ILinkProvider } from '../linkProviders';
 
 export enum CacheMode {
   ValidateCache = 'ValidateCache',
@@ -39,7 +39,6 @@ export class RestLibrary {
   private linkProvider: ILinkProvider;
   private github: any;
 
-  public memoryCache?: any;
   private _collections: RestCollections;
   private _links: LinkMethods;
   private _crossOrganization: CrossOrganizationCollator;
@@ -68,8 +67,6 @@ export class RestLibrary {
       throw new Error('No runtime configuration instance provided to the library context constructor');
     }
 
-    let memoryCache = options.memoryCache || new Map();
-
     const nodeGithubVersion = `${githubPackage.name}/${githubPackage.version}`;
     let userAgent = nodeGithubVersion;
     if (config && config.github && config.github.library && config.github.library.userAgent) {
@@ -77,7 +74,7 @@ export class RestLibrary {
     }
     let github = options.github;
     if (!github) {
-      let githubApi = options.GitHubApi || GitHubApi;
+      let githubApi = options.GitHubApi || Octokit;
       github = new githubApi({
         userAgent,
       });
@@ -91,8 +88,6 @@ export class RestLibrary {
     this.compositeEngine = new CompositeIntelligentEngine();
 
     this.hasNextPage = hasNextPage.bind(this);
-
-    this.memoryCache = memoryCache;
 
     this.call = this.call.bind(this);
     this.post = this.post.bind(this);
@@ -173,6 +168,12 @@ export class RestLibrary {
     parameters = parameters || {};
     parameters['octokitRequest'] = restEndpoint;
     return this.call(token, 'request', parameters, cacheOptions);
+  }
+
+  requestAsPost(token, restEndpoint, parameters: any): Promise<any> {
+    parameters = parameters || {};
+    parameters['octokitRequest'] = restEndpoint;
+    return this.post(token, 'request', parameters);
   }
 
   async post(awaitToken: IGetAuthorizationHeader | string, api: string, options: any): Promise<any> {

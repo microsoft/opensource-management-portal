@@ -20,12 +20,12 @@ const apiPeople = require('./people');
 const apiWebhook = require('./webhook');
 
 import { AzureDevOpsAuthenticationMiddleware } from '../../middleware/apiVstsAuth';
-import { ReposApiAuthentiction } from '../../middleware/apiReposAuth';
+import { ReposApiAuthentication } from '../../middleware/apiReposAuth';
 import { CreateRepository } from './createRepo';
-import { Organization } from '../../business/organization';
 const supportMultipleAuthProviders = require('../../middleware/supportMultipleAuthProviders');
 
 const hardcodedApiVersions = [
+  '2019-10-01',
   '2019-02-01',
   '2017-09-01',
   '2017-03-08',
@@ -35,7 +35,6 @@ const hardcodedApiVersions = [
 router.use('/client', apiClient);
 router.use('/webhook', apiWebhook);
 
-// Require a "preview" API version: ?api-version=2016-12-01
 router.use((req: IApiRequest, res, next) => {
   const apiVersion = req.query['api-version'] || req.headers['api-version'];
   if (!apiVersion) {
@@ -56,7 +55,7 @@ router.use((req: IApiRequest, res, next) => {
 //-----------------------------------------------------------------------------
 const multipleProviders = supportMultipleAuthProviders([
   AzureDevOpsAuthenticationMiddleware,
-  ReposApiAuthentiction,
+  ReposApiAuthentication,
 ]);
 
 router.use('/people', multipleProviders, apiPeople);
@@ -65,7 +64,7 @@ router.use('/extension', multipleProviders, apiExtension);
 //-----------------------------------------------------------------------------
 // AUTHENTICATION: repos (specific to this app)
 //-----------------------------------------------------------------------------
-router.use(ReposApiAuthentiction);
+router.use('/:org', ReposApiAuthentication);
 
 router.use('/:org', function (req: IApiRequest, res, next) {
   const orgName = req.params.org;
@@ -117,5 +116,26 @@ router.post('/:org/repos', asyncHandler(async function (req: ReposAppRequest, re
     return next(error);
   }
 }));
+
+router.use((err, req, res, next) => {
+  if (err && err['json']) {
+    // jsonError objects should bubble up like before
+    return next(err);
+  }
+  // If any errors happened in the API routes that did not send a jsonError,
+  // just return as a JSON error and end here.
+  if (err && err['status']) {
+    res.status(err['status']);
+  } else {
+    res.status(500);
+  }
+  res.json({
+    message: err && err.message ? err.message : 'Error',
+  });
+  const providers = req.app.settings.providers as IProviders;
+  if (providers && providers.insights) {
+    providers.insights.trackException(err);
+  }
+});
 
 module.exports = router;

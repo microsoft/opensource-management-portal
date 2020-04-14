@@ -7,16 +7,37 @@
 
 import { MicrosoftGraphProvider } from "./microsoftGraphProvider";
 
+export enum GraphUserType {
+  Unknown = '',
+}
+
+export interface IGraphEntry {
+  displayName: string;
+  givenName: string;
+  id: string;
+  mail: string;
+  userPrincipalName: string;
+  userType?: GraphUserType;
+}
+
+export interface IGraphEntryWithManager extends IGraphEntry {
+  manager: IGraphEntry;
+}
+
 export interface IGraphProvider {
   getUserById(corporateId: string, callback);
-  getUserByIdAsync(id: string) : Promise<any>;
+  getUserByIdAsync(id: string) : Promise<IGraphEntry>;
 
   getManagerById(corporateId: string, callback);
   getUserAndManagerById(corporateId: string, callback);
+  getManagementChain(corporateId: string): Promise<IGraphEntry[]>;
 }
 
 export function CreateGraphProviderInstance(config, callback) {
-  const graphConfig = config.graph;
+  const activeDirectoryConfig = config.activeDirectory;
+  const graphConfig = Object.assign({
+    tenantId: activeDirectoryConfig.tenantId,
+  }, config.graph);
   if (!graphConfig) {
     return callback(new Error('No graph provider configuration.'));
   }
@@ -43,3 +64,14 @@ export function CreateGraphProviderInstance(config, callback) {
 
   return callback(null, providerInstance);
 };
+
+export function getUserAndManagerById(graphProvider: IGraphProvider, aadId: string) : Promise<IGraphEntryWithManager> {
+  return new Promise((resolve, reject) => {
+    if (!graphProvider || !aadId) {
+      return resolve();
+    }
+    graphProvider.getUserAndManagerById(aadId, (error, info) => {
+      return error ? reject(error) : resolve(info);
+    });
+  });
+}

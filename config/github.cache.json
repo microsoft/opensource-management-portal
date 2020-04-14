@@ -1,0 +1,20 @@
+{
+  "provider": "env://GITHUB_CACHE_PROVIDER?default=redis",
+  "cosmosdb": {
+    "endpoint": "env://GITHUB_CACHE_COSMOSDB_ENDPOINT",
+    "key": "env://GITHUB_CACHE_COSMOSDB_KEY",
+    "database": "env://GITHUB_CACHE_COSMOSDB_DATABASE",
+    "collection": "env://GITHUB_CACHE_COSMOSDB_COLLECTION",
+
+    "blobFallback": {
+      "account": "env://GITHUB_CACHE_COSMOS_FALLBACK_BLOB_ACCOUNT",
+      "key": "env://GITHUB_CACHE_COSMOS_FALLBACK_BLOB_KEY",
+      "container": "env://GITHUB_CACHE_COSMOS_FALLBACK_BLOB_CONTAINER"
+    }
+  },
+  "blob": {
+    "account": "env://GITHUB_CACHE_BLOB_ACCOUNT",
+    "key": "env://GITHUB_CACHE_BLOB_KEY",
+    "container": "env://GITHUB_CACHE_BLOB_CONTAINER"
+  }
+}

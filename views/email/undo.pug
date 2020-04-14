@@ -1,0 +1,62 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends email
+
+block content
+  - var thirdPartyUsername = details.thirdPartyUsername
+  - var undoEntry = details.undoEntry // eventDescription, undoDescription
+  - var undoOutcome = details.undoOutcome // message, warnings, localUrl
+  - var operation = undoEntry.operation // recordId, action
+  - var link = undoEntry.link
+
+  if isMailToUser
+    p
+      = thirdPartyUsername + ','
+      br
+      | The undo operation that you requested has been completed.
+
+  if isMailToOperations
+    h2 FYI: Operations
+
+  if undoEntry.eventDescription
+    h3 Correction for an original event performed by the user
+    p= undoEntry.eventDescription
+
+  if undoOutcome
+    h3 Undo outcome
+    if undoOutcome.message
+      h5= undoOutcome.message
+    if undoOutcome.warnings && undoOutcome.warnings.length
+      h4 WARNINGS
+      ul
+        each warning in undoOutcome.warnings
+          li= warning
+    if undoEntry.undoDescription && undoOutcome && undoOutcome.warnings && undoOutcome.warnings.length
+      h5 Intended outcome
+      p= undoEntry.undoDescription
+
+  if link
+    h3 GitHub user
+    table
+      tbody
+        tr
+          td GitHub account
+          td= link.thirdPartyUsername
+        tr
+          td Corporate identity
+          td= link.corporateUsername
+
+  if operation
+    h3 Original Event Record
+    if operation.recordId
+      h5 Event Audit ID
+      p= operation.recordId
+    if operation.action
+      h5 Original Event action
+      p= operation.action
+    if operation.created
+      h5 Original Event occurrence
+      p= operation.created

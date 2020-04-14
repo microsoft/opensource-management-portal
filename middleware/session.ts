@@ -4,19 +4,22 @@
 //
 
 import debug = require('debug');
-const dbg = debug('oss-initialize');
+import { IProviders } from '../transitional';
+const dbg = debug('startup');
 
 const session = require('express-session');
-const RedisStore = require('connect-redis')(session);
+
+import ConnectRedis from 'connect-redis';
 
 const saltNotSet = 'session-salt-not-set-warning';
 
 const supportedProviders = [
   'memory',
   'redis',
+  'cosmosdb',
 ];
 
-module.exports = function (app, config, redisClient) {
+export default function ConnectSession(app, config, providers: IProviders) {
   const sessionProvider = config.session.provider;
   if (!supportedProviders.includes(sessionProvider)) {
     throw new Error(`The configured session provider ${sessionProvider} is not supported`);
@@ -33,22 +36,31 @@ module.exports = function (app, config, redisClient) {
 
   let store = undefined;
   if (sessionProvider === 'redis') {
-    const redisPrefix = config.redis.prefix ? `${config.redis.prefix}.session` : 'session';
+    if (!providers.sessionRedisClient) {
+      throw new Error('No provided session Redis client');
+    }
+    const redisPrefix = config.session.redis.prefix ? `${config.session.redis.prefix}.session` : 'session';
     const redisOptions = {
-      client: redisClient,
-      ttl: config.redis.ttl,
+      client: providers.sessionRedisClient,
+      ttl: config.session.redis.ttl,
       prefix: redisPrefix,
     };
+    const RedisStore = ConnectRedis(session);
+    // const RedisStore = require('connect-redis')(session);
     store = new RedisStore(redisOptions);
+  } else if (sessionProvider === 'cosmosdb') {
+    if (!providers.session) {
+      throw new Error('No provided session store');
+    }
+    store = providers.session;
   }
-
   const settings = {
     secret: sessionSalt,
     name: config.session.name || 'sid',
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: config.redis.ttl * 1000 /* milliseconds for maxAge, not seconds */,
+      maxAge: (store['ttl']|| 86400) * 1000 /* milliseconds for maxAge, not seconds */,
       secure: undefined,
       domain: undefined,
     }

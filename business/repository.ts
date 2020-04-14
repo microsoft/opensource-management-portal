@@ -3,12 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import { wrapError } from '../utils';
+import { wrapError, asNumber } from '../utils';
 import { Operations } from './operations';
 import { Organization } from './organization';
-import { ICacheOptions, IGetOwnerToken, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader } from '../transitional';
+import { ICacheOptions, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, ErrorHelper } from '../transitional';
 import * as common from './common';
 import { RepositoryPermission } from './repositoryPermission';
 import { Collaborator } from './collaborator';
@@ -63,6 +61,34 @@ export interface ICreateWebhookOptions {
   events?: string[];
 }
 
+interface IGitHubGetFileParameters {
+  owner: string;
+  repo: string;
+  path: string;
+  branch?: string;
+
+  alternateToken?: string;
+}
+
+interface IGitHubFileContents {
+  type: string;
+  encoding: 'base64';
+  size: number;
+  name: string;
+  path: string;
+  content: string;
+  sha: string;
+  url: string;
+  git_url: string;
+  html_url: string;
+  download_url: string;
+  _links: {
+    git: string;
+    self: string;
+    html: string;
+  }
+}
+
 interface ICreateFileParameters {
   owner: string;
   repo: string;
@@ -71,14 +97,20 @@ interface ICreateFileParameters {
   content: string;
   branch?: string;
   committer?: any;
+  sha?: string;
 
   alternateToken?: string;
+}
+
+interface IGitHubGetFileOptions {
+  branch?: string;
 }
 
 interface ICreateFileOptions {
   branch?: string;
   committer?: any;
   alternateToken?: string;
+  sha?: string;
 }
 
 interface IGetBranchesParameters {
@@ -130,58 +162,9 @@ const repoPrimaryProperties = [
   'default_branch',
 ];
 
-const repoSecondaryProperties = [
-  'owner',
-  'permissions',
-  'forks_url',
-  'keys_url',
-  'clone_url',
-  'collaborators_url',
-  'teams_url',
-  'hooks_url',
-  'issue_events_url',
-  'events_url',
-  'assignees_url',
-  'branches_url',
-  'tags_url',
-  'blobs_url',
-  'git_tags_url',
-  'git_refs_url',
-  'has_downloads',
-  'ssh_url',
-  'trees_url',
-  'statuses_url',
-  'languages_url',
-  'stargazers_url',
-  'contributors_url',
-  'subscribers_url',
-  'subscription_url',
-  'commits_url',
-  'git_commits_url',
-  'comments_url',
-  'issue_comment_url',
-  'contents_url',
-  'compare_url',
-  'merges_url',
-  'archive_url',
-  'downloads_url',
-  'issues_url',
-  'pulls_url',
-  'milestones_url',
-  'notifications_url',
-  'labels_url',
-  'releases_url',
-  'svn_url',
-  'mirror_url',
-  'organization',
-  'network_count',
-  'subscribers_count',
-  'deployments_url',
-];
-
 export class Repository {
   public static PrimaryProperties = repoPrimaryProperties;
-
+  private _entity: any;
   private _baseUrl: string;
 
   private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
@@ -189,63 +172,42 @@ export class Repository {
 
   private _organization: Organization;
 
-  private _id: number;
   private _name: string;
-  private _full_name: string;
-  private _private: boolean;
-  private _html_url: string;
-  private _description: string;
-  private _fork: any;
-  private _url: string;
-  private _created_at: Date;
-  private _updated_at: Date;
-  private _pushed_at: Date;
-  private _git_url: string;
-  private _homepage: string;
-  private _size: any;
-  private _stargazers_count: any;
-  private _watchers_count: any;
-  private _language: any;
-  private _has_issues: boolean;
-  private _has_wiki: boolean;
-  private _has_pages: boolean;
-  private _forks_count: any;
-  private _open_issues_count: any;
-  private _forks: any;
-  private _open_issues: any;
-  private _watchers: any;
-  private _license: any;
-  private _default_branch: any;
 
   private _moments: IRepositoryMoments;
 
-  get id(): number { return this._id; }
-  get name(): string { return this._name; }
-  get full_name(): string { return this._full_name; }
-  get private(): boolean { return this._private; }
-  get html_url(): string { return this._html_url; }
-  get description(): string { return this._description; }
-  get fork(): any { return this._fork; }
-  get url(): string { return this._url; }
-  get created_at(): Date { return this._created_at; }
-  get updated_at(): Date { return this._updated_at; }
-  get pushed_at(): Date { return this._pushed_at; }
-  get git_url(): string { return this._git_url; }
-  get homepage(): string { return this._homepage; }
-  get size(): any { return this._size; }
-  get stargazers_count(): any { return this._stargazers_count; }
-  get watchers_count(): any { return this._watchers_count; }
-  get language(): string { return this._language; }
-  get has_issues(): boolean { return this._has_issues; }
-  get has_wiki(): boolean { return this._has_wiki; }
-  get has_pages(): boolean { return this._has_pages; }
-  get forks_count(): any { return this._forks_count; }
-  get open_issues_count(): any { return this._open_issues_count; }
-  get forks(): any { return this._forks; }
-  get open_issues(): any { return this._open_issues; }
-  get watchers(): any { return this._watchers; }
-  get license(): any { return this._license; }
-  get default_branch(): any { return this._default_branch; }
+  getEntity(): any { return this._entity; }
+
+  get id(): number { return this._entity ? this._entity.id : null; }
+  get name(): string { return this._entity ? this._entity.name : this._name; }
+  get full_name(): string { return this._entity ? this._entity.full_name : null; }
+  get private(): boolean { return this._entity ? this._entity.private : false; }
+  get html_url(): string { return this._entity ? this._entity.html_url : null; }
+  get description(): string { return this._entity ? this._entity.description : null; }
+  get fork(): boolean { return this._entity ? this._entity.fork : null; }
+  get url(): string { return this._entity ? this._entity.url : null; }
+  get created_at(): Date { return this._entity ? this._entity.created_at : null; }
+  get updated_at(): Date { return this._entity ? this._entity.updated_at : null; }
+  get pushed_at(): Date { return this._entity ? this._entity.pushed_at : null; }
+  get git_url(): string { return this._entity ? this._entity.git_url : null; }
+  get homepage(): string { return this._entity ? this._entity.homepage : null; }
+  get size(): any { return this._entity ? this._entity.size : null; }
+  get stargazers_count(): any { return this._entity ? this._entity.stargazers_count : null; }
+  get watchers_count(): any { return this._entity ? this._entity.watchers_count : null; }
+  get language(): string { return this._entity ? this._entity.language : null; }
+  get has_issues(): boolean { return this._entity ? this._entity.has_issues : null; }
+  get has_wiki(): boolean { return this._entity ? this._entity.has_wiki : null; }
+  get has_pages(): boolean { return this._entity ? this._entity.has_pages : null; }
+  get forks_count(): any { return this._entity ? this._entity.forks_count : null; }
+  get open_issues_count(): any { return this._entity ? this._entity.open_issues_count : null; }
+  get forks(): any { return this._entity ? this._entity.forks : null; }
+  get open_issues(): any { return this._entity ? this._entity.open_issues : null; }
+  get watchers(): any { return this._entity ? this._entity.watchers : null; }
+  get license(): any { return this._entity ? this._entity.license : null; }
+  get default_branch(): any { return this._entity ? this._entity.default_branch : null; }
+  get clone_url(): any { return this._entity ? this._entity.clone_url : null; }
+  get ssh_url(): any { return this._entity ? this._entity.ssh_url : null; }
+  get parent(): any { return this._entity ? this._entity.parent : null; }
 
   get organization(): Organization {
     return this._organization;
@@ -255,11 +217,13 @@ export class Repository {
     return this._baseUrl;
   }
 
+  get absoluteBaseUrl(): string {
+    return this.organization.absoluteBaseUrl + 'repos/' + this.name + '/';
+  }
+
   constructor(organization: Organization, entity: any, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, operations: Operations) {
     this._organization = organization;
-    if (entity) {
-      common.assignKnownFieldsPrefixed(this, entity, 'repository', repoPrimaryProperties, repoSecondaryProperties);
-    }
+    this._entity = entity;
     this._baseUrl = organization.baseUrl + 'repos/' + this.name + '/';
     this._getAuthorizationHeader = getAuthorizationHeader;
     this._operations = operations;
@@ -299,6 +263,15 @@ export class Repository {
   async getDetails(options?: ICacheOptions): Promise<any> {
     options = options || {};
     const operations = this._operations;
+    if (this.id && !this.name) {
+      try {
+        const lookupById = await this.organization.getRepositoryById(this.id);
+        this._entity = lookupById.getEntity();
+        this._name = this._entity.name;
+      } catch (getByIdError) {
+        throw getByIdError;
+      }
+    }
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
@@ -311,7 +284,7 @@ export class Repository {
     }
     try {
       const entity = await operations.github.call(this.authorize(AppPurpose.Data), 'repos.get', parameters, cacheOptions);
-      common.assignKnownFieldsPrefixed(this, entity, 'repository', repoPrimaryProperties, repoSecondaryProperties);
+      this._entity = entity;
       return entity;
     } catch (error) {
       const notFound = error.status && error.status == /* loose */ 404;
@@ -365,6 +338,32 @@ export class Repository {
     };
     const operations = this._operations
     return operations.github.call(this.authorize(AppPurpose.Data), 'repos.getContents', parameters);
+  }
+
+  async getPages(options?: ICacheOptions): Promise<any> {
+    options = options || {};
+    const operations = this._operations;
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+    };
+    const cacheOptions: ICacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgRepoDetailsStaleSeconds,
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    try {
+      const token = this._operations.authorizeCentralOperationsToken();
+      return await operations.github.call(token, 'repos.getPages', parameters, cacheOptions);
+    } catch (error) {
+      const notFound = error.status && error.status == /* loose */ 404;
+      error = wrapError(error, notFound ? 'The repo is not configured for pages.' : 'Could not get details about the repo pages configuration.', notFound);
+      if (notFound) {
+        error.status = 404;
+      }
+      throw error;
+    }
   }
 
   async checkCollaborator(username: string, cacheOptions?: ICacheOptions): Promise<boolean> {
@@ -488,33 +487,70 @@ export class Repository {
       message: commitMessage,
       content: base64Content,
     }, options);
-    if (options.branch) {
+    if (options && options.sha) {
+      parameters.sha = options.sha;
+    }
+    if (options && options.branch) {
       parameters.branch = options.branch;
     }
-    if (options.committer) {
+    if (options && options.committer) {
       parameters.committer = options.committer;
     }
     const alternateHeader = options.alternateToken ? `token ${options.alternateToken}` : null;
     return this._operations.github.post(alternateHeader || this.authorize(AppPurpose.Operations), 'repos.createOrUpdateFile', parameters);
   }
 
-  setTeamPermission(teamId: number, newPermission: GitHubRepositoryPermission): Promise<any> {
+  getFile(path: string, options?: IGitHubGetFileOptions): Promise<IGitHubFileContents> {
+    const parameters: IGitHubGetFileParameters = Object.assign({
+      owner: this.organization.name,
+      repo: this.name,
+      path,
+    }, options);
+    if (options && options.branch) {
+      parameters.branch = options.branch;
+    }
+    // const alternateHeader = options.alternateToken ? `token ${options.alternateToken}` : null;
+    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.getContents', parameters);
+  }
+
+  getFiles(path: string, options?: IGitHubGetFileOptions): Promise<IGitHubFileContents[]> {
+    const parameters: IGitHubGetFileParameters = Object.assign({
+      owner: this.organization.name,
+      repo: this.name,
+      path,
+    }, options);
+    if (options.branch) {
+      parameters.branch = options.branch;
+    }
+    // const alternateHeader = options.alternateToken ? `token ${options.alternateToken}` : null;
+    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.getContents', parameters);
+  }
+
+  async setTeamPermission(teamId: number, newPermission: GitHubRepositoryPermission): Promise<any> {
+    const team = this.organization.team(teamId);
+    // CONSIDER: note the performance penalty on the slug resolution; the alternate path has not been working for GitHub Apps
+    await team.getDetails();
     const options = {
-      team_id: teamId,
+      org: this.organization.name,
+      team_slug: team.slug,
       owner: this.organization.name,
       repo: this.name,
       permission: newPermission,
     };
-    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'teams.addOrUpdateRepo', options);
+    // alternate version of: 'teams.addOrUpdateRepoInOrg': 'PUT /organizations/:org_id/team/:team_id/repos/:owner/:repo'
+    const result = await this._operations.github.post(this.authorize(AppPurpose.Operations), 'teams.addOrUpdateRepoInOrg', options);
+    return result;
   }
 
   removeTeamPermission(teamId: number): Promise<any> {
     const options = {
+      org_id: this.organization.id.toString(),
       team_id: teamId,
       owner: this.organization.name,
       repo: this.name,
     };
-    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'teams.removeRepo', options);
+    // alternate version of: 'teams.removeRepoInOrg'
+    return this._operations.github.requestAsPost(this.authorize(AppPurpose.Operations), 'DELETE /organizations/:org_id/team/:team_id/repos/:owner/:repo', options);
   }
 
   async getWebhooks(options?: ICacheOptions): Promise<any> {
@@ -608,6 +644,7 @@ export class Repository {
     const operations = this._operations;
     const parameters = {
       owner: this.organization.name,
+      org_id: this.organization.id.toString(),
       repo: this.name,
       team_id: teamId,
 
@@ -620,9 +657,10 @@ export class Repository {
       cacheOptions.backgroundRefresh = true;
     }
     try {
-      const ok = await operations.github.post(this.authorize(AppPurpose.Data), 'teams.addOrUpdateRepo', parameters);
+      // this is the alternate form of 'teams.checkManagesRepoInOrg'
+      const ok = await operations.github.requestAsPost(this.authorize(AppPurpose.Data), 'GET /organizations/:org_id/team/:team_id/repos/:owner/:repo', parameters);
       return true;
-    } catch (error) {
+   } catch (error) {
       if (error && error.status == /* loose */ 404) {
         return false;
       }

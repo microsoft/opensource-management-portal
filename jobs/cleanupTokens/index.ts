@@ -5,8 +5,6 @@
 
 /*eslint no-console: ["error", { allow: ["log"] }] */
 
-'use strict';
-
 import moment from 'moment';
 
 // Kill bit if this takes more than 90 minutes
@@ -15,18 +13,21 @@ setTimeout(() => {
   process.exit(0);
 }, 1000 * 60 * 90);
 
-// To skip this WebJob, setting WEBJOB_REPOS_CLEANUP_INVITES_SKIP should be set to '1'
-if (process.env.WEBJOB_REPOS_CLEANUP_INVITES_SKIP == '1' /* loose */) {
-  console.log('Organization invitation cleanup job is configured to skip execution.');
-  process.exit(0);
+if (!process.env.DEBUG) {
+  process.env.DEBUG = 'restapi';
 }
-
-process.env.DEBUG = 'restapi';
 
 const started = moment().utc();
 const startedString = started.format();
 
-const painlessConfigResolver = require('painless-config-resolver')();
+let painlessConfigResolver = null;
+try {
+  painlessConfigResolver = require('painless-config-resolver')();
+} catch (error) {
+  console.log('Painless config resolver initialization error:');
+  console.dir(error);
+  throw error;
+}
 
 painlessConfigResolver.resolve((configurationError, config) => {
   if (configurationError) {

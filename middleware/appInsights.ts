@@ -7,6 +7,8 @@
 
 const insights = require('../lib/insights');
 
+const appInsights = require('applicationinsights');
+
 function ignoreKubernetesProbes(envelope/* , context */) {
   if ('RequestData' === envelope.data.baseType) {
     const data = envelope.data;
@@ -15,7 +17,15 @@ function ignoreKubernetesProbes(envelope/* , context */) {
       return false;
     }
   }
+  return true;
+}
 
+function filterTelemetry(envelope, context): boolean {
+  const { data } = envelope;
+  if (data && data.baseType === 'RequestData' && data.baseData.responseCode === '401') {
+    // We believe 401 is successful, not a failure
+    data.baseData.success = true;
+  }
   return true;
 }
 
@@ -31,10 +41,10 @@ module.exports = function initializeAppInsights(app, config) {
     key = config.telemetry.jobsApplicationInsightsKey;
   }
   if (key) {
-    const appInsights = require('applicationinsights');
     const instance = appInsights.setup(key).setAutoCollectDependencies(false);
-    client = instance && instance.getClient ? instance.getClient(key) : appInsights.defaultClient;
+    client = appInsights.defaultClient;
     client.addTelemetryProcessor(ignoreKubernetesProbes);
+    client.addTelemetryProcessor(filterTelemetry);
     instance.start();
   }
 

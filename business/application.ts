@@ -3,11 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import { Operations } from "./operations";
-import { IPurposefulGetAuthorizationHeader, IGetAuthorizationHeader, ICacheOptions } from "../transitional";
-import { wrapError } from "../utils";
+import { Operations } from './operations';
+import { IGetAuthorizationHeader, ICacheOptions } from '../transitional';
+import { wrapError } from '../utils';
 
 export interface IGitHubAppInstallation {
   id: number;

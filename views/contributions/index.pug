@@ -1,0 +1,342 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+mixin displayEvents(contributions, truncateDisplay, truncateAt)
+
+      each contributionType in contributionTypes
+        - var contributionGroup = contributions[contributionType]
+        - var description = contributionDescriptions[contributionType]
+        if !description
+          //- ignore this unspecified type of event for now
+        else
+          if contributionGroup && Array.isArray(contributionGroup) && contributionGroup.length
+            h2= description
+
+            - var innerCount = 0
+            - var wereRemaining = 0
+            each contribution in contributionGroup
+              - var action = contribution.additionalData.payload.action
+              - var issue = contribution.additionalData.payload.issue
+              - var comment = contribution.additionalData.payload.comment
+              - var pr = contribution.additionalData.payload.pull_request
+              - var repo = contribution.additionalData.repo
+
+              - ++innerCount
+              if innerCount > (truncateDisplay ? truncateAt : 1000)
+                //- ignore
+                - ++wereRemaining
+              else
+                .row
+                  .col-md-3
+                    if repo
+                      ul.list-unstyled
+                        li(style='margin-top:8px;margin-bottom:8px')
+                          ul.list-inline
+                            li: a.btn.btn-sm.btn-muted-more(target='_new', href='https://github.com/' + repo.name)= repo.name
+                  .col-md-6
+                    
+                    
+                    if contributionType == 'IssueCommentEvent'
+                      if issue && repo
+                        ul.list-unstyled
+                          li(style='margin-top:8px;margin-bottom:8px')
+                            ul.list-inline
+                              li
+                                != octicon('comment', 24)
+                              li
+                                a(target='_new', href='https://github.com/' + repo.name + '/issues/' + issue.number + '#issuecomment-' + comment.id)
+                                  = 'Issue ' + issue.number
+                                  = ' '
+                                  small= issue.title
+                          if action !== 'created'
+                            li: strong= action
+                          li(style='margin-top:8px;margin-bottom:8px')
+                            small= 'Comment: '
+                            small: strong
+                              =comment.body.substr(0, 45)
+                              if (comment.body.length > 44)
+                                = '...'
+                            //- small= 'Comment ' + comment.id
+                    
+                    
+                    else if contributionType == 'PullRequestEvent'
+                      if repo && pr
+                        ul.list-unstyled
+                          li(style='margin-top:8px;margin-bottom:8px')
+                            ul.list-inline
+                              li
+                                if action == 'opened' || action == 'reopened'
+                                  != octicon('git-pull-request', 24)
+                                else if action == 'closed'
+                                  != octicon('x', 24)
+                              li
+                                a(target='_new', href='https://github.com/' + repo.name + '/pull/' + pr.number)
+                                  = 'Pull Request ' + pr.number
+                                  = ' '
+                                  small= pr.title.substr(0, 50) + (pr.title.length >= 50 ? '...' : '')
+                          if action !== 'opened' && action !== 'closed'
+                            li: strong= action
+
+                    
+                    else if contributionType == 'IssuesEvent'
+                      if issue && repo
+                        ul.list-unstyled
+                          li(style='margin-top:8px;margin-bottom:8px')
+                            ul.list-inline
+                              li
+                                if action == 'opened'
+                                  != octicon('issue-opened', 24)
+                                else if action == 'closed'
+                                  != octicon('issue-closed', 24)
+                                else if action == 'reopened'
+                                  != octicon('issue-reopened', 24)
+                                else
+                                  != octicon('issue-opened', 24)
+                              li
+                                a(target='_new', href='https://github.com/' + repo.name + '/issues/' + issue.number)
+                                  = 'Issue ' + issue.number
+                                  = ' '
+                                  small= issue.title
+                          if action !== 'closed' && action !== 'opened' && action !== 'reopened'
+                            li: strong= action
+
+                    
+                    else if contributionType == 'CommitCommentEvent'
+                      if comment && repo && comment.commit_id
+                        ul.list-unstyled
+                          li(style='margin-top:8px;margin-bottom:8px')
+                            ul.list-inline
+                              li
+                                != octicon('comment', 24)
+                              li
+                                a(target='_new', href='https://github.com/' + repo.name + '/commit/' + comment.commit_id + '#commitcomment-' + comment.id)
+                                  = 'Comment on commit ' + comment.commit_id
+                          li(style='margin-top:8px;margin-bottom:8px')
+                            small= 'Comment: '
+                            small: strong
+                              =comment.body.substr(0, 45)
+                              if (comment.body.length > 44)
+                                = '...'
+
+
+
+                    else if contributionType == 'PullRequestReviewCommentEvent'
+                      if comment && pr
+                        ul.list-unstyled
+                          li(style='margin-top:8px;margin-bottom:8px')
+                            ul.list-inline
+                              li
+                                if action == 'created'
+                                  != octicon('comment', 24)
+                              li
+                                a(target='_new', href='https://github.com/' + repo.name + '/pull/' + pr.number)
+                                  = 'Pull Request ' + pr.number
+                                  = ' '
+                                  small= pr.title.substr(0, 50) + (pr.title.length >= 50 ? '...' : '')
+                              if action !== 'created'
+                                li= action
+                          li(style='margin-top:8px;margin-bottom:8px')
+                            small= 'Comment: '
+                            small: strong
+                              =comment.body.substr(0, 45)
+                              if (comment.body.length > 44)
+                                = '...'
+
+
+
+                    else
+                      p Information about the contribution you made is not currently available for display on this page.
+                      //-pre= JSON.stringify(contribution, undefined, 2)
+
+                  .col-md-3
+                    p= moment(contribution.created).fromNow()
+
+            if wereRemaining
+              p There were #{wereRemaining} other contributions that were made but are not being shown on this page. Add the query parameter #[code all=1] to this page to view them all.
+          else
+            != '<!-- No contributions of the type ' + contributionType + ' -->'
+
+
+block content
+  - var fileSize = viewServices.fileSize
+  - var moment = viewServices.moment
+  - var octicon = viewServices.octicon
+
+  - var maximumContributionsPerGroupToShow = 5
+
+  - var startMonthName = moment(start).format('MMMM')
+  - var previousMonthName = moment(start).subtract(1, 'months').format('MMMM')
+
+  //- NOT YET IMPLEMENTED:
+  //- PullRequestReviewEvent: 'Pull request reviews',
+
+  .container
+
+    if isOtherEventsDisplay
+      //- alternative view of non-open source events
+
+      if isSelf
+      .row
+        .col-md-11: h1 Other public activity by #{login} in #{startMonthName}
+      if otherContributionsCount === 0
+        .row: .col-md-12: p No other contribution events were discovered for #{startMonthName}.
+      else
+        .row: .col-md-12
+          if isSelf
+            p You made #{otherContributionsCount} contribution#{otherContributionsCount > 1 ? 's' : '' } in #{startMonthName} to projects on GitHub that the company governs.
+          else
+            p These are other public contributions that #{login} made in #{startMonthName} on GitHub.
+
+          +displayEvents(otherContributions, isTruncating, maximumContributionsPerGroupToShow)
+
+      hr
+      p: small.
+        #[a(href='mailto:opensource@microsoft.com') Feedback welcome] on this data. 
+        This data is refreshed at least daily but is not real-time.
+        This view shows events that are to corporate-controlled public repositories on GitHub, not open source activity for the purposes of the FOSS Fund.
+        #[br]
+        #{startMonthName} contribution period: #{start}-#{end}
+
+    else
+      //- FOSS Fund-eligible display
+
+      if isSelf && (contributionsPageMode == 'nominate' || contributionsPageMode == 'vote')
+        .row: .col-md-12: h1 #{startMonthName} FOSS Fund #[small Free &amp; Open Source Software Fund]
+        p.
+          Each month, Microsoft is supporting an open source project nominated by Microsoft
+          employees who contribute to open source. Each month that you contribute to a project 
+          outside of Microsoft's GitHub organizations, you're eligible to nominate a project and cast a 
+          vote for that month.
+        p Thank you for helping Microsoft support the open source software projects that we care about.
+
+        if contributionCount > 0
+          .alert.alert-info(role='alert')
+            strong You're eligible to #[a(style='color:white; text-decoration: underline', href='https://forms.office.com/Pages/ResponsePage.aspx?id=v4j5cvGGr0GRqy180BHbR36H-bmuHF5EvCg8lDB4yOdUNzZLVUFGVEFCTFhVUUZUUDRPSlI5WElTMC4u', target='_new') nominate a project] and vote in the #{startMonthName} fund!
+            br
+            | Thank you so much for contributing to open source in #{startMonthName}. Voting will open in the coming weeks.
+          h3 Nominate a project
+          p Nominations #[strong are now open]. Please #[a(href='https://forms.office.com/Pages/ResponsePage.aspx?id=v4j5cvGGr0GRqy180BHbR36H-bmuHF5EvCg8lDB4yOdUNzZLVUFGVEFCTFhVUUZUUDRPSlI5WElTMC4u', target='_new') nominate a project]. 5-15 nominated projects will be in each month of voting. Any nominations that do not make the #{startMonthName} ballot will be considered for the next month automatically.
+          p: a.btn.btn-huge.btn-muted(href='https://forms.office.com/Pages/ResponsePage.aspx?id=v4j5cvGGr0GRqy180BHbR36H-bmuHF5EvCg8lDB4yOdUNzZLVUFGVEFCTFhVUUZUUDRPSlI5WElTMC4u', target='_new') Nominate a project
+        else
+          .alert.alert-warning(role='alert', style='color:#000')
+            strong Sorry, you're not eligible to vote at this time.
+            br
+            | Please contribute to an open source community to light up the nomination and voting
+            | capabilities of this page. Contributions can include opening issues, opening and
+            | closing pull requests, participating in pull request reviews, and other public actions.
+            | Eligibility is recalculated daily, so 
+            | #[strong if you have recently contributed to a project, check back here tomorrow to see your nomination and voting options]!
+
+        p Open source projects that meet the following conditions are great candidates:
+        ul
+          li Project has an #[a(href='https://opensource.org/licenses', target='_new') OSI-approved license]
+          li Project is used by Microsoft
+          li Project is not maintained by a Microsoft employee
+          li Project is able to receive funds (GitHub Sponsors team may be able to work with nominated projects to establish a funding system)
+
+        //- Voting
+        hr
+        if contributionCount > 0 && prior === true
+          h3 Cast your #{startMonthName} vote
+          p The voting window will open in the coming weeks.
+        else if prior === true
+          h3 Voting opens in the coming weeks
+          p You are not eligible to contribute in the #{startMonthName} fund.
+
+        div(style='margin-bottom:20px')
+        hr
+
+        h3 Looking to get started?
+        p If you're looking to get involved, feel free to check out these resources, or even to #[a(href='mailto:opensource@microsoft.com') contact the Open Source Champs at opensource@microsoft.com] to discuss your interests and experience.
+        p Often the best way to get started is to "watch" a GitHub repo to get notified of happenings such as new pull requests, issue discussions, etc. You can watch how the community works together, and when you feel comfortable, you can jump in on adding your thoughts to issues, reviewing code, or even, eventually submitting your own pull requests.
+        p Consider checking out:
+        ul
+          li: a(href='https://opensource.guide/', target='_new') The Open Source Guides at https://opensource.guide
+          li: a(href='https://docs.opensource.microsoft.com/content/contributing/index.html', target='_new') Microsoft's Contribution guide and policies
+          li: a(href='https://nam06.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fsearch%3Fq%3Dlabel%253Afirst-timers-only%26state%3Dopen%26type%3DIssues&data=02%7C01%7CJeff.Wilcox%40microsoft.com%7Ccf5f2217d0374c392c9708d7d002cbf7%7C72f988bf86f141af91ab2d7cd011db47%7C1%7C0%7C637206582744699280&sdata=%2FhP4bwZNDWtqNMOiTsNEIPplaodPtQMnjW4nKgKy4a8%3D&reserved=0', target='_new') Great first issues on GitHub
+          li: a(href='https://aka.ms/opensourcechannel') Open the Open Source Channel on Microsoft Teams to discuss with others
+
+        div(style='margin-bottom:20px')
+        hr
+      else if isSelf && contributionsPageMode == 'normal'
+        .row: .col-md-12: h1 FOSS (Free &amp; open source) Fund
+        p.
+          Each month, Microsoft is supporting an open source project nominated by Microsoft
+          employees who contribute to open source. When you contribute to a project 
+          outside of Microsoft's GitHub organizations, you're eligible to nominate a project and cast a 
+          vote for that month.
+
+        if !prior
+          //- Current month
+          if contributedLastMonth
+            p
+              | You contributed last month and are eligible to vote in the #{previousMonthName} FOSS Fund.
+              br
+              a(href='/contributions/nominate?prior=true') Nominate and vote in the #{previousMonthName} fund...
+            if contributionCount > 0
+              p
+                | You've contributed in #{startMonthName} and will be able to participate again.
+                br
+                a(href='/contributions/nominate') Nominate and vote for the #{startMonthName} fund...
+            else
+              p
+                | You do not have eligible #{startMonthName} activity yet.
+          else
+            if contributionCount > 0
+              p
+                | You've contributed in #{startMonthName} and can participate.
+                br
+                a(href='/contributions/nominate') Nominate a project for the #{startMonthName} fund...
+            else
+              p
+                | You do not have eligible #{startMonthName} activity.
+                br
+                a(href='/contributions/nominate') Learn more about the fund...
+
+        else if prior
+          if contributionCount > 0
+            p: a(href='/contributions/nominate?prior=true') Nominate and vote in the #{startMonthName} fund...
+          else
+            p: a(href='/contributions/nominate?prior=true') Learn more about the FOSS Fund...
+
+        div(style='margin-bottom:20px')
+        hr
+
+      .row
+        .col-md-11: h1 Open source contributions by #{login} in #{startMonthName}
+        //- .col-md-1: a(href='?login=' + login + '&refresh=1') Refresh
+
+      if contributionCount === 0
+        .row: .col-md-12: p No open source contributions were discovered for #{startMonthName}.
+      else
+        .row: .col-md-12
+          if isSelf
+            p Thank you for making #{contributionCount} contribution#{contributionCount > 1 ? 's' : '' } in #{startMonthName} to open source projects on GitHub.
+          else
+            p These are public open source contributions that #{login} made in #{startMonthName}.
+
+          +displayEvents(contributions, isTruncating, maximumContributionsPerGroupToShow)
+
+      if otherContributionsCount
+        h2 Other contributions
+        if isSelf
+          p You also made at least #{otherContributionsCount} contributions to public GitHub repos during #{startMonthName}, either to your individual repos, or to corporate-governed resources.
+        else
+          p The user also made #{otherContributionsCount} contributions to public GitHub repos during #{startMonthName}, to either their individual repos or other corporate-governed resources.
+        p: a.btn.btn-sm.btn-muted(href='?login=' + login + '&other=1' + (prior ? '&prior=true' : '')) Show other #{startMonthName} public activity
+
+      if !prior
+        h2 #{previousMonthName} contributions
+        p: a.btn.btn-sm.btn-muted-more(href='?prior=true&login=' + login) Show #{previousMonthName} contributions
+
+      hr
+      p: small.
+        Thank you for your contributions. #[a(href='mailto:opensource@microsoft.com') Feedback welcome]. 
+        This data is refreshed regularly but typically lags by a day.
+        The scope of contributions displayed on this page are those which the data indicates likely were made to projects outside the company. Open source projects within official organizations at the company are excluded to help encourage participation in the open source projects our customers depend on.
+        #[br]
+        #{startMonthName} contribution period: #{start}-#{end}

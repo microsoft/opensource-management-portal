@@ -1,0 +1,3 @@
+{
+  "createLinks": "env://API_FLAG_ALLOW_LINKING?trueIf=1"
+}

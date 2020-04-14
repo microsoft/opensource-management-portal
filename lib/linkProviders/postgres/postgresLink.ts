@@ -174,41 +174,29 @@ function getDirtyColumns(self) {
 function createDataHelpers(link: CorporateLinkPostgres, provider: PostgresLinkProvider): IPostgresLinkInstanceDataHelpers {
   return {
     update: async () : Promise<boolean> => {
-      return new Promise<boolean>((resolve, reject) => {
-        provider.updateLink(link, (error, actualUpdate: boolean) => {
-          if (error) {
-            return reject(error);
-          }
-          return resolve(actualUpdate);
-        });
-      });
+      return provider.updateLink(link);
     },
 
     save: async () : Promise<boolean> => {
-      return new Promise<boolean>((resolve, reject) => {
-        provider.updateLink(link, (error, actualUpdate: boolean) => {
-          // SAVE is different in update in that it only saves if changes
-          // are needed (not an error if such). UPDATE will throw if no
-          // changes are necessary to be stored.
-          if (error && error['noUpdatesRequired'] === true) {
-            return resolve(false);
-          } else if (error) {
-            return reject(error);
-          }
-          return resolve(actualUpdate);
-        });
-      });
+      let actualUpdate = null;
+      try {
+        actualUpdate = provider.updateLink(link);
+      } catch (error) {
+        // SAVE is different in update in that it only saves if changes
+        // are needed (not an error if such). UPDATE will throw if no
+        // changes are necessary to be stored.
+        if (error && error['noUpdatesRequired'] === true) {
+          return false;
+        } else if (error) {
+          throw error;
+        }
+      }
+      return actualUpdate;
     },
 
     delete: async () : Promise<boolean> => {
-      return new Promise<boolean>((resolve, reject) => {
-        provider.deleteLink(link, (error, actualDelete: boolean) => {
-          if (error) {
-            return reject(error);
-          }
-          return resolve(actualDelete);
-        });
-      });
+      await provider.deleteLink(link);
+      return true;
     },
   };
 }

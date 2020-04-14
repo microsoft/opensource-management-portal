@@ -12,6 +12,9 @@ export enum EntityMetadataType {
   // GitHub entities METADATA
   Repository = 'Repository',
 
+  AuditLogRecord = 'AuditLogRecord',
+  EventRecord = 'EventRecord',
+
   // App-specific entities
   TeamJoinRequest = 'TeamJoinRequest',
 
@@ -31,6 +34,8 @@ export enum EntityMetadataType {
 
 export const EntityMetadataTypes = [
   EntityMetadataType.Repository,
+  EntityMetadataType.AuditLogRecord,
+  EntityMetadataType.EventRecord,
   EntityMetadataType.TeamJoinRequest,
   EntityMetadataType.Token,
   EntityMetadataType.LocalExtensionKey,

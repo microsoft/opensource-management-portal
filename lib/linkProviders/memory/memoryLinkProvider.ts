@@ -9,10 +9,10 @@ import _ from 'lodash';
 
 import { v4 as uuidV4 } from 'uuid';
 import { IReposError } from '../../../transitional';
-import { ILinkProvider } from '../postgres/postgresLinkProvider';
 import { ICorporateLinkProperties, ICorporateLink, ICorporateLinkExtended, CorporatePropertyNames } from '../../../business/corporateLink';
 
 import { CorporateMemoryLink } from './memoryLink';
+import { ILinkProvider } from '..';
 
 const defaultThirdPartyType = 'github';
 const defaultPageSize = 500;
@@ -79,88 +79,81 @@ export class MemoryLinkProvider implements ILinkProvider {
     this._options = options;
   }
 
-  initialize(callback) {
+  async initialize(): Promise<ILinkProvider> {
     this._entities = new Map();
-
-    return callback();
+    return this as any as ILinkProvider;
   }
 
   get thirdPartyType() {
     return this._thirdPartyType;
   }
 
-  getByThirdPartyUsername(username, callback) {
+  async getByThirdPartyUsername(username: string): Promise<CorporateMemoryLink> {
     username = username.toLowerCase();
-    return getSingleLinkByProperty(this, this.propertyMapping.thirdPartyUsername, username, callback);
+    return this.getSingleLinkByProperty(this.propertyMapping.thirdPartyUsername, username);
   }
 
-  getByThirdPartyId(id, callback) {
+  async getByThirdPartyId(id: string): Promise<CorporateMemoryLink> {
     if (typeof(id) !== 'string') {
-      id = id.toString();
+      id = (id as any).toString();
     }
-    return getSingleLinkByProperty(this, this.propertyMapping.thirdPartyId, id, callback);
+    return this.getSingleLinkByProperty(this.propertyMapping.thirdPartyId, id);
   }
 
-  queryByCorporateId(id, callback) {
-    return getLinksByProperty(this, this.propertyMapping.corporateId, id, callback);
+  async queryByCorporateId(id: string): Promise<CorporateMemoryLink[]> {
+    return this.getLinksByProperty(this.propertyMapping.corporateId, id);
   }
 
-  getAll(callback) {
+  async getAll(): Promise<CorporateMemoryLink[]> {
     const all = Array.from(this._entities.values());
     const sorted = _.sortBy(all, [this.propertyMapping.corporateUsername, this.propertyMapping.thirdPartyUsername]);
-    const links = createLinkInstancesFromMemoryEntityArray(this, sorted);
-    return callback(null, links);
+    const links = this.createLinkInstancesFromMemoryEntityArray(sorted);
+    return links;
   }
 
-  queryByCorporateUsername(username, callback) {
+  async queryByCorporateUsername(username): Promise<CorporateMemoryLink[]> {
     username = username.toLowerCase();
-    return getLinksByProperty(this, this.propertyMapping.corporateUsername, username, callback);
+    return this.getLinksByProperty(this.propertyMapping.corporateUsername, username);
   }
 
-  createLink(link: ICorporateLink, callback: (error: any, newLinkId: string) => void) {
+  async createLink(link: ICorporateLink): Promise<string> {
     const generatedLinkId = uuidV4();
     const initialEntity = {};
     initialEntity[linkInterfacePropertyMapping.memoryLinkId] = generatedLinkId;
-
     for (let linkPropertyName of CorporatePropertyNames) {
       const tableColumnName = linkInterfacePropertyMapping[linkPropertyName];
       if (!tableColumnName) {
-        return callback(new Error(`Missing mapping from property ${linkPropertyName} to equivalent key`), null);
+        throw new Error(`Missing mapping from property ${linkPropertyName} to equivalent key`);
       }
       initialEntity[tableColumnName] = link[linkPropertyName];
     }
-
     if (this._entities.has(generatedLinkId)) {
       const error: IAlreadyLinkedError = new Error('This link already exists');
-      return callback(error, null);
+      throw error;
     }
-
     this._entities.set(generatedLinkId, initialEntity);
-    return callback(null, generatedLinkId);
+    return generatedLinkId;
   }
 
-  updateLink(linkInstance: ICorporateLink, callback) {
+  async updateLink(linkInstance: ICorporateLink): Promise<void> {
     const tl = linkInstance as CorporateMemoryLink;
     const replacementEntity = tl.internal().getDirectEntity();
     const linkId = tl.id;
     if (!this._entities.has(linkId)) {
-      return callback(new Error(`No existing entity with link ID ${linkId}`));
+      throw new Error(`No existing entity with link ID ${linkId}`);
     }
     this._entities.set(linkId, replacementEntity);
-    return callback();
   }
 
-  deleteLink(linkInstance: ICorporateLink, callback) {
+  async deleteLink(linkInstance: ICorporateLink): Promise<void> {
     // This is inefficient at this time; with the newer design centering
     // around a link ID, this has to query first.
     const tl = linkInstance as CorporateMemoryLink;
-    return getSingleLinkByProperty(this, this.propertyMapping.memoryLinkId, tl.id, (queryError, link: ICorporateLink) => {
-      if (!queryError && !link) {
-        queryError = new Error(`No link found with ID ${tl.id}`);
-      }
-      this._entities.delete(tl.id);
-      return callback();
-    });
+    const link = this.getSingleLinkByProperty(this.propertyMapping.memoryLinkId, tl.id);
+    if (!link) {
+      throw new Error(`No link found with ID ${tl.id}`);
+    }
+    this._entities.delete(tl.id);
   }
 
   dehydrateLink(linkInstance: ICorporateLinkExtended): any {
@@ -191,7 +184,7 @@ export class MemoryLinkProvider implements ILinkProvider {
     }
     const clonedObject = Object.assign({}, jsonObject);
     delete clonedObject[dehydratedIdentityKey];
-    const pglink = createLinkInstanceFromHydratedEntity(this, clonedObject);
+    const pglink = this.createLinkInstanceFromHydratedEntity(clonedObject);
     return pglink;
   }
 
@@ -218,65 +211,57 @@ export class MemoryLinkProvider implements ILinkProvider {
     const arr = jsonArray.map(this.rehydrateLink.bind(this));
     return arr as any[] as ICorporateLink[];
   }
-}
 
-function createLinkInstancesFromMemoryEntityArray(provider: MemoryLinkProvider, rows: any[]) {
-  return rows.map(createLinkInstanceFromMemoryEntity.bind(null, provider));
-}
+  private createLinkInstancesFromMemoryEntityArray(rows: any[]): CorporateMemoryLink[] {
+    return rows.map(this.createLinkInstanceFromMemoryEntity.bind(this));
+  }
 
-function createLinkInstanceFromMemoryEntity(provider: MemoryLinkProvider, row: any): CorporateMemoryLink {
-  const linkInternalOptions = {
-    provider,
-  };
-  const newLink = new CorporateMemoryLink(linkInternalOptions, row);
-  newLink[linkProviderInstantiationTypeProperty] = LinkInstantiatedType.MemoryEntity; // in case this helps while debugging
-  return newLink;
-}
+  private createLinkInstanceFromMemoryEntity(row: any): CorporateMemoryLink {
+    const linkInternalOptions = {
+      provider: this,
+    };
+    const newLink = new CorporateMemoryLink(linkInternalOptions, row);
+    newLink[linkProviderInstantiationTypeProperty] = LinkInstantiatedType.MemoryEntity; // in case this helps while debugging
+    return newLink;
+  }
 
-function createLinkInstanceFromHydratedEntity(self, jsonObject) {
-  const linkInternalOptions = {
-    provider: self,
-  };
-  const newLink = new CorporateMemoryLink(linkInternalOptions, jsonObject);
-  newLink[linkProviderInstantiationTypeProperty] = LinkInstantiatedType.Rehydrated; // in case this helps while debugging
-  return newLink;
-}
+  private createLinkInstanceFromHydratedEntity(jsonObject) {
+    const linkInternalOptions = {
+      provider: this,
+    };
+    const newLink = new CorporateMemoryLink(linkInternalOptions, jsonObject);
+    newLink[linkProviderInstantiationTypeProperty] = LinkInstantiatedType.Rehydrated; // in case this helps while debugging
+    return newLink;
+  }
 
-function getUserEntitiesByProperty(entities: Map<string, CorporateMemoryLink>, propertyName: string, value: string, callback) {
-  const rows: CorporateMemoryLink[] = [];
-  entities.forEach(entry => {
-    if (entry && entry[propertyName] === value) {
-      rows.push(entry);
+  private getUserEntitiesByProperty(entities: Map<string, CorporateMemoryLink>, propertyName: string, value: string): CorporateMemoryLink[] {
+    const rows: CorporateMemoryLink[] = [];
+    for (const entry of entities.values()) {
+      if (entry && entry[propertyName] === value) {
+        rows.push(entry);
+      }
     }
-  });
-  return callback(null, rows);
-}
+    return rows;
+  }
 
-function getLinksByProperty(self, propertyName, value, callback) {
-  return getUserEntitiesByProperty(self._entities, propertyName, value, (error, rows) => {
-    if (error) {
-      return callback(error);
-    }
-    const links = createLinkInstancesFromMemoryEntityArray(self, rows);
-    return callback(null, links);
-  });
-}
+  private getLinksByProperty(propertyName: string, value): CorporateMemoryLink[] {
+    const rows = this.getUserEntitiesByProperty(this._entities, propertyName, value);
+    const links = this.createLinkInstancesFromMemoryEntityArray(rows);
+    return links;
+  }
 
-function getSingleLinkByProperty(self, propertyName, value, callback) {
-  return getUserEntitiesByProperty(self._entities, propertyName, value, (getError, rows) => {
-    if (getError) {
-      return callback(getError);
-    }
+  private getSingleLinkByProperty(propertyName: string, value): CorporateMemoryLink {
+    const rows = this.getUserEntitiesByProperty(this._entities, propertyName, value);
     if (rows.length <= 0) {
-      return callback(null, false);
+      return false as any as CorporateMemoryLink;
     }
     if (rows.length > 1) {
       const error: Error = new Error(`More than a single result were returned by the query (${rows.length})`);
       error['multipleResults'] = rows.length;
-      return callback(error);
+      throw error;
     }
     const entityRow = rows[0];
-    const link = createLinkInstanceFromMemoryEntity(self, entityRow);
-    return callback(null, link);
-  });
+    const link = this.createLinkInstanceFromMemoryEntity(entityRow);
+    return link;
+  }
 }

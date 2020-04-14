@@ -14,7 +14,7 @@ import { Operations } from '../../business/operations';
 import { WebhookProcessor } from '../organizationProcessor';
 import { Organization } from '../../business/organization';
 
-import { RenderHtmlMail } from '../../lib/emailRender';
+import RenderHtmlMail from '../../lib/emailRender';
 import { IMailProvider } from '../../lib/mailProvider';
 
 interface IAutomaticTeamsMail {

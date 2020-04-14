@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import asyncHandler from 'express-async-handler';
 import express from 'express';
 import _ from 'lodash';
@@ -19,7 +17,7 @@ import { Organization } from '../business/organization';
 import { IPersonalizedUserAggregateRepositoryPermission } from '../business/graphManager';
 import { IRequestTeamPermissions } from '../middleware/github/teamPermissions';
 import { UserContext } from '../user/aggregate';
-import { asNumber } from '../utils';
+import { asNumber, daysInMilliseconds } from '../utils';
 
 interface IGetReposAndOptionalTeamPermissionsResponse {
   reposData: Repository[];
@@ -91,6 +89,23 @@ module.exports = asyncHandler(async function(req: IReposAppWithTeam, res: expres
     type = null;
   }
 
+  let metadataType = req.query.mt;
+  if (
+    metadataType !== 'with-metadata' &&
+    metadataType !== 'without-metadata' &&
+    metadataType !== 'administrator-locked' &&
+    metadataType !== 'locked' &&
+    metadataType !== 'unlocked'
+  ) {
+    metadataType = null;
+  }
+
+  const createdSinceValue = req.query.cs ? asNumber(req.query.cs) : null;
+  let createdSince = null;
+  if (createdSinceValue) {
+    createdSince = new Date((new Date()).getTime() - daysInMilliseconds(createdSinceValue));
+  }
+
   let showIds = req.query.showids === '1';
 
   let teamsSubType = null;
@@ -135,17 +150,34 @@ module.exports = asyncHandler(async function(req: IReposAppWithTeam, res: expres
       displaySuffix: 'team permissions',
     });
   }
+  if (createdSince) {
+    filters.push({
+      type: 'cs',
+      value: `${createdSinceValue} days`,
+      displayPrefix: 'created within',
+    });
+  }
+  if (metadataType) {
+    const mtValue = metadataType.replace('-', ' ');
+    filters.push({
+      type: 'mt',
+      value: mtValue,
+    });
+  }
 
   const search = new RepositorySearch(reposData, {
     phrase,
     language,
     type,
     teamsType,
+    metadataType,
     specificTeamRepos,
     specificTeamPermissions,
+    createdSince,
     teamsSubType,
     userRepos,
     graphManager: operations.graphManager,
+    repositoryMetadataProvider: operations.providers.repositoryMetadataProvider,
   });
 
   await search.search(page, req.query.sort);

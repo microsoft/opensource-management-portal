@@ -11,8 +11,8 @@ import express = require('express');
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest } from '../../transitional';
-import { addLinkToRequest } from '../../middleware/links/';
+import { ReposAppRequest, IProviders } from '../../transitional';
+import { AddLinkToRequest } from '../../middleware/links/';
 import { Operations } from '../../business/operations';
 import { IMailAddressProvider } from '../../lib/mailAddressProvider';
 import { ICorporateLink } from '../../business/corporateLink';
@@ -22,14 +22,18 @@ const authorizationsRoute = require('./authorizations');
 const digestReportsRoute = require('./digestReports');
 const personalAccessTokensRoute = require('./personalAccessTokens');
 
-router.use(addLinkToRequest);
+import campaignsRoute from './campaigns';
+
+router.use(asyncHandler(AddLinkToRequest));
 
 router.get('/', asyncHandler( async (req: ReposAppRequest, res) => {
-  const operations = req.app.settings.operations as Operations;
+  const providers = req.app.settings.providers as IProviders;
   const link = req.individualContext.link;
   let legalContactInformation = null;
   try {
-    legalContactInformation = await getLegalContact(operations.providers.mailAddressProvider, link);
+    if (providers.corporateContactProvider) {
+      legalContactInformation = await providers.corporateContactProvider.lookupContacts(link.corporateUsername);
+    }
   } catch (ignoredError) { /* ignored */ }
   req.individualContext.webContext.render({
     view: 'settings',
@@ -41,21 +45,10 @@ router.get('/', asyncHandler( async (req: ReposAppRequest, res) => {
   });
 }));
 
+router.use('/approvals', approvalsRoute);
 router.use('/authorizations', authorizationsRoute);
+router.use('/campaigns', campaignsRoute);
 router.use('/digestReports', digestReportsRoute);
 router.use('/security/tokens', personalAccessTokensRoute);
-router.use('/approvals', approvalsRoute);
-
-function getLegalContact(mailAddressProvider: IMailAddressProvider, link: ICorporateLink): Promise<any> {
-  return new Promise((resolve, reject) => {
-    if (link && link.corporateUsername && mailAddressProvider && mailAddressProvider['getLegalContactInformationFromUpn']) {
-      return mailAddressProvider['getLegalContactInformationFromUpn'](link.corporateUsername, (error, data) => {
-        return error ? reject(error) : resolve(data);
-      });
-    } else {
-      return resolve();
-    }
-  });
-}
 
 module.exports = router;

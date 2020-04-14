@@ -3,118 +3,78 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import express = require('express');
-import { ReposAppRequest } from '../../../transitional';
-const request = require('request');
-
-import { jsonError } from '../../../middleware/jsonError';
-
+import express from 'express';
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
+
+import { ReposAppRequest, IProviders } from '../../../transitional';
+import { getReviewService } from './reviewService';
+import { jsonError } from '../../../middleware/jsonError';
+import { GetAliasFromUpn } from '../../../lib/mailAddressProvider';
 
 const releaseApprovalsRedisKey = 'release-approvals';
 
-interface IReleaseApprovalRedisRequest extends ReposAppRequest {
-  releaseApprovalsRedis?: any;
-}
-
-router.use((req: IReleaseApprovalRedisRequest, res, next) => {
-  const providers = req.app.settings.providers;
-  req.releaseApprovalsRedis = providers.witnessRedisHelper || providers.redis;
-  return next();
-});
-
-router.get('/', (req: IReleaseApprovalRedisRequest, res, next) => {
+router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
+  const { cacheProvider } = req.app.settings.providers as IProviders;
   try {
-    req.releaseApprovalsRedis.getObject(releaseApprovalsRedisKey, (error, data) => {
-      if (!error && data) {
-        return res.json({ releaseApprovals: data });
-      } else { // cache miss
-        const options = getWitnessRequestOptions(req.app.settings.runtimeConfig);
-        request.get(options, (httpError, ignoredResponse, body) => {
-          if (httpError) {
-            return next(jsonError(new Error(httpError.message)));
-          }
-          if (body.message) {
-            return next(jsonError(new Error(body.message)));
-          }
-          req.releaseApprovalsRedis.setObjectWithExpire(releaseApprovalsRedisKey, body, 60 * 24); // async caching
-          return res.json({ releaseApprovals: body });
-        });
-      }
-    });
+    const reviewService = getReviewService(req.app.settings.runtimeConfig);
+    const data = await cacheProvider.getObject(releaseApprovalsRedisKey);
+    if (data) {
+      return res.json({ releaseApprovals: data });
+    }
+    const reviews = await reviewService.getAllReleaseReviews();
+    await cacheProvider.setObjectWithExpire(releaseApprovalsRedisKey, reviews, 60 * 24);
+    res.json({ releaseApprovals: reviews });
   } catch (error) {
     return next(jsonError(error, 400));
   }
-});
+}));
 
-router.post('/', (req: IReleaseApprovalRedisRequest, res, next) => {
+router.post('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
+  const { mailAddressProvider, cacheProvider, insights } = req.app.settings.providers as IProviders;
   try {
-    const body = req.body;
+    const context = req.individualContext || req.apiContext;
+    const upn = context.corporateIdentity.username;
+      const body = req.body;
     if (!body) {
       return next(jsonError('No body', 400));
     }
-    const options = getWitnessRequestOptions(req.app.settings.runtimeConfig);
-    const upn = req.user.azure.username.toLowerCase();
-    const operations = req.app.settings.operations;
-    operations.mailAddressProvider.getCorporateEntry('upns', upn, (redisGetError, person) => {
-      if (!person) {
-        redisGetError = new Error(`Given the user principal name of ${upn}, we were unable to find the e-mail address for the user`);
+    let alias = null;
+    try {
+      alias = await GetAliasFromUpn(mailAddressProvider, upn);
+      if (!alias) {
+        throw new Error(`Given the user principal name of ${upn}, we were unable to find the e-mail address for the user`);
       }
-      if (redisGetError) {
-        return next(jsonError(new Error(redisGetError.message)));
-      }
-      options.body = {
-        context: {
-          user: person.alias
-        },
-        default: body
-      };
-      request.post(options, (httpError, ignoredResponse, body) => {
-        req.app.settings.providers.insights.trackEvent({
-          name: 'ApiClientCreateReleaseApproval',
-          properties: {
-            requestBody: JSON.stringify(options.body),
-            responseBody: JSON.stringify(body),
-          },
-        });
-        if (httpError) {
-          return next(jsonError(new Error(httpError.message)));
-        }
-        if (!body) {
-          return next(jsonError('No response', 400));
-        }
-        if (body.message) {
-          return next(jsonError(new Error(body.message)));
-        }
-        const result = body.default[0].result;
-        if (result.state === 'Failed') {
-          return next(jsonError(new Error(result.issues ? result.issues[0] : 'Failed to create new release registration')));
-        }
-        const getOptions = getWitnessRequestOptions(req.app.settings.runtimeConfig);
-        request.get(getOptions, (error, response, releases) => { // async caching
-          if (!error && releases) {
-            req.releaseApprovalsRedis.setObjectWithExpire(releaseApprovalsRedisKey, releases, 60 * 24);
-          }
-        });
-        return res.json({
-          releaseApprovals: [result.record]
-        });
-      });
+    } catch (getAliasError) {
+      return next(jsonError(new Error(getAliasError.message)));
+    }
+    const reviewService = getReviewService(req.app.settings.runtimeConfig);
+    const response = await reviewService.submitReleaseRequestBatch({
+      context: {
+        user: alias,
+      },
+      requests: body,
+    });
+    insights.trackEvent({
+      name: 'ApiClientCreateReleaseApproval',
+      properties: {
+        requestBody: JSON.stringify(body),
+        responseBody: JSON.stringify(response),
+      },
+    });
+    const result = response[0];
+    if (result.issue || result.error) {
+      return next(jsonError(new Error(result.issue || result.error || 'Failed to create new release registration')));
+    }
+    const reviews = await reviewService.getAllReleaseReviews();
+    await cacheProvider.setObjectWithExpire(releaseApprovalsRedisKey, reviews, 60 * 24);
+    // BUG in the implementation: seemed to be sending multiple results! return res.json({ releaseApprovals: reviews });
+    return res.json({
+      releaseApprovals: [result.review]
     });
   } catch (error) {
-    return next(jsonError(error, 400));
+    return next(jsonError(error));
   }
-});
+}));
 
-function getWitnessRequestOptions(config) {
-  const url = config.witness.approval.serviceUrl + '/releases';
-  const authToken = 'Basic ' + Buffer.from(':' + config.witness.approval.authToken, 'utf8').toString('base64');
-  const headers = {
-    Authorization: authToken
-  };
-  return { url: url, headers: headers, json: true, body: undefined };
-}
-
-module.exports = router;
+export default router;

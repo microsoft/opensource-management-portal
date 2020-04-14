@@ -15,6 +15,7 @@ base path and also set headers.
 
 The following API versions are currently supported:
 
+- "2019-10-01": creates a link
 - "2019-02-01": adds avatar and additional service account contact fields
 - "2016-12-01": supports creating repositories and also creating links
 - "2017-03-08": updates the shape of link responses to `aad.id` and `corporate` is renamed `aad`
@@ -123,6 +124,10 @@ Body
 
 This API will retrieve information about a specific user. The first API version to support this was `2017-03-08`.
 
+### by Link ID
+
+> GET /api/people/links:linkid
+
 ### by GitHub username
 
 > GET /api/people/links/github/:login
@@ -212,6 +217,36 @@ Response body:
 It is most common that the array will be of length === 1.
 
 If there are no results, instead of an HTTP 200, you will receive 404 (no empty array).
+
+## Create a link
+
+Required API scope: `link`
+
+> POST /api/people/links
+
+### Request
+
+```
+BODY
+{
+  "corporate": {
+    "id": "corporate AAD user ID GUID as a string value"
+  },
+  "github": {
+    "id": "github user BY ID not username this is a string value"
+  }
+}
+```
+
+> If the account is a Service Account, the `corporate` object should also include a field called `serviceAccountMail` that points to a contact for the service account.
+
+### Response
+
+```
+Status: 201 OK
+```
+
+'Location' header includes a pointer to the resource by link ID.
 
 # Repository management
 

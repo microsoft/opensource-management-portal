@@ -1,0 +1,28 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends layout
+
+block content
+  div.container
+    if config && config.news && config.news.all && Array.isArray(config.news.all) && config.news.all.length
+      h1 What's New
+        each story in config.news.all
+          if story.link
+            h3: a(href=story.link)= story.title
+          else
+            h3= story.title
+          if story.subtitle
+            h4= story.subtitle
+          if story.paragraphs
+            each paragraph in story.paragraphs
+              p= paragraph
+          if story.actions
+            ul.list-unstyled
+              each action in story.actions
+                if action.link
+                  li: a(href=action.link)= action.text
+                else
+                  li= action.text
