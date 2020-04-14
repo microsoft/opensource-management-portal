@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import moment from 'moment';
 
 import { ICorporateLink } from './corporateLink';
@@ -63,7 +61,7 @@ export class GraphManager {
     if (optionalRole) {
       options.role = optionalRole;
     }
-    options.maxAgeSeconds = 60 * 20;
+    options.maxAgeSeconds = 60 * 20; // 20m
     options.backgroundRefresh = true;
     const teams = await this.getUserTeams(id, options);
     return teams;
@@ -95,12 +93,12 @@ export class GraphManager {
   getTeamsWithMembers(options: ICrossOrganizationTeamMembership): Promise<any[]> {
     options = options || {};
     if (!options.maxAgeSeconds) {
-      options.maxAgeSeconds = 60 * 30 * 48 * 10 /* 2 WEEKS */ /* 2 DAYS */ /* 30m per-org full team members list OK */;
+      options.maxAgeSeconds = 24 * 60 * 60; // One day
     }
     if (options.backgroundRefresh === undefined) {
       options.backgroundRefresh = true;
     }
-    options.individualMaxAgeSeconds = 7 * 24 * 60 * 60; // One week
+    options.individualMaxAgeSeconds = 12 * 60 * 60; // Half day
     return this._operations.getTeamsWithMembers(options);
   }
 
@@ -165,7 +163,7 @@ export class GraphManager {
     if (!options.maxAgeSeconds) {
       options.maxAgeSeconds = 60 * 20 /* 20m per-org collabs list OK */;
     }
-    options.individualMaxAgeSeconds = 7 * 24 * 60 * 60; // One week
+    options.individualMaxAgeSeconds = 12 * 60 * 60; // Half day
     if (options.backgroundRefresh === undefined) {
       options.backgroundRefresh = true;
     }
@@ -177,7 +175,7 @@ export class GraphManager {
     if (!options.maxAgeSeconds) {
       options.maxAgeSeconds = 60 * 20 /* 20m per-org collabs list OK */;
     }
-    options.individualMaxAgeSeconds = 7 * 24 * 60 * 60; // One week
+    options.individualMaxAgeSeconds = 12 * 60 * 60; // Half day
     if (options.backgroundRefresh === undefined) {
       options.backgroundRefresh = true;
     }

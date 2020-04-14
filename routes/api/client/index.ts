@@ -5,13 +5,16 @@
 
 'use strict';
 
-import express = require('express');
+import express from 'express';
+import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../../middleware/jsonError';
 import { apiContextMiddleware } from '../../../middleware/business/setContext';
 import { setIdentity } from '../../../middleware/business/authentication';
-import { addLinkToRequest } from '../../../middleware/links';
+import { AddLinkToRequest } from '../../../middleware/links';
 import { ReposAppRequest } from '../../../transitional';
+
+import ReleaseApprovalsRoute from './releaseApprovals';
 
 const router = express.Router();
 
@@ -24,10 +27,10 @@ router.use((req: ReposAppRequest, res, next) => {
 
 router.use(apiContextMiddleware);
 router.use(setIdentity);
-router.use(addLinkToRequest);
+router.use(asyncHandler(AddLinkToRequest));
 
 router.use('/newRepo', require('./newRepo'));
-router.use('/releaseApprovals', require('./releaseApprovals'));
+router.use('/releaseApprovals', ReleaseApprovalsRoute);
 
 router.use((req, res, next) => {
   return next(jsonError('The resource or endpoint you are looking for is not there', 404));

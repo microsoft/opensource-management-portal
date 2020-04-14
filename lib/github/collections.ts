@@ -78,6 +78,10 @@ export class RestCollections {
     return this.generalizedCollectionWithFilter('orgTeams', 'teams.list', teamDetailsToCopy, token, options, cacheOptions);
   }
 
+  getUserActivity(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any> {
+    return this.generalizedCollectionWithFilter('userActivity', 'activity.listEventsForUser', null /*activityDetailsToCopy*/, token, options, cacheOptions);
+  }
+
   getOrgMembers(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any> {
     return this.generalizedCollectionWithFilter('orgMembers', 'orgs.listMembers', memberDetailsToCopy, token, options, cacheOptions);
   }
@@ -105,11 +109,11 @@ export class RestCollections {
   }
 
   getTeamMembers(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any> {
-    return this.generalizedCollectionWithFilter('teamMembers', 'teams.listMembers', memberDetailsToCopy, token, options, cacheOptions);
+    return this.generalizedCollectionWithFilter('teamMembers', 'teams.listMembersInOrg', memberDetailsToCopy, token, options, cacheOptions);
   }
 
   getTeamRepos(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any> {
-    return this.generalizedCollectionWithFilter('teamRepos', 'teams.listRepos', teamRepoPermissionsToCopy, token, options, cacheOptions);
+    return this.generalizedCollectionWithFilter('teamRepos', 'teams.listReposInOrg', teamRepoPermissionsToCopy, token, options, cacheOptions);
   }
 
   private async getGithubCollection(token: string | IGetAuthorizationHeader, methodName, options, cacheOptions: IPagedCacheOptions): Promise<IRequestWithData> {

@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 // Query cache is an optional alternate cache that is used for any non-operational
 // purposes, namely customer-facing user interface components like the set of
 // orgs the user is a member of, the teams they are a member of, or the respos
@@ -724,11 +722,11 @@ export default class QueryCache {
 
   private hydrateRepositoryCollaborator(cacheEntity: RepositoryCollaboratorCacheEntity): IQueryCacheRepositoryCollaborator {
     const organization = this.operations.getOrganizationById(asNumber(cacheEntity.organizationId));
-    const repository = organization.repository(cacheEntity.repositoryId, {
+    const repository = organization.repository(null, {
       id: cacheEntity.repositoryId,
     }); // a string version of repositoryId FYI
     return {
-      repository: repository,
+      repository,
       affiliation: cacheEntity.collaboratorType,
       cacheEntity,
       userId: cacheEntity.userId,

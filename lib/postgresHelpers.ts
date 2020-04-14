@@ -32,7 +32,7 @@ export function PostgresPoolQuerySingleRow(pool, sql: string, values: any[], cal
   });
 }
 
-export function PostgresPoolQuerySingleRowAsync(pool, sql: string, values: any[]): Promise<any[]> {
+export function PostgresPoolQuerySingleRowAsync(pool, sql: string, values: any[]): Promise<any> {
   return new Promise((resolve, reject) => {
     PostgresPoolQuerySingleRow(pool, sql, values, (error, results) => {
       return error ? reject(error) : resolve(results);
@@ -74,7 +74,7 @@ export function PostgresPoolQuery(pool, sql: string, values: any[], callback) {
   });
 }
 
-export function PostgresPoolQueryAsync(pool, sql: string, values: any[]): Promise<any[]> {
+export function PostgresPoolQueryAsync(pool, sql: string, values: any[]): Promise<any> {
   return new Promise((resolve, reject) => {
     PostgresPoolQuery(pool, sql, values, (error, results) => {
       if (results && results['rows'] && results['rows'].length !== undefined) {

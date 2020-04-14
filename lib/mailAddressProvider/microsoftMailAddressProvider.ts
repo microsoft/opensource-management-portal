@@ -4,14 +4,12 @@
 
 // microsoftMailAddressProvider.js: THIS FILE IS FOR INTERNAL USE AND SHOULD NOT BE OPEN SOURCED AT THIS TIME
 
-'use strict';
-
 import request = require('request');
 
 module.exports = function createMailAddressProvider(options) {
   const config = options.config;
-  if (!config.witness || !config.witness.approval || !config.witness.approval.serviceUrl) {
-    throw new Error('Not configured for the Witness service');
+  if (!config.identity || !config.identity.url || !config.identity.pat) {
+    throw new Error('Not configured for the Identity service');
   }
 
   const providers = options.providers;
@@ -24,25 +22,28 @@ module.exports = function createMailAddressProvider(options) {
   }
 
   function getLegalContactInformationFromUpn(upn, callback) {
-    const options = getWitnessRequestOptions(config, `/org/user/${upn}`);
+    const options = getWitnessRequestOptions(config, `/user/${upn}`);
     request.get(options, (error, response, entry) => {
-      if (!error && (!entry || !entry.legal)) {
+      if (!error && (!entry || !entry.attorney || !entry.legal)) {
         error = new Error('Could not retrieve the legal contact');
       }
       if (error) {
         return callback(error);
       }
       const legalInfo = {
-        assignedTo: entry,
-        legalContact: entry.legal,
+        attorney: entry.attorney,
+        legal: entry.legal,
+        group: entry.group,
+        lowRiskBusiness: entry.lowRiskBusiness,
+        highRiskBusiness: entry.highRiskBusiness,
       };
       return callback(null, legalInfo);
     });
   }
 
   function getWitnessRequestOptions(config, endpoint) {
-    const url = config.witness.approval.serviceUrl + endpoint;
-    const authToken = 'Basic ' + Buffer.from(config.witness.approval.authToken + ':', 'utf8').toString('base64');
+    const url = config.identity.url + endpoint;
+    const authToken = 'Basic ' + Buffer.from(config.identity.pat + ':', 'utf8').toString('base64');
     const headers = {
       Authorization: authToken
     };
@@ -85,11 +86,12 @@ module.exports = function createMailAddressProvider(options) {
   }
 
   function getCorporateEntry(hashKey, hashField, expectJson, callback) {
-    if (!callback && typeof(expectJson) === 'function') {
+    if (!callback && typeof (expectJson) === 'function') {
       callback = expectJson;
       expectJson = true;
     }
     const redisClient = getRedisClient();
+    // TODO: this may no logner work!
     redisClient.hget(hashKey, hashField, (redisGetError, data) => {
       if (redisGetError) {
         return callback(redisGetError);
@@ -134,8 +136,8 @@ module.exports = function createMailAddressProvider(options) {
         return callback(new Error('No ID for the user'));
       });
     },
-    getManagerInformationFromUpn: getManagerInformationFromUpn,
-    getLegalContactInformationFromUpn: getLegalContactInformationFromUpn,
-    getCorporateEntry: getCorporateEntry,
+    getManagerInformationFromUpn,
+    getLegalContactInformationFromUpn,
+    getCorporateEntry,
   };
 };

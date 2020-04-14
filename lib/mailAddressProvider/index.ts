@@ -20,6 +20,17 @@ export function GetAddressFromUpnAsync(mailAddressProvider: IMailAddressProvider
   });
 }
 
+export function GetAliasFromUpn(mailAddressProvider: IMailAddressProvider, upn: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    mailAddressProvider.getCorporateEntry('upns', upn, (error: Error, person: any) => {
+      if (error) {
+        return reject(error);
+      }
+      return resolve(person && person.alias ? person.alias : null);
+    });
+  });
+}
+
 export function createMailAddressProviderInstance(options: any, callback: ICallback<IMailAddressProvider>) {
   const config = options.config;
   const mailAddressesConfig = config.mailAddresses || {};

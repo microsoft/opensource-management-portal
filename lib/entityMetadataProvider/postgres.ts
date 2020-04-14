@@ -51,11 +51,25 @@ export function PostgresGetByID(tableName: string, entityTypeColumn: string, ent
   return { sql, values };
 }
 
-export function PostgresJsonEntityQuery(tableName: string, entityTypeColumn: string, entityTypeValue: string, metadataColumnName: string, jsonQueryObject: any): IPostgresQuery {
+export function PostgresJsonEntityQuery(tableName: string, entityTypeColumn: string, entityTypeValue: string, metadataColumnName: string, jsonQueryObject: any, optionalOrderFieldName?: string, isDescending?: boolean): IPostgresQuery {
+  const orderBy = optionalOrderBy(metadataColumnName, optionalOrderFieldName, 3, isDescending);
   const sql = `SELECT * FROM ${tableName} WHERE ${entityTypeColumn} = $1 AND
-      ${metadataColumnName} @> $2`;
-  const values = [ entityTypeValue, jsonQueryObject ];
+      ${metadataColumnName} @> $2 ${orderBy.sql}`;
+  const values = [ entityTypeValue, jsonQueryObject, ...orderBy.values];
   return { sql, values };
+}
+
+function optionalOrderBy(metadataColumnName, optionalOrderFieldName: string, variableStartNumber: number, isDescending: boolean) {
+  const r = {
+    sql: '',
+    values: [],
+  };
+  if (optionalOrderFieldName) {
+    const ascend = isDescending ? ' DESC' : 'ASC';
+    r.sql = ` ORDER BY ${metadataColumnName}->$${variableStartNumber} ${ascend}`;
+    r.values = [optionalOrderFieldName];
+  }
+  return r;
 }
 
 export function PostgresJsonEntityQueryMultiple(tableName: string, entityTypeColumn: string, entityTypeValue: string, metadataColumnName: string, jsonQueryObjects: any[]): IPostgresQuery {
@@ -200,8 +214,8 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
 
   async fixedQueryMetadata(type: EntityMetadataType, query: IEntityMetadataFixedQuery): Promise<IEntityMetadata[]> {
     const tableName = this.getTableName(type);
-    const { sql, values } = this.createQueryFromFixedQueryEnum(tableName, type, query);
-    return await this.sqlQueryToMetadataArray(type, sql, values);
+    const { sql, values, skipEntityMapping } = this.createQueryFromFixedQueryEnum(tableName, type, query);
+    return await this.sqlQueryToMetadataArray(type, sql, values, skipEntityMapping);
   }
 
   getSerializationHelper(type: EntityMetadataType): IEntityMetadataSerializationHelper {
@@ -303,15 +317,18 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
     return newMetadataObject;
   }
 
-  private async sqlQueryToMetadataArray(type, sql, values): Promise<IEntityMetadata[]> {
-    const result = await PostgresPoolQueryAsync(this._pool, sql, values);
-    const rows = result['rows'];
-    if (!rows) {
-      throw new Error('No rows or empty rows returned');
+  private async sqlQueryToMetadataArray(type, sql, values, skipEntityMapping): Promise<IEntityMetadata[]> {
+    try {
+      const result = await PostgresPoolQueryAsync(this._pool, sql, values);
+      const rows = result['rows'];
+      if (!rows) {
+        throw new Error('No rows or empty rows returned');
+      }
+      return skipEntityMapping ? rows : rows.map(row => this.rowToMetadataObject(type, row));
+    } catch (errorish) {
+      console.dir(errorish);
+      throw errorish;
     }
-    return rows.map(row => {
-      return this.rowToMetadataObject(type, row);
-    });
   }
 
   private createQueryFromFixedQueryEnum(tableName: string, type: EntityMetadataType, query: IEntityMetadataFixedQuery): any {

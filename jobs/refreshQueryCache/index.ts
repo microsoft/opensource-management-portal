@@ -5,16 +5,25 @@
 
 /*eslint no-console: ["error", { allow: ["log"] }] */
 
-'use strict';
+import Task from './task';
 
 if (!process.env.DEBUG) {
   process.env.DEBUG = 'querycache';
 }
 
-require('painless-config-resolver')().resolve((configurationError, config) => {
+let painlessConfigResolver = null;
+try {
+  painlessConfigResolver = require('painless-config-resolver')();
+} catch (error) {
+  console.log('Painless config resolver initialization error:');
+  console.dir(error);
+  throw error;
+}
+
+painlessConfigResolver.resolve((configurationError, config) => {
   if (configurationError) {
     throw configurationError;
   }
   const args = process.argv.slice(2);
-  require('./task')(config, args);
+  Task(config, args);
 });

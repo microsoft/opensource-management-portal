@@ -3,18 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express = require('express');
 import asyncHandler from 'express-async-handler';
 
-import { ReposAppRequest } from '../../../transitional';
 import { jsonError } from '../../../middleware/jsonError';
 import { MemberSearch } from '../../../business/memberSearch';
 import { ICorporateLink } from '../../../business/corporateLink';
 import { Operations, ICrossOrganizationMembersResult } from '../../../business/operations';
 import { IApiRequest } from '../../../middleware/apiReposAuth';
-import { OrganizationMember } from '../../../business/organizationMember';
+import postLinkApi from './link';
 
 const router = express.Router();
 const wrapError = require('../../../utils').wrapError;
@@ -32,11 +29,13 @@ router.use(function (req: IApiRequest, res, next) {
   if (!token.scopes) {
     return next(jsonError('The key is not authorized for specific APIs', 401));
   }
-  if (!token.hasScope('links')) {
-  return next(jsonError('The key is not authorized to use the get links API', 401));
+  if (!token.hasScope('links') && !token.hasScope('link')) {
+  return next(jsonError('The key is not authorized to use the links API', 401));
   }
   return next();
 });
+
+router.post('/', asyncHandler(postLinkApi));
 
 router.get('/', asyncHandler(async (req: IApiRequest, res, next) => {
   const operations = req.app.settings.operations;
@@ -46,6 +45,25 @@ router.get('/', asyncHandler(async (req: IApiRequest, res, next) => {
   req.insights.trackMetric({ name: 'ApiRequestLinks', value: 1 });
   res.set('Content-Type', 'application/json');
   res.send(JSON.stringify(results, undefined, 2));
+}));
+
+router.get('/:linkid', asyncHandler(async (req: IApiRequest, res, next) => {
+  if (unsupportedApiVersions.includes(req.apiVersion)) {
+    return next(jsonError('This API is not supported by the API version you are using.', 400));
+  }
+  const linkid = req.params.linkid.toLowerCase();
+  const operations = req.app.settings.operations as Operations;
+  const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
+  const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
+  const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps, true);
+  for (let i = 0; i < results.length; i++) {
+    const entry = results[i];
+    if (entry && entry.id === linkid) {
+      req.insights.trackMetric({ name: 'ApiRequestLinkByLinkId', value: 1 });
+      return res.json(entry);
+    }
+  }
+  return next(jsonError('Could not find the link', 404));
 }));
 
 router.get('/github/:username', asyncHandler (async (req: IApiRequest, res, next) => {
@@ -117,7 +135,7 @@ router.get('/aad/:id', asyncHandler(async (req: IApiRequest, res, next) => {
   return res.json(r);
 }));
 
-async function getAllUsers(apiVersion, operations: Operations, skipOrganizations: boolean, showTimestamps: boolean): Promise<any[]> {
+async function getAllUsers(apiVersion, operations: Operations, skipOrganizations: boolean, showTimestamps: boolean, showLinkIds?: boolean): Promise<any[]> {
   let links: ICorporateLink[] = null;
   try {
     links = await operations.getLinks();
@@ -135,8 +153,8 @@ async function getAllUsers(apiVersion, operations: Operations, skipOrganizations
   }
   const search = new MemberSearch(members, {
     type: 'linked',
-    links: links,
-    getCorporateProfile: operations.mailAddressProvider.getCorporateEntry,
+    links,
+    providers: operations.providers,
     pageSize: 200000,
   });
   try {
@@ -158,6 +176,9 @@ async function getAllUsers(apiVersion, operations: Operations, skipOrganizations
       if (isExpandedView) {
         entry.github['avatar'] = member.account.avatar_url;
       }
+      if (showLinkIds && member && member.link && member.link.id) {
+        entry['id'] = member.link.id;
+      }
       if (!skipOrganizations && member.orgs) {
         entry.github.organizations = Object.getOwnPropertyNames(member.orgs);
       }
@@ -176,12 +197,12 @@ async function getAllUsers(apiVersion, operations: Operations, skipOrganizations
         const corporatePropertyName = apiVersion === '2016-12-01' ? 'corporate' : 'aad'; // This was renamed to be provider name-based
         entry[corporatePropertyName] = {
           alias: member.corporate.alias,
-          preferredName: member.corporate.preferredName,
-          userPrincipalName: member.corporate.userPrincipalName,
+          preferredName: member.corporate.preferredName || member.corporate.corporateDisplayName,
+          userPrincipalName: member.corporate.userPrincipalName || member.corporate.corporateUsername,
           emailAddress: member.corporate.emailAddress,
         };
         const corporateIdPropertyName = apiVersion === '2016-12-01' ? 'aadId' : 'id'; // Now just 'id'
-        entry[corporatePropertyName][corporateIdPropertyName] = member.corporate.aadId;
+        entry[corporatePropertyName][corporateIdPropertyName] = member.corporate.aadId || link?.corporateId;
       }
       results.push(entry);
     });

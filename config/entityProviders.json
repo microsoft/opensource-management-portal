@@ -1,8 +1,13 @@
 {
+    "auditlogrecord": "env://ENTITY_PROVIDER_AUDITLOG?default=firstconfigured",
+    "eventrecord": "env://ENTITY_PROVIDER_EVENT?default=firstconfigured",
+
     "teamjoin": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
     "repositorymetadata": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
-    "organizationmembercache": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
+
     "organizationsettings": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
+
+    "organizationmembercache": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
     "repositorycache": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
     "repositorycollaboratorcache": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
     "repositoryteamcache": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",

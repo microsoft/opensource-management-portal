@@ -22,6 +22,12 @@ export enum GitHubRepositoryPermission {
   Admin = 'admin',
 }
 
+export enum RepositoryLockdownState {
+  Locked = 'locked',
+  Unlocked = 'unlocked',
+  AdministratorLocked = 'administratorLocked',
+}
+
 export const GitHubRepositoryPermissions = [
   GitHubRepositoryPermission.Pull,
   GitHubRepositoryPermission.Push,
@@ -65,6 +71,10 @@ interface IRepositoryMetadataProperties {
 
   initialCorrelationId: any;
 
+  lockdownState: any;
+
+  transferSource: any;
+
   projectType: any;
   releaseReviewJustification: any;
   releaseReviewType: any;
@@ -98,6 +108,8 @@ const Field: IRepositoryMetadataProperties = {
   releaseReviewJustification: 'releaseReviewJustification',
   releaseReviewType: 'releaseReviewType',
   releaseReviewUrl: 'releaseReviewUrl',
+  lockdownState: 'lockdownState',
+  transferSource: 'transferSource',
 }
 
 const fieldNames = Object.getOwnPropertyNames(Field);
@@ -129,6 +141,10 @@ export class RepositoryMetadataEntity implements IRepositoryMetadataProperties {
   releaseReviewJustification: string;
   releaseReviewType: string;
   releaseReviewUrl: string;
+
+  lockdownState: RepositoryLockdownState;
+
+  transferSource: string;
 
   constructor() {
     this.initialTeamPermissions = [];
@@ -216,6 +232,8 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableMapping, ne
   [Field.releaseReviewJustification, 'justification'],
   [Field.releaseReviewType, 'approvalType'],
   [Field.releaseReviewUrl, 'approvalUrl'],
+  [Field.lockdownState, (Field.lockdownState).toLowerCase()],
+  [Field.transferSource, (Field.transferSource).toLowerCase()],
 ]));
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.TablePossibleDateColumns, [
   Field.created,
@@ -252,6 +270,9 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, n
   [Field.releaseReviewJustification, 'justification'],
   [Field.releaseReviewType, 'approvalType'],
   [Field.releaseReviewUrl, 'approvalUrl'],
+
+  [Field.lockdownState, (Field.lockdownState).toLowerCase()],
+  [Field.transferSource, (Field.transferSource).toLowerCase()],
 ]));
 EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.MemoryMapping, fieldNames, [repositoryId]);
 
@@ -287,6 +308,9 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping,
   [Field.releaseReviewJustification, (Field.releaseReviewJustification as string).toLowerCase()],
   [Field.releaseReviewType, (Field.releaseReviewType as string).toLowerCase()],
   [Field.releaseReviewUrl, (Field.releaseReviewUrl as string).toLowerCase()],
+
+  [Field.lockdownState, (Field.lockdownState).toLowerCase()],
+  [Field.transferSource, (Field.transferSource).toLowerCase()],
 ]));
 EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.PostgresMapping, fieldNames, [repositoryId]);
 

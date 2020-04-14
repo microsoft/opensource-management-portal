@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 
 const currentRepositoryMetadataSchema = 'rm1.0';

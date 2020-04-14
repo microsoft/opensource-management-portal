@@ -1,0 +1,58 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block content
+
+  //- Services
+  - var languageColor = viewServices.languageColor
+  - var octicon = viewServices.octicon
+  - var fileSize = viewServices.fileSize
+
+  //- View constants
+  - var maxReaders = 10
+
+  //- Variables
+  - var githubUrl = 'https://github.com/' + repo.full_name
+  - var cloneUrl = repo.clone_url
+  - var sshUrl = repo.ssh_url
+  - var admin = repoPermissions && repoPermissions.allowAdministration
+
+  .container
+    .row: .col-md-12
+        - var hugeHeading = repo.name.length < 33
+        h1(class={huge: hugeHeading})
+          a(href='https://github.com/' + repo.full_name, target="_blank")= repo.name
+          if repo.private === true
+            | &nbsp;
+            .label.label-warning(class={shrink66: !hugeHeading, shrink50: hugeHeading}) Private
+        h6= repo.full_name.replace('/' + repo.name, '') + ' organization'
+        if repo.description
+          p.lead=repo.description
+
+    .row
+      .col-md-8
+
+        h2 Delete your repo
+        p For a short time after creating a repository, as the original creator of a repo, you can delete it.
+        div.alert.alert-danger
+          p
+            strong Warning - this will permanently delete this repo
+            br
+            | This is only designed to help delete a repo when you have accidentally forked a repo into an official org that you meant to fork into your own account, or if you realize you need to create the repo again.
+
+        p &nbsp;
+
+        form(method='post')
+          p
+            input.btn.btn-large.btn-default(
+              type='submit',
+              onclick='return confirm(\'Are you ABSOLUTELY sure that you want to delete this repo?\');'
+              value='Delete ' + repo.organization.name + '/' + repo.name)
+
+        p &nbsp;
+
+        p &nbsp;

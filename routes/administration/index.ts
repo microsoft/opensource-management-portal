@@ -12,6 +12,7 @@ const router = express.Router();
 
 router.use('/app', require('./app'));
 router.use('/apps', require('./apps'));
+router.use('/contributingorgs', require('./contributingorgs'));
 
 router.get('/', (req: ReposAppRequest, res, next) => {
   const individualContext = req.individualContext;

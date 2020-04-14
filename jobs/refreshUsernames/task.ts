@@ -5,26 +5,23 @@
 
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
-'use strict';
-
 import throat = require('throat');
 
-import { createAndInitializeLinkProviderInstance } from '../../lib/linkProviders';
+import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../../lib/linkProviders';
 import { IProviders } from '../../transitional';
-import { ILinkProvider } from '../../lib/linkProviders/postgres/postgresLinkProvider';
 import { ICorporateLink } from '../../business/corporateLink';
 import { Operations, UnlinkPurpose } from '../../business/operations';
 import { GitHubTokenManager } from '../../github/tokenManager';
+import { sleep } from '../../utils';
 
 let insights;
 
-module.exports = function run(config) {
+export default function Task(config) {
   const app = require('../../app');
   config.skipModules = new Set([
     'web',
   ]);
-
-  app.initializeApplication(config, null, error => {
+  app.initializeJob(config, null, error => {
     if (error) {
       throw error;
     }
@@ -135,12 +132,12 @@ async function refresh(config, app) : Promise<void> {
         ++errors;
         insights.trackException({ exception: getDetailsError, properties: { name: 'JobRefreshUsernamesError' } });
         errorList.push(getDetailsError);
-        await sleepPromise(secondsDelayAfterError * 1000);
+        await sleep(secondsDelayAfterError * 1000);
       }
       return;
     }
 
-    await sleepPromise(secondsDelayAfterSuccess * 1000);
+    await sleep(secondsDelayAfterSuccess * 1000);
 
   }, userDetailsThroatCount)));
 
@@ -157,30 +154,10 @@ async function refresh(config, app) : Promise<void> {
   insights.trackEvent({ name: 'JobRefreshUsernamesSuccess', properties: { updates, updatedUsernames, updatedAvatars, updatedAadNames, updatedAadUpns, errors } });
 }
 
-async function updateLink(linkProvider: ILinkProvider, link: ICorporateLink) : Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    linkProvider.updateLink(link, error => {
-      if (error) {
-        return reject(error);
-      }
-      return resolve();
-    });
-  });
+function updateLink(linkProvider: ILinkProvider, link: ICorporateLink) : Promise<void> {
+  return linkProvider.updateLink(link);
 }
 
-async function getAllLinks(linkProvider: ILinkProvider) : Promise<ICorporateLink[]> {
-  return new Promise<ICorporateLink[]>((resolve, reject) => {
-    linkProvider.getAll((error, links: ICorporateLink[]) => {
-      if (error) {
-        return reject(error);
-      }
-      return resolve(links);
-    });
-  });
-}
-
-function sleepPromise(ms: number): Promise<void> {
-  return new Promise<void>(resolve => {
-    setTimeout(resolve, ms);
-  });
+function getAllLinks(linkProvider: ILinkProvider) : Promise<ICorporateLink[]> {
+  return linkProvider.getAll();
 }

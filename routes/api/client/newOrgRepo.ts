@@ -16,7 +16,6 @@ import { Organization, ICreateRepositoryResult } from '../../../business/organiz
 import { CreateRepository, ICreateRepositoryApiResult } from '../createRepo';
 import { Team, GitHubTeamRole } from '../../../business/team';
 import { GetAddressFromUpnAsync } from '../../../lib/mailAddressProvider';
-import { Operations } from '../../../business/operations';
 import { asNumber } from '../../../utils';
 
 const router = express.Router();
@@ -157,9 +156,11 @@ async function discoverUserIdentities(req: ReposAppRequest, res, next) {
 }
 
 router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(async function (req: ILocalApiRequest, res, next) {
+  const individualContext = req.individualContext || req.apiContext;
   const config = req.app.settings.runtimeConfig;
   const organization = req.organization as Organization;
-  if (organization.createRepositoriesOnGitHub) {
+  const existingRepoId = req.body.existingrepoid;
+  if (organization.createRepositoriesOnGitHub && !(existingRepoId && organization.isNewRepositoryLockdownSystemEnabled())) {
     return next(jsonError(`The GitHub organization ${organization.name} is configured as "createRepositoriesOnGitHub": repos should be created on GitHub.com directly and not through this wizard.`, 400));
   }
   const body = req.body;
@@ -209,7 +210,7 @@ router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(as
   });
   let success: ICreateRepositoryApiResult = null;
   try {
-    success = await CreateRepository(req, body);
+    success = await CreateRepository(req, body, individualContext);
   } catch (createRepositoryError) {
     req.app.settings.providers.insights.trackEvent({
       name: 'ApiClientNewOrgRepoError',
@@ -223,10 +224,14 @@ router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(as
     }
     return next(createRepositoryError);
   }
+  let message = success.github ? `Your new repo, ${success.github.name}, has been created:` : 'Your repo request has been submitted.';
+  if (existingRepoId && success.github) {
+    message = `Your repository ${success.github.name} is classified and the repo is now ready, unlocked, with your selected team permissions assigned.`;
+  }
   const output = {
     ...success,
-    title: 'Repository created',
-    message: success.github ? `Your new repo, ${success.github.name}, has been created:` : 'Your repo request has been submitted.',
+    title: existingRepoId ? 'Repository unlocked' : 'Repository created',
+    message,
     url: null,
     messages: null,
   };

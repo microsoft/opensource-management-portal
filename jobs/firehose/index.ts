@@ -5,15 +5,7 @@
 
 /*eslint no-console: ["error", { allow: ["log"] }] */
 
-'use strict';
-
 import moment from 'moment';
-
-// To skip this WebJob, setting WEBJOB_REPOS_FIREHOSE_SKIP should be set to '1'
-if (process.env.WEBJOB_REPOS_FIREHOSE_SKIP == '1' /* loose */) {
-  console.log('Firehose job is configured to skip execution.');
-  process.exit(0);
-}
 
 if (!process.env.DEBUG) {
   process.env.DEBUG = 'redis,restapi,querycache';
@@ -22,7 +14,14 @@ if (!process.env.DEBUG) {
 const started = moment().utc();
 const startedString = started.format();
 
-const painlessConfigResolver = require('painless-config-resolver')();
+let painlessConfigResolver = null;
+try {
+  painlessConfigResolver = require('painless-config-resolver')();
+} catch (error) {
+  console.log('Painless config resolver initialization error:');
+  console.dir(error);
+  throw error;
+}
 
 painlessConfigResolver.resolve((configurationError, config) => {
   if (configurationError) {

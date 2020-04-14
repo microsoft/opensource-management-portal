@@ -5,35 +5,31 @@
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-'use strict';
+import rp from 'request-promise-native';
 
-import async = require('async');
-
-import { ICacheOptions, IMapPlusMetaCost, IProviders, IPagedCrossOrganizationCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IAuthorizationHeaderValue } from '../transitional';
+import { ICacheOptions, IMapPlusMetaCost, IProviders, IPagedCrossOrganizationCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IAuthorizationHeaderValue, IDictionary, CreateError, ErrorHelper, setImmediateAsync } from '../transitional';
 
 import { Account } from './account';
 import { GraphManager } from './graphManager';
 import { Organization } from './organization';
 import GitHubApplication from './application';
-import { ILinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
 import { GitHubTokenManager } from '../github/tokenManager';
 
-const request = require('requestretry');
-
-const emailRender = require('../lib/emailRender');
+import RenderHtmlMail from '../lib/emailRender';
 
 import { wrapError, sortByCaseInsensitive, asNumber } from '../utils';
 import { ICorporateLink } from './corporateLink';
 import { Repository } from './repository';
 import { RestLibrary } from '../lib/github';
-import { RedisHelper } from '../lib/redis';
 import { IMailAddressProvider, GetAddressFromUpnAsync } from '../lib/mailAddressProvider';
 import { Team, ICrossOrganizationTeamMembership } from './team';
 import { AppPurpose, GitHubAppAuthenticationType } from '../github';
-import { getGitHubAppConfigurationOptions } from '../middleware/passport-config';
 import { OrganizationSetting } from '../entities/organizationSettings/organizationSetting';
 import { OrganizationSettingProvider } from '../entities/organizationSettings/organizationSettingProvider';
 import { IMail } from '../lib/mailProvider';
+import { ILinkProvider } from '../lib/linkProviders';
+import { getUserAndManagerById, IGraphEntryWithManager } from '../lib/graphProvider';
+import { ICacheHelper } from '../lib/caching';
 
 const throwIfOrganizationIdsMissing = true;
 
@@ -95,6 +91,16 @@ export const RedisPrefixManagerInfoCache = 'employeewithmanager:';
 
 const defaultGitHubPageSize = 100;
 
+export enum SupportedLinkType {
+  User = 'user',
+  ServiceAccount = 'serviceAccount',
+}
+
+export interface ISupportedLinkTypeOutcome {
+  type: SupportedLinkType;
+  graphEntry: IGraphEntryWithManager;
+}
+
 export enum UnlinkPurpose {
   Unknown = 'unknown',
   Termination = 'termination', // no longer listed as an employee
@@ -102,6 +108,26 @@ export enum UnlinkPurpose {
   Operations = 'operations', // operational support
   Deleted = 'deleted', // the GitHub account has been deleted or does not exist
 };
+
+export enum LinkOperationSource {
+  Portal = 'portal',
+  Api = 'api',
+}
+
+export interface ICreateLinkOptions {
+  link: ICorporateLink;
+  operationSource: LinkOperationSource;
+  skipCorporateValidation?: boolean;
+  skipGitHubValidation?: boolean;
+  skipSendingMail?: boolean;
+  eventProperties?: IDictionary<string>;
+  correlationId?: string;
+}
+
+export interface ICreatedLinkOutcome {
+  linkId: string;
+  resourceLink?: string;
+}
 
 export interface ICrossOrganizationMembershipBasics {
   id: string;
@@ -112,6 +138,13 @@ export interface ICrossOrganizationMembershipBasics {
 export interface ICrossOrganizationMembershipByOrganization {
   id: number; // ?
   orgs: any; // object[orgName] = theirGitHubaccount entity avatar_url, id, login : ICrossOrganizationMembershipBasics
+}
+
+interface IPromisedLinks {
+  headers: {
+    type: 'links',
+  },
+  data: ICorporateLink[],
 }
 
 export interface ICrossOrganizationMembersResult extends Map<number, ICrossOrganizationMembershipByOrganization> {}
@@ -126,6 +159,7 @@ export interface ICachedEmployeeInformation {
 }
 
 export class Operations {
+  private _cache: ICacheHelper;
   private _providers: IProviders;
   private _baseUrl: string;
   private _linkProvider: ILinkProvider;
@@ -135,10 +169,10 @@ export class Operations {
   private _github: RestLibrary;
   private _config: any;
   private _insights: any;
-  private _redis: RedisHelper;
   private _defaults: ICacheDefaultTimes;
-  private _organizationNames: any;
+  private _organizationNames: string[];
   private _organizations: Map<string, Organization>;
+  private _uncontrolledOrganizations: Map<string, Organization>;
   private _organizationOriginalNames: any;
   private _organizationNamesWithWithAuthorizationHeaders: any;
   private _defaultPageSize: number;
@@ -159,6 +193,14 @@ export class Operations {
 
   get baseUrl(): string {
     return this._baseUrl;
+  }
+
+  get absoluteBaseUrl(): string {
+    let baseUrl = this.config && this.config.webServer && this.config.webServer.baseUrl ? this.config.webServer.baseUrl : null;
+    if (baseUrl) {
+      return baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+    }
+    return '/';
   }
 
   get mailAddressProvider(): IMailAddressProvider {
@@ -198,7 +240,23 @@ export class Operations {
   }
 
   constructor(options) {
-    setRequiredProperties(this, ['github', 'config', 'insights', 'redis'], options);
+    if (!options.github) {
+      throw new Error('options.github required');
+    }
+    this._github = options.github;
+    if (!options.config) {
+      throw new Error('options.config required');
+    }
+    this._config = options.config;
+    if (!options.insights) {
+      throw new Error('options.insights required');
+    }
+    this._insights = options.insights;
+    if (!options.cacheProvider) {
+      throw new Error('options.cacheProvider required');
+    }
+    this._cache = options.cacheProvider;
+
     this._providers = options;
     this._baseUrl = '/';
     this._defaults = Object.assign({}, defaults);
@@ -207,6 +265,7 @@ export class Operations {
     this._mailProvider = options.mailProvider;
     this._linkProvider = options.linkProvider as ILinkProvider;
     this._graphManager = new GraphManager(this);
+    this._uncontrolledOrganizations = new Map();
     this._defaultPageSize = this.config && this.config.github && this.config.github.api && this.config.github.api.defaultPageSize ? this.config.github.api.defaultPageSize : defaultGitHubPageSize;
     const hasModernGitHubApps = options.config.github && options.config.github.app;
     this._tokenManager = new GitHubTokenManager({
@@ -220,6 +279,7 @@ export class Operations {
   }
 
   async initialize(): Promise<Operations> {
+    await this._tokenManager.initialize();
     const hasModernGitHubApps = this.config.github && this.config.github.app;
     // const hasConfiguredOrganizations = this.config.github.organizations && this.config.github.organizations.length;
     const organizationSettingsProvider = this.providers.organizationSettingsProvider;
@@ -252,7 +312,7 @@ export class Operations {
     return Array.from(this._applicationIds.values());
   }
 
-  get organizationNames() {
+  get   organizationNames(): string[] {
     if (!this._organizationNames) {
       const names = [];
       const processed = new Set<string>();
@@ -271,19 +331,6 @@ export class Operations {
       this._organizationNames = names.sort(sortByCaseInsensitive);
     }
     return this._organizationNames;
-  }
-
-  get supportsAcceptingOrganizationInvitationsUserToServer(): boolean {
-    const { modernAppInUse } = getGitHubAppConfigurationOptions(this._config);
-    // GitHub Apps also have an OAuth2 client ID and secret, unfortunately,
-    // there are bugs on the GitHub side where the user does not seem to have
-    // enough permission to actually call the 'write your org membership' API
-    // in these cases as of September 2019. While I have reported this to GitHub
-    // this will take some time. In the interim, this means that if the OAuth
-    // experience users are using is provided by a *modern GitHub app*, the
-    // nicer 'express' join experience is not available, and so the manual
-    // invite flow will need to be followed.
-    return !modernAppInUse;
   }
 
   getOrganizationIds(): number[] {
@@ -432,6 +479,24 @@ export class Operations {
     return this.createOrganization(settings.organizationName.toLowerCase(), settings, null, GitHubAppAuthenticationType.ForceSpecificInstallation);
   }
 
+  getUncontrolledOrganization(organizationName: string, organizationId?: number): Organization {
+    organizationName = organizationName.toLowerCase();
+    const officialOrganization = this.organizations.get(organizationName);
+    if (officialOrganization) {
+      return officialOrganization;
+    }
+    if (this._uncontrolledOrganizations.has(organizationName)) {
+      return this._uncontrolledOrganizations.get(organizationName);
+    }
+    const emptySettings = new OrganizationSetting();
+    emptySettings.operationsNotes = `Uncontrolled Organization - ${organizationName}`;
+    const centralOperationsToken = this.config.github.operations.centralOperationsToken;
+    const org = this.createOrganization(organizationName, emptySettings, centralOperationsToken, GitHubAppAuthenticationType.ForceSpecificInstallation);
+    this._uncontrolledOrganizations.set(organizationName, org);
+    org.uncontrolled = true;
+    return org;
+  }
+
   isIgnoredOrganization(name: string): boolean {
     const value = this.getAlternateOrganization(name, 'onboarding') || this.getAlternateOrganization(name, 'ignore');
     return !!value;
@@ -523,8 +588,189 @@ export class Operations {
 
   async getCachedEmployeeManagementInformation(corporateId: string): Promise<ICachedEmployeeInformation> {
     const key = `${RedisPrefixManagerInfoCache}${corporateId}`;
-    const currentManagerIfAny = await this._redis.getObjectCompressedAsync(key);
+    const currentManagerIfAny = await this._cache.getObjectCompressed(key);
     return currentManagerIfAny as ICachedEmployeeInformation;
+  }
+
+  async linkAccounts(options: ICreateLinkOptions): Promise<ICreatedLinkOutcome> {
+    const { linkProvider, graphProvider, insights } = this.providers;
+    if (!linkProvider) {
+      throw CreateError.ServerError('linkProvider required');
+    }
+    if (!graphProvider) {
+      throw CreateError.ServerError('Graph provider required');
+    }
+    if (!options.link) {
+      throw CreateError.InvalidParameters('options.link required');
+    }
+    const link = options.link;
+    if (!options.operationSource || (options.operationSource !== LinkOperationSource.Api && options.operationSource !== LinkOperationSource.Portal)) {
+      throw CreateError.InvalidParameters('options.operationSource missing or invalid');
+    }
+    if (!link.corporateId) {
+      throw CreateError.InvalidParameters('options.link.corporateId required');
+    }
+    if (!link.thirdPartyId) {
+      throw CreateError.InvalidParameters('options.link.thirdPartyId required');
+    }
+    const correlationId = options.correlationId || 'no-correlation-id';
+    const insightsOperationsPrefix = options.operationSource === LinkOperationSource.Portal ? 'Portal' : 'Api';
+    const insightsLinkType = link.isServiceAccount ? 'ServiceAccount' : 'User';
+    const insightsPrefix = `${insightsOperationsPrefix}${insightsLinkType}Link`;
+    const insightsLinkedMetricName = `${insightsPrefix}s`;
+    const insightsAllUpMetricsName = `${insightsLinkType}Links`;
+
+    insights.trackEvent({ name: `${insightsPrefix}Start`, properties: {...link, correlationId} });
+
+    if (!options.skipGitHubValidation) {
+      const githubAccount = this.getAccount(link.thirdPartyId);
+      try {
+        await githubAccount.getDetails();
+        link.thirdPartyUsername = githubAccount.login;
+        link.thirdPartyAvatar = githubAccount.avatar_url;
+      } catch (validateAccountError) {
+        throw ErrorHelper.EnsureHasStatus(validateAccountError, 400);
+      }
+    }
+
+    let mailAddress: string = null;
+    if (!options.skipCorporateValidation) {
+      try {
+        const corporateInfo = await this.validateCorporateAccountCanLink(link.corporateId);
+        const corporateAccount = corporateInfo.graphEntry;
+        if (!corporateAccount) {
+          throw CreateError.NotFound(`Corporate ID ${link.corporateId} not found`);
+        }
+        mailAddress = corporateAccount.mail || link.serviceAccountMail;
+        link.corporateDisplayName = corporateAccount.displayName;
+        link.corporateUsername = corporateAccount.userPrincipalName;
+        // Validate that the corporate account can be linked
+        if (corporateInfo.type === SupportedLinkType.ServiceAccount) {
+          if (!link.serviceAccountMail) {
+            throw CreateError.InvalidParameters(`Corporate account ${link.corporateUsername} must provide a Service Account e-mail address`);
+          }
+          link.isServiceAccount = true;
+        }
+      } catch (validateCorporateError) {
+        throw ErrorHelper.EnsureHasStatus(validateCorporateError, 400);
+      }
+    }
+
+    let newLinkId: string = null;
+    try {
+      newLinkId = await linkProvider.createLink(link);
+      const eventData = {...link, linkId: newLinkId, correlationId };
+      insights.trackEvent({ name: `${insightsPrefix}Created`, properties: eventData });
+      insights.trackMetric({ name: insightsLinkedMetricName, value: 1 });
+      insights.trackMetric({ name: insightsAllUpMetricsName, value: 1 });
+      setImmediateAsync(this.fireLinkEvent.bind(this, eventData));
+    } catch (createLinkError) {
+      if (ErrorHelper.IsConflict(createLinkError)) {
+        insights.trackEvent({ name: `${insightsPrefix}AlreadyLinked`, properties: {...link, correlationId}})
+        throw ErrorHelper.EnsureHasStatus(createLinkError, 409);
+      }
+      insights.trackException({
+        exception: createLinkError,
+        properties: {...link, event: `${insightsPrefix}InsertError`, correlationId},
+      });
+      throw createLinkError;
+    }
+
+    if (!options.skipSendingMail) {
+      setImmediateAsync(this.sendLinkedAccountMail.bind(this, link, mailAddress, correlationId, false /* do not throw on errors */));
+    }
+
+    const getApi = `${this.baseUrl}api/people/links/${newLinkId}`;
+    insights.trackEvent({ name: `${insightsPrefix}End`, properties: { newLinkId, getApi } });
+    return { linkId: newLinkId, resourceLink: getApi };
+  }
+
+  async validateCorporateAccountCanLink(corporateId: string): Promise<ISupportedLinkTypeOutcome> {
+    const graphEntry = await getUserAndManagerById(this.providers.graphProvider, corporateId);
+    // NOTE: This assumption, that a user without a manager must be a Service Account,
+    // is a bit of a hack. It means that the CEO will be flagged as a service account if
+    // they find the time to use this app. This code prioritizes the more common scenario,
+    // that a user without an assigned manager in the directory is a Service Account.
+    if (graphEntry && !graphEntry.manager) {
+      return { type: SupportedLinkType.ServiceAccount, graphEntry };
+    }
+    return { type: SupportedLinkType.User, graphEntry };
+  }
+
+  private async sendLinkedAccountMail(link: ICorporateLink, mailAddress: string | null, correlationId: string | null, throwIfError: boolean): Promise<void> {
+    const { insights, mailProvider, mailAddressProvider, config } = this.providers;
+    if (!mailProvider) {
+      return;
+    }
+    if (!mailAddress && !mailAddressProvider) {
+      return;
+    }
+    if (!mailAddress) {
+      try {
+        mailAddress = await GetAddressFromUpnAsync(mailAddressProvider, link.corporateUsername);
+      } catch (getAddressError) {
+        if (throwIfError) {
+          throw getAddressError;
+        }
+        return;
+      }
+    }
+    const to = [mailAddress];
+    const toAsString = to.join(', ');
+    const cc = [];
+    if (config.brand && config.brand.operationsEmail && link.isServiceAccount) {
+      cc.push(config.brand.operationsEmail);
+    }
+    const mail = {
+      to,
+      subject: `${link.corporateUsername} linked to ${link.thirdPartyUsername}`,
+      correlationId,
+      content: undefined,
+    };
+    const contentOptions = {
+      reason: (`You are receiving this one-time e-mail because you have linked your account.
+                To stop receiving these mails, you can unlink your account.
+                This mail was sent to: ${toAsString}`),
+      headline: `Welcome to GitHub, ${link.thirdPartyUsername}`,
+      notification: 'information',
+      app: `${config.brand.companyName} GitHub`,
+      correlationId,
+      docs: config && config.microsoftOpenSource ? config.microsoftOpenSource.docs : null,
+      companyName: config.brand.companyName,
+      link,
+    };
+    try {
+      mail.content = await this.emailRender('link', contentOptions);
+    } catch (renderError) {
+      insights.trackException({
+        exception: renderError,
+        properties: {
+          content: contentOptions,
+          eventName: 'LinkMailRenderFailure',
+        },
+      });
+      if (throwIfError) {
+        throw renderError;
+      }
+      return;
+    }
+    const customData = {
+      content: contentOptions,
+      receipt: null,
+      eventName: undefined,
+    };
+    try {
+      const receipt = await this.sendMail(mail);
+      insights.trackEvent({ name: 'LinkMailSuccess', properties: customData });
+      customData.receipt = receipt;
+    } catch (sendMailError) {
+      customData.eventName = 'LinkMailFailure';
+      insights.trackException({ exception: sendMailError, properties: customData });
+      if (throwIfError) {
+        throw sendMailError;
+      }
+      return;
+    }
   }
 
   async terminateLinkAndMemberships(thirdPartyId, options?: any): Promise<string[]> {
@@ -608,6 +854,32 @@ export class Operations {
       history.push(`Unlink error: ${removeLinkError.toString()}`);
     }
 
+    // Collaborator permissions to repositories
+    try {
+      const removed = await account.removeCollaboratorPermissions();
+      history.push(... removed.history);
+      if (removed.error) {
+        throw removed.error;
+      }
+    } catch (removeCollaboratorsError) {
+      ++errors;
+      if (insights) {
+        insights.trackException({ exception: removeCollaboratorsError });
+      }
+      if (account.id && !account.login) {
+        // If the account information could not be resolved through the
+        // GitHub API for this _id_, then the user deleted their account,
+        // or is using a different one now, etc., so try deleting the
+        // associated link still by searching for it by _ID_.
+
+        // TODO: Ported code from account.ts, remains unimp. It's OK.
+      }
+      if (!continueOnError) {
+        throw removeCollaboratorsError;
+      }
+      history.push(`Collaborator remove error: ${removeCollaboratorsError.toString()}`);
+    }
+
     // Notify
     try {
       await this.sendTerminatedAccountMail(account, purpose, history, errors);
@@ -641,6 +913,14 @@ export class Operations {
 
   getOperationsMailAddress(): string {
     return this.config.brand.operationsMail;
+  }
+
+  getExtendedOperationsMailAddresses(): string[] {
+    const extendedMailsValue = this.config.brand?.extendedOperationsMails;
+    if (extendedMailsValue) {
+      return extendedMailsValue.split(',');
+    }
+    return [this.getOperationsMailAddress()];
   }
 
   private async sendTerminatedAccountMail(account: Account, purpose: UnlinkPurpose, details: string[], errorsCount: number): Promise<void> {
@@ -795,8 +1075,12 @@ export class Operations {
     // CONSIDER: Cross-org functionality might be best in the GitHub library itself
     const orgs = this.organizations.values();
     for (let organization of orgs) {
-      const organizationRepos = await organization.getRepositories(cacheOptions);
-      repos.push(... organizationRepos);
+      try {
+        const organizationRepos = await organization.getRepositories(cacheOptions);
+        repos.push(... organizationRepos);
+      } catch (orgReposError) {
+        console.dir(orgReposError);
+      }
     }
     return repos;
   }
@@ -840,21 +1124,13 @@ export class Operations {
   }
 
   getLinkByThirdPartyId(thirdPartyId: string) : Promise<ICorporateLink> {
-    return new Promise((resolve, reject) => {
-      const linkProvider = this._linkProvider;
-      linkProvider.getByThirdPartyId(thirdPartyId, (error, link) => {
-        return error ? reject(error) : resolve(link as ICorporateLink);
-      })
-    });
+    const linkProvider = this._linkProvider;
+    return linkProvider.getByThirdPartyId(thirdPartyId);
   }
 
   getLinkByThirdPartyUsername(username: string): Promise<ICorporateLink> {
-    return new Promise((resolve, reject) => {
-      const linkProvider = this._linkProvider;
-      linkProvider.getByThirdPartyUsername(username, (error, link) => {
-        return error ? reject(error) : resolve(link as ICorporateLink);
-      });
-    });
+    const linkProvider = this._linkProvider;
+    return linkProvider.getByThirdPartyUsername(username);
   }
 
   getMailAddressFromCorporateUsername(corporateUsername: string): Promise<string> {
@@ -889,7 +1165,6 @@ export class Operations {
     delete options.backgroundRefresh;
     delete options.maxAgeSeconds;
     delete options.individualMaxAgeSeconds;
-
     return this._github.crossOrganization.teamMembers(this._organizationNamesWithWithAuthorizationHeaders, options, cacheOptions);
   }
 
@@ -902,7 +1177,6 @@ export class Operations {
     delete options.backgroundRefresh;
     delete options.maxAgeSeconds;
     delete options.individualMaxAgeSeconds;
-
     return this._github.crossOrganization.repoCollaborators(this.organizationNamesWithWithAuthorizationHeaders, options, cacheOptions);
   }
 
@@ -915,7 +1189,6 @@ export class Operations {
     delete options.backgroundRefresh;
     delete options.maxAgeSeconds;
     delete options.individualMaxAgeSeconds;
-
     return this._github.crossOrganization.repoTeams(this.organizationNamesWithWithAuthorizationHeaders, options, cacheOptions);
   }
 
@@ -962,14 +1235,28 @@ export class Operations {
     return this._config && this._config.features && this._config.features.allowUnauthorizedNewRepositoryLockdownSystem === true;
   }
 
-  // Eventually link/unlink should move from context into operations here to centralize more than just the events
-
-  fireLinkEvent(value, callback?) {
-    fireEvent(this._config, 'link', value, callback);
+  allowUnauthorizedForkLockdownSystemFeature() {
+    // This feature has a hard dependency on the new repo lockdown system itself
+    return this.allowUnauthorizedNewRepositoryLockdownSystemFeature() && this._config && this._config.features && this._config.features.allowUnauthorizedForkLockdownSystem === true;
   }
 
-  fireUnlinkEvent(value, callback?) {
-    fireEvent(this._config, 'unlink', value, callback);
+  allowTransferLockdownSystemFeature() {
+    // This feature has a hard dependency on the new repo lockdown system itself
+    return this.allowUnauthorizedNewRepositoryLockdownSystemFeature() && this._config && this._config.features && this._config.features.allowUnauthorizedTransferLockdownSystem === true;
+  }
+
+  allowUndoSystem() {
+    return this._config && this._config.features && this._config.features.allowUndoSystem === true;
+  }
+
+  // Eventually link/unlink should move from context into operations here to centralize more than just the events
+
+  async fireLinkEvent(value): Promise<void> {
+    await fireEvent(this._config, 'link', value);
+  }
+
+  async fireUnlinkEvent(value): Promise<void> {
+    await fireEvent(this._config, 'unlink', value);
   }
 
   get systemAccountsByUsername(): string[] {
@@ -993,7 +1280,6 @@ export class Operations {
   }
 
   getAccount(id: string) {
-    // TODO: Centralized "accounts" local store
     const entity = { id };
     return new Account(entity, this, getCentralOperationsAuthorizationHeader.bind(null, this)); // getCentralOperationsToken.bind(null, this));
   }
@@ -1008,8 +1294,7 @@ export class Operations {
     const parameters = {};
     try {
       const entity = await github.post(`token ${token}`, 'users.getAuthenticated', parameters);
-      const account = new Account(entity, this, getCentralOperationsAuthorizationHeader.bind(null, this)); // getCentralOperationsToken.bind(null, this));
-      // const account = new Account(entity, this,  getCentralOperationsToken.bind(null, this));
+      const account = new Account(entity, this, getCentralOperationsAuthorizationHeader.bind(null, this));
       return account;
     } catch (error) {
       throw wrapError(error, 'Could not get details about the authenticated account');
@@ -1049,7 +1334,7 @@ export class Operations {
       return account;
     } catch (error) {
       if (error.status && error.status == /* loose */ 404) {
-        error = new Error(`The GitHub username ${username} could not be found (or was deleted)`);
+        error = new Error(`The GitHub username ${username} could not be found (or has been deleted)`);
         error.status = 404;
         throw error;
       } else if (error) {
@@ -1079,49 +1364,56 @@ export class Operations {
 
   async emailRender(emailViewName: string, contentOptions: any): Promise<string> {
     const appDirectory = this.config.typescript.appDirectory;
-    return new Promise((resolve, reject) => {
-      emailRender.render(appDirectory, emailViewName, contentOptions, (renderError, mailContent) => {
-        return renderError ? reject(renderError) : resolve(mailContent);
-      });
-    });
+    return await RenderHtmlMail(appDirectory, emailViewName, contentOptions);
   }
 }
 
-function fireEvent(config, configurationName, value, callback?) {
-  callback = callback || function () {};
+interface IFireEventResult {
+  url: string;
+  value: string;
+  body: string;
+  headers: any;
+  statusCode: any;
+}
+
+async function fireEvent(config, configurationName, value): Promise<IFireEventResult[]> {
   if (!config || !config.github || !config.github.links || !config.github.links.events || !config.github.links.events) {
-    return callback();
+    return;
   }
   const userAgent = config.userAgent || 'Unknown user agent';
   const httpUrls = config.github.links.events.http;
   if (!httpUrls || !httpUrls[configurationName]) {
-    return callback();
+    return;
   }
   const urlOrUrls = httpUrls[configurationName];
   let urls = Array.isArray(urlOrUrls) ? urlOrUrls : [urlOrUrls];
-  let results = [];
-  return async.eachLimit(urls, 1, (httpUrl, next) => {
-    request.post({
-      url: httpUrl,
-      json: true,
-      body: value,
-      headers: {
-        'User-Agent': userAgent,
-        'X-Repos-Event': configurationName,
-      },
-    }, (postError, response, body) => {
+  let results: IFireEventResult[] = [];
+  for (const httpUrl of urls) {
+    try {
+      const { statusCode, body, headers } = await rp({
+        method: 'POST',
+        uri: httpUrl,
+        json: true,
+        body: value,
+        headers: {
+          'User-Agent': userAgent,
+          'X-Repos-Event': configurationName,
+        },
+        resolveWithFullResponse: true,
+      });
       results.push({
         url: httpUrl,
-        value: value,
-        error: postError,
-        response: response,
-        body: body,
+        value,
+        headers,
+        body,
+        statusCode,
       });
-      return next();
-    });
-  }, asyncError => {
-    return callback(asyncError, results);
-  });
+    } catch (ignoredTechnicalError) {
+      /* ignored */
+      console.log();
+    }
+  }
+  return results;
 }
 
 function getCentralOperationsAuthorizationHeader(self: Operations): IPurposefulGetAuthorizationHeader {
@@ -1183,25 +1475,19 @@ function crossOrganizationResults(operations: Operations, results, keyProperty) 
   return map;
 }
 
-function getPromisedLinks(linkProvider: ILinkProvider) {
-  return new Promise((resolve, reject) => {
-    // TODO: consider looking at the options as to how to include/exclude properties etc.
-    // today (TypeScript update with PGSQL) the 'options' have zero impact on what is actually returned...
-    linkProvider.getAll((error, links) => {
-      if (error) {
-        return reject(error);
-      }
-      const jsonLinks = linkProvider.dehydrateLinks(links);
-      const dataObject = {
-        headers: {
-          'type': 'links',
-        },
-        data: jsonLinks,
-      };
-      return resolve(dataObject);
-    });
-  });
-};
+async function getPromisedLinks(linkProvider: ILinkProvider): Promise<IPromisedLinks> {
+  // TODO: consider looking at the options as to how to include/exclude properties etc.
+  // today (TypeScript update with PGSQL) the 'options' have zero impact on what is actually returned...
+  const links = await linkProvider.getAll();
+  const jsonLinks = linkProvider.dehydrateLinks(links);
+  const dataObject: IPromisedLinks = {
+    headers: {
+      'type': 'links',
+    },
+    data: jsonLinks,
+  };
+  return dataObject;
+}
 
 function restartAfterDynamicConfigurationUpdate(minimumSeconds: number, maximumSeconds: number, appInitialized: Date, organizationSettingsProvider: OrganizationSettingProvider) {
   didDynamicConfigurationUpdate(appInitialized, organizationSettingsProvider).then(changed => {

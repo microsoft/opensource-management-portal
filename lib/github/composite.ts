@@ -150,6 +150,9 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
   }
 
   withResponseShouldCacheBeServed(apiContext: ApiContext, response: any) {
+    if (typeof(response) === 'function') {
+      throw new Error('The response must not be a function');
+    }
     if (response === undefined) {
       throw new Error(`${apiContext.redisKey.metadata}: the response was undefined and unable to process`);
     }

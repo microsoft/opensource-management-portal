@@ -10,17 +10,17 @@
 
 import _ from 'lodash';
 
-import { Operations } from "./operations";
-import { IReposError, ICacheOptions, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IReposRestRedisCacheCost, IAuthorizationHeaderValue } from "../transitional";
+import { Operations } from './operations';
+import { IReposError, ICacheOptions, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IReposRestRedisCacheCost, IAuthorizationHeaderValue } from '../transitional';
 import * as common from './common';
-import { OrganizationMember } from "./organizationMember";
-import { Team, GitHubTeamRole } from "./team";
+import { OrganizationMember } from './organizationMember';
+import { Team, GitHubTeamRole, ITeamMembershipRoleState } from './team';
 import { Repository } from "./repository";
 
 import { wrapError, asNumber } from '../utils';
-import { StripGitHubEntity } from "../lib/github/restApi";
-import { GitHubResponseType } from "../lib/github/endpointEntities";
-import { AppPurpose, GitHubAppAuthenticationType } from "../github";
+import { StripGitHubEntity } from '../lib/github/restApi';
+import { GitHubResponseType } from '../lib/github/endpointEntities';
+import { AppPurpose, GitHubAppAuthenticationType } from '../github';
 import { OrganizationSetting, SpecialTeam } from '../entities/organizationSettings/organizationSetting';
 
 export interface IAccountBasics {
@@ -118,6 +118,7 @@ export interface IGitHubOrganizationResponse {
   default_repository_permission: string;
   description: string;
   disk_usage: number;
+  email: string;
   followers: number;
   following: number;
   has_organization_projects: boolean;
@@ -128,7 +129,7 @@ export interface IGitHubOrganizationResponse {
   is_verified: boolean;
   location: string;
   login: string;
-  members_can_Create_repositories: boolean;
+  members_can_create_repositories: boolean;
   name: string;
   node_id: string;
   owned_private_repos: number;
@@ -148,9 +149,11 @@ export class Organization {
 
   private _operations: Operations;
   private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
+  private _usesGitHubApp: boolean;
   private _settings: OrganizationSetting;
 
   id: number;
+  uncontrolled: boolean;
 
   constructor(operations: Operations, name: string, settings: OrganizationSetting, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, public hasDynamicSettings: boolean) {
     this._name = settings.organizationName || name;
@@ -158,6 +161,7 @@ export class Organization {
 
     this._operations = operations;
     this._settings = settings;
+    this._usesGitHubApp = hasDynamicSettings;
     this._getAuthorizationHeader = getAuthorizationHeader;
     if (settings && settings.organizationId) {
       this.id = asNumber(settings.organizationId);
@@ -168,6 +172,10 @@ export class Organization {
     return this._baseUrl;
   }
 
+  get absoluteBaseUrl(): string {
+    return this._operations.absoluteBaseUrl + this.name + '/';
+  }
+
   get name(): string {
     return this._name;
   }
@@ -176,11 +184,15 @@ export class Organization {
     return this._settings ? this._settings.active : false;
   }
 
+  get usesApp(): boolean {
+    return this._usesGitHubApp;
+  }
+
   repository(name: string, optionalEntity?) {
     let entity = optionalEntity || {};
-    if (!optionalEntity) {
-      entity.name = name;
-    }
+    // if (!optionalEntity) {
+    entity.name = name;
+    // }
     const repository = new Repository(
       this,
       entity,
@@ -188,6 +200,36 @@ export class Organization {
       this._operations);
     // CONSIDER: Cache any repositories in the local instance
     return repository;
+  }
+
+  async getRepositoryById(id: number, options?: ICacheOptions): Promise<Repository> {
+    options = options || {};
+    const operations = this._operations;
+    if (!id) {
+      throw new Error('Must provide a repository ID to retrieve the repository.');
+    }
+    const parameters = {
+      id,
+    };
+    const cacheOptions: ICacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.accountDetailStaleSeconds,
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    try {
+      const entity = await operations.github.request(
+        this.authorize(AppPurpose.Data),
+        'GET /repositories/:id', parameters, cacheOptions);
+      return this.repositoryFromEntity(entity);
+    } catch (error) {
+      if (error.status && error.status === 404) {
+        error = new Error(`The GitHub repository ID ${id} could not be found`);
+        error.status = 404;
+        throw error;
+      }
+      throw wrapError(error, `Could not get details about repository ID ${id}: ${error.message}`);
+    }
   }
 
   async getRepositories(options?: IPagedCacheOptions): Promise<Repository[]> {
@@ -283,7 +325,7 @@ export class Organization {
   }
 
   get privateRepositoriesSupported(): boolean {
-    return getSupportedRepositoryTypesByPriority(this).includes('private');
+    return this.getSupportedRepositoryTypesByPriority().includes('private');
   }
 
   get sudoersTeam(): Team {
@@ -292,6 +334,13 @@ export class Organization {
       throw new Error('Multiple sudoer teams are not supported.');
     }
     return teams.length === 1 ? this.team(teams[0]) : null;
+  }
+
+  getDynamicSettings(): OrganizationSetting {
+    if (!this.hasDynamicSettings) {
+      throw new Error('This organization is not configured for dynamic settings');
+    }
+    return this._settings;
   }
 
   get specialRepositoryPermissionTeams() {
@@ -455,8 +504,8 @@ export class Organization {
         default: settings.properties['defaultGitIgnoreLanguage'] || operations.config.github.gitignore.default,
         languages: operations.config.github.gitignore.languages,
       },
-      templates: this.repositoryCreateTemplates(options || {}),
-      visibilities: getSupportedRepositoryTypesByPriority(this),
+      templates: this.sanitizedRepositoryCreateTemplates(options || {}),
+      visibilities: this.getSupportedRepositoryTypesByPriority(),
     };
     return metadata;
   }
@@ -555,8 +604,8 @@ export class Organization {
     let membership: GitHubTeamRole = null;
     try {
       const response = await sudoerTeam.getMembershipEfficiently(username);
-      if (response && response.role) {
-        membership = response.role;
+      if (response && (response as ITeamMembershipRoleState).role) {
+        membership = (response as ITeamMembershipRoleState).role;
       }
     } catch (getMembershipError) {
       // The team for sudoers may have been deleted, which is not an error
@@ -805,6 +854,18 @@ export class Organization {
     return getAuthorizationHeader;
   }
 
+  private sanitizedRepositoryCreateTemplates(options) {
+    return this.repositoryCreateTemplates(options).map(template => {
+      return {
+        id: template.id,
+        spdx: template.spdx,
+        name: template.name,
+        environments: template.environments,
+        legalEntities: template.legalEntities,
+      };
+    });
+  }
+
   private repositoryCreateTemplates(options) {
     options = options || {};
     const projectType = options.projectType;
@@ -859,6 +920,14 @@ export class Organization {
     return this._operations.allowUnauthorizedNewRepositoryLockdownSystemFeature() && this._settings.hasFeature('new-repository-lockdown-system');
   }
 
+  isForkLockdownSystemEnabled() {
+    return this._operations.allowUnauthorizedForkLockdownSystemFeature() && this._settings.hasFeature('lock-new-forks');
+  }
+
+  isTransferLockdownSystemEnabled() {
+    return this._operations.allowTransferLockdownSystemFeature() && this._settings.hasFeature('lock-transfers');
+  }
+
   // Helper functions
 
   memberFromEntity(entity): OrganizationMember {
@@ -905,31 +974,30 @@ export class Organization {
     return teams;
   }
 
-}
-
-function getSupportedRepositoryTypesByPriority(self) {
-  // Returns the types of repositories supported by the configuration for the organization.
-  // The returned array position 0 represents the recommended default choice for new repos.
-  // Note that while the configuration may say 'private', the organization may not have
-  // a billing relationship, so repo create APIs would fail asking you to upgrade to a paid
-  // plan.
-  const settings = self._settings;
-  const type = settings.type || 'public';
-  let types = ['public'];
-  switch (type) {
-  case 'public':
-    break;
-  case 'publicprivate':
-    types.push('private');
-    break;
-  case 'private':
-    types.splice(0, 1, 'private');
-    break;
-  case 'privatepublic':
-    types.splice(0, 0, 'private');
-    break;
-  default:
-    throw new Error(`Unsupported configuration for repository types in the organization: ${type}`);
+  private getSupportedRepositoryTypesByPriority() {
+    // Returns the types of repositories supported by the configuration for the organization.
+    // The returned array position 0 represents the recommended default choice for new repos.
+    // Note that while the configuration may say 'private', the organization may not have
+    // a billing relationship, so repo create APIs would fail asking you to upgrade to a paid
+    // plan.
+    const settings = this._settings;
+    const type = settings.properties['type'] || 'public';
+    let types = ['public'];
+    switch (type) {
+      case 'public':
+        break;
+      case 'publicprivate':
+        types.push('private');
+        break;
+      case 'private':
+        types.splice(0, 1, 'private');
+        break;
+      case 'privatepublic':
+        types.splice(0, 0, 'private');
+        break;
+      default:
+        throw new Error(`Unsupported configuration for repository types in the organization: ${type}`);
+    }
+    return types;
   }
-  return types;
 }

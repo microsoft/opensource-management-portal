@@ -8,7 +8,6 @@
 import * as common from './common';
 import { Organization } from "./organization";
 import { Operations } from "./operations";
-import { IGetOwnerToken } from '../transitional';
 import { GetAddressFromUpnAsync } from '../lib/mailAddressProvider';
 
 const memberPrimaryProperties = [
@@ -29,17 +28,23 @@ export class OrganizationMember {
   private _created_at;
   private _avatar_url;
   private _permissions;
+  private _entity;
 
   constructor(organization: Organization, entity: any, operations: Operations) {
     this._organization = organization;
     if (entity) {
       common.assignKnownFieldsPrefixed(this, entity, 'member', memberPrimaryProperties, memberSecondaryProperties);
+      this._entity = entity;
     }
     // Organization accounts have a plan
     if (entity && entity.plan) {
       this._organizationProfile = entity;
     }
     this._operations = operations;
+  }
+
+  getEntity() {
+    return this._entity;
   }
 
   getProfileCreatedDate(): Date {

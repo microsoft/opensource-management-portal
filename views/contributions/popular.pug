@@ -1,0 +1,28 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block content
+  - var octicon = viewServices.octicon
+
+  .container
+    p Popular repos people contribute to.
+
+    p
+      | Start time: #{start}
+      br
+      | End time: #{end}
+    hr
+
+    if !data
+      p No data.
+    else
+
+      .row
+        ul
+          each thing in data
+            li: pre= JSON.stringify(thing, null, 2)
+            

@@ -12,7 +12,8 @@ const debug = require('debug')('restapi');
 import { v4 as uuidV4 } from 'uuid';
 import moment from 'moment';
 import { RestLibrary } from '.';
-import { IAuthorizationHeaderValue } from '../../transitional';
+import { IAuthorizationHeaderValue, ErrorHelper } from '../../transitional';
+import { sleep } from '../../utils';
 
 const cost = require('./cost');
 
@@ -173,13 +174,7 @@ export abstract class IntelligentEngine {
 
   protected async tryGetCachedResult(apiContext): Promise<any> {
     const key = this.redisKeyBodyVersion(apiContext);
-    if (apiContext.libraryContext.memoryCache.has(key)) {
-      ++apiContext.cost.local.cacheHits;
-      return apiContext.libraryContext.memoryCache.get(key);
-    }
-    ++apiContext.cost.local.cacheMisses;
-
-    const response = await apiContext.libraryContext.redis.getObjectCompressedAsync(this.redisKeyBodyVersion(apiContext));
+    const response = await apiContext.libraryContext.redis.getObjectCompressed(this.redisKeyBodyVersion(apiContext));
     this.recordRedisCost(apiContext, 'get', response);
     await this.storeLocalResult(apiContext, response);
     return response;
@@ -206,28 +201,34 @@ export abstract class IntelligentEngine {
     return response;
   }
 
-  protected backgroundRefreshAsync(apiContext: ApiContext, currentMetadata) {
+  protected async backgroundRefreshAsync(apiContext: ApiContext, currentMetadata) {
     // Potential data loss/consistency problem: upsert/overwrite
-    let refreshing = moment().utc().format();
-    let refreshId = uuidV4();
-    currentMetadata.refreshing = refreshing;
-    currentMetadata.refreshId = refreshId;
-    apiContext.generatedRefreshId = refreshId;
-    debug(`refresh in the background starting for ${apiContext.redisKey.metadata} was updated ${apiContext.metadata.updated} and seconds of ${apiContext.maxAgeSeconds}`);
-    // TODO: use proper next tick to kick this off?
-    return apiContext.libraryContext.redis.setObjectWithExpireAsync(apiContext.redisKey.metadata, currentMetadata, apiContext.cacheValues.longtermMetadata)
-      .then(() => {
-        // Remove the values in case the refresh uses the metadata
-        delete currentMetadata.refreshing;
-        delete currentMetadata.refreshId;
-      })
-      .then(this.recordRedisCost.bind(this, apiContext, 'set'))
-      .delay(delayBeforeRefreshMilliseconds)
-      .then(this.callApi.bind(this, apiContext))
-      .then(this.processResponse.bind(this, apiContext))
-      .catch(exp => {
-        console.dir(exp);
-      });
+    try {
+      let refreshing = moment().utc().format();
+      let refreshId = uuidV4();
+      currentMetadata.refreshing = refreshing;
+      currentMetadata.refreshId = refreshId;
+      apiContext.generatedRefreshId = refreshId;
+      debug(`refresh in the background starting for ${apiContext.redisKey.metadata} was updated ${apiContext.metadata.updated} and seconds of ${apiContext.maxAgeSeconds}`);
+      // TODO: use proper next tick to kick this off?
+      const setReturnValue = await apiContext.libraryContext.redis.setObjectWithExpire(apiContext.redisKey.metadata, currentMetadata, apiContext.cacheValues.longtermMetadata);
+      // Remove the values in case the refresh uses the metadata
+      delete currentMetadata.refreshing;
+      delete currentMetadata.refreshId;
+      this.recordRedisCost(apiContext, 'set', setReturnValue);
+      await sleep(delayBeforeRefreshMilliseconds);
+      let response = await this.callApi(apiContext);
+      response = await this.processResponse(apiContext, response);
+      // ? anything to return... I don't think so
+    } catch (backgroundError) {
+      if (backgroundError.status === 404) {
+        // gone entity
+      } else if (backgroundError.status === 304) {
+        // did not change
+      } else {
+        console.dir(backgroundError);
+      }
+    }
   }
 
   // --- Caching ---
@@ -238,7 +239,7 @@ export abstract class IntelligentEngine {
     }
     debug('Expiring older cached response');
 
-    const cost = await apiContext.libraryContext.redis.expireAsync(
+    const cost = await apiContext.libraryContext.redis.expire(
       this.redisKeyBodyVersion(apiContext, apiContext.etag),
       apiContext.cacheValues.acceleratedExpiration);
     this.recordRedisCost(apiContext, 'expire', cost);
@@ -248,7 +249,7 @@ export abstract class IntelligentEngine {
     if (!apiContext.etag) {
       return;
     }
-    const cost = await apiContext.libraryContext.redis.expireAsync(
+    const cost = await apiContext.libraryContext.redis.expire(
       this.redisKeyBodyVersion(apiContext, apiContext.etag),
       apiContext.cacheValues.longtermResponse);
     this.recordRedisCost(apiContext, 'expire', cost);
@@ -256,7 +257,7 @@ export abstract class IntelligentEngine {
 
   protected async storeMetadata(apiContext: ApiContext, response): Promise<void> {
     const reducedMetadata = this.reduceMetadataToCacheFromResponse(apiContext, response);
-    const cost = await apiContext.libraryContext.redis.setObjectWithExpireAsync(
+    const cost = await apiContext.libraryContext.redis.setObjectWithExpire(
       apiContext.redisKey.metadata,
       reducedMetadata,
       apiContext.cacheValues.longtermMetadata);
@@ -266,7 +267,6 @@ export abstract class IntelligentEngine {
   protected async storeLocalResult(apiContext: ApiContext, response): Promise<any> {
     if (response) {
       const key = this.redisKeyBodyVersion(apiContext, response && response.headers ? response.headers.etag : undefined);
-      apiContext.libraryContext.memoryCache.set(key, response);
     }
     return response;
   }
@@ -278,7 +278,7 @@ export abstract class IntelligentEngine {
     } catch (noKey) {
       return;
     }
-    const cost = await apiContext.libraryContext.redis.setObjectCompressedWithExpireAsync(
+    const cost = await apiContext.libraryContext.redis.setObjectCompressedWithExpire(
       key,
       response,
       apiContext._cacheValues.longtermResponse);
@@ -402,7 +402,7 @@ export abstract class IntelligentEngine {
       throw new Error('No Redis key provided in apiContext.redisKey.metadata');
     }
 
-    const cachedMetadata: IIntelligentCacheMetadata = await apiContext.libraryContext.redis.getObjectAsync(redisKey) as IIntelligentCacheMetadata;
+    const cachedMetadata: IIntelligentCacheMetadata = await apiContext.libraryContext.redis.getObject(redisKey) as IIntelligentCacheMetadata;
     // TODO: BREAKPOINT: validate what the bare essentials of the cache might be here to help build out the real interface IIntelligentCacheMetadata
     this.recordRedisCost(apiContext, 'get', cachedMetadata);
     return cachedMetadata;

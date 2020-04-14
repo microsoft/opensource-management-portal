@@ -1,6 +1,6 @@
 {
-  "useCustomerFacingGitHubAppIfPresent": "env://GITHUB_OAUTH_USE_CUSTOMER_FACING_IF_PRESENT?trueIf=1&default=0",
-  "_reasonForAbove^": "As of September 2019 we have realized that there are many bugs with user-to-server requests in the newer GitHub App model, so are NOT defaulting to using GitHub App OAuth *even if it is configured*",
+  "useCustomerFacingGitHubAppIfPresent": "env://GITHUB_OAUTH_USE_CUSTOMER_FACING_IF_PRESENT?trueIf=1&default=1",
+  "_reasonForAbove^": "Until a GitHub bug was fixed in early October 2019, user-to-server modern GitHub App requests would not work for scenarios used in this app",
 
   "clientId": "env://GITHUB_CLIENT_ID",
   "clientSecret": "env://GITHUB_CLIENT_SECRET",

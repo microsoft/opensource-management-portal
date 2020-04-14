@@ -1,0 +1,64 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block content
+  - var repo = repository
+  .container
+    .row: .col-sm-12
+      .nav
+        ul.pager.zero-pad-bottom
+          li.previous
+            a(href='/' + organization.name + '/repos/' + repository.name)
+              span(aria-hidden=true) &larr;
+              = ' Back to the ' + repository.name + ' repository'
+      - var hugeHeading = false
+      h1(class={huge: hugeHeading})
+        a(href='https://github.com/' + repo.full_name, target="_blank")= repo.name
+        if repo.private === true
+          | &nbsp;
+          .label.label-warning(class={shrink66: !hugeHeading, shrink50: hugeHeading}) Private
+      h6= repo.full_name.replace('/' + repo.name, '') + ' organization'
+      if repo.description
+        p=repo.description
+
+      if repositoryEntity && repositoryEntity.parent
+        h3
+          | Fork of &nbsp;
+          strong: a(href='https://github.com/' + repositoryEntity.full_name, target='_new')= repositoryEntity.parent.full_name
+
+      h1 Administrative lock status
+
+      if repositoryMetadata
+        h2 Repository metadata
+        table.table
+          thead
+            tr
+              th Key
+              th Value
+          tbody
+            tr
+              td Created
+              td= repositoryMetadata.created
+            tr
+              td Created by
+              td
+                ul.list-unstyled
+                  if repositoryMetadata.createdByCorporateDisplayName
+                    li= repositoryMetadata.createdByCorporateDisplayName
+                  if repositoryMetadata.createdByCorporateUsername
+                    li= repositoryMetadata.createdByCorporateUsername
+            tr
+              td Lockdown state
+              td= repositoryMetadata.lockdownState
+
+        if repositoryMetadata.lockdownState && repositoryMetadata.lockdownState == 'administratorLocked'
+          form.form-vertical(method='post')
+            h2 Remove administrative lock
+            p: input.btn.btn-primary(type='submit', value='Approve fork and remove administrative lock', name='remove-administrative-lock')
+
+            h2 Delete this fork
+            p: input.btn.btn-default(type='submit', value='Delete fork', name='delete-fork')

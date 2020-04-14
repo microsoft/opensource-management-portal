@@ -1,5 +1,5 @@
 //-
-//- Copyright (c) Microsoft. All rights reserved.
+//- Copyright (c) Microsoft.
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
@@ -15,22 +15,27 @@ block content
   else if api
     p.lead #{approvalRequest.repositoryName} was created by a service
   else
-    p.lead.
-      Your repo <strong>"#{approvalRequest.repositoryName}"</strong> has been created in the <strong>"#{approvalRequest.organizationName}"</strong> organization.
+    if existingRepoId
+      p.lead.
+        Thanks for configuring your new <strong>#{approvalRequest.repositoryName}</strong> repo.
+    else
+      p.lead.
+        Your repo <strong>"#{approvalRequest.repositoryName}"</strong> has been created in the <strong>"#{approvalRequest.organizationName}"</strong> organization.
   if approvalRequest.initialRepositoryVisibility == 'private'
   if liveReposSiteUrl && approvalRequest.repoVisibility == 'private'
     p.
       Since the new repo is private, you may receive a 404 if you yourself are
       not a member of one of the teams that you requested have access. Let github@microsoft.com know if you need support.
-    h3 How to make your repo public
-    p.
-      At this time, the typical experience of taking a repo public directly on
-      GitHub using the admin "settings" tab for a repo is broken. We are working
-      with GitHub to get this fixed.
-    p.
-      In the meantime, you can use the internal GitHub management portal to
-      take your repo public with a single click here:
-    p: a(href=liveReposSiteUrl + approvalRequest.org + '/repos/' + approvalRequest.repoName)= liveReposSiteUrl + approvalRequest.org + '/repos/' + approvalRequest.repoName
+    if !existingRepoId
+      h3 How to make your repo public
+      p.
+        At this time, the typical experience of taking a repo public directly on
+        GitHub using the admin "settings" tab for a repo is broken. We are working
+        with GitHub to get this fixed.
+      p.
+        In the meantime, you can use the internal GitHub management portal to
+        take your repo public with a single click here:
+      p: a(href=liveReposSiteUrl + approvalRequest.org + '/repos/' + approvalRequest.repoName)= liveReposSiteUrl + approvalRequest.org + '/repos/' + approvalRequest.repoName
 
   if approvalRequest.initialLicense
     h3 License

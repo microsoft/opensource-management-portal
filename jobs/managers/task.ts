@@ -5,28 +5,26 @@
 
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
-'use strict';
-
 // A simple job to cache the last-known manager e-mail address for linked users
 // in Redis, using this app's abstracted APIs to be slightly more generic.
 
 import throat = require('throat');
 
-import { createAndInitializeLinkProviderInstance } from '../../lib/linkProviders';
+import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../../lib/linkProviders';
 import { IProviders } from '../../transitional';
-import { ILinkProvider } from '../../lib/linkProviders/postgres/postgresLinkProvider';
 import { ICorporateLink } from '../../business/corporateLink';
-import { Operations, ICachedEmployeeInformation, RedisPrefixManagerInfoCache } from '../../business/operations';
+import { ICachedEmployeeInformation, RedisPrefixManagerInfoCache } from '../../business/operations';
+import { sleep, quitInAMinute } from '../../utils';
+import { IMicrosoftIdentityServiceBasics } from '../../lib/corporateContactProvider';
 
 let insights;
 
-module.exports = function run(config) {
+export default function Task(config) {
   const app = require('../../app');
   config.skipModules = new Set([
     'web',
   ]);
-
-  app.initializeApplication(config, null, error => {
+  app.initializeJob(config, null, error => {
     if (error) {
       throw error;
     }
@@ -36,7 +34,7 @@ module.exports = function run(config) {
     }
     refresh(config, app).then(done => {
       console.log('done');
-      process.exit(0);
+      return quitInAMinute(true);
     }).catch(error => {
       if (insights) {
         insights.trackException({ exception: error, properties: { name: 'JobRefreshManagersFailure' } });
@@ -49,7 +47,7 @@ module.exports = function run(config) {
 async function refresh(config, app) : Promise<void> {
   const providers = app.settings.providers as IProviders;
   const graphProvider = providers.graphProvider;
-  const redisHelper = providers.redis;
+  const cacheHelper = providers.cacheProvider;
   const linkProvider = await createAndInitializeLinkProviderInstance(providers, config);
 
   console.log('reading all links to gather manager info ahead of any terminations');
@@ -67,25 +65,67 @@ async function refresh(config, app) : Promise<void> {
 
   const userDetailsThroatCount = 5;
   const secondsDelayAfterError = 1;
-  const secondsDelayAfterSuccess = 0.15;
+  const secondsDelayAfterSuccess = 0.1;
 
   const managerInfoCachePeriodMinutes = 60 * 24 * 7; // 2 weeks
 
+  let processed = 0;
+
+  const bulkContacts = new Map<string, IMicrosoftIdentityServiceBasics>();
+
   await Promise.all(allLinks.map(throat<void, (link: ICorporateLink) => Promise<void>>(async link => {
     const employeeDirectoryId = link.corporateId;
-
+    console.log(`${++processed}.`);
+    let info =  null, infoError = null;
     try {
-      const info = await getUserAndManager(graphProvider, employeeDirectoryId);
-
+      info = await getUserAndManager(graphProvider, employeeDirectoryId);
+    } catch (retrievalError) {
+      infoError = retrievalError;
+    }
+    if (providers.corporateContactProvider && (info && info.userPrincipalName || link.corporateUsername)) {
+      try {
+        const userPrincipalName = info && info.userPrincipalName ? info.userPrincipalName : link.corporateUsername;
+        const contactsCache = await providers.corporateContactProvider.lookupContacts(userPrincipalName);
+        if (contactsCache || (!contactsCache && link.isServiceAccount)) {
+          bulkContacts.set(userPrincipalName, contactsCache);
+        }
+      } catch (identityServiceError) {
+        // Bulk cache is a secondary function of this job
+        console.warn(identityServiceError);
+      }
+    }
+    if (link.isServiceAccount) {
+      console.log(`skipping service account link ${link.corporateUsername}`);
+      return;
+    }
+    try {
+      if (infoError) {
+        throw infoError;
+      }
       if (!info || !info.manager) {
         console.log(`No manager info is set for ${employeeDirectoryId} - ${info.displayName} ${info.userPrincipalName}`);
         return; // no sleep
+      }
+      // Has the user's corporate display information changed?
+      let linkChanges = false;
+      if (info.displayName !== link.corporateDisplayName) {
+        linkChanges = true;
+        console.log(`Update to corporate link: display name changed from ${link.corporateDisplayName} to ${info.displayName}`);
+        link.corporateDisplayName = info.displayName;
+      }
+      if (info.userPrincipalName !== link.corporateUsername) {
+        linkChanges = true;
+        console.log(`Update to corporate link: username changed from ${link.corporateUsername} to ${info.userPrincipalName}`);
+        link.corporateUsername = info.disuserPrincipalNameplayName;
+      }
+      if (linkChanges) {
+        await linkProvider.updateLink(link);
+        console.log(`Updated link for ${link.corporateId}`);
       }
       if (!info.manager.mail) {
         console.log('No manager mail address');
         throw new Error('No manager mail address in graph');
       }
-
       const reducedWithManagerInfo: ICachedEmployeeInformation = {
         id: info.id,
         displayName: info.displayName,
@@ -94,12 +134,10 @@ async function refresh(config, app) : Promise<void> {
         managerDisplayName: info.manager.displayName,
         managerMail: info.manager.mail,
       };
-
       const key = `${RedisPrefixManagerInfoCache}${employeeDirectoryId}`;
-      const currentManagerIfAny = await redisHelper.getObjectCompressedAsync(key) as any;
-
+      const currentManagerIfAny = await cacheHelper.getObjectCompressed(key) as any;
       if (!currentManagerIfAny) {
-        await redisHelper.setObjectCompressedWithExpireAsync(key, reducedWithManagerInfo, managerInfoCachePeriodMinutes);
+        await cacheHelper.setObjectCompressedWithExpire(key, reducedWithManagerInfo, managerInfoCachePeriodMinutes);
         ++managerSets;
         console.log(`Manager for ${reducedWithManagerInfo.displayName} set to ${reducedWithManagerInfo.managerDisplayName}`);
       } else {
@@ -118,29 +156,40 @@ async function refresh(config, app) : Promise<void> {
             console.log(`Metadata for ${reducedWithManagerInfo.displayName} updated`);
         }
         if (updateEntry) {
-          await redisHelper.setObjectCompressedWithExpireAsync(key, reducedWithManagerInfo, managerInfoCachePeriodMinutes);
+          await cacheHelper.setObjectCompressedWithExpire(key, reducedWithManagerInfo, managerInfoCachePeriodMinutes);
         }
       }
     } catch (retrievalError) {
       if (retrievalError && retrievalError.status && retrievalError.status === 404) {
         ++notFoundErrors;
+        console.log(`deleting: ${link.corporateUsername}`);
+        // Not deleting links so proactively: await linkProvider.deleteLink(link);
         insights.trackEvent({ name: 'JobRefreshManagersNotFound', properties: { error: retrievalError.message } });
       } else {
         console.dir(retrievalError);
         ++errors;
         insights.trackEvent({ name: 'JobRefreshManagersError', properties: { error: retrievalError.message } });
       }
-      await sleepPromise(secondsDelayAfterError * 1000);
+      await sleep(secondsDelayAfterError * 1000);
       return;
     }
-
-    await sleepPromise(secondsDelayAfterSuccess * 1000);
-
+    await sleep(secondsDelayAfterSuccess * 1000);
   }, userDetailsThroatCount)));
 
   console.log('All done with', errors, 'errors. Not found errors:', notFoundErrors);
   console.dir(errorList);
   console.log();
+
+  if (bulkContacts.size) {
+    console.log(`Writing ${bulkContacts.size} contacts to bulk cache...`);
+    try {
+      await providers.corporateContactProvider.setBulkCachedContacts(bulkContacts);
+      console.log('Cached.');
+    } catch (cacheError) {
+      console.log('Cache problem:');
+      console.warn(cacheError);
+    }
+  }
 
   console.log(`Manager updates: ${managerUpdates}`);
   console.log(`Manager sets:    ${managerSets}`);
@@ -161,18 +210,5 @@ async function getUserAndManager(graphProvider, employeeDirectoryId: string): Pr
 }
 
 async function getAllLinks(linkProvider: ILinkProvider) : Promise<ICorporateLink[]> {
-  return new Promise<ICorporateLink[]>((resolve, reject) => {
-    linkProvider.getAll((error, links: ICorporateLink[]) => {
-      if (error) {
-        return reject(error);
-      }
-      return resolve(links);
-    });
-  });
-}
-
-function sleepPromise(ms: number): Promise<void> {
-  return new Promise<void>(resolve => {
-    setTimeout(resolve, ms);
-  });
+  return linkProvider.getAll();
 }

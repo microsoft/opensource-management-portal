@@ -26,7 +26,7 @@ export interface IApiRequest extends ReposAppRequest {
   userContextOverwriteRequest?: any; // refactor?
 }
 
-export function ReposApiAuthentiction(req: IApiRequest, res, next) {
+export function ReposApiAuthentication(req: IApiRequest, res, next) {
   const user = basicAuth(req);
   const key = user? (user.pass || user.name) : null;
   if (!key) {

@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 // This JS file is shared between ospo-witness-event & ospo-opensource-repos
 // where reports are generated. It helps take a minimum viable consolidated
 // report, containing issue type definitions and also the entities impacted

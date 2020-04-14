@@ -32,7 +32,7 @@ export enum GitHubResponseType {
   Collaborator = 'Collaborator',
   UserPermissionLevel = 'UserPermissionLevel',
   Team = 'Team',
-  UserDetail = "UserDetail",
+  UserDetail = 'UserDetail',
 }
 
 function RegisterEntity(entityType: GitHubResponseType, properties: any[]) {
@@ -95,7 +95,9 @@ RegisterEndpoint('orgs.getTeams', GitHubResponseType.Team, ResponseBodyType.Arra
 RegisterEndpoint('orgs.getTeamMembers', GitHubResponseType.UserOrOrganization, ResponseBodyType.Array);
 RegisterEndpoint('orgs.getTeamRepos', GitHubResponseType.Repository, ResponseBodyType.Array);
 RegisterEndpoint('teams.list', GitHubResponseType.Team, ResponseBodyType.Array); // new orgs.getTeams
-RegisterEndpoint('teams.listMembers', GitHubResponseType.UserOrOrganization, ResponseBodyType.Array); // new orgs.getTeamMembers
+RegisterEndpoint('teams.listMembersLegacy', GitHubResponseType.UserOrOrganization, ResponseBodyType.Array); // new orgs.getTeamMembers
+RegisterEndpoint('teams.listMembersInOrg', GitHubResponseType.UserOrOrganization, ResponseBodyType.Array); // new orgs.getTeamMembers
+// teams.listReposInOrg
 RegisterEndpoint('users.getById', GitHubResponseType.UserDetail);
 
 RegisterEntity(GitHubResponseType.UserPermissionLevel, [
@@ -248,6 +250,7 @@ RegisterEntity(GitHubResponseType.Repository, [
   ['network_count', FieldType.Keep],
   ['subscribers_count', FieldType.Keep],
   ['permissions', FieldType.Keep], // is useful when used for team repos listing
+  ['parent', FieldType.Entity, GitHubResponseType.Repository],
 ]);
 
 RegisterEntity(GitHubResponseType.UserDetail, [

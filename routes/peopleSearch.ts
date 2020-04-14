@@ -108,10 +108,10 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
     });
   }
   const search = new MemberSearch(members, {
-    phrase: phrase,
-    type: type,
+    phrase,
+    type,
     links: linksFromMiddleware,
-    getCorporateProfile: operations.mailAddressProvider.getCorporateEntry,
+    providers: operations.providers,
 
     // Used to filter team members in ./org/ORG/team/TEAM/members and other views
     teamMembers: teamMembers,

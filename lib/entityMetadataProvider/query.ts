@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IEntityMetadata } from "./entityMetadata";
-
 export enum FixedQueryType {
   // Team join
   ActiveTeamJoinApprovalsByTeam,
@@ -12,41 +10,66 @@ export enum FixedQueryType {
   ActiveTeamJoinApprovalsByThirdPartyId,
   AllActiveTeamJoinApprovals,
   AllTeamJoinApprovals,
+
   // Repo metadata
   AllRepositoryMetadata,
   RepositoryMetadataByRepositoryId,
+
+  // Audit log entries
+  AuditLogUndoCandidateRecordsByThirdPartyId,
+  AuditLogRecordsByRepositoryId,
+  AuditLogRecordsByTeamId,
+  AuditLogRecordsByActorThirdPartyId,
+  AuditLogRecordsByUserThirdPartyId,
+
+  // Event entries
+  EventRecordContributionsByThirdPartyId,
+  EventRecordContributionsByDateRange,
+  EventRecordContributionsByDateRangeAndId,
+  EventRecordDistinctOrganizations,
+  EventRecordDistinctEligibleContributorsByDateRange,
+  EventRecordPopularContributionsByDateRange,
+
   // Tokens
   TokensByCorporateId,
   TokensGetAll,
+
   // Key extension keys
   LocalExtensionKeysGetAll,
+
   // Orgs
   OrganizationMemberCacheGetAll,
   OrganizationMemberCacheByOrganizationId,
   OrganizationMemberCacheByUserId,
+
   // Repo cache
   RepositoryCacheGetAll,
   RepositoryCacheGetByOrganizationId,
+
   // Repo collaborator cache
   RepositoryCollaboratorCacheGetAll,
   RepositoryCollaboratorCacheByOrganizationId,
   RepositoryCollaboratorCacheByRepositoryId,
   RepositoryCollaboratorCacheByUserId,
+
   // Repository team cache
   RepositoryTeamCacheGetAll,
   RepositoryTeamCacheByRepositoryId,
   RepositoryTeamCacheByTeamId,
   RepositoryTeamCacheByTeamIds,
   RepositoryTeamCacheByOrganizationId,
+
   // Team cache
   TeamCacheGetAll,
   TeamCacheGetByOrganizationId,
+
   // Team member cache
   TeamMemberCacheGetAll,
   TeamMemberCacheGetByOrganizationId,
   TeamMemberCacheGetByUserId,
   TeamMemberCacheGetByTeamId,
   TeamMemberCacheGetByOrganizationIdAndUserId,
+
   // Organization settings
   OrganizationSettingsGetAll,
   OrganizationSettingsGetMostRecentlyUpdatedActive,

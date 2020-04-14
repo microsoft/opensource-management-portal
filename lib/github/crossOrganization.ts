@@ -5,13 +5,11 @@
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-'use strict';
-
-import { IIntelligentCacheObjectResponse, IIntelligentCacheResponseArray, createCallbackFlattenData, flattenData } from './core';
+import { IIntelligentCacheObjectResponse, IIntelligentCacheResponseArray, flattenData } from './core';
 import { CompositeApiContext } from './composite';
 import { RestLibrary } from '.';
 import { RestCollections } from './collections';
-import { OrganizationMembershipRoleQuery, IGetOrganizationMembersOptions } from '../../business/organization';
+import { IGetOrganizationMembersOptions } from '../../business/organization';
 import { ITeamMembershipOptions } from '../../business/team';
 
 interface IOrganizationsResponse extends IIntelligentCacheObjectResponse {

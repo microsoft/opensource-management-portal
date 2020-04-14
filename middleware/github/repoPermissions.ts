@@ -32,9 +32,13 @@ export async function AddRepositoryPermissionsToRequest(req: ReposAppRequest, re
   if (isSudoer === true || isPortalSudoer === true) {
     repoPermissions.sudo = true;
   }
-  const collaborator = await repository.getCollaborator(login);
-  if (collaborator && collaborator.permission === 'admin') {
-    repoPermissions.admin = true;
+  try {
+    const collaborator = await repository.getCollaborator(login);
+    if (collaborator && collaborator.permission === 'admin') {
+      repoPermissions.admin = true;
+    }
+  } catch (getCollaboratorPermissionError) {
+    console.dir(getCollaboratorPermissionError);
   }
   // Make a permission decision
   if (repoPermissions.admin || repoPermissions.sudo) {

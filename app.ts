@@ -6,15 +6,16 @@
 import express = require('express');
 const app = express();
 
-require('debug')('oss-initialize')('loading express application');
+require('debug')('startup')('loading express application');
 
-const initialize = require('./middleware/initialize');
+import initialize from './middleware/initialize';
+import { IReposApplication } from './transitional';
 
 app['initializeApplication'] = initialize.bind(undefined, app, express, __dirname);
 
 app['initializeJob'] = function initializeJob(config, configurationError, callback) {
   config.isJobInternal = true;
-  return initialize(app, express, __dirname, config, configurationError, callback);
+  return initialize(app as unknown as IReposApplication, express, __dirname, config, configurationError, callback);
 }
 
 module.exports = app;

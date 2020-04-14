@@ -42,7 +42,6 @@ function getModuleConfiguration(environmentInstances, environmentType, environme
       /* The environment does not have the type */
     }
   }
-  throw new Error(`No environment instances of type ${environmentType} contained the ${environmentName} data`);
 }
 
 module.exports = (graphApi) => {
@@ -95,8 +94,6 @@ module.exports = (graphApi) => {
       }
       group.push(org);
     });
-  } else {
-    console.warn('No GitHub organizations are configured. Set either GITHUB_ORGANIZATIONS_FILE or GITHUB_ORGANIZATIONS_ENVIRONMENT_NAME in order to load organizations');
   }
 
   if (!orgs.onboarding.length) {

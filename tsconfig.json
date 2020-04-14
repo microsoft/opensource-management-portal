@@ -36,6 +36,7 @@
       "./features/**/*",
       "./jobs/**/*",
       "./webhooks/**/*",
+      "./scripts/**/*",
       "./app.ts",
       "./data.ts",
       "./localEnvironment.ts",

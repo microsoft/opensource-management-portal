@@ -114,9 +114,12 @@ function activeDirectorySubset(app, iss, sub, profile, done) {
 
 export function getGitHubAppConfigurationOptions(config) {
   let legacyOAuthApp = config.github.oauth2 && config.github.oauth2.clientId && config.github.oauth2.clientSecret ? config.github.oauth2 : null;
-  const customerFacingApp = config.github.app && config.github.app.customerFacing && config.github.app.customerFacing.clientId && config.github.app.customerFacing.clientSecret ? config.github.app.customerFacing : null;
+  const customerFacingApp = config.github.app && config.github.app.ui && config.github.app.ui.clientId && config.github.app.ui.clientSecret ? config.github.app.ui : null;
   const useCustomerFacingGitHubAppIfPresent = config.github.oauth2.useCustomerFacingGitHubAppIfPresent === true;
   if (useCustomerFacingGitHubAppIfPresent && customerFacingApp) {
+    if (legacyOAuthApp && legacyOAuthApp['callbackUrl']) {
+      customerFacingApp['callbackUrl'] = legacyOAuthApp['callbackUrl'];
+    }
     legacyOAuthApp = null;
   }
   const modernAppInUse = customerFacingApp && !legacyOAuthApp;
@@ -151,20 +154,20 @@ export default function (app, config) {
     userAgent: 'passport-azure-oss-portal-for-github' // CONSIDER: User agent should be configured.
   };
   if (githubAppConfiguration.callbackUrl) {
-    githubOptions.callbackURL = githubAppConfiguration.callbackUrl;
+    githubOptions.callbackURL = githubAppConfiguration.callbackUrl
   }
   let githubPassportStrategy = new GitHubStrategy(githubOptions, githubResponseToSubset.bind(null, app, modernAppInUse));
   let aadStrategy = new OIDCStrategy({
-    redirectUrl: config.activeDirectory.redirectUrl,
+    redirectUrl: config.activeDirectory.redirectUrl || `${config.webServer.baseUrl}/auth/azure/callback`,
     allowHttpForRedirectUrl: config.containers.docker || config.webServer.allowHttp,
     realm: config.activeDirectory.tenantId,
     clientID: config.activeDirectory.clientId,
     clientSecret: config.activeDirectory.clientSecret,
-    oidcIssuer: config.activeDirectory.issuer,
     identityMetadata: 'https://login.microsoftonline.com/' + config.activeDirectory.tenantId + '/.well-known/openid-configuration',
     responseType: 'id_token code',
     responseMode: 'form_post',
-    validateIssuer: true,
+    // oidcIssuer: config.activeDirectory.issuer,
+    // validateIssuer: true,
   }, activeDirectorySubset.bind(null, app));
 
   // Patching the AAD strategy to intercept a specific state failure message and instead

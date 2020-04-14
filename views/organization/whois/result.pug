@@ -1,5 +1,5 @@
 //-
-//- Copyright (c) Microsoft. All rights reserved.
+//- Copyright (c) Microsoft.
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
@@ -140,7 +140,7 @@ block content
             td= query.gitHubUserInfo.id
 
       if query.link && query.link.corporateUsername
-        h2 #{config.brand.companyName} Directory
+        h2 #{config.brand.companyName} Linked Corporate ID
         table.table
           thead
             tr
@@ -191,6 +191,12 @@ block content
           p.lead DANGER ZONE - NO CONFIRMATION
           p
             input.btn.btn-danger(type='submit', value='Remove link', name='remove-link-only')
+
+    if query && query.collaboratorRepositories
+      h2 Active individual Collaborator permissions on repos
+      ul
+        each cr in query.collaboratorRepositories
+          li= cr
 
     if query && query.link
       hr

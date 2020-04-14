@@ -9,29 +9,38 @@
 
 import cache from 'memory-cache';
 import request from 'request';
-import { IGraphProvider } from '.';
+import { IGraphProvider, IGraphEntry, IGraphEntryWithManager } from '.';
+import { ErrorHelper } from '../../transitional';
 
 export interface IMicrosoftGraphProviderOptions {
   tokenCacheSeconds?: string | number;
   clientId: string;
   clientSecret: string;
+  tokenEndpoint?: string;
+  tenantId?: string;
 }
 
 export class MicrosoftGraphProvider implements IGraphProvider {
-  private _tokenCacheMilliseconds: number;
-  private _clientSecret: string;
+  #_tokenCacheMilliseconds: number;
+  #_clientSecret: string;
+  #_staticManagerEntryCacheById: Map<string, IGraphEntryWithManager>;
+  #_tenantId: string;
+  #_tokenEndpoint: string;
 
   public clientId: string;
 
   constructor(graphOptions: IMicrosoftGraphProviderOptions) {
+    this.#_staticManagerEntryCacheById = new Map();
     const secondsString = (graphOptions.tokenCacheSeconds || '60').toString();
-    this._tokenCacheMilliseconds = parseInt(secondsString, 10) * 1000;
+    this.#_tokenCacheMilliseconds = parseInt(secondsString, 10) * 1000;
     this.clientId = graphOptions.clientId;
-    this._clientSecret = graphOptions.clientSecret;
+    this.#_clientSecret = graphOptions.clientSecret;
+    this.#_tenantId = graphOptions.tenantId;
+    this.#_tokenEndpoint = graphOptions.tokenEndpoint;
     if (!this.clientId) {
       throw new Error('MicrosoftGraphProvider: clientId required');
     }
-    if (!this._clientSecret) {
+    if (!this.#_clientSecret) {
       throw new Error('MicrosoftGraphProvider: clientId required');
     }
   }
@@ -58,13 +67,55 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     });
   }
 
-  async getUserByIdAsync(id: string) : Promise<any> {
-    return new Promise<string>((resolve, reject) => {
+  async getManagementChain(corporateId: string): Promise<IGraphEntryWithManager[]> {
+    let chain = [];
+    try {
+      let entry = await this.getCachedEntryWithManagerById(corporateId);
+      while (entry) {
+        const clone = {...entry};
+        delete clone.manager;
+        chain.push(clone);
+        entry = entry.manager && entry.manager.id ? await this.getCachedEntryWithManagerById(entry.manager.id) : null;
+      }
+    } catch (getError) {
+      if (ErrorHelper.IsNotFound(getError)) {
+        return null;
+      } else {
+        console.dir(getError);
+        throw getError;
+      }
+    }
+    return chain;
+  }
+
+  async getCachedEntryWithManagerById(corporateId: string): Promise<IGraphEntryWithManager> {
+    let entry = this.#_staticManagerEntryCacheById.get(corporateId);
+    if (entry) {
+      return entry;
+    }
+    entry = await this.getUserAndManagerAsync(corporateId);
+    this.#_staticManagerEntryCacheById.set(corporateId, entry);
+    return entry;
+  }
+
+  async getUserByIdAsync(id: string) : Promise<IGraphEntry> {
+    return new Promise<IGraphEntry>((resolve, reject) => {
       this.getUserById(id, (err, info) => {
         if (err && err['status'] === 404) {
           // console.log('User not found in the directory');
           return resolve(null);
         }
+        if (err) {
+          return reject(err);
+        }
+        return resolve(info as IGraphEntry);
+      });
+    });
+  }
+
+  private async getUserAndManagerAsync(employeeDirectoryId: string): Promise<any> {
+    return new Promise<any>((resolve, reject) => {
+      this.getUserAndManagerById(employeeDirectoryId, (err, info) => {
         if (err) {
           return reject(err);
         }
@@ -92,7 +143,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       if (error) {
         return callback(error);
       }
-      cache.put(tokenKey, t, this._tokenCacheMilliseconds);
+      cache.put(tokenKey, t, this.#_tokenCacheMilliseconds);
       return callback(null, t);
     });
   }
@@ -127,11 +178,11 @@ export class MicrosoftGraphProvider implements IGraphProvider {
 
   private getGraphAccessToken(callback) {
     const clientId = this.clientId;
-    const clientSecret = this._clientSecret;
+    const clientSecret = this.#_clientSecret;
     if (!clientId || !clientSecret) {
       return callback(null, new Error('The graph provider requires an AAD clientId and clientSecret.'));
     }
-    const tokenEndpoint = 'https://login.microsoftonline.com/microsoft.com/oauth2/token';
+    const tokenEndpoint = this.#_tokenEndpoint || `https://login.microsoftonline.com/${this.#_tenantId}/oauth2/token`;
     // These are the parameters necessary for the OAuth 2.0 Client Credentials Grant Flow.
     // For more information, see Service to Service Calls Using Client Credentials (https://msdn.microsoft.com/library/azure/dn645543.aspx).
     const requestParams = {
