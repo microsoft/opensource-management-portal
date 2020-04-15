@@ -5,8 +5,6 @@
 
 /*eslint no-console: ["error", { allow: ["dir", "log"] }] */
 
-'use strict';
-
 import { WebhookProcessor } from "../organizationProcessor";
 import { Operations } from "../../business/operations";
 import { Organization } from "../../business/organization";
@@ -79,16 +77,16 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
     }
     if (update) {
       // CONSIDER: When to update the entire org list? operations.getRepos() would be cross-org
-      organization.getRepositories(immediateRefreshOptions, () => {
-        console.log('refreshed repos list after ADD');
-        const crossOrgRefreshOptions = {
-          backgroundRefresh: false,
-          maxAgeSeconds: 15,
-        };
-        operations.getRepos(crossOrgRefreshOptions, () => {
-          console.log('refreshed cross-org repos list with 15s buffer');
-        });
-      });
+      // organization.getRepositories(immediateRefreshOptions, () => {
+      //   console.log('refreshed repos list after ADD');
+      //   const crossOrgRefreshOptions = {
+      //     backgroundRefresh: false,
+      //     maxAgeSeconds: 15,
+      //   };
+      //   operations.getRepos(crossOrgRefreshOptions, () => {
+      //     console.log('refreshed cross-org repos list with 15s buffer');
+      //   });
+      // });
     }
     if (isNewOrTransferred && event.sender.login && event.sender.id && organization.isNewRepositoryLockdownSystemEnabled()) {
       try {
