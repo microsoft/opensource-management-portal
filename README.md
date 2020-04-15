@@ -45,24 +45,37 @@ dedicate a user seat to a machine account.
 
 #### Install Node packages
 
-Make sure to include dev dependencies
+Make sure to include dev dependencies.
 
+Run 
 ```
-$ npm install
+npm install
 ```
+ in the project's root directory.
 
 ### Build
 
+The Opensource-Portal is written in TypeScript, so the app needs to be compiled before launching. 
+Visual Studio Code does the compiling automatically at launching, but to compile it manually run the command 
 ```
-$ npm run-script build
+npm run build
+``` 
+from the project's root directory.
+
+You also have to build the 'default-assets-package'-folder. For this, run
+
 ```
+cd default-assets-package
+npm install
+npm run build
+``` 
+
+You need to rebuild the default-assets-package if you change something. [see Static Site Assets](#static-site-assets)  
 
 ### Building the Docker image
 
-You need to set the NPM_TOKEN parameter to the NPM token to the private registry.
-
 ```
-$ docker build --build-arg NPM_TOKEN="YOURTOKENHERE" .
+$ docker build .
 ```
 
 ### Test
@@ -123,6 +136,68 @@ A GitHub organization(s) configuration file in JSON format is required as of ver
 With the current configuration story, a `CONFIGURATION_ENVIRONMENT` variable is required, as well
 as a secret for AAD to get KeyVault bootstrapped. That requirement will go away soon.
 
+### Adding Organizations
+
+The opensource-portal only shows GitHub-organizations which are configured in a specific file. The path for this file is handed over with the environment-variable `GITHUB_ORGANIZATIONS_FILE`, which specifies the relative path of this file from the `data`-folder as root directory. This JSON-file has to be created, here is an example of the organizations-file:
+
+```
+[
+  {
+    "name": "ContosoDev",
+    "id": 20195765,
+    "type": "public",
+    "ownerToken": "keyvault://portalppe.vault.azure.net/secrets/dev-github-org-contosodev-repos-token",
+    "description": "Contoso Public Development - Cloud",
+    "teamAllMembers": "2063735",
+    "teamPortalSudoers": "2063734",
+    "preventLargeTeamPermissions": true,
+    "teamAllReposRead": "2280089",
+    "teamAllReposWrite": "2148455",
+    "templates": ["mit", "microsoft.docs", "dnfmit", "dnfmit.docs", "other"]
+  },
+  {
+    "name": "contoso-d",
+    "id": 9669768,
+    "type": "public",
+    "ownerToken": "keyvault://portalppe.vault.azure.net/secrets/local-github-org-contosodev-repos-token",
+    "description": "Classic contoso-d",
+    "teamAllMembers": "1944235",
+    "preventLargeTeamPermissions": true,
+    "teamAllReposRead": "2275189",
+    "teamAllReposWrite": "2275190",
+    "teamAllReposAdmin": "2279870",
+    "templates": ["mit", "dnfmit"]
+  }
+]
+```
+
+Here is a short overview about the meanings of the different parameters:
+- name (mandatory): GitHub organization name
+- id (mandatory ([soon](https://github.com/microsoft/opensource-portal/issues/92))): organization id
+- ownerToken (mandatory): personal access token of an organization owner
+- type: supported repo types
+- description: description text which is shown for the organization
+- teamAllMembers: every member of this team is org-member (team-ID required)
+- teamAllReposRead: every member of this team has read access to all repos (team-ID required)
+- teamAllReposWrite: every member of this team has write access to all repos (team-ID required)
+- teamAllReposAdmin: every member of this team has admin access to all repos (team-ID required)
+- templates: GitHub repository templates
+- locked: joining this organization via the opensource-portal is disabled
+
+### PostgreSQL Configuration
+
+To run the opensource-portal with a postgres database, you need to [setup postgres](https://www.postgresql.org/docs/11/runtime.html) and initialize the database by running the `pg.sql`-file in the psql-terminal.
+It's recommended to [run postgres in a docker container](https://hub.docker.com/_/postgres), there is also an offical docker image called `postgres` for building.
+
+Once the setup is done, set the `host`, `database`, `user`, `password`, `ssl` (as boolean) and `port` of the postgres in the `config/data.postgres.json`-file.
+Additionally set the name of the linking-table (`tableName` parameter), if the tables were created with the `pg.sql`-file, the name for this table is `links`.
+
+### Redis Configuration
+
+For caching GitHub-requests with Redis, [setup a redis database](https://redis.io/topics/quickstart) ([running Redis in a docker container](https://hub.docker.com/_/redis/) is recommended, there is an official docker image called `redis` for building).
+
+After Redis setup is complete, set your Redis configs in the `config/redis.json`-file. The `post` and `host` parameters are mandatory, other configs are optional (depending on the Redis configuration).
+
 ### KeyVault Secret Support
 
 Any configuration string property can be resolved to a KeyVault secret.
@@ -143,6 +218,32 @@ present.
 
 As configuration, including secrets, is resolved at startup, any key rotation would need
 to include a restart of the app service.
+
+## Minimum Configuration
+
+If you place a JSON file `env.json` above the directory of your cloned repo
+(to prevent committing secrets to your repo by accident or in your editor),
+you can configure the following extreme minimum working set to use the app.
+
+In this mode memory providers are used, including a mocked Redis client. Note
+that this does mean that a large GitHub organization configured with memory
+providers could become a token use nightmare, as each new execution of the app
+without a Redis Cache behind the scenes is going to have 100% cache misses for
+GitHub metadata. Consider configuring a development or local Redis server to
+keep cached data around.
+
+For authentication, the opensource-portal uses Azure Active Directory (AD) for corporate authentication 
+and GitHub OAuth2 for the GitHub authentication.
+
+### Azure Active Directory Configuration
+
+Create an Azure Active Directory application ([guide](https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app)) and set the IDs and the redirect-URL in the `config/activeDirectory.json` file.
+
+### GitHub OAuth2 Configuration
+
+Create an GitHub OAuth2 application ([guide](https://developer.github.com/apps/building-oauth-apps/creating-an-oauth-app/)) and set the IDs and the callback-URL in the `config/github.oauth2.json` file.
+
+You need to grant the application [third party permissions](https://help.github.com/en/articles/about-oauth-app-access-restrictions). To do this, navigate to the following link `https://github.com/orgs/<org-name>/policies/applications/<application-ID>`.
 
 ## Jobs
 

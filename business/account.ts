@@ -73,6 +73,14 @@ export class Account {
     return this._originalEntity ? this._originalEntity.company : undefined;
   }
 
+  public get email(): string {
+    return this._originalEntity ? this._originalEntity.email : undefined;
+  }
+
+  public get name(): string {
+    return this._originalEntity ? this._originalEntity.name : undefined;
+  }
+
   constructor(entity, operations: Operations, getAuthorizationHeader: IGetAuthorizationHeader) {
     common.assignKnownFieldsPrefixed(this, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
     this._originalEntity = entity;
