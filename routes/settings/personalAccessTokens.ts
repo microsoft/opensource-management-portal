@@ -3,10 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import async from 'async';
-import express = require('express');
+import express from 'express';
+import asyncHandler from 'express-async-handler';
+const router = express.Router();
 
 import { IResponseForSettingsPersonalAccessTokens, ReposAppRequest, IProviders } from '../../transitional';
 import { PersonalAccessToken } from '../../entities/token/token';
@@ -24,8 +23,6 @@ interface IPersonalAccessTokenForDisplay {
 export interface IRequestForSettingsPersonalAccessTokens extends ReposAppRequest {
   personalAccessTokens?: IPersonalAccessTokenForDisplay[];
 }
-
-const router = express.Router();
 
 const serviceName = 'repos-pat';
 const tokenExpirationMs = 1000 * 60 * 60 * 24 * 365; // 365 days
@@ -141,26 +138,20 @@ function createToken(req: ReposAppRequest, res, next) {
 router.post('/create', createToken);
 router.post('/extension', createToken);
 
-router.post('/delete', (req: IRequestForSettingsPersonalAccessTokens, res, next) => {
+router.post('/delete', asyncHandler(async (req: IRequestForSettingsPersonalAccessTokens, res, next) => {
   const providers = req.app.settings.providers as IProviders;
   const tokenProvider = providers.tokenProvider;
   const revokeAll = req.body.revokeAll === '1';
   const revokeIdentifier = req.body.revoke;
   const personalAccessTokens = req.personalAccessTokens;
-  async.eachLimit(personalAccessTokens, 1, (pat: IPersonalAccessTokenForDisplay, callback) => {
+  for (const pat of personalAccessTokens) {
     const token = pat.tokenEntity;
     if (revokeAll || pat.identifier === revokeIdentifier) {
       token.active = false;
-      return tokenProvider.updateToken(token).then(ok => {
-        return callback();
-      }).catch(error => {
-        return callback(error);
-      });
+      await tokenProvider.updateToken(token);
     }
-    return callback();
-  }, error => {
-    return error ? next(error) : res.redirect('/settings/security/tokens');
-  });
-});
+  }
+  return res.redirect('/settings/security/tokens');
+}));
 
 module.exports = router;

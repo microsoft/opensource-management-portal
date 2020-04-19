@@ -5,4 +5,4 @@
 
 import { EntityMetadataType } from '../../lib/entityMetadataProvider/entityMetadata';
 
-export const Type = EntityMetadataType.AuditLogRecord;
+export const Type = new EntityMetadataType('AuditLogRecord');

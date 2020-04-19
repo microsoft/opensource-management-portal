@@ -6,7 +6,6 @@
 'use strict';
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-import async = require('async');
 import { wrapError } from '../../utils';
 const encryption = require('../../lib/encryption');
 
@@ -94,49 +93,50 @@ function deserializeEntity(options, entityName, entity, callback) {
 }
 
 function serialize(options, user, done) {
-  const tasks = {};
-  for (const entityName in userEncryptedEntities) {
-    const entityPresent = user[entityName];
-    if (entityPresent !== undefined) {
-      const entityOriginalValue = entityPresent;
-      delete user[entityName];
-      tasks[entityName] = serializeEntity.bind(null, options, entityName, entityOriginalValue);
-    }
-  }
-  async.parallel(tasks, (error, results) => {
-    if (error) {
-      return done(error);
-    }
-    for (const result in results) {
-      user[result] = results[result];
-    }
+  return Promise.all(Object.getOwnPropertyNames(userEncryptedEntities).map(entityName => {
+    return new Promise((resolve, reject) => {
+      const entityPresent = user[entityName];
+      if (entityPresent !== undefined) {
+        const entityOriginalValue = entityPresent;
+        delete user[entityName];
+        return serializeEntity(options, entityName, entityOriginalValue, (error, value) => {
+          user[entityName] = value;
+          return error ? reject(error) : resolve();
+        });
+      } else {
+        return resolve();
+      }
+    });
+  })).then(ok => {
     return done(null, user);
+  }).catch(error => {
+    return done(error);
   });
 }
 
 function deserialize(options, user, done) {
-  const tasks = {};
-  let u = {};
-  for (const entityName in user) {
-    if (userEncryptedEntities[entityName] !== undefined) {
-      let entityValue = user[entityName];
-      tasks[entityName] = deserializeEntity.bind(null, options, entityName, entityValue);
-    }
-  }
-  async.parallel(tasks, (error, results) => {
-    if (error) {
-      return done(error);
-    }
-    for (const result in results) {
-      u[result] = results[result];
-    }
+  const u = {};
+  return Promise.all(Object.getOwnPropertyNames(user).map(entityName => {
+    return new Promise((resolve, reject) => {
+      if (userEncryptedEntities[entityName] !== undefined) {
+        let entityValue = user[entityName];
+        return deserializeEntity(options, entityName, entityValue, (error, result) => {
+          u[entityName] = result;
+          return error ? reject(error) : resolve();
+        });
+      } else {
+        return resolve();
+      }
+    });
+  })).then(ok => {
     for (const unencryptedEntity in user) {
       if (userEncryptedEntities[unencryptedEntity] === undefined) {
         u[unencryptedEntity] = user[unencryptedEntity];
       }
-
     }
     return done(null, u);
+  }).catch(error => {
+    return done(error);
   });
 }
 

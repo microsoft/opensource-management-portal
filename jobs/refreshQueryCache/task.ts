@@ -5,7 +5,7 @@
 
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
-import throat = require('throat');
+import throat from 'throat';
 import { shuffle } from 'lodash';
 
 import { IProviders, ICacheOptions, IPagedCacheOptions, permissionsObjectToValue, ErrorHelper } from '../../transitional';
@@ -575,10 +575,12 @@ async function refresh(config, app, args: string[]) : Promise<void> {
   console.log(`Parallel dynamic organization count: ${parallelDynamicCount} for ${dynamicOrgs.length} configured dynamic orgs`);
   try {
     console.log(`processing ${dynamicOrgs.length} dynamic orgs, ${parallelDynamicCount} at a time`);
-    await Promise.all(dynamicOrgs.map(throat<void, (org: Organization) => Promise<void>>(organizationProcessed, parallelDynamicCount)));
+    const dynamicThrottle = throat(parallelDynamicCount);
+    await Promise.all(dynamicOrgs.map((org: Organization) => dynamicThrottle(organizationProcessed.bind(null, org))));
     processedOrgs = 0;
     console.log(`processing ${staticOrgs.length} static orgs, ${parallelWorkCount} at a time to avoid rate-limiting`);
-    await Promise.all(staticOrgs.map(throat<void, (org: Organization) => Promise<void>>(organizationProcessed, parallelWorkCount)));
+    const staticThrottle = throat(parallelWorkCount);
+    await Promise.all(staticOrgs.map((org: Organization) => staticThrottle(organizationProcessed.bind(null, org))));
   } catch (dynamicError) {
     console.dir(dynamicError);
   }

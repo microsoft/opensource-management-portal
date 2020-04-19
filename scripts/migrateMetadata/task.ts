@@ -11,7 +11,7 @@
 
 const circuitBreakerOverrideClearingDestination = process.env.CIRCUIT_BREAKER_OVERRIDE === 'migrate-data-clear-ok';
 
-import throat = require('throat');
+import throat from 'throat';
 
 import { IProviders } from '../../transitional';
 
@@ -94,7 +94,8 @@ async function migration(config, app) : Promise<void> {
   let errors = 0;
   let errorList = [];
   let i = 0;
-  await Promise.all(sourceRepositoryMetadata.map(throat<string, (r: RepositoryMetadataEntity) => Promise<string>>(async repo => {
+  const throttle = throat(parallelMigrations);
+  await Promise.all(sourceRepositoryMetadata.map((repo: RepositoryMetadataEntity) => throttle(async () => {
     try {
       console.log(`${i++}: Migrating: ${repo.repositoryId}: ${repo.organizationName}/${repo.repositoryName}`);
       await destinationRepoMetadataProvider.createRepositoryMetadata(stripAzureTableDataIfPresent(repo));
@@ -105,8 +106,7 @@ async function migration(config, app) : Promise<void> {
       ++errors;
       // throw migrationError;
     }
-    return '';
-  }, parallelMigrations)));
+  })));
 
   console.log('All done with repo metadatas, ' + errors + ' errors');
   console.dir(errorList);
@@ -129,7 +129,7 @@ async function migration(config, app) : Promise<void> {
   await destinationTeamJoinApprovalProvider.deleteAllRequests();
 
   i = 0;
-  await Promise.all(sourceTeamJoinApprovals.map(throat<string, (tj: TeamJoinApprovalEntity) => Promise<string>>(async request => {
+  await Promise.all(sourceTeamJoinApprovals.map((request: TeamJoinApprovalEntity) => throttle(async () => {
     try {
       console.log(`${i++}: Migrating: ${request.approvalId} by ${request.thirdPartyUsername}`);
       await destinationTeamJoinApprovalProvider.createTeamJoinApprovalEntity(stripAzureTableDataIfPresent(request));
@@ -140,7 +140,7 @@ async function migration(config, app) : Promise<void> {
       errorList.push(migrationError);
     }
     return '';
-  }, parallelMigrations)));
+  })));
 
   console.log('All done with requests, ' + errors + ' errors');
   console.dir(errorList);

@@ -177,7 +177,7 @@ export class RestLibrary {
   }
 
   async post(awaitToken: IGetAuthorizationHeader | string, api: string, options: any): Promise<any> {
-    const method = restApi.IntelligentGitHubEngine.findLibaryMethod(this.github, api);
+    const method = restApi.IntelligentGitHubEngine.findLibraryMethod(this.github, api);
     if (!options.headers) {
       options.headers = {};
     }
@@ -191,7 +191,14 @@ export class RestLibrary {
       options.headers.authorization = typeof(value) === 'string' ? value as string : (value as IAuthorizationHeaderValue).value;
     }
     try {
-      const value = await method.call(this.github, options) as Promise<any>;
+      let value = null;
+      if (api === 'request' && options.octokitRequest) {
+        const endpoint = options.octokitRequest;
+        delete options.octokitRequest;
+        value = await method.call(this.github, endpoint, options) as Promise<any>;
+      } else {
+        value = await method.call(this.github, options) as Promise<any>;
+      }
       const finalized = massageData(value);
       return finalized;
     } catch (error) {

@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
@@ -14,7 +12,7 @@ import { GitHubTeamRole } from '../../business/team';
 import { PostgresGetAllEntities, PostgresJsonEntityQuery } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
 
-const type = EntityMetadataType.TeamMemberCache;
+const type = new EntityMetadataType('TeamMemberCache');
 
 interface ITeamMemberCacheProperties {
   uniqueId: any; // orgid:teamid:userid

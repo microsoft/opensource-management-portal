@@ -46,7 +46,7 @@ interface IGitHubLink {
 
 export class IntelligentGitHubEngine extends IntelligentEngine {
 
-  public static findLibaryMethod(libraryInstance, apiName) {
+  public static findLibraryMethod(libraryInstance, apiName) {
     const instance = libraryInstance;
     const combined = apiName;
 
@@ -414,7 +414,7 @@ export class GitHubApiContext extends ApiContext {
       // and is probably not needed
       throw new Error('API has already been attached to');
     }
-    const method = IntelligentGitHubEngine.findLibaryMethod(implementationLibrary, this.api);
+    const method = IntelligentGitHubEngine.findLibraryMethod(implementationLibrary, this.api);
     method['thisInstance'] = implementationLibrary; // // HACK, is there a better way?
     this._apiMethod = method;
   }

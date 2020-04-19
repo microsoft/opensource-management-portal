@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+'use strict';
+
 import express = require('express');
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
@@ -15,8 +17,8 @@ const PeopleSearch = require('../../peopleSearch')
 
 const teamAdminRequired = require('./teamAdminRequired');
 
-export interface ILocalTeamRequest extends ReposAppRequest {
-  team2?: any;
+interface ILocalTeamRequest extends ReposAppRequest {
+  team2?: Team;
   refreshedMembers?: any;
   teamUrl?: any;
   team2AddType?: any;

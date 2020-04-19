@@ -12,32 +12,28 @@ Key features center around opinionated takes on at-scale management, with an emp
 - __Self-service GitHub organization join__: one-click GitHub organization joining for authorized users
 - __Cross-organization functionality__: consolidated views across a set of managed GitHub organizations including people, repos, teams
 
-Before providing GitHub management functionality to all of Microsoft, this
-application started within Azure.
-
 > An introduction to this project is available in this 2015 post by Jeff Wilcox:   [http://www.jeff.wilcox.name/2015/11/azure-on-github/](http://www.jeff.wilcox.name/2015/11/azure-on-github/)
 
-The app is a GitHub OAuth application; with the May 2017 release of
-GitHub Apps (formerly called Integrations), this app over time may be
-refactored to support the integration concept, removing the need to
-dedicate a user seat to a machine account.
+Starting in 2020, the application pivoted to help scale better:
+
+- The portal works best as a GitHub App instead of the older GitHub OAuth app model
+- The app can be installed as multiple parallel apps (user-facing, operations, background jobs, and data) to ensure that key user experiences continue to function even if a background job or other task exhausts available REST API reosurces
+- When combined with a near-realtime webhook feed, the app tracks updates for views in a database instead of through REST API caches.
 
 ## Node app
 
 - Node.js LTS (v10+)
 - TypeScript
-- Mixed callback and Q promises and async and whoa at this time
+
+Native promises and await/async are being introduced into the codebase. Older callback-based
+code using libraries such as `async` or the promise library `q` have been removed.
 
 ## Service Dependencies
 
 - At least one of your own GitHub organizations
-- Bring your own Redis server, or use a hosted Redis provider
+- Bring your own cache system (built-in providers for Redis, Cosmos DB, and Azure storage)
 - Azure Active Directory, or hack your own Passport provider in
 - Data storage for links, etc.: either Azure Storage _or_ Postgres
-
-## LICENSE
-
-[MIT License](LICENSE)
 
 ## Dev prep, build, deploy
 
@@ -47,26 +43,15 @@ dedicate a user seat to a machine account.
 
 Make sure to include dev dependencies.
 
-Run 
 ```
 npm install
+cd default-assets-package
+npm install
 ```
- in the project's root directory.
 
 ### Build
 
-The Opensource-Portal is written in TypeScript, so the app needs to be compiled before launching. 
-Visual Studio Code does the compiling automatically at launching, but to compile it manually run the command 
 ```
-npm run build
-``` 
-from the project's root directory.
-
-You also have to build the 'default-assets-package'-folder. For this, run
-
-```
-cd default-assets-package
-npm install
 npm run build
 ``` 
 
@@ -80,43 +65,15 @@ $ docker build .
 
 ### Test
 
-This project is starting to get improved testability. But it will be a long slog.
-
-```
-$ npm test
-```
-
-Which is equivalent to running:
-
-```
-$ mocha
-```
-
-## Contributions welcome
-
-Happy to have contributions, though please consider reviewing the CONTRIBUTING.MD file, the code of conduct,
-and then also open a work item to help discuss the features or functionality ahead of kicking off any such
-work.
-
-This project has adopted the [Microsoft Open Source Code of
-Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct
-FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com)
-with any additional questions or comments.
+This project basically has _no tests_.
 
 # Work to be done
 
-- Documenting refresh/cache-based views vs event bus
-- Getting started guide including baremin configuration
 - Continuing to refactor out Microsoft-specific things when possible
 - Tests
 - Proper model/view/API system
 - Front-end UI
 
-# If you are starting fresh
-
-- Consider using Postgres instead of Azure Table in all circumstances
 
 # Implementation Details
 
@@ -136,7 +93,16 @@ A GitHub organization(s) configuration file in JSON format is required as of ver
 With the current configuration story, a `CONFIGURATION_ENVIRONMENT` variable is required, as well
 as a secret for AAD to get KeyVault bootstrapped. That requirement will go away soon.
 
-### Adding Organizations
+### Configuring organizations
+
+When installed as a GitHub App, the installations can be added into the "dynamic settings" system where
+the org info is stored in an entity database. This allows the app and jobs to pick up the latest configuration
+without needing redeployment.
+
+Alternatively, a static JSON file can be provided to store configuration details and other information
+about your GitHub orgs that the app will manage.
+
+#### Static orgs
 
 The opensource-portal only shows GitHub-organizations which are configured in a specific file. The path for this file is handed over with the environment-variable `GITHUB_ORGANIZATIONS_FILE`, which specifies the relative path of this file from the `data`-folder as root directory. This JSON-file has to be created, here is an example of the organizations-file:
 
@@ -192,11 +158,16 @@ It's recommended to [run postgres in a docker container](https://hub.docker.com/
 Once the setup is done, set the `host`, `database`, `user`, `password`, `ssl` (as boolean) and `port` of the postgres in the `config/data.postgres.json`-file.
 Additionally set the name of the linking-table (`tableName` parameter), if the tables were created with the `pg.sql`-file, the name for this table is `links`.
 
-### Redis Configuration
+There is also a script in the `scripts` folder that can blast the `pg.sql` insertions into a new database. Be
+sure to configure grants and your user accounts with the concept of least privilege required.
+
+### Cache Configuration
 
 For caching GitHub-requests with Redis, [setup a redis database](https://redis.io/topics/quickstart) ([running Redis in a docker container](https://hub.docker.com/_/redis/) is recommended, there is an official docker image called `redis` for building).
 
 After Redis setup is complete, set your Redis configs in the `config/redis.json`-file. The `post` and `host` parameters are mandatory, other configs are optional (depending on the Redis configuration).
+
+Other providers available include Azure Blob (slower but cheap), Cosmos DB, and a hybrid Cosmos+Blob.
 
 ### KeyVault Secret Support
 
@@ -239,7 +210,38 @@ and GitHub OAuth2 for the GitHub authentication.
 
 Create an Azure Active Directory application ([guide](https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app)) and set the IDs and the redirect-URL in the `config/activeDirectory.json` file.
 
-### GitHub OAuth2 Configuration
+### GitHub App Configuration (modern)
+
+Create a new GitHub App.
+
+Make sure the app has these permissions:
+
+- Administration (R&W)
+- Metadata (R)
+- Org members (R&W)
+- Org administration (R&W)
+- Plan (R)
+- Blocking users (R&W, recommended)
+
+Subscribe to these events in only your single app instance _or_ your operations instance:
+
+- meta
+- fork
+- member
+- membership
+- organization
+- public
+- repository
+- star
+- team
+- team add
+- org block
+
+Download the private key for the app to be able to authenticate.
+
+You can do this 3 more times to create dedicated apps for `UI`, `background jobs`, `data`, and `operations` in total.
+
+### GitHub OAuth2 Configuration (legacy)
 
 Create an GitHub OAuth2 application ([guide](https://developer.github.com/apps/building-oauth-apps/creating-an-oauth-app/)) and set the IDs and the callback-URL in the `config/github.oauth2.json` file.
 
@@ -254,10 +256,13 @@ CronJob can help.
 - `cleanupInvites`: if configured for an org, cleanup old unaccepted invites
 - `firehose`: ongoing processing of GitHub events for keeping cache up-to-date
 - `managers`: cache the last-known manager for links, to use in notifications after a departure may remove someone from the graph
-- `migrateLinks`: a one-time migration script to help when moving link source of truth
 - `permissions`: updating permissions for all-write/all-read/all-admin teams when configured
 - `refreshUsernames`: keeping link data fresh with GitHub username renames, corporate username and display name updates, and removing links for deleted GitHub users who remove their accounts permanently from GitHub.com
-- `reports`: processing the building of report data about use, abandoned repos, etc.
+- `reports`: processing the building of report data about use, abandoned repos, etc. __this job is broken__
+
+## Scripts
+
+- `migrateLinks`: a one-time migration script to help when moving link source of truth
 
 ## Application Insights
 
@@ -275,7 +280,7 @@ User interface events include:
 - PortalUserReconnectNeeded: When a user needs to reconnect their GitHub account
 - PortalUserReconnected: When a user successfully reconnects their GitHub account when using AAD-first auth
 
-## E-mail
+## Email, corporate contacts and graph providers
 
 A custom mail provider is being used internally, but a more generic mail
 provider contract exists in the library folder for the app now. This
@@ -285,11 +290,6 @@ over mail. Since Microsoft is an e-mail company and all.
 # API
 
 Please see the [API.md](API.md) file for information about the early API implementation.
-
-# Undocumented / special features
-
-This is meant to start an index of interesting features for operations
-use.
 
 ## people
 
@@ -333,15 +333,6 @@ with more generic Bootstrap content, Grunt build scripts, etc. It is used if thi
 is not defined in the package JSON. Unfortunately you need to separately
 `npm install` and `grunt` to use it, or just point it at your own set of
 CSS files and other assets. Sorry, its not pretty.
-
-## Breaking changes with the TypeScript version
-
-- In-memory session and link providers enable an easier local development experience. As a result, you *must* configure a link provider type and a session type in settings.
-  - SESSION_PROVIDER should be explicitly set to `redis`
-
-## Breaking changes with historical repo metadata
-
-- Prior to late 2017, newly created repos stored metadata that included the org name and repo name requested but _not_ the repo ID of the repo when created. The current implementation tries to use the repo ID as an entity lookup value and so will fail on historical data.
 
 ### Removed features and functions
 
@@ -457,3 +448,21 @@ variable value to `1`.
   - Variable: `FEATURE_FLAG_ALLOW_UNAUTHORIZED_FORK_LOCKDOWN_SYSTEM`
   - Purpose: Locks repositories that are forks until they are approved by an administrator
   - Requirements: depends on the new repo lockdown system already being enabled and in use
+
+## LICENSE
+
+[MIT License](LICENSE)
+
+
+## Contributions welcome
+
+Happy to have contributions, though please consider reviewing the CONTRIBUTING.MD file, the code of conduct,
+and then also open a work item to help discuss the features or functionality ahead of kicking off any such
+work.
+
+This project has adopted the [Microsoft Open Source Code of
+Conduct](https://opensource.microsoft.com/codeofconduct/).
+For more information see the [Code of Conduct
+FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
+contact [opencode@microsoft.com](mailto:opencode@microsoft.com)
+with any additional questions or comments.

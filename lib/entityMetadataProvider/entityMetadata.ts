@@ -5,48 +5,22 @@
 
 import { IEntityMetadataProvider, IEntityMetadataSerializationHelper, IEntityMetadataDeserializationHelper } from "./entityMetadataProvider";
 
-export enum EntityMetadataType {
-  // READ THIS:
-  // IMPORTANT: When adding new types, also add it to EntityMetadataTypes array below!
+export class EntityMetadataType {
+  constructor(public readonly typeName: string) {
+    EntityMetadataTypes.map(entry => {
+      if (entry.typeName === typeName) {
+        throw new Error(`EntityMetadataType with name=${typeName} has already been registered`);
+      }
+    });
+    EntityMetadataTypes.push(this);
+  }
 
-  // GitHub entities METADATA
-  Repository = 'Repository',
-
-  AuditLogRecord = 'AuditLogRecord',
-  EventRecord = 'EventRecord',
-
-  // App-specific entities
-  TeamJoinRequest = 'TeamJoinRequest',
-
-  // Fast query cache entities
-  OrganizationMemberCache = 'OrganizationMemberCache',
-  RepositoryCache = 'RepositoryCache',
-  RepositoryCollaboratorCache = 'RepositoryCollaboratorCache',
-  RepositoryTeamCache = 'RepositoryTeamCache',
-  TeamCache = 'TeamCache',
-  TeamMemberCache = 'TeamMemberCache',
-
-  // Setting entities
-  Token = 'Token',
-  LocalExtensionKey = 'LocalExtensionKey',
-  OrganizationSetting = 'OrganizationSetting',
+  toString() {
+    return this.typeName;
+  }
 }
 
-export const EntityMetadataTypes = [
-  EntityMetadataType.Repository,
-  EntityMetadataType.AuditLogRecord,
-  EntityMetadataType.EventRecord,
-  EntityMetadataType.TeamJoinRequest,
-  EntityMetadataType.Token,
-  EntityMetadataType.LocalExtensionKey,
-  EntityMetadataType.OrganizationMemberCache,
-  EntityMetadataType.OrganizationSetting,
-  EntityMetadataType.RepositoryCache,
-  EntityMetadataType.RepositoryCollaboratorCache,
-  EntityMetadataType.RepositoryTeamCache,
-  EntityMetadataType.TeamCache,
-  EntityMetadataType.TeamMemberCache,
-];
+export const EntityMetadataTypes: EntityMetadataType[] = [];
 
 export interface IEntityMetadata {
   entityType: EntityMetadataType;

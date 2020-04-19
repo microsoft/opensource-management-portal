@@ -4,18 +4,15 @@
 //
 
 import express = require('express');
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
-
-import async = require('async');
 
 import { ReposAppRequest, IProviders } from '../../../../transitional';
 import { wrapError } from '../../../../utils';
 import { Team } from '../../../../business/team';
 import { PermissionWorkflowEngine } from '../approvals';
-
 import RenderHtmlMail from '../../../../lib/emailRender';
-import { IMailAddressProvider } from '../../../../lib/mailAddressProvider';
-import { IMailProvider } from '../../../../lib/mailProvider';
+import { GetAddressFromUpnAsync } from '../../../../lib/mailAddressProvider';
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: any;
@@ -63,13 +60,16 @@ router.get('/setNote/:action', function (req: ILocalRequest, res) {
   });
 });
 
-router.post('/', function (req: ILocalRequest, res, next) {
+router.post('/', asyncHandler(async function (req: ILocalRequest, res, next) {
   const engine = req.approvalEngine as PermissionWorkflowEngine;
   const approvalRequest = req.approvalEngine.request;
   const requestid = engine.id;
-  const providers = req.app.settings.providers as IProviders;
-  const teamJoinApprovalProvider = providers.approvalProvider;
-  const config = req.app.settings.runtimeConfig;
+  const {
+    approvalProvider: teamJoinApprovalProvider,
+    config,
+    mailAddressProvider,
+    mailProvider,
+  } = req.app.settings.providers as IProviders;
   if (!req.body.text && req.body.deny) {
     return res.redirect(req.teamUrl + 'approvals/' + requestid + '/setNote/deny');
   }
@@ -92,156 +92,102 @@ router.post('/', function (req: ILocalRequest, res, next) {
   if (!mailProviderInUse) {
     return next(new Error('No configured approval providers configured.'));
   }
-  const mailProvider = req.app.settings.mailProvider as IMailProvider;
   if (!mailProvider) {
     return next(new Error('A mail provider has been requested but a provider instance could not be found.'));
   }
-  const mailAddressProvider = req.app.settings.mailAddressProvider as IMailAddressProvider;
   // Approval workflow note: although the configuration may specify just a mail
   // provider today, there may actually be an issue that was opened at the time
   // of the request. So we will attempt to close any issues if the request has
   // an issue ID.
-  var action = req.body.approveWithComment || req.body.approve ? 'approve' : 'deny';
-  var bodyText = req.body.text;
-
+  const action = req.body.approveWithComment || req.body.approve ? 'approve' : 'deny';
+  const bodyText = req.body.text;
   const username = req.individualContext.getGitHubIdentity().username;
-  var friendlyErrorMessage = 'Whoa? What happened?';
-  var pendingRequest = engine.request;
+  let friendlyErrorMessage = 'Whoa? What happened?';
+  const pendingRequest = engine.request;
+  const upn = pendingRequest.corporateUsername;
   let userMailAddress = null;
-  async.waterfall([
-    function getMailAddressForUser(callback) {
-      const upn = pendingRequest.corporateUsername;
-      mailAddressProvider.getAddressFromUpn(upn, (resolveError, mailAddress) => {
-        if (resolveError) {
-          return callback(resolveError);
-        }
-        userMailAddress = mailAddress;
-        callback();
-      });
-    },
-    function updateRequest() {
-      const callback = arguments[arguments.length - 1];
-
-      pendingRequest.decision = action,
-      pendingRequest.active = false;
-      pendingRequest.decisionTime = new Date();
-      pendingRequest.decisionThirdPartyUsername = username;
-      pendingRequest.decisionThirdPartyId = req.individualContext.getGitHubIdentity().id;
-      pendingRequest.decisionMessage = bodyText;
-      pendingRequest.decisionCorporateUsername = req.individualContext.corporateIdentity.username;
-      pendingRequest.decisionCorporateId = req.individualContext.corporateIdentity.id;
-
-      friendlyErrorMessage = 'The approval request information could not be updated, indicating a data store problem potentially. The decision may not have been recorded.';
-
-      teamJoinApprovalProvider.updateTeamApprovalEntity(pendingRequest).then(ok => {
-        return callback();
-      }).catch(error => {
-        return callback(error);
-      });
-    },
-    function performApprovalOperations() {
-      const callback = arguments[arguments.length - 1];
-      if (action == 'approve') {
-        engine.performApprovalOperation(callback);
-      } else {
-        callback();
-      }
-    },
-    function () {
-      friendlyErrorMessage = null;
-      const callback = arguments[arguments.length - 1];
-      return callback();
-    },
-  ], function (error, output: string[]) {
-    if (error) {
-      if (friendlyErrorMessage) {
-        error = wrapError(error, friendlyErrorMessage);
-      }
-      return next(error);
-    }
-    var secondaryErrors = false;
-    if (output && output.length) {
-      output.forEach((secondaryResult: any) => {
-        if (secondaryResult.error) {
-          secondaryErrors = true;
-          try {
-            var extraInfo = {
-              eventName: 'ReposRequestSecondaryTaskError',
-            };
-            if (secondaryResult.error.data) {
-              Object.assign(extraInfo, secondaryResult.error.data);
-            }
-            if (secondaryResult.error.headers) {
-              Object.assign(extraInfo, secondaryResult.error.headers);
-            }
-            req.insights.trackException({ exception: secondaryResult.error, properties: extraInfo });
-          } catch (unusedError) {
-            // never want this to fail
-          }
-        }
+  try {
+    userMailAddress = await GetAddressFromUpnAsync(mailAddressProvider, upn);
+    pendingRequest.decision = action,
+    pendingRequest.active = false;
+    pendingRequest.decisionTime = new Date();
+    pendingRequest.decisionThirdPartyUsername = username;
+    pendingRequest.decisionThirdPartyId = req.individualContext.getGitHubIdentity().id;
+    pendingRequest.decisionMessage = bodyText;
+    pendingRequest.decisionCorporateUsername = req.individualContext.corporateIdentity.username;
+    pendingRequest.decisionCorporateId = req.individualContext.corporateIdentity.id;
+    friendlyErrorMessage = 'The approval request information could not be updated, indicating a data store problem potentially. The decision may not have been recorded.';
+    await teamJoinApprovalProvider.updateTeamApprovalEntity(pendingRequest);
+    if (action == 'approve') {
+      await new Promise((resolve, reject) => {
+        engine.performApprovalOperation((error: Error) => {
+          return error ? reject(error) : resolve();
+        });
       });
     }
-    req.individualContext.webContext.saveUserAlert('Thanks for your ' + action.toUpperCase() + ' decision.', engine.typeName, 'success');
-    function sendDecisionMail() {
-      const wasApproved = action == 'approve';
-      const contentOptions = {
+    friendlyErrorMessage = null;
+  } catch (error) {
+    if (friendlyErrorMessage) {
+      error = wrapError(error, friendlyErrorMessage);
+    }
+    return next(error);
+  }
+  let secondaryErrors = false;
+  req.individualContext.webContext.saveUserAlert('Thanks for your ' + action.toUpperCase() + ' decision.', engine.typeName, 'success');
+  if (mailProviderInUse) {
+    const wasApproved = action === 'approve';
+    const contentOptions = {
+      correlationId: req.correlationId,
+      pendingRequest,
+      version: config.logging.version,
+      results: [], // no longer a used field, used to be called 'output'
+      wasApproved,
+      decisionBy: username,
+      decisionNote: bodyText,
+      decisionEmail: req.individualContext.corporateIdentity.username,
+      reason: (`You are receiving this e-mail because of a request that you created, and a decision has been made.
+                This mail was sent to: ${pendingRequest.corporateUsername}`),
+      headline: engine.getDecisionEmailHeadline(wasApproved),
+      notification: wasApproved ? 'information' : 'warning',
+      service: (config.brand?.companyName || 'Microsoft') + ' GitHub',
+    };
+    if (!engine.getDecisionEmailViewName || !engine.getDecisionEmailSubject) {
+      return req.insights.trackException({
+        exception: new Error('No getDecisionEmailViewName available with the engine.'),
+        properties: Object.assign({ eventName: 'ReposRequestDecisionMailRenderFailure' }, contentOptions),
+      });
+    }
+    const getDecisionEmailViewName = engine.getDecisionEmailViewName();
+    let content = null;
+    try {
+      content = await RenderHtmlMail(req.app.settings.runtimeConfig.typescript.appDirectory, getDecisionEmailViewName, contentOptions);
+    } catch (renderError) {
+      req.insights.trackException({
+        exception: renderError,
+        properties: Object.assign({ eventName: 'ReposRequestDecisionMailRenderFailure' }, contentOptions),
+      });
+    }
+    if (content) {
+      const mail = {
+        to: [ userMailAddress ],
+        subject: engine.getDecisionEmailSubject(wasApproved, pendingRequest),
+        content,
         correlationId: req.correlationId,
-        pendingRequest: pendingRequest,
-        version: config.logging.version,
-        results: output,
-        wasApproved: wasApproved,
-        decisionBy: username,
-        decisionNote: bodyText,
-        decisionEmail: req.individualContext.corporateIdentity.username,
-        reason: (`You are receiving this e-mail because of a request that you created, and a decision has been made.
-                  This mail was sent to: ${pendingRequest.corporateUsername}`),
-        headline: engine.getDecisionEmailHeadline(wasApproved),
-        notification: wasApproved ? 'information' : 'warning',
-        service: 'Microsoft GitHub',
+        category: ['decision', 'repos'],
       };
-      if (!engine.getDecisionEmailViewName || !engine.getDecisionEmailSubject) {
-        return req.insights.trackException({
-          exception: new Error('No getDecisionEmailViewName available with the engine.'),
-          properties: Object.assign({ eventName: 'ReposRequestDecisionMailRenderFailure' }, contentOptions),
-        });
+      try {
+        const mailResult = await mailProvider.sendMail(mail);
+        req.insights.trackEvent({ name: 'ReposRequestDecisionMailSuccess', properties: Object.assign({
+          receipt: mailResult,
+        }, contentOptions)});
+      } catch (mailError) {
+        req.insights.trackException({ exception: mailError, properties: Object.assign({
+          eventName: 'ReposRequestDecisionMailFailure',
+        }, contentOptions)});
       }
-      const getDecisionEmailViewName = engine.getDecisionEmailViewName();
-      RenderHtmlMail(req.app.settings.runtimeConfig.typescript.appDirectory, getDecisionEmailViewName, contentOptions).catch(renderError => {
-        req.insights.trackException({
-            exception: renderError,
-            properties: Object.assign({ eventName: 'ReposRequestDecisionMailRenderFailure' }, contentOptions),
-          });
-      }).then(content => {
-        // TODO: remove spike: adding the GitHub admin alias if there is a secondary failure
-        const recipients = [userMailAddress];
-        if (secondaryErrors) {
-          recipients.push('github-admin@microsoft.com');
-        }
-        const mail = {
-          to: recipients,
-          subject: engine.getDecisionEmailSubject(wasApproved, pendingRequest),
-          content,
-          correlationId: req.correlationId,
-          category: ['decision', 'repos'],
-        };
-        mailProvider.sendMail(mail).then(mailResult => {
-          const customData = Object.assign({
-            receipt: mailResult,
-          }, contentOptions);
-          req.insights.trackEvent({ name: 'ReposRequestDecisionMailSuccess', properties: customData });
-        }).catch(mailError => {
-          const customData = Object.assign({
-            eventName: 'ReposRequestDecisionMailFailure',
-          }, contentOptions);
-          req.insights.trackException({ exception: mailError, properties: customData });
-        });
-      });
     }
-    if (mailProviderInUse) {
-      sendDecisionMail();
-    }
-    return res.redirect(req.teamUrl);
-  });
-});
+  }
+  return res.redirect(req.teamUrl);
+}));
 
 module.exports = router;

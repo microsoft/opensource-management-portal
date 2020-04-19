@@ -6,7 +6,7 @@
 'use strict';
 
 import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { EventRecord, EventRecordQueryContributionEventsByDateRange, EventRecordQueryContributionEventsByDateRangeAndId, EventRecordQueryContributionEventsByThirdPartyId, EventRecordDistinctOrganizations, EventRecordQueryRecordEligibleContributorsByRange, EventRecordPopularContributionsByRange } from './eventRecord';
+import { EventRecord, EventRecordQueryContributionEventsByDateRange, EventRecordQueryContributionEventsByDateRangeAndId, EventRecordQueryContributionEventsByThirdPartyId, EventRecordDistinctOrganizations, EventRecordQueryRecordEligibleContributorsByRange, EventRecordPopularContributionsByRange, EventRecordQueryContributionEventsByDateRangeAndCorporateId } from './eventRecord';
 import { EntityImplementation } from './eventRecord';
 
 const thisProviderType = EntityImplementation.Type;
@@ -23,6 +23,7 @@ export interface IEventRecordProvider {
   queryEventsByThirdPartyId(thirdPartyId: string): Promise<EventRecord[]>;
   queryOpenContributionEventsByDateRange(startDate: Date, endDate: Date): Promise<EventRecord[]>;
   queryOpenContributionEventsByDateRangeAndThirdPartyId(thirdPartyId: string, startDate: Date, endDate: Date, limitToOpenContributionsOnly: boolean): Promise<EventRecord[]>;
+  queryOpenContributionEventsByDateRangeAndCorporateId(corporateId: string, startDate: Date, endDate: Date, limitToOpenContributionsOnly: boolean): Promise<EventRecord[]>;
   queryDistinctEligibleContributors(startDate: Date, endDate: Date): Promise<string[]>;
   queryDistinctOrganizations(): Promise<string[]>;
   queryPopularContributions(startDate: Date, endDate: Date): Promise<any[]>;
@@ -68,6 +69,13 @@ export class EventRecordProvider extends EntityMetadataBase implements IEventRec
 
   async queryOpenContributionEventsByDateRangeAndThirdPartyId(thirdPartyId: string, startDate: Date, endDate: Date, limitToOpenContributionsOnly: boolean): Promise<EventRecord[]> {
     const query = new EventRecordQueryContributionEventsByDateRangeAndId(startDate, endDate, thirdPartyId, limitToOpenContributionsOnly);
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<EventRecord>(thisProviderType, metadatas);
+    return results;
+  }
+  
+  async queryOpenContributionEventsByDateRangeAndCorporateId(corporateId: string, startDate: Date, endDate: Date, limitToOpenContributionsOnly: boolean): Promise<EventRecord[]> {
+    const query = new EventRecordQueryContributionEventsByDateRangeAndCorporateId(startDate, endDate, corporateId, limitToOpenContributionsOnly);
     const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
     const results = this.deserializeArray<EventRecord>(thisProviderType, metadatas);
     return results;

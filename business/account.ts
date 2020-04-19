@@ -72,12 +72,12 @@ export class Account {
   public get company(): string {
     return this._originalEntity ? this._originalEntity.company : undefined;
   }
-
-  public get email(): string {
+  
+  public get email(): string {		
     return this._originalEntity ? this._originalEntity.email : undefined;
   }
 
-  public get name(): string {
+   public get name(): string {		
     return this._originalEntity ? this._originalEntity.name : undefined;
   }
 
@@ -186,7 +186,7 @@ export class Account {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     try {
-      const entity = await operations.github.call(this.authorize(AppPurpose.Data), 'activity.listEventsForUser', parameters, cacheOptions);
+      const entity = await operations.github.call(this.authorize(AppPurpose.Data), 'activity.listEventsForAuthenticatedUser', parameters, cacheOptions);
       return entity;
     } catch (error) {
       console.dir(error);

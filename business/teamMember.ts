@@ -52,6 +52,7 @@ export class TeamMember {
   }
 
   set link(value: ICorporateLink) {
+    // console.warn('TeamMember.link was set');
     this._link = value;
   }
 
@@ -102,8 +103,9 @@ export class TeamMember {
       throw new Error('No mailAddressProvider is available in this application instance');
     }
     // Preventing a crash when trying to send a mail to an unlinked account
-    this._mailAddress = link ? await GetAddressFromUpnAsync(providers.mailAddressProvider, link.corporateUsername) : null;;
-    return this._mailAddress;
+    const mailAddress = link ? await GetAddressFromUpnAsync(providers.mailAddressProvider, link.corporateUsername) : null;
+    this._mailAddress = mailAddress;
+    return mailAddress;
   }
 
   async resolveDirectLink(): Promise<ICorporateLink> {

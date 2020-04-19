@@ -95,6 +95,12 @@ export class EventRecordQueryContributionEventsByDateRangeAndId implements IEnti
   }
 }
 
+export class EventRecordQueryContributionEventsByDateRangeAndCorporateId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.EventRecordContributionsByDateRangeAndCorporateId;
+  constructor(public startDate: Date, public endDate: Date, public corporateId: string, public limitToOpenContributionsOnly: boolean) {
+  }
+}
+
 export class EventRecordPopularContributionsByRange implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.EventRecordPopularContributionsByDateRange;
   constructor(public startDate: Date, public endDate: Date) {
@@ -215,7 +221,35 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
         userid: stringOrNumberAsString(thirdPartyId),
       }, Field.created.toLowerCase(), true);
     }
-    case FixedQueryType.EventRecordContributionsByDateRangeAndId: {
+    case FixedQueryType.EventRecordContributionsByDateRangeAndCorporateId: {
+      const { corporateId, startDate, endDate, limitToOpenContributionsOnly } = query as EventRecordQueryContributionEventsByDateRangeAndCorporateId;
+      if (!corporateId) {
+        throw new Error('corporateId required');
+      }
+      if (!startDate) {
+        throw new Error('startDate required');
+      }
+      if (!endDate) {
+        throw new Error('endDate required');
+      }
+      return {
+        sql: (`
+          SELECT *, (${metadataColumnName}->>'created')::timestamptz AS eventtime
+          FROM ${tableName}
+          WHERE
+              (${metadataColumnName}->>'usercorporateid') = $1
+          ${limitToOpenContributionsOnly ? '' : '-- '} AND (${metadataColumnName}->'additionaldata'->>'contribution')::boolean = True
+          AND (${metadataColumnName}->>'created')::timestamptz >= $2
+          AND (${metadataColumnName}->>'created')::timestamptz < $3
+          ORDER BY eventtime DESC
+          `),
+        values: [
+          corporateId,
+          startDate,
+          endDate,
+        ]
+      };
+    }    case FixedQueryType.EventRecordContributionsByDateRangeAndId: {
       const { thirdPartyId, startDate, endDate, limitToOpenContributionsOnly } = query as EventRecordQueryContributionEventsByDateRangeAndId;
       if (!thirdPartyId) {
         throw new Error('thirdPartyId required');
@@ -260,14 +294,14 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
       }, Field.created.toLowerCase(), true);
     }
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
   switch (query.fixedQueryType) {
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 

@@ -20,8 +20,15 @@ import { AddTeamPermissionsToRequest, IRequestTeamPermissions } from '../../../m
 import { AddOrganizationPermissionsToRequest, GetOrganizationPermissionsFromRequest } from '../../../middleware/github/orgPermissions';
 import { TeamMember } from '../../../business/teamMember';
 
+import throat from 'throat';
+
 const lowercaser = require('../../../middleware/lowercaser');
 const teamMaintainerRoute = require('./index-maintainer');
+
+const FirstPageMembersCap = 25;
+const ParallelMailAddressLookups = 4;
+
+// TODO: PERFORMANCE: The ability to lookup the e-mail address for a member should happen through a dedicated /people/login endpoint that would allow offloading the e-mail lookup functions until actually needed.
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: any;
@@ -63,9 +70,8 @@ router.use(asyncHandler(async (req: ILocalRequest, res, next) => {
     const approval = pendingApprovals[i];
     if (approval.thirdPartyId === id) {
       req.existingRequest = approval;
-    } else {
-      req.otherApprovals.push(approval);
     }
+    req.otherApprovals.push(approval);
   }
   return next();
 }));
@@ -403,6 +409,8 @@ enum BasicTeamViewPage {
 
 async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
   const providers = req.app.settings.providers as IProviders;
+
+  const showManagementFeatures = req.query['inline-management'] == /* loose */ 1;
   
   const idAsString = req.individualContext.getGitHubIdentity().id;
   const id = idAsString ? parseInt(idAsString, 10) : null;
@@ -413,13 +421,13 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
   const operations = req.app.settings.operations as Operations;
   const organization = req.organization as Organization;
 
-  const teamMaintainers = req.teamMaintainers;
+  const teamMaintainers = req.teamMaintainers as TeamMember[];
   const maintainersSet = new Set();
   for (let i = 0; i < teamMaintainers.length; i++) {
     maintainersSet.add(teamMaintainers[i].id);
   }
 
-  let membersFirstPage = [];
+  let membersFirstPage: TeamMember[] = [];
   let teamDetails = null;
   let repositories = null;
 
@@ -429,7 +437,7 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
   const orgOwnersSet = req.orgOwnersSet;
   let isOrgOwner = orgOwnersSet ? orgOwnersSet.has(id) : false;
 
-  // Get the first page (by 100) of members, we only show a subset
+  // Get the first page (by 100) of members, we only show a subset of 25
   if (display === BasicTeamViewPage.Default) {
     const firstPageOptions = {
       pageLimit: 1,
@@ -437,7 +445,7 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
       maxAgeSeconds: 60,
     };
     const membersSubset = await team2.getMembers(firstPageOptions);
-    membersFirstPage = membersSubset;
+    membersFirstPage = membersSubset.slice(0, FirstPageMembersCap);
   }
 
   const details = await team2.getDetails();
@@ -458,8 +466,15 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
     }
   }
 
-  const links = await operations.getLinks();
   const map = new Map<number, ICorporateLink>();
+  let links: ICorporateLink[] = null;
+  if (Math.max(teamMaintainers.length, membersFirstPage.length) > FirstPageMembersCap) {
+    links = await operations.getLinks();
+  } else {
+    const ids = Array.from((new Set([...teamMaintainers, ...membersFirstPage].map(tm => String(tm.id)))).values());
+    links = await operations.getLinksFromThirdPartyIds(ids);
+  }
+
   for (let i = 0; i < links.length; i++) {
     const id = links[i].thirdPartyId;
     if (id) {
@@ -488,6 +503,16 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
   } else if (display === BasicTeamViewPage.History) {
     title = `History - ${team2.name}`;
   }
+
+  const mailSubjectSuffix = `?subject=${team2.name} GitHub team`;
+  const maintainerMails = teamMaintainers.map(maint => maint.mailAddress).filter(val => val);
+  let mailToMaintainers = maintainerMails.length ? `mailto:${maintainerMails.join(';')}${mailSubjectSuffix}` : null;
+  let mailToMaintainersCount = maintainerMails.length;
+
+  // on purpose the members would only include those shown on the first page here if there are less than the cap # of members
+  const memberMails = membersFirstPage.map(mem => mem.mailAddress).filter(val => val);
+  let mailToMembers = memberMails.length && memberMails.length !== FirstPageMembersCap ? `mailto:${memberMails.join(';')}${mailSubjectSuffix}` : null;
+  let mailToMembersCount = memberMails.length;
 
   return req.individualContext.webContext.render({
     view: 'org/team/index',
@@ -519,6 +544,14 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
       isOrgOwner,
       orgOwnersSet,
       organizationPermissions,
+
+      showManagementFeatures,
+
+      // contacts
+      mailToMaintainers,
+      mailToMaintainersCount,
+      mailToMembers,
+      mailToMembersCount,
 
       // provider refactoring additions
       existingTeamJoinRequest: req.existingRequest,
@@ -553,10 +586,14 @@ async function resolveMailAddresses(operations: Operations, array: TeamMember[])
   if (!mailAddressProvider) {
     return;
   }
-  // PERF: used by be parallel, might be a good idea...
-  for (const entry of array) {
-    await entry.getMailAddress();
-  }
+  const throttle = throat(ParallelMailAddressLookups);
+  await Promise.all(array.map(entry => throttle(async () => {
+    try {
+      await entry.getMailAddress();
+    } catch (ignoreError) {
+      console.warn(ignoreError);
+    }
+  })));
 }
 
 function sortByNameCaseInsensitive(a, b) {

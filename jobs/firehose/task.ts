@@ -7,14 +7,12 @@
 
 // Webhook firehose processing specific to repos
 
-import async = require('async');
-
 import moment from 'moment';
 import os from 'os';
 
 import ProcessOrganizationWebhook, { IGitHubWebhookProperties } from '../../webhooks/organizationProcessor';
 import { IProviders } from '../../transitional';
-import { sleep } from '../../utils';
+import { sleep, quitInAMinute } from '../../utils';
 import { IQueueMessage } from '../../lib/queues';
 
 const runningAsOngoingDeployment = true;
@@ -69,7 +67,8 @@ module.exports = function runFirehoseTask(started, startedString, config) {
     }
     // let parallelism = messagesInQueue > maxParallelism / 2 ? maxParallelism : Math.min(5, maxParallelism);
     let parallelism = maxParallelism;
-    console.log(`Parallelism for this run will be ${parallelism} logical threads`);
+    const sliceDelayPerThread =  emptyQueueDelaySeconds/ parallelism;
+    console.log(`Parallelism for this run will be ${parallelism} logical threads, offset by ${sliceDelayPerThread}s`);
     // const insights = app.settings.appInsightsClient;
     insights.trackEvent({
       name: 'JobFirehoseStarted',
@@ -83,39 +82,46 @@ module.exports = function runFirehoseTask(started, startedString, config) {
     });
     //insights.trackMetric({ name: 'FirehoseMessagesInQueue', value: messagesInQueue });
     //insights.trackMetric({ name: 'FirehoseDeadLetters', value: deadLetters });
-    const tasks = [];
+    const threads: Promise<void>[] = [];
+    let delay = 0;
     for (let i = 0; i < parallelism; i++) {
-      tasks.push(foreverExecutionThread.bind(null, app, providers, webhooksConfig));
+      threads.push(createThread(app, providers, i, delay));
+      delay += sliceDelayPerThread;
     }
-    async.parallelLimit(tasks, parallelism);
+    let ok = true;
+    return Promise.all(threads).catch(err => {
+      console.dir(err);
+      ok = false;
+    }).finally(() => {
+      console.log('Forever execution thread has ended.');
+      quitInAMinute(ok);
+    });
   });
 
-  function foreverExecutionThread(app, providers: IProviders, webhooksConfig) {
-    async.forever(performIteration.bind(null, app, providers, webhooksConfig), error => {
-      if (error) {
-        const insights = app.settings.appInsightsClient;
-        insights.trackException({ exception: error });
-        insights.trackEvent({
-          name:'JobFirehoseFatalError',
-          properties: {
-            message: error.message,
-          },
-        });
+  async function createThread(app, providers: IProviders, threadNumber: number, startupDelay: number): Promise<void> {
+    if (startupDelay > 0) {
+      const ms = startupDelay * 1000;
+      console.log(`[thread ${threadNumber}] delay ${ms}ms`);
+      await sleep(ms);
+    }
+    console.log(`[thread ${threadNumber}] started`);
+    try {
+      while (true) {
+        await iterate(providers, threadNumber);
       }
-    });
+    } catch (error) {
+      const insights = app.settings.appInsightsClient;
+      insights.trackException({ exception: error });
+      insights.trackEvent({
+        name:'JobFirehoseFatalError',
+        properties: {
+          message: error.message,
+        },
+      });
+    }
   }
 
-  function performIteration(app, providers: IProviders, webhooksConfig, callback) {
-    //const subscriptionPath = isClearingDeadLetterQueue ? `${serviceBusConfig.subscriptionName}/$deadletterqueue` : serviceBusConfig.subscriptionName;
-    //serviceBusService.receiveSubscriptionMessage(serviceBusConfig.topic, subscriptionPath, {
-      return iterate(app, providers, webhooksConfig).then(ok => {
-      return callback(null, ok);
-    }).catch(error => {
-      return callback(error);
-    });
-  }
-
-  async function iterate(app, providers: IProviders, webhooksConfig): Promise<void> {
+  async function iterate(providers: IProviders, threadNumber: number): Promise<void> {
     const { webhookQueueProcessor } = providers;
     let messages: IQueueMessage[] = null;
     try {
@@ -126,7 +132,7 @@ module.exports = function runFirehoseTask(started, startedString, config) {
       return;
     }
     if (!messages || messages.length === 0) {
-      console.log(`[empty queue] ${emptyQueueDelaySeconds}s until retry`);
+      console.log(`[${threadNumber}] [empty queue] peek in ${emptyQueueDelaySeconds}s`);
       await sleep(emptyQueueDelaySeconds * 1000);
       return;
     }

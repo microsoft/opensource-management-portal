@@ -7,8 +7,6 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import async from 'async';
-
 import { IReposError, ReposAppRequest, IProviders } from '../../transitional';
 import { IApprovalProvider } from '../../entities/teamJoinApproval/approvalProvider';
 import { TeamJoinApprovalEntity } from '../../entities/teamJoinApproval/teamJoinApproval';
@@ -115,11 +113,9 @@ router.post('/:requestid/cancel', function (req: ReposAppRequest, res, next) {
   });
 });
 
-router.get('/:requestid', function (req: ReposAppRequest, res, next) {
+router.get('/:requestid', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const requestid = req.params.requestid;
-  const providers = req.app.settings.providers as IProviders;
-  const operations = providers.operations;
-  const approvalProvider = providers.approvalProvider;
+  const { approvalProvider, operations } = req.app.settings.providers as IProviders;
   req.individualContext.webContext.pushBreadcrumb('Your Request');
   let isMaintainer = false;
   let pendingRequest: TeamJoinApprovalEntity = null;
@@ -128,87 +124,54 @@ router.get('/:requestid', function (req: ReposAppRequest, res, next) {
   const username = req.individualContext.getGitHubIdentity().username;
   const id = req.individualContext.getGitHubIdentity().id;
   let organization: Organization = null;
-  async.waterfall([
-    function (callback) {
-      approvalProvider.getApprovalEntity(requestid).then(entry => {
-        return callback(null, entry);
-      }).catch(error => {
-        return callback(error);
-      });
-    },
-    function (pendingRequestValue: TeamJoinApprovalEntity) {
-      var callback = arguments[arguments.length - 1];
-      pendingRequest = pendingRequestValue;
-      if (!pendingRequest.organizationName) {
-        // TODO: Need to make sure 'org' is _always_ provided going forward
-        // XXX
-        return callback(new Error('No organization information stored alongside the request'));
-      }
-      organization = operations.getOrganization(pendingRequest.organizationName);
-      team2 = organization.team(asNumber(pendingRequest.teamId));
-      team2.getDetails().then(ok => {
-        return organization.isSudoer(username).then(result => {
-          return callback(null, result);
-        }).catch(callback);
-      }).catch(getDetailsError => {
-          return callback(getDetailsError);
-      });
-    },
-    function (isOrgSudoer: boolean, callback) {
-      isMaintainer = isOrgSudoer;
-      team2.getOfficialMaintainers().then(maints => {
-        return callback(null, maints);
-      }).catch(callback);
-    },
-    function (maintainersValue, callback) {
-      maintainers = maintainersValue;
-      if (!isMaintainer) {
-        for (var i = 0; i < maintainers.length; i++) {
-          if (maintainers[i].id == id) {
-            isMaintainer = true;
-          }
+  try {
+    pendingRequest = await approvalProvider.getApprovalEntity(requestid);
+    organization = operations.getOrganization(pendingRequest.organizationName);
+    team2 = organization.team(asNumber(pendingRequest.teamId));
+    await team2.getDetails();
+    const isOrgSudoer = await organization.isSudoer(username);
+    isMaintainer = isOrgSudoer;
+    const maintainers = await team2.getOfficialMaintainers();
+    if (!isMaintainer) {
+      for (let i = 0; i < maintainers.length; i++) {
+        if (String(maintainers[i].id) == String(id)) {
+          isMaintainer = true;
         }
       }
-      if (isMaintainer) {
-        let err: IReposError = new Error('Redirecting to the admin experience to approve');
-        let slugPreferred = team2.slug || team2.name;
-        err.redirect = '/' + organization.name + '/teams/' + slugPreferred + '/approvals/' + requestid;
-        return callback(err);
-      }
-      if (pendingRequest.thirdPartyId != /* loose */ id) {
-        let msg: IReposError = new Error('This request does not exist or was created by another user.');
-        msg.skipLog = true;
-        return callback(msg);
-      }
-      callback();
     }
-  ], function (error: any) {
-    if (error) {
-      if (error.redirect) {
-        return res.redirect(error.redirect);
-      }
-      // Edge case: the team no longer exists.
-      if (error.innerError && error.innerError.innerError && error.innerError.innerError.statusCode == 404) {
-        return closeOldRequest(pendingRequest, req, res, next);
-      }
-      return next(error);
-    } else {
-      req.individualContext.webContext.render({
-        view: 'org/userApprovalStatus',
-        title: 'Review your request',
-        state: {
-          entry: pendingRequest,
-          team: team2,
-        },
-      });
+    if (isMaintainer) {
+      let err: IReposError = new Error('Redirecting to the admin experience to approve');
+      let slugPreferred = team2.slug || team2.name;
+      err.redirect = '/' + organization.name + '/teams/' + slugPreferred + '/approvals/' + requestid;
+      throw err;
     }
+    if (pendingRequest.thirdPartyId != /* loose */ id) {
+      let msg: IReposError = new Error('This request does not exist or was created by another user.');
+      msg.skipLog = true;
+      throw msg;
+    }
+  } catch (error) {
+    if (error.redirect) {
+      return res.redirect(error.redirect);
+    }
+    // Edge case: the team no longer exists.
+    if (error.innerError && error.innerError.innerError && error.innerError.innerError.statusCode == 404) {
+      return closeOldRequest(pendingRequest, req, res, next);
+    }
+    return next(error);
+  }
+  req.individualContext.webContext.render({
+    view: 'org/userApprovalStatus',
+    title: 'Review your request',
+    state: {
+      entry: pendingRequest,
+      team: team2,
+    },
   });
-});
+}));
 
-function closeOldRequest(pendingRequest, req: ReposAppRequest, res, next) {
-  const providers = req.app.settings.providers as IProviders;
-  const operations = providers.operations as Operations;
-  const organization = operations.getOrganization(pendingRequest.org);
+function closeOldRequest(pendingRequest: TeamJoinApprovalEntity, req: ReposAppRequest, res, next) {
+  const { approvalProvider } = req.app.settings.providers as IProviders;
   const config = req.app.settings.runtimeConfig;
   const repoApprovalTypesValues = config.github.approvalTypes.repo;
   if (repoApprovalTypesValues.length === 0) {
@@ -223,8 +186,7 @@ function closeOldRequest(pendingRequest, req: ReposAppRequest, res, next) {
   if (pendingRequest.active === false) {
     return res.redirect('/');
   }
-  const approvalProvider = providers.approvalProvider;
-  closeRequest(approvalProvider, pendingRequest.RowKey, 'Team no longer exists.', (closeError) => {
+  closeRequest(approvalProvider, pendingRequest.approvalId, 'Team no longer exists.', (closeError: Error) => {
     if (closeError) {
       return next(closeError);
     }

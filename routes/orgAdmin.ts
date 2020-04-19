@@ -7,8 +7,6 @@ import express = require('express');
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import async = require('async');
-
 import { ReposAppRequest } from '../transitional';
 
 import { requirePortalAdministrationPermission } from '../middleware/business/administration';
@@ -591,18 +589,19 @@ router.get('/bulkRepoDelete', (req: ReposAppRequest, res) => {
   });
 });
 
-router.post('/bulkRepoDelete', (req, res, next) => {
-  const operations = req.app.settings.operations;
+router.post('/bulkRepoDelete', asyncHandler(async (req, res, next) => {
+  const operations = req.app.settings.operations as Operations;
   let repositories = req.body.repositories;
+  // TODO: FEATURE FLAG: add a feature flag whether this API is available.
   if (!repositories) {
     return next(new Error('No repositories provided'));
   }
   repositories = repositories.split('\n');
   const log = [];
-  async.eachLimit(repositories, 1, (repositoryName: string, next) => {
+  for (let repositoryName of repositories) {
     repositoryName = (repositoryName || '').trim();
     if (!repositoryName.length) {
-      return next();
+      continue;
     }
     let githubcom = 'github.com';
     let ghi = repositoryName.indexOf(githubcom);
@@ -610,30 +609,23 @@ router.post('/bulkRepoDelete', (req, res, next) => {
       let name = repositoryName.substr(ghi + githubcom.length + 1);
       let divider = name.indexOf('/');
       if (divider <= 0) {
-        return next();
+        continue;
       }
       let orgName = name.substr(0, divider);
       let repoName = name.substr(divider + 1);
       const repository = operations.getOrganization(orgName).repository(repoName);
-      repository.delete((errorIsh, more) => {
-        if (errorIsh) {
-          log.push(name + ': ' + errorIsh);
-        } else {
-          let metaStatus = more && more.headers ? more.headers.status : null;
-          log.push(name + ': ' + metaStatus);
-        }
-        return next();
-      });
+      try {
+        await repository.delete();
+        // let metaStatus = more && more.headers ? more.headers.status : null;
+        log.push(`${name}: deleted`);
+      } catch (deleteError) {
+        log.push(`${name}: error: ${deleteError}`);
+      }
     } else {
       log.push(`Skipping, does not appear to be a GitHub repo URL: ${repositoryName}`);
-      return next();
     }
-  }, error => {
-    if (error) {
-      return next(error);
-    }
-    res.json(log);
-  });
-});
+  }
+  return res.json(log);
+}));
 
 module.exports = router;

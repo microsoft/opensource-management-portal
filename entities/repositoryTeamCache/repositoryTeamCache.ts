@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { EntityField } from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
@@ -13,7 +11,7 @@ import { GitHubRepositoryPermission } from '../repositoryMetadata/repositoryMeta
 import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresJsonEntityQueryMultiple } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
 
-const type = EntityMetadataType.RepositoryTeamCache;
+const type = new EntityMetadataType('RepositoryTeamCache');
 
 interface IRepositoryTeamCacheProperties {
   // entity ID: orgid:repoid:teamid
@@ -186,7 +184,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
       }));
     }
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 
@@ -202,7 +200,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryQueries, (
       }
       throw new Error('Not implemented yet');
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 

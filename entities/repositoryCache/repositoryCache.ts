@@ -12,7 +12,7 @@ import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/ent
 import { PostgresGetAllEntities, PostgresJsonEntityQuery } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
 
-const type = EntityMetadataType.RepositoryCache;
+const type = new EntityMetadataType('RepositoryCache');
 
 interface IRepositoryCacheProperties {
   organizationId: any;
@@ -94,7 +94,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
       });
     }
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 
@@ -110,7 +110,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryQueries, (
       throw new Error('Not implemented yet');
     }
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 

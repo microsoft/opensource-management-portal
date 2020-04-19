@@ -5,9 +5,7 @@
 
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
-'use strict';
-
-import throat = require('throat');
+import throat from 'throat';
 
 // Revoke tokens of users that no longer resolve in the corporate graph and
 // delete tokens that have been expired 30 days.
@@ -95,7 +93,8 @@ async function cleanup(config, app) : Promise<void> {
 
   const knownUsers = new Map<string, any>();
 
-  await Promise.all(allTokens.map(throat<void, (token: PersonalAccessToken) => Promise<void>>(async pat => {
+  const throttle = throat(parallelUsers);
+  await Promise.all(allTokens.map((pat: PersonalAccessToken) => throttle(async () => {
     const isGuidMeansADash = pat.corporateId && pat.corporateId.includes('-');
     let wasUser = false;
     if (isGuidMeansADash) {
@@ -139,7 +138,7 @@ async function cleanup(config, app) : Promise<void> {
 
     await sleep(secondsDelayAfterSuccess * 1000);
 
-  }, parallelUsers)));
+  })));
 
   console.log(`deleted: ${deleted}`);
   console.log(`revokedUnresolved: ${revokedUnresolved}`);

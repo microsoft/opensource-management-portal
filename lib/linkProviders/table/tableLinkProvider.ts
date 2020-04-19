@@ -7,11 +7,8 @@
 
 // This wrapper also implements table row encryption at rest.
 
-'use strict';
-
 import _ from 'lodash';
 import azure from 'azure-storage';
-import async from 'async';
 import { v4 as uuidV4 } from 'uuid';
 
 import { IReposError } from '../../../transitional';
@@ -420,15 +417,8 @@ function getTableService(self): azure.TableService {
   return self._table;
 }
 
-function queryLinksTable(self: TableLinkProvider, options): Promise<any[]> {
-  return new Promise((resolve, reject) => {
-    return queryLinksTableSync(self, options, (error, results) => {
-      return error ? reject(error) : resolve(results);
-    });
-  });
-}
-
-function queryLinksTableSync(self: TableLinkProvider, options, callback) {
+async function queryLinksTable(self: TableLinkProvider, options): Promise<any[]> {
+  const rows = [];
   function buildQuery(options) {
     let q = new azure.TableQuery();
     if (options.columns) {
@@ -441,55 +431,36 @@ function queryLinksTableSync(self: TableLinkProvider, options, callback) {
     q = q.top(pageSize);
     return q;
   }
-
   const tableName = options.tableName || getTableName(self);
-  const rows = [];
-
   let continuationToken = null;
   let done = false;
-
-  async.whilst(
-    () => {
-      return !done;
-    },
-    next => {
-      const tableService = getTableService(self);
+  function pushQueryEntities(tableService: azure.TableService, options: any): Promise<void> {
+    return new Promise((resolve, reject) => {
       tableService.queryEntities(tableName, buildQuery(options), continuationToken, (queryError, results: azure.TableService.QueryEntitiesResult<any>) => {
         if (queryError) {
           done = true;
-          return next(queryError);
+          return reject(queryError);
         }
-
         // Is there another page of query results?
         if (results.continuationToken) {
           continuationToken = results.continuationToken;
         } else {
           done = true;
         }
-
         // NOTE: This function does not use continuation tokens or anything like that!
         const entries = results && results.entries ? results.entries : null;
         for (let i = 0; entries && i < entries.length; i++) {
           rows.push(tableEntity.reduce(entries[i]));
         }
-
-        return next(null);
+        return resolve();
       });
-    },
-    error => {
-      if (error) {
-        return callback(error);
-      }
-      // TODO: The legacy provider was wasting time with the following, can we normalize as part of data fixes?
-      /*
-      employees.forEach(account => {
-        if (account.aadupn) {
-          account.aadupn = account.aadupn.toLowerCase();
-        }
-      });
-      */
-      return callback(null, rows);
     });
+  }
+  const tableService = getTableService(self);
+  while (!done) {
+    await pushQueryEntities(tableService, buildQuery(options));
+  }
+  return rows;
 }
 
 function configureTableEncryption(self, options) {

@@ -9,6 +9,10 @@ import { IProviders } from './transitional';
 import { RepositoryMetadataEntity } from './entities/repositoryMetadata/repositoryMetadata';
 import { PersonalAccessToken } from './entities/token/token';
 import { LocalExtensionKey } from './entities/localExtensionKey/localExtensionKey';
+import { FossFundElection } from './features/fossFundElection';
+import { ElectionEntity, ElectionEligibilityType } from './entities/voting/election';
+import { getOffsetMonthRange, quitInAMinute } from './utils';
+import { ElectionNominationEntity } from './entities/voting/nomination';
 
 /*eslint no-console: ["error", { allow: ["warn", "log", "dir"] }] */
 
@@ -28,6 +32,22 @@ async function localEnvironment(app, config): Promise<void> {
   // const s = contosoOrg.getDynamicSettings();
   // s.features.push('new-repository-lockdown-system');
   // await providers.organizationSettingsProvider.updateOrganizationSetting(s);
+
+  const ffe = new FossFundElection(providers);
+  const elections = await ffe.getActiveElections();
+
+  console.log(elections.length);
+ 
+  const election = elections[0];
+
+  const nom1 = new ElectionNominationEntity();
+  // nom1.nominationId = '1-';
+  // providers.electionNominationProvider.insertNomination(nom1);
+
+  const nominees = await ffe.getAllNominations(election.electionId);
+  console.log(nominees.length);
+
+  const haveIVoted = await ffe.hasVoted('x', 'y');
 
   return;
 }
@@ -70,11 +90,11 @@ function initialize(config) {
     console.log('Local environment started.');
     return localEnvironment(app, config).then(ok => {
       console.log('OK');
-      process.exit(0);
+      quitInAMinute(true);
     }).catch(error => {
       console.error(error);
       console.dir(error);
-      process.exit(1);
+      quitInAMinute(false);
     });
   });
 }
