@@ -333,7 +333,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableQueries, (q
       return qtpid;
 
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 
@@ -353,7 +353,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
       return PostgresGetByID(tableName, entityTypeColumn, entityTypeValue, entityIDColumn, repositoryId);
     }
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 
@@ -370,7 +370,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryQueries, (
       return allInTypeBin[repositoryId];
 
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 

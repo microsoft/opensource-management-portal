@@ -3,7 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import async = require('async');
 import express = require('express');
 import fs = require('fs');
 import path = require('path');
@@ -313,7 +312,7 @@ export function addBreadcrumb(req, breadcrumbTitle, optionalBreadcrumbLink) {
 
 export function stackSafeCallback(callback, err, item, extraItem) {
   // Works around RangeError: Maximum call stack size exceeded.
-  async.setImmediate(() => {
+  setImmediate(() => {
     callback(err, item, extraItem);
   });
 };

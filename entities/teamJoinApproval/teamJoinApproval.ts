@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { v4 as uuidV4 } from 'uuid';
 import azure from 'azure-storage';
 
@@ -15,7 +13,7 @@ import { FixedQueryType, IEntityMetadataFixedQuery } from '../../lib/entityMetad
 import { stringOrNumberAsString, stringOrNumberArrayAsStringArray } from '../../utils';
 import { PostgresGetAllEntities, PostgresJsonEntityQuery } from '../../lib/entityMetadataProvider/postgres';
 
-const type = EntityMetadataType.TeamJoinRequest;
+const type = new EntityMetadataType('TeamJoinRequest');
 
 interface ITeamJoinApprovalEntityProperties {
   // approvalId: any;
@@ -337,7 +335,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableQueries, (q
       return qtpid;
 
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 
@@ -394,7 +392,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
       });
     }
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 

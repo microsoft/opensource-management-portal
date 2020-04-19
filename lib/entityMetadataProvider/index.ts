@@ -16,7 +16,7 @@ const providerTypes = [
   'postgres',
 ];
 
-const defaultProviderName = 'memory'; // if provider not configured, use in-memory database
+const defaultProviderName = 'memory';
 
 export interface IEntityMetadataProvidersOptions {
   tableOptions?: ITableEntityMetadataProviderOptions;

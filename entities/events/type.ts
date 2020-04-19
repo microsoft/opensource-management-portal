@@ -5,4 +5,4 @@
 
 import { EntityMetadataType } from '../../lib/entityMetadataProvider/entityMetadata';
 
-export const Type = EntityMetadataType.EventRecord;
+export const Type = new EntityMetadataType('EventRecord');

@@ -28,7 +28,7 @@
 //
 
 import _ = require('lodash');
-import throat = require('throat');
+import throat from 'throat';
 
 import appPackage = require('../../package.json');
 
@@ -346,9 +346,8 @@ async function learn(config, app, reclassify: boolean) : Promise<void> {
   let x = 0;
   let concurrency = reclassify ? 5 : 1;
 
-  await Promise.all(allLinks.map(throat<void, (link: ICorporateLink) => Promise<void>>(innerWork, concurrency)));
-
-  async function innerWork(link: ICorporateLink): Promise<void> {
+  const throttle = throat(concurrency);
+  await Promise.all(allLinks.map((link: ICorporateLink) => throttle(async () => {
     const i = ++x;
     try {
       const account = operations.getAccount(link.thirdPartyId);
@@ -518,7 +517,7 @@ async function learn(config, app, reclassify: boolean) : Promise<void> {
       errorList.push(error);
       await sleep(10*1000);
     }
-  }
+  })));
   console.log(`Inserted ${insertedEvents} new events, processed ${processedEvents} overall events returned from GitHub APIs`);
   if (reclassify) {
     console.log(`RECLASSIFIED ${reclassifiedEvents} events for ${reclassifiedUsers} distinct users`);

@@ -8,7 +8,7 @@
 // A simple job to cache the last-known manager e-mail address for linked users
 // in Redis, using this app's abstracted APIs to be slightly more generic.
 
-import throat = require('throat');
+import throat from 'throat';
 
 import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../../lib/linkProviders';
 import { IProviders } from '../../transitional';
@@ -73,7 +73,8 @@ async function refresh(config, app) : Promise<void> {
 
   const bulkContacts = new Map<string, IMicrosoftIdentityServiceBasics>();
 
-  await Promise.all(allLinks.map(throat<void, (link: ICorporateLink) => Promise<void>>(async link => {
+  const throttle = throat(userDetailsThroatCount);
+  await Promise.all(allLinks.map((link: ICorporateLink) => throttle(async () => {
     const employeeDirectoryId = link.corporateId;
     console.log(`${++processed}.`);
     let info =  null, infoError = null;
@@ -174,7 +175,7 @@ async function refresh(config, app) : Promise<void> {
       return;
     }
     await sleep(secondsDelayAfterSuccess * 1000);
-  }, userDetailsThroatCount)));
+  })));
 
   console.log('All done with', errors, 'errors. Not found errors:', notFoundErrors);
   console.dir(errorList);

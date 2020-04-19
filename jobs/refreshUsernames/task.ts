@@ -5,7 +5,7 @@
 
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
-import throat = require('throat');
+import throat from 'throat';
 
 import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../../lib/linkProviders';
 import { IProviders } from '../../transitional';
@@ -69,7 +69,8 @@ async function refresh(config, app) : Promise<void> {
 
   const maxAgeSeconds = 24 * 60 * 60; // details can be a day out-of-date
 
-  await Promise.all(allLinks.map(throat<void, (link: ICorporateLink) => Promise<void>>(async link => {
+  const throttle = throat(userDetailsThroatCount);
+  await Promise.all(allLinks.map((link: ICorporateLink) => throttle(async () => {
     // Refresh GitHub username for the ID
     let id = link.thirdPartyId;
     const account = operations.getAccount(id);
@@ -139,7 +140,7 @@ async function refresh(config, app) : Promise<void> {
 
     await sleep(secondsDelayAfterSuccess * 1000);
 
-  }, userDetailsThroatCount)));
+  })));
 
   console.log('All done with', errors, 'errors. Not found errors:', notFoundErrors);
   console.dir(errorList);

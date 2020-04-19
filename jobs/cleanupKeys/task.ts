@@ -5,9 +5,7 @@
 
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
-'use strict';
-
-import throat = require('throat');
+import throat from 'throat';
 
 import { IProviders } from '../../transitional';
 import { sleep } from '../../utils';
@@ -85,7 +83,8 @@ async function cleanup(config, app) : Promise<void> {
 
   const knownUsers = new Map<string, any>();
 
-  await Promise.all(allKeys.map(throat<void, (token: LocalExtensionKey) => Promise<void>>(async key => {
+  const throttle = throat(parallelUsers);
+  await Promise.all(allKeys.map((key: LocalExtensionKey) => throttle(async () => {
     const corporateId = key.corporateId;
     const userStatus = await lookupCorporateId(graphProvider, knownUsers, corporateId);
     if (!userStatus) {
@@ -106,7 +105,7 @@ async function cleanup(config, app) : Promise<void> {
 
     await sleep(secondsDelayAfterSuccess * 1000);
 
-  }, parallelUsers)));
+  })));
 
   console.log(`deleted: ${deleted}`);
   console.log(`okUserTokens: ${okUserTokens}`);

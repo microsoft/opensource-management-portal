@@ -138,4 +138,15 @@ CREATE INDEX IF NOT EXISTS corporate_lowercase_thirdparty_username ON links (thi
 CREATE INDEX IF NOT EXISTS corporate_id ON links (corporateid);
 CREATE INDEX IF NOT EXISTS corporate_lowercase_username ON links (lower(corporateusername));
 
+CREATE TABLE IF NOT EXISTS voting (
+  entitytype text,
+  entityid text,
+  metadata jsonb,
+  PRIMARY KEY(entitytype, entityid)
+);
+
+CREATE INDEX IF NOT EXISTS voting_active ON voting ((metadata->>'active'));
+CREATE INDEX IF NOT EXISTS voting_electionid ON voting ((metadata->>'electionid'));
+CREATE INDEX IF NOT EXISTS voting_gin ON voting USING gin (metadata jsonb_path_ops);
+
 COMMIT;

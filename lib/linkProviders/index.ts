@@ -16,6 +16,8 @@ const linkProviders = [
 
 const defaultProviderName = 'memory';
 
+// TODO: implement a new queryByThirdPartyIds to retrieve a set of links for a set of known IDs more effectively
+
 // should move out of the postgres-specific page...
 export interface ILinkProvider {
   initialize(): Promise<ILinkProvider>;

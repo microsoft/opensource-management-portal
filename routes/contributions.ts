@@ -3,14 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
 import groupBy from 'lodash/groupBy';
 import sortBy from 'lodash/sortBy';
+
+import FossFundRoute from './fossfund';
 
 import { AuthorizeOnlyCorporateAdministrators } from '../middleware/business/corporateAdministrators';
 import { ReposAppRequest, IProviders, ErrorHelper } from '../transitional';
@@ -171,6 +171,8 @@ router.get('/nominate', AuthorizeOnlyFullTimeEmployeesAndInterns, asyncHandler(a
 router.get('/vote', AuthorizeOnlyFullTimeEmployeesAndInterns, asyncHandler(async (req: IContributionsRequest, res, next) => {
   await showContributions(req, ContributionsPageMode.Nominations, -1);
 }));
+
+router.use('/fund', AuthorizeOnlyFullTimeEmployeesAndInterns, FossFundRoute);
 
 async function refreshMonthContributions(providers: IProviders, thirdPartyId: string, offsetMonths?: number): Promise<void> {
   const account = providers.operations.getAccount(thirdPartyId);

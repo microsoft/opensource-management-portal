@@ -7,12 +7,15 @@
 
 const bodyParser = require('body-parser');
 const compression = require('compression');
+
 const debug = require('debug')('startup');
 import path = require('path');
+
 import { StaticClientApp } from './staticClientApp';
 import { StaticSiteFavIcon, StaticSiteAssets } from './staticSiteAssets';
 import ConnectSession from './session';
 import passportConfig from './passport-config';
+import Onboard from './onboarding';
 
 let viewServices = null;
 try {
@@ -94,7 +97,7 @@ module.exports = function initMiddleware(app, express, config, dirname, redisCli
       require('./passport-routes')(app, passport, config);
       if (config.github.organizations.onboarding && config.github.organizations.onboarding.length) {
         debug('Onboarding helper loaded');
-        require('./onboarding')(app, config);
+        Onboard(app, config);
       }
       app.use(officeHyperlinks);
     }

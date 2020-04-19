@@ -14,7 +14,7 @@ import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataPro
 import { MetadataMappingDefinition, EntityMetadataMappings } from '../../lib/entityMetadataProvider/declarations';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 
-const type = EntityMetadataType.LocalExtensionKey;
+const type = new EntityMetadataType('LocalExtensionKey');
 
 const oldestAllowedKeyExpirationMs = 1000 * 60 * 60 * 24 * 14; // 14 days
 

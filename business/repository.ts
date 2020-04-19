@@ -658,7 +658,7 @@ export class Repository {
     }
     try {
       // this is the alternate form of 'teams.checkManagesRepoInOrg'
-      const ok = await operations.github.requestAsPost(this.authorize(AppPurpose.Data), 'GET /organizations/:org_id/team/:team_id/repos/:owner/:repo', parameters);
+      await operations.github.requestAsPost(this.authorize(AppPurpose.Data), 'GET /organizations/:org_id/team/:team_id/repos/:owner/:repo', parameters);
       return true;
    } catch (error) {
       if (error && error.status == /* loose */ 404) {

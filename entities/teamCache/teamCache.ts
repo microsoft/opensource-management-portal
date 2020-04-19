@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
@@ -13,7 +11,7 @@ import { TeamCacheFixedQueryByOrganizationId } from '.';
 import { PostgresJsonEntityQuery, PostgresGetAllEntities } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
 
-const type = EntityMetadataType.TeamCache;
+const type = new EntityMetadataType('TeamCache');
 
 interface ITeamCacheProperties {
   organizationId: any;
@@ -93,7 +91,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
       });
     }
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 

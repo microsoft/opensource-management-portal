@@ -5,6 +5,8 @@
 
 /*eslint no-console: ["error", { allow: ["dir", "log"] }] */
 
+'use strict';
+
 import { Operations } from "../../business/operations";
 import { Organization, OrganizationMembershipRole } from "../../business/organization";
 import { IProviders } from "../../transitional";

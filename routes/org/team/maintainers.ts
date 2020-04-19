@@ -3,17 +3,16 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+'use strict';
+
 import express = require('express');
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
-
-import { ILocalTeamRequest } from './members';
 
 import { ReposAppRequest } from '../../../transitional';
 import { Team } from '../../../business/team';
 import { TeamMember } from '../../../business/teamMember';
 const teamAdminRequired = require('./teamAdminRequired');
-const PeopleSearch = require('../../peopleSearch')
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: Team;
@@ -39,10 +38,9 @@ async function refreshMaintainers(team2: Team): Promise<TeamMember[]> {
   });
 }
 
-router.get('/refresh', async (req: ILocalRequest, res) => {
+router.get('/refresh', (req: ILocalRequest, res) => {
   // Since the views are cached, this can help resolve support situations before they start
-  await refreshMaintainers(req.team2); // returns now promise
-  return res.redirect(req.teamUrl);
+  res.redirect(req.teamUrl);
 });
 
 
@@ -68,10 +66,10 @@ router.post('/:id/downgrade', teamAdminRequired, asyncHandler(async (req: ILocal
   res.redirect(req.teamUrl);
 }));
 
-router.use('/add', teamAdminRequired, (req: ILocalTeamRequest, res, next) => {
+router.use('/add', teamAdminRequired, (req: ILocalRequest, res, next) => {
   req.team2AddType = 'maintainer';
   return next();
-}, PeopleSearch);
+});
 
 router.post('/add', teamAdminRequired, asyncHandler(async function (req: ILocalRequest, res, next) {
   const team2 = req.team2 as Team;
@@ -81,5 +79,7 @@ router.post('/add', teamAdminRequired, asyncHandler(async function (req: ILocalR
   const maintainers = await refreshMaintainers(team2);
   return res.redirect(req.teamUrl);
 }));
+
+router.use('/add', require('../../peopleSearch'));
 
 module.exports = router;

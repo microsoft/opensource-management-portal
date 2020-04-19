@@ -5,14 +5,13 @@
 
 /*eslint no-console: ["error", { allow: ["warn", "log", "dir"] }] */
 
-'use strict';
+import _ from 'lodash';
 
-import _= require('lodash');
-import async = require('async');
-import { Operations } from '../business/operations';
-import { Organization } from '../business/organization';
 const crypto = require('crypto');
 const secureCompare = require('secure-compare');
+
+import { Operations } from '../business/operations';
+import { Organization } from '../business/organization';
 
 import Tasks from './tasks';
 

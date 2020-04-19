@@ -19,6 +19,7 @@ import { IEntityMetadata, EntityMetadataType, EntityMetadataTypes } from './enti
 import { PostgresPoolQuerySingleRowAsync, PostgresPoolQueryAsync } from '../postgresHelpers';
 import { IEntityMetadataFixedQuery } from './query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from './declarations';
+import { IDictionary } from '../../transitional';
 
 interface IPostgresGetQueries {
   (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue: any): any;
@@ -255,7 +256,7 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
   }
 
   private getEntityTypeColumnValue(type: EntityMetadataType): string {
-    const value = this._entityTypeToColumnValuesMapping[type];
+    const value = this._entityTypeToColumnValuesMapping[type.typeName];
     if (!value) {
       throw new Error(`No Postgres column value mapping provider for EntityMetadataType value ${type}`);
     }
@@ -264,7 +265,7 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
 
   private getTableName(type: EntityMetadataType): string {
     // CONSIDER: for safety, should the table name be forced safe here?
-    const tableName = this._entityTypeToTableNamesMapping[type];
+    const tableName = this._entityTypeToTableNamesMapping[type.typeName];
     if (tableName) {
       return tableName;
     }
@@ -349,7 +350,7 @@ function defaultTableNames() {
         return;
       }
       const tableName = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.PostgresDefaultTableName, true);
-      defaults[type] = tableName;
+      defaults[type.typeName] = tableName;
     } catch (noDefaultTableNameError) {
       throw new Error(`No default Postgres table name is defined for the type ${type}`);
     }
@@ -365,7 +366,7 @@ function defaultTypeColumnNames() {
         return;
       }
       const column = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, true);
-      defaults[type] = column;
+      defaults[type.typeName] = column;
     } catch (noDefaultTableNameError) {
       throw new Error(`No default Postgres type column name is defined for the type ${type}`);
     }

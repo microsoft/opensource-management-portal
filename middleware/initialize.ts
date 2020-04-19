@@ -57,6 +57,10 @@ import createCorporateContactProviderInstance from '../lib/corporateContactProvi
 import { IQueueProcessor } from '../lib/queues';
 import ServiceBusQueueProcessor from '../lib/queues/servicebus';
 import AzureQueuesProcessor from '../lib/queues/azurequeue';
+import { ElectionProvider } from '../entities/voting/election';
+import { ElectionVoteProvider } from '../entities/voting/vote';
+import { ElectionNominationEntityProvider } from '../entities/voting/nomination';
+import { ElectionNominationCommentEntityProvider } from '../entities/voting/nominationComment';
 
 async function initializeAsync(app: IReposApplication, express, rootdir: string, config): Promise<void> {
   const providers = app.get('providers') as IProviders;
@@ -187,6 +191,15 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
   }
 
   providers.corporateContactProvider = createCorporateContactProviderInstance(config, providers.cacheProvider);
+
+  if (config.features && config.features.allowFossFundElections) {
+    const electionEmp = { entityMetadataProvider: providerNameToInstance('postgres') };
+    // note: not calling initialize on any of these
+    providers.electionProvider = new ElectionProvider(electionEmp)
+    providers.electionVoteProvider = new ElectionVoteProvider(electionEmp);
+    providers.electionNominationProvider = new ElectionNominationEntityProvider(electionEmp);
+    providers.electionNominationCommentProvider = new ElectionNominationCommentEntityProvider(electionEmp);
+  }
 
   const webhooksConfig = config.github.webhooks;
   if (webhooksConfig && webhooksConfig.provider) {

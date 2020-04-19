@@ -3,16 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 // ----------------------------------------------------------------------------
 // This is a Node.js implementation of client-side table entity encryption,
 // compatible with the official Azure storage .NET library.
 // ----------------------------------------------------------------------------
 
-import async = require('async');
-const crypto = require('crypto');
-const jose = require('node-jose');
+import crypto from 'crypto';
+import jose from 'node-jose';
 
 // ----------------------------------------------------------------------------
 // Azure Storage .NET client library - entity encryption keys:
@@ -248,38 +245,39 @@ function encryptProperties(encryptionResolver, contentEncryptionKey, contentEncr
   if (!unencryptedProperties) {
     return callback(new Error('The entity properties are not set.'));
   }
-  async.forEachOf(unencryptedProperties, (value, property, next) => {
-    if (property === tableEncryptionKeyDetails || property === tableEncryptionPropertyDetails) {
-      return next(new Error('A table encryption property is present in the entity properties to consider for encryption. The property must be removed.'));
+  const propertyNames = Object.getOwnPropertyNames(unencryptedProperties);
+  try {
+    for (const property of propertyNames) {
+      const value = unencryptedProperties[property];
+      if (property === tableEncryptionKeyDetails || property === tableEncryptionPropertyDetails) {
+        throw new Error('A table encryption property is present in the entity properties to consider for encryption. The property must be removed.');
+      }
+      if (property === 'PartitionKey' || property === 'RowKey') {
+        encryptedProperties[property] = value;
+        continue;
+      }
+      if (property === 'Timestamp') {
+        continue;
+      }
+      if (encryptionResolver(partitionKey, rowKey, property) !== true) {
+        encryptedProperties[property] = value;
+        continue;
+      }
+      if (value === undefined || value === null) {
+        throw new Error(`Null or undefined properties cannot be encrypted. Property in question: ${property}`);
+      }
+      let type = typeof value;
+      if (type !== 'string') {
+        throw new Error(`${type} properties cannot be encrypted; property in question: ${property}`);
+      }
+      const encryptedValue = encryptProperty(contentEncryptionKey, contentEncryptionIV, partitionKey, rowKey, property, value);
+      encryptedPropertiesList.push(property);
+      encryptedProperties[property] = encryptedValue;
     }
-    if (property === 'PartitionKey' || property === 'RowKey') {
-      encryptedProperties[property] = value;
-      return next();
-    }
-    if (property === 'Timestamp') {
-      return next();
-    }
-    if (encryptionResolver(partitionKey, rowKey, property) !== true) {
-      encryptedProperties[property] = value;
-      return next();
-    }
-    if (value === undefined || value === null) {
-      return next(new Error(`Null or undefined properties cannot be encrypted. Property in question: ${property}`));
-    }
-    let type = typeof value;
-    if (type !== 'string') {
-      return next(new Error(`${type} properties cannot be encrypted; property in question: ${property}`));
-    }
-    const encryptedValue = encryptProperty(contentEncryptionKey, contentEncryptionIV, partitionKey, rowKey, property, value);
-    encryptedPropertiesList.push(property);
-    encryptedProperties[property] = encryptedValue;
-    next();
-  }, (asyncError) => {
-    if (asyncError) {
-      return callback(asyncError);
-    }
-    callback(null, encryptedProperties, encryptedPropertiesList);
-  });
+  } catch (asyncError) {
+    return callback(asyncError);
+  }
+  return callback(null, encryptedProperties, encryptedPropertiesList);
 }
 
 function decryptProperties(allEntityProperties, encryptedPropertyNames, partitionKey, rowKey, contentEncryptionKey, encryptionData, contentEncryptionIV) {
@@ -300,7 +298,7 @@ function decryptProperties(allEntityProperties, encryptedPropertyNames, partitio
   return decryptedProperties;
 }
 
-function encryptEntity(partitionKey, rowKey, properties, encryptionOptions, callback) {
+export function encryptEntity(partitionKey, rowKey, properties, encryptionOptions, callback) {
   if (!partitionKey || !rowKey || !properties) {
     return callback(new Error('Must provide a partition key, row key and properties for the entity.'));
   }
@@ -350,7 +348,7 @@ function encryptEntity(partitionKey, rowKey, properties, encryptionOptions, call
   });
 }
 
-function decryptEntity(partitionKey, rowKey, properties, encryptionOptions, callback) {
+export function decryptEntity(partitionKey, rowKey, properties, encryptionOptions, callback) {
   if (!partitionKey || !rowKey || !properties) {
     return callback(new Error('A partition key, row key and properties must be provided.'));
   }
@@ -402,8 +400,3 @@ function decryptEntity(partitionKey, rowKey, properties, encryptionOptions, call
     });
   });
 }
-
-module.exports = {
-  decryptEntity: decryptEntity,
-  encryptEntity: encryptEntity,
-};

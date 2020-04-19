@@ -6,6 +6,7 @@
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
 import rp from 'request-promise-native';
+import throat from 'throat';
 
 import { ICacheOptions, IMapPlusMetaCost, IProviders, IPagedCrossOrganizationCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IAuthorizationHeaderValue, IDictionary, CreateError, ErrorHelper, setImmediateAsync } from '../transitional';
 
@@ -35,6 +36,8 @@ const throwIfOrganizationIdsMissing = true;
 
 const SecondsBetweenOrganizationSettingUpdatesCheck = 60 * 2; // every 2 minutes, check for dynamic app updates
 let DynamicRestartCheckHandle = null;
+
+const ParallelLinkLookup = 4;
 
 interface ICacheDefaultTimes {
   orgReposStaleSeconds: number;
@@ -1121,6 +1124,22 @@ export class Operations {
           return resolve(rehydratedLinks);
         });
     });
+  }
+
+  async getLinksFromThirdPartyIds(thirdPartyIds: string[]): Promise<ICorporateLink[]> {
+    const corporateLinks: ICorporateLink[] = [];
+    const throttle = throat(ParallelLinkLookup);
+    await Promise.all(thirdPartyIds.map(thirdPartyId => throttle(async () => {
+      try {
+        const link = await this.getLinkByThirdPartyId(thirdPartyId);
+        if (link) {
+          corporateLinks.push(link);
+        }
+      } catch (noLinkError) {
+        console.dir(noLinkError);
+      }
+    })));
+    return corporateLinks;
   }
 
   getLinkByThirdPartyId(thirdPartyId: string) : Promise<ICorporateLink> {

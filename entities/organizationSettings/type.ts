@@ -7,4 +7,4 @@
 
 import { EntityMetadataType } from '../../lib/entityMetadataProvider/entityMetadata';
 
-export const Type = EntityMetadataType.OrganizationSetting;
+export const Type = new EntityMetadataType('OrganizationSetting');

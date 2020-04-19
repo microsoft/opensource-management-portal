@@ -44,6 +44,10 @@ import { ICacheHelper } from './lib/caching';
 import { ICampaignHelper } from './lib/campaigns';
 import { ICorporateContactProvider } from './lib/corporateContactProvider';
 import { IQueueProcessor } from './lib/queues';
+import { IElectionEntityProvider } from './entities/voting/election';
+import { IElectionVoteEntityProvider } from './entities/voting/vote';
+import { IElectionNominationEntityProvider } from './entities/voting/nomination';
+import { IElectionNominationCommentEntityProvider } from './entities/voting/nominationComment';
 
 export interface ICallback<T> {
   (error: IReposError, result?: T): void;
@@ -161,6 +165,10 @@ export interface IProviders {
   campaignStateProvider?: ICampaignHelper;
   corporateContactProvider?: ICorporateContactProvider;
   config?: any;
+  electionProvider?: IElectionEntityProvider;
+  electionVoteProvider?: IElectionVoteEntityProvider;
+  electionNominationProvider?: IElectionNominationEntityProvider;
+  electionNominationCommentProvider?: IElectionNominationCommentEntityProvider;
   healthCheck?: any;
   keyEncryptionKeyResolver?: any;
   github?: RestLibrary;
@@ -193,7 +201,7 @@ export interface IProviders {
 }
 
 export interface RedisOptions {
-  auth_pass?: string;
+  auth_pass: string;
   detect_buffers: boolean;
   tls?: {
     servername: string;
@@ -428,6 +436,12 @@ export class ErrorHelper {
     return error;
   }
 
+  public static WrapError(innerError: Error, message: string): Error {
+    const err = new Error(message);
+    err['innerError'] = innerError;
+    return err;
+  }
+
   public static HasStatus(error: Error): boolean {
     return error && error['status'];
   }
@@ -447,6 +461,10 @@ export class ErrorHelper {
       return true;
     }
     return false;
+  }
+
+  public static NotImplemented() {
+    return new Error('Not implemented');
   }
 
   public static GetStatus(error: Error): number {

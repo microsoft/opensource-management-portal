@@ -15,12 +15,13 @@
 // LINK_MIGRATION_DESTINATION_TYPE
 // LINK_MIGRATION_OVERWRITE  values : 'overwrite', 'skip'
 
-// import async = require('async');
-import throat = require('throat');
+import throat from 'throat';
 
 import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../../lib/linkProviders';
 import { IProviders } from '../../transitional';
 import { ICorporateLink } from '../../business/corporateLink';
+
+const parallelWorkLimit = 5;
 
 export default function Task(config) {
   const app = require('../../app');
@@ -65,7 +66,8 @@ async function migration(config, app) : Promise<void> {
   let errors = 0;
   let errorList = [];
 
-  await Promise.all(allSourceLinks.map(throat<string, (sourceLink: ICorporateLink) => Promise<string>>(async sourceLink => {
+  const throttle = throat(parallelWorkLimit);
+  await Promise.all(allSourceLinks.map((sourceLink: ICorporateLink) => throttle(async () => {
     const existingLink = await getThirdPartyLink(destinationLinkProvider, sourceLink.thirdPartyId);
     if (existingLink && overwriteDestinationLinks) {
       console.warn('Removing existing destination link...');
@@ -99,7 +101,7 @@ async function migration(config, app) : Promise<void> {
     }
     console.log('[next]');
     return 'x';
-  }, 5)));
+  })));
 
   console.log('All done with ' + errors + ' errors');
   console.dir(errorList);

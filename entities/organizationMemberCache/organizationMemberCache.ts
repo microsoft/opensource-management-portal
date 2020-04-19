@@ -13,7 +13,7 @@ import { OrganizationMembershipRole } from '../../business/organization';
 import { stringOrNumberAsString } from '../../utils';
 import { PostgresJsonEntityQuery, PostgresGetAllEntities } from '../../lib/entityMetadataProvider/postgres';
 
-const type = EntityMetadataType.OrganizationMemberCache;
+const type = new EntityMetadataType('OrganizationMemberCache');
 
 interface IOrganizationMemberCacheProperties {
   // entity ID: orgid:userid
@@ -126,7 +126,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
       });
     }
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 
@@ -142,7 +142,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryQueries, (
       }
       throw new Error('Not implemented yet');
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 

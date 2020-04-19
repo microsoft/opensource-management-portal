@@ -188,7 +188,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
   }
 
   private getFixedPartitionKey(type: EntityMetadataType) {
-    const pk = this._fixedPartitionKeyMapping[type];
+    const pk = this._fixedPartitionKeyMapping[type.typeName];
     if (pk) {
       return pk;
     }
@@ -199,7 +199,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     if (!this._encryptionOptions) {
       return null;
     }
-    const set = this._typeToEncryptedColumnsMapping[type] as Set<string>;
+    const set = this._typeToEncryptedColumnsMapping[type.typeName] as Set<string>;
     return set && set.size > 0 ? set : null;
   }
 
@@ -228,12 +228,12 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
   }
 
   private getRowKey(type: EntityMetadataType, entityId: string) {
-    const prefix = this._rowKeyPrefixMapping[type] || emptyString;
+    const prefix = this._rowKeyPrefixMapping[type.typeName] || emptyString;
     return `${prefix}${entityId}`;
   }
 
   private rowKeyToEntityId(type: EntityMetadataType, rowKey: string) {
-    const prefix = this._rowKeyPrefixMapping[type] || emptyString;
+    const prefix = this._rowKeyPrefixMapping[type.typeName] || emptyString;
     if (!prefix) {
       return rowKey;
     }
@@ -248,7 +248,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     if (tableName) {
       return tableName;
     }
-    const tableSuffix = this._tableNameMapping[type];
+    const tableSuffix = this._tableNameMapping[type.typeName];
     if (!tableSuffix) {
       throw new Error(`No storage table name mapping provided for value ${type}`);
     }
@@ -661,7 +661,7 @@ function defaultRowKeyPrefixes() {
       return;
     }
     const rowKeyPrefix = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.TableDefaultRowKeyPrefix, false);
-    defaults[type] = rowKeyPrefix;
+    defaults[type.typeName] = rowKeyPrefix;
   });
   return defaults;
 }
@@ -675,7 +675,7 @@ function defaultFixedPartitionKeys(prefix: string) {
       }
       const partitionKey = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.TableDefaultFixedPartitionKey, true);
       const skipPrefix = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.TableDefaultFixedPartitionKeyNoPrefix, false);
-      defaults[type] = skipPrefix ? partitionKey : `${prefix || ''}${partitionKey}`;
+      defaults[type.typeName] = skipPrefix ? partitionKey : `${prefix || ''}${partitionKey}`;
     } catch (error) {
       throw new Error(`No default Azure table fixed partition key defined for type ${type}`);
     }
@@ -691,7 +691,7 @@ function defaultTableNames() {
         return;
       }
       const tableName = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.TableDefaultTableName, true);
-      defaults[type] = tableName;
+      defaults[type.typeName] = tableName;
     } catch (error) {
       throw new Error(`No default Azure table name defined for type ${type} (${error})`);
     }
@@ -707,7 +707,7 @@ function defaultEncryptionColumns() {
     }
     const encryptedColumnNames = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.TableEncryptedColumnNames, false);
     if (encryptedColumnNames) {
-      defaults[type] = new Set(encryptedColumnNames);
+      defaults[type.typeName] = new Set(encryptedColumnNames);
     }
   });
   return defaults;
