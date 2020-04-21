@@ -134,7 +134,7 @@ router.use((err, req, res, next) => {
   });
   const providers = req.app.settings.providers as IProviders;
   if (providers && providers.insights) {
-    providers.insights.trackException(err);
+    providers.insights.trackException({ exception: err });
   }
 });
 
