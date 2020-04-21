@@ -17,8 +17,8 @@ The following API versions are currently supported:
 
 - "2019-10-01": creates a link
 - "2019-02-01": adds avatar and additional service account contact fields
-- "2016-12-01": supports creating repositories and also creating links
 - "2017-03-08": updates the shape of link responses to `aad.id` and `corporate` is renamed `aad`
+- "2016-12-01": supports creating repositories and also creating links
 
 An API version must be provided as either a _header_ value or in the _query string_.
 

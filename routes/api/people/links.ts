@@ -12,6 +12,8 @@ import { ICorporateLink } from '../../../business/corporateLink';
 import { Operations, ICrossOrganizationMembersResult } from '../../../business/operations';
 import { IApiRequest } from '../../../middleware/apiReposAuth';
 import postLinkApi from './link';
+import { ErrorHelper } from '../../../transitional';
+import { asNumber } from '../../../utils';
 
 const router = express.Router();
 const wrapError = require('../../../utils').wrapError;
@@ -55,6 +57,27 @@ router.get('/:linkid', asyncHandler(async (req: IApiRequest, res, next) => {
   const operations = req.app.settings.operations as Operations;
   const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
   const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
+  if (operations.providers.queryCache && operations.providers.queryCache.supportsOrganizationMembership) {
+    // faster implementation
+    const links = (await operations.providers.linkProvider.getAll()).filter(lid => lid['id'] === linkid);
+    let link = links.length === 1 ? links[0] : null;
+    if (!link) {
+      return next(jsonError('Could not find the link', 404));
+    }
+    let entry = null;
+    const thirdPartyId = link.thirdPartyId;
+    try {
+      entry = await getByThirdPartyId(thirdPartyId, req.apiVersion, operations, skipOrganizations, showTimestamps);
+    } catch (error) {
+      if (ErrorHelper.IsNotFound(error)) {
+        return next(jsonError('Could not find the link', 404));
+      } else {
+        return next(jsonError(error, 500));
+      }
+    }
+    req.insights.trackMetric({ name: 'ApiRequestLinkByLinkId', value: 1 });
+    return res.json(entry);
+  }
   const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps, true);
   for (let i = 0; i < results.length; i++) {
     const entry = results[i];
@@ -74,6 +97,21 @@ router.get('/github/:username', asyncHandler (async (req: IApiRequest, res, next
   const operations = req.app.settings.operations as Operations;
   const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
   const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
+  if (operations.providers.queryCache && operations.providers.queryCache.supportsOrganizationMembership) {
+    // faster implementation
+    let account = null;
+    try {
+      account = await operations.getAccountByUsername(username);
+    } catch (getAccountError) {
+      if (ErrorHelper.IsNotFound(account)) {
+        return next(jsonError('Could not find a link for the user', 404));
+      }
+      return next(jsonError(getAccountError, 500));
+    }
+    const entry = await getByThirdPartyId(String(account.id), req.apiVersion, operations, skipOrganizations, showTimestamps);
+    req.insights.trackMetric({ name: 'ApiRequestLinkByGitHubUsername', value: 1 });
+    return res.json(entry);
+  }
   const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps);
   for (let i = 0; i < results.length; i++) {
     const entry = results[i];
@@ -87,9 +125,33 @@ router.get('/github/:username', asyncHandler (async (req: IApiRequest, res, next
 
 router.get('/aad/userPrincipalName/:upn', asyncHandler(async (req: IApiRequest, res, next) => {
   const upn = req.params.upn;
-  const operations = req.app.settings.operations;
+  const operations = req.app.settings.operations as Operations;
   const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
   const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
+  if (operations.providers.queryCache && operations.providers.queryCache.supportsOrganizationMembership) {
+    // faster implementation
+    const links = await operations.providers.linkProvider.queryByCorporateUsername(upn);
+    const r = [];
+    for (const link of links) {
+      const thirdPartyId = link.thirdPartyId;
+      try {
+        const entry = await getByThirdPartyId(thirdPartyId, req.apiVersion, operations, skipOrganizations, showTimestamps);
+        if (entry) {
+          r.push(entry);
+        }
+      } catch (partialIgnoreError) {
+        console.dir(partialIgnoreError);
+      }
+    }
+    req.insights.trackEvent({
+      name: 'ApiRequestLinkByAadUpnResult',
+      properties: {
+        length: r.length.toString(),
+        userPrincipalName: upn,
+      },
+    });
+    return res.json(r);
+  }
   const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps);
   let r = [];
   for (let i = 0; i < results.length; i++) {
@@ -119,7 +181,25 @@ router.get('/aad/:id', asyncHandler(async (req: IApiRequest, res, next) => {
   const id = req.params.id;
   const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
   const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
-  const operations = req.app.settings.operations;
+  const operations = req.app.settings.operations as Operations;
+  if (operations.providers.queryCache && operations.providers.queryCache.supportsOrganizationMembership) {
+    // faster implementation
+    const links = await operations.providers.linkProvider.queryByCorporateId(id);
+    const r = [];
+    for (const link of links) {
+      const thirdPartyId = link.thirdPartyId;
+      try {
+        const entry = await getByThirdPartyId(thirdPartyId, req.apiVersion, operations, skipOrganizations, showTimestamps);
+        if (entry) {
+          r.push(entry);
+        }
+      } catch (partialIgnoreError) {
+        console.dir(partialIgnoreError);
+      }
+    }
+    req.insights.trackMetric({ name: 'ApiRequestLinkByAadId', value: 1 });
+    return res.json(r);
+  }
   const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps);
   let r = [];
   for (let i = 0; i < results.length; i++) {
@@ -134,6 +214,70 @@ router.get('/aad/:id', asyncHandler(async (req: IApiRequest, res, next) => {
   req.insights.trackMetric({ name: 'ApiRequestLinkByAadId', value: 1 });
   return res.json(r);
 }));
+
+async function getByThirdPartyId(thirdPartyId: string, apiVersion, operations: Operations, skipOrganizations: boolean, showTimestamps: boolean, showLinkIds?: boolean): Promise<any> {
+  const providers = operations.providers;
+  let link: ICorporateLink = null;
+  try {
+    link = await providers.linkProvider.getByThirdPartyId(thirdPartyId);
+  } catch (linksError) {
+    linksError = wrapError(linksError, 'There was a problem retrieving link information to display alongside the member.');
+    throw jsonError(linksError, 500);
+  }
+  const account = operations.getAccount(thirdPartyId);
+  await account.getDetails();
+  let orgMembershipNames: string[] = [];
+  if (providers.queryCache && operations.providers.queryCache.supportsOrganizationMembership) {
+    orgMembershipNames = (await providers.queryCache.userOrganizations(thirdPartyId)).map(org => org.organization.name);
+  } else {
+    // TODO: not implemented for performance reasons now
+    throw ErrorHelper.NotImplemented();
+  }
+  const isExpandedView = extendedLinkApiVersions.includes(apiVersion);
+  const entry = {
+    github: {
+      id: asNumber(link.thirdPartyId),
+      login: account.login,
+      organizations: undefined,
+    },
+    isServiceAccount: undefined,
+    serviceAccountContact: undefined,
+  };
+  if (isExpandedView) {
+    entry.github['avatar'] = account.avatar_url;
+  }
+  if (showLinkIds && link) {
+    entry['id'] = link['id']; // not part of the interface
+  }
+  if (!skipOrganizations) {
+    entry.github.organizations = orgMembershipNames;
+  }
+  // '2017-09-01' added 'isServiceAccount'; so '2016-12-01' & '2017-03-08' do not have it
+  if (showTimestamps && link && link['created']) {
+    entry['timestamp'] = link['created'];
+  }
+  if (link && link.isServiceAccount === true && apiVersion !== '2016-12-01' && apiVersion !== '2017-03-08') {
+    entry.isServiceAccount = true;
+    if (isExpandedView && link.isServiceAccount && link.serviceAccountMail) {
+      entry.serviceAccountContact = link.serviceAccountMail;
+    }
+  }
+  if (providers.corporateContactProvider) {
+    const contacts = await providers.corporateContactProvider.lookupContacts(link.corporateUsername);
+    if (contacts) {
+      const corporatePropertyName = apiVersion === '2016-12-01' ? 'corporate' : 'aad'; // This was renamed to be provider name-based
+      entry[corporatePropertyName] = {
+        alias: contacts.alias,
+        preferredName: link.corporateDisplayName,
+        userPrincipalName: link.corporateUsername,
+        emailAddress: contacts.emailAddress,
+      };
+      const corporateIdPropertyName = apiVersion === '2016-12-01' ? 'aadId' : 'id'; // Now just 'id'
+      entry[corporatePropertyName][corporateIdPropertyName] = link.corporateId;
+    }
+  }
+  return entry;
+}
 
 async function getAllUsers(apiVersion, operations: Operations, skipOrganizations: boolean, showTimestamps: boolean, showLinkIds?: boolean): Promise<any[]> {
   let links: ICorporateLink[] = null;

@@ -43,7 +43,7 @@ painlessConfigResolver.resolve((configurationError, config) => {
 });
 
 async function work(app): Promise<void> {
-  let runLimit = 10000;
+  let runLimit = 45000;
   let inRun = 0;
   const campaignGroupId = 'fossfund';
   const campaignId = '2'; // 2 = first voting campaign
@@ -56,8 +56,7 @@ async function work(app): Promise<void> {
   const nominees = await electionNominationProvider.queryApprovedElectionNominees(election.electionId);
   let employees = (await linkProvider.getAll())
     .filter(resource => isEmployeeOrIntern(resource.corporateUsername))
-    .filter(resource => !resource.isServiceAccount)
-    .slice(0, runLimit);
+    .filter(resource => !resource.isServiceAccount);
   employees = _.shuffle(employees);
   let i = 0;
   for (const employee of employees) {
