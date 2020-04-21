@@ -141,7 +141,7 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
     return new Promise((resolve, reject) => {
       const options = this.getIdentityServiceRequestOptions(`/user/${corporateUsername}`);
       request.get(options, (error, response, entry: IMicrosoftIdentityServiceResponse) => {
-        if (response.statusCode === 404) {
+        if (response && response.statusCode === 404) {
           return resolve(null);
         }
         if (entry && !error && entry['error'] && entry['error']['message']) {

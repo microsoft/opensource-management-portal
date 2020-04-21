@@ -13,8 +13,8 @@ const circuitBreakerOverrideClearingDestination = process.env.CIRCUIT_BREAKER_OV
 
 import throat from 'throat';
 
+import app from '../../app';
 import { IProviders } from '../../transitional';
-
 import { createAndInitializeEntityMetadataProviderInstance, IEntityMetadataProvidersOptions } from '../../lib/entityMetadataProvider';
 import { createAndInitializeRepositoryMetadataProviderInstance } from '../../entities/repositoryMetadata';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
@@ -24,11 +24,6 @@ import { createAndInitializeApprovalProviderInstance } from '../../entities/team
 const parallelMigrations = 1;
 
 export default function Task(config) {
-  const app = require('../../app');
-  config.skipModules = new Set([
-    'web',
-  ]);
-
   app.initializeApplication(config, null, error => {
     if (error) {
       throw error;

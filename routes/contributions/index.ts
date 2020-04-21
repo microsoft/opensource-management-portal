@@ -12,16 +12,18 @@ import sortBy from 'lodash/sortBy';
 
 import FossFundRoute from './fossfund';
 
-import { AuthorizeOnlyCorporateAdministrators } from '../middleware/business/corporateAdministrators';
-import { ReposAppRequest, IProviders, ErrorHelper } from '../transitional';
-import { EventRecord } from '../entities/events/eventRecord';
-import { AuthorizeOnlyFullTimeEmployeesAndInterns } from '../middleware/business/employeesOnly';
-import { getOffsetMonthRange } from '../utils';
+import { AuthorizeOnlyCorporateAdministrators } from '../../middleware/business/corporateAdministrators';
+import { ReposAppRequest, IProviders, ErrorHelper } from '../../transitional';
+import { EventRecord } from '../../entities/events/eventRecord';
+import { AuthorizeOnlyFullTimeEmployeesAndInterns } from '../../middleware/business/employeesOnly';
+import { getOffsetMonthRange } from '../../utils';
+import { FossFundElection } from '../../features/fossFundElection';
 
 interface IContributionsRequest extends ReposAppRequest {
   contributions?: EventRecord[];
   previousContributions?: EventRecord[];
   contributionsLogin?: string;
+  electionsSystem?: FossFundElection;
 }
 
 interface IContributionsDocument {
@@ -36,6 +38,8 @@ const hardcodedDisplayMap = {
   PullRequestReviewEvent: 'Pull request reviews',
   PullRequestReviewCommentEvent: 'Pull request comments',
 };
+
+router.use('/voting', AuthorizeOnlyFullTimeEmployeesAndInterns, FossFundRoute);
 
 router.get('/popular', AuthorizeOnlyCorporateAdministrators, asyncHandler(async (req: ReposAppRequest, res, next)  => {
   const providers = req.app.settings.providers as IProviders;
@@ -104,16 +108,17 @@ router.use(asyncHandler(async (req: IContributionsRequest, res, next) => {
   const previousDocument = await getMonthContributions(providers, id, -1);
   req.previousContributions = previousDocument && previousDocument.contributions ? previousDocument.contributions : [];
   req.contributionsLogin = username;
+
+  try {
+    req.electionsSystem = new FossFundElection(providers);
+  } catch (electionsIgnore) {
+    console.log(electionsIgnore);
+  }
+
   return next();
 }));
 
-enum ContributionsPageMode {
-  Normal = 'normal',
-  Nominations = 'nominate',
-  Vote = 'vote',
-}
-
-async function showContributions(req: IContributionsRequest, pageMode: ContributionsPageMode, monthOffset: number): Promise<void> {
+async function showContributions(req: IContributionsRequest, monthOffset: number): Promise<void> {
   const username = req.contributionsLogin;
   const isSelf = username.toLowerCase() === req.individualContext.getGitHubIdentity().username.toLowerCase();
   const isOtherEventsDisplay = req.query['other'] === '1';
@@ -122,6 +127,22 @@ async function showContributions(req: IContributionsRequest, pageMode: Contribut
     throw new Error('Unsupported month offset value');
   }
   const { start, end } = getOffsetMonthRange(monthOffset);
+  let eligibleStartMonths = [];
+  let elections = [];
+  if (req.electionsSystem) {
+    const thisMonth = getOffsetMonthRange(0);
+    const lastMonth = getOffsetMonthRange(-1);
+    elections.push(... await req.electionsSystem.getElectionsByEligibilityDates(lastMonth.start, lastMonth.end));
+    elections.push(... await req.electionsSystem.getElectionsByEligibilityDates(thisMonth.start, thisMonth.end));
+    const thisMonthOpenContributions = req.contributions.filter(event => event.additionalData.contribution);
+    if (thisMonthOpenContributions.length > 0) {
+      eligibleStartMonths.push(thisMonth.start.toISOString());
+    }
+    const lastMonthOpenContributions = req.previousContributions.filter(event => event.additionalData.contribution);
+    if (lastMonthOpenContributions.length > 0) {
+      eligibleStartMonths.push(lastMonth.start.toISOString());
+    }
+  }
   let offsetContributions = monthOffset === -1 ? req.previousContributions : req.contributions;
   offsetContributions = offsetContributions || [];
   let contributedLastMonth = false;
@@ -153,7 +174,9 @@ async function showContributions(req: IContributionsRequest, pageMode: Contribut
       otherContributions,
       otherContributionsCount: otherContributionsData.length,
       isTruncating,
-      contributionsPageMode: pageMode,
+      elections,
+      electionsSystem: req.electionsSystem,
+      eligibleStartMonths,
     },
   });
 }
@@ -161,18 +184,8 @@ async function showContributions(req: IContributionsRequest, pageMode: Contribut
 // The contributions page can be shown to any user, but not the nomination experience.
 
 router.get('/', asyncHandler(async (req: IContributionsRequest, res, next) => {
-  await showContributions(req, ContributionsPageMode.Normal, req.query.prior ? -1 : 0);
+  await showContributions(req, req.query.prior ? -1 : 0);
 }));
-
-router.get('/nominate', AuthorizeOnlyFullTimeEmployeesAndInterns, asyncHandler(async (req: IContributionsRequest, res, next) => {
-  await showContributions(req, ContributionsPageMode.Nominations, req.query.prior ? -1 : 0);
-}));
-
-router.get('/vote', AuthorizeOnlyFullTimeEmployeesAndInterns, asyncHandler(async (req: IContributionsRequest, res, next) => {
-  await showContributions(req, ContributionsPageMode.Nominations, -1);
-}));
-
-router.use('/fund', AuthorizeOnlyFullTimeEmployeesAndInterns, FossFundRoute);
 
 async function refreshMonthContributions(providers: IProviders, thirdPartyId: string, offsetMonths?: number): Promise<void> {
   const account = providers.operations.getAccount(thirdPartyId);

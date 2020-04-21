@@ -7,7 +7,7 @@
 
 import CosmosSessionStore from '../lib/cosmosSession';
 
-import { IProviders, IReposApplication, InnerError, RedisOptions } from '../transitional';
+import { IProviders, InnerError, RedisOptions } from '../transitional';
 import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../lib/linkProviders';
 
 import { Operations } from '../business/operations';
@@ -61,6 +61,7 @@ import { ElectionProvider } from '../entities/voting/election';
 import { ElectionVoteProvider } from '../entities/voting/vote';
 import { ElectionNominationEntityProvider } from '../entities/voting/nomination';
 import { ElectionNominationCommentEntityProvider } from '../entities/voting/nominationComment';
+import { IReposApplication } from '../app';
 
 async function initializeAsync(app: IReposApplication, express, rootdir: string, config): Promise<void> {
   const providers = app.get('providers') as IProviders;

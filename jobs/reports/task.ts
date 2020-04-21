@@ -11,12 +11,12 @@
 // collected before its execution.
 
 import azure from 'azure-storage';
+import os from 'os';
+import fileSize from 'file-size';
+import moment from 'moment-timezone';
+import path from 'path';
 
-const fileSize = require('file-size');
-const fs = require('fs');
-const moment = require('moment-timezone');
-const os = require('os');
-const path = require('path');
+import app from '../../app';
 
 import { buildConsolidatedMap as buildRecipientMap } from './consolidated';
 
@@ -146,16 +146,6 @@ async function buildReport(context): Promise<void> {
 
 module.exports = function run(started, startedString, config) {
   console.log(`Report run started ${startedString}`);
-  let app = null;
-  try {
-    app = require('../../app');
-  } catch (loadAppError) {
-    console.dir(loadAppError);
-    throw loadAppError;
-  }
-  config.skipModules = new Set([
-    'web',
-  ]);
   config.optInModules = new Set([
     'witnessRedis',
   ]);
@@ -163,6 +153,11 @@ module.exports = function run(started, startedString, config) {
     if (error) {
       throw error;
     }
+
+    // Ending this job until it can get fixed
+    console.log('This job is no longer in use and needs work...');
+    closeInHalfMinute();
+
     const insights = app.settings.appInsightsClient;
     if (!insights) {
       throw new Error('No app insights client available');

@@ -139,7 +139,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, n
 EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.MemoryMapping, fieldNames, [eventId]);
 
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTableName, 'events');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, 'eventid');
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, 'event');
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping, new Map<string, string>([
   [Field.action, (Field.action).toLowerCase()],
   [Field.additionalData, (Field.additionalData).toLowerCase()],

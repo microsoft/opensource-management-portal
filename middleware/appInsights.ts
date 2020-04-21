@@ -25,6 +25,11 @@ function filterTelemetry(envelope, context): boolean {
   if (data && data.baseType === 'RequestData' && data.baseData.responseCode === '401') {
     // We believe 401 is successful, not a failure
     data.baseData.success = true;
+  } else if (data && data.baseData && data.baseData.name && data.baseData.responseCode && data.baseData.responseCode === '404') {
+    if (data.baseData.name.startsWith('GET /api/')) {
+      // Link lookup APIs return 404 by design, which is a success.
+      data.baseData.success = true;
+    }
   }
   return true;
 }

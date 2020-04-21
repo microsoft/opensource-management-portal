@@ -168,7 +168,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, n
 EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.MemoryMapping, fieldNames, [recordId]);
 
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTableName, 'auditlog');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, 'recordid');
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, 'auditlogrecord');
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping, new Map<string, string>([
   [Field.recordSource, (Field.recordSource).toLowerCase()],
   [Field.action, (Field.action).toLowerCase()],

@@ -4,18 +4,34 @@
 //
 
 import express = require('express');
+import { Application } from 'express';
+
 const app = express();
 
 require('debug')('startup')('loading express application');
 
+import { IProviders } from './transitional';
 import initialize from './middleware/initialize';
-import { IReposApplication } from './transitional';
 
-app['initializeApplication'] = initialize.bind(undefined, app, express, __dirname);
+export interface IReposApplication extends Application {
+  // Standard Express
+  set(settingName: string, settingValue: any);
 
-app['initializeJob'] = function initializeJob(config, configurationError, callback) {
+   // Local things
+   providers: IProviders;
+
+   initializeApplication: (config: any, configurationError: Error, callback) => void;
+   initializeJob: (config: any, configurationError: Error, callback) => void;
+}
+
+(app as unknown as IReposApplication).initializeApplication = initialize.bind(undefined, app, express, __dirname);
+
+(app as unknown as IReposApplication).initializeJob = function initializeJob(config, configurationError, callback) {
   config.isJobInternal = true;
+  config.skipModules = new Set([
+    'web',
+  ]);
   return initialize(app as unknown as IReposApplication, express, __dirname, config, configurationError, callback);
 }
 
-module.exports = app;
+export default app as unknown as IReposApplication;

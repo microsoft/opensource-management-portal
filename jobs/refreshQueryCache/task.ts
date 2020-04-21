@@ -8,6 +8,7 @@
 import throat from 'throat';
 import { shuffle } from 'lodash';
 
+import App from '../../app';
 import { IProviders, ICacheOptions, IPagedCacheOptions, permissionsObjectToValue, ErrorHelper } from '../../transitional';
 import { Operations } from '../../business/operations';
 import { Organization, OrganizationMembershipRoleQuery, OrganizationMembershipRole } from '../../business/organization';
@@ -57,17 +58,12 @@ const sleepBetweenSteps = 100; // mostly impacts repo collaborator views
 let insights;
 
 export default function Task(config, args) {
-  const app = require('../../app');
-  config.skipModules = new Set([
-    'web',
-  ]);
-
-  app.initializeJob(config, null, error => {
+  App.initializeJob(config, null, error => {
     if (error) {
       throw error;
     }
     // TODO: track elapsed time as a metric
-    insights = app.settings.appInsightsClient;
+    insights = App.settings.appInsightsClient;
     if (!insights) {
       throw new Error('No app insights client available');
     }
@@ -88,7 +84,7 @@ export default function Task(config, args) {
       return quitInAMinute(false);
     }, 1000 * 60 * asMinutes);
 
-    refresh(config, app, args).then(done => {
+    refresh(config, App, args).then(done => {
       const completed = moment();
       const minutes = completed.diff(jobStarted, 'minutes');
       console.log(`done after ${minutes} minutes`);

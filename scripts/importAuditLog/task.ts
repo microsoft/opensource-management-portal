@@ -7,6 +7,7 @@ import fs from 'fs';
 import csv from 'csv-parser';
 import moment from 'moment';
 
+import app from '../../app';
 import { IProviders } from '../../transitional';
 import { AuditLogRecord } from '../../entities/auditLogRecord/auditLogRecord';
 import { sleep, asNumber } from '../../utils';
@@ -15,10 +16,6 @@ import { Organization } from '../../business/organization';
 import { AuditLogSource } from '../../entities/auditLogRecord';
 
 export default function Task(config) {
-  const app = require('../../app');
-  config.skipModules = new Set([
-    'web',
-  ]);
   app.initializeJob(config, null, error => {
     if (error) {
       throw error;

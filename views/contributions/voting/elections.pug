@@ -1,0 +1,26 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+block content
+  - var fileSize = viewServices.fileSize
+  - var moment = viewServices.moment
+  - var octicon = viewServices.octicon
+
+  //- var startMonthName = moment(start).format('MMMM')
+  //- var previousMonthName = moment(start).subtract(1, 'months').format('MMMM')
+
+  .container
+    h2 Active Elections
+    
+    if activeElections && activeElections.length
+      each election in activeElections
+        //-pre= JSON.stringify(election, undefined, 2)
+        h2: a(href='/contributions/voting/' + election.slug)= election.title
+        p= election.description
+    else
+      p No active voting opportunities.
+

@@ -10,6 +10,8 @@ import throat from 'throat';
 // Revoke tokens of users that no longer resolve in the corporate graph and
 // delete tokens that have been expired 30 days.
 
+import app from '../../app';
+
 const expiredTokenDeleteThresholdDays = 30;
 
 import { IProviders } from '../../transitional';
@@ -20,11 +22,6 @@ import { IGraphProvider } from '../../lib/graphProvider';
 let insights;
 
 module.exports = function run(config) {
-  const app = require('../../app');
-  config.skipModules = new Set([
-    'web',
-  ]);
-
   app.initializeApplication(config, null, error => {
     if (error) {
       throw error;

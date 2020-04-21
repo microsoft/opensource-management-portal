@@ -5,20 +5,16 @@
 
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
-import { IProviders, ErrorHelper } from '../../transitional';
-import { sleep, asNumber } from '../../utils';
+import { IProviders } from '../../transitional';
 import BlobCache from '../../lib/caching/blob';
+import App from '../../app';
 
 export function run(config: any, reclassify: boolean) {
-  const app = require('../../app');
-  config.skipModules = new Set([
-    'web',
-  ]);
-  app.initializeJob(config, null, (error) => {
+  App.initializeJob(config, null, (error) => {
     if (error) {
       throw error;
     }
-    go(config, app).then(done => {
+    go(config, App).then(done => {
       console.log('done');
       process.exit(0);
     }).catch(error => {

@@ -103,4 +103,9 @@ export abstract class QueryBase<T> implements IEntityMetadataFixedQuery {
     const results = deserialize(metadatas);
     return results as T[];
   }
+
+  public async generic(provider: EntityMetadataBase, entities: IEntityMetadataProvider, thisProviderType: EntityMetadataType): Promise<any[]> {
+    const metadatas = await entities.fixedQueryMetadata(thisProviderType, this);
+    return metadatas as any[];
+  }
 }

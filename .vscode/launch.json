@@ -72,8 +72,8 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Local environment",
-      "program": "${workspaceRoot}/dist/localEnvironment.js",
+      "name": "Script: Local environment",
+      "program": "${workspaceRoot}/dist/scripts/localEnvironment.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
@@ -396,6 +396,20 @@
       "request": "launch",
       "name": "Script: Mail: FOSSFund",
       "program": "${workspaceRoot}/dist/scripts/email/fossfund/process.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Script: Mail: FOSSFundVote",
+      "program": "${workspaceRoot}/dist/scripts/email/fossfund/vote.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,

@@ -27,9 +27,10 @@
 // for things clearly open source.
 //
 
-import _ = require('lodash');
+import _ from 'lodash';
 import throat from 'throat';
 
+import App from '../../app';
 import appPackage = require('../../package.json');
 
 import { ILinkProvider } from '../../lib/linkProviders';
@@ -181,15 +182,11 @@ function stripPayloadSize(type: string, payload: any) {
 }
 
 export function run(config: any, reclassify: boolean) {
-  const app = require('../../app');
-  config.skipModules = new Set([
-    'web',
-  ]);
-  app.initializeJob(config, null, (error) => {
+  App.initializeJob(config, null, (error) => {
     if (error) {
       throw error;
     }
-    learn(config, app, reclassify).then(done => {
+    learn(config, App, reclassify).then(done => {
       console.log('done');
       process.exit(0);
     }).catch(error => {

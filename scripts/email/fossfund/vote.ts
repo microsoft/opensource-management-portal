@@ -11,7 +11,7 @@ import app from '../../../app';
 
 import { IProviders } from "../../../transitional";
 import { isEmployeeOrIntern } from "../../../middleware/business/employeesOnly";
-import { getOffsetMonthRange, sleep } from "../../../utils";
+import { getOffsetMonthRange, sleep, quitInAMinute } from "../../../utils";
 import { GetAddressFromUpnAsync } from '../../../lib/mailAddressProvider';
 import { IMail } from '../../../lib/mailProvider';
 
@@ -32,102 +32,73 @@ painlessConfigResolver.resolve((configurationError, config) => {
     if (error) {
       throw error;
     }
-    work(config, app).then(done => {
-      console.log('done, closing in 10 seconds after any network requests complete...');
-      setInterval(() => {
-        console.log(done);
-        process.exit(0);  
-      }, 10000);
+    work(app).then(done => {
+      quitInAMinute(true);
     }).catch(error => {
       console.dir(error);
+      quitInAMinute(false);
       throw error;
     });
   });
 });
 
-async function work(config: any, app): Promise<void> {
-
-  let type1=0, type2=0, type3=0;
-  const type1limit = 30000, type2limit = 30000, type3limit = 30000;
-
+async function work(app): Promise<void> {
+  let runLimit = 10000;
+  let inRun = 0;
   const campaignGroupId = 'fossfund';
-  const campaignId = '1';
+  const campaignId = '2'; // 2 = first voting campaign
   const emailViewName = `${campaignGroupId}-${campaignId}`;
 
   const providers = app.settings.providers as IProviders;
-  const { linkProvider, operations, eventRecordProvider, mailAddressProvider, campaignStateProvider } = providers;
-  const { start, end } = getOffsetMonthRange();
+  const { linkProvider, operations, eventRecordProvider, electionProvider, electionNominationProvider, mailAddressProvider, campaignStateProvider } = providers;
+  const { start, end } = getOffsetMonthRange(-1);
+  const election = (await electionProvider.queryElectionsByEligibilityDates(start, end))[0];
+  const nominees = await electionNominationProvider.queryApprovedElectionNominees(election.electionId);
   let employees = (await linkProvider.getAll())
     .filter(resource => isEmployeeOrIntern(resource.corporateUsername))
-    .filter(resource => !resource.isServiceAccount);
-  // employees = _.shuffle(employees);
+    .filter(resource => !resource.isServiceAccount)
+    .slice(0, runLimit);
+  employees = _.shuffle(employees);
   let i = 0;
   for (const employee of employees) {
     ++i;
     try {
       const corporateId = employee.corporateId;
-      if (type1 > type1limit && type2 > type2limit && type3 > type3limit) {
-        continue; // totally done
+      if (inRun > runLimit) {
+        continue;
       }
+      ++inRun;
       const state = await campaignStateProvider.getState(corporateId, campaignGroupId, campaignId);
       if (state.optOut) {
         console.log(`employee id=${corporateId} has opted out of the campaign group=${campaignGroupId}`);
         continue;
       }
       if (state.sent) {
-        // console.log(`${i}.`);
-        // console.log(`mail has already been sent too id=${corporateId}`);
-        // console.log('fixing a bug to an already-sent-through for ' + employee.corporateUsername);
-        // await campaignStateProvider.setSent(corporateId, campaignGroupId, campaignId);
-        // await campaignStateProvider.deleteOops(corporateId, campaignGroupId);
         await sleep(5);
         continue;
       }
-      await sleep(250);
-      const events = await eventRecordProvider.queryOpenContributionEventsByDateRangeAndThirdPartyId(
-        employee.thirdPartyId, 
+      await sleep(5);
+      const events = await eventRecordProvider.queryOpenContributionEventsByDateRangeAndCorporateId(
+        employee.corporateId,
         start, 
         end, 
         false /* corporate and open source contributions wanted */);
       const openContributions = events.filter(event => event.additionalData.contribution);
+      if (openContributions.length === 0) {
+        // not an open source contributor for the election
+        // mark this as "sent" to skip in the future
+        await campaignStateProvider.setSent(corporateId, campaignGroupId, campaignId);
+        continue;
+      }
       const otherContributionsData = events.filter(event => !event.additionalData.contribution);
       const contributions = _.groupBy(openContributions, contrib => contrib.action);
-      let contributionMailType = 'opportunity';
-      let subjectSubset = 'Introducing the FOSS Fund: Please help Microsoft contribute to open source communities';
+      let subjectSubset = 'FOSS Fund voting is now open: Let\'s give $10,000 to a project thanks to YOUR contributions!';
       let headline = 'FOSS Fund';
-      if (openContributions.length) {
-        // Go nominate!
-        contributionMailType = 'nominate';
-        subjectSubset = 'Introducing the FOSS Fund: Help us give $10,000 to an open source project thanks to YOUR contributions';
-        if (type1 > type1limit) {
-          continue;
-        }
-        ++type1;
-        // console.log(`${employee.corporateDisplayName}: cool`);
-      } else if (otherContributionsData.length) {
-        subjectSubset = 'Introducing the FOSS Fund: Help us give $10,000 to an open source project by contributing to an open source community';
-        contributionMailType = 'godo';
-        if (type2 > type2limit) {
-          continue;
-        }
-        ++type2;
-        // Tell them to do more things beyond Microsoft
-        // console.log(`${employee.corporateDisplayName}: so close`);
-      } else {
-        if (type3 > type3limit) {
-          continue;
-        }
-        ++type3;
-        // Let them know about the opportunity
-        // console.log(`${employee.corporateDisplayName}: opportunity`);
-      }
-
       const address = await GetAddressFromUpnAsync(mailAddressProvider, employee.corporateUsername);
       if (!address) {
         console.log(`No e-mail address for ${employee.corporateUsername}`);
         continue;
       }
-
       const email: IMail = {
         to: address,
         bcc: 'jeff.wilcox@microsoft.com',
@@ -137,10 +108,10 @@ async function work(config: any, app): Promise<void> {
           unsubscribeText: 'Opt-out of future FOSS Fund emails',
           unsubscribeLink: `https://repos.opensource.microsoft.com/settings/campaigns/${campaignGroupId}/unsubscribe`,
           headline,
+          election,
+          nominees: _.shuffle(nominees),
           notification: 'information',
           app: `Microsoft Open Source`,
-
-          contributionMailType,
           employee,
           openContributions,
           contributions,
@@ -151,8 +122,8 @@ async function work(config: any, app): Promise<void> {
       await operations.sendMail(email);
       console.log(`OK sent to ${corporateId} and set state for ${employee.corporateUsername} ${employee.corporateDisplayName}`);
       //console.log(`OK sent to ${corporateId} and didn't state *** for ${employee.corporateUsername} ${employee.corporateDisplayName}`);
-      console.log(`${employee.corporateUsername} ${type1}/${type1limit} ${type2}/${type2limit} ${type3}/${type3limit} `);
-      await sleep(500);
+      console.log(`${employee.corporateUsername} ${inRun}/${runLimit}`);
+      await sleep(10);
       if (i % 100 === 0) {
         console.log();
         console.log('long sleep...');

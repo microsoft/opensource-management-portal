@@ -9,7 +9,7 @@ import Debug from 'debug';
 const debug = Debug('g:server');
 const debugInitialization = Debug('startup');
 
-const app = require('../app');
+import app from '../app';
 
 let painlessConfigResolver = null;
 try {

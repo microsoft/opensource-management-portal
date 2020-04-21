@@ -3,9 +3,6 @@
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
-//- THIS PAGE IS MICROSOFT-SPECIFIC
-//- DO NOT MERGE THIS PAGE UP TO 'PUBLIC-DEVELOP'
-
 div.navbar.navbar-inverse
   div.container-fluid
     div.navbar-header
@@ -18,40 +15,6 @@ div.navbar.navbar-inverse
       ul.nav.navbar-nav(style='margin-left:-30px')
         li(class={ active: reposContext.section === 'orgs' })
           a(href='/', title='Site home page; view all GitHub organizations') Organizations
-
-        //- with the August 2017 refactor, the list is no longer actively and dynamically setup... commenting out that old UI for now
-        //-
-          li.dropdown(class={ active: /*reposContext.section === 'org' || */ reposContext.section === 'orgs' })
-            a.dropbown-toggle(
-                href=reposContext.organization && reposContext.organization.name ? '#' : '/',
-                data-toggle='dropdown',
-                role='button',
-                aria-haspopup='true',
-                aria-expanded='false')
-              //= reposContext.organization && reposContext.organization.name ? reposContext.organization.name : 'Organizations'
-              = 'Organizations'
-              | &nbsp;
-              span.caret
-            ul.dropdown-menu
-              if reposContext.organization
-                li
-                  a(href='/' + reposContext.organization.name)= reposContext.organization.name
-              if reposContext.availableOrganizations && reposContext.availableOrganizations.length > 0
-                if reposContext.organization
-                  li.divider(role='separator')
-                li.dropdown-header My organizations
-                each availableOrg in reposContext.availableOrganizations
-                  - var directPivot = reposContext.pivotDirectlyToOtherOrg ? reposContext.pivotDirectlyToOtherOrg : ''
-                  li
-                    a(href='/' + availableOrg.name + directPivot)= availableOrg.name
-                if reposContext.section !== 'orgs'
-                  li.divider(role='separator')
-                  li
-                    a(href='/') Join another organization
-              else if reposContext.organization === undefined
-                li
-                  a(href='/') Join your first org
-        //- commenting out work-in-progress to get up to production
         if reposContext.organization
           li(class={ active: reposContext.section === 'org' })
             a(href=(reposContext.organization ? '/' + reposContext.organization.name : ''), title=(reposContext.organization ? reposContext.organization.name + ' organization' : ''))= reposContext.organization.name
@@ -63,6 +26,6 @@ div.navbar.navbar-inverse
           a(href=(reposContext.organization ? '/' + reposContext.organization.name : '') + '/people', title='People: GitHub organization members') People
         if !reposContext.organization
           li(class={ active: reposContext.section === 'contributions' })
-            a(href=('/contributions', title='Contributions')) Contributions
+            a(href=('/contributions')) Contributions
 
       //-ul.nav.navbar-nav.navbar-right

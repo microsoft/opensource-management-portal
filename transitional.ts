@@ -3,10 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-// Transitional interfaces
-
 import { Application, Response, Request } from 'express';
 
 import redis from 'redis';
@@ -138,21 +134,6 @@ export interface IReposRestRedisCacheCost {
   };
 }
 
-export interface IClassicLink {
-  ghu: string;
-  ghid: string; // ?
-  aadupn: string;
-  aadname?: string;
-  aadoid: string;
-  ghavatar?: string;
-  githubToken?: string;
-  githubTokenUpdated?: any;
-  githubTokenIncreasedScope?: string;
-  githubTokenIncreasedScopeUpdated?: any;
-  joined?: Date;
-  serviceAccount?: boolean;
-}
-
 export interface IDictionary<TValue> {
   [id: string]: TValue;
 }
@@ -227,14 +208,6 @@ export interface IReposError extends Error {
   innerError?: IReposError;
 }
 
-export interface IReposApplication extends Application {
-  // Standard Express
-  set(settingName: string, settingValue: any);
-
-   // Local things
-   providers: IProviders;
-}
-
 export interface IReposAppContext {
   section?: string;
   pivotDirectlyToOtherOrg?: string;
@@ -287,24 +260,6 @@ export interface RequestWithSystemwidePermissions extends ReposAppRequest {
 export interface IResponseForSettingsPersonalAccessTokens extends Response {
   newKey?: string;
 }
-
-export function translateNewLinksArrayToOldTemporarily(links: ICorporateLink[]): IClassicLink[] {
-  return links.map(translateNewLinkFormatToOldTemporarily) as any[] as IClassicLink[];
-}
-
-export function translateNewLinkFormatToOldTemporarily(link: ICorporateLink): IClassicLink {
-  const ancientLink: IClassicLink = {
-    aadoid: link.corporateId,
-    aadupn: link.corporateUsername,
-    ghu: link.thirdPartyUsername,
-    ghid: link.thirdPartyId,
-    ghavatar: link.thirdPartyAvatar,
-    serviceAccount: link.isServiceAccount,
-  };
-  return ancientLink;
-}
-
-// Not used... yet.
 
 interface ITooManyLinksError extends Error {
   links?: any;

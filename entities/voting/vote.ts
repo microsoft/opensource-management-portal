@@ -14,6 +14,12 @@ import { PostgresJsonEntityQuery } from '../../lib/entityMetadataProvider/postgr
 const type = new EntityMetadataType('ElectionVote');
 
 const postgresTableName = 'voting';
+const columnTypeName = 'vote';
+
+export interface IElectionResult {
+  nominationId: string;
+  votes: number;
+}
 
 class VoteQueryBase extends QueryBase<ElectionVoteEntity> {
   constructor(public query: Query) {
@@ -33,6 +39,7 @@ class VoteQuery<T> extends VoteQueryBase {
 enum Query {
   VotesByCorporateId = 'VotesByCorporateId',
   VotesByElection = 'VotesByElection',
+  ResultsByElection = 'ResultsByElection',
 }
 
 interface ParameterElectionId {
@@ -93,7 +100,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiat
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, voteId);
 
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTableName, postgresTableName);
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, voteId.toLowerCase());
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, columnTypeName);
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping, new Map<string, string>([
   [Field.electionId, (Field.electionId).toLowerCase()],
   [Field.voted, (Field.voted).toLowerCase()],
@@ -118,6 +125,31 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
       return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
         electionid: parameters.electionId,
       });
+    }
+    case Query.ResultsByElection: {
+      const parameters = (base as VoteQuery<ParameterElectionId>).parameters;
+      return {
+        sql: (`
+          SELECT
+            (${metadataColumnName}->'nominationid') as nominationid,
+            count( (${metadataColumnName}->'nominationid') ) as votes
+          FROM
+            ${tableName}
+          WHERE
+            ${entityTypeColumn} = $1 
+            AND
+            ${metadataColumnName} @> $2 
+          GROUP BY
+            (${metadataColumnName}->'nominationid')
+          ORDER BY 
+            votes DESC
+          `),
+        values: [
+          entityTypeValue,
+          { electionid: parameters.electionId },
+        ],
+        skipEntityMapping: true,
+      };
     }
     default:
       throw new Error(`The query ${base.query} is not implemented by this provider for the type ${type}`);
@@ -145,6 +177,7 @@ export interface IElectionVoteEntityProvider {
 
   queryElectionVotes(electionId: string): Promise<ElectionVoteEntity[]>;
   queryVotesByCorporateId(corporateId: string): Promise<ElectionVoteEntity[]>;
+  currentElectionResults(electionId: string): Promise<IElectionResult[]>;
 }
 
 export class ElectionVoteProvider extends EntityMetadataBase implements IElectionVoteEntityProvider {
@@ -169,6 +202,12 @@ export class ElectionVoteProvider extends EntityMetadataBase implements IElectio
   queryElectionVotes(electionId: string): Promise<ElectionVoteEntity[]> {
     const query = new VoteQuery<ParameterElectionId>(Query.VotesByElection, { electionId });
     return query.discover(this, this._entities, thisProviderType);
+  }
+
+  async currentElectionResults(electionId: string): Promise<IElectionResult[]> {
+    const query = new VoteQuery<ParameterElectionId>(Query.ResultsByElection, { electionId });
+    const results = await query.generic(this, this._entities, thisProviderType);
+    return results.map(row => { return { nominationId: row.nominationid, votes: row.votes } });
   }
 
   queryVotesByCorporateId(corporateId: string): Promise<ElectionVoteEntity[]> {

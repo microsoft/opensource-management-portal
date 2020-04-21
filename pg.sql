@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS events_repoid ON events ((metadata->>'repositoryid'));
 CREATE INDEX IF NOT EXISTS events_orgid ON events ((metadata->>'organizationid'));
 CREATE INDEX IF NOT EXISTS events_userid ON events ((metadata->>'userid'));
+CREATE INDEX IF NOT EXISTS events_usercorporateid ON events ((metadata->>'usercorporateid'));
 CREATE INDEX IF NOT EXISTS events_gin ON events USING gin (metadata jsonb_path_ops);
 
 CREATE TABLE IF NOT EXISTS approvals (
@@ -147,6 +148,7 @@ CREATE TABLE IF NOT EXISTS voting (
 
 CREATE INDEX IF NOT EXISTS voting_active ON voting ((metadata->>'active'));
 CREATE INDEX IF NOT EXISTS voting_electionid ON voting ((metadata->>'electionid'));
+CREATE INDEX IF NOT EXISTS voting_results ON voting ((metadata->>'electionid'), (metadata->>'nominationid'));
 CREATE INDEX IF NOT EXISTS voting_gin ON voting USING gin (metadata jsonb_path_ops);
 
 COMMIT;

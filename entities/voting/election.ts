@@ -17,6 +17,7 @@ export enum ElectionEligibilityType {
 const type = new EntityMetadataType('Election');
 
 const postgresTableName = 'voting';
+const columnTypeName = 'election';
 
 class ElectionQueryBase extends QueryBase<ElectionEntity> {
   constructor(public query: Query) {
@@ -36,10 +37,15 @@ class ElectionQuery<T> extends ElectionQueryBase {
 enum Query {
   ActiveElections = 'ActiveElections',
   BySlug = 'BySlug',
+  ByEligibilityDates = 'ByEligibilityDates',
 }
 
 interface NoParameters {}
 interface ParameterElectionSlug { slug: string }
+interface ParametersElectionEligibilityDates {
+  start: Date;
+  end: Date
+}
 
 interface IElectionProperties {
   // THIS IS THE PRIMARY ID: electionId: any;
@@ -99,7 +105,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiat
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, electionId);
 
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTableName, postgresTableName);
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, electionId.toLowerCase());
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, columnTypeName);
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping, new Map<string, string>([
   [Field.active, (Field.active).toLowerCase()],
   [Field.title, (Field.title).toLowerCase()],
@@ -124,6 +130,13 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
       const parameters = (base as ElectionQuery<ParameterElectionSlug>).parameters;
       return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
         slug: parameters.slug,
+      });
+    }
+    case Query.ByEligibilityDates: {
+      const parameters = (base as ElectionQuery<ParametersElectionEligibilityDates>).parameters;
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        eligibilitystart: parameters.start,
+        eligibilityend: parameters.end,
       });
     }
     case Query.ActiveElections: {
@@ -158,6 +171,8 @@ export interface IElectionEntityProvider {
   updateElection(record: ElectionEntity): Promise<void>;
   queryActiveElections(): Promise<ElectionEntity[]>;
   queryElectionBySlug(slug: string): Promise<ElectionEntity[]>;
+  queryElectionsByEligibilityDates(start: Date, end: Date): Promise<ElectionEntity[]>;
+  deleteElection(metadata: ElectionEntity): Promise<void>;
 }
 
 export class ElectionProvider extends EntityMetadataBase implements IElectionEntityProvider {
@@ -190,7 +205,17 @@ export class ElectionProvider extends EntityMetadataBase implements IElectionEnt
   }
 
   queryElectionBySlug(slug: string): Promise<ElectionEntity[]> {
-    const query = new ElectionQuery<ParameterElectionSlug>(Query.ActiveElections, { slug});
+    const query = new ElectionQuery<ParameterElectionSlug>(Query.ActiveElections, { slug });
     return query.discover(this, this._entities, thisProviderType);
+  }
+
+  queryElectionsByEligibilityDates(start: Date, end: Date): Promise<ElectionEntity[]> {
+    const query = new ElectionQuery<ParametersElectionEligibilityDates>(Query.ByEligibilityDates, { start, end });
+    return query.discover(this, this._entities, thisProviderType);
+  }
+
+  async deleteElection(metadata: ElectionEntity): Promise<void> {
+    const entity = this.serialize(thisProviderType, metadata);
+    await this._entities.deleteMetadata(entity);
   }
 }
