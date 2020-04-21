@@ -10,6 +10,8 @@
 import moment from 'moment';
 import os from 'os';
 
+import App from '../../app';
+
 import ProcessOrganizationWebhook, { IGitHubWebhookProperties } from '../../webhooks/organizationProcessor';
 import { IProviders } from '../../transitional';
 import { sleep, quitInAMinute } from '../../utils';
@@ -42,18 +44,12 @@ module.exports = function runFirehoseTask(started, startedString, config) {
   } else {
     console.log(`Job started ${startedString} and will run for ${runtimeSeconds}s with empty delays of ${emptyQueueDelaySeconds}s`);
   }
-
-  const app = require('../../app');
-  config.skipModules = new Set([
-    'web',
-  ]);
-
-  app.initializeJob(config, null, (error) => {
+  App.initializeJob(config, null, (error) => {
     if (error) {
       throw error;
     }
-    const providers = app.settings.providers as IProviders;
-    const insights = app.settings.appInsightsClient;
+    const providers = App.settings.providers as IProviders;
+    const insights = App.settings.appInsightsClient;
     if (!insights) {
       throw new Error('No app insights client available');
     }
@@ -85,7 +81,7 @@ module.exports = function runFirehoseTask(started, startedString, config) {
     const threads: Promise<void>[] = [];
     let delay = 0;
     for (let i = 0; i < parallelism; i++) {
-      threads.push(createThread(app, providers, i, delay));
+      threads.push(createThread(App, providers, i, delay));
       delay += sliceDelayPerThread;
     }
     let ok = true;

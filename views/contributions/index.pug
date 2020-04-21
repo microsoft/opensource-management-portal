@@ -168,6 +168,8 @@ block content
 
   - var maximumContributionsPerGroupToShow = 5
 
+  - var now = new Date()
+
   - var startMonthName = moment(start).format('MMMM')
   - var previousMonthName = moment(start).subtract(1, 'months').format('MMMM')
 
@@ -204,48 +206,100 @@ block content
     else
       //- FOSS Fund-eligible display
 
-      if isSelf && (contributionsPageMode == 'nominate' || contributionsPageMode == 'vote')
-        .row: .col-md-12: h1 #{startMonthName} FOSS Fund #[small Free &amp; Open Source Software Fund]
+      if isSelf && elections && elections.length
+        if elections && elections.length > 0
+          each election in elections
+            - var eligibilityStart = new Date(election.eligibilityStart)
+            - var isEligibleForElection = eligibleStartMonths && eligibleStartMonths.includes(eligibilityStart.toISOString())
+            - var votingStart = new Date(election.votingStart)
+            - var votingEnd = new Date(election.votingEnd)
+            - var votingEndMoment = moment(votingEnd)
+            - var nominationStart = new Date(election.nominationStart)
+            - var nominationEnd = new Date(election.nominationEnd)
+            - var eligibilityStart = new Date(election.eligibilityStart)
+            - var eligibilityEnd = new Date(election.eligibilityEnd)
+            - var urlToVote = electionsSystem.getElectionUrl(election.slug)
+            h3: a(href=urlToVote)= election.title
+            p= election.description
+            if election.active === false
+              .alert.alert-gray(role='alert')
+                strong This election is not yet active.
+                br
+                | Check back soon for the latest.
+                br
+                br
+                | Tentative dates related to this election:
+                ul.list-unstyled
+                  if eligibilityEnd < now
+                    li Eligibility period ended #{moment(eligibilityEnd).fromNow()}
+                  if eligibilityEnd > now
+                    li Eligibility period ends #{moment(eligibilityEnd).fromNow()}
+                  if nominationStart > now
+                    li Nominations scheduled to open #{moment(nominationStart).fromNow()}
+                  else if nominationEnd < now
+                    li Nominations ended #{moment(nominationEnd).fromNow()}
+                  if votingEnd < now
+                    li Voting ended #{votingEndMoment.fromNow()}
+                  else if votingEnd > now
+                    li Voting scheduled to end #{votingEndMoment.fromNow()}
+            else if votingStart < now && now < votingEnd
+              if isEligibleForElection
+                .alert.alert-info(role='alert', class='ms-blue')
+                  strong You're eligible to #[a(style='color:white; text-decoration: underline', href=urlToVote) vote in #{election.title} right now]!
+                  br
+                  | Thank you so much for contributing to open source. Voting ends #{votingEndMoment.fromNow()}.
+                  p: a.btn.btn-huge.btn-white(href=urlToVote) Vote
+              else
+                .alert.alert-warning(role='alert', style='color:#000')
+                  strong Sorry, you're not eligible to vote in #{election.title}.
+                  br
+                  | Please contribute to an open source community to be eligible for an upcoming vote.
+                  | Contributions can include opening issues, opening and
+                  | closing pull requests, participating in pull request reviews, and other public actions.
+                  br
+                  br
+                  | The eligibility period for this election was from #{moment(eligibilityStart).fromNow()} through #{moment(eligibilityEnd).fromNow()}.
+            else if nominationStart < now && now < nominationEnd
+              if isEligibleForElection
+                .alert.alert-gray(role='alert')
+                  strong You're eligible to #[a(style='text-decoration: underline', href=urlToVote) participate in the nomination process for #{startMonthName}].
+                  br
+                  | Thank you so much for contributing to open source. The nomination period ends #{moment(nominationEnd).fromNow()}.
+                  br
+                  br
+                  p: a.btn.btn-lg.btn-primary(href=urlToVote) Nominate a project
+              else
+                .alert.alert-warning(role='alert', style='color:#000')
+                  strong Sorry, you're not eligible to nominate for #{election.title}.
+                  br
+                  | Please contribute to an open source community to be eligible for an upcoming vote.
+                  | Contributions can include opening issues, opening and
+                  | closing pull requests, participating in pull request reviews, and other public actions.
+                  br
+                  br
+                  | The eligibility period for contributions in this election was from #{moment(eligibilityStart).fromNow()} through #{moment(eligibilityEnd).fromNow()}.
+            else
+              //- This should not be a valid state.
+              p No activities available for this election right now.
+
+            //-pre= JSON.stringify(election, null, 2)
+
+            hr
+
+        .row: .col-md-12: h1 About the FOSS Fund #[small Free &amp; Open Source Software Fund]
         p.
-          Each month, Microsoft is supporting an open source project nominated by Microsoft
-          employees who contribute to open source. Each month that you contribute to a project 
-          outside of Microsoft's GitHub organizations, you're eligible to nominate a project and cast a 
+          Each month, #{config.brand.companyName} is supporting an open source project nominated by #{config.brand.companyName}
+          employees who contribute to open source. When you contribute to a project 
+          outside of #{config.brand.companyName}'s GitHub organizations, you're eligible to nominate a project and cast a 
           vote for that month.
-        p Thank you for helping Microsoft support the open source software projects that we care about.
+        p Thank you for helping #{config.brand.companyName} support the open source software projects that we care about.
 
-        if contributionCount > 0
-          .alert.alert-info(role='alert')
-            strong You're eligible to #[a(style='color:white; text-decoration: underline', href='https://forms.office.com/Pages/ResponsePage.aspx?id=v4j5cvGGr0GRqy180BHbR36H-bmuHF5EvCg8lDB4yOdUNzZLVUFGVEFCTFhVUUZUUDRPSlI5WElTMC4u', target='_new') nominate a project] and vote in the #{startMonthName} fund!
-            br
-            | Thank you so much for contributing to open source in #{startMonthName}. Voting will open in the coming weeks.
-          h3 Nominate a project
-          p Nominations #[strong are now open]. Please #[a(href='https://forms.office.com/Pages/ResponsePage.aspx?id=v4j5cvGGr0GRqy180BHbR36H-bmuHF5EvCg8lDB4yOdUNzZLVUFGVEFCTFhVUUZUUDRPSlI5WElTMC4u', target='_new') nominate a project]. 5-15 nominated projects will be in each month of voting. Any nominations that do not make the #{startMonthName} ballot will be considered for the next month automatically.
-          p: a.btn.btn-huge.btn-muted(href='https://forms.office.com/Pages/ResponsePage.aspx?id=v4j5cvGGr0GRqy180BHbR36H-bmuHF5EvCg8lDB4yOdUNzZLVUFGVEFCTFhVUUZUUDRPSlI5WElTMC4u', target='_new') Nominate a project
-        else
-          .alert.alert-warning(role='alert', style='color:#000')
-            strong Sorry, you're not eligible to vote at this time.
-            br
-            | Please contribute to an open source community to light up the nomination and voting
-            | capabilities of this page. Contributions can include opening issues, opening and
-            | closing pull requests, participating in pull request reviews, and other public actions.
-            | Eligibility is recalculated daily, so 
-            | #[strong if you have recently contributed to a project, check back here tomorrow to see your nomination and voting options]!
-
-        p Open source projects that meet the following conditions are great candidates:
+        p Open source projects that meet the following conditions are great candidates for the fund:
         ul
           li Project has an #[a(href='https://opensource.org/licenses', target='_new') OSI-approved license]
           li Project is used by Microsoft
           li Project is not maintained by a Microsoft employee
           li Project is able to receive funds (GitHub Sponsors team may be able to work with nominated projects to establish a funding system)
-
-        //- Voting
-        hr
-        if contributionCount > 0 && prior === true
-          h3 Cast your #{startMonthName} vote
-          p The voting window will open in the coming weeks.
-        else if prior === true
-          h3 Voting opens in the coming weeks
-          p You are not eligible to contribute in the #{startMonthName} fund.
 
         div(style='margin-bottom:20px')
         hr
@@ -257,18 +311,12 @@ block content
         ul
           li: a(href='https://opensource.guide/', target='_new') The Open Source Guides at https://opensource.guide
           li: a(href='https://docs.opensource.microsoft.com/content/contributing/index.html', target='_new') Microsoft's Contribution guide and policies
-          li: a(href='https://nam06.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fsearch%3Fq%3Dlabel%253Afirst-timers-only%26state%3Dopen%26type%3DIssues&data=02%7C01%7CJeff.Wilcox%40microsoft.com%7Ccf5f2217d0374c392c9708d7d002cbf7%7C72f988bf86f141af91ab2d7cd011db47%7C1%7C0%7C637206582744699280&sdata=%2FhP4bwZNDWtqNMOiTsNEIPplaodPtQMnjW4nKgKy4a8%3D&reserved=0', target='_new') Great first issues on GitHub
+          li: a(href='https://github.com/search?q=label%3Afirst-timers-only&state=open&type=Issues', target='_new') Great first issues on GitHub
           li: a(href='https://aka.ms/opensourcechannel') Open the Open Source Channel on Microsoft Teams to discuss with others
 
         div(style='margin-bottom:20px')
         hr
-      else if isSelf && contributionsPageMode == 'normal'
-        .row: .col-md-12: h1 FOSS (Free &amp; open source) Fund
-        p.
-          Each month, Microsoft is supporting an open source project nominated by Microsoft
-          employees who contribute to open source. When you contribute to a project 
-          outside of Microsoft's GitHub organizations, you're eligible to nominate a project and cast a 
-          vote for that month.
+      else if isSelf && false
 
         if !prior
           //- Current month
@@ -276,12 +324,12 @@ block content
             p
               | You contributed last month and are eligible to vote in the #{previousMonthName} FOSS Fund.
               br
-              a(href='/contributions/nominate?prior=true') Nominate and vote in the #{previousMonthName} fund...
+              a(href='/contributions/ballot?prior=true') Nominate and vote in the #{previousMonthName} fund...
             if contributionCount > 0
               p
                 | You've contributed in #{startMonthName} and will be able to participate again.
                 br
-                a(href='/contributions/nominate') Nominate and vote for the #{startMonthName} fund...
+                a(href='/contributions/ballot') Nominate and vote for the #{startMonthName} fund...
             else
               p
                 | You do not have eligible #{startMonthName} activity yet.
@@ -290,18 +338,18 @@ block content
               p
                 | You've contributed in #{startMonthName} and can participate.
                 br
-                a(href='/contributions/nominate') Nominate a project for the #{startMonthName} fund...
+                a(href='/contributions/ballot') Nominate a project for the #{startMonthName} fund...
             else
               p
                 | You do not have eligible #{startMonthName} activity.
                 br
-                a(href='/contributions/nominate') Learn more about the fund...
+                a(href='/contributions/ballot') Learn more about the fund...
 
         else if prior
           if contributionCount > 0
-            p: a(href='/contributions/nominate?prior=true') Nominate and vote in the #{startMonthName} fund...
+            p: a(href='/contributions/ballot?prior=true') Nominate and vote in the #{startMonthName} fund...
           else
-            p: a(href='/contributions/nominate?prior=true') Learn more about the FOSS Fund...
+            p: a(href='/contributions/ballot?prior=true') Learn more about the FOSS Fund...
 
         div(style='margin-bottom:20px')
         hr

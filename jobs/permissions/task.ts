@@ -5,14 +5,13 @@
 
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
-'use strict';
-
 import { Operations } from '../../business/operations';
 import { TeamPermission } from '../../business/teamPermission';
 
-const os = require('os');
+import os from 'os';
 import { shuffle } from 'lodash';
 
+import App from '../../app';
 import AutomaticTeamsWebhookProcessor from '../../webhooks/tasks/automaticTeams';
 import { GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { GitHubTokenManager } from '../../github/tokenManager';
@@ -32,17 +31,11 @@ const delayBetweenSeconds = 1;
 module.exports = function run(started, startedString, config) {
   console.log(`Job started ${startedString}`);
   GitHubTokenManager.IsBackgroundJob();
-
-  const app = require('../../app');
-  config.skipModules = new Set([
-    'web',
-  ]);
-
-  app.initializeJob(config, null, error => {
+  App.initializeJob(config, null, error => {
     if (error) {
       throw error;
     }
-    const insights = app.settings.appInsightsClient;
+    const insights = App.settings.appInsightsClient;
     if (!insights) {
       throw new Error('No app insights client available');
     }
@@ -52,7 +45,7 @@ module.exports = function run(started, startedString, config) {
         hostname: os.hostname(),
       },
     });
-    permissionsRun(config, app).then(done => {
+    permissionsRun(config, App).then(done => {
       console.log('done');
       process.exit(0);
     }).catch(error => {

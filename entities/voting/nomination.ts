@@ -13,6 +13,7 @@ import { v4 } from 'uuid';
 const type = new EntityMetadataType('ElectionNomination');
 
 const postgresTableName = 'voting';
+const columnTypeName = 'nomination';
 
 class NominationQueryBase extends QueryBase<ElectionNominationEntity> {
   constructor(public query: Query) {
@@ -38,17 +39,16 @@ interface ParameterElectionId {
   electionId: string;
 }
 
-// TODO: add GitHub repo or other URL
-// TODO: add initial justification and description from the nominator
-// TODO: add final description
-
 interface IElectionNominationProperties {
   // THIS IS THE PRIMARY ID: nominationId: any;
   electionId: any;
-  uniqueId: any;
-  approved: any;
-  title: any;
+  uniqueId: any;           // The unique ID identifies the nominee without any user-based information
+  approved: any;           // Only approved nominations appear on a ballot
+  title: any;              // Project or nominee headline
   corporateId: any;
+  web: any;                // URL to the project or repo
+  justification: any;      // Original nomination description
+  description: any;        // Visible description of the nomination for voters
 }
 
 const nominationId = 'nominationId';
@@ -60,6 +60,9 @@ const Field: IElectionNominationProperties = {
   approved: 'approved',
   title: 'title',
   corporateId: 'corporateId',
+  web: 'web',
+  justification: 'justification',
+  description: 'description',
 }
 
 const fieldNames = Object.getOwnPropertyNames(Field);
@@ -72,6 +75,10 @@ export class ElectionNominationEntity implements IElectionNominationProperties {
   approved: boolean;
   title: string;
   corporateId: string;
+
+  web: string;
+  justification: string;
+  description: string;
 
   constructor() {
     this.nominationId = '';
@@ -93,13 +100,16 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiat
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, nominationId);
 
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTableName, postgresTableName);
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, nominationId.toLowerCase());
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, columnTypeName);
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping, new Map<string, string>([
   [Field.electionId, (Field.electionId).toLowerCase()],
   [Field.uniqueId, (Field.uniqueId).toLowerCase()],
   [Field.approved, (Field.approved).toLowerCase()],
   [Field.title, (Field.title).toLowerCase()],
   [Field.corporateId, (Field.corporateId).toLowerCase()],
+  [Field.web, (Field.web).toLowerCase()],
+  [Field.justification, (Field.justification).toLowerCase()],
+  [Field.description, (Field.description).toLowerCase()],
 ]));
 EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.PostgresMapping, fieldNames, [nominationId]);
 

@@ -10,6 +10,7 @@
 
 import throat from 'throat';
 
+import App from '../../app';
 import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../../lib/linkProviders';
 import { IProviders } from '../../transitional';
 import { ICorporateLink } from '../../business/corporateLink';
@@ -20,19 +21,15 @@ import { IMicrosoftIdentityServiceBasics } from '../../lib/corporateContactProvi
 let insights;
 
 export default function Task(config) {
-  const app = require('../../app');
-  config.skipModules = new Set([
-    'web',
-  ]);
-  app.initializeJob(config, null, error => {
+  App.initializeJob(config, null, error => {
     if (error) {
       throw error;
     }
-    insights = app.settings.appInsightsClient;
+    insights = App.settings.appInsightsClient;
     if (!insights) {
       throw new Error('No app insights client available');
     }
-    refresh(config, app).then(done => {
+    refresh(config, App).then(done => {
       console.log('done');
       return quitInAMinute(true);
     }).catch(error => {

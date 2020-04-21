@@ -5,13 +5,12 @@
 
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
-'use strict';
-
 import moment from 'moment';
+import os from 'os';
+
+import app from '../../app';
 import { Operations } from '../../business/operations';
 import { GitHubTokenManager } from '../../github/tokenManager';
-
-const os = require('os');
 
 // Organization invitations cleanup: remove any invitations that are older than a
 // set period of time from the organization.
@@ -21,12 +20,6 @@ const defaultMaximumInvitationAgeDays = 7;
 
 module.exports = function run(started, startedString, config) {
   console.log(`Job started ${startedString}`);
-
-  const app = require('../../app');
-  config.skipModules = new Set([
-    'web',
-  ]);
-
   app.initializeJob(config, null, error => {
     if (error) {
       throw error;

@@ -5,26 +5,18 @@
 
 /*eslint no-console: ["error", { allow: ["log", "warn"] }] */
 
-const bodyParser = require('body-parser');
-const compression = require('compression');
+import bodyParser from 'body-parser';
+import compression from 'compression';
+import path from 'path';
 
 const debug = require('debug')('startup');
-import path = require('path');
 
 import { StaticClientApp } from './staticClientApp';
 import { StaticSiteFavIcon, StaticSiteAssets } from './staticSiteAssets';
 import ConnectSession from './session';
 import passportConfig from './passport-config';
 import Onboard from './onboarding';
-
-let viewServices = null;
-try {
-  // TODO: for public project, improve to not have a try/catch, and go off of
-  // package presence instead?
-  viewServices = require('@ospo/pug-view-services');
-} catch (noPrivateNpmInstalled) {
-  viewServices = require('../lib/pugViewServices');
-}
+import viewServices from '../lib/pugViewServices';
 
 const campaign = require('./campaign');
 const officeHyperlinks = require('./officeHyperlinks');

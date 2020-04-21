@@ -15,6 +15,7 @@ import { stringOrNumberAsString } from '../../utils';
 const type = new EntityMetadataType('ElectionNominationComment');
 
 const postgresTableName = 'voting';
+const columnTypeName = 'nominationcomment';
 
 interface IElectionNominationCommentProperties {
   // THIS IS THE PRIMARY ID: commentId: any;
@@ -56,7 +57,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiat
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, commentId);
 
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTableName, postgresTableName);
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, commentId.toLowerCase());
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, columnTypeName);
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping, new Map<string, string>([
   [Field.nominationId, (Field.nominationId).toLowerCase()],
   [Field.corporateId, (Field.corporateId).toLowerCase()],

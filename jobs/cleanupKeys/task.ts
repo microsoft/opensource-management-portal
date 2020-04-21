@@ -7,6 +7,7 @@
 
 import throat from 'throat';
 
+import App from '../../app';
 import { IProviders } from '../../transitional';
 import { sleep } from '../../utils';
 import { IGraphProvider } from '../../lib/graphProvider';
@@ -15,20 +16,15 @@ import { LocalExtensionKey } from '../../entities/localExtensionKey/localExtensi
 let insights;
 
 module.exports = function run(config) {
-  const app = require('../../app');
-  config.skipModules = new Set([
-    'web',
-  ]);
-
-  app.initializeApplication(config, null, error => {
+  App.initializeApplication(config, null, error => {
     if (error) {
       throw error;
     }
-    insights = app.settings.appInsightsClient;
+    insights = App.settings.appInsightsClient;
     if (!insights) {
       throw new Error('No app insights client available');
     }
-    cleanup(config, app).then(done => {
+    cleanup(config, App).then(done => {
       console.log('done');
       process.exit(0);
     }).catch(error => {

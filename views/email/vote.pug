@@ -1,0 +1,43 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends email
+
+block content
+  if mailToVoter
+    if link
+      h3 Thanks for your vote #{link.corporateDisplayName}.
+    else
+      h3 Thanks for your vote.
+
+  if mailToOperations
+    h3 Vote submitted
+    if link
+      p
+      if link.corporateDisplayName
+        = link.corporateDisplayName
+        br
+      if link.corporateUsername
+        = link.corporateUsername
+        br
+
+  if nomination
+    if mailToVoter
+      h2 Your vote record
+    else
+      h2 Vote record
+    h4= nomination.title
+    if nomination.web
+      p: a(href=nomination.web)= nomination.web
+    p= nomination.description
+    if vote && vote.voted
+      p= 'Vote placed: ' + vote.voted
+
+  if election
+    h2= election.title
+    p= election.description
+
+  p For more information, please refer to #[a(href='https://aka.ms/fossfund') https://aka.ms/fossfund].
+  p If you have any questions, feel free to reply to this e-mail.

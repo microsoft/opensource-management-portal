@@ -7,6 +7,7 @@
 
 import throat from 'throat';
 
+import app from '../../app';
 import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../../lib/linkProviders';
 import { IProviders } from '../../transitional';
 import { ICorporateLink } from '../../business/corporateLink';
@@ -17,10 +18,6 @@ import { sleep } from '../../utils';
 let insights;
 
 export default function Task(config) {
-  const app = require('../../app');
-  config.skipModules = new Set([
-    'web',
-  ]);
   app.initializeJob(config, null, error => {
     if (error) {
       throw error;

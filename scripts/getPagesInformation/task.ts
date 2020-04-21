@@ -5,20 +5,12 @@
 
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
-import _ = require('lodash');
+import _ from 'lodash';
 
-import { ILinkProvider } from '../../lib/linkProviders';
+import app from '../../app';
 import { IProviders, ErrorHelper } from '../../transitional';
-import { ICorporateLink } from '../../business/corporateLink';
-import { sleep } from '../../utils';
-import { EventRecord } from '../../entities/events/eventRecord';
 
 export function run(config) {
-  const app = require('../../app');
-  config.skipModules = new Set([
-    'web',
-  ]);
-
   app.initializeJob(config, null, (error) => {
     if (error) {
       throw error;
