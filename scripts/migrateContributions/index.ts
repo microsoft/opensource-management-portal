@@ -8,16 +8,14 @@
 // The local environment script is designed to allow for local debugging, test and
 // development scenarios. The go method is called with resolved configuration.
 
-import { PostgresPoolQueryAsync } from '../lib/postgresHelpers';
+import { PostgresPoolQueryAsync } from '../../lib/postgresHelpers';
 import throat from 'throat';
 
 async function go(providers: IProviders): Promise<void> {
   // ---------------------------------------------------------------------------  
   const _ = require('lodash');
   let links = await providers.linkProvider.getAll();
-  // links = links.reverse();
   links = _.shuffle(links);
-  // links = links.slice(0, 50);
   let i = 0;
 
   const throttle = throat(4);
@@ -142,11 +140,9 @@ async function go(providers: IProviders): Promise<void> {
 // -----------------------------------------------------------------------------
 // Local script initialization
 // -----------------------------------------------------------------------------
-import App, { IReposApplication } from '../app';
-import { IProviders } from '../transitional';
-import { quitInAMinute, asNumber } from '../utils';
-import { date } from 'azure-storage';
-import router from '../routes';
+import App, { IReposApplication } from '../../app';
+import { IProviders } from '../../transitional';
+import { quitInAMinute } from '../../utils';
 
 console.log('Initializing the local environment...');
 

@@ -449,6 +449,10 @@ variable value to `1`.
   - Purpose: Locks repositories that are forks until they are approved by an administrator
   - Requirements: depends on the new repo lockdown system already being enabled and in use
 
+## Breaking changes
+
+- The newer `events` entity type was refactored to use proper Postgres columns in April 2020. As this was not being used by any others, there is no entity migration script at this time that mapped the prior JSONP values into top-level column names.
+
 ## LICENSE
 
 [MIT License](LICENSE)

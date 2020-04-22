@@ -80,7 +80,7 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "localhost",
-        "DEBUG": "startup,appinsights,redis,restapi"
+        "DEBUG": "startup"
       }
     },
     {
@@ -126,6 +126,20 @@
       "env": {
         "NODE_ENV": "development",
         "DEBUG": "startup,appinsights,cache"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Cleanup Contributions Data",
+      "program": "${workspaceRoot}/dist/jobs/cleanupContributions/index.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,appinsights"
       }
     },
     {
@@ -417,6 +431,20 @@
       "env": {
         "NODE_ENV": "development",
         "DEBUG": "startup,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Script: Migrate contributions schema",
+      "program": "${workspaceRoot}/dist/scripts/migrateContributions/index.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "localhost",
+        "DEBUG": "startup"
       }
     },
     {
