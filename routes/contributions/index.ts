@@ -15,7 +15,7 @@ import FossFundRoute from './fossfund';
 import { AuthorizeOnlyCorporateAdministrators } from '../../middleware/business/corporateAdministrators';
 import { ReposAppRequest, IProviders, ErrorHelper } from '../../transitional';
 import { EventRecord } from '../../entities/events/eventRecord';
-import { AuthorizeOnlyFullTimeEmployeesAndInterns } from '../../middleware/business/employeesOnly';
+import { AuthorizeOnlyFullTimeEmployeesAndInterns, isEmployeeOrIntern } from '../../middleware/business/employeesOnly';
 import { getOffsetMonthRange } from '../../utils';
 import { FossFundElection } from '../../features/fossFundElection';
 
@@ -120,6 +120,7 @@ router.use(asyncHandler(async (req: IContributionsRequest, res, next) => {
 
 async function showContributions(req: IContributionsRequest, monthOffset: number): Promise<void> {
   const username = req.contributionsLogin;
+  const isEmployee = isEmployeeOrIntern(req.individualContext.corporateIdentity.username);
   const isSelf = username.toLowerCase() === req.individualContext.getGitHubIdentity().username.toLowerCase();
   const isOtherEventsDisplay = req.query['other'] === '1';
   const isTruncating = req.query['all'] !== '1';
@@ -177,6 +178,7 @@ async function showContributions(req: IContributionsRequest, monthOffset: number
       elections,
       electionsSystem: req.electionsSystem,
       eligibleStartMonths,
+      isEmployee,
     },
   });
 }
