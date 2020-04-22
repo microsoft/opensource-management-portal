@@ -6,181 +6,157 @@
 extends ../layout
 
 mixin displayEvents(contributions, truncateDisplay, truncateAt)
+  each contributionType in contributionTypes
+    - var contributionGroup = contributions[contributionType]
+    - var description = contributionDescriptions[contributionType]
+    if !description
+      //- ignore this unspecified type of event for now
+    else
+      if contributionGroup && Array.isArray(contributionGroup) && contributionGroup.length
+        h2= description
 
-      each contributionType in contributionTypes
-        - var contributionGroup = contributions[contributionType]
-        - var description = contributionDescriptions[contributionType]
-        if !description
-          //- ignore this unspecified type of event for now
-        else
-          if contributionGroup && Array.isArray(contributionGroup) && contributionGroup.length
-            h2= description
+        - var innerCount = 0
+        - var wereRemaining = 0
+        each contribution in contributionGroup
+          - var action = contribution.additionalData.payload.action
+          - var issue = contribution.additionalData.payload.issue
+          - var comment = contribution.additionalData.payload.comment
+          - var pr = contribution.additionalData.payload.pull_request
+          - var repo = contribution.additionalData.repo
 
-            - var innerCount = 0
-            - var wereRemaining = 0
-            each contribution in contributionGroup
-              - var action = contribution.additionalData.payload.action
-              - var issue = contribution.additionalData.payload.issue
-              - var comment = contribution.additionalData.payload.comment
-              - var pr = contribution.additionalData.payload.pull_request
-              - var repo = contribution.additionalData.repo
-
-              - ++innerCount
-              if innerCount > (truncateDisplay ? truncateAt : 1000)
-                //- ignore
-                - ++wereRemaining
-              else
-                .row
-                  .col-md-3
-                    if repo
-                      ul.list-unstyled
-                        li(style='margin-top:8px;margin-bottom:8px')
-                          ul.list-inline
-                            li: a.btn.btn-sm.btn-muted-more(target='_new', href='https://github.com/' + repo.name)= repo.name
-                  .col-md-6
-                    
-                    
-                    if contributionType == 'IssueCommentEvent'
-                      if issue && repo
-                        ul.list-unstyled
-                          li(style='margin-top:8px;margin-bottom:8px')
-                            ul.list-inline
-                              li
-                                != octicon('comment', 24)
-                              li
-                                a(target='_new', href='https://github.com/' + repo.name + '/issues/' + issue.number + '#issuecomment-' + comment.id)
-                                  = 'Issue ' + issue.number
-                                  = ' '
-                                  small= issue.title
-                          if action !== 'created'
-                            li: strong= action
-                          li(style='margin-top:8px;margin-bottom:8px')
-                            small= 'Comment: '
-                            small: strong
-                              =comment.body.substr(0, 45)
-                              if (comment.body.length > 44)
-                                = '...'
-                            //- small= 'Comment ' + comment.id
-                    
-                    
-                    else if contributionType == 'PullRequestEvent'
-                      if repo && pr
-                        ul.list-unstyled
-                          li(style='margin-top:8px;margin-bottom:8px')
-                            ul.list-inline
-                              li
-                                if action == 'opened' || action == 'reopened'
-                                  != octicon('git-pull-request', 24)
-                                else if action == 'closed'
-                                  != octicon('x', 24)
-                              li
-                                a(target='_new', href='https://github.com/' + repo.name + '/pull/' + pr.number)
-                                  = 'Pull Request ' + pr.number
-                                  = ' '
-                                  small= pr.title.substr(0, 50) + (pr.title.length >= 50 ? '...' : '')
-                          if action !== 'opened' && action !== 'closed'
-                            li: strong= action
-
-                    
-                    else if contributionType == 'IssuesEvent'
-                      if issue && repo
-                        ul.list-unstyled
-                          li(style='margin-top:8px;margin-bottom:8px')
-                            ul.list-inline
-                              li
-                                if action == 'opened'
-                                  != octicon('issue-opened', 24)
-                                else if action == 'closed'
-                                  != octicon('issue-closed', 24)
-                                else if action == 'reopened'
-                                  != octicon('issue-reopened', 24)
-                                else
-                                  != octicon('issue-opened', 24)
-                              li
-                                a(target='_new', href='https://github.com/' + repo.name + '/issues/' + issue.number)
-                                  = 'Issue ' + issue.number
-                                  = ' '
-                                  small= issue.title
-                          if action !== 'closed' && action !== 'opened' && action !== 'reopened'
-                            li: strong= action
-
-                    
-                    else if contributionType == 'CommitCommentEvent'
-                      if comment && repo && comment.commit_id
-                        ul.list-unstyled
-                          li(style='margin-top:8px;margin-bottom:8px')
-                            ul.list-inline
-                              li
-                                != octicon('comment', 24)
-                              li
-                                a(target='_new', href='https://github.com/' + repo.name + '/commit/' + comment.commit_id + '#commitcomment-' + comment.id)
-                                  = 'Comment on commit ' + comment.commit_id
-                          li(style='margin-top:8px;margin-bottom:8px')
-                            small= 'Comment: '
-                            small: strong
-                              =comment.body.substr(0, 45)
-                              if (comment.body.length > 44)
-                                = '...'
-
-
-
-                    else if contributionType == 'PullRequestReviewCommentEvent'
-                      if comment && pr
-                        ul.list-unstyled
-                          li(style='margin-top:8px;margin-bottom:8px')
-                            ul.list-inline
-                              li
-                                if action == 'created'
-                                  != octicon('comment', 24)
-                              li
-                                a(target='_new', href='https://github.com/' + repo.name + '/pull/' + pr.number)
-                                  = 'Pull Request ' + pr.number
-                                  = ' '
-                                  small= pr.title.substr(0, 50) + (pr.title.length >= 50 ? '...' : '')
-                              if action !== 'created'
-                                li= action
-                          li(style='margin-top:8px;margin-bottom:8px')
-                            small= 'Comment: '
-                            small: strong
-                              =comment.body.substr(0, 45)
-                              if (comment.body.length > 44)
-                                = '...'
-
-
-
-                    else
-                      p Information about the contribution you made is not currently available for display on this page.
-                      //-pre= JSON.stringify(contribution, undefined, 2)
-
-                  .col-md-3
-                    p= moment(contribution.created).fromNow()
-
-            if wereRemaining
-              p There were #{wereRemaining} other contributions that were made but are not being shown on this page. Add the query parameter #[code all=1] to this page to view them all.
+          - ++innerCount
+          if innerCount > (truncateDisplay ? truncateAt : 1000)
+            //- ignore
+            - ++wereRemaining
           else
-            != '<!-- No contributions of the type ' + contributionType + ' -->'
-
+            .row
+              .col-md-3
+                if repo
+                  ul.list-unstyled
+                    li(style='margin-top:8px;margin-bottom:8px')
+                      ul.list-inline
+                        li: a.btn.btn-sm.btn-muted-more(target='_new', href='https://github.com/' + repo.name)= repo.name
+              .col-md-6
+                if contributionType == 'IssueCommentEvent'
+                  if issue && repo
+                    ul.list-unstyled
+                      li(style='margin-top:8px;margin-bottom:8px')
+                        ul.list-inline
+                          li
+                            != octicon('comment', 24)
+                          li
+                            a(target='_new', href='https://github.com/' + repo.name + '/issues/' + issue.number + '#issuecomment-' + comment.id)
+                              = 'Issue ' + issue.number
+                              = ' '
+                              small= issue.title
+                      if action !== 'created'
+                        li: strong= action
+                      li(style='margin-top:8px;margin-bottom:8px')
+                        small= 'Comment: '
+                        small: strong
+                          =comment.body.substr(0, 45)
+                          if (comment.body.length > 44)
+                            = '...'
+                        //- small= 'Comment ' + comment.id
+                else if contributionType == 'PullRequestEvent'
+                  if repo && pr
+                    ul.list-unstyled
+                      li(style='margin-top:8px;margin-bottom:8px')
+                        ul.list-inline
+                          li
+                            if action == 'opened' || action == 'reopened'
+                              != octicon('git-pull-request', 24)
+                            else if action == 'closed'
+                              != octicon('x', 24)
+                          li
+                            a(target='_new', href='https://github.com/' + repo.name + '/pull/' + pr.number)
+                              = 'Pull Request ' + pr.number
+                              = ' '
+                              small= pr.title.substr(0, 50) + (pr.title.length >= 50 ? '...' : '')
+                      if action !== 'opened' && action !== 'closed'
+                        li: strong= action
+                else if contributionType == 'IssuesEvent'
+                  if issue && repo
+                    ul.list-unstyled
+                      li(style='margin-top:8px;margin-bottom:8px')
+                        ul.list-inline
+                          li
+                            if action == 'opened'
+                              != octicon('issue-opened', 24)
+                            else if action == 'closed'
+                              != octicon('issue-closed', 24)
+                            else if action == 'reopened'
+                              != octicon('issue-reopened', 24)
+                            else
+                              != octicon('issue-opened', 24)
+                          li
+                            a(target='_new', href='https://github.com/' + repo.name + '/issues/' + issue.number)
+                              = 'Issue ' + issue.number
+                              = ' '
+                              small= issue.title
+                      if action !== 'closed' && action !== 'opened' && action !== 'reopened'
+                        li: strong= action
+                else if contributionType == 'CommitCommentEvent'
+                  if comment && repo && comment.commit_id
+                    ul.list-unstyled
+                      li(style='margin-top:8px;margin-bottom:8px')
+                        ul.list-inline
+                          li
+                            != octicon('comment', 24)
+                          li
+                            a(target='_new', href='https://github.com/' + repo.name + '/commit/' + comment.commit_id + '#commitcomment-' + comment.id)
+                              = 'Comment on commit ' + comment.commit_id
+                      li(style='margin-top:8px;margin-bottom:8px')
+                        small= 'Comment: '
+                        small: strong
+                          =comment.body.substr(0, 45)
+                          if (comment.body.length > 44)
+                            = '...'
+                else if contributionType == 'PullRequestReviewCommentEvent'
+                  if comment && pr
+                    ul.list-unstyled
+                      li(style='margin-top:8px;margin-bottom:8px')
+                        ul.list-inline
+                          li
+                            if action == 'created'
+                              != octicon('comment', 24)
+                          li
+                            a(target='_new', href='https://github.com/' + repo.name + '/pull/' + pr.number)
+                              = 'Pull Request ' + pr.number
+                              = ' '
+                              small= pr.title.substr(0, 50) + (pr.title.length >= 50 ? '...' : '')
+                          if action !== 'created'
+                            li= action
+                      li(style='margin-top:8px;margin-bottom:8px')
+                        small= 'Comment: '
+                        small: strong
+                          =comment.body.substr(0, 45)
+                          if (comment.body.length > 44)
+                            = '...'
+                else
+                  p Information about the contribution you made is not currently available for display on this page.
+                  //-pre= JSON.stringify(contribution, undefined, 2)
+              .col-md-3
+                p= moment(contribution.created).fromNow()
+        if wereRemaining
+          p There were #{wereRemaining} other contributions that were made but are not being shown on this page. Add the query parameter #[code all=1] to this page to view them all.
+      else
+        != '<!-- No contributions of the type ' + contributionType + ' -->'
 
 block content
   - var fileSize = viewServices.fileSize
   - var moment = viewServices.moment
   - var octicon = viewServices.octicon
-
   - var maximumContributionsPerGroupToShow = 5
-
   - var now = new Date()
-
   - var startMonthName = moment(start).format('MMMM')
   - var previousMonthName = moment(start).subtract(1, 'months').format('MMMM')
-
   //- NOT YET IMPLEMENTED:
   //- PullRequestReviewEvent: 'Pull request reviews',
-
   .container
 
     if isOtherEventsDisplay
       //- alternative view of non-open source events
-
       if isSelf
       .row
         .col-md-11: h1 Other public activity by #{login} in #{startMonthName}
@@ -202,12 +178,10 @@ block content
         This view shows events that are to corporate-controlled public repositories on GitHub, not open source activity for the purposes of the FOSS Fund.
         #[br]
         #{startMonthName} contribution period: #{start}-#{end}
-
     else
       //- FOSS Fund-eligible display
-
       if isSelf && elections && elections.length
-        if elections && elections.length > 0
+        if elections && elections.length > 0 && isEmployee
           each election in elections
             - var eligibilityStart = new Date(election.eligibilityStart)
             - var isEligibleForElection = eligibleStartMonths && eligibleStartMonths.includes(eligibilityStart.toISOString())
@@ -285,6 +259,11 @@ block content
             //-pre= JSON.stringify(election, null, 2)
 
             hr
+        if !isEmployee
+          .alert.alert-warning(role='alert', style='color:#000')
+            strong Sorry, you're not eligible to participate in the FOSS Fund.
+            br
+            | At this time, this program is only open to Microsoft full-time employees and interns.
 
         .row: .col-md-12: h1 About the FOSS Fund #[small Free &amp; Open Source Software Fund]
         p.
