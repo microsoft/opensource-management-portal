@@ -111,6 +111,11 @@ export class MemoryLinkProvider implements ILinkProvider {
     return links;
   }
 
+  async getAllCorporateIds(): Promise<string[]> {
+    const all = await this.getAll();
+    return all.map(link => link.corporateId);
+  }
+
   async queryByCorporateUsername(username): Promise<CorporateMemoryLink[]> {
     username = username.toLowerCase();
     return this.getLinksByProperty(this.propertyMapping.corporateUsername, username);

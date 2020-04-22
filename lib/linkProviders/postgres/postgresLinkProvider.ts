@@ -17,8 +17,6 @@
 // It is assumed that a link have a unique identifier, whether constructed or passed
 // through the data layer, that can uniquely refer to a link for key operations.
 
-'use strict';
-
 const onlySupportedThirdPartyType = 'github';
 
 import { v4 as uuidV4 } from 'uuid';
@@ -184,6 +182,24 @@ export class PostgresLinkProvider implements ILinkProvider {
       const link = this.createLinkInstanceFromRow(row);
       const ll = link;
       r.push(ll);
+    }
+    return r;
+  }
+
+  async getAllCorporateIds(): Promise<string[]> {
+    const internalThirdPartyTypeValue = this._internalThirdPartyTypeValue;
+    const results = await PostgresPoolQueryAsync(this._pool, `
+      SELECT
+        corporateid
+      FROM ${this._tableName}
+      WHERE
+        thirdpartytype = $1
+    `, [
+      internalThirdPartyTypeValue,
+    ]);
+    let r = [];
+    if (results && results.rows) {
+      r = results.rows.map(row => String(row.corporateid));
     }
     return r;
   }

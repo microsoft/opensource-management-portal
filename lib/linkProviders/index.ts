@@ -29,6 +29,7 @@ export interface ILinkProvider {
   queryByCorporateId(id: string): Promise<ICorporateLink[]>;
   queryByCorporateUsername(username: string): Promise<ICorporateLink[]>;
   getAll(): Promise<ICorporateLink[]>;
+  getAllCorporateIds(): Promise<string[]>;
 
   createLink(link: ICorporateLink): Promise<string>;
   updateLink(linkInstance: ICorporateLink): Promise<void>;

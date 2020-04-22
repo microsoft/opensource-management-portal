@@ -187,7 +187,6 @@ export class TableLinkProvider implements ILinkProvider {
   }
 
   async getAll(): Promise<CorporateTableLink[]> {
-    const self = this;
     const queryOptions = {
       columns: [
         'aadoid',
@@ -205,9 +204,23 @@ export class TableLinkProvider implements ILinkProvider {
     };
     const unsorted = await queryLinksTable(this, queryOptions);
     const sorted = _.sortBy(unsorted, ['aadupn', 'ghu']);
-    const links = createLinkInstancesFromAzureTableEntityArray(self, sorted);
+    const links = createLinkInstancesFromAzureTableEntityArray(this, sorted);
     return links;
   }
+
+  async getAllCorporateIds(): Promise<string[]> {
+    const queryOptions = {
+      columns: [
+        'aadoid',
+        'PartitionKey',
+        'RowKey',
+        'Timestamp',
+      ],
+    };
+    const results = await queryLinksTable(this, queryOptions);
+    return results.map(row => String(row.aadoid)) as string[];
+  }
+
 
   queryByCorporateUsername(username: string): Promise<CorporateTableLink[]> {
     // ?? username = username.toLowerCase();
