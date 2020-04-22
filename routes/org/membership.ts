@@ -8,9 +8,10 @@ import asyncHandler from 'express-async-handler';
 
 import { ReposAppRequest } from '../../transitional';
 import { wrapError } from '../../utils';
+import RequireActiveGitHubSession from '../../middleware/github/requireActiveSession';
 const router = express.Router();
 
-router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
+router.get('/', RequireActiveGitHubSession, asyncHandler(async function (req: ReposAppRequest, res, next) {
   const organization = req.organization;
   if (!organization) {
     // TODO: Was this ever a possible situation? What's going on here? Probably was v1 (single-org)
@@ -46,7 +47,7 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   });
 }));
 
-router.post('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
+router.post('/', RequireActiveGitHubSession, asyncHandler(async function (req: ReposAppRequest, res, next) {
   const username = req.individualContext.getGitHubIdentity().username;
   const organization = req.organization;
   if (!organization) {
