@@ -738,7 +738,7 @@ export class Organization {
       username: login,
     };
     try {
-      const ok = await operations.github.post(`token ${userToken}`, 'orgs.publicizeMembership', parameters);
+      await operations.github.post(`token ${userToken}`, 'orgs.publicizeMembership', parameters);
     } catch (error) {
       throw wrapError(error, `Could not publicize the ${this.name} organization membership for  ${login}: ${error.message}`);
     }
