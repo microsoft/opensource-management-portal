@@ -71,4 +71,3 @@ COPY --from=build --chown=oss:oss /build/jobs/reports/exemptRepositories.json \
 # Host the app
 USER oss
 ENTRYPOINT ["npm", "run-script", "start-in-container"]
-

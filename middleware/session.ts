@@ -33,11 +33,13 @@ export default function ConnectSession(app, config, providers: IProviders) {
   if (isProduction && sessionProvider === 'memory') {
     throw new Error('In a production Node.js environment, a SESSION_PROVIDER of type \'memory\' is not supported.');
   }
-
   let store = undefined;
   if (sessionProvider === 'redis') {
     if (!providers.sessionRedisClient) {
       throw new Error('No provided session Redis client');
+    }
+    if (!config?.session?.redis?.ttl) {
+      throw new Error('config.session.redis.ttl is required');
     }
     const redisPrefix = config.session.redis.prefix ? `${config.session.redis.prefix}.session` : 'session';
     const redisOptions = {
@@ -54,13 +56,14 @@ export default function ConnectSession(app, config, providers: IProviders) {
     }
     store = providers.session;
   }
+  const ttlFromStore = store && store['ttl'] ? store['ttl'] : null;
   const settings = {
     secret: sessionSalt,
     name: config.session.name || 'sid',
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: (store['ttl']|| 86400) * 1000 /* milliseconds for maxAge, not seconds */,
+      maxAge: (ttlFromStore || 86400) * 1000 /* milliseconds for maxAge, not seconds */,
       secure: undefined,
       domain: undefined,
     }
