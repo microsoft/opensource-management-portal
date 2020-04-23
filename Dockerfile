@@ -11,6 +11,9 @@ COPY package-lock.json .
 
 # Only if needed, copy .npmrc files into the container
 # COPY Dockerfile.npmrc /build/.npmrc
+
+# If you are doing local development and OK with your private tokens in the contains (CAREFUL):
+# DO NOT RECOMMEND:
 # COPY .npmrc /build/.npmrc
 
 # RUN npm install --production --verbose && mv node_modules production_node_modules
@@ -25,7 +28,7 @@ RUN npm install && rm -rf .npmrc
 # TypeScript build
 RUN npm run-script build
 
-# Only if needed, build the default assets sub-project
+# The open source project build needs: build the site assets sub-project
 RUN cd default-assets-package && npm install && npm run build
 
 FROM node:12-alpine AS run
@@ -50,7 +53,7 @@ COPY --from=build --chown=oss:oss /build/data ./data
 # Copy built assets, app, config map
 COPY --from=build --chown=oss:oss /build/dist ./
 
-# Only if needed, default assets should be placed
+# The open source project build needs: default assets should be placed
 COPY --from=build --chown=oss:oss /build/default-assets-package ../default-assets-package
 
 COPY --from=build --chown=oss:oss /build/config ./config
