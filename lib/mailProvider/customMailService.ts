@@ -1,10 +1,9 @@
 //
-// Copyright (c) Microsoft.
+// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-// customMailService.js: THIS FILE IS FOR INTERNAL USE AND SHOULD NOT BE OPEN SOURCED AT THIS TIME
-
-'use strict';
+// This file uses a Microsoft-specific internal mail system that will not be very useful to others.
 
 import request = require('request');
 import { IMailProvider, IMail } from '.';
@@ -35,6 +34,8 @@ export default class IrisMailService implements IMailProvider {
     this.info = `customMailService-${customServiceConfig.version} v${appVersion}`;
     this._config = config;
   }
+
+  async initialize() {}
 
   async sendMail(mail: IMail): Promise<any> {
     const mailConfig = this._config.mail;
@@ -89,6 +90,7 @@ export default class IrisMailService implements IMailProvider {
       customMailPost.mail['category'] = category;
     }
     await new Promise((resolve, reject) => {
+      console.dir(customMailPost);
       request.post({
         auth,
         json: true,

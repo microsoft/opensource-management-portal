@@ -48,12 +48,12 @@ CREATE INDEX IF NOT EXISTS events_repoid ON events ((metadata->>'repositoryid'))
 CREATE INDEX IF NOT EXISTS events_orgid ON events ((metadata->>'organizationid'));
 CREATE INDEX IF NOT EXISTS events_userid ON events ((metadata->>'userid'));
 CREATE INDEX IF NOT EXISTS events_usercorporateid ON events ((metadata->>'usercorporateid'));
-CREATE INDEX IF NOT EXISTS events_orgname ON events ((metadata->>'organizationname'))
-CREATE INDEX IF NOT EXISTS events_open_range1 ON events((metadata->'additionaldata'->>'contribution'), (metadata->'created'))
-CREATE INDEX IF NOT EXISTS events_open_range2 ON events((metadata->'userid'), (metadata->'additionaldata'->>'contribution'), (metadata->'created'))
-CREATE INDEX IF NOT EXISTS events_open_range3 ON events((metadata->'usercorporateid'), (metadata->'additionaldata'->>'contribution'), (metadata->'created'))
-CREATE INDEX IF NOT EXISTS events_open_range4 ON events((metadata->'usercorporateid'), (metadata->'created'))
-CREATE INDEX IF NOT EXISTS events_open_range5 ON events((metadata->'additionaldata'->>'contribution'))
+CREATE INDEX IF NOT EXISTS events_orgname ON events ((metadata->>'organizationname'));
+CREATE INDEX IF NOT EXISTS events_open_range1 ON events((metadata->'additionaldata'->>'contribution'), (metadata->'created'));
+CREATE INDEX IF NOT EXISTS events_open_range2 ON events((metadata->'userid'), (metadata->'additionaldata'->>'contribution'), (metadata->'created'));
+CREATE INDEX IF NOT EXISTS events_open_range3 ON events((metadata->'usercorporateid'), (metadata->'additionaldata'->>'contribution'), (metadata->'created'));
+CREATE INDEX IF NOT EXISTS events_open_range4 ON events((metadata->'usercorporateid'), (metadata->'created'));
+CREATE INDEX IF NOT EXISTS events_open_range5 ON events((metadata->'additionaldata'->>'contribution'));
 
 CREATE INDEX IF NOT EXISTS events_c_usercorporateid ON events (usercorporateid);
 CREATE INDEX IF NOT EXISTS events_c_isopencontribution ON events (isopencontribution);

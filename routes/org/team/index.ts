@@ -138,7 +138,7 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
   if (req.existingRequest) {
     throw new Error('You have already created a team join request that is pending a decision.');
   }
-  const config = req.app.settings.runtimeConfig;
+  const { config, mailProvider } = req.app.settings.providers as IProviders;
   const organization = req.organization as Organization;
   const operations = req.app.settings.providers.operations as Operations;
   const team2 = req.team2 as Team;
@@ -173,7 +173,6 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
     });
     return res.redirect(`${organization.baseUrl}teams`);
   }
-
   const justification = req.body.justification;
   if (justification === undefined || justification === '') {
     return next(wrapError(null, 'You must include justification for your request.', true));
@@ -187,7 +186,6 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
   if (!mailProviderInUse) {
     return next(new Error('No configured approval providers configured.'));
   }
-  const mailProvider = req.app.settings.mailProvider;
   const approverMailAddresses = [];
   if (mailProviderInUse && !mailProvider) {
     return next(wrapError(null, 'No mail provider is enabled, yet this application is configured to use a mail provider.'));

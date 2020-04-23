@@ -5,8 +5,6 @@
 
 /*eslint no-console: ["error", { allow: ["log", "error", "warn", "dir"] }] */
 
-'use strict';
-
 import appPackage = require('../package.json');
 
 const debug = require('debug')('startup');

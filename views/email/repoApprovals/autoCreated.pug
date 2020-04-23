@@ -74,3 +74,8 @@ block content
       each result in results
         if result && (result.error || result.message)
           li(style=result.error ? 'color:red' : undefined)= result.message
+
+  if managerInfo && managerInfo.managerMail
+    h3 Additional notifications
+    p For visibility, the manager #{managerMail.managerDisplayName ? managerMail.managerDisplayName : managerMail.managerMail} was also notified of this new GitHub repo for open source.
+    

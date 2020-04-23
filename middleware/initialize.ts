@@ -98,8 +98,10 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
   providers.mailAddressProvider = await createMailAddressProvider(config, providers);
   app.set('mailAddressProvider', providers.mailAddressProvider);
 
-  providers.mailProvider = CreateMailProviderInstance(config);
-  app.set('mailProvider', providers.mailProvider); // necessry anymore? hopefully not!
+  const mailProvider = CreateMailProviderInstance(config);
+  const mailInitializedMessage = await mailProvider.initialize();
+  debug(`mail provider type=${config.mail.provider} ${mailInitializedMessage}`);
+  providers.mailProvider = mailProvider;
 
   providers.github = await configureGitHubLibrary(app, providers.cacheProvider, providers.linkProvider, config);
   app.set('github', providers.github);

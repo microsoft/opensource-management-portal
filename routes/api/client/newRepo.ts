@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express = require('express');
 import { ReposAppRequest } from '../../../transitional';
 import { jsonError } from '../../../middleware/jsonError';

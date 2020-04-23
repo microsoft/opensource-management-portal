@@ -21,6 +21,8 @@ export default class MockMailService implements IMailProvider {
     this.appVersion = config.logging.version;
   }
 
+  async initialize() {}
+  
   get info(): string {
     return `mockMailService-${this.customServiceConfig.version} v${this.appVersion}`;
   }

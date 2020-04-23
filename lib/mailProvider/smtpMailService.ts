@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { IMailProvider, IMail } from ".";
 
 const nodemailer = require('nodemailer');
@@ -22,6 +20,8 @@ export default class SmtpMailService implements IMailProvider {
   getSentMessages() {
     return []; // this provider does not support mocks
   }
+
+  async initialize() {}
 
   async sendMail(mail: IMail): Promise<any> {
     if (!this._config.customSmtpService) {

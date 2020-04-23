@@ -3,12 +3,12 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express = require('express');
 import asyncHandler from 'express-async-handler';
+const router = express.Router();
 
 import _ from 'lodash';
+
 import { ReposAppRequest, IProviders } from '../../../transitional';
 import { jsonError } from '../../../middleware/jsonError';
 import { IndividualContext } from '../../../user';
@@ -17,8 +17,6 @@ import { CreateRepository, ICreateRepositoryApiResult } from '../createRepo';
 import { Team, GitHubTeamRole } from '../../../business/team';
 import { GetAddressFromUpnAsync } from '../../../lib/mailAddressProvider';
 import { asNumber } from '../../../utils';
-
-const router = express.Router();
 
 interface ILocalApiRequest extends ReposAppRequest {
   apiVersion?: string;
