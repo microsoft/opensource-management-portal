@@ -15,6 +15,7 @@ import { IReposJob, IReposJobResult } from '../../app';
 
 export default async function refresh({ providers }: IReposJob) : Promise<IReposJobResult> {
   const operations = providers.operations as Operations;
+  const insights = providers.insights;
   const config = providers.config;
   const linkProvider = await createAndInitializeLinkProviderInstance(providers, config);
   const graphProvider = providers.graphProvider;

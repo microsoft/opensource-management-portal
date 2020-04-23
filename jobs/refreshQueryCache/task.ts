@@ -429,6 +429,7 @@ async function cacheRepositoryCollaborators(queryCache: QueryCache, organization
 
 export default async function refresh({ providers, args }: IReposJob) : Promise<IReposJobResult> {
   const operations = providers.operations as Operations;
+  const insights = providers.insights;
   const repositoryCacheProvider = providers.repositoryCacheProvider;
   const queryCache = providers.queryCache;
   const teamCacheProvider = providers.teamCacheProvider;

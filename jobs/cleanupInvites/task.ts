@@ -15,6 +15,7 @@ import { IReposJob } from '../../app';
 const defaultMaximumInvitationAgeDays = 7;
 
 export default async function cleanup({ providers }: IReposJob) : Promise<void> {
+  const insights = providers.insights;
   let maximumInvitationAgeDays = defaultMaximumInvitationAgeDays;
   const { config, operations } = providers;
   if (config.github && config.github.jobs && config.github.jobs.cleanup && config.github.jobs.cleanup.maximumInvitationAgeDays) {

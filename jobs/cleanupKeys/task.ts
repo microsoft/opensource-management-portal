@@ -37,6 +37,7 @@ async function lookupCorporateId(graphProvider: IGraphProvider, knownUsers: Map<
 export default async function cleanup({ providers }: IReposJob) : Promise<IReposJobResult> {
   const graphProvider = providers.graphProvider;
   const localExtensionKeyProvider = providers.localExtensionKeyProvider;
+  const insights = providers.insights;
 
   console.log('reading all keys');
   const allKeys = await localExtensionKeyProvider.getAllKeys();

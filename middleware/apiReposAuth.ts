@@ -3,15 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 // Auth provider for this application's own local key system.
 
 // As an API authentication provider, the request is augmented with a
 // "apiKeyRow" object that provides additional information found
 // while validating the key.
 
-const basicAuth = require('basic-auth');
+import basicAuth from 'basic-auth';
 import crypto from 'crypto';
 
 import { jsonError } from './jsonError';
@@ -26,7 +24,7 @@ export interface IApiRequest extends ReposAppRequest {
   userContextOverwriteRequest?: any; // refactor?
 }
 
-export function ReposApiAuthentication(req: IApiRequest, res, next) {
+export default function ReposApiAuthentication(req: IApiRequest, res, next) {
   const user = basicAuth(req);
   const key = user? (user.pass || user.name) : null;
   if (!key) {
@@ -61,25 +59,36 @@ export function ReposApiAuthentication(req: IApiRequest, res, next) {
       apiEventProperties.message = tokenError.message;
       apiEventProperties.statusCode = tokenError.statusCode;
     }
-    req.insights.trackEvent({ name: eventName, properties: apiEventProperties });
+    const insights = req.insights || (req.app.settings.providers as IProviders).insights;
+    if (insights) {
+      insights.trackEvent({ name: eventName, properties: apiEventProperties });
+    }
     if (tokenError) {
-      req.insights.trackMetric({ name: 'ApiInvalidKey', value: 1 });
+      if (insights) {
+        insights.trackMetric({ name: 'ApiInvalidKey', value: 1 });
+      }
       tokenError.skipLog = true;
       return next(jsonError(tokenError.statusCode === 404 ? 'Key not authorized' : tokenError.message, 401));
     }
     if (token.isRevoked()) {
       tokenError = new Error('A revoked key attempted to use an API');
       tokenError.authErrorMessage = tokenError.message;
-      req.insights.trackMetric({ name: 'ApiRevokedKeyAttempt', value: 1 });
+      if (insights) {
+        req.insights.trackMetric({ name: 'ApiRevokedKeyAttempt', value: 1 });
+      }
       return next(jsonError('Key revoked', 403));
     }
     if (token.isExpired()) {
       tokenError = new Error('A revoked key attempted to use an API');
       tokenError.authErrorMessage = tokenError.message;
-      req.insights.trackMetric({ name: 'ApiExpiredKeyAttempt', value: 1 });
+      if (insights) {
+        req.insights.trackMetric({ name: 'ApiExpiredKeyAttempt', value: 1 });
+      }
       return next(jsonError('Key expired', 403));
     }
-    req.insights.trackMetric({ name: 'ApiRequest', value: 1 });
+    if (insights) {
+      req.insights.trackMetric({ name: 'ApiRequest', value: 1 });
+    }
     req.apiKeyToken = token;
     req.apiKeyProviderName = 'repos';
     return next();

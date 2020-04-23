@@ -6,15 +6,13 @@
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
 import throat from 'throat';
+import { IReposJob, IReposJobResult } from '../../app';
 
 // Revoke tokens of users that no longer resolve in the corporate graph and
 // delete tokens that have been expired 30 days.
 
-import app, { IReposJob, IReposJobResult } from '../../app';
-
 const expiredTokenDeleteThresholdDays = 30;
 
-import { IProviders } from '../../transitional';
 import { PersonalAccessToken } from '../../entities/token/token';
 import { sleep } from '../../utils';
 import { IGraphProvider } from '../../lib/graphProvider';
@@ -41,8 +39,8 @@ async function lookupCorporateId(graphProvider: IGraphProvider, knownUsers: Map<
   }
 }
 
-export default async function cleanup({ app }: IReposJob) : Promise<IReposJobResult> {
-  const providers = app.settings.providers as IProviders;
+export default async function cleanup({ providers }: IReposJob) : Promise<IReposJobResult> {
+  const insights = providers.insights;
   const graphProvider = providers.graphProvider;
   const tokenProvider = providers.tokenProvider;
 

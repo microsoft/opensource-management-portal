@@ -20,7 +20,7 @@ const apiPeople = require('./people');
 const apiWebhook = require('./webhook');
 
 import { AzureDevOpsAuthenticationMiddleware } from '../../middleware/apiVstsAuth';
-import { ReposApiAuthentication } from '../../middleware/apiReposAuth';
+import ReposApiAuthentication from '../../middleware/apiReposAuth';
 import { CreateRepository } from './createRepo';
 const supportMultipleAuthProviders = require('../../middleware/supportMultipleAuthProviders');
 

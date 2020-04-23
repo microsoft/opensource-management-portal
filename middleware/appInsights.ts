@@ -3,11 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 const insights = require('../lib/insights');
 
-const appInsights = require('applicationinsights');
+import { setup as appInsightsSetup, defaultClient } from 'applicationinsights';
 
 function ignoreKubernetesProbes(envelope/* , context */) {
   if ('RequestData' === envelope.data.baseType) {
@@ -46,10 +44,9 @@ module.exports = function initializeAppInsights(app, config) {
     key = config.telemetry.jobsApplicationInsightsKey;
   }
   if (key) {
-    const instance = appInsights.setup(key).setAutoCollectDependencies(false);
-    client = appInsights.defaultClient;
-    client.addTelemetryProcessor(ignoreKubernetesProbes);
-    client.addTelemetryProcessor(filterTelemetry);
+    const instance = appInsightsSetup(key).setAutoCollectDependencies(false);
+    defaultClient.addTelemetryProcessor(ignoreKubernetesProbes);
+    defaultClient.addTelemetryProcessor(filterTelemetry);
     instance.start();
   }
 
