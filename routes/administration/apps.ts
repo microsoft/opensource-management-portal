@@ -34,6 +34,31 @@ interface IByOrgView {
   id?: number;
 }
 
+router.post('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
+  const providers = req.app.settings.providers as IProviders;
+  const { deletesettingsorgname } = req.body;
+  if (!deletesettingsorgname) {
+    return next(new Error('Not able to complete this operation'));
+  }
+  const organizationSettingsProvider = providers.organizationSettingsProvider;
+  const allOrgs = await organizationSettingsProvider.queryAllOrganizations();
+  const thisOne = allOrgs.filter(org => org.organizationName.toLowerCase() === deletesettingsorgname.toLowerCase());
+  if (thisOne.length === 1) {
+    const org = thisOne[0];
+    await organizationSettingsProvider.deleteOrganizationSetting(org);
+    req.individualContext.webContext.saveUserAlert('Removed the org.', org.organizationName, 'danger');
+    res.redirect('/administration/apps');
+    // after the redirect, delete any caching for the org...
+    if (providers.queryCache) {
+      const { queryCache } = providers;
+      queryCache.removeOrganizationById(String(org.organizationId));
+    }
+    return;
+  } else {
+    return next(new Error('Org not found with settings'));
+  }
+}));
+
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const providers = req.app.settings.providers as IProviders;
   const operations = providers.operations;

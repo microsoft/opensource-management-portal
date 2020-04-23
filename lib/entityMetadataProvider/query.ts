@@ -45,16 +45,22 @@ export enum FixedQueryType {
   OrganizationMemberCacheGetAll,
   OrganizationMemberCacheByOrganizationId,
   OrganizationMemberCacheByUserId,
+  OrganizationCacheGetAllBasics,
+  OrganizationMemberCacheDeleteByOrganizationId,
 
   // Repo cache
   RepositoryCacheGetAll,
   RepositoryCacheGetByOrganizationId,
+  RepositoryCacheDeleteByOrganizationId,
+  RepositoryCacheGetOrganizationIds,
 
   // Repo collaborator cache
   RepositoryCollaboratorCacheGetAll,
   RepositoryCollaboratorCacheByOrganizationId,
   RepositoryCollaboratorCacheByRepositoryId,
   RepositoryCollaboratorCacheByUserId,
+  RepositoryCollaboratorCacheDeleteByOrganizationId,
+  RepositoryCollaboratorCacheGetOrganizationIds,
 
   // Repository team cache
   RepositoryTeamCacheGetAll,
@@ -62,10 +68,14 @@ export enum FixedQueryType {
   RepositoryTeamCacheByTeamId,
   RepositoryTeamCacheByTeamIds,
   RepositoryTeamCacheByOrganizationId,
+  RepositoryTeamCacheDeleteByOrganizationId,
+  RepositoryTeamCacheGetOrganizationIds,
 
   // Team cache
   TeamCacheGetAll,
   TeamCacheGetByOrganizationId,
+  TeamCacheGetOrganizationIds,
+  TeamCacheDeleteByOrganizationId,
 
   // Team member cache
   TeamMemberCacheGetAll,
@@ -73,6 +83,8 @@ export enum FixedQueryType {
   TeamMemberCacheGetByUserId,
   TeamMemberCacheGetByTeamId,
   TeamMemberCacheGetByOrganizationIdAndUserId,
+  TeamMemberCacheGetOrganizationIds,
+  TeamMemberCacheDeleteByOrganizationId,
 
   // Organization settings
   OrganizationSettingsGetAll,

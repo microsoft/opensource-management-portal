@@ -18,6 +18,19 @@ export class TeamMemberCacheFixedQueryAll implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamMemberCacheGetAll;
 }
 
+export class TeamMemberCacheGetOrganizationIdsQuery implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamMemberCacheGetOrganizationIds;
+}
+
+export class TeamMemberCacheDeleteByOrganizationId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamMemberCacheDeleteByOrganizationId;
+  constructor(public organizationId: string) {
+    if (typeof(this.organizationId) !== 'string') {
+      throw new Error(`${organizationId} must be a string`);
+    }
+  }
+}
+
 export class TeamMemberCacheFixedQueryByOrganizationId implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamMemberCacheGetByOrganizationId;
   constructor(public organizationId: string) {

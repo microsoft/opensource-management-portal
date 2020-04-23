@@ -48,6 +48,19 @@ export class RepositoryCacheFixedQueryAll implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryCacheGetAll;
 }
 
+export class RepositoryCacheGetOrganizationIdsQuery implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryCacheGetOrganizationIds;
+}
+
+export class RepositoryCacheDeleteByOrganizationId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryCacheDeleteByOrganizationId;
+  constructor(public organizationId: string) {
+    if (typeof(this.organizationId) !== 'string') {
+      throw new Error(`${organizationId} must be a string`);
+    }
+  }
+}
+
 export class RepositoryCacheFixedQueryByOrganizationId implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryCacheGetByOrganizationId;
   constructor(public organizationId: string) {
@@ -92,6 +105,23 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
       return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
         organizationid: stringOrNumberAsString(organizationId),
       });
+    }
+    case FixedQueryType.RepositoryCacheDeleteByOrganizationId: {
+      const { organizationId } = query as RepositoryCacheDeleteByOrganizationId;
+      return {
+        sql: (`DELETE FROM ${tableName} WHERE ${metadataColumnName}->>'organizationid' = $1`),
+        values: [ organizationId ],
+        skipEntityMapping: true,
+      };
+    }
+    case FixedQueryType.RepositoryCacheGetOrganizationIds: {
+      return {
+        sql: (`
+          SELECT DISTINCT(${metadataColumnName}->>'organizationid') as organizationid
+          FROM ${tableName}`),
+        values: [],
+        skipEntityMapping: true,
+      };
     }
     default:
       throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);

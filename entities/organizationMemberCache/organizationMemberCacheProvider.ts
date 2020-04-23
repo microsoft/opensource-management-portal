@@ -3,10 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { OrganizationMemberCacheEntity, EntityImplementation, OrganizationMemberCacheFixedQueryAll, OrganizationMemberCacheFixedQueryByOrganizationId, OrganizationMemberCacheFixedQueryByUserId } from './organizationMemberCache';
+import { OrganizationMemberCacheEntity, EntityImplementation, OrganizationMemberCacheFixedQueryAll, OrganizationMemberCacheFixedQueryByOrganizationId, OrganizationMemberCacheFixedQueryByUserId, OrganizationBasicsFixedQuery, OrganizationMemberCacheDeleteByOrganizationId } from './organizationMemberCache';
 
 const thisProviderType = EntityImplementation.Type;
 
@@ -24,6 +22,8 @@ export interface IOrganizationMemberCacheProvider {
   queryAllOrganizationMembers(): Promise<OrganizationMemberCacheEntity[]>;
   queryOrganizationMembersByOrganizationId(organizationId: string): Promise<OrganizationMemberCacheEntity[]>;
   queryOrganizationMembersByUserId(userId: string): Promise<OrganizationMemberCacheEntity[]>;
+  queryAllOrganizationIds(): Promise<string[]>;
+  deleteByOrganizationId(organizationId: string): Promise<void>;
 }
 
 export class OrganizationMemberCacheProvider extends EntityMetadataBase implements IOrganizationMemberCacheProvider {
@@ -57,6 +57,17 @@ export class OrganizationMemberCacheProvider extends EntityMetadataBase implemen
     const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
     const results = this.deserializeArray<OrganizationMemberCacheEntity>(thisProviderType, metadatas);
     return results;
+  }
+
+  async queryAllOrganizationIds(): Promise<string[]> {
+    const query = new OrganizationBasicsFixedQuery();
+    const results = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    return results.map(row => row['organizationid']);
+  }
+
+  async deleteByOrganizationId(organizationId: string): Promise<void> {
+    const query = new OrganizationMemberCacheDeleteByOrganizationId(organizationId);
+    await this._entities.fixedQueryMetadata(thisProviderType, query);
   }
 
   async queryOrganizationMembersByOrganizationId(organizationId: string): Promise<OrganizationMemberCacheEntity[]> {

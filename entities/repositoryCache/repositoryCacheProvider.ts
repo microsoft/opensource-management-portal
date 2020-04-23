@@ -6,7 +6,7 @@
 'use strict';
 
 import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { RepositoryCacheEntity, EntityImplementation, RepositoryCacheFixedQueryAll, RepositoryCacheFixedQueryByOrganizationId } from './repositoryCache';
+import { RepositoryCacheEntity, EntityImplementation, RepositoryCacheFixedQueryAll, RepositoryCacheFixedQueryByOrganizationId, RepositoryCacheDeleteByOrganizationId, RepositoryCacheGetOrganizationIdsQuery } from './repositoryCache';
 
 const thisProviderType = EntityImplementation.Type;
 
@@ -22,6 +22,8 @@ export interface IRepositoryCacheProvider {
   deleteRepositoryCache(metadata: RepositoryCacheEntity): Promise<void>;
   queryAllRepositories(): Promise<RepositoryCacheEntity[]>;
   queryRepositoriesByOrganizationId(organizationId: string): Promise<RepositoryCacheEntity[]>;
+  queryAllOrganizationIds(): Promise<string[]>;
+  deleteByOrganizationId(organizationId: string): Promise<void>;
 }
 
 export class RepositoryCacheProvider extends EntityMetadataBase implements IRepositoryCacheProvider {
@@ -77,5 +79,16 @@ export class RepositoryCacheProvider extends EntityMetadataBase implements IRepo
   async deleteRepositoryCache(metadata: RepositoryCacheEntity): Promise<void> {
     const entity = this.serialize(thisProviderType, metadata);
     await this._entities.deleteMetadata(entity);
+  }
+
+  async queryAllOrganizationIds(): Promise<string[]> {
+    const query = new RepositoryCacheGetOrganizationIdsQuery();
+    const results = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    return results.map(row => row['organizationid']);
+  }
+
+  async deleteByOrganizationId(organizationId: string): Promise<void> {
+    const query = new RepositoryCacheDeleteByOrganizationId(organizationId);
+    await this._entities.fixedQueryMetadata(thisProviderType, query);
   }
 }

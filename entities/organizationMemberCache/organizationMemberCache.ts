@@ -56,6 +56,19 @@ export class OrganizationMemberCacheEntity implements IOrganizationMemberCachePr
   }
 }
 
+export class OrganizationBasicsFixedQuery implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.OrganizationCacheGetAllBasics;
+}
+
+export class OrganizationMemberCacheDeleteByOrganizationId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.OrganizationMemberCacheDeleteByOrganizationId;
+  constructor(public organizationId: string) {
+    if (typeof(this.organizationId) !== 'string') {
+      throw new Error(`${organizationId} must be a string`);
+    }
+  }
+}
+
 export class OrganizationMemberCacheFixedQueryAll implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.OrganizationMemberCacheGetAll;
 }
@@ -107,6 +120,23 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
   switch (query.fixedQueryType) {
     case FixedQueryType.OrganizationMemberCacheGetAll:
       return PostgresGetAllEntities(tableName, entityTypeColumn, entityTypeValue);
+    case FixedQueryType.OrganizationMemberCacheDeleteByOrganizationId: {
+      const { organizationId } = query as OrganizationMemberCacheDeleteByOrganizationId;
+      return {
+        sql: (`DELETE FROM ${tableName} WHERE ${metadataColumnName}->>'organizationid' = $1`),
+        values: [ organizationId ],
+        skipEntityMapping: true,
+      };
+    }
+    case FixedQueryType.OrganizationCacheGetAllBasics: {
+      return {
+        sql: (`
+          SELECT DISTINCT(${metadataColumnName}->>'organizationid') as organizationid
+          FROM ${tableName}`),
+        values: [],
+        skipEntityMapping: true,
+      };
+    }
     case FixedQueryType.OrganizationMemberCacheByOrganizationId: {
       const { organizationId } = query as OrganizationMemberCacheFixedQueryByOrganizationId;
       if (!organizationId) {

@@ -3,10 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { RepositoryTeamCacheEntity, EntityImplementation, RepositoryTeamCacheFixedQueryAll, RepositoryTeamCacheFixedQueryByOrganizationId, RepositoryTeamCacheFixedQueryByTeamId, RepositoryTeamCacheFixedQueryByRepositoryId, RepositoryTeamCacheFixedQueryByTeamIds } from './repositoryTeamCache';
+import { RepositoryTeamCacheEntity, EntityImplementation, RepositoryTeamCacheFixedQueryAll, RepositoryTeamCacheFixedQueryByOrganizationId, RepositoryTeamCacheFixedQueryByTeamId, RepositoryTeamCacheFixedQueryByRepositoryId, RepositoryTeamCacheFixedQueryByTeamIds, RepositoryTeamCacheDeleteByOrganizationId, RepositoryTeamCacheGetOrganizationIdsQuery } from './repositoryTeamCache';
 
 const thisProviderType = EntityImplementation.Type;
 
@@ -25,6 +23,8 @@ export interface IRepositoryTeamCacheProvider {
   queryByRepositoryId(repositoryId: string): Promise<RepositoryTeamCacheEntity[]>;
   queryByTeamId(teamId: string): Promise<RepositoryTeamCacheEntity[]>;
   queryByTeamIds(teamIds: string[]): Promise<RepositoryTeamCacheEntity[]>;
+  queryAllOrganizationIds(): Promise<string[]>;
+  deleteByOrganizationId(organizationId: string): Promise<void>;
 }
 
 export class RepositoryTeamCacheProvider extends EntityMetadataBase implements IRepositoryTeamCacheProvider {
@@ -98,5 +98,16 @@ export class RepositoryTeamCacheProvider extends EntityMetadataBase implements I
   async deleteRepositoryTeamCache(metadata: RepositoryTeamCacheEntity): Promise<void> {
     const entity = this.serialize(thisProviderType, metadata);
     await this._entities.deleteMetadata(entity);
+  }
+
+  async queryAllOrganizationIds(): Promise<string[]> {
+    const query = new RepositoryTeamCacheGetOrganizationIdsQuery();
+    const results = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    return results.map(row => row['organizationid']);
+  }
+
+  async deleteByOrganizationId(organizationId: string): Promise<void> {
+    const query = new RepositoryTeamCacheDeleteByOrganizationId(organizationId);
+    await this._entities.fixedQueryMetadata(thisProviderType, query);
   }
 }

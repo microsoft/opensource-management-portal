@@ -404,3 +404,10 @@ export function gunzipBuffer(buffer: Buffer): Promise<string> {
     });
   });
 }
+
+export function addArrayToSet<T>(set: Set<T>, array: T[]): Set<T> {
+  for (const entry of array) {
+    set.add(entry);
+  }
+  return set;
+}

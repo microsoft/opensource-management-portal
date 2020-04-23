@@ -7,7 +7,7 @@ import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvi
 import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
-import { TeamMemberCacheFixedQueryByOrganizationId, TeamMemberCacheFixedQueryByUserId, TeamMemberCacheFixedQueryByTeamId, TeamMemberCacheFixedQueryByOrganizationIdAndUserId } from '.';
+import { TeamMemberCacheFixedQueryByOrganizationId, TeamMemberCacheFixedQueryByUserId, TeamMemberCacheFixedQueryByTeamId, TeamMemberCacheFixedQueryByOrganizationIdAndUserId, TeamMemberCacheDeleteByOrganizationId } from '.';
 import { GitHubTeamRole } from '../../business/team';
 import { PostgresGetAllEntities, PostgresJsonEntityQuery } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
@@ -131,6 +131,23 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
       return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
         teamid: stringOrNumberAsString(teamId),
       });
+    }
+    case FixedQueryType.TeamMemberCacheDeleteByOrganizationId: {
+      const { organizationId } = query as TeamMemberCacheDeleteByOrganizationId;
+      return {
+        sql: (`DELETE FROM ${tableName} WHERE ${metadataColumnName}->>'organizationid' = $1`),
+        values: [ organizationId ],
+        skipEntityMapping: true,
+      };
+    }
+    case FixedQueryType.TeamMemberCacheGetOrganizationIds: {
+      return {
+        sql: (`
+          SELECT DISTINCT(${metadataColumnName}->>'organizationid') as organizationid
+          FROM ${tableName}`),
+        values: [],
+        skipEntityMapping: true,
+      };
     }
     case FixedQueryType.TeamMemberCacheGetByOrganizationIdAndUserId: {
       const { organizationId, userId } = query as TeamMemberCacheFixedQueryByOrganizationIdAndUserId;

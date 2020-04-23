@@ -124,7 +124,6 @@ export default class DirectoryMailService implements IMailProvider {
     bcc = bcc || [];
     const html = content;
     const text = null;
-    // ...
     const message = new DirectoryMailServiceMessage(this.#options.eventName);
     message.SenderProfile = this.#options.senderProfile;
     const source = html ? {
