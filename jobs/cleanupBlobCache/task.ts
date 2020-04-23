@@ -5,26 +5,10 @@
 
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
-import { IProviders } from '../../transitional';
 import BlobCache from '../../lib/caching/blob';
-import App from '../../app';
+import { IReposJob } from '../../app';
 
-export function run(config: any, reclassify: boolean) {
-  App.initializeJob(config, null, (error) => {
-    if (error) {
-      throw error;
-    }
-    go(config, App).then(done => {
-      console.log('done');
-      process.exit(0);
-    }).catch(error => {
-      throw error;
-    });
-  });
-};
-
-async function go(config, app) : Promise<void> {
-  const providers = app.settings.providers as IProviders;
+export default async function go({ providers }: IReposJob): Promise<void> {
   for (const providerName in providers) {
     const provider = providers[providerName];
     if (provider && provider['expiringBlobCache']) {

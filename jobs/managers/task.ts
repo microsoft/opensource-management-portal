@@ -10,45 +10,22 @@
 
 import throat from 'throat';
 
-import App from '../../app';
-import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../../lib/linkProviders';
-import { IProviders } from '../../transitional';
+import { IReposJob, IReposJobResult } from '../../app';
+import { createAndInitializeLinkProviderInstance } from '../../lib/linkProviders';
 import { ICorporateLink } from '../../business/corporateLink';
 import { ICachedEmployeeInformation, RedisPrefixManagerInfoCache } from '../../business/operations';
-import { sleep, quitInAMinute } from '../../utils';
+import { sleep } from '../../utils';
 import { IMicrosoftIdentityServiceBasics } from '../../lib/corporateContactProvider';
 
-let insights;
-
-export default function Task(config) {
-  App.initializeJob(config, null, error => {
-    if (error) {
-      throw error;
-    }
-    insights = App.settings.appInsightsClient;
-    if (!insights) {
-      throw new Error('No app insights client available');
-    }
-    refresh(config, App).then(done => {
-      console.log('done');
-      return quitInAMinute(true);
-    }).catch(error => {
-      if (insights) {
-        insights.trackException({ exception: error, properties: { name: 'JobRefreshManagersFailure' } });
-      }
-      throw error;
-    });
-  });
-};
-
-async function refresh(config, app) : Promise<void> {
-  const providers = app.settings.providers as IProviders;
+export default async function refresh({ providers }: IReposJob) : Promise<IReposJobResult> {
   const graphProvider = providers.graphProvider;
   const cacheHelper = providers.cacheProvider;
+  const insights = providers.insights;
+  const config = providers.config;
   const linkProvider = await createAndInitializeLinkProviderInstance(providers, config);
 
   console.log('reading all links to gather manager info ahead of any terminations');
-  const allLinks = await getAllLinks(linkProvider);
+  const allLinks = await linkProvider.getAll();
   console.log(`READ: ${allLinks.length} links`);
   insights.trackEvent({ name: 'JobRefreshManagersReadLinks', properties: { links: allLinks.length } });
 
@@ -193,7 +170,14 @@ async function refresh(config, app) : Promise<void> {
   console.log(`Manager sets:    ${managerSets}`);
   console.log(`Other updates:   ${managerMetadataUpdates}`);
   console.log();
-  insights.trackEvent({ name: 'JobRefreshManagersSuccess', properties: { managerUpdates, managerSets, managerMetadataUpdates, errors } });
+  return {
+    successProperties: {
+      managerUpdates,
+      managerSets,
+      managerMetadataUpdates,
+      errors,
+    }
+  };
 }
 
 async function getUserAndManager(graphProvider, employeeDirectoryId: string): Promise<any> {
@@ -205,8 +189,4 @@ async function getUserAndManager(graphProvider, employeeDirectoryId: string): Pr
       return resolve(info);
     });
   });
-}
-
-async function getAllLinks(linkProvider: ILinkProvider) : Promise<ICorporateLink[]> {
-  return linkProvider.getAll();
 }

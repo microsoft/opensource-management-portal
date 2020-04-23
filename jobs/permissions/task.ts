@@ -8,13 +8,11 @@
 import { Operations } from '../../business/operations';
 import { TeamPermission } from '../../business/teamPermission';
 
-import os from 'os';
 import { shuffle } from 'lodash';
 
-import App from '../../app';
+import { IReposJob, IReposJobResult } from '../../app';
 import AutomaticTeamsWebhookProcessor from '../../webhooks/tasks/automaticTeams';
 import { GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
-import { GitHubTokenManager } from '../../github/tokenManager';
 import { sleep } from '../../utils';
 import { ErrorHelper } from '../../transitional';
 
@@ -28,37 +26,8 @@ const maxParallelism = 1;
 
 const delayBetweenSeconds = 1;
 
-module.exports = function run(started, startedString, config) {
-  console.log(`Job started ${startedString}`);
-  GitHubTokenManager.IsBackgroundJob();
-  App.initializeJob(config, null, error => {
-    if (error) {
-      throw error;
-    }
-    const insights = App.settings.appInsightsClient;
-    if (!insights) {
-      throw new Error('No app insights client available');
-    }
-    insights.trackEvent({
-      name: 'JobPermissionsStarted',
-      properties: {
-        hostname: os.hostname(),
-      },
-    });
-    permissionsRun(config, App).then(done => {
-      console.log('done');
-      process.exit(0);
-    }).catch(error => {
-      if (insights) {
-        insights.trackException({ exception: error, properties: { name: 'JobPermissionsFailure' } });
-      }
-      throw error;
-    });
-  });
-};
-
-async function permissionsRun(config, app) : Promise<void> {
-  const operations = app.settings.operations as Operations;
+export default async function permissionsRun({ providers }: IReposJob) : Promise<IReposJobResult> {
+  const operations = providers.operations as Operations;
   for (const organization of shuffle(Array.from(operations.organizations.values()))) {
     console.log(`org ${organization.name}...`);
     try {
@@ -128,6 +97,7 @@ async function permissionsRun(config, app) : Promise<void> {
       console.log(`moving past ${organization.name} processing due to error...`);
     }
   }
+  return {};
 }
 
 function isAtLeastPermissionLevel(value, expected) {

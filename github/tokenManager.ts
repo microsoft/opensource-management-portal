@@ -49,6 +49,7 @@ export class GitHubTokenManager {
       throw new Error('options required');
     }
     this.#options = options;
+    GitHubTokenManager._isBackgroundJob = options.app.isBackgroundJob;
   }
 
   async initialize() {
@@ -56,10 +57,6 @@ export class GitHubTokenManager {
     await this.initializeApp(AppPurpose.Operations, this.#options.operationsApp);
     await this.initializeApp(AppPurpose.Data, this.#options.dataApp);
     await this.initializeApp(AppPurpose.BackgroundJobs, this.#options.backgroundJobs);
-  }
-
-  static IsBackgroundJob() {
-    GitHubTokenManager._isBackgroundJob = true;
   }
 
   organizationSupportsAnyPurpose(organizationName: string, organizationSettings?: OrganizationSetting) {

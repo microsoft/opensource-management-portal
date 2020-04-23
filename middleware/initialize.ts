@@ -243,95 +243,95 @@ function configureGitHubLibrary(app, redis, linkProvider: ILinkProvider, config)
 }
 
 // Asynchronous initialization for the Express app, configuration and data stores.
-export default function initialize(app: IReposApplication, express, rootdir: string, config, configurationError, callback) {
+export default async function initialize(app: IReposApplication, express, rootdir: string, config: any, exception: Error): Promise<IReposApplication> {
+  debug(config && config.isJobInternal ? 'loading job' : 'loading express application');
   app.set('started', new Date());
-  if (configurationError) {
+  app.config = config;
+  if (exception) {
     // Once app insights is available, will try to log this exception; display for now.
-    console.dir(configurationError);
+    console.dir(exception);
   }
   app.set('basedir', rootdir);
-  var providers: IProviders = {
+  const providers: IProviders = {
+    app,
     basedir: rootdir,
   };
   app.set('providers', providers);
+  app.providers = providers;
   app.set('runtimeConfig', config);
   providers.healthCheck = healthCheck(app, config);
   app.use(require('./correlationId'));
   providers.insights = appInsights(app, config);
   app.set('appInsightsClient', providers.insights);
 
-  let redisClient = null;
-  let finalizeInitialization = (error?) => {
-    // providers.redisClient = redisClient;
+  if (!exception && (!config || !config.activeDirectory)) {
+    exception = new Error(`config.activeDirectory.clientId and config.activeDirectory.clientSecret are required to initialize KeyVault`);
+  }
+  if (!exception) {
+    const kvConfig = {
+      clientId: config && config.activeDirectory ? config.activeDirectory.clientId : null,
+      clientSecret: config && config.activeDirectory ? config.activeDirectory.clientSecret : null,
+    };
+    providers.config = config;
+    let keyEncryptionKeyResolver = null;
     try {
-      require('./index')(app, express, config, rootdir, redisClient, error);
-    } catch (middlewareError) {
-      error = middlewareError;
+      const keyVaultClient = keyVault(kvConfig);
+      keyEncryptionKeyResolver = keyVaultResolver(keyVaultClient);
+      app.set('keyEncryptionKeyResolver', keyEncryptionKeyResolver);
+      providers.keyEncryptionKeyResolver = keyEncryptionKeyResolver;
+      debug('configuration secrets resolved');
+    } catch (noKeyVault) {
+      debug('configuration resolved');
     }
-    if (!error) {
-      app.use('/', expressRoutes);
-    } else {
-      console.error(error);
-      const appInsightsClient = providers.insights;
-      const crash = (error) => {
-        return () => {
-          debug('App crashed because of an initialization error.');
-          console.log(error.message);
-          if (error.stack) {
-            console.log(error.stack);
-          }
-          process.exit(1);
-        };
-      };
-      if (appInsightsClient) {
-        appInsightsClient.trackException({
-          exception: error,
-          properties: {
-            info: 'App crashed while initializing',
-          },
-        });
-        try {
-          appInsightsClient.flush({ isAppCrashing: true, callback: crash(error) });
-        } catch (sendError) {
-          console.dir(sendError);
-          crash(error)();
-        }
-      } else {
-        crash(error)();
-      }
+    try {
+      await initializeAsync(app, express, rootdir, config);
+    } catch (initializeError) {
+      console.dir(initializeError);
+      debug(`Initialization failure: ${initializeError}`);
+      exception = initializeError;
     }
-    require('./error-routes')(app, error);
-    callback(null, app);
-  };
-  if (!configurationError && (!config || !config.activeDirectory)) {
-    configurationError = `config.activeDirectory.clientId and config.activeDirectory.clientSecret are required to initialize KeyVault`;
   }
-  if (configurationError) {
-    return finalizeInitialization(configurationError);
-  }
-  const kvConfig = {
-    clientId: config && config.activeDirectory ? config.activeDirectory.clientId : null,
-    clientSecret: config && config.activeDirectory ? config.activeDirectory.clientSecret : null,
-  };
-  providers.config = config;
-  let keyEncryptionKeyResolver = null;
+  
   try {
-    const keyVaultClient = keyVault(kvConfig);
-    keyEncryptionKeyResolver = keyVaultResolver(keyVaultClient);
-    app.set('keyEncryptionKeyResolver', keyEncryptionKeyResolver);
-    providers.keyEncryptionKeyResolver = keyEncryptionKeyResolver;
-    debug('configuration secrets resolved');
-  } catch (noKeyVault) {
-    debug('configuration resolved');
+    require('./index')(app, express, config, rootdir, exception);
+  } catch (middlewareError) {
+    exception = middlewareError;
   }
-  initializeAsync(app, express, rootdir, config).then(success => {
-    finalizeInitialization();
-  }, (failure: Error) => {
-    console.dir(failure);
-    debug(`Initialization failure: ${failure.message}`);
-    finalizeInitialization(failure);
-  });
-};
+  if (!exception) {
+    app.use('/', expressRoutes);
+  } else {
+    console.error(exception);
+    const appInsightsClient = providers.insights;
+    const crash = (error) => {
+      return () => {
+        debug('App crashed because of an initialization error.');
+        console.log(error.message);
+        if (error.stack) {
+          console.log(error.stack);
+        }
+        process.exit(1);
+      };
+    };
+    if (appInsightsClient) {
+      appInsightsClient.trackException({
+        exception,
+        properties: {
+          info: 'App crashed while initializing',
+        },
+      });
+      try {
+        appInsightsClient.flush({ isAppCrashing: true, callback: crash(exception) });
+      } catch (sendError) {
+        console.dir(sendError);
+        crash(exception)();
+      }
+    } else {
+      crash(exception)();
+    }
+  }
+  require('./error-routes')(app, exception);
+  return app;
+}
 
 function createGraphProvider(config: any): Promise<IGraphProvider> {
   return new Promise((resolve, reject) => {

@@ -276,6 +276,7 @@ export class Operations {
       operationsApp: hasModernGitHubApps? options.config.github.app.operations : null,
       dataApp: hasModernGitHubApps? options.config.github.app.data : null,
       backgroundJobs: hasModernGitHubApps ? options.config.github.app.jobs : null,
+      app: this.providers.app,
     });
     this._dynamicOrganizationIds = new Set();
     this._dynamicOrganizationSettings = [];

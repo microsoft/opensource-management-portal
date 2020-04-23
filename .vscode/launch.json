@@ -16,8 +16,7 @@
       "env": {
         "NODE_ENV": "development",
         "DEBUG": "startup,cosmosdb,cache",
-        "MORE_DEBUG": "appinsights,redis,restapi,pg,querycache,user,redis-cross-org",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+        "MORE_DEBUG": "appinsights,redis,restapi,pg,querycache,user,redis-cross-org"
       }
     },
     {
@@ -32,8 +31,7 @@
       "env": {
         "NODE_ENV": "development",
         "DEBUG": "appinsights,startup,oss-cache-optimization,redis-cross-org,appinsights,health",
-        "MORE_DEBUG": "redis,restapi",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+        "MORE_DEBUG": "redis,restapi"
       }
     },
     {
@@ -48,8 +46,7 @@
       "env": {
         "NODE_ENV": "development",
         "DEBUG": "appinsights,restapi,startup,redis-cross-org,appinsights",
-        "DEBUG_GITHUB_PORTAL_SUDO_FORCE": "1",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+        "DEBUG_GITHUB_PORTAL_SUDO_FORCE": "1"
       }
     },
     {
@@ -65,8 +62,7 @@
         "NODE_ENV": "development",
         "DEBUG": "appinsights,restapi,startup,redis-cross-org,appinsights",
         "DEBUG_GITHUB_PORTAL_SUDO_OFF": "1",
-        "DEBUG_GITHUB_ORG_SUDO_OFF": "1",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+        "DEBUG_GITHUB_ORG_SUDO_OFF": "1"
       }
     },
     {
@@ -81,6 +77,20 @@
       "env": {
         "NODE_ENV": "localhost",
         "DEBUG": "startup"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Firehose",
+      "program": "${workspaceRoot}/dist/jobs/firehose/index.js",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "cwd": "${workspaceRoot}/dist",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "redis,restapi,startup,appinsights,querycache"
       }
     },
     {
@@ -103,21 +113,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Firehose",
-      "program": "${workspaceRoot}/dist/jobs/firehose/index.js",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "cwd": "${workspaceRoot}/dist",
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "redis,restapi,startup,appinsights,querycache"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Job: Cleanup Blob Caches",
+      "name": "Job: Cleanup blob cache",
       "program": "${workspaceRoot}/dist/jobs/cleanupBlobCache/index.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
@@ -131,7 +127,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Cleanup Contributions Data",
+      "name": "Job: Cleanup event data",
       "program": "${workspaceRoot}/dist/jobs/cleanupContributions/index.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
@@ -145,7 +141,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Invitation Cleanup",
+      "name": "Job: Cleanup invitations",
       "program": "${workspaceRoot}/dist/jobs/cleanupInvites/index.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
@@ -159,7 +155,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Cleanup Tokens",
+      "name": "Job: Cleanup tokens",
       "program": "${workspaceRoot}/dist/jobs/cleanupTokens/index.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
@@ -173,7 +169,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Cleanup Extension Keys",
+      "name": "Job: Cleanup extension keys",
       "program": "${workspaceRoot}/dist/jobs/cleanupKeys/index.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
@@ -187,7 +183,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Refresh Usernames",
+      "name": "Job: User attributes hygiene",
       "program": "${workspaceRoot}/dist/jobs/refreshUsernames/index.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
@@ -201,7 +197,21 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Refresh QC All",
+      "name": "Job: Manager hygiene",
+      "program": "${workspaceRoot}/dist/jobs/managers/index.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "redis,restapi,startup,appinsights,cache"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Consistency: All",
       "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
       "args": ["all"],
       "cwd": "${workspaceRoot}/dist",
@@ -216,22 +226,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Get Pages Information",
-      "program": "${workspaceRoot}/dist/jobs/getPagesInformation/index.js",
-      "args": ["all"],
-      "cwd": "${workspaceRoot}/dist",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "startup,appinsights"
-      }
-    },
-      {
-      "type": "node",
-      "request": "launch",
-      "name": "Job: Refresh QC teams",
+      "name": "Job: Consistency: Teams",
       "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
       "args": ["teams"],
       "cwd": "${workspaceRoot}/dist",
@@ -246,7 +241,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Refresh QC orgmembers",
+      "name": "Job: Consistency: Org members",
       "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
       "args": ["organizations"],
       "cwd": "${workspaceRoot}/dist",
@@ -261,7 +256,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Refresh QC repo collabs",
+      "name": "Job: Consistency: Repo collaborators",
       "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
       "args": ["collaborators"],
       "cwd": "${workspaceRoot}/dist",
@@ -276,7 +271,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Refresh QC repo teamperms",
+      "name": "Job: Consistency: Team permissions",
       "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
       "args": ["permissions"],
       "cwd": "${workspaceRoot}/dist",
@@ -291,20 +286,6 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Refresh Managers",
-      "program": "${workspaceRoot}/dist/jobs/managers/index.js",
-      "cwd": "${workspaceRoot}/dist",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "redis,restapi,startup,appinsights,cache"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "Job: Recent Contributions",
       "program": "${workspaceRoot}/dist/jobs/recentContributions/index.js",
       "cwd": "${workspaceRoot}/dist",
@@ -314,37 +295,6 @@
       "env": {
         "NODE_ENV": "development",
         "DEBUG": "startup,appinsights"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Job: Reclassify Contributions",
-      "program": "${workspaceRoot}/dist/jobs/recentContributions/reclassify.js",
-      "cwd": "${workspaceRoot}/dist",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "startup,appinsights,github,rest"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Script: Import audit CSV",
-      "program": "${workspaceRoot}/dist/jobs/importAuditLog/index.js",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "args": [
-        "c:/Users/jwilcox/Downloads/export-microsoft-1572565889.csv"
-      ],
-      "cwd": "${workspaceRoot}/dist",
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "redis,restapi,startup,appinsights"
       }
     },
     {
@@ -401,14 +351,13 @@
       "env": {
         "NODE_ENV": "production",
         "DEBUG": "startup,appinsights,health",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0",
         "NOTE_FOR_PUBLIC_MEMORY_PROVIDER_USE": "In-memory providers should fail in production node env by design, this entry helps validate that"
       }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Script: Mail: FOSSFund",
+      "name": "Campaign: Fund info",
       "program": "${workspaceRoot}/dist/scripts/email/fossfund/process.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
@@ -422,7 +371,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Script: Mail: FOSSFundVote",
+      "name": "Campaign: Fund vote",
       "program": "${workspaceRoot}/dist/scripts/email/fossfund/vote.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
@@ -431,6 +380,37 @@
       "env": {
         "NODE_ENV": "development",
         "DEBUG": "startup,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Script: Reclassify contributions",
+      "program": "${workspaceRoot}/dist/jobs/recentContributions/reclassify.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,appinsights,github,rest"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Script: Import audit CSV",
+      "program": "${workspaceRoot}/dist/jobs/importAuditLog/index.js",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "args": [
+        "c:/Users/jwilcox/Downloads/export-microsoft-1572565889.csv"
+      ],
+      "cwd": "${workspaceRoot}/dist",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "redis,restapi,startup,appinsights"
       }
     },
     {
@@ -461,6 +441,21 @@
       "env": {
         "NODE_ENV": "development,pg",
         "DEBUG": "redis,restapi,startup,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Script: Pages info",
+      "program": "${workspaceRoot}/dist/scripts/getPagesInformation/index.js",
+      "args": ["all"],
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,appinsights"
       }
     },
     {

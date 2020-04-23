@@ -11,9 +11,11 @@
 import { PostgresPoolQueryAsync } from '../lib/postgresHelpers';
 import throat from 'throat';
 
+import _ from 'lodash';
+
 async function go(providers: IProviders): Promise<void> {
   // ---------------------------------------------------------------------------  
-  const _ = require('lodash');
+
   let links = await providers.linkProvider.getAll();
   // links = links.reverse();
   links = _.shuffle(links);
@@ -142,44 +144,11 @@ async function go(providers: IProviders): Promise<void> {
 // -----------------------------------------------------------------------------
 // Local script initialization
 // -----------------------------------------------------------------------------
-import App, { IReposApplication } from '../app';
+import app, { IReposJob } from '../app';
 import { IProviders } from '../transitional';
-import { quitInAMinute, asNumber } from '../utils';
-import { date } from 'azure-storage';
-import router from '../routes';
-
 console.log('Initializing the local environment...');
 
-let painlessConfigResolver = null;
-try {
-  painlessConfigResolver = require('painless-config-resolver')();
-} catch (error) {
-  console.log('Painless config resolver initialization error:');
-  console.dir(error);
-  throw error;
-}
-
-painlessConfigResolver.resolve((configurationError, config) => {
-  if (configurationError) {
-    throw configurationError;
-  }
-  return initialize(config);
+app.runJob(async function ({ providers }: IReposJob) {
+  await go(providers);
+  return {};
 });
-
-function initialize(config) {
-  console.log('Local configuration ready, initializing non-web app pipeline...');
-  App.initializeJob(config, null, error => {
-    if (error) {
-      throw error;
-    }
-    console.log('Local environment started.');
-    return go(App.settings.providers as IProviders).then(ok => {
-      console.log('Local environment script complete.');
-      quitInAMinute(true);
-    }).catch(error => {
-      console.error(error);
-      console.dir(error);
-      quitInAMinute(false);
-    });
-  });
-}

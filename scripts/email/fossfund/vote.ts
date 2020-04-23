@@ -7,49 +7,18 @@
 
 import _ from 'lodash';
 
-import app from '../../../app';
-
-import { IProviders } from "../../../transitional";
+import app, { IReposJob } from '../../../app';
 import { isEmployeeOrIntern } from "../../../middleware/business/employeesOnly";
-import { getOffsetMonthRange, sleep, quitInAMinute } from "../../../utils";
+import { getOffsetMonthRange, sleep, quitInTenSeconds } from "../../../utils";
 import { GetAddressFromUpnAsync } from '../../../lib/mailAddressProvider';
 import { IMail } from '../../../lib/mailProvider';
 
-let painlessConfigResolver = null;
-try {
-  painlessConfigResolver = require('painless-config-resolver')();
-} catch (error) {
-  console.log('Painless config resolver initialization error:');
-  console.dir(error);
-  throw error;
-}
-
-painlessConfigResolver.resolve((configurationError, config) => {
-  if (configurationError) {
-    throw configurationError;
-  }
-  app.initializeJob(config, null, (error) => {
-    if (error) {
-      throw error;
-    }
-    work(app).then(done => {
-      quitInAMinute(true);
-    }).catch(error => {
-      console.dir(error);
-      quitInAMinute(false);
-      throw error;
-    });
-  });
-});
-
-async function work(app): Promise<void> {
+app.runJob(async function work({ providers }: IReposJob) {
   let runLimit = 45000;
   let inRun = 0;
   const campaignGroupId = 'fossfund';
   const campaignId = '2'; // 2 = first voting campaign
   const emailViewName = `${campaignGroupId}-${campaignId}`;
-
-  const providers = app.settings.providers as IProviders;
   const { linkProvider, operations, eventRecordProvider, electionProvider, electionNominationProvider, mailAddressProvider, campaignStateProvider } = providers;
   const { start, end } = getOffsetMonthRange(-1);
   const election = (await electionProvider.queryElectionsByEligibilityDates(start, end))[0];
@@ -134,4 +103,4 @@ async function work(app): Promise<void> {
       console.dir(processEmployeeError);
     }
   }
-}
+});

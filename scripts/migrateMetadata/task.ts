@@ -13,7 +13,7 @@ const circuitBreakerOverrideClearingDestination = process.env.CIRCUIT_BREAKER_OV
 
 import throat from 'throat';
 
-import app from '../../app';
+import app, { IReposJob } from '../../app';
 import { IProviders } from '../../transitional';
 import { createAndInitializeEntityMetadataProviderInstance, IEntityMetadataProvidersOptions } from '../../lib/entityMetadataProvider';
 import { createAndInitializeRepositoryMetadataProviderInstance } from '../../entities/repositoryMetadata';
@@ -23,23 +23,8 @@ import { createAndInitializeApprovalProviderInstance } from '../../entities/team
 
 const parallelMigrations = 1;
 
-export default function Task(config) {
-  app.initializeApplication(config, null, error => {
-    if (error) {
-      throw error;
-    }
-    migration(config, app).then(done => {
-      console.log('done');
-      process.exit(0);
-    }).catch(error => {
-      console.dir(error);
-      throw error;
-    });
-  });
-};
-
-async function migration(config, app) : Promise<void> {
-  const providers = app.settings.providers as IProviders;
+export default async function migration({ providers }: IReposJob) : Promise<void> {
+  const config = providers.config;
   const emOptions: IEntityMetadataProvidersOptions = {
     tableOptions: {
       account: config.github.links.table.account,
