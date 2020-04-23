@@ -68,6 +68,19 @@ export class RepositoryTeamCacheEntity implements IRepositoryTeamCacheProperties
   }
 }
 
+export class RepositoryTeamCacheGetOrganizationIdsQuery implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryTeamCacheGetOrganizationIds;
+}
+
+export class RepositoryTeamCacheDeleteByOrganizationId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryTeamCacheDeleteByOrganizationId;
+  constructor(public organizationId: string) {
+    if (typeof(this.organizationId) !== 'string') {
+      throw new Error(`${organizationId} must be a string`);
+    }
+  }
+}
+
 export class RepositoryTeamCacheFixedQueryAll implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryTeamCacheGetAll;
 }
@@ -168,6 +181,23 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
       return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
         teamid: stringOrNumberAsString(teamId),
       });
+    }
+    case FixedQueryType.RepositoryTeamCacheDeleteByOrganizationId: {
+      const { organizationId } = query as RepositoryTeamCacheDeleteByOrganizationId;
+      return {
+        sql: (`DELETE FROM ${tableName} WHERE ${metadataColumnName}->>'organizationid' = $1`),
+        values: [ organizationId ],
+        skipEntityMapping: true,
+      };
+    }
+    case FixedQueryType.RepositoryTeamCacheGetOrganizationIds: {
+      return {
+        sql: (`
+          SELECT DISTINCT(${metadataColumnName}->>'organizationid') as organizationid
+          FROM ${tableName}`),
+        values: [],
+        skipEntityMapping: true,
+      };
     }
     case FixedQueryType.RepositoryTeamCacheByTeamIds: {
       const { teamIds } = query as RepositoryTeamCacheFixedQueryByTeamIds;

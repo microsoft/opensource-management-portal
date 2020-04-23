@@ -29,6 +29,7 @@ import { TeamCacheEntity } from '../entities/teamCache/teamCache';
 import { RepositoryTeamCacheEntity } from '../entities/repositoryTeamCache/repositoryTeamCache';
 import { RepositoryCacheEntity } from '../entities/repositoryCache/repositoryCache';
 import { RepositoryCollaboratorCacheEntity } from '../entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
+
 const debug = Debug('querycache');
 
 export enum QueryCacheOperation {
@@ -89,6 +90,32 @@ export default class QueryCache {
 
   get operations(): Operations {
     return this._providers.operations;
+  }
+
+  // -- Major removal function for when an organization is deleted or unmanaged
+
+  async removeOrganizationById(organizationId: string): Promise<void> {
+    try {
+      if (this.supportsOrganizationMembership) {
+        await this._providers.organizationMemberCacheProvider.deleteByOrganizationId(organizationId);
+      }
+      if (this.supportsRepositories) {
+        await this._providers.repositoryCacheProvider.deleteByOrganizationId(organizationId);
+      }
+      if (this.supportsRepositoryCollaborators) {
+        await this._providers.repositoryCollaboratorCacheProvider.deleteByOrganizationId(organizationId);
+      }
+      if (this.supportsTeamPermissions) {
+        await this._providers.repositoryTeamCacheProvider.deleteByOrganizationId(organizationId);
+      }
+      if (this.supportsTeams) {
+        await this._providers.teamCacheProvider.deleteByOrganizationId(organizationId);
+      }
+    } catch (groupError) {
+      console.dir(groupError);
+      throw groupError;
+    }
+    console.log('removed organization cache for ' + organizationId);
   }
 
   // -- Team Members
@@ -237,6 +264,13 @@ export default class QueryCache {
   get supportsRepositories(): boolean {
     const repositoryCacheProvider = this._providers.repositoryCacheProvider;
     return !!repositoryCacheProvider;
+  }
+
+  repositoryCacheOrganizationIds(): Promise<string[]> {
+    if (!this.supportsRepositories) {
+      this.throwMethodNotSupported('repositoryCacheOrganizationIds', 'repositoryCacheProvider');
+    }
+    return this._providers.repositoryCacheProvider.queryAllOrganizationIds();
   }
 
   async addOrUpdateRepository(organizationId: string, repositoryId: string, repositoryDetails: any): Promise<QueryCacheOperation> {
@@ -493,6 +527,13 @@ export default class QueryCache {
     return !!repositoryTeamCacheProvider;
   }
 
+  teamOrganizationIds(): Promise<string[]> {
+    if (!this.supportsTeams) {
+      this.throwMethodNotSupported('teamOrganizationIds', 'teamCacheProvider');
+    }
+    return this._providers.teamCacheProvider.queryAllOrganizationIds();
+  }
+
   async addOrUpdateTeamsPermission(organizationId: string, repositoryId: string, repositoryName: string, teamId: string, permission: GitHubRepositoryPermission): Promise<QueryCacheOperation> {
     if (!this.supportsTeamPermissions) {
       throw new Error('addOrUpdateTeamsPermission not supported');
@@ -563,6 +604,13 @@ export default class QueryCache {
       outcome = QueryCacheOperation.Delete;
     }
     return outcome;
+  }
+
+  repositoryTeamOrganizationIds(): Promise<string[]> {
+    if (!this.supportsTeamPermissions) {
+      this.throwMethodNotSupported('repositoryTeamOrganizationIds', 'repositoryTeamCacheProvider');
+    }
+    return this._providers.repositoryTeamCacheProvider.queryAllOrganizationIds();
   }
 
   async repositoryTeamPermissions(repositoryId: string): Promise<IQueryCacheTeamRepositoryPermission[]> {
@@ -698,6 +746,13 @@ export default class QueryCache {
     return rawEntities.map(cacheEntity => this.hydrateRepositoryCollaborator(cacheEntity)).filter(real => real);
   }
 
+  repositoryCollaboratorCacheOrganizationIds(): Promise<string[]> {
+    if (!this.supportsRepositoryCollaborators) {
+      this.throwMethodNotSupported('supportsRepositoryCollaborators', 'repositoryCollaboratorCacheProvider');
+    }
+    return this._providers.repositoryCollaboratorCacheProvider.queryAllOrganizationIds();
+  }
+
   async removeRepositoryCollaborator(organizationId: string, repositoryId: string, userId: string): Promise<QueryCacheOperation> {
     if (!this.supportsRepositoryCollaborators) {
       throw new Error('removeRepositoryCollaborator not supported');
@@ -826,6 +881,13 @@ export default class QueryCache {
       return;
       }
     }).filter(exists => exists);
+  }
+
+  organizationMemberCacheOrganizationIds(): Promise<string[]> {
+    if (!this.supportsOrganizationMembership) {
+      this.throwMethodNotSupported('organizationMemberCacheOrganizationIds', 'organizationMemberCacheProvider');
+    }
+    return this._providers.organizationMemberCacheProvider.queryAllOrganizationIds();
   }
 
   async userOrganizations(githubId: string): Promise<IQueryCacheOrganizationMembership[]> {

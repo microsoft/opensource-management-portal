@@ -7,7 +7,7 @@ import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvi
 import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
-import { TeamCacheFixedQueryByOrganizationId } from '.';
+import { TeamCacheFixedQueryByOrganizationId, TeamCacheDeleteByOrganizationId } from '.';
 import { PostgresJsonEntityQuery, PostgresGetAllEntities } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
 
@@ -80,6 +80,23 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
   switch (query.fixedQueryType) {
     case FixedQueryType.TeamCacheGetAll: {
       return PostgresGetAllEntities(tableName, entityTypeColumn, entityTypeValue);
+    }
+    case FixedQueryType.TeamCacheDeleteByOrganizationId: {
+      const { organizationId } = query as TeamCacheDeleteByOrganizationId;
+      return {
+        sql: (`DELETE FROM ${tableName} WHERE ${metadataColumnName}->>'organizationid' = $1`),
+        values: [ organizationId ],
+        skipEntityMapping: true,
+      };
+    }
+    case FixedQueryType.TeamCacheGetOrganizationIds: {
+      return {
+        sql: (`
+          SELECT DISTINCT(${metadataColumnName}->>'organizationid') as organizationid
+          FROM ${tableName}`),
+        values: [],
+        skipEntityMapping: true,
+      };
     }
     case FixedQueryType.TeamCacheGetByOrganizationId: {
       const { organizationId } = query as TeamCacheFixedQueryByOrganizationId;

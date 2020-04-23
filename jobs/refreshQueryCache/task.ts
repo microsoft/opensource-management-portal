@@ -18,7 +18,7 @@ import { Repository, IGetCollaboratorsOptions, GitHubCollaboratorAffiliationQuer
 import { Collaborator } from '../../business/collaborator';
 import { TeamPermission } from '../../business/teamPermission';
 import { OrganizationMember } from '../../business/organizationMember';
-import { sleep } from '../../utils';
+import { sleep, addArrayToSet } from '../../utils';
 import QueryCache, { IQueryCacheOrganizationMembership, IQueryCacheTeam, IQueryCacheRepository, IQueryCacheTeamRepositoryPermission, IQueryCacheRepositoryCollaborator, QueryCacheOperation, IQueryCacheTeamMembership } from '../../business/queryCache';
 
 interface IConsistencyStats {
@@ -475,6 +475,7 @@ export default async function refresh({ providers, args }: IReposJob) : Promise<
   }
   const parallelWorkCount = 1;
   const orgs = shuffle(Array.from(operations.organizations.values()));
+  const currentlyKnownOrgIds = new Set<string>(orgs.map(org => String(org.id)));
   let organizationWorkerCount = 0;
   const allUpStats: IConsistencyStats = {
     'delete': 0,
@@ -525,12 +526,34 @@ export default async function refresh({ providers, args }: IReposJob) : Promise<
     console.dir(dynamicError);
   }
 
-  // TODO: CLEANUP: if an organization is removed from the app...
+  let removedOrganizations = 0;
+  if (queryCache && queryCache.supportsOrganizationMembership && (refreshSet === 'all' || refreshSet === 'organizations')) {
+    const knownOrgIds = new Set<string>();
+    addArrayToSet(knownOrgIds, await queryCache.organizationMemberCacheOrganizationIds());
+    addArrayToSet(knownOrgIds, await queryCache.repositoryCacheOrganizationIds());
+    addArrayToSet(knownOrgIds, await queryCache.repositoryCollaboratorCacheOrganizationIds());
+    addArrayToSet(knownOrgIds, await queryCache.repositoryTeamOrganizationIds());
+    addArrayToSet(knownOrgIds, await queryCache.teamOrganizationIds());
+    const unknownOrgs = Array.from(knownOrgIds.values()).filter(id => !currentlyKnownOrgIds.has(id));
+    if (unknownOrgs.length > 0) {
+      for (const id of unknownOrgs) {
+        try {
+          console.log(`Unknown former organization ID: ${id}`);
+          await queryCache.removeOrganizationById(id);
+          ++removedOrganizations;
+        } catch (processingIndividualOrgError) {
+          console.dir(processingIndividualOrgError);
+        }
+      }
+    }
+  }
+
   console.log('--------------------------------------------------');
   console.log('All organizations processed, all-up results:');
-  console.log(`Added: ${allUpStats['new']}`);
-  console.log(`Removed: ${allUpStats['delete']}`);
-  console.log(`Updated: ${allUpStats['update']}`);
+  console.log(`Added:        ${allUpStats['new']}`);
+  console.log(`Removed:      ${allUpStats['delete']}`);
+  console.log(`Updated:      ${allUpStats['update']}`);
+  console.log(`Removed orgs: ${removedOrganizations}`);
   console.log('--------------------------------------------------');
   insights.trackEvent({ name: 'JobRefreshQueryCacheSuccess', properties: {
     allUpNew: allUpStats['new'].toString(),

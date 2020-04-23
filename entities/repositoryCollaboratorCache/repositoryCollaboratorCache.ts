@@ -79,6 +79,19 @@ export class RepositoryCollaboratorCacheFixedQueryAll implements IEntityMetadata
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryCollaboratorCacheGetAll;
 }
 
+export class RepositoryCollaboratorCacheGetOrganizationIdsQuery implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryCollaboratorCacheGetOrganizationIds;
+}
+
+export class RepositoryCollaboratorCacheDeleteByOrganizationId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryCollaboratorCacheDeleteByOrganizationId;
+  constructor(public organizationId: string) {
+    if (typeof(this.organizationId) !== 'string') {
+      throw new Error(`${organizationId} must be a string`);
+    }
+  }
+}
+
 export class RepositoryCollaboratorCacheFixedQueryByOrganizationId implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryCollaboratorCacheByOrganizationId;
   constructor(public organizationId: string) {
@@ -160,6 +173,23 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
       return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
         userid: stringOrNumberAsString(userId),
       });
+    }
+    case FixedQueryType.RepositoryCollaboratorCacheDeleteByOrganizationId: {
+      const { organizationId } = query as RepositoryCollaboratorCacheDeleteByOrganizationId;
+      return {
+        sql: (`DELETE FROM ${tableName} WHERE ${metadataColumnName}->>'organizationid' = $1`),
+        values: [ organizationId ],
+        skipEntityMapping: true,
+      };
+    }
+    case FixedQueryType.RepositoryCollaboratorCacheGetOrganizationIds: {
+      return {
+        sql: (`
+          SELECT DISTINCT(${metadataColumnName}->>'organizationid') as organizationid
+          FROM ${tableName}`),
+        values: [],
+        skipEntityMapping: true,
+      };
     }
     case FixedQueryType.RepositoryCollaboratorCacheByRepositoryId: {
       const { repositoryId } = query as RepositoryCollaboratorCacheFixedQueryByRepositoryId;

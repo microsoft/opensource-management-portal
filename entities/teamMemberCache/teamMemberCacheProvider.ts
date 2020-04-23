@@ -3,11 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
 import { TeamMemberCacheEntity, EntityImplementation } from './teamMemberCache';
-import { TeamMemberCacheFixedQueryAll, TeamMemberCacheFixedQueryByOrganizationId, TeamMemberCacheFixedQueryByUserId, TeamMemberCacheFixedQueryByTeamId, TeamMemberCacheFixedQueryByOrganizationIdAndUserId } from '.';
+import { TeamMemberCacheFixedQueryAll, TeamMemberCacheFixedQueryByOrganizationId, TeamMemberCacheFixedQueryByUserId, TeamMemberCacheFixedQueryByTeamId, TeamMemberCacheFixedQueryByOrganizationIdAndUserId, TeamMemberCacheGetOrganizationIdsQuery, TeamMemberCacheDeleteByOrganizationId } from '.';
 
 const thisProviderType = EntityImplementation.Type;
 
@@ -27,6 +25,8 @@ export interface ITeamMemberCacheProvider {
   queryTeamMembersByUserId(userId:string): Promise<TeamMemberCacheEntity[]>;
   queryTeamMembersByTeamId(teamId:string): Promise<TeamMemberCacheEntity[]>;
   queryTeamMembersByOrganizationIdAndUserId(organizationId: string, userId: string): Promise<TeamMemberCacheEntity[]>;
+  queryAllOrganizationIds(): Promise<string[]>;
+  deleteByOrganizationId(organizationId: string): Promise<void>;
 }
 
 export class TeamMemberCacheProvider extends EntityMetadataBase implements ITeamMemberCacheProvider {
@@ -107,5 +107,16 @@ export class TeamMemberCacheProvider extends EntityMetadataBase implements ITeam
   async deleteTeamMemberCache(metadata: TeamMemberCacheEntity): Promise<void> {
     const entity = this.serialize(thisProviderType, metadata);
     await this._entities.deleteMetadata(entity);
+  }
+
+  async queryAllOrganizationIds(): Promise<string[]> {
+    const query = new TeamMemberCacheGetOrganizationIdsQuery();
+    const results = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    return results.map(row => row['organizationid']);
+  }
+
+  async deleteByOrganizationId(organizationId: string): Promise<void> {
+    const query = new TeamMemberCacheDeleteByOrganizationId(organizationId);
+    await this._entities.fixedQueryMetadata(thisProviderType, query);
   }
 }

@@ -18,6 +18,7 @@ block content
             th Status
             each app in apps
               th= app.friendlyName
+            th Delete
         tbody
           each orgName in orgNames
             - var entry = orgs.get(orgName)
@@ -35,6 +36,12 @@ block content
                     td: a.btn.btn-sm.btn-muted(href='https://github.com/apps/' + app.slug + '/installations/new/permissions?target_id=' + entry.id, target='_new') Install
                   else
                     td N/A
+              td: form(method='post')
+                input(type='hidden', name='deletesettingsorgname', value=entry.organizationName)
+                input.btn.btn-sm.btn-danger(
+                  type='submit', 
+                  onclick='return confirm(\'Are you sure that you want to delete any settings for the ' + entry.organizationName + ' org?\');',
+                  value='Delete settings')
 
     else if orgNames.length === 0 && apps.length > 0
       p No organizations have installed the configured GitHub apps yet.

@@ -26,3 +26,16 @@ export class TeamCacheFixedQueryByOrganizationId implements IEntityMetadataFixed
     }
   }
 }
+
+export class TeamCacheGetOrganizationIdsQuery implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamCacheGetOrganizationIds;
+}
+
+export class TeamCacheDeleteByOrganizationId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamCacheDeleteByOrganizationId;
+  constructor(public organizationId: string) {
+    if (typeof(this.organizationId) !== 'string') {
+      throw new Error(`${organizationId} must be a string`);
+    }
+  }
+}

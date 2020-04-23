@@ -3,15 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { Operations } from '../business/operations';
-import { SettleToStateValue, isPermissionBetterThan } from '../transitional';
+import { SettleToStateValue, isPermissionBetterThan, ErrorHelper } from '../transitional';
 
 import LinkManager from './linkManager';
 import { Team, GitHubTeamRole } from '../business/team';
 import { Organization, OrganizationMembershipRoleQuery, OrganizationMembershipRole } from '../business/organization';
-import { Repository, GitHubCollaboratorType } from '../business/repository';
+import { Repository } from '../business/repository';
 import QueryCache, { IQueryCacheTeamRepositoryPermission } from '../business/queryCache';
 import { IPersonalizedUserAggregateRepositoryPermission } from '../business/graphManager';
 import { TeamRepositoryPermission } from '../business/teamRepositoryPermission';
@@ -281,14 +279,20 @@ export class UserContext {
     const teams = await this._queryCache.userTeams(userIdString);
     const awaits: Promise<any>[] = [];
     for (let  { role, team } of teams ) {
-      if (role !== GitHubTeamRole.Maintainer && role !== GitHubTeamRole.Member) {
-        throw new Error(`Unrecognized or invalid role ${role} for team ID ${team.id} in org ${team.organization.name}`);
+      try {
+        if (role !== GitHubTeamRole.Maintainer && role !== GitHubTeamRole.Member) {
+          throw new Error(`Unrecognized or invalid role ${role} for team ID ${team.id} in org ${team.organization.name}`);
+        }
+        const bucket = GitHubTeamRole.Maintainer ? maintainer : member;
+        await team.getDetails();
+        bucket.push(team);
+      } catch (getTeamInfoError) {
+        // Teams getting deleted is normal and OK.
+        if (!ErrorHelper.IsNotFound(getTeamInfoError)) {
+          console.log(`Unable to get team information: ${getTeamInfoError}`);
+        }
       }
-      const bucket = GitHubTeamRole.Maintainer ? maintainer : member;
-      bucket.push(team);
-      awaits.push(team.getDetails()); // TODO: note, this may slow things down for some
     }
-    await Promise.all(awaits);
     return { maintainer, member };
   }
 
