@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
+import { IReposApplication } from '../app';
 
 export enum AppPurpose {
   Data = 'Data',
@@ -33,4 +33,5 @@ export interface IGitHubAppsOptions {
   dataApp?: IGitHubAppConfiguration;
   customerFacingApp?: IGitHubAppConfiguration;
   operationsApp?: IGitHubAppConfiguration;
+  app: IReposApplication;
 }

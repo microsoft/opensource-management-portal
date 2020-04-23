@@ -7,34 +7,10 @@
 
 import throat from 'throat';
 
-import App from '../../app';
-import { IProviders } from '../../transitional';
+import { IReposJob, IReposJobResult } from '../../app';
 import { sleep } from '../../utils';
 import { IGraphProvider } from '../../lib/graphProvider';
 import { LocalExtensionKey } from '../../entities/localExtensionKey/localExtensionKey';
-
-let insights;
-
-module.exports = function run(config) {
-  App.initializeApplication(config, null, error => {
-    if (error) {
-      throw error;
-    }
-    insights = App.settings.appInsightsClient;
-    if (!insights) {
-      throw new Error('No app insights client available');
-    }
-    cleanup(config, App).then(done => {
-      console.log('done');
-      process.exit(0);
-    }).catch(error => {
-      if (insights) {
-        insights.trackException({ exception: error, properties: { name: 'JobCleanupKeysFailure' } });
-      }
-      throw error;
-    });
-  });
-};
 
 async function lookupCorporateId(graphProvider: IGraphProvider, knownUsers: Map<string, any>, corporateId: string): Promise<any> {
   let entry = knownUsers.get(corporateId);
@@ -58,8 +34,7 @@ async function lookupCorporateId(graphProvider: IGraphProvider, knownUsers: Map<
   }
 }
 
-async function cleanup(config, app) : Promise<void> {
-  const providers = app.settings.providers as IProviders;
+export default async function cleanup({ providers }: IReposJob) : Promise<IReposJobResult> {
   const graphProvider = providers.graphProvider;
   const localExtensionKeyProvider = providers.localExtensionKeyProvider;
 
@@ -107,10 +82,11 @@ async function cleanup(config, app) : Promise<void> {
   console.log(`okUserTokens: ${okUserTokens}`);
   console.log();
 
-  insights.trackEvent({ name: 'JobCleanupKeysSuccess', properties: {
+  return {
+    successProperties: {
       deleted,
       okUserTokens,
       errors,
     },
-  });
+  };
 }

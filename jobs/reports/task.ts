@@ -16,7 +16,7 @@ import fileSize from 'file-size';
 import moment from 'moment-timezone';
 import path from 'path';
 
-import app from '../../app';
+import app, { IReposJob, IReposJobResult } from '../../app';
 
 import { buildConsolidatedMap as buildRecipientMap } from './consolidated';
 
@@ -144,101 +144,88 @@ async function buildReport(context): Promise<void> {
   }
 }
 
-module.exports = function run(started, startedString, config) {
-  console.log(`Report run started ${startedString}`);
-  config.optInModules = new Set([
-    'witnessRedis',
-  ]);
-  app.initializeJob(config, null, error => {
-    if (error) {
-      throw error;
-    }
+export default async function run({ providers, started }: IReposJob): Promise<IReposJobResult> {
+  const config = providers.config;
+  const okToContinue = (config && config.github && config.github.jobs && config.github.jobs.reports && config.github.jobs.reports.enabled === true);
+  if (!okToContinue) {
+    console.log('config.github.jobs.reports.enabled is not set');
+    return {};
+  }
 
-    // Ending this job until it can get fixed
-    console.log('This job is no longer in use and needs work...');
-    closeInHalfMinute();
+  console.log('OK, so, this job is actually not setup to work right now...');
+  return {};
 
-    const insights = app.settings.appInsightsClient;
-    if (!insights) {
-      throw new Error('No app insights client available');
-    }
-    insights.trackEvent({
-      name: 'JobReportsStarted',
-      properties: {
-        hostname: os.hostname(),
-      },
-    });
-    const operations = app.settings.operations as Operations;
-    if (!operations.mailProvider) {
-      throw new Error('No mail provider available');
-    }
-    const providers = operations.providers;
-    // const reportRedisClient = providers.witnessRedis ? new RedisHelper(providers.witnessRedis) : null;
-    const reportConfig = config && config.github && config.github.jobs ? config.github.jobs.reports : {};
-    const context: IReportsContext = {
-      providers,
-      operations,
-      insights,
-      entities: {},
-      processing: {},
-      reportsBy: {
-        upn: new Map(),
-        email: new Map(),
-      },
-      started: moment().format(),
-      organizationData: {},
-      settings: {
-        basedir: operations.config.typescript.appDirectory,
-        slice: slice || undefined,
-        parallelRepoProcessing: 2,
-        repoDelayAfter: 200, // 200ms to wait between repo actions, to help reduce GitHub load
-        teamDelayAfter: 200, // 200ms to wait between team actions, to help reduce GitHub load
-        tooManyOrgOwners: 5,
-        tooManyRepoAdministrators: 15,
-        orgPercentAvailablePrivateRepos: 0.15,
-        fakeSend: fakeSend ? path.join(__dirname, 'sent') : undefined,
-        storeLocalReportPath: skipStore ? path.join(__dirname, 'report.json') : undefined,
-        witnessEventKey: reportConfig.witnessEventKey,
-        witnessEventReportsTimeToLiveMinutes: reportConfig.witnessEventReportsTimeToLiveMinutes,
-        consolidatedSchemaVersion: '170503',
-        fromAddress: reportConfig.mail.from,
-        dataLakeAccount: null,
-        campaign: {
-          source: 'administrator-digest',
-          medium: 'email',
-          campaign: 'github-digests',
-        },
-      },
-      reports: {
-        reportRedisClient: null, // reportRedisClient,
-        send: true && (fakeSend || reportConfig.mail && reportConfig.mail.enabled),
-        store: true && !skipStore,
-        dataLake: true && !skipStore && reportConfig.dataLake && reportConfig.dataLake.enabled,
-      },
-      visitedDefinitions: {},
-      consolidated: {},
-      config,
-      app,
-    };
-    if (context.reports.dataLake === true && reportConfig.dataLake && reportConfig.dataLake.azureStorage && reportConfig.dataLake.azureStorage.key) {
-      context.settings.dataLakeAccount = reportConfig.dataLake.azureStorage;
-    }
-    return buildReport(context).then(() => {
-      console.log('reporting done');
-    }).catch(error => {
-      console.warn(error);
-    }).finally(() => {
-      // Allow updates and other actions
-      console.log('Will close in 30 seconds');
-      closeInHalfMinute();
-    });
+  // -- THIS JOB IS OFFLINE FOR NOW --
+
+  console.log(`Report run started ${started}`);
+
+  const insights = providers.insights;
+  if (!insights) {
+    throw new Error('No app insights client available');
+  }
+  insights.trackEvent({
+    name: 'JobReportsStarted',
+    properties: {
+      hostname: os.hostname(),
+    },
   });
-};
-
-function closeInHalfMinute() {
-  setTimeout(() => {
-    process.exit(0);
-  }, 1000 * 30);  
+  const operations = providers.operations as Operations;
+  if (!operations.mailProvider) {
+    throw new Error('No mail provider available');
+  }
+  // const reportRedisClient = providers.witnessRedis ? new RedisHelper(providers.witnessRedis) : null;
+  const reportConfig = config && config.github && config.github.jobs ? config.github.jobs.reports : {};
+  const context: IReportsContext = {
+    providers,
+    operations,
+    insights,
+    entities: {},
+    processing: {},
+    reportsBy: {
+      upn: new Map(),
+      email: new Map(),
+    },
+    started: moment().format(),
+    organizationData: {},
+    settings: {
+      basedir: operations.config.typescript.appDirectory,
+      slice: slice || undefined,
+      parallelRepoProcessing: 2,
+      repoDelayAfter: 200, // 200ms to wait between repo actions, to help reduce GitHub load
+      teamDelayAfter: 200, // 200ms to wait between team actions, to help reduce GitHub load
+      tooManyOrgOwners: 5,
+      tooManyRepoAdministrators: 15,
+      orgPercentAvailablePrivateRepos: 0.15,
+      fakeSend: fakeSend ? path.join(__dirname, 'sent') : undefined,
+      storeLocalReportPath: skipStore ? path.join(__dirname, 'report.json') : undefined,
+      witnessEventKey: reportConfig.witnessEventKey,
+      witnessEventReportsTimeToLiveMinutes: reportConfig.witnessEventReportsTimeToLiveMinutes,
+      consolidatedSchemaVersion: '170503',
+      fromAddress: reportConfig.mail.from,
+      dataLakeAccount: null,
+      campaign: {
+        source: 'administrator-digest',
+        medium: 'email',
+        campaign: 'github-digests',
+      },
+    },
+    reports: {
+      reportRedisClient: null, // reportRedisClient,
+      send: true && (fakeSend || reportConfig.mail && reportConfig.mail.enabled),
+      store: true && !skipStore,
+      dataLake: true && !skipStore && reportConfig.dataLake && reportConfig.dataLake.enabled,
+    },
+    visitedDefinitions: {},
+    consolidated: {},
+    config,
+    app,
+  };
+  if (context.reports.dataLake === true && reportConfig.dataLake && reportConfig.dataLake.azureStorage && reportConfig.dataLake.azureStorage.key) {
+    context.settings.dataLakeAccount = reportConfig.dataLake.azureStorage;
+  }
+  await buildReport(context);
+  console.log('reporting done');
+  return {};
 }
 
 // ------------------------------------------------------------------

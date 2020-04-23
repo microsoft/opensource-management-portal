@@ -7,54 +7,18 @@
 
 import _ from 'lodash';
 
-import app from '../../../app';
-
-import { IProviders } from "../../../transitional";
+import app, { IReposJob } from '../../../app';
 import { isEmployeeOrIntern } from "../../../middleware/business/employeesOnly";
 import { getOffsetMonthRange, sleep } from "../../../utils";
 import { GetAddressFromUpnAsync } from '../../../lib/mailAddressProvider';
 import { IMail } from '../../../lib/mailProvider';
 
-let painlessConfigResolver = null;
-try {
-  painlessConfigResolver = require('painless-config-resolver')();
-} catch (error) {
-  console.log('Painless config resolver initialization error:');
-  console.dir(error);
-  throw error;
-}
-
-painlessConfigResolver.resolve((configurationError, config) => {
-  if (configurationError) {
-    throw configurationError;
-  }
-  app.initializeJob(config, null, (error) => {
-    if (error) {
-      throw error;
-    }
-    work(config, app).then(done => {
-      console.log('done, closing in 10 seconds after any network requests complete...');
-      setInterval(() => {
-        console.log(done);
-        process.exit(0);  
-      }, 10000);
-    }).catch(error => {
-      console.dir(error);
-      throw error;
-    });
-  });
-});
-
-async function work(config: any, app): Promise<void> {
-
+app.runJob(async function work({ providers }: IReposJob) {
   let type1=0, type2=0, type3=0;
   const type1limit = 30000, type2limit = 30000, type3limit = 30000;
-
   const campaignGroupId = 'fossfund';
   const campaignId = '1';
   const emailViewName = `${campaignGroupId}-${campaignId}`;
-
-  const providers = app.settings.providers as IProviders;
   const { linkProvider, operations, eventRecordProvider, mailAddressProvider, campaignStateProvider } = providers;
   const { start, end } = getOffsetMonthRange();
   let employees = (await linkProvider.getAll())
@@ -164,4 +128,4 @@ async function work(config: any, app): Promise<void> {
       console.dir(processEmployeeError);
     }
   }
-}
+});

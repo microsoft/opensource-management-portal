@@ -8,8 +8,8 @@
 import throat from 'throat';
 import { shuffle } from 'lodash';
 
-import App from '../../app';
-import { IProviders, ICacheOptions, IPagedCacheOptions, permissionsObjectToValue, ErrorHelper } from '../../transitional';
+import { IReposJob, IReposJobResult } from '../../app';
+import { ICacheOptions, IPagedCacheOptions, permissionsObjectToValue, ErrorHelper } from '../../transitional';
 import { Operations } from '../../business/operations';
 import { Organization, OrganizationMembershipRoleQuery, OrganizationMembershipRole } from '../../business/organization';
 import { Team, GitHubTeamRole } from '../../business/team';
@@ -18,12 +18,8 @@ import { Repository, IGetCollaboratorsOptions, GitHubCollaboratorAffiliationQuer
 import { Collaborator } from '../../business/collaborator';
 import { TeamPermission } from '../../business/teamPermission';
 import { OrganizationMember } from '../../business/organizationMember';
-import { sleep, quitInAMinute } from '../../utils';
-import moment from 'moment';
+import { sleep } from '../../utils';
 import QueryCache, { IQueryCacheOrganizationMembership, IQueryCacheTeam, IQueryCacheRepository, IQueryCacheTeamRepositoryPermission, IQueryCacheRepositoryCollaborator, QueryCacheOperation, IQueryCacheTeamMembership } from '../../business/queryCache';
-import { GitHubTokenManager } from '../../github/tokenManager';
-
-const killBitHours = 48;
 
 interface IConsistencyStats {
   'new': number;
@@ -55,56 +51,8 @@ const sleepBetweenSteps = 100; // mostly impacts repo collaborator views
 // TODO: we mark when the slow walk starts for the process, use it to set the max age value when requesting entities (?)
 // TODO: make max age seconds accept a function that could make it dynamic and functional
 
-let insights;
-
-export default function Task(config, args) {
-  App.initializeJob(config, null, error => {
-    if (error) {
-      throw error;
-    }
-    // TODO: track elapsed time as a metric
-    insights = App.settings.appInsightsClient;
-    if (!insights) {
-      throw new Error('No app insights client available');
-    }
-
-    // Only use Background Job app for all calls here
-    GitHubTokenManager.IsBackgroundJob();
-
-    const jobStarted = moment();
-
-    // Kill bit if this takes way too long
-    const asMinutes = killBitHours * 60;
-    setTimeout(() => {
-      console.log(`Kill bit at ${killBitHours}h, shutting down process in 1m`);
-      if (insights) {
-        insights.trackEvent({ name: 'JobRefreshQueryCacheTimeout', properties: { } });
-        insights.trackMetric({ name: 'JobRefreshQueryCacheTimeouts', value: 1 });
-      }
-      return quitInAMinute(false);
-    }, 1000 * 60 * asMinutes);
-
-    refresh(config, App, args).then(done => {
-      const completed = moment();
-      const minutes = completed.diff(jobStarted, 'minutes');
-      console.log(`done after ${minutes} minutes`);
-      if (insights) {
-        insights.trackMetric({ name: 'JobRefreshQueryCacheMinutes', value: minutes });
-      }
-      return quitInAMinute(true);
-    }).catch(error => {
-      console.dir(error);
-      if (insights) {
-        insights.trackException({ exception: error, properties: { name: 'JobRefreshQueryCacheFailure' } });
-        const completed = moment();
-        const minutes = jobStarted.diff(completed, 'minutes');
-        console.log(`failed after ${minutes} minutes`);
-        insights.trackMetric({ name: 'JobRefreshQueryCacheFailedMinutes', value: minutes });
-      }
-      return quitInAMinute(false);
-    });
-  });
-};
+// removed during refactor:
+// insights.trackMetric({ name: 'JobRefreshQueryCacheMinutes', value: minutes });
 
 async function refreshOrganization(
   organizationIndex: number,
@@ -479,8 +427,7 @@ async function cacheRepositoryCollaborators(queryCache: QueryCache, organization
   return operations.filter(real => real);
 }
 
-async function refresh(config, app, args: string[]) : Promise<void> {
-  const providers = app.settings.providers as IProviders;
+export default async function refresh({ providers, args }: IReposJob) : Promise<IReposJobResult> {
   const operations = providers.operations as Operations;
   const repositoryCacheProvider = providers.repositoryCacheProvider;
   const queryCache = providers.queryCache;
@@ -488,7 +435,6 @@ async function refresh(config, app, args: string[]) : Promise<void> {
   const teamMemberCacheProvider = providers.teamMemberCacheProvider;
   const repositoryCollaboratorCacheProvider = providers.repositoryCollaboratorCacheProvider;
   const repositoryTeamCacheProvider = providers.repositoryTeamCacheProvider;
-
   if (!repositoryCacheProvider) {
     throw new Error('repositoryCacheProvider required');
   }
@@ -504,7 +450,6 @@ async function refresh(config, app, args: string[]) : Promise<void> {
   if (!repositoryTeamCacheProvider) {
     throw new Error('repositoryTeamCacheProvider required');
   }
-
   let refreshSet = 'all';
   if (args.length > 0) {
     switch (args[0]) {
@@ -527,10 +472,8 @@ async function refresh(config, app, args: string[]) : Promise<void> {
         throw new Error(`unsupported mode ${args[0]}`);
     }
   }
-
   const parallelWorkCount = 1;
   const orgs = shuffle(Array.from(operations.organizations.values()));
-
   let organizationWorkerCount = 0;
   const allUpStats: IConsistencyStats = {
     'delete': 0,
@@ -596,6 +539,13 @@ async function refresh(config, app, args: string[]) : Promise<void> {
   insights.trackMetric({ name: 'QueryCacheConsistencyAdds', value: allUpStats['new']});
   insights.trackMetric({ name: 'QueryCacheConsistencyDeletes', value: allUpStats['delete']});
   insights.trackMetric({ name: 'QueryCacheConsistencyUpdates', value: allUpStats['update']});
+  return {
+    successProperties: {
+      adds: allUpStats['new'],
+      deletes: allUpStats['delete'],
+      updates: allUpStats['update'],
+    },
+  };
 }
 
 function updateConsistencyStats(stats: IConsistencyStats, outcomes: QueryCacheOperation | QueryCacheOperation[]): void {

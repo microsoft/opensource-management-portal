@@ -369,11 +369,11 @@ export function writeTextToFile(filename: string, stringContent: string): Promis
   });
 }
 
-export function quitInAMinute(successful: boolean) {
-  console.log(`Quitting process in one minute... exit code=${successful ? 0 : 1}`);
+export function quitInTenSeconds(successful: boolean) {
+  console.log(`Quitting process in 10s... exit code=${successful ? 0 : 1}`);
   return setTimeout(() => {
     process.exit(successful ? 0 : 1);
-  }, 1000 * 60 /* 1 minute later */);
+  }, 1000 * 10 /* 10s */);
 }
 
 export function gzipString(value: string): Promise<Buffer> {

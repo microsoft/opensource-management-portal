@@ -7,41 +7,15 @@
 
 import throat from 'throat';
 
-import app from '../../app';
 import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../../lib/linkProviders';
-import { IProviders } from '../../transitional';
 import { ICorporateLink } from '../../business/corporateLink';
 import { Operations, UnlinkPurpose } from '../../business/operations';
-import { GitHubTokenManager } from '../../github/tokenManager';
 import { sleep } from '../../utils';
+import { IReposJob, IReposJobResult } from '../../app';
 
-let insights;
-
-export default function Task(config) {
-  app.initializeJob(config, null, error => {
-    if (error) {
-      throw error;
-    }
-    insights = app.settings.appInsightsClient;
-    if (!insights) {
-      throw new Error('No app insights client available');
-    }
-    GitHubTokenManager.IsBackgroundJob();
-    refresh(config, app).then(done => {
-      console.log('done');
-      process.exit(0);
-    }).catch(error => {
-      if (insights) {
-        insights.trackException({ exception: error, properties: { name: 'JobRefreshUsernamesFailure' } });
-      }
-      throw error;
-    });
-  });
-};
-
-async function refresh(config, app) : Promise<void> {
-  const providers = app.settings.providers as IProviders;
+export default async function refresh({ providers }: IReposJob) : Promise<IReposJobResult> {
   const operations = providers.operations as Operations;
+  const config = providers.config;
   const linkProvider = await createAndInitializeLinkProviderInstance(providers, config);
   const graphProvider = providers.graphProvider;
 
@@ -148,8 +122,17 @@ async function refresh(config, app) : Promise<void> {
   console.log(`GitHub avatar changes: ${updatedAvatars}`);
   console.log(`AAD name changes: ${updatedAadNames}`);
   console.log(`AAD username changes: ${updatedAadUpns}`);
-  console.log();
-  insights.trackEvent({ name: 'JobRefreshUsernamesSuccess', properties: { updates, updatedUsernames, updatedAvatars, updatedAadNames, updatedAadUpns, errors } });
+
+  return {
+    successProperties: {
+      updates,
+      updatedUsernames,
+      updatedAvatars,
+      updatedAadNames,
+      updatedAadUpns,
+      errors,
+    },
+  };
 }
 
 function updateLink(linkProvider: ILinkProvider, link: ICorporateLink) : Promise<void> {

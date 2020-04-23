@@ -44,6 +44,7 @@ import { IElectionEntityProvider } from './entities/voting/election';
 import { IElectionVoteEntityProvider } from './entities/voting/vote';
 import { IElectionNominationEntityProvider } from './entities/voting/nomination';
 import { IElectionNominationCommentEntityProvider } from './entities/voting/nominationComment';
+import { IReposApplication } from './app';
 
 export interface ICallback<T> {
   (error: IReposError, result?: T): void;
@@ -139,6 +140,7 @@ export interface IDictionary<TValue> {
 }
 
 export interface IProviders {
+  app: IReposApplication;
   approvalProvider?: IApprovalProvider;
   auditLogRecordProvider?: IAuditLogRecordProvider;
   basedir?: string;

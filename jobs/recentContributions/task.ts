@@ -30,7 +30,7 @@
 import _ from 'lodash';
 import throat from 'throat';
 
-import App from '../../app';
+import { IReposJob, IReposJobResult } from '../../app';
 import appPackage = require('../../package.json');
 
 import { ILinkProvider } from '../../lib/linkProviders';
@@ -181,20 +181,6 @@ function stripPayloadSize(type: string, payload: any) {
   }
 }
 
-export function run(config: any, reclassify: boolean) {
-  App.initializeJob(config, null, (error) => {
-    if (error) {
-      throw error;
-    }
-    learn(config, App, reclassify).then(done => {
-      console.log('done');
-      process.exit(0);
-    }).catch(error => {
-      throw error;
-    });
-  });
-};
-
 function isCorporateOrganization(
   organizationId: number | string, 
   organizationName: string, 
@@ -313,9 +299,9 @@ function stripRepositoryName(repositoryName: string) {
   return { repoName, orgName };
 }
 
-async function learn(config, app, reclassify: boolean) : Promise<void> {
-  const providers = app.settings.providers as IProviders;
-  const { linkProvider, operations, eventRecordProvider, graphProvider } = providers;
+export default async function job({ providers, parameters }: IReposJob): Promise<IReposJobResult> {
+  const { reclassify } = parameters;
+    const { linkProvider, operations, eventRecordProvider, graphProvider } = providers;
   let forcedOpenSourceOrgs = new Set<string>();
   if (appPackage['contributions-official-overridden-organizations-require']) {
     forcedOpenSourceOrgs = new Set(require(appPackage['contributions-official-overridden-organizations-require']));
@@ -527,6 +513,8 @@ async function learn(config, app, reclassify: boolean) : Promise<void> {
   const orgs = Array.from(collectedOrgs.values()).sort();
   orgs.map(org => console.log(org));
   console.log('-----------------------------------------------------------------');
+
+  return {};
 }
 
 async function getAllLinks(linkProvider: ILinkProvider) : Promise<ICorporateLink[]> {

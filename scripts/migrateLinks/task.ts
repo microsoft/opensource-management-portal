@@ -17,31 +17,15 @@
 
 import throat from 'throat';
 
-import app from '../../app';
+import app, { IReposJob } from '../../app';
 import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../../lib/linkProviders';
-import { IProviders } from '../../transitional';
 import { ICorporateLink } from '../../business/corporateLink';
 
 const parallelWorkLimit = 5;
 
-export default function Task(config) {
-  app.initializeJob(config, null, error => {
-    if (error) {
-      throw error;
-    }
-    migration(config, app).then(done => {
-      console.log('done');
-      process.exit(0);
-    }).catch(error => {
-      throw error;
-    });
-  });
-};
-
-async function migration(config, app) : Promise<void> {
-  const providers = app.settings.providers as IProviders;
+export default async function migration({ providers }: IReposJob) : Promise<void> {
   // const sourceLinkProvider = providers.linkProvider;
-
+  const config = providers.config;
   const sourceLinkProviderName = 'table';
   console.log(`creating source ${sourceLinkProviderName} provider`);
   const sourceLinkProvider = await createAndInitializeLinkProviderInstance(providers, config, sourceLinkProviderName);
@@ -52,7 +36,7 @@ async function migration(config, app) : Promise<void> {
   const destinationLinkProvider = await createAndInitializeLinkProviderInstance(providers, config, destinationLinkProviderName);
 
   console.log('downloading all source links');
-  const allSourceLinks = await getAllLinks(sourceLinkProvider);
+  const allSourceLinks = await sourceLinkProvider.getAll();
   console.log(`SOURCE: ${allSourceLinks.length} links`);
 
   // const clearDestinationLinksFirst = false;
@@ -68,7 +52,7 @@ async function migration(config, app) : Promise<void> {
     const existingLink = await getThirdPartyLink(destinationLinkProvider, sourceLink.thirdPartyId);
     if (existingLink && overwriteDestinationLinks) {
       console.warn('Removing existing destination link...');
-      await deleteLink(destinationLinkProvider, existingLink);
+      await destinationLinkProvider.deleteLink(existingLink);
     } else if (existingLink && overwriteDestinationLinks === false) {
       return '$';
     }
@@ -85,7 +69,7 @@ async function migration(config, app) : Promise<void> {
         sourceLink.corporateId = id;
       }
 
-      const newLinkId = await createNewLink(destinationLinkProvider, sourceLink);
+      const newLinkId = await destinationLinkProvider.createLink(sourceLink);
       console.log(`OK: new link ID in destination: ${newLinkId}`);
     } catch (linkCreateError) {
       console.log('Issue with link:');
@@ -130,16 +114,4 @@ async function getUserIdByUpn(graphProvider, upn: string) : Promise<string> {
     });
 
   });
-}
-
-function createNewLink(linkProvider: ILinkProvider, link: ICorporateLink) : Promise<string> {
-  return linkProvider.createLink(link);
-}
-
-async function deleteLink(linkProvider: ILinkProvider, link: ICorporateLink) : Promise<void> {
-  return linkProvider.deleteLink(link);
-}
-
-async function getAllLinks(linkProvider: ILinkProvider) : Promise<ICorporateLink[]> {
-  return linkProvider.getAll();
 }

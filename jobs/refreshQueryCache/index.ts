@@ -3,27 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-/*eslint no-console: ["error", { allow: ["log"] }] */
+import Job from './task';
+import app from '../../app';
 
-import Task from './task';
+const killBitHours = 48;
 
-if (!process.env.DEBUG) {
-  process.env.DEBUG = 'querycache';
-}
-
-let painlessConfigResolver = null;
-try {
-  painlessConfigResolver = require('painless-config-resolver')();
-} catch (error) {
-  console.log('Painless config resolver initialization error:');
-  console.dir(error);
-  throw error;
-}
-
-painlessConfigResolver.resolve((configurationError, config) => {
-  if (configurationError) {
-    throw configurationError;
-  }
-  const args = process.argv.slice(2);
-  Task(config, args);
+app.runJob(Job, {
+  defaultDebugOutput: 'querycache',
+  timeoutMinutes: 60 * killBitHours,
+  insightsPrefix: 'JobRefreshQueryCache',
 });

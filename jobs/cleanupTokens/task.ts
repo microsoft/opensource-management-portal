@@ -10,7 +10,7 @@ import throat from 'throat';
 // Revoke tokens of users that no longer resolve in the corporate graph and
 // delete tokens that have been expired 30 days.
 
-import app from '../../app';
+import app, { IReposJob, IReposJobResult } from '../../app';
 
 const expiredTokenDeleteThresholdDays = 30;
 
@@ -18,29 +18,6 @@ import { IProviders } from '../../transitional';
 import { PersonalAccessToken } from '../../entities/token/token';
 import { sleep } from '../../utils';
 import { IGraphProvider } from '../../lib/graphProvider';
-
-let insights;
-
-module.exports = function run(config) {
-  app.initializeApplication(config, null, error => {
-    if (error) {
-      throw error;
-    }
-    insights = app.settings.appInsightsClient;
-    if (!insights) {
-      throw new Error('No app insights client available');
-    }
-    cleanup(config, app).then(done => {
-      console.log('done');
-      process.exit(0);
-    }).catch(error => {
-      if (insights) {
-        insights.trackException({ exception: error, properties: { name: 'JobCleanupTokensFailure' } });
-      }
-      throw error;
-    });
-  });
-};
 
 async function lookupCorporateId(graphProvider: IGraphProvider, knownUsers: Map<string, any>, corporateId: string): Promise<any> {
   let entry = knownUsers.get(corporateId);
@@ -64,7 +41,7 @@ async function lookupCorporateId(graphProvider: IGraphProvider, knownUsers: Map<
   }
 }
 
-async function cleanup(config, app) : Promise<void> {
+export default async function cleanup({ app }: IReposJob) : Promise<IReposJobResult> {
   const providers = app.settings.providers as IProviders;
   const graphProvider = providers.graphProvider;
   const tokenProvider = providers.tokenProvider;
@@ -143,11 +120,13 @@ async function cleanup(config, app) : Promise<void> {
   console.log(`serviceTokens: ${serviceTokens}`);
   console.log();
 
-  insights.trackEvent({ name: 'JobCleanupTokensSuccess', properties: {
-    deleted,
-    revokedUnresolved,
-    okUserTokens,
-    serviceTokens,
-    errors,
-  } });
+  return {
+    successProperties: {
+      deleted,
+      revokedUnresolved,
+      okUserTokens,
+      serviceTokens,
+      errors,
+    },
+  };
 }

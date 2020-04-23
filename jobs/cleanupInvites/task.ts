@@ -6,63 +6,23 @@
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
 import moment from 'moment';
-import os from 'os';
 
-import app from '../../app';
-import { Operations } from '../../business/operations';
-import { GitHubTokenManager } from '../../github/tokenManager';
+import { IReposJob } from '../../app';
 
 // Organization invitations cleanup: remove any invitations that are older than a
 // set period of time from the organization.
 
-const maxParallelism = 1;
 const defaultMaximumInvitationAgeDays = 7;
 
-module.exports = function run(started, startedString, config) {
-  console.log(`Job started ${startedString}`);
-  app.initializeJob(config, null, error => {
-    if (error) {
-      throw error;
-    }
-    GitHubTokenManager.IsBackgroundJob();
-    const insights = app.settings.appInsightsClient;
-    if (!insights) {
-      throw new Error('No app insights client available');
-    }
-    cleanup(config, app, insights).then(done => {
-      console.log('done');
-      process.exit(0);
-    }).catch(error => {
-      if (insights) {
-        insights.trackException({ exception: error, properties: { name: 'JobCleanupInvitesFailure' } });
-      }
-      console.dir(error);
-      throw error;
-    });
-  });
-}
-
-async function cleanup(config, app, insights) : Promise<void> {
+export default async function cleanup({ providers }: IReposJob) : Promise<void> {
   let maximumInvitationAgeDays = defaultMaximumInvitationAgeDays;
+  const { config, operations } = providers;
   if (config.github && config.github.jobs && config.github.jobs.cleanup && config.github.jobs.cleanup.maximumInvitationAgeDays) {
     maximumInvitationAgeDays = config.github.jobs.cleanup.maximumInvitationAgeDays;
   }
-
   const maximumAgeMoment = moment().subtract(maximumInvitationAgeDays, 'days');
-
-  insights.trackEvent({
-    name: 'JobOrganizationInvitationsCleanupStarted',
-    properties: {
-      hostname: os.hostname(),
-      maximumDays: maximumInvitationAgeDays.toString(),
-    },
-  });
-
-  const operations = app.settings.operations as Operations;
   const organizations = operations.getOrganizations();
-
   let removedInvitations = 0;
-
   for (let organization of organizations) {
     let invitations: any[];
     try {

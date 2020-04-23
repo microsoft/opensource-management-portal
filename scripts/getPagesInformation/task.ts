@@ -7,25 +7,11 @@
 
 import _ from 'lodash';
 
-import app from '../../app';
 import { IProviders, ErrorHelper } from '../../transitional';
+import { IReposJob } from '../../app';
 
-export function run(config) {
-  app.initializeJob(config, null, (error) => {
-    if (error) {
-      throw error;
-    }
-    learn(config, app).then(done => {
-      console.log('done');
-      process.exit(0);
-    }).catch(error => {
-      throw error;
-    });
-  });
-};
-
-async function learn(config, app) : Promise<void> {
-  const { operations } = app.settings.providers as IProviders;
+export default async function learn({ providers }: IReposJob) : Promise<void> {
+  const { operations } = providers;
   const allRepos = await operations.getRepos();
   console.log('org,repo,pages,cname');
   for (let i = 0; i < allRepos.length; i++) {

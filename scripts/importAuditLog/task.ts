@@ -7,27 +7,12 @@ import fs from 'fs';
 import csv from 'csv-parser';
 import moment from 'moment';
 
-import app from '../../app';
-import { IProviders } from '../../transitional';
+import { IReposJob } from '../../app';
 import { AuditLogRecord } from '../../entities/auditLogRecord/auditLogRecord';
 import { sleep, asNumber } from '../../utils';
 import { Operations } from '../../business/operations';
 import { Organization } from '../../business/organization';
 import { AuditLogSource } from '../../entities/auditLogRecord';
-
-export default function Task(config) {
-  app.initializeJob(config, null, error => {
-    if (error) {
-      throw error;
-    }
-    migration(config, app).then(done => {
-      console.log('done');
-      process.exit(0);
-    }).catch(error => {
-      throw error;
-    });
-  });
-};
 
 const restingBeforeRequestMs = 200;
 
@@ -106,8 +91,7 @@ async function tryGetTeamId(teamsToIds: Map<string, boolean | number>, organizat
   }
 }
 
-async function migration(config, app) : Promise<void> {
-  const providers = app.settings.providers as IProviders;
+export default async function migration({ providers }: IReposJob) {
   const { linkProvider, operations } = providers;
 
   const rows = await parseCsv(process.argv[2]);

@@ -10,19 +10,20 @@
 import moment from 'moment';
 import os from 'os';
 
-import App from '../../app';
+import App, { IReposJob, IReposJobResult } from '../../app';
 
 import ProcessOrganizationWebhook, { IGitHubWebhookProperties } from '../../webhooks/organizationProcessor';
 import { IProviders } from '../../transitional';
-import { sleep, quitInAMinute } from '../../utils';
+import { sleep, quitInTenSeconds } from '../../utils';
 import { IQueueMessage } from '../../lib/queues';
 
 const runningAsOngoingDeployment = true;
 
-module.exports = function runFirehoseTask(started, startedString, config) {
+export default async function firehose({ providers, started }: IReposJob): Promise<IReposJobResult> {
   let processedEventTypes = {};
   let interestingEvents = 0;
   let processedEvents = 0;
+  const config = providers.config;
   const jobMinutesFrequency = config.github.webhooks.runtimeMinutes ? parseInt(config.github.webhooks.runtimeMinutes) : 5;
   let runtimeSeconds = (jobMinutesFrequency - 1) * 60 + 30 /* 30 second flex in the last minute instead of 60s */;
   if (runningAsOngoingDeployment) {
@@ -40,32 +41,25 @@ module.exports = function runFirehoseTask(started, startedString, config) {
   const emptyQueueDelaySeconds = config.github.webhooks.emptyQueueDelaySeconds ? parseInt(config.github.webhooks.emptyQueueDelaySeconds) : 10;
 
   if (runningAsOngoingDeployment) {
-    console.log(`Webhooks processor started ${startedString} and will run with empty delays of ${emptyQueueDelaySeconds}s`);
+    console.log(`Webhooks processor started ${started} and will run with empty delays of ${emptyQueueDelaySeconds}s`);
   } else {
-    console.log(`Job started ${startedString} and will run for ${runtimeSeconds}s with empty delays of ${emptyQueueDelaySeconds}s`);
+    console.log(`Job started ${started} and will run for ${runtimeSeconds}s with empty delays of ${emptyQueueDelaySeconds}s`);
   }
-  App.initializeJob(config, null, (error) => {
-    if (error) {
-      throw error;
-    }
-    const providers = App.settings.providers as IProviders;
-    const insights = App.settings.appInsightsClient;
-    if (!insights) {
-      throw new Error('No app insights client available');
-    }
-    const webhooksConfig = config.github.webhooks;
-    if (!webhooksConfig) {
-      throw new Error('No webhoooks queue configuration');
-    }
-    const webhookQueueProcessor = providers.webhookQueueProcessor;
-    if (!webhookQueueProcessor) {
-      throw new Error('No webhookQueueProcessor available');
-    }
-    // let parallelism = messagesInQueue > maxParallelism / 2 ? maxParallelism : Math.min(5, maxParallelism);
-    let parallelism = maxParallelism;
-    const sliceDelayPerThread =  emptyQueueDelaySeconds/ parallelism;
-    console.log(`Parallelism for this run will be ${parallelism} logical threads, offset by ${sliceDelayPerThread}s`);
-    // const insights = app.settings.appInsightsClient;
+  const insights = providers.insights;
+  const webhooksConfig = config.github.webhooks;
+  if (!webhooksConfig) {
+    throw new Error('No webhoooks queue configuration');
+  }
+  const webhookQueueProcessor = providers.webhookQueueProcessor;
+  if (!webhookQueueProcessor) {
+    throw new Error('No webhookQueueProcessor available');
+  }
+  // let parallelism = messagesInQueue > maxParallelism / 2 ? maxParallelism : Math.min(5, maxParallelism);
+  let parallelism = maxParallelism;
+  const sliceDelayPerThread =  emptyQueueDelaySeconds/ parallelism;
+  console.log(`Parallelism for this run will be ${parallelism} logical threads, offset by ${sliceDelayPerThread}s`);
+  // const insights = app.settings.appInsightsClient;
+  if (insights) {
     insights.trackEvent({
       name: 'JobFirehoseStarted',
       properties: {
@@ -73,26 +67,25 @@ module.exports = function runFirehoseTask(started, startedString, config) {
         // queue: serviceBusConfig.queue,
         // subscription: serviceBusConfig.subscriptionName,
         // messagesInQueue: messagesInQueue.toString(),
-        //deadLetters: deadLetters.toString(),
+        // deadLetters: deadLetters.toString(),
       },
     });
-    //insights.trackMetric({ name: 'FirehoseMessagesInQueue', value: messagesInQueue });
-    //insights.trackMetric({ name: 'FirehoseDeadLetters', value: deadLetters });
-    const threads: Promise<void>[] = [];
-    let delay = 0;
-    for (let i = 0; i < parallelism; i++) {
-      threads.push(createThread(App, providers, i, delay));
-      delay += sliceDelayPerThread;
-    }
-    let ok = true;
-    return Promise.all(threads).catch(err => {
-      console.dir(err);
-      ok = false;
-    }).finally(() => {
-      console.log('Forever execution thread has ended.');
-      quitInAMinute(ok);
-    });
-  });
+    // insights.trackMetric({ name: 'FirehoseMessagesInQueue', value: messagesInQueue });
+    // insights.trackMetric({ name: 'FirehoseDeadLetters', value: deadLetters });
+  }
+  const threads: Promise<void>[] = [];
+  let delay = 0;
+  for (let i = 0; i < parallelism; i++) {
+    threads.push(createThread(App, providers, i, delay));
+    delay += sliceDelayPerThread;
+  }
+  let ok = true;
+  await Promise.all(threads);
+
+  console.warn('Forever execution thread has completed.');
+  return {};
+
+  // -- end of job startup --
 
   async function createThread(app, providers: IProviders, threadNumber: number, startupDelay: number): Promise<void> {
     if (startupDelay > 0) {
@@ -237,4 +230,4 @@ module.exports = function runFirehoseTask(started, startedString, config) {
       console.warn(processingError);
     }
   }
-};
+}
