@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Operations } from '../business/operations';
+import { Operations, ICachedEmployeeInformation } from '../business/operations';
 import { Organization } from '../business/organization';
 import { Repository, GitHubCollaboratorAffiliationQuery } from '../business/repository';
 import { Team } from '../business/team';
@@ -13,6 +13,7 @@ import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repo
 import { RepositoryMetadataEntity, GitHubRepositoryVisibility, RepositoryLockdownState } from '../entities/repositoryMetadata/repositoryMetadata';
 import { IndividualContext } from '../user';
 import { daysInMilliseconds } from '../utils';
+
 import moment = require('moment');
 
 const botBracket = '[bot]';
@@ -129,12 +130,22 @@ export default class NewRepositoryLockdownSystem {
       lockdownMailContent.mailAddress = await this.operations.getMailAddressFromCorporateUsername(repositoryMetadata.createdByCorporateUsername);
       const repoName = this.repository.name;
       const companyName = this.operations.config.brand.companyName;
+      let managerInfo: ICachedEmployeeInformation = null;
+      let reasonInfo = `This mail was sent to: ${lockdownMailContent.mailAddress}`;
+      try {
+        managerInfo = await this.operations.getCachedEmployeeManagementInformation(repositoryMetadata.createdByCorporateId);
+        if (managerInfo && managerInfo.managerMail) {
+          reasonInfo += ` and manager ${managerInfo.managerMail}`;
+        }
+      } catch (managerInfoError) {
+        console.dir(managerInfoError);
+      }
       const mailToCreator: IMail = {
         to: lockdownMailContent.mailAddress,
         subject: `Your repo was approved, please complete its setup: ${repoName}`,
         content: await this.operations.emailRender('newrepolockremoved', {
           reason: (`Your new repo was approved. Additional actions are now required to gain access to continue to use it after classification.
-                    This mail was sent to: ${lockdownMailContent.mailAddress}`),
+                    ${reasonInfo}.`),
           headline: 'Repo approved',
           notification: 'action',
           app: `${companyName} GitHub`,
@@ -142,6 +153,9 @@ export default class NewRepositoryLockdownSystem {
           lockdownMailContent,
         }),
       };
+      if (managerInfo && managerInfo.managerMail) {
+        mailToCreator.cc = managerInfo.managerMail;
+      }
       await this.operations.sendMail(mailToCreator);
       mailSentToCreator = true;
     } catch (noLinkOrEmail) {
@@ -189,12 +203,22 @@ export default class NewRepositoryLockdownSystem {
     await this.repository.delete();
     try {
       const mailAddress = await this.operations.getMailAddressFromCorporateUsername(repositoryMetadata.createdByCorporateUsername);
+      let managerInfo: ICachedEmployeeInformation = null;
+      let reasonInfo = `This mail was sent to: ${mailAddress}`;
+      try {
+        managerInfo = await this.operations.getCachedEmployeeManagementInformation(repositoryMetadata.createdByCorporateId);
+        if (managerInfo && managerInfo.managerMail) {
+          reasonInfo += ` and manager ${managerInfo.managerMail}`;
+        }
+      } catch (managerInfoError) {
+        console.dir(managerInfoError);
+      }
       const companyName = this.operations.config.brand.companyName;
       const mailToCreator: IMail = {
         to: mailAddress,
         subject: `${targetType} deleted by ${deletedByUser ? repositoryMetadata.createdByCorporateUsername : 'operations'}: ${this.repository.organization.name}/${repoName}`,
         content: await this.operations.emailRender('lockedrepodeleted', {
-          reason: (`The ${targetType.toLowerCase()} was deleted. This mail was sent to: ${mailAddress}`),
+          reason: (`The ${targetType.toLowerCase()} was deleted. ${reasonInfo}.`),
           headline: `${targetType} deleted`,
           notification: 'information',
           app: `${companyName} GitHub`,
@@ -205,6 +229,9 @@ export default class NewRepositoryLockdownSystem {
           repository: this.repository,
         }),
       };
+      if (managerInfo && managerInfo.managerMail) {
+        mailToCreator.cc = managerInfo.managerMail;
+      }
       await this.operations.sendMail(mailToCreator);
     } catch (noLinkOrEmail) {
       console.dir(noLinkOrEmail);
@@ -351,12 +378,22 @@ export default class NewRepositoryLockdownSystem {
         if (mailAddress) {
           lockdownMailContent.mailAddress = mailAddress;
           const companyName = this.operations.config.brand.companyName;
+          let managerInfo: ICachedEmployeeInformation = null;
+          let reasonInfo = `This mail was sent to: ${mailAddress}`;
+          try {
+            managerInfo = await this.operations.getCachedEmployeeManagementInformation(link.corporateId);
+            if (managerInfo && managerInfo.managerMail) {
+              reasonInfo += ` and manager ${managerInfo.managerMail}`;
+            }
+          } catch (managerInfoError) {
+            console.dir(managerInfoError);
+          }
           const mailToCreator: IMail = {
             to: mailAddress,
             subject,
             content: await this.operations.emailRender('newrepolockdown', {
               reason: (`You just ${repoActionType} a repository on GitHub and have additional actions required to gain access to continue to use it after classification.
-                        This mail was sent to: ${mailAddress}`),
+                        ${reasonInfo}.`),
               headline: isForkAdministratorLocked ? 'Fork approval required' : `Setup your ${stateVerb} repository`,
               notification: isForkAdministratorLocked ? 'action' : 'information',
               app: `${companyName} GitHub`,
@@ -368,6 +405,9 @@ export default class NewRepositoryLockdownSystem {
               transferSourceRepositoryLogin,
             }),
           };
+          if (managerInfo && managerInfo.managerMail) {
+            mailToCreator.cc = managerInfo.managerMail;
+          }
           await this.operations.sendMail(mailToCreator);
           lockdownLog.push(`sent an e-mail to the person who ${repoActionType} the repository ${mailAddress} (corporate username: ${link.corporateUsername})`);
           mailSentToCreator = true;

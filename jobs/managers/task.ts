@@ -16,6 +16,7 @@ import { ICorporateLink } from '../../business/corporateLink';
 import { ICachedEmployeeInformation, RedisPrefixManagerInfoCache } from '../../business/operations';
 import { sleep } from '../../utils';
 import { IMicrosoftIdentityServiceBasics } from '../../lib/corporateContactProvider';
+import { getUserAndManager } from '../../lib/graphProvider/microsoftGraphProvider';
 
 export default async function refresh({ providers }: IReposJob) : Promise<IReposJobResult> {
   const graphProvider = providers.graphProvider;
@@ -178,15 +179,4 @@ export default async function refresh({ providers }: IReposJob) : Promise<IRepos
       errors,
     }
   };
-}
-
-async function getUserAndManager(graphProvider, employeeDirectoryId: string): Promise<any> {
-  return new Promise<any>((resolve, reject) => {
-    graphProvider.getUserAndManagerById(employeeDirectoryId, (err, info) => {
-      if (err) {
-        return reject(err);
-      }
-      return resolve(info);
-    });
-  });
 }

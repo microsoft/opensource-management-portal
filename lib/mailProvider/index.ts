@@ -3,11 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import MockMailService from './mockMailService';
 import IrisMailService from './customMailService';
 import SmtpMailService from './smtpMailService';
+import DirectoryMailService from './directoryMailService';
 
 export interface IMail {
   from?: string;
@@ -25,6 +24,7 @@ export interface IMailProvider {
   sendMail(mail: IMail): Promise<any>;
   html: boolean;
   getSentMessages(): any[];
+  initialize(): Promise<string | void>;
 }
 
 function patchOverride(provider, newToAddress, htmlOrNot) {
@@ -81,6 +81,10 @@ export default function createMailProviderInstance(config): IMailProvider {
     }
     case 'smtpMailService': {
       mailProvider = new SmtpMailService(config);
+      break;
+    }
+    case 'directory': {
+      mailProvider = new DirectoryMailService(config.mail?.directoryMailService);
       break;
     }
     case 'mockMailService': {

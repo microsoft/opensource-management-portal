@@ -21,7 +21,7 @@ import { IMailProvider } from '../../lib/mailProvider';
 import { asNumber } from '../../utils';
 import { IndividualContext } from '../../user';
 import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
-import { Operations } from '../../business/operations';
+import { Operations, ICachedEmployeeInformation } from '../../business/operations';
 
 const supportedLicenseExpressions = [
   'mit',
@@ -49,7 +49,7 @@ export async function CreateRepository(req, bodyOverride: unknown, individualCon
   }
   const providers = req.app.settings.providers as IProviders;
   const operations = providers.operations;
-  const mailProvider = req.app.settings.mailProvider;
+  const mailProvider = providers.mailProvider;
   const repositoryMetadataProvider = providers.repositoryMetadataProvider;
   const ourFields = [
     'ms.onBehalfOf',
@@ -191,7 +191,12 @@ export async function CreateRepository(req, bodyOverride: unknown, individualCon
     // Store create metadata
     metadata.created = new Date();
     metadata.createdByThirdPartyUsername = msProperties.onBehalfOf;
-    // TODO: we also want to store corporate information when present
+    if (individualContext && individualContext.corporateIdentity.id) {
+      metadata.createdByCorporateId = individualContext.corporateIdentity.id;
+      metadata.createdByCorporateUsername = individualContext.corporateIdentity.username;
+      metadata.createdByCorporateDisplayName = individualContext.corporateIdentity.displayName;
+    }
+    // TODO: we also want to store corporate manager information, eventually
     try {
       const account = await operations.getAccountByUsername(metadata.createdByThirdPartyUsername);
       metadata.createdByThirdPartyId = account.id.toString();
@@ -230,7 +235,7 @@ export async function CreateRepository(req, bodyOverride: unknown, individualCon
     }
     NewRepositoryLockdownSystem.ValidateUserCanConfigureRepository(metadata, individualContext);
     // CONSIDER: or a org sudo user or a portal administrator
-    const repositoryByName = await organization.repository(metadata.repositoryName);
+    const repositoryByName = organization.repository(metadata.repositoryName);
     const response = await repositoryByName.getDetails();
     if (response.id != /* loose */ existingRepoId) {
       throw new Error(`The ID of the repo ${metadata.repositoryName} does not match ${existingRepoId}`);
@@ -349,12 +354,19 @@ function downgradeBroadAccessTeams(organization, teams) {
 }
 
 async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlationId: string, repoCreateResults, approvalRequest: RepositoryMetadataEntity, msProperties, existingRepoId: any): Promise<void> {
-  const config = req.app.settings.runtimeConfig;
-  const operations = req.app.settings.providers.operations as Operations;
+  const { config, operations } = req.app.settings.providers as IProviders;
   const emails = msProperties.notify.split(',');
   let targetType = repoCreateResults.fork ? 'Fork' : 'Repo';
   if (!repoCreateResults.fork && approvalRequest.transferSource) {
     targetType = 'Transfer';
+  }
+  let managerInfo: ICachedEmployeeInformation = null;
+  if (approvalRequest.createdByCorporateId) {
+    try {
+      managerInfo = await operations.getCachedEmployeeManagementInformation(approvalRequest.createdByCorporateId);
+    } catch (ignoreError) {
+      console.dir(ignoreError);
+    }
   }
   let headline = `${targetType} ready`;
   const serviceShortName = apiKeyRow && apiKeyRow.service ? apiKeyRow.service : undefined;
@@ -368,21 +380,26 @@ async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlatio
   const reposSiteBaseUrl = `${approvalScheme}://${displayHostname}/`;
   const mail = {
     to: emails,
+    cc: undefined,
     subject,
     correlationId: correlationId,
     category: ['error', 'repos'],
     content: undefined,
   };
+  if (managerInfo && managerInfo.managerMail) {
+    mail.cc = managerInfo.managerMail;
+  }
   const contentOptions = {
-    reason: `You are receiving this e-mail because an API request included the e-mail notification address(es) ${msProperties.notify} during the creation of a repo.`,
-    headline: headline,
+    reason: `You are receiving this e-mail because an API request included the e-mail notification address(es) ${msProperties.notify} during the creation of a repo or you are the manager of the person who created the repo.`,
+    headline,
     notification: 'information',
     app: 'Microsoft GitHub',
-    correlationId: correlationId,
-    approvalRequest: approvalRequest,
+    correlationId,
+    approvalRequest,
     existingRepoId,
     results: repoCreateResults,
     version: config.logging.version,
+    managerInfo,
     reposSiteUrl: reposSiteBaseUrl,
     liveReposSiteUrl: config.microsoftOpenSource ? config.microsoftOpenSource.repos : null,
     api: serviceShortName, // when used by the client single-page app, this is not considered an API call
@@ -407,6 +424,8 @@ async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlatio
     receipt: null,
     eventName: undefined,
   };
+  console.log(mail);
+  console.dir(mail);
   const additionalMail = {...mail};
   try {
     customData.receipt = await mailProvider.sendMail(mail);
@@ -417,6 +436,7 @@ async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlatio
     req.insights.trackException({ exception: mailError, properties: customData });
   }
   // send to operations, too
+  delete additionalMail.cc;
   const operationsMails = operations.getExtendedOperationsMailAddresses();
   if (operationsMails && operationsMails.length) {
     additionalMail.to = operationsMails;

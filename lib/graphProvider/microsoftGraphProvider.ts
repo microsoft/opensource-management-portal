@@ -216,3 +216,14 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     });
   }
 }
+
+export function getUserAndManager(graphProvider, employeeDirectoryId: string): Promise<any> {
+  return new Promise<any>((resolve, reject) => {
+    graphProvider.getUserAndManagerById(employeeDirectoryId, (err, info) => {
+      if (err) {
+        return reject(err);
+      }
+      return resolve(info);
+    });
+  });
+}

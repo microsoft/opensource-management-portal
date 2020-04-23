@@ -1159,7 +1159,7 @@ export class Operations {
     }
     return GetAddressFromUpnAsync(this.mailAddressProvider, corporateUsername);
   }
-
+  
   async getLinkWithOverhead(id: string, options?): Promise<ICorporateLink> {
     // TODO: remove function?
     console.log('* * * * * * * * * * * * /sd/sd/sd/sd/sd/sd getLinkWithOverhead * * * * * * * * * * * * * * * * * * * * ');
