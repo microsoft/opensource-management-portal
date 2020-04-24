@@ -155,7 +155,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
       res.render('message', {
         message: unlinked ? `Your ${config.brand.companyName} and GitHub accounts have been unlinked. You no longer have access to any ${config.brand.companyName} organizations, and you have been signed out of this portal.` : 'Goodbye',
         title: 'Goodbye',
-        buttonText: unlinked ? 'Re-link' : 'Sign In',
+        buttonText: unlinked ? 'Sign in to connect a new account' : 'Sign in',
         config: initialConfig.obfuscatedConfig,
       });
     }

@@ -5,8 +5,6 @@
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-'use strict';
-
 import express = require('express');
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
@@ -65,7 +63,6 @@ router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
 router.post('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const id = req.individualContext.getGitHubIdentity().id;
   const operations = req.app.settings.providers.operations as Operations;
-  // const account = operations.getAccount(id);
   const insights = req.insights;
   const terminationOptions = {
     reason: 'User used the unlink function on the web site',
@@ -96,4 +93,4 @@ router.post('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   }
 }));
 
-module.exports = router;
+export default router;

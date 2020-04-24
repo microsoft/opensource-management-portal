@@ -19,6 +19,22 @@ block content
       h1 GitHub Teams
       p.lead Across all officially managed #{config.brand.companyName} organizations
 
+    if onboarding
+      .alert.alert-gray
+        strong You're all set for use GitHub for open source now.
+        br
+        | You may need to join a GitHub Team at some point. Teams provide access to GitHub repos with specific permissions: for example, a team with admin permission to a repo will have the ability to manage the repo's settings, make it public or private, etc.
+        br
+        br
+        | For the majority of the work you do on GitHub, you can submit a pull request from your individual fork of a project without needing any special permission to contribute back.
+        br
+        br
+        | You can #[a(href='https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/about-teams', target='_new') learn more about GitHub Teams on the GitHub Help site].
+        if organization
+          br
+          br
+          a.btn.btn-default.btn-sm(href=organization.baseUrl) Go to the main #{organization.name} page
+
     .row
       .col-md-8
         form.form-horizontal#entitySearch(style='margin-top:24px')
