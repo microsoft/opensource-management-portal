@@ -159,6 +159,7 @@ module.exports = function (err, req, res, next) {
     req.logout();
   }
   var safeMessage = redactRootPaths(err.message);
+  const defaultErrorTitle = err && err.skipOops ? 'FYI' : 'Oops';
   const view = {
     message: safeMessage,
     encodedMessage: querystring.escape(safeMessage),
@@ -167,11 +168,12 @@ module.exports = function (err, req, res, next) {
     detailed: err && err.detailed ? redactRootPaths(err.detailed) : undefined,
     encodedDetailed: err && err.detailed ? querystring.escape(redactRootPaths(err.detailed)) : undefined,
     errorFancyLink: err && err.fancyLink ? err.fancyLink : undefined,
+    errorFancySecondaryLink: err && err.fancySecondaryLink ? err.fancySecondaryLink : undefined,
     errorStatus: errorStatus,
     skipLog: err.skipLog,
     skipOops: err && err.skipOops ? err.skipOops : false,
     error: {},
-    title: err.title || (err.status === 404 ? 'Not Found' : 'Oops'),
+    title: err.title || (err.status === 404 ? 'Not Found' : defaultErrorTitle),
     primaryUser: primaryUserInstance,
     user: req.user,
     config: config && config.obfuscatedConfig ? config.obfuscatedConfig : null,

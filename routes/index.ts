@@ -17,6 +17,7 @@ router.use('/myinfo', require('./diagnostics'));
 router.use('/explore', require('./explore'));
 router.use('/approvals', require('./approvals'));
 
-router.use(require('./index-authenticated'));
+import AuthenticatedRoute from './index-authenticated';
+router.use(AuthenticatedRoute);
 
 export default router;

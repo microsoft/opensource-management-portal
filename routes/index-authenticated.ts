@@ -12,13 +12,14 @@ import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
 import { ReposAppRequest, IProviders } from '../transitional';
-import { AddLinkToRequest, RequireLinkMatchesGitHubSession } from '../middleware/links/';
+import { AddLinkToRequest, RequireLinkMatchesGitHubSessionExceptPrefixedRoute } from '../middleware/links/';
 import { requireAuthenticatedUserOrSignIn, setIdentity } from '../middleware/business/authentication';
 import { Organization } from '../business/organization';
 
-const linkRoute = require('./link');
-const linkedUserRoute = require('./index-linked');
-const linkCleanupRoute = require('./link-cleanup');
+import linkRoute from './link';
+import linkedUserRoute from './index-linked';
+import linkCleanupRoute from './link-cleanup';
+
 const placeholdersRoute = require('./placeholders');
 const settingsRoute = require('./settings');
 const releasesSpa = require('./releasesSpa');
@@ -38,7 +39,7 @@ router.use('/settings', settingsRoute);
 router.use('/releases', releasesSpa);
 
 // Link cleanups and check their signed-in username vs their link
-router.use(RequireLinkMatchesGitHubSession);
+router.use(RequireLinkMatchesGitHubSessionExceptPrefixedRoute('/unlink'));
 
 router.get('/news', (req: ReposAppRequest, res, next) => {
   const config = req.app.settings.runtimeConfig;
@@ -55,13 +56,11 @@ router.get('/news', (req: ReposAppRequest, res, next) => {
 // Dual-purpose homepage: if not linked, welcome; otherwise, show things
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const onboarding = req.query.onboarding !== undefined;
-
   const individualContext = req.individualContext;
   const link = individualContext.link;
   const providers = req.app.settings.providers as IProviders;
   const operations = providers.operations;
   const config = req.app.settings.runtimeConfig;
-
   if (!link) {
     if (!individualContext.getGitHubIdentity()) {
       return individualContext.webContext.render({
@@ -150,4 +149,4 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
 
 router.use(linkedUserRoute);
 
-module.exports = router;
+export default router;

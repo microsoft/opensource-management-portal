@@ -5,24 +5,19 @@
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-'use strict';
-
 import express = require('express');
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
-
-import emailRender from '../lib/emailRender';
 
 import { ReposAppRequest, IProviders } from '../transitional';
 import { IndividualContext } from '../user';
 import { storeOriginalUrlAsReferrer, wrapError } from '../utils';
 import { ICorporateLink } from '../business/corporateLink';
-import { ILinkProvider } from '../lib/linkProviders';
 import { Operations, LinkOperationSource, SupportedLinkType } from '../business/operations';
 
-const isEmail = require('validator/lib/isEmail');
+import validator from 'validator';
 
-const unlinkRoute = require('./unlink');
+import unlinkRoute from './unlink';
 
 interface IRequestWithSession extends ReposAppRequest {
   session?: any;
@@ -197,7 +192,7 @@ async function linkUser(req, res, next) {
   const isServiceAccount = req.body.sa === '1';
   const serviceAccountMail = req.body.serviceAccountMail;
   const operations = req.app.settings.providers.operations as Operations;
-  if (isServiceAccount && !isEmail(serviceAccountMail)) {
+  if (isServiceAccount && !validator.isEmail(serviceAccountMail)) {
     return next(wrapError(null, 'Please enter a valid e-mail address for the Service Account maintainer.', true));
   }
   let newLinkObject: ICorporateLink = null;
@@ -248,4 +243,4 @@ router.get('/reconnect', function (req: ReposAppRequest, res, next) {
   });
 });
 
-module.exports = router;
+export default router;

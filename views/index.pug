@@ -15,10 +15,11 @@ block content
   - var overview = accountInfo ? accountInfo.overview : null
   div.container
     if onboarding === true
-      if user && user.azure
-        h1.huge Congratulations, #{user.azure.displayName || user.azure.username}
-      else
-        h1.huge Congratulations
+      .div.col-md-7
+        if user && user.azure
+          h1 Welcome, #{user.azure.displayName || user.azure.username}
+        else
+          h1 Welcome
     else
       //h1
         | Open Source Portal&nbsp;
@@ -60,7 +61,7 @@ block content
         h1
           a.a-unstyled(name='orgs') Your #{config.brand.companyName} GitHub organization memberships
       else
-        h3 You've successfully linked your #{config.brand.companyName} and GitHub accounts.
+        h4 You've successfully linked your #{config.brand.companyName} and GitHub accounts.
 
       - var currentPriority = ''
       - var oom = overview && overview.organizations ? overview.organizations.member : []
@@ -83,15 +84,13 @@ block content
           | Link your accounts&nbsp;
           i.glyphicon.glyphicon-ok
         h5.text-primary
-          | Join your first GitHub organization
+          strong Join your first GitHub organization
         h5
-          | Multifactor security checkup
+          | Profile review #[small: em optional]
         h5
-          | Profile review
+          | Publish your membership #[small: em optional]
         h5
-          | Publish your membership <em>(optional)</em>
-        h5
-          | Join a team <em>(optional)</em>
+          | Join a team #[small: em optional]
 
       //-if accountInfo.isSudoer
         h1 Organization Administration
@@ -199,11 +198,22 @@ block content
       if overview && overview.organizations && overview.organizations.available && overview.organizations.available.length
         hr
         h2 Available #{config.brand.companyName} GitHub organizations
-        p These are GitHub organizations that you have not yet joined.
+
+        if onboarding === true
+          .alert.alert-gray(style='color:#000')
+            strong Please join your first corporate GitHub org.
+            br
+            | Your link lets us know who you are, but there is more to be done.
+            br
+            br
+            | The company has many official GitHub orgs. You can choose which you would like to join from the list below.
+            br
+            br
+            | Most users join the official #{config.brand.companyName} org to participate in that great open source community.
+        else
+          p These are GitHub organizations that you are not a member of.
 
         .right
-          if onboarding === true
-            p Join these #{config.brand.companyName} organizations to see private repos and get elevated privileges.
 
           - var currentPriority = ''
           if groupedAvailableOrganizations
@@ -225,13 +235,19 @@ block content
                     a(href='/' + o.name + '/join' + onboardingPostfixUrl)
                       if groupType === 'secondary'
                         h6.text-muted
-                          strong= o.name + ' '
+                          strong(style='text-decoration: underline')= o.name
+                          = ' '
                           small: span.label.label-muted Join
+                        if true || onboarding === true
+                          p: small= o.nativeUrl
                         p.small.text-mute= o.description
                       else
                         h4
-                          = o.name + ' '
+                          span(style='text-decoration: underline')= o.name
+                          = ' '
                           small: span.label.label-primary Join
+                        if true || onboarding === true
+                          p: small= o.nativeUrl
                         p.small(style='color:#333')= o.description
 
     div.col-md-5

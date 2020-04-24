@@ -212,6 +212,10 @@ export interface IReposError extends Error {
     link: string;
     title: string;
   };
+  fancySecondaryLink?: {
+    link: string;
+    title: string;
+  };
   innerError?: IReposError;
 }
 

@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 // Within the context, tries to resolve a link if it _can_. It does not force that a user is linked!
 
 import { IndividualContext } from '../../user';
@@ -12,26 +10,44 @@ import { ReposAppRequest, IReposError } from "../../transitional";
 import { wrapError } from "../../utils";
 import { ILinkProvider } from '../../lib/linkProviders';
 
-export function RequireLinkMatchesGitHubSession(req: ReposAppRequest, res, next) {
-  // trying to be equivalent to legacy code in ./usernameConsistency (lightweight)
+export function RequireLinkMatchesGitHubSessionExceptPrefixedRoute(prefix: string) {
+  return requireLinkMatchesGitHubSession.bind(null, prefix);
+}
 
+export function RequireLinkMatchesGitHubSession(req: ReposAppRequest, res, next) {
+  return requireLinkMatchesGitHubSession(null, req, res, next);
+}
+
+function requireLinkMatchesGitHubSession(allowedPrefix: string, req: ReposAppRequest, res, next) {
+  // trying to be equivalent to legacy code in ./usernameConsistency (lightweight)
   const context = req.individualContext;
   if (!context) {
     return next(new Error('Missing context'));
   }
-
   if (!context.link || !context.link.thirdPartyId) {
     return next();
   }
-
   const gitHubIdentity = context.getGitHubIdentity();
   const sessionIdentity = context.getSessionBasedGitHubIdentity() || gitHubIdentity;
   if (gitHubIdentity && gitHubIdentity.id === sessionIdentity.id) {
     return next();
   }
+  if (allowedPrefix && req.path.startsWith(allowedPrefix)) {
+    console.log(`Mixed GitHub identity issue. Allowed prefix ${allowedPrefix} matches for ${req.path}, allowing downstream route`);
+    return next();
+  }
+  let securityError: IReposError = new Error(`Your GitHub account identity has changed.`);
+  securityError.detailed = `When you linked your GitHub account to your corporate identity, you used the GitHub account with the username ${gitHubIdentity.username} (GitHub user ID ${gitHubIdentity.id}), but you are currently signed into GitHub with the username of ${sessionIdentity.username} (GitHub user ID ${sessionIdentity.id}). Please sign out of this site and GitHub and try again.`;
+  securityError.fancyLink = {
+    title: 'Unlink my account',
+    link: '/unlink',
+  };
+  securityError.fancySecondaryLink = {
+    title: 'Sign out of GitHub',
+    link: '/signout/github?redirect=github',
+  };
+  securityError.skipOops = true;
 
-  // TODO_LOW: this happens often enough, maybe it's time to let them self-delete...
-  let securityError: IReposError = new Error(`When you linked your GitHub account to your corporate identity, you used the GitHub account with the username ${gitHubIdentity.username} (GitHub user ID ${gitHubIdentity.id}), but you are currently signed into GitHub with the username of ${sessionIdentity.username} (GitHub user ID ${sessionIdentity.id}). Please sign out of this site and GitHub and try again. If for some reason you deleted your prior, linked account, you will need to e-mail support to get this resolved.`);
   // TODO_LOW: support multi-account again, if necessary
   const multipleAccountsEnabled = sessionIdentity.id && context.webContext['_fake*property_session_enableMultipleAccounts'] === true;
   if (multipleAccountsEnabled) {
@@ -95,14 +111,4 @@ export async function AddLinkToRequest(req, res, next) {
   const selectedLink = links[0];
   activeContext.link = selectedLink;
   return next();
-  // const user = req.legacyUserContext.modernUser();
-  // if (!user) {
-  //   return res.redirect('/');
-  // }
-  // const link = user.link;
-  // if (!link) {
-  //   return res.redirect('/');
-  // }
-  // req.link = link;
-  // return next();
 }

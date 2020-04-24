@@ -70,17 +70,15 @@ block content
           | Sign in to your GitHub &amp; #{config.brand.companyName} accounts&nbsp;
           i.glyphicon.glyphicon-ok
         h5.text-primary
-          | Link your accounts
+          strong Link your accounts
         h5
           | Join your first GitHub organization
         h5
-          | Multifactor security checkup
-        h5
           | Profile review
         h5
-          | Publish your membership <em>(optional)</em>
+          | Publish your membership #[small: em optional]
         h5
-          | Join a team <em>(optional)</em>
+          | Join a team #[small: em optional]
 
       div.col-md-4.col-lg-4
         if user && user.github && user.github.id

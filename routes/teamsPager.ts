@@ -118,6 +118,7 @@ module.exports = asyncHandler(async function(req: ReposAppRequest, res: express.
       },
       yourTeamsMap,
       totalMemberships,
+      onboarding: req.query.onboarding,
       totalMaintainerships,
       errorAsWarning: null, // warning /* if an error occurs that is not fatal, we may want to display information about it */,
       onboardingOrJoining,

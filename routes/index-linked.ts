@@ -3,15 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express from 'express';
 
-import { ReposAppRequest, IReposError } from '../transitional';
+import { ReposAppRequest } from '../transitional';
 import { IndividualContext } from '../user';
 import { storeOriginalUrlAsVariable } from '../utils';
 import { AuthorizeOnlyCorporateAdministrators } from '../middleware/business/corporateAdministrators';
 const router = express.Router();
+
+import unlinkRoute from './unlink';
 
 const orgsRoute = require('./orgs');
 const orgAdmin = require('./orgAdmin');
@@ -19,7 +19,6 @@ const peopleRoute = require('./people');
 const setupRoute = require('./administration');
 const reposRoute = require('./repos');
 const teamsRoute = require('./teams');
-const unlinkRoute = require('./unlink');
 const undoRoute = require('./undo');
 const contributionsRoute = require('./contributions');
 
@@ -63,4 +62,4 @@ router.use('/https?*github.com/:org/:repo', (req, res, next) => {
 
 router.use('/', orgsRoute);
 
-module.exports = router;
+export default router;
