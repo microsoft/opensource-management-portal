@@ -6,12 +6,10 @@
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-'use strict';
-
 import _ from 'lodash';
 
 import { Operations } from './operations';
-import { IReposError, ICacheOptions, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IReposRestRedisCacheCost, IAuthorizationHeaderValue } from '../transitional';
+import { IReposError, ICacheOptions, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IReposRestRedisCacheCost, IAuthorizationHeaderValue, NoRestApiCache, ErrorHelper } from '../transitional';
 import * as common from './common';
 import { OrganizationMember } from './organizationMember';
 import { Team, GitHubTeamRole, ITeamMembershipRoleState } from './team';
@@ -146,6 +144,8 @@ export interface IGitHubOrganizationResponse {
 export class Organization {
   private _name: string;
   private _baseUrl: string;
+  private _nativeUrl: string;
+  private _nativeManagementUrl: string;
 
   private _operations: Operations;
   private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
@@ -157,7 +157,9 @@ export class Organization {
 
   constructor(operations: Operations, name: string, settings: OrganizationSetting, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, public hasDynamicSettings: boolean) {
     this._name = settings.organizationName || name;
-    this._baseUrl = operations.baseUrl + this.name + '/';
+    this._baseUrl = `${operations.baseUrl}${this.name}/`;
+    this._nativeUrl = `https://github.com/${this.name}/`;
+    this._nativeManagementUrl = `https://github.com/orgs/${this.name}/`;
 
     this._operations = operations;
     this._settings = settings;
@@ -170,6 +172,14 @@ export class Organization {
 
   get baseUrl(): string {
     return this._baseUrl;
+  }
+
+  get nativeUrl(): string {
+    return this._nativeUrl;
+  }
+
+  get nativeManagementUrl(): string {
+    return this._nativeManagementUrl;
   }
 
   get absoluteBaseUrl(): string {
@@ -510,6 +520,36 @@ export class Organization {
     return metadata;
   }
 
+  async getTeamFromSlug(slug: string, options?: ICacheOptions): Promise<Team> {
+    options = options || {};
+    const cacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || this._operations.defaults.orgTeamDetailsStaleSeconds,
+      backgroundRefresh: false,
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    const parameters = {
+      org: this.name,
+      team_slug: slug,
+    };
+    try {
+      const entity = await this._operations.github.call(
+        this.authorize(AppPurpose.Data),
+        'teams.getByName',
+        parameters,
+        cacheOptions);
+      return this.teamFromEntity(entity);
+    } catch (error) {
+      if (error.status && error.status === 404) {
+        error = new Error(`The GitHub team with the slug ${slug} could not be found`);
+        error.status = 404;
+        throw error;
+      }
+      throw error;
+    }
+  }
+
   async getTeamFromName(nameOrSlug: string, options?: ICacheOptions): Promise<Team> {
     options = options || {};
     const operations = this._operations;
@@ -517,6 +557,20 @@ export class Organization {
     // information to help prevent downtime when a new team is created
     if (!options.maxAgeSeconds) {
       options.maxAgeSeconds = operations.defaults.orgTeamsSlugLookupStaleSeconds;
+    }
+    // Try a direct slug lookup first, for better performance
+    try {
+      const team = await this.getTeamFromSlug(nameOrSlug);
+      if (team) {
+        return team;
+      }
+    } catch (teamSlugLookupError) {
+      if (ErrorHelper.IsNotFound(teamSlugLookupError)) {
+        // that's OK...
+      } else {
+        console.log('teamSlugLookupError:');
+        console.warn(teamSlugLookupError);
+      }
     }
     const expected = nameOrSlug.toLowerCase();
     const teams = await this.getTeams(options);
@@ -672,11 +726,7 @@ export class Organization {
     // This is a specific version of the getMembership function that takes
     // no options and never allows for caching [outside of the standard
     // e-tag validation with the real-time GitHub API]
-    const options = {
-      backgroundRefresh: false,
-      maxAgeSeconds: -60,
-    };
-    return await this.getMembership(username, options);
+    return await this.getMembership(username, NoRestApiCache);
   }
 
   async addMembership(username: string, options?: IAddOrganizationMembershipOptions): Promise<any> {

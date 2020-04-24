@@ -1,0 +1,51 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends email
+
+block content
+
+  p.
+    Hi,#[br]
+    #{identifierForRequester} has upgraded themselves to be Team Maintainer of a team that you are in:
+  ul
+    li Team name: #{team.name} #{team.name !== team.slug ? '(' + team.slug + ')' : ''}
+    li GitHub direct link: #[a(href=team.nativeUrl)= team.nativeUrl]
+    li Internal management and information link: #[a(href=team.baseUrl)= team.baseUrl]
+  
+  h3 About this operation
+  p.
+    This self-service operation is in Preview. We hope that this has been useful to help unblock you. 
+    More information about the #{team.name} team can be found at #{team.baseUrl}.
+
+  if link && link.thirdPartyUsername
+    h3 Requested created by #{identifierForRequester}
+      p: a(href='https://github.com/' + link.thirdPartyUsername)= 'https://github.com/' + link.thirdPartyUsername
+      if link
+        table
+          tbody
+            tr
+              td GitHub account
+              td= link.thirdPartyUsername
+            tr
+              td Corporate identity
+              td= link.corporateUsername
+
+  if maintainers && maintainers.length
+    h3 Team Maintainers
+    p Other team maintains include:
+    ul
+      each maintainer in maintainers
+        if maintainer.login
+          - var maintainerLink = thirdPartyLoginToLink.get(maintainer.login.toLowerCase())
+          li: p
+            if maintainerLink.corporateDisplayName
+              = 'Name: ' + maintainerLink.corporateDisplayName
+              br
+            if maintainerLink.corporateUsername
+              = 'Corporate identity: ' + maintainerLink.corporateDisplayName
+              br
+            if maintainerLink.thirdPartyUsername
+              = 'GitHub account: ' + maintainerLink.thirdPartyUsername

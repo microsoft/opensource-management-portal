@@ -13,6 +13,7 @@ import { requireJson, asNumber } from '../../utils';
 import { OrganizationMember } from '../../business/organizationMember';
 import { IReportsContext } from './task';
 import { ICorporateLink } from '../../business/corporateLink';
+import { NoRestApiCache } from '../../transitional';
 
 const definitions = requireJson('jobs/reports/organizationDefinitions.json');
 
@@ -79,13 +80,11 @@ function getIndividualUserLink(context: IReportsContext, id: number): Promise<IC
 }
 
 async function ensureAllUserLinks(context: IReportsContext, operations: Operations) {
-  const latestDataOptions = {
+  const latestDataOptions = Object.assign({
     includeNames: true,
     includeId: true,
     includeServiceAccounts: true,
-    maxAgeSeconds: 0,
-    backgroundRefresh: false,
-  };
+  }, NoRestApiCache);
   const links = await operations.getLinks(latestDataOptions);
   const set = new Map<number, ICorporateLink>();
   for (let i = 0; i < links.length; i++) {

@@ -10,9 +10,8 @@ const router = express.Router();
 import { ReposAppRequest, IProviders } from '../../../transitional';
 import { wrapError } from '../../../utils';
 import { ICorporateLink } from '../../../business/corporateLink';
-import { Team, GitHubRepositoryType, ITeamMembershipRoleState } from '../../../business/team';
+import { Team, GitHubRepositoryType, ITeamMembershipRoleState, GitHubTeamRole } from '../../../business/team';
 import { Organization } from '../../../business/organization';
-import { IMailAddressProvider, GetAddressFromUpnAsync } from '../../../lib/mailAddressProvider';
 import { IApprovalProvider } from '../../../entities/teamJoinApproval/approvalProvider';
 import { Operations } from '../../../business/operations';
 import { TeamJoinApprovalEntity } from '../../../entities/teamJoinApproval/teamJoinApproval';
@@ -21,6 +20,7 @@ import { AddOrganizationPermissionsToRequest, GetOrganizationPermissionsFromRequ
 import { TeamMember } from '../../../business/teamMember';
 
 import throat from 'throat';
+import SelfServiceTeamMemberToMaintainerUpgrades from '../../../features/teamMemberToMaintainerUpgrade';
 
 const lowercaser = require('../../../middleware/lowercaser');
 const teamMaintainerRoute = require('./index-maintainer');
@@ -32,7 +32,7 @@ const ParallelMailAddressLookups = 4;
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: any;
-  membershipStatus?: any;
+  membershipStatus?: GitHubTeamRole;
   membershipState?: any;
   orgPermissions?: any;
   sudoMode?: any;
@@ -42,9 +42,11 @@ interface ILocalRequest extends ReposAppRequest {
   teamMaintainers?: any;
   existingRequest?: TeamJoinApprovalEntity;
   otherApprovals?: TeamJoinApprovalEntity[];
+  selfServiceTeamMemberToMaintainerUpgrades?: SelfServiceTeamMemberToMaintainerUpgrades;
 }
 
 router.use(asyncHandler(async (req: ILocalRequest, res, next) => {
+  const { operations } = req.app.settings.providers as IProviders;
   const login = req.individualContext.getGitHubIdentity().username;
   const team2 = req.team2 as Team;
   try {
@@ -53,6 +55,9 @@ router.use(asyncHandler(async (req: ILocalRequest, res, next) => {
     req.membershipState = statusResult && (statusResult as ITeamMembershipRoleState).state ? (statusResult as ITeamMembershipRoleState).state : null;
   } catch (problem) {
     console.dir(problem);
+  }
+  if (operations.allowSelfServiceTeamMemberToMaintainerUpgrades()) {
+    req.selfServiceTeamMemberToMaintainerUpgrades = new SelfServiceTeamMemberToMaintainerUpgrades({ operations, team: team2 });
   }
   return next();
 }));
@@ -134,6 +139,26 @@ router.get('/join', asyncHandler(async function (req: ILocalRequest, res, next) 
   });
 }));
 
+router.post('/selfServiceMaintainerUpgrade', asyncHandler(async (req: ILocalRequest, res, next) => {
+  const { selfServiceTeamMemberToMaintainerUpgrades } = req;
+  if (!selfServiceTeamMemberToMaintainerUpgrades) {
+    throw new Error('System not available');
+  }
+  const individualContext = req.individualContext;
+  try {
+    await selfServiceTeamMemberToMaintainerUpgrades.validateUserCanSelfServicePromote(individualContext)
+  } catch (notEligible) {
+    return next(notEligible);
+  }
+  try {
+    await selfServiceTeamMemberToMaintainerUpgrades.upgrade(individualContext);
+  } catch (upgradeError) {
+    return next(upgradeError);
+  }
+  individualContext.webContext.saveUserAlert('You are now a Team Maintainer', 'Self-service permission upgrade', 'success');
+  return res.redirect(req.team2.baseUrl);
+}));
+
 router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
   if (req.existingRequest) {
     throw new Error('You have already created a team join request that is pending a decision.');
@@ -201,7 +226,7 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
   let approvalRequest = new TeamJoinApprovalEntity();
   try {
     const upn = req.individualContext.corporateIdentity.username;
-    personMail = await mailAddressProviderGetAddressFromUpn(mailAddressProvider, upn);
+    personMail = await operations.getMailAddressFromCorporateUsername(upn);
     const isMember = await team2.isMember(username);
     if (isMember === true) {
       return next(wrapError(null, 'You are already a member of the team ' + team2.name, true));
@@ -230,7 +255,7 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
       const ml = maintainer ? maintainer.link as ICorporateLink : null;
       const approverUpn = ml && ml.corporateUsername ? ml.corporateUsername : null;
       if (approverUpn) {
-        const mailAddress = await mailAddressProviderGetAddressFromUpn(mailAddressProvider, approverUpn);
+        const mailAddress = await operations.getMailAddressFromCorporateUsername(approverUpn);
         if (mailAddress) {
           approverMailAddresses.push(mailAddress);
         }
@@ -512,6 +537,15 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
   let mailToMembers = memberMails.length && memberMails.length !== FirstPageMembersCap ? `mailto:${memberMails.join(';')}${mailSubjectSuffix}` : null;
   let mailToMembersCount = memberMails.length;
 
+  const { selfServiceTeamMemberToMaintainerUpgrades } = req;
+  let isSelfServiceMemberToMaintainerEligible = false;
+  if (display === BasicTeamViewPage.Default && req.membershipStatus === GitHubTeamRole.Member && selfServiceTeamMemberToMaintainerUpgrades) {
+    const isTeamEligible = await selfServiceTeamMemberToMaintainerUpgrades.isTeamEligible(true /* cache is OK */);
+    if (typeof(isTeamEligible) !=='string') {
+      isSelfServiceMemberToMaintainerEligible = true;
+    }
+  }
+
   return req.individualContext.webContext.render({
     view: 'org/team/index',
     title,
@@ -553,6 +587,9 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
 
       // provider refactoring additions
       existingTeamJoinRequest: req.existingRequest,
+
+      // self-service feature
+      isSelfServiceMemberToMaintainerEligible,
     },
   });
 }
@@ -614,13 +651,5 @@ router.use('/maintainers', require('./maintainers'));
 router.use('/leave', require('./leave'));
 
 router.use(teamMaintainerRoute);
-
-async function mailAddressProviderGetAddressFromUpn(mailAddressProvider: IMailAddressProvider, upn: string): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    mailAddressProvider.getAddressFromUpn(upn, (resolveError, mailAddress) => {
-      return resolveError ? reject(resolveError) : resolve(mailAddress);
-    });
-  });
-}
 
 module.exports = router;

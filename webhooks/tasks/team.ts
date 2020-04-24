@@ -29,10 +29,6 @@ export default class TeamWebhookProcessor implements WebhookProcessor {
   async run(operations: Operations, organization: Organization, data: any): Promise<boolean> {
     const queryCache = operations.providers.queryCache;
     const event = data.body;
-    const immediateRefreshOptions = {
-      backgroundRefresh: false,
-      maxAgeSeconds: 0.01,
-    };
     let refresh = false;
     let expectedAfterRefresh = false;
     const teamId = event.team.id;

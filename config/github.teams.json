@@ -1,0 +1,4 @@
+{
+  "maximumMembersToAllowUpgrade": "env://GITHUB_SELFSERVICE_TEAM_MEMBERTOMAINTAINER_MAXIMUM_MEMBER_COUNT?default=20",
+  "maximumMaintainersToAllowUpgrade": "env://GITHUB_SELFSERVICE_TEAM_MEMBERTOMAINTAINER_MAXIMUM_MAINTAINER_COUNT?default=1"
+}
