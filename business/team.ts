@@ -175,6 +175,10 @@ export class Team {
     return operations.baseUrl + 'teams?q=' + this._id;
   }
 
+  get absoluteBaseUrl(): string {
+    return `${this._organization.absoluteBaseUrl}teams/${this._slug || this._name}/`;
+  }
+
   get nativeUrl() {
     if (this._organization && this._slug) {
       return this._organization.nativeManagementUrl + `teams/${this._slug}/`;

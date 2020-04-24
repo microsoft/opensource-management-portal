@@ -13,7 +13,7 @@ block content
   ul
     li Team name: #{team.name} #{team.name !== team.slug ? '(' + team.slug + ')' : ''}
     li GitHub direct link: #[a(href=team.nativeUrl)= team.nativeUrl]
-    li Internal management and information link: #[a(href=team.baseUrl)= team.baseUrl]
+    li Internal management and information link: #[a(href=team.absoluteBaseUrl)= team.absoluteBaseUrl]
   
   h3 About this operation
   p.
