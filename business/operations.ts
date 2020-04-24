@@ -1159,6 +1159,24 @@ export class Operations {
     }
     return GetAddressFromUpnAsync(this.mailAddressProvider, corporateUsername);
   }
+
+  async getMailAddressesFromCorporateUsernames(corporateUsernames: string[]): Promise<string[]> {
+    // This is a best-faith effort but will not fail if some are not returned.
+    const throttle = throat(2);
+    const addresses: string[] = [];
+    await Promise.all(corporateUsernames.map(username => throttle(async () => {
+      try {
+        const address = await this.getMailAddressFromCorporateUsername(username);
+        if (address) {
+          addresses.push(address);
+        }
+      } catch (ignoreError) {
+        console.log('getMailAddressesFromCorporateUsernames error:');
+        console.warn(ignoreError);
+      }
+    })));
+    return addresses;
+  }
   
   async getLinkWithOverhead(id: string, options?): Promise<ICorporateLink> {
     // TODO: remove function?
@@ -1250,6 +1268,10 @@ export class Operations {
   }
 
   // Feature flags
+
+  allowSelfServiceTeamMemberToMaintainerUpgrades() {
+    return this._config?.features?.allowTeamMemberToMaintainerSelfUpgrades === true;
+  }
 
   allowUnauthorizedNewRepositoryLockdownSystemFeature() {
     return this._config && this._config.features && this._config.features.allowUnauthorizedNewRepositoryLockdownSystem === true;
@@ -1454,17 +1476,6 @@ function getCentralOperationsAuthorizationHeader(self: Operations): IPurposefulG
   // CONSIDER: would randomizing the organization be better, or a priority based on known-rate limit remaining?
   const firstOrganization = s.getOrganizations()[0];
   return firstOrganization.getAuthorizationHeader();
-}
-
-function setRequiredProperties(self, properties, options) {
-  for (let i = 0; i < properties.length; i++) {
-    const key = properties[i];
-    if (!options[key]) {
-      throw new Error(`Required option with key "${key}" was not provided.`);
-    }
-    const privateKey = `_${key}`;
-    self[privateKey] = options[key];
-  }
 }
 
 function crossOrganizationResults(operations: Operations, results, keyProperty) {

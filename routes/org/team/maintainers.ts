@@ -9,7 +9,7 @@ import express = require('express');
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest } from '../../../transitional';
+import { ReposAppRequest, NoRestApiCache } from '../../../transitional';
 import { Team } from '../../../business/team';
 import { TeamMember } from '../../../business/teamMember';
 const teamAdminRequired = require('./teamAdminRequired');
@@ -32,10 +32,7 @@ router.use(asyncHandler(async (req: ILocalRequest, res, next) => {
 }));
 
 async function refreshMaintainers(team2: Team): Promise<TeamMember[]> {
-  return team2.getMaintainers({
-    maxAgeSeconds: -1,
-    backgroundRefresh: false,
-  });
+  return team2.getMaintainers(NoRestApiCache);
 }
 
 router.get('/refresh', (req: ILocalRequest, res) => {

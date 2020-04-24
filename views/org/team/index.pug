@@ -10,7 +10,7 @@ extends ../../layout
 mixin authenticGitHubLink()
   ul.list-unstyled
     li: a.btn.btn-sm(
-          href='https://github.com/orgs/' + organization.name + '/teams/' + team2.slug,
+          href=team.nativeUrl,
           target="_blank",
           class=admin ? 'btn-primary' : 'btn-muted-more'
           )
@@ -151,7 +151,7 @@ block content
                 p Please check your e-mail for a message from GitHub asking you to accept your invitation to this team.
                 p You may also be able to accept your invitation on the team page at GitHub:
                 p: a.btn.btn-default.btn-sm(
-                  href='https://github.com/orgs/' + organization.name + '/teams/' + team2.slug,
+                  href=team2.nativeUrl,
                   target="_blank") Open team on GitHub.com
           //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
           //- JOIN
@@ -210,23 +210,39 @@ block content
         if maintainers && display == 'default'
           h2
             = 'Team Maintainers '
-            small: a(href=teamUrl + 'maintainers/refresh', title='Refresh the team maintainers list')
+            small: a(href=teamUrl + 'maintainers/refresh', title='Refresh the team maintainers list. For performance reasons, this view may be cached.')
               i.glyphicon.glyphicon-refresh
 
           if maintainers.length <= 0
               div.alert.alert-danger(role='alert')
                 strong This team does not have any maintainers
                 br
-                | Without team maintainers members cannot request access to this team and it is unclear who the owner of the repository is.
+                | Without team maintainers people cannot request access to this team and it is unclear who the owner of any associated repositories is.
           else
             if maintainers.length < 2
-              div.alert.alert-warning(role='alert')
+              div.alert.alert-warning(role='alert', style='color: #000')
                 strong This team only has a single maintainer
                 br
                 | It is strongly recommended that a team have multiple maintainers to make it easier to stay on top of permission requests.
             +membersList('maintainer', maintainers, admin)
 
-          if admin
+          if isSelfServiceMemberToMaintainerEligible
+            .alert.alert-gray
+              h4 Self-service Maintainer Upgrade
+              p If you would like to take control of managing this team, you can choose to upgrade yourself to a Team Maintainer.
+              p: form(method='post', action=team.baseUrl + 'selfServiceMaintainerUpgrade')
+                ul.list-inline
+                  li: input.btn.btn-default.btn-sm(
+                    type='submit',
+                    onclick='return confirm(\'Are you sure that you would like to become the Team Maintainer? For awareness, this will inform other maintainers or members.\');',
+                    value='Upgrade to Team Maintainer')
+                  li: input.btn.btn-muted.btn-sm(
+                    style='margin-left:-12px',
+                    type='submit',
+                    onclick='return confirm(\'Are you sure that you would like to become the Team Maintainer? For awareness, this will inform other maintainers or members.\');',
+                    value='Preview')
+
+          if admin && showManagementFeatures
             ul.list-inline
               li: a.btn.btn-sm.btn-muted(href=teamUrl + 'maintainers/add') Add a team maintainer
 
@@ -236,7 +252,7 @@ block content
         if membersFirstPage  && display == 'default'
           h2
             = 'Members '
-            small: a(href=teamUrl + 'members/refresh', title='Refresh the team members list')
+            small: a(href=teamUrl + 'members/refresh', title='Refresh the team members list.  For performance reasons, this view may be cached.')
               i.glyphicon.glyphicon-refresh
 
           if membersFirstPage.length <= 0
@@ -249,12 +265,15 @@ block content
 
           ul.list-inline
             if membersFirstPage.length
-              li: a.btn.btn-sm.btn-muted(href=teamUrl + 'members/browse/', title='Only a subset of members are listed on this page. A full view is also available.')
+              li: a.btn.btn-sm.btn-muted(
+                href=teamUrl + 'members/browse/', 
+                onclick='return confirm(\'Are you sure that you want to browse on this site? The native GitHub experience will offer much better performance.\');'
+                title='Only a subset of members are listed on this page. A full view is also available.')
                 if teamDetails && teamDetails.members_count
                   = 'Browse all ' + teamDetails.members_count.toLocaleString() + ' members'
                 else
                   | Browse all team members
-            if admin
+            if admin && showManagementFeatures
               li: a.btn.btn-sm.btn-muted(href=teamUrl + 'members/add') Add a member
 
         //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -371,9 +390,9 @@ block content
           div.alert.alert-gray(role='alert')
             strong Have you considered GitHub.com?
             | &nbsp;
-            | You can directly manage this team and its maintainers on GitHub.com natively
+            | You can view this team and other information on GitHub.com natively
             | at: &nbsp
-            a(href='https://github.com/orgs/' + organization.name + '/teams/' + team.slug + '/members', target='_new')= 'https://github.com/orgs/' + organization.name + '/teams/' + team.slug + '/members'
+            a(href=team.nativeUrl + 'members', target='_new')= team.nativeUrl + 'members'
 
         //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         //- ADMINISTRATION
@@ -393,7 +412,7 @@ block content
             | &nbsp;
             | You can directly manage this team on GitHub.com natively
             | at:&nbsp;
-            a(href='https://github.com/orgs/' + organization.name + '/teams/' + team.slug + '/members', target='_new')= 'https://github.com/orgs/' + organization.name + '/teams/' + team.slug + '/members'
+            a(href=team.nativeUrl + 'members', target='_new')= team.nativeUrl + 'members'
           +authenticGitHubLink()
 
           ul.list-unstyled.list-vspace(style='margin-bottom:48px; margin-top:12px')
@@ -415,8 +434,9 @@ block content
         h4(style='margin-top:24px') Share
         p: small You can share these links with other users who need to work with this team.
         ul.list-unstyled.list-vspace
-          li: a.btn.btn-muted-more.btn-sm(href=teamUrl + 'join/', title='This URL can be shared for a linked user to join') Request to join this team
-          li: a.btn.btn-muted-more.btn-sm(href=teamUrl, title='This URL can be shared for anyone in the system to learn about what the team is and does') Get team information
+          li: a.btn.btn-muted-more.btn-sm(target='_new', href=teamUrl + 'join/', title='This URL can be shared for a linked user to join') Request to join this team
+          li: a.btn.btn-muted-more.btn-sm(target='_new', href=teamUrl, title='This URL can be shared for anyone in the system to learn about what the team is and does') Get team information
+          li: a.btn.btn-muted-more.btn-sm(target='_new', href=team.nativeUrl, title='This URL can be shared for anyone in the system to learn about what the team is and does') Native GitHub URL
 
         //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         //- CONTACT LINKS
@@ -428,13 +448,18 @@ block content
             if mailToMaintainers && mailToMaintainersCount
               li: a.btn.btn-muted-more.btn-sm(href=mailToMaintainers, title='Contact the maintainers') Contact #{mailToMaintainersCount} maintainers
             if mailToMembers && mailToMembersCount
-              li: a.btn.btn-muted-more.btn-sm(href=teamUrl, title='Contact the members') Contact #{mailToMembersCount} members
+              if mailToMembersCount === mailToMaintainersCount
+                // Same set of people
+              else
+                li: a.btn.btn-muted-more.btn-sm(href=teamUrl, title='Contact the members') Contact #{mailToMembersCount} members
 
     if membershipStatus && !isSystemTeam
       hr
       p
         form(method='post', action=teamUrl + 'leave')
-          button.btn.btn-default(type='submit') Leave #{team2.slug}
+          button.btn.btn-default(
+            onclick='return confirm(\'Are you sure that you want to leave this team?\');'
+            type='submit') Leave #{team2.slug}
 
     hr
     small

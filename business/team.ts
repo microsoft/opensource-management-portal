@@ -175,6 +175,14 @@ export class Team {
     return operations.baseUrl + 'teams?q=' + this._id;
   }
 
+  get nativeUrl() {
+    if (this._organization && this._slug) {
+      return this._organization.nativeManagementUrl + `teams/${this._slug}/`;
+    }
+    // Less ideal fallback
+    return this._organization.nativeManagementUrl + `teams/`;
+  }
+
   async ensureName(): Promise<void> {
     if (this._name && this._slug) {
       return;

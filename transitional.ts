@@ -195,6 +195,11 @@ export interface InnerError extends Error {
   inner?: Error;
 }
 
+export const NoRestApiCache: ICacheOptions = {
+  backgroundRefresh: false,
+  maxAgeSeconds: -1,
+};
+
 export interface IReposError extends Error {
   skipLog?: boolean;
   status?: any; // status?: number;
