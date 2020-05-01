@@ -146,6 +146,7 @@ export interface IProviders {
   basedir?: string;
   eventRecordProvider?: IEventRecordProvider;
   campaignStateProvider?: ICampaignHelper;
+  campaign?: any; // campaign redirection route, poor variable name
   corporateContactProvider?: ICorporateContactProvider;
   config?: any;
   electionProvider?: IElectionEntityProvider;
@@ -178,6 +179,7 @@ export interface IProviders {
   session?: any;
   teamCacheProvider?: ITeamCacheProvider;
   teamMemberCacheProvider?: ITeamMemberCacheProvider;
+  viewServices?: any;
   witnessRedis?: redis.RedisClient;
   witnessRedisHelper?: RedisHelper;
   tokenProvider?: ITokenProvider;

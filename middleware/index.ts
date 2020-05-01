@@ -17,6 +17,7 @@ import ConnectSession from './session';
 import passportConfig from './passport-config';
 import Onboard from './onboarding';
 import viewServices from '../lib/pugViewServices';
+import { IProviders } from '../transitional';
 
 const campaign = require('./campaign');
 const officeHyperlinks = require('./officeHyperlinks');
@@ -25,7 +26,7 @@ const rawBodyParser = require('./rawBodyParser');
 module.exports = function initMiddleware(app, express, config, dirname, initializationError) {
   config = config || {};
   const appDirectory = config && config.typescript && config.typescript.appDirectory ? config.typescript.appDirectory : stripDistFolderName(dirname);
-  const providers = app.get('providers');
+  const providers = app.get('providers') as IProviders;
   if (initializationError) {
     providers.healthCheck.healthy = false;
   }
