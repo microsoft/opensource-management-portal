@@ -31,30 +31,42 @@ block content
   //- var previousMonthName = moment(start).subtract(1, 'months').format('MMMM')
 
   .container
+    - var today = new Date()
+    - var votingEnd = election.votingEnd ? new Date(election.votingEnd) : null
+
     h2= election.title
     p= election.description
-    
     if votingState == 'Voted' || votingState == 'NotEligible'
       if votingState == 'Voted'
         h1 Thanks for voting.
       else if votingState == 'NotEligible'
         h2 You're not eligible to vote this time.
-
       p
         if vote
           - var votedDate = new Date(vote.voted)
           - var votedMoment = moment(votedDate)
           = 'Thank you for your vote. You cast your vote ' + votedMoment.fromNow() + '. '
 
-        = 'So far, ' + totalVotes + ' votes have been cast. '
+
+        if votingEnd && today > votingEnd
+          = totalVotes + ' votes were cast. '
+        else
+          = 'So far, ' + totalVotes + ' votes have been cast. '
         if election && election.votingEnd
           - var ve = new Date(election.votingEnd)
           - var vem = moment(ve)
-          = 'Voting ends ' + vem.fromNow() + '.'
+          if votingEnd && today > votingEnd
+            = 'Voting ended ' + vem.fromNow() + '.'
+          else
+            = 'Voting ends ' + vem.fromNow() + '.'
 
       if results
         hr
-        h4 CURRENT RESULTS
+
+        if votingEnd && today > votingEnd
+          h4 FINAL RESULTS
+        else
+          h4 CURRENT RESULTS
         - var count = 0
         each result in results
           - var nomination = result.nomination

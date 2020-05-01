@@ -1,0 +1,330 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+//- Required inputs: viewServices, repositoryMetadataEntity, repository
+//- Optional inputs: createdUserLink
+
+//- Services
+- var octicon = viewServices ? viewServices.octicon : null
+- var moment = viewServices ? viewServices.moment : null
+
+//- isBootstrap is currently being used to differentiate this include for whether it is
+//- being used to render a web site (isBootstrap===true) OR an email (isNotBootstrap set).
+- var isBootstrap = isNotBootstrap === undefined
+
+mixin groupTitle(heading)
+  if isBootstrap
+    .col-md-3: p.text-right= heading
+  else
+    h4= heading
+
+- var createdCorporateDisplayName = createdUserLink && createdUserLink.corporateDisplayName ? createdUserLink.corporateDisplayName : repositoryMetadataEntity.createdByCorporateUsername
+- var createdCorporateId = createdUserLink && createdUserLink.corporateId ? createdUserLink.corporateId : repositoryMetadataEntity.createdByCorporateId
+if repositoryMetadataEntity.releaseReviewType
+  .row
+    +groupTitle('Release type')
+    .col-md-9
+      if repositoryMetadataEntity.releaseReviewType == 'SmallLibrariesToolsSamples'
+        p Small library, tool, or sample
+      else if repositoryMetadataEntity.releaseReviewType == 'NewReleaseReview'
+        p Official release
+      else if repositoryMetadataEntity.releaseReviewType == 'ExistingReleaseReview'
+        p Additional repository associated with an existing official release
+      else if repositoryMetadataEntity.releaseReviewType == 'Exempt'
+        if createdCorporateDisplayName
+          p #{createdCorporateDisplayName} indicated this project is exempt from corporate GitHub policy
+        else
+          p The user indicated this project is exempt from corporate GitHub policy
+      else
+        p= repositoryMetadataEntity.releaseReviewType
+if repositoryMetadataEntity.projectType
+  .row
+    +groupTitle('Project type')
+    .col-md-9
+      if repositoryMetadataEntity.projectType == 'sample code'
+        p Sample code
+      else if repositoryMetadataEntity.projectType == 'documentation'
+        p Documentation
+      else if repositoryMetadataEntity.projectType == 'other'
+        p "Other"
+      else if repositoryMetadataEntity.projectType == 'utility library / tool'
+        p Small utility library or tool
+      else if repositoryMetadataEntity.projectType == 'product code'
+        p Product code
+      else if repositoryMetadataEntity.projectType == 'sdk'
+        p Software Development Kit (SDK)
+      else
+        p= repositoryMetadataEntity.projectType
+if repositoryMetadataEntity.releaseReviewUrl
+  .row
+    if repositoryMetadataEntity.releaseReviewType && repositoryMetadataEntity.releaseReviewType == 'NewReleaseReview'
+      +groupTitle('New release review')
+    else if repositoryMetadataEntity.releaseReviewType && repositoryMetadataEntity.releaseReviewType == 'ExistingReleaseReview'
+      .col-md-3: p.text-right Existing release review
+    else
+      .col-md-3: p.text-right Review work item
+    .col-md-9
+      if releaseReviewWorkItemId
+        p: a(href=repositoryMetadataEntity.releaseReviewUrl, target='_new')= releaseReviewWorkItemId
+      else
+        p: a(href=repositoryMetadataEntity.releaseReviewUrl, target='_new')= repositoryMetadataEntity.releaseReviewUrl
+if repositoryMetadataEntity.releaseReviewJustification
+  .row
+    +groupTitle('Business justification')
+    .col-md-9
+      if repository.private && repositoryMetadataEntity.releaseReviewJustification == 'Policy exception: Team project'
+        if createdCorporateDisplayName
+          p This repository is a private engineering team project. #{createdCorporateDisplayName} acknowledged that this should be stored in an approved engineering system other than GitHub but proceeded with repository configuration.
+        else
+          p This is a private engineering / team project that should be located in an approved engineering system.
+      else if repository.private === false && repositoryMetadataEntity.releaseReviewJustification == 'Policy exception: Team project'
+        p When created, the repository was marked as being a team project, and the repo creator acknowledged that the scenario may not comply with corporate GitHub policy.
+      else if repositoryMetadataEntity.releaseReviewJustification == 'Policy exception: Personal project'
+        p This is a personal or individual repository that may not comply with corporate GitHub policies. #{createdCorporateDisplayName} acknowledged understanding corporate GitHub policy when creating the repository.
+      else if repository.private && repositoryMetadataEntity.releaseReviewJustification == 'Policy exception: Inner-source / Internal shared source'
+        if createdCorporateDisplayName
+          p This repository is #[a(href='https://aka.ms/innersource') innersource] (private engineering) that should be located in an approved engineering system; #{createdCorporateDisplayName} acknowledged the policy but proceeded with repository configuration.
+        else
+          p This is a private engineering / team project that should be located in an approved engineering system. It was configured as an #[a(href='https://aka.ms/innersource') innersource] project.
+      else if repository.private === false && repositoryMetadataEntity.releaseReviewJustification == 'Policy exception: Inner-source / Internal shared source'
+        if createdCorporateDisplayName
+          p This repository is public, but was marked as an #[a(href='https://aka.ms/innersource') innersource] project. #{createdCorporateDisplayName} assigned this justification.
+        else
+          p This is public, but was marked as a private repository. It was configured as an #[a(href='https://aka.ms/innersource') innersource] project.
+      else
+        p= repositoryMetadataEntity.releaseReviewJustification
+//- Release Review sub-section
+if releaseReviewObject && octicon && moment
+  .row
+    - var review = releaseReviewObject
+    - var state = review.state
+    +groupTitle('Review status')
+    .col-md-9
+      ul.list-inline
+        if state == 'Completed'
+          li: != octicon('check', 16)
+        else if state == 'Initial Review'
+          li: != octicon('person', 16)
+        else if state == 'Legal Review'
+          li: != octicon('law', 16)
+        else if state == 'OSS Attorney Review'
+          li: != octicon('law', 16)
+        else if state == 'Final Review'
+          li: != octicon('checklist', 16)
+        else if state == 'Rejected'
+          li: != octicon('x', 16)
+        else if state == 'Cancelled'
+          li: != octicon('x', 16)
+        li= state
+    //- Subsection for all review details
+    if state !== 'Completed' && repository.private === false
+      .row
+        +groupTitle('Risk')
+        .col-md-9: .alert.alert-danger(style='margin-bottom:16px')
+          strong This repository is already public, but the final business review has not been completed.
+          br
+          p Please review the #[a(style='color:#fff;text-decoration:underline', href='https://docs.opensource.microsoft.com/content/releasing/business-review-release.html', target='_new') business review process] to learn more about how to continue this review.
+    .row
+      +groupTitle('Review details')
+      .col-md-9
+        //-if review.guidance
+          .row
+            .col-md-12: p Guidance has been provided
+        if state !== 'Completed' && review.createdDate
+          .row
+            .col-md-2: p Process started
+            .col-md-10: p= moment(review.createdDate).fromNow()
+        if review.assignedTo && review.assignedTo.displayName
+          .row
+            .col-md-2: p: strong Assigned to
+            .col-md-10: p: strong= review.assignedTo.displayName
+        //-if review.usageDetails
+          .row
+            .col-md-2: p Provided details
+            .col-md-10: p= review.usageDetails
+        if review.reviewers
+          .row
+            .col-md-2: p Reviewers
+            .col-md-10
+              if review.reviewers.initialReviewer
+                .row
+                  .col-md-3: p.text-right Initial business
+                  .col-md-9: p= review.reviewers.initialReviewer.displayName
+              if review.reviewers.legalReviewer
+                .row
+                  .col-md-3: p.text-right Legal
+                  .col-md-9: p= review.reviewers.legalReviewer.displayName
+              if review.reviewers.ossAttorney
+                .row
+                  .col-md-3: p.text-right Open source
+                  .col-md-9: p= review.reviewers.ossAttorney.displayName
+              if review.reviewers.finalReviewer
+                .row
+                  .col-md-3: p.text-right Final business
+                  .col-md-9: p= review.reviewers.finalReviewer.displayName
+//- Lockdown state
+if repositoryMetadataEntity.lockdownState && repositoryMetadataEntity.lockdownState !== 'unlocked'
+  .row
+    +groupTitle('Lockdown state')
+    .col-md-9
+      if repositoryMetadataEntity.lockdownState == 'locked'
+        p Awaiting setup by #{createdCorporateDisplayName}
+      else
+        p= repositoryMetadataEntity.lockdownState
+//- Basic metadata
+if repositoryMetadataEntity.repositoryName
+  .row
+    +groupTitle('Repository name')
+    if repositoryMetadataEntity.repositoryName !== repository.name
+      .col-md-9: p
+        =repositoryMetadataEntity.repositoryName
+        = ' '
+        span.label.label-default RENAMED
+    else
+      .col-md-9: p= repositoryMetadataEntity.repositoryName
+if repository.fork
+  .row
+    +groupTitle('Fork note')
+    .col-md-9: p This is an official fork of an upstream repository.
+  if entity && entity.parent && entity.parent.full_name
+    .row
+      +groupTitle('Upstream')
+      .col-md-9: p: a(href='https://github.com/' + entity.parent.full_name, target='_new')= entity.parent.full_name
+if repositoryMetadataEntity.created && moment
+  .row
+    +groupTitle('Created')
+    .col-md-9: p
+      = moment(repositoryMetadataEntity.created).fromNow()
+      br
+      = repositoryMetadataEntity.created + ' (UTC)'
+  if repository.private
+    - var monthAgo = moment().subtract(1, 'month')
+    - var twoWeeksAgo = moment().subtract(2, 'week')
+    - var ninetyAgo = moment().subtract(3, 'month')
+    - var createdMoment = moment(repositoryMetadataEntity.created)
+    if ninetyAgo.isAfter(createdMoment)
+      .row
+        +groupTitle('Age note')
+        .col-md-9: p This repository has been private for more than 90 days.
+    else if monthAgo.isAfter(createdMoment)
+      .row
+        +groupTitle('Age note')
+        .col-md-9: p This repository has been private for more than the recommended 30 day period before being released as public open source.
+    else if twoWeeksAgo.isAfter(createdMoment)
+      .row
+        +groupTitle('Age note')
+        .col-md-9: p It is recommended that this repository be made public soon, when ready.
+    else
+      .row
+        +groupTitle('New repository')
+        .col-md-9: p This is a new repository.
+if repositoryMetadataEntity.lockdownState
+  .row
+    +groupTitle('Create source')
+    .col-md-9: p GitHub.com direct
+else if !repositoryMetadataEntity.lockdownState
+  .row
+    +groupTitle('Create source')
+    .col-md-9: p New repository wizard
+if repositoryMetadataEntity.initialTemplate
+  .row
+    +groupTitle('Created using template')
+    .col-md-9
+      if repositoryMetadataEntity.initialTemplate == 'mit'
+        p MIT
+      else
+        p= repositoryMetadataEntity.initialTemplate
+if repositoryMetadataEntity.initialLicense
+  .row
+    +groupTitle('Initial license')
+    .col-md-9
+      if repositoryMetadataEntity.initialLicense == 'mit'
+        p MIT
+      else
+        p= repositoryMetadataEntity.initialLicense
+if repositoryMetadataEntity.initialRepositoryDescription
+  .row
+    +groupTitle('Initial description')
+    .col-md-9: p= repositoryMetadataEntity.initialRepositoryDescription
+if repositoryMetadataEntity.initialRepositoryVisibility
+  .row
+    +groupTitle('Initial visibility')
+    .col-md-9
+      if repositoryMetadataEntity.initialRepositoryVisibility == 'public'
+        p Public repository
+      else if repositoryMetadataEntity.initialRepositoryVisibility == 'private'
+        p Private repository
+      else
+        p= repositoryMetadataEntity.initialRepositoryVisibility
+  if repositoryMetadataEntity.initialRepositoryVisibility == 'private' && !repository.private
+    .row
+      +groupTitle('Visibility change')
+      .col-md-9: p This repository has been released and is now public.
+  else if repositoryMetadataEntity.initialRepositoryVisibility == 'private' && repository.private
+    .row
+      +groupTitle('Visibility unchanged')
+      .col-md-9: p This repository has not yet been released as public open source.
+  else if repositoryMetadataEntity.initialRepositoryVisibility == 'public' && !repository.private && repositoryMetadataEntity.releaseReviewUrl
+    .row
+      +groupTitle('Visibility note')
+      .col-md-9: p This repository was made public when created, at the same time the business review was started.
+if repositoryMetadataEntity.initialTeamPermissions && repositoryMetadataEntity.initialTeamPermissions.length
+  .row
+    +groupTitle('Initial requested team permissions')
+    .col-md-9: ul.list-unstyled
+      each itp in repositoryMetadataEntity.initialTeamPermissions
+        if itp.teamId
+          li: ul.list-inline
+            if repository.organization
+              if isBootstrap
+                li: a(href='/teams?q=' + itp.teamId, target='_new')= itp.teamId
+              else
+                li: a(href=repository.organization.absoluteBaseUrl + 'teams?q=' + itp.teamId, target='_new')= itp.teamId
+            else
+              li= itp.teamId
+            if itp.permission
+              li= ' (' + itp.permission + ')'
+if repositoryMetadataEntity.createdByThirdPartyUsername
+  .row
+    +groupTitle('Created by GitHub login')
+    .col-md-9: p
+      if repositoryMetadataEntity.createdByThirdPartyUsername.includes('[bot]')
+        = repositoryMetadataEntity.createdByThirdPartyUsername
+      else
+        a(href='https://github.com/' + repositoryMetadataEntity.createdByThirdPartyUsername, target='_new')= repositoryMetadataEntity.createdByThirdPartyUsername
+        = ' '
+        if repositoryMetadataEntity.createdByThirdPartyId
+          small= '(' + repositoryMetadataEntity.createdByThirdPartyId + ')'
+if createdCorporateDisplayName
+  .row
+    +groupTitle('Created by corporate user')
+    .col-md-9: ul.list-unstyled
+      li: ul.list-inline
+        if repositoryMetadataEntity.createdByCorporateDisplayName || createdUserLink
+          li= repositoryMetadataEntity.createdByCorporateDisplayName || createdUserLink.corporateDisplayName
+        if createdCorporateId
+          if isBootstrap
+            li: small: a(href='/people?q=' + createdCorporateId, target='_new') (linked)
+          else
+            li: small (linked)
+        else
+          li= ' (Not currently linked)'
+      if repositoryMetadataEntity.createdByCorporateUsername || (createdUserLink && createdUserLink.corporateUsername)
+        li= repositoryMetadataEntity.createdByCorporateUsername || (createdUserLink ? createdUserLink.corporateUsername : null)
+      if createdUserLink && createdUserLink.isServiceAccount
+        if createdUserLink && createdUserLink.serviceAccountMail
+          li
+            | Service account managed by
+            = ' '
+            a(href='mailto:' + createdUserLink.serviceAccountMail)= createdUserLink.serviceAccountMail
+        else
+          li Service account
+if repositoryMetadataEntity.initialCorrelationId
+  .row
+    +groupTitle('Correlation ID')
+    .col-md-9: p
+      = repositoryMetadataEntity.initialCorrelationId
+      br
+      small If support is investigating any repository setup issues, this value will help retrieve telemetry.

@@ -199,10 +199,9 @@ export class Organization {
   }
 
   repository(name: string, optionalEntity?) {
-    let entity = optionalEntity || {};
-    // if (!optionalEntity) {
-    entity.name = name;
-    // }
+    const entity = Object.assign({}, optionalEntity || {}, {
+      name,
+    });
     const repository = new Repository(
       this,
       entity,

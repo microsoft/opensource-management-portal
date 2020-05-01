@@ -18,10 +18,12 @@ import RenderHtmlMail from '../../lib/emailRender';
 
 import { RepoWorkflowEngine, IRepositoryWorkflowOutput } from '../org/repoWorkflowEngine';
 import { IMailProvider } from '../../lib/mailProvider';
-import { asNumber } from '../../utils';
+import { asNumber, sleep } from '../../utils';
 import { IndividualContext } from '../../user';
 import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
 import { Operations, ICachedEmployeeInformation } from '../../business/operations';
+import { Repository } from '../../business/repository';
+import { ICorporateLink } from '../../business/corporateLink';
 
 const supportedLicenseExpressions = [
   'mit',
@@ -124,6 +126,7 @@ export async function CreateRepository(req, bodyOverride: unknown, individualCon
   if (existingRepoId && !organization.isNewRepositoryLockdownSystemEnabled()) {
     throw jsonError(new Error(`Repository ID ${existingRepoId} provided for a repository within the ${organization.name} org that is not configured for existing repository classification`), 422);
   }
+  let repository: Repository = null;
   if (!existingRepoId) {
     req.app.settings.providers.insights.trackEvent({
       name: 'ApiRepoTryCreateForOrg',
@@ -137,6 +140,9 @@ export async function CreateRepository(req, bodyOverride: unknown, individualCon
     let createResult: ICreateRepositoryResult = null;
     try {
       createResult = await organization.createRepository(parameters.name, parameters);
+      if (createResult && createResult.repository) {
+        repository = organization.repositoryFromEntity(createResult.repository);
+      }
     } catch (error) {
       req.app.settings.providers.insights.trackEvent({
         name: 'ApiRepoCreateForOrgGitHubFailure',
@@ -240,6 +246,7 @@ export async function CreateRepository(req, bodyOverride: unknown, individualCon
     if (response.id != /* loose */ existingRepoId) {
       throw new Error(`The ID of the repo ${metadata.repositoryName} does not match ${existingRepoId}`);
     }
+    repository = repositoryByName;
     metadata.lockdownState = RepositoryLockdownState.Unlocked;
     const repoCreateResponse: ICreateRepositoryApiResult = {
       github: response,
@@ -320,7 +327,16 @@ export async function CreateRepository(req, bodyOverride: unknown, individualCon
   req.repoCreateResponse.tasks = output;
   if (msProperties.notify && mailProvider) {
     try {
-    await sendEmail(req, mailProvider, req.apiKeyRow, req.correlationId, output, repoWorkflow.request, msProperties, existingRepoId);
+      let createdUserLink: ICorporateLink = null;
+      if (providers.linkProvider) {
+        try {
+          createdUserLink = await providers.linkProvider.getByThirdPartyId(repoWorkflow.request.createdByThirdPartyId);
+        } catch (linkError) {
+          console.log(`Ignored link error during new repo notification: ${linkError}`);
+        }
+      }
+
+      await sendEmail(req, mailProvider, req.apiKeyRow, req.correlationId, output, repoWorkflow.request, msProperties, existingRepoId, repository, createdUserLink);
     } catch (mailSendError) {
       console.dir(mailSendError);
     }
@@ -353,8 +369,8 @@ function downgradeBroadAccessTeams(organization, teams) {
   }
 }
 
-async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlationId: string, repoCreateResults, approvalRequest: RepositoryMetadataEntity, msProperties, existingRepoId: any): Promise<void> {
-  const { config, operations } = req.app.settings.providers as IProviders;
+async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlationId: string, repoCreateResults, approvalRequest: RepositoryMetadataEntity, msProperties, existingRepoId: any, repository: Repository, createdUserLink: ICorporateLink): Promise<void> {
+  const { config, operations, viewServices } = req.app.settings.providers as IProviders;
   const emails = msProperties.notify.split(',');
   let targetType = repoCreateResults.fork ? 'Fork' : 'Repo';
   if (!repoCreateResults.fork && approvalRequest.transferSource) {
@@ -374,7 +390,7 @@ async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlatio
   if (existingRepoId) {
     subject = `${approvalRequest.repositoryName} ${targetType.toLowerCase()} ready`;
   }
-  const emailTemplate = 'repoApprovals/autoCreated';
+  const emailTemplate = 'newRepository';
   const displayHostname = req.hostname;
   const approvalScheme = displayHostname === 'localhost' && config.webServer.allowHttp === true ? 'http' : 'https';
   const reposSiteBaseUrl = `${approvalScheme}://${displayHostname}/`;
@@ -389,13 +405,25 @@ async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlatio
   if (managerInfo && managerInfo.managerMail) {
     mail.cc = managerInfo.managerMail;
   }
+  if (repository) {
+    try {
+      await repository.getDetails();
+    } catch (getDetailsErrorIgnored) {
+      console.dir(getDetailsErrorIgnored);
+    }
+  }
+  const app = config.brand?.companyName ? `${config.brand.companyName} GitHub` : 'GitHub';
   const contentOptions = {
-    reason: `You are receiving this e-mail because an API request included the e-mail notification address(es) ${msProperties.notify} during the creation of a repo or you are the manager of the person who created the repo.`,
+    reason: `You are receiving this e-mail because the new repository request included the e-mail notification address(es) ${msProperties.notify}, or, you are the manager of the person who created the repo.`,
     headline,
     notification: 'information',
-    app: 'Microsoft GitHub',
+    app,
     correlationId,
-    approvalRequest,
+    approvalRequest, // old name
+    repositoryMetadataEntity: approvalRequest,
+    repository,
+    organization: repository ? repository.organization : null,
+    createdUserLink,
     existingRepoId,
     results: repoCreateResults,
     version: config.logging.version,
@@ -406,6 +434,8 @@ async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlatio
     service: serviceShortName,
     serviceOwner: apiKeyRow ? apiKeyRow.owner : undefined,
     serviceDescription: apiKeyRow ? apiKeyRow.description : undefined,
+    viewServices,
+    isNotBootstrap: true,
   };
   try {
     mail.content = await RenderHtmlMail(req.app.settings.runtimeConfig.typescript.appDirectory, emailTemplate, contentOptions);
@@ -424,8 +454,6 @@ async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlatio
     receipt: null,
     eventName: undefined,
   };
-  console.log(mail);
-  console.dir(mail);
   const additionalMail = {...mail};
   try {
     customData.receipt = await mailProvider.sendMail(mail);

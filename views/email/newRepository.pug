@@ -3,7 +3,7 @@
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
-extends ../email
+extends email
 
 block content
   h1 #{approvalRequest.organizationName}/#{approvalRequest.repositoryName}
@@ -37,11 +37,11 @@ block content
         take your repo public with a single click here:
       p: a(href=liveReposSiteUrl + approvalRequest.org + '/repos/' + approvalRequest.repoName)= liveReposSiteUrl + approvalRequest.org + '/repos/' + approvalRequest.repoName
 
-  if approvalRequest.initialLicense
+  //-if approvalRequest.initialLicense
     h3 License
     p= approvalRequest.initialLicense
 
-  if approvalRequest.releaseReviewType
+  //-if approvalRequest.releaseReviewType
     h3 Open Source Approval
     p
       | Release Type: #{approvalRequest.releaseReviewType}
@@ -51,6 +51,7 @@ block content
       if approvalRequest.releaseReviewJustification
         br
         | Business Justification: #{approvalRequest.releaseReviewJustification}
+  
   if service || serviceOwner || serviceDescription
     h3 Service information
     p This repo was created by a service:
@@ -79,3 +80,9 @@ block content
     h3 Additional notifications
     p For visibility, the manager #{managerInfo.managerDisplayName ? managerInfo.managerDisplayName : managerInfo.managerMail} was also notified of this new GitHub repo for open source.
     
+  if repository && repositoryMetadataEntity && repositoryMetadataEntity.repositoryName && repositoryMetadataEntity.organizationName
+    h3 Associated corporate metadata
+    if repository
+      p This information is available at #[a(href=repository.absoluteBaseUrl)=repository.absoluteBaseUrl]
+    include ../includes/corporateRepoMetadata
+  
