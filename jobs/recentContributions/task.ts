@@ -33,7 +33,6 @@ import throat from 'throat';
 import { IReposJob, IReposJobResult } from '../../app';
 import appPackage = require('../../package.json');
 
-import { ILinkProvider } from '../../lib/linkProviders';
 import { IProviders, ErrorHelper } from '../../transitional';
 import { ICorporateLink } from '../../business/corporateLink';
 import { Account } from '../../business/account';
@@ -143,8 +142,8 @@ function distill(obj: any) {
   return obj;
 }
 
-function strippedEventBody(body: IGitHubEventBody, payload: any, isOpenSource: boolean) {
-  const copy = distill({...body, contribution: isOpenSource});
+function strippedEventBody(body: IGitHubEventBody, payload: any) {
+  const copy = distill({...body});
   delete copy.public;
   delete copy.payload;
   if (payload) {
@@ -311,7 +310,7 @@ export default async function job({ providers, parameters }: IReposJob): Promise
     illegalOrgs = require(appPackage['contributions-unofficial-organizations-require']);
   }
   const illegalCorporateOrgs = new Set(illegalOrgs);
-  let allLinks = await getAllLinks(linkProvider);
+  let allLinks = await linkProvider.getAll();
   allLinks = _.shuffle(allLinks);
   console.log(reclassify ? 
     `reclassifying contributions for ${allLinks.length} links` : 
@@ -328,10 +327,10 @@ export default async function job({ providers, parameters }: IReposJob): Promise
   let reclassifiedUsers = 0;
   let x = 0;
   let concurrency = reclassify ? 5 : 1;
-
   const throttle = throat(concurrency);
   await Promise.all(allLinks.map((link: ICorporateLink) => throttle(async () => {
     const i = ++x;
+    console.log(`${i}/${allLinks.length}`);
     try {
       const account = operations.getAccount(link.thirdPartyId);
       await account.getDetails();
@@ -352,18 +351,18 @@ export default async function job({ providers, parameters }: IReposJob): Promise
             continue; // quick skip
           }
           const wasOpenSource = event.additionalData.contribution || false;
-          if (management === undefined) {
+          if (!event.additionalData && event.additionalData.management && management === undefined) {
             management = await getManagers(graphProvider, link);
           }
           if (!event.additionalData.management && management) {
             event.additionalData.management = management.map(entry => entry.id).reverse();
           } else if (management && event.additionalData.management) {
-            console.log('could actually skip!');
+            // console.log('could actually skip!');
           }
           // not actually reclassifying anything now!
           event.additionalData.reclassified = new Date();
           await eventRecordProvider.rewriteEvent(event);
-          console.log(`\trewrote: event id=${event.eventId} with mgmt-info`);
+          // console.log(`\trewrote: event id=${event.eventId} with mgmt-info`);
           ++newaction;
           if (false) {
             // NO RE-EVAL NOW SINCE THIS IS JUST FOCUSED
@@ -465,7 +464,9 @@ export default async function job({ providers, parameters }: IReposJob): Promise
           record.userCorporateUsername = link.corporateUsername;
           record.userId = link.thirdPartyId;
           record.userUsername = link.thirdPartyUsername;
-          record.additionalData = strippedEventBody(body, payload, isOpenSource);
+          record.isOpenContribution = isOpenSource;
+          record.additionalData = strippedEventBody(body, payload);
+          record.isOpenContribution = isOpenSource;
           if (management === undefined) {
             management = await getManagers(graphProvider, link);
           }
@@ -515,10 +516,6 @@ export default async function job({ providers, parameters }: IReposJob): Promise
   console.log('-----------------------------------------------------------------');
 
   return {};
-}
-
-async function getAllLinks(linkProvider: ILinkProvider) : Promise<ICorporateLink[]> {
-  return linkProvider.getAll();
 }
 
 async function getManagers(graphProvider: IGraphProvider, link: ICorporateLink) {

@@ -8,8 +8,9 @@ import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataPro
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
 import { GitHubRepositoryPermission } from '../repositoryMetadata/repositoryMetadata';
-import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresJsonEntityQueryMultiple } from '../../lib/entityMetadataProvider/postgres';
+import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresJsonEntityQueryMultiple, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
+import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
 
 const type = new EntityMetadataType('RepositoryTeamCache');
 
@@ -125,7 +126,7 @@ export class RepositoryTeamCacheFixedQueryByRepositoryId implements IEntityMetad
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => { return new RepositoryTeamCacheEntity(); });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, Field.uniqueId);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, new Map<string, string>([
+EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, new Map<string, string>([
   [Field.cacheUpdated, 'cached'],
   [Field.organizationId, 'orgid'],
   [Field.permission, 'permission'],
@@ -134,11 +135,11 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, n
   [Field.teamId, 'teamId'],
   [Field.repositoryName, 'repositoryName'],
 ]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.MemoryMapping, fieldNames, []);
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTableName, 'repositoryteamcache');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, 'repositoryteamcache');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping, new Map<string, string>([
+PostgresConfiguration.SetDefaultTableName(type, 'repositoryteamcache');
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'repositoryteamcache');
+PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
   [Field.cacheUpdated, (Field.cacheUpdated as string).toLowerCase()],
   [Field.organizationId, (Field.organizationId as string).toLowerCase()], // net new
   [Field.permission, (Field.permission as string).toLowerCase()],
@@ -147,9 +148,9 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping,
   [Field.uniqueId, (Field.uniqueId as string).toLowerCase()],
   [Field.teamId, (Field.teamId as string).toLowerCase()],
 ]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.PostgresMapping, fieldNames, []);
+PostgresConfiguration.ValidateMappings(type, fieldNames, []);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
   const entityTypeColumn = mapMetadataPropertiesToFields[EntityField.Type];
   const entityTypeValue = getEntityTypeColumnValue(type);
   switch (query.fixedQueryType) {
@@ -218,7 +219,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
   }
 });
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
+EntityMetadataMappings.Register(type, MemorySettings.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
   switch (query.fixedQueryType) {
     case FixedQueryType.RepositoryTeamCacheGetAll:
       return allInTypeBin;

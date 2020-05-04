@@ -11,7 +11,7 @@ import _ from 'lodash';
 
 import { Organization, OrganizationMembershipState } from './organization';
 import { Operations } from './operations';
-import { ICacheOptions, ICallback, IGetOwnerToken, ICacheOptionsPageLimiter, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IPagedCrossOrganizationCacheOptions } from '../transitional';
+import { ICacheOptions, ICacheOptionsPageLimiter, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IPagedCrossOrganizationCacheOptions } from '../transitional';
 import { TeamMember } from './teamMember';
 import { TeamRepositoryPermission } from './teamRepositoryPermission';
 import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';

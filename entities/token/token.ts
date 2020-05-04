@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import azure from 'azure-storage';
 import crypto from 'crypto';
 
@@ -16,6 +14,8 @@ import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetad
 import { TokenGenerator } from './tokenGenerator';
 import { QueryTokensByCorporateID } from './tokenProvider';
 import { Type } from './type';
+import { TableSettings } from '../../lib/entityMetadataProvider/table';
+import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
 
 const type = Type;
 
@@ -139,7 +139,7 @@ export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntity
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => { return new PersonalAccessToken(); });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, Field.token);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableMapping, new Map<string, string>([
+EntityMetadataMappings.Register(type, TableSettings.TableMapping, new Map<string, string>([
   [Field.token, null], // RowKey
   [Field.active, 'active'],
   [Field.corporateId, 'owner'],
@@ -150,17 +150,17 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableMapping, ne
   [Field.expires, 'expires'],
   [Field.scopes, 'apis'],
 ]));
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TablePossibleDateColumns, [
+EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [
   Field.created,
   Field.expires,
 ]);
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableDefaultTableName, 'settings');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableDefaultFixedPartitionKey, 'apiKey');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableDefaultRowKeyPrefix, 'apiKey');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableDefaultFixedPartitionKeyNoPrefix, true);
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.TableMapping, fieldNames, []);
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultTableName, 'settings');
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKey, 'apiKey');
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultRowKeyPrefix, 'apiKey');
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKeyNoPrefix, true);
+EntityMetadataMappings.RuntimeValidateMappings(type, TableSettings.TableMapping, fieldNames, []);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, new Map<string, string>([
+EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, new Map<string, string>([
   [Field.token, Field.token],
   [Field.active, Field.active],
   [Field.corporateId, Field.corporateId],
@@ -172,9 +172,9 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, n
   [Field.expires, Field.expires],
   [Field.scopes, Field.scopes],
 ]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.MemoryMapping, fieldNames, []);
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableQueries, (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
+EntityMetadataMappings.Register(type, TableSettings.TableQueries, (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
   switch (query.fixedQueryType) {
     case FixedQueryType.TokensByCorporateId:
       const { corporateId } = query as QueryTokensByCorporateID;
@@ -192,9 +192,9 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableQueries, (q
   }
 });
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
+EntityMetadataMappings.Register(type, MemorySettings.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
   function translatedField(type: EntityMetadataType, key: string): string {
-    const mapTeamApprovalObjectToMemoryFields = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.MemoryMapping, true);
+    const mapTeamApprovalObjectToMemoryFields = EntityMetadataMappings.GetDefinition(type, MemorySettings.MemoryMapping, true);
     const value = mapTeamApprovalObjectToMemoryFields.get(key);
     if (!value) {
       throw new Error(`No translation exists for field ${key} in memory provider`);

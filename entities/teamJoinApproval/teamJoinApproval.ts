@@ -11,7 +11,9 @@ import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataPro
 import { MetadataMappingDefinition, EntityMetadataMappings } from '../../lib/entityMetadataProvider/declarations';
 import { FixedQueryType, IEntityMetadataFixedQuery } from '../../lib/entityMetadataProvider/query';
 import { stringOrNumberAsString, stringOrNumberArrayAsStringArray } from '../../utils';
-import { PostgresGetAllEntities, PostgresJsonEntityQuery } from '../../lib/entityMetadataProvider/postgres';
+import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
+import { TableSettings } from '../../lib/entityMetadataProvider/table';
+import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
 
 const type = new EntityMetadataType('TeamJoinRequest');
 
@@ -124,9 +126,9 @@ export class TeamJoinApprovalEntity implements IObjectWithDefinedKeys, ITeamJoin
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => { return new TeamJoinApprovalEntity(); });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, 'approvalId');
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableDefaultTableName, 'pending');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableDefaultFixedPartitionKey, 'pk');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableMapping, new Map<string, string>([
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultTableName, 'pending');
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKey, 'pk');
+EntityMetadataMappings.Register(type, TableSettings.TableMapping, new Map<string, string>([
   [Field.thirdPartyId, 'ghid'],
   [Field.thirdPartyUsername, 'ghu'],
 
@@ -156,13 +158,13 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableMapping, ne
 
   [Field.ticketType, 'tickettype'],
 ]));
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TablePossibleDateColumns, [
+EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [
   Field.created,
   Field.decisionTime,
 ]);
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.TableMapping, fieldNames, []);
+EntityMetadataMappings.RuntimeValidateMappings(type, TableSettings.TableMapping, fieldNames, []);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, new Map<string, string>([
+EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, new Map<string, string>([
   [Field.thirdPartyId, '__ghi'],
   [Field.thirdPartyUsername, '__ghu'],
 
@@ -192,11 +194,11 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, n
 
   [Field.ticketType, '/type'],
 ]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.MemoryMapping, fieldNames, []);
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, 'teamjoin');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTableName, 'approvals');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping, new Map<string, string>([
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'teamjoin');
+PostgresConfiguration.SetDefaultTableName(type, 'approvals');
+PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
   [Field.thirdPartyId, (Field.thirdPartyId as string).toLowerCase()],
   [Field.thirdPartyUsername, (Field.thirdPartyUsername as string).toLowerCase()],
 
@@ -226,8 +228,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping,
 
   [Field.ticketType, 'tickettype'], // TODO: remove ticket type from team join approvals
 ]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.PostgresMapping, fieldNames, []);
-
+PostgresConfiguration.ValidateMappings(type, fieldNames, []);
 
 export class TeamJoinRequestFixedQueryAll implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.AllTeamJoinApprovals;
@@ -282,7 +283,7 @@ export class TeamJoinRequestFixedQueryAllActiveRequests implements IEntityMetada
 }
 
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableQueries, (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
+EntityMetadataMappings.Register(type, TableSettings.TableQueries, (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
   switch (query.fixedQueryType) {
     case FixedQueryType.ActiveTeamJoinApprovalsByTeams:
       const { ids } = query as TeamJoinRequestFixedQueryByTeams;
@@ -339,7 +340,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableQueries, (q
   }
 });
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
   const entityTypeColumn = mapMetadataPropertiesToFields['entityType'];
   const entityTypeValue = getEntityTypeColumnValue(type);
   let sql = '', values = [];
@@ -396,9 +397,9 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
   }
 });
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
+EntityMetadataMappings.Register(type, MemorySettings.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
   function translatedField(type: EntityMetadataType, key: string): string {
-    const mapTeamApprovalObjectToMemoryFields = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.MemoryMapping, true);
+    const mapTeamApprovalObjectToMemoryFields = EntityMetadataMappings.GetDefinition(type, MemorySettings.MemoryMapping, true);
     const value = mapTeamApprovalObjectToMemoryFields.get(key);
     if (!value) {
       throw new Error(`No translation exists for field ${key} in memory provider`);

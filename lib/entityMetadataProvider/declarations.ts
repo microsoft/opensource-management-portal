@@ -5,38 +5,32 @@
 
 import { EntityMetadataType } from './entityMetadata';
 
-export enum MetadataMappingDefinition {
-  EntityIdColumnName = 'EntityIdColumnName',
-  EntityInstantiate = 'EntityInstantiate',
+export abstract class MetadataMappingDefinitionBase {
+  alternateRuntimeValidateMapping: Map<string, string>;
 
-  TableMapping = 'TableMapping',
-  TablePossibleDateColumns = 'TablePossibleDateColumns',
-  TableQueries = 'TableQueries',
-  TableNoPointQueries = 'TableNoPointQueries',
-  TableNoPointQueryMapping = 'TableNoPointQueryMapping',
-  TableNoPointQueryAlternateIdFieldName = 'TableNoPointQueryAlternateIdFieldName',
-  TableSpecializedDeserializationHelper = 'TableSpecializedDeserializationHelper',
-  TableSpecializedSerializationHelper = 'TableSpecializedSerializationHelper',
-  TableDefaultTableName = 'TableDefaultTableName',
-  TableDefaultFixedPartitionKey = 'TableDefaultFixedPartitionKey',
-  TableDefaultFixedPartitionKeyNoPrefix = 'TableDefaultFixedPartitionKeyNoPrefix',
-  TableDefaultRowKeyPrefix = 'TableDefaultRowKeyPrefix',
-  TableEncryptedColumnNames= 'TableEncryptedColumnNames',
+  constructor(public definitionName: string) {
+  }
 
-  PostgresMapping = 'PostgresMapping',
-  PostgresQueries = 'PostgresQueries',
-  PostgresDefaultTableName = 'PostgresDefaultTableName',
-  PostgresDefaultTypeColumnName = 'PostgresDefaultTypeColumnName',
-  PostgresDateColumns = 'PostgresDateColumns',
+  toString(): string {
+    return this.definitionName;
+  }
+}
 
-  MemoryMapping = 'MemoryMapping',
-  MemoryQueries = 'MemoryQueries',
+class LegacyMappingDefinition extends MetadataMappingDefinitionBase {
+  constructor(definitionName: string) {
+    super(definitionName);
+  }
+}
+
+export const MetadataMappingDefinition = {
+  EntityIdColumnName: new LegacyMappingDefinition('EntityIdColumnName'),
+  EntityInstantiate: new LegacyMappingDefinition('EntityInstantiate'),
 }
 
 export class EntityMetadataMappings {
-  private static _values = new Map<EntityMetadataType, Map<MetadataMappingDefinition, any>>();
+  private static _values = new Map<EntityMetadataType, Map<MetadataMappingDefinitionBase, any>>();
 
-  public static Register(type: EntityMetadataType, definitionType: MetadataMappingDefinition, definition: any) {
+  public static Register(type: EntityMetadataType, definitionType: MetadataMappingDefinitionBase, definition: any) {
     if (!EntityMetadataMappings._values.has(type)) {
       EntityMetadataMappings._values.set(type, new Map());
     }
@@ -47,7 +41,7 @@ export class EntityMetadataMappings {
     typeMap.set(definitionType, definition);
   }
 
-  public static GetDefinition(type: EntityMetadataType, definitionType: MetadataMappingDefinition, throwIfMissing: boolean): any {
+  public static GetDefinition(type: EntityMetadataType, definitionType: MetadataMappingDefinitionBase, throwIfMissing: boolean): any {
     if (!EntityMetadataMappings._values.has(type)) {
       throw new Error(`Type definitions not initialized or set to ${type} (${definitionType})`);
     }
@@ -66,9 +60,9 @@ export class EntityMetadataMappings {
     return ctor();
   }
 
-  public static RuntimeValidateMappings(type: EntityMetadataType, definitionType: MetadataMappingDefinition, fieldNames: string[], permittedAdditionalUnvisitedMappings: string[]) {
+  public static RuntimeValidateMappings(type: EntityMetadataType, definitionType: MetadataMappingDefinitionBase, fieldNames: string[], permittedAdditionalUnvisitedMappings: string[]) {
     try {
-      const mapping = EntityMetadataMappings.GetDefinition(type, definitionType, true) as Map<string, string>;
+      const mapping = definitionType.alternateRuntimeValidateMapping || EntityMetadataMappings.GetDefinition(type, definitionType, true) as Map<string, string>;
       if (!mapping || !mapping.keys) {
         throw new Error(`RuntimeValidateMappings: type ${type} definition ${definitionType} does not have a map`);
       }

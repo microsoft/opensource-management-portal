@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IEventRecordProvider, IEventRecordProviderCreateOptions, EventRecordProvider } from './eventRecordProvider';
+import { IEventRecordProvider, IEventRecordProviderCreateOptions, EventRecordProvider } from './eventRecord';
 
 export async function createAndInitializeEventRecordProviderInstance(options?: IEventRecordProviderCreateOptions): Promise<IEventRecordProvider> {
   const provider = new EventRecordProvider(options);

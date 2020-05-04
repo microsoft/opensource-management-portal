@@ -7,7 +7,7 @@ import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvi
 import { IEntityMetadata, EntityMetadataType, IEntityMetadataBaseOptions, EntityMetadataBase } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
-import { PostgresJsonEntityQuery } from '../../lib/entityMetadataProvider/postgres';
+import { PostgresJsonEntityQuery, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
 import { IDictionary } from '../../transitional';
 import { v4 } from 'uuid';
 import { stringOrNumberAsString } from '../../utils';
@@ -56,18 +56,18 @@ export class ElectionNominationCommentEntity implements IElectionNominationComme
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => { return new ElectionNominationCommentEntity(); });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, commentId);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTableName, postgresTableName);
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, columnTypeName);
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping, new Map<string, string>([
+PostgresConfiguration.SetDefaultTableName(type, postgresTableName);
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, columnTypeName);
+PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
   [Field.nominationId, (Field.nominationId).toLowerCase()],
   [Field.corporateId, (Field.corporateId).toLowerCase()],
   [Field.corporateDisplayName, (Field.corporateDisplayName).toLowerCase()],
   [Field.created, (Field.created).toLowerCase()],
   [Field.comment, (Field.comment).toLowerCase()],
 ]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.PostgresMapping, fieldNames, [commentId]);
+PostgresConfiguration.ValidateMappings(type, fieldNames, [commentId]);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
   const entityTypeColumn = mapMetadataPropertiesToFields[EntityField.Type];
   const entityTypeValue = getEntityTypeColumnValue(type);
   switch (query.fixedQueryType) {

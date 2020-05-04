@@ -5,6 +5,7 @@
 
 import { IEntityMetadata, EntityMetadataType } from './entityMetadata';
 import { IEntityMetadataFixedQuery } from './query';
+import { swapMap } from '../../utils';
 
 export enum EntityField {
   Type = 'entityType',
@@ -39,8 +40,6 @@ export interface IEntityMetadataProvider {
 
   supportsHistory: boolean;
   name: string;
-
-  getMetadataHistory(type: EntityMetadataType, id: string): Promise<IEntityMetadata[]>;
 
   fixedQueryMetadata(type: EntityMetadataType, query: IEntityMetadataFixedQuery): Promise<IEntityMetadata[]>;
 
@@ -134,12 +133,4 @@ export function DeserializeEntityMetadataToObjectSetCollection(entity: IEntityMe
     throw new Error(`The destination field ${destinationIdFieldName} was overwritten deserializing the metadata for ${entity.entityType}`);
   }
   return setCollection;
-}
-
-function swapMap(map: Map<string, string>): Map<string, string> {
-  const rm = new Map<string, string>();
-  for (const [key, value] of map.entries()) {
-    rm.set(value, key);
-  }
-  return rm;
 }

@@ -35,7 +35,7 @@ import { IOrganizationSettingProvider } from './entities/organizationSettings/or
 import { ILinkProvider } from './lib/linkProviders';
 import { asNumber } from './utils';
 import { IAuditLogRecordProvider } from './entities/auditLogRecord/auditLogRecordProvider';
-import { IEventRecordProvider } from './entities/events/eventRecordProvider';
+import { IEventRecordProvider } from './entities/events/eventRecord';
 import { ICacheHelper } from './lib/caching';
 import { ICampaignHelper } from './lib/campaigns';
 import { ICorporateContactProvider } from './lib/corporateContactProvider';
@@ -377,6 +377,11 @@ export class CreateError {
 
   static NotFound(message: string): Error {
     return CreateError.CreateStatusCodeError(404, message);
+  }
+
+  static ParameterRequired(parameterName: string, optionalDetails?: string): Error {
+    const msg = `${parameterName} required`;
+    return CreateError.CreateStatusCodeError(400, optionalDetails ? `${msg}: ${optionalDetails}` : msg);
   }
 
   static InvalidParameters(message: string): Error {

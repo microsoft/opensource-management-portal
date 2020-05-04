@@ -316,7 +316,7 @@ export class Operations {
     return Array.from(this._applicationIds.values());
   }
 
-  get   organizationNames(): string[] {
+  get organizationNames(): string[] {
     if (!this._organizationNames) {
       const names = [];
       const processed = new Set<string>();

@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { EntityMetadataBase } from '../../lib/entityMetadataProvider/entityMetadata';
 import { LocalExtensionKey, EntityImplementation } from './localExtensionKey';
 import { ILocalExtensionKeyProvider, ILocalExtensionKeyProviderOptions } from '.';

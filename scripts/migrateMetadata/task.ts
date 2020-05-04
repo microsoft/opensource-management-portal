@@ -14,7 +14,6 @@ const circuitBreakerOverrideClearingDestination = process.env.CIRCUIT_BREAKER_OV
 import throat from 'throat';
 
 import app, { IReposJob } from '../../app';
-import { IProviders } from '../../transitional';
 import { createAndInitializeEntityMetadataProviderInstance, IEntityMetadataProvidersOptions } from '../../lib/entityMetadataProvider';
 import { createAndInitializeRepositoryMetadataProviderInstance } from '../../entities/repositoryMetadata';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
