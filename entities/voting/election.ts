@@ -7,7 +7,7 @@ import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvi
 import { IEntityMetadata, EntityMetadataType, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType, QueryBase } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
-import { PostgresJsonEntityQuery } from '../../lib/entityMetadataProvider/postgres';
+import { PostgresJsonEntityQuery, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
 import { v4 } from 'uuid';
 
 export enum ElectionEligibilityType {
@@ -104,9 +104,9 @@ export class ElectionEntity implements IElectionProperties {
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => { return new ElectionEntity(); });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, electionId);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTableName, postgresTableName);
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, columnTypeName);
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping, new Map<string, string>([
+PostgresConfiguration.SetDefaultTableName(type, postgresTableName);
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, columnTypeName);
+PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
   [Field.active, (Field.active).toLowerCase()],
   [Field.title, (Field.title).toLowerCase()],
   [Field.slug, (Field.slug).toLowerCase()],
@@ -119,9 +119,9 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping,
   [Field.nominationStart, (Field.nominationStart).toLowerCase()],
   [Field.nominationEnd, (Field.nominationEnd).toLowerCase()],
 ]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.PostgresMapping, fieldNames, [electionId]);
+PostgresConfiguration.ValidateMappings(type, fieldNames, [electionId]);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
   const entityTypeColumn = mapMetadataPropertiesToFields[EntityField.Type];
   const entityTypeValue = getEntityTypeColumnValue(type);
   const base = query as ElectionQueryBase;

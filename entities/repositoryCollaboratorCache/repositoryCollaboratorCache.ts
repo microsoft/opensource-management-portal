@@ -9,8 +9,9 @@ import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetad
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
 import { GitHubRepositoryPermission } from '../repositoryMetadata/repositoryMetadata';
 import { GitHubCollaboratorType } from '../../business/repository';
-import { PostgresGetAllEntities, PostgresJsonEntityQuery } from '../../lib/entityMetadataProvider/postgres';
+import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
+import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
 
 const type = new EntityMetadataType('RepositoryCollaboratorCache');
 
@@ -122,7 +123,7 @@ export class RepositoryCollaboratorCacheFixedQueryByRepositoryId implements IEnt
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => { return new RepositoryCollaboratorCacheEntity(); });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, Field.uniqueId);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, new Map<string, string>([
+EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, new Map<string, string>([
   [Field.avatar, 'avatar'],
   [Field.cacheUpdated, 'cached'],
   [Field.login, 'login'],
@@ -133,11 +134,11 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, n
   [Field.userId, 'userid'],
   [Field.collaboratorType, 'collaboratorType'],
 ]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.MemoryMapping, fieldNames, []);
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTableName, 'repositorycollaboratorcache');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, 'repositorycollaboratorcache');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping, new Map<string, string>([
+PostgresConfiguration.SetDefaultTableName(type, 'repositorycollaboratorcache');
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'repositorycollaboratorcache');
+PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
   [Field.avatar, (Field.avatar as string).toLowerCase()],
   [Field.cacheUpdated, (Field.cacheUpdated as string).toLowerCase()],
   [Field.login, (Field.login as string).toLowerCase()],
@@ -148,9 +149,9 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping,
   [Field.userId, (Field.userId as string).toLowerCase()],
   [Field.collaboratorType, (Field.collaboratorType as string).toLowerCase()],
 ]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.PostgresMapping, fieldNames, []);
+PostgresConfiguration.ValidateMappings(type, fieldNames, []);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
   const entityTypeColumn = mapMetadataPropertiesToFields[EntityField.Type];
   const entityTypeValue = getEntityTypeColumnValue(type);
   switch (query.fixedQueryType) {
@@ -205,7 +206,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
   }
 });
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
+EntityMetadataMappings.Register(type, MemorySettings.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
   switch (query.fixedQueryType) {
     case FixedQueryType.RepositoryCollaboratorCacheGetAll:
       return allInTypeBin;

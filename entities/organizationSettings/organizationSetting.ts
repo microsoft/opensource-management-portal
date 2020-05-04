@@ -3,15 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { IEntityMetadata, EntityMetadataType } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
 import { Type } from './type';
-import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresGetByID } from '../../lib/entityMetadataProvider/postgres';
+import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresGetByID, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
 import { asNumber } from '../../utils';
+import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
 
 export interface IBasicGitHubAppInstallation {
   appId: number;
@@ -304,7 +303,7 @@ export class OrganizationSettingFixedQueryMostRecentlyUpdatedActive implements I
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => { return new OrganizationSetting(); });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, organizationId);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, new Map<string, string>([
+EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, new Map<string, string>([
   // [Field.organizationId, 'organizationId'], // the ID field
   [Field.setupByCorporateDisplayName, (Field.setupByCorporateDisplayName as string).toLowerCase()],
   [Field.setupByCorporateId, (Field.setupByCorporateId as string).toLowerCase()],
@@ -323,12 +322,12 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, n
   [Field.templates, (Field.templates as string).toLowerCase()],
   [Field.legalEntities, (Field.legalEntities as string).toLowerCase()],
 ]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.MemoryMapping, fieldNames, [organizationId]);
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, [organizationId]);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTableName, 'organizationsettings');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, 'organizationsetting');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDateColumns, ['updated', 'setupDate']);
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping, new Map<string, string>([
+PostgresConfiguration.SetDefaultTableName(type, 'organizationsettings');
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'organizationsetting');
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDateColumns, ['updated', 'setupDate']);
+PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
   [Field.setupByCorporateDisplayName, (Field.setupByCorporateDisplayName as string).toLowerCase()],
   [Field.setupByCorporateId, (Field.setupByCorporateId as string).toLowerCase()],
   [Field.setupByCorporateUsername, (Field.setupByCorporateUsername as string).toLowerCase()],
@@ -346,9 +345,9 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping,
   [Field.templates, (Field.templates as string).toLowerCase()],
   [Field.legalEntities, (Field.legalEntities as string).toLowerCase()],
 ]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.PostgresMapping, fieldNames, [organizationId]);
+PostgresConfiguration.ValidateMappings(type, fieldNames, [organizationId]);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
   const entityTypeColumn = mapMetadataPropertiesToFields[EntityField.Type];
   // const entityIDColumn = mapMetadataPropertiesToFields[EntityField.ID];
   const entityTypeValue = getEntityTypeColumnValue(type);
@@ -362,7 +361,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries,
   }
 });
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
+EntityMetadataMappings.Register(type, MemorySettings.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
   switch (query.fixedQueryType) {
     case FixedQueryType.OrganizationSettingsGetAll:
       return allInTypeBin;

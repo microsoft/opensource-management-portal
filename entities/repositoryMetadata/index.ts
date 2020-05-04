@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { IRepositoryMetadataProvider, IRepositoryMetadataCreateOptions, RepositoryMetadataApprovalProvider } from './repositoryMetadataProvider';
 
 export async function createAndInitializeRepositoryMetadataProviderInstance(options?: IRepositoryMetadataCreateOptions): Promise<IRepositoryMetadataProvider> {

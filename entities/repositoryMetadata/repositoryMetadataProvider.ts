@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
 import { RepositoryMetadataEntity, RepositoryMetadataFixedQueryAll, RepositoryMetadataFixedQueryByRepositoryId } from './repositoryMetadata';
 import { EntityImplementation } from './repositoryMetadata';

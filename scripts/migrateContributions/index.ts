@@ -48,8 +48,8 @@ app.runJob(async function go({ providers }: IReposJob) {
         'event',
       ]);
       console.log(`${++i}/${links.length}\t\t${r && r.rows ? r.rows.length : ''}`);
-      if (r && r.rows) {
-        // console.log(link.corporateId + ', ' + r.rows.length);
+      if (r && r.rows && r.rows.length) {
+        console.log(link.corporateId + ': migrating ' + r.rows.length + ' rows');
         const innerThrottle = throat(5);
         await Promise.all(r.rows.map(row => innerThrottle(async () => {
           const { entityid, entitytype, jsoncreated, jsoncontribution, metadata } = row;

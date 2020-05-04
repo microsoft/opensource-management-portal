@@ -351,9 +351,9 @@ block content
       if otherContributionsCount
         h2 Other contributions
         if isSelf
-          p You also made at least #{otherContributionsCount} contributions to public GitHub repos during #{startMonthName}, either to your individual repos, or to corporate-governed resources.
+          p You made at least #{otherContributionsCount} contributions to public GitHub repos during #{startMonthName}, either to your individual repos, or to corporate-governed resources.
         else
-          p The user also made #{otherContributionsCount} contributions to public GitHub repos during #{startMonthName}, to either their individual repos or other corporate-governed resources.
+          p The user made #{otherContributionsCount} contributions to public GitHub repos during #{startMonthName}, to either their individual repos or other corporate-governed resources.
         p: a.btn.btn-sm.btn-muted(href='?login=' + login + '&other=1' + (prior ? '&prior=true' : '')) Show other #{startMonthName} public activity
 
       if !prior

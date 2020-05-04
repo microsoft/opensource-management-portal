@@ -405,6 +405,14 @@ export function gunzipBuffer(buffer: Buffer): Promise<string> {
   });
 }
 
+export function swapMap(map: Map<string, string>): Map<string, string> {
+  const rm = new Map<string, string>();
+  for (const [key, value] of map.entries()) {
+    rm.set(value, key);
+  }
+  return rm;
+}
+
 export function addArrayToSet<T>(set: Set<T>, array: T[]): Set<T> {
   for (const entry of array) {
     set.add(entry);
