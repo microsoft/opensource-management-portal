@@ -4,14 +4,17 @@
 //
 
 import express from 'express';
+import asyncHandler from 'express-async-handler';
+const router = express.Router();
 
-import { ReposAppRequest } from '../transitional';
+import { ReposAppRequest, IProviders, CreateError } from '../transitional';
 import { IndividualContext } from '../user';
 import { storeOriginalUrlAsVariable } from '../utils';
 import { AuthorizeOnlyCorporateAdministrators } from '../middleware/business/corporateAdministrators';
-const router = express.Router();
 
 import unlinkRoute from './unlink';
+import { Organization } from '../business/organization';
+import { Repository } from '../business/repository';
 
 const orgsRoute = require('./orgs');
 const orgAdmin = require('./orgAdmin');
@@ -51,14 +54,29 @@ router.use('/undo', undoRoute);
 router.use('/contributions', contributionsRoute);
 router.use('/administration', AuthorizeOnlyCorporateAdministrators, setupRoute);
 
-router.use('/https?*github.com/:org/:repo', (req, res, next) => {
+router.use('/https?*github.com/:org/:repo', asyncHandler(async (req, res, next) => {
   // Helper method to allow pasting a GitHub URL into the app to go to a repo
   const { org, repo } = req.params;
+  const { operations } = req.app.settings.providers as IProviders;
   if (org && repo) {
-    return res.redirect(`/${org}/repos/${repo}`);
+    let organization: Organization = null;
+    try {
+      organization = operations.getOrganization(org);
+    } catch (error) {
+      return next(CreateError.InvalidParameters(`Organization ${org} not managed by this system`));
+    }
+    let repository: Repository = null;
+    try {
+      repository = organization.repository(repo);
+      await repository.getDetails();
+    }
+    catch (error) {
+      return next(CreateError.NotFound(`The repository ${org}/${repo} no longer exists.`));
+    }
+    return res.redirect(repository.baseUrl);
   }
   return next();
-});
+}));
 
 router.use('/', orgsRoute);
 
