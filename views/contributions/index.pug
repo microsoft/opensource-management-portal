@@ -180,7 +180,7 @@ block content
         #{startMonthName} contribution period: #{start}-#{end}
     else
       //- FOSS Fund-eligible display
-      if isSelf && elections && elections.length
+      if isSelf && elections
         if elections && elections.length > 0 && isEmployee
           each election in elections
             - var eligibilityStart = new Date(election.eligibilityStart)
