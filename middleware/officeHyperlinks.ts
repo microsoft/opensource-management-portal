@@ -31,7 +31,7 @@ module.exports = function supportOfficeHyperlinks(req, res, next) {
         },
       });
     }
-    return res.send(`When using Microsoft Office, you need to open the hyperlink in your browser to authenticate if needed ${req.originalUrl}`);
+    return res.send(`When using Microsoft Office, you need to open the hyperlink in your browser to authenticate if needed`);
   }
   return next();
 };
