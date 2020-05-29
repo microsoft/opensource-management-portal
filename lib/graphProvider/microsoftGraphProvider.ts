@@ -41,7 +41,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       throw new Error('MicrosoftGraphProvider: clientId required');
     }
     if (!this.#_clientSecret) {
-      throw new Error('MicrosoftGraphProvider: clientId required');
+      throw new Error('MicrosoftGraphProvider: clientSecret required');
     }
   }
 
@@ -72,7 +72,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     try {
       let entry = await this.getCachedEntryWithManagerById(corporateId);
       while (entry) {
-        const clone = {...entry};
+        const clone = { ...entry };
         delete clone.manager;
         chain.push(clone);
         entry = entry.manager && entry.manager.id ? await this.getCachedEntryWithManagerById(entry.manager.id) : null;
@@ -98,7 +98,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     return entry;
   }
 
-  async getUserByIdAsync(id: string) : Promise<IGraphEntry> {
+  async getUserByIdAsync(id: string): Promise<IGraphEntry> {
     return new Promise<IGraphEntry>((resolve, reject) => {
       this.getUserById(id, (err, info) => {
         if (err && err['status'] === 404) {
@@ -149,7 +149,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
   }
 
   private getUserByIdLookup(aadId, options, subResource, callback) {
-    if (!callback && typeof(subResource) === 'function') {
+    if (!callback && typeof (subResource) === 'function') {
       callback = subResource;
       subResource = null;
     }
