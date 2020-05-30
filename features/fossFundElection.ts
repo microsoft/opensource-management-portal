@@ -250,15 +250,15 @@ export class FossFundElection {
   }
 
   async vote(corporateId: string, electionId: string, nominationId: string): Promise<string> {
-    // Simply casts a vote.
+    // Casts a vote.
     // DOES NOT verify eligibility for the election or whether the nomination is valid.
-    // IMPORTANT: the nominationId is not the same thing as the unique nomination ID.
+    // IMPORTANT: The nominationId is not the same thing as the unique nomination ID.
     const { electionVoteProvider } = this.#providers;
     const entity = ElectionVoteEntity.CreateVote(corporateId, electionId);
     entity.nominationId = nominationId;
     try {
       const voteId = await electionVoteProvider.insertVote(entity);
-      this.trySendingVoteMails(corporateId, electionId); // do not await this...
+      this.trySendingVoteMails(corporateId, electionId); // Do not await this...
       return voteId;
     } catch (insertVoteError) {
       // TODO: Verify if Conflict works with pgsql.

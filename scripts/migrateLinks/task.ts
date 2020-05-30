@@ -9,7 +9,7 @@
 // table links - and copies those links into the configured provider if it is different.
 
 // Assumes the source and destination providers are of different types so
-// that the default configuration is simply required for both.
+// that the default configuration is required for both.
 //
 // Also requires migration environment variables:
 // LINK_MIGRATION_DESTINATION_TYPE

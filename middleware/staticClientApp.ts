@@ -13,7 +13,7 @@ const debug = require('debug')('startup');
 export function StaticClientApp (app, express) {
   // Serve/host the static client app from the location reported by the private
   // NPM module for the Ember app. Assumes that the inclusion of the package
-  // simply returns the path to host.
+  // returns the path to host.
   const staticClientPackageName = appPackage[packageVariableName];
   if (!staticClientPackageName) {
     debug(`package.json is not configured with a package in the property name ${packageVariableName}. No additional client package will be hosted.`);

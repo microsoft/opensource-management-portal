@@ -52,7 +52,7 @@ block content
                   - var permissionColor = rcp.admin === true ? 'alert-danger' : (rcp.push === true ? 'btn-primary' : 'alert-success')
                   - var permissionText = rcp.admin === true ? 'Admin' : (rcp.push === true ? 'Write' : 'Read')
                   p
-                    a.btn.btn-sm(class=permissionColor, href='javascript:alert("Change the permission level by simply adding the same user again, with the new permission level.")')= permissionText
+                    a.btn.btn-sm(class=permissionColor, href='javascript:alert("Change the permission level by adding the same user again, with the new permission level.")')= permissionText
                 td
                   form(method='post', action=repoCollaboratorsUrl + '/' + teamMember.login + '/remove', onsubmit='return confirm("Are you sure that you want to remove ' + teamMember.login + ' as a collaborator?");')
                     p
@@ -99,7 +99,7 @@ block content
                   - var permissionColor = rcp.admin === true ? 'alert-danger' : (rcp.push === true ? 'btn-primary' : 'alert-success')
                   - var permissionText = rcp.admin === true ? 'Admin' : (rcp.push === true ? 'Write' : 'Read')
                   p
-                    a.btn.btn-sm(class=permissionColor, href='javascript:alert("Change the permission level by simply adding the same user again, with the new permission level.")')= permissionText
+                    a.btn.btn-sm(class=permissionColor, href='javascript:alert("Change the permission level by adding the same user again, with the new permission level.")')= permissionText
                 td
                   form(method='post', action=repoCollaboratorsUrl + '/' + teamMember.login + '/remove', onsubmit='return confirm("Are you sure that you want to remove ' + teamMember.login + ' as a collaborator?");')
                     p

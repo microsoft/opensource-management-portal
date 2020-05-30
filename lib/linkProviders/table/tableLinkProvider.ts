@@ -166,7 +166,7 @@ export class TableLinkProvider implements ILinkProvider {
     }
     // Legacy table design: this call actually can go direct; in the
     // original implementation, the partition key is fixed and the
-    // row key is simply the string value of the GitHub user ID.
+    // row key is the string value of the GitHub user ID.
     // SLOW query equivalent: return getUserEntityByProperty(this, 'ghid', id, callback);
     const partitionKey = this._options.partitionKey;
     if (!partitionKey) {

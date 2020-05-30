@@ -190,7 +190,7 @@ Other providers available include Azure Blob (slower but cheap), Cosmos DB, and 
 Any configuration string property can be resolved to a KeyVault secret.
 
 To use a stored KeyVault secret, configuration to allow this application's service
-principal to `get` the secret value, simply use a custom `keyvault://` URI format.
+principal to `get` the secret value, use a custom `keyvault://` URI format.
 
 For example, given a key vault named `samplevault`, setting a configuration
 parameter to `keyvault://samplevault.vault.azure.net/secrets/secret-name/optionalVersion`
@@ -450,7 +450,7 @@ the monolithic site.
 This was, organizations can choose which specific features they may
 want to have exposed by the app.
 
-Most features can be opted in to by simply setting the environment
+Most features can be opted in to by setting the environment
 variable value to `1`.
 
 - allowUnauthorizedNewRepositoryLockdownSystem
