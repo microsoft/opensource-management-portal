@@ -181,11 +181,12 @@ Where `id` is an AAD ID.
 
 If a link is not registered for this user
 
-````
+```
 Status: 404 Not Found
 ```
 
 If a link is found
+
 
 ```
 Status: 200 OK
