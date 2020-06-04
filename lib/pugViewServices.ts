@@ -43,6 +43,6 @@ export default {
     return icon.toSVG(options);
   },
   stripJsSingleQuote: function (value) {
-    return value.replace(/\'/g, '\\\'');
+    return value.replace(/\\/g, '').replace(/\'/g, '\\\'');
   },
 };
