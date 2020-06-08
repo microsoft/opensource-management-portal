@@ -13,7 +13,7 @@ import { RequestWithSystemwidePermissions } from '../transitional';
 
 import { ensureAllLinksInMemory, getAllLinksFromRequest } from '../middleware/business/allLinks';
 
-const lowercaser = require('../middleware/lowercaser.js');
+const lowercaser = require('../middleware/lowercaser');
 
 import { Operations } from '../business/operations';
 import { MemberSearch } from '../business/memberSearch';
@@ -77,7 +77,7 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
   const page = req.query.page_number ? asNumber(req.query.page_number) : 1;
   let phrase = req.query.q;
   let type = req.query.type;
-  if (type !== 'linked' && type!== 'active' && type !== 'unlinked' && type !== 'former' && type !== 'serviceAccount' && type !== 'unknownAccount') {
+  if (type !== 'linked' && type !== 'active' && type !== 'unlinked' && type !== 'former' && type !== 'serviceAccount' && type !== 'unknownAccount') {
     type = null;
   }
   if (/*twoFactor !== 'on' && */twoFactor !== 'off') {
