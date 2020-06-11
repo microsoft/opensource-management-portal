@@ -74,19 +74,6 @@ router.use(getPersonalAccessTokens);
 
 router.get('/', view);
 
-router.get('/extension', (req: IRequestForSettingsPersonalAccessTokens, res: IResponseForSettingsPersonalAccessTokens) => {
-  const personalAccessTokens = req.personalAccessTokens;
-  req.individualContext.webContext.render({
-    view: 'settings/extension',
-    title: 'Install the browser extension (preview)',
-    state: {
-      personalAccessTokens,
-      newKey: res.newKey,
-      newTokenDescription: 'Extension ' + (new Date()).toDateString(),
-    },
-  });
-});
-
 function createToken(req: ReposAppRequest, res, next) {
   const providers = req.app.settings.providers as IProviders;
   const tokenProvider = providers.tokenProvider;

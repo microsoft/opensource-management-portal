@@ -62,6 +62,7 @@ interface IRepositoryMetadataProperties {
   repositoryName: any;
 
   initialTeamPermissions: any;
+  initialAdministrators: any;
   initialRepositoryDescription: any;
   initialRepositoryVisibility: any;
 
@@ -97,6 +98,7 @@ const Field: IRepositoryMetadataProperties = {
   organizationName: 'organizationName',
   organizationId: 'organizationId',
   repositoryName: 'repositoryName',
+  initialAdministrators: 'initialAdministrators',
   initialTeamPermissions: 'initialTeamPermissions',
   initialRepositoryDescription: 'initialRepositoryDescription',
   initialRepositoryVisibility: 'initialRepositoryVisibility',
@@ -130,6 +132,7 @@ export class RepositoryMetadataEntity implements IRepositoryMetadataProperties {
   created: Date;
 
   initialTeamPermissions: IInitialTeamPermission[];
+  initialAdministrators: string[];
   initialRepositoryDescription: string;
   initialRepositoryVisibility: GitHubRepositoryVisibility;
   initialLicense: string;
@@ -148,6 +151,7 @@ export class RepositoryMetadataEntity implements IRepositoryMetadataProperties {
 
   constructor() {
     this.initialTeamPermissions = [];
+    this.initialAdministrators = [];
     this.initialRepositoryVisibility = GitHubRepositoryVisibility.Public;
   }
 }
@@ -175,6 +179,9 @@ EntityMetadataMappings.Register(type, TableSettings.TableNoPointQueryAlternateId
 EntityMetadataMappings.Register(type, TableSettings.TableSpecializedDeserializationHelper, function tableRepoMetadataSpecializedDeserializer(entity: IEntityMetadata, object: RepositoryMetadataEntity) {
   if (!Array.isArray(object.initialTeamPermissions)) {
     throw new Error('RepositoryMetadataEntity.initialTeamPermissions must be an initialized array');
+  }
+  if (!Array.isArray(object.initialAdministrators)) {
+    throw new Error('RepositoryMetadataEntity.initialAdministrators must be an initialized array');
   }
   if (entity['teamsCount'] && !isNaN(entity['teamsCount'])) {
     const teamsCount = parseInt(entity['teamsCount'], 10);
@@ -219,6 +226,7 @@ EntityMetadataMappings.Register(type, TableSettings.TableMapping, new Map<string
   // [repositoryId, azureTableRepositoryIdField], // in table, RowKey is not the repo ID
 
   [Field.initialTeamPermissions, null], // special serializer handles
+  [Field.initialAdministrators, 'initialAdministrators'], // this may not work
 
   [Field.initialRepositoryDescription, 'repoDescription'],
   [Field.initialRepositoryVisibility, 'repoVisibility'],
@@ -257,6 +265,7 @@ EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, new Map<stri
   // [repositoryId, azureTableRepositoryIdField], // in table, RowKey is not the repo ID
 
   [Field.initialTeamPermissions, 'itp'], // special processing case
+  [Field.initialAdministrators, 'initialAdministrators'],
 
   [Field.initialRepositoryDescription, 'repoDescription'],
   [Field.initialRepositoryVisibility, 'repoVisibility'],
@@ -295,6 +304,7 @@ PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
   // [repositoryId, azureTableRepositoryIdField], // in table, RowKey is not the repo ID
 
   [Field.initialTeamPermissions, (Field.initialTeamPermissions as string).toLowerCase()], // special processing case
+  [Field.initialAdministrators, (Field.initialAdministrators as string).toLowerCase()], // special processing case
 
   [Field.initialRepositoryDescription, (Field.initialRepositoryDescription as string).toLowerCase()],
   [Field.initialRepositoryVisibility, (Field.initialRepositoryVisibility as string).toLowerCase()],

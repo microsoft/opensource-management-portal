@@ -21,6 +21,7 @@ import { Team } from '../business/team';
 import { TeamMember } from '../business/teamMember';
 import { OrganizationMember } from '../business/organizationMember';
 import { asNumber } from '../utils';
+import { Organization } from '../business/organization';
 
 interface IPeopleSearchRequest extends RequestWithSystemwidePermissions {
   organization?: any;
@@ -66,6 +67,7 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
   const linksFromMiddleware = getAllLinksFromRequest(req);
   const operations = req.app.settings.operations as Operations;
   const org = req.organization ? req.organization.name : null;
+  const orgId = req.organization ? (req.organization as Organization).id : null;
   const isPortalSudoer = req.systemWidePermissions && req.systemWidePermissions.allowAdministration === true;
   let twoFactor = req.query.twoFactor;
   const team2 = req.team2 as Team;
@@ -77,7 +79,16 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
   const page = req.query.page_number ? asNumber(req.query.page_number) : 1;
   let phrase = req.query.q;
   let type = req.query.type;
-  if (type !== 'linked' && type !== 'active' && type !== 'unlinked' && type !== 'former' && type !== 'serviceAccount' && type !== 'unknownAccount') {
+  const validTypes = new Set([
+    'linked',
+    'active',
+    'unlinked',
+    'former',
+    'serviceAccount',
+    'unknownAccount',
+    'owners',
+  ]);
+  if (!validTypes.has(type)) {
     type = null;
   }
   if (/*twoFactor !== 'on' && */twoFactor !== 'off') {
@@ -113,6 +124,8 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
     links: linksFromMiddleware,
     providers: operations.providers,
 
+    orgId,
+
     // Used to filter team members in ./org/ORG/team/TEAM/members and other views
     teamMembers: teamMembers,
 
@@ -143,6 +156,7 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
       team2RemoveType: req.team2RemoveType,
       teamUrl: req.teamUrl,
       specificTeamPermissions: req.teamPermissions,
+      operations,
     },
   });
 }));

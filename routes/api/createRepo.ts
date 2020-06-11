@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 // NOTE: this file at this time is Microsoft-specific and needs to be updated
 // and refactored to be useful by others. There are values stored in
 // configuration that can be used instead of the hardcoded values within.
@@ -18,10 +16,9 @@ import RenderHtmlMail from '../../lib/emailRender';
 
 import { RepoWorkflowEngine, IRepositoryWorkflowOutput } from '../org/repoWorkflowEngine';
 import { IMailProvider } from '../../lib/mailProvider';
-import { asNumber, sleep } from '../../utils';
 import { IndividualContext } from '../../user';
 import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
-import { Operations, ICachedEmployeeInformation } from '../../business/operations';
+import { ICachedEmployeeInformation } from '../../business/operations';
 import { Repository } from '../../business/repository';
 import { ICorporateLink } from '../../business/corporateLink';
 
@@ -60,6 +57,7 @@ export async function CreateRepository(req, bodyOverride: unknown, individualCon
     'ms.approval-url',
     'ms.justification',
     'ms.notify',
+    'ms.administrators',
     'ms.teams',
     'ms.template',
     'ms.project-type',
@@ -79,6 +77,7 @@ export async function CreateRepository(req, bodyOverride: unknown, individualCon
     approvalType: properties['ms.approval'] || req.headers['ms-approval'],
     approvalUrl: properties['ms.approval-url'] || req.headers['ms-approval-url'],
     notify: properties['ms.notify'] || req.headers['ms-notify'],
+    administrators: properties['ms.administrators'] || req.headers['ms-administrators'],
     teams: properties['ms.teams'] || req.headers['ms-teams'],
     template: properties['ms.template'] || req.headers['ms-template'],
     projectType: properties['ms.project-type'] || req.headers['ms-project-type'],
@@ -91,6 +90,9 @@ export async function CreateRepository(req, bodyOverride: unknown, individualCon
   msLicense = msLicense.toLowerCase();
   if (supportedLicenseExpressions.indexOf(msLicense) < 0) {
     throw jsonError(new Error('The provided license expression is not currently supported'), 422);
+  }
+  if (msProperties.administrators && !Array.isArray(msProperties.administrators)) {
+    throw jsonError(new Error('Administrators must be an array of logins'), 422);
   }
   // Validate approval types
   const msApprovalType = msProperties.approvalType;
@@ -259,6 +261,9 @@ export async function CreateRepository(req, bodyOverride: unknown, individualCon
   metadata.releaseReviewType = msProperties.approvalType;
   metadata.releaseReviewUrl = msProperties.approvalUrl;
   metadata.initialTemplate = msProperties.template;
+  if (msProperties.administrators) {
+    metadata.initialAdministrators = msProperties.administrators;
+  }
   metadata.projectType = msProperties.projectType;
   metadata.initialCorrelationId = req.correlationId;
   // team permissions

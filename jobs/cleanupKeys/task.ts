@@ -43,7 +43,7 @@ export default async function cleanup({ providers }: IReposJob) : Promise<IRepos
   const allKeys = await localExtensionKeyProvider.getAllKeys();
   console.log(`read ${allKeys.length}`);
 
-  insights.trackEvent({ name: 'JobCleanupTokensKeysTokens', properties: { tokens: allKeys.length } });
+  insights.trackEvent({ name: 'JobCleanupTokensKeysTokens', properties: { tokens: String(allKeys.length) } });
 
   let errors = 0;
 

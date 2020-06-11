@@ -26,6 +26,6 @@ div.navbar.navbar-inverse
           a(href=(reposContext.organization ? '/' + reposContext.organization.name : '') + '/people', title='People: GitHub organization members') People
         if !reposContext.organization
           li(class={ active: reposContext.section === 'contributions' })
-            a(href=('/contributions')) Contributions
+            a(href=('/contributions')) FOSS Fund
 
       //-ul.nav.navbar-nav.navbar-right

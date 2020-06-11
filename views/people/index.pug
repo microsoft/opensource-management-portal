@@ -222,7 +222,13 @@ block content
                         li
                           a(href='mailto:' + email, title='Send corporate email to ' + email)
                             != octicon('mail', 16)
-                    if serviceAccount
+                    if operations && operations.isSystemAccountByUsername(account.login)
+                      li!= octicon('hubot', 16)
+                      li Official #{config.brand.companyName} system account
+                      if serviceAccountMail
+                        li managed by
+                        li: a(href='mailto:' + serviceAccountMail)= serviceAccountMail
+                    else if serviceAccount
                       li!= octicon('hubot', 16)
                       li Service account
                       if serviceAccountMail
@@ -245,7 +251,9 @@ block content
               .col-sm-2
                 if !organization && person.orgs
                   - var localOrgList = Object.getOwnPropertyNames(person.orgs)
-                  if localOrgList.length === 0
+                  if operations && operations.isSystemAccountByUsername(account.login)
+                    p: small System account
+                  else if localOrgList.length === 0
                     p: small No organizations
                   else
                     ul.list-unstyled
@@ -270,4 +278,6 @@ block content
                     span(aria-hidden="true") Next &rarr;
 
         hr
-        p The presence of people in this list does not imply that they are an employee.
+        p.
+          This view is cached and eventually consistent within a few hours. 
+          The presence of people in this list does not imply that they are an employee.

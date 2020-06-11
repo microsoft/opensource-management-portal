@@ -20,6 +20,20 @@ export interface IGraphEntry {
   userType?: GraphUserType;
 }
 
+export interface IGraphGroupMember {
+  id: string;
+  userPrincipalName: string;
+}
+
+export interface IGraphGroup {
+  id: string;
+  displayName: string;
+  mailNickname: string;
+
+  description?: string;
+  mail?: string;
+}
+
 export interface IGraphEntryWithManager extends IGraphEntry {
   manager: IGraphEntry;
 }
@@ -29,8 +43,17 @@ export interface IGraphProvider {
   getUserByIdAsync(id: string) : Promise<IGraphEntry>;
 
   getManagerById(corporateId: string, callback);
+  getManagerByIdAsync(id: string) : Promise<IGraphEntry>;
   getUserAndManagerById(corporateId: string, callback);
   getManagementChain(corporateId: string): Promise<IGraphEntry[]>;
+  getUserIdByNickname(nickname: string): Promise<string>;
+
+  getGroupsById(corporateId: string): Promise<string[]>;
+  getGroupsByMail(mailAddress: string): Promise<string[]>;
+  getGroupsByNickname(nickname: string): Promise<string[]>;
+  getGroupsStartingWith(minimum3Characters: string): Promise<IGraphGroup[]>;
+  getGroupMembers(corporateGroupId: string): Promise<IGraphGroupMember[]>;
+  getGroup(corporateGroupId: string): Promise<IGraphGroup>;
 }
 
 export function CreateGraphProviderInstance(config, callback) {

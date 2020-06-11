@@ -20,6 +20,8 @@ import { StripGitHubEntity } from '../lib/github/restApi';
 import { GitHubResponseType } from '../lib/github/endpointEntities';
 import { AppPurpose, GitHubAppAuthenticationType } from '../github';
 import { OrganizationSetting, SpecialTeam } from '../entities/organizationSettings/organizationSetting';
+import { ICorporateLink } from './corporateLink';
+import { MemberSearch } from './memberSearch';
 
 export interface IAccountBasics {
   id: number;
@@ -62,6 +64,11 @@ export interface IGetOrganizationMembersOptions extends IPagedCacheOptions {
 
 export interface IAddOrganizationMembershipOptions extends ICacheOptions {
   role?: OrganizationMembershipRole;
+}
+
+export interface IOrganizationMemberPair {
+  member?: OrganizationMember;
+  link?: ICorporateLink;
 }
 
 export interface IOrganizationMembership {
@@ -684,7 +691,7 @@ export class Organization {
       state: 'active',
     };
     try {
-      const response = await operations.github.post(`token ${userToken}`, 'orgs.updateMembership', parameters);
+      const response = await operations.github.post(`token ${userToken}`, 'orgs.updateMembershipForAuthenticatedUser', parameters);
       return response;
     } catch (error) {
       throw wrapError(error, `Could not accept your invitation for the ${this.name} organization on GitHub`);
@@ -700,7 +707,7 @@ export class Organization {
     };
     const operations = this._operations;
     try {
-      const result = await operations.github.call(this.authorize(AppPurpose.Operations), 'orgs.getMembership', parameters);
+      const result = await operations.github.call(this.authorize(AppPurpose.Operations), 'orgs.getMembershipForUser', parameters);
       return result;
     } catch (error) {
       if (error.status == /* loose */ 404) {
@@ -738,7 +745,7 @@ export class Organization {
       username: username,
       role: role,
     };
-    const ok = await github.post(this.authorize(AppPurpose.Operations), 'orgs.addOrUpdateMembership', parameters);
+    const ok = await github.post(this.authorize(AppPurpose.Operations), 'orgs.setMembershipForUser', parameters);
     return ok;
   }
 
@@ -754,7 +761,7 @@ export class Organization {
     const operations = this._operations;
     parameters.allowEmptyResponse = true;
     try {
-      const ok = await operations.github.post(this.authorize(AppPurpose.CustomerFacing), 'orgs.checkPublicMembership', parameters);
+      await operations.github.post(this.authorize(AppPurpose.CustomerFacing), 'orgs.checkPublicMembershipForUser', parameters);
       return true;
     } catch (error) {
       // The user either is not a member of the organization, or their membership is concealed
@@ -773,7 +780,7 @@ export class Organization {
       username: login,
     };
     try {
-      const ok = await operations.github.post(`token ${userToken}`, 'orgs.concealMembership', parameters);
+      const ok = await operations.github.post(`token ${userToken}`, 'orgs.removePublicMembershipForAuthenticatedUser', parameters);
     } catch (error) {
       throw wrapError(error, `Could not conceal the ${this.name} organization membership for  ${login}: ${error.message}`);
     }
@@ -787,7 +794,7 @@ export class Organization {
       username: login,
     };
     try {
-      await operations.github.post(`token ${userToken}`, 'orgs.publicizeMembership', parameters);
+      await operations.github.post(`token ${userToken}`, 'orgs.setPublicMembershipForAuthenticatedUser', parameters);
     } catch (error) {
       throw wrapError(error, `Could not publicize the ${this.name} organization membership for  ${login}: ${error.message}`);
     }
@@ -839,6 +846,40 @@ export class Organization {
     return false;
   }
 
+  private async getMemberPairs(options?: IGetOrganizationMembersOptions): Promise<IOrganizationMemberPair[]> {
+    const members = await this.getMembers(options);
+    const linksArray = await this._operations.getLinks();
+    const links = new Map<string, ICorporateLink>();
+    for (const link of linksArray) {
+      links.set(link.thirdPartyUsername.toLowerCase(), link);
+    }
+    return members.map(member => {
+      return {
+        member,
+        link: links.get(member.login.toLowerCase()),
+      }
+    });
+  }
+
+  async getServiceAccounts(excludeSystemAccounts: boolean, options?: IGetOrganizationMembersOptions): Promise<IOrganizationMemberPair[]> {
+    const pairs = await this.getMemberPairs(options);
+    let accounts = pairs.filter(pair => pair.link && pair.link.isServiceAccount);
+    if (excludeSystemAccounts) {
+      accounts = accounts.filter(pair => !this._operations.isSystemAccountByUsername(pair.member.login));
+    }
+    return accounts;
+  }
+
+  async getLinkedMembers(options?: IGetOrganizationMembersOptions): Promise<IOrganizationMemberPair[]> {
+    const pairs = await this.getMemberPairs(options);
+    return pairs.filter(pair => pair.link);
+  }
+
+  async getUnlinkedMembers(options?: IGetOrganizationMembersOptions): Promise<OrganizationMember[]> {
+    const pairs = await this.getMemberPairs(options);
+    return pairs.filter(pair => !pair.link).map(entry => entry.member);
+  }
+
   async getTeams(options?: IPagedCacheOptions): Promise<Team[]> {
     options = options || {};
     const operations = this._operations;
@@ -867,7 +908,7 @@ export class Organization {
       username: login,
     };
     try {
-      await operations.github.post(this.authorize(AppPurpose.Operations), 'orgs.removeMembership', parameters);
+      await operations.github.post(this.authorize(AppPurpose.Operations), 'orgs.removeMembershipForUser', parameters);
       if (queryCache && queryCache.supportsOrganizationMembership) {
         try {
           if (!optionalId) {

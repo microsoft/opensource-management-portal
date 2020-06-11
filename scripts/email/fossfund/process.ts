@@ -53,8 +53,8 @@ app.runJob(async function work({ providers }: IReposJob) {
         start, 
         end, 
         false /* corporate and open source contributions wanted */);
-      const openContributions = events.filter(event => event.additionalData.contribution);
-      const otherContributionsData = events.filter(event => !event.additionalData.contribution);
+      const openContributions = events.filter(event => event.isOpenContribution || event.additionalData.contribution);
+      const otherContributionsData = events.filter(event => !(event.isOpenContribution || event.additionalData.contribution));
       const contributions = _.groupBy(openContributions, contrib => contrib.action);
       let contributionMailType = 'opportunity';
       let subjectSubset = 'Introducing the FOSS Fund: Please help Microsoft contribute to open source communities';

@@ -15,8 +15,8 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "startup,cosmosdb,cache",
-        "MORE_DEBUG": "appinsights,redis,restapi,pg,querycache,user,redis-cross-org"
+        "DEBUG": "startup,cosmosdb",
+        "MORE_DEBUG": "appinsights,cache,restapi,pg,querycache,user,redis-cross-org"
       }
     },
     {
@@ -90,7 +90,7 @@
       "cwd": "${workspaceRoot}/dist",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "redis,restapi,startup,appinsights,querycache"
+        "DEBUG": "startup,querycache"
       }
     },
     {
@@ -205,7 +205,7 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "redis,restapi,startup,appinsights,cache"
+        "DEBUG": "redis,restapi,startup,appinsights"
       }
     },
     {
@@ -448,6 +448,36 @@
       "request": "launch",
       "name": "Script: Pages info",
       "program": "${workspaceRoot}/dist/scripts/getPagesInformation/index.js",
+      "args": ["all"],
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Script: Check links",
+      "program": "${workspaceRoot}/dist/scripts/checkGraph/index.js",
+      "args": ["all"],
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Script: Token Scanning",
+      "program": "${workspaceRoot}/dist/scripts/addScanning/index.js",
       "args": ["all"],
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",

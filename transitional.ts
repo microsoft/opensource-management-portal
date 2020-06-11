@@ -8,6 +8,8 @@ import { Application, Response, Request } from 'express';
 import redis from 'redis';
 import { Pool as PostgresPool } from 'pg';
 
+import type { TelemetryClient } from 'applicationinsights';
+
 import { IndividualContext } from './user';
 import { ICorporateLink } from './business/corporateLink';
 import { IApprovalProvider } from './entities/teamJoinApproval/approvalProvider';
@@ -157,7 +159,7 @@ export interface IProviders {
   keyEncryptionKeyResolver?: any;
   github?: RestLibrary;
   graphProvider?: IGraphProvider;
-  insights?: any;
+  insights?: TelemetryClient;
   linkProvider?: ILinkProvider;
   localExtensionKeyProvider?: ILocalExtensionKeyProvider;
   mailAddressProvider?: IMailAddressProvider;

@@ -48,7 +48,7 @@ export default async function cleanup({ providers }: IReposJob) : Promise<IRepos
   const allTokens = await tokenProvider.getAllTokens();
   console.log(`read ${allTokens.length}`);
 
-  insights.trackEvent({ name: 'JobCleanupTokensReadTokens', properties: { tokens: allTokens.length } });
+  insights.trackEvent({ name: 'JobCleanupTokensReadTokens', properties: { tokens: String(allTokens.length) } });
 
   let errors = 0;
 

@@ -3,14 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 // This code adopted from our existing jobs code
 
 import cache from 'memory-cache';
 import request from 'request';
-import { IGraphProvider, IGraphEntry, IGraphEntryWithManager } from '.';
-import { ErrorHelper } from '../../transitional';
+import querystring from 'querystring';
+
+import { IGraphProvider, IGraphEntry, IGraphEntryWithManager, IGraphGroupMember, IGraphGroup } from '.';
+import { ErrorHelper, CreateError } from '../../transitional';
 
 export interface IMicrosoftGraphProviderOptions {
   tokenCacheSeconds?: string | number;
@@ -18,6 +18,16 @@ export interface IMicrosoftGraphProviderOptions {
   clientSecret: string;
   tokenEndpoint?: string;
   tenantId?: string;
+}
+
+const graphBaseUrl = 'https://graph.microsoft.com/v1.0/';
+const odataNextLink = '@odata.nextLink';
+
+interface IGraphOptions {
+  selectValues?: string;
+  filterValues?: string;
+  orderBy?: string;
+  body?: any;
 }
 
 export class MicrosoftGraphProvider implements IGraphProvider {
@@ -113,6 +123,102 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     });
   }
 
+  async getManagerByIdAsync(id: string) : Promise<IGraphEntry> {
+    return new Promise<IGraphEntry>((resolve, reject) => {
+      this.getManagerById(id, (err, info) => {
+        if (err && err['status'] === 404) {
+          // console.log('User not found in the directory');
+          return resolve(null);
+        }
+        if (err) {
+          return reject(err);
+        }
+        return resolve(info as IGraphEntry);
+      });
+    });
+  }
+
+  async getGroup(corporateGroupId: string): Promise<IGraphGroup> {
+    const response = await this.lookupInGraph([
+      'groups',
+      corporateGroupId,
+    ], {
+      selectValues: 'description,displayName,id,mail,mailNickname',
+    });
+    return response;
+  }
+
+  async getGroupsByNickname(nickname: string): Promise<string[]> {
+    const response = await this.lookupInGraph([
+      'groups',
+    ], {
+      filterValues: `mailNickname eq '${encodeURIComponent(nickname)}'`,
+      selectValues: 'id',
+    }) as any[];
+    return response.map(entry => entry.id);
+  }
+
+  async getUserIdByNickname(nickname: string): Promise<string> {
+    const response = await this.lookupInGraph([
+      'users',
+    ], {
+      filterValues: `mailNickname eq '${encodeURIComponent(nickname)}'`,
+      selectValues: 'id',
+    }) as any[];
+    if (!response || response.length === 0) {
+      return null;
+    }
+    return response.map(entry => entry.id)[0];
+  }
+
+  async getGroupMembers(corporateGroupId: string): Promise<IGraphGroupMember[]> {
+    const response = await this.lookupInGraph([
+      'groups',
+      corporateGroupId,
+      'transitiveMembers', // transitiveMembers or members
+    ], {
+      selectValues: 'id,userPrincipalName',
+    }) as any[];
+    return response.map(entry => { return { id: entry.id, userPrincipalName: entry.userPrincipalName } });
+  }
+
+  async getGroupsStartingWith(minimum3Characters: string): Promise<IGraphGroup[]> {
+    if (!minimum3Characters || minimum3Characters.length < 3) {
+      throw new Error(`Minimum 3 characters required: ${minimum3Characters}`);
+    }
+    const response = await this.lookupInGraph([
+      'groups',
+    ], {
+      filterValues: `startswith(displayName, '${minimum3Characters}') or startswith(mailNickname, '${minimum3Characters}')`,
+      selectValues: 'id,displayName,mailNickname',
+    }) as any[];
+    return response.map(entry => { return { id: entry.id, mailNickname: entry.mailNickname, displayName: entry.displayName } });
+  }
+
+  async getGroupsByMail(groupMailAddress: string): Promise<string[]> {
+    const response = await this.lookupInGraph([
+      'groups',
+    ], {
+      filterValues: `mail eq '${groupMailAddress}'`,
+      selectValues: 'id',
+    }) as any[];
+    return response.map(entry => entry.id);
+  }
+
+  async getGroupsById(corporateId: string): Promise<string[]> {
+    const response = await this.lookupInGraph([
+      'users',
+      corporateId,
+      'getMemberGroups',
+    ], {
+      // selectValues: '',
+      body: {
+        securityEnabledOnly: true,
+      },
+    }) as string[];
+    return response;
+  }
+  
   private async getUserAndManagerAsync(employeeDirectoryId: string): Promise<any> {
     return new Promise<any>((resolve, reject) => {
       this.getUserAndManagerById(employeeDirectoryId, (err, info) => {
@@ -133,7 +239,25 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     };
   }
 
-  private getToken(callback) {
+  private async getRequestOptionsWithToken(): Promise<any> {
+    const token = await this.getToken();
+    return {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      json: true,
+    };
+  }
+
+  private async getToken(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      this.getTokenByCallback((error, token) => {
+        return error ? reject(error) : resolve(token);
+      });
+    });
+  }
+
+  private getTokenByCallback(callback) {
     const tokenKey = this.clientId;
     const token = cache.get(tokenKey);
     if (token) {
@@ -176,6 +300,74 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     });
   }
 
+  private async lookupInGraph(entityPath: string[], options: IGraphOptions): Promise<any> {
+    // initial hacking on top of the API
+    const subUrl = entityPath.map(item => encodeURIComponent(item)).join('/');
+    const queries = {};
+    if (options.filterValues) {
+      queries['$filter'] = options.filterValues;
+    }
+    if (options.selectValues) {
+      queries['$select'] = options.selectValues;
+    }
+    if (options.orderBy) {
+      queries['$orderby'] = options.orderBy;
+    }
+    let hasArray = false;
+    let value = null;
+    let url = `${graphBaseUrl}${subUrl}?${querystring.stringify(queries)}`;
+    let pages = 0;
+    do {
+      const body = await this.request(url, options.body);
+      if (body.value && pages === 0) {
+        hasArray = body && body.value && Array.isArray(body.value);
+        if (hasArray) {
+          value = body.value as any[];
+        } else {
+          value = body.value;
+        }
+      } else if (hasArray && body.value) {
+        value = value.concat(body.value as any[]);
+      } else if (!body.value) {
+        value = body;
+      } else {
+        throw new Error(`Page ${pages} in response is not an array type but had a link: ${url}`);
+      }
+      ++pages;
+      url = body && body[odataNextLink] ? body[odataNextLink] : null;
+    } while (url);
+    return value;
+  }
+
+  private async request(url: string, body?: any): Promise<any> {
+    const requestOptions = await this.getRequestOptionsWithToken();
+    if (body) {
+      requestOptions.body = body;
+    }
+    requestOptions.method = body ? 'post' : 'get';
+    return await new Promise((resolve, reject) => {
+      request(url, requestOptions, (err, response, body) => {
+        if (err) {
+          return reject(err);
+        } else if (response.statusCode === 404) {
+          return reject(CreateError.NotFound(url));
+        } else if (response.statusCode >= 400) {
+          const extraMessage = body && body.error && body.error.message ? body.error.message + ' ' : '';
+          const err = new Error(`${extraMessage}Response code ${response.statusCode}`);
+          ErrorHelper.EnsureHasStatus(err, response.statusCode);
+          return reject(err);
+        } else if (body === undefined) {
+          const err = new Error('Empty body');
+          return reject(err);
+        } else if (body.error) {
+          return reject(new Error(body.error.message));
+        } else {
+          return resolve(body);
+        }
+      });
+    });
+  }
+
   private getGraphAccessToken(callback) {
     const clientId = this.clientId;
     const clientSecret = this.#_clientSecret;
@@ -208,7 +400,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
   }
 
   private getTokenThenEntity(aadId, resource, callback) {
-    this.getToken((error, token) => {
+    this.getTokenByCallback((error, token) => {
       if (error) {
         return callback(error);
       }

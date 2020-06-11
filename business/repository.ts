@@ -65,7 +65,7 @@ interface IGitHubGetFileParameters {
   owner: string;
   repo: string;
   path: string;
-  branch?: string;
+  ref?: string;
 
   alternateToken?: string;
 }
@@ -103,7 +103,7 @@ interface ICreateFileParameters {
 }
 
 interface IGitHubGetFileOptions {
-  branch?: string;
+  ref?: string;
 }
 
 interface ICreateFileOptions {
@@ -166,6 +166,8 @@ export class Repository {
   public static PrimaryProperties = repoPrimaryProperties;
   private _entity: any;
   private _baseUrl: string;
+
+  private _awesomeness: number;
 
   private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
   private _operations: Operations;
@@ -337,7 +339,7 @@ export class Repository {
       ref: ref,
     };
     const operations = this._operations
-    return operations.github.call(this.authorize(AppPurpose.Data), 'repos.getContents', parameters);
+    return operations.github.call(this.authorize(AppPurpose.Data), 'repos.getContent', parameters);
   }
 
   async getPages(options?: ICacheOptions): Promise<any> {
@@ -497,7 +499,7 @@ export class Repository {
       parameters.committer = options.committer;
     }
     const alternateHeader = options.alternateToken ? `token ${options.alternateToken}` : null;
-    return this._operations.github.post(alternateHeader || this.authorize(AppPurpose.Operations), 'repos.createOrUpdateFile', parameters);
+    return this._operations.github.post(alternateHeader || this.authorize(AppPurpose.Operations), 'repos.createOrUpdateFileContents', parameters);
   }
 
   getFile(path: string, options?: IGitHubGetFileOptions): Promise<IGitHubFileContents> {
@@ -506,11 +508,11 @@ export class Repository {
       repo: this.name,
       path,
     }, options);
-    if (options && options.branch) {
-      parameters.branch = options.branch;
+    if (options && options.ref) {
+      parameters.ref = options.ref;
     }
     // const alternateHeader = options.alternateToken ? `token ${options.alternateToken}` : null;
-    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.getContents', parameters);
+    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.getContent', parameters);
   }
 
   getFiles(path: string, options?: IGitHubGetFileOptions): Promise<IGitHubFileContents[]> {
@@ -519,11 +521,11 @@ export class Repository {
       repo: this.name,
       path,
     }, options);
-    if (options.branch) {
-      parameters.branch = options.branch;
+    if (options.ref) {
+      parameters.ref = options.ref;
     }
     // const alternateHeader = options.alternateToken ? `token ${options.alternateToken}` : null;
-    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.getContents', parameters);
+    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.getContent', parameters);
   }
 
   async setTeamPermission(teamId: number, newPermission: GitHubRepositoryPermission): Promise<any> {
@@ -538,7 +540,7 @@ export class Repository {
       permission: newPermission,
     };
     // alternate version of: 'teams.addOrUpdateRepoInOrg': 'PUT /organizations/:org_id/team/:team_id/repos/:owner/:repo'
-    const result = await this._operations.github.post(this.authorize(AppPurpose.Operations), 'teams.addOrUpdateRepoInOrg', options);
+    const result = await this._operations.github.post(this.authorize(AppPurpose.Operations), 'teams.addOrUpdateRepoPermissionsInOrg', options);
     return result;
   }
 
@@ -566,7 +568,7 @@ export class Repository {
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
-    return operations.github.call(this.authorize(AppPurpose.Data), 'repos.listHooks', parameters, cacheOptions);
+    return operations.github.call(this.authorize(AppPurpose.Data), 'repos.listWebhooks', parameters, cacheOptions);
   }
 
   deleteWebhook(webhookId: string): Promise<any> {
@@ -575,7 +577,7 @@ export class Repository {
       repo: this.name,
       id: webhookId,
     };
-    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.deleteHook', parameters);
+    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.deleteWebhook', parameters);
   }
 
   createWebhook(options: ICreateWebhookOptions): Promise<any> {
@@ -599,7 +601,7 @@ export class Repository {
         content_type: 'json',
       };
     }
-    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.createHook', parameters);
+    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.createWebhook', parameters);
   }
 
   async editPublicPrivate(options): Promise<void> {
@@ -668,9 +670,84 @@ export class Repository {
     }
   }
 
+  async enableSecretScanning(): Promise<boolean> {
+    // NOTE: this is an experimental API as part of the program public beta, and likely not available
+    // to most users. Expect this call to fail.
+    const operations = this._operations;
+    const parameters = {
+      repo_id: this.id.toString(),
+    };
+    try {
+      await operations.github.requestAsPost(this.authorize(AppPurpose.Operations), 'PUT /repositories/:repo_id/secret-scanning', parameters);
+      return true;
+   } catch (error) {
+      if (error && error.status == /* loose */ 404 && error.message === 'Secret scanning is disabled') {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  async checkSecretScanning(cacheOptions?: ICacheOptions): Promise<boolean> {
+    // NOTE: this is an experimental API as part of the program public beta, and likely not available
+    // to most users. Expect this call to fail.
+    cacheOptions = cacheOptions || {};
+    const operations = this._operations;
+    const parameters = {
+      repo_id: this.id.toString(),
+    };
+    if (!cacheOptions.maxAgeSeconds) {
+      cacheOptions.maxAgeSeconds = operations.defaults.orgRepoTeamsStaleSeconds;
+    }
+    if (cacheOptions.backgroundRefresh === undefined) {
+      cacheOptions.backgroundRefresh = true;
+    }
+    try {
+      await operations.github.requestAsPost(this.authorize(AppPurpose.Operations), 'GET /repositories/:repo_id/secret-scanning', parameters);
+      return true;
+   } catch (error) {
+      if (error && error.status == /* loose */ 404 && error.message === 'Secret scanning is disabled') {
+        return false;
+      }
+      throw error;
+    }
+  }
+
   private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
     const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as IGetAuthorizationHeader;
     return getAuthorizationHeader;
+  }
+
+  public static SortByAwesomeness(a: Repository, b: Repository) {
+    return b.computeAwesomeness() - a.computeAwesomeness();
+  }
+
+  public computeAwesomeness() {
+    if (this._awesomeness) {
+      return this._awesomeness;
+    }
+    const repo = this;
+    const pushAwesomeness = 1000;
+    const pushHalfLife = 42 * Math.E * Math.pow(10, -15);
+    const starAwesomeness = (10 + Math.PI) * Math.pow(10, 13);
+    const maxValue = 32767;
+    if(!repo.pushed_at) {
+      return 0;
+    }
+    const pushTicks = (moment.utc().valueOf() - moment.utc(repo.pushed_at).valueOf()) * 10000;
+    const createdTicks = (moment.utc().valueOf() - moment.utc(repo.created_at).valueOf()) * 10000;
+    // People power, if you have a high star factor (i.e. stars per day) then you
+    // are definitely awesome.
+    let awesomeness = (starAwesomeness * repo.stargazers_count) / createdTicks;
+    // Make it so a recent contribution pushes you up the stack, but make the effect
+    // fade quickly (as determined by the halflife of a push.
+    awesomeness += pushAwesomeness * Math.pow(Math.E, -1 * pushHalfLife * pushTicks);
+    // Everyone who makes their code open source is a little bit awesome.
+    ++awesomeness;
+    if (awesomeness > maxValue) {
+      awesomeness = maxValue;
+    }
+    this._awesomeness = awesomeness;
   }
 }
 

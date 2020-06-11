@@ -22,16 +22,16 @@ block content
 
   if link && link.thirdPartyUsername
     h3 Requested created by #{identifierForRequester}
-      p: a(href='https://github.com/' + link.thirdPartyUsername)= 'https://github.com/' + link.thirdPartyUsername
-      if link
-        table
-          tbody
-            tr
-              td GitHub account
-              td= link.thirdPartyUsername
-            tr
-              td Corporate identity
-              td= link.corporateUsername
+    p: a(href='https://github.com/' + link.thirdPartyUsername)= 'https://github.com/' + link.thirdPartyUsername
+    if link
+      table
+        tbody
+          tr
+            td GitHub account
+            td= link.thirdPartyUsername
+          tr
+            td Corporate identity
+            td= link.corporateUsername
 
   if maintainers && maintainers.length
     h3 Team Maintainers
@@ -45,7 +45,7 @@ block content
               = 'Name: ' + maintainerLink.corporateDisplayName
               br
             if maintainerLink.corporateUsername
-              = 'Corporate identity: ' + maintainerLink.corporateDisplayName
+              = 'Corporate identity: ' + maintainerLink.corporateUsername
               br
             if maintainerLink.thirdPartyUsername
               = 'GitHub account: ' + maintainerLink.thirdPartyUsername

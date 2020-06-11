@@ -154,7 +154,7 @@ export default class BlobCache implements ICacheHelper {
     if (options.minutesToExpire) {
       const expires = new Date(uploadStarted.getTime() + (1000 * 60 * options.minutesToExpire));
       const iso8601 = expires.toISOString();
-      console.log(`blob will expire in ${options.minutesToExpire}m; expires=${iso8601}, blob=${blobName}, key=${key}`);
+      debug(`blob will expire in ${options.minutesToExpire}m; expires=${iso8601}, blob=${blobName}, key=${key}`);
       metadata[ttlAttributeName] = iso8601;
     }
     let response: BlockBlobUploadResponse = null;
@@ -268,17 +268,17 @@ export default class BlobCache implements ICacheHelper {
         const blob = b as BlobItem;
         try {
           if (!blob.metadata || !blob.metadata.expires) {
-            console.log(`${++x}. FYI: blob ${blob.name} does not have an expiration to review and was skipped`);
+            debug(`${++x}. FYI: blob ${blob.name} does not have an expiration to review and was skipped`);
             ++stats.processedBlobs;
             continue;
           }
           const expires = new Date(blob.metadata.expires);
           const now = new Date();
           if (now > expires) {
-            console.log(blob.name);
+            debug(blob.name);
             const blobClient = this._container.getBlobClient(blob.name);
             await blobClient.delete();
-            console.log(`expired ${blob.name}`);
+            debug(`expired ${blob.name}`);
             ++stats.expired;
           }
         } catch (processBlobError) {
@@ -286,7 +286,7 @@ export default class BlobCache implements ICacheHelper {
           stats.errors.push(processBlobError);
         }
         ++stats.processedBlobs;
-        console.log(`processed=${stats.processedBlobs}, pages=${stats.processedPages}, expired=${stats.expired}`);
+        debug(`processed=${stats.processedBlobs}, pages=${stats.processedPages}, expired=${stats.expired}`);
       }
       ++stats.processedPages;
       response = await iterator.next();

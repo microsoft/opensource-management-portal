@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express = require('express');
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
@@ -18,6 +16,8 @@ const apiClient = require('./client');
 const apiExtension = require('./extension');
 const apiPeople = require('./people');
 const apiWebhook = require('./webhook');
+
+import apiPublicRepos from './publicRepos';
 
 import { AzureDevOpsAuthenticationMiddleware } from '../../middleware/apiVstsAuth';
 import ReposApiAuthentication from '../../middleware/apiReposAuth';
@@ -34,6 +34,7 @@ const hardcodedApiVersions = [
 
 router.use('/client', apiClient);
 router.use('/webhook', apiWebhook);
+router.use('/publicRepos', apiPublicRepos);
 
 router.use((req: IApiRequest, res, next) => {
   const apiVersion = req.query['api-version'] || req.headers['api-version'];

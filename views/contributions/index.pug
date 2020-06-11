@@ -338,7 +338,11 @@ block content
         //- .col-md-1: a(href='?login=' + login + '&refresh=1') Refresh
 
       if contributionCount === 0
-        .row: .col-md-12: p No open source contributions were discovered for #{startMonthName}.
+        .row: .col-md-12
+          if recentlyLinked
+            p No open source contributions have been discovered for #{startMonthName}. #[strong This account was linked recently, so please check back in a few days as data is refreshed.]
+          else
+            p No open source contributions were discovered for #{startMonthName}.
       else
         .row: .col-md-12
           if isSelf
@@ -363,7 +367,7 @@ block content
       hr
       p: small.
         Thank you for your contributions. #[a(href='mailto:opensource@microsoft.com') Feedback welcome]. 
-        This data is refreshed regularly but typically lags by a day.
+        This data is refreshed regularly but typically lags by at least a day. Only recent public contributions will be displayed for people linking for their first time.
         The scope of contributions displayed on this page are those which the data indicates likely were made to projects outside the company. Open source projects within official organizations at the company are excluded to help encourage participation in the open source projects our customers depend on.
         #[br]
         #{startMonthName} contribution period: #{start}-#{end}

@@ -10,8 +10,6 @@
 // GitHub Enterprise Cloud capability of using GraphQL to hit the official audit log
 // for organizations, and also to import JSON-based audit export files.
 
-'use strict';
-
 import { WebhookProcessor } from '../organizationProcessor';
 import { Operations } from '../../business/operations';
 import { Organization } from '../../business/organization';
@@ -104,7 +102,7 @@ async function runAsync(operations: Operations, organization: Organization, data
   //     },
   }
   record.inserted = new Date();
-  console.dir(record);
+  // console.dir(record);
   await auditLogRecordProvider.insertRecord(record);
 }
 

@@ -74,7 +74,7 @@ block content
     ul
       each result in results
         if result && (result.error || result.message)
-          li(style=result.error ? 'color:red' : undefined)= result.message
+          li(style=result.error ? 'color:red' : undefined)= result.error || result.message
 
   if managerInfo && managerInfo.managerMail
     h3 Additional notifications

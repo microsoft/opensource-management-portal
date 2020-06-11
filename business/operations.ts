@@ -94,6 +94,12 @@ export const RedisPrefixManagerInfoCache = 'employeewithmanager:';
 
 const defaultGitHubPageSize = 100;
 
+interface IUnlinkMailStatus {
+  to: string[];
+  bcc: string[];
+  receipt: string;
+}
+
 export enum SupportedLinkType {
   User = 'user',
   ServiceAccount = 'serviceAccount',
@@ -506,6 +512,15 @@ export class Operations {
     return !!value;
   }
 
+  isManagedOrganization(name: string) {
+    try {
+      this.getOrganization(name.toLowerCase());
+      return true;
+    } catch (unmanaged) {
+      return this.isIgnoredOrganization(name);
+    }
+  }
+
   getOrganizations(organizationList?: string[]): Organization[] {
     if (!organizationList) {
       return Array.from(this.organizations.values());
@@ -624,7 +639,7 @@ export class Operations {
     const insightsLinkedMetricName = `${insightsPrefix}s`;
     const insightsAllUpMetricsName = `${insightsLinkType}Links`;
 
-    insights.trackEvent({ name: `${insightsPrefix}Start`, properties: {...link, correlationId} });
+    insights.trackEvent({ name: `${insightsPrefix}Start`, properties: {...link, correlationId} as any as { [key: string]: string } });
 
     if (!options.skipGitHubValidation) {
       const githubAccount = this.getAccount(link.thirdPartyId);
@@ -664,18 +679,18 @@ export class Operations {
     try {
       newLinkId = await linkProvider.createLink(link);
       const eventData = {...link, linkId: newLinkId, correlationId };
-      insights.trackEvent({ name: `${insightsPrefix}Created`, properties: eventData });
+      insights.trackEvent({ name: `${insightsPrefix}Created`, properties: eventData as any as { [key: string]: string } });
       insights.trackMetric({ name: insightsLinkedMetricName, value: 1 });
       insights.trackMetric({ name: insightsAllUpMetricsName, value: 1 });
       setImmediateAsync(this.fireLinkEvent.bind(this, eventData));
     } catch (createLinkError) {
       if (ErrorHelper.IsConflict(createLinkError)) {
-        insights.trackEvent({ name: `${insightsPrefix}AlreadyLinked`, properties: {...link, correlationId}})
+        insights.trackEvent({ name: `${insightsPrefix}AlreadyLinked`, properties: {...link, correlationId} as any as { [key: string]: string }})
         throw ErrorHelper.EnsureHasStatus(createLinkError, 409);
       }
       insights.trackException({
         exception: createLinkError,
-        properties: {...link, event: `${insightsPrefix}InsertError`, correlationId},
+        properties: {...link, event: `${insightsPrefix}InsertError`, correlationId} as any as { [key: string]: string },
       });
       throw createLinkError;
     }
@@ -719,14 +734,28 @@ export class Operations {
         return;
       }
     }
+    let managerMail = null;
+    try {
+      const manager = await this.providers.graphProvider.getManagerByIdAsync(link.corporateId);
+      if (manager) {
+        managerMail = await GetAddressFromUpnAsync(this.providers.mailAddressProvider, manager.userPrincipalName);
+      }
+    } catch (ignoreError) {
+      // ignored
+    }
     const to = [mailAddress];
     const toAsString = to.join(', ');
     const cc = [];
     if (config.brand && config.brand.operationsEmail && link.isServiceAccount) {
       cc.push(config.brand.operationsEmail);
     }
+    if (managerMail) {
+      cc.push(managerMail);
+    }
     const mail = {
       to,
+      cc,
+      bcc: this.providers.operations.getOperationsMailAddress(),
       subject: `${link.corporateUsername} linked to ${link.thirdPartyUsername}`,
       correlationId,
       content: undefined,
@@ -751,7 +780,7 @@ export class Operations {
         properties: {
           content: contentOptions,
           eventName: 'LinkMailRenderFailure',
-        },
+        } as any as { [key: string]: string },
       });
       if (throwIfError) {
         throw renderError;
@@ -765,11 +794,11 @@ export class Operations {
     };
     try {
       const receipt = await this.sendMail(mail);
-      insights.trackEvent({ name: 'LinkMailSuccess', properties: customData });
+      insights.trackEvent({ name: 'LinkMailSuccess', properties: customData as any as { [key: string]: string } });
       customData.receipt = receipt;
     } catch (sendMailError) {
       customData.eventName = 'LinkMailFailure';
-      insights.trackException({ exception: sendMailError, properties: customData });
+      insights.trackException({ exception: sendMailError, properties: customData as any as { [key: string]: string } });
       if (throwIfError) {
         throw sendMailError;
       }
@@ -838,7 +867,9 @@ export class Operations {
 
     // Link
     try {
-      history.push(... await account.removeLink());
+      if (account.link) {
+        history.push(... await account.removeLink());
+      }
     } catch (removeLinkError) {
       ++errors;
       if (insights) {
@@ -886,8 +917,12 @@ export class Operations {
 
     // Notify
     try {
-      await this.sendTerminatedAccountMail(account, purpose, history, errors);
-      history.push('Unlink e-mail sent to manager');
+      const status = await this.sendTerminatedAccountMail(account, purpose, history, errors);
+      if (status) {
+        history.push(`Unlink e-mail sent to manager: to=${status.to.join(', ')} bcc=${status.bcc.join(', ')}, receipt=${status.receipt}`);
+      } else {
+        history.push('Service not configured to notify by mail');
+      }
     } catch (notifyTerminationMailError) {
       if (insights) {
         insights.trackException({ exception: notifyTerminationMailError });
@@ -927,9 +962,9 @@ export class Operations {
     return [this.getOperationsMailAddress()];
   }
 
-  private async sendTerminatedAccountMail(account: Account, purpose: UnlinkPurpose, details: string[], errorsCount: number): Promise<void> {
+  private async sendTerminatedAccountMail(account: Account, purpose: UnlinkPurpose, details: string[], errorsCount: number): Promise<IUnlinkMailStatus> {
     if (!this.providers.mailProvider || !account.link || !account.link.corporateId) {
-      return;
+      return null;
     }
 
     purpose = purpose || UnlinkPurpose.Unknown;
@@ -969,12 +1004,13 @@ export class Operations {
       details.push(getEmployeeInfoError.toString());
     }
 
-    const to: string[] = [];
+    let to: string[] = [];
     if (errorMode) {
       to.push(...operationsArray);
     } else {
       to.push(cachedEmployeeManagementInfo.managerMail);
     }
+    to = to.filter(val => val);
     const bcc = [];
     if (!errorMode) {
       bcc.push(...operationsArray);
@@ -1026,8 +1062,11 @@ export class Operations {
       purpose,
       details,
     });
-
-    await this.sendMail(mail);
+    return {
+      to,
+      bcc,
+      receipt: await this.sendMail(Object.assign(mail)),
+    }
   }
 
   getDefaultRepositoryTemplateNames(): string[] {

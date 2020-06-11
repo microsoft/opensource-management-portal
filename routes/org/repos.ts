@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import _ from 'lodash';
 import asyncHandler from 'express-async-handler';
 import express from 'express';
@@ -26,6 +24,7 @@ import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
 import { daysInMilliseconds, ParseReleaseReviewWorkItemId } from '../../utils';
 import { ICorporateLink } from '../../business/corporateLink';
 import { getReviewService } from '../api/client/reviewService';
+import { IGraphEntry } from '../../lib/graphProvider';
 
 const router = express.Router();
 
@@ -195,7 +194,7 @@ router.post('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), async
 }));
 
 router.get('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: ILocalRequest, res, next) {
-  const { linkProvider, config } = req.app.settings.providers as IProviders;
+  const { linkProvider, config, graphProvider } = req.app.settings.providers as IProviders;
   const repoPermissions = req.repoPermissions;
   const referer = req.headers.referer as string;
   const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
@@ -257,6 +256,14 @@ router.get('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncH
       console.dir(linkError);
     }
   }
+  let currentManagementChain: IGraphEntry[] = null;
+  try {
+    if (createdUserLink && createdUserLink.corporateId) {
+      currentManagementChain = (await graphProvider.getManagementChain(createdUserLink.corporateId)).reverse();
+    }
+  } catch (ignoreError) {
+    console.dir(ignoreError);
+  }
   req.individualContext.webContext.render({
     view: 'repos/repo',
     title,
@@ -267,6 +274,7 @@ router.get('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncH
       reposSubView: 'default',
       repoPermissions,
       entity: repository.getEntity(),
+      currentManagementChain,
       repo, // : decorateRepoForView(repository),
       repository,
       // permissions: slicePermissionsForView(filterSystemTeams(teamsFilterType.systemTeamsExcluded, systemTeams, permissions)),

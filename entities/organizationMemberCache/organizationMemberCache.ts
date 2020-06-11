@@ -68,6 +68,10 @@ export class OrganizationMemberCacheDeleteByOrganizationId implements IEntityMet
   }
 }
 
+export class OrganizationOwnersQuery implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.OrganizationOwnersCache;
+}
+
 export class OrganizationMemberCacheFixedQueryAll implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.OrganizationMemberCacheGetAll;
 }
@@ -135,6 +139,20 @@ EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: 
         values: [],
         skipEntityMapping: true,
       };
+    }
+    case FixedQueryType.OrganizationOwnersCache: {
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        role: 'admin',
+      });
+    }
+    case FixedQueryType.OrganizationOwnersCache: {
+      const { organizationId } = query as OrganizationMemberCacheFixedQueryByOrganizationId;
+      if (!organizationId) {
+        throw new Error('organizationId required');
+      }
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        organizationid: stringOrNumberAsString(organizationId),
+      });
     }
     case FixedQueryType.OrganizationMemberCacheByOrganizationId: {
       const { organizationId } = query as OrganizationMemberCacheFixedQueryByOrganizationId;

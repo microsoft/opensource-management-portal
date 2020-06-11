@@ -5,8 +5,6 @@
 
 /*eslint no-console: ["error", { allow: ["dir", "log"] }] */
 
-'use strict';
-
 import { WebhookProcessor } from "../organizationProcessor";
 import { Operations } from "../../business/operations";
 import { Organization } from "../../business/organization";

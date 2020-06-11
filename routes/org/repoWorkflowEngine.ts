@@ -128,6 +128,10 @@ export class RepoWorkflowEngine {
     }
     // GitHub adds the creator of a repo as an admin directly now, but we don't need that...
     output.push(await removeOrganizationCollaboratorTask(organization, this.createResponse));
+    // Add any administrator logins as invited, if present
+    if (request.initialAdministrators && request.initialAdministrators.length > 0) {
+      output.push(await addAdministratorCollaboratorsTask(organization, repoName, request.initialAdministrators));
+    }
     return output.filter(real => real);
   }
 }
@@ -254,7 +258,13 @@ async function createAddTemplateFilesTask(organization: Organization, repoName: 
   const repository = organization.repository(repoName);
   try {
     const templateGitHubCommitterUsername = userName;
-    await authorizeTemplateCommitterAccount(repository, templateGitHubCommitterUsername, alternateTokenOptions);
+    try {
+      await authorizeTemplateCommitterAccount(repository, templateGitHubCommitterUsername, alternateTokenOptions);
+    } catch (authorizeError) {
+      return {
+        error: `Could not authorize ${templateGitHubCommitterUsername} to apply template: ${authorizeError}`,
+      };
+    }
     const templateRoot = path.join(templatePath, templateName);
     const fileNames = await getTemplateFilenames(templateRoot);
     const fileContents = await getFileContents(templateRoot, templatePath, templateName, fileNames);
@@ -319,6 +329,34 @@ async function authorizeTemplateCommitterAccount(repository: Repository, templat
   }
   const invitationId = invitation.id;
   await repository.acceptCollaborationInvite(invitationId, alternateTokenOptions);
+}
+
+async function addAdministratorCollaboratorsTask(organization: Organization, repositoryName: string, administratorLogins: string[]): Promise<IRepositoryWorkflowOutput> {
+  if (!administratorLogins || !administratorLogins.length) {
+    return null;
+  }
+  const repository = organization.repository(repositoryName);
+  const errors = [];
+  const messages = [];
+  for (const login of administratorLogins) {
+    try {
+      await repository.addCollaborator(login, GitHubRepositoryPermission.Admin);
+      messages.push(`Added collaborator ${login} with admin permission`);
+    } catch (error) {
+      errors.push(error.message);
+    }
+  }
+  let error = null;
+  let message = null;
+  if (errors.length) {
+    error = errors.join(', ');
+  } else {
+    message = messages.join(', ');
+  }
+  return {
+    error,
+    message,
+  };
 }
 
 async function addTemplateCollaborators(organization: Organization, repositoryName: string, templateName: string): Promise<IRepositoryWorkflowOutput> {
