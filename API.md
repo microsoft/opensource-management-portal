@@ -275,6 +275,10 @@ BODY
   "ms.entity": "Legal Entity Name",
   "ms.notify": "yourteam@domain.com",
   "ms.onBehalfOf": "alias",
+  "ms.administrators": [
+    "githublogin1",
+    "githublogin2"
+  ],
   "ms.teams": {
     "pull": [
       12346,

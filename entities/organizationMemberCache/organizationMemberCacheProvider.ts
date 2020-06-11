@@ -4,7 +4,7 @@
 //
 
 import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { OrganizationMemberCacheEntity, EntityImplementation, OrganizationMemberCacheFixedQueryAll, OrganizationMemberCacheFixedQueryByOrganizationId, OrganizationMemberCacheFixedQueryByUserId, OrganizationBasicsFixedQuery, OrganizationMemberCacheDeleteByOrganizationId } from './organizationMemberCache';
+import { OrganizationMemberCacheEntity, EntityImplementation, OrganizationMemberCacheFixedQueryAll, OrganizationMemberCacheFixedQueryByOrganizationId, OrganizationMemberCacheFixedQueryByUserId, OrganizationBasicsFixedQuery, OrganizationMemberCacheDeleteByOrganizationId, OrganizationOwnersQuery } from './organizationMemberCache';
 
 const thisProviderType = EntityImplementation.Type;
 
@@ -23,6 +23,7 @@ export interface IOrganizationMemberCacheProvider {
   queryOrganizationMembersByOrganizationId(organizationId: string): Promise<OrganizationMemberCacheEntity[]>;
   queryOrganizationMembersByUserId(userId: string): Promise<OrganizationMemberCacheEntity[]>;
   queryAllOrganizationIds(): Promise<string[]>;
+  queryAllOrganizationOwners(): Promise<OrganizationMemberCacheEntity[]>;
   deleteByOrganizationId(organizationId: string): Promise<void>;
 }
 
@@ -79,6 +80,13 @@ export class OrganizationMemberCacheProvider extends EntityMetadataBase implemen
 
   async queryOrganizationMembersByUserId(userId: string): Promise<OrganizationMemberCacheEntity[]> {
     const query = new OrganizationMemberCacheFixedQueryByUserId(userId);
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<OrganizationMemberCacheEntity>(thisProviderType, metadatas);
+    return results;
+  }
+
+  async queryAllOrganizationOwners(): Promise<OrganizationMemberCacheEntity[]> {
+    const query = new OrganizationOwnersQuery();
     const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
     const results = this.deserializeArray<OrganizationMemberCacheEntity>(thisProviderType, metadatas);
     return results;

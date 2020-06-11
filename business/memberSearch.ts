@@ -10,7 +10,7 @@ import { OrganizationMember } from './organizationMember';
 import { ICrossOrganizationMembersResult } from './operations';
 import { IProviders } from '../transitional';
 
-const earlyProfileFetchTypes = new Set(['former', 'active', 'serviceAccount', 'unknownAccount']);
+const earlyProfileFetchTypes = new Set(['former', 'active', 'unknownAccount']);
 
 const defaultPageSize = 33; // GitHub.com seems to use a value around 33
 const earlyFetchPageBreak = 200;
@@ -40,6 +40,8 @@ export class MemberSearch {
   public pageFirstItem: number;
   public pageLastItem: number;
 
+  private orgId: string;
+
   constructor(members: ICrossOrganizationMembersResult | OrganizationMember[], options) {
     options = options || {};
     // must be a Map from ID to object with { orgs, memberships, account }
@@ -56,17 +58,21 @@ export class MemberSearch {
     this.#providers = options.providers as IProviders;
     this.teamMembers = options.teamMembers;
     this.team2AddType = options.team2AddType;
-
     this.pageSize = options.pageSize || defaultPageSize;
 
     this.phrase = options.phrase;
     this.type = options.type;
+
+    if (options.orgId) {
+      this.orgId = String(options.orgId);
+    }
   }
 
   async search(page, sort?: string): Promise<void> {
     this.page = parseInt(page);
     this.sort = sort ? sort.charAt(0).toUpperCase() + sort.slice(1) : 'Alphabet';
 
+    await this.filterOrganizationOwners();
     await this
       .filterByTeamMembers()
       .associateLinks()
@@ -78,6 +84,24 @@ export class MemberSearch {
       .getPage(this.page)
       .sortOrganizations()
       .getCorporateProfiles();
+  }
+
+  async filterOrganizationOwners() {
+    const { queryCache, organizationMemberCacheProvider } = this.#providers;
+    if (this.type === 'owners' && queryCache.supportsOrganizationMembership && organizationMemberCacheProvider) {
+      if (!this.orgId) {
+        throw new Error('org owners view not available at the top root level currently');
+      }
+      const allOwners = await organizationMemberCacheProvider.queryAllOrganizationOwners();
+      const owners = new Set<string>();
+      for (const owner of allOwners) {
+        if (this.orgId && owner.organizationId === this.orgId) {
+          owners.add(owner.userId);
+        }
+      }
+      this.members = this.members.filter(member => owners.has(String(member.id)));
+    }
+    return this;
   }
 
   filterByTeamMembers() {

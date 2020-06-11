@@ -36,7 +36,7 @@ router.use((req: IRequestHacked, res, next) => {
   }
 });
 
-router.use('/', function (req: ReposAppRequest, res, next) {
+router.use('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   // Make sure both account types are authenticated before showing the link pg [wi 12690]
   const individualContext = req.individualContext;
   if (!individualContext.corporateIdentity || !individualContext.getGitHubIdentity()) {
@@ -44,13 +44,13 @@ router.use('/', function (req: ReposAppRequest, res, next) {
     return res.redirect('/?signin');
   }
   return next();
-});
+}));
 
 // TODO: graph provider non-guest check should be middleware and in the link business process
 
-router.use((req: IRequestHacked, res, next) => {
+router.use(asyncHandler(async (req: IRequestHacked, res, next) => {
   const individualContext = req.individualContext as IndividualContext;
-  const providers = req.app.settings.providers;
+  const providers = req.app.settings.providers as IProviders;
   const insights = providers.insights;
   const config = providers.config;
   let validateAndBlockGuests = false;
@@ -74,27 +74,17 @@ router.use((req: IRequestHacked, res, next) => {
       aadId: aadId,
     },
   });
-  graphProvider.getUserById(aadId, (graphError, details) => {
-    if (graphError) {
-      insights.trackException({
-        exception: graphError,
-        properties: {
-          aadId: aadId,
-          name: 'LinkValidateNotGuestGraphFailure',
-        },
-      });
-      return next(graphError);
-    }
+  try {
+    const details = await graphProvider.getUserByIdAsync(aadId);
     const userType = details.userType;
     const displayName = details.displayName;
     const userPrincipalName = details.userPrincipalName;
-    let block = userType === 'Guest';
+    let block = userType as string === 'Guest';
     let blockedRecord = block ? 'BLOCKED' : 'not blocked';
     // If the app is configured to check for guests, but this is a specifically permitted guest user, continue:
     if (config && config.activeDirectoryGuests && config.activeDirectoryGuests.authorizedIds && config.activeDirectoryGuests.authorizedIds.length && config.activeDirectoryGuests.authorizedIds.includes(aadId)) {
       block = false;
       blockedRecord = 'specifically authorized user ' + aadId + ' ' + userPrincipalName;
-      /// HACK !
       req.overrideLinkUserPrincipalName = userPrincipalName;
       return next(new Error('This feature is not currently available. Please reach out to support to re-enable this feature.'));
     }
@@ -112,9 +102,22 @@ router.use((req: IRequestHacked, res, next) => {
       insights.trackMetric({ name: 'LinksBlockedForGuests', value: 1 });
       return next(new Error(`This system is not available to guests. You are currently signed in as ${displayName} ${userPrincipalName}. Please sign out or try a private browser window.`));
     }
+    const manager = await providers.graphProvider.getManagerByIdAsync(aadId);
+    if (!manager || !manager.userPrincipalName) {
+      throw new Error(`You do not have an active manager entry in the directory and so cannot yet link.`);
+    }
     return next();
-  });
-});
+  } catch (graphError) {
+    insights.trackException({
+      exception: graphError,
+      properties: {
+        aadId: aadId,
+        name: 'LinkValidateNotGuestGraphFailure',
+      },
+    });
+    return next(graphError);
+  }
+}));
 
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const individualContext = req.individualContext;
@@ -204,6 +207,7 @@ async function linkUser(req, res, next) {
   if (isServiceAccount) {
     newLinkObject.isServiceAccount = true;
     newLinkObject.serviceAccountMail = serviceAccountMail;
+    return next(new Error('Service Account linking is disabled pending corporate security updates. Please reach out to github@microsoft.com for more information.'));
   }
   try {
     await operations.linkAccounts({

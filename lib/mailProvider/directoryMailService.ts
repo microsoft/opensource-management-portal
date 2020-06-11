@@ -230,7 +230,7 @@ export default class DirectoryMailService implements IMailProvider {
 
   private mapRecipientToSpecializedFormat(recipients: string[]) {
     if (recipients && Array.isArray(recipients) && recipients.length > 0) {
-      return recipients.map(rec => {
+      return recipients.filter(email => email).map(rec => {
         return {
           Format: 1, // hard-coded C#/.NET enum from a specific SDK
           Value: rec,

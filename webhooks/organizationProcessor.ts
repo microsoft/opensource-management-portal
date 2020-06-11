@@ -14,6 +14,7 @@ import { Operations } from '../business/operations';
 import { Organization } from '../business/organization';
 
 import Tasks from './tasks';
+import { sleep } from '../utils';
 
 interface IValidationError extends Error {
   statusCode?: number;
@@ -122,8 +123,32 @@ export default async function ProcessOrganizationWebhook(options: IProcessOrgani
     try {
       await processor.run(operations, organization, event);
     } catch (processInitializationError) {
-      console.log('Processor ran into an error with an event:');
-      console.dir(processInitializationError);
+      if (processInitializationError.status === 403) {
+        console.log(`403: ${processInitializationError}`);
+        if (processInitializationError.headers) {
+          const headers = processInitializationError.headers;
+          const rateLimit = headers['x-ratelimit-limit'];
+          const rateLimitRemaining = headers['x-ratelimit-remaining'];
+          const rateLimitReset = headers['x-ratelimit-reset'];
+          if (rateLimit !== undefined) {
+            console.log(`rate limit=${rateLimit}, remaining=${rateLimitRemaining}`);
+          }
+          if (rateLimitReset) {
+            const resetValue = Number(rateLimitReset);
+            const resetDate = new Date(1000 * resetValue);
+            const now = new Date();
+            if (resetDate > now) {
+              const difference = resetDate.getTime() - now.getTime();
+              console.log(`[rate limit sleep] This thread will sleep for the remainder of this limit, ${difference}ms, until ${resetDate}`);
+              await sleep(difference);
+              console.log('[resuming from rate limit sleep]');             
+            }
+          }  
+        }
+      } else {
+        console.log('Processor ran into an error with an event:');
+        console.dir(processInitializationError);  
+      }
     }
   }
   return interestingEvents;

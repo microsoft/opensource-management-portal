@@ -45,6 +45,7 @@ export interface IReposJobOptions {
   defaultDebugOutput?: string;
   insightsPrefix?: string;
   parameters?: any;
+  treatGitHubAppAsBackground?: boolean;
 }
 
 const app = express() as unknown as IReposApplication;
@@ -108,7 +109,9 @@ app.runJob = async function (job: (job: IReposJob) => Promise<IReposJobResult | 
   if (options.defaultDebugOutput && !process.env.DEBUG) {
     process.env.DEBUG = options.defaultDebugOutput;
   }
-  app.isBackgroundJob = true;
+  if (options.treatGitHubAppAsBackground !== false) {
+    app.isBackgroundJob = true;
+  }
   try {
     await app.startupJob();
   } catch (startupError) {

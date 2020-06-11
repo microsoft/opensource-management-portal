@@ -18,14 +18,18 @@ block content
           if graphUser && graphUser.mail
             input(type='hidden', name='sam', value=graphUser.mail)
           if isServiceAccountCandidate
-            h1 Create a service account link
-            p.lead Service accounts are often used for continuous integration, deployment and test systems
+            if false
+              h1 Create a service account link
+              p.lead Service accounts are often used for continuous integration, deployment and test systems
 
-            h5 Service account contact
-            p This account is a Service Account at #{config.brand.companyName}. Since many mail-enabled service accounts are not regularly monitored for communications, we need to record an e-mail address to associate with the maintainers of this account.
+              h5 Service account contact
+              p This account is a Service Account at #{config.brand.companyName}. Since many mail-enabled service accounts are not regularly monitored for communications, we need to record an e-mail address to associate with the maintainers of this account.
 
-            input(type='hidden', name='sa', value='1')
-            input.form-control(name='serviceAccountMail', type='text', placeholder='Discussion list, security group, or e-mail address of the primary maintainer')
+              input(type='hidden', name='sa', value='1')
+              input.form-control(name='serviceAccountMail', type='text', placeholder='Discussion list, security group, or e-mail address of the primary maintainer')
+
+            h3 WARNING: Service Account linking is not available
+            p Due to corporate security updates to GitHub, Service Accounts have been updated. Please e-mail github@microsoft.com for more information or visit https://aka.ms/github/serviceaccounts.
 
             h5 Link details
           else
@@ -62,7 +66,10 @@ block content
             if isServiceAccountCandidate
               li The e-mail address(es) associated with this service account can be used to communicate with those controlling the account regarding policy, operations, and outages
           p(style='margin-top:24px')
-            input.btn.btn-lg.btn-primary(type='submit', value='Link')
+            if isServiceAccountCandidate
+              p.btn.btn-lg.btn-default Link (not available currently)
+            else
+              input.btn.btn-lg.btn-primary(type='submit', value='Link')
 
         p &nbsp;
         h3 Your onboarding progress

@@ -219,8 +219,8 @@ async function sendEmail(insights, basedir, mailProvider: IMailProvider, to, bod
   body.notification = 'warning';
   body.app = 'Microsoft GitHub';
   const mail: IAutomaticTeamsMail = {
-    to: to,
-    cc: 'jwilcox@microsoft.com',
+    to,
+    cc: 'github@microsoft.com',
     subject: `Team permission change for ${body.repository.full_name} repository reverted`,
     category: ['error', 'repos'],
   };

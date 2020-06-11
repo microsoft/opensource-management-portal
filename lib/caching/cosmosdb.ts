@@ -185,7 +185,7 @@ export default class CosmosCache implements ICacheHelper {
       approxSize = bytes(asJsonText);
       if (approxSize > largess) {
         if (this._blobCache) {
-          console.log(`storing in blob instead... key=${originalKey}, dataSize=${approxSize}`);
+          debug(`storing in blob instead... key=${originalKey}, dataSize=${approxSize}`);
           const ttlSeconds = object.ttl;
           delete object.ttl;
           await ttlSeconds ? this._blobCache.setObjectCompressedWithExpire(originalKey, object, ttlSeconds / 60) : this._blobCache.setObject(originalKey, object);
@@ -201,7 +201,7 @@ export default class CosmosCache implements ICacheHelper {
       }
       if (approxSize > cut) {
         const chunks = this.intoChunks(asJsonText, cut);
-        console.log(`LARGE Cosmos save, would blob be better? chunks: ${chunks.length}`);
+        debug(`LARGE Cosmos save, would blob be better? chunks: ${chunks.length}`);
         for (let i = 0; i < chunks.length; i++) {
           const id = i === 0 ? key : `${key}_c${i}`;
           const chunkDoc = {
@@ -234,7 +234,7 @@ export default class CosmosCache implements ICacheHelper {
           } catch (cosmosError) {
             if (cosmosError && cosmosError.code && cosmosError.code === 429) {
               const time = cosmosError && cosmosError.retryAfterInMs ? cosmosError.retryAfterInMs : 500;
-              console.log(`pausing, will retry on 429 in ${time}ms`);
+              debug(`pausing, will retry on 429 in ${time}ms`);
               await sleep(time);
             } else {
               tries += 10;

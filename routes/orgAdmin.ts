@@ -48,9 +48,9 @@ interface IUserInformationQuery {
   gitHubUserInfo?: any;
   renamedGitHubUserOutcome?: UserQueryOutcomeRenamedThirdPartyUsername;
   deletedGitHubUserOutcome?: any;
-  personEntry?: any;
   realtimeGraph?: any;
   realtimeGraphError?: any;
+  managerInfo?: any;
 }
 
 class UserQueryOutcomeRenamedThirdPartyUsername {
@@ -158,17 +158,6 @@ async function queryByCorporateUsername(operations: Operations, graphProvider: a
 async function loadInformation(operations: Operations, graphProvider: any, redisClient: any, query: IUserInformationQuery) : Promise<IUserInformationQuery> {
   // Input: query type and value; pre-queried and set single link, if present
 
-  // Lookup person entry as exposed by our people data
-  const corporateUpn = query.link ? query.link.corporateUsername : null;
-  if (corporateUpn) {
-    try {
-    query.personEntry = await getPersonEntryByUpn(redisClient, query.link.corporateUsername);
-    } catch (ignoreError) {
-      // we no longer use this data so its OK to fail out
-      console.dir(ignoreError);
-    }
-  }
-
   const corporateAadId = query.link ? query.link.corporateId : null;
   if (corporateAadId) {
     try {
@@ -176,6 +165,11 @@ async function loadInformation(operations: Operations, graphProvider: any, redis
       query.realtimeGraph = info.graphEntry;
     } catch (graphError) {
       query.realtimeGraphError = graphError;
+    }
+    try {
+      query.managerInfo = await operations.getCachedEmployeeManagementInformation(corporateAadId);
+    } catch (managerError) {
+      console.dir(managerError);
     }
   }
 
@@ -254,28 +248,6 @@ async function getGitHubAccountInformationById(operations: Operations, id: strin
   return account;
 }
 
-function getPersonEntryByUpn(redisClient, upn: string) : Promise<any> {
-  return new Promise((resolve, reject) => {
-    redisClient.hget('upns', upn, (redisGetError, data) => {
-      if (redisGetError) {
-        return reject(redisGetError);
-      }
-      var person = null;
-      if (data) {
-        try {
-          person = JSON.parse(data);
-        } catch (jsonError) {
-          return reject(jsonError);
-        }
-      }
-      if (person) {
-        return resolve(person);
-      }
-      return resolve(null);
-    });
-  });
-}
-
 router.get('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {
   const thirdPartyId = req.params.githubid;
   const operations = req.app.settings.providers.operations as Operations;
@@ -286,7 +258,6 @@ router.get('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {
       view: 'organization/whois/result',
       title: `Whois by GitHub ID: ${thirdPartyId}`,
       state: {
-        personEntry: query.personEntry,
         info: query.gitHubUserInfo,
         realtimeGraph: query.realtimeGraph,
 
@@ -431,8 +402,7 @@ router.get('/whois/aad/:upn', function (req: ReposAppRequest, res, next) {
       view: 'organization/whois/result',
       title: `Whois by AAD UPN: ${upn}`,
       state: {
-        personEntry: query.personEntry,
-        upn: upn,
+        upn,
         info: query.gitHubUserInfo,
         realtimeGraph: query.realtimeGraph,
 
@@ -453,7 +423,6 @@ router.get('/whois/github/:username', function (req: ReposAppRequest, res, next)
       view: 'organization/whois/result',
       title: `Whois: ${login}`,
       state: {
-        personEntry: query.personEntry,
         info: query.gitHubUserInfo,
         realtimeGraph: query.realtimeGraph,
 
@@ -505,6 +474,7 @@ async function destructiveLogic(operations: Operations, graphProvider, redisClie
   };
   let thirdPartyUsername = identifier.type === IDValueType.Username ? identifier.value : null;
   let thirdPartyId = identifier.type === IDValueType.ID ? identifier.value : null;
+  const dataAsTerminated = req.body.dataTerminated === 'yes';
   try {
     if (!thirdPartyUsername) {
       state.messages.push('Destruction operation not requested on a username');
@@ -561,8 +531,12 @@ async function destructiveLogic(operations: Operations, graphProvider, redisClie
   }
 
   // Account termination
-  if (linkQuery && linkQuery.link) {
-    state.results = await operations.terminateLinkAndMemberships(linkQuery.link.thirdPartyId, { purpose: UnlinkPurpose.Operations });
+  if (linkQuery && linkQuery.link && !thirdPartyId) {
+    thirdPartyId = linkQuery.link.thirdPartyId;
+  }
+  if (thirdPartyId) {
+    const purpose = dataAsTerminated ? UnlinkPurpose.Termination : UnlinkPurpose.Operations;
+    state.results = await operations.terminateLinkAndMemberships(thirdPartyId, { purpose });
   } else {
     state.messages.push('Could not terminate the account, no link was found');
   }

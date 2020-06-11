@@ -28,7 +28,7 @@ export default async function refresh({ providers }: IReposJob) : Promise<IRepos
   console.log('reading all links to gather manager info ahead of any terminations');
   const allLinks = await linkProvider.getAll();
   console.log(`READ: ${allLinks.length} links`);
-  insights.trackEvent({ name: 'JobRefreshManagersReadLinks', properties: { links: allLinks.length } });
+  insights.trackEvent({ name: 'JobRefreshManagersReadLinks', properties: { links: String(allLinks.length) } });
 
   let errors = 0;
   let notFoundErrors = 0;
@@ -42,20 +42,36 @@ export default async function refresh({ providers }: IReposJob) : Promise<IRepos
   const secondsDelayAfterError = 1;
   const secondsDelayAfterSuccess = 0.1;
 
-  const managerInfoCachePeriodMinutes = 60 * 24 * 7; // 2 weeks
+  const managerInfoCachePeriodMinutes = 60 * 24 * 7 * 12; // 12 weeks
 
   let processed = 0;
 
   const bulkContacts = new Map<string, IMicrosoftIdentityServiceBasics>();
 
   const throttle = throat(userDetailsThroatCount);
+  let unknownServiceAccounts: ICorporateLink[] = [];
   await Promise.all(allLinks.map((link: ICorporateLink) => throttle(async () => {
     const employeeDirectoryId = link.corporateId;
     console.log(`${++processed}.`);
+    if (link.isServiceAccount) {
+      console.log(`Service account: ${link.corporateUsername}`);
+    }
     let info =  null, infoError = null;
     try {
       info = await getUserAndManager(graphProvider, employeeDirectoryId);
+      if (link.isServiceAccount) {
+        console.dir(info);
+        console.log(`info OK for SA ${link.corporateUsername}`);
+      }
     } catch (retrievalError) {
+      if (link.isServiceAccount) {
+        // console.dir(retrievalError);
+        console.log(`no info for SA: ${link.corporateUsername}`);
+        unknownServiceAccounts.push(link);
+      } else {
+        console.log(`error finding: ${link.corporateUsername}: ${retrievalError}`);
+        infoError = retrievalError;
+      }
       infoError = retrievalError;
     }
     if (providers.corporateContactProvider && (info && info.userPrincipalName || link.corporateUsername)) {
@@ -154,6 +170,10 @@ export default async function refresh({ providers }: IReposJob) : Promise<IRepos
 
   console.log('All done with', errors, 'errors. Not found errors:', notFoundErrors);
   console.dir(errorList);
+  console.log();
+
+  console.log(`Service Accounts not in the directory: ${unknownServiceAccounts.length}`);
+  console.log(unknownServiceAccounts.map(x => x.corporateUsername).join('\n'));
   console.log();
 
   if (bulkContacts.size) {

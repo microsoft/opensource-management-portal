@@ -143,6 +143,8 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
       request.get(options, (error, response, entry: IMicrosoftIdentityServiceResponse) => {
         if (response && response.statusCode === 404) {
           return resolve(null);
+        } else if (response && response.statusCode >= 300) {
+          error = new Error(`Response code: ${response.statusCode}`)
         }
         if (entry && !error && entry['error'] && entry['error']['message']) {
           error = new Error(entry['error']['message']);

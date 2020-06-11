@@ -3,7 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-const insights = require('../lib/insights');
+import wrapOrCreateInsightsConsoleClient from '../lib/insights';
+
+const debug = require('debug')('startup');
 
 import { setup as appInsightsSetup, defaultClient } from 'applicationinsights';
 
@@ -38,7 +40,7 @@ module.exports = function initializeAppInsights(app, config) {
     // Configuration failure happened ahead of this module
     return;
   }
-  let key = config.telemetry && config.telemetry.applicationInsightsKey ? config.telemetry.applicationInsightsKey : null;
+  let key: string = config.telemetry && config.telemetry.applicationInsightsKey ? config.telemetry.applicationInsightsKey : null;
   // Override the key with a job-specific one if this is a job execution instead
   if (config.telemetry && config.telemetry.jobsApplicationInsightsKey && config.isJobInternal === true) {
     key = config.telemetry.jobsApplicationInsightsKey;
@@ -48,6 +50,10 @@ module.exports = function initializeAppInsights(app, config) {
     defaultClient.addTelemetryProcessor(ignoreKubernetesProbes);
     defaultClient.addTelemetryProcessor(filterTelemetry);
     instance.start();
+    client = defaultClient;
+    debug(`insights telmetry will use identifier: ${key.substr(0,6)}`);
+  } else {
+    debug(`insights telmetry is not configured with a key`);
   }
 
   app.use((req, res, next) => {
@@ -60,9 +66,9 @@ module.exports = function initializeAppInsights(app, config) {
     const extraProperties = {
       correlationId: req.correlationId,
     };
-    req.insights = insights(extraProperties, client);
+    req.insights = wrapOrCreateInsightsConsoleClient(extraProperties, client);
     next();
   });
 
-  return insights({}, client);
+  return wrapOrCreateInsightsConsoleClient({}, client);
 };

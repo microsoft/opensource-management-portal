@@ -1,3 +1,4 @@
 {
-  "createLinks": "env://API_FLAG_ALLOW_LINKING?trueIf=1"
+  "createLinks": "env://API_FLAG_ALLOW_LINKING?trueIf=1",
+  "publicReposFilter": "env://API_FLAG_ALLOW_PUBLIC_REPO_FILTERING?trueIf=1"
 }

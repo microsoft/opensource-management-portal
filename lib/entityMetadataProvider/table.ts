@@ -15,7 +15,7 @@
 import azure from 'azure-storage';
 import { v4 as uuidV4 } from 'uuid';
 
-const debugShowTableOperations = true;
+const debugShowTableOperations = false;
 
 const emptyString = '';
 

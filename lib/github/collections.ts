@@ -78,6 +78,10 @@ export class RestCollections {
     return this.generalizedCollectionWithFilter('orgTeams', 'teams.list', teamDetailsToCopy, token, options, cacheOptions);
   }
 
+  getTeamChildTeams(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any> {
+    return this.generalizedCollectionWithFilter('teamChildTeams', 'teams.listChildInOrg', teamDetailsToCopy, token, options, cacheOptions);
+  }
+
   getUserActivity(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any> {
     return this.generalizedCollectionWithFilter('userActivity', 'activity.listEventsForAuthenticatedUser', null /*activityDetailsToCopy*/, token, options, cacheOptions);
   }

@@ -51,14 +51,14 @@ app.runJob(async function work({ providers }: IReposJob) {
         start, 
         end, 
         false /* corporate and open source contributions wanted */);
-      const openContributions = events.filter(event => event.additionalData.contribution);
+      const openContributions = events.filter(event => event.isOpenContribution || event.additionalData.contribution);
       if (openContributions.length === 0) {
         // not an open source contributor for the election
         // mark this as "sent" to skip in the future
         await campaignStateProvider.setSent(corporateId, campaignGroupId, campaignId);
         continue;
       }
-      const otherContributionsData = events.filter(event => !event.additionalData.contribution);
+      const otherContributionsData = events.filter(event => !(event.isOpenContribution || event.additionalData.contribution));
       const contributions = _.groupBy(openContributions, contrib => contrib.action);
       let subjectSubset = 'FOSS Fund voting is now open: Let\'s give $10,000 to a project thanks to YOUR contributions!';
       let headline = 'FOSS Fund';

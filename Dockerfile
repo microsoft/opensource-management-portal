@@ -21,6 +21,9 @@ RUN npm install --production && mv node_modules production_node_modules
 
 COPY . .
 
+# Only if needed, copy .npmrc files into the container, again...
+# COPY Dockerfile.npmrc /build/.npmrc
+
 # Dev dependencies
 # RUN npm install --verbose && rm -rf .npmrc
 RUN npm install && rm -rf .npmrc

@@ -394,7 +394,8 @@ async function cleanupFormerMembers(operations: Operations, queryCache: QueryCac
         if (!operationalMembership) {
           confirmedFormer = true;
         } else {
-          console.log(`while looking to cleanup a former member ID ${userId} with login ${login}, operational membership indicated a status of ${operationalMembership}, it will be kept`);
+          console.log(`while looking to cleanup a former member ID ${userId} with login ${login}, operational membership indicated a status of role=${operationalMembership.role}, state=${operationalMembership.state}, it will be kept`);
+          console.log();
         }
       }
       if (confirmedFormer) {
@@ -495,7 +496,7 @@ export default async function refresh({ providers, args }: IReposJob) : Promise<
       allUpStats['delete'] += orgResult.consistencyStats['delete'];
       allUpStats['update'] += orgResult.consistencyStats['update'];
       allUpStats['new'] += orgResult.consistencyStats['new'];
-      insights.trackEvent({ name: 'QueryCacheOrganizationConsistencyResults', properties: resultsAsLog });
+      insights.trackEvent({ name: 'QueryCacheOrganizationConsistencyResults', properties: resultsAsLog as any as { [key: string]: string } });
   
       console.log('--------------------------------------------------');
       console.log(`${organization.name} processed - eventual consistency`)

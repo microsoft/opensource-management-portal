@@ -246,6 +246,30 @@ export class Team {
     }
   }
 
+  async getChildTeams(options?: IPagedCacheOptions): Promise<Team[]> {
+    options = options || {};
+    const operations = this._operations;
+    const github = operations.github;
+    if (!this.slug) {
+      await this.getDetails();
+    }
+    const parameters = {
+      org: this.organization.name,
+      per_page: operations.defaultPageSize,
+      team_slug: this.slug,
+    };
+    const caching: IPagedCacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgTeamsStaleSeconds,
+      backgroundRefresh: true,
+      pageRequestDelay: options.pageRequestDelay || null,
+    };
+    caching.backgroundRefresh = options.backgroundRefresh;
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, AppPurpose.Data) as IGetAuthorizationHeader;
+    const teamEntities = await github.collections.getTeamChildTeams(getAuthorizationHeader, parameters, caching);
+    const teams = common.createInstances<Team>(this, this.organization.teamFromEntity, teamEntities);
+    return teams;
+  }
+
   get isBroadAccessTeam(): boolean {
     const teams = this._organization.broadAccessTeams;
     // TODO: validating typing here - number or int?

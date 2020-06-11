@@ -12,7 +12,7 @@ import { IReposJob } from '../../app';
 // Organization invitations cleanup: remove any invitations that are older than a
 // set period of time from the organization.
 
-const defaultMaximumInvitationAgeDays = 7;
+const defaultMaximumInvitationAgeDays = 4;
 
 export default async function cleanup({ providers }: IReposJob) : Promise<void> {
   const insights = providers.insights;

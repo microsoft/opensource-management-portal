@@ -5,8 +5,6 @@
 
 /*eslint no-console: ["error", { allow: ["dir", "log"] }] */
 
-'use strict';
-
 import { WebhookProcessor } from "../organizationProcessor";
 import { Operations } from "../../business/operations";
 import { Organization } from "../../business/organization";
@@ -66,7 +64,6 @@ export default class MemberWebhookProcessor implements WebhookProcessor {
       } else {
         console.log(`no permission level returned for ${event.member.login} for repository ${repositoryName} which was collaborator permission ${collaborator.permission}`);
       }
-      console.log();
     }
 
     return true;

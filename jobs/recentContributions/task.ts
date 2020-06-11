@@ -349,8 +349,8 @@ export default async function job({ providers, parameters }: IReposJob): Promise
           if (reclassified > dateAWeekAgo) {
             ++noop;
             continue; // quick skip
-          }
-          const wasOpenSource = event.additionalData.contribution || false;
+          }         
+          const wasOpenSource = event.isOpenContribution || event.additionalData.contribution || false;
           if (!event.additionalData && event.additionalData.management && management === undefined) {
             management = await getManagers(graphProvider, link);
           }
@@ -372,6 +372,7 @@ export default async function job({ providers, parameters }: IReposJob): Promise
               if (newOpenSourceValue === true) {
                 console.log('Project went from closed to open recognition!');
               }
+              event.isOpenContribution = newOpenSourceValue;
               event.additionalData.contribution = newOpenSourceValue;
               ++reclassifiedEvents;
               try {

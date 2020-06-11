@@ -23,7 +23,7 @@ export default async function refresh({ providers }: IReposJob) : Promise<IRepos
   console.log('reading all links');
   const allLinks = await getAllLinks(linkProvider);
   console.log(`READ: ${allLinks.length} links`);
-  insights.trackEvent({ name: 'JobRefreshUsernamesReadLinks', properties: { links: allLinks.length } });
+  insights.trackEvent({ name: 'JobRefreshUsernamesReadLinks', properties: { links: String(allLinks.length) } });
 
   let errors = 0;
   let notFoundErrors = 0;

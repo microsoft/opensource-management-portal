@@ -8,10 +8,18 @@
 // The local environment script is designed to allow for local debugging, test and
 // development scenarios. The go method is called with resolved configuration.
 
-import { getOffsetMonthRange } from '../utils';
+import _ from 'lodash';
 
 async function go(providers: IProviders): Promise<void> {
   // ---------------------------------------------------------------------------
+
+
+  
+
+
+
+
+
 
 
 
@@ -45,9 +53,15 @@ async function go(providers: IProviders): Promise<void> {
 // -----------------------------------------------------------------------------
 import app, { IReposJob } from '../app';
 import { IProviders } from '../transitional';
+import { ICorporateLink } from '../business/corporateLink';
+import { link } from 'fs';
+import { ElectionEntity, ElectionEligibilityType } from '../entities/voting/election';
+import { getOffsetMonthRange } from '../utils';
 console.log('Initializing the local environment...');
 
 app.runJob(async function ({ providers }: IReposJob) {
   await go(providers);
   return {};
+}, {
+  treatGitHubAppAsBackground: false,
 });
