@@ -1,0 +1,31 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends email
+
+block content
+  //-h1 #{targetType} reminder
+  p Your #{targetType.toLowerCase()} has not been configured yet. Would you mind configuring it or deleting it?
+  
+  p
+    a(href=linkToClassifyRepository, target='_new', style='font-size: 36px') Finish setting up #{repository.name}
+    br
+    small
+      | Direct link to complete setup:&nbsp;
+      a(href=linkToClassifyRepository, target='_new', style='font-size: 10px')= linkToClassifyRepository
+
+  h3 Delete the #{targetType.toLowerCase()}
+  p If you no longer need this repo, or this was an accident, click below to delete the repo. The page will ask for your confirmation first.
+  p
+    a(href=linkToDeleteRepository, target='_new') Delete #{targetType.toLowerCase()} #{repository.name}
+    br
+    small
+      | Link to delete:&nbsp;
+      a(href=linkToDeleteRepository, target='_new', style='font-size: 10px')= linkToDeleteRepository
+
+  h3 Associated corporate metadata
+  if repository
+    p This information is available online at #[a(href=repository.absoluteBaseUrl)=repository.absoluteBaseUrl]
+  include ../includes/corporateRepoMetadata

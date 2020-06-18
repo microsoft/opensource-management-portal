@@ -470,7 +470,8 @@ async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlatio
   }
   // send to operations, too
   delete additionalMail.cc;
-  const operationsMails = operations.getExtendedOperationsMailAddresses();
+  const notifyMailAddress = operations.getRepositoriesNotificationMailAddress();
+  const operationsMails = notifyMailAddress ? [ notifyMailAddress ] : [];
   if (operationsMails && operationsMails.length) {
     additionalMail.to = operationsMails;
     contentOptions.reason = `You are receiving this e-mail as the operations contact address(es) ${operationsMails.join(', ')}. A repo has been created or classified.`;

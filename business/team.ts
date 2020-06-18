@@ -334,7 +334,7 @@ export class Team {
       username,
       role,
     };
-    const ok = await github.post(this.authorize(AppPurpose.CustomerFacing), 'teams.addOrUpdateMembershipInOrg', parameters);
+    const ok = await github.post(this.authorize(AppPurpose.CustomerFacing), 'teams.addOrUpdateMembershipForUserInOrg', parameters);
     return ok;
   }
 

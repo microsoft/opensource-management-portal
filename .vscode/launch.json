@@ -1,7 +1,4 @@
 {
-  // Use IntelliSense to learn about possible Node.js debug attributes.
-  // Hover to view descriptions of existing attributes.
-  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
     {
@@ -213,7 +210,9 @@
       "request": "launch",
       "name": "Job: Consistency: All",
       "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
-      "args": ["all"],
+      "args": [
+        "all"
+      ],
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
@@ -228,7 +227,9 @@
       "request": "launch",
       "name": "Job: Consistency: Teams",
       "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
-      "args": ["teams"],
+      "args": [
+        "teams"
+      ],
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
@@ -243,7 +244,9 @@
       "request": "launch",
       "name": "Job: Consistency: Org members",
       "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
-      "args": ["organizations"],
+      "args": [
+        "organizations"
+      ],
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
@@ -258,7 +261,9 @@
       "request": "launch",
       "name": "Job: Consistency: Repo collaborators",
       "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
-      "args": ["collaborators"],
+      "args": [
+        "collaborators"
+      ],
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
@@ -273,7 +278,9 @@
       "request": "launch",
       "name": "Job: Consistency: Team permissions",
       "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
-      "args": ["permissions"],
+      "args": [
+        "permissions"
+      ],
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
@@ -435,8 +442,7 @@
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
       "console": "integratedTerminal",
-      "args": [
-      ],
+      "args": [],
       "cwd": "${workspaceRoot}/dist",
       "env": {
         "NODE_ENV": "development,pg",
@@ -448,7 +454,9 @@
       "request": "launch",
       "name": "Script: Pages info",
       "program": "${workspaceRoot}/dist/scripts/getPagesInformation/index.js",
-      "args": ["all"],
+      "args": [
+        "all"
+      ],
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
@@ -463,7 +471,9 @@
       "request": "launch",
       "name": "Script: Check links",
       "program": "${workspaceRoot}/dist/scripts/checkGraph/index.js",
-      "args": ["all"],
+      "args": [
+        "all"
+      ],
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
@@ -478,7 +488,9 @@
       "request": "launch",
       "name": "Script: Token Scanning",
       "program": "${workspaceRoot}/dist/scripts/addScanning/index.js",
-      "args": ["all"],
+      "args": [
+        "all"
+      ],
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,

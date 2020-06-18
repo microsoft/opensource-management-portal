@@ -26,6 +26,7 @@ export enum RepositoryLockdownState {
   Locked = 'locked',
   Unlocked = 'unlocked',
   AdministratorLocked = 'administratorLocked',
+  Deleted = 'deleted',
 }
 
 export const GitHubRepositoryPermissions = [

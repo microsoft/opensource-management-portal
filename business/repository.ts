@@ -539,7 +539,7 @@ export class Repository {
       repo: this.name,
       permission: newPermission,
     };
-    // alternate version of: 'teams.addOrUpdateRepoInOrg': 'PUT /organizations/:org_id/team/:team_id/repos/:owner/:repo'
+    // alternate version of: 'teams.octokit.teams.addOrUpdateRepoPermissionsInOrg': 'PUT /organizations/:org_id/team/:team_id/repos/:owner/:repo'
     const result = await this._operations.github.post(this.authorize(AppPurpose.Operations), 'teams.addOrUpdateRepoPermissionsInOrg', options);
     return result;
   }
@@ -659,7 +659,7 @@ export class Repository {
       cacheOptions.backgroundRefresh = true;
     }
     try {
-      // this is the alternate form of 'teams.checkManagesRepoInOrg'
+      // this is the alternate form of 'teams.checkPermissionsForRepoInOrg'
       await operations.github.requestAsPost(this.authorize(AppPurpose.Data), 'GET /organizations/:org_id/team/:team_id/repos/:owner/:repo', parameters);
       return true;
    } catch (error) {
