@@ -43,13 +43,13 @@
     "node": "12.0.0"
   },
   "dependencies": {
-    "@azure/cosmos": "3.7.0",
+    "@azure/cosmos": "3.7.2",
     "@azure/storage-blob": "12.1.2",
     "@azure/storage-queue": "12.0.5",
     "@octokit/app": "4.2.0",
-    "@octokit/rest": "17.11.0",
+    "@octokit/rest": "18.0.0",
     "adal-node": "0.2.1",
-    "applicationinsights": "1.7.6",
+    "applicationinsights": "1.8.0",
     "async-prompt": "1.0.1",
     "azure-keyvault": "3.0.5",
     "azure-sb": "0.11.1",
@@ -76,7 +76,7 @@
     "morgan": "1.10.0",
     "mz": "2.7.0",
     "node-jose": "1.1.4",
-    "nodemailer": "6.4.8",
+    "nodemailer": "6.4.10",
     "oauth": "0.9.x",
     "object-path": "0.11.4",
     "octicons": "5.0.1",
@@ -103,7 +103,7 @@
     "tmp": "0.2.1",
     "uid2": "0.0.x",
     "uuid": "8.1.0",
-    "validator": "13.0.0"
+    "validator": "13.1.1"
   },
   "devDependencies": {
     "@types/azure-sb": "0.0.37",
@@ -126,7 +126,7 @@
     "@types/uuid": "8.0.0",
     "@types/validator": "13.0.0",
     "chai": "4.2.0",
-    "mocha": "7.2.0",
+    "mocha": "8.0.1",
     "typescript": "3.9.5"
   }
 }

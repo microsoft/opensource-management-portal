@@ -746,16 +746,13 @@ export class Operations {
     const to = [mailAddress];
     const toAsString = to.join(', ');
     const cc = [];
-    if (config.brand && config.brand.operationsEmail && link.isServiceAccount) {
-      cc.push(config.brand.operationsEmail);
-    }
     if (managerMail) {
       cc.push(managerMail);
     }
     const mail = {
       to,
       cc,
-      bcc: this.providers.operations.getOperationsMailAddress(),
+      bcc: this.getLinksNotificationMailAddress(),
       subject: `${link.corporateUsername} linked to ${link.thirdPartyUsername}`,
       correlationId,
       content: undefined,
@@ -954,12 +951,12 @@ export class Operations {
     return this.config.brand.operationsMail;
   }
 
-  getExtendedOperationsMailAddresses(): string[] {
-    const extendedMailsValue = this.config.brand?.extendedOperationsMails;
-    if (extendedMailsValue) {
-      return extendedMailsValue.split(',');
-    }
-    return [this.getOperationsMailAddress()];
+  getLinksNotificationMailAddress(): string {
+    return this.config.notifications.linksMailAddress || this.getOperationsMailAddress();
+  }
+
+  getRepositoriesNotificationMailAddress(): string {
+    return this.config.notifications.reposMailAddress || this.getOperationsMailAddress();
   }
 
   private async sendTerminatedAccountMail(account: Account, purpose: UnlinkPurpose, details: string[], errorsCount: number): Promise<IUnlinkMailStatus> {
@@ -971,7 +968,7 @@ export class Operations {
 
     let errorMode = errorsCount > 0;
 
-    let operationsMail = this.config.brand ? (this.config.brand.unlinkOperationsMail || this.config.brand.operationsMail) : null;
+    let operationsMail = this.getLinksNotificationMailAddress();
     if (!operationsMail && errorMode) {
       return;
     }

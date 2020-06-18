@@ -161,7 +161,8 @@ export default class NewRepositoryLockdownSystem {
     } catch (noLinkOrEmail) {
       console.dir(noLinkOrEmail);
     }
-    const operationsMails = this.operations.getExtendedOperationsMailAddresses();
+    const notifyMailAddress = this.operations.getRepositoriesNotificationMailAddress();
+    const operationsMails = notifyMailAddress ? [ notifyMailAddress ] : [];
     if (operationsMails && operationsMails.length) {
       try {
         const subject = `Repo approved by an administrator - ${this.organization.name}/${this.repository.name}`;
@@ -236,7 +237,7 @@ export default class NewRepositoryLockdownSystem {
     } catch (noLinkOrEmail) {
       console.dir(noLinkOrEmail);
     }
-    const operationsMails = this.operations.getExtendedOperationsMailAddresses();
+    const operationsMails = [ this.operations.getRepositoriesNotificationMailAddress() ];
     if (operationsMails && operationsMails.length) {
       try {
         const mailToOperations: IMail = {
@@ -355,7 +356,7 @@ export default class NewRepositoryLockdownSystem {
       lockdownLog.push(`While writing repository metadata an error: ${metadataSystemError.message}`);
     }
     let mailSentToCreator = false;
-    const operationsMails = this.operations.getExtendedOperationsMailAddresses();
+    const operationsMails = [ this.operations.getRepositoriesNotificationMailAddress() ];
     const lockdownMailContent: IMailToLockdownRepo = {
       username,
       log: lockdownLog,

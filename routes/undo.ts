@@ -353,7 +353,7 @@ function nextTickAsyncSendMail(operations: Operations, context: IndividualContex
 }
 
 async function sendUndoMailNotification(operations: Operations, context: IndividualContext, undoEntry: IUndoEntry, undoOutcome: IUndoOutcome) {
-  const operationsMails = operations.getExtendedOperationsMailAddresses();
+  const operationsMails = [ operations.getOperationsMailAddress() ];
   const ghi = context.getGitHubIdentity();
   const link = context.link;
   const details = {

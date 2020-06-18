@@ -97,7 +97,7 @@ export class RestCollections {
     const projectedOptions = {
       additionalDifferentiationParameters: parameters,
     };
-    return this.generalizedCollectionWithFilter(`appInstallations`, 'apps.listInstallations', appInstallDetailsToCopy, token, projectedOptions, cacheOptions);
+    return this.generalizedCollectionWithFilter(`appInstallations`, 'apps.listAppInstallations', appInstallDetailsToCopy, token, projectedOptions, cacheOptions);
   }
 
   getRepoTeams(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any> {

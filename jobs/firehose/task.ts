@@ -114,7 +114,6 @@ export default async function firehose({ providers, started }: IReposJob): Promi
     const { webhookQueueProcessor } = providers;
     let messages: IQueueMessage[] = null;
     try {
-      await sleep(1000);
       messages = await webhookQueueProcessor.receiveMessages();
     } catch (getError) {
       console.dir(getError);
@@ -129,7 +128,6 @@ export default async function firehose({ providers, started }: IReposJob): Promi
     for (const message of messages) {
       try {
         await handle(providers, message);
-        await sleep(1000);
       } catch (handleError) {
         console.dir(handleError);
         await sleep(emptyQueueDelaySeconds * 1000);
