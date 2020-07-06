@@ -43,7 +43,7 @@
     "node": "12.0.0"
   },
   "dependencies": {
-    "@azure/cosmos": "3.7.2",
+    "@azure/cosmos": "3.7.4",
     "@azure/storage-blob": "12.1.2",
     "@azure/storage-queue": "12.0.5",
     "@octokit/app": "4.2.0",
@@ -71,7 +71,7 @@
     "lodash": "4.17.15",
     "luxon": "1.24.1",
     "memory-cache": "0.2.0",
-    "moment": "2.26.0",
+    "moment": "2.27.0",
     "moment-timezone": "0.5.31",
     "morgan": "1.10.0",
     "mz": "2.7.0",
@@ -101,8 +101,7 @@
     "serve-favicon": "2.5.0",
     "throat": "5.0.0",
     "tmp": "0.2.1",
-    "uid2": "0.0.x",
-    "uuid": "8.1.0",
+    "uuid": "8.2.0",
     "validator": "13.1.1"
   },
   "devDependencies": {
@@ -111,11 +110,11 @@
     "@types/core-js": "2.5.3",
     "@types/debug": "4.1.5",
     "@types/express-session": "1.17.0",
-    "@types/lodash": "4.14.155",
-    "@types/luxon": "1.24.0",
+    "@types/lodash": "4.14.157",
+    "@types/luxon": "1.24.1",
     "@types/memory-cache": "0.2.1",
     "@types/mocha": "7.0.2",
-    "@types/node": "14.0.13",
+    "@types/node": "14.0.14",
     "@types/node-jose": "1.1.4",
     "@types/passport-strategy": "0.2.35",
     "@types/pg": "7.14.3",
@@ -124,9 +123,9 @@
     "@types/request": "2.48.5",
     "@types/request-promise-native": "1.0.17",
     "@types/uuid": "8.0.0",
-    "@types/validator": "13.0.0",
+    "@types/validator": "13.1.0",
     "chai": "4.2.0",
     "mocha": "8.0.1",
-    "typescript": "3.9.5"
+    "typescript": "3.9.6"
   }
 }

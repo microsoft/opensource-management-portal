@@ -734,24 +734,10 @@ export class Operations {
         return;
       }
     }
-    let managerMail = null;
-    try {
-      const manager = await this.providers.graphProvider.getManagerByIdAsync(link.corporateId);
-      if (manager) {
-        managerMail = await GetAddressFromUpnAsync(this.providers.mailAddressProvider, manager.userPrincipalName);
-      }
-    } catch (ignoreError) {
-      // ignored
-    }
     const to = [mailAddress];
     const toAsString = to.join(', ');
-    const cc = [];
-    if (managerMail) {
-      cc.push(managerMail);
-    }
     const mail = {
       to,
-      cc,
       bcc: this.getLinksNotificationMailAddress(),
       subject: `${link.corporateUsername} linked to ${link.thirdPartyUsername}`,
       correlationId,

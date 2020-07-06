@@ -20,6 +20,8 @@ mixin showNominee(election, nominee, iitemp, stripJsSingleQuote)
     if nominee.web
       li: a.btn.btn-sm.btn-muted-more(href=nominee.web, target='_new')= nominee.web
   p= nominee.description
+  if nominee.justification
+    p: small: em= nominee.justification
 
 block content
   - var fileSize = viewServices.fileSize
@@ -51,7 +53,7 @@ block content
         if votingEnd && today > votingEnd
           = totalVotes + ' votes were cast. '
         else
-          = 'So far, ' + totalVotes + ' votes have been cast. '
+          = 'So far, ' + totalVotes + ' votes have been cast out of over 3,000 eligible voters. '
         if election && election.votingEnd
           - var ve = new Date(election.votingEnd)
           - var vem = moment(ve)

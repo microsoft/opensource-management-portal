@@ -8,25 +8,35 @@
 import _ from 'lodash';
 
 import app, { IReposJob } from '../../../app';
-import { isEmployeeOrIntern } from "../../../middleware/business/employeesOnly";
-import { getOffsetMonthRange, sleep, quitInTenSeconds } from "../../../utils";
+import { isEmployeeOrIntern } from '../../../middleware/business/employeesOnly';
+import { sleep } from '../../../utils';
 import { GetAddressFromUpnAsync } from '../../../lib/mailAddressProvider';
 import { IMail } from '../../../lib/mailProvider';
 
+let fakeSend = false;
+let markIneligibleAsSent = false;
+
 app.runJob(async function work({ providers }: IReposJob) {
-  let runLimit = 45000;
+  let runLimit = 100000;
   let inRun = 0;
   const campaignGroupId = 'fossfund';
-  const campaignId = '2'; // 2 = first voting campaign
+  const campaignId = '3'; // 3 = current voting campaign
   const emailViewName = `${campaignGroupId}-${campaignId}`;
-  const { linkProvider, operations, eventRecordProvider, electionProvider, electionNominationProvider, mailAddressProvider, campaignStateProvider } = providers;
-  const { start, end } = getOffsetMonthRange(-1);
-  const election = (await electionProvider.queryElectionsByEligibilityDates(start, end))[0];
+  const { linkProvider, operations, config, eventRecordProvider, electionProvider, electionVoteProvider, electionNominationProvider, mailAddressProvider, campaignStateProvider } = providers;
+  const now = new Date();
+  const electionSet = (await electionProvider.queryActiveElections()).filter(election => new Date(election.votingEnd) > now);
+  if (electionSet.length !== 1) {
+    throw new Error(`election set length: ${electionSet.length}`);
+  }
+  const election = electionSet[0];
+  const start = new Date(election.eligibilityStart);
+  const end = new Date(election.eligibilityEnd);
   const nominees = await electionNominationProvider.queryApprovedElectionNominees(election.electionId);
   let employees = (await linkProvider.getAll())
     .filter(resource => isEmployeeOrIntern(resource.corporateUsername))
     .filter(resource => !resource.isServiceAccount);
   employees = _.shuffle(employees);
+  // employees = employees.slice(0, 500); // very short list
   let i = 0;
   for (const employee of employees) {
     ++i;
@@ -38,11 +48,20 @@ app.runJob(async function work({ providers }: IReposJob) {
       ++inRun;
       const state = await campaignStateProvider.getState(corporateId, campaignGroupId, campaignId);
       if (state.optOut) {
-        console.log(`employee id=${corporateId} has opted out of the campaign group=${campaignGroupId}`);
+        console.log(`[opt-out] employee id=${corporateId} has opted out of the campaign group=${campaignGroupId}`);
         continue;
       }
       if (state.sent) {
         await sleep(5);
+        continue;
+      }
+      // have they voted already?
+      const voteState = (await electionVoteProvider.queryVotesByCorporateId(corporateId)).filter(vote => vote.electionId === election.electionId);
+      const hasVoted = voteState.length > 0;
+      if (hasVoted) {
+        // do not nag them since they already got there
+        console.log(`[already-voted] employee=${employee.corporateDisplayName} has already voted so will be marked as SENT`);
+        await campaignStateProvider.setSent(corporateId, campaignGroupId, campaignId);
         continue;
       }
       await sleep(5);
@@ -55,24 +74,28 @@ app.runJob(async function work({ providers }: IReposJob) {
       if (openContributions.length === 0) {
         // not an open source contributor for the election
         // mark this as "sent" to skip in the future
-        await campaignStateProvider.setSent(corporateId, campaignGroupId, campaignId);
+        console.log(`[not-eligible] employee ${employee.corporateDisplayName} has 0 contributions this eligibility period`);
+        if (markIneligibleAsSent) {
+          await campaignStateProvider.setSent(corporateId, campaignGroupId, campaignId);
+        }
         continue;
       }
       const otherContributionsData = events.filter(event => !(event.isOpenContribution || event.additionalData.contribution));
       const contributions = _.groupBy(openContributions, contrib => contrib.action);
-      let subjectSubset = 'FOSS Fund voting is now open: Let\'s give $10,000 to a project thanks to YOUR contributions!';
+      let subjectSubset = `${election.title} voting is now open: Let's give $10,000 to a project thanks to YOUR contributions!`;
       let headline = 'FOSS Fund';
-      const address = await GetAddressFromUpnAsync(mailAddressProvider, employee.corporateUsername);
+      const address = fakeSend ? 'jeff.wilcox@microsoft.com' : await GetAddressFromUpnAsync(mailAddressProvider, employee.corporateUsername);
       if (!address) {
-        console.log(`No e-mail address for ${employee.corporateUsername}`);
+        console.log(`[noemail] No e-mail address for ${employee.corporateUsername}`);
         continue;
       }
+      const bcc = config.brand?.electionMail;
       const email: IMail = {
         to: address,
-        bcc: 'jeff.wilcox@microsoft.com',
+        bcc,
         subject: subjectSubset,
         content: await operations.emailRender(emailViewName, {
-          reason: (`This mail was sent to ${address} for the GitHub user ${employee.thirdPartyUsername} linked to ${employee.corporateDisplayName}`),
+          reason: (`This mail was sent to ${address} for the GitHub user ${employee.thirdPartyUsername} linked to ${employee.corporateDisplayName} as part of the FOSS Fund community initiative.`),
           unsubscribeText: 'Opt-out of future FOSS Fund emails',
           unsubscribeLink: `https://repos.opensource.microsoft.com/settings/campaigns/${campaignGroupId}/unsubscribe`,
           headline,
@@ -84,13 +107,15 @@ app.runJob(async function work({ providers }: IReposJob) {
           openContributions,
           contributions,
           otherContributionsData,
+          viewServices: providers.viewServices,
         }),
       };
-      await campaignStateProvider.setSent(corporateId, campaignGroupId, campaignId);
+      if (!fakeSend) {
+        await campaignStateProvider.setSent(corporateId, campaignGroupId, campaignId);
+      }
       await operations.sendMail(email);
-      console.log(`OK sent to ${corporateId} and set state for ${employee.corporateUsername} ${employee.corporateDisplayName}`);
+      console.log(`[${fakeSend ? 'fake send' : 'OK'}] ${inRun}/${runLimit}: sent to ${corporateId} and set state for ${employee.corporateUsername} ${employee.corporateDisplayName}`);
       //console.log(`OK sent to ${corporateId} and didn't state *** for ${employee.corporateUsername} ${employee.corporateDisplayName}`);
-      console.log(`${employee.corporateUsername} ${inRun}/${runLimit}`);
       await sleep(10);
       if (i % 100 === 0) {
         console.log();

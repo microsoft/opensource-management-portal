@@ -17,6 +17,7 @@ export interface ICampaignHelper {
   getState(corporateId: string, campaignGroupId: string, campaignId?: string): Promise<ICampaignUserState>;
   optOut(corporateId: string, campaignGroupId: string): Promise<void>;
   setSent(corporateId: string, campaignGroupId: string, campaignId: string): Promise<void>;
+  clearSent(corporateId: string, campaignGroupId: string, campaignId: string): Promise<void>;
   // 
   deleteOops(corporateId: string, campaignGroupId: string): Promise<void>;
 }
@@ -87,6 +88,18 @@ export class StatefulCampaignProvider implements ICampaignHelper {
 
   async deleteOops(corporateId: string, campaignGroupId: string): Promise<void> {
     const id = this.key(corporateId, campaignGroupId);
+    try {
+      await this.#cosmosHelper.delete(corporateId, id);
+    } catch (oopsError) {
+      if (oopsError && oopsError.code === 404) {
+        return;
+      }
+      throw oopsError;
+    }
+  }
+
+  async clearSent(corporateId: string, campaignGroupId: string, campaignId: string): Promise<void> {
+    const id = this.key(corporateId, campaignGroupId, campaignId);
     try {
       await this.#cosmosHelper.delete(corporateId, id);
     } catch (oopsError) {

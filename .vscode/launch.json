@@ -321,20 +321,6 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Migrate metadata",
-      "program": "${workspaceRoot}/dist/jobs/migrateMetadata/index.js",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "cwd": "${workspaceRoot}/dist",
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "redis,restapi,startup,appinsights"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "Job: Permissions",
       "program": "${workspaceRoot}/dist/jobs/permissions/index.js",
       "cwd": "${workspaceRoot}/dist",
@@ -423,20 +409,6 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Script: Migrate contributions schema",
-      "program": "${workspaceRoot}/dist/scripts/migrateContributions/index.js",
-      "cwd": "${workspaceRoot}/dist",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "env": {
-        "NODE_ENV": "localhost",
-        "DEBUG": "startup"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "Script: Postgres setup",
       "program": "${workspaceRoot}/dist/scripts/postgres/setup.js",
       "preLaunchTask": "tsbuild",
@@ -447,57 +419,6 @@
       "env": {
         "NODE_ENV": "development,pg",
         "DEBUG": "redis,restapi,startup,appinsights"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Script: Pages info",
-      "program": "${workspaceRoot}/dist/scripts/getPagesInformation/index.js",
-      "args": [
-        "all"
-      ],
-      "cwd": "${workspaceRoot}/dist",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "startup,appinsights"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Script: Check links",
-      "program": "${workspaceRoot}/dist/scripts/checkGraph/index.js",
-      "args": [
-        "all"
-      ],
-      "cwd": "${workspaceRoot}/dist",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "startup,appinsights"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Script: Token Scanning",
-      "program": "${workspaceRoot}/dist/scripts/addScanning/index.js",
-      "args": [
-        "all"
-      ],
-      "cwd": "${workspaceRoot}/dist",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "startup,appinsights"
       }
     },
     {

@@ -12,6 +12,7 @@ import { ElectionVoteEntity } from '../entities/voting/vote';
 import { EventRecord } from '../entities/events/eventRecord';
 import { asNumber } from '../utils';
 import { GetAddressFromUpnAsync } from '../lib/mailAddressProvider';
+import { EEXIST } from 'constants';
 
 export interface IFossBallot {
   election: ElectionEntity;
@@ -49,6 +50,23 @@ export class FossFundElection {
   getElectionsByEligibilityDates(start: Date, end: Date): Promise<ElectionEntity[]> {
     const { electionProvider} = this.#providers;
     return electionProvider.queryElectionsByEligibilityDates(start, end);
+  }
+
+  async getActiveElectionsDateRange(): Promise<Date[]> {
+    const activeElections = await this.getActiveElections();
+    let dates = [];
+    const now = new Date();
+    for (const election of activeElections) {
+      if (new Date(election.votingEnd) < now) {
+        continue;
+      }
+      dates.push(String(election.votingStart));
+      dates.push(String(election.votingEnd));
+      dates.push(String(election.eligibilityStart));
+      dates.push(String(election.eligibilityEnd));
+    }
+    dates.sort();
+    return dates.length <= 1 ? [] : [new Date(dates[0]), new Date(dates[dates.length - 1])];
   }
 
   getElection(electionId: string): Promise<ElectionEntity> {

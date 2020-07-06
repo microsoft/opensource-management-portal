@@ -159,15 +159,15 @@ block content
       //- alternative view of non-open source events
       if isSelf
       .row
-        .col-md-11: h1 Other public activity by #{login} in #{startMonthName}
+        .col-md-11: h1 Other public activity by #{login}
       if otherContributionsCount === 0
-        .row: .col-md-12: p No other contribution events were discovered for #{startMonthName}.
+        .row: .col-md-12: p No other contribution events were discovered during the current contributions range.
       else
         .row: .col-md-12
           if isSelf
-            p You made #{otherContributionsCount} contribution#{otherContributionsCount > 1 ? 's' : '' } in #{startMonthName} to projects on GitHub that the company governs.
+            p You made #{otherContributionsCount} contribution#{otherContributionsCount > 1 ? 's' : '' } to projects on GitHub that the company governs.
           else
-            p These are other public contributions that #{login} made in #{startMonthName} on GitHub.
+            p These are other public contributions that #{login} made on GitHub.
 
           +displayEvents(otherContributions, isTruncating, maximumContributionsPerGroupToShow)
 
@@ -184,7 +184,8 @@ block content
         if elections && elections.length > 0 && isEmployee
           each election in elections
             - var eligibilityStart = new Date(election.eligibilityStart)
-            - var isEligibleForElection = eligibleStartMonths && eligibleStartMonths.includes(eligibilityStart.toISOString())
+            //- var isEligibleForElection = eligibleStartMonths && eligibleStartMonths.includes(eligibilityStart.toISOString())
+            - var isEligibleForElection = eligibleElectionIds.includes(election.electionId)
             - var votingStart = new Date(election.votingStart)
             - var votingEnd = new Date(election.votingEnd)
             - var votingEndMoment = moment(votingEnd)
@@ -232,7 +233,7 @@ block content
                   | closing pull requests, participating in pull request reviews, and other public actions.
                   br
                   br
-                  | The eligibility period for this election was from #{moment(eligibilityStart).fromNow()} through #{moment(eligibilityEnd).fromNow()}.
+                  | The eligibility period for this election is from #{moment(eligibilityStart).fromNow()} - #{moment(eligibilityEnd).fromNow()}.
             else if nominationStart < now && now < nominationEnd
               if isEligibleForElection
                 .alert.alert-gray(role='alert')
@@ -259,6 +260,10 @@ block content
             //-pre= JSON.stringify(election, null, 2)
 
             hr
+
+        else if isEmployee
+          p: a(href='/contributions/voting') View active voting forms
+
         if !isEmployee
           .alert.alert-warning(role='alert', style='color:#000')
             strong Sorry, you're not eligible to participate in the FOSS Fund.
@@ -267,7 +272,7 @@ block content
 
         .row: .col-md-12: h1 About the FOSS Fund #[small Free &amp; Open Source Software Fund]
         p.
-          Each month, #{config.brand.companyName} is supporting an open source project nominated by #{config.brand.companyName}
+          #{config.brand.companyName} is supporting open source projects nominated by
           employees who contribute to open source. When you contribute to a project 
           outside of #{config.brand.companyName}'s GitHub organizations, you're eligible to nominate a project and cast a 
           vote for that month.
@@ -279,6 +284,13 @@ block content
           li Project is used by Microsoft
           li Project is not maintained by a Microsoft employee
           li Project is able to receive funds (GitHub Sponsors team may be able to work with nominated projects to establish a funding system)
+
+        p Eligibility requirements to vote:
+        ul
+          li Full time employee or intern at the company
+          li During the eligibility period for a given fund, have a linked GitHub account that has public activity
+          li 1 or more public activities during the eligibility period
+          li Public activity (opening issues, issue comments, opening pull requests, etc.) need to happen in a repo or org not controlled by the company or associated with its products
 
         div(style='margin-bottom:20px')
         hr
@@ -296,71 +308,48 @@ block content
         div(style='margin-bottom:20px')
         hr
       else if isSelf && false
-
-        if !prior
-          //- Current month
-          if contributedLastMonth
-            p
-              | You contributed last month and are eligible to vote in the #{previousMonthName} FOSS Fund.
-              br
-              a(href='/contributions/ballot?prior=true') Nominate and vote in the #{previousMonthName} fund...
-            if contributionCount > 0
-              p
-                | You've contributed in #{startMonthName} and will be able to participate again.
-                br
-                a(href='/contributions/ballot') Nominate and vote for the #{startMonthName} fund...
-            else
-              p
-                | You do not have eligible #{startMonthName} activity yet.
-          else
-            if contributionCount > 0
-              p
-                | You've contributed in #{startMonthName} and can participate.
-                br
-                a(href='/contributions/ballot') Nominate a project for the #{startMonthName} fund...
-            else
-              p
-                | You do not have eligible #{startMonthName} activity.
-                br
-                a(href='/contributions/ballot') Learn more about the fund...
-
-        else if prior
-          if contributionCount > 0
-            p: a(href='/contributions/ballot?prior=true') Nominate and vote in the #{startMonthName} fund...
-          else
-            p: a(href='/contributions/ballot?prior=true') Learn more about the FOSS Fund...
+        if contributionCount > 0
+          p
+            | You've contributed in #{startMonthName} and can participate.
+            br
+            a(href='/contributions/ballot') Nominate a project for the #{startMonthName} fund...
+        else
+          p
+            | You do not have eligible #{startMonthName} activity.
+            br
+            a(href='/contributions/ballot') Learn more about the fund...
 
         div(style='margin-bottom:20px')
         hr
 
       .row
-        .col-md-11: h1 Open source contributions by #{login} in #{startMonthName}
+        .col-md-11: h1 Recent open source contributions by #{login}
         //- .col-md-1: a(href='?login=' + login + '&refresh=1') Refresh
 
       if contributionCount === 0
         .row: .col-md-12
           if recentlyLinked
-            p No open source contributions have been discovered for #{startMonthName}. #[strong This account was linked recently, so please check back in a few days as data is refreshed.]
+            p No open source contributions have been discovered. #[strong This account was linked recently, so please check back in a few days as data is refreshed.]
           else
-            p No open source contributions were discovered for #{startMonthName}.
+            p No open source contributions were discovered.
       else
         .row: .col-md-12
           if isSelf
-            p Thank you for making #{contributionCount} contribution#{contributionCount > 1 ? 's' : '' } in #{startMonthName} to open source projects on GitHub.
+            p Thank you for making #{contributionCount} contribution#{contributionCount > 1 ? 's' : '' } to open source projects on GitHub.
           else
-            p These are public open source contributions that #{login} made in #{startMonthName}.
+            p These are public open source contributions that #{login} recently made.
 
           +displayEvents(contributions, isTruncating, maximumContributionsPerGroupToShow)
 
       if otherContributionsCount
         h2 Other contributions
         if isSelf
-          p You made at least #{otherContributionsCount} contributions to public GitHub repos during #{startMonthName}, either to your individual repos, or to corporate-governed resources.
+          p You made at least #{otherContributionsCount} contributions to public GitHub repos recently, either to your individual repos, or to corporate-governed resources.
         else
-          p The user made #{otherContributionsCount} contributions to public GitHub repos during #{startMonthName}, to either their individual repos or other corporate-governed resources.
-        p: a.btn.btn-sm.btn-muted(href='?login=' + login + '&other=1' + (prior ? '&prior=true' : '')) Show other #{startMonthName} public activity
+          p The user made #{otherContributionsCount} contributions to public GitHub repos recently, to either their individual repos or other corporate-governed resources.
+        p: a.btn.btn-sm.btn-muted(href='?login=' + login + '&other=1' + (prior ? '&prior=true' : '')) Show other recent public activity
 
-      if !prior
+      //-if !prior
         h2 #{previousMonthName} contributions
         p: a.btn.btn-sm.btn-muted-more(href='?prior=true&login=' + login) Show #{previousMonthName} contributions
 
@@ -370,4 +359,4 @@ block content
         This data is refreshed regularly but typically lags by at least a day. Only recent public contributions will be displayed for people linking for their first time.
         The scope of contributions displayed on this page are those which the data indicates likely were made to projects outside the company. Open source projects within official organizations at the company are excluded to help encourage participation in the open source projects our customers depend on.
         #[br]
-        #{startMonthName} contribution period: #{start}-#{end}
+        Active contribution period: #{start}-#{end}
