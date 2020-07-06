@@ -1,16 +1,25 @@
-import { IReposError } from "../transitional";
-
 //
 // Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 const querystring = require('querystring');
 
 import { redirectToReferrer, storeReferrer } from '../utils';
-import { getGitHubAppConfigurationOptions } from "./passport-config";
+import { getGitHubAppConfigurationOptions } from './passport-config';
+import { IReposError } from '../transitional';
+
+function newSessionAfterAuthentication(req, res, next) {
+  // Prevent session hijacking by generating a new session once authenticated.
+  const passportInstance = req.session.passport;
+  return req.session.regenerate(function (err){
+    if (err) {
+      return next(err);
+    }
+    req.session.passport = passportInstance;
+    return req.session.save(next);
+  });
+}
 
 module.exports = function configurePassport(app, passport, initialConfig) {
   app.get('/signin', function (req, res) {
@@ -182,8 +191,6 @@ module.exports = function configurePassport(app, passport, initialConfig) {
 
   app.get('/auth/github/increased-scope', blockIncreasedScopeForModernApps, passport.authorize('expanded-github-scope'));
 
-  // TODO: Validate that the increased scope user ID === the actual user ID
-
   app.get('/auth/github/callback/increased-scope',
     blockIncreasedScopeForModernApps,
     passport.authorize('expanded-github-scope', {
@@ -194,11 +201,11 @@ module.exports = function configurePassport(app, passport, initialConfig) {
   // ----------------------------------------------------------------------------
   // passport integration with Azure Active Directory
   // ----------------------------------------------------------------------------
-  var aadMiddleware = initialConfig.authentication.scheme === 'github' ? passport.authorize('azure-active-directory') : passport.authenticate('azure-active-directory');
+  const aadMiddleware = initialConfig.authentication.scheme === 'github' ? passport.authorize('azure-active-directory') : passport.authenticate('azure-active-directory');
 
   app.get('/auth/azure', aadMiddleware);
 
-  app.post('/auth/azure/callback', aadMiddleware, authenticationCallback.bind(null, 'aad', 'azure'));
+  app.post('/auth/azure/callback', aadMiddleware, newSessionAfterAuthentication, authenticationCallback.bind(null, 'aad', 'azure'));
 
   // HTTP GET at the callback URL is used for a warning for certain users who launch
   // links from apps that temporarily prevent sessions. Technically this seems to
