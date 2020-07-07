@@ -6,13 +6,13 @@
 const querystring = require('querystring');
 
 import { redirectToReferrer, storeReferrer } from '../utils';
-import { getGitHubAppConfigurationOptions } from './passport-config';
+import { getGitHubAppConfigurationOptions } from './passport/githubStrategy';
 import { IReposError } from '../transitional';
 
 function newSessionAfterAuthentication(req, res, next) {
   // Prevent session hijacking by generating a new session once authenticated.
   const passportInstance = req.session.passport;
-  return req.session.regenerate(function (err){
+  return req.session.regenerate(function (err) {
     if (err) {
       return next(err);
     }
