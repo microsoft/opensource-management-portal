@@ -14,7 +14,7 @@ import { wrapError, sleep, asNumber } from '../../utils';
 import { Organization } from '../../business/organization';
 import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission, GitHubRepositoryPermissions } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { Repository } from '../../business/repository';
-import { CreateRepositoryEntrypoint } from '../api/createRepo';
+import { CreateRepositoryEntrypoint } from '../../api/createRepo';
 
 export interface IApprovalPackage {
   id: string;

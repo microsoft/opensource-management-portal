@@ -7,10 +7,10 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders } from '../../../transitional';
+import { ReposAppRequest, IProviders } from '../../transitional';
 import { getReviewService } from './reviewService';
-import { jsonError } from '../../../middleware/jsonError';
-import { GetAliasFromUpn } from '../../../lib/mailAddressProvider';
+import { jsonError } from '../../middleware/jsonError';
+import { GetAliasFromUpn } from '../../lib/mailAddressProvider';
 
 const releaseApprovalsRedisKey = 'release-approvals';
 

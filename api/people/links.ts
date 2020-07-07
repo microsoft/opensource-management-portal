@@ -6,17 +6,16 @@
 import express = require('express');
 import asyncHandler from 'express-async-handler';
 
-import { jsonError } from '../../../middleware/jsonError';
-import { MemberSearch } from '../../../business/memberSearch';
-import { ICorporateLink } from '../../../business/corporateLink';
-import { Operations, ICrossOrganizationMembersResult } from '../../../business/operations';
-import { IApiRequest } from '../../../middleware/apiReposAuth';
+import { jsonError } from '../../middleware/jsonError';
+import { MemberSearch } from '../../business/memberSearch';
+import { ICorporateLink } from '../../business/corporateLink';
+import { Operations, ICrossOrganizationMembersResult } from '../../business/operations';
+import { IApiRequest } from '../../middleware/apiReposAuth';
 import postLinkApi from './link';
-import { ErrorHelper } from '../../../transitional';
-import { asNumber } from '../../../utils';
+import { ErrorHelper } from '../../transitional';
+import { asNumber, wrapError } from '../../utils';
 
 const router = express.Router();
-const wrapError = require('../../../utils').wrapError;
 
 const unsupportedApiVersions = [
   '2016-12-01',

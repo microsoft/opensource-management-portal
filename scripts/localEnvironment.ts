@@ -13,10 +13,6 @@ import _ from 'lodash';
 async function go(providers: IProviders): Promise<void> {
   // ---------------------------------------------------------------------------
 
-  const org = providers.operations.getOrganization('contosodev');
-  const supporst = await org.supportsUpdatesApp();
-  console.log(supporst);
-  return;
   
 
 

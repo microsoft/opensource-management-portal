@@ -8,19 +8,19 @@
 // configuration that can be used instead of the hardcoded values within.
 
 import _ from 'lodash';
-import { jsonError } from '../../middleware/jsonError';
-import { IProviders } from '../../transitional';
-import { ICreateRepositoryResult, Organization } from '../../business/organization';
-import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission, RepositoryLockdownState } from '../../entities/repositoryMetadata/repositoryMetadata';
-import RenderHtmlMail from '../../lib/emailRender';
+import { jsonError } from '../middleware/jsonError';
+import { IProviders } from '../transitional';
+import { ICreateRepositoryResult, Organization } from '../business/organization';
+import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission, RepositoryLockdownState } from '../entities/repositoryMetadata/repositoryMetadata';
+import RenderHtmlMail from '../lib/emailRender';
 
-import { RepoWorkflowEngine, IRepositoryWorkflowOutput, IApprovalPackage } from '../org/repoWorkflowEngine';
-import { IMailProvider } from '../../lib/mailProvider';
-import { IndividualContext } from '../../user';
-import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
-import { ICachedEmployeeInformation } from '../../business/operations';
-import { Repository } from '../../business/repository';
-import { ICorporateLink } from '../../business/corporateLink';
+import { RepoWorkflowEngine, IRepositoryWorkflowOutput, IApprovalPackage } from '../routes/org/repoWorkflowEngine';
+import { IMailProvider } from '../lib/mailProvider';
+import { IndividualContext } from '../user';
+import NewRepositoryLockdownSystem from '../features/newRepositoryLockdown';
+import { ICachedEmployeeInformation } from '../business/operations';
+import { Repository } from '../business/repository';
+import { ICorporateLink } from '../business/corporateLink';
 
 const supportedLicenseExpressions = [
   'mit',

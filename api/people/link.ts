@@ -3,13 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import { IProviders } from '../../../transitional';
-import { jsonError } from '../../../middleware/jsonError';
-import { IApiRequest } from '../../../middleware/apiReposAuth';
-import { ICorporateLink } from '../../../business/corporateLink';
-import { LinkOperationSource } from '../../../business/operations';
+import { IProviders } from '../../transitional';
+import { jsonError } from '../../middleware/jsonError';
+import { IApiRequest } from '../../middleware/apiReposAuth';
+import { ICorporateLink } from '../../business/corporateLink';
+import { LinkOperationSource } from '../../business/operations';
 
 const linkScope = 'link';
 

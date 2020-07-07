@@ -3,16 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { jsonError } from '../../../middleware/jsonError';
-import { apiContextMiddleware } from '../../../middleware/business/setContext';
-import { setIdentity } from '../../../middleware/business/authentication';
-import { AddLinkToRequest } from '../../../middleware/links';
-import { ReposAppRequest } from '../../../transitional';
+import { jsonError } from '../../middleware/jsonError';
+import { apiContextMiddleware } from '../../middleware/business/setContext';
+import { setIdentity } from '../../middleware/business/authentication';
+import { AddLinkToRequest } from '../../middleware/links';
+import { ReposAppRequest } from '../../transitional';
 
 import ReleaseApprovalsRoute from './releaseApprovals';
 

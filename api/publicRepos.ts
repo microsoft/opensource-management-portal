@@ -7,9 +7,9 @@ import express = require('express');
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { IProviders, CreateError } from '../../transitional';
-import PublicReposFastFilter from '../../features/publicReposFastFilter';
-import { Repository } from '../../business/repository';
+import { IProviders, CreateError } from '../transitional';
+import PublicReposFastFilter from '../features/publicReposFastFilter';
+import { Repository } from '../business/repository';
 
 const symbolFastFilter = Symbol('FastFilter');
 const DefaultPageSize = 40;

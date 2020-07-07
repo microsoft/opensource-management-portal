@@ -9,14 +9,14 @@ const router = express.Router();
 
 import _ from 'lodash';
 
-import { ReposAppRequest, IProviders } from '../../../transitional';
-import { jsonError } from '../../../middleware/jsonError';
-import { IndividualContext } from '../../../user';
-import { Organization, ICreateRepositoryResult } from '../../../business/organization';
+import { ReposAppRequest, IProviders } from '../../transitional';
+import { jsonError } from '../../middleware/jsonError';
+import { IndividualContext } from '../../user';
+import { Organization } from '../../business/organization';
 import { CreateRepository, ICreateRepositoryApiResult, CreateRepositoryEntrypoint } from '../createRepo';
-import { Team, GitHubTeamRole } from '../../../business/team';
-import { GetAddressFromUpnAsync } from '../../../lib/mailAddressProvider';
-import { asNumber } from '../../../utils';
+import { Team, GitHubTeamRole } from '../../business/team';
+import { GetAddressFromUpnAsync } from '../../lib/mailAddressProvider';
+import { asNumber } from '../../utils';
 
 interface ILocalApiRequest extends ReposAppRequest {
   apiVersion?: string;

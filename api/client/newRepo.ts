@@ -4,8 +4,8 @@
 //
 
 import express = require('express');
-import { ReposAppRequest } from '../../../transitional';
-import { jsonError } from '../../../middleware/jsonError';
+import { ReposAppRequest } from '../../transitional';
+import { jsonError } from '../../middleware/jsonError';
 
 const newOrgRepo = require('./newOrgRepo');
 const router = express.Router();

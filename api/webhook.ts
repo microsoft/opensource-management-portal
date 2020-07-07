@@ -7,13 +7,13 @@
 
 import express = require('express');
 import asyncHandler from 'express-async-handler';
-import { jsonError } from '../../middleware/jsonError';
+import { jsonError } from '../middleware/jsonError';
 
 import moment from 'moment';
-import { ReposAppRequest } from '../../transitional';
+import { ReposAppRequest } from '../transitional';
 const router = express.Router();
 
-import OrganizationWebhookProcessor from '../../webhooks/organizationProcessor';
+import OrganizationWebhookProcessor from '../webhooks/organizationProcessor';
 
 interface IRequestWithRaw extends ReposAppRequest {
   _raw?: any;

@@ -3,16 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express = require('express');
 import asyncHandler from 'express-async-handler';
 
-import { ReposAppRequest } from '../../../transitional';
-import { jsonError } from '../../../middleware/jsonError';
-import { ICorporateLink } from '../../../business/corporateLink';
-import { Operations, UnlinkPurpose } from '../../../business/operations';
-import { IApiRequest } from '../../../middleware/apiReposAuth';
+import { jsonError } from '../../middleware/jsonError';
+import { ICorporateLink } from '../../business/corporateLink';
+import { Operations, UnlinkPurpose } from '../../business/operations';
+import { IApiRequest } from '../../middleware/apiReposAuth';
 
 const router = express.Router();
 

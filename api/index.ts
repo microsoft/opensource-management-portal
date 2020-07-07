@@ -7,10 +7,10 @@ import express = require('express');
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders } from '../../transitional';
+import { ReposAppRequest, IProviders } from '../transitional';
 
-import { jsonError } from '../../middleware/jsonError';
-import { IApiRequest } from '../../middleware/apiReposAuth';
+import { jsonError } from '../middleware/jsonError';
+import { IApiRequest } from '../middleware/apiReposAuth';
 
 const apiClient = require('./client');
 const apiExtension = require('./extension');
@@ -19,8 +19,8 @@ const apiWebhook = require('./webhook');
 
 import apiPublicRepos from './publicRepos';
 
-import { AzureDevOpsAuthenticationMiddleware } from '../../middleware/apiVstsAuth';
-import ReposApiAuthentication from '../../middleware/apiReposAuth';
+import { AzureDevOpsAuthenticationMiddleware } from '../middleware/apiVstsAuth';
+import ReposApiAuthentication from '../middleware/apiReposAuth';
 import { CreateRepository, CreateRepositoryEntrypoint } from './createRepo';
 const supportMultipleAuthProviders = require('../../middleware/supportMultipleAuthProviders');
 

@@ -7,15 +7,15 @@ import express = require('express');
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { IProviders } from '../../transitional';
-import { setIdentity } from '../../middleware/business/authentication';
-import { AddLinkToRequest } from '../../middleware/links';
-import { jsonError } from '../../middleware/jsonError';
-import { apiContextMiddleware } from '../../middleware/business/setContext';
-import { ILocalExtensionKeyProvider } from '../../entities/localExtensionKey';
-import { LocalExtensionKey } from '../../entities/localExtensionKey/localExtensionKey';
-import { IApiRequest } from '../../middleware/apiReposAuth';
-import { PersonalAccessToken } from '../../entities/token/token';
+import { IProviders } from '../transitional';
+import { setIdentity } from '../middleware/business/authentication';
+import { AddLinkToRequest } from '../middleware/links';
+import { jsonError } from '../middleware/jsonError';
+import { apiContextMiddleware } from '../middleware/business/setContext';
+import { ILocalExtensionKeyProvider } from '../entities/localExtensionKey';
+import { LocalExtensionKey } from '../entities/localExtensionKey/localExtensionKey';
+import { IApiRequest } from '../middleware/apiReposAuth';
+import { PersonalAccessToken } from '../entities/token/token';
 
 const thisApiScopeName = 'extension';
 

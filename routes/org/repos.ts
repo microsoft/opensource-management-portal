@@ -23,7 +23,7 @@ import routeAdministrativeLock from './repoAdministrativeLock';
 import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
 import { daysInMilliseconds, ParseReleaseReviewWorkItemId } from '../../utils';
 import { ICorporateLink } from '../../business/corporateLink';
-import { getReviewService } from '../api/client/reviewService';
+import { getReviewService } from '../../api/client/reviewService';
 import { IGraphEntry } from '../../lib/graphProvider';
 
 const router = express.Router();
