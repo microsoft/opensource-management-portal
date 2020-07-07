@@ -22,7 +22,7 @@ import apiPublicRepos from './publicRepos';
 import { AzureDevOpsAuthenticationMiddleware } from '../middleware/apiVstsAuth';
 import ReposApiAuthentication from '../middleware/apiReposAuth';
 import { CreateRepository, CreateRepositoryEntrypoint } from './createRepo';
-const supportMultipleAuthProviders = require('../../middleware/supportMultipleAuthProviders');
+const supportMultipleAuthProviders = require('../middleware/supportMultipleAuthProviders');
 
 const hardcodedApiVersions = [
   '2019-10-01',
@@ -104,13 +104,15 @@ router.post('/:org/repos', asyncHandler(async function (req: ReposAppRequest, re
   try {
     const repoCreateResponse = await CreateRepository(req, convergedObject, CreateRepositoryEntrypoint.Api);
     res.status(201);
-    req.insights.trackEvent({ name: 'ApiRepoCreateRequestSuccess', properties: {
-      request: JSON.stringify(convergedObject),
-      response: JSON.stringify(repoCreateResponse),
-    }});
+    req.insights.trackEvent({
+      name: 'ApiRepoCreateRequestSuccess', properties: {
+        request: JSON.stringify(convergedObject),
+        response: JSON.stringify(repoCreateResponse),
+      }
+    });
     return res.json(repoCreateResponse);
   } catch (error) {
-    const data = {...convergedObject};
+    const data = { ...convergedObject };
     data.error = error.message;
     data.encodedError = JSON.stringify(error);
     req.insights.trackEvent({ name: 'ApiRepoCreateFailed', properties: data });

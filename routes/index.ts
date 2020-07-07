@@ -8,7 +8,7 @@ const router = express.Router();
 
 import { webContextMiddleware } from '../middleware/business/setContext';
 
-router.use('/api', require('./api'));
+router.use('/api', require('../api'));
 
 router.use(webContextMiddleware);
 
