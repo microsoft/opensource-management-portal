@@ -315,7 +315,7 @@ export class Team {
     const parameters = {
       org_id: this.organization.id,
       team_id: this._id,
-      username: username,
+      username: this._operations.validateGitHubLogin(username),
     };
     return github.requestAsPost(this.authorize(AppPurpose.Operations), 'DELETE /organizations/:org_id/team/:team_id/memberships/:username', parameters);
   }
@@ -331,7 +331,7 @@ export class Team {
     const parameters = {
       org: this.organization.name,
       team_slug: this.slug,
-      username,
+      username: this._operations.validateGitHubLogin(username),
       role,
     };
     const ok = await github.post(this.authorize(AppPurpose.CustomerFacing), 'teams.addOrUpdateMembershipForUserInOrg', parameters);
@@ -357,7 +357,7 @@ export class Team {
     const parameters = {
       org_id: this.organization.id,
       team_id: this._id,
-      username,
+      username: this._operations.validateGitHubLogin(username),
     };
     try {
       const result = await operations.github.request(
@@ -374,7 +374,7 @@ export class Team {
       if (error.status) {
         reason += ' ' + error.status;
       }
-      const wrappedError = wrapError(error, `Trouble retrieving the membership for ${username} in team ${this._id}. ${reason}`);
+      const wrappedError = wrapError(error, `Trouble retrieving the membership for ${username} in team ${this._id}.`);
       if (error.status) {
         wrappedError['status'] = error.status;
       }

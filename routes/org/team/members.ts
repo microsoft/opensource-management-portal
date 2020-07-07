@@ -3,13 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express = require('express');
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest } from '../../../transitional';
+import { ReposAppRequest, IProviders } from '../../../transitional';
 import { Team } from '../../../business/team';
 import { TeamMember } from '../../../business/teamMember';
 
@@ -69,7 +67,8 @@ router.use('/add', teamAdminRequired, (req: ILocalTeamRequest, res, next) => {
 }, PeopleSearch);
 
 router.post('/remove', teamAdminRequired, asyncHandler(async (req: ILocalTeamRequest, res, next) => {
-  const username = req.body.username;
+  const { operations } = req.app.settings.providers as IProviders;
+  const username = operations.validateGitHubLogin(req.body.username);
   const team2 = req.team2 as Team;
   await team2.removeMembership(username);
   req.individualContext.webContext.saveUserAlert(`${username} has been removed from the team ${team2.name}.`, 'Team membership update', 'success');
@@ -78,10 +77,11 @@ router.post('/remove', teamAdminRequired, asyncHandler(async (req: ILocalTeamReq
 }));
 
 router.post('/add', teamAdminRequired, asyncHandler(async (req: ILocalTeamRequest, res, next) => {
+  const { operations } = req.app.settings.providers as IProviders;
+  const username = operations.validateGitHubLogin(req.body.username);
   const organization = req.organization;
   const team2 = req.team2;
   const refreshedMembers = req.refreshedMembers;
-  const username = req.body.username;
   // Allow a one minute org cache for self-correcting validation
   const orgOptions = {
     maxAgeSeconds: 60,

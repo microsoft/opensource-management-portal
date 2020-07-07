@@ -21,7 +21,7 @@ import apiPublicRepos from './publicRepos';
 
 import { AzureDevOpsAuthenticationMiddleware } from '../../middleware/apiVstsAuth';
 import ReposApiAuthentication from '../../middleware/apiReposAuth';
-import { CreateRepository } from './createRepo';
+import { CreateRepository, CreateRepositoryEntrypoint } from './createRepo';
 const supportMultipleAuthProviders = require('../../middleware/supportMultipleAuthProviders');
 
 const hardcodedApiVersions = [
@@ -102,7 +102,7 @@ router.post('/:org/repos', asyncHandler(async function (req: ReposAppRequest, re
   delete convergedObject.access_token;
   delete convergedObject.authorization;
   try {
-    const repoCreateResponse = await CreateRepository(req, convergedObject);
+    const repoCreateResponse = await CreateRepository(req, convergedObject, CreateRepositoryEntrypoint.Api);
     res.status(201);
     req.insights.trackEvent({ name: 'ApiRepoCreateRequestSuccess', properties: {
       request: JSON.stringify(convergedObject),

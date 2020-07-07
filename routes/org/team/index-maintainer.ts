@@ -4,13 +4,13 @@
 //
 
 import express = require('express');
+
 import { ReposAppRequest } from '../../../transitional';
 import { wrapError } from '../../../utils';
-var router = express.Router();
-var utils = require('../../../utils');
+const router = express.Router();
 
-var approvalsRoute = require('./approvals');
-var membersRoute = require('./members');
+const approvalsRoute = require('./approvals');
+const membersRoute = require('./members');
 
 interface ILocalRequest extends ReposAppRequest {
   teamPermissions?: any;

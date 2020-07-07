@@ -14,6 +14,7 @@ import { wrapError, sleep, asNumber } from '../../utils';
 import { Organization } from '../../business/organization';
 import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission, GitHubRepositoryPermissions } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { Repository } from '../../business/repository';
+import { CreateRepositoryEntrypoint } from '../api/createRepo';
 
 export interface IApprovalPackage {
   id: string;
@@ -23,6 +24,10 @@ export interface IApprovalPackage {
   isUnlockingExistingRepository: number | string | boolean | null | undefined;
   isFork: boolean;
   isTransfer: boolean;
+  // TEMPORARY: default branch rename work
+  createEntrypoint: CreateRepositoryEntrypoint,
+  renameDefaultBranchTo: string,
+  renameDefaultBranchExcludeIfApiCall: boolean,
 }
 
 export enum RepoWorkflowDecision {
@@ -46,6 +51,10 @@ export class RepoWorkflowEngine {
   private isFork: boolean;
   private isTransfer: boolean;
 
+  private createEntrypoint: CreateRepositoryEntrypoint;
+  private renameDefaultBranchTo: string;
+  private renameDefaultBranchExcludeIfApiCall: boolean;
+
   constructor(organization: Organization, approvalPackage: IApprovalPackage) {
     this.request = approvalPackage.repositoryMetadata;
     // this.user = approvalPackage.requestingUser;
@@ -56,6 +65,12 @@ export class RepoWorkflowEngine {
     this.isUnlockingExistingRepository = !!approvalPackage.isUnlockingExistingRepository;
     this.isFork = approvalPackage.isFork;
     this.isTransfer = approvalPackage.isTransfer;
+    // TEMPORARY: defalt branch name work
+    if (approvalPackage.renameDefaultBranchTo) {
+      this.createEntrypoint = approvalPackage.createEntrypoint;
+      this.renameDefaultBranchTo = approvalPackage.renameDefaultBranchTo;
+      this.renameDefaultBranchExcludeIfApiCall = approvalPackage.renameDefaultBranchExcludeIfApiCall;
+    }
   }
 
   editGet(req, res) {
@@ -98,9 +113,39 @@ export class RepoWorkflowEngine {
 
   async executeNewRepositoryChores(): Promise<IRepositoryWorkflowOutput[] /* output */> {
     const request = this.request;
-    const output = [];
+    const output: IRepositoryWorkflowOutput[] = [];
     const organization = this.organization;
     const repoName = request.repositoryName;
+    // TEMPORARY: default branch rename work
+    let shouldRenameDefaultBranch = !!this.renameDefaultBranchTo;
+    const currentDefaultBranchName = this.createResponse['default_branch'];
+    if (!currentDefaultBranchName) {
+      throw new Error('No default branch name known for the current repo by response type');
+    }
+    if (shouldRenameDefaultBranch && currentDefaultBranchName === this.renameDefaultBranchTo) {
+      shouldRenameDefaultBranch = false;
+      output.push({ message: `The default branch name is '${this.renameDefaultBranchTo}'.`});
+    }
+    if (shouldRenameDefaultBranch && this.isFork) {
+      shouldRenameDefaultBranch = false;
+      output.push({ message: `As a fork, the default branch will not be automatically renamed to '${this.renameDefaultBranchTo}'.`});
+    }
+    if (shouldRenameDefaultBranch && this.isTransfer) {
+      shouldRenameDefaultBranch = false;
+      output.push({ message: `As a transfer, the default branch will not be automatically renamed to '${this.renameDefaultBranchTo}'.`});
+    }
+    if (shouldRenameDefaultBranch && this.renameDefaultBranchExcludeIfApiCall && this.createEntrypoint === CreateRepositoryEntrypoint.Api) {
+      shouldRenameDefaultBranch = false;
+      output.push({ message: `The branch will not be automatically renamed to '${this.renameDefaultBranchTo}' because the repository has been created by an API call.`});
+    }
+    if (shouldRenameDefaultBranch && !this.organization.supportsUpdatesApp()) {
+      shouldRenameDefaultBranch = false;
+      output.push({ message: `The branch will not be automatically renamed to '${this.renameDefaultBranchTo}' because the ${this.organization.name} organization is not currently configured for modifying repository contents.`});
+    }
+    if (shouldRenameDefaultBranch) {
+      output.push(await renameDefaultBranchTask(organization, repoName, currentDefaultBranchName, this.renameDefaultBranchTo));
+    }
+    // END TEMPORARY: default branch rename work
     for (let i = 0; i < request.initialTeamPermissions.length; i++) {
       let { teamId, permission, teamName } = request.initialTeamPermissions[i];
       if (teamId && !teamName) {
@@ -134,6 +179,25 @@ export class RepoWorkflowEngine {
     }
     return output.filter(real => real);
   }
+}
+
+async function renameDefaultBranchTask(organization: Organization, repoName: string, currentDefaultBranchName: string, renameDefaultBranchTo: string): Promise<IRepositoryWorkflowOutput> {
+  const output: IRepositoryWorkflowOutput = { error: null, message: null };
+  // This code is adapted from the approach used with Octokit at
+  // https://github.com/gr2m/octokit-plugin-rename-branch/blob/main/src/rename-branch.ts
+  // implemented as of 7/7/2020; however, as a new repo, there should not be
+  // any branch protections in place yet, nor any open pull requests, simplfying the calls.
+  const repository = organization.repository(repoName);
+  try {
+    const sha = await repository.getLastCommitToBranch(currentDefaultBranchName);
+    await repository.createNewBranch(sha, renameDefaultBranchTo);
+    await repository.setDefaultBranch(renameDefaultBranchTo);
+    await repository.deleteBranch(currentDefaultBranchName);
+    output.message = `Renamed the default branch to '${renameDefaultBranchTo}'.`;
+  } catch (error) {
+    output.error = error;
+  }
+  return output;
 }
 
 async function addTeamPermission(organization: Organization, repoName: string, id: number, teamName: string, permission: GitHubRepositoryPermission): Promise<IRepositoryWorkflowOutput> {

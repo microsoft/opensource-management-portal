@@ -3,13 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express = require('express');
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, NoRestApiCache } from '../../../transitional';
+import { ReposAppRequest, NoRestApiCache, IProviders } from '../../../transitional';
 import { Team } from '../../../business/team';
 import { TeamMember } from '../../../business/teamMember';
 const teamAdminRequired = require('./teamAdminRequired');
@@ -69,8 +67,9 @@ router.use('/add', teamAdminRequired, (req: ILocalRequest, res, next) => {
 });
 
 router.post('/add', teamAdminRequired, asyncHandler(async function (req: ILocalRequest, res, next) {
+  const { operations } = req.app.settings.providers as IProviders;
+  const login = operations.validateGitHubLogin(req.body.username);
   const team2 = req.team2 as Team;
-  const login = req.body.username;
   await team2.addMaintainer(login);
   req.individualContext.webContext.saveUserAlert(`Added ${login} as a team maintainer`, team2.name + ' membership updated', 'success');
   const maintainers = await refreshMaintainers(team2);
