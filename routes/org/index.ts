@@ -60,7 +60,6 @@ router.use('/teams', teamsRoute);
 router.use(asyncHandler(AddOrganizationPermissionsToRequest));
 
 router.use(asyncHandler(async (req: ILocalOrgRequest, res, next) => {
-  console.log('---------------------------------------------------- xxx');
   const organization = req.organization;
   const orgPermissions = req.orgPermissions;
   if (!orgPermissions) {

@@ -14,7 +14,7 @@ import { ICreateRepositoryResult, Organization } from '../../business/organizati
 import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission, RepositoryLockdownState } from '../../entities/repositoryMetadata/repositoryMetadata';
 import RenderHtmlMail from '../../lib/emailRender';
 
-import { RepoWorkflowEngine, IRepositoryWorkflowOutput } from '../org/repoWorkflowEngine';
+import { RepoWorkflowEngine, IRepositoryWorkflowOutput, IApprovalPackage } from '../org/repoWorkflowEngine';
 import { IMailProvider } from '../../lib/mailProvider';
 import { IndividualContext } from '../../user';
 import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
@@ -42,7 +42,12 @@ export interface ICreateRepositoryApiResult {
   name: string;
 }
 
-export async function CreateRepository(req, bodyOverride: unknown, individualContext?: IndividualContext): Promise<ICreateRepositoryApiResult> {
+export enum CreateRepositoryEntrypoint {
+  Api = 'api',
+  Client = 'client',
+}
+
+export async function CreateRepository(req, bodyOverride: unknown, entrypoint: CreateRepositoryEntrypoint, individualContext?: IndividualContext): Promise<ICreateRepositoryApiResult> {
   if (!req.organization) {
     throw jsonError(new Error('No organization available in the route.'), 400);
   }
@@ -85,7 +90,7 @@ export async function CreateRepository(req, bodyOverride: unknown, individualCon
   // Validate licenses
   let msLicense = msProperties.license;
   if (!msLicense) {
-    throw jsonError(new Error('Missing Microsoft license information'), 422);
+    throw jsonError(new Error('Missing license metadata'), 422);
   }
   msLicense = msLicense.toLowerCase();
   if (supportedLicenseExpressions.indexOf(msLicense) < 0) {
@@ -97,7 +102,7 @@ export async function CreateRepository(req, bodyOverride: unknown, individualCon
   // Validate approval types
   const msApprovalType = msProperties.approvalType;
   if (!msApprovalType) {
-    throw jsonError(new Error('Missing Microsoft approval type information'), 422);
+    throw jsonError(new Error('Missing corporate approval type information'), 422);
   }
   if (hardcodedApprovalTypes.indexOf(msApprovalType) < 0) {
     throw jsonError(new Error('The provided approval type is not supported'), 422);
@@ -137,6 +142,7 @@ export async function CreateRepository(req, bodyOverride: unknown, individualCon
         description: parameters.description,
         private: parameters.private,
         org: parameters.org,
+        entrypoint,
       },
     });
     let createResult: ICreateRepositoryResult = null;
@@ -153,6 +159,7 @@ export async function CreateRepository(req, bodyOverride: unknown, individualCon
           private: parameters.private,
           org: parameters.org,
           parameters: JSON.stringify(parameters),
+          entrypoint,
         },
       });
       if (error && error.innerError) {
@@ -184,6 +191,7 @@ export async function CreateRepository(req, bodyOverride: unknown, individualCon
         description: parameters.description,
         private: parameters.private,
         org: parameters.org,
+        entrypoint,
         result: JSON.stringify(response),
       },
     });
@@ -311,15 +319,27 @@ export async function CreateRepository(req, bodyOverride: unknown, individualCon
       throw updateError;
     }
   }
-  // req.approvalRequest['ms.approvalId'] = requestId; // TODO: is this ever used?
-  const repoWorkflow = new RepoWorkflowEngine(req.organization as Organization, {
+  const approvalPackage: IApprovalPackage = {
     id: entityId,
     repositoryMetadata: metadata,
     createResponse: response,
     isUnlockingExistingRepository: existingRepoId,
     isFork: response ? response.fork : false,
     isTransfer: metadata && metadata.transferSource ? true : false,
-  });
+    // TEMPORARY:
+    createEntrypoint: entrypoint,
+    renameDefaultBranchTo: null,
+    renameDefaultBranchExcludeIfApiCall: null,
+  };
+  // TEMPORARY FEATURE: through end of 2020, default branch work
+  const config = providers.config;
+  if (config?.github?.newRepos?.renameDefaultBranchFlag === true) {
+    approvalPackage.renameDefaultBranchTo = config.github.newRepos.renameDefaultBranchTo;
+    approvalPackage.renameDefaultBranchExcludeIfApiCall = config.github.newRepos.renameDefaultBranchExcludeApiCreates;
+  }
+  // END TEMPORARY FEATURE: default branch work
+  // req.approvalRequest['ms.approvalId'] = requestId; // TODO: is this ever used?
+  const repoWorkflow = new RepoWorkflowEngine(req.organization as Organization, approvalPackage);
   let output = [];
   try {
     output = await generateAndRunSecondaryTasks(repoWorkflow);

@@ -7,6 +7,7 @@
 
 import rp from 'request-promise-native';
 import throat from 'throat';
+import githubUsernameRegex from 'github-username-regex';
 
 import { ICacheOptions, IMapPlusMetaCost, IProviders, IPagedCrossOrganizationCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IAuthorizationHeaderValue, IDictionary, CreateError, ErrorHelper, setImmediateAsync } from '../transitional';
 
@@ -282,6 +283,7 @@ export class Operations {
       operationsApp: hasModernGitHubApps? options.config.github.app.operations : null,
       dataApp: hasModernGitHubApps? options.config.github.app.data : null,
       backgroundJobs: hasModernGitHubApps ? options.config.github.app.jobs : null,
+      updatesApp: hasModernGitHubApps ? options.config.github.app.updates : null,
       app: this.providers.app,
     });
     this._dynamicOrganizationIds = new Set();
@@ -402,7 +404,12 @@ export class Operations {
       throw new Error(`This application is not configured for the ${name} organization`);
     }
     const hasDynamicSettings = this._dynamicOrganizationIds && settings.organizationId && this._dynamicOrganizationIds.has(asNumber(settings.organizationId));
-    return new Organization(this, name, settings, this.getAuthorizationHeader.bind(this, name, settings, ownerToken, centralOperationsFallbackToken, appAuthenticationType), hasDynamicSettings);
+    return new Organization(this,
+      name,
+      settings,
+      this.getAuthorizationHeader.bind(this, name, settings, ownerToken, centralOperationsFallbackToken, appAuthenticationType),
+      this.getAuthorizationHeader.bind(this, name, settings, ownerToken, centralOperationsFallbackToken, GitHubAppAuthenticationType.ForceSpecificInstallation),
+      hasDynamicSettings);
   }
 
   private async getAppAuthorizationHeader(tokenManager: GitHubTokenManager, appId: number): Promise<string> {
@@ -563,6 +570,13 @@ export class Operations {
       this._organizationOriginalNames = names.sort(sortByCaseInsensitive);
     }
     return this._organizationOriginalNames;
+  }
+
+  validateGitHubLogin(username: string) {
+    if (!githubUsernameRegex.test(username)) {
+      throw new Error('Invalid GitHub username format');
+    }
+    return username;
   }
 
   translateOrganizationNamesFromLowercase(object) {

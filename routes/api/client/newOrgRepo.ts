@@ -13,7 +13,7 @@ import { ReposAppRequest, IProviders } from '../../../transitional';
 import { jsonError } from '../../../middleware/jsonError';
 import { IndividualContext } from '../../../user';
 import { Organization, ICreateRepositoryResult } from '../../../business/organization';
-import { CreateRepository, ICreateRepositoryApiResult } from '../createRepo';
+import { CreateRepository, ICreateRepositoryApiResult, CreateRepositoryEntrypoint } from '../createRepo';
 import { Team, GitHubTeamRole } from '../../../business/team';
 import { GetAddressFromUpnAsync } from '../../../lib/mailAddressProvider';
 import { asNumber } from '../../../utils';
@@ -208,7 +208,7 @@ router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(as
   });
   let success: ICreateRepositoryApiResult = null;
   try {
-    success = await CreateRepository(req, body, individualContext);
+    success = await CreateRepository(req, body, CreateRepositoryEntrypoint.Client, individualContext);
   } catch (createRepositoryError) {
     req.app.settings.providers.insights.trackEvent({
       name: 'ApiClientNewOrgRepoError',

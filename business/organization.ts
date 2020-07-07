@@ -156,13 +156,14 @@ export class Organization {
 
   private _operations: Operations;
   private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
+  private _getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader;
   private _usesGitHubApp: boolean;
   private _settings: OrganizationSetting;
 
   id: number;
   uncontrolled: boolean;
 
-  constructor(operations: Operations, name: string, settings: OrganizationSetting, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, public hasDynamicSettings: boolean) {
+  constructor(operations: Operations, name: string, settings: OrganizationSetting, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader, public hasDynamicSettings: boolean) {
     this._name = settings.organizationName || name;
     this._baseUrl = `${operations.baseUrl}${this.name}/`;
     this._nativeUrl = `https://github.com/${this.name}/`;
@@ -172,6 +173,7 @@ export class Organization {
     this._settings = settings;
     this._usesGitHubApp = hasDynamicSettings;
     this._getAuthorizationHeader = getAuthorizationHeader;
+    this._getSpecificAuthorizationHeader = getSpecificAuthorizationHeader;
     if (settings && settings.organizationId) {
       this.id = asNumber(settings.organizationId);
     }
@@ -205,6 +207,15 @@ export class Organization {
     return this._usesGitHubApp;
   }
 
+  async supportsUpdatesApp() {
+    try {
+      await this._getSpecificAuthorizationHeader(AppPurpose.Updates);
+      return true;
+    } catch (errror) {
+      return false;
+    }
+  }
+
   repository(name: string, optionalEntity?) {
     const entity = Object.assign({}, optionalEntity || {}, {
       name,
@@ -213,6 +224,7 @@ export class Organization {
       this,
       entity,
       this._getAuthorizationHeader,
+      this._getSpecificAuthorizationHeader,
       this._operations);
     // CONSIDER: Cache any repositories in the local instance
     return repository;
@@ -717,7 +729,7 @@ export class Organization {
       if (error.status) {
         reason += ' ' + error.status;
       }
-      const wrappedError = wrapError(error, `Trouble retrieving the membership for "${username}" in the ${orgName} organization. ${reason}`);
+      const wrappedError = wrapError(error, `Trouble retrieving the membership for "${username}" in the ${orgName} organization.`);
       if (error.status) {
         wrapError['status'] = error.status;
       }

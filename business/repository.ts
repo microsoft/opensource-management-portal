@@ -170,6 +170,7 @@ export class Repository {
   private _awesomeness: number;
 
   private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
+  private _getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader;
   private _operations: Operations;
 
   private _organization: Organization;
@@ -223,11 +224,12 @@ export class Repository {
     return this.organization.absoluteBaseUrl + 'repos/' + this.name + '/';
   }
 
-  constructor(organization: Organization, entity: any, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, operations: Operations) {
+  constructor(organization: Organization, entity: any, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader, operations: Operations) {
     this._organization = organization;
     this._entity = entity;
     this._baseUrl = organization.baseUrl + 'repos/' + this.name + '/';
     this._getAuthorizationHeader = getAuthorizationHeader;
+    this._getSpecificAuthorizationHeader = getSpecificAuthorizationHeader;
     this._operations = operations;
   }
 
@@ -340,6 +342,61 @@ export class Repository {
     };
     const operations = this._operations
     return operations.github.call(this.authorize(AppPurpose.Data), 'repos.getContent', parameters);
+  }
+
+  async getLastCommitToBranch(branchName: string): Promise<string> {
+    // Requires: Updates app configured
+    if (!this.organization.supportsUpdatesApp()) {
+      throw new Error('getLastCommitToBranch: The Updates app is not configured for this organization.');
+    }
+    const options = {
+      owner: this.organization.name,
+      repo: this.name,
+      ref: `heads/${branchName}`,
+    };
+    const data = await this._operations.github.requestAsPost(this.authorize(AppPurpose.Updates), 'GET /repos/:owner/:repo/git/ref/:ref', options);
+    return data.object.sha;
+  }
+
+  async createNewBranch(sha: string, newBranchName: string): Promise<void> {
+    // Requires: Updates app configured
+    if (!this.organization.supportsUpdatesApp()) {
+      throw new Error('createNewBranch: The Updates app is not configured for this organization.');
+    }
+    const options = {
+      owner: this.organization.name,
+      repo: this.name,
+      ref: `refs/heads/${newBranchName}`,
+      sha,
+    };
+    await this._operations.github.requestAsPost(this.authorize(AppPurpose.Updates), 'POST /repos/:owner/:repo/git/refs', options);
+  }
+
+  async setDefaultBranch(defaultBranchName: string): Promise<void> {
+    // Requires: Updates app configured
+    if (!this.organization.supportsUpdatesApp()) {
+      throw new Error('setDefaultBranch: The Updates app is not configured for this organization.');
+    }
+    const options = {
+      owner: this.organization.name,
+      repo: this.name,
+      name: this.name,
+      default_branch: defaultBranchName,
+    };
+    await this._operations.github.requestAsPost(this.authorize(AppPurpose.Updates), 'PATCH /repos/:owner/:repo', options);
+  }
+
+  async deleteBranch(branchName: string): Promise<void> {
+    // Requires: Updates app configured
+    if (!this.organization.supportsUpdatesApp()) {
+      throw new Error('deleteBranch: The Updates app is not configured for this organization.');
+    }
+    const options = {
+      owner: this.organization.name,
+      repo: this.name,
+      ref: `heads/${branchName}`,
+    };
+    await this._operations.github.requestAsPost(this.authorize(AppPurpose.Updates), 'DELETE /repos/:owner/:repo/git/refs/:ref', options);
   }
 
   async getPages(options?: ICacheOptions): Promise<any> {

@@ -36,7 +36,7 @@ interface InstallationIdPurposePair {
 }
 
 export class GitHubTokenManager {
-  #options: any;
+  #options: IGitHubAppsOptions;
   private static _isBackgroundJob: boolean;
   // private _appConfiguration = new Map<AppPurpose, IGitHubAppConfiguration>();
   private _apps = new Map<AppPurpose, GitHubAppTokens>();
@@ -57,6 +57,7 @@ export class GitHubTokenManager {
     await this.initializeApp(AppPurpose.Operations, this.#options.operationsApp);
     await this.initializeApp(AppPurpose.Data, this.#options.dataApp);
     await this.initializeApp(AppPurpose.BackgroundJobs, this.#options.backgroundJobs);
+    await this.initializeApp(AppPurpose.Updates, this.#options.updatesApp);
   }
 
   organizationSupportsAnyPurpose(organizationName: string, organizationSettings?: OrganizationSetting) {
@@ -103,7 +104,10 @@ export class GitHubTokenManager {
     if (!organizationSettings) {
       return null;
     }
-    const order = GitHubTokenManager._isBackgroundJob === true ? fallbackBackgroundJobPriorities : [preferredPurpose, ...fallbackPurposePriorities];
+    let order = GitHubTokenManager._isBackgroundJob === true ? fallbackBackgroundJobPriorities : [preferredPurpose, ...fallbackPurposePriorities];
+    if (appAuthenticationType === GitHubAppAuthenticationType.ForceSpecificInstallation) {
+      order = [ preferredPurpose ];
+    }
     for (const purpose of order) {
       if (organizationSettings && organizationSettings.installations) {
         for (const { appId, installationId } of organizationSettings.installations) {
