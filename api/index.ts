@@ -22,7 +22,7 @@ import apiPublicRepos from './publicRepos';
 import { AzureDevOpsAuthenticationMiddleware } from '../middleware/apiVstsAuth';
 import ReposApiAuthentication from '../middleware/apiReposAuth';
 import { CreateRepository, CreateRepositoryEntrypoint } from './createRepo';
-const supportMultipleAuthProviders = require('../middleware/supportMultipleAuthProviders');
+import supportMultipleAuthProviders from '../middleware/supportMultipleAuthProviders';
 
 const hardcodedApiVersions = [
   '2019-10-01',

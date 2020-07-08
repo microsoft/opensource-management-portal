@@ -59,6 +59,7 @@ interface ICacheDefaultTimes {
   crossOrgsMembersParallelCalls: number;
   corporateLinksStaleSeconds: number;
   repoBranchesStaleSeconds: number;
+  repoPullsStaleSeconds: number;
   accountDetailStaleSeconds: number;
   teamDetailStaleSeconds: number;
   orgRepoWebhooksStaleSeconds: number;
@@ -85,6 +86,7 @@ const defaults: ICacheDefaultTimes = {
   crossOrgsMembersParallelCalls: 5,
   corporateLinksStaleSeconds: 30 /* 30s (used to be 5m) */,
   repoBranchesStaleSeconds: 60 * 5 /* 5m */,
+  repoPullsStaleSeconds: 60 * 60 /* 60m */,
   accountDetailStaleSeconds: 60 * 60 * 24 /* 24h */,
   teamDetailStaleSeconds: 60 * 60 * 2 /* 2h */,
   orgRepoWebhooksStaleSeconds: 60 * 60 * 8 /* 8h */,

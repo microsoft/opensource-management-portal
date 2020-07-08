@@ -5,8 +5,6 @@
 
 /*eslint no-console: ["error', { allow: ["warn"] }] */
 
-'use strict';
-
 import _ from 'lodash';
 
 const debug = require('debug')('restapi');
@@ -22,9 +20,38 @@ import { IPagedCacheOptions, IGetAuthorizationHeader } from '../../transitional'
 import { RestLibrary } from '.';
 import { sleep } from '../../utils';
 import GitHubApplication from '../../business/application';
+import { RepositoryPrimaryProperties } from '../../business/primaryProperties';
 
 export interface IGetAppInstallationsParameters {
   app_id: string;
+}
+
+export enum GitHubPullRequestState {
+  Open = 'open',
+  Closed = 'closed',
+  All = 'all',
+}
+
+export enum GitHubPullRequestSort {
+  Created = 'created',
+  Updated = 'updated',
+  Popularity = 'popularity', // comment count
+  LongRunning = 'long-running', // age, filtering by pulls updated in the last month
+}
+
+export enum GitHubSortDirection {
+  Ascending = 'asc',
+  Descending = 'desc',
+}
+
+export interface IListPullsParameters {
+  owner: string;
+  repo: string;
+  state?: GitHubPullRequestState;
+  head?: string;
+  base?: string;
+  sort?: GitHubPullRequestSort;
+  direction?: GitHubSortDirection;
 }
 
 const branchDetailsToCopy = [
@@ -32,7 +59,7 @@ const branchDetailsToCopy = [
   'commit',
   'protected',
 ];
-const repoDetailsToCopy = Repository.PrimaryProperties;
+const repoDetailsToCopy = RepositoryPrimaryProperties;
 const teamDetailsToCopy = Team.PrimaryProperties;
 const memberDetailsToCopy = Collaborator.PrimaryProperties;
 const appInstallDetailsToCopy = GitHubApplication.PrimaryInstallationProperties;
@@ -54,6 +81,31 @@ const teamRepoPermissionsToCopy = [
   'private',
   'fork',
   'permissions',
+];
+const pullDetailsToCopy = [
+  'id',
+  'number',
+  'state',
+  'locked',
+  'title',
+  // user
+  'body',
+  // labels
+  // milestone
+  // active_lock_reason
+  'created_at',
+  'updated_at',
+  'closed_at',
+  'merged_at',
+  'merge_commit_sha',
+  'assignee',
+  // assignees
+  // requested_reviewers
+  // requested_teams
+  'head', // PERF: large user of list storage
+  'base', // PERF: large user of list storage
+  'author_association',
+  'draft',
 ];
 
 interface IRequestWithData {
@@ -110,6 +162,10 @@ export class RestCollections {
 
   getRepoBranches(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any> {
     return this.generalizedCollectionWithFilter('repoBranches', 'repos.listBranches', branchDetailsToCopy, token, options, cacheOptions);
+  }
+
+  getRepoPullRequests(token: string | IGetAuthorizationHeader, options: IListPullsParameters, cacheOptions: IPagedCacheOptions): Promise<any> {
+    return this.generalizedCollectionWithFilter('repoPullRequests', 'pulls.list', pullDetailsToCopy, token, options, cacheOptions);
   }
 
   getTeamMembers(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any> {

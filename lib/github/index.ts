@@ -176,15 +176,22 @@ export class RestLibrary {
     return this.post(token, 'request', parameters);
   }
 
+  graphql(token, query, parameters: any): Promise<any> {
+    parameters = parameters || {};
+    parameters['octokitQuery'] = query;
+    return this.post(token, 'graphql', parameters);
+  }
+
   async post(awaitToken: IGetAuthorizationHeader | string, api: string, options: any): Promise<any> {
     const method = restApi.IntelligentGitHubEngine.findLibraryMethod(this.github, api);
     if (!options.headers) {
       options.headers = {};
     }
+    const noDataMassage = (data) => data;
     let massageData = (data) => flattenData(data);
     if (options.allowEmptyResponse) {
       delete options.allowEmptyResponse;
-      massageData = (data) => data;
+      massageData = noDataMassage;
     }
     if (!options.headers.authorization) {
       const value = await this.resolveAuthorizationHeader(awaitToken);
@@ -196,6 +203,11 @@ export class RestLibrary {
         const endpoint = options.octokitRequest;
         delete options.octokitRequest;
         value = await method.call(this.github, endpoint, options) as Promise<any>;
+      } else if (api === 'graphql') {
+        massageData = noDataMassage;
+        const query = options.octokitQuery;
+        delete options.octokitQuery;
+        value = await method.call(this.github, query, options) as Promise<any>;
       } else {
         value = await method.call(this.github, options) as Promise<any>;
       }

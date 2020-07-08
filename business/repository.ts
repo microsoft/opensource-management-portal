@@ -3,7 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { wrapError, asNumber } from '../utils';
+import moment from 'moment';
+
+import { wrapError } from '../utils';
 import { Operations } from './operations';
 import { Organization } from './organization';
 import { ICacheOptions, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, ErrorHelper } from '../transitional';
@@ -12,8 +14,8 @@ import { RepositoryPermission } from './repositoryPermission';
 import { Collaborator } from './collaborator';
 import { TeamPermission } from './teamPermission';
 import { RepositoryMetadataEntity, GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
-import moment from 'moment';
 import { AppPurpose } from '../github';
+import { IListPullsParameters, GitHubPullRequestState, GitHubPullRequestSort, GitHubSortDirection } from '../lib/github/collections';
 
 export interface IGitHubCollaboratorInvitation {
   id: string;
@@ -46,6 +48,19 @@ export enum GitHubCollaboratorType {
 
 export interface IGetCollaboratorsOptions extends IPagedCacheOptions {
   affiliation?: GitHubCollaboratorAffiliationQuery;
+}
+
+export interface IGitHubProtectedBranchConfiguration {
+  id: string;
+  pattern: string;
+}
+
+export interface IGetPullsOptions extends ICacheOptions {
+  state?: GitHubPullRequestState;
+  head?: string;
+  base?: string;
+  sort?: GitHubPullRequestSort;
+  direction?: GitHubSortDirection;
 }
 
 export interface ICreateWebhookOptions {
@@ -132,38 +147,17 @@ interface IRepositoryMomentsAgo {
   pushed?: string;
 }
 
-const repoPrimaryProperties = [
-  'id',
-  'name',
-  'full_name',
-  'private',
-  'html_url',
-  'description',
-  'fork',
-  'url',
-  'created_at',
-  'updated_at',
-  'pushed_at',
-  'git_url',
-  'homepage',
-  'size',
-  'stargazers_count',
-  'watchers_count',
-  'language',
-  'has_issues',
-  'has_wiki',
-  'has_pages',
-  'forks_count',
-  'open_issues_count',
-  'forks',
-  'open_issues',
-  'watchers',
-  'license',
-  'default_branch',
-];
+
+export interface ITemporaryCommandOutput {
+  error?: Error;
+  message?: string;
+};
+
+interface IProtectedBranchRule {
+  pattern: string;
+};
 
 export class Repository {
-  public static PrimaryProperties = repoPrimaryProperties;
   private _entity: any;
   private _baseUrl: string;
 
@@ -331,6 +325,38 @@ export class Repository {
     return github.collections.getRepoBranches(this.authorize(AppPurpose.Data), parameters, cacheOptions);
   }
 
+  async getPulls(options?: IGetPullsOptions): Promise<any> {
+    // Requires: Updates app configured
+    if (!this.organization.supportsUpdatesApp()) {
+      throw new Error('getPulls: The Updates app is not configured for this organization.');
+    }
+    // CONSIDER: might really need to probe for the app and pick which has pull request access
+    const operations = this._operations;
+    const github = operations.github;
+    const cacheOptions: ICacheOptions = {};
+    const parameters: IListPullsParameters = Object.assign({},
+      options || {}, {
+      owner: this.organization.name,
+      repo: this.name,
+      per_page: operations.defaultPageSize,
+    });
+    if (options && options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+      delete parameters['backgroundRefresh'];
+    }
+    if (options && options.maxAgeSeconds !== undefined) {
+      cacheOptions.maxAgeSeconds = options.maxAgeSeconds;
+      delete parameters['maxAgeSeconds'];
+    }
+    if (cacheOptions.maxAgeSeconds === undefined) {
+      cacheOptions.maxAgeSeconds = operations.defaults.repoPullsStaleSeconds;
+    }
+    if (cacheOptions.backgroundRefresh === undefined) {
+      cacheOptions.backgroundRefresh = true;
+    }
+    return github.collections.getRepoPullRequests(this.authorize(AppPurpose.Updates), parameters, cacheOptions);
+  }
+
   async getContent(path: string, options?: IGetContentOptions): Promise<any> {
     options = options || {};
     const ref = options.branch || options.tag || options.ref || 'master';
@@ -358,6 +384,84 @@ export class Repository {
     return data.object.sha;
   }
 
+  async renameDefaultBranch(newBranchName?: string): Promise<ITemporaryCommandOutput[]> {
+    // TEMPORARY: default branch rename work
+    newBranchName = newBranchName || 'main';
+    // Requires: Updates app configured
+    if (!this.organization.supportsUpdatesApp()) {
+      throw new Error('renameDefaultBranch: The Updates app is not configured for this organization.');
+    }
+    const output: ITemporaryCommandOutput[] = [];
+    try {
+      await this.getDetails({ maxAgeSeconds: -1, backgroundRefresh: false });
+      if (this.default_branch === newBranchName) {
+        return [ { message: `The default branch is already ${newBranchName} for the repo ${this.full_name}. No further action required.` } ];
+      }
+      const currentBranchName = this.default_branch;
+      const sha = await this.getLastCommitToBranch(currentBranchName);
+      // TODO: what if the branch already exists? Should let this keep running to update more PRs until done.
+      await this.createNewBranch(sha, newBranchName);
+      output.push({ message: `Created a new branch '${newBranchName}' from '${currentBranchName}' which points to SHA ${sha}.` });
+      const branchProtectionRules = await this.listBranchProtectionRules();
+      // there can only be one protection per pattern
+      const branchProtection = branchProtectionRules.find(
+        (rule: IProtectedBranchRule) => rule.pattern === currentBranchName
+      );
+      if (branchProtectionRules.length > 0) {
+        const branchMessage = branchProtection ? `. The default branch is protected and the protection will be shifted to target '${newBranchName}'.` : ', but no action is required as the default branch is not protected.';
+        output.push({ message: `There are ${branchProtectionRules.length} protected branches${branchMessage}` });
+      }
+      if (branchProtection) {
+        const { id } = branchProtection;
+        await this.updateBranchProtectionRule(id, newBranchName);
+        output.push({ message: `Branch protection rule shifted from the old branch '${currentBranchName}' to '${newBranchName}'.` });
+      }
+      const pulls = await this.getPulls({
+        state: GitHubPullRequestState.Open,
+        base: currentBranchName,
+      });
+      if (pulls.length === 0) {
+        output.push( { message: `No open pull requests targeting '${currentBranchName}' to update.` });
+      } else {
+        output.push( { message: `There are ${pulls.length} open pull requests targeting '${currentBranchName}' that will be updated to '${newBranchName}'.` });
+      }
+      for (const pull of pulls) {
+        try {
+          await this.patchPullRequestBranch(pull.number, newBranchName);
+          output.push( { message: `Pull request #${pull.number} has been updated to target '${newBranchName}' (URL: https://github.com/${this.full_name}/pull/${pull.number}, title: '${pull.title}').` });
+        } catch (pullError) {
+          // To keep the operation going, failed pulls do not short-circuit the process
+          output.push( { message: `Pull request #${pull.number} could not be updated to target '${newBranchName}. Please inspect https://github.com/${this.full_name}/pull/${pull.number}.` });
+          output.push( { error: pullError } );
+        }
+      }
+      output.push({ message: `Setting the default branch of the repo ${this.full_name} to '${newBranchName}'.` });
+      await this.setDefaultBranch(newBranchName);
+      output.push({ message: `Deleting the branch '${currentBranchName}'.` });
+      await this.deleteBranch(currentBranchName);
+      output.push({ message: `The repo's default branch is now '${newBranchName}'. Thank you. You may inspect the repo at https://github.com/${this.full_name}/.` });
+    } catch (error) {
+      output.push({ message: `The branch rename to '${newBranchName}' was not completely successful. Please review the error and inspect the repo.` });
+      output.push({ error });
+    }
+    return output;
+  }
+
+  async patchPullRequestBranch(number: string, targetBranch: string): Promise<void> {
+    // TEMPORARY: default branch rename work
+    // Requires: Updates app configured
+    if (!this.organization.supportsUpdatesApp()) {
+      throw new Error('patchPullRequestBranch: The Updates app is not configured for this organization.');
+    }
+    const options = {
+      owner: this.organization.name,
+      repo: this.name,
+      pull_number: number,
+      base: targetBranch,
+    };
+    await this._operations.github.requestAsPost(this.authorize(AppPurpose.Updates), 'PATCH /repos/:owner/:repo/pulls/:pull_number', options);
+  }
+
   async createNewBranch(sha: string, newBranchName: string): Promise<void> {
     // Requires: Updates app configured
     if (!this.organization.supportsUpdatesApp()) {
@@ -370,6 +474,65 @@ export class Repository {
       sha,
     };
     await this._operations.github.requestAsPost(this.authorize(AppPurpose.Updates), 'POST /repos/:owner/:repo/git/refs', options);
+  }
+
+  async updateBranchProtectionRule(id: string, newPattern: string): Promise<void> {
+    // Requires: Updates app configured
+    if (!this.organization.supportsUpdatesApp()) {
+      throw new Error('updateBranchProtectionRule: The Updates app is not configured for this organization.');
+    }
+    const mutation = `mutation($branchProtectionRuleId:ID!,$pattern:String!) {
+      updateBranchProtectionRule (input:{branchProtectionRuleId:$branchProtectionRuleId,pattern:$pattern}) {
+        branchProtectionRule {
+          id,
+          pattern
+        }
+      }
+    }`;
+    try {
+      await this._operations.github.graphql(
+        this.authorize(AppPurpose.Updates),
+        mutation,
+        {
+          branchProtectionRuleId: id,
+          pattern: newPattern,
+        });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async listBranchProtectionRules(): Promise<IGitHubProtectedBranchConfiguration[]> {
+    // Requires: Updates app configured
+    if (!this.organization.supportsUpdatesApp()) {
+      throw new Error('listBranchProtectionRules: The Updates app is not configured for this organization.');
+    }
+    const query = `query($owner: String!, $repo: String!) {
+      repository(owner:$owner,name:$repo) {
+        branchProtectionRules(first:100) {
+          nodes {
+            id
+            pattern
+          }
+        }
+      }
+    }`;
+    try {
+      const {
+        repository: {
+          branchProtectionRules: { nodes: branchProtectionRules },
+        },
+      }  = await this._operations.github.graphql(
+        this.authorize(AppPurpose.Updates),
+        query,
+        {
+          owner: this.organization.name,
+          repo: this.name,
+        });
+        return branchProtectionRules as IGitHubProtectedBranchConfiguration[];
+    } catch (error) {
+      throw error;
+    }
   }
 
   async setDefaultBranch(defaultBranchName: string): Promise<void> {

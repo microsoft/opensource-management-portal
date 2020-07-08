@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { jsonError } from './jsonError';
 import { IApiRequest } from './apiReposAuth';
 
@@ -14,7 +12,7 @@ import { IApiRequest } from './apiReposAuth';
 // We treat the presence of "apiKeyRow" on the request as indicating a
 // successful authentication for our API systems.
 
-module.exports = function returnCombinedMiddleware(supportedProviders) {
+export default function returnCombinedMiddleware(supportedProviders) {
   if (!supportedProviders) {
     throw new Error('No supportedProviders provided');
   }
@@ -74,4 +72,4 @@ module.exports = function returnCombinedMiddleware(supportedProviders) {
     }
     return currentProvider(req, res, wrappedNext);
   };
-};
+}
