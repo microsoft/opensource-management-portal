@@ -6,7 +6,7 @@
 const querystring = require('querystring');
 
 import { redirectToReferrer, storeReferrer } from '../utils';
-import { getGitHubAppConfigurationOptions } from './passport/githubStrategy';
+import { getGithubAppConfigurationOptions } from './passport/githubStrategy';
 import { IReposError } from '../transitional';
 
 function newSessionAfterAuthentication(req, res, next) {
@@ -178,7 +178,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
 
   function blockIncreasedScopeForModernApps(req, res, next) {
     const config = req.app.settings.runtimeConfig;
-    const { modernAppInUse } = getGitHubAppConfigurationOptions(config);
+    const { modernAppInUse } = getGithubAppConfigurationOptions(config);
     if (modernAppInUse) {
       return next(new Error('This site is using the newer GitHub App model and so the increased-scope routes are no longer applicable to it'));
     }

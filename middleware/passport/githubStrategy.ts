@@ -1,7 +1,12 @@
-import { IProviders } from "../../transitional";
-import { Operations } from "../../business/operations";
+//
+// Copyright (c) Microsoft.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//
 
-import { Strategy as GitHubStrategy } from 'passport-github';
+import { IProviders } from '../../transitional';
+import { Operations } from '../../business/operations';
+
+import { Strategy as GithubStrategy } from 'passport-github';
 
 function githubResponseToSubset(app, modernAppInUse: boolean, accessToken: string, refreshToken: string, profile, done) {
   const config = app.settings.runtimeConfig;
@@ -56,11 +61,11 @@ function githubResponseToIncreasedScopeSubset(modernAppInUse: boolean, accessTok
   return done(null, subset);
 }
 
-export function getGitHubAppConfigurationOptions(config) {
+export function getGithubAppConfigurationOptions(config) {
   let legacyOAuthApp = config.github.oauth2 && config.github.oauth2.clientId && config.github.oauth2.clientSecret ? config.github.oauth2 : null;
   const customerFacingApp = config.github.app && config.github.app.ui && config.github.app.ui.clientId && config.github.app.ui.clientSecret ? config.github.app.ui : null;
-  const useCustomerFacingGitHubAppIfPresent = config.github.oauth2.useCustomerFacingGitHubAppIfPresent === true;
-  if (useCustomerFacingGitHubAppIfPresent && customerFacingApp) {
+  const useCustomerFacingGithubAppIfPresent = config.github.oauth2.useCustomerFacingGitHubAppIfPresent === true;
+  if (useCustomerFacingGithubAppIfPresent && customerFacingApp) {
     if (legacyOAuthApp && legacyOAuthApp['callbackUrl']) {
       customerFacingApp['callbackUrl'] = legacyOAuthApp['callbackUrl'];
     }
@@ -71,9 +76,9 @@ export function getGitHubAppConfigurationOptions(config) {
   return { legacyOAuthApp, customerFacingApp, modernAppInUse, githubAppConfiguration };
 }
 
-export default function createGitHubStrategy(app, config) {
+export default function createGithubStrategy(app, config) {
   let strategies = {};
-  const { modernAppInUse, githubAppConfiguration } = getGitHubAppConfigurationOptions(config);
+  const { modernAppInUse, githubAppConfiguration } = getGithubAppConfigurationOptions(config);
   // NOTE: due to bugs in the GitHub API v3 around user-to-server requests in
   // the new GitHub model, it is better to use an original GitHub OAuth app
   // for user interaction right now until those bugs are corrected. What this
@@ -98,7 +103,7 @@ export default function createGitHubStrategy(app, config) {
   if (githubAppConfiguration.callbackUrl) {
     githubOptions.callbackURL = githubAppConfiguration.callbackUrl
   }
-  let githubPassportStrategy = new GitHubStrategy(githubOptions, githubResponseToSubset.bind(null, app, modernAppInUse));
+  let githubPassportStrategy = new GithubStrategy(githubOptions, githubResponseToSubset.bind(null, app, modernAppInUse));
   // Validate the borrow some parameters from the GitHub passport library
 
   strategies['github'] = githubPassportStrategy;
@@ -107,7 +112,7 @@ export default function createGitHubStrategy(app, config) {
   // Expanded OAuth-scope GitHub access for org membership writes.
   // ----------------------------------------------------------------------------
   if (!modernAppInUse) { // new GitHub Apps no longer have a separate scope concept
-    let expandedGitHubScopeStrategy = new GitHubStrategy({
+    let expandedGithubScopeStrategy = new GithubStrategy({
       clientID: githubOptions.clientID,
       clientSecret: githubOptions.clientSecret,
       callbackURL: `${githubOptions.callbackURL}/increased-scope`,
@@ -115,7 +120,7 @@ export default function createGitHubStrategy(app, config) {
       userAgent: 'passport-azure-oss-portal-for-github' // CONSIDER: User agent should be configured.
     }, githubResponseToIncreasedScopeSubset.bind(null, modernAppInUse));
 
-    strategies['expanded-github-scope'] = expandedGitHubScopeStrategy;
+    strategies['expanded-github-scope'] = expandedGithubScopeStrategy;
   }
   return strategies;
 }

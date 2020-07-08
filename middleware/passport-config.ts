@@ -3,10 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import createAADStrategy from "./passport/aadStrategy";
-import createGitHubStrategy from "./passport/githubStrategy";
+import createAADStrategy from './passport/aadStrategy';
+import createGithubStrategy from './passport/githubStrategy';
 
 const passport = require('passport');
 const serializer = require('./passport/serializer');
@@ -20,9 +18,9 @@ export default function (app, config) {
   }
 
   // Always set up GitHub strategies
-  const gitHubStrategies = createGitHubStrategy(app, config);
-  for (const name in gitHubStrategies) {
-    passport.use(name, gitHubStrategies[name]);
+  const githubStrategies = createGithubStrategy(app, config);
+  for (const name in githubStrategies) {
+    passport.use(name, githubStrategies[name]);
     // Validate and borrow a few parameters from the GitHub passport library, for the default github strategy
     if (name === 'github') {
       // @ts-ignore
