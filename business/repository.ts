@@ -326,10 +326,7 @@ export class Repository {
   }
 
   async getPulls(options?: IGetPullsOptions): Promise<any> {
-    // Requires: Updates app configured
-    if (!this.organization.supportsUpdatesApp()) {
-      throw new Error('getPulls: The Updates app is not configured for this organization.');
-    }
+    await this.organization.requireUpdatesApp('getPulls');
     // CONSIDER: might really need to probe for the app and pick which has pull request access
     const operations = this._operations;
     const github = operations.github;
@@ -371,10 +368,7 @@ export class Repository {
   }
 
   async getLastCommitToBranch(branchName: string): Promise<string> {
-    // Requires: Updates app configured
-    if (!this.organization.supportsUpdatesApp()) {
-      throw new Error('getLastCommitToBranch: The Updates app is not configured for this organization.');
-    }
+    await this.organization.requireUpdatesApp('getLastCommitToBranch');
     const options = {
       owner: this.organization.name,
       repo: this.name,
@@ -385,17 +379,13 @@ export class Repository {
   }
 
   async renameDefaultBranch(newBranchName?: string): Promise<ITemporaryCommandOutput[]> {
-    // TEMPORARY: default branch rename work
     newBranchName = newBranchName || 'main';
-    // Requires: Updates app configured
-    if (!this.organization.supportsUpdatesApp()) {
-      throw new Error('renameDefaultBranch: The Updates app is not configured for this organization.');
-    }
+    await this.organization.requireUpdatesApp('renameDefaultBranch');
     const output: ITemporaryCommandOutput[] = [];
     try {
       await this.getDetails({ maxAgeSeconds: -1, backgroundRefresh: false });
       if (this.default_branch === newBranchName) {
-        return [ { message: `The default branch is already ${newBranchName} for the repo ${this.full_name}. No further action required.` } ];
+        return [ { message: `The default branch is already '${newBranchName}' for the repo ${this.full_name}. No further action required.` } ];
       }
       const currentBranchName = this.default_branch;
       const sha = await this.getLastCommitToBranch(currentBranchName);
@@ -448,11 +438,7 @@ export class Repository {
   }
 
   async patchPullRequestBranch(number: string, targetBranch: string): Promise<void> {
-    // TEMPORARY: default branch rename work
-    // Requires: Updates app configured
-    if (!this.organization.supportsUpdatesApp()) {
-      throw new Error('patchPullRequestBranch: The Updates app is not configured for this organization.');
-    }
+    await this.organization.requireUpdatesApp('patchPullRequestBranch');
     const options = {
       owner: this.organization.name,
       repo: this.name,
@@ -463,10 +449,7 @@ export class Repository {
   }
 
   async createNewBranch(sha: string, newBranchName: string): Promise<void> {
-    // Requires: Updates app configured
-    if (!this.organization.supportsUpdatesApp()) {
-      throw new Error('createNewBranch: The Updates app is not configured for this organization.');
-    }
+    await this.organization.requireUpdatesApp('createNewBranch');
     const options = {
       owner: this.organization.name,
       repo: this.name,
@@ -477,10 +460,7 @@ export class Repository {
   }
 
   async updateBranchProtectionRule(id: string, newPattern: string): Promise<void> {
-    // Requires: Updates app configured
-    if (!this.organization.supportsUpdatesApp()) {
-      throw new Error('updateBranchProtectionRule: The Updates app is not configured for this organization.');
-    }
+    await this.organization.requireUpdatesApp('updateBranchProtectionRule');
     const mutation = `mutation($branchProtectionRuleId:ID!,$pattern:String!) {
       updateBranchProtectionRule (input:{branchProtectionRuleId:$branchProtectionRuleId,pattern:$pattern}) {
         branchProtectionRule {
@@ -503,10 +483,7 @@ export class Repository {
   }
 
   async listBranchProtectionRules(): Promise<IGitHubProtectedBranchConfiguration[]> {
-    // Requires: Updates app configured
-    if (!this.organization.supportsUpdatesApp()) {
-      throw new Error('listBranchProtectionRules: The Updates app is not configured for this organization.');
-    }
+    await this.organization.requireUpdatesApp('listBranchProtectionRules');
     const query = `query($owner: String!, $repo: String!) {
       repository(owner:$owner,name:$repo) {
         branchProtectionRules(first:100) {
@@ -536,10 +513,7 @@ export class Repository {
   }
 
   async setDefaultBranch(defaultBranchName: string): Promise<void> {
-    // Requires: Updates app configured
-    if (!this.organization.supportsUpdatesApp()) {
-      throw new Error('setDefaultBranch: The Updates app is not configured for this organization.');
-    }
+    await this.organization.requireUpdatesApp('setDefaultBranch');
     const options = {
       owner: this.organization.name,
       repo: this.name,
@@ -550,10 +524,7 @@ export class Repository {
   }
 
   async deleteBranch(branchName: string): Promise<void> {
-    // Requires: Updates app configured
-    if (!this.organization.supportsUpdatesApp()) {
-      throw new Error('deleteBranch: The Updates app is not configured for this organization.');
-    }
+    await this.organization.requireUpdatesApp('deleteBranch');
     const options = {
       owner: this.organization.name,
       repo: this.name,

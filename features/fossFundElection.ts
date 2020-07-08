@@ -12,7 +12,6 @@ import { ElectionVoteEntity } from '../entities/voting/vote';
 import { EventRecord } from '../entities/events/eventRecord';
 import { asNumber } from '../utils';
 import { GetAddressFromUpnAsync } from '../lib/mailAddressProvider';
-import { EEXIST } from 'constants';
 
 export interface IFossBallot {
   election: ElectionEntity;
@@ -202,10 +201,12 @@ export class FossFundElection {
       throw new Error('The election is not currently active.');
     }
     const now = new Date();
-    if (election.votingEnd && election.votingEnd < now) {
+    const votingEnd = new Date(election.votingEnd);
+    if (votingEnd < now) {
       throw new Error(`Voting is not longer open for the ${election.title} election. Voting closed ${election.votingEnd}.`);
     }
-    if (election.votingStart && election.votingStart > now) {
+    const votingStart = new Date(election.votingStart);
+    if (votingStart > now) {
       throw new Error(`Voting has not yet opened for the ${election.title} election. Voting should open ${election.votingStart}.`);
     }
     const hasVoted = await this.hasVoted(corporateId, electionId);

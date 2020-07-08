@@ -1,0 +1,51 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block content
+
+  //- Variables
+  - var repo = repository
+  - var githubUrl = 'https://github.com/' + repo.full_name
+
+  .container
+    .row: .col-md-12
+        .nav
+        ul.pager.zero-pad-bottom
+            li.previous
+              a(href=repository.absoluteBaseUrl)
+                span(aria-hidden=true) &larr;
+                  = ' Back'
+
+        - var hugeHeading = repo.name.length < 33
+        h1(class={huge: hugeHeading})
+          a(href='https://github.com/' + repo.full_name, target="_blank")= repo.name
+          if repo.private === true
+            | &nbsp;
+            .label.label-warning(class={shrink66: !hugeHeading, shrink50: hugeHeading}) Private
+        h6= repo.full_name.replace('/' + repo.name, '') + ' organization'
+        if repo.description
+          p.lead=repo.description
+
+    .row
+      .col-md-8
+
+        p: a.btn.btn-sm.btn-default(href=githubUrl, target='_new')= 'View the updated repo at ' + githubUrl
+
+        h2 Default branch rename
+        p The rename process results are listed below. Please contact operations if you have any questions using the link in the footer of this page.
+
+        if output
+          ul
+            each entry in output
+              if entry.error
+                li(style='color:red ')= entry.error.message || entry.error
+              if entry.message
+                li= entry.message
+
+    if repo && repo.id
+      hr
+      p: small= 'Repository ' + repo.full_name + ' has the GitHub ID ' + repo.id

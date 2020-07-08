@@ -13,7 +13,6 @@ import { ReposAppRequest, IProviders } from '../../transitional';
 import { Organization } from '../../business/organization';
 import { Repository, GitHubCollaboratorAffiliationQuery } from '../../business/repository';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
-import { Operations } from '../../business/operations';
 import { TeamPermission } from '../../business/teamPermission';
 import { Collaborator } from '../../business/collaborator';
 import { OrganizationMember } from '../../business/organizationMember';
@@ -21,7 +20,7 @@ import { AddRepositoryPermissionsToRequest } from '../../middleware/github/repoP
 
 import routeAdministrativeLock from './repoAdministrativeLock';
 import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
-import { daysInMilliseconds, ParseReleaseReviewWorkItemId } from '../../utils';
+import { ParseReleaseReviewWorkItemId } from '../../utils';
 import { ICorporateLink } from '../../business/corporateLink';
 import { getReviewService } from '../../api/client/reviewService';
 import { IGraphEntry } from '../../lib/graphProvider';
@@ -94,7 +93,6 @@ function slicePermissionsForView(permissions) {
   });
   return perms;
 }
-
 
 async function calculateRepoPermissions(organization: Organization, repository: Repository): Promise<ICalculateRepoPermissionsResult> {
   const teamPermissions = await repository.getTeamPermissions();
@@ -173,6 +171,41 @@ router.post('/:repoName/delete', asyncHandler(async function(req: ILocalRequest,
   return res.redirect(organization.baseUrl);
 }));
 
+
+router.post('/:repoName/renameDefaultBranch', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function(req: ILocalRequest, res, next) {
+  const repoPermissions = req.repoPermissions;
+  if (!repoPermissions.allowAdministration) {
+    return next(new Error('You do not have administrative permission on this repository'));
+  }
+  const targetBranchName = req.body.targetBranchName || 'main';
+  const repository = req.repository as Repository;
+  await repository.getDetails();
+  try {
+    const output = await repository.renameDefaultBranch(targetBranchName);
+    // TODO: notify operations as an FYI
+    process.nextTick(() => {
+      repository.getDetails({
+        backgroundRefresh: false,
+        maxAgeSeconds: -60, // force a cache refresh now for any views
+      }).then(ok => {
+        // no-op
+      }).catch(error => {
+        console.error(`Background refresh error: ${error}`);
+      });
+    });
+    req.individualContext.webContext.render({
+      view: 'repos/repoBranchRenamed',
+      title: `Branch renamed to ${targetBranchName} for ${repository.name}`,
+      state: {
+        output,
+        repository,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}));
+
 router.post('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function(req: ILocalRequest, res, next) {
   const repoPermissions = req.repoPermissions;
   if (!repoPermissions.allowAdministration) {
@@ -201,6 +234,7 @@ router.get('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncH
   const organization = req.organization;
   const repository = req.repository;
   const repositoryMetadataEntity = req.repositoryMetadata;
+  const organizationSupportsUpdatesApp = await organization.supportsUpdatesApp();
   let repo = null;
   try {
     repo = decorateRepoForView(await repository.getDetails());
@@ -289,6 +323,7 @@ router.get('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncH
       repositoryMetadataEntity,
       releaseReviewObject: sanitizeReviewObject(releaseReviewObject),
       releaseReviewWorkItemId,
+      organizationSupportsUpdatesApp,
     },
   });
 }));

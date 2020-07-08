@@ -138,7 +138,7 @@ export class RepoWorkflowEngine {
       shouldRenameDefaultBranch = false;
       output.push({ message: `The branch will not be automatically renamed to '${this.renameDefaultBranchTo}' because the repository has been created by an API call.`});
     }
-    if (shouldRenameDefaultBranch && !this.organization.supportsUpdatesApp()) {
+    if (shouldRenameDefaultBranch && !(await this.organization.supportsUpdatesApp())) {
       shouldRenameDefaultBranch = false;
       output.push({ message: `The branch will not be automatically renamed to '${this.renameDefaultBranchTo}' because the ${this.organization.name} organization is not currently configured for modifying repository contents.`});
     }

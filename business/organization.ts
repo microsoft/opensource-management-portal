@@ -216,6 +216,13 @@ export class Organization {
     }
   }
 
+  async requireUpdatesApp(functionName: string) {
+    const supports = await this.supportsUpdatesApp();
+    if (!supports) {
+      throw new Error(`The ${this.name} organization is not configured to support the necessary Updates app to complete this operation: ${functionName}`);
+    }
+  }
+
   repository(name: string, optionalEntity?) {
     const entity = Object.assign({}, optionalEntity || {}, {
       name,
