@@ -16,7 +16,7 @@ import { Organization } from '../../business/organization';
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res) {
   const providers = req.app.settings.providers as IProviders;
   const individualContext = req.individualContext;
-  const existingRepoId = req.query.existingrepoid;
+  const existingRepoId = req.query.existingrepoid as string;
   const organization = req.organization as Organization;
   if (organization.createRepositoriesOnGitHub) {
     throw new Error('This organization requires that repositories are either directly created on GitHub, or by an organization owner.');

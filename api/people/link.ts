@@ -19,7 +19,7 @@ export default async function postLinkApi(req: IApiRequest, res, next) {
   const providers = req.app.settings.providers as IProviders;
   const { operations } = providers;
   const token = req.apiKeyToken;
-  const apiVersion = req.query['api-version'] || req.headers['api-version'];
+  const apiVersion = (req.query['api-version'] || req.headers['api-version']) as string;
   if (!apiVersion || !supportedApiVersions.has(apiVersion)) {
     return next(jsonError('Unsupported API version', 400));
   }
@@ -48,7 +48,7 @@ export default async function postLinkApi(req: IApiRequest, res, next) {
     return next(jsonError('github.id required', 400));
   }
   // validate that the corporate ID nor the GitHub ID are already linked
-  const link : ICorporateLink = {
+  const link: ICorporateLink = {
     thirdPartyAvatar: null,
     thirdPartyId: thirdPartyId,
     thirdPartyUsername: null,

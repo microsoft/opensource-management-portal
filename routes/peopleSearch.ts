@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express = require('express');
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
@@ -78,7 +76,7 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
   const { members, teamMembers } = await getPeople(operations, org, options, team2);
   const page = req.query.page_number ? asNumber(req.query.page_number) : 1;
   let phrase = req.query.q;
-  let type = req.query.type;
+  let type = req.query.type as string;
   const validTypes = new Set([
     'linked',
     'active',
@@ -136,7 +134,7 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
     team2AddType: req.team2AddType,
   });
 
-  await search.search(page, req.query.sort);
+  await search.search(page, req.query.sort as string);
   req.individualContext.webContext.render({
     view: 'people/',
     title: 'People',

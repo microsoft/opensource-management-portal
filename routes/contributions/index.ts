@@ -44,7 +44,7 @@ const hardcodedDisplayMap = {
 
 router.use('/voting', AuthorizeOnlyFullTimeEmployeesAndInterns, FossFundRoute);
 
-router.get('/popular', AuthorizeOnlyCorporateAdministrators, asyncHandler(async (req: ReposAppRequest, res, next)  => {
+router.get('/popular', AuthorizeOnlyCorporateAdministrators, asyncHandler(async (req: ReposAppRequest, res, next) => {
   const providers = req.app.settings.providers as IProviders;
   const { start, end } = getOffsetMonthRange();
   const data = await providers.eventRecordProvider.queryPopularContributions(start, end);
@@ -64,9 +64,9 @@ router.use(asyncHandler(async (req: IContributionsRequest, res, next) => {
     section: 'contributions',
   };
   const providers = req.app.settings.providers as IProviders;
-  let { id, username } = req.individualContext.getGitHubIdentity(); 
+  let { id, username } = req.individualContext.getGitHubIdentity();
   let link = req.individualContext.link;
-  const otherUser = req.query.login;
+  const otherUser = req.query.login as string;
   if (otherUser) {
     try {
       link = await providers.linkProvider.getByThirdPartyUsername(otherUser);
@@ -104,9 +104,9 @@ router.use(asyncHandler(async (req: IContributionsRequest, res, next) => {
   return next();
 }));
 
-router.get('/eligibility', AuthorizeOnlyCorporateAdministrators, asyncHandler(async (req: IContributionsRequest, res, next)  => {
+router.get('/eligibility', AuthorizeOnlyCorporateAdministrators, asyncHandler(async (req: IContributionsRequest, res, next) => {
   const providers = req.app.settings.providers as IProviders;
-  const [ start, end ] = req.dataRange;
+  const [start, end] = req.dataRange;
 
   const thirdPartyIds = new Set(await providers.eventRecordProvider.queryDistinctEligibleContributors(start, end));
   const links = (await providers.linkProvider.getAll()).filter(link => thirdPartyIds.has(link.thirdPartyId) && !link.isServiceAccount);
@@ -140,7 +140,7 @@ async function showContributions(req: IContributionsRequest, start: Date, end: D
   }
   const now = new Date();
   elections = elections.filter(election => new Date(election.votingEnd) > now);
-  const openContributions = req.contributions.filter(event => event.isOpenContribution ||event.additionalData.contribution);
+  const openContributions = req.contributions.filter(event => event.isOpenContribution || event.additionalData.contribution);
   const otherContributionsData = req.contributions.filter(event => !(event.isOpenContribution || event.additionalData.contribution));
   const eligibleElectionIds = [];
   for (const election of elections) {
@@ -196,7 +196,7 @@ router.get('/', asyncHandler(async (req: IContributionsRequest, res, next) => {
 async function refreshMonthContributions(providers: IProviders, thirdPartyId: string, offsetMonths?: number): Promise<void> {
   const account = providers.operations.getAccount(thirdPartyId);
   await account.getDetails();
-  await account.getEvents({ 
+  await account.getEvents({
     backgroundRefresh: false,
     maxAgeSeconds: 0,
   });
@@ -211,7 +211,7 @@ async function getContributionsByRange(providers: IProviders, thirdPartyId: stri
   if (contributions) {
     return contributions;
   }
-  const records  = await providers.eventRecordProvider.queryOpenContributionEventsByDateRangeAndThirdPartyId(
+  const records = await providers.eventRecordProvider.queryOpenContributionEventsByDateRangeAndThirdPartyId(
     thirdPartyId,
     start,
     end,

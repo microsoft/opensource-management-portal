@@ -27,7 +27,7 @@ router.get('/', asyncHandler(async function (req, res, next) {
   const providers = req.app.settings.providers;
   let filterProvider = providers[symbolFastFilter] as PublicReposFastFilter;
 
-  const pageSize = Math.min(req.query.ps ? parseInt(req.query.ps, 10) : DefaultPageSize, MaxPageSize);
+  const pageSize = Math.min(req.query.ps ? parseInt(req.query.ps as string, 10) : DefaultPageSize, MaxPageSize);
 
   if (!filterProvider || !filterProvider.isInitialized) {
     filterProvider = new PublicReposFastFilter(providers);
@@ -35,12 +35,12 @@ router.get('/', asyncHandler(async function (req, res, next) {
     providers[symbolFastFilter] = filterProvider;
   }
 
-  let page = req.query.page ? parseInt(req.query.page, 10) : 0;
+  let page = req.query.page ? parseInt(req.query.page as string, 10) : 0;
   if (Number.isNaN(page) || page < 0) {
     return next(CreateError.InvalidParameters('Invalid page'));
   }
 
-  let search = req.query.q ? req.query.q.toLowerCase() : null;
+  let search = req.query.q ? (req.query.q as string).toLowerCase() : null;
 
   let repos = filterProvider.repositories;
 

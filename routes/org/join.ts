@@ -37,6 +37,14 @@ function clearAuditListAndRedirect(res: express.Response, organization: Organiza
   return res.redirect(url);
 }
 
+function queryParamAsBoolean(input: string): boolean | undefined {
+  try {
+    return JSON.parse(input);
+  } catch (e) {
+    return undefined;
+  }
+}
+
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res: express.Response, next: express.NextFunction) {
   const operations = req.app.settings.operations as Operations;
   const providers = req.app.settings.providers as IProviders;
@@ -47,7 +55,7 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res: express.
   const accountDetails = await accountFromId.getDetails();
   const link = req.individualContext.link;
   const userIncreasedScopeToken = req.individualContext.webContext.tokens.gitHubWriteOrganizationToken;
-  let onboarding = req.query.onboarding;
+  let onboarding = queryParamAsBoolean(req.query.onboarding as string);
   let showTwoFactorWarning = false;
   let showApplicationPermissionWarning = false;
   let writeOrgFailureMessage = null;
@@ -110,14 +118,14 @@ async function addMemberToOrganizationCache(queryCache: QueryCache, organization
   if (queryCache && queryCache.supportsOrganizationMembership) {
     try {
       await queryCache.addOrUpdateOrganizationMember(organization.id.toString(), OrganizationMembershipRole.Member, userId);
-    } catch (ignored) {}
+    } catch (ignored) { }
   }
 }
 
 router.get('/express', asyncHandler(async function (req: ReposAppRequest, res: express.Response, next: express.NextFunction) {
   const providers = req.app.settings.providers as IProviders;
   const organization = req.organization;
-  const onboarding = req.query.onboarding as boolean;
+  const onboarding = queryParamAsBoolean(req.query.onboarding as string);
   const username = req.individualContext.getGitHubIdentity().username;
   const id = req.individualContext.getGitHubIdentity().id;
   const result = await organization.getOperationalMembership(username);
@@ -139,7 +147,7 @@ router.get('/express', asyncHandler(async function (req: ReposAppRequest, res: e
 async function joinOrg(req: ReposAppRequest, res: express.Response, next: express.NextFunction) {
   const individualContext = req.individualContext as IndividualContext;
   const organization = req.organization as Organization;
-  const onboarding = req.query.onboarding as boolean;
+  const onboarding = queryParamAsBoolean(req.query.onboarding as string);
   await joinOrganization(individualContext, organization, req.insights, onboarding);
   return res.redirect(organization.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name));
 }

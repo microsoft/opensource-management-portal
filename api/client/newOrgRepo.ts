@@ -165,7 +165,7 @@ router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(as
   if (!body) {
     return next(jsonError('No body', 400));
   }
-  req.apiVersion = req.query['api-version'] || req.headers['api-version'] || '2017-07-27';
+  req.apiVersion = (req.query['api-version'] || req.headers['api-version'] || '2017-07-27') as string;
   if (req.apiContext && req.apiContext.getGitHubIdentity()) {
     body['ms.onBehalfOf'] = req.apiContext.getGitHubIdentity().username;
   }
