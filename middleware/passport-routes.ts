@@ -11,12 +11,22 @@ import { IReposError } from '../transitional';
 
 function newSessionAfterAuthentication(req, res, next) {
   // Prevent session hijacking by generating a new session once authenticated.
-  const passportInstance = req.session.passport;
+  const preserve = Object.assign({}, req.session);
+  ['cookie', 'id', 'OIDC', 'req', 'seen'].map(key => delete preserve[key]);
+  const keys = Object.getOwnPropertyNames(preserve);
+  for (const key of keys) {
+    if (typeof (preserve[key]) === 'function') {
+      delete preserve[key];
+    }
+  }
   return req.session.regenerate(function (err) {
     if (err) {
       return next(err);
     }
-    req.session.passport = passportInstance;
+    for (const key in preserve) {
+      const value = preserve[key];
+      req.session[key] = value;
+    }
     return req.session.save(next);
   });
 }
@@ -172,9 +182,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
 
   app.get('/signout/github', processSignout.bind(null, 'github', 'github,githubIncreasedScope'));
 
-  // ----------------------------------------------------------------------------
   // Expanded GitHub auth scope routes
-  // ----------------------------------------------------------------------------
 
   function blockIncreasedScopeForModernApps(req, res, next) {
     const config = req.app.settings.runtimeConfig;
@@ -198,9 +206,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     }),
     authenticationCallback.bind(null, 'all', 'githubIncreasedScope'));
 
-  // ----------------------------------------------------------------------------
   // passport integration with Azure Active Directory
-  // ----------------------------------------------------------------------------
   const aadMiddleware = initialConfig.authentication.scheme === 'github' ? passport.authorize('azure-active-directory') : passport.authenticate('azure-active-directory');
 
   app.get('/auth/azure', aadMiddleware);
@@ -248,5 +254,4 @@ module.exports = function configurePassport(app, passport, initialConfig) {
   });
 
   app.get('/signout/azure', processSignout.bind(null, 'aad', 'azure'));
-
 };

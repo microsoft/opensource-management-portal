@@ -37,11 +37,11 @@ function clearAuditListAndRedirect(res: express.Response, organization: Organiza
   return res.redirect(url);
 }
 
-function queryParamAsBoolean(input: string): boolean | undefined {
+function queryParamAsBoolean(input: string): boolean {
   try {
-    return JSON.parse(input);
+    return !!JSON.parse(input);
   } catch (e) {
-    return undefined;
+    return false;
   }
 }
 

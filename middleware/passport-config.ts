@@ -48,6 +48,7 @@ export default function (app, config) {
     }
   } else if (config.authentication.scheme == 'oauth2') {
     // Set up oauth2 strategy here
+    throw new Error('oauth2 is not currently implemented');
   }
 
   app.use(passport.initialize());
