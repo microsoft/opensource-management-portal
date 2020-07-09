@@ -14,7 +14,6 @@ function githubResponseToSubset(app, modernAppInUse: boolean, accessToken: strin
   if (config && config.impersonation && config.impersonation.githubId) {
     const operations = providers.operations as Operations;
     const impersonationId = config.impersonation.githubId;
-
     const account = operations.getAccount(impersonationId);
     return account.getDetails().then(details => {
       console.warn(`GITHUB IMPERSONATION: id=${impersonationId} login=${details.login} name=${details.name}`);
@@ -79,20 +78,12 @@ export function getGithubAppConfigurationOptions(config) {
 export default function createGithubStrategy(app, config) {
   let strategies = {};
   const { modernAppInUse, githubAppConfiguration } = getGithubAppConfigurationOptions(config);
-  // NOTE: due to bugs in the GitHub API v3 around user-to-server requests in
-  // the new GitHub model, it is better to use an original GitHub OAuth app
-  // for user interaction right now until those bugs are corrected. What this
-  // does mean is that any GitHub org that should be managed by this portal
-  // needs the OAuth app to be authorized as a third-party app for the org or
-  // to have the auto-accept invite experience work. (9/24/2019)
   if (modernAppInUse) {
     console.log(`GitHub App for customer-facing OAuth in use, client ID=${githubAppConfiguration.clientId}`);
   } else {
     console.log(`Legacy GitHub OAuth app being used for customers, client ID=${githubAppConfiguration.clientId}`);
   }
-  // ----------------------------------------------------------------------------
   // GitHub Passport session setup.
-  // ----------------------------------------------------------------------------
   let githubOptions = {
     clientID: githubAppConfiguration.clientId,
     clientSecret: githubAppConfiguration.clientSecret,
@@ -105,12 +96,8 @@ export default function createGithubStrategy(app, config) {
   }
   let githubPassportStrategy = new GithubStrategy(githubOptions, githubResponseToSubset.bind(null, app, modernAppInUse));
   // Validate the borrow some parameters from the GitHub passport library
-
   strategies['github'] = githubPassportStrategy;
-
-  // ----------------------------------------------------------------------------
   // Expanded OAuth-scope GitHub access for org membership writes.
-  // ----------------------------------------------------------------------------
   if (!modernAppInUse) { // new GitHub Apps no longer have a separate scope concept
     let expandedGithubScopeStrategy = new GithubStrategy({
       clientID: githubOptions.clientID,
@@ -119,7 +106,6 @@ export default function createGithubStrategy(app, config) {
       scope: ['write:org'],
       userAgent: 'passport-azure-oss-portal-for-github' // CONSIDER: User agent should be configured.
     }, githubResponseToIncreasedScopeSubset.bind(null, modernAppInUse));
-
     strategies['expanded-github-scope'] = expandedGithubScopeStrategy;
   }
   return strategies;

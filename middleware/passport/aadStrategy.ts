@@ -8,19 +8,6 @@ import { IProviders } from '../../transitional';
 import { OIDCStrategy } from 'passport-azure-ad';
 
 function activeDirectorySubset(app, iss, sub, profile, done) {
-  // CONSIDER: TODO: Hybrid tenant checks.
-  // Internal-only code:
-  // ----------------------------------------------------------------
-  // We've identified users with e-mail addresses in AAD similar to
-  // myoutlookaddress#live.com. These are where people have had work
-  // shared with them through a service like Office 365; these users
-  // are not technically employees with active credentials, and so
-  // they should *not* have access. We reject here before the
-  // session tokens can be saved.
-  // if (username && username.indexOf && username.indexOf('#') >= 0) {
-  //   return next(new Error('Your hybrid tenant account, ' + username + ', is not permitted for this resource. Were you invited as an outside collaborator by accident? Please contact us if you have any questions.'));
-  // }
-
   const config = app.settings.runtimeConfig;
   const providers = app.settings.providers as IProviders;
   if (config && config.impersonation && config.impersonation.corporateId) {

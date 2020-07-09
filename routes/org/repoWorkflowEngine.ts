@@ -116,36 +116,6 @@ export class RepoWorkflowEngine {
     const output: IRepositoryWorkflowOutput[] = [];
     const organization = this.organization;
     const repoName = request.repositoryName;
-    // TEMPORARY: default branch rename work
-    let shouldRenameDefaultBranch = !!this.renameDefaultBranchTo;
-    const currentDefaultBranchName = this.createResponse['default_branch'];
-    if (!currentDefaultBranchName) {
-      throw new Error('No default branch name known for the current repo by response type');
-    }
-    if (shouldRenameDefaultBranch && currentDefaultBranchName === this.renameDefaultBranchTo) {
-      shouldRenameDefaultBranch = false;
-      output.push({ message: `The default branch name is '${this.renameDefaultBranchTo}'.`});
-    }
-    if (shouldRenameDefaultBranch && this.isFork) {
-      shouldRenameDefaultBranch = false;
-      output.push({ message: `As a fork, the default branch will not be automatically renamed to '${this.renameDefaultBranchTo}'.`});
-    }
-    if (shouldRenameDefaultBranch && this.isTransfer) {
-      shouldRenameDefaultBranch = false;
-      output.push({ message: `As a transfer, the default branch will not be automatically renamed to '${this.renameDefaultBranchTo}'.`});
-    }
-    if (shouldRenameDefaultBranch && this.renameDefaultBranchExcludeIfApiCall && this.createEntrypoint === CreateRepositoryEntrypoint.Api) {
-      shouldRenameDefaultBranch = false;
-      output.push({ message: `The branch will not be automatically renamed to '${this.renameDefaultBranchTo}' because the repository has been created by an API call.`});
-    }
-    if (shouldRenameDefaultBranch && !(await this.organization.supportsUpdatesApp())) {
-      shouldRenameDefaultBranch = false;
-      output.push({ message: `The branch will not be automatically renamed to '${this.renameDefaultBranchTo}' because the ${this.organization.name} organization is not currently configured for modifying repository contents.`});
-    }
-    if (shouldRenameDefaultBranch) {
-      output.push(await renameDefaultBranchTask(organization, repoName, currentDefaultBranchName, this.renameDefaultBranchTo));
-    }
-    // END TEMPORARY: default branch rename work
     for (let i = 0; i < request.initialTeamPermissions.length; i++) {
       let { teamId, permission, teamName } = request.initialTeamPermissions[i];
       if (teamId && !teamName) {
@@ -173,6 +143,41 @@ export class RepoWorkflowEngine {
     }
     // GitHub adds the creator of a repo as an admin directly now, but we don't need that...
     output.push(await removeOrganizationCollaboratorTask(organization, this.createResponse));
+    // TEMPORARY: default branch rename work
+    let shouldRenameDefaultBranch = !!this.renameDefaultBranchTo;
+    let repoData = this.createResponse;
+    if (!repoData || !repoData['default_branch']) {
+      repoData = await organization.repository(repoName).getDetails();
+    }
+    const currentDefaultBranchName = repoData['default_branch'];
+    if (!currentDefaultBranchName) {
+      output.push({ error: 'No default branch name known for the current repo by response type' });
+      shouldRenameDefaultBranch = false;
+    }
+    if (shouldRenameDefaultBranch && currentDefaultBranchName === this.renameDefaultBranchTo) {
+      shouldRenameDefaultBranch = false;
+      output.push({ message: `The default branch name is '${this.renameDefaultBranchTo}'.`});
+    }
+    if (shouldRenameDefaultBranch && this.isFork) {
+      shouldRenameDefaultBranch = false;
+      output.push({ message: `As a fork, the default branch will not be automatically renamed to '${this.renameDefaultBranchTo}'.`});
+    }
+    if (shouldRenameDefaultBranch && this.isTransfer) {
+      shouldRenameDefaultBranch = false;
+      output.push({ message: `As a transfer, the default branch will not be automatically renamed to '${this.renameDefaultBranchTo}'.`});
+    }
+    if (shouldRenameDefaultBranch && this.renameDefaultBranchExcludeIfApiCall && this.createEntrypoint === CreateRepositoryEntrypoint.Api) {
+      shouldRenameDefaultBranch = false;
+      output.push({ message: `The branch will not be automatically renamed to '${this.renameDefaultBranchTo}' because the repository has been created by an API call.`});
+    }
+    if (shouldRenameDefaultBranch && !(await this.organization.supportsUpdatesApp())) {
+      shouldRenameDefaultBranch = false;
+      output.push({ message: `The branch will not be automatically renamed to '${this.renameDefaultBranchTo}' because the ${this.organization.name} organization is not currently configured for modifying repository contents.`});
+    }
+    if (shouldRenameDefaultBranch) {
+      output.push(await renameDefaultBranchTask(organization, repoName, currentDefaultBranchName, this.renameDefaultBranchTo));
+    }
+    // END TEMPORARY: default branch rename work
     // Add any administrator logins as invited, if present
     if (request.initialAdministrators && request.initialAdministrators.length > 0) {
       output.push(await addAdministratorCollaboratorsTask(organization, repoName, request.initialAdministrators));
