@@ -64,13 +64,13 @@ async function getReposAndOptionalTeamPermissions(organizationId: number, operat
   return { reposData, userRepos };
 }
 
-module.exports = asyncHandler(async function(req: IReposAppWithTeam, res: express.Response, next: express.NextFunction) {
+module.exports = asyncHandler(async function (req: IReposAppWithTeam, res: express.Response, next: express.NextFunction) {
   const providers = req.app.settings.providers as IProviders;
   const operations = providers.operations;
   const queryCache = providers.queryCache;
   const individualContext = req.individualContext;
   const isCrossOrg = req.reposPagerMode === 'orgs';
-  let teamsType = req.query.tt;
+  let teamsType = req.query.tt as string;
   const organization = req.organization as Organization;
   const organizationId = isCrossOrg ? null : organization.id;
   // Filter by team repositories, only in sub-team views
@@ -81,15 +81,15 @@ module.exports = asyncHandler(async function(req: IReposAppWithTeam, res: expres
 
   const page = req.query.page_number ? asNumber(req.query.page_number) : 1;
 
-  let phrase = req.query.q;
+  let phrase = req.query.q as string;
 
   // TODO: Validate the type
-  let type = req.query.type;
+  let type = req.query.type as string;
   if (type !== 'public' && type !== 'private' && type !== 'source' && type !== 'fork' /*&& type !== 'mirrors' - we do not do mirror stuff */) {
     type = null;
   }
 
-  let metadataType = req.query.mt;
+  let metadataType = req.query.mt as string;
   if (
     metadataType !== 'with-metadata' &&
     metadataType !== 'without-metadata' &&
@@ -116,7 +116,7 @@ module.exports = asyncHandler(async function(req: IReposAppWithTeam, res: expres
     teamsType = 'my';
   }
   // TODO: Validate the language value is in the Linguist list
-  let language = req.query.language;
+  let language = req.query.language as string;
 
   const filters = [];
   if (type) {
@@ -180,7 +180,7 @@ module.exports = asyncHandler(async function(req: IReposAppWithTeam, res: expres
     repositoryMetadataProvider: operations.providers.repositoryMetadataProvider,
   });
 
-  await search.search(page, req.query.sort);
+  await search.search(page, req.query.sort as string);
 
   // await Promise.all(search.repos.map(repo => repo.getDetails()));
 
