@@ -37,7 +37,7 @@ router.use('/webhook', apiWebhook);
 router.use('/publicRepos', apiPublicRepos);
 
 router.use((req: IApiRequest, res, next) => {
-  const apiVersion = req.query['api-version'] || req.headers['api-version'];
+  const apiVersion = (req.query['api-version'] || req.headers['api-version']) as string;
   if (!apiVersion) {
     return next(jsonError('This endpoint requires that an API Version be provided.', 422));
   }
