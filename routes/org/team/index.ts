@@ -122,7 +122,7 @@ router.get('/join', asyncHandler(async function (req: ILocalRequest, res, next) 
       state: {
         team: team2,
         allowSelfJoin: true,
-        },
+      },
     });
   }
   const maintainers = (await team2.getOfficialMaintainers()).filter(maintainer => {
@@ -433,8 +433,8 @@ enum BasicTeamViewPage {
 async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
   const providers = req.app.settings.providers as IProviders;
 
-  const showManagementFeatures = req.query['inline-management'] == /* loose */ 1;
-  
+  const showManagementFeatures = parseInt(req.query['inline-management'] as string) == 1;
+
   const idAsString = req.individualContext.getGitHubIdentity().id;
   const id = idAsString ? parseInt(idAsString, 10) : null;
   const teamPermissions = req.teamPermissions as IRequestTeamPermissions;
@@ -541,7 +541,7 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
   let isSelfServiceMemberToMaintainerEligible = false;
   if (display === BasicTeamViewPage.Default && req.membershipStatus === GitHubTeamRole.Member && selfServiceTeamMemberToMaintainerUpgrades) {
     const isTeamEligible = await selfServiceTeamMemberToMaintainerUpgrades.isTeamEligible(true /* cache is OK */);
-    if (typeof(isTeamEligible) !=='string') {
+    if (typeof (isTeamEligible) !== 'string') {
       isSelfServiceMemberToMaintainerEligible = true;
     }
   }
