@@ -23,17 +23,18 @@ export default function (app, config) {
     passport.use(name, githubStrategies[name]);
     // Validate and borrow a few parameters from the GitHub passport library, for the default github strategy
     if (name === 'github') {
+      const strategy = githubStrategies[name];
       // @ts-ignore
-      if (githubPassportStrategy._oauth2 && githubPassportStrategy._oauth2._authorizeUrl) {
+      if (strategy._oauth2 && strategy._oauth2._authorizeUrl) {
         // @ts-ignore
-        app.set('runtime/passport/github/authorizeUrl', githubPassportStrategy._oauth2._authorizeUrl);
+        app.set('runtime/passport/github/authorizeUrl', strategy._oauth2._authorizeUrl);
       } else {
         throw new Error('The GitHub Passport strategy library may have been updated, it no longer contains the expected Authorize URL property within the OAuth2 object.');
       }
       // @ts-ignore
-      if (githubPassportStrategy._scope && githubPassportStrategy._scopeSeparator) {
+      if (strategy._scope && strategy._scopeSeparator) {
         // @ts-ignore
-        app.set('runtime/passport/github/scope', githubPassportStrategy._scope.join(githubPassportStrategy._scopeSeparator));
+        app.set('runtime/passport/github/scope', strategy._scope.join(strategy._scopeSeparator));
       } else {
         throw new Error('The GitHub Passport strategy library may have been updated, it no longer contains the expected Authorize URL property within the OAuth2 object.');
       }
