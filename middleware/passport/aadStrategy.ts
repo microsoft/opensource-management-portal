@@ -6,34 +6,53 @@
 import { IProviders } from '../../transitional';
 
 import { OIDCStrategy } from 'passport-azure-ad';
+import { GraphUserType } from '../../lib/graphProvider';
 
-function activeDirectorySubset(app, iss, sub, profile, done) {
-  const config = app.settings.runtimeConfig;
-  const providers = app.settings.providers as IProviders;
+interface IPassportUserWithAAD {
+  azure?: IAADUser;
+}
+
+interface IAADUser {
+  displayName: string;
+  oid: string;
+  username: string;
+}
+
+async function login(app, config, iss, sub, profile): Promise<IPassportUserWithAAD> {
+  const { graphProvider } = app.settings.providers as IProviders;
   if (config && config.impersonation && config.impersonation.corporateId) {
     const impersonationCorporateId = config.impersonation.corporateId;
-    return providers.graphProvider.getUserById(impersonationCorporateId, (err, impersonationResult) => {
-      if (err) {
-        return done(err);
-      }
-      console.warn(`IMPERSONATION: id=${impersonationResult.id} upn=${impersonationResult.userPrincipalName} name=${impersonationResult.displayName}`);
-      return done(null, {
-        azure: {
-          displayName: impersonationResult.displayName,
-          oid: impersonationResult.id,
-          username: impersonationResult.userPrincipalName,
-        },
-      });
-    });
+    const impersonationResult = await graphProvider.getUserByIdAsync(impersonationCorporateId);
+    console.warn(`IMPERSONATION: id=${impersonationResult.id} upn=${impersonationResult.userPrincipalName} name=${impersonationResult.displayName}`);
+    return {
+      azure: {
+        displayName: impersonationResult.displayName,
+        oid: impersonationResult.id,
+        username: impersonationResult.userPrincipalName,
+      },
+    };
   }
-  const subset = {
+  if (config.activeDirectory.blockGuestSignIns === true) {
+    const lookupResult = await graphProvider.getUserByIdAsync(profile.oid);
+    if (lookupResult && lookupResult.userType === GraphUserType.Guest) {
+      throw new Error(`This application does not permit guests. You are currently signed in to Active Directory as: ${lookupResult.userPrincipalName}`);
+    }
+  }
+  return {
     azure: {
       displayName: profile.displayName,
       oid: profile.oid,
       username: profile.upn,
     },
   };
-  return done(null, subset);
+}
+
+function activeDirectorySubset(app, config, iss, sub, profile, done) {
+  login(app, config, iss, sub, profile).then(profile => {
+    return done(null, profile);
+  }).catch(error => {
+    return done(error);
+  });
 }
 
 export default function createAADStrategy(app, config) {
@@ -49,7 +68,7 @@ export default function createAADStrategy(app, config) {
     responseMode: 'form_post',
     // oidcIssuer: config.activeDirectory.issuer,
     // validateIssuer: true,
-  }, activeDirectorySubset.bind(null, app));
+  }, activeDirectorySubset.bind(null, app, config));
 
   // Patching the AAD strategy to intercept a specific state failure message and instead
   // of providing a generic failure message, redirecting (HTTP GET) to the callback page

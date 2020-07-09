@@ -9,6 +9,7 @@ import { MicrosoftGraphProvider } from "./microsoftGraphProvider";
 
 export enum GraphUserType {
   Unknown = '',
+  Guest = 'Guest',
 }
 
 export interface IGraphEntry {
