@@ -14,8 +14,9 @@ import { OrganizationMembershipState } from '../../business/organization';
 import { IAggregateUserSummary } from '../../user/aggregate';
 import { TeamJoinApprovalEntity } from '../../entities/teamJoinApproval/teamJoinApproval';
 
+import reposRoute from './repos';
+
 const teamsRoute = require('./teams');
-const reposRoute = require('./repos');
 const membershipRoute = require('./membership');
 const joinRoute = require('./join');
 const leaveRoute = require('./leave');
@@ -144,4 +145,4 @@ router.use('/:repoName', asyncHandler(async (req: ReposAppRequest, res, next) =>
   }
 }));
 
-module.exports = router;
+export default router;

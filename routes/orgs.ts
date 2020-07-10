@@ -3,13 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express = require('express');
+const router = express.Router();
+
 import { IReposRequestWithOrganization } from '../transitional';
 import { wrapError } from '../utils';
-const router = express.Router();
-const orgRoute = require('./org/');
+
+import orgRoute from './org/';
 
 router.use('/:orgName', function (req: IReposRequestWithOrganization, res, next) {
   // This middleware contains both the original GitHub operations types
@@ -31,4 +31,4 @@ router.use('/:orgName', function (req: IReposRequestWithOrganization, res, next)
 
 router.use('/:orgName', orgRoute);
 
-module.exports = router;
+export default router;

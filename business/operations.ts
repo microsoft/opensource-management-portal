@@ -159,7 +159,7 @@ interface IPromisedLinks {
   data: ICorporateLink[],
 }
 
-export interface ICrossOrganizationMembersResult extends Map<number, ICrossOrganizationMembershipByOrganization> {}
+export interface ICrossOrganizationMembersResult extends Map<number, ICrossOrganizationMembershipByOrganization> { }
 
 export interface ICachedEmployeeInformation {
   id: string;
@@ -231,7 +231,7 @@ export class Operations {
     return this._graphManager;
   }
 
-  get github(): RestLibrary  {
+  get github(): RestLibrary {
     return this._github;
   }
 
@@ -282,8 +282,8 @@ export class Operations {
     const hasModernGitHubApps = options.config.github && options.config.github.app;
     this._tokenManager = new GitHubTokenManager({
       customerFacingApp: hasModernGitHubApps ? options.config.github.app.ui : null,
-      operationsApp: hasModernGitHubApps? options.config.github.app.operations : null,
-      dataApp: hasModernGitHubApps? options.config.github.app.data : null,
+      operationsApp: hasModernGitHubApps ? options.config.github.app.operations : null,
+      dataApp: hasModernGitHubApps ? options.config.github.app.data : null,
       backgroundJobs: hasModernGitHubApps ? options.config.github.app.jobs : null,
       updatesApp: hasModernGitHubApps ? options.config.github.app.updates : null,
       app: this.providers.app,
@@ -655,7 +655,7 @@ export class Operations {
     const insightsLinkedMetricName = `${insightsPrefix}s`;
     const insightsAllUpMetricsName = `${insightsLinkType}Links`;
 
-    insights.trackEvent({ name: `${insightsPrefix}Start`, properties: {...link, correlationId} as any as { [key: string]: string } });
+    insights.trackEvent({ name: `${insightsPrefix}Start`, properties: { ...link, correlationId } as any as { [key: string]: string } });
 
     if (!options.skipGitHubValidation) {
       const githubAccount = this.getAccount(link.thirdPartyId);
@@ -694,19 +694,19 @@ export class Operations {
     let newLinkId: string = null;
     try {
       newLinkId = await linkProvider.createLink(link);
-      const eventData = {...link, linkId: newLinkId, correlationId };
+      const eventData = { ...link, linkId: newLinkId, correlationId };
       insights.trackEvent({ name: `${insightsPrefix}Created`, properties: eventData as any as { [key: string]: string } });
       insights.trackMetric({ name: insightsLinkedMetricName, value: 1 });
       insights.trackMetric({ name: insightsAllUpMetricsName, value: 1 });
       setImmediateAsync(this.fireLinkEvent.bind(this, eventData));
     } catch (createLinkError) {
       if (ErrorHelper.IsConflict(createLinkError)) {
-        insights.trackEvent({ name: `${insightsPrefix}AlreadyLinked`, properties: {...link, correlationId} as any as { [key: string]: string }})
+        insights.trackEvent({ name: `${insightsPrefix}AlreadyLinked`, properties: { ...link, correlationId } as any as { [key: string]: string } })
         throw ErrorHelper.EnsureHasStatus(createLinkError, 409);
       }
       insights.trackException({
         exception: createLinkError,
-        properties: {...link, event: `${insightsPrefix}InsertError`, correlationId} as any as { [key: string]: string },
+        properties: { ...link, event: `${insightsPrefix}InsertError`, correlationId } as any as { [key: string]: string },
       });
       throw createLinkError;
     }
@@ -846,7 +846,7 @@ export class Operations {
     // GitHub memberships
     try {
       const removal = await account.removeManagedOrganizationMemberships();
-      history.push(... removal.history);
+      history.push(...removal.history);
       if (removal.error) {
         throw removal.error; // unclear if this is actually ideal
       }
@@ -891,7 +891,7 @@ export class Operations {
     // Collaborator permissions to repositories
     try {
       const removed = await account.removeCollaboratorPermissions();
-      history.push(... removed.history);
+      history.push(...removed.history);
       if (removed.error) {
         throw removed.error;
       }
@@ -951,6 +951,10 @@ export class Operations {
 
   getOperationsMailAddress(): string {
     return this.config.brand.operationsMail;
+  }
+
+  getInfrastructureNotificationsMail(): string {
+    return this.config.notifications.infrastructureNotificationsMail || this.getOperationsMailAddress();
   }
 
   getLinksNotificationMailAddress(): string {
@@ -1095,7 +1099,7 @@ export class Operations {
   }
 
   getOrganizationById(organizationId: number): Organization {
-    if (typeof(organizationId) === 'string') {
+    if (typeof (organizationId) === 'string') {
       organizationId = parseInt(organizationId, 10);
       console.warn(`getOrganizationById: organizationId must be a number`);
     }
@@ -1119,7 +1123,7 @@ export class Operations {
     for (let organization of orgs) {
       try {
         const organizationRepos = await organization.getRepositories(cacheOptions);
-        repos.push(... organizationRepos);
+        repos.push(...organizationRepos);
       } catch (orgReposError) {
         console.dir(orgReposError);
       }
@@ -1181,7 +1185,7 @@ export class Operations {
     return corporateLinks;
   }
 
-  getLinkByThirdPartyId(thirdPartyId: string) : Promise<ICorporateLink> {
+  getLinkByThirdPartyId(thirdPartyId: string): Promise<ICorporateLink> {
     const linkProvider = this._linkProvider;
     return linkProvider.getByThirdPartyId(thirdPartyId);
   }
@@ -1215,7 +1219,7 @@ export class Operations {
     })));
     return addresses;
   }
-  
+
   async getLinkWithOverhead(id: string, options?): Promise<ICorporateLink> {
     // TODO: remove function?
     console.log('* * * * * * * * * * * * /sd/sd/sd/sd/sd/sd getLinkWithOverhead * * * * * * * * * * * * * * * * * * * * ');

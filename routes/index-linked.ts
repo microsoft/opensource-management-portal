@@ -16,7 +16,8 @@ import unlinkRoute from './unlink';
 import { Organization } from '../business/organization';
 import { Repository } from '../business/repository';
 
-const orgsRoute = require('./orgs');
+import orgsRoute from './orgs';
+
 const orgAdmin = require('./orgAdmin');
 const peopleRoute = require('./people');
 const setupRoute = require('./administration');

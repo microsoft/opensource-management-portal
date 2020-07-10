@@ -11,7 +11,7 @@ import moment from 'moment';
 const lowercaser = require('../../middleware/lowercaser');
 import { ReposAppRequest, IProviders } from '../../transitional';
 import { Organization } from '../../business/organization';
-import { Repository, GitHubCollaboratorAffiliationQuery } from '../../business/repository';
+import { Repository, GitHubCollaboratorAffiliationQuery, ITemporaryCommandOutput } from '../../business/repository';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { TeamPermission } from '../../business/teamPermission';
 import { Collaborator } from '../../business/collaborator';
@@ -24,6 +24,8 @@ import { ParseReleaseReviewWorkItemId } from '../../utils';
 import { ICorporateLink } from '../../business/corporateLink';
 import { getReviewService } from '../../api/client/reviewService';
 import { IGraphEntry } from '../../lib/graphProvider';
+import { GetAddressFromUpnAsync } from '../../lib/mailAddressProvider';
+import { IMail } from '../../lib/mailProvider';
 
 const router = express.Router();
 
@@ -100,7 +102,7 @@ async function calculateRepoPermissions(organization: Organization, repository: 
   const { collaborators, outsideCollaborators } = await findRepoCollaboratorsExcludingOwners(repository, owners);
   for (let teamPermission of teamPermissions) {
     try {
-    teamPermission.resolveTeamMembers();
+      teamPermission.resolveTeamMembers();
     } catch (ignoredError) { /* ignored */ }
   }
   return { permissions: teamPermissions, collaborators, outsideCollaborators };
@@ -120,7 +122,7 @@ async function findRepoCollaboratorsExcludingOwners(repository: Repository, owne
   return { collaborators: _.filter(collaborators, filterOutOwners), outsideCollaborators };
 }
 
-router.use('/:repoName', asyncHandler(async function(req: ILocalRequest, res, next) {
+router.use('/:repoName', asyncHandler(async function (req: ILocalRequest, res, next) {
   const repoName = req.params.repoName;
   const organization = req.organization;
   const repository = organization.repository(repoName);
@@ -132,7 +134,7 @@ router.use('/:repoName', asyncHandler(async function(req: ILocalRequest, res, ne
 
 router.use('/:repoName/administrativeLock', routeAdministrativeLock);
 
-router.use('/:repoName/delete', asyncHandler(async function(req: ILocalRequest, res, next) {
+router.use('/:repoName/delete', asyncHandler(async function (req: ILocalRequest, res, next) {
   const individualContext = req.individualContext;
   const repository = req.repository;
   const organization = req.organization;
@@ -152,7 +154,7 @@ router.use('/:repoName/delete', asyncHandler(async function(req: ILocalRequest, 
   return next();
 }));
 
-router.get('/:repoName/delete', asyncHandler(async function(req: ILocalRequest, res, next) {
+router.get('/:repoName/delete', asyncHandler(async function (req: ILocalRequest, res, next) {
   return req.individualContext.webContext.render({
     title: 'Delete the repo you created',
     view: 'repos/delete',
@@ -162,7 +164,7 @@ router.get('/:repoName/delete', asyncHandler(async function(req: ILocalRequest, 
   })
 }));
 
-router.post('/:repoName/delete', asyncHandler(async function(req: ILocalRequest, res, next) {
+router.post('/:repoName/delete', asyncHandler(async function (req: ILocalRequest, res, next) {
   const { operations, repositoryMetadataProvider } = req.app.settings.providers as IProviders;
   const { organization, repository } = req;
   const lockdownSystem = new NewRepositoryLockdownSystem({ operations, organization, repository, repositoryMetadataProvider });
@@ -172,7 +174,9 @@ router.post('/:repoName/delete', asyncHandler(async function(req: ILocalRequest,
 }));
 
 
-router.post('/:repoName/renameDefaultBranch', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function(req: ILocalRequest, res, next) {
+router.post('/:repoName/renameDefaultBranch', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: ILocalRequest, res, next) {
+  const corporateUsername = req.individualContext.corporateIdentity.username;
+  const providers = req.app.settings.providers as IProviders;
   const repoPermissions = req.repoPermissions;
   if (!repoPermissions.allowAdministration) {
     return next(new Error('You do not have administrative permission on this repository'));
@@ -182,16 +186,12 @@ router.post('/:repoName/renameDefaultBranch', asyncHandler(AddRepositoryPermissi
   await repository.getDetails();
   try {
     const output = await repository.renameDefaultBranch(targetBranchName);
-    // TODO: notify operations as an FYI
     process.nextTick(() => {
+      triggerRenameNotification(providers, repository, corporateUsername, targetBranchName, output).then(ok => { /* ignore */ }).catch(error => { console.error(`Notify rename trigger: ${error}`); });
       repository.getDetails({
         backgroundRefresh: false,
         maxAgeSeconds: -60, // force a cache refresh now for any views
-      }).then(ok => {
-        // no-op
-      }).catch(error => {
-        console.error(`Background refresh error: ${error}`);
-      });
+      }).then(ok => { /* ignore */ }).catch(error => { console.error(`Background refresh error: ${error}`); });
     });
     req.individualContext.webContext.render({
       view: 'repos/repoBranchRenamed',
@@ -206,7 +206,7 @@ router.post('/:repoName/renameDefaultBranch', asyncHandler(AddRepositoryPermissi
   }
 }));
 
-router.post('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function(req: ILocalRequest, res, next) {
+router.post('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: ILocalRequest, res, next) {
   const repoPermissions = req.repoPermissions;
   if (!repoPermissions.allowAdministration) {
     return next(new Error('You do not have administrative permission on this repository'));
@@ -469,7 +469,7 @@ function sanitizeReviewObject(review) {
   if (!review) {
     return;
   }
-  const clean = {...review};
+  const clean = { ...review };
   if (clean.assignedTo) {
     clean.assignedTo = sanitizeReviewer(clean.assignedTo);
   }
@@ -542,4 +542,40 @@ function teamsToSet(teams) {
 //   return next(new Error('You are not authorized to administer this repository.'));
 // }
 
-module.exports = router;
+async function triggerRenameNotification(providers: IProviders, repository: Repository, corporateUsername: string, targetBranchName: string, output: ITemporaryCommandOutput[]): Promise<void> {
+  const { config, insights, operations, mailAddressProvider, viewServices } = providers;
+  const mailAddress = await GetAddressFromUpnAsync(mailAddressProvider, corporateUsername);
+  const emailTemplate = 'repoDefaultBranchRenamed';
+  const mail: IMail = {
+    to: [mailAddress],
+    cc: [operations.getInfrastructureNotificationsMail()],
+    subject: `${repository.organization.name}/${repository.name} default branch is now ${targetBranchName}`,
+    content: undefined,
+  };
+  const contentOptions = {
+    reason: `You are receiving this e-mail as a transaction record from your action to rename the default branch of this repository you administer.`,
+    headline: `${targetBranchName} branch`,
+    notification: 'information',
+    app: config.brand?.companyName ? `${config.brand.companyName} GitHub` : 'GitHub',
+    output,
+    repository,
+    organization: repository.organization,
+    viewServices,
+  };
+  try {
+    mail.content = await operations.emailRender(emailTemplate, contentOptions);
+    await operations.sendMail(mail);
+  } catch (mailError) {
+    console.warn(mailError);
+    insights.trackException({
+      exception: mailError,
+      properties: {
+        repositoryName: repository.full_name,
+        organizationName: repository.organization.name,
+        eventName: 'SendRenameDefaultBranchMail',
+      },
+    });
+  }
+}
+
+export default router;
