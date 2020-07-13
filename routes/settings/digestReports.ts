@@ -5,7 +5,7 @@
 
 'use strict';
 
-import express = require('express');
+import express from 'express';
 import { RequestWithSystemwidePermissions } from '../../transitional';
 
 import { buildConsolidatedMap as buildRecipientMap } from '../../jobs/reports/consolidated';

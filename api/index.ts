@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express = require('express');
+import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
@@ -12,11 +12,11 @@ import { ReposAppRequest, IProviders } from '../transitional';
 import { jsonError } from '../middleware/jsonError';
 import { IApiRequest } from '../middleware/apiReposAuth';
 
-const apiClient = require('./client');
-const apiExtension = require('./extension');
-const apiPeople = require('./people');
-const apiWebhook = require('./webhook');
+import apiExtension from './extension';
+import apiClient from './client/';
+import apiWebhook from './webhook';
 
+import apiPeople from './people';
 import apiPublicRepos from './publicRepos';
 
 import { AzureDevOpsAuthenticationMiddleware } from '../middleware/apiVstsAuth';
@@ -141,4 +141,4 @@ router.use((err, req, res, next) => {
   }
 });
 
-module.exports = router;
+export default router;

@@ -34,4 +34,4 @@ router.use((req, res, next) => {
   return next(jsonError('The resource or endpoint you are looking for is not there', 404));
 });
 
-module.exports = router;
+export default router;

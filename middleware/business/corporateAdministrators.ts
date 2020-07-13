@@ -6,7 +6,7 @@
 // This route does not use the portal administrator team but instead an explicit
 // approved list of corporate usernames.
 
-import express = require('express');
+import express from 'express';
 
 import { ReposAppRequest } from '../../transitional';
 

@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express = require('express');
+import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
@@ -116,4 +116,3 @@ router.use((err, req, res, next) => {
 });
 
 export default router;
-

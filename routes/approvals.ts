@@ -15,4 +15,4 @@ router.get('/:id', (req, res) => {
   return res.redirect(`/settings/approvals/${id}`);
 });
 
-module.exports = router;
+export default router;

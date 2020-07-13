@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express = require('express');
+import express from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../middleware/jsonError';
@@ -355,4 +355,4 @@ async function getAllUsers(apiVersion, operations: Operations, skipOrganizations
   }
 }
 
-module.exports = router;
+export default router;

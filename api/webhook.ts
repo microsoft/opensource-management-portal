@@ -3,9 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import express = require('express');
+import express from 'express';
 import asyncHandler from 'express-async-handler';
 import { jsonError } from '../middleware/jsonError';
 
@@ -68,4 +66,4 @@ router.use(asyncHandler(async (req: IRequestWithRaw, res, next) => {
   res.json(result);
 }));
 
-module.exports = router;
+export default router;

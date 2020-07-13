@@ -6,11 +6,8 @@
 extends email
 
 block content
+  p: strong Please do not assign large teams write or admin access to your repo.
   h2= repository.full_name
   p= reason
-  p.
-    While we are not able to prevent this at the GitHub level, unfortunately when you assign a very
-    large team to have write or admin access to a repo, it spams all users of GitHub at the company, and
-    subscribes them to notifications about your repo, if users have not opted out of being notified of repos
-    they have strong permissions to.
-  
+  p While we are not able to prevent these large team assignments on GitHub, we wanted to let you know that this action has significant impact, and to be careful not to assign so much permission to your repo again.
+  p Assigning these permissions is a security risk, and also spams all users of GitHub across the company, potentially subscribing them to notifications about your repo (depending on their notification settings).

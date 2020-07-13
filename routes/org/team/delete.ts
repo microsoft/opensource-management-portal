@@ -5,7 +5,7 @@
 
 'use strict';
 
-import express = require('express');
+import express from 'express';
 import { ReposAppRequest } from '../../../transitional';
 const router = express.Router();
 const teamAdminRequired = require('./teamAdminRequired');

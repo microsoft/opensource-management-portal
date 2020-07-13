@@ -7,7 +7,7 @@
 
 // This feature is internal-only at this time. Assumes AAD-first auth scheme.
 
-import express = require('express');
+import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 

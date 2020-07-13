@@ -544,6 +544,13 @@ function teamsToSet(teams) {
 
 async function triggerRenameNotification(providers: IProviders, repository: Repository, corporateUsername: string, targetBranchName: string, output: ITemporaryCommandOutput[]): Promise<void> {
   const { config, insights, operations, mailAddressProvider, viewServices } = providers;
+  insights.trackMetric({ name: 'RenameDefaultBranchs', value: 1 });
+  insights.trackEvent({ name: 'RenameDefaultBranch', properties: {
+      orgName: repository.organization.name,
+      repoName: repository.name,
+      targetBranchName,
+    }
+  });
   const mailAddress = await GetAddressFromUpnAsync(mailAddressProvider, corporateUsername);
   const emailTemplate = 'repoDefaultBranchRenamed';
   const mail: IMail = {

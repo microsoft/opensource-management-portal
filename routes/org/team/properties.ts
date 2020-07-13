@@ -5,7 +5,7 @@
 
 'use strict';
 
-import express = require('express');
+import express from 'express';
 import { ReposAppRequest } from '../../../transitional';
 import { wrapError } from '../../../utils';
 const router = express.Router();

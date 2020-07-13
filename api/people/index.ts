@@ -3,15 +3,18 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express = require('express');
+import express from 'express';
 
 import { json404 } from '../../middleware/jsonError';
 
 const router = express.Router();
 
-router.use('/links', require('./links'));
-router.use('/unlink', require('./unlink'));
+import LinksRoute from './links';
+import UnlinkRoute from './unlink';
+
+router.use('/links', LinksRoute);
+router.use('/unlink', UnlinkRoute);
 
 router.use(json404);
 
-module.exports = router;
+export default router;

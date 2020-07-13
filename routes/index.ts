@@ -8,14 +8,21 @@ const router = express.Router();
 
 import { webContextMiddleware } from '../middleware/business/setContext';
 
-router.use('/api', require('../api'));
+import ApiRoute from '../api';
+
+router.use('/api', ApiRoute);
 
 router.use(webContextMiddleware);
 
-router.use('/thanks', require('./thanks'));
-router.use('/myinfo', require('./diagnostics'));
-router.use('/explore', require('./explore'));
-router.use('/approvals', require('./approvals'));
+import ThanksRoute from './thanks';
+import MyInfoRoute from './diagnostics';
+import ExploreRoute from './explore';
+import ApprovalsRoute from './approvals';
+
+router.use('/thanks', ThanksRoute);
+router.use('/myinfo', MyInfoRoute);
+router.use('/explore', ExploreRoute);
+router.use('/approvals', ApprovalsRoute);
 
 import AuthenticatedRoute from './index-authenticated';
 router.use(AuthenticatedRoute);
