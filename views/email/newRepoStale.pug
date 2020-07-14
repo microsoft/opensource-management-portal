@@ -6,26 +6,47 @@
 extends email
 
 block content
-  //-h1 #{targetType} reminder
-  p Your #{targetType.toLowerCase()} has not been configured yet. Would you mind configuring it or deleting it?
-  
-  p
-    a(href=linkToClassifyRepository, target='_new', style='font-size: 36px') Finish setting up #{repository.name}
-    br
-    small
-      | Direct link to complete setup:&nbsp;
-      a(href=linkToClassifyRepository, target='_new', style='font-size: 10px')= linkToClassifyRepository
-
-  h3 Delete the #{targetType.toLowerCase()}
-  p If you no longer need this repo, or this was an accident, click below to delete the repo. The page will ask for your confirmation first.
-  p
-    a(href=linkToDeleteRepository, target='_new') Delete #{targetType.toLowerCase()} #{repository.name}
-    br
-    small
-      | Link to delete:&nbsp;
-      a(href=linkToDeleteRepository, target='_new', style='font-size: 10px')= linkToDeleteRepository
-
-  h3 Associated corporate metadata
-  if repository
-    p This information is available online at #[a(href=repository.absoluteBaseUrl)=repository.absoluteBaseUrl]
-  include ../includes/corporateRepoMetadata
+  if lockdownState == 'administratorLocked'
+    p Your #{targetType.toLowerCase()} has not been unlocked by an administrator. Have you provided answers to these questions yet?
+    h3 Delete the #{targetType.toLowerCase()}
+    p If you no longer need this repo, or this was an accident, click below to delete the repo. The page will ask for your confirmation first.
+    p
+      a(href=linkToDeleteRepository, target='_new') Delete #{targetType.toLowerCase()} #{repository.name}
+      br
+      small
+        | Link to delete:&nbsp;
+        a(href=linkToDeleteRepository, target='_new', style='font-size: 10px')= linkToDeleteRepository
+      p.
+        A fork of a GitHub repo into an official GitHub org can cause confusion and needs to be done carefully.
+      p To contribute to an upstream project, typically you should fork the repo directly into your individual GitHub account.
+      if operationsMail
+        h3 Please contact operations with more information
+        p: strong Action required: you must e-mail #[a(href='mailto:' + operationsMail)= operationsMail] and provide more information to unlock this fork
+      p Please provide the following information to open source GitHub operations:
+      ul
+        li Why an official fork is being created
+        li Information including prior communications with the upstream open source community where the idea of forking was socialized
+        li Information about how you will support this fork long-term, including responding to contributions through pull requests and issues
+        li Whether there are plans to eventually contribute the forked changes upstream and delete this fork
+        li Acknowledgement that you will help govern this fork and work with any others in this GitHub org who would also like to maintain this fork
+        li Other useful information including your business goals relating to this project
+  else
+    p Your #{targetType.toLowerCase()} has not been configured yet. Would you mind configuring it or deleting it?
+    p
+      a(href=linkToClassifyRepository, target='_new', style='font-size: 36px') Finish setting up #{repository.name}
+      br
+      small
+        | Direct link to complete setup:&nbsp;
+        a(href=linkToClassifyRepository, target='_new', style='font-size: 10px')= linkToClassifyRepository
+    h3 Delete the #{targetType.toLowerCase()}
+    p If you no longer need this repo, or this was an accident, click below to delete the repo. The page will ask for your confirmation first.
+    p
+      a(href=linkToDeleteRepository, target='_new') Delete #{targetType.toLowerCase()} #{repository.name}
+      br
+      small
+        | Link to delete:&nbsp;
+        a(href=linkToDeleteRepository, target='_new', style='font-size: 10px')= linkToDeleteRepository
+    h3 Associated corporate metadata
+    if repository
+      p This information is available online at #[a(href=repository.absoluteBaseUrl)=repository.absoluteBaseUrl]
+    include ../includes/corporateRepoMetadata

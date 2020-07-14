@@ -396,6 +396,14 @@ function downgradeBroadAccessTeams(organization, teams) {
 
 async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlationId: string, repoCreateResults, approvalRequest: RepositoryMetadataEntity, msProperties, existingRepoId: any, repository: Repository, createdUserLink: ICorporateLink): Promise<void> {
   const { config, operations, viewServices } = req.app.settings.providers as IProviders;
+  const excludeNotificationsValue = config.notifications?.reposNotificationExcludeForUsers;
+  let excludeNotifications = [];
+  if (excludeNotificationsValue) {
+    excludeNotifications = excludeNotificationsValue.split(',');
+  }
+  if (approvalRequest.createdByCorporateUsername && excludeNotifications && excludeNotifications.includes(approvalRequest.createdByCorporateUsername.toLowerCase())) {
+    return;
+  }
   const emails = msProperties.notify.split(',');
   let targetType = repoCreateResults.fork ? 'Fork' : 'Repo';
   if (!repoCreateResults.fork && approvalRequest.transferSource) {
