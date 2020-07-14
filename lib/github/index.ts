@@ -82,7 +82,7 @@ export class RestLibrary {
     this.github = github;
 
     this.defaultPageSize = config && config.github && config.github.api && config.github.api.defaultPageSize ? config.github.api.defaultPageSize : 100,
-    this.breakingChangeGitHubPackageVersion = breakingChangeGitHubPackageVersion;
+      this.breakingChangeGitHubPackageVersion = breakingChangeGitHubPackageVersion;
 
     this.githubEngine = new restApi.IntelligentGitHubEngine();
     this.compositeEngine = new CompositeIntelligentEngine();
@@ -120,13 +120,13 @@ export class RestLibrary {
   private async resolveAuthorizationHeader(authorizationHeader: IGetAuthorizationHeader | IAuthorizationHeaderValue | string): Promise<string | IAuthorizationHeaderValue> {
     let authorizationValue = null;
     try {
-      if (typeof(authorizationHeader) === 'string') {
+      if (typeof (authorizationHeader) === 'string') {
         authorizationValue = authorizationHeader as string;
-      } else if (typeof(authorizationHeader) === 'function') {
+      } else if (typeof (authorizationHeader) === 'function') {
         let asFunc = authorizationHeader as IGetAuthorizationHeader;
         let resolved = asFunc.call(null) as Promise<IAuthorizationHeaderValue | string>;
         authorizationValue = await resolved;
-        if (typeof(resolved) === 'function') {
+        if (typeof (resolved) === 'function') {
           asFunc = resolved as IGetAuthorizationHeader;
           resolved = asFunc.call(null) as Promise<IAuthorizationHeaderValue | string>;
           authorizationValue = await resolved;
@@ -195,7 +195,7 @@ export class RestLibrary {
     }
     if (!options.headers.authorization) {
       const value = await this.resolveAuthorizationHeader(awaitToken);
-      options.headers.authorization = typeof(value) === 'string' ? value as string : (value as IAuthorizationHeaderValue).value;
+      options.headers.authorization = typeof (value) === 'string' ? value as string : (value as IAuthorizationHeaderValue).value;
     }
     try {
       let value = null;
@@ -231,7 +231,7 @@ export class RestLibrary {
 
 // follows: deprecated functions that parse links out of the response headers
 
-function getPageLinks (link: any): any {
+function getPageLinks(link: any): any {
   link = link.link || link.headers.link || '';
   const links = {};
   // link format:
@@ -242,6 +242,6 @@ function getPageLinks (link: any): any {
   return links;
 }
 
-function hasNextPage (link): string {
+function hasNextPage(link): string {
   return getPageLinks(link).next;
 }
