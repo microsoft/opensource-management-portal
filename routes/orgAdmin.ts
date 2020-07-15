@@ -78,7 +78,7 @@ router.get('/', function (req: ReposAppRequest, res) {
 });
 
 async function queryByGitHubLogin(operations: Operations, graphProvider: any, redisClient: any, login: string): Promise<IUserInformationQuery> {
-  const query : IUserInformationQuery = {
+  const query: IUserInformationQuery = {
     queryByType: UserQueryByType.ByGitHubUsername,
     queryByValue: login,
   };
@@ -125,7 +125,7 @@ function getLinkByThirdPartyUsername(operations: Operations, graphProvider: any,
 async function queryByGitHubId(operations: Operations, graphProvider: any, redisClient: any, thirdPartyId: string): Promise<IUserInformationQuery> {
   const linkProvider = operations.linkProvider;
   const link = await linkProvider.getByThirdPartyId(thirdPartyId);
-  const query : IUserInformationQuery = {
+  const query: IUserInformationQuery = {
     queryByType: UserQueryByType.ByGitHubId,
     queryByValue: thirdPartyId,
   };
@@ -144,10 +144,11 @@ async function queryByCorporateUsername(operations: Operations, graphProvider: a
     if (!links || links.length <= 0) {
       throw new Error(`No links were identified for the corporate username ${upn}`);
     } else {
-      throw new Error(`Too many links (more than one) exist for the corporate username ${upn}`);
+      const ids = links.map(link => link['id']);
+      throw new Error(`Too many links (more than one) exist for the corporate username ${upn}. Individual Link IDs: ${ids.join(', ')}`);
     }
   }
-  const query : IUserInformationQuery = {
+  const query: IUserInformationQuery = {
     queryByType: UserQueryByType.ByCorporateUsername,
     queryByValue: upn,
     link: links[0],
@@ -155,7 +156,7 @@ async function queryByCorporateUsername(operations: Operations, graphProvider: a
   return loadInformation(operations, graphProvider, redisClient, query);
 }
 
-async function loadInformation(operations: Operations, graphProvider: any, redisClient: any, query: IUserInformationQuery) : Promise<IUserInformationQuery> {
+async function loadInformation(operations: Operations, graphProvider: any, redisClient: any, query: IUserInformationQuery): Promise<IUserInformationQuery> {
   // Input: query type and value; pre-queried and set single link, if present
 
   const corporateAadId = query.link ? query.link.corporateId : null;
@@ -242,7 +243,7 @@ async function loadInformation(operations: Operations, graphProvider: any, redis
   return query;
 }
 
-async function getGitHubAccountInformationById(operations: Operations, id: string) : Promise<Account> {
+async function getGitHubAccountInformationById(operations: Operations, id: string): Promise<Account> {
   const account = operations.getAccount(id);
   await account.getDetails();
   return account;
@@ -446,7 +447,7 @@ router.post('/whois/github/:username', function (req: ReposAppRequest, res, next
   } else if (unmarkServiceAccount) {
     action = OperationsAction.UnmarkServiceAccount;
   }
-  const identifier : IIDValue = {
+  const identifier: IIDValue = {
     type: IDValueType.Username,
     value: username,
   };

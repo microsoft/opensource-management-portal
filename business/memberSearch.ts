@@ -187,7 +187,7 @@ export class MemberSearch {
     const projectLinkAsCorporateProfile = this.type !== 'former';
     if (this.#providers && this.#providers.corporateContactProvider) {
       const corporateContactProvider = this.#providers.corporateContactProvider;
-      let bulk: Map<string, ICorporateProfile> = new Map();
+      let bulk: Map<string, ICorporateProfile | boolean> = new Map();
       const runtimeCache = MemberSearch.runtimeCache;
       let membersWithoutCorporateProfile = this.members.filter(member =>
         member.link && member.link.corporateUsername && (member.corporate === undefined || member.corporate === null));
@@ -213,13 +213,12 @@ export class MemberSearch {
           continue;
         } else if (runtimeValue) {
           member.corporate = runtimeValue;
-          // console.log(`QUICK: local runtime cache was present for ${username}`);
           continue;
         }
-        let profile: ICorporateProfile = bulk.get(username);
-        if (profile) {
-          // console.log(`BULK: bulk profile was available for ${username}`);
-          runtimeCache.set(username, profile);
+        let bulkResponse = bulk.get(username);
+        let profile: ICorporateProfile = bulkResponse && bulkResponse !== false ? bulkResponse as ICorporateProfile : null;
+        if (profile || bulkResponse === false) {
+          runtimeCache.set(username, profile || false);
           member.corporate = profile;
           continue;
         }

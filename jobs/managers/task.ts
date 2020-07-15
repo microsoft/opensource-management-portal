@@ -18,7 +18,7 @@ import { sleep } from '../../utils';
 import { IMicrosoftIdentityServiceBasics } from '../../lib/corporateContactProvider';
 import { getUserAndManager } from '../../lib/graphProvider/microsoftGraphProvider';
 
-export default async function refresh({ providers }: IReposJob) : Promise<IReposJobResult> {
+export default async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
   const graphProvider = providers.graphProvider;
   const cacheHelper = providers.cacheProvider;
   const insights = providers.insights;
@@ -40,27 +40,32 @@ export default async function refresh({ providers }: IReposJob) : Promise<IRepos
 
   const userDetailsThroatCount = 5;
   const secondsDelayAfterError = 1;
-  const secondsDelayAfterSuccess = 0.1;
+  const secondsDelayAfterSuccess = 0; //0.1;
 
   const managerInfoCachePeriodMinutes = 60 * 24 * 7 * 12; // 12 weeks
 
   let processed = 0;
 
-  const bulkContacts = new Map<string, IMicrosoftIdentityServiceBasics>();
+  const bulkContacts = new Map<string, IMicrosoftIdentityServiceBasics | boolean>();
 
   const throttle = throat(userDetailsThroatCount);
   let unknownServiceAccounts: ICorporateLink[] = [];
+  const formerAccounts: ICorporateLink[] = [];
   await Promise.all(allLinks.map((link: ICorporateLink) => throttle(async () => {
     const employeeDirectoryId = link.corporateId;
-    console.log(`${++processed}.`);
+    bulkContacts.set(link.corporateUsername, false);
+    if (processed % 100 === 0) {
+      console.log(`${++processed}.`);
+    }
     if (link.isServiceAccount) {
       console.log(`Service account: ${link.corporateUsername}`);
     }
-    let info =  null, infoError = null;
+    let info = null, infoError = null;
     try {
       info = await getUserAndManager(graphProvider, employeeDirectoryId);
       if (link.isServiceAccount) {
-        console.dir(info);
+        console.log();
+        // console.dir(info);
         console.log(`info OK for SA ${link.corporateUsername}`);
       }
     } catch (retrievalError) {
@@ -69,7 +74,8 @@ export default async function refresh({ providers }: IReposJob) : Promise<IRepos
         console.log(`no info for SA: ${link.corporateUsername}`);
         unknownServiceAccounts.push(link);
       } else {
-        console.log(`error finding: ${link.corporateUsername}: ${retrievalError}`);
+        console.log();
+        console.log(`Not present: ${link.corporateUsername}  ${retrievalError}`);
         infoError = retrievalError;
       }
       infoError = retrievalError;
@@ -88,6 +94,7 @@ export default async function refresh({ providers }: IReposJob) : Promise<IRepos
     }
     if (link.isServiceAccount) {
       console.log(`skipping service account link ${link.corporateUsername}`);
+      console.log();
       return;
     }
     try {
@@ -143,9 +150,9 @@ export default async function refresh({ providers }: IReposJob) : Promise<IRepos
           currentManagerIfAny.userPrincipalName !== reducedWithManagerInfo.userPrincipalName ||
           currentManagerIfAny.managerDisplayName !== reducedWithManagerInfo.managerDisplayName ||
           currentManagerIfAny.managerMail !== reducedWithManagerInfo.managerMail) {
-            updateEntry = true;
-            ++managerMetadataUpdates;
-            console.log(`Metadata for ${reducedWithManagerInfo.displayName} updated`);
+          updateEntry = true;
+          ++managerMetadataUpdates;
+          console.log(`Metadata for ${reducedWithManagerInfo.displayName} updated`);
         }
         if (updateEntry) {
           await cacheHelper.setObjectCompressedWithExpire(key, reducedWithManagerInfo, managerInfoCachePeriodMinutes);
@@ -154,7 +161,7 @@ export default async function refresh({ providers }: IReposJob) : Promise<IRepos
     } catch (retrievalError) {
       if (retrievalError && retrievalError.status && retrievalError.status === 404) {
         ++notFoundErrors;
-        console.log(`deleting: ${link.corporateUsername}`);
+        formerAccounts.push(link);
         // Not deleting links so proactively: await linkProvider.deleteLink(link);
         insights.trackEvent({ name: 'JobRefreshManagersNotFound', properties: { error: retrievalError.message } });
       } else {
@@ -173,7 +180,11 @@ export default async function refresh({ providers }: IReposJob) : Promise<IRepos
   console.log();
 
   console.log(`Service Accounts not in the directory: ${unknownServiceAccounts.length}`);
-  console.log(unknownServiceAccounts.map(x => x.corporateUsername).join('\n'));
+  console.log(unknownServiceAccounts.map(x => x.corporateUsername).sort().join('\n'));
+  console.log();
+
+  console.log(`Former accounts not in the directory: ${formerAccounts.length}`);
+  console.log(formerAccounts.map(x => x.corporateUsername).sort().join('\n'));
   console.log();
 
   if (bulkContacts.size) {

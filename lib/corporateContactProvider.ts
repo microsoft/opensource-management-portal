@@ -25,8 +25,8 @@ export interface ICorporateContactInformation {
 
 export interface ICorporateContactProvider {
   lookupContacts(corporateUsername: string): Promise<ICorporateContactInformation>;
-  getBulkCachedContacts(): Promise<Map<string, ICorporateContactInformation>>;
-  setBulkCachedContacts(map: Map<string, ICorporateContactInformation>): Promise<void>;
+  getBulkCachedContacts(): Promise<Map<string, ICorporateContactInformation | boolean>>;
+  setBulkCachedContacts(map: Map<string, ICorporateContactInformation | boolean>): Promise<void>;
 }
 
 export default function createCorporateContactProviderInstance(config, cacheHelper: ICacheHelper): ICorporateContactProvider {
@@ -103,8 +103,8 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
     };
   }
 
-  async getBulkCachedContacts(): Promise<Map<string, ICorporateContactInformation>> {
-    let map = new Map<string, IMicrosoftIdentityServiceResponse>();
+  async getBulkCachedContacts(): Promise<Map<string, ICorporateContactInformation | boolean>> {
+    let map = new Map<string, IMicrosoftIdentityServiceResponse | boolean>();
     if (!this.#cacheHelper) {
       return map;
     }
@@ -112,6 +112,11 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
     if (bulk && bulk.entities) {
       if (Array.isArray(bulk.entities)) {
         map = new Map<string, IMicrosoftIdentityServiceResponse>(bulk.entities);
+        if (bulk.empties) {
+          for (let i = 0; i < bulk.empties.length; i++) {
+            map.set(bulk.empties[i], false);
+          }
+        }
       } else {
         console.warn(`Cached bulk entry ${BulkCacheKey} does not contain an array of entities`);
       }
@@ -119,13 +124,15 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
     return map;
   }
 
-  async setBulkCachedContacts(map: Map<string, ICorporateContactInformation>): Promise<void> {
+  async setBulkCachedContacts(map: Map<string, ICorporateContactInformation | boolean>): Promise<void> {
     if (!this.#cacheHelper) {
       return;
     }
-    const obj = { entities: Array.from(map.entries()) };
+    const all = Array.from(map.entries());
+    const entities = all.filter(e => typeof (e[1]) !== 'boolean');
+    const empties = all.filter(e => typeof (e[1]) === 'boolean').map(e => e[0]).filter(e => e);
+    const obj = { entities, empties };
     await this.#cacheHelper.setObjectCompressedWithExpire(BulkCacheKey, obj, BulkCacheMinutes);
-    return;
   }
 
   private getIdentityServiceRequestOptions(endpoint: string) {
