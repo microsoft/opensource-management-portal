@@ -63,6 +63,7 @@ export default function ConnectSession(app, config, providers: IProviders) {
     resave: false,
     saveUninitialized: false,
     cookie: {
+      // TODO: 2020: consider SameSite setting requirements here that are compatible with the IdP
       maxAge: (ttlFromStore || 86400) * 1000 /* milliseconds for maxAge, not seconds */,
       secure: undefined,
       domain: undefined,

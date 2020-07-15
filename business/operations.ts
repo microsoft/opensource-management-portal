@@ -149,7 +149,7 @@ export interface ICrossOrganizationMembershipBasics {
 
 export interface ICrossOrganizationMembershipByOrganization {
   id: number; // ?
-  orgs: any; // object[orgName] = theirGitHubaccount entity avatar_url, id, login : ICrossOrganizationMembershipBasics
+  orgs?: ICrossOrganizationMembershipBasics[]; // TODO: WARNING: This typing is incorrect. The object properties are the org name.
 }
 
 interface IPromisedLinks {

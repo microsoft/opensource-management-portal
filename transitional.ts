@@ -53,15 +53,20 @@ export interface ICallback<T> {
 }
 
 export type Json =
-    | string
-    | number
-    | boolean
-    | null
-    | { [property: string]: Json }
-    | Json[];
+  | string
+  | number
+  | boolean
+  | null
+  | { [property: string]: Json }
+  | Json[];
 
 export interface IGetOwnerToken {
   (): string;
+}
+
+export enum RequestTeamMemberAddType {
+  Member = 'member',
+  Maintainer = 'maintainer',
 }
 
 export interface IPurposefulGetAuthorizationHeader {
@@ -211,7 +216,7 @@ export interface IReposError extends Error {
   originalUrl?: any;
   detailed?: any;
   redirect?: string;
-  skipOops?:boolean;
+  skipOops?: boolean;
   fancyLink?: {
     link: string;
     title: string;
@@ -324,20 +329,20 @@ export function permissionsObjectToValue(permissions): GitHubRepositoryPermissio
 
 export function isPermissionBetterThan(currentBest, newConsideration) {
   switch (newConsideration) {
-  case 'admin':
-    return true;
-  case 'push':
-    if (currentBest !== 'admin') {
+    case 'admin':
       return true;
-    }
-    break;
-  case 'pull':
-    if (currentBest === null) {
-      return true;
-    }
-    break;
-  default:
-    throw new Error(`Invalid permission type ${newConsideration}`);
+    case 'push':
+      if (currentBest !== 'admin') {
+        return true;
+      }
+      break;
+    case 'pull':
+      if (currentBest === null) {
+        return true;
+      }
+      break;
+    default:
+      throw new Error(`Invalid permission type ${newConsideration}`);
   }
   return false;
 }
@@ -353,7 +358,7 @@ export function MassagePermissionsToGitHubRepositoryPermission(value: string): G
       return GitHubRepositoryPermission.Admin;
     case 'pull':
     case 'read':
-        return GitHubRepositoryPermission.Pull;
+      return GitHubRepositoryPermission.Pull;
     default:
       throw new Error(`Invalid ${value} GitHub repository permission [massagePermissionsToGitHubRepositoryPermission]`);
   }
@@ -445,7 +450,7 @@ export class ErrorHelper {
   public static GetStatus(error: Error): number {
     if (error && error['status']) {
       const status = error['status'];
-      const type = typeof(status);
+      const type = typeof (status);
       if (type === 'number') {
         return status;
       } else if (type === 'string') {

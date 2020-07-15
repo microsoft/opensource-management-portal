@@ -7,13 +7,13 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { RequestWithSystemwidePermissions } from '../transitional';
+import { RequestWithSystemwidePermissions, RequestTeamMemberAddType } from '../transitional';
 
 import { ensureAllLinksInMemory, getAllLinksFromRequest } from '../middleware/business/allLinks';
 
 const lowercaser = require('../middleware/lowercaser');
 
-import { Operations } from '../business/operations';
+import { Operations, ICrossOrganizationMembersResult } from '../business/operations';
 import { MemberSearch } from '../business/memberSearch';
 import { Team } from '../business/team';
 import { TeamMember } from '../business/teamMember';
@@ -25,7 +25,7 @@ interface IPeopleSearchRequest extends RequestWithSystemwidePermissions {
   organization?: any;
   team2?: any;
   cachedLinks?: any;
-  team2AddType?: any;
+  team2AddType?: RequestTeamMemberAddType;
   team2RemoveType?: any;
   teamUrl?: any;
   teamPermissions?: any;
@@ -36,28 +36,31 @@ interface IOptionalFilter {
 }
 
 interface IGetPeopleResult {
-  members?: OrganizationMember[];
+  organizationMembers?: OrganizationMember[];
+  crossOrganizationMembers?: ICrossOrganizationMembersResult;
   teamMembers?: TeamMember[];
 }
 
 router.use(asyncHandler(ensureAllLinksInMemory));
 
-async function getPeople(operations: Operations, org: string | null, options, team2: Team): Promise<any> {
-  // TODO: confirm the types returning
-  // TODO: split out cross-org results and by-org results by diff. variable names
-  let members;
-  if (org) {
-    const organization = operations.getOrganization(org);
-    members = await organization.getMembers(options);
-  } else {
-    members = await operations.getMembers(options);
-  }
-  // const members = await operations.getMembers(org, options); // no more: ageInformation
+async function getPeopleForOrganization(operations: Operations, org: string | null, options, team2: Team): Promise<IGetPeopleResult> {
+  const organization = operations.getOrganization(org);
+  const organizationMembers = await organization.getMembers(options);
   if (team2) {
     const teamMembers = await team2.getMembers();
-    return { teamMembers, members }; // return callback(null, members, ageInformation, teamMembers);
+    return { teamMembers, organizationMembers };
   } else {
-    return { members }; // return callback(null, members, ageInformation);
+    return { organizationMembers };
+  }
+}
+
+async function getPeopleAcrossOrganizations(operations: Operations, options, team2: Team): Promise<IGetPeopleResult> {
+  const crossOrganizationMembers = await operations.getMembers(options);
+  if (team2) {
+    const teamMembers = await team2.getMembers();
+    return { teamMembers, crossOrganizationMembers };
+  } else {
+    return { crossOrganizationMembers };
   }
 }
 
@@ -73,9 +76,9 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
   if (twoFactor === 'off') {
     options.filter = '2fa_disabled';
   }
-  const { members, teamMembers } = await getPeople(operations, org, options, team2);
+  const { crossOrganizationMembers, organizationMembers, teamMembers } = org ? await getPeopleForOrganization(operations, org, options, team2) : await getPeopleAcrossOrganizations(operations, options, team2);
   const page = req.query.page_number ? asNumber(req.query.page_number) : 1;
-  let phrase = req.query.q;
+  let phrase = req.query.q as string;
   let type = req.query.type as string;
   const validTypes = new Set([
     'linked',
@@ -116,22 +119,17 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
       // displayPrefix: 'matching',
     });
   }
-  const search = new MemberSearch(members, {
+  const search = new MemberSearch({
     phrase,
     type,
     links: linksFromMiddleware,
     providers: operations.providers,
-
     orgId,
-
-    // Used to filter team members in ./org/ORG/team/TEAM/members and other views
-    teamMembers: teamMembers,
-
-    // Whether this view is specific to an org or not
-    isOrganizationScoped: !!org,
-
-    // Used to enable the "add a member" or maintainer experience for teams
-    team2AddType: req.team2AddType,
+    organizationMembers,
+    crossOrganizationMembers,
+    isOrganizationScoped: !!org, // Whether this view is specific to an org or not
+    team2AddType: req.team2AddType, // Used to enable the "add a member" or maintainer experience for teams
+    teamMembers, // Used to filter team members in ./org/ORG/team/TEAM/members and other views
   });
 
   await search.search(page, req.query.sort as string);

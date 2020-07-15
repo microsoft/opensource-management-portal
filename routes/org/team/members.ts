@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders } from '../../../transitional';
+import { ReposAppRequest, IProviders, RequestTeamMemberAddType } from '../../../transitional';
 import { Team } from '../../../business/team';
 import { TeamMember } from '../../../business/teamMember';
 
@@ -19,7 +19,7 @@ interface ILocalTeamRequest extends ReposAppRequest {
   team2?: Team;
   refreshedMembers?: any;
   teamUrl?: any;
-  team2AddType?: any;
+  team2AddType?: RequestTeamMemberAddType;
   team2RemoveType?: any;
 }
 
@@ -62,7 +62,7 @@ router.use('/browse', (req: ILocalTeamRequest, res, next) => {
 
 // Add org members to the team
 router.use('/add', teamAdminRequired, (req: ILocalTeamRequest, res, next) => {
-  req.team2AddType = 'member';
+  req.team2AddType = RequestTeamMemberAddType.Member;
   return next();
 }, PeopleSearch);
 

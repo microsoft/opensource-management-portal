@@ -31,7 +31,7 @@ router.use(function (req: IApiRequest, res, next) {
     return next(jsonError('The key is not authorized for specific APIs', 401));
   }
   if (!token.hasScope('links') && !token.hasScope('link')) {
-  return next(jsonError('The key is not authorized to use the links API', 401));
+    return next(jsonError('The key is not authorized to use the links API', 401));
   }
   return next();
 });
@@ -88,7 +88,7 @@ router.get('/:linkid', asyncHandler(async (req: IApiRequest, res, next) => {
   return next(jsonError('Could not find the link', 404));
 }));
 
-router.get('/github/:username', asyncHandler (async (req: IApiRequest, res, next) => {
+router.get('/github/:username', asyncHandler(async (req: IApiRequest, res, next) => {
   if (unsupportedApiVersions.includes(req.apiVersion)) {
     return next(jsonError('This API is not supported by the API version you are using.', 400));
   }
@@ -286,44 +286,44 @@ async function getAllUsers(apiVersion, operations: Operations, skipOrganizations
     linksError = wrapError(linksError, 'There was a problem retrieving link information to display alongside members.');
     throw jsonError(linksError, 500);
   }
-  let members: ICrossOrganizationMembersResult;
+  let crossOrganizationMembers: ICrossOrganizationMembersResult;
   try {
     // TODO: this is a cross-org map!? validate return type...
-    members = await operations.getMembers();
+    crossOrganizationMembers = await operations.getMembers();
   } catch (error) {
     error = wrapError(error, 'There was a problem getting the members list.');
     throw jsonError(error, 500);
   }
-  const search = new MemberSearch(members, {
+  const search = new MemberSearch({
+    crossOrganizationMembers,
     type: 'linked',
     links,
     providers: operations.providers,
-    pageSize: 200000,
+    pageSize: Number.MAX_SAFE_INTEGER,
   });
   try {
     await search.search(1);
-
     const sr = search.members;
     const isExpandedView = extendedLinkApiVersions.includes(apiVersion);
     const results = [];
     sr.forEach(member => {
       const entry = {
         github: {
-          id: member.account.id,
-          login: member.account.login,
+          id: member['account'].id,
+          login: member['account'].login,
           organizations: undefined,
         },
         isServiceAccount: undefined,
         serviceAccountContact: undefined,
       };
       if (isExpandedView) {
-        entry.github['avatar'] = member.account.avatar_url;
+        entry.github['avatar'] = member['account'].avatar_url;
       }
-      if (showLinkIds && member && member.link && member.link.id) {
-        entry['id'] = member.link.id;
+      if (showLinkIds && member && member.link && member.link['id']) {
+        entry['id'] = member.link['id'];
       }
-      if (!skipOrganizations && member.orgs) {
-        entry.github.organizations = Object.getOwnPropertyNames(member.orgs);
+      if (!skipOrganizations && member['orgs']) {
+        entry.github.organizations = Object.getOwnPropertyNames(member['orgs']);
       }
       // '2017-09-01' added 'isServiceAccount'; so '2016-12-01' & '2017-03-08' do not have it
       const link = member.link as ICorporateLink;
@@ -340,8 +340,8 @@ async function getAllUsers(apiVersion, operations: Operations, skipOrganizations
         const corporatePropertyName = apiVersion === '2016-12-01' ? 'corporate' : 'aad'; // This was renamed to be provider name-based
         entry[corporatePropertyName] = {
           alias: member.corporate.alias,
-          preferredName: member.corporate.preferredName || member.corporate.corporateDisplayName,
-          userPrincipalName: member.corporate.userPrincipalName || member.corporate.corporateUsername,
+          preferredName: member.corporate.preferredName || member.corporate.corporateDisplayName || member.link.corporateDisplayName,
+          userPrincipalName: member.corporate.userPrincipalName || member.corporate.corporateUsername || member.link.corporateUsername,
           emailAddress: member.corporate.emailAddress,
         };
         const corporateIdPropertyName = apiVersion === '2016-12-01' ? 'aadId' : 'id'; // Now just 'id'

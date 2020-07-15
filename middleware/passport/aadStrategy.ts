@@ -56,20 +56,20 @@ function activeDirectorySubset(app, config, iss, sub, profile, done) {
 }
 
 export default function createAADStrategy(app, config) {
+  const { redirectUrl, tenantId, clientId, clientSecret } = config.activeDirectory;
   let aadStrategy = new OIDCStrategy({
-    redirectUrl: config.activeDirectory.redirectUrl || `${config.webServer.baseUrl}/auth/azure/callback`,
+    redirectUrl: redirectUrl || `${config.webServer.baseUrl}/auth/azure/callback`,
     allowHttpForRedirectUrl: config.containers.docker || config.webServer.allowHttp,
     // @ts-ignore
-    realm: config.activeDirectory.tenantId,
-    clientID: config.activeDirectory.clientId,
-    clientSecret: config.activeDirectory.clientSecret,
-    identityMetadata: 'https://login.microsoftonline.com/' + config.activeDirectory.tenantId + '/.well-known/openid-configuration',
+    realm: tenantId,
+    clientID: clientId,
+    clientSecret: clientSecret,
+    identityMetadata: `https://login.microsoftonline.com/${tenantId}/.well-known/openid-configuration`,
     responseType: 'id_token code',
     responseMode: 'form_post',
     // oidcIssuer: config.activeDirectory.issuer,
     // validateIssuer: true,
   }, activeDirectorySubset.bind(null, app, config));
-
   // Patching the AAD strategy to intercept a specific state failure message and instead
   // of providing a generic failure message, redirecting (HTTP GET) to the callback page
   // where we can offer a more useful message
@@ -79,12 +79,13 @@ export default function createAADStrategy(app, config) {
   aadStrategy.failWithLog = function () {
     const args = Array.prototype.slice.call(arguments);
     const messageToIntercept = 'In collectInfoFromReq: invalid state received in the request';
+    if (args.length === 1 && typeof (args[0]) === 'string') {
+      console.warn(`AAD Failure: clientId=${clientId}, tenantId=${tenantId}, message=${args[0]}`);
+    }
     if (args.length === 1 && typeof (args[0]) === 'string' && args[0] === messageToIntercept) {
       return this.redirect('/auth/azure/callback?failure=invalid');
-    } else if (args.length === 1 && typeof (args[0]) === 'string') {
-      console.warn(`AAD Failure: ${args[0]}`);
     }
-    originalFailWithLog.call(this, args);
+    return originalFailWithLog.call(this, args);
   };
   return { 'azure-active-directory': aadStrategy };
 }

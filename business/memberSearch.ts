@@ -7,8 +7,9 @@ import _ from 'lodash';
 
 import { ICorporateLink } from './corporateLink';
 import { OrganizationMember } from './organizationMember';
-import { ICrossOrganizationMembersResult } from './operations';
-import { IProviders } from '../transitional';
+import { ICrossOrganizationMembersResult, ICrossOrganizationMembershipBasics, ICrossOrganizationMembershipByOrganization } from './operations';
+import { IProviders, RequestTeamMemberAddType } from '../transitional';
+import { TeamMember } from './teamMember';
 
 const earlyProfileFetchTypes = new Set(['former', 'active', 'unknownAccount']);
 
@@ -23,13 +24,31 @@ interface ICorporateProfile {
   emailAddress?: string;
 }
 
+export interface IMemberSearchOptions {
+  providers: IProviders;
+
+  organizationMembers?: OrganizationMember[];
+  crossOrganizationMembers?: ICrossOrganizationMembersResult;
+
+  isOrganizationScoped?: boolean;
+  links?: ICorporateLink[];
+  pageSize?: number;
+  phrase?: string;
+  type?: string; // TODO: should be an enum eventually
+  orgId?: string | number;
+  team2AddType?: RequestTeamMemberAddType;
+  teamMembers?: TeamMember[];
+}
+
 export class MemberSearch {
+  private static runtimeCache = new Map<string, ICorporateProfile | boolean>();
+
   #providers: IProviders;
 
-  public members: any[];
+  public members: OrganizationMember[];
   public links: ICorporateLink[];
   public teamMembers: any;
-  public team2AddType: any;
+  public team2AddType: RequestTeamMemberAddType;
   public pageSize: number;
   public phrase: string;
   public type: string;
@@ -42,16 +61,18 @@ export class MemberSearch {
 
   private orgId: string;
 
-  constructor(members: ICrossOrganizationMembersResult | OrganizationMember[], options) {
-    options = options || {};
-    // must be a Map from ID to object with { orgs, memberships, account }
-    if (Array.isArray(members)) {
-      this.members = members;
-    } else {
-      if (!members || !members.values || !members.set) {
-        throw new Error('Members must be a Map.');
-      }
-      this.members = Array.from(members.values());
+  constructor(options: IMemberSearchOptions) {
+    if (!options.crossOrganizationMembers && !options.organizationMembers) {
+      throw new Error('Options must include either crossOrganizationMembers or organizationMembers');
+    }
+    if (options.crossOrganizationMembers && options.organizationMembers) {
+      throw new Error('Options cannot include both crossOrganizationMembers or organizationMembers');
+    }
+    if (options.organizationMembers) {
+      this.members = options.organizationMembers;
+    } else if (options.crossOrganizationMembers) {
+      // must be a Map from ID to object with { orgs, memberships, account }
+      this.members = Array.from(options.crossOrganizationMembers.values()) as any as OrganizationMember[];
     }
     translateMembers(this.members, options.isOrganizationScoped, options.links);
     this.links = options.links;
@@ -116,7 +137,9 @@ export class MemberSearch {
       if (this.team2AddType) {
         for (let i = 0; i < this.members.length; i++) {
           const member = this.members[i];
-          member.isTeamMember = teamSet.has(member.id);
+          // NOTE: this is not officially part of the interface
+          // TODO: cleanup isTeamMember approach
+          member['isTeamMember'] = teamSet.has(member.id);
         }
       } else {
         this.members = this.members.filter(m => { return teamSet.has(m.id); });
@@ -151,7 +174,8 @@ export class MemberSearch {
   }
 
   sortOrganizations() {
-    this.members.forEach(member => {
+    this.members.forEach(m => {
+      const member = m as any as ICrossOrganizationMembershipByOrganization;
       if (member.orgs && member.orgs.length > 0) {
         member.orgs = _.sortBy(member.orgs, ['name']);
       }
@@ -160,30 +184,54 @@ export class MemberSearch {
   }
 
   async getCorporateProfiles(): Promise<MemberSearch> {
+    const projectLinkAsCorporateProfile = this.type !== 'former';
     if (this.#providers && this.#providers.corporateContactProvider) {
       const corporateContactProvider = this.#providers.corporateContactProvider;
-      let bulk = new Map();
-      if (this.pageSize > earlyFetchPageBreak) {
+      let bulk: Map<string, ICorporateProfile> = new Map();
+      const runtimeCache = MemberSearch.runtimeCache;
+      let membersWithoutCorporateProfile = this.members.filter(member =>
+        member.link && member.link.corporateUsername && (member.corporate === undefined || member.corporate === null));
+      if (membersWithoutCorporateProfile.length === 0) {
+        return this;
+      }
+      if (this.pageSize > earlyFetchPageBreak || membersWithoutCorporateProfile.length > earlyFetchPageBreak) {
         try {
           bulk = await corporateContactProvider.getBulkCachedContacts();
         } catch (bulkReadError) {
           console.warn(bulkReadError);
         }
       }
-      const projectLinkAsCorporateProfile = this.type !== 'former';
-      for (const member of this.members) {
-        if (member.corporate) {
-          continue;
-        }
+      for (const member of membersWithoutCorporateProfile) {
         const link = member.link as ICorporateLink;
-        const corporateUsername = link ? link.corporateUsername : null;
-        if (!corporateUsername) {
+        const username = link.corporateUsername;
+        let runtimeValue = runtimeCache.get(username);
+        if (runtimeValue === false) {
+          // Confirmed during this runtime, no value is available, no need to keep trying to retrieve it.
+          if (projectLinkAsCorporateProfile) {
+            member.corporate = link;
+          }
+          continue;
+        } else if (runtimeValue) {
+          member.corporate = runtimeValue;
+          // console.log(`QUICK: local runtime cache was present for ${username}`);
           continue;
         }
-        try {
-          const contacts = bulk.get(corporateUsername) || await corporateContactProvider.lookupContacts(corporateUsername);
+        let profile: ICorporateProfile = bulk.get(username);
+        if (profile) {
+          // console.log(`BULK: bulk profile was available for ${username}`);
+          runtimeCache.set(username, profile);
+          member.corporate = profile;
+          continue;
+        }
+        if (!profile) {
+          let contacts: ICorporateProfile = null;
+          try {
+            contacts = await corporateContactProvider.lookupContacts(username);
+          } catch (lookupError) {
+            console.log(`corporateContactProvider: lookup error for ${username}: ${lookupError}`);
+          }
           if (contacts) {
-            const profile: ICorporateProfile = {
+            profile = {
               corporateDisplayName: link?.corporateDisplayName,
               corporateId: link?.corporateId,
               corporateUsername: link?.corporateUsername,
@@ -191,15 +239,17 @@ export class MemberSearch {
               emailAddress: contacts.emailAddress,
             };
             member.corporate = profile;
+            runtimeCache.set(username, profile);
           } else if (projectLinkAsCorporateProfile) {
             member.corporate = link;
+            runtimeCache.set(username, false);
+          } else {
+            runtimeCache.set(username, false);
           }
-        } catch (lookupError) {
-          console.dir(lookupError);
         }
       }
+      return this;
     }
-    return this;
   }
 
   determinePages() {
@@ -226,24 +276,24 @@ export class MemberSearch {
   filterByType(type) {
     let filter = null;
     switch (type) {
-    case 'linked':
-      filter = r => { return r.link && r.link.thirdPartyId; };
-      break;
-    case 'unlinked':
-      filter = r => { return !r.link; };
-      break;
-    case 'unknownAccount':
-      filter = r => { return r.link && r.link.thirdPartyId && (!r.corporate || !r.corporate.userPrincipalName); };
-      break;
-    case 'former':
-      filter = r => { return r.link && r.link.thirdPartyId && !r.link.serviceAccount && (!r.corporate || !r.corporate.userPrincipalName); };
-      break;
-    case 'active':
-      filter = r => { return r.link && r.link.thirdPartyId && r.link.corporateId && !r.link.serviceAccount && r.corporate && r.corporate.userPrincipalName; };
-      break;
-    case 'serviceAccount':
-      filter = r => { return r.link && r.link.isServiceAccount; };
-      break;
+      case 'linked':
+        filter = r => { return r.link && r.link.thirdPartyId; };
+        break;
+      case 'unlinked':
+        filter = r => { return !r.link; };
+        break;
+      case 'unknownAccount':
+        filter = r => { return r.link && r.link.thirdPartyId && (!r.corporate || !r.corporate.userPrincipalName); };
+        break;
+      case 'former':
+        filter = r => { return r.link && r.link.thirdPartyId && !r.link.serviceAccount && (!r.corporate || !r.corporate.userPrincipalName); };
+        break;
+      case 'active':
+        filter = r => { return r.link && r.link.thirdPartyId && r.link.corporateId && !r.link.serviceAccount && r.corporate && r.corporate.userPrincipalName; };
+        break;
+      case 'serviceAccount':
+        filter = r => { return r.link && r.link.isServiceAccount; };
+        break;
     }
     if (filter) {
       this.members = this.members.filter(filter);
@@ -253,8 +303,8 @@ export class MemberSearch {
 
   sortByAlphabet() {
     this.members.sort((a, b) => {
-      const aAccountIdentity = a.login ? a.login.toLowerCase() : a.account.login.toLowerCase();
-      const bAccountIdentity = b.login ? b.login.toLowerCase() : b.account.login.toLowerCase();
+      const aAccountIdentity = a.login ? a.login.toLowerCase() : a['account'].login.toLowerCase();
+      const bAccountIdentity = b.login ? b.login.toLowerCase() : b['account'].login.toLowerCase();
       if (aAccountIdentity > bAccountIdentity) return 1;
       if (aAccountIdentity < bAccountIdentity) return -1;
       return 0;

@@ -46,7 +46,7 @@ module.exports = function initializeAppInsights(app, config) {
     key = config.telemetry.jobsApplicationInsightsKey;
   }
   if (key) {
-    const instance = appInsightsSetup(key).setAutoCollectDependencies(false);
+    const instance = appInsightsSetup(key);
     defaultClient.addTelemetryProcessor(ignoreKubernetesProbes);
     defaultClient.addTelemetryProcessor(filterTelemetry);
     instance.start();

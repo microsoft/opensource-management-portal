@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, NoRestApiCache, IProviders } from '../../../transitional';
+import { ReposAppRequest, NoRestApiCache, IProviders, RequestTeamMemberAddType } from '../../../transitional';
 import { Team } from '../../../business/team';
 import { TeamMember } from '../../../business/teamMember';
 const teamAdminRequired = require('./teamAdminRequired');
@@ -16,7 +16,7 @@ interface ILocalRequest extends ReposAppRequest {
   team2?: Team;
   verifiedCurrentMaintainers?: any;
   teamUrl?: any;
-  team2AddType?: any;
+  team2AddType?: RequestTeamMemberAddType;
 }
 
 router.use(asyncHandler(async (req: ILocalRequest, res, next) => {
@@ -62,7 +62,7 @@ router.post('/:id/downgrade', teamAdminRequired, asyncHandler(async (req: ILocal
 }));
 
 router.use('/add', teamAdminRequired, (req: ILocalRequest, res, next) => {
-  req.team2AddType = 'maintainer';
+  req.team2AddType = RequestTeamMemberAddType.Maintainer;
   return next();
 });
 
