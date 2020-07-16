@@ -3,9 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-module.exports = function createMailAddressProvider() {
+export default function createMailAddressProvider() {
   const upnToEmails = new Map();
   return {
     getAddressFromUpn: (upn, callback) => {
@@ -19,4 +17,4 @@ module.exports = function createMailAddressProvider() {
       return upnToEmails;
     }
   };
-};
+}

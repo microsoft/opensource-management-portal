@@ -31,21 +31,6 @@ module.exports = function initMiddleware(app, express, config, dirname, initiali
     providers.healthCheck.healthy = false;
   }
   const web = !(config.skipModules && config.skipModules.has('web'));
-  if (!initializationError) {
-    if (!web) {
-      /* No web routes */
-    } else if (config.containers && config.containers.deployment) {
-      console.log('Container deployment: HTTP: listening, HSTS: on');
-      app.use(require('./hsts'));
-    } else if (config.containers && config.containers.docker) {
-      console.log('Docker image: HTTP: listening, HSTS: off');
-    } else if (config.webServer.allowHttp) {
-      console.warn('WARNING: Development mode (DEBUG_ALLOW_HTTP): HTTP: listening, HSTS: off');
-    } else {
-      app.use(require('./sslify'));
-      app.use(require('./hsts'));
-    }
-  }
 
   app.set('views', path.join(appDirectory, 'views'));
   app.set('view engine', 'pug');

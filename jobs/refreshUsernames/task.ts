@@ -13,7 +13,7 @@ import { Operations, UnlinkPurpose } from '../../business/operations';
 import { sleep } from '../../utils';
 import { IReposJob, IReposJobResult } from '../../app';
 
-export default async function refresh({ providers }: IReposJob) : Promise<IReposJobResult> {
+export default async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
   const operations = providers.operations as Operations;
   const insights = providers.insights;
   const config = providers.config;
@@ -68,7 +68,7 @@ export default async function refresh({ providers }: IReposJob) : Promise<IRepos
       }
 
       try {
-        const graphInfo = await graphProvider.getUserByIdAsync(link.corporateId);
+        const graphInfo = await graphProvider.getUserById(link.corporateId);
         if (graphInfo) {
           if (graphInfo.userPrincipalName && link.corporateUsername !== graphInfo.userPrincipalName) {
             link.corporateUsername = graphInfo.userPrincipalName;
@@ -136,10 +136,10 @@ export default async function refresh({ providers }: IReposJob) : Promise<IRepos
   };
 }
 
-function updateLink(linkProvider: ILinkProvider, link: ICorporateLink) : Promise<void> {
+function updateLink(linkProvider: ILinkProvider, link: ICorporateLink): Promise<void> {
   return linkProvider.updateLink(link);
 }
 
-function getAllLinks(linkProvider: ILinkProvider) : Promise<ICorporateLink[]> {
+function getAllLinks(linkProvider: ILinkProvider): Promise<ICorporateLink[]> {
   return linkProvider.getAll();
 }

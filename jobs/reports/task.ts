@@ -104,42 +104,42 @@ export interface IReportsContext {
 async function buildReport(context): Promise<void> {
   try {
     await processReports(context);
-  } catch (error) { 
+  } catch (error) {
     console.dir(error);
   }
   try {
     await buildReports(context);
-  } catch (error) { 
+  } catch (error) {
     console.dir(error);
   }
   try {
     await consolidateReports(context);
-  } catch (error) { 
+  } catch (error) {
     console.dir(error);
   }
   try {
     await storeReports(context);
-  } catch (error) { 
+  } catch (error) {
     console.dir(error);
   }
   try {
     await sendReports(context);
-  } catch (error) { 
-    console.dir(error); 
+  } catch (error) {
+    console.dir(error);
   }
   try {
     await recordMetrics(context);
-  } catch (error) { 
+  } catch (error) {
     console.dir(error);
   }
   try {
     await dataLakeUpload(context);
-  } catch (error) { 
+  } catch (error) {
     console.dir(error);
   }
   try {
     await finalizeEvents(context);
-  } catch (error) { 
+  } catch (error) {
     console.dir(error);
   }
 }
@@ -173,7 +173,6 @@ export default async function run({ providers, started }: IReposJob): Promise<IR
   if (!operations.mailProvider) {
     throw new Error('No mail provider available');
   }
-  // const reportRedisClient = providers.witnessRedis ? new RedisHelper(providers.witnessRedis) : null;
   const reportConfig = config && config.github && config.github.jobs ? config.github.jobs.reports : {};
   const context: IReportsContext = {
     providers,
@@ -265,7 +264,7 @@ async function processReports(context) {
   } catch (globalProcessError) {
     console.dir(globalProcessError);
   }
-    return context;
+  return context;
 }
 
 async function consolidateReports(context: IReportsContext): Promise<IReportsContext> {
@@ -339,7 +338,7 @@ async function dataLakeUpload(context: IReportsContext) {
                 const collection = issues[targetCollectionName];
                 for (let l = 0; l < collection.length; l++) {
                   const row = collection[l];
-                  const rowValue = typeof(row) === 'object' ? row : { text: row };
+                  const rowValue = typeof (row) === 'object' ? row : { text: row };
                   if (!row.entityName) {
                     rowValue.entityName = entity.name;
                   }
@@ -450,7 +449,7 @@ async function storeReports(context: IReportsContext): Promise<IReportsContext> 
   const reportingRedis = context.reports.reportRedisClient;
   const reportingKey = context.settings.witnessEventKey;
   if (reportingRedis && reportingKey) {
-    reportingRedis.setCompressedWithExpire(reportingKey, json, ttl) 
+    reportingRedis.setCompressedWithExpire(reportingKey, json, ttl)
   }
   return context;
 }

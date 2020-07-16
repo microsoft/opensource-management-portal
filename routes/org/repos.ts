@@ -24,7 +24,6 @@ import { ParseReleaseReviewWorkItemId } from '../../utils';
 import { ICorporateLink } from '../../business/corporateLink';
 import { getReviewService } from '../../api/client/reviewService';
 import { IGraphEntry } from '../../lib/graphProvider';
-import { GetAddressFromUpnAsync } from '../../lib/mailAddressProvider';
 import { IMail } from '../../lib/mailProvider';
 
 const router = express.Router();
@@ -545,13 +544,14 @@ function teamsToSet(teams) {
 async function triggerRenameNotification(providers: IProviders, repository: Repository, corporateUsername: string, targetBranchName: string, output: ITemporaryCommandOutput[]): Promise<void> {
   const { config, insights, operations, mailAddressProvider, viewServices } = providers;
   insights.trackMetric({ name: 'RenameDefaultBranchs', value: 1 });
-  insights.trackEvent({ name: 'RenameDefaultBranch', properties: {
+  insights.trackEvent({
+    name: 'RenameDefaultBranch', properties: {
       orgName: repository.organization.name,
       repoName: repository.name,
       targetBranchName,
     }
   });
-  const mailAddress = await GetAddressFromUpnAsync(mailAddressProvider, corporateUsername);
+  const mailAddress = await mailAddressProvider.getAddressFromUpn(corporateUsername);
   const emailTemplate = 'repoDefaultBranchRenamed';
   const mail: IMail = {
     to: [mailAddress],

@@ -55,10 +55,6 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     }
   }
 
-  getUserById(aadId, callback) {
-    this.getTokenThenEntity(aadId, null, callback);
-  }
-
   getManagerById(aadId, callback) {
     this.getTokenThenEntity(aadId, 'manager', callback);
   }
@@ -108,14 +104,12 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     return entry;
   }
 
-  async getUserByIdAsync(id: string): Promise<IGraphEntry> {
+  async getUserById(id: string): Promise<IGraphEntry> {
     return new Promise<IGraphEntry>((resolve, reject) => {
-      this.getUserById(id, (err, info) => {
+      return this.getTokenThenEntity(id, null, (err, info) => {
         if (err && err['status'] === 404) {
-          // console.log('User not found in the directory');
           return resolve(null);
-        }
-        if (err) {
+        } else if (err) {
           return reject(err);
         }
         return resolve(info as IGraphEntry);
@@ -123,7 +117,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     });
   }
 
-  async getManagerByIdAsync(id: string) : Promise<IGraphEntry> {
+  async getManagerByIdAsync(id: string): Promise<IGraphEntry> {
     return new Promise<IGraphEntry>((resolve, reject) => {
       this.getManagerById(id, (err, info) => {
         if (err && err['status'] === 404) {
@@ -156,6 +150,26 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       selectValues: 'id',
     }) as any[];
     return response.map(entry => entry.id);
+  }
+
+  async getMailAddressByUsername(corporateUsername: string): Promise<string> {
+    const response = await this.lookupInGraph([
+      'users',
+      corporateUsername,
+    ], {
+      selectValues: 'mail',
+    });
+    return response?.mail;
+  }
+
+  async getUserIdByUsername(corporateUsername: string): Promise<string> {
+    const response = await this.lookupInGraph([
+      'users',
+      corporateUsername,
+    ], {
+      selectValues: 'id',
+    });
+    return response?.id;
   }
 
   async getUserIdByNickname(nickname: string): Promise<string> {
@@ -218,7 +232,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     }) as string[];
     return response;
   }
-  
+
   private async getUserAndManagerAsync(employeeDirectoryId: string): Promise<any> {
     return new Promise<any>((resolve, reject) => {
       this.getUserAndManagerById(employeeDirectoryId, (err, info) => {
@@ -278,7 +292,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       subResource = null;
     }
     const extraPath = subResource ? `/${subResource}` : '';
-    const url = `https://graph.microsoft.com/v1.0/users/${aadId}${extraPath}?$select=id,userType,displayName,givenName,mail,userPrincipalName`;
+    const url = `https://graph.microsoft.com/v1.0/users/${aadId}${extraPath}?$select=id,alias,userType,displayName,givenName,mail,userPrincipalName`;
     request.get(url, options, (err, response, body) => {
       if (err) {
         return callback(err, null);

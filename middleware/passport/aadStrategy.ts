@@ -22,7 +22,7 @@ async function login(app, config, iss, sub, profile): Promise<IPassportUserWithA
   const { graphProvider } = app.settings.providers as IProviders;
   if (config && config.impersonation && config.impersonation.corporateId) {
     const impersonationCorporateId = config.impersonation.corporateId;
-    const impersonationResult = await graphProvider.getUserByIdAsync(impersonationCorporateId);
+    const impersonationResult = await graphProvider.getUserById(impersonationCorporateId);
     console.warn(`IMPERSONATION: id=${impersonationResult.id} upn=${impersonationResult.userPrincipalName} name=${impersonationResult.displayName}`);
     return {
       azure: {
@@ -33,7 +33,7 @@ async function login(app, config, iss, sub, profile): Promise<IPassportUserWithA
     };
   }
   if (config.activeDirectory.blockGuestSignIns === true) {
-    const lookupResult = await graphProvider.getUserByIdAsync(profile.oid);
+    const lookupResult = await graphProvider.getUserById(profile.oid);
     if (lookupResult && lookupResult.userType === GraphUserType.Guest) {
       throw new Error(`This application does not permit guests. You are currently signed in to Active Directory as: ${lookupResult.userPrincipalName}`);
     }

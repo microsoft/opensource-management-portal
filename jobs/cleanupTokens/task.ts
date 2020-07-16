@@ -26,7 +26,7 @@ async function lookupCorporateId(graphProvider: IGraphProvider, knownUsers: Map<
   }
 
   try {
-    const userDetails = await graphProvider.getUserByIdAsync(corporateId);
+    const userDetails = await graphProvider.getUserById(corporateId);
     if (!userDetails || !userDetails.userPrincipalName) {
       knownUsers.set(corporateId, false);
       return false;
@@ -39,7 +39,7 @@ async function lookupCorporateId(graphProvider: IGraphProvider, knownUsers: Map<
   }
 }
 
-export default async function cleanup({ providers }: IReposJob) : Promise<IReposJobResult> {
+export default async function cleanup({ providers }: IReposJob): Promise<IReposJobResult> {
   const insights = providers.insights;
   const graphProvider = providers.graphProvider;
   const tokenProvider = providers.tokenProvider;

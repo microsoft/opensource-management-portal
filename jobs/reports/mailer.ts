@@ -64,14 +64,10 @@ function resolveAddress(context: IReportsContext, upn: string): Promise<string> 
   if (!providers.mailAddressProvider) {
     return Promise.reject(new Error('No mailAddressProvider is available in this application instance'));
   }
-  return new Promise((resolve, reject) => {
-    providers.mailAddressProvider.getAddressFromUpn(upn, (error, address) => {
-      return error ? reject(error) : resolve(address);
-    });
-  });
+  return providers.mailAddressProvider.getAddressFromUpn(upn);
 }
 
-function recipientTypeToAddress(context: IReportsContext, address: string): Promise<string> {
+async function recipientTypeToAddress(context: IReportsContext, address: string): Promise<string> {
   const i = address.indexOf(':');
   if (i < 0) {
     return Promise.reject(new Error('Invalid consolidated address format'));

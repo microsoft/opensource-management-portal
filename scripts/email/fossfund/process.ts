@@ -10,11 +10,10 @@ import _ from 'lodash';
 import app, { IReposJob } from '../../../app';
 import { isEmployeeOrIntern } from "../../../middleware/business/employeesOnly";
 import { getOffsetMonthRange, sleep } from "../../../utils";
-import { GetAddressFromUpnAsync } from '../../../lib/mailAddressProvider';
 import { IMail } from '../../../lib/mailProvider';
 
 app.runJob(async function work({ providers }: IReposJob) {
-  let type1=0, type2=0, type3=0;
+  let type1 = 0, type2 = 0, type3 = 0;
   const type1limit = 30000, type2limit = 30000, type3limit = 30000;
   const campaignGroupId = 'fossfund';
   const campaignId = '1';
@@ -49,9 +48,9 @@ app.runJob(async function work({ providers }: IReposJob) {
       }
       await sleep(250);
       const events = await eventRecordProvider.queryOpenContributionEventsByDateRangeAndThirdPartyId(
-        employee.thirdPartyId, 
-        start, 
-        end, 
+        employee.thirdPartyId,
+        start,
+        end,
         false /* corporate and open source contributions wanted */);
       const openContributions = events.filter(event => event.isOpenContribution || event.additionalData.contribution);
       const otherContributionsData = events.filter(event => !(event.isOpenContribution || event.additionalData.contribution));
@@ -86,7 +85,7 @@ app.runJob(async function work({ providers }: IReposJob) {
         // console.log(`${employee.corporateDisplayName}: opportunity`);
       }
 
-      const address = await GetAddressFromUpnAsync(mailAddressProvider, employee.corporateUsername);
+      const address = await mailAddressProvider.getAddressFromUpn(employee.corporateUsername);
       if (!address) {
         console.log(`No e-mail address for ${employee.corporateUsername}`);
         continue;

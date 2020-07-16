@@ -5,7 +5,6 @@
 
 import { Organization } from "./organization";
 import { Operations } from "./operations";
-import { GetAddressFromUpnAsync } from '../lib/mailAddressProvider';
 import { ICorporateLink } from './corporateLink';
 
 export class OrganizationMember {
@@ -97,6 +96,6 @@ export class OrganizationMember {
     if (!providers.mailAddressProvider) {
       throw new Error('No mailAddressProvider is available in this application instance');
     }
-    return GetAddressFromUpnAsync(providers.mailAddressProvider, link.corporateUsername);
+    return providers.mailAddressProvider.getAddressFromUpn(link.corporateUsername);
   }
 }

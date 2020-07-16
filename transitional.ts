@@ -187,8 +187,6 @@ export interface IProviders {
   teamCacheProvider?: ITeamCacheProvider;
   teamMemberCacheProvider?: ITeamMemberCacheProvider;
   viewServices?: any;
-  witnessRedis?: redis.RedisClient;
-  witnessRedisHelper?: RedisHelper;
   tokenProvider?: ITokenProvider;
 }
 

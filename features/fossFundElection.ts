@@ -11,7 +11,6 @@ import { ElectionNominationEntity, ElectionNominationEntityProvider } from '../e
 import { ElectionVoteEntity } from '../entities/voting/vote';
 import { EventRecord } from '../entities/events/eventRecord';
 import { asNumber } from '../utils';
-import { GetAddressFromUpnAsync } from '../lib/mailAddressProvider';
 
 export interface IFossBallot {
   election: ElectionEntity;
@@ -42,12 +41,12 @@ export class FossFundElection {
   }
 
   getActiveElections(): Promise<ElectionEntity[]> {
-    const { electionProvider} = this.#providers;
+    const { electionProvider } = this.#providers;
     return electionProvider.queryActiveElections();
   }
 
   getElectionsByEligibilityDates(start: Date, end: Date): Promise<ElectionEntity[]> {
-    const { electionProvider} = this.#providers;
+    const { electionProvider } = this.#providers;
     return electionProvider.queryElectionsByEligibilityDates(start, end);
   }
 
@@ -168,7 +167,7 @@ export class FossFundElection {
     }
     return await this.hasOpenEvents(corporateId, new Date(eligibilityStart), new Date(eligibilityEnd));
   }
-  
+
   private async hasOpenEvents(corporateId: string, start: Date, end: Date): Promise<boolean> {
     const { cacheProvider, eventRecordProvider } = this.#providers;
     const key = `contributions:open:corp:${corporateId}:${start.toISOString()}:${end.toISOString()}`;
@@ -178,7 +177,7 @@ export class FossFundElection {
         return true;
       }
     }
-    const records  = await eventRecordProvider.queryOpenContributionEventsByDateRangeAndCorporateId(
+    const records = await eventRecordProvider.queryOpenContributionEventsByDateRangeAndCorporateId(
       corporateId,
       start,
       end,
@@ -293,7 +292,7 @@ export class FossFundElection {
     try {
       const link = (await linkProvider.queryByCorporateId(corporateId))[0];
       const election = await electionProvider.getElection(electionId);
-      const mailAddress = await GetAddressFromUpnAsync(mailAddressProvider, link.corporateUsername);
+      const mailAddress = await mailAddressProvider.getAddressFromUpn(link.corporateUsername);
       const vote = await electionVoteProvider.getVote(ElectionVoteEntity.GetVoteId(electionId, corporateId));
       const nomination = await electionNominationProvider.getNomination(vote.nominationId);
       let content = await operations.emailRender('vote', {
@@ -334,7 +333,7 @@ export class FossFundElection {
     } catch (exception) {
       console.dir(exception);
       if (insights) {
-        insights.trackException( { exception });
+        insights.trackException({ exception });
       }
     }
   }

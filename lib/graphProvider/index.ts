@@ -3,9 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import { MicrosoftGraphProvider } from "./microsoftGraphProvider";
+import { MicrosoftGraphProvider } from './microsoftGraphProvider';
 
 export enum GraphUserType {
   Unknown = '',
@@ -19,6 +17,7 @@ export interface IGraphEntry {
   mail: string;
   userPrincipalName: string;
   userType?: GraphUserType;
+  alias?: string;
 }
 
 export interface IGraphGroupMember {
@@ -40,14 +39,18 @@ export interface IGraphEntryWithManager extends IGraphEntry {
 }
 
 export interface IGraphProvider {
-  getUserById(corporateId: string, callback);
-  getUserByIdAsync(id: string) : Promise<IGraphEntry>;
+  getUserById(id: string): Promise<IGraphEntry>;
+
+  getUserIdByNickname(nickname: string): Promise<string>;
+
+  getUserAndManagerById(corporateId: string, callback);
 
   getManagerById(corporateId: string, callback);
-  getManagerByIdAsync(id: string) : Promise<IGraphEntry>;
-  getUserAndManagerById(corporateId: string, callback);
+  getManagerByIdAsync(id: string): Promise<IGraphEntry>;
   getManagementChain(corporateId: string): Promise<IGraphEntry[]>;
-  getUserIdByNickname(nickname: string): Promise<string>;
+
+  getMailAddressByUsername(corporateUsername: string): Promise<string>;
+  getUserIdByUsername(corporateUsername: string): Promise<string>;
 
   getGroupsById(corporateId: string): Promise<string[]>;
   getGroupsByMail(mailAddress: string): Promise<string[]>;
@@ -89,7 +92,7 @@ export function CreateGraphProviderInstance(config, callback) {
   return callback(null, providerInstance);
 };
 
-export function getUserAndManagerById(graphProvider: IGraphProvider, aadId: string) : Promise<IGraphEntryWithManager> {
+export function getUserAndManagerById(graphProvider: IGraphProvider, aadId: string): Promise<IGraphEntryWithManager> {
   return new Promise((resolve, reject) => {
     if (!graphProvider || !aadId) {
       return resolve();

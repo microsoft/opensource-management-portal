@@ -7,7 +7,6 @@ import * as common from './common';
 import { Operations } from "./operations";
 import { Team } from "./team";
 import { ICorporateLink } from './corporateLink';
-import { GetAddressFromUpnAsync } from '../lib/mailAddressProvider';
 
 const memberPrimaryProperties = [
   'id',
@@ -103,7 +102,7 @@ export class TeamMember {
       throw new Error('No mailAddressProvider is available in this application instance');
     }
     // Preventing a crash when trying to send a mail to an unlinked account
-    const mailAddress = link ? await GetAddressFromUpnAsync(providers.mailAddressProvider, link.corporateUsername) : null;
+    const mailAddress = link ? await providers.mailAddressProvider.getAddressFromUpn(link.corporateUsername) : null;
     this._mailAddress = mailAddress;
     return mailAddress;
   }

@@ -23,7 +23,7 @@ import { wrapError, sortByCaseInsensitive, asNumber } from '../utils';
 import { ICorporateLink } from './corporateLink';
 import { Repository } from './repository';
 import { RestLibrary } from '../lib/github';
-import { IMailAddressProvider, GetAddressFromUpnAsync } from '../lib/mailAddressProvider';
+import { IMailAddressProvider } from '../lib/mailAddressProvider';
 import { Team, ICrossOrganizationTeamMembership } from './team';
 import { AppPurpose, GitHubAppAuthenticationType } from '../github';
 import { OrganizationSetting } from '../entities/organizationSettings/organizationSetting';
@@ -742,7 +742,7 @@ export class Operations {
     }
     if (!mailAddress) {
       try {
-        mailAddress = await GetAddressFromUpnAsync(mailAddressProvider, link.corporateUsername);
+        mailAddress = await mailAddressProvider.getAddressFromUpn(link.corporateUsername);
       } catch (getAddressError) {
         if (throwIfError) {
           throw getAddressError;
@@ -1199,7 +1199,7 @@ export class Operations {
     if (!this.mailAddressProvider) {
       throw new Error('No mailAddressProvider available');
     }
-    return GetAddressFromUpnAsync(this.mailAddressProvider, corporateUsername);
+    return this.mailAddressProvider.getAddressFromUpn(corporateUsername);
   }
 
   async getMailAddressesFromCorporateUsernames(corporateUsernames: string[]): Promise<string[]> {

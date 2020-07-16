@@ -75,7 +75,7 @@ router.use(asyncHandler(async (req: IRequestHacked, res, next) => {
     },
   });
   try {
-    const details = await graphProvider.getUserByIdAsync(aadId);
+    const details = await graphProvider.getUserById(aadId);
     const userType = details.userType;
     const displayName = details.displayName;
     const userPrincipalName = details.userPrincipalName;
@@ -161,7 +161,7 @@ async function showLinkPage(req, res) {
   }
   const config = req.app.settings.runtimeConfig;
   const graphProvider = req.app.settings.graphProvider;
-  if (config.authentication.scheme !== 'aad' || !graphProvider){
+  if (config.authentication.scheme !== 'aad' || !graphProvider) {
     return render(null);
   }
   const aadId = individualContext.corporateIdentity.id;
@@ -215,7 +215,7 @@ async function linkUser(req, res, next) {
       operationSource: LinkOperationSource.Portal,
       correlationId: individualContext.webContext.correlationId,
       skipGitHubValidation: true, // already has been verified in the recent session
-     });
+    });
     return res.redirect('/?onboarding=yes');
   } catch (createError) {
     return next(wrapError(createError, `We had trouble linking your corporate and GitHub accounts: ${createError.message}`));
@@ -226,7 +226,7 @@ router.use('/remove', unlinkRoute);
 
 router.get('/reconnect', function (req: ReposAppRequest, res, next) {
   const config = req.app.settings.runtimeConfig;
-  if (config.authentication.scheme !== 'aad'){
+  if (config.authentication.scheme !== 'aad') {
     return next(wrapError(null, 'Account reconnection is only needed for Active Directory authentication applications.', true));
   }
   // If the request comes back to the reconnect page, the authenticated app will

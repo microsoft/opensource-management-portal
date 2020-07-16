@@ -15,7 +15,6 @@ import { IndividualContext } from '../../user';
 import { Organization } from '../../business/organization';
 import { CreateRepository, ICreateRepositoryApiResult, CreateRepositoryEntrypoint } from '../createRepo';
 import { Team, GitHubTeamRole } from '../../business/team';
-import { GetAddressFromUpnAsync } from '../../lib/mailAddressProvider';
 import { asNumber } from '../../utils';
 
 interface ILocalApiRequest extends ReposAppRequest {
@@ -145,7 +144,7 @@ async function discoverUserIdentities(req: ReposAppRequest, res, next) {
   // Try and also learn if we know their e-mail address to send the new repo mail to
   const upn = apiContext.corporateIdentity.username;
   try {
-    const mailAddress = await GetAddressFromUpnAsync(mailAddressProvider, upn);
+    const mailAddress = await mailAddressProvider.getAddressFromUpn(upn);
     if (mailAddress) {
       req['knownRequesterMailAddress'] = mailAddress;
     }

@@ -3,61 +3,45 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { ICallback } from '../../transitional';
 
+import microsoftMailAddressProvider from './microsoftMailAddressProvider';
+import mockMailAddressProvider from './mockMailAddressProvider';
+import passthroughMailAddressProvider from './passthroughMailAddressProvider';
+
+const supportedProvidersMapping = {
+  microsoftMailAddressProvider,
+  mockMailAddressProvider,
+  passthroughMailAddressProvider,
+};
+
 export interface IMailAddressProvider {
-  getAddressFromUpn(upn: string, callback: ICallback<string>);
-  getCorporateEntry?: any;
+  getAddressFromUpn(upn: string): Promise<string>;
 }
 
-export function GetAddressFromUpnAsync(mailAddressProvider: IMailAddressProvider, upn: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    mailAddressProvider.getAddressFromUpn(upn, (error, address) => {
-      return error ? reject(error) : resolve(address);
-    });
-  });
-}
-
-export function GetAliasFromUpn(mailAddressProvider: IMailAddressProvider, upn: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    mailAddressProvider.getCorporateEntry('upns', upn, (error: Error, person: any) => {
-      if (error) {
-        return reject(error);
-      }
-      return resolve(person && person.alias ? person.alias : null);
-    });
-  });
-}
-
-export function createMailAddressProviderInstance(options: any, callback: ICallback<IMailAddressProvider>) {
+export function createMailAddressProviderInstance(options: any): IMailAddressProvider {
   const config = options.config;
   const mailAddressesConfig = config.mailAddresses || {};
   const provider = mailAddressesConfig.provider || 'passthroughMailAddressProvider';
   if (!provider) {
-    return callback(null);
+    return null;
   }
   let found = false;
-  const supportedProviders = [
-    'microsoftMailAddressProvider',
-    'mockMailAddressProvider',
-    'passthroughMailAddressProvider',
-  ];
-  supportedProviders.forEach((supportedProvider) => {
+  const supportedProviders = Object.getOwnPropertyNames(supportedProvidersMapping);
+  for (const supportedProvider of supportedProviders) {
     if (supportedProvider === provider) {
+      const createFunction = supportedProvidersMapping[supportedProvider];
       found = true;
       let providerInstance: IMailAddressProvider = null;
       try {
-        providerInstance = require(`./${supportedProvider}`)(options);
+        providerInstance = createFunction.call(null, options);
+      } catch (createError) {
+        throw createError;
       }
-      catch (createError) {
-        return callback(createError);
-      }
-      return callback(null, providerInstance);
+      return providerInstance as IMailAddressProvider;
     }
-  });
-  if (found === false) {
-    return callback(new Error(`The mail address provider "${provider}" is not implemented or configured at this time.`));
   }
-};
+  if (found === false) {
+    throw new Error(`The mail address provider "${provider}" is not implemented or configured at this time.`);
+  }
+}

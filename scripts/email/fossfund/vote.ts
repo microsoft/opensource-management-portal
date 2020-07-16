@@ -10,7 +10,6 @@ import _ from 'lodash';
 import app, { IReposJob } from '../../../app';
 import { isEmployeeOrIntern } from '../../../middleware/business/employeesOnly';
 import { sleep } from '../../../utils';
-import { GetAddressFromUpnAsync } from '../../../lib/mailAddressProvider';
 import { IMail } from '../../../lib/mailProvider';
 
 let fakeSend = false;
@@ -67,8 +66,8 @@ app.runJob(async function work({ providers }: IReposJob) {
       await sleep(5);
       const events = await eventRecordProvider.queryOpenContributionEventsByDateRangeAndCorporateId(
         employee.corporateId,
-        start, 
-        end, 
+        start,
+        end,
         false /* corporate and open source contributions wanted */);
       const openContributions = events.filter(event => event.isOpenContribution || event.additionalData.contribution);
       if (openContributions.length === 0) {
@@ -84,7 +83,7 @@ app.runJob(async function work({ providers }: IReposJob) {
       const contributions = _.groupBy(openContributions, contrib => contrib.action);
       let subjectSubset = `${election.title} voting is now open: Let's give $10,000 to a project thanks to YOUR contributions!`;
       let headline = 'FOSS Fund';
-      const address = fakeSend ? 'jeff.wilcox@microsoft.com' : await GetAddressFromUpnAsync(mailAddressProvider, employee.corporateUsername);
+      const address = fakeSend ? 'jeff.wilcox@microsoft.com' : await mailAddressProvider.getAddressFromUpn(employee.corporateUsername);
       if (!address) {
         console.log(`[noemail] No e-mail address for ${employee.corporateUsername}`);
         continue;

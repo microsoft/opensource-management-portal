@@ -12,7 +12,6 @@ import { wrapError } from '../../../../utils';
 import { Team } from '../../../../business/team';
 import { PermissionWorkflowEngine } from '../approvals';
 import RenderHtmlMail from '../../../../lib/emailRender';
-import { GetAddressFromUpnAsync } from '../../../../lib/mailAddressProvider';
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: any;
@@ -107,8 +106,8 @@ router.post('/', asyncHandler(async function (req: ILocalRequest, res, next) {
   const upn = pendingRequest.corporateUsername;
   let userMailAddress = null;
   try {
-    userMailAddress = await GetAddressFromUpnAsync(mailAddressProvider, upn);
-    pendingRequest.decision = action,
+    userMailAddress = await mailAddressProvider.getAddressFromUpn(upn);
+    pendingRequest.decision = action;
     pendingRequest.active = false;
     pendingRequest.decisionTime = new Date();
     pendingRequest.decisionThirdPartyUsername = username;
@@ -169,7 +168,7 @@ router.post('/', asyncHandler(async function (req: ILocalRequest, res, next) {
     }
     if (content) {
       const mail = {
-        to: [ userMailAddress ],
+        to: [userMailAddress],
         subject: engine.getDecisionEmailSubject(wasApproved, pendingRequest),
         content,
         correlationId: req.correlationId,
@@ -177,13 +176,17 @@ router.post('/', asyncHandler(async function (req: ILocalRequest, res, next) {
       };
       try {
         const mailResult = await mailProvider.sendMail(mail);
-        req.insights.trackEvent({ name: 'ReposRequestDecisionMailSuccess', properties: Object.assign({
-          receipt: mailResult,
-        }, contentOptions)});
+        req.insights.trackEvent({
+          name: 'ReposRequestDecisionMailSuccess', properties: Object.assign({
+            receipt: mailResult,
+          }, contentOptions)
+        });
       } catch (mailError) {
-        req.insights.trackException({ exception: mailError, properties: Object.assign({
-          eventName: 'ReposRequestDecisionMailFailure',
-        }, contentOptions)});
+        req.insights.trackException({
+          exception: mailError, properties: Object.assign({
+            eventName: 'ReposRequestDecisionMailFailure',
+          }, contentOptions)
+        });
       }
     }
   }

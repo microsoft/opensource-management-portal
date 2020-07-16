@@ -21,6 +21,8 @@ export interface IReposApplication extends Application {
   config: any;
   isBackgroundJob: boolean;
 
+  startServer: () => Promise<void>;
+
   initializeApplication: (config: any, configurationError: Error) => Promise<IReposApplication>;
   initializeJob: (config: any, configurationError: Error) => Promise<IReposApplication>;
   startupApplication: () => Promise<IReposApplication>;
@@ -122,11 +124,11 @@ app.runJob = async function (job: (job: IReposJob) => Promise<IReposJobResult | 
   if (options.insightsPrefix && app.providers.insights) {
     try {
       app.providers.insights.trackEvent({
-          name: `${options.insightsPrefix}Started`,
-          properties: {
-            hostname: hostname(),
-          }
-        });
+        name: `${options.insightsPrefix}Started`,
+        properties: {
+          hostname: hostname(),
+        }
+      });
     } catch (ignoreInsightsError) {
       console.error(`insights error: ${ignoreInsightsError}`);
     }
@@ -159,8 +161,10 @@ app.runJob = async function (job: (job: IReposJob) => Promise<IReposJobResult | 
       try {
         app.providers.insights.trackException({
           exception: jobError,
-          properties: { name: `${options.insightsPrefix}Failure`,
-        }});
+          properties: {
+            name: `${options.insightsPrefix}Failure`,
+          }
+        });
       } catch (ignoreInsightsError) {
         console.error(`insights error: ${ignoreInsightsError}`);
       }

@@ -62,6 +62,7 @@ import { ElectionVoteProvider } from '../entities/voting/vote';
 import { ElectionNominationEntityProvider } from '../entities/voting/nomination';
 import { ElectionNominationCommentEntityProvider } from '../entities/voting/nominationComment';
 import { IReposApplication } from '../app';
+import { sleep } from '../utils';
 
 async function initializeAsync(app: IReposApplication, express, rootdir: string, config): Promise<void> {
   const providers = app.get('providers') as IProviders;
@@ -77,19 +78,11 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
     providers.cacheProvider = blobCache;
   } else if (config.github.cache.provider === 'redis') {
     const redisClient = await connectRedis(config, config.redis, 'cache');
-    const redisHelper = new RedisHelper({redisClient, prefix: config.redis.prefix});
+    const redisHelper = new RedisHelper({ redisClient, prefix: config.redis.prefix });
     // providers.redisClient = redisClient;
     providers.cacheProvider = redisHelper;
   } else {
     throw new Error('No cache provider available');
-  }
-
-  providers.witnessRedis = await witnessRedisConnect(config);
-  if (providers.witnessRedis) {
-    providers.witnessRedisHelper = new RedisHelper({
-      redisClient: providers.witnessRedis,
-      prefix: config.redis.prefix,
-    });  
   }
 
   providers.graphProvider = await createGraphProvider(config);
@@ -134,10 +127,10 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
     emOptions,
     'postgres') : null;
   const memoryEntityMetadataProvider = await createAndInitializeEntityMetadataProviderInstance(
-      app,
-      config,
-      emOptions,
-      'memory');
+    app,
+    config,
+    emOptions,
+    'memory');
   const defaultProvider = pgEntityMetadataProvider || tableEntityMetadataProvider || memoryEntityMetadataProvider;
   function providerNameToInstance(value: string): IEntityMetadataProvider {
     switch (value) {
@@ -165,8 +158,8 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
   providers.repositoryTeamCacheProvider = await CreateRepositoryTeamCacheProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.repositoryteamcache) });
   providers.teamCacheProvider = await CreateTeamCacheProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.teamcache) });
   providers.teamMemberCacheProvider = await CreateTeamMemberCacheProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.teammembercache) });
-  providers.auditLogRecordProvider = await createAndInitializeAuditLogRecordProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.auditlogrecord )});
-  providers.eventRecordProvider = await createAndInitializeEventRecordProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.eventrecord )});
+  providers.auditLogRecordProvider = await createAndInitializeAuditLogRecordProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.auditlogrecord) });
+  providers.eventRecordProvider = await createAndInitializeEventRecordProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.eventrecord) });
   providers.queryCache = new QueryCache(providers);
   if (config.campaigns && config.campaigns.provider === 'cosmosdb') {
     const campaignCosmosStore = new CosmosHelper({
@@ -262,12 +255,35 @@ export default async function initialize(app: IReposApplication, express, rootdi
   app.providers = providers;
   app.set('runtimeConfig', config);
   providers.healthCheck = healthCheck(app, config);
+  const web = !(config.skipModules && config.skipModules.has('web'));
+  if (web) {
+    if (!app.startServer) {
+      throw new Error(`app.startServer is required for web applications`);
+    }
+    await app.startServer();
+  }
   app.use(require('./correlationId'));
   providers.insights = appInsights(app, config);
   app.set('appInsightsClient', providers.insights);
-
   if (!exception && (!config || !config.activeDirectory)) {
     exception = new Error(`config.activeDirectory.clientId and config.activeDirectory.clientSecret are required to initialize KeyVault`);
+  }
+  app.use('*', (req, res, next) => {
+    if (providers.healthCheck.ready) {
+      return next();
+    }
+    return res.send('Service not ready.');
+  });
+  if (config.containers && config.containers.deployment) {
+    debug('Container deployment: HTTP: listening, HSTS: on');
+    app.use(require('./hsts'));
+  } else if (config.containers && config.containers.docker) {
+    debug('Docker image: HTTP: listening, HSTS: off');
+  } else if (config.webServer.allowHttp) {
+    debug('WARNING: Development mode (DEBUG_ALLOW_HTTP): HTTP: listening, HSTS: off');
+  } else {
+    app.use(require('./sslify'));
+    app.use(require('./hsts'));
   }
   if (!exception) {
     const kvConfig = {
@@ -293,7 +309,6 @@ export default async function initialize(app: IReposApplication, express, rootdi
       exception = initializeError;
     }
   }
-  
   try {
     require('./index')(app, express, config, rootdir, exception);
   } catch (middlewareError) {
@@ -348,7 +363,7 @@ function createGraphProvider(config: any): Promise<IGraphProvider> {
         return resolve(provider);
       }
       return resolve();
-    });  
+    });
   });
 }
 
@@ -374,14 +389,14 @@ function connectPostgres(config: any): Promise<PostgresPool> {
         // try connecting
         pool.connect((err, client, release) => {
           if (err) {
-            const poolError : InnerError = new Error(`There was a problem connecting to the Postgres server`);
+            const poolError: InnerError = new Error(`There was a problem connecting to the Postgres server`);
             poolError.inner = err;
             return reject(poolError);
           }
           client.query('SELECT NOW()', (err, result) => {
             release();
             if (err) {
-              const poolQueryError : InnerError = new Error('There was a problem performing a test query to the Postgres server');
+              const poolQueryError: InnerError = new Error('There was a problem performing a test query to the Postgres server');
               poolQueryError.inner = err;
               return reject(poolQueryError);
             }
@@ -402,8 +417,8 @@ function connectRedis(config: any, redisConfig: any, purpose: string): Promise<r
   const nodeEnvironment = config && config.node ? config.node.environment : null;
   let redisClient: redis.RedisClient = null;
   const redisOptions: RedisOptions = {
-  auth_pass: redisConfig.key,
-  detect_buffers: true,
+    auth_pass: redisConfig.key,
+    detect_buffers: true,
   };
   if (redisConfig.tls) {
     redisOptions.tls = {
@@ -436,46 +451,10 @@ function connectRedis(config: any, redisConfig: any, purpose: string): Promise<r
   });
 }
 
-function witnessRedisConnect(config: any): Promise<redis.RedisClient> {
-  if (!config.witness || !config.witness.redis) {
-    return Promise.resolve(null);
-  }
-  const nodeEnvironment = config && config.node ? config.node.environment : null;
-  const wr = config.witness.redis;
-  const witnessRedisOptions : RedisOptions = {
-    auth_pass: wr.key,
-    detect_buffers: true,
-  };
-  if (wr.tls) {
-    witnessRedisOptions.tls = {
-      servername: wr.tls,
-    };
-  }
-  wr.port = wr.port || (wr.tls ? 6380 : 6379);
-  if (!wr.host && !wr.tls) {
-    if (nodeEnvironment === 'production') {
-      console.warn('Redis host or TLS host must be provided in production environments');
-      throw new Error('No wr.host or wr.tls');
-    }
-    debug(`mocking Witness Redis, in-memory provider in use`);
-    return Promise.resolve(redisMock.createClient());
-  } else {
-    debug(`connecting to Witness Redis ${wr.host || wr.tls}`);
-    return Promise.resolve(redis.createClient(wr.port, wr.host || wr.tls, witnessRedisOptions));
-  }
-}
-
-function createMailAddressProvider(config: any, providers: IProviders): Promise<IMailAddressProvider> {
+async function createMailAddressProvider(config: any, providers: IProviders): Promise<IMailAddressProvider> {
   const options = {
     config: config,
     providers: providers,
   };
-  return new Promise((resolve, reject) => {
-    createMailAddressProviderInstance(options, (providerInitError, provider: IMailAddressProvider) => {
-      if (providerInitError) {
-        return reject(providerInitError);
-      }
-      return resolve(provider);
-    });  
-  });
+  return createMailAddressProviderInstance(options);
 }

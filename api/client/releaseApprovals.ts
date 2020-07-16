@@ -10,7 +10,6 @@ const router = express.Router();
 import { ReposAppRequest, IProviders } from '../../transitional';
 import { getReviewService } from './reviewService';
 import { jsonError } from '../../middleware/jsonError';
-import { GetAliasFromUpn } from '../../lib/mailAddressProvider';
 
 const releaseApprovalsRedisKey = 'release-approvals';
 
@@ -31,19 +30,22 @@ router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
 }));
 
 router.post('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { mailAddressProvider, cacheProvider, insights } = req.app.settings.providers as IProviders;
+  const { graphProvider, cacheProvider, insights } = req.app.settings.providers as IProviders;
   try {
     const context = req.individualContext || req.apiContext;
-    const upn = context.corporateIdentity.username;
-      const body = req.body;
+    const id = context.corporateIdentity.id;
+    const body = req.body;
     if (!body) {
       return next(jsonError('No body', 400));
     }
     let alias = null;
     try {
-      alias = await GetAliasFromUpn(mailAddressProvider, upn);
+      const graph = await graphProvider.getUserById(id);
+      if (graph && graph.alias) {
+        alias = graph.alias;
+      }
       if (!alias) {
-        throw new Error(`Given the user principal name of ${upn}, we were unable to find the e-mail address for the user`);
+        throw new Error(`Given the user ID of ${id}, we were unable to find the e-mail address for the user`);
       }
     } catch (getAliasError) {
       return next(jsonError(new Error(getAliasError.message)));

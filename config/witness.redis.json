@@ -1,6 +1,0 @@
-{
-  "port": "env://WITNESS_REDIS_PORT",
-  "host": "env://WITNESS_REDIS_HOST",
-  "key": "env://WITNESS_REDIS_KEY",
-  "tls": "env://WITNESS_REDIS_TLS_HOST"
-}
