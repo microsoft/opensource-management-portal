@@ -184,14 +184,16 @@ block content
                   h6 On the Web
                   p
                     a(href=orgUser.blog, target='_new')= orgUser.blog
-                if orgAccount.getProfileCreatedDate && orgAccount.getProfileCreatedDate()
+                if orgAccount && orgAccount.getEntity() && orgAccount.getEntity().created_at
+                  - var createdAt = new Date(orgAccount.getEntity().created_at)
                   h6 Created
                   p
-                    time(datetime=orgAccount.getProfileCreatedDate().toISOString())= orgAccount.getProfileCreatedDate().toDateString()
-                if orgAccount.getProfileUpdatedDate && orgAccount.getProfileUpdatedDate()
+                    time(datetime=createdAt.toISOString())= createdAt.toDateString()
+                if orgAccount && orgAccount.getEntity() && orgAccount.getEntity().updated_at
+                  - var updatedAt = new Date(orgAccount.getEntity().updated_at)
                   h6 Updated
                   p
-                    time(datetime=orgUser.getProfileUpdatedDate().toISOString())= orgUser.getProfileUpdatedDate().toDateString()
+                    time(datetime=updatedAt.toISOString())= updatedAt.toDateString()
                 hr
                 if organization.configuredOrganizationRepositoryTypes
                   h6 Supported Repository Types
@@ -201,11 +203,6 @@ block content
                       li Private
                 if organizationEntity
                   hr
-
-                  if organizationEntity.created_at
-                    h6 CREATED
-                    ul.list-unstyled: li= moment(organizationEntity.created_at).fromNow()
-
                   if organizationEntity.disk_usage
                     h6 STORAGE USED
                     ul.list-unstyled: li

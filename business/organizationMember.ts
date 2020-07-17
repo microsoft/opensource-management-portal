@@ -45,20 +45,6 @@ export class OrganizationMember {
     return this._entity;
   }
 
-  getProfileCreatedDate(): Date {
-    // legacy method that should probably be removed
-    if (this._entity.created_at) {
-      return new Date(this._entity.created_at);
-    }
-  }
-
-  getProfileUpdatedDate(): Date {
-    // legacy method that should probably be removed
-    if (this._entity.updated_at) {
-      return new Date(this._entity.updated_at);
-    }
-  }
-
   get organizationProfile() {
     return this._organizationProfile;
   }

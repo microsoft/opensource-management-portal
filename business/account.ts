@@ -72,12 +72,12 @@ export class Account {
   public get company(): string {
     return this._originalEntity ? this._originalEntity.company : undefined;
   }
-  
-  public get email(): string {		
+
+  public get email(): string {
     return this._originalEntity ? this._originalEntity.email : undefined;
   }
 
-   public get name(): string {		
+  public get name(): string {
     return this._originalEntity ? this._originalEntity.name : undefined;
   }
 
@@ -139,14 +139,6 @@ export class Account {
     }
   }
 
-  getProfileCreatedDate() {
-    return this._created_at ? new Date(this._created_at) : undefined;
-  }
-
-  getProfileUpdatedDate() {
-    return this._updated_at ? new Date(this._updated_at) : undefined;
-  }
-
   // End previous functions
 
   async getDetailsAndLink(options?: ICacheOptions): Promise<Account> {
@@ -163,8 +155,8 @@ export class Account {
         this._link = link;
       }
     } catch (getLinkError) {
-        // We do not assume that the link exists...
-        console.dir(getLinkError);
+      // We do not assume that the link exists...
+      console.dir(getLinkError);
     }
     return this;
   }
@@ -367,8 +359,8 @@ export class Account {
           currentOrganizationMemberships.push(organization);
         }
       } catch (ignoreErrors) {
-         // getMembershipError ignored: if there is no membership that's fine
-         console.log(`error from individual check of organization ${organization.name} membership for username ${username}: ${ignoreErrors}`);
+        // getMembershipError ignored: if there is no membership that's fine
+        console.log(`error from individual check of organization ${organization.name} membership for username ${username}: ${ignoreErrors}`);
       }
     };
     const allOrganizations = Array.from(operations.organizations.values());
