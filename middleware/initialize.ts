@@ -7,7 +7,7 @@
 
 import CosmosSessionStore from '../lib/cosmosSession';
 
-import { IProviders, InnerError, RedisOptions } from '../transitional';
+import { IProviders, InnerError, RedisOptions, IApplicationProfile } from '../transitional';
 import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../lib/linkProviders';
 
 import { Operations } from '../business/operations';
@@ -28,6 +28,7 @@ const keyVault = require('./keyVault');
 const healthCheck = require('./healthCheck');
 
 import expressRoutes from '../routes/';
+import alternateRoutes from './alternateApps';
 
 import RedisHelper from '../lib/caching/redis';
 import { createTokenProvider } from '../entities/token';
@@ -62,7 +63,13 @@ import { ElectionVoteProvider } from '../entities/voting/vote';
 import { ElectionNominationEntityProvider } from '../entities/voting/nomination';
 import { ElectionNominationCommentEntityProvider } from '../entities/voting/nominationComment';
 import { IReposApplication } from '../app';
-import { sleep } from '../utils';
+
+const DefaultApplicationProfile: IApplicationProfile = {
+  applicationName: 'GitHub Management Portal',
+  serveStaticAssets: true,
+  serveClientAssets: true,
+  webServer: true,
+};
 
 async function initializeAsync(app: IReposApplication, express, rootdir: string, config): Promise<void> {
   const providers = app.get('providers') as IProviders;
@@ -239,7 +246,21 @@ function configureGitHubLibrary(app, redis, linkProvider: ILinkProvider, config)
 
 // Asynchronous initialization for the Express app, configuration and data stores.
 export default async function initialize(app: IReposApplication, express, rootdir: string, config: any, exception: Error): Promise<IReposApplication> {
-  debug(config && config.isJobInternal ? 'loading job' : 'loading express application');
+  const applicationProfile = config.web.app && config.web.app !== 'repos' ? await alternateRoutes(config, app, config.web.app) : DefaultApplicationProfile;
+  const web = !(config.skipModules && config.skipModules.has('web'));
+  if (applicationProfile.webServer && !web) {
+    applicationProfile.webServer = false;
+  }
+  const containerPurpose = config && config.isJobInternal ? 'Job' : (applicationProfile.webServer ? 'Web Application' : 'Application');
+  debug(`${containerPurpose} name: ${applicationProfile.applicationName}`);
+  debug(`Environment: ${config?.debug?.environmentName || 'Unknown'}`);
+  if (!exception && applicationProfile.validate) {
+    try {
+      await applicationProfile.validate();
+    } catch (error) {
+      exception = error;
+    }
+  }
   app.set('started', new Date());
   app.config = config;
   if (exception) {
@@ -250,13 +271,13 @@ export default async function initialize(app: IReposApplication, express, rootdi
   const providers: IProviders = {
     app,
     basedir: rootdir,
+    applicationProfile,
   };
   app.set('providers', providers);
   app.providers = providers;
   app.set('runtimeConfig', config);
   providers.healthCheck = healthCheck(app, config);
-  const web = !(config.skipModules && config.skipModules.has('web'));
-  if (web) {
+  if (applicationProfile.webServer) {
     if (!app.startServer) {
       throw new Error(`app.startServer is required for web applications`);
     }
@@ -314,8 +335,13 @@ export default async function initialize(app: IReposApplication, express, rootdi
   } catch (middlewareError) {
     exception = middlewareError;
   }
+  // ROUTES:
   if (!exception) {
-    app.use('/', expressRoutes);
+    if (applicationProfile.customRoutes) {
+      await applicationProfile.customRoutes();
+    } else {
+      app.use('/', expressRoutes);
+    }
   } else {
     console.error(exception);
     const appInsightsClient = providers.insights;

@@ -4,6 +4,7 @@
 //
 
 import { IProviders } from '../../transitional';
+import { IMailAddressProvider } from '.';
 
 export default function createMailAddressProvider(options) {
   const config = options.config;
@@ -15,15 +16,8 @@ export default function createMailAddressProvider(options) {
     throw new Error('The microsoftMailAddressProvider requires that all provider instances are passed in as options');
   }
   return {
-    getAddressFromUpn: (upn, callback) => {
-      providers.graphProvider.getMailAddressByUsername(upn).then(mailAddress => {
-        if (mailAddress) {
-          return callback(null, mailAddress);
-        }
-        return callback(null, upn); // fallback to UPN
-      }).catch(error => {
-        return callback(error);
-      });
+    getAddressFromUpn: (upn: string) => {
+      return providers.graphProvider.getMailAddressByUsername(upn);
     },
-  };
+  } as IMailAddressProvider;
 };

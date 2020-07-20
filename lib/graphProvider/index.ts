@@ -17,7 +17,8 @@ export interface IGraphEntry {
   mail: string;
   userPrincipalName: string;
   userType?: GraphUserType;
-  alias?: string;
+  mailNickname?: string;
+  // alias?: string;
 }
 
 export interface IGraphGroupMember {

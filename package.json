@@ -49,7 +49,7 @@
     "@octokit/app": "4.2.0",
     "@octokit/rest": "18.0.0",
     "adal-node": "0.2.1",
-    "applicationinsights": "1.8.0",
+    "applicationinsights": "1.8.2",
     "async-prompt": "1.0.1",
     "azure-keyvault": "3.0.5",
     "azure-sb": "0.11.1",
@@ -83,7 +83,7 @@
     "octicons": "5.0.1",
     "only": "0.0.2",
     "package-lock.json": "1.0.0",
-    "painless-config-resolver": "4.0.3",
+    "painless-config-resolver": "4.0.4",
     "passport": "0.4.1",
     "passport-azure-ad": "4.2.1",
     "passport-github": "1.1.0",
@@ -102,6 +102,8 @@
     "serve-favicon": "2.5.0",
     "throat": "5.0.0",
     "tmp": "0.2.1",
+    "tmp-promise": "3.0.2",
+    "unzipper": "^0.10.11",
     "uuid": "8.2.0",
     "validator": "13.1.1"
   },
@@ -127,10 +129,11 @@
     "@types/redis": "2.8.25",
     "@types/request": "2.48.5",
     "@types/request-promise-native": "1.0.17",
+    "@types/unzipper": "^0.10.3",
     "@types/uuid": "8.0.0",
     "@types/validator": "13.1.0",
     "chai": "4.2.0",
     "mocha": "8.0.1",
-    "typescript": "3.9.6"
+    "typescript": "3.9.7"
   }
 }

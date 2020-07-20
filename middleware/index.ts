@@ -17,7 +17,7 @@ import ConnectSession from './session';
 import passportConfig from './passport-config';
 import Onboard from './onboarding';
 import viewServices from '../lib/pugViewServices';
-import { IProviders } from '../transitional';
+import { IProviders, IApplicationProfile } from '../transitional';
 
 const campaign = require('./campaign');
 const officeHyperlinks = require('./officeHyperlinks');
@@ -27,10 +27,10 @@ module.exports = function initMiddleware(app, express, config, dirname, initiali
   config = config || {};
   const appDirectory = config && config.typescript && config.typescript.appDirectory ? config.typescript.appDirectory : stripDistFolderName(dirname);
   const providers = app.get('providers') as IProviders;
+  const applicationProfile = providers.applicationProfile;
   if (initializationError) {
     providers.healthCheck.healthy = false;
   }
-  const web = !(config.skipModules && config.skipModules.has('web'));
 
   app.set('views', path.join(appDirectory, 'views'));
   app.set('view engine', 'pug');
@@ -39,21 +39,20 @@ module.exports = function initMiddleware(app, express, config, dirname, initiali
 
   app.set('viewServices', viewServices);
   providers.viewServices = viewServices;
-
-  if (web) {
+  if (applicationProfile.webServer) {
     StaticSiteFavIcon(app);
-
     app.use(rawBodyParser);
     app.use(bodyParser.json());
     app.use(bodyParser.urlencoded({ extended: false }));
     app.use(compression());
-
-    StaticSiteAssets(app, express);
-    StaticClientApp(app, express);
-
+    if (applicationProfile.serveStaticAssets) {
+      StaticSiteAssets(app, express);
+    }
+    if (applicationProfile.serveClientAssets) {
+      StaticClientApp(app, express);
+    }
     providers.campaign = campaign(app, config);
-
-    var passport;
+    let passport;
     if (!initializationError) {
       if (config.containers && config.containers.deployment) {
         app.enable('trust proxy');
@@ -66,11 +65,9 @@ module.exports = function initMiddleware(app, express, config, dirname, initiali
         initializationError = passportError;
       }
     }
-
     app.use(require('./scrubbedUrl'));
     app.use(require('./logger')(config));
     app.use(require('./locals'));
-
     if (!initializationError) {
       require('./passport-routes')(app, passport, config);
       if (config.github.organizations.onboarding && config.github.organizations.onboarding.length) {
@@ -80,7 +77,6 @@ module.exports = function initMiddleware(app, express, config, dirname, initiali
       app.use(officeHyperlinks);
     }
   }
-
   if (initializationError) {
     providers.healthCheck.healthy = false;
     throw initializationError;

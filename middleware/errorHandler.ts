@@ -1,4 +1,5 @@
 import { wrapError } from "../utils";
+import { IProviders } from "../transitional";
 
 //
 // Copyright (c) Microsoft.
@@ -49,6 +50,7 @@ const exceptionFieldsOfInterest = [
 
 module.exports = function (err, req, res, next) {
   // CONSIDER: Let's eventually decouple all of our error message improvements to another area to keep the error handler intact.
+  const { applicationProfile } = req.app.settings.providers as IProviders;
   var config = null;
   var correlationId = req.correlationId;
   var errorStatus = err ? (err.status || err.statusCode) : undefined;
@@ -186,7 +188,7 @@ module.exports = function (err, req, res, next) {
   if (err.status) {
     errStatusAsNumber = parseInt(err.status);
   }
-  const resCode = errStatusAsNumber || (err.status && typeof(err.status) === 'number' ? err.status : false) || err.statusCode || 500;
+  const resCode = errStatusAsNumber || (err.status && typeof (err.status) === 'number' ? err.status : false) || err.statusCode || 500;
   res.status(resCode);
 
   // Support JSON-based error display for the API route, showing just a small
@@ -208,6 +210,14 @@ module.exports = function (err, req, res, next) {
     });
     res.json(safeError);
   } else {
-    res.render('error', view);
+    if (!applicationProfile.customErrorHandlerRender) {
+      return res.render('error', view);
+    }
+    return applicationProfile.customErrorHandlerRender(view, err, req, res, next).then(ok => {
+      // done
+    }).catch(error => {
+      console.error(error);
+      res.end();
+    });
   }
 };

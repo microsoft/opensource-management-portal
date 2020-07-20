@@ -159,7 +159,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     ], {
       selectValues: 'mail',
     });
-    return response?.mail;
+    return response && response.mail ? response.mail : null;
   }
 
   async getUserIdByUsername(corporateUsername: string): Promise<string> {
@@ -292,7 +292,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       subResource = null;
     }
     const extraPath = subResource ? `/${subResource}` : '';
-    const url = `https://graph.microsoft.com/v1.0/users/${aadId}${extraPath}?$select=id,alias,userType,displayName,givenName,mail,userPrincipalName`;
+    const url = `https://graph.microsoft.com/v1.0/users/${aadId}${extraPath}?$select=id,mailNickname,userType,displayName,givenName,mail,userPrincipalName`;
     request.get(url, options, (err, response, body) => {
       if (err) {
         return callback(err, null);

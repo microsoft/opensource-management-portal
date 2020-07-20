@@ -41,11 +41,11 @@ router.post('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
     let alias = null;
     try {
       const graph = await graphProvider.getUserById(id);
-      if (graph && graph.alias) {
-        alias = graph.alias;
+      if (graph && graph.mailNickname) {
+        alias = graph.mailNickname;
       }
       if (!alias) {
-        throw new Error(`Given the user ID of ${id}, we were unable to find the e-mail address for the user`);
+        throw new Error(`Given the user ID of ${id}, we were unable to find the alias of address for the user`);
       }
     } catch (getAliasError) {
       return next(jsonError(new Error(getAliasError.message)));

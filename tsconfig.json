@@ -1,40 +1,40 @@
 {
-    "compilerOptions": {
-      "module": "commonjs",
-      "sourceMap": true,
-      "outDir": "./dist",
-      "incremental": true,
-      "allowJs": true,
-      "moduleResolution": "node",
-      "resolveJsonModule": true,
-      "esModuleInterop": true,
-      "target": "es2018",
-      "lib": [
-        "es2018"
-      ],
-      "types": [
-        "mocha"
-      ]
-    },
-    "exclude": [
+  "compilerOptions": {
+    "module": "commonjs",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "incremental": true,
+    "allowJs": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "target": "es2018",
+    "lib": [
+      "es2018"
     ],
-    "include": [
-      "./*.ts",
-      "./api/**/*",
-      "./bin/**/*",
-      "./business/**/*",
-      "./config/**/*",
-      "./data/**/*",
-      "./entities/**/*",
-      "./features/**/*",
-      "./github/**/*",
-      "./jobs/**/*",
-      "./lib/**/*",
-      "./middleware/**/*",
-      "./routes/**/*",
-      "./scripts/**/*",
-      "./test/**/*",
-      "./user/**/*",
-      "./webhooks/**/*"
+    "types": [
+      "mocha"
     ]
+  },
+  "exclude": [],
+  "include": [
+    "./*.ts",
+    "./api/**/*",
+    "./bin/**/*",
+    "./business/**/*",
+    "./config/**/*",
+    "./data/**/*",
+    "./entities/**/*",
+    "./features/**/*",
+    "./github/**/*",
+    "./jobs/**/*",
+    "./lib/**/*",
+    "./microsoft/**/*",
+    "./middleware/**/*",
+    "./routes/**/*",
+    "./scripts/**/*",
+    "./test/**/*",
+    "./user/**/*",
+    "./webhooks/**/*"
+  ]
 }

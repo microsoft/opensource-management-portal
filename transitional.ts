@@ -148,6 +148,7 @@ export interface IDictionary<TValue> {
 
 export interface IProviders {
   app: IReposApplication;
+  applicationProfile: IApplicationProfile;
   approvalProvider?: IApprovalProvider;
   auditLogRecordProvider?: IAuditLogRecordProvider;
   basedir?: string;
@@ -188,6 +189,16 @@ export interface IProviders {
   teamMemberCacheProvider?: ITeamMemberCacheProvider;
   viewServices?: any;
   tokenProvider?: ITokenProvider;
+}
+
+export interface IApplicationProfile {
+  applicationName: string;
+  customErrorHandlerRender?: (errorView: any, err: Error, req: any, res: any, next: any) => Promise<void>;
+  customRoutes?: () => Promise<void>;
+  serveClientAssets: boolean;
+  serveStaticAssets: boolean;
+  validate?: () => Promise<void>;
+  webServer: boolean;
 }
 
 export interface RedisOptions {
