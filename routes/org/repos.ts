@@ -172,8 +172,7 @@ router.post('/:repoName/delete', asyncHandler(async function (req: ILocalRequest
   return res.redirect(organization.baseUrl);
 }));
 
-
-router.post('/:repoName/renameDefaultBranch', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: ILocalRequest, res, next) {
+router.post('/:repoName/defaultBranch', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: ILocalRequest, res, next) {
   const corporateUsername = req.individualContext.corporateIdentity.username;
   const providers = req.app.settings.providers as IProviders;
   const repoPermissions = req.repoPermissions;
@@ -318,11 +317,39 @@ router.get('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncH
       // outsideCollaborators: outsideCollaborators,
       // reposDataAgeInformation: ageInformation ? ageInformation : undefined,
       fromReposPage,
+      organizationSupportsUpdatesApp,
       // teamBasedPermissions,
       repositoryMetadataEntity,
       releaseReviewObject: sanitizeReviewObject(releaseReviewObject),
       releaseReviewWorkItemId,
+    },
+  });
+}));
+
+router.get('/:repoName/defaultBranch', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: ILocalRequest, res, next) {
+  const referer = req.headers.referer as string;
+  const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
+  const organization = req.organization;
+  const repoPermissions = req.repoPermissions;
+  const repository = req.repository;
+  const repositoryMetadataEntity = req.repositoryMetadata;
+  await repository.getDetails();
+  const title = `${repository.name} - Default Branch Name`;
+  const details = await repository.organization.getDetails();
+  const organizationSupportsUpdatesApp = await organization.supportsUpdatesApp();
+  organization.id = details.id;
+  req.individualContext.webContext.render({
+    view: 'repos/defaultBranch',
+    title,
+    state: {
+      organization,
       organizationSupportsUpdatesApp,
+      repo: decorateRepoForView(repository),
+      reposSubView: 'defaultBranch',
+      repository,
+      fromReposPage,
+      repoPermissions,
+      repositoryMetadataEntity,
     },
   });
 }));
@@ -360,7 +387,7 @@ router.get('/:repoName/permissions', asyncHandler(AddRepositoryPermissionsToRequ
       // reposDataAgeInformation: ageInformation ? ageInformation : undefined,
       fromReposPage,
       teamSets: aggregateTeamsToSets(aggregate.teams),
-      repoPermissions: repoPermissions,
+      repoPermissions,
       teamBasedPermissions,
       repositoryMetadataEntity,
     },
