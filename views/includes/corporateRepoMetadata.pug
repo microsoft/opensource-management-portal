@@ -325,13 +325,8 @@ if currentManagementChain
   .row
     +groupTitle('Current management chain of repo creator')
     .col-md-9: ul.list-unstyled
-      - var counter = 0
       each manager in currentManagementChain
-        if counter == 1
-          li: strong= manager.displayName
-        else
-          li= manager.displayName
-        - ++counter
+        li= manager.displayName
 if repositoryMetadataEntity.initialCorrelationId
   .row
     +groupTitle('Correlation ID')

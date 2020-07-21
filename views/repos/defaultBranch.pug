@@ -1,0 +1,88 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block content
+
+  //- Services
+  - var languageColor = viewServices.languageColor
+  - var octicon = viewServices.octicon
+  - var fileSize = viewServices.fileSize
+
+  //- Variables
+  - var githubUrl = 'https://github.com/' + repo.full_name
+  - var cloneUrl = repo.clone_url
+  - var sshUrl = repo.ssh_url
+  - var admin = repoPermissions && repoPermissions.allowAdministration
+
+  .container
+    .row: .col-md-12
+        if fromReposPage
+          .nav
+            ul.pager.zero-pad-bottom
+              li.previous
+                a(href='javascript:window.history.back()')
+                  span(aria-hidden=true) &larr;
+                  = ' Back'
+        - var hugeHeading = repo.name.length < 33
+        h1(class={huge: hugeHeading})
+          a(href='https://github.com/' + repo.full_name, target="_blank")= repo.name
+          if repo.private === true
+            | &nbsp;
+            .label.label-warning(class={shrink66: !hugeHeading, shrink50: hugeHeading}) Private
+        h6= repo.full_name.replace('/' + repo.name, '') + ' organization'
+        if repo.description
+          p.lead=repo.description
+
+    include ./pills
+
+    if admin
+      if !organizationSupportsUpdatesApp
+        h4 Default branch rename #[span.label.label-muted PREVIEW]
+        ul.list-inline.list-horizontal-space
+          li
+            | Current default branch name
+            br
+            strong= repo.default_branch
+        p.
+          The #{organization.name} is not configured to allow renames at this time.
+      else
+        //- repo.default_branch !== 'main'
+        h4 Default branch rename #[span.label.label-muted PREVIEW]
+        ul.list-inline.list-horizontal-space
+          li
+            | Current default branch name
+            br
+            strong= repo.default_branch
+        p You have administrative rights to this repo and can choose to rename the default branch.
+        if repo.default_branch == 'main'
+          p: strong You're already using the default branch "main", no action required.
+        p.
+          Easily convert the default branch of this project. Note that there are
+          many potential side effects, including impacting deep URL links, continuous
+          integration and deployment systems, and likely this will require cleanup
+          work.
+        p.
+          This automated default branch rename capability:
+        ul
+          li Creates a new branch based off of the current default branch's latest commit
+          li Reassigns any protected branch settings to the new default branch from the former
+          li Updates any open pull requests against the current default branch for the new branch
+          li Updates the default branch to the new branch
+          li Deletes the current default branch
+        p The automated operation will halt if a major error is detected, but will not revert the changes completely. It will take 20-120 seconds to process. Please anticipate updating this repo to take some time, and resource for this change. This process may timeout if there are a large number of open pull requests.
+        
+        form(method='post', action=repository.baseUrl + 'defaultBranch')
+          p: strong New default branch name
+          input.form-control(name='targetBranchName', type='text', placeholder='The new default branch name to use', value='main')
+          br
+          input.btn.btn-sm(
+            type='submit',
+            name='rename-default-branch'
+            class='btn-danger',
+            value='Rename default branch',
+            onclick='return confirm(\'Are you sure that you want to rename the default branch? Additional work may be required to address any errors or configure systems such as webhooks, continuous integration, etc.\');'
+            title='Select this operation to begin the default branch rename process automatically')
