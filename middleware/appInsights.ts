@@ -8,6 +8,8 @@ import wrapOrCreateInsightsConsoleClient from '../lib/insights';
 const debug = require('debug')('startup');
 
 import { setup as appInsightsSetup, defaultClient } from 'applicationinsights';
+import { IReposApplication } from '../app';
+import { IProviders, ReposAppRequest } from '../transitional';
 
 function ignoreKubernetesProbes(envelope/* , context */) {
   if ('RequestData' === envelope.data.baseType) {
@@ -34,19 +36,20 @@ function filterTelemetry(envelope, context): boolean {
   return true;
 }
 
-module.exports = function initializeAppInsights(app, config) {
+module.exports = function initializeAppInsights(app: IReposApplication, config) {
   let client = undefined;
   if (!config) {
     // Configuration failure happened ahead of this module
     return;
   }
+  const providers = app.settings.providers as IProviders;
   let key: string = config.telemetry && config.telemetry.applicationInsightsKey ? config.telemetry.applicationInsightsKey : null;
   // Override the key with a job-specific one if this is a job execution instead
   if (config.telemetry && config.telemetry.jobsApplicationInsightsKey && config.isJobInternal === true) {
     key = config.telemetry.jobsApplicationInsightsKey;
   }
   if (key) {
-    const instance = appInsightsSetup(key);
+    const instance = providers.applicationProfile.logDependencies ? appInsightsSetup(key) : appInsightsSetup(key).setAutoCollectDependencies(false);
     defaultClient.addTelemetryProcessor(ignoreKubernetesProbes);
     defaultClient.addTelemetryProcessor(filterTelemetry);
     instance.start();
@@ -56,7 +59,7 @@ module.exports = function initializeAppInsights(app, config) {
     debug(`insights telmetry is not configured with a key`);
   }
 
-  app.use((req, res, next) => {
+  app.use((req: ReposAppRequest, res, next) => {
     // Acknowledge synthetic tests immediately without spending time in more middleware
     if (req.headers && req.headers['synthetictest-id'] !== undefined && req.headers['x-ms-user-agent'] !== undefined && req.headers['x-ms-user-agent'].includes('System Center')) {
       return res.status(204).send();

@@ -11,6 +11,17 @@ import { ReposAppRequest } from '../../transitional';
 import { ICorporateIdentity, IGitHubIdentity, IndividualContext, GitHubIdentitySource } from '../../user';
 import { storeOriginalUrlAsReferrer } from '../../utils';
 
+export function requireAuthenticatedUserOrSignInExcluding(exclusionPaths: string[], req: ReposAppRequest, res, next) {
+  const baseUrl = req.baseUrl;
+  for (let i = 0; i < exclusionPaths.length; i++) {
+    if (baseUrl.startsWith(exclusionPaths[i])) {
+      console.log(`${req.method} ${req.baseUrl} excluded from auth by prefix: ${exclusionPaths[i]}`);
+      return next();
+    }
+  }
+  return requireAuthenticatedUserOrSignIn(req, res, next);
+}
+
 export function requireAuthenticatedUserOrSignIn(req: ReposAppRequest, res, next) {
   const config = req.app.settings.runtimeConfig;
   if (req.isAuthenticated()) {

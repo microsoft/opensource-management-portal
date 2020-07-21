@@ -58,21 +58,25 @@ module.exports = function initMiddleware(app, express, config, dirname, initiali
         app.enable('trust proxy');
         debug('proxy: trusting reverse proxy');
       }
-      app.use(ConnectSession(app, config, providers));
-      try {
-        passport = passportConfig(app, config);
-      } catch (passportError) {
-        initializationError = passportError;
+      if (applicationProfile.sessions) {
+        app.use(ConnectSession(app, config, providers));
+        try {
+          passport = passportConfig(app, config);
+        } catch (passportError) {
+          initializationError = passportError;
+        }
       }
     }
     app.use(require('./scrubbedUrl'));
     app.use(require('./logger')(config));
     app.use(require('./locals'));
     if (!initializationError) {
-      require('./passport-routes')(app, passport, config);
-      if (config.github.organizations.onboarding && config.github.organizations.onboarding.length) {
-        debug('Onboarding helper loaded');
-        Onboard(app, config);
+      if (applicationProfile.sessions) {
+        require('./passport-routes')(app, passport, config);
+        if (config.github.organizations.onboarding && config.github.organizations.onboarding.length) {
+          debug('Onboarding helper loaded');
+          Onboard(app, config);
+        }
       }
       app.use(officeHyperlinks);
     }

@@ -68,7 +68,9 @@ const DefaultApplicationProfile: IApplicationProfile = {
   applicationName: 'GitHub Management Portal',
   serveStaticAssets: true,
   serveClientAssets: true,
+  logDependencies: true,
   webServer: true,
+  sessions: true,
 };
 
 async function initializeAsync(app: IReposApplication, express, rootdir: string, config): Promise<void> {
