@@ -5,8 +5,6 @@
 
 /*eslint no-console: ["error", { allow: ["log"] }] */
 
-'use strict';
-
 // Composite method/filter/call memoization
 
 const debug = require('debug')('restapi');

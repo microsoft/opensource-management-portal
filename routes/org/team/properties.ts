@@ -3,12 +3,12 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express from 'express';
-import { ReposAppRequest } from '../../../transitional';
-import { wrapError } from '../../../utils';
 const router = express.Router();
+
+import { ReposAppRequest, UserAlertType } from '../../../transitional';
+import { wrapError } from '../../../utils';
+
 const teamAdminRequired = require('./teamAdminRequired');
 
 interface IRequestWithTeamAndLegacy extends ReposAppRequest {
@@ -45,7 +45,7 @@ router.post('/', teamAdminRequired, (req: IRequestWithTeamAndLegacy, res, next) 
     if (error) {
       return next(error);
     }
-    req.individualContext.webContext.saveUserAlert('Team properties updated on GitHub', 'Properties Saved', 'success');
+    req.individualContext.webContext.saveUserAlert('Team properties updated on GitHub', 'Properties Saved', UserAlertType.Success);
     team2.getDetails(getDetailsError => {
       if (getDetailsError) {
         return next(getDetailsError);

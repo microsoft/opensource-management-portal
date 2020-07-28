@@ -8,8 +8,6 @@
 // NOTE: this implementation is relatively temporary, with the hope that
 // TypeScript may bring some sanity in the future.
 
-'use strict';
-
 export const CorporatePropertyNames = [
   'isServiceAccount',
   'serviceAccountMail',

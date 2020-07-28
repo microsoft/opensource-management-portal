@@ -17,7 +17,7 @@ import ConnectSession from './session';
 import passportConfig from './passport-config';
 import Onboard from './onboarding';
 import viewServices from '../lib/pugViewServices';
-import { IProviders, IApplicationProfile } from '../transitional';
+import { IProviders, stripDistFolderName } from '../transitional';
 
 const campaign = require('./campaign');
 const officeHyperlinks = require('./officeHyperlinks');
@@ -34,10 +34,41 @@ module.exports = function initMiddleware(app, express, config, dirname, initiali
 
   app.set('views', path.join(appDirectory, 'views'));
   app.set('view engine', 'pug');
-  app.set('view cache', false);
+  
+  // const pugCustomLoadPlugin = {
+  //   XXresolve(filename, source, loadOptions) {
+  //     console.log();
+  //   },
+  //   read(filename, loadOptions) {
+  //     console.log();
+  //   }
+  // };
+
+  // const pugRenderfile = pug.renderFile;
+  // pug.renderFile = function (renderPath, renderOptions, renderCallback) {
+  //   if (!renderOptions.plugins) {
+  //     renderOptions.plugins = [pugCustomLoadPlugin];
+  //     console.log('--added plugins--');
+  //   }
+  //   return pugRenderfile(renderPath, renderOptions, renderCallback);
+  // };
+
+  // const pugCompileFile = pug.compileFile;
+  // pug.compileFile = function (renderPath, renderOptions) {
+  //   try {
+  //     return pugCompileFile(renderPath, renderOptions);
+  //   } catch (noFileError) {
+  //     console.log();
+  //     throw noFileError;
+  //   }
+  // };
+  
+  //app.engine('pug', pug.__express);
+  app.set('view cache', process.env.NODE_ENV !== 'development'); // CONSIDER: pull from config instead
   app.disable('x-powered-by');
 
   app.set('viewServices', viewServices);
+
   providers.viewServices = viewServices;
   if (applicationProfile.webServer) {
     StaticSiteFavIcon(app);
@@ -88,13 +119,3 @@ module.exports = function initMiddleware(app, express, config, dirname, initiali
     providers.healthCheck.ready = true; // Ready to accept traffic
   }
 };
-
-function stripDistFolderName(dirname: string) {
-  // This is a hacky backup for init failure scenarios where the dirname may
-  // not actually point at the app root.
-  if (dirname.endsWith('dist')) {
-    dirname = dirname.replace('\\dist', '');
-    dirname = dirname.replace('/dist', '');
-  }
-  return dirname;
-}

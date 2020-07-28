@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders } from '../../../../transitional';
+import { ReposAppRequest, IProviders, UserAlertType } from '../../../../transitional';
 import { wrapError } from '../../../../utils';
 import { Team } from '../../../../business/team';
 import { PermissionWorkflowEngine } from '../approvals';
@@ -75,7 +75,7 @@ router.post('/', asyncHandler(async function (req: ILocalRequest, res, next) {
   if (req.body.reopen) {
     approvalRequest.active = true;
     teamJoinApprovalProvider.updateTeamApprovalEntity(approvalRequest).then(ok => {
-      req.individualContext.webContext.saveUserAlert('Request re-opened.', engine.typeName, 'success');
+      req.individualContext.webContext.saveUserAlert('Request re-opened.', engine.typeName, UserAlertType.Success);
       res.redirect(req.teamUrl + 'approvals/' + requestid);
     });
   }
@@ -132,7 +132,7 @@ router.post('/', asyncHandler(async function (req: ILocalRequest, res, next) {
     return next(error);
   }
   let secondaryErrors = false;
-  req.individualContext.webContext.saveUserAlert('Thanks for your ' + action.toUpperCase() + ' decision.', engine.typeName, 'success');
+  req.individualContext.webContext.saveUserAlert('Thanks for your ' + action.toUpperCase() + ' decision.', engine.typeName, UserAlertType.Success);
   if (mailProviderInUse) {
     const wasApproved = action === 'approve';
     const contentOptions = {

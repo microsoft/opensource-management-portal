@@ -3,9 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import { ReposAppRequest, IReposAppResponse } from "../transitional";
+import { ReposAppRequest, IReposAppResponse, UserAlertType, IDictionary, IProviders } from '../transitional';
 
 import { ICorporateLink } from '../business/corporateLink';
 
@@ -14,7 +12,12 @@ import { Operations } from "../business/operations";
 import { GitHubTeamRole } from "../business/team";
 import { UserContext } from "./aggregate";
 
+import pugLoad from 'pug-load';
+import fs from 'fs';
+
 const objectPath = require('object-path');
+
+const debug = require('debug')('context');
 
 // - - - identity
 
@@ -125,6 +128,71 @@ export class WebApiContext {
   }
 }
 
+class PugPlugins {
+  // This is used to alter the pug runtime environment. We use it today
+  // to include conditional Pug files that may or may not exist, without
+  // the typical error that Pug provides.
+
+  private static _instance: PugPlugins = null;
+
+  public static GetInstance(providers: IProviders) {
+    if (!PugPlugins._instance) {
+      PugPlugins._instance = new PugPlugins(providers);
+    }
+    return PugPlugins._instance;
+  }
+
+  _providers: IProviders;
+  _plugins: any[];
+  _analyzedCorporatePaths: Map<string, boolean>;
+
+  constructor(providers: IProviders) {
+    this._providers = providers;
+    this._analyzedCorporatePaths = new Map();
+    this._plugins = this.createPlugins();
+  }
+
+  get plugins() {
+    return this._plugins;
+  }
+
+  private createPlugins() {
+    if (!this._providers.corporateViews || Object.getOwnPropertyNames(this._providers.corporateViews).length === 0) {
+      return [];
+    }
+    const analyzedCorporatePaths = this._analyzedCorporatePaths;
+    const emptyFileContents = '';
+    return [
+      {
+        read: function (filename, loadOptions) {
+          const isPossibleCorporateView = filename.includes('corporate');
+          if (isPossibleCorporateView) {
+            if (analyzedCorporatePaths.get(filename) === false) {
+              return emptyFileContents;
+            } else if (analyzedCorporatePaths.get(filename) === true) {
+              // no-op: this is a known-good file
+            } else {
+              try {
+                fs.statSync(filename);
+                analyzedCorporatePaths.set(filename, true);
+                debug(`corporate view ${filename} validated to exist`);
+              } catch (fileExists) {
+                // This is a corporate view file that does not exist.
+                // Instead of causing an error, this returns essentially
+                // an empty file.
+                analyzedCorporatePaths.set(filename, false);
+                debug(`corporate view ${filename} is not present in the application view folders, using an empty file`);
+                return emptyFileContents;
+              }
+            }
+          }
+          return pugLoad.read(filename, loadOptions);
+        }
+      }
+    ];
+  }
+}
+
 export class WebContext {
   private _baseUrl: string;
   private _request: ReposAppRequest;
@@ -168,7 +236,7 @@ export class WebContext {
 
   // NOTE: This function is direct from the legacy provider... it could move to
   // a dedicated alert provider or something else in the future.
-  saveUserAlert(message: string, title, context, optionalLink?, optionalCaption?) {
+  saveUserAlert(message: string, title: string, context: UserAlertType, optionalLink?, optionalCaption?) {
     if (typeof (message) !== 'string') {
       console.warn('First parameter message should be a string, not an object. Was the request object passed through by accident?');
       throw new Error('First parameter message should be a string, not an object. Was the request object passed through by accident?');
@@ -179,9 +247,9 @@ export class WebContext {
     // Bootstrap, i.e. 'success', 'info', 'warning', 'danger'.
     // ----------------------------------------------------------------------------
     const alert = {
-      message: message,
+      message,
       title: title || 'FYI',
-      context: context || 'success',
+      context: context || UserAlertType.Success,
       optionalLink: optionalLink,
       optionalCaption: optionalCaption,
     };
@@ -257,9 +325,17 @@ export class WebContext {
       ghu: user.github ? user.github.username : null,
     } : null;
     let session = this._request['session'] || null;
-    const obj = {
+
+    const initialViewObject = individualContext ? individualContext.getInitialViewObject() : {};
+
+    const providers = this._request.app.settings.providers as IProviders;
+    const { corporateViews } = providers;
+    const plugins = PugPlugins.GetInstance(providers).plugins;
+    const obj = Object.assign(initialViewObject, {
       title,
       config,
+      corporateViews,
+      plugins,
       serviceBanner: config.serviceMessage ? config.serviceMessage.banner : null,
       user,
       // DESTROY: CONFIRM once 'ossline' is gone this way
@@ -272,7 +348,7 @@ export class WebContext {
       enableMultipleAccounts: session ? session['enableMultipleAccounts'] : false,
       reposContext: undefined,
       alerts: undefined,
-    };
+    });
     if (obj.ossLink && reposContext) {
       obj.reposContext = reposContext;
     }
@@ -290,6 +366,7 @@ export class WebContext {
       }
       obj.alerts = alerts;
     }
+    debug(`web render: view=${options.view}`);
     return this._response.render(view, obj);
     // ANCIENT: RESTORE A GOOD CALL HERE!
   /*
@@ -326,8 +403,10 @@ export class IndividualContext {
   private _isPortalAdministrator: boolean | null;
   private _operations: Operations;
   private _aggregations: UserContext;
+  private _initialView: IDictionary<any>;
 
   constructor(options: IIndividualContextOptions) {
+    this._initialView = {};
     this._isPortalAdministrator = null;
     this._corporateIdentity = options.corporateIdentity;
     this._link = options.link;
@@ -425,6 +504,14 @@ export class IndividualContext {
     const isAdmin = await legacyCallbackIsPortalAdministrator(operations, ghi);
     this._isPortalAdministrator = isAdmin;
     return this._isPortalAdministrator;
+  }
+
+  setInitialViewProperty(propertyName: string, value: any) {
+    this._initialView[propertyName] = value;
+  }
+
+  getInitialViewObject() {
+    return Object.assign({}, this._initialView);
   }
 }
 

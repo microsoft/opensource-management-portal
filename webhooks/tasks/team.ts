@@ -5,8 +5,6 @@
 
 /*eslint no-console: ["error", { allow: ["dir", "log"] }] */
 
-'use strict';
-
 import moment from 'moment';
 import { WebhookProcessor } from '../organizationProcessor';
 import { Operations } from '../../business/operations';

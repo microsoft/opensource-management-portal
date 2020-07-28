@@ -14,6 +14,8 @@
     "teamcache": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
     "teammembercache": "env://ENTITY_PROVIDER_TEAMJOIN?default=firstconfigured",
 
+    "usersettings": "env://ENTITY_PROVIDER_USERSETTINGS?default=firstconfigured",
+
     "tokens": "env://ENTITY_PROVIDER_TEAMJOIN?default=table",
     "localextensionkey": "env://ENTITY_PROVIDER_TEAMJOIN?default=table"
 }

@@ -15,3 +15,10 @@
   .panel-heading Data
   .list-group
     a.list-group-item(href='/administration/contributingorgs', class={active: view === 'administration/contributingorgs'}) Contributed orgs
+
+if _corpAdminUrls
+  .panel.panel-default
+    .panel-heading Corporate apps
+    .list-group
+      each url, slug in _corpAdminUrls
+        a.list-group-item(href=url, class={active: view === 'administration/corporation/' + slug.toLowerCase()})= slug

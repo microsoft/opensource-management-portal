@@ -3,19 +3,17 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import _ from 'lodash';
 import asyncHandler from 'express-async-handler';
 import express from 'express';
+const router = express.Router();
 
-import { ReposAppRequest, IProviders } from '../../transitional';
+import _ from 'lodash';
+
+import { ReposAppRequest, IProviders, UserAlertType } from '../../transitional';
 import { Repository } from '../../business/repository';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { Organization } from '../../business/organization';
 import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
-
-const router = express.Router();
 
 router.use('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
   const organization = req.organization as Organization;
@@ -62,11 +60,11 @@ router.post('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
   const lockdownSystem = new NewRepositoryLockdownSystem({ operations, organization, repository, repositoryMetadataProvider });
   if (actionUnlock) {
     await lockdownSystem.removeAdministrativeLock();
-    req.individualContext.webContext.saveUserAlert('Repo approved', 'Approved', 'success');
+    req.individualContext.webContext.saveUserAlert('Repo approved', 'Approved', UserAlertType.Success);
   }
   if (actionDelete) {
     await lockdownSystem.deleteLockedRepository(true /* only if admin locked now */, false /* not deleted by the user */);
-    req.individualContext.webContext.saveUserAlert('Repo delete action queued', 'Delete', 'success');
+    req.individualContext.webContext.saveUserAlert('Repo delete action queued', 'Delete', UserAlertType.Success);
   }
   return renderPage(req, repositoryMetadata, repository);
 }));

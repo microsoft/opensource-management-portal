@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 const logger = require('morgan');
 
 const encryptionMetadataKey = '_ClientEncryptionMetadata2';

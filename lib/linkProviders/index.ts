@@ -3,10 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import { IProviders } from "../../transitional";
-import { ICorporateLink, ICorporateLinkExtended } from "../../business/corporateLink";
+import { IProviders } from '../../transitional';
+import { ICorporateLink, ICorporateLinkExtended } from '../../business/corporateLink';
 
 const linkProviders = [
   'memory',

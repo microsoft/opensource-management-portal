@@ -5,8 +5,6 @@
 
 /*eslint no-console: ["error", { allow: ["dir", "warn"] }] */
 
-'use strict';
-
 import _ from 'lodash';
 const debug = require('debug')('restapi');
 import { v4 as uuidV4 } from 'uuid';

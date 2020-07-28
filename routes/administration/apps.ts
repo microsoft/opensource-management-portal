@@ -3,13 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { IProviders, ReposAppRequest } from '../../transitional';
+import { IProviders, ReposAppRequest, UserAlertType } from '../../transitional';
 import { sortByCaseInsensitive, asNumber } from '../../utils';
 import GitHubApplication from '../../business/application';
 import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
@@ -46,7 +44,7 @@ router.post('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   if (thisOne.length === 1) {
     const org = thisOne[0];
     await organizationSettingsProvider.deleteOrganizationSetting(org);
-    req.individualContext.webContext.saveUserAlert('Removed the org.', org.organizationName, 'danger');
+    req.individualContext.webContext.saveUserAlert('Removed the org.', org.organizationName, UserAlertType.Danger);
     res.redirect('/administration/apps');
     // after the redirect, delete any caching for the org...
     if (providers.queryCache) {

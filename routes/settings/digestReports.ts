@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express from 'express';
 import { RequestWithSystemwidePermissions } from '../../transitional';
 
@@ -109,4 +107,4 @@ router.get('/', (req: IRequestWithDigestReports, res) => {
   });
 });
 
-module.exports = router;
+export default router;

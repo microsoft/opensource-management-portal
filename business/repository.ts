@@ -183,6 +183,7 @@ export class Repository {
   get description(): string { return this._entity ? this._entity.description : null; }
   get fork(): boolean { return this._entity ? this._entity.fork : null; }
   get url(): string { return this._entity ? this._entity.url : null; }
+  get archived(): boolean { return this._entity ? this._entity.archived : false; }
   get created_at(): Date { return this._entity ? this._entity.created_at : null; }
   get updated_at(): Date { return this._entity ? this._entity.updated_at : null; }
   get pushed_at(): Date { return this._entity ? this._entity.pushed_at : null; }
@@ -939,6 +940,7 @@ export class Repository {
       awesomeness = maxValue;
     }
     this._awesomeness = awesomeness;
+    return this._awesomeness;
   }
 }
 

@@ -18,7 +18,6 @@ import { PostgresPoolQuerySingleRowAsync, PostgresPoolQueryAsync } from '../post
 import { IEntityMetadataFixedQuery } from './query';
 import { EntityMetadataMappings, MetadataMappingDefinition, MetadataMappingDefinitionBase } from './declarations';
 import { CreateError, IDictionary } from '../../transitional';
-import { swapMap } from '../../utils';
 
 const MetadataColumnName = 'metadata';
 

@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders, RequestTeamMemberAddType } from '../../../transitional';
+import { ReposAppRequest, IProviders, RequestTeamMemberAddType, UserAlertType } from '../../../transitional';
 import { Team } from '../../../business/team';
 import { TeamMember } from '../../../business/teamMember';
 
@@ -71,7 +71,7 @@ router.post('/remove', teamAdminRequired, asyncHandler(async (req: ILocalTeamReq
   const username = operations.validateGitHubLogin(req.body.username);
   const team2 = req.team2 as Team;
   await team2.removeMembership(username);
-  req.individualContext.webContext.saveUserAlert(`${username} has been removed from the team ${team2.name}.`, 'Team membership update', 'success');
+  req.individualContext.webContext.saveUserAlert(`${username} has been removed from the team ${team2.name}.`, 'Team membership update', UserAlertType.Success);
   await refreshMembersAndSummary(team2, 'now');
   return res.redirect(`${req.teamUrl}members/browse/`);
 }));
@@ -112,7 +112,7 @@ router.post('/add', teamAdminRequired, asyncHandler(async (req: ILocalTeamReques
     }
   }
   await team2.addMembership(username);
-  req.individualContext.webContext.saveUserAlert(`Added ${username} to the ${team2.name} team.`, 'Team membership update', 'success');
+  req.individualContext.webContext.saveUserAlert(`Added ${username} to the ${team2.name} team.`, 'Team membership update', UserAlertType.Success);
   await refreshMembersAndSummary(team2, 'now');
   return res.redirect(req.teamUrl + 'members/browse/');
 }));

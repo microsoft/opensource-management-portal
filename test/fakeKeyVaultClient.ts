@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { v4 as uuidV4 } from 'uuid';
 
 let storedKeys = new Map();

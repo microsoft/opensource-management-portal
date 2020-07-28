@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 const adalNode = require('adal-node');
 const azureKeyVault = require('azure-keyvault');
 

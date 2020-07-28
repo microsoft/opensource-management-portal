@@ -83,7 +83,7 @@ export default class CosmosCache implements ICacheHelper {
       console.dir(cosmosError);
       throw cosmosError;
     }
-    if (!response.resource) {
+    if (response.resource) {
       if (!response.resource.value) {
         throw new Error('The retrieved resource does not have a single value');
       }

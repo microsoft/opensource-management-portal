@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 // Loose in-memory implementation. Note that it does not translate or clone
 // objects, rather storing them as-is.
 

@@ -6,7 +6,7 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { ReposAppRequest } from '../../transitional';
+import { ReposAppRequest, UserAlertType } from '../../transitional';
 import { wrapError } from '../../utils';
 import RequireActiveGitHubSession from '../../middleware/github/requireActiveSession';
 const router = express.Router();
@@ -68,7 +68,7 @@ router.post('/', RequireActiveGitHubSession, asyncHandler(async function (req: R
   } catch (error) {
     return next(wrapError(error, `We had trouble ${message1} your membership. Did you authorize the increased scope of access with GitHub? ${error.message}`));
   }
-  req.individualContext.webContext.saveUserAlert('Your ' + organization.name + ' membership is now ' + message2 + '!', organization.name, 'success');
+  req.individualContext.webContext.saveUserAlert('Your ' + organization.name + ' membership is now ' + message2 + '!', organization.name, UserAlertType.Success);
   const url = organization.baseUrl + ((onboarding || joining) ? '/teams' : '');
   const extraUrl = (onboarding || joining) ? '?' + (onboarding ? 'onboarding' : 'joining') + '=' + (onboarding || joining) : '';
   return res.redirect(url + extraUrl);

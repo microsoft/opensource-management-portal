@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 // NOTE: Technically this file should be separate from the GitHub library
 
 import { CompositeApiContext } from './composite';

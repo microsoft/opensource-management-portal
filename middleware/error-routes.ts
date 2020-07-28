@@ -1,4 +1,6 @@
 import { IReposError } from "../transitional";
+import { IReposApplication } from "../app";
+import { ICorporationAdministrationSection } from "../routes/administration/corporation";
 
 //
 // Copyright (c) Microsoft.
@@ -7,7 +9,7 @@ import { IReposError } from "../transitional";
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-module.exports = function configureErrorRoutes(app, initializationError) {
+export default async function configureErrorRoutes(app: IReposApplication, initializationError: Error) {
   if (initializationError) {
     console.warn('Initialization Error Present: All app requests will fail!');
 
@@ -29,5 +31,6 @@ module.exports = function configureErrorRoutes(app, initializationError) {
     err.skipLog = true;
     next(err);
   });
+
   app.use(require('./errorHandler'));
 };

@@ -3,11 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express from 'express';
-import { ReposAppRequest } from '../transitional';
 const router = express.Router();
+
+import { ReposAppRequest } from '../transitional';
 
 const lowercaser = require('../middleware/lowercaser');
 

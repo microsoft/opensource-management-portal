@@ -11,7 +11,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders } from '../transitional';
+import { ReposAppRequest, IProviders, UserAlertType } from '../transitional';
 import { AddLinkToRequest, RequireLinkMatchesGitHubSessionExceptPrefixedRoute } from '../middleware/links/';
 import { requireAuthenticatedUserOrSignIn, setIdentity } from '../middleware/business/authentication';
 import { Organization } from '../business/organization';
@@ -20,8 +20,9 @@ import linkRoute from './link';
 import linkedUserRoute from './index-linked';
 import linkCleanupRoute from './link-cleanup';
 
+import SettingsRoute from './settings';
+
 const placeholdersRoute = require('./placeholders');
-const settingsRoute = require('./settings');
 const releasesSpa = require('./releasesSpa');
 
 // - - - Middleware: require that they have a passport - - -
@@ -35,7 +36,7 @@ router.use(asyncHandler(AddLinkToRequest));
 router.use('/placeholder', placeholdersRoute);
 router.use('/link/cleanup', linkCleanupRoute);
 router.use('/link', linkRoute);
-router.use('/settings', settingsRoute);
+router.use('/settings', SettingsRoute);
 router.use('/releases', releasesSpa);
 
 // Link cleanups and check their signed-in username vs their link
@@ -128,7 +129,7 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
     }
   }
   if (warnings && warnings.length > 0) {
-    individualContext.webContext.saveUserAlert(warnings.join(', '), 'Some organizations or memberships could not be loaded', 'danger');
+    individualContext.webContext.saveUserAlert(warnings.join(', '), 'Some organizations or memberships could not be loaded', UserAlertType.Danger);
   }
   const pageTitle = results && results.userOrgMembership === false ? 'My GitHub Account' : config.brand.companyName + ' - ' + config.brand.appName;
   individualContext.webContext.render({

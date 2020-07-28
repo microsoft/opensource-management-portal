@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 // This is a Node.js implementation of client-side table entity encryption,
 // compatible with the official Azure storage .NET library.
 

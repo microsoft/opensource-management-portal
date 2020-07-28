@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express from 'express';
-import { ReposAppRequest } from '../../../transitional';
 const router = express.Router();
+
+import { ReposAppRequest, UserAlertType } from '../../../transitional';
+
 const teamAdminRequired = require('./teamAdminRequired');
 
 interface ILocalRequest extends ReposAppRequest {
@@ -21,7 +21,7 @@ router.post('/', teamAdminRequired, (req: ILocalRequest, res, next) => {
     if (error) {
       return next(error);
     }
-    req.individualContext.webContext.saveUserAlert(`${team2.name} team deleted`, 'Delete', 'success');
+    req.individualContext.webContext.saveUserAlert(`${team2.name} team deleted`, 'Delete', UserAlertType.Success);
     res.redirect('/' + organization.name + '/teams');
   });
 });

@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { IReposError, ReposAppRequest, IProviders } from '../../transitional';
+import { IReposError, ReposAppRequest, IProviders, UserAlertType } from '../../transitional';
 import { IApprovalProvider } from '../../entities/teamJoinApproval/approvalProvider';
 import { TeamJoinApprovalEntity } from '../../entities/teamJoinApproval/teamJoinApproval';
 import { safeLocalRedirectUrl, asNumber } from '../../utils';
@@ -182,7 +182,7 @@ function closeOldRequest(pendingRequest: TeamJoinApprovalEntity, req: ReposAppRe
   if (!mailProviderInUse) {
     return next(new Error('No configured approval providers configured.'));
   }
-  req.individualContext.webContext.saveUserAlert('The team this request was for no longer exists. The request has been canceled.', 'Team gone!', 'success');
+  req.individualContext.webContext.saveUserAlert('The team this request was for no longer exists. The request has been canceled.', 'Team gone!', UserAlertType.Success);
   if (pendingRequest.active === false) {
     return res.redirect('/');
   }
@@ -206,4 +206,4 @@ function closeRequest(approvalProvider: IApprovalProvider, requestid: string, no
   });
 }
 
-module.exports = router;
+export default router;

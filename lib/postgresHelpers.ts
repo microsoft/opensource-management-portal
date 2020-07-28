@@ -3,11 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 const debug = require('debug')('pg');
 
-import { InnerError } from "../transitional";
+import { InnerError } from '../transitional';
 
 export function PostgresPoolQuerySingleRow(pool, sql: string, values: any[], callback) {
   PostgresPoolQuery(pool, sql, values, (error, results) => {

@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders } from '../../transitional';
+import { ReposAppRequest, IProviders, UserAlertType } from '../../transitional';
 import { wrapError } from '../../utils';
 import { Organization, OrganizationMembershipState } from '../../business/organization';
 import { Operations } from '../../business/operations';
@@ -63,7 +63,7 @@ router.post('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const id = req.individualContext.getGitHubIdentity().id;
   try {
     await organization.removeMember(username, id);
-    req.individualContext.webContext.saveUserAlert(`You have been removed from the ${organization.name} and are no longer a member.`, organization.name, 'success');
+    req.individualContext.webContext.saveUserAlert(`You have been removed from the ${organization.name} and are no longer a member.`, organization.name, UserAlertType.Success);
     return res.redirect(operations.baseUrl || '/');
   } catch (error) {
     return next(wrapError(error, `We received an error code back from GitHub when trying to remove your membership from ${organization.name}.`));

@@ -1,11 +1,9 @@
-import { IReposError } from "../../../transitional";
-
 //
 // Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
+import { IReposError } from '../../../transitional';
 
 module.exports = (req, res, next) => {
   const teamPermissions = req.teamPermissions;

@@ -5,12 +5,10 @@
 
 /*eslint no-console: ["error", { allow: ["dir", "log"] }] */
 
-'use strict';
-
-import { Operations } from "../../business/operations";
-import { Organization, OrganizationMembershipRole } from "../../business/organization";
-import { IProviders } from "../../transitional";
-import { WebhookProcessor } from "../organizationProcessor";
+import { Operations } from '../../business/operations';
+import { Organization, OrganizationMembershipRole } from '../../business/organization';
+import { IProviders } from '../../transitional';
+import { WebhookProcessor } from '../organizationProcessor';
 
 // NOTE: unfortunately role changes from admin->member or member->admin do not fire GitHub hooks
 

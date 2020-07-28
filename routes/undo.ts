@@ -3,14 +3,12 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
 import { Operations } from '../business/operations';
-import { ReposAppRequest, ErrorHelper } from '../transitional';
+import { ReposAppRequest, ErrorHelper, UserAlertType } from '../transitional';
 import { AuditLogRecord } from '../entities/auditLogRecord/auditLogRecord';
 import { daysInMilliseconds, asNumber } from '../utils';
 import { AuditEvents } from '../entities/auditLogRecord';
@@ -314,9 +312,9 @@ router.post('/', asyncHandler(async (req: IHaveUndoCandiates, res, next) => {
   }
   try {
     const result = await record.undo();
-    req.individualContext.webContext.saveUserAlert(result.message || 'OK', 'Undo operation completed', 'success');
+    req.individualContext.webContext.saveUserAlert(result.message || 'OK', 'Undo operation completed', UserAlertType.Success);
     if (result.warnings && result.warnings.length) {
-      req.individualContext.webContext.saveUserAlert(result.warnings.join('; '), 'Operation warnings', 'warning');
+      req.individualContext.webContext.saveUserAlert(result.warnings.join('; '), 'Operation warnings', UserAlertType.Warning);
     }
     insights?.trackMetric({ name: 'UndoOperations', value: 1 });
     nextTickAsyncSendMail(operations, req.individualContext, record, result);

@@ -2,8 +2,6 @@
 // Copyright (c) Microsoft.
 //
 
-'use strict';
-
 import { v4 as uuidV4 } from 'uuid';
 import { IMail, IMailProvider } from '.';
 

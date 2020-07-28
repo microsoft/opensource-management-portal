@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
 const entityGenerator = require('azure-storage').TableUtilities.entityGenerator;

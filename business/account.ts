@@ -5,8 +5,6 @@
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-'use strict';
-
 import _ from 'lodash';
 
 import { Operations } from './operations';

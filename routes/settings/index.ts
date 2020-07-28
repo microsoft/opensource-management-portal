@@ -9,15 +9,13 @@ const router = express.Router();
 
 import { ReposAppRequest, IProviders } from '../../transitional';
 import { AddLinkToRequest } from '../../middleware/links/';
-import { Operations } from '../../business/operations';
-import { IMailAddressProvider } from '../../lib/mailAddressProvider';
-import { ICorporateLink } from '../../business/corporateLink';
 
-const approvalsRoute = require('./approvals');
-const authorizationsRoute = require('./authorizations');
-const digestReportsRoute = require('./digestReports');
-const personalAccessTokensRoute = require('./personalAccessTokens');
+import approvalsRoute from './approvals';
+import authorizationsRoute from './authorizations';
+import digestReportsRoute from './digestReports';
+import personalAccessTokensRoute from './personalAccessTokens';
 
+import contributionDataRoute from './contributionData';
 import campaignsRoute from './campaigns';
 
 router.use(asyncHandler(AddLinkToRequest));
@@ -46,5 +44,6 @@ router.use('/authorizations', authorizationsRoute);
 router.use('/campaigns', campaignsRoute);
 router.use('/digestReports', digestReportsRoute);
 router.use('/security/tokens', personalAccessTokensRoute);
+router.use('/contributionData', contributionDataRoute);
 
-module.exports = router;
+export default router;

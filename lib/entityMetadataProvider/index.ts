@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { IEntityMetadataProvider } from './entityMetadataProvider';
 import { ITableEntityMetadataProviderOptions, TableEntityMetadataProvider } from './table';
 import { IPostgresEntityMetadataProviderOptions, PostgresEntityMetadataProvider } from './postgres';
@@ -24,7 +22,7 @@ export interface IEntityMetadataProvidersOptions {
   providerTypeName?: string;
 }
 
-export async function createAndInitializeEntityMetadataProviderInstance(app, config, options: IEntityMetadataProvidersOptions, overrideProviderType?: string): Promise<IEntityMetadataProvider> {
+export async function createAndInitializeEntityMetadataProviderInstance(options: IEntityMetadataProvidersOptions, overrideProviderType?: string): Promise<IEntityMetadataProvider> {
   if (overrideProviderType) {
     options.providerTypeName = overrideProviderType;
   }

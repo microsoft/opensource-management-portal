@@ -5,8 +5,6 @@
 
 /*eslint no-console: ["error", { allow: ["log", "warn"] }] */
 
-'use strict';
-
 const teamTypes = ['read', 'write', 'admin'];
 const defaultLargeAdminTeamSize = 250;
 

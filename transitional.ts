@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Application, Response, Request } from 'express';
+import { Response, Request } from 'express';
 
 import redis from 'redis';
 import { Pool as PostgresPool } from 'pg';
@@ -11,13 +11,11 @@ import { Pool as PostgresPool } from 'pg';
 import type { TelemetryClient } from 'applicationinsights';
 
 import { IndividualContext } from './user';
-import { ICorporateLink } from './business/corporateLink';
 import { IApprovalProvider } from './entities/teamJoinApproval/approvalProvider';
 import { Operations } from './business/operations';
 import { ITokenProvider } from './entities/token';
 import { IMailAddressProvider } from './lib/mailAddressProvider';
 import { IRepositoryMetadataProvider } from './entities/repositoryMetadata/repositoryMetadataProvider';
-import RedisHelper from './lib/caching/redis';
 import { ILocalExtensionKeyProvider } from './entities/localExtensionKey';
 import { Organization } from './business/organization';
 import { IGraphProvider } from './lib/graphProvider';
@@ -47,6 +45,8 @@ import { IElectionVoteEntityProvider } from './entities/voting/vote';
 import { IElectionNominationEntityProvider } from './entities/voting/nomination';
 import { IElectionNominationCommentEntityProvider } from './entities/voting/nominationComment';
 import { IReposApplication } from './app';
+import { IUserSettingsProvider } from './entities/userSettings';
+import { ICorporationAdministrationSection } from './routes/administration/corporation';
 
 export interface ICallback<T> {
   (error: IReposError, result?: T): void;
@@ -149,6 +149,8 @@ export interface IDictionary<TValue> {
 export interface IProviders {
   app: IReposApplication;
   applicationProfile: IApplicationProfile;
+  corporateAdministrationProfile?: ICorporationAdministrationSection;
+  corporateViews?: any;
   approvalProvider?: IApprovalProvider;
   auditLogRecordProvider?: IAuditLogRecordProvider;
   basedir?: string;
@@ -187,8 +189,15 @@ export interface IProviders {
   session?: any;
   teamCacheProvider?: ITeamCacheProvider;
   teamMemberCacheProvider?: ITeamMemberCacheProvider;
-  viewServices?: any;
+  userSettingsProvider?: IUserSettingsProvider;
   tokenProvider?: ITokenProvider;
+  viewServices?: any;
+}
+
+export enum UserAlertType {
+  Success = 'success',
+  Warning = 'warning',
+  Danger = 'danger',
 }
 
 export interface IApplicationProfile {
@@ -199,6 +208,7 @@ export interface IApplicationProfile {
   serveClientAssets: boolean;
   serveStaticAssets: boolean;
   validate?: () => Promise<void>;
+  startup?: (providers: IProviders) => Promise<void>;
   sessions: boolean;
   webServer: boolean;
 }
@@ -486,4 +496,14 @@ export function setImmediateAsync(f: IFunctionPromise<void>): void {
     }
   };
   setImmediate(safeCall.bind(null));
+}
+
+export function stripDistFolderName(dirname: string) {
+  // This is a hacky backup for init failure scenarios where the dirname may
+  // not actually point at the app root.
+  if (dirname.endsWith('dist')) {
+    dirname = dirname.replace('\\dist', '');
+    dirname = dirname.replace('/dist', '');
+  }
+  return dirname;
 }

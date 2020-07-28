@@ -3,9 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-/*eslint no-console: ["error", { allow: ["warn"] }] */
-
 function serialize(config, user, done) {
   done(null, user);
 }

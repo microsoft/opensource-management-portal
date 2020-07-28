@@ -3,6 +3,17 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+
+
+
+
+// TODO:
+// events before; events after; events latest
+
+
+
+
+
 import { v4 } from 'uuid';
 
 import { IEntityMetadata, EntityMetadataType, IEntityMetadataBaseOptions, EntityMetadataBase } from '../../lib/entityMetadataProvider/entityMetadata';

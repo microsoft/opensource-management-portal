@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 interface IErrorJson extends Error {
   json?: boolean;
   statusCode?: string | number;

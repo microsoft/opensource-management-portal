@@ -2,8 +2,6 @@
 // Copyright (c) Microsoft.
 //
 
-'use strict';
-
 // Office uses a specialized pre-fetch to learn more about hyperlinks before
 // opening. As a result, if the Office user agent is in use, and the
 // request is not authenticated, we should still just respond with a simple

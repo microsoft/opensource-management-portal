@@ -141,4 +141,4 @@ router.post('/delete', asyncHandler(async (req: IRequestForSettingsPersonalAcces
   return res.redirect('/settings/security/tokens');
 }));
 
-module.exports = router;
+export default router;

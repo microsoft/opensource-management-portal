@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders } from '../../../transitional';
+import { ReposAppRequest, IProviders, UserAlertType } from '../../../transitional';
 import { wrapError } from '../../../utils';
 import { ICorporateLink } from '../../../business/corporateLink';
 import { Team, GitHubRepositoryType, ITeamMembershipRoleState, GitHubTeamRole } from '../../../business/team';
@@ -155,7 +155,7 @@ router.post('/selfServiceMaintainerUpgrade', asyncHandler(async (req: ILocalRequ
   } catch (upgradeError) {
     return next(upgradeError);
   }
-  individualContext.webContext.saveUserAlert('You are now a Team Maintainer', 'Self-service permission upgrade', 'success');
+  individualContext.webContext.saveUserAlert('You are now a Team Maintainer', 'Self-service permission upgrade', UserAlertType.Success);
   return res.redirect(req.team2.baseUrl);
 }));
 
@@ -188,7 +188,7 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
       });
       return next(wrapError(error, `We had trouble adding you to the ${organization.name} organization. ${username}`));
     }
-    req.individualContext.webContext.saveUserAlert(`You have joined ${team2.name} team successfully`, 'Join Successfully', 'success');
+    req.individualContext.webContext.saveUserAlert(`You have joined ${team2.name} team successfully`, 'Join Successfully', UserAlertType.Success);
     req.insights.trackEvent({
       name: 'GitHubJoinAllMembersTeamSuccess',
       properties: {

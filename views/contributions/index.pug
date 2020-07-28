@@ -270,43 +270,9 @@ block content
             br
             | At this time, this program is only open to Microsoft full-time employees and interns.
 
-        .row: .col-md-12: h1 About the FOSS Fund #[small Free &amp; Open Source Software Fund]
-        p.
-          #{config.brand.companyName} is supporting open source projects nominated by
-          employees who contribute to open source. When you contribute to a project 
-          outside of #{config.brand.companyName}'s GitHub organizations, you're eligible to nominate a project and cast a 
-          vote for that month.
-        p Thank you for helping #{config.brand.companyName} support the open source software projects that we care about.
+        if corporateViews && corporateViews.contributions && corporateViews.contributions.fossfundabout
+          include ../corporate/contributions/fossfundabout
 
-        p Open source projects that meet the following conditions are great candidates for the fund:
-        ul
-          li Project has an #[a(href='https://opensource.org/licenses', target='_new') OSI-approved license]
-          li Project is used by Microsoft
-          li Project is not maintained by a Microsoft employee
-          li Project is able to receive funds (GitHub Sponsors team may be able to work with nominated projects to establish a funding system)
-
-        p Eligibility requirements to vote:
-        ul
-          li Full time employee or intern at the company
-          li During the eligibility period for a given fund, have a linked GitHub account that has public activity
-          li 1 or more public activities during the eligibility period
-          li Public activity (opening issues, issue comments, opening pull requests, etc.) need to happen in a repo or org not controlled by the company or associated with its products
-
-        div(style='margin-bottom:20px')
-        hr
-
-        h3 Looking to get started?
-        p If you're looking to get involved, feel free to check out these resources, or even to #[a(href='mailto:opensource@microsoft.com') contact the Open Source Champs at opensource@microsoft.com] to discuss your interests and experience.
-        p Often the best way to get started is to "watch" a GitHub repo to get notified of happenings such as new pull requests, issue discussions, etc. You can watch how the community works together, and when you feel comfortable, you can jump in on adding your thoughts to issues, reviewing code, or even, eventually submitting your own pull requests.
-        p Consider checking out:
-        ul
-          li: a(href='https://opensource.guide/', target='_new') The Open Source Guides at https://opensource.guide
-          li: a(href='https://docs.opensource.microsoft.com/content/contributing/index.html', target='_new') Microsoft's Contribution guide and policies
-          li: a(href='https://github.com/search?q=label%3Afirst-timers-only&state=open&type=Issues', target='_new') Great first issues on GitHub
-          li: a(href='https://aka.ms/opensourcechannel') Open the Open Source Channel on Microsoft Teams to discuss with others
-
-        div(style='margin-bottom:20px')
-        hr
       else if isSelf && false
         if contributionCount > 0
           p

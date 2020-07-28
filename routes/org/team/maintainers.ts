@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, NoRestApiCache, IProviders, RequestTeamMemberAddType } from '../../../transitional';
+import { ReposAppRequest, NoRestApiCache, IProviders, RequestTeamMemberAddType, UserAlertType } from '../../../transitional';
 import { Team } from '../../../business/team';
 import { TeamMember } from '../../../business/teamMember';
 const teamAdminRequired = require('./teamAdminRequired');
@@ -56,7 +56,7 @@ router.post('/:id/downgrade', teamAdminRequired, asyncHandler(async (req: ILocal
   }
   const username = maintainer.login;
   await team2.addMembership(username);
-  req.individualContext.webContext.saveUserAlert(`Downgraded ${username} from a team maintainer to a team member`, team2.name + ' membership updated', 'success');
+  req.individualContext.webContext.saveUserAlert(`Downgraded ${username} from a team maintainer to a team member`, team2.name + ' membership updated', UserAlertType.Success);
   const maintainers = await refreshMaintainers(team2);
   res.redirect(req.teamUrl);
 }));
@@ -71,7 +71,7 @@ router.post('/add', teamAdminRequired, asyncHandler(async function (req: ILocalR
   const login = operations.validateGitHubLogin(req.body.username);
   const team2 = req.team2 as Team;
   await team2.addMaintainer(login);
-  req.individualContext.webContext.saveUserAlert(`Added ${login} as a team maintainer`, team2.name + ' membership updated', 'success');
+  req.individualContext.webContext.saveUserAlert(`Added ${login} as a team maintainer`, team2.name + ' membership updated', UserAlertType.Success);
   const maintainers = await refreshMaintainers(team2);
   return res.redirect(req.teamUrl);
 }));

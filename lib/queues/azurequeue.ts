@@ -86,8 +86,7 @@ export default class AzureQueuesProcessor implements IQueueProcessor {
       assumedType.identifier,
       assumedType.popReceipt,
     );
-    console.log(deleteMessageResponse);
-    console.log();
+    // console.log(deleteMessageResponse);
   }
 
   private requireInitialized() {

@@ -9,7 +9,7 @@ import express from 'express';
 import moment from 'moment';
 
 const lowercaser = require('../../middleware/lowercaser');
-import { ReposAppRequest, IProviders } from '../../transitional';
+import { ReposAppRequest, IProviders, UserAlertType } from '../../transitional';
 import { Organization } from '../../business/organization';
 import { Repository, GitHubCollaboratorAffiliationQuery, ITemporaryCommandOutput } from '../../business/repository';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
@@ -168,7 +168,7 @@ router.post('/:repoName/delete', asyncHandler(async function (req: ILocalRequest
   const { organization, repository } = req;
   const lockdownSystem = new NewRepositoryLockdownSystem({ operations, organization, repository, repositoryMetadataProvider });
   await lockdownSystem.deleteLockedRepository(false /* delete for any reason */, true /* deleted by the original user instead of ops */);
-  req.individualContext.webContext.saveUserAlert(`You deleted your repo, ${repository.full_name}.`, 'Repo deleted', 'success');
+  req.individualContext.webContext.saveUserAlert(`You deleted your repo, ${repository.full_name}.`, 'Repo deleted', UserAlertType.Success);
   return res.redirect(organization.baseUrl);
 }));
 
@@ -216,7 +216,7 @@ router.post('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), async
   }
   const repository = req.repository as Repository;
   await repository.editPublicPrivate({ private: false });
-  req.individualContext.webContext.saveUserAlert(`${repository.full_name} is now public.`, 'Repository publish', 'success');
+  req.individualContext.webContext.saveUserAlert(`${repository.full_name} is now public.`, 'Repository publish', UserAlertType.Success);
   await repository.getDetails({
     backgroundRefresh: false,
     maxAgeSeconds: -60, // force a refresh now

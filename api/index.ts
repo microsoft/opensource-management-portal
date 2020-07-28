@@ -17,12 +17,12 @@ import apiClient from './client/';
 import apiWebhook from './webhook';
 
 import apiPeople from './people';
-import apiPublicRepos from './publicRepos';
 
 import { AzureDevOpsAuthenticationMiddleware } from '../middleware/apiVstsAuth';
 import ReposApiAuthentication from '../middleware/apiReposAuth';
 import { CreateRepository, CreateRepositoryEntrypoint } from './createRepo';
 import supportMultipleAuthProviders from '../middleware/supportMultipleAuthProviders';
+import JsonErrorHandler from './jsonErrorHandler';
 
 const hardcodedApiVersions = [
   '2019-10-01',
@@ -34,7 +34,6 @@ const hardcodedApiVersions = [
 
 router.use('/client', apiClient);
 router.use('/webhook', apiWebhook);
-router.use('/publicRepos', apiPublicRepos);
 
 router.use((req: IApiRequest, res, next) => {
   const apiVersion = (req.query['api-version'] || req.headers['api-version']) as string;
@@ -120,25 +119,6 @@ router.post('/:org/repos', asyncHandler(async function (req: ReposAppRequest, re
   }
 }));
 
-router.use((err, req, res, next) => {
-  if (err && err['json']) {
-    // jsonError objects should bubble up like before
-    return next(err);
-  }
-  // If any errors happened in the API routes that did not send a jsonError,
-  // just return as a JSON error and end here.
-  if (err && err['status']) {
-    res.status(err['status']);
-  } else {
-    res.status(500);
-  }
-  res.json({
-    message: err && err.message ? err.message : 'Error',
-  });
-  const providers = req.app.settings.providers as IProviders;
-  if (providers && providers.insights) {
-    providers.insights.trackException({ exception: err });
-  }
-});
+router.use(JsonErrorHandler);
 
 export default router;

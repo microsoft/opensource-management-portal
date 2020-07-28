@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders, CreateError } from '../../transitional';
+import { ReposAppRequest, IProviders, CreateError, UserAlertType } from '../../transitional';
 
 router.use('/:campaignGroupId', (req:  ReposAppRequest, res: any, next) => {
   const { config } = req.app.settings.providers as IProviders;
@@ -35,10 +35,10 @@ router.get('/:campaignGroupId/unsubscribe', asyncHandler(async (req: ReposAppReq
   }
   const currentState = await campaignStateProvider.getState(corporateId, campaignGroupId);
   if (currentState && currentState.optOut) {
-    req.individualContext.webContext.saveUserAlert(`You've already opted out of the ${campaignGroupId} campaign.`, 'Opt-out', 'success');
+    req.individualContext.webContext.saveUserAlert(`You've already opted out of the ${campaignGroupId} campaign.`, 'Opt-out', UserAlertType.Success);
   } else {
     await campaignStateProvider.optOut(corporateId, campaignGroupId);
-    req.individualContext.webContext.saveUserAlert(`You've opted out of the ${campaignGroupId} campaign.`, 'Opt-out', 'success');
+    req.individualContext.webContext.saveUserAlert(`You've opted out of the ${campaignGroupId} campaign.`, 'Opt-out', UserAlertType.Success);
   }
   return res.redirect('/');
 }));

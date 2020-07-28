@@ -15,6 +15,9 @@ import { createAndInitializeEntityMetadataProviderInstance, IEntityMetadataProvi
 import { createAndInitializeRepositoryMetadataProviderInstance } from '../entities/repositoryMetadata';
 
 import { createMailAddressProviderInstance, IMailAddressProvider } from '../lib/mailAddressProvider';
+import LoadCorporationAdministrationProfile from '../routes/administration/corporation';
+
+import ErrorRoutes from './error-routes';
 
 import redis = require('redis');
 import { Pool as PostgresPool } from 'pg';
@@ -35,6 +38,7 @@ import { createTokenProvider } from '../entities/token';
 import { createAndInitializeApprovalProviderInstance } from '../entities/teamJoinApproval';
 import { CreateLocalExtensionKeyProvider } from '../entities/localExtensionKey';
 import { CreateGraphProviderInstance, IGraphProvider } from '../lib/graphProvider/';
+import initializeCorporateViews from './corporateViews';
 
 const keyVaultResolver = require('../lib/keyVaultResolver');
 import CreateMailProviderInstance from '../lib/mailProvider/';
@@ -63,6 +67,7 @@ import { ElectionVoteProvider } from '../entities/voting/vote';
 import { ElectionNominationEntityProvider } from '../entities/voting/nomination';
 import { ElectionNominationCommentEntityProvider } from '../entities/voting/nominationComment';
 import { IReposApplication } from '../app';
+import { UserSettingsProvider } from '../entities/userSettings';
 
 const DefaultApplicationProfile: IApplicationProfile = {
   applicationName: 'GitHub Management Portal',
@@ -75,7 +80,7 @@ const DefaultApplicationProfile: IApplicationProfile = {
 
 async function initializeAsync(app: IReposApplication, express, rootdir: string, config): Promise<void> {
   const providers = app.get('providers') as IProviders;
-  providers.postgresPool = await connectPostgres(config);
+  providers.postgresPool = await ConnectPostgresPool(config.data.postgres);
   providers.linkProvider = await createAndInitializeLinkProviderInstance(providers, config);
   if (config.github.cache.provider === 'cosmosdb') {
     const cosmosCache = new CosmosCache(config.github.cache.cosmosdb);
@@ -126,18 +131,12 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
   let tableProviderEnabled = emOptions.tableOptions && emOptions.tableOptions.account && emOptions.tableOptions.key;
   let postgresProviderEnabled = emOptions.postgresOptions && emOptions.postgresOptions.pool;
   const tableEntityMetadataProvider = tableProviderEnabled ? await createAndInitializeEntityMetadataProviderInstance(
-    app,
-    config,
     emOptions,
     'table') : null;
   const pgEntityMetadataProvider = postgresProviderEnabled ? await createAndInitializeEntityMetadataProviderInstance(
-    app,
-    config,
     emOptions,
     'postgres') : null;
   const memoryEntityMetadataProvider = await createAndInitializeEntityMetadataProviderInstance(
-    app,
-    config,
     emOptions,
     'memory');
   const defaultProvider = pgEntityMetadataProvider || tableEntityMetadataProvider || memoryEntityMetadataProvider;
@@ -155,6 +154,7 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
         return null;
     }
   }
+  providers['_temp:nameToInstance'] = providerNameToInstance;
   // providers.entityMetadata = await createAndInitializeEntityMetadataProviderInstance(app, config, providers);
   providers.approvalProvider = await createAndInitializeApprovalProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.teamjoin) });
   providers.repositoryMetadataProvider = await createAndInitializeRepositoryMetadataProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.repositorymetadata) });
@@ -169,6 +169,8 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
   providers.teamMemberCacheProvider = await CreateTeamMemberCacheProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.teammembercache) });
   providers.auditLogRecordProvider = await createAndInitializeAuditLogRecordProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.auditlogrecord) });
   providers.eventRecordProvider = await createAndInitializeEventRecordProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.eventrecord) });
+  providers.userSettingsProvider = new UserSettingsProvider({ entityMetadataProvider: providerNameToInstance(config.entityProviders.usersettings) });
+  await providers.userSettingsProvider.initialize();
   providers.queryCache = new QueryCache(providers);
   if (config.campaigns && config.campaigns.provider === 'cosmosdb') {
     const campaignCosmosStore = new CosmosHelper({
@@ -196,6 +198,10 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
   }
 
   providers.corporateContactProvider = createCorporateContactProviderInstance(config, providers.cacheProvider);
+
+  providers.corporateAdministrationProfile = LoadCorporationAdministrationProfile();
+
+  providers.corporateViews = await initializeCorporateViews(providers, rootdir);
 
   if (config.features && config.features.allowFossFundElections) {
     const electionEmp = { entityMetadataProvider: providerNameToInstance('postgres') };
@@ -230,6 +236,12 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
     console.dir(ignoredError2);
     throw ignoredError2;
   }
+
+  if (providers.applicationProfile.startup) {
+    debug('Application provider-specific startup...');
+    await providers.applicationProfile.startup(providers);
+  }
+
   debug('Good to go.');
 }
 
@@ -374,7 +386,7 @@ export default async function initialize(app: IReposApplication, express, rootdi
       crash(exception)();
     }
   }
-  require('./error-routes')(app, exception);
+  await ErrorRoutes(app, exception);
   return app;
 }
 
@@ -395,11 +407,11 @@ function createGraphProvider(config: any): Promise<IGraphProvider> {
   });
 }
 
-function connectPostgres(config: any): Promise<PostgresPool> {
+export function ConnectPostgresPool(postgresConfigSection: any): Promise<PostgresPool> {
   return new Promise((resolve, reject) => {
     try {
-      if (config.data && config.data.postgres && config.data.postgres.user) {
-        const pool = new PostgresPool(config.data.postgres);
+      if (postgresConfigSection && postgresConfigSection.user) {
+        const pool = new PostgresPool(postgresConfigSection);
         // central
         pool.on('error', (err, client) => {
           pgDebug('POSTGRES POOL ERROR:');
@@ -428,7 +440,7 @@ function connectPostgres(config: any): Promise<PostgresPool> {
               poolQueryError.inner = err;
               return reject(poolQueryError);
             }
-            debug(`connected to Postgres (${config.data.postgres.host} ${config.data.postgres.database} as ${config.data.postgres.user}) and a pool of ${config.data.postgres.max} clients is available in providers.postgresPool`);
+            debug(`connected to Postgres (${postgresConfigSection.host} ${postgresConfigSection.database} as ${postgresConfigSection.user}) and a pool of ${postgresConfigSection.max} clients is available in providers.postgresPool`);
             return resolve(pool);
           })
         })

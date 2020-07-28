@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { IndividualContext, IIndividualContextOptions, IWebContextOptions, WebContext, SessionUserProperties, WebApiContext } from '../../user';
 import { Operations } from '../../business/operations';
 
