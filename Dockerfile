@@ -5,6 +5,9 @@ ARG NPM_TOKEN
 # Make Git available for NPM and rsync in the build image
 RUN apk add --update git && rm -rf /var/cache/apk/*
 
+# Add node-gyp dependencies
+RUN apk add python make gcc g++
+
 WORKDIR /build
 COPY package.json .
 COPY package-lock.json .
