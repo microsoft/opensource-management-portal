@@ -64,7 +64,7 @@ function patchOverride(provider, newToAddress, htmlOrNot) {
   return provider;
 }
 
-export default function createMailProviderInstance(config): IMailProvider {
+export function createMailProviderInstance(config): IMailProvider {
   const mailConfig = config.mail;
   if (mailConfig === undefined) {
     return;
