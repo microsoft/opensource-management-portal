@@ -11,6 +11,7 @@ import app, { IReposJob } from '../../../app';
 import { isEmployeeOrIntern } from '../../../middleware/business/employeesOnly';
 import { sleep } from '../../../utils';
 import { IMail } from '../../../lib/mailProvider';
+import { UserSettings } from '../../../entities/userSettings';
 
 let fakeSend = false;
 let markIneligibleAsSent = false;
@@ -19,9 +20,9 @@ app.runJob(async function work({ providers }: IReposJob) {
   let runLimit = 100000;
   let inRun = 0;
   const campaignGroupId = 'fossfund';
-  const campaignId = '3'; // 3 = current voting campaign
+  const campaignId = '4'; // 4 = current voting campaign for fund #3
   const emailViewName = `${campaignGroupId}-${campaignId}`;
-  const { linkProvider, operations, config, eventRecordProvider, electionProvider, electionVoteProvider, electionNominationProvider, mailAddressProvider, campaignStateProvider } = providers;
+  const { linkProvider, operations, config, eventRecordProvider, electionProvider, electionVoteProvider, electionNominationProvider, mailAddressProvider, campaignStateProvider, userSettingsProvider } = providers;
   const now = new Date();
   const electionSet = (await electionProvider.queryActiveElections()).filter(election => new Date(election.votingEnd) > now);
   if (electionSet.length !== 1) {
@@ -35,7 +36,7 @@ app.runJob(async function work({ providers }: IReposJob) {
     .filter(resource => isEmployeeOrIntern(resource.corporateUsername))
     .filter(resource => !resource.isServiceAccount);
   employees = _.shuffle(employees);
-  // employees = employees.slice(0, 500); // very short list
+  let optOuts = 0;
   let i = 0;
   for (const employee of employees) {
     ++i;
@@ -47,9 +48,11 @@ app.runJob(async function work({ providers }: IReposJob) {
       ++inRun;
       const state = await campaignStateProvider.getState(corporateId, campaignGroupId, campaignId);
       if (state.optOut) {
+        console.log(`[oo: ${++optOuts}]`);
         console.log(`[opt-out] employee id=${corporateId} has opted out of the campaign group=${campaignGroupId}`);
         continue;
       }
+      continue; // ALL
       if (state.sent) {
         await sleep(5);
         continue;
@@ -79,6 +82,12 @@ app.runJob(async function work({ providers }: IReposJob) {
         }
         continue;
       }
+      let userSettings: UserSettings = null;
+      try {
+        userSettings = await userSettingsProvider.getUserSettings(corporateId);
+      } catch (noSettingsError) {
+        // that's OK
+      }
       const otherContributionsData = events.filter(event => !(event.isOpenContribution || event.additionalData.contribution));
       const contributions = _.groupBy(openContributions, contrib => contrib.action);
       let subjectSubset = `${election.title} voting is now open: Let's give $10,000 to a project thanks to YOUR contributions!`;
@@ -106,6 +115,7 @@ app.runJob(async function work({ providers }: IReposJob) {
           openContributions,
           contributions,
           otherContributionsData,
+          userSettings,
           viewServices: providers.viewServices,
         }),
       };
@@ -116,6 +126,7 @@ app.runJob(async function work({ providers }: IReposJob) {
       console.log(`[${fakeSend ? 'fake send' : 'OK'}] ${inRun}/${runLimit}: sent to ${corporateId} and set state for ${employee.corporateUsername} ${employee.corporateDisplayName}`);
       //console.log(`OK sent to ${corporateId} and didn't state *** for ${employee.corporateUsername} ${employee.corporateDisplayName}`);
       await sleep(10);
+
       if (i % 100 === 0) {
         console.log();
         console.log('long sleep...');

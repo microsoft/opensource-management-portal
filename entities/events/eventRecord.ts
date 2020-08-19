@@ -69,6 +69,7 @@ enum Query {
   DistinctEligibleContributorsByDateRange = 'DistinctEligibleContributorsByDateRange',
   DistinctOrganizations = 'DistinctOrganizations',
   PopularContributionsByDateRange = 'PopularContributionsByDateRange',
+  RecentContributionsBySpecificOptInUsers = 'RecentContributionsBySpecificOptInUsers',
 }
 
 interface NoParameters {}
@@ -89,6 +90,12 @@ interface ParametersThirdPartyIdDateRange
   extends ParameterThirdPartyId, ParametersStartEndDates, ParameterContributionsLimiter {}
   interface ParametersCorporateIdDateRange 
   extends ParameterCorporateId, ParametersStartEndDates, ParameterContributionsLimiter {}
+interface ParametersSpecializedOptIn {
+  start: Date;
+  end: Date;
+  specificActionExclusions: string[];
+  limit: number;
+}
 
 const Field: IEventRecordProperties = {
   // eventId: 'eventId',
@@ -341,6 +348,44 @@ EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: 
         ]
       };
     }
+    case Query.RecentContributionsBySpecificOptInUsers: {
+      // this is a specialized query only used at MSFT for now...
+      const { start, end, limit, specificActionExclusions } = (base as EventQuery<ParametersSpecializedOptIn>).parameters;
+      if (!start) {
+        throw new Error('start required');
+      }
+      if (!end) {
+        throw new Error('end required');
+      }
+      if (!specificActionExclusions) {
+        throw new Error('specificActionExclusions required');
+      }
+        // The IN clause is mostly safe within this app only as user values are not used
+        const inClause = specificActionExclusions.map(e => `'${e}'`).join(', ');
+      return {
+        sql: (`
+          SELECT ${tableName}.*
+          FROM
+            ${tableName}
+          LEFT OUTER JOIN 
+            usersettings ON usersettings.entityid = events.usercorporateid
+          WHERE
+              ${tableName}.isopencontribution = True
+          AND usersettings.contributionshareoptin = True
+          AND ${tableName}.created >= $1
+          AND ${tableName}.created < $2
+          AND ${tableName}.action NOT IN ( ${inClause} ) 
+          ORDER BY
+              ${tableName}.created DESC
+          LIMIT $3
+          `),
+        values: [
+          start,
+          end,
+          limit || 25,
+        ],
+      };
+    }
     default:
       throw new Error(`The query ${base.query} is not implemented by this provider for the type ${type}`);
   }
@@ -376,6 +421,7 @@ export interface IEventRecordProvider {
   queryDistinctEligibleContributors(startDate: Date, endDate: Date): Promise<string[]>;
   queryDistinctOrganizations(): Promise<string[]>;
   queryPopularContributions(startDate: Date, endDate: Date): Promise<any[]>;
+  querySpecificContributions(startDate: Date, endDate: Date, limit: number, specificActionExclusions: string[]): Promise<EventRecord[]>;
 }
 
 export class EventRecordProvider extends EntityMetadataBase implements IEventRecordProvider {
@@ -427,6 +473,14 @@ export class EventRecordProvider extends EntityMetadataBase implements IEventRec
   async queryOpenContributionEventsByDateRangeAndCorporateId(corporateId: string, start: Date, end: Date, limitToOpenContributionsOnly: boolean): Promise<EventRecord[]> {
     const query = new EventQuery<ParametersCorporateIdDateRange>(Query.ContributionsByCorporateIdDateRange, {
       start, end, corporateId, limitToOpenContributionsOnly });
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<EventRecord>(thisProviderType, metadatas);
+    return results;
+  }
+
+  async querySpecificContributions(start: Date, end: Date, limit: number, specificActionExclusions: string[]): Promise<EventRecord[]> {
+    const query = new EventQuery<ParametersSpecializedOptIn>(Query.RecentContributionsBySpecificOptInUsers, {
+      start, end, limit, specificActionExclusions });
     const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
     const results = this.deserializeArray<EventRecord>(thisProviderType, metadatas);
     return results;

@@ -16,6 +16,7 @@ import { TeamPermission } from './teamPermission';
 import { RepositoryMetadataEntity, GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 import { AppPurpose } from '../github';
 import { IListPullsParameters, GitHubPullRequestState, GitHubPullRequestSort, GitHubSortDirection } from '../lib/github/collections';
+import { RepositoryIssue } from './repositoryIssue';
 
 export interface IGitHubCollaboratorInvitation {
   id: string;
@@ -941,6 +942,11 @@ export class Repository {
     }
     this._awesomeness = awesomeness;
     return this._awesomeness;
+  }
+
+  issue(issueNumber: number, optionalEntity?: any): RepositoryIssue {
+    const issue = new RepositoryIssue(this, issueNumber, this._operations, this._getAuthorizationHeader, optionalEntity);
+    return issue;
   }
 }
 

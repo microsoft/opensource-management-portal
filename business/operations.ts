@@ -1185,6 +1185,24 @@ export class Operations {
     return corporateLinks;
   }
 
+  async getLinksFromCorporateIds(corporateIds: string[]): Promise<ICorporateLink[]> {
+    const corporateLinks: ICorporateLink[] = [];
+    const throttle = throat(ParallelLinkLookup);
+    await Promise.all(corporateIds.map(corporateId => throttle(async () => {
+      try {
+        const links = await this.linkProvider.queryByCorporateId(corporateId);
+        if (links && links.length === 1) {
+          corporateLinks.push(links[0]);
+        } else if (links.length > 1) {
+          throw new Error('Multiple links not supported');
+        }
+      } catch (noLinkError) {
+        console.dir(noLinkError);
+      }
+    })));
+    return corporateLinks;
+  }
+
   getLinkByThirdPartyId(thirdPartyId: string): Promise<ICorporateLink> {
     const linkProvider = this._linkProvider;
     return linkProvider.getByThirdPartyId(thirdPartyId);

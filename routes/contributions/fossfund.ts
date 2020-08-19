@@ -10,6 +10,7 @@ const router = express.Router();
 import { ReposAppRequest, IProviders, ErrorHelper } from '../../transitional';
 import { FossFundElection, IElectionResultWithNominee } from '../../features/fossFundElection';
 import { ElectionEntity } from '../../entities/voting/election';
+import { UserSettings } from '../../entities/userSettings';
 
 interface IFundRequest extends ReposAppRequest {
   providers: IProviders;
@@ -58,18 +59,33 @@ enum ElectionDisplayState {
 
 router.get('/:electionid', asyncHandler(async (req: IFundRequest, res, next) => {
   const { election, elections } = req;
+  const { userSettingsProvider } = req.app.settings.providers as IProviders;
   const electionId = election.electionId;
   const corporateId = req.individualContext.corporateIdentity.id;
+  let userSettings: UserSettings = null;
+  try {
+    userSettings = await userSettingsProvider.getUserSettings(corporateId)
+  } catch (noUserSettings) {
+    if (ErrorHelper.IsNotFound(noUserSettings)) {
+      userSettings = new UserSettings();
+      userSettings.corporateId = corporateId;
+      await userSettingsProvider.insertUserSettings(userSettings);
+    }
+  }
   let votingState = ElectionDisplayState.NotEligible;
   let ballot = null;
   let vote = await elections.hasVoted(corporateId, electionId);
   if (vote) {
     votingState = ElectionDisplayState.Voted;
   } else {
-    const canVote = await elections.canVote(corporateId, electionId);
-    if (canVote) {
-      votingState = ElectionDisplayState.Vote;
-      ballot = await elections.getBallot(electionId);
+    try {
+      const canVote = await elections.canVote(corporateId, electionId);
+      if (canVote) {
+        votingState = ElectionDisplayState.Vote;
+        ballot = await elections.getBallot(electionId);
+      }
+    } catch (cannotVote) {
+      // ok
     }
   }
   const showResults = votingState === ElectionDisplayState.Voted || votingState === ElectionDisplayState.NotEligible;
@@ -91,6 +107,7 @@ router.get('/:electionid', asyncHandler(async (req: IFundRequest, res, next) => 
       results,
       totalVotes,
       vote,
+      userSettings,
     },
   });
 }));

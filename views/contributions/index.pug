@@ -261,8 +261,8 @@ block content
 
             hr
 
-        else if isEmployee
-          p: a(href='/contributions/voting') View active voting forms
+        if isEmployee
+          p: a(href='/contributions/voting') View ballots and past results
 
         if !isEmployee
           .alert.alert-warning(role='alert', style='color:#000')

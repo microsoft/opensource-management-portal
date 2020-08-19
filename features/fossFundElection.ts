@@ -202,7 +202,7 @@ export class FossFundElection {
     const now = new Date();
     const votingEnd = new Date(election.votingEnd);
     if (votingEnd < now) {
-      throw new Error(`Voting is not longer open for the ${election.title} election. Voting closed ${election.votingEnd}.`);
+      throw new Error(`Voting is no longer open for the ${election.title} election. Voting closed ${election.votingEnd}.`);
     }
     const votingStart = new Date(election.votingStart);
     if (votingStart > now) {

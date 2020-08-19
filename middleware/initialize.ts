@@ -28,7 +28,8 @@ const pgDebug = require('debug')('pgpool');
 
 const appInsights = require('./appInsights');
 const keyVault = require('./keyVault');
-const healthCheck = require('./healthCheck');
+
+import healthCheck from './healthCheck';
 
 import expressRoutes from '../routes/';
 import alternateRoutes from './alternateApps';
