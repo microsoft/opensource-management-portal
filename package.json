@@ -83,7 +83,7 @@
     "node-jose": "1.1.4",
     "nodemailer": "6.4.11",
     "oauth": "0.9.x",
-    "object-path": "0.11.4",
+    "object-path": "0.11.5",
     "octicons": "5.0.1",
     "only": "0.0.2",
     "package-lock.json": "1.0.0",
