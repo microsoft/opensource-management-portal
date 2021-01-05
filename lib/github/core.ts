@@ -172,7 +172,7 @@ export abstract class IntelligentEngine {
 
   protected async tryGetCachedResult(apiContext): Promise<any> {
     const key = this.redisKeyBodyVersion(apiContext);
-    const response = await apiContext.libraryContext.redis.getObjectCompressed(this.redisKeyBodyVersion(apiContext));
+    const response = await apiContext.libraryContext.redis.getObjectCompressed(key);
     this.recordRedisCost(apiContext, 'get', response);
     await this.storeLocalResult(apiContext, response);
     return response;
