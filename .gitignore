@@ -26,3 +26,4 @@ sync-*.js
 # Local development environment scripts
 app.yaml
 env.json
+.env

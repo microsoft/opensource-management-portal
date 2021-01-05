@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { promises as fs } from 'fs';
+import { constants as fsConstants, promises as fs } from 'fs';
 import path from 'path';
 
 import { IProviders, stripDistFolderName } from '../transitional';
@@ -29,6 +29,11 @@ export default async function initializeCorporateViews(providers: IProviders, di
   const { config } = providers.config;
   const appDirectory = config && config.typescript && config.typescript.appDirectory ? config.typescript.appDirectory : stripDistFolderName(dirname);
   const corporateViewsRoot = path.resolve(path.join(appDirectory, 'views', 'corporate'));
+  try {
+    await fs.access(corporateViewsRoot, fsConstants.R_OK);
+  } catch (err) {
+    return null;
+  }
   return await recurseDirectory(corporateViewsRoot);
 }
 
