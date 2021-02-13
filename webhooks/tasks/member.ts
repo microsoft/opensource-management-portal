@@ -23,6 +23,11 @@ export default class MemberWebhookProcessor implements WebhookProcessor {
     const queryCache = providers.queryCache;
     const event = data.body;
     const organizationIdAsString = event.organization.id.toString();
+    if (!operations.isOrganizationManagedById(event.organization.id)) {
+      console.log(`skipping organization ID ${event.organization.id} which is not directly managed: ${event.organization.login}`);
+      return true;
+    }
+
     const repositoryIdAsString = event.repository.id.toString();
     const userIdAsString = event.member.id.toString();
     const userLogin = event.member.login;
@@ -59,7 +64,7 @@ export default class MemberWebhookProcessor implements WebhookProcessor {
       if (permission) {
         const isOrganizationMember = await organization.getMembership(userLogin);
         const collaboratorType = isOrganizationMember ? GitHubCollaboratorType.Direct : GitHubCollaboratorType.Outside;
-        queryCache.addOrUpdateCollaborator(organizationIdAsString, repositoryIdAsString, repositoryName, userIdAsString, userLogin, event.member.avatar_url, permission, collaboratorType);
+        queryCache.addOrUpdateCollaborator(organizationIdAsString, repositoryIdAsString, repository, repositoryName, userIdAsString, userLogin, event.member.avatar_url, permission, collaboratorType);
         console.log(`collaborator ${collaboratorType} ${event.member.login} for repository ${repositoryName} set to permission=${permission}`);
       } else {
         console.log(`no permission level returned for ${event.member.login} for repository ${repositoryName} which was collaborator permission ${collaborator.permission}`);

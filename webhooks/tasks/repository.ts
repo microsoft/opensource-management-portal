@@ -24,6 +24,11 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
     let isNewOrTransferred = false;
     let transferSourceLogin: string = null;
     const action = event.action;
+    const organizationId = event.organization.id as number;
+    if (!operations.isOrganizationManagedById(organizationId)) {
+      console.log(`skipping organization ID ${organizationId} which is not directly managed: ${event.organization.login}`);
+      return true;
+    }
     if (action === 'created' || action === 'transferred') {
       console.log(`repo ${action}: ${event.repository.full_name} ${event.repository.private === 'private' ? 'private' : 'public'} by ${event.sender.login}`);
       addOrUpdateRepositoryQueryCache = true;

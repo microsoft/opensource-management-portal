@@ -9,7 +9,7 @@
 import _ from 'lodash';
 
 import { Operations } from './operations';
-import { IReposError, ICacheOptions, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IReposRestRedisCacheCost, IAuthorizationHeaderValue, NoRestApiCache, ErrorHelper } from '../transitional';
+import { IReposError, ICacheOptions, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IReposRestRedisCacheCost, IAuthorizationHeaderValue, NoRestApiCache, ErrorHelper, CreateError } from '../transitional';
 import * as common from './common';
 import { OrganizationMember } from './organizationMember';
 import { Team, GitHubTeamRole, ITeamMembershipRoleState } from './team';
@@ -21,7 +21,6 @@ import { GitHubResponseType } from '../lib/github/endpointEntities';
 import { AppPurpose, GitHubAppAuthenticationType } from '../github';
 import { OrganizationSetting, SpecialTeam } from '../entities/organizationSettings/organizationSetting';
 import { ICorporateLink } from './corporateLink';
-import { MemberSearch } from './memberSearch';
 
 export interface IAccountBasics {
   id: number;
@@ -160,6 +159,8 @@ export class Organization {
   private _usesGitHubApp: boolean;
   private _settings: OrganizationSetting;
 
+  private _entity: IGitHubOrganizationResponse;
+
   id: number;
   uncontrolled: boolean;
 
@@ -205,6 +206,25 @@ export class Organization {
 
   get usesApp(): boolean {
     return this._usesGitHubApp;
+  }
+
+  asClientJson() {
+    // TEMP: TEMP: TEMP: not long-term as currently designed
+    return {
+      active: this.active,
+      createRepositoriesOnGitHub: this.createRepositoriesOnGitHub,
+      description: this.description,
+      externalMembersPermitted: this.externalMembersPermitted,
+      id: this.id,
+      locked: this.locked,
+      name: this.name,
+      priority: this.priority,
+      privateEngineering: this.privateEngineering,
+    };
+  }
+
+  getEntity() {
+    return this._entity;
   }
 
   async supportsUpdatesApp() {
@@ -256,6 +276,9 @@ export class Organization {
       const entity = await operations.github.request(
         this.authorize(AppPurpose.Data),
         'GET /repositories/:id', parameters, cacheOptions);
+      if (entity.owner.id !== this.id) {
+        throw CreateError.NotFound(`Repository ID ${parameters.id} has a different owner of ${entity.owner.login} instead of ${this.name}. It has been relocated and will be treated as a 404.`);
+      }
       return this.repositoryFromEntity(entity);
     } catch (error) {
       if (error.status && error.status === 404) {
@@ -520,6 +543,7 @@ export class Organization {
       if (entity && entity.id) {
         this.id = entity.id;
       }
+      this._entity = entity;
       return entity as IGitHubOrganizationResponse;
     } catch (error) {
       throw wrapError(error, `Could not get details about the ${this.name} organization: ${error.message}`);
@@ -754,7 +778,7 @@ export class Organization {
     return await this.getMembership(username, NoRestApiCache);
   }
 
-  async addMembership(username: string, options?: IAddOrganizationMembershipOptions): Promise<any> {
+  async addMembership(username: string, options?: IAddOrganizationMembershipOptions): Promise<IOrganizationMembership> {
     const operations = this._operations;
     const github = operations.github;
     options = options || {};
@@ -765,7 +789,7 @@ export class Organization {
       role: role,
     };
     const ok = await github.post(this.authorize(AppPurpose.Operations), 'orgs.setMembershipForUser', parameters);
-    return ok;
+    return ok as IOrganizationMembership; // state: pending or acive, role: admin or member
   }
 
   async checkPublicMembership(username: string, options?: ICacheOptions): Promise<boolean> {
@@ -1010,7 +1034,7 @@ export class Organization {
         candidateTemplate.legalEntities = legalEntities;
         template = candidateTemplate;
       }
-      if (template) {
+      if (template && template.name) {
         templates.push(template);
         if (projectType && template.forceForReleaseType && template.forceForReleaseType == projectType) {
           limitedTypeTemplates.push(template);

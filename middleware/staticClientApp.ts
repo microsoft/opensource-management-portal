@@ -7,6 +7,7 @@
 
 import appPackage = require('../package.json');
 const packageVariableName = 'static-client-package-name';
+const otherPackageVariableName = 'static-react-package-name';
 
 const debug = require('debug')('startup');
 
@@ -15,8 +16,11 @@ export function StaticClientApp (app, express) {
   // NPM module for the Ember app. Assumes that the inclusion of the package
   // returns the path to host.
   const staticClientPackageName = appPackage[packageVariableName];
+  const otherValue = appPackage[otherPackageVariableName];
   if (!staticClientPackageName) {
-    debug(`package.json is not configured with a package in the property name ${packageVariableName}. No additional client package will be hosted.`);
+    if (!staticClientPackageName && !otherValue) {
+      debug(`package.json is not configured with a package in the property name ${packageVariableName}. No additional client package will be hosted.`);
+    }
     return;
   }
 

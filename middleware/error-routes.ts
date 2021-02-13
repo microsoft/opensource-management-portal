@@ -1,6 +1,5 @@
-import { IReposError } from "../transitional";
-import { IReposApplication } from "../app";
-import { ICorporationAdministrationSection } from "../routes/administration/corporation";
+import { IReposError } from '../transitional';
+import { IReposApplication } from '../app';
 
 //
 // Copyright (c) Microsoft.

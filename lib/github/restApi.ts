@@ -6,20 +6,21 @@
 /*eslint no-console: ["error", { allow: ["log"] }] */
 
 import _ from 'lodash';
+import moment from 'moment';
+import semver from 'semver';
+
 const debug = require('debug')('restapi');
 const debugCacheOptimization = require('debug')('oss-cache-optimization');
-import moment from 'moment';
-
-const semver = require('semver');
 
 const debugShowStandardBehavior = false;
 const debugOutputUnregisteredEntityApis = true;
 
-import { IShouldServeCache, IntelligentEngine, ApiContext, IApiContextCacheValues, IApiContextRedisKeys, ApiContextType } from './core';
+import { IShouldServeCache, IntelligentEngine, ApiContext, IApiContextCacheValues, IApiContextRedisKeys, ApiContextType, IRestResponse, IRestMetadata } from './core';
 import { getEntityDefinitions, GitHubResponseType, ResponseBodyType } from './endpointEntities';
 
 import appPackage = require('../../package.json');
 import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../transitional';
+
 const appVersion = appPackage.version;
 
 const longtermMetadataMinutes = 60 * 24 * 14; // assumed to be a long time
@@ -36,20 +37,14 @@ interface IReducedGitHubMetadata {
   updated?: any;
 }
 
-interface IHackyOptions {
-  t?: any;
-}
-
 interface IGitHubLink {
   link: string;
 }
 
 export class IntelligentGitHubEngine extends IntelligentEngine {
-
   public static findLibraryMethod(libraryInstance, apiName) {
     const instance = libraryInstance;
     const combined = apiName;
-
     const i = combined.indexOf('.');
     let apiGroup = null;
     let apiMethodName = combined;
@@ -68,9 +63,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     return method;
   }
 
-  // were previously in the pipeline and context:
-
-  async callApi(apiContext: GitHubApiContext, optionalMessage?: string): Promise<any> {
+  async callApi(apiContext: GitHubApiContext, optionalMessage?: string): Promise<IRestResponse> {
     const token = apiContext.token;
     // CONSIDER: rename apiContext.token *to* something like apiContext.authorization
     if (typeof(token) === 'string' && (!(token as string).startsWith('token ') && !(token as string).startsWith('bearer '))) {
@@ -136,9 +129,9 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     return response;
   }
 
-  processMetadataBeforeCall(apiContext, metadata) {
+  processMetadataBeforeCall(apiContext: ApiContext, metadata: IRestMetadata) {
     if (metadata && metadata.av && apiContext.libraryContext.breakingChangeGitHubPackageVersion && !semver.gte(metadata.av, apiContext.libraryContext.breakingChangeGitHubPackageVersion)) {
-      console.log(`${apiContext.redisKey.metadata} was using ${metadata.av}, which is < to ${apiContext.libraryContext.breakingChangeGitHubPackageVersion}. This is a schema break, discarding cache.`);
+      console.warn(`${apiContext.redisKey.metadata} was using ${metadata.av}, which is < to ${apiContext.libraryContext.breakingChangeGitHubPackageVersion}. This is a schema break, discarding cache.`);
       metadata = undefined;
     } else if (metadata && !metadata.av) {
       // Old version of metadata, no package version, which is required for all GitHub REST API metadata now
@@ -151,14 +144,12 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     return metadata;
   }
 
-  withResponseUpdateMetadata(apiContext: ApiContext, response: any) {
+  withResponseUpdateMetadata(apiContext: ApiContext, response: IRestResponse) {
     return response;
   }
 
-  optionalStripResponse(apiContext: ApiContext, response: any): any {
-    delete response.meta;
+  optionalStripResponse(apiContext: ApiContext, response: IRestResponse): IRestResponse {
     const clonedResponse = Object.assign({}, response);
-
     if (response.headers) {
       let clonedHeaders = StripGitHubEntity(GitHubResponseType.Headers, response.headers, 'response.headers');
       if (clonedHeaders) {
@@ -233,28 +224,30 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     return clonedResponse;
   }
 
-  reduceMetadataToCacheFromResponse(apiContext: any, response: any): any {
-    if (response) {
-      delete response.meta; // this is to avoid deprecation messages from the library
-    }
+  reduceMetadataToCacheFromResponse(apiContext: ApiContext, response: IRestResponse): any {
     const headers = response ? response.headers : null;
-    if (headers && headers.etag) {
+    if (headers?.etag) {
       let reduced: IReducedGitHubMetadata = {
         etag: headers.etag,
-        av: appVersion, // added in app v5.0.1
+        av: appVersion,
       };
       if (headers.link) {
         reduced.link = headers.link;
       }
-      // CONSIDER: can parse last-modified and store it as 'changed' UTC
-      const calledTime = apiContext.calledTime ? apiContext.calledTime.format() : moment().utc().format();
-      reduced.updated = calledTime;
+      // Updated for 2021: parse last-modified to use as a more accurate 'changed' value
+      const lastModifiedTime = headers?.['last-modified'];
+      let updated = lastModifiedTime ? new Date(lastModifiedTime) : null;
+      if (!updated) {
+        const calledTime = apiContext.calledTime ? apiContext.calledTime : new Date();
+        updated = calledTime;
+      }
+      reduced.updated = updated.toISOString();
       return reduced;
     }
     return headers;
   }
 
-  withResponseShouldCacheBeServed(apiContext: ApiContext, response: any): boolean | IShouldServeCache {
+  withResponseShouldCacheBeServed(apiContext: ApiContext, response: IRestResponse): boolean | IShouldServeCache {
     if (response === undefined) {
       throw new Error('The response was undefined and unable to process.');
     }
@@ -270,16 +263,10 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     if (rateLimitRemaining) {
       apiContext.cost.github.remainingApiTokens = rateLimitRemaining;
     }
-    let statusCode = 0;
-    if (headers.status) {
-      let status = headers.status || '';
-      let i = status.indexOf(' ');
-      statusCode = parseInt(i >= 0 ? status.substr(0, i) : status);
-      headers.statusActual = statusCode;
-    }
+    const { status } = response;
     let cacheOk = false;
-    if (statusCode === 304) {
-      const displayInfo = apiContext.redisKey ? apiContext.redisKey.root : '';
+    const displayInfo = apiContext.redisKey ? apiContext.redisKey.root : '';
+    if (status === 304 || response.notModified) {
       let appPurposeSuffix = apiContext.tokenSource && apiContext.tokenSource.purpose ? ` [${apiContext.tokenSource.purpose}]` : '';
       if (apiContext.tokenSource && !apiContext.tokenSource.purpose && apiContext.tokenSource.source) {
         appPurposeSuffix = ` [token source=${apiContext.tokenSource.source}]`;
@@ -287,18 +274,22 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
       debug(`304:               ${displayInfo} ${appPurposeSuffix}`);
       ++apiContext.cost.github.cacheHits;
       cacheOk = true;
-    } else if (statusCode < 200 || statusCode >= 300) {
+    } else if (status !== undefined && (status < 200 || status >= 300)) {
       // The underlying library I believe actually processes these conditions as errors anyway
-      throw new Error(`Response code of ${statusCode} is not currently supported in this system.`);
+      throw new Error(`Response code of ${status} is not currently supported in this system.`);
     }
     return cacheOk;
   }
 
-  getResponseMetadata(apiContext: ApiContext, response: any): Promise<any> {
-    return Promise.resolve(response.headers);
+  getResponseMetadata(apiContext: ApiContext, response: IRestResponse): IRestMetadata {
+    const md: IRestMetadata = {
+      headers: response.headers,
+      status: response.status,
+    }
+    return md;
   }
 
-  withMetadataShouldCacheBeServed(apiContext: ApiContext, metadata: any): boolean | IShouldServeCache {
+  withMetadataShouldCacheBeServed(apiContext: ApiContext, metadata: IRestMetadata): boolean | IShouldServeCache {
     // result can be falsy OR an object; { cache: true, refresh: true }
     // cache: whether to use the cache, if available
     // refresh: whether to refresh in the background for a newer value

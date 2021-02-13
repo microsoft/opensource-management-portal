@@ -61,6 +61,7 @@ export enum FixedQueryType {
   RepositoryCollaboratorCacheByRepositoryId,
   RepositoryCollaboratorCacheByUserId,
   RepositoryCollaboratorCacheDeleteByOrganizationId,
+  RepositoryCollaboratorCacheDeleteByRepositoryId,
   RepositoryCollaboratorCacheGetOrganizationIds,
 
   // Repository team cache
@@ -70,6 +71,7 @@ export enum FixedQueryType {
   RepositoryTeamCacheByTeamIds,
   RepositoryTeamCacheByOrganizationId,
   RepositoryTeamCacheDeleteByOrganizationId,
+  RepositoryTeamCacheDeleteByRepositoryId,
   RepositoryTeamCacheGetOrganizationIds,
 
   // Team cache

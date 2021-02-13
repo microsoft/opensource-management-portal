@@ -9,7 +9,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders } from '../transitional';
+import { ReposAppRequest, IProviders, IAppSession } from '../transitional';
 import { IndividualContext } from '../user';
 import { storeOriginalUrlAsReferrer, wrapError } from '../utils';
 import { ICorporateLink } from '../business/corporateLink';
@@ -18,9 +18,10 @@ import { Operations, LinkOperationSource, SupportedLinkType } from '../business/
 import validator from 'validator';
 
 import unlinkRoute from './unlink';
+import { jsonError } from '../middleware/jsonError';
 
 interface IRequestWithSession extends ReposAppRequest {
-  session?: any;
+  session: IAppSession;
 }
 
 interface IRequestHacked extends ReposAppRequest {
@@ -188,15 +189,22 @@ router.get('/enableMultipleAccounts', function (req: IRequestWithSession, res) {
   storeOriginalUrlAsReferrer(req, res, '/auth/github', 'multiple accounts enabled need to auth with GitHub again now');
 });
 
-router.post('/', asyncHandler(linkUser));
-
-async function linkUser(req, res, next) {
+router.post('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
   const individualContext = req.individualContext as IndividualContext;
+  try {
+    await interactiveLinkUser(false, individualContext, req, res, next);
+  } catch (error) {
+    return next(error);
+  }
+}));
+
+export async function interactiveLinkUser(isJson: boolean, individualContext: IndividualContext, req, res, next) {
   const isServiceAccount = req.body.sa === '1';
   const serviceAccountMail = req.body.serviceAccountMail;
   const operations = req.app.settings.providers.operations as Operations;
   if (isServiceAccount && !validator.isEmail(serviceAccountMail)) {
-    return next(wrapError(null, 'Please enter a valid e-mail address for the Service Account maintainer.', true));
+    const errorMessage = 'Please enter a valid e-mail address for the Service Account maintainer.'
+    return next(isJson ? jsonError(errorMessage, 400) : wrapError(null, errorMessage, true));
   }
   let newLinkObject: ICorporateLink = null;
   try {
@@ -207,18 +215,25 @@ async function linkUser(req, res, next) {
   if (isServiceAccount) {
     newLinkObject.isServiceAccount = true;
     newLinkObject.serviceAccountMail = serviceAccountMail;
-    return next(new Error('Service Account linking is disabled pending corporate security updates. Please reach out to github@microsoft.com for more information.'));
+    const errorMessage = 'Service Account linking is disabled pending corporate security updates. Please reach out to github@microsoft.com for more information.';
+    return next(isJson ? jsonError(errorMessage, 400) : new Error(errorMessage));
   }
   try {
     await operations.linkAccounts({
       link: newLinkObject,
       operationSource: LinkOperationSource.Portal,
-      correlationId: individualContext.webContext.correlationId,
+      correlationId: individualContext.webContext?.correlationId || 'N/A',
       skipGitHubValidation: true, // already has been verified in the recent session
     });
-    return res.redirect('/?onboarding=yes');
+    if (isJson) {
+      res.status(201);
+      return res.end();
+    } else {
+      return res.redirect('/?onboarding=yes');
+    }
   } catch (createError) {
-    return next(wrapError(createError, `We had trouble linking your corporate and GitHub accounts: ${createError.message}`));
+    const errorMessage = `We had trouble linking your corporate and GitHub accounts: ${createError.message}`;
+    return next(isJson ? jsonError(errorMessage, 500) : wrapError(createError, errorMessage));
   }
 }
 

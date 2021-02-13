@@ -42,16 +42,23 @@ block content
       if votingState == 'Voted'
         h3 Thanks for voting.
       else if votingState == 'NotEligible'
-        h3 You're not eligible to vote this time.
+        if doPollsOpenInFuture
+          h3 Voting is not yet open.
+        else
+          h3 You're not eligible to vote this time.
       p
         if vote
           - var votedDate = new Date(vote.voted)
           - var votedMoment = moment(votedDate)
-          = 'Thank you for your vote. You cast your vote ' + votedMoment.fromNow() + '. '
+          = 'Thank you for your selection. You made your choice ' + votedMoment.fromNow() + '. '
         if votingEnd && today > votingEnd
-          = totalVotes + ' votes were cast. '
-        else
-          = 'So far, ' + totalVotes + ' votes have been cast out of over 2,200 eligible voters. '
+          = totalVotes + ' selections were made. '
+        else if !doPollsOpenInFuture
+          = 'So far, ' + totalVotes + ' selections have been made. '
+        if doPollsOpenInFuture && election && election.votingStart
+          - var vs = new Date(election.votingStart)
+          - var vsm = moment(vs)
+          = 'Voting starts ' + vsm.fromNow() + '. '
         if election && election.votingEnd
           - var ve = new Date(election.votingEnd)
           - var vem = moment(ve)
@@ -86,10 +93,12 @@ block content
                     .label.label-muted You voted for this project.
               p= nomination.description
               if nomination.web
-                p:small Learn more about this project at #[a(href=nomination.web, target='_new')= nomination.web].
+                p:small Learn more about this project at #[a(href=nomination.web.trim(), target='_new')= nomination.web.trim()].
+              if nomination.justification
+                p: small: em= nomination.justification
             .col-md-2(style='vertical-align:middle;display:block')
-              h3.text-center= percentOfVotes + '%'
-              if result.votes > 0
+              if results.votes > 0
+                h3.text-center= percentOfVotes + '%'
                 p.text-center: small= result.votes + ' vote' + (result.votes > 1 ? 's' : '')
             .col-md-4
                 if rawPercentOfVotes > 0

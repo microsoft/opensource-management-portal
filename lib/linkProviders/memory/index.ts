@@ -5,7 +5,7 @@
 
 import { MemoryLinkProvider } from './memoryLinkProvider';
 
-module.exports = function createProvider(providers, config) {
+export default function createMemoryProvider(providers, config) {
   const memoryOptions = {};
   return new MemoryLinkProvider(providers, memoryOptions);
-};
+}

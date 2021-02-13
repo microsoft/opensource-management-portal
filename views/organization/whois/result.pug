@@ -99,7 +99,7 @@ block content
             if query.realtimeGraphError
               h4 Graph lookup returned an error
               if query.realtimeGraphError.status && query.realtimeGraphError.status == '404'
-                h5.text-danger The user could not be found in the directory graph by corporate user ID
+                .alert-danger: h5 The user could not be found in the directory graph by corporate user ID
               else
                 h5.text-danger= query.realtimeGraphError.toString()
 

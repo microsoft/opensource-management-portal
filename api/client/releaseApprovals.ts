@@ -66,7 +66,22 @@ router.post('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
     });
     const result = response[0];
     if (result.issue || result.error) {
-      return next(jsonError(new Error(result.issue || result.error || 'Failed to create new release registration')));
+      if (result.error && typeof(result.error) === 'string') {
+        const knownError = result.error as string;
+        // Fallback reviewers can have a better error message
+        if (knownError.includes('Ipsum Business Reviewers')) {
+          return next(jsonError(`There is no known business reviewer for your organization. Please report this issue to OpenSourceEngSupport@microsoft.com to help configure a business reviewer and unblock your request. ${knownError}`))
+        }
+      }
+      try {
+        // Never-used business reviewer case
+        const consolidatedError = result.issue || result.error;
+        const consolidated = JSON.stringify(consolidatedError.toString());
+        if (consolidated && consolidated.includes('is an unknown identity')) {
+          return next(jsonError(`The business reviewer for your organization has not used the OSSMSFT Azure DevOps organization before, so the business review cannot be assigned to them. Please report this issue to OpenSourceEngSupport@microsoft.com to help configure the business reviewer in the instance and unblock your request. ${consolidated}`));
+        }
+      } catch (ignore) { /* ignore */ }
+      return next(jsonError(result.issue || result.error || 'Failed to create new release registration'));
     }
     const reviews = await reviewService.getAllReleaseReviews();
     await cacheProvider.setObjectWithExpire(releaseApprovalsRedisKey, reviews, 60 * 24);

@@ -16,7 +16,8 @@ import { TeamJoinApprovalEntity } from '../../entities/teamJoinApproval/teamJoin
 
 import reposRoute from './repos';
 
-const teamsRoute = require('./teams');
+import RouteTeams from './teams';
+
 const membershipRoute = require('./membership');
 const joinRoute = require('./join');
 const leaveRoute = require('./leave');
@@ -55,7 +56,7 @@ router.get('/', (req: ReposAppRequest, res, next) => {
 router.use('/join', joinRoute);
 router.use('/repos', reposRoute);
 router.use('/people', peopleRoute);
-router.use('/teams', teamsRoute);
+router.use('/teams', RouteTeams);
 
 // Org membership requirement middleware
 router.use(asyncHandler(AddOrganizationPermissionsToRequest));

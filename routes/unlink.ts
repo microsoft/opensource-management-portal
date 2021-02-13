@@ -9,10 +9,12 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest } from '../transitional';
+import { IProviders, ReposAppRequest } from '../transitional';
 import { wrapError } from '../utils';
 import { Operations, UnlinkPurpose } from '../business/operations';
 import { OrganizationMembershipState } from '../business/organization';
+import { IndividualContext } from '../user';
+import { jsonError } from '../middleware/jsonError';
 
 router.use(asyncHandler(async function (req: ReposAppRequest, res, next) {
   const memberOfOrganizations = [];
@@ -60,10 +62,9 @@ router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
   }
 }));
 
-router.post('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
-  const id = req.individualContext.getGitHubIdentity().id;
-  const operations = req.app.settings.providers.operations as Operations;
-  const insights = req.insights;
+export async function unlinkInteractive(isJson: boolean, individualContext: IndividualContext, req: ReposAppRequest, res, next) {
+  const id = individualContext.getGitHubIdentity().id;
+  const { operations, insights } = req.app.settings.providers as IProviders;
   const terminationOptions = {
     reason: 'User used the unlink function on the web site',
     purpose: UnlinkPurpose.Self,
@@ -87,10 +88,21 @@ router.post('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   }
   insights.trackEvent({ name: 'PortalUserUnlink', properties: eventData });
   if (error) {
-    return next(wrapError(error, 'You were successfully removed from all of your organizations. However, a failure happened during a data housecleaning operation with GitHub. Double check that you are happy with your current membership status on GitHub.com before continuing.'));
+    const errorMessage = 'You were successfully removed from all of your organizations. However, a failure happened during a data housecleaning operation with GitHub. Double check that you are happy with your current membership status on GitHub.com before continuing.';
+    return next(isJson ? jsonError(errorMessage, 400) : wrapError(error, errorMessage));
   } else {
+    if (isJson) {
+      res.status(204);
+      return res.end();
+    }
     return res.redirect('/signout?unlink');
   }
+}
+
+router.post('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
+  const individualContext = req.individualContext;
+  // TODO: validate
+  return unlinkInteractive(false, individualContext, req, res, next);
 }));
 
 export default router;

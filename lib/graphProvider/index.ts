@@ -6,8 +6,9 @@
 import { MicrosoftGraphProvider } from './microsoftGraphProvider';
 
 export enum GraphUserType {
-  Unknown = '',
+  Unknown = '', // most employees
   Guest = 'Guest',
+  Member = 'Member', // some users, like LinkedIn employees, are a member
 }
 
 export interface IGraphEntry {
@@ -19,6 +20,7 @@ export interface IGraphEntry {
   userType?: GraphUserType;
   mailNickname?: string;
   // alias?: string;
+  jobTitle?: string;
 }
 
 export interface IGraphGroupMember {
@@ -53,12 +55,18 @@ export interface IGraphProvider {
   getMailAddressByUsername(corporateUsername: string): Promise<string>;
   getUserIdByUsername(corporateUsername: string): Promise<string>;
 
+  getUsersBySearch(minimum3Characters: string): Promise<IGraphEntry[]>;
+  getUsersByIds(userIds: string[]): Promise<IGraphEntry[]>;
+  getUsersByMailNicknames(mailNicknames: string[]): Promise<IGraphEntry[]>;
+
   getGroupsById(corporateId: string): Promise<string[]>;
   getGroupsByMail(mailAddress: string): Promise<string[]>;
   getGroupsByNickname(nickname: string): Promise<string[]>;
   getGroupsStartingWith(minimum3Characters: string): Promise<IGraphGroup[]>;
   getGroupMembers(corporateGroupId: string): Promise<IGraphGroupMember[]>;
   getGroup(corporateGroupId: string): Promise<IGraphGroup>;
+
+  getToken(): Promise<string>;
 }
 
 export function CreateGraphProviderInstance(config, callback) {
@@ -96,7 +104,7 @@ export function CreateGraphProviderInstance(config, callback) {
 export function getUserAndManagerById(graphProvider: IGraphProvider, aadId: string): Promise<IGraphEntryWithManager> {
   return new Promise((resolve, reject) => {
     if (!graphProvider || !aadId) {
-      return resolve();
+      return resolve(null);
     }
     graphProvider.getUserAndManagerById(aadId, (error, info) => {
       return error ? reject(error) : resolve(info);

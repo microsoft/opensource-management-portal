@@ -16,12 +16,12 @@ import { Team } from '../../business/team';
 import { Organization } from '../../business/organization';
 import { IAggregateUserTeams } from '../../user/aggregate';
 
-interface ApprovalPair {
+export interface ApprovalPair {
   team: Team;
   request: TeamJoinApprovalEntity;
 }
 
-async function getTeamMaintainerApprovals(operations: Operations, aggregateTeams: IAggregateUserTeams, approvalProvider: IApprovalProvider): Promise<ApprovalPair[]> {
+export async function Approvals_getTeamMaintainerApprovals(operations: Operations, aggregateTeams: IAggregateUserTeams, approvalProvider: IApprovalProvider): Promise<ApprovalPair[]> {
   // TODO: move to team object?
   const ownedTeamIdsAsStrings = aggregateTeams.maintainer.map(team => team.id.toString());
   if (ownedTeamIdsAsStrings.length === 0) {
@@ -50,7 +50,7 @@ async function hydrateRequest(operations: Operations, request: TeamJoinApprovalE
   }
 }
 
-async function getUserRequests(operations: Operations, thirdPartyIdAsString: string, approvalProvider: IApprovalProvider): Promise<ApprovalPair[]> {
+export async function Approvals_getUserRequests(operations: Operations, thirdPartyIdAsString: string, approvalProvider: IApprovalProvider): Promise<ApprovalPair[]> {
   const pendingApprovals = await approvalProvider.queryPendingApprovalsForThirdPartyId(thirdPartyIdAsString);
   const pairs: ApprovalPair[] = [];
   for (const request of pendingApprovals) {
@@ -75,8 +75,8 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const id = req.individualContext.getGitHubIdentity().id;
   const aggregateTeams = await req.individualContext.aggregations.teams();
   const state = {
-    teamResponsibilities: await getTeamMaintainerApprovals(operations, aggregateTeams, approvalProvider),
-    usersRequests: await getUserRequests(operations, id.toString(), approvalProvider),
+    teamResponsibilities: await Approvals_getTeamMaintainerApprovals(operations, aggregateTeams, approvalProvider),
+    usersRequests: await Approvals_getUserRequests(operations, id.toString(), approvalProvider),
   };
   req.individualContext.webContext.render({
     view: 'settings/approvals',
@@ -156,7 +156,7 @@ router.get('/:requestid', asyncHandler(async function (req: ReposAppRequest, res
     }
     // Edge case: the team no longer exists.
     if (error.innerError && error.innerError.innerError && error.innerError.innerError.statusCode == 404) {
-      return closeOldRequest(pendingRequest, req, res, next);
+      return closeOldRequest(false /* not a JSON client app */, pendingRequest, req, res, next);
     }
     return next(error);
   }
@@ -170,7 +170,7 @@ router.get('/:requestid', asyncHandler(async function (req: ReposAppRequest, res
   });
 }));
 
-function closeOldRequest(pendingRequest: TeamJoinApprovalEntity, req: ReposAppRequest, res, next) {
+export function closeOldRequest(isJsonClient: boolean, pendingRequest: TeamJoinApprovalEntity, req: ReposAppRequest, res, next) {
   const { approvalProvider } = req.app.settings.providers as IProviders;
   const config = req.app.settings.runtimeConfig;
   const repoApprovalTypesValues = config.github.approvalTypes.repo;
@@ -182,15 +182,17 @@ function closeOldRequest(pendingRequest: TeamJoinApprovalEntity, req: ReposAppRe
   if (!mailProviderInUse) {
     return next(new Error('No configured approval providers configured.'));
   }
-  req.individualContext.webContext.saveUserAlert('The team this request was for no longer exists. The request has been canceled.', 'Team gone!', UserAlertType.Success);
+  if (!isJsonClient) {
+    req.individualContext.webContext.saveUserAlert('The team this request was for no longer exists. The request has been canceled.', 'Team gone!', UserAlertType.Success);
+  }
   if (pendingRequest.active === false) {
-    return res.redirect('/');
+    return isJsonClient ? res.json({}) : res.redirect('/');
   }
   closeRequest(approvalProvider, pendingRequest.approvalId, 'Team no longer exists.', (closeError: Error) => {
     if (closeError) {
       return next(closeError);
     }
-    return res.redirect('/');
+    return isJsonClient ? res.json({}) : res.redirect('/');
   });
 }
 

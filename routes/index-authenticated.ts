@@ -11,9 +11,9 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders, UserAlertType } from '../transitional';
+import { ReposAppRequest, IProviders, UserAlertType, hasStaticReactClientApp } from '../transitional';
 import { AddLinkToRequest, RequireLinkMatchesGitHubSessionExceptPrefixedRoute } from '../middleware/links/';
-import { requireAuthenticatedUserOrSignIn, setIdentity } from '../middleware/business/authentication';
+import { requireAccessTokenClient, requireAuthenticatedUserOrSignIn, setIdentity } from '../middleware/business/authentication';
 import { Organization } from '../business/organization';
 
 import linkRoute from './link';
@@ -21,12 +21,18 @@ import linkedUserRoute from './index-linked';
 import linkCleanupRoute from './link-cleanup';
 
 import SettingsRoute from './settings';
+import { injectReactClient } from '../microsoft/preview';
+import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
+
+const hasReactApp = hasStaticReactClientApp();
+const reactRoute = hasReactApp ? injectReactClient() : undefined;
 
 const placeholdersRoute = require('./placeholders');
 const releasesSpa = require('./releasesSpa');
 
 // - - - Middleware: require that they have a passport - - -
 router.use(requireAuthenticatedUserOrSignIn);
+router.use(asyncHandler(requireAccessTokenClient));
 // - - - Middleware: set the identities we have authenticated  - - -
 router.use(setIdentity);
 // - - - Middleware: resolve whether the corporate user has a link - - -
@@ -34,13 +40,28 @@ router.use(asyncHandler(AddLinkToRequest));
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 router.use('/placeholder', placeholdersRoute);
-router.use('/link/cleanup', linkCleanupRoute);
-router.use('/link', linkRoute);
-router.use('/settings', SettingsRoute);
-router.use('/releases', releasesSpa);
+router.use('/link/cleanup', reactRoute || linkCleanupRoute);
+router.use('/link', reactRoute || linkRoute);
+router.use('/releases', reactRoute || releasesSpa);
 
-// Link cleanups and check their signed-in username vs their link
-router.use(RequireLinkMatchesGitHubSessionExceptPrefixedRoute('/unlink'));
+// Additional closed source routes can be configured through getCompanySpecificDeployment().
+const dynamicStartupInstance = getCompanySpecificDeployment();
+
+if (reactRoute) {
+  // client-only routes
+  router.use('/support', reactRoute);
+  router.use('/use', reactRoute);
+  router.use('/release', reactRoute);
+  router.use('/unlock', reactRoute);
+  router.use('/new', reactRoute);
+  router.use('/news', reactRoute); // intercept early
+}
+
+if (dynamicStartupInstance?.routes?.connectAuthenticatedRoutes) {
+  dynamicStartupInstance.routes.connectAuthenticatedRoutes(router, reactRoute);
+}
+
+router.use('/settings', SettingsRoute);
 
 router.get('/news', (req: ReposAppRequest, res, next) => {
   const config = req.app.settings.runtimeConfig;
@@ -54,8 +75,11 @@ router.get('/news', (req: ReposAppRequest, res, next) => {
   }
 });
 
+// Link cleanups and check their signed-in username vs their link
+router.use(RequireLinkMatchesGitHubSessionExceptPrefixedRoute('/unlink'));
+
 // Dual-purpose homepage: if not linked, welcome; otherwise, show things
-router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
+router.get('/', reactRoute || asyncHandler(async function (req: ReposAppRequest, res, next) {
   const onboarding = req.query.onboarding !== undefined;
   const individualContext = req.individualContext;
   const link = individualContext.link;

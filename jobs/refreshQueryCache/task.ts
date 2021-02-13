@@ -263,7 +263,9 @@ async function cacheRepositoryTeams(queryCache: QueryCache, repository: Reposito
   for (let teamPermission of repoTeamPermissions) {
     const teamId = teamPermission.team.id.toString();
     const permission = teamPermission.permission;
-    ops.push(await queryCache.addOrUpdateTeamsPermission(organizationId, repositoryId, repository.name, teamId, permission));
+    const isPrivate = repository.private as boolean;
+    const repoName = repository.name as string;
+    ops.push(await queryCache.addOrUpdateTeamsPermission(organizationId, repositoryId, isPrivate, repoName, teamId, permission));
   }
   return ops.filter(exists => exists);
 }
@@ -418,6 +420,7 @@ async function cacheRepositoryCollaborators(queryCache: QueryCache, organization
     operations.push(await queryCache.addOrUpdateCollaborator(
       organizationId,
       repositoryId,
+      repository,
       repository.name,
       collaborator.id.toString(),
       collaborator.login,

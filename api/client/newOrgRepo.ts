@@ -17,10 +17,12 @@ import { CreateRepository, ICreateRepositoryApiResult, CreateRepositoryEntrypoin
 import { Team, GitHubTeamRole } from '../../business/team';
 import { asNumber } from '../../utils';
 
+// This file supports the client apps for creating repos.
+
 interface ILocalApiRequest extends ReposAppRequest {
   apiVersion?: string;
   organization?: Organization;
-  knownRequesterMailAddress?: any;
+  knownRequesterMailAddress?: string;
 }
 
 router.get('/metadata', (req: ILocalApiRequest, res, next) => {
@@ -137,12 +139,16 @@ router.get('/repo/:repo', asyncHandler(async (req: ILocalApiRequest, res) => {
   });
 }));
 
-async function discoverUserIdentities(req: ReposAppRequest, res, next) {
+export async function discoverUserIdentities(req: ReposAppRequest, res, next) {
   const apiContext = req.apiContext as IndividualContext;
   const providers = req.app.settings.providers as IProviders;
   const mailAddressProvider = providers.mailAddressProvider;
   // Try and also learn if we know their e-mail address to send the new repo mail to
   const upn = apiContext.corporateIdentity.username;
+  if (apiContext.link && apiContext.link.corporateMailAddress) {
+    req['knownRequesterMailAddress'] = apiContext.link.corporateMailAddress;
+    return next();
+  }
   try {
     const mailAddress = await mailAddressProvider.getAddressFromUpn(upn);
     if (mailAddress) {
@@ -152,11 +158,39 @@ async function discoverUserIdentities(req: ReposAppRequest, res, next) {
   return next();
 }
 
-router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(async function (req: ILocalApiRequest, res, next) {
+router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(createRepositoryFromClient));
+
+export async function createRepositoryFromClient(req: ILocalApiRequest, res, next) {
+  const providers = req.app.settings.providers as IProviders;
+  const { insights, diagnosticsDrop, customizedNewRepositoryLogic } = providers;
   const individualContext = req.individualContext || req.apiContext;
   const config = req.app.settings.runtimeConfig;
   const organization = req.organization as Organization;
   const existingRepoId = req.body.existingrepoid;
+  const correlationId = req.correlationId;
+  const debugValues = req.body.debugValues || {};
+  const corporateId = individualContext.corporateIdentity.id;
+  const customContext = customizedNewRepositoryLogic?.createContext(req);
+  const additionalTelemetryProperties = customizedNewRepositoryLogic?.getAdditionalTelemetryProperties(customContext) || {};
+  insights.trackEvent({
+    name: 'CreateRepositoryFromClientStart',
+    properties: Object.assign({
+      debugValues,
+      correlationId,
+      body: JSON.stringify(req.body),
+      query: JSON.stringify(req.query),
+      corporateId,
+    }, additionalTelemetryProperties),
+  });
+  if (diagnosticsDrop) {
+    diagnosticsDrop.setObject(`newrepo.${organization.name}.${correlationId}`, Object.assign({
+      debugValues,
+      correlationId,
+      body: req.body,
+      query: req.query,
+      corporateId,
+    }, additionalTelemetryProperties));
+  }
   if (organization.createRepositoriesOnGitHub && !(existingRepoId && organization.isNewRepositoryLockdownSystemEnabled())) {
     return next(jsonError(`The GitHub organization ${organization.name} is configured as "createRepositoriesOnGitHub": repos should be created on GitHub.com directly and not through this wizard.`, 400));
   }
@@ -164,16 +198,35 @@ router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(as
   if (!body) {
     return next(jsonError('No body', 400));
   }
+  try {
+    await customizedNewRepositoryLogic?.validateRequest(customContext, req);
+  } catch (validationError) {
+    return next(jsonError(validationError, 400));
+  }
   req.apiVersion = (req.query['api-version'] || req.headers['api-version'] || '2017-07-27') as string;
   if (req.apiContext && req.apiContext.getGitHubIdentity()) {
     body['ms.onBehalfOf'] = req.apiContext.getGitHubIdentity().username;
   }
   // these fields do not need translation: name, description, private
   const approvalTypesToIds = config.github.approvalTypes.fields.approvalTypesToIds;
-  if (!approvalTypesToIds[body.approvalType]) {
-    return next(jsonError('The approval type is not supported or approved at this time', 400));
+  if (approvalTypesToIds[body.approvalType]) {
+    body.approvalType = approvalTypesToIds[body.approvalType];
+  } else {
+    let valid = false;
+    Object.getOwnPropertyNames(approvalTypesToIds).forEach(key => {
+      if (approvalTypesToIds[key] === body.approvalType) {
+        valid = true;
+      }
+    })
+    if (!valid) {
+      return next(jsonError('The approval type is not supported or approved at this time', 400));
+    }
   }
-  body.approvalType = approvalTypesToIds[body.approvalType];
+  // Property supporting private repos from the client
+  if (body.visibility === 'private') {
+    body.private = true;
+    delete body.visibility;
+  }
   translateValue(body, 'approvalType', 'ms.approval');
   translateValue(body, 'approvalUrl', 'ms.approval-url');
   translateValue(body, 'justification', 'ms.justification');
@@ -187,19 +240,19 @@ router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(as
   // Initial repo contents and license
   const templates = _.keyBy(organization.getRepositoryCreateMetadata().templates, 'id');
   const template = templates[body.template];
-  if (!template) {
-    return next(jsonError('There was a configuration problem, the template metadata was not available for this request', 400));
-  }
+  // if (!template) {
+    // return next(jsonError('There was a configuration problem, the template metadata was not available for this request', 400));
+  // }
   translateValue(body, 'template', 'ms.template');
-  body['ms.license'] = template.spdx || template.name; // Today this is the "template name" or SPDX if available
+  body['ms.license'] = template && (template.spdx || template.name); // Today this is the "template name" or SPDX if available
   translateValue(body, 'gitIgnoreTemplate', 'gitignore_template');
   if (!body['ms.notify']) {
-    body['ms.notify'] = req.knownRequesterMailAddress || config.brand.operationsMail || config.brand.supportMail;
+    body['ms.notify'] = individualContext?.link?.corporateMailAddress || req.knownRequesterMailAddress || config.brand.operationsMail || config.brand.supportMail;
   }
   // these fields are currently ignored: orgName
   delete body.orgName;
-  delete body.claEntity; // a legacy value
-  req.app.settings.providers.insights.trackEvent({
+  customizedNewRepositoryLogic?.stripRequestBody(customContext, body);
+  insights.trackEvent({
     name: 'ApiClientNewOrgRepoStart',
     properties: {
       body: JSON.stringify(req.body),
@@ -207,9 +260,9 @@ router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(as
   });
   let success: ICreateRepositoryApiResult = null;
   try {
-    success = await CreateRepository(req, body, CreateRepositoryEntrypoint.Client, individualContext);
+    success = await CreateRepository(req, customizedNewRepositoryLogic, customContext, body, CreateRepositoryEntrypoint.Client, individualContext);
   } catch (createRepositoryError) {
-    req.app.settings.providers.insights.trackEvent({
+    insights.trackEvent({
       name: 'ApiClientNewOrgRepoError',
       properties: {
         error: createRepositoryError.message,
@@ -221,6 +274,8 @@ router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(as
     }
     return next(createRepositoryError);
   }
+  // before success, was: Number(existingRepoId || success.github.id)
+  await customizedNewRepositoryLogic?.afterRepositoryCreated(customContext, corporateId, success);
   let message = success.github ? `Your new repo, ${success.github.name}, has been created:` : 'Your repo request has been submitted.';
   if (existingRepoId && success.github) {
     message = `Your repository ${success.github.name} is classified and the repo is now ready, unlocked, with your selected team permissions assigned.`;
@@ -237,7 +292,7 @@ router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(as
   }
   output.messages = output['tasks'];
   delete output['tasks'];
-  req.app.settings.providers.insights.trackEvent({
+  insights.trackEvent({
     name: 'ApiClientNewOrgRepoSuccessful',
     properties: {
       body: JSON.stringify(body),
@@ -245,7 +300,7 @@ router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(as
     },
   });
   return res.json(output);
-}));
+}
 
 function translateTeams(body) {
   let admin = body.selectedAdminTeams;
@@ -277,4 +332,4 @@ function translateValue(object, fromKey, toKey) {
   }
 }
 
-module.exports = router;
+export default router;

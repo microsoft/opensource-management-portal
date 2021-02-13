@@ -21,26 +21,59 @@ router.use('/:campaignGroupId', (req:  ReposAppRequest, res: any, next) => {
 });
 
 router.get('/:campaignGroupId/unsubscribe', asyncHandler(async (req: ReposAppRequest, res: any, next) => {
+  return await modifySubscription(true, req, res, next);
+}));
+
+router.get('/:campaignGroupId/subscribe', asyncHandler(async (req: ReposAppRequest, res: any, next) => {
+  return await modifySubscription(false, req, res, next);
+}));
+
+router.get('/:campaignGroupId', asyncHandler(async (req: ReposAppRequest, res: any, next) => {
   const { campaignStateProvider } = req.app.settings.providers as IProviders;
   if (!campaignStateProvider) {
     return next(new Error('This app is not configured for campaign management'));
   }
   const { campaignGroupId } = req.params;
   if (!campaignGroupId) {
-    return next(new Error('Campaign required to unsubscribe'));
+    return next(new Error('Campaign required'));
   }
   const corporateId = req.individualContext.corporateIdentity.id;
   if (!corporateId) {
-    return next (new Error('Corporate ID required'));
+    return next (new Error('Corporate authentcation and identity required'));
   }
   const currentState = await campaignStateProvider.getState(corporateId, campaignGroupId);
-  if (currentState && currentState.optOut) {
+  return res.json(currentState);
+}));
+
+async function modifySubscription(isUnsubscribing: boolean, req: ReposAppRequest, res: any, next: any) {
+  const { campaignStateProvider } = req.app.settings.providers as IProviders;
+  if (!campaignStateProvider) {
+    return next(new Error('This app is not configured for campaign management'));
+  }
+  const actionName = isUnsubscribing ? 'unsubscribe' : 'subscribe';
+  const { campaignGroupId } = req.params;
+  if (!campaignGroupId) {
+    return next(new Error(`Campaign required to ${actionName}`));
+  }
+  const corporateId = req.individualContext.corporateIdentity.id;
+  if (!corporateId) {
+    return next (new Error('Corporate authentcation and identity required'));
+  }
+  const currentState = await campaignStateProvider.getState(corporateId, campaignGroupId);
+  if (currentState && currentState.optOut && isUnsubscribing) {
     req.individualContext.webContext.saveUserAlert(`You've already opted out of the ${campaignGroupId} campaign.`, 'Opt-out', UserAlertType.Success);
+  } else if (currentState && !currentState.optOut && !isUnsubscribing) {
+    req.individualContext.webContext.saveUserAlert(`You're not opted out of the ${campaignGroupId} campaign.`, 'Re-subscribe', UserAlertType.Success);
   } else {
-    await campaignStateProvider.optOut(corporateId, campaignGroupId);
-    req.individualContext.webContext.saveUserAlert(`You've opted out of the ${campaignGroupId} campaign.`, 'Opt-out', UserAlertType.Success);
+    if (isUnsubscribing) {
+      await campaignStateProvider.optOut(corporateId, campaignGroupId);
+      req.individualContext.webContext.saveUserAlert(`You've opted out of the ${campaignGroupId} campaign.`, 'Opt-out', UserAlertType.Success);
+    } else {
+      await campaignStateProvider.clearOptOut(corporateId, campaignGroupId);
+      req.individualContext.webContext.saveUserAlert(`You've subscribed to the ${campaignGroupId} campaign.`, 'Re-subscribe', UserAlertType.Success);
+    }
   }
   return res.redirect('/');
-}));
+}
 
 export default router;

@@ -35,18 +35,28 @@ import { IOrganizationSettingProvider } from './entities/organizationSettings/or
 import { ILinkProvider } from './lib/linkProviders';
 import { asNumber } from './utils';
 import { IAuditLogRecordProvider } from './entities/auditLogRecord/auditLogRecordProvider';
-import { IEventRecordProvider } from './entities/events/eventRecord';
 import { ICacheHelper } from './lib/caching';
 import { ICampaignHelper } from './lib/campaigns';
 import { ICorporateContactProvider } from './lib/corporateContactProvider';
 import { IQueueProcessor } from './lib/queues';
-import { IElectionEntityProvider } from './entities/voting/election';
-import { IElectionVoteEntityProvider } from './entities/voting/vote';
-import { IElectionNominationEntityProvider } from './entities/voting/nomination';
-import { IElectionNominationCommentEntityProvider } from './entities/voting/nominationComment';
 import { IReposApplication } from './app';
 import { IUserSettingsProvider } from './entities/userSettings';
 import { ICorporationAdministrationSection } from './routes/administration/corporation';
+import { AccessToken, AuthorizationCode } from 'simple-oauth2';
+
+import appPackage = require('./package.json');
+import BlobCache from './lib/caching/blob';
+import { Session } from 'express-session';
+import { ICreateRepositoryApiResult } from './api/createRepo';
+import { Repository } from './business/repository';
+const packageVariableName = 'static-react-package-name';
+
+export function hasStaticReactClientApp() {
+  const staticClientPackageName = appPackage[packageVariableName];
+  if (process.env.ENABLE_REACT_CLIENT && staticClientPackageName) {
+    return staticClientPackageName;
+  }
+}
 
 export interface ICallback<T> {
   (error: IReposError, result?: T): void;
@@ -67,6 +77,11 @@ export interface IGetOwnerToken {
 export enum RequestTeamMemberAddType {
   Member = 'member',
   Maintainer = 'maintainer',
+}
+
+export enum GitHubTeamPrivacy {
+  Closed = 'closed',
+  Secret = 'secret',
 }
 
 export interface IPurposefulGetAuthorizationHeader {
@@ -149,20 +164,19 @@ export interface IDictionary<TValue> {
 export interface IProviders {
   app: IReposApplication;
   applicationProfile: IApplicationProfile;
+  authorizationCodeClient?: AuthorizationCode;
   corporateAdministrationProfile?: ICorporationAdministrationSection;
   corporateViews?: any;
   approvalProvider?: IApprovalProvider;
   auditLogRecordProvider?: IAuditLogRecordProvider;
   basedir?: string;
-  eventRecordProvider?: IEventRecordProvider;
   campaignStateProvider?: ICampaignHelper;
   campaign?: any; // campaign redirection route, poor variable name
   corporateContactProvider?: ICorporateContactProvider;
   config?: any;
-  electionProvider?: IElectionEntityProvider;
-  electionVoteProvider?: IElectionVoteEntityProvider;
-  electionNominationProvider?: IElectionNominationEntityProvider;
-  electionNominationCommentProvider?: IElectionNominationCommentEntityProvider;
+  customizedNewRepositoryLogic?: ICustomizedNewRepositoryLogic;
+  customizedTeamPermissionsWebhookLogic?: ICustomizedTeamPermissionsWebhookLogic;
+  diagnosticsDrop?: BlobCache;
   healthCheck?: any;
   keyEncryptionKeyResolver?: any;
   github?: RestLibrary;
@@ -178,9 +192,7 @@ export interface IProviders {
   postgresPool?: PostgresPool;
   queryCache?: QueryCache;
   webhookQueueProcessor?: IQueueProcessor;
-  //redis?: RedisHelper;
   sessionRedisClient?: redis.RedisClient;
-  //redisClient?: redis.RedisClient;
   cacheProvider?: ICacheHelper;
   repositoryCacheProvider?: IRepositoryCacheProvider;
   repositoryCollaboratorCacheProvider?: IRepositoryCollaboratorCacheProvider;
@@ -192,6 +204,8 @@ export interface IProviders {
   userSettingsProvider?: IUserSettingsProvider;
   tokenProvider?: ITokenProvider;
   viewServices?: any;
+  //redis?: RedisHelper;
+  //redisClient?: redis.RedisClient;
 }
 
 export enum UserAlertType {
@@ -280,6 +294,7 @@ export interface ReposAppRequest extends Request {
   // FUTURE:
   apiContext: IndividualContext;
   individualContext: IndividualContext;
+  oauthAccessToken: AccessToken;
 }
 
 export interface IReposAppResponse extends Response {
@@ -342,25 +357,37 @@ export function permissionsObjectToValue(permissions): GitHubRepositoryPermissio
     return GitHubRepositoryPermission.Admin;
   } else if (permissions.push === true) {
     return GitHubRepositoryPermission.Push;
+  } else if (permissions.triage === true) {
+    return GitHubRepositoryPermission.Triage;
+  } else if (permissions.maintain === true) {
+    return GitHubRepositoryPermission.Maintain;
   } else if (permissions.pull === true) {
     return GitHubRepositoryPermission.Pull;
   }
   throw new Error(`Unsupported GitHubRepositoryPermission value inside permissions`);
 }
 
-export function isPermissionBetterThan(currentBest, newConsideration) {
+export function isPermissionBetterThan(currentBest: GitHubRepositoryPermission, newConsideration: GitHubRepositoryPermission) {
   switch (newConsideration) {
-    case 'admin':
+    case GitHubRepositoryPermission.Admin:
       return true;
-    case 'push':
-      if (currentBest !== 'admin') {
+    case GitHubRepositoryPermission.Maintain:
+      if (currentBest !== GitHubRepositoryPermission.Admin) {
         return true;
       }
       break;
-    case 'pull':
-      if (currentBest === null) {
+    case GitHubRepositoryPermission.Push:
+      if (currentBest !== GitHubRepositoryPermission.Admin) {
         return true;
       }
+      break;
+    case GitHubRepositoryPermission.Pull:
+      if (currentBest === null || currentBest === GitHubRepositoryPermission.None) {
+        return true;
+      }
+      break;
+    case GitHubRepositoryPermission.Triage:
+      // not really great
       break;
     default:
       throw new Error(`Invalid permission type ${newConsideration}`);
@@ -377,6 +404,10 @@ export function MassagePermissionsToGitHubRepositoryPermission(value: string): G
       return GitHubRepositoryPermission.Push;
     case 'admin':
       return GitHubRepositoryPermission.Admin;
+    case 'triage':
+      return GitHubRepositoryPermission.Triage;
+    case 'maintain':
+      return GitHubRepositoryPermission.Maintain;
     case 'pull':
     case 'read':
       return GitHubRepositoryPermission.Pull;
@@ -506,4 +537,40 @@ export function stripDistFolderName(dirname: string) {
     dirname = dirname.replace('/dist', '');
   }
   return dirname;
+}
+
+export interface IUserAlert {
+  message: string;
+  title: string;
+  context: UserAlertType;
+  optionalLink: string;
+  optionalCaption: string;
+
+}
+
+interface IAppSessionProperties extends Session {
+  enableMultipleAccounts: boolean;
+  selectedGithubId: string;
+  passport: any;
+  id: string;
+  alerts?: IUserAlert[];
+}
+
+export interface IAppSession extends IAppSessionProperties {}
+
+export interface ICustomizedNewRepositoryLogic {
+  createContext(req: any): INewRepositoryContext;
+  getAdditionalTelemetryProperties(context: INewRepositoryContext): IDictionary<string>;
+  validateRequest(context: INewRepositoryContext, req: any): Promise<void>;
+  stripRequestBody(context: INewRepositoryContext, body: any): void;
+  afterRepositoryCreated(context: INewRepositoryContext, corporateId: string, success: ICreateRepositoryApiResult): Promise<void>;
+  shouldNotifyManager(context: INewRepositoryContext, corporateId: string): boolean;
+}
+
+export interface ICustomizedTeamPermissionsWebhookLogic {
+  shouldSkipEnforcement(repository: Repository): Promise<boolean>;
+}
+
+export interface INewRepositoryContext {
+  isCustomContext: boolean;
 }

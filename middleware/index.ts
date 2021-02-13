@@ -11,13 +11,14 @@ import path from 'path';
 
 const debug = require('debug')('startup');
 
+import { hasStaticReactClientApp, IProviders, stripDistFolderName } from '../transitional';
 import { StaticClientApp } from './staticClientApp';
+import { StaticReactClientApp } from './staticClientApp2';
 import { StaticSiteFavIcon, StaticSiteAssets } from './staticSiteAssets';
 import ConnectSession from './session';
 import passportConfig from './passport-config';
 import Onboard from './onboarding';
 import viewServices from '../lib/pugViewServices';
-import { IProviders, stripDistFolderName } from '../transitional';
 
 const campaign = require('./campaign');
 const officeHyperlinks = require('./officeHyperlinks');
@@ -78,6 +79,9 @@ module.exports = function initMiddleware(app, express, config, dirname, initiali
     app.use(compression());
     if (applicationProfile.serveStaticAssets) {
       StaticSiteAssets(app, express);
+    }
+    if (hasStaticReactClientApp()) {
+      StaticReactClientApp(app, express);
     }
     if (applicationProfile.serveClientAssets) {
       StaticClientApp(app, express);

@@ -18,12 +18,13 @@ import { IPersonalizedUserAggregateRepositoryPermission } from '../business/grap
 import { IRequestTeamPermissions } from '../middleware/github/teamPermissions';
 import { UserContext } from '../user/aggregate';
 import { asNumber, daysInMilliseconds } from '../utils';
+import { TeamRepositoryPermission } from '../business/teamRepositoryPermission';
 
 interface IGetReposAndOptionalTeamPermissionsResponse {
   reposData: Repository[];
   ageInformation?: any;
   userRepos?: IPersonalizedUserAggregateRepositoryPermission[];
-  specificTeamRepos?: Repository[],
+  specificTeamRepos?: TeamRepositoryPermission[],
 }
 
 function sortOrgs(orgs) {

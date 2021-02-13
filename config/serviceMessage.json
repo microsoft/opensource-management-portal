@@ -1,3 +1,5 @@
 {
-  "banner": "env://SITE_SERVICE_BANNER"
+  "banner": "env://SITE_SERVICE_BANNER",
+  "link": "env://SITE_SERVICE_BANNER_LINK",
+  "details": "env://SITE_SERVICE_BANNER_DETAILS"
 }

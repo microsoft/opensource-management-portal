@@ -5,6 +5,8 @@
 
 /*eslint no-console: ["error", { allow: ["log", "error", "warn", "dir"] }] */
 
+import path from 'path';
+
 import CosmosSessionStore from '../lib/cosmosSession';
 
 import { IProviders, InnerError, RedisOptions, IApplicationProfile } from '../transitional';
@@ -54,7 +56,6 @@ import QueryCache from '../business/queryCache';
 import { createAndInitializeOrganizationSettingProviderInstance } from '../entities/organizationSettings';
 import { IEntityMetadataProvider } from '../lib/entityMetadataProvider/entityMetadataProvider';
 import { createAndInitializeAuditLogRecordProviderInstance } from '../entities/auditLogRecord';
-import { createAndInitializeEventRecordProviderInstance } from '../entities/events';
 import CosmosCache from '../lib/caching/cosmosdb';
 import BlobCache from '../lib/caching/blob';
 import { StatefulCampaignProvider } from '../lib/campaigns';
@@ -63,10 +64,6 @@ import createCorporateContactProviderInstance from '../lib/corporateContactProvi
 import { IQueueProcessor } from '../lib/queues';
 import ServiceBusQueueProcessor from '../lib/queues/servicebus';
 import AzureQueuesProcessor from '../lib/queues/azurequeue';
-import { ElectionProvider } from '../entities/voting/election';
-import { ElectionVoteProvider } from '../entities/voting/vote';
-import { ElectionNominationEntityProvider } from '../entities/voting/nomination';
-import { ElectionNominationCommentEntityProvider } from '../entities/voting/nominationComment';
 import { IReposApplication } from '../app';
 import { UserSettingsProvider } from '../entities/userSettings';
 
@@ -78,6 +75,8 @@ const DefaultApplicationProfile: IApplicationProfile = {
   webServer: true,
   sessions: true,
 };
+
+type CompanyStartupEntrypoint = (config: any, providers: IProviders, rootdir: string) => Promise<void>;
 
 async function initializeAsync(app: IReposApplication, express, rootdir: string, config): Promise<void> {
   const providers = app.get('providers') as IProviders;
@@ -169,7 +168,6 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
   providers.teamCacheProvider = await CreateTeamCacheProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.teamcache) });
   providers.teamMemberCacheProvider = await CreateTeamMemberCacheProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.teammembercache) });
   providers.auditLogRecordProvider = await createAndInitializeAuditLogRecordProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.auditlogrecord) });
-  providers.eventRecordProvider = await createAndInitializeEventRecordProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.eventrecord) });
   providers.userSettingsProvider = new UserSettingsProvider({ entityMetadataProvider: providerNameToInstance(config.entityProviders.usersettings) });
   await providers.userSettingsProvider.initialize();
   providers.queryCache = new QueryCache(providers);
@@ -197,6 +195,14 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
     const redisSessionClient = await connectRedis(config, config.session.redis, 'session');
     providers.sessionRedisClient = redisSessionClient;
   }
+  if (config?.diagnostics?.blob?.key) {
+    providers.diagnosticsDrop = new BlobCache({
+      key: config.diagnostics.blob.key,
+      account: config.diagnostics.blob.account,
+      container: config.diagnostics.blob.container,
+    });
+    await providers.diagnosticsDrop.initialize();
+  }
 
   providers.corporateContactProvider = createCorporateContactProviderInstance(config, providers.cacheProvider);
 
@@ -204,14 +210,7 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
 
   providers.corporateViews = await initializeCorporateViews(providers, rootdir);
 
-  if (config.features && config.features.allowFossFundElections) {
-    const electionEmp = { entityMetadataProvider: providerNameToInstance('postgres') };
-    // note: not calling initialize on any of these
-    providers.electionProvider = new ElectionProvider(electionEmp)
-    providers.electionVoteProvider = new ElectionVoteProvider(electionEmp);
-    providers.electionNominationProvider = new ElectionNominationEntityProvider(electionEmp);
-    providers.electionNominationCommentProvider = new ElectionNominationCommentEntityProvider(electionEmp);
-  }
+  await dynamicStartup(config, providers, rootdir);
 
   const webhooksConfig = config.github.webhooks;
   if (webhooksConfig && webhooksConfig.provider) {
@@ -261,8 +260,11 @@ function configureGitHubLibrary(app, redis, linkProvider: ILinkProvider, config)
 
 // Asynchronous initialization for the Express app, configuration and data stores.
 export default async function initialize(app: IReposApplication, express, rootdir: string, config: any, exception: Error): Promise<IReposApplication> {
-  const applicationProfile = config.web.app && config.web.app !== 'repos' ? await alternateRoutes(config, app, config.web.app) : DefaultApplicationProfile;
-  const web = !(config.skipModules && config.skipModules.has('web'));
+  if (!config) {
+    throw new Error('No configuration resolved');
+  }
+  const applicationProfile = config?.web?.app && config.web.app !== 'repos' ? await alternateRoutes(config, app, config.web.app) : DefaultApplicationProfile;
+  const web = !(config?.skipModules && config.skipModules.has('web'));
   if (applicationProfile.webServer && !web) {
     applicationProfile.webServer = false;
   }
@@ -399,11 +401,13 @@ function createGraphProvider(config: any): Promise<IGraphProvider> {
     CreateGraphProviderInstance(config, (providerInitError: Error, provider: IGraphProvider) => {
       if (providerInitError) {
         debug(`No org chart graph provider configured: ${providerInitError.message}`);
-        // NOTE: never rejects
+        if (config.graph?.require === true) {
+          return reject(new Error(`Unable to initialize the graph provider: ${providerInitError.message}`));
+        }
       } else {
         return resolve(provider);
       }
-      return resolve();
+      return resolve(null);
     });
   });
 }
@@ -446,7 +450,7 @@ export function ConnectPostgresPool(postgresConfigSection: any): Promise<Postgre
           })
         })
       } else {
-        return resolve();
+        return resolve(undefined);
       }
     } catch (failProblem) {
       return reject(failProblem);
@@ -498,4 +502,20 @@ async function createMailAddressProvider(config: any, providers: IProviders): Pr
     providers: providers,
   };
   return createMailAddressProviderInstance(options);
+}
+
+async function dynamicStartup(config: any, providers: IProviders, rootdir: string) {
+  const p = config?.startup?.path;
+  if (p) {
+    try {
+      const dynamicInclude = require(path.join(rootdir, p));
+      const entrypoint = dynamicInclude && dynamicInclude.default ? dynamicInclude.default : dynamicInclude;
+      if (typeof(entrypoint) !== 'function') {
+        throw new Error(`Entrypoint ${p} is not a function`);
+      }
+      (entrypoint as CompanyStartupEntrypoint).call(null, config, providers, rootdir);
+    } catch (dynamicLoadError) {
+      throw new Error(`config.startup.path=${p} could not successfully load: ${dynamicLoadError}`);
+    }
+  }
 }

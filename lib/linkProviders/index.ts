@@ -6,11 +6,15 @@
 import { IProviders } from '../../transitional';
 import { ICorporateLink, ICorporateLinkExtended } from '../../business/corporateLink';
 
-const linkProviders = [
-  'memory',
-  'postgres',
-  'table',
-];
+import createMemoryProvider from './memory';
+import createPostgresProvider from './postgres';
+import createTableProvider from './table';
+
+const linkProviders = {
+  'memory': createMemoryProvider,
+  'postgres': createPostgresProvider,
+  'table': createTableProvider,
+};
 
 const defaultProviderName = 'memory';
 
@@ -65,13 +69,14 @@ export function createLinkProviderInstance(linkProviderCreateOptions: ILinkProvi
   const provider = linkProviderCreateOptions.overrideProviderType || config.github.links.provider.name || defaultProviderName;
   // FUTURE: should also include a parameter for "what kind of third-party", i.e. 'github' to create
   let found = false;
-  for (const supportedProvider of linkProviders) {
+  const providerNames = Object.getOwnPropertyNames(linkProviders);
+  for (const supportedProvider of providerNames) {
     if (supportedProvider === provider) {
       found = true;
       let providerInstance = null;
       try {
-        // TODO: should no longer include the providers this way
-        providerInstance = require(`./${supportedProvider}`)(providers, config);
+        const createInstance = linkProviders[provider];
+        providerInstance = createInstance(providers, config);
       } catch (createError) {
         throw createError;
       }

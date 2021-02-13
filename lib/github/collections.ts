@@ -11,12 +11,11 @@ const debug = require('debug')('restapi');
 
 const cost = require('./cost');
 
-import { IInteligentEngineResponse, flattenData } from './core';
+import { IRestResponse, flattenData } from './core';
 import { CompositeApiContext, CompositeIntelligentEngine } from './composite';
 import { Collaborator } from '../../business/collaborator';
-import { Repository } from '../../business/repository';
 import { Team } from '../../business/team';
-import { IPagedCacheOptions, IGetAuthorizationHeader } from '../../transitional';
+import { IPagedCacheOptions, IGetAuthorizationHeader, IDictionary } from '../../transitional';
 import { RestLibrary } from '.';
 import { sleep } from '../../utils';
 import GitHubApplication from '../../business/application';
@@ -63,6 +62,11 @@ const repoDetailsToCopy = RepositoryPrimaryProperties;
 const teamDetailsToCopy = Team.PrimaryProperties;
 const memberDetailsToCopy = Collaborator.PrimaryProperties;
 const appInstallDetailsToCopy = GitHubApplication.PrimaryInstallationProperties;
+const contributorsDetailsToCopy = [
+  ...Collaborator.PrimaryProperties,
+  'contributions',
+];
+
 const teamPermissionsToCopy = [
   'id',
   'name',
@@ -109,15 +113,21 @@ const pullDetailsToCopy = [
 ];
 
 interface IRequestWithData {
-  data: any;
-  requests: any;
+  data: unknown;
+  requests: IPageRequest[];
+}
+
+interface IPageRequest {
+  cost: unknown;
+  headers: IDictionary<string>;
+  status?: number;
 }
 
 export class RestCollections {
   private libraryContext: RestLibrary;
-  private githubCall: any;
+  private githubCall: unknown;
 
-  constructor(libraryContext: RestLibrary, githubCall: any) {
+  constructor(libraryContext: RestLibrary, githubCall: unknown) {
     this.libraryContext = libraryContext;
     this.githubCall = githubCall;
   }
@@ -154,6 +164,10 @@ export class RestCollections {
 
   getRepoTeams(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any> {
     return this.generalizedCollectionWithFilter('repoTeamPermissions', 'repos.listTeams', teamPermissionsToCopy, token, options, cacheOptions);
+  }
+
+  getRepoContributors(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any> {
+    return this.generalizedCollectionWithFilter('repoListContributors', 'repos.listContributors', contributorsDetailsToCopy, token, options, cacheOptions);
   }
 
   getRepoCollaborators(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any> {
@@ -200,7 +214,7 @@ export class RestCollections {
       let error = null;
       let result = null;
       try {
-        result = await method.apply(null, args);
+        result = await (method as any).apply(null, args);
         recentResult = result;
         if (result) {
           ++pages;
@@ -253,15 +267,18 @@ export class RestCollections {
     try {
       // IRequestWithData
       const getCollectionResponse = await this.getGithubCollection(token, methodName, options, cacheOptions);
-      if (!getCollectionResponse.data) {
+      if (!getCollectionResponse) {
+        throw new Error('No response');
+      }
+      const root = getCollectionResponse.data as any;
+      if (!root) {
         throw new Error('No object, no data');
       }
-      if (!getCollectionResponse.data.data) {
+      if (!root.data) {
         throw new Error('The resulting object did not contain a data property');
       }
       const requests = getCollectionResponse.requests;
-      const data = getCollectionResponse.data;
-      const results = data.data;
+      const results = root.data;
       const repos = [];
       for (let i = 0; i < results.length; i++) {
         const doNotModify = results[i];
@@ -287,9 +304,9 @@ export class RestCollections {
     }
   }
 
-  private async getFilteredGithubCollectionWithMetadataAnalysis(token: string | IGetAuthorizationHeader, methodName, options, cacheOptions: IPagedCacheOptions, propertiesToKeep): Promise<any> {
+  private async getFilteredGithubCollectionWithMetadataAnalysis(token: string | IGetAuthorizationHeader, methodName, options, cacheOptions: IPagedCacheOptions, propertiesToKeep): Promise<IRestResponse> {
     const collectionResults = await this.getFilteredGithubCollection(token, methodName, options, cacheOptions, propertiesToKeep);
-    const results = collectionResults.data;
+    const results = collectionResults.data as IRestResponse;
     const requests = collectionResults.requests;
     const pages = [];
     let dirty = false;
@@ -301,7 +318,7 @@ export class RestCollections {
       } else {
         throw new Error('Invalid set of responses for pages');
       }
-      if (requests[i] && requests[i].headers && requests[i].headers.statusActual && requests[i].headers.statusActual !== 304) {
+      if (requests[i] && requests[i].status && requests[i].status !== 304) {
         dirty = true;
         let lastModified = requests[i].headers['last-modified'];
         if (lastModified) {
@@ -318,14 +335,14 @@ export class RestCollections {
       // Would want to use the Last-Modified over the refresh time, sorting to find the latest.
     }
     results.headers = {
-      pages: pages,
-      dirty: dirty,
+      pages,
+      dirty,
     };
     results.cost = compositeCost;
     return results;
   }
 
-  private generalizedCollectionMethod(token: string | IGetAuthorizationHeader, apiName: string, method, options, cacheOptions: IPagedCacheOptions): Promise<IInteligentEngineResponse> {
+  private generalizedCollectionMethod(token: string | IGetAuthorizationHeader, apiName: string, method, options, cacheOptions: IPagedCacheOptions): Promise<IRestResponse> {
     const apiContext = new CompositeApiContext(apiName, method, options);
     apiContext.maxAgeSeconds = cacheOptions.maxAgeSeconds || 600;
     apiContext.overrideToken(token);

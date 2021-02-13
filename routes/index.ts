@@ -18,13 +18,19 @@ import ThanksRoute from './thanks';
 import MyInfoRoute from './diagnostics';
 import ExploreRoute from './explore';
 import ApprovalsRoute from './approvals';
+import AuthenticatedRoute from './index-authenticated';
 
 router.use('/thanks', ThanksRoute);
 router.use('/myinfo', MyInfoRoute);
 router.use('/explore', ExploreRoute);
-router.use('/approvals', ApprovalsRoute);
 
-import AuthenticatedRoute from './index-authenticated';
+import { hasStaticReactClientApp } from '../transitional';
+import { injectReactClient } from '../microsoft/preview';
+
+const hasReactApp = hasStaticReactClientApp();
+const reactRoute = hasReactApp ? injectReactClient() : undefined;
+router.use('/approvals', reactRoute || ApprovalsRoute); // redirects into settings for site users
+
 router.use(AuthenticatedRoute);
 
 export default router;

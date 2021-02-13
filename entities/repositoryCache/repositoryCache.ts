@@ -10,6 +10,7 @@ import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/ent
 import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { Operations } from '../../business/operations';
 
 const type = new EntityMetadataType('RepositoryCache');
 
@@ -40,6 +41,17 @@ export class RepositoryCacheEntity implements IRepositoryCacheProperties {
 
   constructor() {
     this.cacheUpdated = new Date();
+  }
+
+  hydrateToInstance(operations: Operations) {
+    try {
+      const organization = operations.getOrganizationById(Number(this.organizationId));
+      const clone = {...this.repositoryDetails};
+      clone.id = Number(this.repositoryId); // GitHub entities are numbers
+      return organization.repository(this.repositoryName, clone);
+    } catch (noConfiguredOrganization) {
+      throw noConfiguredOrganization;
+    }  
   }
 }
 

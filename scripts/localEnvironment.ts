@@ -13,41 +13,13 @@ import _ from 'lodash';
 async function go(providers: IProviders): Promise<void> {
   // ---------------------------------------------------------------------------
 
-
-
-
-
-
-
-
-
-
-  // ---------------------------------------------------------------------------
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // -----------------------------------------------------------------------------
 // Local script initialization
 // -----------------------------------------------------------------------------
 import app, { IReposJob } from '../app';
+import { ICorporateProviders } from '../microsoft';
 import { IProviders } from '../transitional';
 console.log('Initializing the local environment...');
 

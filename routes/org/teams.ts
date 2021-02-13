@@ -11,7 +11,7 @@ import { ReposAppRequest } from '../../transitional';
 import { popSessionVariable } from '../../utils';
 const lowercaser = require('../../middleware/lowercaser');
 
-const teamRoute = require('./team/');
+import RouteTeam from './team/';
 
 interface ITeamsRequest extends ReposAppRequest {
   team2?: any;
@@ -59,6 +59,6 @@ router.use('/:teamSlug', asyncHandler(async (req: ITeamsRequest, res, next) => {
   }
 }));
 
-router.use('/:teamname', teamRoute);
+router.use('/:teamname', RouteTeam);
 
-module.exports = router;
+export default router;

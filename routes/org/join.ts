@@ -15,6 +15,7 @@ import { Organization, OrganizationMembershipState, OrganizationMembershipRole }
 import { Operations } from '../../business/operations';
 import QueryCache from '../../business/queryCache';
 import RequireActiveGitHubSession from '../../middleware/github/requireActiveSession';
+import { jsonError } from '../../middleware/jsonError';
 
 router.use(function (req: ReposAppRequest, res, next) {
   const organization = req.organization;
@@ -190,5 +191,18 @@ async function joinOrganization(individualContext: IndividualContext, organizati
 }
 
 router.post('/', joinOrg);
+
+// /orgname/join/byClient
+router.post('/byClient', asyncHandler(async (req: ReposAppRequest, res: express.Response, next: express.NextFunction) => {
+  const individualContext = req.individualContext as IndividualContext;
+  const organization = req.organization as Organization;
+  const onboarding = queryParamAsBoolean(req.query.onboarding as string);
+  try {
+    await joinOrganization(individualContext, organization, req.insights, onboarding);
+  } catch (error) {
+    return next(jsonError(error, 400));
+  }
+  return res.redirect(`/orgs/${organization.name}/join` + (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name));
+}));
 
 module.exports = router;

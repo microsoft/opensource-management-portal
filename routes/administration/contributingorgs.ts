@@ -5,12 +5,13 @@
 
 import express from 'express';
 import asyncHandler from 'express-async-handler';
+import { ICorporateProviders } from '../../microsoft';
 const router = express.Router();
 
-import { IProviders, ReposAppRequest } from '../../transitional';
+import { ReposAppRequest } from '../../transitional';
 
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = req.app.settings.providers as ICorporateProviders;
   const individualContext = req.individualContext;
   const orgNames = await providers.eventRecordProvider.queryDistinctOrganizations();
   individualContext.webContext.render({

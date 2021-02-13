@@ -9,7 +9,8 @@ import { ReposAppRequest } from '../../../transitional';
 import { wrapError } from '../../../utils';
 const router = express.Router();
 
-const approvalsRoute = require('./approvals');
+import RouteApprovals from './approvals';
+
 const membersRoute = require('./members');
 
 interface ILocalRequest extends ReposAppRequest {
@@ -29,7 +30,7 @@ router.use(function (req: ILocalRequest, res, next) {
   return next();
 });
 
-router.use('/approvals', approvalsRoute);
+router.use('/approvals', RouteApprovals);
 router.use('/members', membersRoute);
 
-module.exports = router;
+export default router;

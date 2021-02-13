@@ -98,10 +98,10 @@ function serialize(options, user, done) {
         delete user[entityName];
         return serializeEntity(options, entityName, entityOriginalValue, (error, value) => {
           user[entityName] = value;
-          return error ? reject(error) : resolve();
+          return error ? reject(error) : resolve(undefined);
         });
       } else {
-        return resolve();
+        return resolve(undefined);
       }
     });
   })).then(ok => {
@@ -119,10 +119,10 @@ function deserialize(options, user, done) {
         let entityValue = user[entityName];
         return deserializeEntity(options, entityName, entityValue, (error, result) => {
           u[entityName] = result;
-          return error ? reject(error) : resolve();
+          return error ? reject(error) : resolve(undefined);
         });
       } else {
-        return resolve();
+        return resolve(undefined);
       }
     });
   })).then(ok => {

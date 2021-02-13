@@ -13,6 +13,9 @@ export function json404(req, res, next) {
 }
 
 export function jsonError(error: IErrorJson | string | Error, statusCode?: number): IErrorJson {
+  if (error && error['json'] === true) {
+    return error as IErrorJson; // already good to go
+  }
   if (typeof(error) === 'string') {
     error = new Error(error);
   } else if (Array.isArray(error)) {

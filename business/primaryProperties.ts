@@ -5,6 +5,7 @@
 
 export const RepositoryPrimaryProperties = [
   'id',
+  'archived',
   'name',
   'full_name',
   'private',

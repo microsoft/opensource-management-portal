@@ -21,6 +21,11 @@ export default class MembershipWebhookProcessor implements WebhookProcessor {
     const providers = operations.providers as IProviders;
     const queryCache = providers.queryCache;
     const event = data.body;
+    const organizationId = event.organization.id as number;
+    if (!operations.isOrganizationManagedById(organizationId)) {
+      console.log(`skipping organization ID ${organizationId} which is not directly managed: ${event.organization.login}`);
+      return true;
+    }
     if (event.action === 'added' && event.scope === 'team') {
       const userIdAsString = event.member.id.toString();
       const userLogin = event.member.login;

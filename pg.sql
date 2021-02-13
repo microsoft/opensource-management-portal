@@ -154,6 +154,8 @@ CREATE TABLE IF NOT EXISTS links (
   corporateid text,
   corporateusername text,
   corporatename text,
+  corporatemail text,
+  corporatealias text,
   serviceaccount boolean DEFAULT false,
   serviceaccountmail text,
   created timestamp without time zone,
@@ -166,6 +168,7 @@ CREATE INDEX IF NOT EXISTS all_links ON links (thirdpartytype);
 
 CREATE UNIQUE INDEX IF NOT EXISTS thirdparty_id ON links (thirdpartytype, thirdpartyid);
 CREATE UNIQUE INDEX IF NOT EXISTS thirdparty_lowercase_username ON links (thirdpartytype, lower(thirdpartyusername));
+CREATE UNIQUE INDEX IF NOT EXISTS thirdparty_id_only ON links (thirdpartyid);
 
 CREATE INDEX IF NOT EXISTS corporate_thirdparty_id ON links (thirdpartytype, corporateid);
 CREATE INDEX IF NOT EXISTS corporate_lowercase_thirdparty_username ON links (thirdpartytype, lower(corporateusername));

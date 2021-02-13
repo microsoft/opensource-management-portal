@@ -4,7 +4,7 @@
 //
 
 import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { RepositoryTeamCacheEntity, EntityImplementation, RepositoryTeamCacheFixedQueryAll, RepositoryTeamCacheFixedQueryByOrganizationId, RepositoryTeamCacheFixedQueryByTeamId, RepositoryTeamCacheFixedQueryByRepositoryId, RepositoryTeamCacheFixedQueryByTeamIds, RepositoryTeamCacheDeleteByOrganizationId, RepositoryTeamCacheGetOrganizationIdsQuery } from './repositoryTeamCache';
+import { RepositoryTeamCacheEntity, EntityImplementation, RepositoryTeamCacheFixedQueryAll, RepositoryTeamCacheFixedQueryByOrganizationId, RepositoryTeamCacheFixedQueryByTeamId, RepositoryTeamCacheFixedQueryByRepositoryId, RepositoryTeamCacheFixedQueryByTeamIds, RepositoryTeamCacheDeleteByOrganizationId, RepositoryTeamCacheGetOrganizationIdsQuery, RepositoryTeamCacheDeleteByRepositoryId } from './repositoryTeamCache';
 
 const thisProviderType = EntityImplementation.Type;
 
@@ -25,6 +25,7 @@ export interface IRepositoryTeamCacheProvider {
   queryByTeamIds(teamIds: string[]): Promise<RepositoryTeamCacheEntity[]>;
   queryAllOrganizationIds(): Promise<string[]>;
   deleteByOrganizationId(organizationId: string): Promise<void>;
+  deleteByRepositoryId(repositoryId: string): Promise<void>;
 }
 
 export class RepositoryTeamCacheProvider extends EntityMetadataBase implements IRepositoryTeamCacheProvider {
@@ -108,6 +109,11 @@ export class RepositoryTeamCacheProvider extends EntityMetadataBase implements I
 
   async deleteByOrganizationId(organizationId: string): Promise<void> {
     const query = new RepositoryTeamCacheDeleteByOrganizationId(organizationId);
+    await this._entities.fixedQueryMetadata(thisProviderType, query);
+  }
+
+  async deleteByRepositoryId(repositoryId: string): Promise<void> {
+    const query = new RepositoryTeamCacheDeleteByRepositoryId(repositoryId);
     await this._entities.fixedQueryMetadata(thisProviderType, query);
   }
 }

@@ -9,7 +9,6 @@ import createGithubStrategy from './passport/githubStrategy';
 const passport = require('passport');
 const serializer = require('./passport/serializer');
 
-
 export default function (app, config) {
   const supportedAuth = ['github', 'aad', 'oauth2'];
 

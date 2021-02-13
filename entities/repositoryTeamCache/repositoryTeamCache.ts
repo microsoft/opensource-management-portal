@@ -24,6 +24,8 @@ interface IRepositoryTeamCacheProperties {
   repositoryName: any;
   teamId: any;
 
+  repositoryPrivate: any;
+
   permission: any;
 }
 
@@ -36,6 +38,8 @@ const Field: IRepositoryTeamCacheProperties = {
   repositoryName: 'repositoryName',
   teamId: 'teamId',
   permission: 'permission',
+
+  repositoryPrivate: 'repositoryPrivate',
 }
 
 const fieldNames = Object.getOwnPropertyNames(Field);
@@ -48,6 +52,8 @@ export class RepositoryTeamCacheEntity implements IRepositoryTeamCacheProperties
   repositoryId: string;
   repositoryName: string;
   teamId: string;
+
+  repositoryPrivate: boolean;
 
   permission: GitHubRepositoryPermission;
 
@@ -78,6 +84,15 @@ export class RepositoryTeamCacheDeleteByOrganizationId implements IEntityMetadat
   constructor(public organizationId: string) {
     if (typeof(this.organizationId) !== 'string') {
       throw new Error(`${organizationId} must be a string`);
+    }
+  }
+}
+
+export class RepositoryTeamCacheDeleteByRepositoryId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryTeamCacheDeleteByRepositoryId;
+  constructor(public repositoryId: string) {
+    if (typeof(this.repositoryId) !== 'string') {
+      throw new Error(`repositoryId ${repositoryId} must be a string`);
     }
   }
 }
@@ -131,6 +146,7 @@ EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, new Map<stri
   [Field.organizationId, 'orgid'],
   [Field.permission, 'permission'],
   [Field.repositoryId, 'repoid'],
+  [Field.repositoryPrivate, 'repoprivate'],
   [Field.uniqueId, 'unique'],
   [Field.teamId, 'teamId'],
   [Field.repositoryName, 'repositoryName'],
@@ -147,6 +163,7 @@ PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
   [Field.repositoryName, (Field.repositoryName as string).toLowerCase()],
   [Field.uniqueId, (Field.uniqueId as string).toLowerCase()],
   [Field.teamId, (Field.teamId as string).toLowerCase()],
+  [Field.repositoryPrivate, (Field.repositoryPrivate as string).toLowerCase()],
 ]));
 PostgresConfiguration.ValidateMappings(type, fieldNames, []);
 
@@ -182,6 +199,14 @@ EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: 
       return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
         teamid: stringOrNumberAsString(teamId),
       });
+    }
+    case FixedQueryType.RepositoryTeamCacheDeleteByRepositoryId: {
+      const { repositoryId } = query as RepositoryTeamCacheDeleteByRepositoryId;
+      return {
+        sql: (`DELETE FROM ${tableName} WHERE ${metadataColumnName}->>'repositoryid' = $1`),
+        values: [ repositoryId ],
+        skipEntityMapping: true,
+      };
     }
     case FixedQueryType.RepositoryTeamCacheDeleteByOrganizationId: {
       const { organizationId } = query as RepositoryTeamCacheDeleteByOrganizationId;

@@ -32,7 +32,7 @@ export default class TeamWebhookProcessor implements WebhookProcessor {
     const teamId = event.team.id;
     const teamIdAsString = event.team.id.toString();
     const organizationIdAsString = event.organization.id.toString();
-  let addOrUpdate = false;
+    let addOrUpdate = false;
     if (event.action === 'created') {
       console.log(`team created: ${event.team.name} in organization ${event.organization.login} by ${event.sender.login}`);
       refresh = true;
@@ -54,22 +54,34 @@ export default class TeamWebhookProcessor implements WebhookProcessor {
         const oldRepositoryPermissionLevel = permissionsObjectToValue(event.changes.repository.permissions.from);
         const newRepositoryPermissionLevel = permissionsObjectToValue(event.repository.permissions);
         console.log(`team ${event.team.name} permission level for repo ${event.repository.name} changed from ${oldRepositoryPermissionLevel} to ${newRepositoryPermissionLevel}`);
-        await queryCache.addOrUpdateTeamsPermission(
-          organizationIdAsString,
-          event.repository.id.toString(),
-          event.repository.name,
-          event.team.id.toString(),
-          newRepositoryPermissionLevel);
+        const isPrivate = event.repository.private as boolean;
+        const repoName = event.repository.name as string;
+        const orgId = event.repository.owner.id as number;
+        if (operations.isOrganizationManagedById(orgId)) {
+          await queryCache.addOrUpdateTeamsPermission(
+            organizationIdAsString,
+            event.repository.id.toString(),
+            isPrivate,
+            repoName,
+            event.team.id.toString(),
+            newRepositoryPermissionLevel);
+        }
       }
     } else if (event.action === 'added_to_repository') {
       console.log(`team got permission to repo: ${event.team.name} for repo ${event.repository.name} in organization ${event.organization.login} by ${event.sender.login}`);
       if (queryCache && queryCache.supportsTeamPermissions) {
-        await queryCache.addOrUpdateTeamsPermission(
-          organizationIdAsString,
-          event.repository.id.toString(),
-          event.repository.name,
-          event.team.id.toString(),
-          permissionsObjectToValue(event.repository.permissions)); // equiv to event.team.permission as GitHubRepositoryPermission
+        const isPrivate = event.repository.private as boolean;
+        const repoName = event.repository.name as string;
+        const orgId = event.repository.owner.id as number;
+        if (operations.isOrganizationManagedById(orgId)) {
+          await queryCache.addOrUpdateTeamsPermission(
+            organizationIdAsString,
+            event.repository.id.toString(),
+            isPrivate,
+            repoName,
+            event.team.id.toString(),
+            permissionsObjectToValue(event.repository.permissions)); // equiv to event.team.permission as GitHubRepositoryPermission
+        }
       }
     } else if (event.action === 'removed_from_repository') {
       console.log(`team lost permission to repo: ${event.team.name} for repo ${event.repository.name} in organization ${event.organization.login} by ${event.sender.login}`);
