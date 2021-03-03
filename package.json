@@ -94,7 +94,7 @@
     "passport-strategy": "1.x.x",
     "pg": "8.3.0",
     "pg-escape": "0.2.0",
-    "pug": "2.0.4",
+    "pug": "3.0.1",
     "recursive-readdir": "2.2.2",
     "redis": "3.0.2",
     "redis-mock": "0.50.0",
