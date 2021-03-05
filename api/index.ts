@@ -7,9 +7,11 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
+import cors from 'cors';
+
 import { ReposAppRequest, IProviders } from '../transitional';
 
-import { jsonError } from '../middleware/jsonError';
+import { jsonError } from '../middleware';
 import { IApiRequest } from '../middleware/apiReposAuth';
 
 import apiExtension from './extension';
@@ -18,6 +20,7 @@ import apiWebhook from './webhook';
 
 import apiPeople from './people';
 
+import AadApiAuthentication from '../middleware/apiAad';
 import { AzureDevOpsAuthenticationMiddleware } from '../middleware/apiVstsAuth';
 import ReposApiAuthentication from '../middleware/apiReposAuth';
 import { CreateRepository, CreateRepositoryEntrypoint } from './createRepo';
@@ -54,12 +57,13 @@ router.use((req: IApiRequest, res, next) => {
 // AUTHENTICATION: VSTS or repos
 //-----------------------------------------------------------------------------
 const multipleProviders = supportMultipleAuthProviders([
-  AzureDevOpsAuthenticationMiddleware,
+  AadApiAuthentication,
   ReposApiAuthentication,
+  AzureDevOpsAuthenticationMiddleware,
 ]);
 
-router.use('/people', multipleProviders, apiPeople);
-router.use('/extension', multipleProviders, apiExtension);
+router.use('/people', cors(), multipleProviders, apiPeople);
+router.use('/extension', cors(), multipleProviders, apiExtension);
 
 //-----------------------------------------------------------------------------
 // AUTHENTICATION: repos (specific to this app)
@@ -95,13 +99,16 @@ router.use('/:org', function (req: IApiRequest, res, next) {
 });
 
 router.post('/:org/repos', asyncHandler(async function (req: ReposAppRequest, res, next) {
+  const providers = req.app.settings.providers as IProviders;
   const convergedObject = Object.assign({}, req.headers);
   req.insights.trackEvent({ name: 'ApiRepoCreateRequest', properties: convergedObject });
   Object.assign(convergedObject, req.body);
   delete convergedObject.access_token;
   delete convergedObject.authorization;
+  const logic = providers.customizedNewRepositoryLogic;
+  const customContext = logic?.createContext(req);
   try {
-    const repoCreateResponse = await CreateRepository(req, convergedObject, CreateRepositoryEntrypoint.Api);
+    const repoCreateResponse = await CreateRepository(req, logic, customContext, convergedObject, CreateRepositoryEntrypoint.Api);
     res.status(201);
     req.insights.trackEvent({
       name: 'ApiRepoCreateRequestSuccess', properties: {

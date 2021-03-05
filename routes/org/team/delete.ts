@@ -8,13 +8,13 @@ const router = express.Router();
 
 import { ReposAppRequest, UserAlertType } from '../../../transitional';
 
-const teamAdminRequired = require('./teamAdminRequired');
+import MiddlewareTeamAdminRequired from './teamAdminRequired';
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: any;
 }
 
-router.post('/', teamAdminRequired, (req: ILocalRequest, res, next) => {
+router.post('/', MiddlewareTeamAdminRequired, (req: ILocalRequest, res, next) => {
   const organization = req.organization;
   const team2 = req.team2;
   team2.delete(error => {
@@ -26,4 +26,4 @@ router.post('/', teamAdminRequired, (req: ILocalRequest, res, next) => {
   });
 });
 
-module.exports = router;
+export default router;

@@ -9,6 +9,11 @@ import { Operations } from './operations';
 import { wrapError } from '../utils';
 import { AppPurpose } from '../github';
 
+export enum GitHubIssueState {
+  Closed = 'closed',
+  Open = 'open',
+}
+
 export interface IIssueLabel {
   id: number;
   node_id: string;
@@ -40,6 +45,8 @@ export class RepositoryIssue {
 
   get id(): number { return this._entity?.id as number; }
   get title(): string { return this._entity?.title as string; }
+  get body(): string { return this._entity.body as string; }
+  get state(): GitHubIssueState { return this._entity?.state as GitHubIssueState; }
   get labels(): IIssueLabel[] {
     if (this._entity) {
       return this._entity.labels as IIssueLabel[];
@@ -54,6 +61,30 @@ export class RepositoryIssue {
 
   get repository(): Repository {
     return this._repository;
+  }
+
+  async update(patch: any): Promise<any> {
+    const parameters = Object.assign(patch, {
+      owner: this.repository.organization.name,
+      repo: this.repository.name,
+      issue_number: this.number,
+    });
+    // Operations has issue write permissions
+    const details = await this._operations.github.post(this.authorize(AppPurpose.Operations), 'issues.update', parameters);
+    return details;
+  }
+
+  async comment(commentBody: string): Promise<any> {
+    const parameters = Object.assign({
+      body: commentBody,
+    }, {
+      owner: this.repository.organization.name,
+      repo: this.repository.name,
+      issue_number: this.number,
+    });
+    // Operations has issue write permissions
+    const comment = await this._operations.github.post(this.authorize(AppPurpose.Operations), 'issues.createComment', parameters);
+    return comment;
   }
 
   async getDetails(options?: ICacheOptions): Promise<any> {

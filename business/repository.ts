@@ -7,8 +7,8 @@ import moment from 'moment';
 
 import { wrapError } from '../utils';
 import { Operations } from './operations';
-import { Organization } from './organization';
-import { ICacheOptions, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, ErrorHelper } from '../transitional';
+import { IAccountBasics, Organization } from './organization';
+import { ICacheOptions, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, ErrorHelper, NoCacheNoBackground } from '../transitional';
 import * as common from './common';
 import { RepositoryPermission } from './repositoryPermission';
 import { Collaborator } from './collaborator';
@@ -17,9 +17,14 @@ import { RepositoryMetadataEntity, GitHubRepositoryPermission } from '../entitie
 import { AppPurpose } from '../github';
 import { IListPullsParameters, GitHubPullRequestState, GitHubPullRequestSort, GitHubSortDirection } from '../lib/github/collections';
 import { RepositoryIssue } from './repositoryIssue';
+import { IGitHubTeamBasics } from './team';
 
 export interface IGitHubCollaboratorInvitation {
   id: string;
+  permissions: GitHubRepositoryPermission;
+  created_at: string; // Date
+  url: string; // API url
+  html_url: string; // user-facing URL
 }
 
 export interface IAlternateTokenRequiredOptions extends ICacheOptions {
@@ -45,6 +50,10 @@ export enum GitHubCollaboratorAffiliationQuery {
 export enum GitHubCollaboratorType {
   Outside = 'outside',
   Direct = 'direct',
+}
+
+export interface IListContributorsOptions extends IPagedCacheOptions {
+  anon?: boolean;
 }
 
 export interface IGetCollaboratorsOptions extends IPagedCacheOptions {
@@ -75,6 +84,31 @@ export interface ICreateWebhookOptions {
   };
   url?: string;
   events?: string[];
+}
+
+export enum SecretScanningState {
+  Resolved = 'resolved',
+  Open = 'open',
+}
+
+export enum SecretScanningResolution {
+  FalsePositive = 'false_positive',
+  WontFix = 'wont_fix',
+  Revoked = 'revoked',
+  UsedInTests = 'used_in_tests',
+}
+
+export interface IGitHubSecretScanningAlert {
+  number: number;
+  created_at: string;
+  url: string;
+  html_url: string;
+  state: SecretScanningState;
+  resolution?: SecretScanningResolution;
+  resolved_at?: string;
+  resolved_by?: any;
+  secret_type: string;
+  secret: string;
 }
 
 interface IGitHubGetFileParameters {
@@ -133,7 +167,84 @@ interface IGetBranchesParameters {
   owner: string;
   repo: string;
   per_page: number;
-  protected?: any;
+  protected?: boolean;
+}
+
+export interface IGitHubBranch {
+  name: string;
+  commit: {
+    sha: string;
+    url: string;
+  };
+  protected: boolean;
+}
+
+export interface IGitHubBranchDetailed {
+  name: string;
+  commit: {
+    sha: string;
+    node_id: string;
+    commit: {
+      author: {
+        name: string;
+        date: string; // iso8601
+        email: string;
+      };
+      url: string;
+      message: string;
+      tree: {
+        sha: string;
+        url: string;
+      };
+      committer: {
+        name: string;
+        date: string;
+        email: string;
+      };
+      verification: {
+        verified: boolean;
+        reason: string; // 'unsigned', ...
+        signature: unknown;
+        payload: unknown;
+      };
+      comment_count: number;
+    };
+    author: unknown; // basic user, avatar, id, etc.
+    parents: unknown[];
+    url: string;
+    committer: unknown; // basic user
+    protected: boolean;
+    protection: {
+      enabled: boolean;
+      required_status_checks: {
+        enforcement_level: 'non_admins' | 'admins',
+        contexts: string[];
+      };
+    };
+    protection_url: string;
+  };
+}
+
+export interface IRepositoryBranchAccessProtections {
+  allow_deletions: {
+    enabled: boolean;
+  };
+  allow_force_pushes: {
+    enabled: boolean;
+  }
+  enforce_admins: {
+    enabled: boolean;
+    url: string;
+  }
+  required_linear_history: {
+    enabled: boolean;
+  }
+  restrictions: {
+    users: IAccountBasics[];
+    teams: IGitHubTeamBasics[];
+    apps: unknown[];
+  }
+  url: string;
 }
 
 interface IRepositoryMoments {
@@ -158,6 +269,29 @@ interface IProtectedBranchRule {
   pattern: string;
 };
 
+const safeEntityFieldsForJsonSend = [
+  'fork',
+  'name',
+  'size',
+  'forks',
+  'license',
+  'private',
+  'archived',
+  'disabled',
+  'homepage',
+  'language',
+  'watchers',
+  'pushed_at',
+  'created_at',
+  'updated_at',
+  'description',
+  'forks_count',
+  'watchers_count',
+  'stargazers_count',
+  'open_issues_count',
+  'id',
+];
+
 export class Repository {
   private _entity: any;
   private _baseUrl: string;
@@ -175,6 +309,24 @@ export class Repository {
   private _moments: IRepositoryMoments;
 
   getEntity(): any { return this._entity; }
+
+  asJson() {
+    const organizationSubset = {
+      organization: {
+        login: this.organization.name,
+        id: this.organization.id,
+      },
+    };
+    const entity = this.getEntity();
+    const safeClone = {};
+    for (let i = 0; i < safeEntityFieldsForJsonSend.length; i++) {
+      const key = safeEntityFieldsForJsonSend[i];
+      if (entity[key] !== undefined) {
+        safeClone[key] = entity[key];
+      }
+    }
+    return Object.assign(organizationSubset, safeClone);
+  }
 
   get id(): number { return this._entity ? this._entity.id : null; }
   get name(): string { return this._entity ? this._entity.name : this._name; }
@@ -305,7 +457,7 @@ export class Repository {
     }
   }
 
-  async getBranches(cacheOptions: IGetBranchesOptions): Promise<any> {
+  async getBranches(cacheOptions: IGetBranchesOptions): Promise<IGitHubBranch[]> {
     cacheOptions = cacheOptions || {};
     const operations = this._operations;
     const github = operations.github;
@@ -385,7 +537,7 @@ export class Repository {
     await this.organization.requireUpdatesApp('renameDefaultBranch');
     const output: ITemporaryCommandOutput[] = [];
     try {
-      await this.getDetails({ maxAgeSeconds: -1, backgroundRefresh: false });
+      await this.getDetails(NoCacheNoBackground);
       if (this.default_branch === newBranchName) {
         return [ { message: `The default branch is already '${newBranchName}' for the repo ${this.full_name}. No further action required.` } ];
       }
@@ -514,6 +666,29 @@ export class Repository {
     }
   }
 
+  async getProtectedBranchAccessRestrictions(branchName: string, cacheOptions?: ICacheOptions): Promise<IRepositoryBranchAccessProtections> {
+    // NOTE: GitHub has a "100-item limit" currently. This is an object response and not
+    // technically paginated.
+    cacheOptions = cacheOptions || {};
+    const operations = this._operations;
+    const github = operations.github;
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      branch: branchName,
+    };
+    if (!cacheOptions.maxAgeSeconds) {
+      //cacheOptions.maxAgeSeconds = operations.defaults.orgRepoCollaboratorStaleSeconds;
+    }
+    if (cacheOptions.backgroundRefresh === undefined) {
+      //cacheOptions.backgroundRefresh = true;
+    }
+    Object.assign(parameters, cacheOptions);
+    // GET /repos/{owner}/{repo}/branches/{branch}/protection/restrictions
+    const protections = await github.call(this.authorize(AppPurpose.Data), 'repos.getBranchProtection', parameters);
+    return protections as IRepositoryBranchAccessProtections;
+  }
+
   async setDefaultBranch(defaultBranchName: string): Promise<void> {
     await this.organization.requireUpdatesApp('setDefaultBranch');
     const options = {
@@ -588,6 +763,21 @@ export class Repository {
     }
   }
 
+  async isUserPermissionFromTeam(login: string, permission: any) {
+    const teamPermissions = await this.getTeamPermissions();
+    for (let i = 0; i < teamPermissions.length; i++) {
+      try {
+        const teamPermission = teamPermissions[i];
+        if (teamPermission.permission === permission) {
+          if (await teamPermission.team.isMember(login)) {
+            return true;
+          }
+        }
+      } catch (ignore) { /* ignore */ }
+    }
+    return false;
+  }
+
   async getCollaborator(username: string, cacheOptions?: ICacheOptions): Promise<RepositoryPermission> {
     // This call is used in customer-facing sites by permissions middleware
     cacheOptions = cacheOptions || {};
@@ -607,6 +797,28 @@ export class Repository {
     Object.assign(parameters, cacheOptions);
     const userPermissionLevel = await github.call(this.authorize(AppPurpose.CustomerFacing), 'repos.getCollaboratorPermissionLevel', parameters);
     return new RepositoryPermission(userPermissionLevel);
+  }
+
+  async listContributors(cacheOptions?: IListContributorsOptions): Promise<any[]> {
+    cacheOptions = cacheOptions || {};
+    const operations = this._operations;
+    const github = operations.github;
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      per_page: operations.defaultPageSize,
+      anon: cacheOptions.anon || false,
+    };
+    delete cacheOptions.anon;
+    if (!cacheOptions.maxAgeSeconds) {
+      cacheOptions.maxAgeSeconds = operations.defaults.orgRepoCollaboratorsStaleSeconds;
+    }
+    if (cacheOptions.backgroundRefresh === undefined) {
+      cacheOptions.backgroundRefresh = true;
+    }
+    const contributors = await github.collections.getRepoContributors(this.authorize(AppPurpose.Data), parameters, cacheOptions);
+    // const contributors = common.createInstances<Collaborator>(this, collaboratorPermissionFromEntity, contributorsEntities);
+    return contributors;
   }
 
   async getCollaborators(cacheOptions?: IGetCollaboratorsOptions): Promise<Collaborator[]> {
@@ -809,9 +1021,21 @@ export class Repository {
       private: options.private,
     });
     // BUG: GitHub Apps do not work with locking down no repository permissions as documented here: https://github.community/t5/GitHub-API-Development-and/GitHub-App-cannot-patch-repo-visibility-in-org-with-repo/m-p/33448#M3150
-    const token = this._operations.authorizeCentralOperationsToken();
-    return this._operations.github.post(token, 'repos.update', parameters);
-    // return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
+    // const token = this._operations.authorizeCentralOperationsToken();
+    // return this._operations.github.post(token, 'repos.update', parameters);
+    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
+  }
+
+  async archive(): Promise<void> {
+    const parameters = Object.assign({
+      owner: this.organization.name,
+      repo: this.name,
+    }, {
+      archived: true,
+    });
+    //const token = this._operations.authorizeCentralOperationsToken();
+    //return this._operations.github.post(token, 'repos.update', parameters);
+    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
   }
 
   async getTeamPermissions(cacheOptions?: IPagedCacheOptions): Promise<TeamPermission[]> {
@@ -881,6 +1105,35 @@ export class Repository {
     }
   }
 
+  async getSecretScanningAlerts(cacheOptions?: ICacheOptions): Promise<IGitHubSecretScanningAlert[]> {
+    cacheOptions = cacheOptions || {};
+    const operations = this._operations;
+    const parameters = {
+      // repo_id: this.id.toString(),
+      owner: this.organization.name,
+      repo: this.name,
+      per_page: 100,
+      // state: 'open' | 'resolved'
+    };
+    // NOTE: not paginating for now
+    // if (!cacheOptions.maxAgeSeconds) {
+    //   cacheOptions.maxAgeSeconds = operations.defaults.orgRepoTeamsStaleSeconds;
+    // }
+    // if (cacheOptions.backgroundRefresh === undefined) {
+    //   cacheOptions.backgroundRefresh = true;
+    // }
+    try {
+      // using requestAsPost to _not cache_ the secrets for now
+      const response = await operations.github.requestAsPost(this.authorize(AppPurpose.Data), 'GET /repos/:owner/:repo/secret-scanning/alerts', parameters);
+      return response as IGitHubSecretScanningAlert[];
+   } catch (error) {
+      if (error && error.status == /* loose */ 404 && error.message === 'Secret scanning is disabled on this repository.') {
+        throw error;
+      }
+      throw error;
+    }
+  }
+
   async checkSecretScanning(cacheOptions?: ICacheOptions): Promise<boolean> {
     // NOTE: this is an experimental API as part of the program public beta, and likely not available
     // to most users. Expect this call to fail.
@@ -904,6 +1157,99 @@ export class Repository {
       }
       throw error;
     }
+  }
+
+  async getAdministrators(excludeOwners = true, excludeBroadAndSystemTeams = true): Promise<string[]> {
+    const owners = await this._organization.getOwners();
+    const ownersSet = new Set<string>(owners.map(o => o.login.toLowerCase()));
+    const actualCollaborators = await this.getCollaborators({ affiliation: GitHubCollaboratorAffiliationQuery.Direct });
+    let collaborators = actualCollaborators.filter(c => c.permissions?.admin === true);
+    // No system accounts or owners
+    collaborators = collaborators.filter(c => false === this._operations.isSystemAccountByUsername(c.login));
+    if (excludeOwners) {
+      collaborators = collaborators.filter(c => false === ownersSet.has(c.login.toLowerCase()));
+    }
+    const users = new Set<string>(collaborators.map(c => c.login.toLowerCase()));
+    let teams = (await this.getTeamPermissions()).filter(tp => tp.permission === 'admin');
+    for (let i = 0; i < teams.length; i++) {
+      const team = teams[i];
+      if (excludeBroadAndSystemTeams && (team.team.isSystemTeam || team.team.isBroadAccessTeam)) {
+        // Do not include broad access teams
+        continue;
+      }
+      const members = await team.team.getMembers();
+      for (let j = 0; j < members.length; j++) {
+        const tm = members[j];
+        const login = tm.login.toLowerCase();
+        if (!ownersSet.has(login) && !this._operations.isSystemAccountByUsername(login)) {
+          users.add(login.toLowerCase());
+        }
+      }
+    }
+    return Array.from(users.values());
+  }
+
+  async getPushers(): Promise<string[]> {
+    // duplicated code from getAdministrators
+    const owners = await this._organization.getOwners();
+    const ownersSet = new Set<string>(owners.map(o => o.login.toLowerCase()));
+    const actualCollaborators = await this.getCollaborators({ affiliation: GitHubCollaboratorAffiliationQuery.Direct });
+    let collaborators = actualCollaborators.filter(c => c.permissions?.push === true);
+    // No system accounts or owners
+    collaborators = collaborators.filter(c => false === this._operations.isSystemAccountByUsername(c.login));
+    collaborators = collaborators.filter(c => false === ownersSet.has(c.login.toLowerCase()));
+    const users = new Set<string>(collaborators.map(c => c.login.toLowerCase()));
+    let teams = (await this.getTeamPermissions()).filter(tp => tp.permission === 'push');
+    for (let i = 0; i < teams.length; i++) {
+      const team = teams[i];
+      if (team.team.isSystemTeam || team.team.isBroadAccessTeam) {
+        // Do not include broad access teams
+        continue;
+      }
+      const members = await team.team.getMembers();
+      for (let j = 0; j < members.length; j++) {
+        const tm = members[j];
+        const login = tm.login.toLowerCase();
+        if (!ownersSet.has(login) && !this._operations.isSystemAccountByUsername(login)) {
+          users.add(login.toLowerCase());
+        }
+      }
+    }
+    return Array.from(users.values());
+  }
+
+  async getPullers(excludeBroadTeamsAndOwners: boolean = true): Promise<string[]> {
+    // duplicated code from getAdministrators
+    if (!this.private) {
+      return [];
+    }
+    const owners = await this._organization.getOwners();
+    const ownersSet = new Set<string>(owners.map(o => o.login.toLowerCase()));
+    const actualCollaborators = await this.getCollaborators({ affiliation: GitHubCollaboratorAffiliationQuery.Direct });
+    let collaborators = actualCollaborators.filter(c => c.permissions?.pull === true);
+    // No system accounts or owners
+    collaborators = collaborators.filter(c => false === this._operations.isSystemAccountByUsername(c.login));
+    if (excludeBroadTeamsAndOwners) {
+      collaborators = collaborators.filter(c => false === ownersSet.has(c.login.toLowerCase()));
+    }
+    const users = new Set<string>(collaborators.map(c => c.login.toLowerCase()));
+    let teams = (await this.getTeamPermissions()).filter(tp => tp.permission === 'pull');
+    for (let i = 0; i < teams.length; i++) {
+      const team = teams[i];
+      if (excludeBroadTeamsAndOwners && (team.team.isSystemTeam || team.team.isBroadAccessTeam)) {
+        // Do not include broad access teams
+        continue;
+      }
+      const members = await team.team.getMembers();
+      for (let j = 0; j < members.length; j++) {
+        const tm = members[j];
+        const login = tm.login.toLowerCase();
+        if (!ownersSet.has(login) && !this._operations.isSystemAccountByUsername(login)) {
+          users.add(login.toLowerCase());
+        }
+      }
+    }
+    return Array.from(users.values());
   }
 
   private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
@@ -946,6 +1292,20 @@ export class Repository {
 
   issue(issueNumber: number, optionalEntity?: any): RepositoryIssue {
     const issue = new RepositoryIssue(this, issueNumber, this._operations, this._getAuthorizationHeader, optionalEntity);
+    return issue;
+  }
+
+  async createIssue(title: string, body: string): Promise<RepositoryIssue> {
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      title,
+      body,
+    };
+    // Operations has issue write permissions
+    const details = await this._operations.github.post(this.authorize(AppPurpose.Operations), 'issues.create', parameters);
+    const issueNumber = details.number as number;
+    const issue = new RepositoryIssue(this, issueNumber, this._operations, this._getAuthorizationHeader, details);
     return issue;
   }
 }

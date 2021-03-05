@@ -11,6 +11,7 @@ import { IRequestTeamPermissions } from '../middleware/github/teamPermissions';
 import { GitHubRepositoryPermission, RepositoryMetadataEntity, RepositoryLockdownState } from '../entities/repositoryMetadata/repositoryMetadata';
 import { asNumber } from '../utils';
 import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repositoryMetadataProvider';
+import { TeamRepositoryPermission } from './teamRepositoryPermission';
 
 const defaultPageSize = 20; // GitHub.com seems to use a value around 33
 
@@ -22,7 +23,7 @@ export interface IRepositorySearchOptions {
   userRepos?: IPersonalizedUserAggregateRepositoryPermission[];
   teamsType?: string; // ?
   teamsSubType?: string; // ?
-  specificTeamRepos?: Repository[];
+  specificTeamRepos?: TeamRepositoryPermission[];
   specificTeamPermissions?: IRequestTeamPermissions;
   graphManager?: GraphManager;
   repositoryMetadataProvider?: IRepositoryMetadataProvider;
@@ -60,7 +61,7 @@ export class RepositorySearch {
 
   repositoryMetadataProvider: IRepositoryMetadataProvider;
 
-  private specificTeamRepos: Repository[];
+  private specificTeamRepos: TeamRepositoryPermission[];
 
   constructor(repos: Repository[], options: IRepositorySearchOptions) {
     options = options || {};

@@ -7,11 +7,13 @@ import * as common from './common';
 
 import { wrapError } from '../utils';
 
+import util from 'util';
+
 import _ from 'lodash';
 
 import { Organization, OrganizationMembershipState } from './organization';
 import { Operations } from './operations';
-import { ICacheOptions, ICacheOptionsPageLimiter, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IPagedCrossOrganizationCacheOptions } from '../transitional';
+import { ICacheOptions, ICacheOptionsPageLimiter, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IPagedCrossOrganizationCacheOptions, ErrorHelper } from '../transitional';
 import { TeamMember } from './teamMember';
 import { TeamRepositoryPermission } from './teamRepositoryPermission';
 import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';
@@ -38,8 +40,20 @@ const teamSecondaryProperties = [
   'repositories_url',
 ];
 
+export interface IGitHubTeamBasics {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 export enum GitHubRepositoryType {
   Sources = 'sources',
+}
+
+export enum TeamJsonFormat {
+  Simple, // basics
+  Detailed, // full entity
+  Augmented, // entity + corporate configuration layer
 }
 
 export interface ICheckRepositoryPermissionOptions extends ICacheOptions {
@@ -95,6 +109,10 @@ interface IGetRepositoriesParameters {
   pageLimit?: any;
 }
 
+// TODO: cleanup intentional memory leak
+// MEMORY_LEAK: INTENTIONAL: keep a cache going from ID to slug
+const memoryIdToSlugStore = new Map<number, string>();
+
 export class Team {
   public static PrimaryProperties = teamPrimaryProperties;
 
@@ -116,6 +134,7 @@ export class Team {
   private _members_count: any;
 
   private _detailsEntity?: any;
+  private _ctorEntity?: any; // temp
 
   get id(): number {
     return this._id;
@@ -165,6 +184,41 @@ export class Team {
     common.assignKnownFieldsPrefixed(this, entity, 'team', teamPrimaryProperties, teamSecondaryProperties);
     this._getAuthorizationHeader = getAuthorizationHeader;
     this._operations = operations;
+    this._ctorEntity = entity;
+  }
+
+  [util.inspect.custom](depth, options) {
+    return `GitHub Team: slug=${this._slug} id=${this.id} org=${this._organization?.name}`;
+  }
+
+  asJson(format?: TeamJsonFormat) {
+    if (format === TeamJsonFormat.Detailed || format === TeamJsonFormat.Augmented) {
+      const clone = {...this._ctorEntity, ...this._detailsEntity};
+      // technically will also include `.parent`
+      clone.organization = {
+        login: clone.organization?.login || this.organization.name,
+        id: clone.organization?.id || this.organization.id,
+      };
+      delete clone.members_url;
+      delete clone.repositories_url;
+      delete clone.cost;
+      delete clone.headers;
+      if (format === TeamJsonFormat.Detailed) {
+        return clone;
+      }
+      // Augment with corporate information
+      clone.corporateMetadata = {
+        isSystemTeam: this.isSystemTeam,
+        isBroadAccessTeam: this.isBroadAccessTeam,
+      };
+      return clone;
+    }
+    return {
+      id: this.id,
+      slug: this.slug,
+      name: this.name,
+      description: this.description,
+    };
   }
 
   get baseUrl() {
@@ -237,6 +291,11 @@ export class Team {
       common.assignKnownFieldsPrefixed(this, entity, 'team', teamPrimaryProperties, teamSecondaryProperties);
       return entity;
     } catch (error) {
+      if (error?.status === 403) {
+        error = new Error(`Error retrieving team details: ${error}`);
+        error.status = 403;
+        throw error;
+      }
       if (error.status && error.status === 404) {
         error = new Error(`The GitHub team ID ${id} could not be found`);
         error.status = 404;
@@ -463,8 +522,16 @@ export class Team {
     const operations = this._operations;
     const github = operations.github;
     if (!this.slug) {
-      console.log('WARN: team.getMembers had to slowly retrieve a slug to perform the call');
-      await this.getDetails(); // octokit rest v17 requires slug or custom endpoint requests
+      const cachedSlug = memoryIdToSlugStore.get(Number(this.id));
+      if (cachedSlug) {
+        this._slug = cachedSlug;
+      } else {
+        console.log('WARN: team.getMembers had to slowly retrieve a slug to perform the call');
+        await this.getDetails(); // octokit rest v17 requires slug or custom endpoint requests
+        if (this._slug) {
+          memoryIdToSlugStore.set(Number(this.id), this._slug);
+        }
+      }
     }
     const parameters: IGetMembersParameters = {
       team_slug: this.slug,
@@ -485,12 +552,20 @@ export class Team {
       parameters.pageLimit = options.pageLimit;
     }
     // CONSIDER: Check the error object, if present, for error.status == /* loose */ 404 to alert/store telemetry on deleted teams
-    const teamMembersEntities = await github.collections.getTeamMembers(this.authorize(AppPurpose.Data), parameters, caching);
-    const teamMembers = common.createInstances<TeamMember>(this, this.memberFromEntity, teamMembersEntities);
-    return teamMembers;
+    try {
+      const teamMembersEntities = await github.collections.getTeamMembers(this.authorize(AppPurpose.Data), parameters, caching);
+      const teamMembers = common.createInstances<TeamMember>(this, this.memberFromEntity, teamMembersEntities);
+      return teamMembers;
+    } catch (error) {
+      if (ErrorHelper.IsNotFound(error)) {
+        // If a previously cached slug is no longer good, remove from the leaky store
+        memoryIdToSlugStore.delete(Number(this.id));
+      }
+      throw error;
+    }
   }
 
-  async getRepositories(options?: IGetTeamRepositoriesOptions): Promise<Repository[]> {
+  async getRepositories(options?: IGetTeamRepositoriesOptions): Promise<TeamRepositoryPermission[]> {
     options = options || {};
     const operations = this._operations;
     const github = operations.github;
@@ -523,7 +598,7 @@ export class Team {
       // Remove forks (non-sources)
       _.remove(entities, (repo: any) => { return repo.fork; });
     }
-    return common.createInstances<Repository>(this, repositoryFromEntity, entities);
+    return common.createInstances<TeamRepositoryPermission>(this, teamRepositoryPermissionsFromEntity, entities);
   }
 
   async getOfficialMaintainers(): Promise<TeamMember[]> {
@@ -595,7 +670,7 @@ async function resolveDirectLinks(people: TeamMember[]): Promise<TeamMember[]> {
   return people;
 }
 
-function repositoryFromEntity(entity) {
+function teamRepositoryPermissionsFromEntity(entity) {
   // private, remapped "this"
   const instance = new TeamRepositoryPermission(
     this,

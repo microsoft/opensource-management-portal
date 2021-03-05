@@ -3,11 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+// ORGANIZATION membership and ownership
+
 /*eslint no-console: ["error", { allow: ["dir", "log"] }] */
 
 import { Operations } from '../../business/operations';
-import { Organization, OrganizationMembershipRole } from '../../business/organization';
-import { IProviders } from '../../transitional';
+import { Organization, OrganizationMembershipRole, OrganizationMembershipState } from '../../business/organization';
+import { IProviders, NoCacheNoBackground } from '../../transitional';
 import { WebhookProcessor } from '../organizationProcessor';
 
 // NOTE: unfortunately role changes from admin->member or member->admin do not fire GitHub hooks
@@ -42,16 +44,31 @@ export default class OrganizationWebhookProcessor implements WebhookProcessor {
       console.log(`org member invite by ${event.invitation.inviter.login}; ghu ${event.invitation.login} role ${event.invitation.role} ghid ${event.invitation.id} org: ${event.organization.login}`);
     } else if (event.action === 'member_added') {
       console.log(`org member added; ghu ${event.membership.user.login} role ${event.membership.role} state ${event.membership.state} ghid ${event.membership.user.id} org: ${event.organization.login}`);
-      if (event.membership.state === 'active') {
-        const userIdAsString = event.membership.user.id.toString();
-        const organizationIdAsString = event.organization.id.toString();
-        try {
-          if (queryCache && queryCache.supportsOrganizationMembership) {
-            const role = getRoleFromString(event.membership.role);
-            await queryCache.addOrUpdateOrganizationMember(organizationIdAsString, role, userIdAsString);
+      if (event.membership.state === 'active' || event.membership.state === 'pending') {
+        // triple-check the state; GitHub is sending new memberships are PENDING and not ACTIVE now.
+        const login = event.membership.user.login;
+        const liveMembership = await organization.getMembership(login, NoCacheNoBackground);
+        let state = null;
+        if (liveMembership) {
+          console.log(`live membership: state=${liveMembership.state}`);
+          state = liveMembership.state;
+        }
+        if (state === OrganizationMembershipState.Active) {
+          const userIdAsString = event.membership.user.id.toString();
+          const organizationIdAsString = event.organization.id.toString();
+          try {
+            if (queryCache && queryCache.supportsOrganizationMembership) {
+              const role = getRoleFromString(event.membership.role);
+              await queryCache.addOrUpdateOrganizationMember(organizationIdAsString, role, userIdAsString);
+              console.log(`OK: query cache added orgid=${organizationIdAsString}, userid=${userIdAsString}, role=${role}`);
+            } else {
+              console.warn('the organization does not use the query cache');
+            }
+          } catch (queryCacheError) {
+            console.dir(queryCacheError);
           }
-        } catch (queryCacheError) {
-          console.dir(queryCacheError);
+        } else {
+          console.log(`Live state is still not right to insert: ${state}`);
         }
       }
       refresh = true;
@@ -62,12 +79,16 @@ export default class OrganizationWebhookProcessor implements WebhookProcessor {
       try {
         if (queryCache && queryCache.supportsOrganizationMembership) {
           await queryCache.removeOrganizationMember(organizationIdAsString, userIdAsString);
+          console.log(`OK: query cache removed orgid=${organizationIdAsString}, userid=${userIdAsString}`);
+        } else {
+          console.warn('the organization does not use the query cache');
         }
       } catch (queryCacheError) {
         console.dir(queryCacheError);
       }
       refresh = true;
     } else {
+      console.log('Unsupported org event:');
       console.dir(data);
     }
     if (refresh) {

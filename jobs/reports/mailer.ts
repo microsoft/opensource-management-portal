@@ -145,7 +145,7 @@ async function sendReport(context: IReportsContext, mailProvider: IMailProvider,
     return context;
   }
   // Send the e-mail
-  const actionSubject = isActionRequired ? 'Action required: ' : '';
+  const actionSubject = isActionRequired ? 'Action Required: ' : '';
   const mailOptions = {
     to: address,
     from: fromAddress,

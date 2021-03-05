@@ -73,14 +73,16 @@ export default class NewRepositoryLockdownSystem {
   }
 
   static async ValidateUserCanSelfDeleteRepository(repository: Repository, metadata: RepositoryMetadataEntity, individualContext: IndividualContext, daysAfterCreateToAllowSelfDelete: number): Promise<void> {
-    if (!individualContext.corporateIdentity || !individualContext.corporateIdentity.id || !metadata.createdByCorporateId) {
+    if ((!individualContext.corporateIdentity || !individualContext.corporateIdentity.id || !metadata.createdByCorporateId) && (
+      !individualContext.getGitHubIdentity() || !individualContext.getGitHubIdentity().id)) {
       throw new Error('The authenticated user or the linked identity of the repo creator did not have a corporate ID available');
     }
-    if (individualContext.corporateIdentity.id !== metadata.createdByCorporateId) {
+    if ((metadata.createdByCorporateId && individualContext.corporateIdentity.id !== metadata.createdByCorporateId) || (
+      metadata.createdByThirdPartyId && individualContext.getGitHubIdentity()?.id !== metadata.createdByThirdPartyId)) {
       throw new Error('Only the original linked user who first created this repository can classify the repository');
     }
     // any lockdown state is permitted for self-deletes
-    const isLockedForkOrNotSetupYet = metadata.lockdownState == RepositoryLockdownState.AdministratorLocked || metadata.lockdownState === RepositoryLockdownState.Locked;
+    const isLockedForkOrNotSetupYet = metadata.lockdownState === RepositoryLockdownState.AdministratorLocked || metadata.lockdownState === RepositoryLockdownState.Locked;
     const isWindowOk = (new Date()) <= new Date((new Date(repository.created_at)).getTime() + daysInMilliseconds(daysAfterCreateToAllowSelfDelete));
     if (!isWindowOk && !isLockedForkOrNotSetupYet) {
       throw new Error(`The ${repository.name} repo was created ${moment(repository.created_at).fromNow()}. Repos can only be deleted by their creator ${daysAfterCreateToAllowSelfDelete} days after being created.`);
@@ -88,10 +90,12 @@ export default class NewRepositoryLockdownSystem {
   }
 
   static async ValidateUserCanConfigureRepository(metadata: RepositoryMetadataEntity, individualContext: IndividualContext): Promise<void> {
-    if (!individualContext.corporateIdentity || !individualContext.corporateIdentity.id || !metadata.createdByCorporateId) {
+    if ((!individualContext.corporateIdentity || !individualContext.corporateIdentity.id || !metadata.createdByCorporateId) && (
+      !individualContext.getGitHubIdentity() || !individualContext.getGitHubIdentity().id)) {
       throw new Error('The authenticated user or the linked identity of the repo creator did not have a corporate ID available');
     }
-    if (individualContext.corporateIdentity.id !== metadata.createdByCorporateId) {
+    if ((metadata.createdByCorporateId && individualContext.corporateIdentity.id !== metadata.createdByCorporateId) || (
+      metadata.createdByThirdPartyId && individualContext.getGitHubIdentity()?.id !== metadata.createdByThirdPartyId)) {
       throw new Error('Only the original linked user who first created this repository can classify the repository');
     }
     if (!metadata.lockdownState) {
@@ -102,6 +106,9 @@ export default class NewRepositoryLockdownSystem {
     }
     if (metadata.lockdownState === RepositoryLockdownState.AdministratorLocked) {
       throw new Error('This repository is locked and requires administrator approval.');
+    }
+    if (metadata.lockdownState === RepositoryLockdownState.ComplianceLocked) {
+      throw new Error('This repository is locked because compliance information is missing.');
     }
     if (metadata.lockdownState !== RepositoryLockdownState.Locked) {
       throw new Error(`Unsupported repository lockdown state ${metadata.lockdownState}`);
@@ -373,7 +380,7 @@ export default class NewRepositoryLockdownSystem {
     const stateVerb = isTransfer ? 'transferred' : 'new';
     if (link) {
       try {
-        const mailAddress = await this.operations.getMailAddressFromCorporateUsername(link.corporateUsername);
+        const mailAddress = link.corporateMailAddress || await this.operations.getMailAddressFromCorporateUsername(link.corporateUsername);
         const repoName = this.repository.name;
         const subject = isForkAdministratorLocked ? `Your new fork requires administrator approval: ${repoName} (${username})` : `Please complete the setup of your ${stateVerb} GitHub repository ${repoName} (${username})`;
         if (mailAddress) {
@@ -382,9 +389,17 @@ export default class NewRepositoryLockdownSystem {
           let managerInfo: ICachedEmployeeInformation = null;
           let reasonInfo = `This mail was sent to: ${mailAddress}`;
           try {
-            managerInfo = await this.operations.getCachedEmployeeManagementInformation(link.corporateId);
-            if (managerInfo && managerInfo.managerMail) {
-              reasonInfo += ` and manager ${managerInfo.managerMail}`;
+            const providers = this.operations.providers;
+            let shouldTryNotifyManager = true;
+            if (providers?.customizedNewRepositoryLogic) { // this is a hack around the new repo custom logic
+              const customContext = providers.customizedNewRepositoryLogic.createContext({} /* "request" */);
+              shouldTryNotifyManager = providers.customizedNewRepositoryLogic.shouldNotifyManager(customContext, link.corporateId);
+            }
+            if (shouldTryNotifyManager) {
+              managerInfo = await this.operations.getCachedEmployeeManagementInformation(link.corporateId);
+              if (managerInfo && managerInfo.managerMail) {
+                reasonInfo += ` and manager ${managerInfo.managerMail}`;
+              }
             }
           } catch (managerInfoError) {
             console.dir(managerInfoError);

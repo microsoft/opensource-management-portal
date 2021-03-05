@@ -9,7 +9,7 @@ import cache from 'memory-cache';
 import request from 'request';
 import querystring from 'querystring';
 
-import { IGraphProvider, IGraphEntry, IGraphEntryWithManager, IGraphGroupMember, IGraphGroup } from '.';
+import { IGraphProvider, IGraphEntry, IGraphEntryWithManager, IGraphGroupMember, IGraphGroup, GraphUserType } from '.';
 import { ErrorHelper, CreateError } from '../../transitional';
 
 export interface IMicrosoftGraphProviderOptions {
@@ -185,6 +185,73 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     return response.map(entry => entry.id)[0];
   }
 
+  async getUsersByIds(userIds: string[]): Promise<IGraphEntry[]> {
+    if (!userIds || userIds.length === 0) {
+      return [];
+    }
+    const response = await this.lookupInGraph([
+      'users',
+    ], {
+      filterValues: userIds.map(id => `id eq '${id.trim()}'`).join(' or '),
+      selectValues: 'id,displayName,mailNickname,mail,userPrincipalName,userType,jobTitle',
+    }) as any[];
+    return response.filter(e => e.userType !== GraphUserType.Guest).map(entry => {
+      return {
+        id: entry.id,
+        mailNickname: entry.mailNickname,
+        displayName: entry.displayName,
+        mail: entry.mail,
+        givenName: entry.givenName,
+        userPrincipalName: entry.userPrincipalName,
+        jobTitle: entry.jobTitle,
+      }
+    });
+  }
+
+  async getUsersByMailNicknames(mailNicknames: string[]): Promise<IGraphEntry[]> {
+    const response = await this.lookupInGraph([
+      'users',
+    ], {
+      filterValues: mailNicknames.map(alias => `mailNickname eq '${alias.trim()}'`).join(' or '),
+      selectValues: 'id,displayName,mailNickname,mail,userPrincipalName,userType,jobTitle',
+    }) as any[];
+    return response.filter(e => e.userType !== GraphUserType.Guest).map(entry => {
+      return {
+        id: entry.id,
+        mailNickname: entry.mailNickname,
+        displayName: entry.displayName,
+        mail: entry.mail,
+        givenName: entry.givenName,
+        userPrincipalName: entry.userPrincipalName,
+        jobTitle: entry.jobTitle,
+      }
+    });
+  }
+
+  async getUsersBySearch(minimum3Characters: string): Promise<IGraphEntry[]> {
+    if (!minimum3Characters || minimum3Characters.length < 3) {
+      throw new Error(`Minimum 3 characters required: ${minimum3Characters}`);
+    }
+    minimum3Characters = minimum3Characters.replace(/'/g, '\'\'');
+    const response = await this.lookupInGraph([
+      'users',
+    ], {
+      filterValues: `startswith(givenName, '${minimum3Characters}') or startswith(surname, '${minimum3Characters}') or startswith(displayName, '${minimum3Characters}') or startswith(mailNickname, '${minimum3Characters}') or startswith(mail, '${minimum3Characters}')`,
+      selectValues: 'id,displayName,mailNickname,mail,userPrincipalName,userType,jobTitle',
+    }) as any[];
+    return response.filter(e => e.userType !== GraphUserType.Guest).map(entry => {
+      return {
+        id: entry.id,
+        mailNickname: entry.mailNickname,
+        displayName: entry.displayName,
+        mail: entry.mail,
+        givenName: entry.givenName,
+        userPrincipalName: entry.userPrincipalName,
+        jobTitle: entry.jobTitle,
+      }
+    });
+  }
+
   async getGroupMembers(corporateGroupId: string): Promise<IGraphGroupMember[]> {
     const response = await this.lookupInGraph([
       'groups',
@@ -200,10 +267,11 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     if (!minimum3Characters || minimum3Characters.length < 3) {
       throw new Error(`Minimum 3 characters required: ${minimum3Characters}`);
     }
+    // NOTE: this is currently explicitly looking for Security Groups only
     const response = await this.lookupInGraph([
       'groups',
     ], {
-      filterValues: `startswith(displayName, '${minimum3Characters}') or startswith(mailNickname, '${minimum3Characters}')`,
+      filterValues: `securityEnabled eq true and (startswith(displayName, '${minimum3Characters}') or startswith(mailNickname, '${minimum3Characters}'))`,
       selectValues: 'id,displayName,mailNickname',
     }) as any[];
     return response.map(entry => { return { id: entry.id, mailNickname: entry.mailNickname, displayName: entry.displayName } });
@@ -263,7 +331,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     };
   }
 
-  private async getToken(): Promise<string> {
+  async getToken(): Promise<string> {
     return new Promise((resolve, reject) => {
       this.getTokenByCallback((error, token) => {
         return error ? reject(error) : resolve(token);
@@ -406,7 +474,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       }
       const parsedBody = JSON.parse(body);
       if (parsedBody.error) {
-        return callback(new Error(parsedBody.error.message), null);
+        return callback(new Error(parsedBody.error.message ? parsedBody.error.message : parsedBody.error), null);
       } else {
         return callback(null, parsedBody.access_token);
       }
@@ -424,12 +492,19 @@ export class MicrosoftGraphProvider implements IGraphProvider {
 }
 
 export function getUserAndManager(graphProvider, employeeDirectoryId: string): Promise<any> {
-  return new Promise<any>((resolve, reject) => {
-    graphProvider.getUserAndManagerById(employeeDirectoryId, (err, info) => {
+  const timeoutMs = 18000;
+  let timeout = new Promise((resolve, reject) => {
+    let id = setTimeout(() => {
+      clearTimeout(id);
+      return reject(`User and manager request timed out in ${timeoutMs}ms`);
+    }, timeoutMs);
+  });
+  return Promise.race([new Promise<any>((resolve, reject) => {
+    graphProvider.getUserAndManagerById(employeeDirectoryId, (err: Error, info: any) => {
       if (err) {
         return reject(err);
       }
       return resolve(info);
     });
-  });
+  }), timeout]);
 }

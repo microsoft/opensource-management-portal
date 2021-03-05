@@ -9,14 +9,14 @@ const router = express.Router();
 import { ReposAppRequest, UserAlertType } from '../../../transitional';
 import { wrapError } from '../../../utils';
 
-const teamAdminRequired = require('./teamAdminRequired');
+import MiddlewareTeamAdminRequired from './teamAdminRequired';
 
 interface IRequestWithTeamAndLegacy extends ReposAppRequest {
   team2?: any;
   teamUrl?: string;
 }
 
-router.get('/', teamAdminRequired, (req: IRequestWithTeamAndLegacy, res, next) => {
+router.get('/', MiddlewareTeamAdminRequired, (req: IRequestWithTeamAndLegacy, res, next) => {
   const team2 = req.team2;
   team2.getDetails(error => {
     if (error) {
@@ -34,7 +34,7 @@ router.get('/', teamAdminRequired, (req: IRequestWithTeamAndLegacy, res, next) =
   });
 });
 
-router.post('/', teamAdminRequired, (req: IRequestWithTeamAndLegacy, res, next) => {
+router.post('/', MiddlewareTeamAdminRequired, (req: IRequestWithTeamAndLegacy, res, next) => {
   const team2 = req.team2;
   const organization = req.organization;
   const patch = {
@@ -56,4 +56,4 @@ router.post('/', teamAdminRequired, (req: IRequestWithTeamAndLegacy, res, next) 
   });
 });
 
-module.exports = router;
+export default router;

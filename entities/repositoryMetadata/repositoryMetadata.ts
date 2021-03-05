@@ -20,6 +20,10 @@ export enum GitHubRepositoryPermission {
   Pull = 'pull',
   Push = 'push',
   Admin = 'admin',
+  Triage = 'triage',
+  Maintain = 'maintain',
+
+  None = '',
 }
 
 export enum RepositoryLockdownState {
@@ -27,12 +31,16 @@ export enum RepositoryLockdownState {
   Unlocked = 'unlocked',
   AdministratorLocked = 'administratorLocked',
   Deleted = 'deleted',
+  ComplianceLocked = 'complianceLocked',
 }
 
 export const GitHubRepositoryPermissions = [
   GitHubRepositoryPermission.Pull,
+  GitHubRepositoryPermission.Triage,
   GitHubRepositoryPermission.Push,
+  GitHubRepositoryPermission.Maintain,
   GitHubRepositoryPermission.Admin,
+  // NOTE: does not include 'None' which is not a real GitHub REST API value
 ];
 
 export interface IInitialTeamPermission {

@@ -1,0 +1,13 @@
+{
+  "tool": "Credential Scanner",
+  "suppressions": [
+    {
+      "hash": "34SQRUna0pP6Y18G6IYdIa3I9gBv2ON5ZxoCDdeHqbk=",
+      "_justification": "False Positive"
+    },
+    {
+      "hash": "ZzUKTx+ldjAH/tEOf//NJQwMwKX3bpnKJmHO7iXT1vs=",
+      "_justification": "False Positive"
+    }
+  ]
+}

@@ -7,24 +7,27 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders, CreateError } from '../transitional';
+import { ReposAppRequest, IProviders, CreateError, hasStaticReactClientApp } from '../transitional';
 import { IndividualContext } from '../user';
 import { storeOriginalUrlAsVariable } from '../utils';
 import { AuthorizeOnlyCorporateAdministrators } from '../middleware/business/corporateAdministrators';
+
+import RouteAdministration from './administration';
+import RouteUndo from './undo';
+import RouteTeams from './teams';
+import RoutePeople from './people';
+import RouteRepos from './repos';
+import RouteLegacyOrganizationAdministration from './orgAdmin';
 
 import unlinkRoute from './unlink';
 import { Organization } from '../business/organization';
 import { Repository } from '../business/repository';
 
 import orgsRoute from './orgs';
+import { injectReactClient } from '../middleware';
 
-const orgAdmin = require('./orgAdmin');
-const peopleRoute = require('./people');
-const setupRoute = require('./administration');
-const reposRoute = require('./repos');
-const teamsRoute = require('./teams');
-const undoRoute = require('./undo');
-const contributionsRoute = require('./contributions');
+const hasReactApp = hasStaticReactClientApp();
+const reactRoute = hasReactApp ? injectReactClient() : undefined;
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -32,28 +35,33 @@ const contributionsRoute = require('./contributions');
 // Below this next call, all routes will require an active link to exist for
 // the authenticated GitHub user.
 //-----------------------------------------------------------------------------
+// * only for the traditional app. The React app does not require a link to browse orgs.
 //-----------------------------------------------------------------------------
-router.use(function (req: ReposAppRequest, res, next) {
-  const individualContext = req.individualContext as IndividualContext;
-  const link = individualContext.link;
-  if (link && link.thirdPartyId) {
-    return next();
-  }
-  storeOriginalUrlAsVariable(req, res, 'beforeLinkReferrer', '/', 'no linked github username');
-});
+if (!hasReactApp) {
+  router.use(function (req: ReposAppRequest, res, next) {
+    const individualContext = req.individualContext as IndividualContext;
+    const link = individualContext.link;
+    if (link && link.thirdPartyId) {
+      return next();
+    }
+    storeOriginalUrlAsVariable(req, res, 'beforeLinkReferrer', '/', 'no linked github username');
+  });
+}
 // end security route
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
 router.use('/unlink', unlinkRoute);
 
-router.use('/teams', teamsRoute);
-router.use('/organization', orgAdmin);
-router.use('/people', peopleRoute);
-router.use('/repos', reposRoute);
-router.use('/undo', undoRoute);
-router.use('/contributions', contributionsRoute);
-router.use('/administration', AuthorizeOnlyCorporateAdministrators, setupRoute);
+router.use('/organization', RouteLegacyOrganizationAdministration); // admin UI, not in React
+
+router.use('/teams', reactRoute || RouteTeams);
+router.use('/people', reactRoute || RoutePeople);
+router.use('/repos', reactRoute || RouteRepos);
+
+// Routes not yet available in the client
+router.use('/undo', RouteUndo);
+router.use('/administration', AuthorizeOnlyCorporateAdministrators, RouteAdministration);
 
 router.use('/https?*github.com/:org/:repo', asyncHandler(async (req, res, next) => {
   // Helper method to allow pasting a GitHub URL into the app to go to a repo
@@ -73,6 +81,9 @@ router.use('/https?*github.com/:org/:repo', asyncHandler(async (req, res, next) 
     }
     catch (error) {
       return next(CreateError.NotFound(`The repository ${org}/${repo} no longer exists.`));
+    }
+    if (hasReactApp) {
+      return res.redirect(`/orgs/${repository.organization.name}/repos/${repository.name}`);
     }
     return res.redirect(repository.baseUrl);
   }

@@ -133,9 +133,9 @@ export class RepoWorkflowEngine {
     }
     if (request.initialTemplate) {
       try {
+        output.push(await addTemplateCollaborators(organization, repoName, request.initialTemplate));
         output.push(await createAddTemplateFilesTask(organization, repoName, request.initialTemplate, this.isUnlockingExistingRepository, this.isFork, this.isTransfer));
         output.push(await addTemplateWebHook(organization, repoName, request.initialTemplate));
-        output.push(await addTemplateCollaborators(organization, repoName, request.initialTemplate));
       } catch (outerError) {
         // ignored
         console.dir(outerError);
@@ -165,6 +165,10 @@ export class RepoWorkflowEngine {
     if (shouldRenameDefaultBranch && this.isTransfer) {
       shouldRenameDefaultBranch = false;
       output.push({ message: `As a transfer, the default branch will not be automatically renamed to '${this.renameDefaultBranchTo}'.`});
+    }
+    if (shouldRenameDefaultBranch && !request.initialGitIgnoreTemplate && !request.initialTemplate) {
+      output.push({ message: 'Without a .gitignore or template, there are no commits to change the default branch'});
+      shouldRenameDefaultBranch = false;
     }
     if (shouldRenameDefaultBranch && this.renameDefaultBranchExcludeIfApiCall && this.createEntrypoint === CreateRepositoryEntrypoint.Api) {
       shouldRenameDefaultBranch = false;

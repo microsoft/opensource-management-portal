@@ -2,6 +2,8 @@
 // Copyright (c) Microsoft.
 //
 
+// I no longer believe this file FYI... I don't think we need this any longer.
+
 // Office uses a specialized pre-fetch to learn more about hyperlinks before
 // opening. As a result, if the Office user agent is in use, and the
 // request is not authenticated, we should still just respond with a simple
@@ -12,7 +14,7 @@
 const GenericOfficeUserAgent = 'ms-office';
 const WordUserAgent = 'Microsoft Office Word';
 
-module.exports = function supportOfficeHyperlinks(req, res, next) {
+export default function supportOfficeHyperlinks(req, res, next) {
   const userAgent = req.headers['user-agent'];
   const isAuthenticated = req.isAuthenticated ? req.isAuthenticated() : false;
   if (userAgent && userAgent.includes && !isAuthenticated && (userAgent.includes(GenericOfficeUserAgent) || userAgent.includes(WordUserAgent))) {

@@ -8,8 +8,8 @@
 // configuration that can be used instead of the hardcoded values within.
 
 import _ from 'lodash';
-import { jsonError } from '../middleware/jsonError';
-import { IProviders } from '../transitional';
+import { jsonError } from '../middleware';
+import { ICustomizedNewRepositoryLogic, INewRepositoryContext, IProviders } from '../transitional';
 import { ICreateRepositoryResult, Organization } from '../business/organization';
 import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission, RepositoryLockdownState } from '../entities/repositoryMetadata/repositoryMetadata';
 import RenderHtmlMail from '../lib/emailRender';
@@ -40,6 +40,8 @@ const hardcodedApprovalTypes = [
 export interface ICreateRepositoryApiResult {
   github: any;
   name: string;
+  repositoryId: number;
+  organizationName: string;
 }
 
 export enum CreateRepositoryEntrypoint {
@@ -47,7 +49,7 @@ export enum CreateRepositoryEntrypoint {
   Client = 'client',
 }
 
-export async function CreateRepository(req, bodyOverride: unknown, entrypoint: CreateRepositoryEntrypoint, individualContext?: IndividualContext): Promise<ICreateRepositoryApiResult> {
+export async function CreateRepository(req, logic: ICustomizedNewRepositoryLogic, createContext: INewRepositoryContext, bodyOverride: unknown, entrypoint: CreateRepositoryEntrypoint, individualContext?: IndividualContext): Promise<ICreateRepositoryApiResult> {
   if (!req.organization) {
     throw jsonError(new Error('No organization available in the route.'), 400);
   }
@@ -87,14 +89,13 @@ export async function CreateRepository(req, bodyOverride: unknown, entrypoint: C
     template: properties['ms.template'] || req.headers['ms-template'],
     projectType: properties['ms.project-type'] || req.headers['ms-project-type'],
   };
-  // Validate licenses
+  // Validate licenses when present
   let msLicense = msProperties.license;
-  if (!msLicense) {
-    throw jsonError(new Error('Missing license metadata'), 422);
-  }
-  msLicense = msLicense.toLowerCase();
-  if (supportedLicenseExpressions.indexOf(msLicense) < 0) {
-    throw jsonError(new Error('The provided license expression is not currently supported'), 422);
+  if (msLicense) {
+    msLicense = msLicense.toLowerCase();
+    if (supportedLicenseExpressions.indexOf(msLicense) < 0) {
+      throw jsonError(new Error('The provided license expression is not currently supported'), 422);
+    }
   }
   if (msProperties.administrators && !Array.isArray(msProperties.administrators)) {
     throw jsonError(new Error('Administrators must be an array of logins'), 422);
@@ -201,6 +202,8 @@ export async function CreateRepository(req, bodyOverride: unknown, entrypoint: C
     const repoCreateResponse: ICreateRepositoryApiResult = {
       github: response,
       name: response && response.name ? response.name : undefined,
+      organizationName: repository.organization.name,
+      repositoryId: response?.id ? Number(response.id) : undefined,
     };
     req.repoCreateResponse = repoCreateResponse;
     metadata = new RepositoryMetadataEntity();
@@ -261,6 +264,8 @@ export async function CreateRepository(req, bodyOverride: unknown, entrypoint: C
     const repoCreateResponse: ICreateRepositoryApiResult = {
       github: response,
       name: response && response.name ? response.name : undefined,
+      repositoryId: Number(existingRepoId),
+      organizationName: repository.organization.name,
     };
     req.repoCreateResponse = repoCreateResponse;
   }
@@ -352,16 +357,15 @@ export async function CreateRepository(req, bodyOverride: unknown, entrypoint: C
   req.repoCreateResponse.tasks = output;
   if (msProperties.notify && mailProvider) {
     try {
-      let createdUserLink: ICorporateLink = null;
-      if (providers.linkProvider) {
+      let createdUserLink: ICorporateLink = individualContext?.link || null;
+      if (!createdUserLink && providers.linkProvider) {
         try {
           createdUserLink = await providers.linkProvider.getByThirdPartyId(repoWorkflow.request.createdByThirdPartyId);
         } catch (linkError) {
           console.log(`Ignored link error during new repo notification: ${linkError}`);
         }
       }
-
-      await sendEmail(req, mailProvider, req.apiKeyRow, req.correlationId, output, repoWorkflow.request, msProperties, existingRepoId, repository, createdUserLink);
+      await sendEmail(req, logic, createContext, mailProvider, req.apiKeyRow, req.correlationId, output, repoWorkflow.request, msProperties, existingRepoId, repository, createdUserLink);
     } catch (mailSendError) {
       console.dir(mailSendError);
     }
@@ -394,7 +398,7 @@ function downgradeBroadAccessTeams(organization, teams) {
   }
 }
 
-async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlationId: string, repoCreateResults, approvalRequest: RepositoryMetadataEntity, msProperties, existingRepoId: any, repository: Repository, createdUserLink: ICorporateLink): Promise<void> {
+async function sendEmail(req, logic: ICustomizedNewRepositoryLogic, createContext: INewRepositoryContext, mailProvider: IMailProvider, apiKeyRow, correlationId: string, repoCreateResults, approvalRequest: RepositoryMetadataEntity, msProperties, existingRepoId: any, repository: Repository, createdUserLink: ICorporateLink): Promise<void> {
   const { config, operations, viewServices } = req.app.settings.providers as IProviders;
   const excludeNotificationsValue = config.notifications?.reposNotificationExcludeForUsers;
   let excludeNotifications = [];
@@ -436,7 +440,13 @@ async function sendEmail(req, mailProvider: IMailProvider, apiKeyRow, correlatio
     content: undefined,
   };
   if (managerInfo && managerInfo.managerMail) {
-    mail.cc = managerInfo.managerMail;
+    let shouldSend = true;
+    if (createContext && logic) {
+      shouldSend = logic.shouldNotifyManager(createContext, approvalRequest.createdByCorporateId);
+    }
+    if (shouldSend) {
+      mail.cc = managerInfo.managerMail;
+    }
   }
   if (repository) {
     try {

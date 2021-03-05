@@ -3,12 +3,12 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { App as GitHubApp } from '@octokit/app';
+import { createAppAuth } from '@octokit/auth-app';
+import { AuthOptions, Authentication } from '@octokit/auth-app/dist-types/types';
+import { AuthInterface } from '@octokit/types';
+
 import { AppPurpose } from '.';
 import { IAuthorizationHeaderValue } from '../transitional';
-
-const InstallationTokenLifetimeMilliseconds = 1000 * 60 * 60;
-const ValidityOffsetAfterNowMilliseconds = 1000 * 120; // how long to require validity in the future
 
 interface IInstallationToken {
   installationId: number;
@@ -19,10 +19,17 @@ interface IInstallationToken {
   headerValue: string;
 }
 
-export class GitHubAppTokens {
-  public purpose: AppPurpose;
+type OctokitAuthFunction = AuthInterface<[AuthOptions], Authentication>;
 
-  private _app: GitHubApp;
+const InstallationTokenLifetimeMilliseconds = 1000 * 60 * 60;
+const ValidityOffsetAfterNowMilliseconds = 1000 * 120; // how long to require validity in the future
+
+export class GitHubAppTokens {
+  #privateKey: string;
+  private _appId: number;
+  public purpose: AppPurpose;
+  private _appAuth: OctokitAuthFunction;
+  private _installationAuth = new Map<number, OctokitAuthFunction>();
   private _tokensByInstallation = new Map<number, IInstallationToken[]>();
 
   static CreateFromBase64EncodedFileString(purpose: AppPurpose, friendlyName: string, applicationId: number, fileContents: string): GitHubAppTokens {
@@ -34,13 +41,33 @@ export class GitHubAppTokens {
     return new GitHubAppTokens(purpose, friendlyName, applicationId, value);
   }
 
-  constructor(purpose: AppPurpose, public friendlyName: string, applicationId: number, privateKey: string) {
-    this._app = new GitHubApp({ id: applicationId, privateKey, cache: alwaysEmptyCache() });
+  constructor(purpose: AppPurpose, public friendlyName: string, appId: number, privateKey: string) {
+    this.#privateKey = privateKey;
+    this._appId = appId;
+    this._appAuth = createAppAuth({
+      appId,
+      privateKey,
+    });
     this.purpose = purpose;
   }
 
-  getSignedJsonWebToken() {
-    return this._app.getSignedJsonWebToken();
+  async getAppAuthenticationToken() {
+    const details = await this._appAuth({ type: 'app' });
+    const token = details.token;
+    return token;
+  }
+
+  private getOrCreateInstallationAuthFunction(installationId: number) {
+    let auth = this._installationAuth.get(installationId);
+    if (!auth) {
+      auth = createAppAuth({
+        appId: this._appId,
+        privateKey: this.#privateKey,
+        installationId,
+      });
+      this._installationAuth.set(installationId, auth);
+    }
+    return auth;
   }
 
   async getInstallationToken(installationId: number, organizationName: string): Promise<IAuthorizationHeaderValue> {
@@ -50,22 +77,31 @@ export class GitHubAppTokens {
     if (latestToken) {
       return { value: latestToken.headerValue, purpose: this.purpose };
     }
-    const requestedToken = await this.requestInstallationToken(installationId, organizationName);
-    this.getInstallationTokens(installationId).push(requestedToken);
-    return { value: requestedToken.headerValue, purpose: this.purpose };
+    try {
+      const requestedToken = await this.requestInstallationToken(installationId, organizationName);
+      this.getInstallationTokens(installationId).push(requestedToken);
+      return { value: requestedToken.headerValue, purpose: this.purpose };
+    } catch (error) {
+      console.warn(`Error retrieving installation token ID ${installationId} for organization ${organizationName}`);
+      throw error;
+    }
   }
 
   private async requestInstallationToken(installationId: number, organizationName: string): Promise<IInstallationToken> {
     try {
       const requested = new Date();
-      const installationToken = await this._app.getInstallationAccessToken({ installationId });
+      const installationAppAuth = this.getOrCreateInstallationAuthFunction(installationId);
+      const installationTokenDetails = await installationAppAuth({ type: 'installation' });
+      const installationToken = installationTokenDetails.token;
       const headerValue = `token ${installationToken}`;
+      const expiresFromDetails = (installationTokenDetails as any).expiresAt;
+      const expires = expiresFromDetails ? new Date(expiresFromDetails) : (new Date(requested.getTime() + InstallationTokenLifetimeMilliseconds));
       const wrapped: IInstallationToken = {
         installationId,
         organizationName,
         requested,
         headerValue,
-        expires: new Date(requested.getTime() + InstallationTokenLifetimeMilliseconds),
+        expires,
       };
       return wrapped;
     } catch (getTokenError) {
@@ -114,14 +150,4 @@ function tokenValidFilter(timeTokenMustBeValid: Date, token: IInstallationToken)
     return false;
   }
   return true;
-}
-
-function alwaysEmptyCache() {
-  return {
-    get: function() {
-      return null;
-    },
-    set: function () {
-    },
-  };
 }

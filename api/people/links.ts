@@ -107,9 +107,13 @@ router.get('/github/:username', asyncHandler(async (req: IApiRequest, res, next)
       }
       return next(jsonError(getAccountError, 500));
     }
-    const entry = await getByThirdPartyId(String(account.id), req.apiVersion, operations, skipOrganizations, showTimestamps);
-    req.insights.trackMetric({ name: 'ApiRequestLinkByGitHubUsername', value: 1 });
-    return res.json(entry);
+    try {
+      const entry = await getByThirdPartyId(String(account.id), req.apiVersion, operations, skipOrganizations, showTimestamps);
+      req.insights.trackMetric({ name: 'ApiRequestLinkByGitHubUsername', value: 1 });
+      return res.json(entry);
+    } catch (entryError) {
+      return next(jsonError(entryError, 500));
+    }
   }
   const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps);
   for (let i = 0; i < results.length; i++) {
@@ -336,16 +340,17 @@ async function getAllUsers(apiVersion, operations: Operations, skipOrganizations
           entry.serviceAccountContact = link.serviceAccountMail;
         }
       }
-      if (member.corporate) {
+      const corporate = member.link;
+      if (corporate) {
         const corporatePropertyName = apiVersion === '2016-12-01' ? 'corporate' : 'aad'; // This was renamed to be provider name-based
         entry[corporatePropertyName] = {
-          alias: member.corporate.alias,
-          preferredName: member.corporate.preferredName || member.corporate.corporateDisplayName || member.link.corporateDisplayName,
-          userPrincipalName: member.corporate.userPrincipalName || member.corporate.corporateUsername || member.link.corporateUsername,
-          emailAddress: member.corporate.emailAddress,
+          alias: corporate.corporateAlias,
+          preferredName: corporate.corporateDisplayName,
+          userPrincipalName: corporate.corporateUsername,
+          emailAddress: corporate.corporateMailAddress,
         };
         const corporateIdPropertyName = apiVersion === '2016-12-01' ? 'aadId' : 'id'; // Now just 'id'
-        entry[corporatePropertyName][corporateIdPropertyName] = member.corporate.aadId || link?.corporateId;
+        entry[corporatePropertyName][corporateIdPropertyName] = corporate.corporateId;
       }
       results.push(entry);
     });

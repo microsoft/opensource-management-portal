@@ -11,9 +11,8 @@ import { ReposAppRequest, IProviders, RequestTeamMemberAddType, UserAlertType } 
 import { Team } from '../../../business/team';
 import { TeamMember } from '../../../business/teamMember';
 
-const PeopleSearch = require('../../peopleSearch')
-
-const teamAdminRequired = require('./teamAdminRequired');
+import RoutePeopleSearch from '../../peopleSearch';
+import MiddlewareTeamAdminRequired from './teamAdminRequired';
 
 interface ILocalTeamRequest extends ReposAppRequest {
   team2?: Team;
@@ -58,15 +57,15 @@ router.get('/refresh', asyncHandler(async (req: ILocalTeamRequest, res, next) =>
 router.use('/browse', (req: ILocalTeamRequest, res, next) => {
   req.team2RemoveType = 'member';
   return next();
-}, PeopleSearch);
+}, RoutePeopleSearch);
 
 // Add org members to the team
-router.use('/add', teamAdminRequired, (req: ILocalTeamRequest, res, next) => {
+router.use('/add', MiddlewareTeamAdminRequired, (req: ILocalTeamRequest, res, next) => {
   req.team2AddType = RequestTeamMemberAddType.Member;
   return next();
-}, PeopleSearch);
+}, RoutePeopleSearch);
 
-router.post('/remove', teamAdminRequired, asyncHandler(async (req: ILocalTeamRequest, res, next) => {
+router.post('/remove', MiddlewareTeamAdminRequired, asyncHandler(async (req: ILocalTeamRequest, res, next) => {
   const { operations } = req.app.settings.providers as IProviders;
   const username = operations.validateGitHubLogin(req.body.username);
   const team2 = req.team2 as Team;
@@ -76,7 +75,7 @@ router.post('/remove', teamAdminRequired, asyncHandler(async (req: ILocalTeamReq
   return res.redirect(`${req.teamUrl}members/browse/`);
 }));
 
-router.post('/add', teamAdminRequired, asyncHandler(async (req: ILocalTeamRequest, res, next) => {
+router.post('/add', MiddlewareTeamAdminRequired, asyncHandler(async (req: ILocalTeamRequest, res, next) => {
   const { operations } = req.app.settings.providers as IProviders;
   const username = operations.validateGitHubLogin(req.body.username);
   const organization = req.organization;
@@ -117,4 +116,4 @@ router.post('/add', teamAdminRequired, asyncHandler(async (req: ILocalTeamReques
   return res.redirect(req.teamUrl + 'members/browse/');
 }));
 
-module.exports = router;
+export default router;

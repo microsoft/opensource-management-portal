@@ -72,7 +72,9 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
     let response: IMicrosoftIdentityServiceResponse;
     const cacheKey = `cc:${corporateUsername}`;
     if (this.#cacheHelper) {
-      response = await this.#cacheHelper.getObject(cacheKey);
+      try {
+        response = await this.#cacheHelper.getObject(cacheKey);
+      } catch (ignoreError){ /* ignored */ }
     }
     if (!response) {
       response = await this.callIdentityService(corporateUsername);

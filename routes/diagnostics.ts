@@ -4,12 +4,13 @@
 //
 
 import express from 'express';
+import { IAppSession } from '../transitional';
 const router = express.Router();
 
 const redacted = '*****';
 
 interface IRequestWithSession extends express.Request {
-  session?: any;
+  session: IAppSession;
   user: any;
 }
 
@@ -42,7 +43,7 @@ router.get('/', (req: IRequestWithSession, res) => {
     }
     safeUserView.user.github = github;
   }
-  if ((req.user && req.user.githubIncreasedScope) || (req.user.github && req.user.github['scope'] === 'githubapp')) {
+  if ((req.user && req.user.githubIncreasedScope) || (req.user && req.user.github && req.user.github['scope'] === 'githubapp')) {
     let githubIncreasedScope = {};
     const source = req.user.github && req.user.github['scope'] === 'githubapp' ? req.user.github : req.user.githubIncreasedScope;
     for (let key in source) {
@@ -58,7 +59,7 @@ router.get('/', (req: IRequestWithSession, res) => {
     let azure = {};
     for (let key in req.user.azure) {
       let val = req.user.azure[key];
-      if (key === 'accessToken') {
+      if (key === 'accessToken' || key === 'oauthToken') {
         val = redacted;
       }
       azure[key] = val;

@@ -5,7 +5,7 @@
 
 import express from 'express';
 import asyncHandler from 'express-async-handler';
-import { jsonError } from '../middleware/jsonError';
+import { jsonError } from '../middleware';
 
 import moment from 'moment';
 import { ReposAppRequest } from '../transitional';

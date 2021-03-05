@@ -5,14 +5,12 @@
 
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
-import { Operations } from '../../business/operations';
-import { TeamPermission } from '../../business/teamPermission';
-
 import { shuffle } from 'lodash';
 
+import { TeamPermission } from '../../business/teamPermission';
 import { IReposJob, IReposJobResult } from '../../app';
 import AutomaticTeamsWebhookProcessor from '../../webhooks/tasks/automaticTeams';
-import { GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { GitHubRepositoryPermission, RepositoryLockdownState, RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { sleep } from '../../utils';
 import { ErrorHelper } from '../../transitional';
 
@@ -21,24 +19,25 @@ import { ErrorHelper } from '../../transitional';
 // regularly but is not looking to answer "the truth" - it will use the cache of repos and other
 // assets to not abuse GitHub and its API exhaustively. Over time repos will converge to having
 // the right permissions.
+// 
+// If a repository is "compliance locked", the system teams are not enforced until the lock is removed.
 
 const maxParallelism = 1;
 
 const delayBetweenSeconds = 1;
 
 export default async function permissionsRun({ providers }: IReposJob) : Promise<IReposJobResult> {
-  const operations = providers.operations as Operations;
+  const { operations, repositoryMetadataProvider } = providers;
   for (const organization of shuffle(Array.from(operations.organizations.values()))) {
-    console.log(`org ${organization.name}...`);
+    console.log(`Reviewing permissions for all repos in ${organization.name}...`);
     try {
       const repos = await organization.getRepositories();
-      console.log(`We have a lot of ${organization.name} repos: ${repos.length}`);
+      console.log(`Repos in the ${organization.name} org: ${repos.length}`);
       let z = 0;
       const automaticTeams = new AutomaticTeamsWebhookProcessor();
       for (let repo of repos) {
         console.log(`${repo.organization.name}/${repo.name}`);
         sleep(1000 * delayBetweenSeconds);
-
         const cacheOptions = {
           maxAgeSeconds: 10 * 60 /* 10m */,
           backgroundRefresh: false,
@@ -60,9 +59,17 @@ export default async function permissionsRun({ providers }: IReposJob) : Promise
           }
           return;
         }
-        const currentPermissions = new Map<number, TeamPermission>();
+        const { customizedTeamPermissionsWebhookLogic } = providers;
+        if (customizedTeamPermissionsWebhookLogic) {
+          const shouldSkipEnforcement = await customizedTeamPermissionsWebhookLogic.shouldSkipEnforcement(repo);
+          if (shouldSkipEnforcement) {
+            console.log(`Customized logic for team permissions: skipping enforcement`);
+            return;
+          }
+        }
+        const currentPermissions = new Map<number, GitHubRepositoryPermission>();
         permissions.forEach(entry => {
-          currentPermissions.set(entry.team.id, entry.permission);
+          currentPermissions.set(Number(entry.team.id), entry.permission);
         });
         const teamsToSet = new Set<number>();
         specialTeamIds.forEach(specialTeamId => {

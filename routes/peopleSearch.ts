@@ -11,7 +11,7 @@ import { RequestWithSystemwidePermissions, RequestTeamMemberAddType } from '../t
 
 import { ensureAllLinksInMemory, getAllLinksFromRequest } from '../middleware/business/allLinks';
 
-const lowercaser = require('../middleware/lowercaser');
+import lowercaser from '../middleware/lowercaser';
 
 import { Operations, ICrossOrganizationMembersResult } from '../business/operations';
 import { MemberSearch } from '../business/memberSearch';
@@ -157,4 +157,4 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
   });
 }));
 
-module.exports = router;
+export default router;

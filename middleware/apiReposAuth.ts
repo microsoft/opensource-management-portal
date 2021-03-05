@@ -16,6 +16,11 @@ import { jsonError } from './jsonError';
 import { IProviders, ReposAppRequest } from '../transitional';
 import { PersonalAccessToken } from '../entities/token/token';
 
+export const wrapErrorForImmediateUserError = (err: Error) => {
+  (err as any).immediate = true;
+  return err;
+}
+
 export interface IApiRequest extends ReposAppRequest {
   apiKeyToken: PersonalAccessToken;
   apiKeyProviderName: string;
@@ -45,6 +50,7 @@ export default function ReposApiAuthentication(req: IApiRequest, res, next) {
     failed: undefined,
     message: undefined,
     statusCode: undefined,
+    warning: undefined,
   };
   tokenProvider.getToken(hashValue).then((token: PersonalAccessToken) => {
     return after(null, token);
@@ -54,10 +60,14 @@ export default function ReposApiAuthentication(req: IApiRequest, res, next) {
 
   function after(tokenError: any, token: PersonalAccessToken) {
     const eventName = 'ApiRequest' + (tokenError ? 'Denied' : 'Approved');
+    const warning = token?.warning;
     if (tokenError) {
       apiEventProperties.failed = true;
       apiEventProperties.message = tokenError.message;
       apiEventProperties.statusCode = tokenError.statusCode;
+    }
+    if (tokenError && warning) {
+      apiEventProperties.warning = warning;
     }
     const insights = req.insights || (req.app.settings.providers as IProviders).insights;
     if (insights) {
@@ -71,20 +81,22 @@ export default function ReposApiAuthentication(req: IApiRequest, res, next) {
       return next(jsonError(tokenError.statusCode === 404 ? 'Key not authorized' : tokenError.message, 401));
     }
     if (token.isRevoked()) {
-      tokenError = new Error('A revoked key attempted to use an API');
+      tokenError = jsonError(warning || 'Key revoked', 403);
+      wrapErrorForImmediateUserError(tokenError);
       tokenError.authErrorMessage = tokenError.message;
       if (insights) {
         req.insights.trackMetric({ name: 'ApiRevokedKeyAttempt', value: 1 });
       }
-      return next(jsonError('Key revoked', 403));
+      return next(tokenError);
     }
     if (token.isExpired()) {
-      tokenError = new Error('A revoked key attempted to use an API');
+      tokenError = jsonError(warning || 'A revoked key attempted to use an API', 403);
+      wrapErrorForImmediateUserError(tokenError);
       tokenError.authErrorMessage = tokenError.message;
       if (insights) {
         req.insights.trackMetric({ name: 'ApiExpiredKeyAttempt', value: 1 });
       }
-      return next(jsonError('Key expired', 403));
+      return next(tokenError);
     }
     if (insights) {
       req.insights.trackMetric({ name: 'ApiRequest', value: 1 });

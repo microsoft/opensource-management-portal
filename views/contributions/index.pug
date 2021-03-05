@@ -6,6 +6,7 @@
 extends ../layout
 
 mixin displayEvents(contributions, truncateDisplay, truncateAt)
+  //-pre= JSON.stringify(contributions, null, 2)
   each contributionType in contributionTypes
     - var contributionGroup = contributions[contributionType]
     - var description = contributionDescriptions[contributionType]
@@ -18,11 +19,11 @@ mixin displayEvents(contributions, truncateDisplay, truncateAt)
         - var innerCount = 0
         - var wereRemaining = 0
         each contribution in contributionGroup
-          - var action = contribution.additionalData.payload.action
-          - var issue = contribution.additionalData.payload.issue
-          - var comment = contribution.additionalData.payload.comment
-          - var pr = contribution.additionalData.payload.pull_request
-          - var repo = contribution.additionalData.repo
+          - var action = contribution.additionalData.payload ? contribution.additionalData.payload.action : ''
+          - var issue = contribution.additionalData.payload ? contribution.additionalData.payload.issue : ''
+          - var comment = contribution.additionalData.payload ? contribution.additionalData.payload.comment: ''
+          - var pr = contribution.additionalData.payload ? contribution.additionalData.payload.pull_request : ''
+          - var repo = contribution.additionalData.payload ? contribution.additionalData.repo : ''
 
           - ++innerCount
           if innerCount > (truncateDisplay ? truncateAt : 1000)
@@ -36,6 +37,11 @@ mixin displayEvents(contributions, truncateDisplay, truncateAt)
                     li(style='margin-top:8px;margin-bottom:8px')
                       ul.list-inline
                         li: a.btn.btn-sm.btn-muted-more(target='_new', href='https://github.com/' + repo.name)= repo.name
+                else if contribution.additionalData.projectName
+                  ul.list-unstyled
+                    li(style='margin-top:8px;margin-bottom:8px')
+                      ul.list-inline
+                        li: a.btn.btn-sm.btn-muted-more(target='_new', href=contribution.additionalData.link)= contribution.additionalData.projectName
               .col-md-6
                 if contributionType == 'IssueCommentEvent'
                   if issue && repo
@@ -58,6 +64,28 @@ mixin displayEvents(contributions, truncateDisplay, truncateAt)
                           if (comment.body.length > 44)
                             = '...'
                         //- small= 'Comment ' + comment.id
+                else if contributionType == 'self-service-contribution'
+                  ul.list-unstyled
+                    if contribution.additionalData.projectName
+                      li(style='margin-top:8px;margin-bottom:8px')
+                        strong Project name#[br]
+                        = contribution.additionalData.projectName
+                    if contribution.additionalData.contributionDate
+                      li(style='margin-top:8px;margin-bottom:8px')
+                        strong Contribution date#[br]
+                        time(datetime=contribution.additionalData.contributionDate)= contribution.additionalData.contributionDate
+                    if contribution.additionalData.category
+                      li(style='margin-top:8px;margin-bottom:8px')
+                        strong Contribution category#[br]
+                        = contribution.additionalData.category
+                    if contribution.additionalData.link
+                      li(style='margin-top:8px;margin-bottom:8px')
+                        strong Contribution URL#[br]
+                        = contribution.additionalData.link
+                    if contribution.additionalData.description
+                      li(style='margin-top:8px;margin-bottom:8px')
+                        strong Description#[br]
+                        = contribution.additionalData.description
                 else if contributionType == 'PullRequestEvent'
                   if repo && pr
                     ul.list-unstyled
@@ -233,16 +261,21 @@ block content
                   | closing pull requests, participating in pull request reviews, and other public actions.
                   br
                   br
+                  | You can self-attest if you have participated in other interesting ways to open source projects. 
+                  a(href='/contributions/attestation') Self-attestation form
+                  br
+                  br
                   | The eligibility period for this election is from #{moment(eligibilityStart).fromNow()} - #{moment(eligibilityEnd).fromNow()}.
             else if nominationStart < now && now < nominationEnd
               if isEligibleForElection
+                - var nominationUrl = 'https://aka.ms/fossfundform'
                 .alert.alert-gray(role='alert')
-                  strong You're eligible to #[a(style='text-decoration: underline', href=urlToVote) participate in the nomination process for #{startMonthName}].
+                  strong You're eligible to #[a(style='text-decoration: underline', href=nominationUrl) participate in the nomination process].
                   br
                   | Thank you so much for contributing to open source. The nomination period ends #{moment(nominationEnd).fromNow()}.
                   br
                   br
-                  p: a.btn.btn-lg.btn-primary(href=urlToVote) Nominate a project
+                  p: a.btn.btn-lg.btn-primary(href=nominationUrl) Nominate a project
               else
                 .alert.alert-warning(role='alert', style='color:#000')
                   strong Sorry, you're not eligible to nominate for #{election.title}.
@@ -288,36 +321,44 @@ block content
         div(style='margin-bottom:20px')
         hr
 
-      .row
-        .col-md-11: h1 Recent open source contributions by #{login}
-        //- .col-md-1: a(href='?login=' + login + '&refresh=1') Refresh
+      if login
+        .row
+          .col-md-11: h1 Recent open source contributions by #{login}
+          //- .col-md-1: a(href='?login=' + login + '&refresh=1') Refresh
 
-      if contributionCount === 0
-        .row: .col-md-12
-          if recentlyLinked
-            p No open source contributions have been discovered. #[strong This account was linked recently, so please check back in a few days as data is refreshed.]
-          else
-            p No open source contributions were discovered.
-      else
-        .row: .col-md-12
-          if isSelf
-            p Thank you for making #{contributionCount} contribution#{contributionCount > 1 ? 's' : '' } to open source projects on GitHub.
-          else
-            p These are public open source contributions that #{login} recently made.
-
-          +displayEvents(contributions, isTruncating, maximumContributionsPerGroupToShow)
-
-      if otherContributionsCount
-        h2 Other contributions
-        if isSelf
-          p You made at least #{otherContributionsCount} contributions to public GitHub repos recently, either to your individual repos, or to corporate-governed resources.
+        if contributionCount === 0
+          .row: .col-md-12
+            if recentlyLinked
+              p No open source contributions have been discovered. #[strong This account was linked recently, so please check back in a few days as data is refreshed.]
+            else
+              p No open source contributions were discovered.
         else
-          p The user made #{otherContributionsCount} contributions to public GitHub repos recently, to either their individual repos or other corporate-governed resources.
-        p: a.btn.btn-sm.btn-muted(href='?login=' + login + '&other=1' + (prior ? '&prior=true' : '')) Show other recent public activity
+          .row: .col-md-12
+            if isSelf
+              p Thank you for making #{contributionCount} contribution#{contributionCount > 1 ? 's' : '' } to open source projects.
+            else
+              p These are public open source contributions that #{login} recently made.
 
-      //-if !prior
-        h2 #{previousMonthName} contributions
-        p: a.btn.btn-sm.btn-muted-more(href='?prior=true&login=' + login) Show #{previousMonthName} contributions
+            +displayEvents(contributions, isTruncating, maximumContributionsPerGroupToShow)
+
+        if otherContributionsCount
+          h2 Other contributions
+          if isSelf
+            p You made at least #{otherContributionsCount} contributions to public GitHub repos recently, either to your individual repos, or to corporate-governed resources.
+          else
+            p The user made #{otherContributionsCount} contributions to public GitHub repos recently, to either their individual repos or other corporate-governed resources.
+          p: a.btn.btn-sm.btn-muted(href='?login=' + login + '&other=1' + (prior ? '&prior=true' : '')) Show other recent public activity
+
+        //-if !prior
+          h2 #{previousMonthName} contributions
+          p: a.btn.btn-sm.btn-muted-more(href='?prior=true&login=' + login) Show #{previousMonthName} contributions
+      else
+        h2 Not linked
+        p You have not yet linked a GitHub account, so no contributions information is available.
+        p: a.btn.btn-primary(href='/link') Link
+        if corporateViews && corporateViews.contributions && corporateViews.contributions.fossfundabout
+          hr
+          include ../corporate/contributions/fossfundabout
 
       hr
       p: small.

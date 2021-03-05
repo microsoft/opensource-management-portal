@@ -16,6 +16,14 @@ block content
       | Start time: #{start}
       br
       | End time: #{end}
+    
+    p Links not service accounts: #{linksCount}
+    p FTE links: #{fte}
+    p Public FTE: #{pFte}
+    p Percent of FTE and interns here: #{count / fte}%
+    p Percent of FTE and interns divided by public: #{count / pFte}%
+    p No longer linked public data set #{noLongerLinked}
+
     hr
 
     if count === 0

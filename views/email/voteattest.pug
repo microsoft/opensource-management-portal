@@ -1,0 +1,36 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends email
+
+block content
+  if contribution
+    p Details of the self-attestation:
+
+    h5 Submitted by
+    if contribution.userCorporateUsername
+      p= contribution.userCorporateUsername
+    if contribution.userUsername
+      p= contribution.userUsername + ' (on GitHub)'
+    if contribution.additionalData
+      if contribution.additionalData.projectName
+        h5 Project name
+        p= contribution.additionalData.projectName
+      if contribution.additionalData.link
+        h5 Project link
+        p: aP(href=contribution.additionalData.link)= contribution.additionalData.link
+      if contribution.additionalData.category
+        h5 Category
+        p= contribution.additionalData.category
+      if contribution.additionalData.contributionDate
+        h5 Contribution made on (UTC ISO date)
+        p= contribution.additionalData.contributionDate
+      if contribution.additionalData.description
+        h5 Description of contribution
+        p= contribution.additionalData.description
+
+  //-if contribution
+    h3 Raw data
+    pre= JSON.stringify(contribution, null, 2)

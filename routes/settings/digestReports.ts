@@ -4,17 +4,18 @@
 //
 
 import express from 'express';
-import { RequestWithSystemwidePermissions } from '../../transitional';
+const router = express.Router();
 
-import { buildConsolidatedMap as buildRecipientMap } from '../../jobs/reports/consolidated';
+import { RequestWithSystemwidePermissions } from '../../transitional';
 import { IndividualContext } from '../../user';
 
+// import { buildConsolidatedMap as buildRecipientMap } from '../../jobs/reports/consolidated';
 // const buildRecipientMap = require('../../jobs/reports/consolidated').buildRecipientMap;
-import RedisHelper from '../../lib/caching/redis';
-const router = express.Router();
-const systemWidePermissionsMiddleware = require('../../middleware/github/systemWidePermissions');
+// import RedisHelper from '../../lib/caching/redis';
 
-router.use(systemWidePermissionsMiddleware);
+import MiddlewareSystemWidePermissions from '../../middleware/github/systemWidePermissions';
+
+router.use(MiddlewareSystemWidePermissions);
 
 interface IRequestWithDigestReports extends RequestWithSystemwidePermissions {
   availableReports?: any;
@@ -28,7 +29,7 @@ router.use((req: IRequestWithDigestReports, res, next) => {
     return next(new Error('Must have an active corporate link'));
   }
 
-  const systemWidePermissions = req.systemWidePermissions;
+  // const systemWidePermissions = req.systemWidePermissions;
 
   // For performance reasons, this current implementation only works
   // when the Redis server is the same for both reports and the

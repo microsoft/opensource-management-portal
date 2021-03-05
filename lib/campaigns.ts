@@ -16,6 +16,7 @@ export interface ICampaignUserState {
 export interface ICampaignHelper {
   getState(corporateId: string, campaignGroupId: string, campaignId?: string): Promise<ICampaignUserState>;
   optOut(corporateId: string, campaignGroupId: string): Promise<void>;
+  clearOptOut(corporateId: string, campaignGroupId: string): Promise<void>;
   setSent(corporateId: string, campaignGroupId: string, campaignId: string): Promise<void>;
   clearSent(corporateId: string, campaignGroupId: string, campaignId: string): Promise<void>;
   // 
@@ -75,6 +76,13 @@ export class StatefulCampaignProvider implements ICampaignHelper {
   async optOut(corporateId: string, campaignGroupId: string): Promise<void> {
     const value = Object.assign(this.baseObject(corporateId, campaignGroupId), {
       optOut: (new Date()).toISOString(),
+    });
+    await this.#cosmosHelper.setObject(value);
+  }
+
+  async clearOptOut(corporateId: string, campaignGroupId: string): Promise<void> {
+    const value = Object.assign(this.baseObject(corporateId, campaignGroupId), {
+      optOut: false,
     });
     await this.#cosmosHelper.setObject(value);
   }

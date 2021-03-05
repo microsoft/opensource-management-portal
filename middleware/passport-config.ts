@@ -3,12 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import passport from 'passport';
+
 import createAADStrategy from './passport/aadStrategy';
 import createGithubStrategy from './passport/githubStrategy';
-
-const passport = require('passport');
-const serializer = require('./passport/serializer');
-
+import serializer from './passport/serializer';
 
 export default function (app, config) {
   const supportedAuth = ['github', 'aad', 'oauth2'];

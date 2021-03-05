@@ -98,6 +98,7 @@ export function AzureDevOpsAuthenticationMiddleware(req: IApiRequest, res, next)
     } else {
       const error = jsonError(`You are not authorized to access ${vstsCollectionUrl}`, 401);
       error['authErrorMessage'] = error.message;
+      error['skipLog'] = true;
       return next(error);
     }
   });

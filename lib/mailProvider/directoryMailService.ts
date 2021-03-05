@@ -8,7 +8,7 @@
 import * as adalNode from 'adal-node';
 import { v4 } from 'uuid';
 
-import appPackage = require('../../package.json');
+import appPackage from '../../package.json';
 
 const request = require('requestretry').defaults({ json: true, maxAttempts: 3, fullResponse: true });
 
@@ -125,7 +125,7 @@ export default class DirectoryMailService implements IMailProvider {
     const html = content;
     const text = null;
     const message = new DirectoryMailServiceMessage(this.#options.eventName);
-    message.SenderProfile = this.#options.senderProfile;
+    message.SenderProfile = mail.senderProfile || this.#options.senderProfile;
     const source = html ? {
       KeyValuePairs: {
         Subject: subject,
