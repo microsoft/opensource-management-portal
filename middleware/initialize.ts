@@ -43,8 +43,7 @@ import { CreateGraphProviderInstance, IGraphProvider } from '../lib/graphProvide
 import initializeCorporateViews from './corporateViews';
 
 import keyVaultResolver from '../lib/keyVaultResolver';
-
-import CreateMailProviderInstance from '../lib/mailProvider/';
+import { createMailProviderInstance } from '../lib/mailProvider/';
 import { RestLibrary } from '../lib/github';
 import { CreateRepositoryCacheProviderInstance } from '../entities/repositoryCache';
 import { CreateRepositoryCollaboratorCacheProviderInstance } from '../entities/repositoryCollaboratorCache';
@@ -112,7 +111,7 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
   providers.mailAddressProvider = await createMailAddressProvider(config, providers);
   app.set('mailAddressProvider', providers.mailAddressProvider);
 
-  const mailProvider = CreateMailProviderInstance(config);
+  const mailProvider = createMailProviderInstance(config);
   const mailInitializedMessage = await mailProvider.initialize();
   debug(`mail provider type=${config.mail.provider} ${mailInitializedMessage}`);
   providers.mailProvider = mailProvider;
