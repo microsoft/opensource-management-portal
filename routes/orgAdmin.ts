@@ -603,4 +603,4 @@ router.post('/bulkRepoDelete', asyncHandler(async (req, res, next) => {
   return res.json(log);
 }));
 
-module.exports = router;
+export default router;

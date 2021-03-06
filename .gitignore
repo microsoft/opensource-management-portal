@@ -1,29 +1,7 @@
-# Logs
-*.log
-
-# TypeScript output
 dist/
-
-# Ignore TypeScript things
-dist/
-
-# Component registration logs
-registration/
-
-# Node
 node_modules/
-
-# Client script
-.sass-cache/
-
-
-# OS X
 .DS_Store
-
-# Local scripts
-sync-*.js
-
-# Local development environment scripts
+# Potential local development environment scripts
 app.yaml
 env.json
 .env

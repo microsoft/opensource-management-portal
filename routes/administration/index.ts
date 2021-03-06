@@ -5,11 +5,13 @@
 
 import express from 'express';
 import asyncHandler from 'express-async-handler';
+import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 const router = express.Router();
 
 import { ReposAppRequest, IProviders } from '../../transitional';
 
-import LoadCorporationSection from './corporation';
+import RouteApp from './app';
+import RouteApps from './apps';
 
 router.use('*', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const { corporateAdministrationProfile } = req.app.settings.providers as IProviders;
@@ -20,16 +22,16 @@ router.use('*', asyncHandler(async function (req: ReposAppRequest, res, next) {
 }));
 
 try {
-  const profile = LoadCorporationSection();
+  const dynamicStartupInstance = getCompanySpecificDeployment();
+  const profile = dynamicStartupInstance?.administrationSection;
   if (profile && profile.setupRoutes) {
     profile.setupRoutes(router);
   }
 } catch (error) {
   console.dir(error);
 }
-router.use('/app', require('./app'));
-router.use('/apps', require('./apps'));
-router.use('/contributingorgs', require('./contributingorgs'));
+router.use('/app', RouteApp);
+router.use('/apps', RouteApps);
 
 router.get('/', (req: ReposAppRequest, res, next) => {
   const individualContext = req.individualContext;
@@ -42,4 +44,4 @@ router.get('/', (req: ReposAppRequest, res, next) => {
   });
 });
 
-module.exports = router;
+export default router;

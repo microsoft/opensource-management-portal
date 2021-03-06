@@ -5,6 +5,7 @@
 
 import { CosmosClient, Database, Container } from '@azure/cosmos';
 import { Store } from 'express-session';
+import { IAppSession } from '../../transitional';
 
 export interface ICosmosSessionProviderOptions {
   endpoint: string;
@@ -87,7 +88,8 @@ export default class CosmosSessionStore extends Store {
     }).catch(error => {
       console.dir(error);
       if (callback) {
-        return callback(error);
+        return callback();
+        // We do not bubble any errors here.
       }
     });
   };
@@ -95,7 +97,7 @@ export default class CosmosSessionStore extends Store {
   // The session argument should be a session if found, otherwise null or undefined if the 
   // session was not found (and there was no error). A special case is made when 
   // error.code === 'ENOENT' to act like callback(null, null).
-  set = (sid: string, session: Express.SessionData, callback) => {
+  set = (sid: string, session: IAppSession, callback) => {
     this.throwIfNotInitialized();
     if (sid !== session.id) {
       throw new Error('The \'sid\' parameter value must match the value of \'session.id\'.');
@@ -124,7 +126,7 @@ export default class CosmosSessionStore extends Store {
   // This is primarily used when the store will automatically delete idle sessions 
   // and this method is used to signal to the store the given session is active, 
   // potentially resetting the idle timer.
-  touch = (sid: string, session: Express.SessionData, callback) => {
+  touch = (sid: string, session: IAppSession, callback) => {
     this.set(sid, session, callback);
   };
 
@@ -134,7 +136,7 @@ export default class CosmosSessionStore extends Store {
     }
   }
 
-  // optional: all: (callback: (err: any, obj?: { [sid: string]: Express.SessionData; } | null) => void) => void;
+  // optional: all: (callback: (err: any, obj?: { [sid: string]: IAppSession; } | null) => void) => void;
   // optional: length: (callback: (err: any, length?: number | null) => void) => void;
   // optional: clear: (callback?: (err?: any) => void) => void;
 }

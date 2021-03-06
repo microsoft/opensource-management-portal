@@ -8,7 +8,7 @@ import { v4 as uuidV4 } from 'uuid';
 // ----------------------------------------------------------------------------
 // Generate a correlation ID
 // ----------------------------------------------------------------------------
-module.exports = function (req, res, next) {
+export default function (req, res, next) {
   req.correlationId = uuidV4();
   next();
 };

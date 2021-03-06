@@ -5,7 +5,7 @@
 
 import { TableLinkProvider } from './tableLinkProvider';
 
-module.exports = function createProvider(providers, config) {
+export default function createTableProvider(providers, config) {
   let tableOptions = config && config.github && config.github.links ? config.github.links.table : null;
   if (!tableOptions) {
     throw new Error('TableLinkProvider requires config.github.links.table');
@@ -23,8 +23,8 @@ module.exports = function createProvider(providers, config) {
   const originalTablePartitionKey = originalTablePrefix + 'pk';
   const originalTableName = originalTablePrefix + 'links';
 
-  modernTableOptions.tableName = originalTableName; // 'jeffv7test';
-  modernTableOptions.partitionKey = originalTablePartitionKey; // 'testing';
+  modernTableOptions.tableName = originalTableName;
+  modernTableOptions.partitionKey = originalTablePartitionKey;
 
   return new TableLinkProvider(providers, modernTableOptions);
-};
+}

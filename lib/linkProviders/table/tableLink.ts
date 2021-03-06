@@ -52,6 +52,22 @@ export class CorporateTableLink implements ICorporateLinkExtended {
     return this._entity[this._provider.propertyMapping.corporateId];
   }
 
+  get corporateMailAddress(): string {
+    return this._entity[this._provider.propertyMapping.corporateMailAddress];
+  }
+
+  set corporateMailAddress(value: string) {
+    _updateColumn(this, this._provider.propertyMapping.corporateMailAddress, value);
+  }
+
+  get corporateAlias() {
+    return this._entity[this._provider.propertyMapping.corporateAlias];
+  }
+
+  set corporateAlias(value: string) {
+    _updateColumn(this, this._provider.propertyMapping.corporateAlias, value);
+  }
+
   set corporateId(value: string) {
     _updateColumn(this, this._provider.propertyMapping.corporateId, value);
   }

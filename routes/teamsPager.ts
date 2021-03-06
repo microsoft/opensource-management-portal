@@ -73,7 +73,7 @@ function reduceTeams(collections, property, map) {
   });
 }
 
-module.exports = asyncHandler(async function(req: ReposAppRequest, res: express.Response, next: express.NextFunction) {
+export default asyncHandler(async function(req: ReposAppRequest, res: express.Response, next: express.NextFunction) {
   const operations = req.app.settings.operations as Operations;
   const isCrossOrg = req.teamsPagerMode === 'orgs';
   const aggregations = req.individualContext.aggregations;

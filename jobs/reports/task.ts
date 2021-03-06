@@ -18,13 +18,11 @@ import path from 'path';
 
 import app, { IReposJob, IReposJobResult } from '../../app';
 
-import { buildConsolidatedMap as buildRecipientMap } from './consolidated';
+// import { buildConsolidatedMap as buildRecipientMap } from './consolidated';
 
 import { build as organizationsBuild, consolidate as organizationsConsoldate, process as organizationsProcess } from './organizations';
 import { build as repositoriesBuild, consolidate as repositoriesConsolidate, process as repositoriesProcess } from './repositories';
 import { build as teamsBuild, consolidate as teamsConsolidate, process as teamsProcess, IReportsTeamContext } from './teams';
-
-const fileCompression = require('./fileCompression');
 
 import mailer from './mailer';
 
@@ -34,6 +32,7 @@ import { ICorporateLink } from '../../business/corporateLink';
 import { writeTextToFile } from '../../utils';
 import { Repository } from '../../business/repository';
 import { Team } from '../../business/team';
+import { writeDeflatedTextFile } from './fileCompression';
 
 // Debug-related values for convienience
 const fakeSend = false;
@@ -389,7 +388,7 @@ function saveDataLakeOutput(context: IReportsContext, dataLakeOutput: string[]):
       }
       const blobPrefix = dla.blobPrefix || 'consolidatedReports';
       const backupBlobName = `${blobPrefix}_${moment.utc().format('YYYY_MM_DD')}.json.gz`;
-      fileCompression.writeDeflatedTextFile(text, (writeError, deflatedTempPath) => {
+      writeDeflatedTextFile(text, (writeError, deflatedTempPath) => {
         if (writeError) {
           insights.trackException({ exception: writeError });
           return reject(writeError);

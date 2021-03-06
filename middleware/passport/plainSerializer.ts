@@ -3,20 +3,21 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-function serialize(config, user, done) {
-  done(null, user);
-}
+import { LegacySerializer } from './serializer';
 
-function deserialize(config, user, done) {
-  done(null, user);
-}
+// function i() {
+//   console.warn('Plain text session tokens are in use. Not recommended for production.');
+// }
 
-function i() {
-  console.warn('Plain text session tokens are in use. Not recommended for production.');
-}
+export default class PlainSerializer implements LegacySerializer {
+  serialize(config, user, done) {
+    return done(null, user);
+  }
 
-module.exports = {
-  serialize: serialize,
-  deserialize: deserialize,
-  initialize: i,
-};
+  deserialize(config, user, done) {
+    return done(null, user);
+  }
+
+  initialize(options: any, app: any) {
+  }
+}

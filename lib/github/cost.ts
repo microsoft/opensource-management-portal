@@ -47,7 +47,7 @@ function addCosts(a, b) {
   return a;
 }
 
-module.exports = {
+export default {
   create: createCostContainer,
   add: addCosts,
 };

@@ -70,14 +70,14 @@ export default class AutomaticTeamsWebhookProcessor implements WebhookProcessor 
     return false;
   }
 
-  async run(operations: Operations, organization, data: any): Promise<boolean> {
+  async run(operations: Operations, organization: Organization, data: any): Promise<boolean> {
     const eventType = data.properties.event;
     const eventAction = data.body.action;
     const { specialTeamIds, specialTeamLevels } = this.processOrgSpecialTeams(organization);
     const preventLargeTeamPermissions = organization.preventLargeTeamPermissions;
     const repositoryBody = data.body.repository;
     const newPermissions = repositoryBody ? repositoryBody.permissions : null;
-    const whoChangedIt = data.body && data.body.sender ? data.body.sender.login : null;
+    const whoChangedIt = (data.body && data.body.sender ? data.body.sender.login : null) as string;
     const whoChangedItId = whoChangedIt ? data.body.sender.id : null;
 
     // New repository
@@ -116,8 +116,7 @@ export default class AutomaticTeamsWebhookProcessor implements WebhookProcessor 
         // 6/13/17. Thank you for helping us simplify our code!
         if (['added_to_repository', 'edited'].includes(eventAction) && newPermissions) {
           const specificReason = teamTooLargeForPurpose(teamId, newPermissions.admin, newPermissions.push, organization, teamSize, preventLargeTeamPermissions);
-          if (specificReason) {
-            // CONSIDER: system/ops accounts may actually be useful to consider allowing via operations.isSystemAccountByUsername
+          if (specificReason && !operations.isSystemAccountByUsername(whoChangedIt)) {
             await revertLargePermissionChange(operations, organization, repositoryBody, teamId, teamName, whoChangedIt, whoChangedItId, specificReason);
           }
         }
@@ -160,7 +159,7 @@ function translateSpecialToGitHub(ourTerm) {
   throw new Error(`Unknown team type ${ourTerm}`);
 }
 
-async function getTeamSize(organization: Organization, teamId): Promise<number> {
+export async function getTeamSize(organization: Organization, teamId): Promise<number> {
   const team = organization.team(teamId);
   await team.getDetails();
   return team.members_count || 0;
@@ -183,10 +182,12 @@ async function revertLargePermissionChange(operations: Operations, organization:
       whoChangedItId: whoChangedItId,
     },
   });
-  await setTeamPermission(operations, organization, repositoryBody, teamId, 'pull', blockReason);
-  const owner = repositoryBody.owner.login.toLowerCase(); // We do not want to notify for each fork, if the permissions bubble to the fork
-  if (owner === organization.name.toLowerCase()) {
-    await largeTeamPermissionPreventionWarningMail(operations, organization, repositoryBody, teamId, teamName, blockReason, whoChangedIt, whoChangedItId);
+  const successfulAndOk = await setTeamPermission(operations, organization, repositoryBody, teamId, 'pull', blockReason);
+  if (successfulAndOk) {
+    const owner = repositoryBody.owner.login.toLowerCase(); // We do not want to notify for each fork, if the permissions bubble to the fork
+    if (owner === organization.name.toLowerCase()) {
+      await largeTeamPermissionPreventionWarningMail(operations, organization, repositoryBody, teamId, teamName, blockReason, whoChangedIt, whoChangedItId);
+    }
   }
 }
 
@@ -251,11 +252,20 @@ async function sendEmail(insights, basedir, mailProvider: IMailProvider, to, bod
   insights.trackEvent({ name: 'JobAutomaticTeamsLargeTeamPermissionBlockMailSuccess', properties: customData });
 }
 
-async function setTeamPermission(operations: Operations, organization: Organization, repositoryBody: any, teamId, necessaryPermission, reason): Promise<void> {
+async function setTeamPermission(operations: Operations, organization: Organization, repositoryBody: any, teamId, necessaryPermission, reason): Promise<boolean> {
+  const { customizedTeamPermissionsWebhookLogic } = operations.providers;
   const repoName = repositoryBody.name;
+  const repoId = repositoryBody?.id;
   const orgName = organization.name;
+  const repository = organization.repository(repoName, { id: repoId });
+  if (customizedTeamPermissionsWebhookLogic) {
+    const shouldSkipEnforcement = await customizedTeamPermissionsWebhookLogic.shouldSkipEnforcement(repository);
+    if (shouldSkipEnforcement) {
+      console.log(`Customized logic for team permissions: skipping enforcement for repository ${repository.id}`);
+      return false;
+    }
+  }
   const description = `setting permission level ${necessaryPermission} for the team with ID ${teamId} on the repository ${repoName} inside the ${orgName} GitHub org because ${reason}`;
-  const repository = organization.repository(repoName);
   const insights = operations.insights;
   let error = null;
   try {
@@ -284,4 +294,5 @@ async function setTeamPermission(operations: Operations, organization: Organizat
   if (error) {
     throw error;
   }
+  return true;
 }

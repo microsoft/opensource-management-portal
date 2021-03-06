@@ -11,19 +11,30 @@ import path from 'path';
 
 const debug = require('debug')('startup');
 
+export * from './react';
+export * from './links';
+export * from './business';
+export * from './jsonError';
+
+import { hasStaticReactClientApp, IProviders, stripDistFolderName } from '../transitional';
 import { StaticClientApp } from './staticClientApp';
+import { StaticReactClientApp } from './staticClientApp2';
 import { StaticSiteFavIcon, StaticSiteAssets } from './staticSiteAssets';
 import ConnectSession from './session';
 import passportConfig from './passport-config';
 import Onboard from './onboarding';
 import viewServices from '../lib/pugViewServices';
-import { IProviders, stripDistFolderName } from '../transitional';
 
-const campaign = require('./campaign');
-const officeHyperlinks = require('./officeHyperlinks');
-const rawBodyParser = require('./rawBodyParser');
+import campaign from './campaign';
+import officeHyperlinks from './officeHyperlinks';
+import rawBodyParser from './rawBodyParser';
 
-module.exports = function initMiddleware(app, express, config, dirname, initializationError) {
+import RouteScrubbedUrl from './scrubbedUrl';
+import RouteLogger from './logger';
+import RouteLocals from './locals';
+import RoutePassport from './passport-routes';
+
+export default function initMiddleware(app, express, config, dirname, initializationError) {
   config = config || {};
   const appDirectory = config && config.typescript && config.typescript.appDirectory ? config.typescript.appDirectory : stripDistFolderName(dirname);
   const providers = app.get('providers') as IProviders;
@@ -79,10 +90,13 @@ module.exports = function initMiddleware(app, express, config, dirname, initiali
     if (applicationProfile.serveStaticAssets) {
       StaticSiteAssets(app, express);
     }
+    if (hasStaticReactClientApp()) {
+      StaticReactClientApp(app, express);
+    }
     if (applicationProfile.serveClientAssets) {
       StaticClientApp(app, express);
     }
-    providers.campaign = campaign(app, config);
+    providers.campaign = campaign(app);
     let passport;
     if (!initializationError) {
       if (config.containers && config.containers.deployment) {
@@ -98,12 +112,12 @@ module.exports = function initMiddleware(app, express, config, dirname, initiali
         }
       }
     }
-    app.use(require('./scrubbedUrl'));
-    app.use(require('./logger')(config));
-    app.use(require('./locals'));
+    app.use(RouteScrubbedUrl);
+    app.use(RouteLogger(config));
+    app.use(RouteLocals);
     if (!initializationError) {
       if (applicationProfile.sessions) {
-        require('./passport-routes')(app, passport, config);
+        RoutePassport(app, passport, config);
         if (config.github.organizations.onboarding && config.github.organizations.onboarding.length) {
           debug('Onboarding helper loaded');
           Onboard(app, config);

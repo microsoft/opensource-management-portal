@@ -38,9 +38,9 @@ export default async function refresh({ providers }: IReposJob): Promise<IReposJ
   let managerSets = 0;
   let managerMetadataUpdates = 0;
 
-  const userDetailsThroatCount = 5;
+  const userDetailsThroatCount = 1;
   const secondsDelayAfterError = 1;
-  const secondsDelayAfterSuccess = 0; //0.1;
+  const secondsDelayAfterSuccess = 0.09; //0.1;
 
   const managerInfoCachePeriodMinutes = 60 * 24 * 7 * 12; // 12 weeks
 
@@ -53,9 +53,10 @@ export default async function refresh({ providers }: IReposJob): Promise<IReposJ
   const formerAccounts: ICorporateLink[] = [];
   await Promise.all(allLinks.map((link: ICorporateLink) => throttle(async () => {
     const employeeDirectoryId = link.corporateId;
+    ++processed;
     bulkContacts.set(link.corporateUsername, false);
-    if (processed % 100 === 0) {
-      console.log(`${++processed}.`);
+    if (processed % 25 === 0) {
+      console.log(`${processed}/${allLinks.length}.`);
     }
     if (link.isServiceAccount) {
       console.log(`Service account: ${link.corporateUsername}`);

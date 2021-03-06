@@ -4,22 +4,57 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch site",
-      "program": "${workspaceRoot}/dist/bin/www.js",
-      "cwd": "${workspaceRoot}/dist",
+      "name": "Launch site 3000",
+      "program": "${workspaceFolder}/dist/bin/www.js",
+      "cwd": "${workspaceFolder}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "startup,cosmosdb,g:server,context",
+        "DEBUG": "startup,cosmosdb,g:server,context,cache,restapi,redis-cross-org",
         "MORE_DEBUG": "appinsights,cache,restapi,pg,querycache,user,redis-cross-org"
       }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch site (cache optimization work)",
+      "name": "Launch site 4000 sudo",
+      "program": "${workspaceFolder}/dist/bin/www.js",
+      "cwd": "${workspaceFolder}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "PORT": "4000",
+        "DEBUG_GITHUB_PORTAL_SUDO_FORCE": "1",
+        "DEBUG": "startup,cosmosdb,g:server,context,*simple-oauth2*,appinsights,insights",
+        "MORE_DEBUG": "appinsights,cache,restapi,pg,querycache,user,redis-cross-org"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch site 4000 sudo OFF",
+      "program": "${workspaceFolder}/dist/bin/www.js",
+      "cwd": "${workspaceFolder}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "PORT": "4000",
+        "DEBUG": "startup,cosmosdb,g:server,context",
+        "DEBUG_GITHUB_PORTAL_SUDO_OFF": "1",
+        "DEBUG_GITHUB_ORG_SUDO_OFF": "1",
+        "MORE_DEBUG": "appinsights,cache,restapi,pg,querycache,user,redis-cross-org"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch site + cache optimization alerts",
       "program": "${workspaceRoot}/dist/bin/www.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
@@ -34,7 +69,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch site (SUDO FORCE)",
+      "name": "Launch site 3000 (SUDO FORCE)",
       "program": "${workspaceRoot}/dist/bin/www",
       "console": "integratedTerminal",
       "cwd": "${workspaceRoot}/dist",
@@ -49,7 +84,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch site (SUDO OFF)",
+      "name": "Launch site 3000 (SUDO OFF)",
       "console": "integratedTerminal",
       "program": "${workspaceRoot}/dist/bin/www",
       "cwd": "${workspaceRoot}/dist",
@@ -79,7 +114,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Firehose",
+      "name": "Webhook events firehose",
       "program": "${workspaceRoot}/dist/jobs/firehose/index.js",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
@@ -93,7 +128,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Build Repo Reports",
+      "name": "Job: Build Repo Reports (deprecated)",
       "program": "${workspaceRoot}/dist/jobs/reports/index.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
@@ -119,20 +154,6 @@
       "env": {
         "NODE_ENV": "development",
         "DEBUG": "startup,appinsights,cache"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Job: Cleanup event data",
-      "program": "${workspaceRoot}/dist/jobs/cleanupContributions/index.js",
-      "cwd": "${workspaceRoot}/dist",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "startup,appinsights"
       }
     },
     {
@@ -188,7 +209,7 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "redis,restapi,startup,appinsights"
+        "DEBUG": "redis,restapi,startup,appinsights,cache"
       }
     },
     {
@@ -213,6 +234,21 @@
       "args": [
         "all"
       ],
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,querycache,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Consistency: Deleted repos",
+      "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/deletedRepositories.js",
+      "args": [],
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
@@ -294,7 +330,7 @@
       "type": "node",
       "request": "launch",
       "name": "Job: Recent Contributions",
-      "program": "${workspaceRoot}/dist/jobs/recentContributions/index.js",
+      "program": "${workspaceRoot}/dist/microsoft/jobs/recentContributions/index.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
@@ -345,48 +381,6 @@
         "NODE_ENV": "production",
         "DEBUG": "startup,appinsights,health",
         "NOTE_FOR_PUBLIC_MEMORY_PROVIDER_USE": "In-memory providers should fail in production node env by design, this entry helps validate that"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Campaign: Fund info",
-      "program": "${workspaceRoot}/dist/scripts/email/fossfund/process.js",
-      "cwd": "${workspaceRoot}/dist",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "startup,appinsights"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Campaign: Fund vote",
-      "program": "${workspaceRoot}/dist/scripts/email/fossfund/vote.js",
-      "cwd": "${workspaceRoot}/dist",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "startup,appinsights"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Script: Reclassify contributions",
-      "program": "${workspaceRoot}/dist/jobs/recentContributions/reclassify.js",
-      "cwd": "${workspaceRoot}/dist",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "startup,appinsights,github,rest"
       }
     },
     {

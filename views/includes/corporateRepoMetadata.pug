@@ -57,19 +57,6 @@ if repositoryMetadataEntity.projectType
         p Software Development Kit (SDK)
       else
         p= repositoryMetadataEntity.projectType
-if repositoryMetadataEntity.releaseReviewUrl
-  .row
-    if repositoryMetadataEntity.releaseReviewType && repositoryMetadataEntity.releaseReviewType == 'NewReleaseReview'
-      +groupTitle('New release review')
-    else if repositoryMetadataEntity.releaseReviewType && repositoryMetadataEntity.releaseReviewType == 'ExistingReleaseReview'
-      .col-md-3: p.text-right Existing release review
-    else
-      .col-md-3: p.text-right Review work item
-    .col-md-9
-      if releaseReviewWorkItemId
-        p: a(href=repositoryMetadataEntity.releaseReviewUrl, target='_new')= releaseReviewWorkItemId
-      else
-        p: a(href=repositoryMetadataEntity.releaseReviewUrl, target='_new')= repositoryMetadataEntity.releaseReviewUrl
 if repositoryMetadataEntity.releaseReviewJustification
   .row
     +groupTitle('Business justification')
@@ -95,75 +82,6 @@ if repositoryMetadataEntity.releaseReviewJustification
           p This is public, but was marked as a private repository. It was configured as an #[a(href='https://aka.ms/innersource') innersource] project.
       else
         p= repositoryMetadataEntity.releaseReviewJustification
-//- Release Review sub-section
-if releaseReviewObject && octicon && moment
-  .row
-    - var review = releaseReviewObject
-    - var state = review.state
-    +groupTitle('Review status')
-    .col-md-9
-      ul.list-inline
-        if state == 'Completed'
-          li: != octicon('check', 16)
-        else if state == 'Initial Review'
-          li: != octicon('person', 16)
-        else if state == 'Legal Review'
-          li: != octicon('law', 16)
-        else if state == 'OSS Attorney Review'
-          li: != octicon('law', 16)
-        else if state == 'Final Review'
-          li: != octicon('checklist', 16)
-        else if state == 'Rejected'
-          li: != octicon('x', 16)
-        else if state == 'Cancelled'
-          li: != octicon('x', 16)
-        li= state
-    //- Subsection for all review details
-    if state !== 'Completed' && repository.private === false
-      .row
-        +groupTitle('Risk')
-        .col-md-9: .alert.alert-danger(style='margin-bottom:16px')
-          strong This repository is already public, but the final business review has not been completed.
-          br
-          p Please review the #[a(style='color:#fff;text-decoration:underline', href='https://docs.opensource.microsoft.com/content/releasing/business-review-release.html', target='_new') business review process] to learn more about how to continue this review.
-    .row
-      +groupTitle('Review details')
-      .col-md-9
-        //-if review.guidance
-          .row
-            .col-md-12: p Guidance has been provided
-        if state !== 'Completed' && review.createdDate
-          .row
-            .col-md-2: p Process started
-            .col-md-10: p= moment(review.createdDate).fromNow()
-        if review.assignedTo && review.assignedTo.displayName
-          .row
-            .col-md-2: p: strong Assigned to
-            .col-md-10: p: strong= review.assignedTo.displayName
-        //-if review.usageDetails
-          .row
-            .col-md-2: p Provided details
-            .col-md-10: p= review.usageDetails
-        if review.reviewers
-          .row
-            .col-md-2: p Reviewers
-            .col-md-10
-              if review.reviewers.initialReviewer
-                .row
-                  .col-md-3: p.text-right Initial business
-                  .col-md-9: p= review.reviewers.initialReviewer.displayName
-              if review.reviewers.legalReviewer
-                .row
-                  .col-md-3: p.text-right Legal
-                  .col-md-9: p= review.reviewers.legalReviewer.displayName
-              if review.reviewers.ossAttorney
-                .row
-                  .col-md-3: p.text-right Open source
-                  .col-md-9: p= review.reviewers.ossAttorney.displayName
-              if review.reviewers.finalReviewer
-                .row
-                  .col-md-3: p.text-right Final business
-                  .col-md-9: p= review.reviewers.finalReviewer.displayName
 //- Lockdown state
 if repositoryMetadataEntity.lockdownState && repositoryMetadataEntity.lockdownState !== 'unlocked'
   .row

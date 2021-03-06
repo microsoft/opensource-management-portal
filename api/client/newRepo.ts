@@ -7,7 +7,7 @@ import express from 'express';
 import { ReposAppRequest } from '../../transitional';
 import { jsonError } from '../../middleware/jsonError';
 
-const newOrgRepo = require('./newOrgRepo');
+import newOrgRepo from './newOrgRepo';
 const router = express.Router();
 
 router.use('/org/:org', (req: ReposAppRequest, res, next) => {
@@ -23,4 +23,4 @@ router.use('/org/:org', (req: ReposAppRequest, res, next) => {
 
 router.use('/org/:org', newOrgRepo);
 
-module.exports = router;
+export default router;

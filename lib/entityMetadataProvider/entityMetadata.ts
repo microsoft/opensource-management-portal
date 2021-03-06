@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IEntityMetadataProvider, IEntityMetadataSerializationHelper, IEntityMetadataDeserializationHelper } from "./entityMetadataProvider";
+import { IEntityMetadataProvider, IEntityMetadataSerializationHelper, IEntityMetadataDeserializationHelper } from './entityMetadataProvider';
 
 export class EntityMetadataType {
   constructor(public readonly typeName: string) {

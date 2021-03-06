@@ -5,19 +5,19 @@
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-import { IIntelligentCacheObjectResponse, IIntelligentCacheResponseArray, flattenData } from './core';
+import { IRestResponse, IIntelligentCacheResponseArray, flattenData } from './core';
 import { CompositeApiContext } from './composite';
 import { RestLibrary } from '.';
 import { RestCollections } from './collections';
 import { IGetOrganizationMembersOptions } from '../../business/organization';
 import { ITeamMembershipOptions } from '../../business/team';
 
-interface IOrganizationsResponse extends IIntelligentCacheObjectResponse {
+interface IOrganizationsResponse extends IRestResponse {
   orgs?: any;
 }
 
-interface ICrossOrganizationDataResponse extends IIntelligentCacheObjectResponse {
-  data?: any;
+interface ICrossOrganizationDataResponse extends IRestResponse {
+//  data?: any;
 }
 
 interface ILocalOptionsParameters {
@@ -108,9 +108,13 @@ export class CrossOrganizationCollator {
     }
     const capturedThis = this;
     const crossOrgMethod = async function actualCrossOrgMethod(): Promise<any> {
-      const values: IOrganizationsResponse = {};
-      values.headers = {};
-      values.orgs = {};
+      const values: IOrganizationsResponse = {
+        headers: {},
+        orgs: {},
+        data: undefined,
+      };
+      // values.headers = {};
+      // values.orgs = {};
       for (let orgName in orgsAndTokens) {
         const token = orgsAndTokens[orgName];
         const localOptions = Object.assign({}, options);
@@ -149,7 +153,7 @@ export class CrossOrganizationCollator {
 
   private crossOrganizationCollection(capturedThis: CrossOrganizationCollator, orgsAndTokens, options, cacheOptions, innerKeyType, outerFunction, collectionMethodName: string, collectionKey, optionalSetOrganizationLogin) {
     return async (): Promise<any> => {
-      const entities: IIntelligentCacheResponseArray = [];
+      const entities = [] as IIntelligentCacheResponseArray;
       entities.headers = {};
       let data = null;
       try {

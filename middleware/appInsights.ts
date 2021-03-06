@@ -36,7 +36,7 @@ function filterTelemetry(envelope, context): boolean {
   return true;
 }
 
-module.exports = function initializeAppInsights(app: IReposApplication, config) {
+export default function initializeAppInsights(app: IReposApplication, config) {
   let client = undefined;
   if (!config) {
     // Configuration failure happened ahead of this module

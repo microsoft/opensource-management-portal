@@ -3,10 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-const adalNode = require('adal-node');
-const azureKeyVault = require('azure-keyvault');
+import adalNode, { TokenResponse }  from 'adal-node'; // NOTE: this is deprecated-ish
+import { KeyVaultClient, KeyVaultCredentials } from 'azure-keyvault';
 
-module.exports = function createClient(kvConfig) {
+export default function createClient(kvConfig) {
   if (!kvConfig.clientId) {
     throw new Error('KeyVault client ID required at this time for the middleware to initialize.');
   }
@@ -19,11 +19,12 @@ module.exports = function createClient(kvConfig) {
       if (tokenAcquisitionError) {
         return authCallback(tokenAcquisitionError);
       }
-      const authorizationValue = `${tokenResponse.tokenType} ${tokenResponse.accessToken}`;
+      const tk = tokenResponse as TokenResponse;
+      const authorizationValue = `${tk.tokenType} ${tk.accessToken}`;
       return authCallback(null, authorizationValue);
     });
   };
-  const credentials = new azureKeyVault.KeyVaultCredentials(authenticator);
-  const keyVaultClient = new azureKeyVault.KeyVaultClient(credentials);
+  const credentials = new KeyVaultCredentials(authenticator, null);
+  const keyVaultClient = new KeyVaultClient(credentials);
   return keyVaultClient;
 };

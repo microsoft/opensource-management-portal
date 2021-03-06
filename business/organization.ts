@@ -9,7 +9,7 @@
 import _ from 'lodash';
 
 import { Operations } from './operations';
-import { IReposError, ICacheOptions, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IReposRestRedisCacheCost, IAuthorizationHeaderValue, NoRestApiCache, ErrorHelper } from '../transitional';
+import { IReposError, ICacheOptions, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IReposRestRedisCacheCost, IAuthorizationHeaderValue, ErrorHelper, CreateError, NoCacheNoBackground } from '../transitional';
 import * as common from './common';
 import { OrganizationMember } from './organizationMember';
 import { Team, GitHubTeamRole, ITeamMembershipRoleState } from './team';
@@ -21,7 +21,6 @@ import { GitHubResponseType } from '../lib/github/endpointEntities';
 import { AppPurpose, GitHubAppAuthenticationType } from '../github';
 import { OrganizationSetting, SpecialTeam } from '../entities/organizationSettings/organizationSetting';
 import { ICorporateLink } from './corporateLink';
-import { MemberSearch } from './memberSearch';
 
 export interface IAccountBasics {
   id: number;
@@ -55,6 +54,49 @@ export enum OrganizationMembershipRoleQuery {
 export enum OrganizationMembershipTwoFactorFilter {
   AllMembers = 'all',
   TwoFactorOff = '2fa_disabled',
+}
+
+export enum GitHubAuditLogInclude {
+  Web = 'web',
+  Git = 'git',
+  All = 'all',
+}
+
+export interface GitHubAuditLogEntry {
+  '@timestamp': number;
+  action: string;
+  actor: string;
+  created_at: number;
+  event: string;
+  head_branch?: string;
+  head_sha?: string;
+  name?: string;
+  org: string;
+  repo: string;
+  started_at: string;
+  trigger_id?: string;
+  workflow_id?: number;
+  workflow_run_id?: number;
+  user?: string;
+}
+
+export interface GitHubAuditLogFormattedEntryMvp {
+  pretty: string;
+  raw: GitHubAuditLogEntry;
+}
+
+export enum GitHubAuditLogOrder {
+  Ascending = 'asc',
+  Descending = 'desc',
+}
+
+export interface IGetOrganizationAuditLogOptions extends ICacheOptions {
+  phrase?: string;
+  include?: GitHubAuditLogInclude;
+  after?: string;
+  before?: string;
+  order?: GitHubAuditLogOrder;
+  per_page?: number;
 }
 
 export interface IGetOrganizationMembersOptions extends IPagedCacheOptions {
@@ -160,6 +202,8 @@ export class Organization {
   private _usesGitHubApp: boolean;
   private _settings: OrganizationSetting;
 
+  private _entity: IGitHubOrganizationResponse;
+
   id: number;
   uncontrolled: boolean;
 
@@ -205,6 +249,27 @@ export class Organization {
 
   get usesApp(): boolean {
     return this._usesGitHubApp;
+  }
+
+  asClientJson() {
+    // TEMP: TEMP: TEMP: not long-term as currently designed
+    return {
+      active: this.active,
+      createRepositoriesOnGitHub: this.createRepositoriesOnGitHub,
+      description: this.description,
+      externalMembersPermitted: this.externalMembersPermitted,
+      id: this.id,
+      locked: this.locked,
+      hidden: this.hidden,
+      appOnly: this.isAppOnly,
+      name: this.name,
+      priority: this.priority,
+      privateEngineering: this.privateEngineering,
+    };
+  }
+
+  getEntity() {
+    return this._entity;
   }
 
   async supportsUpdatesApp() {
@@ -256,6 +321,9 @@ export class Organization {
       const entity = await operations.github.request(
         this.authorize(AppPurpose.Data),
         'GET /repositories/:id', parameters, cacheOptions);
+      if (entity.owner.id !== this.id) {
+        throw CreateError.NotFound(`Repository ID ${parameters.id} has a different owner of ${entity.owner.login} instead of ${this.name}. It has been relocated and will be treated as a 404.`);
+      }
       return this.repositoryFromEntity(entity);
     } catch (error) {
       if (error.status && error.status === 404) {
@@ -290,7 +358,11 @@ export class Organization {
   }
 
   get priority(): string {
-    return this._settings.properties['priority'] || 'primary';
+    return this._settings.properties['priority'] || 'secondary';
+  }
+
+  get isAppOnly(): boolean {
+    return this._settings.hasFeature('appOnly') || false;
   }
 
   get locked(): boolean {
@@ -520,6 +592,7 @@ export class Organization {
       if (entity && entity.id) {
         this.id = entity.id;
       }
+      this._entity = entity;
       return entity as IGitHubOrganizationResponse;
     } catch (error) {
       throw wrapError(error, `Could not get details about the ${this.name} organization: ${error.message}`);
@@ -670,6 +743,39 @@ export class Organization {
     return this.getMembers(memberOptions);
   }
 
+  async getAuditLog(options?: IGetOrganizationAuditLogOptions): Promise<GitHubAuditLogEntry[]> {
+    options = options || {};
+    const operations = this._operations;
+    const name = this.name;
+    const parameters = {
+      org: name,
+      phrase: options.phrase,
+      include: options.include,
+      after: options.after,
+      before: options.before,
+      order: options.order,
+      per_page: options.per_page,
+    };
+    const cacheOptions: ICacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.accountDetailStaleSeconds,
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    try {
+      const entities = await operations.github.request(this.authorize(AppPurpose.Data), 'GET /orgs/:org/audit-log', parameters, cacheOptions) as GitHubAuditLogEntry[];
+      // common.assignKnownFieldsPrefixed(this, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
+      return entities;
+    } catch (error) {
+      if (error.status && error.status === 404) {
+        error = new Error(`The GitHub audit log endpoint is not available for the ${this.name} organization`);
+        error.status = 404;
+        throw error;
+      }
+      throw wrapError(error, `Could not get the audit log for the ${this.name} org: ${error.message}`);
+    }
+  }
+
   async isSudoer(username: string): Promise<boolean> {
     const sudoerTeam = this.sudoersTeam;
     if (!sudoerTeam) {
@@ -703,7 +809,7 @@ export class Organization {
     }
   }
 
-  async acceptOrganizationInvitation(userToken: string): Promise<any> {
+  async acceptOrganizationInvitation(userToken: string): Promise<IOrganizationMembership> {
     const operations = this._operations;
     const parameters = {
       org: this.name,
@@ -713,7 +819,17 @@ export class Organization {
       const response = await operations.github.post(`token ${userToken}`, 'orgs.updateMembershipForAuthenticatedUser', parameters);
       return response;
     } catch (error) {
-      throw wrapError(error, `Could not accept your invitation for the ${this.name} organization on GitHub`);
+      const wrappedError = wrapError(error, `Could not accept your invitation for the ${this.name} organization on GitHub`);
+      if (error.status === 403 && error.headers && error.headers['x-github-sso']) {
+        const xGitHubSso = error.headers['x-github-sso'] as string;
+        const i = xGitHubSso.indexOf('url=');
+        if (i >= 0) {
+          const remainder = xGitHubSso.substr(i + 4);
+          console.log(`remaining SSO URL: ${remainder}`);
+          wrappedError['x-github-sso-url'] = remainder;
+        }
+      }
+      throw wrappedError;
     }
   }
 
@@ -751,10 +867,10 @@ export class Organization {
     // This is a specific version of the getMembership function that takes
     // no options and never allows for caching [outside of the standard
     // e-tag validation with the real-time GitHub API]
-    return await this.getMembership(username, NoRestApiCache);
+    return await this.getMembership(username, NoCacheNoBackground);
   }
 
-  async addMembership(username: string, options?: IAddOrganizationMembershipOptions): Promise<any> {
+  async addMembership(username: string, options?: IAddOrganizationMembershipOptions): Promise<IOrganizationMembership> {
     const operations = this._operations;
     const github = operations.github;
     options = options || {};
@@ -765,7 +881,7 @@ export class Organization {
       role: role,
     };
     const ok = await github.post(this.authorize(AppPurpose.Operations), 'orgs.setMembershipForUser', parameters);
-    return ok;
+    return ok as IOrganizationMembership; // state: pending or acive, role: admin or member
   }
 
   async checkPublicMembership(username: string, options?: ICacheOptions): Promise<boolean> {
@@ -1010,7 +1126,7 @@ export class Organization {
         candidateTemplate.legalEntities = legalEntities;
         template = candidateTemplate;
       }
-      if (template) {
+      if (template && template.name) {
         templates.push(template);
         if (projectType && template.forceForReleaseType && template.forceForReleaseType == projectType) {
           limitedTypeTemplates.push(template);

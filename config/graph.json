@@ -1,5 +1,6 @@
 {
   "provider": "env://GRAPH_PROVIDER",
+  "require": "env://GRAPH_PROVIDER_REQUIRED?trueIf=1",
   "tokenCacheSeconds": "env://GRAPH_TOKEN_CACHE_SECONDS?type=int",
   "clientId": "env://GRAPH_AAD_CLIENT_ID",
   "clientSecret": "env://GRAPH_AAD_CLIENT_SECRET",

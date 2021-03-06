@@ -1,5 +1,6 @@
 import { wrapError } from "../utils";
 import { IProviders } from "../transitional";
+import { AxiosError } from "axios";
 
 //
 // Copyright (c) Microsoft.
@@ -48,7 +49,7 @@ const exceptionFieldsOfInterest = [
   'innerMessage',
 ];
 
-module.exports = function (err, req, res, next) {
+export default function SiteErrorHandler (err, req, res, next) {
   // CONSIDER: Let's eventually decouple all of our error message improvements to another area to keep the error handler intact.
   const { applicationProfile } = req.app.settings.providers as IProviders;
   var config = null;
@@ -188,7 +189,13 @@ module.exports = function (err, req, res, next) {
   if (err.status) {
     errStatusAsNumber = parseInt(err.status);
   }
-  const resCode = errStatusAsNumber || (err.status && typeof (err.status) === 'number' ? err.status : false) || err.statusCode || 500;
+  let resCode = errStatusAsNumber || (err.status && typeof (err.status) === 'number' ? err.status : false) || err.statusCode || 500;
+  if (err && err.isAxiosError) {
+    const axiosError = err as AxiosError;
+    if (axiosError?.response?.status) {
+      resCode = axiosError.response.status;
+    }
+  }
   res.status(resCode);
 
   // Support JSON-based error display for the API route, showing just a small

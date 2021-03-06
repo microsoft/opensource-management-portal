@@ -17,6 +17,7 @@ export interface IMail {
   subject?: string;
   category?: string[];
   correlationId?: string;
+  senderProfile?: string;
 }
 
 export interface IMailProvider {

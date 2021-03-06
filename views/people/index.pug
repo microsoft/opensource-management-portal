@@ -171,12 +171,11 @@ block content
           each person in search.members
             - var link = person.link
             - var account = person.account ? person.account : person
-            - var corporate = person.corporate;
             - var serviceAccount = link && link.isServiceAccount
             - var serviceAccountMail = link ? link.serviceAccountMail : null
-            - var shorthandName = corporate && corporate.corporateDisplayName ? corporate.corporateDisplayName : (link ? (link.corporateDisplayName || account.login) : account.login);
-            - var corporateIdentity = corporate && corporate.alias ? corporate.alias : (link ? link.corporateUsername : null)
-            - var email = corporate ? corporate.emailAddress || corporate.userPrincipalName : null
+            - var shorthandName = link && link.corporateDisplayName ? link.corporateDisplayName : account.login;
+            - var corporateIdentity = link && link.corporateAlias ? link.corporateAlias : (link ? link.corporateUsername : null)
+            - var email = link ? link.corporateMailAddress || link.userPrincipalName : null
 
             .row.vertical-pad-bottom
               .col-sm-8
@@ -203,12 +202,7 @@ block content
                       li
                         .label.label-danger Not linked
                     if corporateIdentity
-                      if link && !corporate
-                        li.text-warning!= octicon('link', 16)
-                        li
-                          span(title=link.aadoid)= link.aadupn
-                          div(style='width:1px')
-                      else
+                      if link
                         li!= octicon('link', 16)
                         li
                           div(style='width:1px')

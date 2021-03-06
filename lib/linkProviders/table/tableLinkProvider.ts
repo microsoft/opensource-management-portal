@@ -16,8 +16,8 @@ import { ICorporateLinkProperties, ICorporateLink, ICorporateLinkExtended, Corpo
 import { CorporateTableLink } from './tableLink';
 import { ILinkProvider } from '..';
 
-const tableEntity = require('../../tableEntity');
-const tableEncryption = require('../../tableEncryption');
+import tableEntity from '../../tableEntity';
+import tableEncryption from '../../tableEncryption';
 
 const defaultThirdPartyType = 'github';
 const defaultPageSize = 500;
@@ -63,6 +63,8 @@ const linkInterfacePropertyMapping : ITableLinkProperties = {
   corporateId: 'aadoid',
   corporateUsername: 'aadupn',
   corporateDisplayName: 'aadname',
+  corporateMailAddress: 'corporateMailAddress', // NOTE: this was not part of the original table entity
+  corporateAlias: 'corporateAlias', // NOTE: this was not part of the original table entity
 
   thirdPartyId: 'ghid',
   thirdPartyUsername: 'ghu',
@@ -78,6 +80,7 @@ const coreColumns = [
   'aadoid',
   'aadupn',
   'aadname',
+  'corporateMailAddress',
   'serviceAccount',
   'serviceAccountMail',
   'linkid',

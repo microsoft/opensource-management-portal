@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-const sslify = require('express-sslify');
+import sslify from 'express-sslify';
 
-module.exports = sslify.HTTPS(
+export default sslify.HTTPS(
   { trustAzureHeader: true }
 );

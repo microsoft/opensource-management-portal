@@ -10,7 +10,7 @@ const router = express.Router();
 import { IProviders } from '../transitional';
 import { setIdentity } from '../middleware/business/authentication';
 import { AddLinkToRequest } from '../middleware/links';
-import { jsonError } from '../middleware/jsonError';
+import { jsonError } from '../middleware';
 import { apiContextMiddleware } from '../middleware/business/setContext';
 import { ILocalExtensionKeyProvider } from '../entities/localExtensionKey';
 import { LocalExtensionKey } from '../entities/localExtensionKey/localExtensionKey';

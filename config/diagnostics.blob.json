@@ -1,0 +1,5 @@
+{
+  "account": "env://DIAGNOSTICS_BLOB_DROP_ACCOUNT",
+  "key": "env://DIAGNOSTICS_BLOB_DROP_KEY",
+  "container": "env://DIAGNOSTICS_BLOB_DROP_CONTAINER"
+}

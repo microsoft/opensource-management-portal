@@ -45,6 +45,10 @@ export default function returnCombinedMiddleware(supportedProviders) {
         authErrorMessages.push(error.authErrorMessage);
       }
 
+      if (error.immediate === true) {
+        return next(error);
+      }
+
       ++i;
       if (i >= totalProviders) {
         authErrorMessages.push('Authentication failed, no providers were able to authorize you');

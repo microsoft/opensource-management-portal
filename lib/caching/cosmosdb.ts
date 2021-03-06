@@ -7,6 +7,7 @@ import { ICacheHelper } from ".";
 import { CosmosClient, Database, Container } from "@azure/cosmos";
 import BlobCache, { IBlobCacheOptions } from "./blob";
 import { sleep } from "../../utils";
+import { ErrorHelper } from "../../transitional";
 
 const debug = require('debug')('cache');
 
@@ -301,9 +302,13 @@ export default class CosmosCache implements ICacheHelper {
 
   async delete(key: string): Promise<void> {
     try {
-      await this._collection.item(key, key).delete();
+      key = this.key(key);
+      const item = this._collection.item(key, key);
+      await item.delete();
     } catch (cosmosError) {
-      console.dir(cosmosError);
+      if (!ErrorHelper.IsNotFound(cosmosError)) {
+        console.dir(cosmosError);
+      }
       throw cosmosError;
     }
   }

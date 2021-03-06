@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ReposAppRequest, IReposAppResponse, UserAlertType, IDictionary, IProviders } from '../transitional';
+import { ReposAppRequest, IReposAppResponse, UserAlertType, IDictionary, IProviders, IAppSession } from '../transitional';
 
 import { ICorporateLink } from '../business/corporateLink';
 
@@ -15,15 +15,15 @@ import { UserContext } from "./aggregate";
 import pugLoad from 'pug-load';
 import fs from 'fs';
 
-const objectPath = require('object-path');
+import objectPath from 'object-path';
 
 const debug = require('debug')('context');
 
 // - - - identity
 
 export enum GitHubIdentitySource {
-  Link,
-  Session,
+  Link = 'link',
+  Session = 'session',
 }
 
 export interface IGitHubIdentity {
@@ -253,7 +253,7 @@ export class WebContext {
       optionalLink: optionalLink,
       optionalCaption: optionalCaption,
     };
-    const session = this._request['session'];
+    const session = this._request['session'] as IAppSession;
     if (session) {
       if (session.alerts && session.alerts.length) {
         session.alerts.push(alert);
@@ -441,7 +441,8 @@ export class IndividualContext {
   }
 
   hasGitHubOrganizationWriteToken() : boolean {
-    return false;
+    const hasToken = !!this.webContext?.tokens?.gitHubWriteOrganizationToken;
+    return hasToken;
   }
 
   get aggregations(): UserContext {
@@ -492,6 +493,8 @@ export class IndividualContext {
       corporateId: corporateIdentity.id,
       corporateUsername: corporateIdentity.username,
       corporateDisplayName: corporateIdentity.displayName,
+      corporateMailAddress: null,
+      corporateAlias: null,
       isServiceAccount: false,
       serviceAccountMail: undefined,
     };

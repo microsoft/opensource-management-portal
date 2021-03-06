@@ -55,6 +55,8 @@ export default async function postLinkApi(req: IApiRequest, res, next) {
     corporateId: corporateId,
     corporateUsername: null,
     corporateDisplayName: null,
+    corporateMailAddress: null,
+    corporateAlias: null,
     isServiceAccount: false,
     serviceAccountMail,
   };

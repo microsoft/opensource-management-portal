@@ -6,7 +6,7 @@
 import { Team, GitHubTeamRole, ITeamMembershipRoleState } from '../business/team';
 import { Operations } from '../business/operations';
 import { IndividualContext } from '../user';
-import { NoRestApiCache, ErrorHelper } from '../transitional';
+import { ErrorHelper, NoCacheNoBackground } from '../transitional';
 import { asNumber, addArrayToSet } from '../utils';
 import { IMail } from '../lib/mailProvider';
 import { OrganizationMembershipState } from '../business/organization';
@@ -48,7 +48,7 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
   }
 
   async isTeamEligible(cacheOk?: boolean): Promise<ISelfServiceAllowedResult | string> {
-    const cacheOptions = cacheOk ? {} : NoRestApiCache;
+    const cacheOptions = cacheOk ? {} : NoCacheNoBackground;
     const team = this.#team;
     const maintainersCount = (await team.getMaintainers(cacheOptions)).length;
     if (maintainersCount > this.maximumAllowedMaintainers()) {
@@ -62,7 +62,7 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
   }
 
   async isUserTeamMember(login: string): Promise<boolean> {
-    const membership = await this.#team.getMembership(login, NoRestApiCache) as ITeamMembershipRoleState;
+    const membership = await this.#team.getMembership(login, NoCacheNoBackground) as ITeamMembershipRoleState;
     return (membership.state === OrganizationMembershipState.Active && membership.role === GitHubTeamRole.Member);
   }
 
@@ -113,7 +113,7 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
     }
     // Refresh for display
     try {
-      await team.getMaintainers(NoRestApiCache);
+      await team.getMaintainers(NoCacheNoBackground);
     } catch (ignoreTeamRefreshErrors) {
       console.log('ignoreTeamRefreshErrors:');
       console.warn(ignoreTeamRefreshErrors);

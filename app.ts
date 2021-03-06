@@ -89,7 +89,7 @@ async function startup(startupApplication: boolean) {
     }
   } catch (startupError) {
     console.error(`Startup error: ${startupError}`);
-    throw startupError;
+    process.exit(1); // throw startupError;
   }
 
   return app;

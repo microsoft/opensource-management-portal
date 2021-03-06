@@ -40,6 +40,6 @@ function keyVaultSecretResolver(keyVaultClient, id, callback) {
   });
 }
 
-module.exports = function createKeyVaultResolver(keyVaultClient) {
+export default function createKeyVaultResolver(keyVaultClient) {
   return keyVaultSecretResolver.bind(undefined, keyVaultClient);
 };

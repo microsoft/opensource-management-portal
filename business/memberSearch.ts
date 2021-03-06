@@ -16,14 +16,6 @@ const earlyProfileFetchTypes = new Set(['former', 'active', 'unknownAccount']);
 const defaultPageSize = 33; // GitHub.com seems to use a value around 33
 const earlyFetchPageBreak = 200;
 
-interface ICorporateProfile {
-  corporateDisplayName?: string;
-  corporateId?: string;
-  corporateUsername?: string;
-  alias?: string;
-  emailAddress?: string;
-}
-
 export interface IMemberSearchOptions {
   providers: IProviders;
 
@@ -41,8 +33,6 @@ export interface IMemberSearchOptions {
 }
 
 export class MemberSearch {
-  private static runtimeCache = new Map<string, ICorporateProfile | boolean>();
-
   #providers: IProviders;
 
   public members: OrganizationMember[];
@@ -184,71 +174,10 @@ export class MemberSearch {
   }
 
   async getCorporateProfiles(): Promise<MemberSearch> {
-    const projectLinkAsCorporateProfile = this.type !== 'former';
-    if (this.#providers && this.#providers.corporateContactProvider) {
-      const corporateContactProvider = this.#providers.corporateContactProvider;
-      let bulk: Map<string, ICorporateProfile | boolean> = new Map();
-      const runtimeCache = MemberSearch.runtimeCache;
-      let membersWithoutCorporateProfile = this.members.filter(member =>
-        member.link && member.link.corporateUsername && (member.corporate === undefined || member.corporate === null));
-      if (membersWithoutCorporateProfile.length === 0) {
-        return this;
-      }
-      if (this.pageSize > earlyFetchPageBreak || membersWithoutCorporateProfile.length > earlyFetchPageBreak) {
-        try {
-          bulk = await corporateContactProvider.getBulkCachedContacts();
-        } catch (bulkReadError) {
-          console.warn(bulkReadError);
-        }
-      }
-      for (const member of membersWithoutCorporateProfile) {
-        const link = member.link as ICorporateLink;
-        const username = link.corporateUsername;
-        let runtimeValue = runtimeCache.get(username);
-        if (runtimeValue === false) {
-          // Confirmed during this runtime, no value is available, no need to keep trying to retrieve it.
-          if (projectLinkAsCorporateProfile) {
-            member.corporate = link;
-          }
-          continue;
-        } else if (runtimeValue) {
-          member.corporate = runtimeValue;
-          continue;
-        }
-        let bulkResponse = bulk.get(username);
-        let profile: ICorporateProfile = bulkResponse && bulkResponse !== false ? bulkResponse as ICorporateProfile : null;
-        if (profile || bulkResponse === false) {
-          runtimeCache.set(username, profile || false);
-          member.corporate = profile;
-          continue;
-        }
-        if (!profile) {
-          let contacts: ICorporateProfile = null;
-          try {
-            contacts = await corporateContactProvider.lookupContacts(username);
-          } catch (lookupError) {
-            console.log(`corporateContactProvider: lookup error for ${username}: ${lookupError}`);
-          }
-          if (contacts) {
-            profile = {
-              corporateDisplayName: link?.corporateDisplayName,
-              corporateId: link?.corporateId,
-              corporateUsername: link?.corporateUsername,
-              alias: contacts.alias,
-              emailAddress: contacts.emailAddress,
-            };
-            member.corporate = profile;
-            runtimeCache.set(username, profile);
-          } else if (projectLinkAsCorporateProfile) {
-            member.corporate = link;
-            runtimeCache.set(username, false);
-          } else {
-            runtimeCache.set(username, false);
-          }
-        }
-      }
-      return this;
-    }
+    // const projectLinkAsCorporateProfile = this.type !== 'former';
+    // corporate.alias -> corporateMailAddress (?)
+    // corporate.emailAddress -> corporateAlias
+    return this;
   }
 
   determinePages() {
@@ -276,22 +205,22 @@ export class MemberSearch {
     let filter = null;
     switch (type) {
       case 'linked':
-        filter = r => { return r.link && r.link.thirdPartyId; };
+        filter = (r: OrganizationMember) => { return r.link && r.link.thirdPartyId; };
         break;
       case 'unlinked':
-        filter = r => { return !r.link; };
+        filter = (r: OrganizationMember) => { return !r.link; };
         break;
       case 'unknownAccount':
-        filter = r => { return r.link && r.link.thirdPartyId && (!r.corporate || !r.corporate.userPrincipalName); };
+        filter = (r: OrganizationMember) => { return r.link && r.link.thirdPartyId && (!r.link || !r.link.corporateUsername); };
         break;
       case 'former':
-        filter = r => { return r.link && r.link.thirdPartyId && !r.link.serviceAccount && (!r.corporate || !r.corporate.userPrincipalName); };
+        filter = (r: OrganizationMember) => { return r.link && r.link.thirdPartyId && !r.link.isServiceAccount && (!r.link || !r.link.corporateUsername); };
         break;
       case 'active':
-        filter = r => { return r.link && r.link.thirdPartyId && r.link.corporateId && !r.link.serviceAccount && r.corporate && r.corporate.userPrincipalName; };
+        filter = (r: OrganizationMember) => { return r.link && r.link.thirdPartyId && r.link.corporateId && !r.link.isServiceAccount && r.link && r.link.corporateUsername; };
         break;
       case 'serviceAccount':
-        filter = r => { return r.link && r.link.isServiceAccount; };
+        filter = (r: OrganizationMember) => { return r.link && r.link.isServiceAccount; };
         break;
     }
     if (filter) {
@@ -359,8 +288,8 @@ function translateMembers(members, isOrganizationScoped, optionalLinks) {
 
 function memberMatchesPhrase(member, phrase) {
   const link = member.link as ICorporateLink;
-  let linkIdentity = link ? `${link.corporateUsername} ${link.corporateDisplayName} ${link.corporateId} ${link.thirdPartyUsername} ${link.thirdPartyId} ` : '';
+  let linkIdentity = link ? `${link.corporateUsername} ${link.corporateDisplayName} ${link.corporateId} ${link.thirdPartyUsername} ${link.thirdPartyId} ${link.corporateMailAddress} ${link.corporateAlias}` : '';
   let accountIdentity = member.login ? member.login.toLowerCase() : member.account.login.toLowerCase();
-  let combined = (linkIdentity + accountIdentity).toLowerCase();
+  let combined = (linkIdentity + ' ' + accountIdentity).toLowerCase();
   return combined.includes(phrase);
 }
