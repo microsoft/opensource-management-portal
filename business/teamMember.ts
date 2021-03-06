@@ -63,6 +63,14 @@ export class TeamMember {
     this._operations = operations;
   }
 
+  asJson() {
+    return {
+      id: this.id,
+      login: this.login,
+      avatar_url: this.avatar_url,
+    };
+  }
+
   // ----------------------------------------------------------------------------
   // Retrieves the URL for the user's avatar, if present. If the user's details
   // have not been loaded, we will not yet have an avatar URL.

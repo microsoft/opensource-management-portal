@@ -25,6 +25,9 @@ interface IRepositoryCollaboratorCacheProperties {
   userId: any;
   permission: any;
 
+  repositoryPrivate: any;
+  repositoryName: any;
+
   login: any;
   avatar: any;
   collaboratorType: any;
@@ -36,6 +39,8 @@ const Field: IRepositoryCollaboratorCacheProperties = {
 
   organizationId: 'organizationId',
   repositoryId: 'repositoryId',
+  repositoryName: 'repositoryName',
+  repositoryPrivate: 'repositoryPrivate',
   userId: 'userId',
   permission: 'permission',
   login: 'login',
@@ -52,6 +57,9 @@ export class RepositoryCollaboratorCacheEntity implements IRepositoryCollaborato
   organizationId: string;
   repositoryId: string;
   userId: string;
+
+  repositoryName: string;
+  repositoryPrivate: boolean;
 
   permission: GitHubRepositoryPermission;
   login: string;
@@ -88,7 +96,16 @@ export class RepositoryCollaboratorCacheDeleteByOrganizationId implements IEntit
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryCollaboratorCacheDeleteByOrganizationId;
   constructor(public organizationId: string) {
     if (typeof(this.organizationId) !== 'string') {
-      throw new Error(`${organizationId} must be a string`);
+      throw new Error(`organizationId ${organizationId} must be a string`);
+    }
+  }
+}
+
+export class RepositoryCollaboratorCacheDeleteByRepositoryId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryCollaboratorCacheDeleteByRepositoryId;
+  constructor(public repositoryId: string) {
+    if (typeof(this.repositoryId) !== 'string') {
+      throw new Error(`repositoryId ${repositoryId} must be a string`);
     }
   }
 }
@@ -130,6 +147,8 @@ EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, new Map<stri
   [Field.organizationId, 'orgid'],
   [Field.permission, 'permission'],
   [Field.repositoryId, 'repoid'],
+  [Field.repositoryName, 'reponame'],
+  [Field.repositoryPrivate, 'repoprivate'],
   [Field.uniqueId, 'unique'],
   [Field.userId, 'userid'],
   [Field.collaboratorType, 'collaboratorType'],
@@ -143,6 +162,8 @@ PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
   [Field.cacheUpdated, (Field.cacheUpdated as string).toLowerCase()],
   [Field.login, (Field.login as string).toLowerCase()],
   [Field.organizationId, (Field.organizationId as string).toLowerCase()], // net new
+  [Field.repositoryName, (Field.repositoryName as string).toLowerCase()], // net new
+  [Field.repositoryPrivate, (Field.repositoryPrivate as string).toLowerCase()], // net new
   [Field.permission, (Field.permission as string).toLowerCase()],
   [Field.repositoryId, (Field.repositoryId as string).toLowerCase()],
   [Field.uniqueId, (Field.uniqueId as string).toLowerCase()],
@@ -180,6 +201,14 @@ EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: 
       return {
         sql: (`DELETE FROM ${tableName} WHERE ${metadataColumnName}->>'organizationid' = $1`),
         values: [ organizationId ],
+        skipEntityMapping: true,
+      };
+    }
+    case FixedQueryType.RepositoryCollaboratorCacheDeleteByRepositoryId: {
+      const { repositoryId } = query as RepositoryCollaboratorCacheDeleteByRepositoryId;
+      return {
+        sql: (`DELETE FROM ${tableName} WHERE ${metadataColumnName}->>'repositoryid' = $1`),
+        values: [ repositoryId ],
         skipEntityMapping: true,
       };
     }

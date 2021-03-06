@@ -7,10 +7,13 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, NoRestApiCache, IProviders, RequestTeamMemberAddType, UserAlertType } from '../../../transitional';
+import { ReposAppRequest, IProviders, RequestTeamMemberAddType, UserAlertType, NoCacheNoBackground } from '../../../transitional';
 import { Team } from '../../../business/team';
 import { TeamMember } from '../../../business/teamMember';
-const teamAdminRequired = require('./teamAdminRequired');
+
+import MiddlewareTeamAdminRequired from './teamAdminRequired';
+
+import RoutePeopleSearch from '../../peopleSearch';
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: Team;
@@ -30,7 +33,7 @@ router.use(asyncHandler(async (req: ILocalRequest, res, next) => {
 }));
 
 async function refreshMaintainers(team2: Team): Promise<TeamMember[]> {
-  return team2.getMaintainers(NoRestApiCache);
+  return team2.getMaintainers(NoCacheNoBackground);
 }
 
 router.get('/refresh', (req: ILocalRequest, res) => {
@@ -39,7 +42,7 @@ router.get('/refresh', (req: ILocalRequest, res) => {
 });
 
 
-router.post('/:id/downgrade', teamAdminRequired, asyncHandler(async (req: ILocalRequest, res, next) => {
+router.post('/:id/downgrade', MiddlewareTeamAdminRequired, asyncHandler(async (req: ILocalRequest, res, next) => {
   const team2 = req.team2 as Team;
   const id = req.params.id;
   const verifiedCurrentMaintainers = req.verifiedCurrentMaintainers;
@@ -61,12 +64,12 @@ router.post('/:id/downgrade', teamAdminRequired, asyncHandler(async (req: ILocal
   res.redirect(req.teamUrl);
 }));
 
-router.use('/add', teamAdminRequired, (req: ILocalRequest, res, next) => {
+router.use('/add', MiddlewareTeamAdminRequired, (req: ILocalRequest, res, next) => {
   req.team2AddType = RequestTeamMemberAddType.Maintainer;
   return next();
 });
 
-router.post('/add', teamAdminRequired, asyncHandler(async function (req: ILocalRequest, res, next) {
+router.post('/add', MiddlewareTeamAdminRequired, asyncHandler(async function (req: ILocalRequest, res, next) {
   const { operations } = req.app.settings.providers as IProviders;
   const login = operations.validateGitHubLogin(req.body.username);
   const team2 = req.team2 as Team;
@@ -76,6 +79,6 @@ router.post('/add', teamAdminRequired, asyncHandler(async function (req: ILocalR
   return res.redirect(req.teamUrl);
 }));
 
-router.use('/add', require('../../peopleSearch'));
+router.use('/add', RoutePeopleSearch);
 
-module.exports = router;
+export default router;

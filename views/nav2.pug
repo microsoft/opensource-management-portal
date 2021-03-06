@@ -79,7 +79,7 @@ div.navbar.navbar-default(style=reposContext ? 'margin-bottom:0' : undefined)
           a(
             style=((reposContext && !reposContext.releaseTab) && site === 'github' && ossLink && reposContext) ? 'color:#fff;background-color:#0072C6' : undefined,
             href='/') GitHub
-        li(class={ active: site === 'resources' })
+        //-li(class={ active: site === 'resources' })
           a(href=config.microsoftOpenSource.explore + 'resources') About
         //-form.navbar-form.navbar-right
           div.form-group

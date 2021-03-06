@@ -4,7 +4,7 @@
 //
 
 import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { RepositoryCollaboratorCacheEntity, EntityImplementation, RepositoryCollaboratorCacheFixedQueryAll, RepositoryCollaboratorCacheFixedQueryByOrganizationId, RepositoryCollaboratorCacheFixedQueryByUserId, RepositoryCollaboratorCacheFixedQueryByRepositoryId, RepositoryCollaboratorCacheDeleteByOrganizationId, RepositoryCollaboratorCacheGetOrganizationIdsQuery } from './repositoryCollaboratorCache';
+import { RepositoryCollaboratorCacheEntity, EntityImplementation, RepositoryCollaboratorCacheFixedQueryAll, RepositoryCollaboratorCacheFixedQueryByOrganizationId, RepositoryCollaboratorCacheFixedQueryByUserId, RepositoryCollaboratorCacheFixedQueryByRepositoryId, RepositoryCollaboratorCacheDeleteByOrganizationId, RepositoryCollaboratorCacheGetOrganizationIdsQuery, RepositoryCollaboratorCacheDeleteByRepositoryId } from './repositoryCollaboratorCache';
 
 const thisProviderType = EntityImplementation.Type;
 
@@ -25,6 +25,7 @@ export interface IRepositoryCollaboratorCacheProvider {
   queryCollaboratorsByUserId(userId: string): Promise<RepositoryCollaboratorCacheEntity[]>;
   queryAllOrganizationIds(): Promise<string[]>;
   deleteByOrganizationId(organizationId: string): Promise<void>;
+  deleteByRepositoryId(repositoryId: string): Promise<void>;
 }
 
 export class RepositoryCollaboratorCacheProvider extends EntityMetadataBase implements IRepositoryCollaboratorCacheProvider {
@@ -108,6 +109,11 @@ export class RepositoryCollaboratorCacheProvider extends EntityMetadataBase impl
 
   async deleteByOrganizationId(organizationId: string): Promise<void> {
     const query = new RepositoryCollaboratorCacheDeleteByOrganizationId(organizationId);
+    await this._entities.fixedQueryMetadata(thisProviderType, query);
+  }
+
+  async deleteByRepositoryId(repositoryId: string): Promise<void> {
+    const query = new RepositoryCollaboratorCacheDeleteByRepositoryId(repositoryId);
     await this._entities.fixedQueryMetadata(thisProviderType, query);
   }
 }

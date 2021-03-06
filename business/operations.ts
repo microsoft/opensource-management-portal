@@ -32,6 +32,7 @@ import { IMail } from '../lib/mailProvider';
 import { ILinkProvider } from '../lib/linkProviders';
 import { getUserAndManagerById, IGraphEntryWithManager } from '../lib/graphProvider';
 import { ICacheHelper } from '../lib/caching';
+import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 
 const throwIfOrganizationIdsMissing = true;
 
@@ -298,7 +299,7 @@ export class Operations {
     // const hasConfiguredOrganizations = this.config.github.organizations && this.config.github.organizations.length;
     const organizationSettingsProvider = this.providers.organizationSettingsProvider;
     if (hasModernGitHubApps && organizationSettingsProvider) {
-      const dynamicOrganizations = (await organizationSettingsProvider.queryAllOrganizations()).filter(dynamicOrg => dynamicOrg.active === true);
+      const dynamicOrganizations = (await organizationSettingsProvider.queryAllOrganizations()).filter(dynamicOrg => dynamicOrg.active === true && !dynamicOrg.hasFeature('ignore'));
       this._dynamicOrganizationSettings = dynamicOrganizations;
       this._dynamicOrganizationIds = new Set(dynamicOrganizations.map(org => asNumber(org.organizationId)));
     }
@@ -415,7 +416,7 @@ export class Operations {
   }
 
   private async getAppAuthorizationHeader(tokenManager: GitHubTokenManager, appId: number): Promise<string> {
-    const jwt = tokenManager.getAppById(appId).getSignedJsonWebToken();
+    const jwt = await tokenManager.getAppById(appId).getAppAuthenticationToken();
     const value = `bearer ${jwt}`;
     return value;
   }
@@ -495,7 +496,8 @@ export class Operations {
   }
 
   getUnconfiguredOrganization(settings: OrganizationSetting): Organization {
-    return this.createOrganization(settings.organizationName.toLowerCase(), settings, null, GitHubAppAuthenticationType.ForceSpecificInstallation);
+    // was: ForceSpecificInstallation
+    return this.createOrganization(settings.organizationName.toLowerCase(), settings, null, GitHubAppAuthenticationType.BestAvailable);
   }
 
   getUncontrolledOrganization(organizationName: string, organizationId?: number): Organization {
@@ -575,8 +577,12 @@ export class Operations {
   }
 
   validateGitHubLogin(username: string) {
-    if (!githubUsernameRegex.test(username)) {
-      throw new Error('Invalid GitHub username format');
+    // There are some legitimate usernames at GitHub that have a dash
+    // in them. While GitHub no longer allows this for new accounts,
+    // they are grandfathered in.
+    if (!githubUsernameRegex.test(username) && !username.endsWith('-')) {
+      console.warn(`Invalid GitHub username format: ${username}`);
+      // throw new Error(`Invalid GitHub username format: ${username}`);
     }
     return username;
   }
@@ -679,6 +685,11 @@ export class Operations {
         mailAddress = corporateAccount.mail || link.serviceAccountMail;
         link.corporateDisplayName = corporateAccount.displayName;
         link.corporateUsername = corporateAccount.userPrincipalName;
+        link.corporateMailAddress = corporateAccount.mail;
+        // NOTE: this is strongly typed to the AAD graph info response right now instead of more generic
+        if (corporateAccount.mailNickname) {
+          link.corporateAlias = corporateAccount.mailNickname.toLowerCase();
+        }
         // Validate that the corporate account can be linked
         if (corporateInfo.type === SupportedLinkType.ServiceAccount) {
           if (!link.serviceAccountMail) {
@@ -759,6 +770,8 @@ export class Operations {
       correlationId,
       content: undefined,
     };
+    const companySpecific = getCompanySpecificDeployment();
+    const companySpecificStrings = companySpecific?.strings || {};
     const contentOptions = {
       reason: (`You are receiving this one-time e-mail because you have linked your account.
                 To stop receiving these mails, you can unlink your account.
@@ -769,6 +782,7 @@ export class Operations {
       correlationId,
       docs: config && config.microsoftOpenSource ? config.microsoftOpenSource.docs : null,
       companyName: config.brand.companyName,
+      customStrings: companySpecificStrings,
       link,
     };
     try {
@@ -1088,14 +1102,23 @@ export class Operations {
 
   getOrganization(name: string): Organization {
     if (!name) {
-      throw new Error('getOrganization: name required');
+      throw CreateError.ParameterRequired('name');
     }
     const lc = name.toLowerCase();
     const organization = this.organizations.get(lc);
     if (!organization) {
-      throw new Error(`Could not find configuration for the "${name}" organization.`);
+      throw CreateError.NotFound(`Could not find configuration for the "${name}" organization.`);
     }
     return organization;
+  }
+
+  isOrganizationManagedById(organizationId: number): boolean {
+    try {
+      this.getOrganizationById(organizationId);
+      return true;
+    } catch (notConfigured) {
+      return false;
+    }
   }
 
   getOrganizationById(organizationId: number): Organization {
@@ -1108,7 +1131,7 @@ export class Operations {
     }
     const org = this._organizationIds.get(organizationId);
     if (!org) {
-      throw new Error(`getOrganizationById: no configured ID for an organization with ID ${organizationId}`);
+      throw CreateError.NotFound(`getOrganizationById: no configured ID for an organization with ID ${organizationId}`);
     }
     return org;
   }
@@ -1177,6 +1200,26 @@ export class Operations {
         const link = await this.getLinkByThirdPartyId(thirdPartyId);
         if (link) {
           corporateLinks.push(link);
+        }
+      } catch (noLinkError) {
+        if (!ErrorHelper.IsNotFound(noLinkError)) {
+          console.dir(noLinkError);
+        }
+      }
+    })));
+    return corporateLinks;
+  }
+
+  async getLinksFromCorporateIds(corporateIds: string[]): Promise<ICorporateLink[]> {
+    const corporateLinks: ICorporateLink[] = [];
+    const throttle = throat(ParallelLinkLookup);
+    await Promise.all(corporateIds.map(corporateId => throttle(async () => {
+      try {
+        const links = await this.linkProvider.queryByCorporateId(corporateId);
+        if (links && links.length === 1) {
+          corporateLinks.push(links[0]);
+        } else if (links.length > 1) {
+          throw new Error('Multiple links not supported');
         }
       } catch (noLinkError) {
         console.dir(noLinkError);
@@ -1399,7 +1442,7 @@ export class Operations {
     options = options || {};
     const operations = this;
     if (!username) {
-      throw new Error('Must provide a GitHub username to retrieve account information.');
+      throw CreateError.ParameterRequired('username');
     }
     const parameters = {
       username: username,

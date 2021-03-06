@@ -107,6 +107,21 @@ block content
       form(method='post')
         input.btn.btn-primary(type='submit', name='adopt-new-org', value='Adopt new organization')
 
+      hr
+      h2 Ownership option
+      p To help with onboarding, before adoption, this may be available:
+      if isUserOwner === true
+        p: strong You are an owner of this org.
+      else if isUserOwner === false
+        p: strong You are a member of this org but not an owner.
+      else
+        p: strong You are not a member of this org.
+      if userCheckError
+        p= 'User check error: ' + userCheckError.toString()
+      if !isUserOwner
+        form(method='post')
+          input.btn.btn-danger.btn-sm(type='submit', name='elevate-to-owner', value='Elevate to owner')
+
     if proposedDynamicSettings
       h4 Proposed imported settings
       +displayConfiguration(proposedDynamicSettings)

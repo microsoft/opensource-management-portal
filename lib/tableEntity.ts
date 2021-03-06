@@ -19,7 +19,7 @@ function reduceEntity(instance) {
   return instance;
 }
 
-function createEntity(partitionKey, rowKey, obj, callback) {
+function createEntity(partitionKey, rowKey, obj?, callback?) {
   if (typeof (obj) === 'function') {
     callback = obj;
     obj = undefined;
@@ -38,7 +38,7 @@ function createEntity(partitionKey, rowKey, obj, callback) {
   }
 }
 
-function mergeIntoEntity(entity, obj, callback) {
+function mergeIntoEntity(entity, obj, callback?) {
   // Pretty legacy code...
   if (obj) {
     for (let key in obj) {
@@ -80,7 +80,7 @@ function mergeIntoEntity(entity, obj, callback) {
   }
 }
 
-module.exports = {
+export default {
   reduce: reduceEntity,
   create: createEntity,
   merge: mergeIntoEntity,

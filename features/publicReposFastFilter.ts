@@ -8,9 +8,12 @@ import { Repository } from '../business/repository';
 
 // TODO: refresh occassionally.
 
+const RepoSocialImagesCacheKey = 'repos:socialmediaimages';
+
 export default class PublicReposFastFilter {
   #providers: IProviders;
   #initialized: boolean;
+  #socialMediaImages: Map<number, string>;
 
   repositories: Repository[];
 
@@ -22,6 +25,11 @@ export default class PublicReposFastFilter {
     this.#providers = providers;
   }
 
+  tryGetSocialMediaImage(repository: Repository) {
+    const asNumber = Number(repository.id);
+    return this.#socialMediaImages ? this.#socialMediaImages.get(asNumber) : null;
+  }
+
   async initialize() {
     if (!this.#providers.queryCache) {
       throw new Error('Query cache provider must be available');
@@ -29,7 +37,18 @@ export default class PublicReposFastFilter {
     if (!this.#providers.queryCache.supportsRepositories) {
       throw new Error('Query cache of repositories must be available');
     }
-    const { queryCache } = this.#providers;
+    const { queryCache, cacheProvider } = this.#providers;
+    
+    try {
+      const socialMediaImagesValue = await cacheProvider.getCompressed(RepoSocialImagesCacheKey);
+      if (socialMediaImagesValue) {
+        const parsed = JSON.parse(socialMediaImagesValue);
+        this.#socialMediaImages = new Map(parsed);
+      }
+    } catch (ignoreError) {
+      console.error(ignoreError);
+    }
+
     const repositories = (await queryCache.allRepositories()).filter(repo => !repo.repository.private);
     this.repositories = repositories.map(entry => entry.repository);
 

@@ -208,6 +208,7 @@ export class UserContext {
     // Find all the repos that the user have permission to across all configured orgs
     function getOrCreatePair(repositoryId: string, repository: Repository): IRepositoryPermissionPair {
       let pair = repositories.get(repositoryId);
+      let newPair = !!pair;
       if (!pair) {
         pair = {
           repository: repository,
@@ -215,6 +216,9 @@ export class UserContext {
           teamPermissions: [],
         };
         repositories.set(repositoryId, pair);
+      }
+      if (newPair) {
+        // console.log(`${newPair ? 'new' : 'exi'}: ${repositoryId} + ${pair.repository.name} + ${pair.repository.id}`);
       }
       return pair;
     }
@@ -283,7 +287,7 @@ export class UserContext {
         if (role !== GitHubTeamRole.Maintainer && role !== GitHubTeamRole.Member) {
           throw new Error(`Unrecognized or invalid role ${role} for team ID ${team.id} in org ${team.organization.name}`);
         }
-        const bucket = GitHubTeamRole.Maintainer ? maintainer : member;
+        const bucket = role === GitHubTeamRole.Maintainer ? maintainer : member;
         await team.getDetails();
         bucket.push(team);
       } catch (getTeamInfoError) {

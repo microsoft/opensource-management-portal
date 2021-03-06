@@ -9,9 +9,10 @@ const router = express.Router();
 
 import { ReposAppRequest } from '../../transitional';
 import { popSessionVariable } from '../../utils';
-const lowercaser = require('../../middleware/lowercaser');
+import lowercaser from '../../middleware/lowercaser';
 
-const teamRoute = require('./team/');
+import RouteTeam from './team/';
+import RouteTeamsPager from '../teamsPager';
 
 interface ITeamsRequest extends ReposAppRequest {
   team2?: any;
@@ -35,7 +36,7 @@ router.get('/', function (req, res, next) {
   return next();
 });
 
-router.get('/', lowercaser(['sort', 'set']), require('../teamsPager'));
+router.get('/', lowercaser(['sort', 'set']), RouteTeamsPager);
 
 router.use('/:teamSlug', asyncHandler(async (req: ITeamsRequest, res, next) => {
   const organization = req.organization;
@@ -59,6 +60,6 @@ router.use('/:teamSlug', asyncHandler(async (req: ITeamsRequest, res, next) => {
   }
 }));
 
-router.use('/:teamname', teamRoute);
+router.use('/:teamname', RouteTeam);
 
-module.exports = router;
+export default router;

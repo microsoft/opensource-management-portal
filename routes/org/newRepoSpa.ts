@@ -41,4 +41,4 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res) {
   });
 }));
 
-module.exports = router;
+export default router;

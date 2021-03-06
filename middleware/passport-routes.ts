@@ -3,13 +3,28 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-const querystring = require('querystring');
+import querystring from 'querystring';
 
 import { redirectToReferrer, storeReferrer } from '../utils';
 import { getGithubAppConfigurationOptions } from './passport/githubStrategy';
-import { IReposError } from '../transitional';
+import { IProviders, IReposError } from '../transitional';
 
 function newSessionAfterAuthentication(req, res, next) {
+  // Same site issues
+  if (req.query && req.query.failure === 'invalid') {
+    console.log('Invalid callback from AAD. Likely a SameSite issue.');
+    const { config } = req.app.settings.providers as IProviders;
+    if (config?.session?.name) {
+      try {
+      const sessionName = config.session.name;
+      res.clearCookie(sessionName);
+      req.session.destroy();
+      } catch (warnError) {
+        console.warn(warnError);
+      }
+    }
+    return res.redirect('/');
+  }
   // Prevent session hijacking by generating a new session once authenticated.
   const preserve = Object.assign({}, req.session);
   ['cookie', 'id', 'OIDC', 'req', 'seen'].map(key => delete preserve[key]);
@@ -31,9 +46,27 @@ function newSessionAfterAuthentication(req, res, next) {
   });
 }
 
-module.exports = function configurePassport(app, passport, initialConfig) {
-  app.get('/signin', function (req, res) {
-    storeReferrer(req, res, '/auth/azure', 'signin page hit, need to go authenticate');
+export default function configurePassport(app, passport, initialConfig) {
+  app.get('/signin', function (req, res, next) {
+    if (req.isAuthenticated()) {
+      const username = req.user?.azure?.username;
+      if (username) {
+        // Do not sign in yet again
+        const nextDestination = req.headers?.referer || '/';
+        return res.redirect(nextDestination);
+      }
+    }
+    // const currentlyStoredSessionReferer = req.session?.referer || undefined;
+    // req.session.regenerate(function (err) {
+    //   if (err) {
+    //     return next(err);
+    //   }
+    //   if (currentlyStoredSessionReferer && req.session) {
+    //     req.session.referer = currentlyStoredSessionReferer;
+    //   }
+    //   storeReferrer(req, res, '/auth/azure', 'signin page hit, need to go authenticate');
+    // });
+    return storeReferrer(req, res, '/auth/azure', 'signin page hit, need to go authenticate');
   });
 
   // ----------------------------------------------------------------------------
@@ -160,7 +193,7 @@ module.exports = function configurePassport(app, passport, initialConfig) {
     });
   }
 
-  app.get('/signout', function (req, res) {
+  function signoutPage(req, res) {
     var config = req.app.settings.runtimeConfig;
     req.logout();
     if (req.session) {
@@ -178,7 +211,10 @@ module.exports = function configurePassport(app, passport, initialConfig) {
         config: initialConfig.obfuscatedConfig,
       });
     }
-  });
+  };
+
+  app.get('/signout',signoutPage);
+  app.get('/signout/goodbye',signoutPage);
 
   app.get('/signout/github', processSignout.bind(null, 'github', 'github,githubIncreasedScope'));
 
@@ -209,6 +245,23 @@ module.exports = function configurePassport(app, passport, initialConfig) {
   // passport integration with Azure Active Directory
   const aadMiddleware = initialConfig.authentication.scheme === 'github' ? passport.authorize('azure-active-directory') : passport.authenticate('azure-active-directory');
 
+  app.get('/auth/azure', (req, res, next) => {
+    // SameSite cookie auth fixes, will regenerate even more sessions before proceeding to redirect to AAD...
+    const currentlyStoredSessionReferer = req.session?.referer || undefined;
+    if (!req.session) {
+      return next();
+    }
+    return req.session.regenerate(function (err) {
+      if (err) {
+        return next(err);
+      }
+      if (currentlyStoredSessionReferer && req.session) {
+        req.session.referer = currentlyStoredSessionReferer;
+      }
+      return next();
+    });
+  });
+
   app.get('/auth/azure', aadMiddleware);
 
   app.post('/auth/azure/callback', aadMiddleware, newSessionAfterAuthentication, authenticationCallback.bind(null, 'aad', 'azure'));
@@ -231,15 +284,17 @@ module.exports = function configurePassport(app, passport, initialConfig) {
       });
     }
     const messageError: IReposError = new Error(
-      isAuthenticated ? 'Authentication initially failed, but you are good to go now.' : 'Authentication failed, possibly due to a state problem. This can happen when certain tools or apps launch URLs. Try signing in again now.');
+      isAuthenticated ? 'Authentication initially failed, but you are good to go now.' : 'Authentication failed, possibly due to SameSite cookie issues with newer browsers.');
     messageError.skipLog = true;
+    messageError.status = 400;
     if (isAuthenticated) {
-      messageError.skipOops = true;
-      messageError.detailed = 'Unfortunately we were not able to take you to the URL that you clicked on. If you go to that URL now, your request should work!';
-      messageError.fancyLink = {
-        link: '/',
-        title: 'Go to the site homepage',
-      };
+      return res.redirect('/');
+      // messageError.skipOops = true;
+      // messageError.detailed = 'Unfortunately we were not able to take you to the URL that you clicked on. If you go to that URL now, your request should work!';
+      // messageError.fancyLink = {
+      //   link: '/',
+      //   title: 'Go to the site homepage',
+      // };
     } else {
       messageError.fancyLink = {
         link: '/auth/azure',

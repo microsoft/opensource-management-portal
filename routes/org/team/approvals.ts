@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-const approvalRoute = require('./approval/');
+import RouteApproval from './approval';
 
 import { IRequestTeams, ReposAppRequest } from '../../../transitional';
 import { wrapError } from '../../../utils';
@@ -124,6 +124,10 @@ router.use('/:requestid', asyncHandler(async function (req: IRequestPlusApproval
       requestingUser: requestingUserAccount,
       id: requestid,
     };
+    if (String(approvalPackage.request.teamId) !== String(team.id)) {
+      res.status(400);
+      return next(new Error('Mismatch on team'));
+    }
     const engine = new PermissionWorkflowEngine(team, approvalPackage);
     req.individualContext.webContext.pushBreadcrumb(engine.typeName + ' Request');
     req.approvalEngine = engine;
@@ -134,6 +138,6 @@ router.use('/:requestid', asyncHandler(async function (req: IRequestPlusApproval
 }));
 
 // Pass on to the context-specific routes.
-router.use('/:requestid', approvalRoute);
+router.use('/:requestid', RouteApproval);
 
-module.exports = router;
+export default router;

@@ -16,4 +16,4 @@ router.get('/', function (req: ReposAppRequest, res) {
   });
 });
 
-module.exports = router;
+export default router;

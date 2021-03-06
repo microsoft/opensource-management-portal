@@ -24,4 +24,4 @@ router.post('/', asyncHandler(async (req: ILocalRequest, res, next) => {
   return res.redirect('/' + organization.name + '/teams');
 }));
 
-module.exports = router;
+export default router;

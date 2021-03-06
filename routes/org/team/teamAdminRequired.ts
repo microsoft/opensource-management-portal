@@ -5,7 +5,7 @@
 
 import { IReposError } from '../../../transitional';
 
-module.exports = (req, res, next) => {
+export default function middlewareTeamAdminRequired(req, res, next) {
   const teamPermissions = req.teamPermissions;
   if (!teamPermissions) {
     return next(new Error('No team permissions information available'));

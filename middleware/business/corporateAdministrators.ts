@@ -22,8 +22,9 @@ export function AuthorizeOnlyCorporateAdministrators(req: ReposAppRequest, res, 
   const administrators: string[] = config && config.administrators && config.administrators.corporateUsernames ? config.administrators.corporateUsernames : null;
   const username = individualContext.corporateIdentity.username;
   let isAuthorized = false;
-  if (administrators && username && administrators.includes(username)) {
+  if (administrators && username && administrators.includes(username.toLowerCase())) {
     return next();
   }
+  res.header('x-username', username);
   return denyRoute(next);
 }

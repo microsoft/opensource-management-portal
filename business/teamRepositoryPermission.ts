@@ -25,6 +25,13 @@ export class TeamRepositoryPermission {
     this._operations = operations;
   }
 
+  asJson() {
+    const repo = this._repository.asJson();
+    const permissions = this._permissions;
+    const combined = {...repo, permissions};
+    return combined;
+  }
+
   get team(): Team {
     return this._team;
   }

@@ -18,12 +18,13 @@ import { IPersonalizedUserAggregateRepositoryPermission } from '../business/grap
 import { IRequestTeamPermissions } from '../middleware/github/teamPermissions';
 import { UserContext } from '../user/aggregate';
 import { asNumber, daysInMilliseconds } from '../utils';
+import { TeamRepositoryPermission } from '../business/teamRepositoryPermission';
 
 interface IGetReposAndOptionalTeamPermissionsResponse {
   reposData: Repository[];
   ageInformation?: any;
   userRepos?: IPersonalizedUserAggregateRepositoryPermission[];
-  specificTeamRepos?: Repository[],
+  specificTeamRepos?: TeamRepositoryPermission[],
 }
 
 function sortOrgs(orgs) {
@@ -64,7 +65,7 @@ async function getReposAndOptionalTeamPermissions(organizationId: number, operat
   return { reposData, userRepos };
 }
 
-module.exports = asyncHandler(async function (req: IReposAppWithTeam, res: express.Response, next: express.NextFunction) {
+export default asyncHandler(async function (req: IReposAppWithTeam, res: express.Response, next: express.NextFunction) {
   const providers = req.app.settings.providers as IProviders;
   const operations = providers.operations;
   const queryCache = providers.queryCache;

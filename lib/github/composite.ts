@@ -7,14 +7,16 @@
 
 // Composite method/filter/call memoization
 
-const debug = require('debug')('restapi');
 import { v4 as uuidV4 } from 'uuid';
 import moment from 'moment';
-const semver = require('semver');
-import { IShouldServeCache, ApiContext, IntelligentEngine, IApiContextRedisKeys, IApiContextCacheValues, ApiContextType } from './core';
+import semver from 'semver';
 
-import appPackage = require('../../package.json');
+const debug = require('debug')('restapi');
+
+import { IShouldServeCache, ApiContext, IntelligentEngine, IApiContextRedisKeys, IApiContextCacheValues, ApiContextType, IRestMetadata, IRestResponse } from './core';
 import { IGetAuthorizationHeader } from '../../transitional';
+
+import appPackage from '../../package.json';
 
 const appVersion = appPackage.version;
 
@@ -85,7 +87,7 @@ export class CompositeApiContext extends ApiContext {
 
 export class CompositeIntelligentEngine extends IntelligentEngine {
 
-  withMetadataShouldCacheBeServed(apiContext: ApiContext, metadata: any): boolean | IShouldServeCache {
+  withMetadataShouldCacheBeServed(apiContext: ApiContext, metadata: IRestMetadata): boolean | IShouldServeCache {
     // result can be falsy OR an object; { cache: true, refresh: true }
     // cache: whether to use the cache, if available
     // refresh: whether to refresh in the background for a newer value
@@ -147,7 +149,7 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
     return shouldServeCache;
   }
 
-  withResponseShouldCacheBeServed(apiContext: ApiContext, response: any) {
+  withResponseShouldCacheBeServed(apiContext: ApiContext, response: IRestResponse) {
     if (typeof(response) === 'function') {
       throw new Error('The response must not be a function');
     }
@@ -161,23 +163,25 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
     apiContext.etag = response.headers.etag;
 
     // Probably should check; if original data has not changed at all, then return true.
-    if (response && response.headers && response.headers.updated === false) {
-      shouldUseCache = true;
-    }
+    // XXX: cannot find updated ever being set to false but...?
+    debug('composite.withResponseShouldCacheBeServed: not checking for updated = false so never serving cache');
+    // if (response && response.headers && response.headers.updated === false) {
+    //   shouldUseCache = true;
+    // }
 
     return shouldUseCache;
   }
 
-  optionalStripResponse(apiContext: ApiContext, response: any): any {
+  optionalStripResponse(apiContext: ApiContext, response: IRestResponse): IRestResponse {
     // Composite does not strip any results further before caching
     return response;
   }
 
-  withResponseUpdateMetadata(apiContext: ApiContext, response: any) {
+  withResponseUpdateMetadata(apiContext: ApiContext, response: IRestResponse) {
     return response;
   }
 
-  reduceMetadataToCacheFromResponse(apiContext: ApiContext, response: any) {
+  reduceMetadataToCacheFromResponse(apiContext: ApiContext, response: IRestResponse) {
     // No reduction for object type metadata.
     // Store the app version in case it is needed for a future
     // schema update or cache invalidation
@@ -187,7 +191,7 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
     }
   }
 
-  callApi(apiContext: CompositeApiContext) {
+  async callApi(apiContext: CompositeApiContext): Promise<IRestResponse> {
     const args = [];
     const apiMethod = apiContext.apiMethod;
     if (apiContext.token) {
@@ -196,18 +200,18 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
     const argOptions = Object.assign({}, apiContext.options);
     args.push(argOptions);
     const thisArgument = apiMethod.thisInstance || null;
-    let result = undefined;
+    let unknown = undefined;
     try {
-      result = apiMethod.apply(thisArgument, args);
+      unknown = await apiMethod.apply(thisArgument, args);
     } catch (applyError) {
       throw applyError;
     }
-    return result;
+    return unknown as IRestResponse;
   }
 
-  getResponseMetadata(apiContext: CompositeApiContext, response: any): Promise<any> {
+  getResponseMetadata(apiContext: CompositeApiContext, response: IRestResponse): IRestMetadata {
     const headers = response.headers || {};
-    let calledTime = apiContext.calledTime ? apiContext.calledTime.format() : moment().utc().format();
+    let calledTime = apiContext.calledTime ? apiContext.calledTime.toISOString() : (new Date()).toISOString();
     headers.updated = calledTime;
     let changed = calledTime;
     if (headers.dirty === true) {
@@ -218,11 +222,10 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
     headers.changed = changed;
     headers.etag = apiContext.generatedRefreshId || uuidV4();
     delete headers.dirty;
-    return Promise.resolve(headers);
-    // return Q(meta);
+    return headers;
   }
 
-  processMetadataBeforeCall(apiContext: CompositeApiContext, metadata: any) {
+  processMetadataBeforeCall(apiContext: CompositeApiContext, metadata: IRestMetadata) {
     if (metadata && !metadata.av) {
       // Old version of metadata, no package version, which is required for all composite metadata now
       metadata = undefined;
@@ -239,5 +242,4 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
     }
     return metadata;
   }
-
 }

@@ -1,13 +1,13 @@
-import { IReposError } from "../transitional";
-import { IReposApplication } from "../app";
-import { ICorporationAdministrationSection } from "../routes/administration/corporation";
-
 //
 // Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
+
+import { IReposError } from '../transitional';
+import { IReposApplication } from '../app';
+import RouteErrorHandler from './errorHandler';
 
 export default async function configureErrorRoutes(app: IReposApplication, initializationError: Error) {
   if (initializationError) {
@@ -32,5 +32,5 @@ export default async function configureErrorRoutes(app: IReposApplication, initi
     next(err);
   });
 
-  app.use(require('./errorHandler'));
+  app.use(RouteErrorHandler);
 };

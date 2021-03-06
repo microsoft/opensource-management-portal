@@ -74,4 +74,4 @@ router.post('/', RequireActiveGitHubSession, asyncHandler(async function (req: R
   return res.redirect(url + extraUrl);
 }));
 
-module.exports = router;
+export default router;

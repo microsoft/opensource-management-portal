@@ -7,12 +7,13 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { IProviders, ReposAppRequest } from '../../transitional';
+import { IProviders, NoCacheNoBackground, ReposAppRequest } from '../../transitional';
 import { asNumber } from '../../utils';
 import GitHubApplication, { IGitHubAppInstallation } from '../../business/application';
 import { OrganizationSetting, IBasicGitHubAppInstallation, SpecialTeam, ISpecialTeam } from '../../entities/organizationSettings/organizationSetting';
 import { IndividualContext } from '../../user';
 import { Operations } from '../../business/operations';
+import { Organization, OrganizationMembershipRole, OrganizationMembershipState } from '../../business/organization';
 
 router.use('/:appId', asyncHandler(async function (req, res, next) {
   const providers = req.app.settings.providers as IProviders;
@@ -101,7 +102,7 @@ function isInstallationConfigured(settings: OrganizationSetting, installation: I
   return false;
 }
 
-async function getDynamicSettingsFromLegacySettings(operations: Operations, staticSettings: any, installation: IGitHubAppInstallation, individualContext: IndividualContext): Promise<OrganizationSetting> {
+async function getDynamicSettingsFromLegacySettings(operations: Operations, staticSettings: any, installation: IGitHubAppInstallation, individualContext: IndividualContext): Promise<[OrganizationSetting, Organization]> {
   const settings = OrganizationSetting.CreateFromStaticSettings(staticSettings);
 
   if (installation.target_type !== 'Organization') {
@@ -125,8 +126,9 @@ async function getDynamicSettingsFromLegacySettings(operations: Operations, stat
   settings.active = false;
 
   let organizationDetails = null;
+  let unconfiguredOrganization: Organization = null;
   try {
-    const unconfiguredOrganization = operations.getUnconfiguredOrganization(settings);
+    unconfiguredOrganization = operations.getUnconfiguredOrganization(settings);
     organizationDetails = await unconfiguredOrganization.getDetails();
   } catch (ignoreOrganizationDetailsProblem) {
     throw new Error(`Is the app still installed correctly? The app needs to be able to read the organization plan information. ${ignoreOrganizationDetailsProblem.message}`);
@@ -138,12 +140,13 @@ async function getDynamicSettingsFromLegacySettings(operations: Operations, stat
     }
   }
 
-  return settings;
+  return [settings, unconfiguredOrganization];
 }
 
 router.post('/:appId/installations/:installationId', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const hasImportButtonClicked = req.body['adopt-import-settings'];
   const hasCreateButtonClicked = req.body['adopt-new-org'];
+  const hasElevationButtonClicked = req.body['elevate-to-owner'];
   const forceDeleteConfig = req.body['force-delete-config'];
   const updateConfig = req.body['update'];
   const activate = req.body['activate'];
@@ -151,12 +154,13 @@ router.post('/:appId/installations/:installationId', asyncHandler(async function
   const removeConfiguration = req.body['remove-configuration'];
   const addConfiguration = req.body['configure'];
   let isCreatingNew = hasImportButtonClicked || hasCreateButtonClicked;
-  if (!hasImportButtonClicked && !forceDeleteConfig && !hasCreateButtonClicked && !activate && !deactivate && !removeConfiguration && !addConfiguration && !updateConfig) {
+  if (!hasImportButtonClicked && !hasElevationButtonClicked && !forceDeleteConfig && !hasCreateButtonClicked && !activate && !deactivate && !removeConfiguration && !addConfiguration && !updateConfig) {
     return next(new Error('No supported POST parameters present'));
   }
   const providers = req.app.settings.providers as IProviders;
   const githubApplication = req['githubApplication'] as GitHubApplication;
   const individualContext = req.individualContext;
+  const login = individualContext.getGitHubIdentity().username;
   const {
     staticSettings,
     dynamicSettings,
@@ -171,9 +175,23 @@ router.post('/:appId/installations/:installationId', asyncHandler(async function
   const organizationName = installation.account.login;
   const organizationSettingsProvider = providers.organizationSettingsProvider;
 
-  // create a new settings entity object!
-  if (isCreatingNew) {
-    const settings = await getDynamicSettingsFromLegacySettings(providers.operations, staticSettings, installation, individualContext);
+  
+  if (hasElevationButtonClicked) {
+    // Only available for pre-adoption
+    const [, unconfiguredOrganization] = await getDynamicSettingsFromLegacySettings(providers.operations, staticSettings, installation, individualContext);
+    try {
+      const result = await unconfiguredOrganization.addMembership(login, { role: OrganizationMembershipRole.Admin });
+      if (result?.state === OrganizationMembershipState.Pending) {
+        return res.send(`You need to accept the membership now at: https://github.com/${unconfiguredOrganization.name}`);
+      } else {
+        return res.send('OK. Elevation should be allset.');
+      }
+    } catch (error) {
+      return next(error);
+    }
+  } else if (isCreatingNew) {
+    // create a new settings entity object!
+    const [settings,] = await getDynamicSettingsFromLegacySettings(providers.operations, staticSettings, installation, individualContext);
     await organizationSettingsProvider.createOrganizationSetting(settings);
     displayDynamicSettings = settings;
   } else if (dynamicSettings) {
@@ -301,6 +319,24 @@ router.get('/:appId/installations/:installationId', asyncHandler(async function 
     installation,
   } = req['installationConfiguration'];
   const organizationName = installation.account.login;
+  const [proposedDynamicSettings, unconfiguredOrganization] = !dynamicSettings ? await getDynamicSettingsFromLegacySettings(providers.operations, staticSettings, installation, individualContext) : [null, null];
+  const installationConfigured = isInstallationConfigured(dynamicSettings, installation);
+  let isUserOwner = null;
+  let userCheckError = null;
+  if (!installationConfigured && unconfiguredOrganization) {
+    try {
+      const login = individualContext.getGitHubIdentity().username;
+      const userMembership = await unconfiguredOrganization.getMembership(login, NoCacheNoBackground);
+      if (userMembership?.role === OrganizationMembershipRole.Admin) {
+        isUserOwner = true;
+      } else if (userMembership?.role == OrganizationMembershipRole.Member) {
+        isUserOwner = false;
+      }
+    } catch (error) {
+      console.warn(error);
+      userCheckError = error;
+    }
+  }
   individualContext.webContext.render({
     view: 'administration/setup/installation',
     title: `${organizationName} installation of application ${githubApplication.id}`,
@@ -308,12 +344,14 @@ router.get('/:appId/installations/:installationId', asyncHandler(async function 
       organizationName,
       dynamicSettings,
       staticSettings,
+      isUserOwner,
+      userCheckError,
       installation,
-      proposedDynamicSettings: !dynamicSettings ? await getDynamicSettingsFromLegacySettings(providers.operations, staticSettings, installation, individualContext) : null,
+      proposedDynamicSettings,
       app: githubApplication,
-      installationConfigured: isInstallationConfigured(dynamicSettings, installation),
+      installationConfigured,
     },
   });
 }));
 
-module.exports = router;
+export default router;

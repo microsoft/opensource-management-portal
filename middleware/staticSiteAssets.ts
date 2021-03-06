@@ -5,11 +5,12 @@
 
 /*eslint no-console: ["error", { allow: ["log", "error", "warn", "dir"] }] */
 
-import appPackage = require('../package.json');
+import appPackage from '../package.json';
 
 const debug = require('debug')('startup');
-const favicon = require('serve-favicon');
-const path = require('path');
+
+import favicon from 'serve-favicon';
+import path from 'path';
 
 const defaultPublicAssetsPackageName = '../../default-assets-package/';
 const staticAssetspackageName = appPackage['static-site-assets-package-name'] || defaultPublicAssetsPackageName;

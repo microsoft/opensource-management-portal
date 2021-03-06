@@ -8,6 +8,11 @@ import { ITableEntityMetadataProviderOptions, TableEntityMetadataProvider } from
 import { IPostgresEntityMetadataProviderOptions, PostgresEntityMetadataProvider } from './postgres';
 import { MemoryEntityMetadataProvider } from './memory';
 
+export * from './entityMetadataProvider';
+export * from './query';
+export * from './declarations';
+export * from './entityMetadata';
+
 const providerTypes = [
   'memory',
   'table',
@@ -15,6 +20,8 @@ const providerTypes = [
 ];
 
 const defaultProviderName = 'memory';
+
+export const keyValueMetadataField = 'additionalData';
 
 export interface IEntityMetadataProvidersOptions {
   tableOptions?: ITableEntityMetadataProviderOptions;

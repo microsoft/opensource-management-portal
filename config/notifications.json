@@ -1,5 +1,6 @@
 {
   "linksMailAddress": "env://GITHUB_NOTIFICATIONS_LINK_MAIL",
   "reposMailAddress": "env://GITHUB_NOTIFICATIONS_REPOS_MAIL",
-  "reposNotificationExcludeForUsers": "env://GITHUB_NOTIFICATIONS_REPOS_EXCLUDE_FOR_USERS"
+  "reposNotificationExcludeForUsers": "env://GITHUB_NOTIFICATIONS_REPOS_EXCLUDE_FOR_USERS",
+  "reposNotificationExcludeManagerForUserIds": "env://GITHUB_NOTIFICATIONS_REPOS_EXCLUDE_MANAGER_FOR_IDS"
 }

@@ -1,4 +1,4 @@
-FROM node:12-alpine AS build
+FROM node:15-alpine AS build
 
 ARG NPM_TOKEN
 

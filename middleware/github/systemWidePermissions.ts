@@ -7,7 +7,7 @@ import { ReposAppRequest } from '../../transitional';
 
 const requestCachedKeyName = 'systemWidePermissions';
 
-module.exports = function addSystemWidePermissionsToRequest(req: ReposAppRequest, res, next) {
+export default function addSystemWidePermissionsToRequest(req: ReposAppRequest, res, next) {
   // Only compute once per request
   if (req[requestCachedKeyName]) {
     return next();

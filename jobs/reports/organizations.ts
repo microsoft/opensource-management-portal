@@ -13,7 +13,7 @@ import { requireJson, asNumber } from '../../utils';
 import { OrganizationMember } from '../../business/organizationMember';
 import { IReportsContext } from './task';
 import { ICorporateLink } from '../../business/corporateLink';
-import { NoRestApiCache } from '../../transitional';
+import { NoCacheNoBackground } from '../../transitional';
 
 const definitions = requireJson('jobs/reports/organizationDefinitions.json');
 
@@ -84,7 +84,7 @@ async function ensureAllUserLinks(context: IReportsContext, operations: Operatio
     includeNames: true,
     includeId: true,
     includeServiceAccounts: true,
-  }, NoRestApiCache);
+  }, NoCacheNoBackground);
   const links = await operations.getLinks(latestDataOptions);
   const set = new Map<number, ICorporateLink>();
   for (let i = 0; i < links.length; i++) {

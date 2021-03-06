@@ -12,7 +12,7 @@ let mapTypeToValue = {
   liveness: 'healthy',
 };
 
-module.exports = function initializeHealthCheck(app, config) {
+export default function initializeHealthCheck(app, config) {
   let configuredHealthDelays = {
     readiness: 0,
     liveness: 0,
@@ -71,6 +71,9 @@ module.exports = function initializeHealthCheck(app, config) {
     app.get('/health/readiness', containerHealthCheck.bind(null, 'readiness', true));
     app.get('/health/liveness', containerHealthCheck.bind(null, 'liveness', true));
     app.get('/health/external', containerHealthCheck.bind(null, 'liveness', false /* do not validate a header, anyone can hit */));
+    debug('Health probes listening');
+  } else {
+    debug('No health probes listening');
   }
 
   return provider;

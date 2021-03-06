@@ -92,8 +92,6 @@ block content
         
         if repositoryMetadataEntity && repositoryMetadataEntity.lockdownState && repositoryMetadataEntity.lockdownState !== 'unlocked'
           div.label.label-danger SETUP INCOMPLETE
-        if repositoryMetadataEntity && (!repositoryMetadataEntity.lockdownState || repositoryMetadataEntity.lockdownState == 'unlocked') && releaseReviewObject && releaseReviewObject.state && releaseReviewObject.state !== 'Completed' && repository.private === false
-          div.label.label-danger RELEASED BEFORE COMPLETION OF BUSINESS REVIEW
         
         - var hugeHeading = repo.name.length < 33
         h1(class={huge: hugeHeading})

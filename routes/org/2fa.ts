@@ -9,7 +9,7 @@ const router = express.Router();
 
 import moment from 'moment';
 
-import { ReposAppRequest, NoRestApiCache } from '../../transitional';
+import { NoCacheNoBackground, ReposAppRequest } from '../../transitional';
 import { wrapError } from '../../utils';
 
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
@@ -20,7 +20,7 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   req.individualContext.webContext.pushBreadcrumb('Multi-factor authentication check');
   const username = req.individualContext.getGitHubIdentity().username;
   try {
-    const state = await organization.isMemberSingleFactor(username, NoRestApiCache);
+    const state = await organization.isMemberSingleFactor(username, NoCacheNoBackground);
     if (state === false && (req.body.validate || onboarding || joining)) {
       let url = organization.baseUrl;
       if (onboarding || joining) {
@@ -46,4 +46,4 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   }
 }));
 
-module.exports = router;
+export default router;

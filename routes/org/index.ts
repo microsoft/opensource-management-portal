@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express from 'express';
+import express, { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
@@ -14,16 +14,15 @@ import { OrganizationMembershipState } from '../../business/organization';
 import { IAggregateUserSummary } from '../../user/aggregate';
 import { TeamJoinApprovalEntity } from '../../entities/teamJoinApproval/teamJoinApproval';
 
-import reposRoute from './repos';
-
-const teamsRoute = require('./teams');
-const membershipRoute = require('./membership');
-const joinRoute = require('./join');
-const leaveRoute = require('./leave');
-const securityCheckRoute = require('./2fa');
-const profileReviewRoute = require('./profileReview');
-const newRepoSpa = require('./newRepoSpa');
-const peopleRoute = require('./people');
+import RouteRepos from './repos';
+import RouteTeams from './teams';
+import RouteMembership from './membership';
+import RouteJoin from './join';
+import RouteLeave from './leave';
+import RouteSecurityCheck from './2fa';
+import RouteProfileReview from './profileReview';
+import RouteNewRepoSpa from './newRepoSpa';
+import RoutePeople from './people';
 
 interface ILocalOrgRequest extends ReposAppRequest {
   sudoMode?: boolean;
@@ -52,10 +51,10 @@ router.get('/', (req: ReposAppRequest, res, next) => {
 });
 
 // Routes that do not require that the user be an org member
-router.use('/join', joinRoute);
-router.use('/repos', reposRoute);
-router.use('/people', peopleRoute);
-router.use('/teams', teamsRoute);
+router.use('/join', RouteJoin);
+router.use('/repos', RouteRepos);
+router.use('/people', RoutePeople);
+router.use('/teams', RouteTeams);
 
 // Org membership requirement middleware
 router.use(asyncHandler(AddOrganizationPermissionsToRequest));
@@ -122,15 +121,15 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   });
 }));
 
-router.use('/membership', membershipRoute);
-router.use('/leave', leaveRoute);
-router.use('/security-check', securityCheckRoute);
-router.use('/profile-review', profileReviewRoute);
+router.use('/membership', RouteMembership);
+router.use('/leave', RouteLeave);
+router.use('/security-check', RouteSecurityCheck);
+router.use('/profile-review', RouteProfileReview);
 router.use('/new-repo', (req: ReposAppRequest, res) => {
   const organization = req.organization;
   res.redirect(organization.baseUrl + 'wizard');
 });
-router.use('/wizard', newRepoSpa);
+router.use('/wizard', RouteNewRepoSpa);
 
 router.use('/:repoName', asyncHandler(async (req: ReposAppRequest, res, next) => {
   const repoName = req.params.repoName;

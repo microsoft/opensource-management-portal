@@ -30,7 +30,7 @@ export interface IRedisHelperOptions {
 export default class RedisHelper implements ICacheHelper {
   private _redis: redis.RedisClient;
   private _prefix: string;
-  
+
   constructor(options: IRedisHelperOptions) {
     if (!options.redisClient) {
       throw new Error('options.redisClient required by RedisHelper');
@@ -38,7 +38,7 @@ export default class RedisHelper implements ICacheHelper {
     this._prefix = options.prefix ? options.prefix + '.' : '';
     this._redis = options.redisClient;
   }
-  
+
   private key(key: string) {
     return this._prefix + key;
   }
@@ -123,7 +123,7 @@ export default class RedisHelper implements ICacheHelper {
   }
 
   async getObjectCompressed(key: string): Promise<any> {
-    const value = await this.getObject(key);
+    const value = await this.getCompressed(key);
     return JSON.parse(value);
   }
 

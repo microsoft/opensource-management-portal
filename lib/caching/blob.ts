@@ -50,6 +50,13 @@ export default class BlobCache implements ICacheHelper {
     this._options = options;
   }
 
+  cloneForNewContainer(containerName: string) {
+    const optionsClone = Object.assign({}, this._options, {
+      container: containerName,
+    });
+    return new BlobCache(optionsClone);
+  }
+
   readonly expiringBlobCache = this;
 
   private getBlobName(key: string, extension: string) {

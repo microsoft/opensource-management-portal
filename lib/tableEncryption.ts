@@ -135,7 +135,7 @@ function mergeEntity() {
   return callback(new Error('Entity merge operations are not supported when using table encryption.'));
 }
 
-module.exports = function wrapTableClient(tableClient, encryptionOptions) {
+export default function wrapTableClient(tableClient, encryptionOptions) {
   const wrapped = {
     insertEntity: insertEntity.bind(undefined, tableClient, encryptionOptions),
     mergeEntity: mergeEntity.bind(undefined, tableClient, encryptionOptions),

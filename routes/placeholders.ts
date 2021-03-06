@@ -21,4 +21,4 @@ router.use('/release', (req, res) => {
   res.redirect(`${exploreUrl}resources/release`);
 });
 
-module.exports = router;
+export default router;

@@ -28,6 +28,7 @@ interface ITokenEntityProperties {
   expires: any;
   source: any;
   organizationScopes: any;
+  warning: any;
   scopes: any;
 }
 
@@ -39,6 +40,7 @@ const Field: ITokenEntityProperties = {
   description: 'description',
   expires: 'expires',
   source: 'source',
+  warning: 'warning',
   organizationScopes: 'organizationScopes',
   scopes: 'scopes',
 }
@@ -51,6 +53,7 @@ export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntity
   token: string;
 
   active: boolean;
+  warning: string;
   corporateId: string;
   created: Date;
   description: string;
@@ -63,6 +66,22 @@ export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntity
 
   constructor() {
     this.created = new Date();
+  }
+
+  static CreateFromAadAuthorization({
+    appId,
+    oid,
+    scopes,
+    organizationScopes,
+  }) : PersonalAccessToken {
+    const pat = new PersonalAccessToken();
+    pat.corporateId = null;
+    pat.description = `AAD oid ${oid} app ${appId} with scopes ${scopes}`;
+    pat.source = `AAD oid ${oid} app ${appId}`;
+    pat.displayUsername = 'AAD Identity';
+    pat.organizationScopes = organizationScopes;
+    pat.scopes = scopes;
+    return pat;
   }
 
   static CreateFromAzureDevOpsTokenAuthorization({
@@ -148,6 +167,7 @@ EntityMetadataMappings.Register(type, TableSettings.TableMapping, new Map<string
   [Field.source, 'service'],
   [Field.organizationScopes, 'orgs'],
   [Field.expires, 'expires'],
+  [Field.warning, 'warning'],
   [Field.scopes, 'apis'],
 ]));
 EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [
@@ -170,6 +190,7 @@ EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, new Map<stri
   [Field.active, Field.active],
   [Field.organizationScopes, Field.organizationScopes],
   [Field.expires, Field.expires],
+  [Field.warning, Field.warning],
   [Field.scopes, Field.scopes],
 ]));
 EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);

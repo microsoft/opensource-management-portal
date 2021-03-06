@@ -8,7 +8,8 @@ const router = express.Router();
 
 import { ReposAppRequest } from '../transitional';
 
-const lowercaser = require('../middleware/lowercaser');
+import lowercaser from '../middleware/lowercaser';
+import RouteReposPager from './reposPager';
 
 router.use(function (req: ReposAppRequest, res, next) {
   req.individualContext.webContext.pushBreadcrumb('Repositories');
@@ -20,6 +21,6 @@ router.use(function (req: ReposAppRequest, res, next) {
   next();
 });
 
-router.get('/', lowercaser(['sort', 'language', 'type', 'tt']), require('./reposPager'));
+router.get('/', lowercaser(['sort', 'language', 'type', 'tt']), RouteReposPager);
 
-module.exports = router;
+export default router;

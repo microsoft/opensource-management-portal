@@ -7,7 +7,7 @@ import debug = require('debug');
 import { IProviders } from '../transitional';
 const dbg = debug('startup');
 
-const session = require('express-session');
+import session from 'express-session';
 
 import ConnectRedis from 'connect-redis';
 
