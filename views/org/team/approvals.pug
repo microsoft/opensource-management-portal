@@ -50,7 +50,7 @@ block content
                   h5 CORPORATE IDENTITY
                   p
                     if metadata.corporateUsername
-                      a.btn.btn-sm.btn-muted(href='about:blank', target='_new')= metadata.corporateUsername
+                      a.btn.btn-sm.btn-muted(href='mailto:' + metadata.corporateUsername + '?subject=Team join request for ' + metadata.teamName)= metadata.corporateUsername
                     if metadata.corporateDisplayName
                       a.btn.btn-sm.btn-muted-more(href='about:blank', target='_new')
                         = metadata.corporateDisplayName + ' '

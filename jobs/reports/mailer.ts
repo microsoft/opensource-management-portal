@@ -9,9 +9,11 @@
 // account, and also is linked themselves, then it's possible that they may get multiple reports or
 // may have the reports masked.
 
-const fs = require('fs');
-const path = require('path');
-const pug = require('pug');
+import fs from 'fs';
+import path from 'path';
+import pug from 'pug';
+
+import app from '../../app';
 
 import { IReportsContext } from './task';
 import { IMailProvider } from '../../lib/mailProvider';
@@ -123,18 +125,16 @@ async function sendReport(context: IReportsContext, mailProvider: IMailProvider,
     throw new Error('No from address is configured for reports in the github.jobs.reports.mail.from value');
   }
   const address = await recipientTypeToAddress(context, recipientKey);
-  if (!report || !report.length) {
-    return context;
-  }
+  const html = renderReport(context, report, address);
   const isActionRequired = consolidatedActionRequired(report);
   const notification = isActionRequired ? 'action' : 'information';
-  const html = renderReport(context, report, address);
   const viewOptions = {
-    html: html,
+    html,
     headline: isActionRequired ? 'Your GitHub updates' : 'GitHub updates',
-    app: 'Microsoft GitHub',
+    app: `${app.config.brand.companyName} GitHub`, // may break
+    companyName: app.config.brand.companyName,
     reason: 'This digest report is provided to all managed GitHub organization owners, repository admins, and team maintainers. This report was personalized and sent directly to ' + address,
-    notification: notification,
+    notification,
   };
   const basedir = context.settings.basedir;
   const mailContent = await emailRender(basedir, 'report', viewOptions);

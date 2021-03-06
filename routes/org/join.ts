@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+// the changes in Further-UI-Improvements did not merge well, need to review by hand
+
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
@@ -33,9 +35,12 @@ router.use(function (req: ReposAppRequest, res, next) {
 
 router.use(RequireActiveGitHubSession);
 
-function clearAuditListAndRedirect(res: express.Response, organization: Organization, onboarding: boolean) {
+function clearAuditListAndRedirect(res: express.Response, organization: Organization, onboarding: boolean, req: any, state: OrganizationMembershipState) {
   // Behavior change, only important to those not using GitHub's 2FA enforcement feature; no longer clearing the cache
   const url = organization.baseUrl + 'security-check' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name);
+  if (state === OrganizationMembershipState.Active && req) {
+    req.individualContext.webContext.saveUserAlert(`You successfully joined the ${organization.name} organization!`, organization.name, 'success');
+  }
   return res.redirect(url);
 }
 
@@ -65,14 +70,14 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res: express.
   let state = result && result.state ? result.state : false;
   if (state === OrganizationMembershipState.Active) {
     await addMemberToOrganizationCache(providers.queryCache, organization, id);
-    return clearAuditListAndRedirect(res, organization, onboarding);
+    return clearAuditListAndRedirect(res, organization, onboarding, req, state);
   } else if (state === 'pending' && userIncreasedScopeToken) {
     let updatedState;
     try {
       updatedState = await organization.acceptOrganizationInvitation(userIncreasedScopeToken);
       if (updatedState && updatedState.state === OrganizationMembershipState.Active) {
         await addMemberToOrganizationCache(providers.queryCache, organization, id);
-        return clearAuditListAndRedirect(res, organization, onboarding);
+        return clearAuditListAndRedirect(res, organization, onboarding, req, state);
       }
     } catch (error) {
       // We do not error out, they can still fall back on the
@@ -150,11 +155,11 @@ async function joinOrg(req: ReposAppRequest, res: express.Response, next: expres
   const individualContext = req.individualContext as IndividualContext;
   const organization = req.organization as Organization;
   const onboarding = queryParamAsBoolean(req.query.onboarding as string);
-  await joinOrganization(individualContext, organization, req.insights, onboarding);
+  await joinOrganization(req, individualContext, organization, req.insights, onboarding);
   return res.redirect(organization.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name));
 }
 
-async function joinOrganization(individualContext: IndividualContext, organization: Organization, insights, isOnboarding: boolean): Promise<any> {
+async function joinOrganization(req, individualContext: IndividualContext, organization: Organization, insights, isOnboarding: boolean): Promise<any> {
   let invitationTeam = organization.invitationTeam as Team;
   const username = individualContext.getGitHubIdentity().username;
   if (!username) {
@@ -163,6 +168,7 @@ async function joinOrganization(individualContext: IndividualContext, organizati
   let joinResult = null;
   try {
     joinResult = invitationTeam ? await invitationTeam.addMembership(username, null) : await organization.addMembership(username, null);
+    req.individualContext.webContext.saveUserAlert(`You successfully joined the ${organization.name} organization!`, organization.name, 'success');
   } catch (error) {
     insights.trackMetric({ name: 'GitHubOrgInvitationFailures', value: 1 });
     insights.trackEvent({
@@ -201,7 +207,7 @@ router.post('/byClient', asyncHandler(async (req: ReposAppRequest, res: express.
   const organization = req.organization as Organization;
   const onboarding = queryParamAsBoolean(req.query.onboarding as string);
   try {
-    await joinOrganization(individualContext, organization, req.insights, onboarding);
+    await joinOrganization(req, individualContext, organization, req.insights, onboarding);
   } catch (error) {
     return next(jsonError(error, 400));
   }

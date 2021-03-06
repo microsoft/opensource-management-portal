@@ -5,9 +5,11 @@
 //
 */
 
+.override-white {
+  color: #fff !important
+}
+
 /* Set color for user dropdown */
-
-
 .list-unstyled-dropdown-first {
   color: #fff;
   padding-inline-start: 20px;
@@ -145,6 +147,10 @@ code {
 
 .button:hover{
   color: lightgray;
+}
+
+.invisible{
+  visibility: hidden;
 }
 
 .alert-gray {

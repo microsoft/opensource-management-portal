@@ -133,6 +133,13 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
   });
 
   await search.search(page, req.query.sort as string);
+  let maillist = '';
+  search.members.forEach(function(element) {
+    if (maillist != '' && element.link != undefined) {
+      maillist = maillist + ', '
+    }
+    maillist += element.link && element.link.corporateUsername || ""
+  });
   req.individualContext.webContext.render({
     view: 'people/',
     title: 'People',
@@ -152,6 +159,7 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
       team2RemoveType: req.team2RemoveType,
       teamUrl: req.teamUrl,
       specificTeamPermissions: req.teamPermissions,
+      maillist,
       operations,
     },
   });

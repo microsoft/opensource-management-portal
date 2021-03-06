@@ -1075,6 +1075,7 @@ export class Operations {
       notification: 'information',
       app: `${this.config.brand.companyName} GitHub`,
       link: account.link,
+      companyName: this.config.brand.companyName,
       managementInformation: cachedEmployeeManagementInfo,
       purpose,
       details,

@@ -109,6 +109,9 @@ block content
                     li(class={ active: currentTwoFactor === 'off' })
                       a(href=href='?page_number=' + (search.page) + (tag ? '&tag=' + tag : '') + (search.sort ? '&sort=' + search.sort : '') + (search.type ? '&type=' + search.type : '') + ('&twoFactor=off') + (query.phrase ? '&q=' + query.phrase : '')) 2FA off
 
+            a.pull-right.btn.btn-sm.btn-muted-more(href='mailto:' + maillist)
+              = 'Mail to all linked Members (on this page)'
+
         if filters.length > 0
           p(style='margin-top:24px')
             if search.totalItems > 1
@@ -151,6 +154,11 @@ block content
           nav(style='margin-bottom:48px')
             ul.pager
               li.previous(class=(previous_possible ? '' : 'invisible'))
+                if previous_possible
+                  a(href='?page_number=' + (search.page-1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                  span(aria-hidden="true") &larr; Previous
+                else
+                  span(aria-hidden="true") &larr; Previous
                   a(href='?page_number=' + (search.page-1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
                     span(aria-hidden="true") &larr; Previous
               li
@@ -159,12 +167,20 @@ block content
                 else
                   | #{search.pageFirstItem.toLocaleString()} - #{search.pageLastItem.toLocaleString()} of #{search.totalItems.toLocaleString()} #{itemType}
               li.next(class=(next_possible ? '' : 'invisible'))
+                if next_possible
                   a(href='?page_number=' + (search.page+1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
-                    span(aria-hidden="true") Next &rarr;
+                  span(aria-hidden="true") Next &rarr;
+                else
+                  span(aria-hidden="true") Next &rarr;
 
           .row.vertical-pad-bottom
-            .col-sm-8
-            .col-sm-4
+            .col-sm-5
+              h6 GitHub Identity
+            if organization
+              .col-sm-1
+            .col-sm-5
+              h6 Corporate Identity
+            .col-sm-2
               if !organization
                 h6 Memberships
 
@@ -178,11 +194,11 @@ block content
             - var email = link ? link.corporateMailAddress || link.userPrincipalName : null
 
             .row.vertical-pad-bottom
-              .col-sm-8
+              .col-sm-5
                 div.horizontal-space-right.vertical-space.pull-left(style='width:48px;height:48px;display:block;vertical-align:middle')
                   if account.avatar_url
                     img(src=account.avatar_url + '&s=96', style='width:48px;height:48px', title='Avatar of ' + shorthandName)
-                div(style='display:block;vertical-align:middle')
+                div
                   h4
                     a(href='https://github.com/' + account.login, target='_new')= shorthandName
                     //-if !link
@@ -242,6 +258,22 @@ block content
                         type='submit',
                         onclick='return confirm(\'Are you sure that you want to remove ' + account.login + ' from the team?\');',
                         value= 'Remove from ' + team2.name + ' team')
+              if organization
+                .col-sm-1
+              .col-sm-4
+                div(style='display:block;vertical-align:middle')
+                  if link
+                    h4
+                      =link.corporateDisplayName + " "
+                    ul.list-inline
+                      if link.corporateUsername
+                        li
+                          span(title=link.corporateUsername + ' is the corporate identity for ' + link.corporateDisplayName)= link.corporateUsername
+                  else
+                    ul.list-inline(style='margin-top:7.5%')
+                      li
+                        .label.label-danger Not linked
+                
               .col-sm-2
                 if !organization && person.orgs
                   - var localOrgList = Object.getOwnPropertyNames(person.orgs)
@@ -262,14 +294,20 @@ block content
           nav
             ul.pager
               li.previous(class=(previous_possible ? '' : 'invisible'))
+                if previous_possible
                   a(href='?page_number=' + (search.page-1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
-                    span(aria-hidden="true") &larr; Previous
+                  span(aria-hidden="true") &larr; Previous
+                else
+                  span(aria-hidden="true") &larr; Previous
               li
                 h4(style="display:inline")
                   | Page #{search.page} of #{search.totalPages}
               li.next(class=(next_possible ? '' : 'invisible'))
+                if next_possible
                   a(href='?page_number=' + (search.page+1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
                     span(aria-hidden="true") Next &rarr;
+                else
+                  span(aria-hidden="true") Next &rarr;
 
         hr
         p.

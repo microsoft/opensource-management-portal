@@ -19,7 +19,7 @@ block content
       h1 GitHub Teams
       p.lead Across all officially managed #{config.brand.companyName} organizations
 
-    if onboarding
+if onboarding
       .alert.alert-gray
         strong You're all set for use GitHub for open source now.
         br
@@ -109,12 +109,18 @@ block content
           nav(style='margin-bottom:48px')
             ul.pager
               li.previous(class=(previous_possible ? '' : 'invisible'))
-                a(href='?page_number=' + (search.page-1) + (query.set ? '&set=' + query.set : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                if previous_possible
+                  a(href='?page_number=' + (search.page-1) + (query.set ? '&set=' + query.set : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                  span(aria-hidden="true") &larr; Previous
+                else
                   span(aria-hidden="true") &larr; Previous
               li
                 | #{search.pageFirstTeam.toLocaleString()} - #{search.pageLastTeam.toLocaleString()} of #{search.totalTeams.toLocaleString()}
               li.next(class=(next_possible ? '' : 'invisible'))
-                a(href='?page_number=' + (search.page+1) + (query.set ? '&set=' + query.set : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                if next_possible
+                  a(href='?page_number=' + (search.page+1) + (query.set ? '&set=' + query.set : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                  span(aria-hidden="true") Next &rarr;
+                else  
                   span(aria-hidden="true") Next &rarr;
 
           .container
@@ -147,13 +153,19 @@ block content
           nav
             ul.pager
               li.previous(class=(previous_possible ? '' : 'invisible'))
-                a(href='?page_number=' + (search.page-1) + (query.set ? '&set=' + query.set : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                if previous_possible
+                  a(href='?page_number=' + (search.page-1) + (query.set ? '&set=' + query.set : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                  span(aria-hidden="true") &larr; Previous
+                else  
                   span(aria-hidden="true") &larr; Previous
               li
                 h4(style="display:inline")
                   | Page #{search.page} of #{search.totalPages}
               li.next(class=(next_possible ? '' : 'invisible'))
-                a(href='?page_number=' + (search.page+1) + (query.set ? '&set=' + query.set : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                if next_possible
+                  a(href='?page_number=' + (search.page+1) + (query.set ? '&set=' + query.set : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                  span(aria-hidden="true") Next &rarr;
+                else  
                   span(aria-hidden="true") Next &rarr;
 
       .col-md-3.col-md-offset-1

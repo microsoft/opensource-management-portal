@@ -170,10 +170,12 @@ export async function postActionDecision(providers: IProviders, individualContex
       headline: engine.getDecisionEmailHeadline(wasApproved),
       notification: wasApproved ? 'information' : 'warning',
       service: (config.brand?.companyName || 'Corporate') + ' GitHub',
+      companyName: config.brand.companyName,
     };
     if (!engine.getDecisionEmailViewName || !engine.getDecisionEmailSubject) {
       return { message, redirect: teamBaseUrl };
     }
+    // req.individualContext.webContext.saveUserAlert('Thanks for your ' + action.toUpperCase() + ' decision.', engine.typeName, 'success');
     const getDecisionEmailViewName = engine.getDecisionEmailViewName();
     let content = null;
     try {
