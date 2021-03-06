@@ -1,9 +1,7 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import azure from 'azure-storage';
 
@@ -12,6 +10,9 @@ import { IEntityMetadata, EntityMetadataType } from '../../lib/entityMetadataPro
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
 import { Type } from './type';
+import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresGetByID, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
+import { TableSettings } from '../../lib/entityMetadataProvider/table';
+import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
 
 const type = Type;
 
@@ -19,7 +20,28 @@ export enum GitHubRepositoryPermission {
   Pull = 'pull',
   Push = 'push',
   Admin = 'admin',
+  Triage = 'triage',
+  Maintain = 'maintain',
+
+  None = '',
 }
+
+export enum RepositoryLockdownState {
+  Locked = 'locked',
+  Unlocked = 'unlocked',
+  AdministratorLocked = 'administratorLocked',
+  Deleted = 'deleted',
+  ComplianceLocked = 'complianceLocked',
+}
+
+export const GitHubRepositoryPermissions = [
+  GitHubRepositoryPermission.Pull,
+  GitHubRepositoryPermission.Triage,
+  GitHubRepositoryPermission.Push,
+  GitHubRepositoryPermission.Maintain,
+  GitHubRepositoryPermission.Admin,
+  // NOTE: does not include 'None' which is not a real GitHub REST API value
+];
 
 export interface IInitialTeamPermission {
   permission: GitHubRepositoryPermission;
@@ -49,6 +71,7 @@ interface IRepositoryMetadataProperties {
   repositoryName: any;
 
   initialTeamPermissions: any;
+  initialAdministrators: any;
   initialRepositoryDescription: any;
   initialRepositoryVisibility: any;
 
@@ -57,6 +80,10 @@ interface IRepositoryMetadataProperties {
   initialGitIgnoreTemplate: any;
 
   initialCorrelationId: any;
+
+  lockdownState: any;
+
+  transferSource: any;
 
   projectType: any;
   releaseReviewJustification: any;
@@ -80,6 +107,7 @@ const Field: IRepositoryMetadataProperties = {
   organizationName: 'organizationName',
   organizationId: 'organizationId',
   repositoryName: 'repositoryName',
+  initialAdministrators: 'initialAdministrators',
   initialTeamPermissions: 'initialTeamPermissions',
   initialRepositoryDescription: 'initialRepositoryDescription',
   initialRepositoryVisibility: 'initialRepositoryVisibility',
@@ -91,6 +119,8 @@ const Field: IRepositoryMetadataProperties = {
   releaseReviewJustification: 'releaseReviewJustification',
   releaseReviewType: 'releaseReviewType',
   releaseReviewUrl: 'releaseReviewUrl',
+  lockdownState: 'lockdownState',
+  transferSource: 'transferSource',
 }
 
 const fieldNames = Object.getOwnPropertyNames(Field);
@@ -111,6 +141,7 @@ export class RepositoryMetadataEntity implements IRepositoryMetadataProperties {
   created: Date;
 
   initialTeamPermissions: IInitialTeamPermission[];
+  initialAdministrators: string[];
   initialRepositoryDescription: string;
   initialRepositoryVisibility: GitHubRepositoryVisibility;
   initialLicense: string;
@@ -123,8 +154,13 @@ export class RepositoryMetadataEntity implements IRepositoryMetadataProperties {
   releaseReviewType: string;
   releaseReviewUrl: string;
 
+  lockdownState: RepositoryLockdownState;
+
+  transferSource: string;
+
   constructor() {
     this.initialTeamPermissions = [];
+    this.initialAdministrators = [];
     this.initialRepositoryVisibility = GitHubRepositoryVisibility.Public;
   }
 }
@@ -141,17 +177,20 @@ export class RepositoryMetadataFixedQueryByRepositoryId implements IEntityMetada
 
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => { return new RepositoryMetadataEntity(); });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, repositoryId);
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableNoPointQueries, true);
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableNoPointQueryMapping, new Map<string, string>([
+EntityMetadataMappings.Register(type, TableSettings.TableNoPointQueries, true);
+EntityMetadataMappings.Register(type, TableSettings.TableNoPointQueryMapping, new Map<string, string>([
   [repositoryId, azureTableRepositoryIdField], // in table, RowKey is not the repo ID
   [azureTableRowKey, EntityField.ID], // to still point at the row
 ]));
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableDefaultTableName, 'pending');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableDefaultFixedPartitionKey, 'pk');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableNoPointQueryAlternateIdFieldName, azureTableRowKey);
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableSpecializedDeserializationHelper, function tableRepoMetadataSpecializedDeserializer(entity: IEntityMetadata, object: RepositoryMetadataEntity) {
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultTableName, 'pending');
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKey, 'pk');
+EntityMetadataMappings.Register(type, TableSettings.TableNoPointQueryAlternateIdFieldName, azureTableRowKey);
+EntityMetadataMappings.Register(type, TableSettings.TableSpecializedDeserializationHelper, function tableRepoMetadataSpecializedDeserializer(entity: IEntityMetadata, object: RepositoryMetadataEntity) {
   if (!Array.isArray(object.initialTeamPermissions)) {
     throw new Error('RepositoryMetadataEntity.initialTeamPermissions must be an initialized array');
+  }
+  if (!Array.isArray(object.initialAdministrators)) {
+    throw new Error('RepositoryMetadataEntity.initialAdministrators must be an initialized array');
   }
   if (entity['teamsCount'] && !isNaN(entity['teamsCount'])) {
     const teamsCount = parseInt(entity['teamsCount'], 10);
@@ -168,7 +207,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableSpecialized
   }
 });
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableSpecializedSerializationHelper, function tableRepoMetadataSpecializedSerializer(entity: IEntityMetadata, object: RepositoryMetadataEntity) {
+EntityMetadataMappings.Register(type, TableSettings.TableSpecializedSerializationHelper, function tableRepoMetadataSpecializedSerializer(entity: IEntityMetadata, object: RepositoryMetadataEntity) {
   entity['tickettype'] = 'repo';
   entity['teamsCount'] = object.initialTeamPermissions.length.toString();
   for (let i = 0; i < object.initialTeamPermissions.length; i++) {
@@ -179,7 +218,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableSpecialized
   }
 });
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableMapping, new Map<string, string>([
+EntityMetadataMappings.Register(type, TableSettings.TableMapping, new Map<string, string>([
   [Field.createdByThirdPartyId, 'ghid'],
   [Field.createdByThirdPartyUsername, 'ghu'],
 
@@ -196,6 +235,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableMapping, ne
   // [repositoryId, azureTableRepositoryIdField], // in table, RowKey is not the repo ID
 
   [Field.initialTeamPermissions, null], // special serializer handles
+  [Field.initialAdministrators, 'initialAdministrators'], // this may not work
 
   [Field.initialRepositoryDescription, 'repoDescription'],
   [Field.initialRepositoryVisibility, 'repoVisibility'],
@@ -209,13 +249,15 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableMapping, ne
   [Field.releaseReviewJustification, 'justification'],
   [Field.releaseReviewType, 'approvalType'],
   [Field.releaseReviewUrl, 'approvalUrl'],
+  [Field.lockdownState, (Field.lockdownState).toLowerCase()],
+  [Field.transferSource, (Field.transferSource).toLowerCase()],
 ]));
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TablePossibleDateColumns, [
+EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [
   Field.created,
 ]);
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.TableMapping, fieldNames, [repositoryId]);
+EntityMetadataMappings.RuntimeValidateMappings(type, TableSettings.TableMapping, fieldNames, [repositoryId]);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, new Map<string, string>([
+EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, new Map<string, string>([
   [Field.createdByThirdPartyId, 'ghid'],
   [Field.createdByThirdPartyUsername, 'ghu'],
 
@@ -232,6 +274,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, n
   // [repositoryId, azureTableRepositoryIdField], // in table, RowKey is not the repo ID
 
   [Field.initialTeamPermissions, 'itp'], // special processing case
+  [Field.initialAdministrators, 'initialAdministrators'],
 
   [Field.initialRepositoryDescription, 'repoDescription'],
   [Field.initialRepositoryVisibility, 'repoVisibility'],
@@ -245,12 +288,15 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, n
   [Field.releaseReviewJustification, 'justification'],
   [Field.releaseReviewType, 'approvalType'],
   [Field.releaseReviewUrl, 'approvalUrl'],
-]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.MemoryMapping, fieldNames, [repositoryId]);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTableName, 'repositorymetadata');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, 'repository');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping, new Map<string, string>([
+  [Field.lockdownState, (Field.lockdownState).toLowerCase()],
+  [Field.transferSource, (Field.transferSource).toLowerCase()],
+]));
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, [repositoryId]);
+
+PostgresConfiguration.SetDefaultTableName(type, 'repositorymetadata');
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'repository');
+PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
   [Field.createdByThirdPartyId, (Field.createdByThirdPartyId as string).toLowerCase()],
   [Field.createdByThirdPartyUsername, (Field.createdByThirdPartyUsername as string).toLowerCase()],
 
@@ -267,6 +313,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping,
   // [repositoryId, azureTableRepositoryIdField], // in table, RowKey is not the repo ID
 
   [Field.initialTeamPermissions, (Field.initialTeamPermissions as string).toLowerCase()], // special processing case
+  [Field.initialAdministrators, (Field.initialAdministrators as string).toLowerCase()], // special processing case
 
   [Field.initialRepositoryDescription, (Field.initialRepositoryDescription as string).toLowerCase()],
   [Field.initialRepositoryVisibility, (Field.initialRepositoryVisibility as string).toLowerCase()],
@@ -280,10 +327,13 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping,
   [Field.releaseReviewJustification, (Field.releaseReviewJustification as string).toLowerCase()],
   [Field.releaseReviewType, (Field.releaseReviewType as string).toLowerCase()],
   [Field.releaseReviewUrl, (Field.releaseReviewUrl as string).toLowerCase()],
-]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.PostgresMapping, fieldNames, [repositoryId]);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableQueries, (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
+  [Field.lockdownState, (Field.lockdownState).toLowerCase()],
+  [Field.transferSource, (Field.transferSource).toLowerCase()],
+]));
+PostgresConfiguration.ValidateMappings(type, fieldNames, [repositoryId]);
+
+EntityMetadataMappings.Register(type, TableSettings.TableQueries, (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
   switch (query.fixedQueryType) {
     case FixedQueryType.AllRepositoryMetadata:
       return new azure.TableQuery()
@@ -302,51 +352,31 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableQueries, (q
       return qtpid;
 
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
   const entityTypeColumn = mapMetadataPropertiesToFields[EntityField.Type];
-  const entityIdColumn = mapMetadataPropertiesToFields[EntityField.ID];
+  const entityIDColumn = mapMetadataPropertiesToFields[EntityField.ID];
   const entityTypeValue = getEntityTypeColumnValue(type);
-  let sql = '', values = [];
   switch (query.fixedQueryType) {
-    case FixedQueryType.AllRepositoryMetadata:
-      sql = `
-        SELECT *
-        FROM ${tableName}
-        WHERE
-          ${entityTypeColumn} = $1
-      `;
-      values = [
-        entityTypeValue,
-      ];
-      return { sql, values };
-    case FixedQueryType.RepositoryMetadataByRepositoryId:
+    case FixedQueryType.AllRepositoryMetadata: {
+      return PostgresGetAllEntities(tableName, entityTypeColumn, entityTypeValue);
+    }
+    case FixedQueryType.RepositoryMetadataByRepositoryId: {
       const { repositoryId } = query as RepositoryMetadataFixedQueryByRepositoryId;
       if (!repositoryId) {
         throw new Error('repositoryId required');
       }
-      sql = `
-        SELECT *
-        FROM ${tableName}
-        WHERE
-          ${entityTypeColumn} = $1 AND
-          ${entityIdColumn} = $2
-      `;
-      values = [
-        entityTypeValue,
-        repositoryId,
-      ];
-      return { sql, values };
-
+      return PostgresGetByID(tableName, entityTypeColumn, entityTypeValue, entityIDColumn, repositoryId);
+    }
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
+EntityMetadataMappings.Register(type, MemorySettings.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
   switch (query.fixedQueryType) {
     case FixedQueryType.AllRepositoryMetadata:
       return allInTypeBin;
@@ -359,7 +389,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryQueries, (
       return allInTypeBin[repositoryId];
 
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 

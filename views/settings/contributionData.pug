@@ -1,0 +1,38 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block content
+  .container
+    .row
+      .col-md-3.col-lg-3
+        include ./menu
+      .col-md-7.col-lg-7
+
+        h1 Contribution sharing opt-in
+
+        p.
+          You can choose whether to allow for the sharing of public contributions
+          you make from your GitHub account.
+
+        if userSettings.contributionShareOptIn === null || userSettings.contributionShareOptIn === undefined
+          p: strong You have not yet made a decision to opt in to public data sharing.
+
+        else if userSettings.contributionShareOptIn === true
+          p You have opted in to sharing data. Awesome!
+        
+        else if userSettings.contributionShareOptIn === false
+          p You have opted out.
+
+        form(method='post')
+          ul.list-inline
+            li: input.input-control#optincheck(type='checkbox', name='optIn', value='1', checked=userSettings.contributionShareOptIn === true)
+            li: label(for='optincheck') Opt-in to public contribution and avatar sharing
+          p: button.btn.btn-primary(name='add') Save your choice
+
+        if corporateViews && corporateViews.contributions && corporateViews.contributions.datasharing
+          hr
+          include ../corporate/contributions/datasharing

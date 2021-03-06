@@ -1,13 +1,15 @@
-import { IReposError } from "../transitional";
-
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-module.exports = function configureErrorRoutes(app, initializationError) {
+import { IReposError } from '../transitional';
+import { IReposApplication } from '../app';
+import RouteErrorHandler from './errorHandler';
+
+export default async function configureErrorRoutes(app: IReposApplication, initializationError: Error) {
   if (initializationError) {
     console.warn('Initialization Error Present: All app requests will fail!');
 
@@ -29,5 +31,6 @@ module.exports = function configureErrorRoutes(app, initializationError) {
     err.skipLog = true;
     next(err);
   });
-  app.use(require('./errorHandler'));
+
+  app.use(RouteErrorHandler);
 };

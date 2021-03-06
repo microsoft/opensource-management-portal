@@ -1,9 +1,7 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import { IApprovalProvider } from './approvalProvider';
 import { IEntityMetadataBaseOptions, EntityMetadataBase } from '../../lib/entityMetadataProvider/entityMetadata';

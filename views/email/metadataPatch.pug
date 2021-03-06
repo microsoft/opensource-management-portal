@@ -1,0 +1,47 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends email
+
+block content
+  - var thirdPartyUsername = details.thirdPartyUsername
+
+  p This is the raw data updated by a user. We can cleanup this template later if we need to.
+
+  if details && details.repository
+    h3= details.repository.organization.name + '/' + details.repository.name
+
+  if isMailToUser
+    p
+      = thirdPartyUsername + ','
+      br
+      | The undo operation that you requested has been completed.
+
+  if isMailToOperations
+    h2 FYI: Notification of update to a repo
+
+  if details.patchedGroups
+    h5 Patched information
+    p The program updated was:
+    pre= JSON.stringify(details.patchedGroups, null, 2)
+
+  if details.microsoftMetadata
+    h5 Updated metadata
+    pre= JSON.stringify(details.microsoftMetadata, null, 2)
+
+  if details.link
+    h3 GitHub user
+    table
+      tbody
+        tr
+          td GitHub account
+          td= details.link.thirdPartyUsername
+        tr
+          td Corporate identity
+          td= details.link.corporateUsername
+
+  if details.repository
+    h5 Repository
+    pre= JSON.stringify(details.repository, null, 2)

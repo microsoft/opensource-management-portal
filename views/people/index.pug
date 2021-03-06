@@ -1,5 +1,5 @@
 //-
-//- Copyright (c) Microsoft. All rights reserved.
+//- Copyright (c) Microsoft.
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
@@ -159,6 +159,8 @@ block content
                   span(aria-hidden="true") &larr; Previous
                 else
                   span(aria-hidden="true") &larr; Previous
+                  a(href='?page_number=' + (search.page-1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                    span(aria-hidden="true") &larr; Previous
               li
                 if search.totalItems == 1
                   | One member
@@ -185,11 +187,11 @@ block content
           each person in search.members
             - var link = person.link
             - var account = person.account ? person.account : person
-            - var corporate = person.corporate;
-            - var serviceAccount = person.link && person.link.serviceAccount
-            - var shorthandName = corporate && corporate.preferredName ? corporate.preferredName : (link ? (link.aadname || account.login) : account.login);
-            - var corporateIdentity = corporate && corporate.alias ? corporate.alias : (link ? link.aadupn : null)
-            - var email = corporate ? corporate.emailAddress || corporate.userPrincipalName : null
+            - var serviceAccount = link && link.isServiceAccount
+            - var serviceAccountMail = link ? link.serviceAccountMail : null
+            - var shorthandName = link && link.corporateDisplayName ? link.corporateDisplayName : account.login;
+            - var corporateIdentity = link && link.corporateAlias ? link.corporateAlias : (link ? link.corporateUsername : null)
+            - var email = link ? link.corporateMailAddress || link.userPrincipalName : null
 
             .row.vertical-pad-bottom
               .col-sm-5
@@ -208,14 +210,40 @@ block content
                   ul.list-inline
                     if shorthandName && shorthandName !== account.login
                       li
-                        span(title=account.login + ' is the GitHub username for ' + shorthandName)= account.login
+                        span(title=account.login + ' is the GitHub username for ' + shorthandName)
+                          = account.login
+                          //-= ' '
+                          //-small.label.label-muted GitHub
+                    if !link
+                      li
+                        .label.label-danger Not linked
+                    if corporateIdentity
+                      if link
+                        li!= octicon('link', 16)
+                        li
+                          div(style='width:1px')
+                          span(title=corporateIdentity + ' is the corporate identity for ' + shorthandName)
+                            = corporateIdentity
+                            //-= ' '
+                            //-small.label.label-default= config.brand.companyName
+
+                      //- just corporate e-mails here, not user emails
                       if email
                         li
                           a(href='mailto:' + email, title='Send corporate email to ' + email)
                             != octicon('mail', 16)
-                    if serviceAccount
+                    if operations && operations.isSystemAccountByUsername(account.login)
+                      li!= octicon('hubot', 16)
+                      li Official #{config.brand.companyName} system account
+                      if serviceAccountMail
+                        li managed by
+                        li: a(href='mailto:' + serviceAccountMail)= serviceAccountMail
+                    else if serviceAccount
                       li!= octicon('hubot', 16)
                       li Service account
+                      if serviceAccountMail
+                        li managed by
+                        li: a(href='mailto:' + serviceAccountMail)= serviceAccountMail
                   if team2AddType && teamAdmin
                     form(action=teamUrl + team2AddType + 's/add', method='post')
                       input(type='hidden', name='username', value=account.login)
@@ -249,7 +277,9 @@ block content
               .col-sm-2
                 if !organization && person.orgs
                   - var localOrgList = Object.getOwnPropertyNames(person.orgs)
-                  if localOrgList.length === 0
+                  if operations && operations.isSystemAccountByUsername(account.login)
+                    p: small System account
+                  else if localOrgList.length === 0
                     p: small No organizations
                   else
                     ul.list-unstyled
@@ -280,4 +310,6 @@ block content
                   span(aria-hidden="true") Next &rarr;
 
         hr
-        p The presence of people in this list does not imply that they are an employee.
+        p.
+          This view is cached and eventually consistent within a few hours. 
+          The presence of people in this list does not imply that they are an employee.

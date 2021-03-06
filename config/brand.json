@@ -4,5 +4,6 @@
   "appName": "env://APP_NAME?default=Self-service GitHub Management",
   "supportMail": "env://PORTAL_ADMIN_EMAIL",
   "operationsMail": "env://GITHUB_OPERATIONS_EMAIL",
-  "unlinkOperationsMail": "env://GITHUB_OPERATIONS_UNLINK_EMAIL"
+  "electionMail": "env://FOSSFUND_ELECTION_MAIL",
+  "infrastructureNotificationsMail": "env://GITHUB_INFRASTRUCTURE_NOTIFICATIONS_MAIL"
 }

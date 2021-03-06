@@ -1,31 +1,43 @@
 ﻿//
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-import async from 'async';
 import fs from 'fs';
 import path from 'path';
 
 import recursiveReadDirectory from 'recursive-readdir';
 
-import { wrapError } from '../../utils';
-import { Organization, ICreateRepositoryResult } from '../../business/organization';
-import { Operations } from '../../business/operations';
-import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { wrapError, sleep, asNumber } from '../../utils';
+import { Organization } from '../../business/organization';
+import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission, GitHubRepositoryPermissions } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { Repository } from '../../business/repository';
+import { CreateRepositoryEntrypoint } from '../../api/createRepo';
 
 export interface IApprovalPackage {
   id: string;
   // requestingUser: string;
   repositoryMetadata: RepositoryMetadataEntity;
+  createResponse: unknown;
+  isUnlockingExistingRepository: number | string | boolean | null | undefined;
+  isFork: boolean;
+  isTransfer: boolean;
+  // TEMPORARY: default branch rename work
+  createEntrypoint: CreateRepositoryEntrypoint,
+  renameDefaultBranchTo: string,
+  renameDefaultBranchExcludeIfApiCall: boolean,
 }
 
 export enum RepoWorkflowDecision {
   Approve = 'approve',
   Deny = 'deny',
+}
+
+export interface IRepositoryWorkflowOutput {
+  error?: any;
+  message?: string;
 }
 
 export class RepoWorkflowEngine {
@@ -34,6 +46,14 @@ export class RepoWorkflowEngine {
   user: string;
   id: string;
   typeName: string;
+  private createResponse?: unknown;
+  private isUnlockingExistingRepository: boolean;
+  private isFork: boolean;
+  private isTransfer: boolean;
+
+  private createEntrypoint: CreateRepositoryEntrypoint;
+  private renameDefaultBranchTo: string;
+  private renameDefaultBranchExcludeIfApiCall: boolean;
 
   constructor(organization: Organization, approvalPackage: IApprovalPackage) {
     this.request = approvalPackage.repositoryMetadata;
@@ -41,6 +61,16 @@ export class RepoWorkflowEngine {
     this.id = approvalPackage.id;
     this.organization = organization;
     this.typeName = 'Repository Create';
+    this.createResponse = approvalPackage.createResponse;
+    this.isUnlockingExistingRepository = !!approvalPackage.isUnlockingExistingRepository;
+    this.isFork = approvalPackage.isFork;
+    this.isTransfer = approvalPackage.isTransfer;
+    // TEMPORARY: defalt branch name work
+    if (approvalPackage.renameDefaultBranchTo) {
+      this.createEntrypoint = approvalPackage.createEntrypoint;
+      this.renameDefaultBranchTo = approvalPackage.renameDefaultBranchTo;
+      this.renameDefaultBranchExcludeIfApiCall = approvalPackage.renameDefaultBranchExcludeIfApiCall;
+    }
   }
 
   editGet(req, res) {
@@ -56,8 +86,7 @@ export class RepoWorkflowEngine {
   }
 
   editPost(req, res, next) {
-    const destructured = this.organization.getLegacySystemObjects();
-    const operations = destructured[1] as Operations;
+    const { operations } = this.organization.getLegacySystemObjects();
     const repositoryMetadataProvider = operations.providers.repositoryMetadataProvider;
     const visibility = req.body.repoVisibility;
     if (!(visibility == 'public' || visibility == 'private')) {
@@ -82,67 +111,121 @@ export class RepoWorkflowEngine {
     return 'repoApprovals/decision';
   }
 
-  generateSecondaryTasks(callback) {
-    const pendingRequest = this.request;
-    const tasks = [];
+  async executeNewRepositoryChores(): Promise<IRepositoryWorkflowOutput[] /* output */> {
+    const request = this.request;
+    const output: IRepositoryWorkflowOutput[] = [];
     const organization = this.organization;
-    const repoName = pendingRequest.repositoryName;
-    for (let i = 0; i < pendingRequest.initialTeamPermissions.length; i++) {
-      const { teamId, permission, teamName } = pendingRequest.initialTeamPermissions[i];
+    const repoName = request.repositoryName;
+    for (let i = 0; i < request.initialTeamPermissions.length; i++) {
+      let { teamId, permission, teamName } = request.initialTeamPermissions[i];
+      if (teamId && !teamName) {
+        try {
+          const team = organization.team(asNumber(teamId));
+          await team.getDetails();
+          if (team.name) {
+            teamName = team.name;
+          }
+        } catch (noFail) { /* ignore */ }
+      }
       if (teamId && permission) {
-        tasks.push(createAddRepositoryTask(organization, repoName, teamId, teamName, permission));
+        output.push(await addTeamPermission(organization, repoName, asNumber(teamId), teamName, permission));
       }
     }
-    if (pendingRequest.initialTemplate) {
-      tasks.push(createAddTemplateFilesTask(organization, repoName, pendingRequest.initialTemplate));
-      tasks.push(createAddTemplateWebHookTask(organization, repoName, pendingRequest.initialTemplate));
+    if (request.initialTemplate) {
+      try {
+        output.push(await addTemplateCollaborators(organization, repoName, request.initialTemplate));
+        output.push(await createAddTemplateFilesTask(organization, repoName, request.initialTemplate, this.isUnlockingExistingRepository, this.isFork, this.isTransfer));
+        output.push(await addTemplateWebHook(organization, repoName, request.initialTemplate));
+      } catch (outerError) {
+        // ignored
+        console.dir(outerError);
+      }
     }
-    return callback(null, tasks);
-  }
-
-  performApprovalOperation(callback) {
-    const properties = {
-      description: this.request.initialRepositoryDescription,
-      'private': this.request.initialRepositoryVisibility === GitHubRepositoryVisibility.Public ? false : true,
-      gitignore_template: this.request.initialGitIgnoreTemplate,
-    };
-    const organization = this.organization;
-    return organization.createRepository(this.request.repositoryName, properties).then((result: ICreateRepositoryResult) => {
-      return callback(null, result);
-    }).catch(error => {
-      error = wrapError(error, `The GitHub API did not allow the creation of the new repo ${this.request.repositoryName}. ${error.message}`);
-      return callback(error);
-    });
+    // GitHub adds the creator of a repo as an admin directly now, but we don't need that...
+    output.push(await removeOrganizationCollaboratorTask(organization, this.createResponse));
+    // TEMPORARY: default branch rename work
+    let shouldRenameDefaultBranch = !!this.renameDefaultBranchTo;
+    let repoData = this.createResponse;
+    if (!repoData || !repoData['default_branch']) {
+      repoData = await organization.repository(repoName).getDetails();
+    }
+    const currentDefaultBranchName = repoData['default_branch'];
+    if (!currentDefaultBranchName) {
+      output.push({ error: 'No default branch name known for the current repo by response type' });
+      shouldRenameDefaultBranch = false;
+    }
+    if (shouldRenameDefaultBranch && currentDefaultBranchName === this.renameDefaultBranchTo) {
+      shouldRenameDefaultBranch = false;
+      output.push({ message: `The default branch name is '${this.renameDefaultBranchTo}'.`});
+    }
+    if (shouldRenameDefaultBranch && this.isFork) {
+      shouldRenameDefaultBranch = false;
+      output.push({ message: `As a fork, the default branch will not be automatically renamed to '${this.renameDefaultBranchTo}'.`});
+    }
+    if (shouldRenameDefaultBranch && this.isTransfer) {
+      shouldRenameDefaultBranch = false;
+      output.push({ message: `As a transfer, the default branch will not be automatically renamed to '${this.renameDefaultBranchTo}'.`});
+    }
+    if (shouldRenameDefaultBranch && !request.initialGitIgnoreTemplate && !request.initialTemplate) {
+      output.push({ message: 'Without a .gitignore or template, there are no commits to change the default branch'});
+      shouldRenameDefaultBranch = false;
+    }
+    if (shouldRenameDefaultBranch && this.renameDefaultBranchExcludeIfApiCall && this.createEntrypoint === CreateRepositoryEntrypoint.Api) {
+      shouldRenameDefaultBranch = false;
+      output.push({ message: `The branch will not be automatically renamed to '${this.renameDefaultBranchTo}' because the repository has been created by an API call.`});
+    }
+    if (shouldRenameDefaultBranch && !(await this.organization.supportsUpdatesApp())) {
+      shouldRenameDefaultBranch = false;
+      output.push({ message: `The branch will not be automatically renamed to '${this.renameDefaultBranchTo}' because the ${this.organization.name} organization is not currently configured for modifying repository contents.`});
+    }
+    if (shouldRenameDefaultBranch) {
+      output.push(await renameDefaultBranchTask(organization, repoName, currentDefaultBranchName, this.renameDefaultBranchTo));
+    }
+    // END TEMPORARY: default branch rename work
+    // Add any administrator logins as invited, if present
+    if (request.initialAdministrators && request.initialAdministrators.length > 0) {
+      output.push(await addAdministratorCollaboratorsTask(organization, repoName, request.initialAdministrators));
+    }
+    return output.filter(real => real);
   }
 }
 
-function createAddRepositoryTask(organization: Organization, repoName: string, id: string, teamName: string, permission: GitHubRepositoryPermission) {
-  return function (cb) {
-    async.retry({
-      times: 3,
-      interval: function (retryCount) {
-        return 500 * Math.pow(2, retryCount);
-      }
-    }, function (callback) {
-      organization.repository(repoName).setTeamPermission(id, permission).then(ok => {
-        return callback();
-      }).catch(error => {
-        return callback(error);
-      });
-    }, function (error) {
-      // Don't propagate as an error, just record the issue...
-      const teamIdentity = teamName ? `${teamName} (${id})` : `with the ID ${id}`;
-      let message = `Successfully added the ${repoName} repo to GitHub team ${teamIdentity} with ${permission.toUpperCase()} permissions.`;
-      if (error) {
-        message = `The addition of the repo ${repoName} to GitHub team ${teamIdentity} failed. GitHub returned an error: ${error.message}.`;
-      }
-      const result = {
-        error: error,
-        message: message,
-      };
-      return cb(null, result);
-    });
+async function renameDefaultBranchTask(organization: Organization, repoName: string, currentDefaultBranchName: string, renameDefaultBranchTo: string): Promise<IRepositoryWorkflowOutput> {
+  const output: IRepositoryWorkflowOutput = { error: null, message: null };
+  // This code is adapted from the approach used with Octokit at
+  // https://github.com/gr2m/octokit-plugin-rename-branch/blob/main/src/rename-branch.ts
+  // implemented as of 7/7/2020; however, as a new repo, there should not be
+  // any branch protections in place yet, nor any open pull requests, simplfying the calls.
+  const repository = organization.repository(repoName);
+  try {
+    const sha = await repository.getLastCommitToBranch(currentDefaultBranchName);
+    await repository.createNewBranch(sha, renameDefaultBranchTo);
+    await repository.setDefaultBranch(renameDefaultBranchTo);
+    await repository.deleteBranch(currentDefaultBranchName);
+    output.message = `Renamed the default branch to '${renameDefaultBranchTo}'.`;
+  } catch (error) {
+    output.error = error;
+  }
+  return output;
+}
+
+async function addTeamPermission(organization: Organization, repoName: string, id: number, teamName: string, permission: GitHubRepositoryPermission): Promise<IRepositoryWorkflowOutput> {
+  let attempts = 0;
+  const calculateDelay = (retryCount: number) => 500 * Math.pow(2, retryCount);
+  let error = null;
+  const teamIdentity = teamName ? `${teamName} (${id})` : `with the ID ${id}`;
+  while (attempts < 3) {
+    try {
+      const ok = await organization.repository(repoName).setTeamPermission(id, permission);
+      return { message: `Successfully added the ${repoName} repo to GitHub team ${teamIdentity} with ${permission.toUpperCase()} permissions.` };
+    } catch (iterationError) {
+      error = iterationError;
+    }
+    const nextInterval = calculateDelay(attempts++);
+    await sleep(nextInterval);
   };
+  const message = `The addition of the repo ${repoName} to GitHub team ${teamIdentity} failed. GitHub returned an error: ${error.message}.`;
+  return { error, message };
 };
 
 async function getFileContents(templateRoot:string, templatePath: string, templateName: string, absoluteFileNames: string[]): Promise<IFileContents[]> {
@@ -184,48 +267,19 @@ async function readFileToBase64(templatePath: string, templateName: string, file
   });
 }
 
-function createAddTemplateWebHookTask(organization: Organization, repositoryName: string, templateName: string) {
-  const destructured = organization.getLegacySystemObjects(); // const [, operations] =
-  const operations = destructured[1] as Operations;
+async function addTemplateWebHook(organization: Organization, repositoryName: string, templateName: string): Promise<IRepositoryWorkflowOutput> {
+  const { operations } = organization.getLegacySystemObjects();
   const config = operations.config;
   const definitions = config.github.templates.definitions;
   const templateData = definitions ? definitions[templateName] : null;
-  if (templateData && templateData.webhook) {
-    const repository = organization.repository(repositoryName);
-    return (taskCallback) => {
-      createAddTemplateWebHookTaskAsync({
-        webhook: templateData.webhook,
-        webhookSharedSecret: templateData.webhookSharedSecret,
-        webhookEvents: templateData.webhookEvents,
-        webhookFriendlyName: templateData.webhookFriendlyName,
-        repository,
-        templateName,
-      }).then(templateWebhookResults => {
-        return taskCallback(null, templateWebhookResults);
-      }).catch(error => {
-        return taskCallback(error);
-      });
-    };
-  } else {
-    return (taskCallback) => { taskCallback(); };
+  if (!templateData || ! templateData.webhook) {
+    return null;
   }
-}
-
-async function createAddTemplateWebHookTaskAsync({
-  webhook,
-  webhookSharedSecret,
-  webhookEvents,
-  webhookFriendlyName,
-  templateName,
-  repository,
-}: {
-  repository: Repository,
-  webhook: string,
-  webhookEvents?: string[],
-  webhookSharedSecret: string,
-  webhookFriendlyName?: string,
-  templateName: string,
-}): Promise<ITemplateUploadResult> {
+  const repository = organization.repository(repositoryName);
+  const webhook = templateData.webhook;
+  const webhookSharedSecret = templateData.webhookSharedSecret;
+  const webhookEvents = templateData.webhookEvents;
+  const webhookFriendlyName = templateData.webhookFriendlyName;
   let error = null;
   let message = null;
   const friendlyName = webhookFriendlyName || webhook;
@@ -250,9 +304,23 @@ async function createAddTemplateWebHookTaskAsync({
   };
 }
 
-function createAddTemplateFilesTask(organization: Organization, repoName: string, templateName: string) {
-  const destructured = organization.getLegacySystemObjects(); // const [, operations] =
-  const operations = destructured[1] as Operations;
+async function removeOrganizationCollaboratorTask(organization: Organization, createResponse: any): Promise<IRepositoryWorkflowOutput> {
+  const result = null;
+  if (organization.usesApp) {
+    // If a GitHub App created the repo, it is not present as a collaborator.
+    return;
+  }
+  try {
+    const createAccount = await organization.getAuthorizedOperationsAccount();
+    const repositoryName = createResponse.name;
+    const repository = organization.repository(repositoryName, createResponse);
+    await repository.removeCollaborator(createAccount.login);
+  } catch (ignoredError) { /* ignored */ }
+  return result;
+}
+
+async function createAddTemplateFilesTask(organization: Organization, repoName: string, templateName: string, isUnlockingExistingRepository: boolean, isFork: boolean, isTransfer: boolean): Promise<IRepositoryWorkflowOutput> {
+  const { operations } = organization.getLegacySystemObjects();
   const config = operations.config;
   const templatePath = config.github.templates.directory;
   const userName = config.github.user.initialCommit.username;
@@ -261,19 +329,66 @@ function createAddTemplateFilesTask(organization: Organization, repoName: string
     alternateToken: token,
   };
   const repository = organization.repository(repoName);
-  return (taskCallback) => {
-    createAddTemplateFilesTaskAsync({
-      repository,
-      templateGitHubCommitterUsername: userName,
-      alternateTokenOptions,
-      templatePath,
-      templateName,
-    }).then(templateUploadResults => {
-      return taskCallback(null, templateUploadResults);
-    }).catch(error => {
-      return taskCallback(error);
-    });
-  };
+  try {
+    const templateGitHubCommitterUsername = userName;
+    try {
+      await authorizeTemplateCommitterAccount(repository, templateGitHubCommitterUsername, alternateTokenOptions);
+    } catch (authorizeError) {
+      return {
+        error: `Could not authorize ${templateGitHubCommitterUsername} to apply template: ${authorizeError}`,
+      };
+    }
+    const templateRoot = path.join(templatePath, templateName);
+    const fileNames = await getTemplateFilenames(templateRoot);
+    const fileContents = await getFileContents(templateRoot, templatePath, templateName, fileNames);
+    const uploadedFiles = [];
+    let result = {
+      error: null,
+      message: null,
+    };
+    if (isFork || isTransfer) {
+      const subMessage = isFork ? 'is a fork' : 'was transferred';
+      result.message = `Repository ${subMessage}, template files will not be committed. Please check the LICENSE and other files to understand existing obligations.`;
+      return result;
+    }
+    try {
+      for (let i = 0; i < fileContents.length; i++) {
+        const item = fileContents[i];
+        let sha = null;
+        if (isUnlockingExistingRepository) {
+          try {
+            const fileDescription = await repository.getFile(item.path);
+            if (fileDescription && fileDescription.sha) {
+              sha = fileDescription.sha;
+            }
+          } catch (getFileError) {
+            if (getFileError.status === 404) {
+              // often the file will not exist, that's great.
+            } else {
+              throw getFileError;
+            }
+          }
+        }
+        const fileOptions = sha ? {...alternateTokenOptions, sha} : alternateTokenOptions;
+        const message = sha ? `Updating ${item.path} to template content` : `Initial ${item.path} commit`;
+        await repository.createFile(item.path, item.content, message, fileOptions);
+        uploadedFiles.push(item.path);
+      }
+      result.message = `Initial commit of ${uploadedFiles.join(', ')} template files to the ${repository.name} repo succeeded.`;
+    } catch (commitError) {
+      result.error = commitError;
+      const notUploaded = fileContents.map(fc => fc.path).filter(f => !uploadedFiles.includes(f));
+      if (uploadedFiles.length) {
+        result.message = `Initial commit of ${uploadedFiles.join(', ')} template files to the ${repository.name} repo partially succeeded. Not uploaded: ${notUploaded.join(', ')}. Error: ${commitError.message}`;
+      } else {
+        result.message = `Initial commit of template file(s) to the ${repository.name} repo failed. Not uploaded: ${notUploaded.join(', ')}. Error: ${commitError.message}.`;
+      }
+    }
+    await repository.removeCollaborator(templateGitHubCommitterUsername);
+    return result;
+  } catch (error) {
+    return { error };
+  }
 }
 
 async function authorizeTemplateCommitterAccount(repository: Repository, templateGitHubCommitterUsername: string, alternateTokenOptions): Promise<void> {
@@ -286,53 +401,75 @@ async function authorizeTemplateCommitterAccount(repository: Repository, templat
     throw new Error(`The system account ${templateGitHubCommitterUsername} could not be invited to the ${repository.name} repository to apply the template.`);
   }
   const invitationId = invitation.id;
-  const blah = await repository.acceptCollaborationInvite(invitationId, alternateTokenOptions);
-  console.log();
-}
-interface ITemplateUploadResult {
-  error?: any;
-  message: string;
+  await repository.acceptCollaborationInvite(invitationId, alternateTokenOptions);
 }
 
-async function createAddTemplateFilesTaskAsync({
-  repository,
-  templateGitHubCommitterUsername,
-  alternateTokenOptions,
-  templatePath,
-  templateName,
-}: {
-  repository: Repository,
-  templateGitHubCommitterUsername: string,
-  alternateTokenOptions,
-  templatePath: string,
-  templateName: string,
-}): Promise<ITemplateUploadResult> {
-  await authorizeTemplateCommitterAccount(repository, templateGitHubCommitterUsername, alternateTokenOptions);
-  const templateRoot = path.join(templatePath, templateName);
-  const fileNames = await getTemplateFilenames(templateRoot);
-  const fileContents = await getFileContents(templateRoot, templatePath, templateName, fileNames);
-  const message = 'Initial commit';
-  const uploadedFiles = [];
-  let result = {
-    error: null,
-    message: null,
-  };
-  try {
-    for (let i = 0; i < fileContents.length; i++) {
-      const item = fileContents[i];
-      await repository.createFile(item.path, item.content, message, alternateTokenOptions);
-      uploadedFiles.push(item.path);
-    }
-    result.message = `Initial commit of ${uploadedFiles.join(', ')} template files to the ${repository.name} repo succeeded.`;
-  } catch (commitError) {
-    result.error = commitError;
-    const notUploaded = fileContents.map(fc => fc.path).filter(f => !uploadedFiles.includes(f));
-    if (uploadedFiles.length) {
-      result.message = `Initial commit of ${uploadedFiles.join(', ')} template files to the ${repository.name} repo partially succeeded. Not uploaded: ${notUploaded.join(', ')}. Error: ${commitError.message}`;
-    } else {
-      result.message = `Initial commit of template file(s) to the ${repository.name} repo failed. Not uploaded: ${notUploaded.join(', ')}. Error: ${commitError.message}.`;
+async function addAdministratorCollaboratorsTask(organization: Organization, repositoryName: string, administratorLogins: string[]): Promise<IRepositoryWorkflowOutput> {
+  if (!administratorLogins || !administratorLogins.length) {
+    return null;
+  }
+  const repository = organization.repository(repositoryName);
+  const errors = [];
+  const messages = [];
+  for (const login of administratorLogins) {
+    try {
+      await repository.addCollaborator(login, GitHubRepositoryPermission.Admin);
+      messages.push(`Added collaborator ${login} with admin permission`);
+    } catch (error) {
+      errors.push(error.message);
     }
   }
-  await repository.removeCollaborator(templateGitHubCommitterUsername);
-  return result;
+  let error = null;
+  let message = null;
+  if (errors.length) {
+    error = errors.join(', ');
+  } else {
+    message = messages.join(', ');
+  }
+  return {
+    error,
+    message,
+  };
+}
+
+async function addTemplateCollaborators(organization: Organization, repositoryName: string, templateName: string): Promise<IRepositoryWorkflowOutput> {
+  const { operations } = organization.getLegacySystemObjects();
+  const config = operations.config;
+  const definitions = config.github.templates.definitions;
+  const templateData = definitions ? definitions[templateName] : null;
+  if (!templateData || ! templateData.collaborators) {
+    return null;
+  }
+  const repository = organization.repository(repositoryName);
+  const collaborators = templateData.collaborators;
+  const errors = [];
+  const messages = [];
+  for (const permission of GitHubRepositoryPermissions) {
+    const users = collaborators[permission];
+    if (users && Array.isArray(users)) {
+      for (const { username, acceptInvitationToken } of users) {
+        try {
+          const invitation = await repository.addCollaborator(username, permission);
+          messages.push(`Added collaborator ${username} with ${permission} permission`);
+          if (acceptInvitationToken) {
+            const invitationId = invitation.id;
+            await repository.acceptCollaborationInvite(invitationId, acceptInvitationToken);
+          }
+        } catch (error) {
+          errors.push(error.message);
+        }
+      }
+    }
+  }
+  let error = null;
+  let message = null;
+  if (errors.length) {
+    error = errors.join(', ');
+  } else {
+    message = messages.join(', ');
+  }
+  return {
+    error,
+    message,
+  };
 }

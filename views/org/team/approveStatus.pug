@@ -1,5 +1,5 @@
 //-
-//- Copyright (c) Microsoft. All rights reserved.
+//- Copyright (c) Microsoft.
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
@@ -33,12 +33,12 @@ block content
         form(method='post')
           input.btn.btn-sm.btn-default(type='submit', name='reopen', value='Re-open')
 
-    if metadata.created && metadata.created.toISOString
+    if metadata.created && metadata.created
       p
         | This request was opened by&nbsp;
         a(href='https://github.com/' + metadata.thirdPartyUsername, target='_new')= metadata.thirdPartyUsername
         | &nbsp;
-        time(datetime=metadata.created.toISOString())= metadata.created.toDateString()
+        time(datetime=metadata.created)= metadata.created
 
     p
       form(method='post', action=teamUrl + 'approvals/' + metadata.approvalId)
@@ -69,7 +69,7 @@ block content
             td
               if metadata.decisionTime
                 p
-                  time(datetime=metadata.decisionTime.toISOString())= metadata.decisionTime.toDateString()
+                  time(datetime=metadata.decisionTime)= metadata.decisionTime
               else
                 p Unknown
             td

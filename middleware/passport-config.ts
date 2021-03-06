@@ -1,182 +1,54 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
+import passport from 'passport';
 
-import { IProviders } from "../transitional";
-import { Operations } from "../business/operations";
+import createAADStrategy from './passport/aadStrategy';
+import createGithubStrategy from './passport/githubStrategy';
+import serializer from './passport/serializer';
 
-const passport = require('passport');
-const OIDCStrategy = require('passport-azure-ad').OIDCStrategy;
+export default function (app, config) {
+  const supportedAuth = ['github', 'aad', 'oauth2'];
 
-const serializer = require('./passport/serializer');
-
-const passportGitHub = require('passport-github');
-
-const GitHubStrategy = passportGitHub.Strategy;
-
-function githubResponseToSubset(app, accessToken, refreshToken, profile, done) {
-  const config = app.settings.runtimeConfig;
-  const providers = app.settings.providers as IProviders;
-  if (config && config.impersonation && config.impersonation.githubId) {
-    const operations = providers.operations as Operations;
-    const impersonationId = config.impersonation.githubId;
-
-    const account = operations.getAccount(impersonationId);
-    return account.getDetails().then(details => {
-      console.warn(`GITHUB IMPERSONATION: id=${impersonationId} login=${details.login} name=${details.name}`);
-      return done(null, {
-        github: {
-          accessToken: 'fakeaccesstoken',
-          displayName: details.name,
-          avatarUrl: details.avatar_url,
-          id: details.id.toString(),
-          username: details.login,
-        },
-      });
-    }).catch(err => {
-      return done(err);
-    });
-  }
-  let subset = {
-    github: {
-      accessToken: accessToken,
-      displayName: profile.displayName,
-      avatarUrl: profile._json && profile._json.avatar_url ? profile._json.avatar_url : undefined,
-      id: profile.id,
-      username: profile.username,
-    },
-  };
-  return done(null, subset);
-}
-
-function githubResponseToIncreasedScopeSubset(accessToken, refreshToken, profile, done) {
-  let subset = {
-    githubIncreasedScope: {
-      accessToken: accessToken,
-      id: profile.id,
-      username: profile.username,
-    },
-  };
-  return done(null, subset);
-}
-
-function activeDirectorySubset(app, iss, sub, profile, done) {
-  // CONSIDER: TODO: Hybrid tenant checks.
-  // Internal-only code:
-  // ----------------------------------------------------------------
-  // We've identified users with e-mail addresses in AAD similar to
-  // myoutlookaddress#live.com. These are where people have had work
-  // shared with them through a service like Office 365; these users
-  // are not technically employees with active credentials, and so
-  // they should *not* have access. We reject here before the
-  // session tokens can be saved.
-  // if (username && username.indexOf && username.indexOf('#') >= 0) {
-  //   return next(new Error('Your hybrid tenant account, ' + username + ', is not permitted for this resource. Were you invited as an outside collaborator by accident? Please contact us if you have any questions.'));
-  // }
-
-  const config = app.settings.runtimeConfig;
-  const providers = app.settings.providers as IProviders;
-  if (config && config.impersonation && config.impersonation.corporateId) {
-    const impersonationCorporateId = config.impersonation.corporateId;
-    return providers.graphProvider.getUserById(impersonationCorporateId, (err, impersonationResult) => {
-      if (err) {
-        return done(err);
-      }
-      console.warn(`IMPERSONATION: id=${impersonationResult.id} upn=${impersonationResult.userPrincipalName} name=${impersonationResult.displayName}`);
-      return done(null, {
-        azure: {
-          displayName: impersonationResult.displayName,
-          oid: impersonationResult.id,
-          username: impersonationResult.userPrincipalName,
-        },
-      });
-    });
-  }
-  const subset = {
-    azure: {
-      displayName: profile.displayName,
-      oid: profile.oid,
-      username: profile.upn,
-    },
-  };
-  return done(null, subset);
-}
-
-module.exports = function (app, config) {
-  if (config.authentication.scheme !== 'github' && config.authentication.scheme !== 'aad') {
+  if (!supportedAuth.includes(config.authentication.scheme)) {
     throw new Error(`Unsupported primary authentication scheme type "${config.authentication.scheme}"`);
   }
 
-  // ----------------------------------------------------------------------------
-  // GitHub Passport session setup.
-  // ----------------------------------------------------------------------------
-  let githubOptions = {
-    clientID: config.github.oauth2.clientId,
-    clientSecret: config.github.oauth2.clientSecret,
-    callbackURL: config.github.oauth2.callbackUrl,
-    // appInsightsClient: app.get('appInsightsClient'),
-    scope: [],
-    userAgent: 'passport-azure-oss-portal-for-github' // CONSIDER: User agent should be configured.
-  };
-  let githubPassportStrategy = new GitHubStrategy(githubOptions, githubResponseToSubset.bind(null, app));
-  let aadStrategy = new OIDCStrategy({
-    redirectUrl: config.activeDirectory.redirectUrl,
-    allowHttpForRedirectUrl: config.containers.docker || config.webServer.allowHttp,
-    realm: config.activeDirectory.tenantId,
-    clientID: config.activeDirectory.clientId,
-    clientSecret: config.activeDirectory.clientSecret,
-    oidcIssuer: config.activeDirectory.issuer,
-    identityMetadata: 'https://login.microsoftonline.com/' + config.activeDirectory.tenantId + '/.well-known/openid-configuration',
-    responseType: 'id_token code',
-    responseMode: 'form_post',
-    validateIssuer: true,
-  }, activeDirectorySubset.bind(null, app));
-
-  // Patching the AAD strategy to intercept a specific state failure message and instead
-  // of providing a generic failure message, redirecting (HTTP GET) to the callback page
-  // where we can offer a more useful message
-  const originalFailWithLog = aadStrategy.failWithLog;
-  aadStrategy.failWithLog = function () {
-    const args = Array.prototype.slice.call(arguments);
-    const messageToIntercept = 'In collectInfoFromReq: invalid state received in the request';
-    if (args.length === 1 && typeof(args[0]) === 'string' && args[0] === messageToIntercept) {
-      return this.redirect('/auth/azure/callback?failure=invalid');
-    } else if (args.length === 1 && typeof(args[0]) === 'string') {
-      console.warn(`AAD Failure: ${args[0]}`);
+  // Always set up GitHub strategies
+  const githubStrategies = createGithubStrategy(app, config);
+  for (const name in githubStrategies) {
+    passport.use(name, githubStrategies[name]);
+    // Validate and borrow a few parameters from the GitHub passport library, for the default github strategy
+    if (name === 'github') {
+      const strategy = githubStrategies[name];
+      // @ts-ignore
+      if (strategy._oauth2 && strategy._oauth2._authorizeUrl) {
+        // @ts-ignore
+        app.set('runtime/passport/github/authorizeUrl', strategy._oauth2._authorizeUrl);
+      } else {
+        throw new Error('The GitHub Passport strategy library may have been updated, it no longer contains the expected Authorize URL property within the OAuth2 object.');
+      }
+      // @ts-ignore
+      if (strategy._scope && strategy._scopeSeparator) {
+        // @ts-ignore
+        app.set('runtime/passport/github/scope', strategy._scope.join(strategy._scopeSeparator));
+      } else {
+        throw new Error('The GitHub Passport strategy library may have been updated, it no longer contains the expected Authorize URL property within the OAuth2 object.');
+      }
     }
-    originalFailWithLog.call(this, args);
-  };
-
-  // Validate the borrow some parameters from the GitHub passport library
-  if (githubPassportStrategy._oauth2 && githubPassportStrategy._oauth2._authorizeUrl) {
-    app.set('runtime/passport/github/authorizeUrl', githubPassportStrategy._oauth2._authorizeUrl);
-  } else {
-    throw new Error('The GitHub Passport strategy library may have been updated, it no longer contains the expected Authorize URL property within the OAuth2 object.');
-  }
-  if (githubPassportStrategy._scope && githubPassportStrategy._scopeSeparator) {
-    app.set('runtime/passport/github/scope', githubPassportStrategy._scope.join(githubPassportStrategy._scopeSeparator));
-  } else {
-    throw new Error('The GitHub Passport strategy library may have been updated, it no longer contains the expected Authorize URL property within the OAuth2 object.');
   }
 
-  passport.use('github', githubPassportStrategy);
-  passport.use('azure-active-directory', aadStrategy);
-
-  // ----------------------------------------------------------------------------
-  // Expanded OAuth-scope GitHub access for org membership writes.
-  // ----------------------------------------------------------------------------
-  let expandedGitHubScopeStrategy = new GitHubStrategy({
-    clientID: config.github.oauth2.clientId,
-    clientSecret: config.github.oauth2.clientSecret,
-    callbackURL: config.github.oauth2.callbackUrl + '/increased-scope',
-    scope: ['write:org'],
-    userAgent: 'passport-azure-oss-portal-for-github' // CONSIDER: User agent should be configured.
-  }, githubResponseToIncreasedScopeSubset);
-
-  passport.use('expanded-github-scope', expandedGitHubScopeStrategy);
+  if (config.authentication.scheme == 'aad') {
+    const aadStrategies = createAADStrategy(app, config);
+    for (const name in aadStrategies) {
+      passport.use(name, aadStrategies[name]);
+    }
+  } else if (config.authentication.scheme == 'oauth2') {
+    // Set up oauth2 strategy here
+    throw new Error('oauth2 is not currently implemented');
+  }
 
   app.use(passport.initialize());
   app.use(passport.session());

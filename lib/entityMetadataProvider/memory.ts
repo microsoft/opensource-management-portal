@@ -1,9 +1,7 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 // Loose in-memory implementation. Note that it does not translate or clone
 // objects, rather storing them as-is.
@@ -16,7 +14,18 @@ import {
   DeserializeEntityMetadataToObjectSetCollection } from './entityMetadataProvider';
 import { IEntityMetadata, EntityMetadataType } from './entityMetadata';
 import { IEntityMetadataFixedQuery } from './query';
-import { EntityMetadataMappings, MetadataMappingDefinition } from './declarations';
+import { EntityMetadataMappings, MetadataMappingDefinition, MetadataMappingDefinitionBase } from './declarations';
+
+class MemoryMetadataDefinition extends MetadataMappingDefinitionBase {
+  constructor(name: string) {
+    super(name);
+  }
+}
+
+export const MemorySettings = {
+  MemoryMapping: new MemoryMetadataDefinition('MemoryMapping'),
+  MemoryQueries: new MemoryMetadataDefinition('MemoryQueries'),
+}
 
 interface IMemoryGetQueries {
   (query: IEntityMetadataFixedQuery, directMemory: IEntityMetadata[]): any;
@@ -77,15 +86,9 @@ export class MemoryEntityMetadataProvider implements IEntityMetadataProvider {
     this.entityBin(type).clear();
   }
 
-  async getMetadataHistory(type: EntityMetadataType, id: string): Promise<IEntityMetadata[]> {
-    const bin = this.entityBin(type).get(id) || [];
-    const history = bin.slice().reverse();
-    return history;
-  }
-
   async fixedQueryMetadata(type: EntityMetadataType, query: IEntityMetadataFixedQuery): Promise<IEntityMetadata[]> {
     const allInTypeBin = this.getAllInTypeBin(type);
-    let get = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.MemoryQueries, true) as IMemoryGetQueries;
+    let get = EntityMetadataMappings.GetDefinition(type, MemorySettings.MemoryQueries, true) as IMemoryGetQueries;
     return get(query, allInTypeBin);
   }
 
@@ -97,7 +100,7 @@ export class MemoryEntityMetadataProvider implements IEntityMetadataProvider {
   }
 
   getSerializationHelper(type: EntityMetadataType): IEntityMetadataSerializationHelper {
-    const mapObjectToMemoryFields = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.MemoryMapping, true);
+    const mapObjectToMemoryFields = EntityMetadataMappings.GetDefinition(type, MemorySettings.MemoryMapping, true);
     if (!mapObjectToMemoryFields) {
       return null;
     }
@@ -109,7 +112,7 @@ export class MemoryEntityMetadataProvider implements IEntityMetadataProvider {
   }
 
   getDeserializationHelper(type: EntityMetadataType): IEntityMetadataDeserializationHelper {
-    const mapObjectToMemoryFields = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.MemoryMapping, true);
+    const mapObjectToMemoryFields = EntityMetadataMappings.GetDefinition(type, MemorySettings.MemoryMapping, true);
     if (!mapObjectToMemoryFields) {
       return null;
     }

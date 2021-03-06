@@ -1,5 +1,5 @@
 //-
-//- Copyright (c) Microsoft. All rights reserved.
+//- Copyright (c) Microsoft.
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
@@ -16,10 +16,10 @@ block content
               p.lead Since you've just linked your #{config.brand.companyName} and GitHub accounts, it's a perfect time to think about how you show up in public on GitHub.
             p Your interactions in public open source repos (commenting on issues, creating and working with pull requests, contributing source) are all associated with your public GitHub profile. With #{config.brand.companyName}'s open source and social media policies in mind, consider the these questions:
             ul
-              li Are you using the name you use professionally?
-              li Have you identified #{config.brand.companyName} as your company?
+              li Are you using the name you would like to use in public?
+              li Have you identified #{config.brand.companyName} as your company in the bio, company field, or e-mail?
               li Have you included an e-mail address?
-              li Do you have a professional, smart profile avatar?
+              li Do you have a profile avatar that is work-appropriate and professional?
             p &nbsp;
             p
               a.btn.btn-primary.btn-lg(href=organization.baseUrl + (onboarding ? 'membership?onboarding=' + onboarding : 'membership')) Continue
@@ -40,15 +40,12 @@ block content
               h5
                 | Join your first GitHub organization&nbsp;
                 i.glyphicon.glyphicon-ok
-              h5
-                | Multifactor security checkup&nbsp;
-                i.glyphicon.glyphicon-ok
               h5.text-primary
-                | Profile review
+                strong Profile review
               h5
-                | Publish your membership <em>(optional)</em>
+                | Publish your membership #[small: em optional]
               h5
-                | Join a team <em>(optional)</em>
+                | Join a team #[small: em optional]
 
           div.col-lg-4.col-md-4.col-sm-4
             div.row

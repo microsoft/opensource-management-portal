@@ -1,3 +1,4 @@
 {
-  "allowHttp": "env://DEBUG_ALLOW_HTTP?trueIf=1"
+  "allowHttp": "env://DEBUG_ALLOW_HTTP?type=boolean&default=1&trueIf=1",
+  "baseUrl": "env://SITE_BASE_URL"
 }

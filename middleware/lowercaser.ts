@@ -1,11 +1,9 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-module.exports = function (params) {
+export default function (params) {
   return function (req, res, next) {
     // lowercase parameters
     Object.getOwnPropertyNames(req.params).forEach((param) => {

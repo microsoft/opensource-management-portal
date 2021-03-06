@@ -1,14 +1,13 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import 'mocha';
 
 const assert = require('chai').assert;
-const mailProvider = require('../lib/mailProvider/');
+
+import { createMailProviderInstance } from '../lib/mailProvider';
 
 const fakeMailProviderName = 'mockMailService';
 
@@ -38,60 +37,59 @@ describe('mailProvider', () => {
 
     it('can create a factory by configuration', () => {
       const config = createMailConfig();
-      mailProvider(config, (error, provider) => {
-        assert.isDefined(provider, 'provider is created');
-      });
+      const provider = createMailProviderInstance(config);
+      assert.isDefined(provider, 'provider is created');
     });
 
-    it('overriding to works', () => {
+    it('overriding to works', async () => {
       const config = createMailConfig();
       config.mail.overrideRecipient = developer;
-      mailProvider(config, (error, provider) => {
-        const mail = {
-          to: executive,
-        };
-        provider.sendMail(mail, (sendMail, receipt) => {
-          assert.isDefined(receipt, 'mail is sent');
-          const messages = provider.getSentMessages();
-          assert.strictEqual(messages.length, 1, 'one message was sent');
-          const message = messages[0];
-          assert.equal(message.id, receipt, 'message ID matches');
-          assert.equal(message.to, developer, 'overridden e-mail address is used for TO:');
-        });
-      });
+      const provider = createMailProviderInstance(config);
+      const mail = {
+        to: executive,
+      };
+      const receipt = await provider.sendMail(mail);
+      assert.isDefined(receipt, 'mail is sent');
+      const messages = provider.getSentMessages();
+      assert.strictEqual(messages.length, 1, 'one message was sent');
+      const message = messages[0];
+      assert.equal(message.id, receipt, 'message ID matches');
+      assert.equal(message.to, developer, 'overridden e-mail address is used for TO:');
     });
 
-    it('mock send mail works', () => {
+    it('mock send mail works', async () => {
       const config = createMailConfig();
-      mailProvider(config, (error, provider) => {
-        const mail = {
-          to: executive,
-        };
-        provider.sendMail(mail, (sendMail, receipt) => {
-          assert.isDefined(receipt, 'mail is sent');
-          const messages = provider.getSentMessages();
-          assert.strictEqual(messages.length, 1, 'one message was sent');
-          const message = messages[0];
-          assert.equal(message.id, receipt, 'message ID matches');
-          assert.equal(message.to, executive, 'intended receipient was sent the message');
-        });
-      });
+      const provider = createMailProviderInstance(config);
+      const mail = {
+        to: executive,
+      };
+      const receipt = await provider.sendMail(mail);
+      assert.isDefined(receipt, 'mail is sent');
+      const messages = provider.getSentMessages();
+      assert.strictEqual(messages.length, 1, 'one message was sent');
+      const message = messages[0];
+      assert.equal(message.id, receipt, 'message ID matches');
+      assert.equal(message.to, executive, 'intended receipient was sent the message');
     });
 
     it('reports basic provider info and version properties', () => {
       const config = createMailConfig();
-      mailProvider(config, (error, provider) => {
-        assert.isTrue(provider.info.includes(fakeMailProviderName), 'provider self-registers correctly');
-      });
+      const provider = createMailProviderInstance(config);
+      assert.isTrue(provider.info.includes(fakeMailProviderName), 'provider self-registers correctly');
     });
 
     it('throws an error when the provider is not supported', () => {
       const config = createMailConfig();
       config.mail.provider = 'providerDoesNotExist';
-      mailProvider(config, (error, provider) => {
-        assert.isDefined(error, 'provider did not exist, error set');
-        assert.isUndefined(provider, 'provider was not created');
-      });
+      let error = null;
+      let provider = null;
+      try {
+        provider = createMailProviderInstance(config);
+      } catch (ee) {
+        error = ee;
+      }
+      assert.isDefined(error, 'provider did not exist, error set');
+      assert.isUndefined(provider, 'provider was not created');
     });
   });
 });

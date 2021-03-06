@@ -1,14 +1,17 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import { IEntityMetadataProvider } from './entityMetadataProvider';
 import { ITableEntityMetadataProviderOptions, TableEntityMetadataProvider } from './table';
 import { IPostgresEntityMetadataProviderOptions, PostgresEntityMetadataProvider } from './postgres';
 import { MemoryEntityMetadataProvider } from './memory';
+
+export * from './entityMetadataProvider';
+export * from './query';
+export * from './declarations';
+export * from './entityMetadata';
 
 const providerTypes = [
   'memory',
@@ -16,7 +19,9 @@ const providerTypes = [
   'postgres',
 ];
 
-const defaultProviderName = 'table';
+const defaultProviderName = 'memory';
+
+export const keyValueMetadataField = 'additionalData';
 
 export interface IEntityMetadataProvidersOptions {
   tableOptions?: ITableEntityMetadataProviderOptions;
@@ -24,7 +29,7 @@ export interface IEntityMetadataProvidersOptions {
   providerTypeName?: string;
 }
 
-export async function createAndInitializeEntityMetadataProviderInstance(app, config, options: IEntityMetadataProvidersOptions, overrideProviderType?: string): Promise<IEntityMetadataProvider> {
+export async function createAndInitializeEntityMetadataProviderInstance(options: IEntityMetadataProvidersOptions, overrideProviderType?: string): Promise<IEntityMetadataProvider> {
   if (overrideProviderType) {
     options.providerTypeName = overrideProviderType;
   }

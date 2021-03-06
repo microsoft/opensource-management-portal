@@ -1,18 +1,19 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
-import { TeamMemberCacheFixedQueryByOrganizationId } from '.';
+import { TeamMemberCacheFixedQueryByOrganizationId, TeamMemberCacheFixedQueryByUserId, TeamMemberCacheFixedQueryByTeamId, TeamMemberCacheFixedQueryByOrganizationIdAndUserId, TeamMemberCacheDeleteByOrganizationId } from '.';
 import { GitHubTeamRole } from '../../business/team';
+import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
+import { stringOrNumberAsString } from '../../utils';
+import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
 
-const type = EntityMetadataType.TeamMemberCache;
+const type = new EntityMetadataType('TeamMemberCache');
 
 interface ITeamMemberCacheProperties {
   uniqueId: any; // orgid:teamid:userid
@@ -73,7 +74,7 @@ export class TeamMemberCacheEntity implements ITeamMemberCacheProperties {
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => { return new TeamMemberCacheEntity(); });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, Field.uniqueId);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, new Map<string, string>([
+EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, new Map<string, string>([
   [Field.organizationId, 'orgid'],
   [Field.teamId, 'teamName'],
   [Field.userId, 'teamSlug'],
@@ -83,11 +84,10 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, n
   [Field.login, 'login'],
   [Field.avatar, 'avatar'],
 ]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.MemoryMapping, fieldNames, []);
-
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTableName, 'teammembercache');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, 'teammembercache');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping, new Map<string, string>([
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
+PostgresConfiguration.SetDefaultTableName(type, 'teammembercache');
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'teammembercache');
+PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
   [Field.organizationId, (Field.organizationId as string).toLowerCase()],
   [Field.uniqueId, (Field.uniqueId as string).toLowerCase()],
   [Field.teamId, (Field.teamId as string).toLowerCase()],
@@ -97,49 +97,77 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping,
   [Field.login, (Field.login as string).toLowerCase()],
   [Field.avatar, (Field.avatar as string).toLowerCase()],
 ]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.PostgresMapping, fieldNames, []);
+PostgresConfiguration.ValidateMappings(type, fieldNames, []);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
   const entityTypeColumn = mapMetadataPropertiesToFields[EntityField.Type];
-  const orgIdColumn = mapMetadataPropertiesToFields[Field.organizationId];
   const entityTypeValue = getEntityTypeColumnValue(type);
-  let sql = '', values = [];
   switch (query.fixedQueryType) {
     case FixedQueryType.TeamMemberCacheGetAll:
-      sql = `
-        SELECT *
-        FROM ${tableName}
-        WHERE
-          ${entityTypeColumn} = $1
-      `;
-      values = [
-        entityTypeValue,
-      ];
-      return { sql, values };
-    case FixedQueryType.TeamMemberCacheGetByOrganizationId:
+      return PostgresGetAllEntities(tableName, entityTypeColumn, entityTypeValue);
+    case FixedQueryType.TeamMemberCacheGetByOrganizationId: {
       const { organizationId } = query as TeamMemberCacheFixedQueryByOrganizationId;
       if (!organizationId) {
         throw new Error('organizationId required');
       }
-      sql = `
-        SELECT *
-        FROM ${tableName}
-        WHERE
-          ${entityTypeColumn} = $1 AND
-          ${orgIdColumn} = $2
-      `;
-      values = [
-        entityTypeValue,
-        organizationId,
-      ];
-      return { sql, values };
-
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        organizationid: stringOrNumberAsString(organizationId),
+      });
+    }
+    case FixedQueryType.TeamMemberCacheGetByUserId: {
+      const { userId } = query as TeamMemberCacheFixedQueryByUserId;
+      if (!userId) {
+        throw new Error('userId required');
+      }
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        userid: stringOrNumberAsString(userId),
+      });
+    }
+    case FixedQueryType.TeamMemberCacheGetByTeamId: {
+      const { teamId } = query as TeamMemberCacheFixedQueryByTeamId;
+      if (!teamId) {
+        throw new Error('teamId required');
+      }
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        teamid: stringOrNumberAsString(teamId),
+      });
+    }
+    case FixedQueryType.TeamMemberCacheDeleteByOrganizationId: {
+      const { organizationId } = query as TeamMemberCacheDeleteByOrganizationId;
+      return {
+        sql: (`DELETE FROM ${tableName} WHERE ${metadataColumnName}->>'organizationid' = $1`),
+        values: [ organizationId ],
+        skipEntityMapping: true,
+      };
+    }
+    case FixedQueryType.TeamMemberCacheGetOrganizationIds: {
+      return {
+        sql: (`
+          SELECT DISTINCT(${metadataColumnName}->>'organizationid') as organizationid
+          FROM ${tableName}`),
+        values: [],
+        skipEntityMapping: true,
+      };
+    }
+    case FixedQueryType.TeamMemberCacheGetByOrganizationIdAndUserId: {
+      const { organizationId, userId } = query as TeamMemberCacheFixedQueryByOrganizationIdAndUserId;
+      if (!organizationId) {
+        throw new Error('organizationId required');
+      }
+      if (!userId) {
+        throw new Error('userId required');
+      }
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        organizationid: stringOrNumberAsString(organizationId),
+        userid: stringOrNumberAsString(userId),
+      });
+    }
     default:
       throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
+EntityMetadataMappings.Register(type, MemorySettings.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
   switch (query.fixedQueryType) {
     case FixedQueryType.TeamMemberCacheGetAll:
       return allInTypeBin;

@@ -1,11 +1,9 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import express = require('express');
+import express from 'express';
 const router = express.Router();
 
 import { ReposAppRequest } from '../transitional';
@@ -151,7 +149,6 @@ router.use((req: ReposAppRequest, res, next) => {
 //   const options = {
 //     config: req.app.settings.runtimeConfig,
 //     redisClient: req.app.settings.providers.redisClient,
-//     redisHelper: req.app.settings.redisHelper,
 //     githubLibrary: req.app.settings.githubLibrary,
 //     operations: operations,
 //     link: link,
@@ -171,7 +168,6 @@ router.use((req: ReposAppRequest, res, next) => {
 //   const options = {
 //     config: req.app.settings.runtimeConfig,
 //     redisClient: req.app.settings.providers.redisClient,
-//     redisHelper: req.app.settings.redisHelper,
 //     githubLibrary: req.app.settings.githubLibrary,
 //     operations: req.app.settings.providers.operations,
 //     link: link,
@@ -185,4 +181,4 @@ router.use((req: ReposAppRequest, res, next) => {
 //   });
 // }
 
-module.exports = router;
+export default router;

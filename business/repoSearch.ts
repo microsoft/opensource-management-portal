@@ -1,17 +1,35 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import moment from 'moment';
 import querystring from 'querystring';
 
-import { GraphManager } from './graphManager';
 import { Repository } from './repository';
+import { IPersonalizedUserAggregateRepositoryPermission, GraphManager } from './graphManager';
+import { IRequestTeamPermissions } from '../middleware/github/teamPermissions';
+import { GitHubRepositoryPermission, RepositoryMetadataEntity, RepositoryLockdownState } from '../entities/repositoryMetadata/repositoryMetadata';
+import { asNumber } from '../utils';
+import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repositoryMetadataProvider';
+import { TeamRepositoryPermission } from './teamRepositoryPermission';
 
 const defaultPageSize = 20; // GitHub.com seems to use a value around 33
+
+export interface IRepositorySearchOptions {
+  pageSize?: number;
+  phrase?: string;
+  type?: string;
+  language?: string;
+  userRepos?: IPersonalizedUserAggregateRepositoryPermission[];
+  teamsType?: string; // ?
+  teamsSubType?: string; // ?
+  specificTeamRepos?: TeamRepositoryPermission[];
+  specificTeamPermissions?: IRequestTeamPermissions;
+  graphManager?: GraphManager;
+  repositoryMetadataProvider?: IRepositoryMetadataProvider;
+  createdSince?: Date;
+  metadataType?: string;
+}
 
 export class RepositorySearch {
   repos: Repository[];
@@ -23,10 +41,14 @@ export class RepositorySearch {
   type: string;
   language: string;
 
+  metadataType: string;
+
+  createdSince?: Date;
+
   teamsType: string;
   teamsSubType: string;
-  repoPermissions: any;
-  userRepos: any;
+  // repoPermissions: any;
+  userRepos: IPersonalizedUserAggregateRepositoryPermission[];
 
   page: number;
   tags: any;
@@ -37,11 +59,11 @@ export class RepositorySearch {
   pageFirstRepo: number;
   pageLastRepo: number;
 
-  private graphManager: GraphManager;
-  private specificTeamRepos: any;
-  private specificTeamPermissions: any;
+  repositoryMetadataProvider: IRepositoryMetadataProvider;
 
-  constructor(repos: Repository[], options) {
+  private specificTeamRepos: TeamRepositoryPermission[];
+
+  constructor(repos: Repository[], options: IRepositorySearchOptions) {
     options = options || {};
     this.repos = repos; // is repoStore in opensource.microsoft.com, this is different by design
     this.pageSize = options.pageSize || defaultPageSize;
@@ -53,36 +75,94 @@ export class RepositorySearch {
     this.type = options.type;
     this.language = options.language;
 
-    this.graphManager = options.graphManager as GraphManager;
+    this.repositoryMetadataProvider = options.repositoryMetadataProvider;
+    this.metadataType = options.metadataType;
 
-    if (options.specificTeamRepos && options.specificTeamPermissions) {
+    this.createdSince = options.createdSince;
+
+    if (options.specificTeamRepos) {
       this.specificTeamRepos = options.specificTeamRepos;
-      this.specificTeamPermissions = options.specificTeamPermissions;
     }
 
-    if (options.teamsType && options.repoPermissions) {
+    if (options.teamsType && options.userRepos) { // options.repoPermissions) {
       this.teamsType = options.teamsType;
       this.teamsSubType = options.teamsSubType;
-      this.repoPermissions = options.repoPermissions;
+      // this.repoPermissions = options.repoPermissions;
       this.userRepos = options.userRepos;
     }
   }
 
-  search(page: number, sort: string): Promise<RepositorySearch> {
+  async search(page: number, sort: string): Promise<RepositorySearch> {
     this.page = page;
     this.sort = sort ? sort.charAt(0).toUpperCase() + sort.slice(1) : 'Pushed';
-    return this.filterBySpecificTeam(this.specificTeamRepos)
+    let metadataCollection = null;
+    if (this.metadataType && this.repositoryMetadataProvider) {
+      metadataCollection = await this.repositoryMetadataProvider.queryAllRepositoryMetadatas();
+    }
+    this.filterByMetadata(metadataCollection)
+      .filterByCreatedSince()
+      .filterBySpecificTeam(this.specificTeamRepos)
       .filterByLanguageAndRecordAllLanguages(this.language)
       .filterByType(this.type)
       .filterByPhrase(this.phrase)
       .filterByTeams(this.teamsType)
       .determinePages()['sortBy' + this.sort]()
       .getPage(this.page);
+    await this.expandEntitiesForkForks();
+    return this;
   }
 
   determinePages(): RepositorySearch {
     this.totalPages = Math.ceil(this.repos.length / this.pageSize);
     this.totalRepos = this.repos.length;
+    return this;
+  }
+
+  filterByCreatedSince(): RepositorySearch {
+    if (!this.createdSince) {
+      return this;
+    }
+    this.repos = this.repos.filter(repo => {
+      const createdAt = new Date(repo.created_at);
+      return createdAt >= this.createdSince;
+    });
+    return this;
+  }
+
+  filterByMetadata(metadatas: RepositoryMetadataEntity[]): RepositorySearch {
+    if (!metadatas || !metadatas.length) {
+      return this;
+    }
+    const mappedMetadata = new Map<number, RepositoryMetadataEntity>();
+    for (const metadata of metadatas) {
+      mappedMetadata.set(asNumber(metadata.repositoryId), metadata);
+    }
+    this.repos = this.repos.filter(repo => {
+      const id = asNumber(repo.id);
+      switch (this.metadataType) {
+        case 'with-metadata': {
+          return mappedMetadata.has(id);
+        }
+        case 'without-metadata': {
+          return !mappedMetadata.has(id);
+        }
+        case 'administrator-locked': {
+          const metadata = mappedMetadata.get(id);
+          return metadata && metadata.lockdownState === RepositoryLockdownState.AdministratorLocked;
+        }
+        case 'locked': {
+          const metadata = mappedMetadata.get(id);
+          return metadata && metadata.lockdownState === RepositoryLockdownState.Locked;
+        }
+        case 'unlocked': {
+          const metadata = mappedMetadata.get(id);
+          return metadata && metadata.lockdownState === RepositoryLockdownState.Unlocked;
+        }
+        default: {
+          throw new Error(`Unsupported metadata type ${this.metadataType}`);
+        }
+      }
+    });
     return this;
   }
 
@@ -148,45 +228,34 @@ export class RepositorySearch {
   }
 
   filterByTeams(teamsType: string): RepositorySearch {
-    if (teamsType === 'teamless' || teamsType === 'my') {
-      const repoPermissions = this.repoPermissions;
-      if (!repoPermissions) {
-        throw new Error('Missing team and repo permissions instances to help filter by teams');
+    if (teamsType === 'my') {
+      const userRepos = this.userRepos;
+      if (!userRepos) {
+        throw new Error('Missing team and repo permissions to filter by teams');
       }
-      const repos = new Set();
+      const repos = new Set<number>();
       switch (teamsType) {
-
-      case 'my': {
-        const subType = this.teamsSubType;
-        this.userRepos.forEach(repo => {
-          const myPermission = repo.personalized.permission;
-          let ok = false;
-          if (subType === 'admin' && myPermission === 'admin') {
-            ok = true;
-          } else if (subType === 'write' && (myPermission === 'admin' || myPermission === 'write')) {
-            ok = true;
-          } else if (subType === 'read') {
-            ok = true;
-          }
-          if (ok) {
-            repos.add(repo.id);
-          }
-        });
-        break;
-      }
-
-      case 'teamless': {
-        repoPermissions.forEach(repo => {
-          if (!repo.teams || repo.teams.length === 0) {
-            repos.add(repo.id);
-          }
-        });
-        break;
-      }
-
+        case 'my': {
+          const subType = this.teamsSubType;
+          userRepos.forEach(personalized => {
+            const myPermission = personalized.bestComputedPermission;
+            let ok = false;
+            if (subType === 'admin' && myPermission === GitHubRepositoryPermission.Admin) {
+              ok = true;
+            } else if (subType === 'write' && (myPermission === 'admin' || myPermission === GitHubRepositoryPermission.Push)) {
+              ok = true;
+            } else if (subType === 'read') {
+              ok = true;
+            }
+            if (ok) {
+              repos.add(asNumber(personalized.repository.id));
+            }
+          });
+          break;
+        }
       }
       this.repos = this.repos.filter(repo => {
-        return repos.has(repo.id);
+        return repos.has(asNumber(repo.id));
       });
     }
     return this;
@@ -242,6 +311,18 @@ export class RepositorySearch {
     return this;
   }
 
+  async expandEntitiesForkForks(): Promise<RepositorySearch> {
+    const forks = this.repos.filter(repo => repo.fork === true);
+    if (forks.length) {
+      for (const fork of forks) {
+        try {
+          await fork.getDetails();
+        } catch (ignoredError) { /* ignored */ }
+      }
+    }
+    return this;
+  }
+
   private repoMatchesPhrase(repo: Repository, phrase: string): boolean {
     // Poor man's search, starting with just a raw includes search
     // Assumes that phrase is already lowercase to work
@@ -249,31 +330,24 @@ export class RepositorySearch {
     return string.includes(phrase);
   }
 
-  private sortDates(a: moment.Moment, b: moment.Moment): number { // Inverted sort (newest first)
-    return b.isAfter(a) ? 1 : -1;
+  private sortDates(fieldName: string, a: Repository, b: Repository): number { // Inverted sort (newest first)
+    const aa = a[fieldName] ? (typeof(a[fieldName]) === 'string' ? new Date(a[fieldName]) : a[fieldName]) : new Date(0);
+    const bb = b[fieldName] ? (typeof(b[fieldName]) === 'string' ? new Date(b[fieldName]) : b[fieldName]) : new Date(0);
+    return aa == bb ? 0 : (aa < bb) ? 1 : -1;
   }
 
   sortByUpdated(): RepositorySearch {
-    this.repos = this.repos.filter(r => { return r.updated_at; });
-    this.repos.sort((a, b) => {
-      return this.sortDates(a.moment.updated, b.moment.updated);
-    });
+    this.repos.sort(this.sortDates.bind(this, 'updated_at'));
     return this;
   }
 
   sortByCreated(): RepositorySearch {
-    this.repos = this.repos.filter(r => { return r.created_at; });
-    this.repos.sort((a, b) => {
-      return this.sortDates(a.moment.created, b.moment.created);
-    });
+    this.repos.sort(this.sortDates.bind(this, 'created_at'));
     return this;
   }
 
   sortByPushed(): RepositorySearch {
-    this.repos = this.repos.filter(r => { return r.pushed_at; });
-    this.repos.sort((a, b) => {
-      return this.sortDates(a.moment.pushed, b.moment.pushed);
-    });
+    this.repos.sort(this.sortDates.bind(this, 'pushed_at'));
     return this;
   }
 

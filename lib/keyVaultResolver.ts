@@ -1,9 +1,7 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import { URL }  from 'url';
 
@@ -42,6 +40,6 @@ function keyVaultSecretResolver(keyVaultClient, id, callback) {
   });
 }
 
-module.exports = function createKeyVaultResolver(keyVaultClient) {
+export default function createKeyVaultResolver(keyVaultClient) {
   return keyVaultSecretResolver.bind(undefined, keyVaultClient);
 };

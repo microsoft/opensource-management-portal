@@ -1,31 +1,31 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import express = require('express');
+import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { RequestWithSystemwidePermissions } from '../transitional';
+import { RequestWithSystemwidePermissions, RequestTeamMemberAddType } from '../transitional';
 
 import { ensureAllLinksInMemory, getAllLinksFromRequest } from '../middleware/business/allLinks';
 
-const lowercaser = require('../middleware/lowercaser.js');
+import lowercaser from '../middleware/lowercaser';
 
-import { Operations } from '../business/operations';
+import { Operations, ICrossOrganizationMembersResult } from '../business/operations';
 import { MemberSearch } from '../business/memberSearch';
 import { Team } from '../business/team';
 import { TeamMember } from '../business/teamMember';
 import { OrganizationMember } from '../business/organizationMember';
+import { asNumber } from '../utils';
+import { Organization } from '../business/organization';
 
 interface IPeopleSearchRequest extends RequestWithSystemwidePermissions {
   organization?: any;
   team2?: any;
   cachedLinks?: any;
-  team2AddType?: any;
+  team2AddType?: RequestTeamMemberAddType;
   team2RemoveType?: any;
   teamUrl?: any;
   teamPermissions?: any;
@@ -36,28 +36,31 @@ interface IOptionalFilter {
 }
 
 interface IGetPeopleResult {
-  members?: OrganizationMember[];
+  organizationMembers?: OrganizationMember[];
+  crossOrganizationMembers?: ICrossOrganizationMembersResult;
   teamMembers?: TeamMember[];
 }
 
 router.use(asyncHandler(ensureAllLinksInMemory));
 
-async function getPeople(operations: Operations, org: string | null, options, team2: Team): Promise<any> {
-  // TODO: confirm the types returning
-  // TODO: split out cross-org results and by-org results by diff. variable names
-  let members;
-  if (org) {
-    const organization = operations.getOrganization(org);
-    members = await organization.getMembers(options);
-  } else {
-    members = await operations.getMembers(options);
-  }
-  // const members = await operations.getMembers(org, options); // no more: ageInformation
+async function getPeopleForOrganization(operations: Operations, org: string | null, options, team2: Team): Promise<IGetPeopleResult> {
+  const organization = operations.getOrganization(org);
+  const organizationMembers = await organization.getMembers(options);
   if (team2) {
     const teamMembers = await team2.getMembers();
-    return { teamMembers, members }; // return callback(null, members, ageInformation, teamMembers);
+    return { teamMembers, organizationMembers };
   } else {
-    return { members }; // return callback(null, members, ageInformation);
+    return { organizationMembers };
+  }
+}
+
+async function getPeopleAcrossOrganizations(operations: Operations, options, team2: Team): Promise<IGetPeopleResult> {
+  const crossOrganizationMembers = await operations.getMembers(options);
+  if (team2) {
+    const teamMembers = await team2.getMembers();
+    return { teamMembers, crossOrganizationMembers };
+  } else {
+    return { crossOrganizationMembers };
   }
 }
 
@@ -65,6 +68,7 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
   const linksFromMiddleware = getAllLinksFromRequest(req);
   const operations = req.app.settings.operations as Operations;
   const org = req.organization ? req.organization.name : null;
+  const orgId = req.organization ? (req.organization as Organization).id : null;
   const isPortalSudoer = req.systemWidePermissions && req.systemWidePermissions.allowAdministration === true;
   let twoFactor = req.query.twoFactor;
   const team2 = req.team2 as Team;
@@ -72,11 +76,20 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
   if (twoFactor === 'off') {
     options.filter = '2fa_disabled';
   }
-  const { members, teamMembers } = await getPeople(operations, org, options, team2);
-  const page = req.query.page_number ? req.query.page_number : 1;
-  let phrase = req.query.q;
-  let type = req.query.type;
-  if (type !== 'linked' && type!== 'active' && type !== 'unlinked' && type !== 'former' && type !== 'serviceAccount' && type !== 'unknownAccount') {
+  const { crossOrganizationMembers, organizationMembers, teamMembers } = org ? await getPeopleForOrganization(operations, org, options, team2) : await getPeopleAcrossOrganizations(operations, options, team2);
+  const page = req.query.page_number ? asNumber(req.query.page_number) : 1;
+  let phrase = req.query.q as string;
+  let type = req.query.type as string;
+  const validTypes = new Set([
+    'linked',
+    'active',
+    'unlinked',
+    'former',
+    'serviceAccount',
+    'unknownAccount',
+    'owners',
+  ]);
+  if (!validTypes.has(type)) {
     type = null;
   }
   if (/*twoFactor !== 'on' && */twoFactor !== 'off') {
@@ -106,32 +119,27 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
       // displayPrefix: 'matching',
     });
   }
-  const search = new MemberSearch(members, {
-    phrase: phrase,
-    type: type,
+  const search = new MemberSearch({
+    phrase,
+    type,
     links: linksFromMiddleware,
-    getCorporateProfile: operations.mailAddressProvider.getCorporateEntry,
-
-    // Used to filter team members in ./org/ORG/team/TEAM/members and other views
-    teamMembers: teamMembers,
-
-    // Whether this view is specific to an org or not
-    isOrganizationScoped: !!org,
-
-    // Used to enable the "add a member" or maintainer experience for teams
-    team2AddType: req.team2AddType,
+    providers: operations.providers,
+    orgId,
+    organizationMembers,
+    crossOrganizationMembers,
+    isOrganizationScoped: !!org, // Whether this view is specific to an org or not
+    team2AddType: req.team2AddType, // Used to enable the "add a member" or maintainer experience for teams
+    teamMembers, // Used to filter team members in ./org/ORG/team/TEAM/members and other views
   });
 
-  await search.search(page, req.query.sort);
-
-  var maillist = ""; 
+  await search.search(page, req.query.sort as string);
+  let maillist = '';
   search.members.forEach(function(element) {
-    if (maillist != "" && element.link != undefined) {
-      maillist = maillist + ", "
+    if (maillist != '' && element.link != undefined) {
+      maillist = maillist + ', '
     }
     maillist += element.link && element.link.corporateUsername || ""
   });
-
   req.individualContext.webContext.render({
     view: 'people/',
     title: 'People',
@@ -152,8 +160,9 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
       teamUrl: req.teamUrl,
       specificTeamPermissions: req.teamPermissions,
       maillist,
+      operations,
     },
   });
 }));
 
-module.exports = router;
+export default router;

@@ -1,15 +1,66 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
 import _ from 'lodash';
+const debug = require('debug')('user');
 
-import { ReposAppRequest } from '../../transitional';
-import { ICorporateIdentity, IGitHubIdentity, IndividualContext, GitHubIdentitySource } from '../../business/context2';
+import { IAppSession, IProviders, ReposAppRequest } from '../../transitional';
+import { ICorporateIdentity, IGitHubIdentity, IndividualContext, GitHubIdentitySource } from '../../user';
 import { storeOriginalUrlAsReferrer } from '../../utils';
+
+export function requireAuthenticatedUserOrSignInExcluding(exclusionPaths: string[], req: ReposAppRequest, res, next) {
+  const baseUrl = req.baseUrl;
+  for (let i = 0; i < exclusionPaths.length; i++) {
+    if (baseUrl.startsWith(exclusionPaths[i])) {
+      console.log(`${req.method} ${req.baseUrl} excluded from auth by prefix: ${exclusionPaths[i]}`);
+      return next();
+    }
+  }
+  return requireAuthenticatedUserOrSignIn(req, res, next);
+}
+
+export async function requireAccessTokenClient(req: ReposAppRequest, res, next) {
+  if (req.oauthAccessToken) {
+    return next();
+  }
+  // This code currently assumes you're using AAD.
+  const { authorizationCodeClient } = req.app.settings.providers as IProviders;
+  if (!req.user.azure) {
+    console.warn('Not an Azure authenticated user');
+    return signoutThenSignIn(req, res);
+  }
+  // Build an OAuth Access Token instance for the request, refreshing as needed
+  const { oauthToken } = req.user.azure;
+  if (authorizationCodeClient && oauthToken) {     
+    const hydratedToken = JSON.parse(oauthToken);
+    let oauthTokenInstance = authorizationCodeClient.createToken(hydratedToken);
+    if (oauthTokenInstance.expired()) {
+      oauthTokenInstance = await oauthTokenInstance.refresh();
+      const session = req.session as IAppSession;
+      session.passport.user.azure.oauthToken = JSON.stringify(oauthTokenInstance.token);
+    }
+    req.oauthAccessToken = oauthTokenInstance;
+  } else {
+    // this is only used during the transition to storing this kind of data
+    // console.warn('The user did not have an oauthToken available');
+    // return signoutThenSignIn(req, res);
+  }
+  return next();
+}
+
+function signoutThenSignIn(req, res) {
+  req.logout();
+  return redirectToSignIn(req, res);
+}
+
+function redirectToSignIn(req, res) {
+  const config = req.app.settings.runtimeConfig;
+  storeOriginalUrlAsReferrer(req, res, config.authentication.scheme === 'github' ? '/auth/github' : '/auth/azure', 'user is not authenticated and needs to authenticate');
+}
 
 export function requireAuthenticatedUserOrSignIn(req: ReposAppRequest, res, next) {
   const config = req.app.settings.runtimeConfig;
@@ -25,7 +76,7 @@ export function requireAuthenticatedUserOrSignIn(req: ReposAppRequest, res, next
     }
     return next();
   }
-  storeOriginalUrlAsReferrer(req, res, config.authentication.scheme === 'github' ? '/auth/github' : '/auth/azure', 'user is not authenticated and needs to authenticate');
+  return redirectToSignIn(req, res);
 }
 
 export function setIdentity(req: ReposAppRequest, res, next) {
@@ -48,11 +99,10 @@ export function setIdentity(req: ReposAppRequest, res, next) {
 
   let corporateIdentity: ICorporateIdentity = null;
   let gitHubIdentity: IGitHubIdentity = null;
-  // temp
+
   let s = `${contextName} ${sourceText}: `;
   const user = requestForAuthentication.user;
 
-  console.log();
   if (user.github) {
     s += `github(id=${user.github.id}, username=${user.github.username}) `;
     gitHubIdentity = {
@@ -71,8 +121,7 @@ export function setIdentity(req: ReposAppRequest, res, next) {
       displayName: user.azure.displayName,
     };
   }
-  console.log(s);
-  // end temp
+  debug(s);
 
   // const insights = req.app.settings.providers.insights;
 

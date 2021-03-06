@@ -1,21 +1,15 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-/*eslint no-console: ["error", { allow: ["log"] }] */
+import Job from './task';
+import app from '../../app';
 
-'use strict';
+const killBitHours = 48;
 
-// Kill bit if this takes more than 120 minutes
-setTimeout(() => {
-  console.log('Kill bit at 120m');
-  process.exit(0);
-}, 1000 * 60 * 120);
-
-require('painless-config-resolver')().resolve((configurationError, config) => {
-  if (configurationError) {
-    throw configurationError;
-  }
-  require('./task')(config);
+app.runJob(Job, {
+  defaultDebugOutput: 'querycache',
+  timeoutMinutes: 60 * killBitHours,
+  insightsPrefix: 'JobRefreshQueryCache',
 });

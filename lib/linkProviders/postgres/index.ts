@@ -1,13 +1,11 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { PostgresLinkProvider } from './postgresLinkProvider';
 
-module.exports = function createProvider(providers, config) {
+export default function createPostgresProvider(providers, config) {
   if (!providers.postgresPool) {
     throw new Error('A Postgres pool must be initialized and available at providers.postgresPool to use the PostgresLinkProvider');
   }
@@ -26,4 +24,4 @@ module.exports = function createProvider(providers, config) {
   }
 
   return new PostgresLinkProvider(providers, options);
-};
+}

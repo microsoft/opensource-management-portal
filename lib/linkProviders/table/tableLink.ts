@@ -1,9 +1,7 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import { ICorporateLinkExtended, ICorporateLinkExtendedDirectMethods } from '../../../business/corporateLink';
 import { TableLinkProvider } from './tableLinkProvider';
@@ -52,6 +50,22 @@ export class CorporateTableLink implements ICorporateLinkExtended {
 
   get corporateId(): string {
     return this._entity[this._provider.propertyMapping.corporateId];
+  }
+
+  get corporateMailAddress(): string {
+    return this._entity[this._provider.propertyMapping.corporateMailAddress];
+  }
+
+  set corporateMailAddress(value: string) {
+    _updateColumn(this, this._provider.propertyMapping.corporateMailAddress, value);
+  }
+
+  get corporateAlias() {
+    return this._entity[this._provider.propertyMapping.corporateAlias];
+  }
+
+  set corporateAlias(value: string) {
+    _updateColumn(this, this._provider.propertyMapping.corporateAlias, value);
   }
 
   set corporateId(value: string) {
@@ -170,41 +184,26 @@ function getDirtyColumns(self) {
 function createDataHelpers(link: CorporateTableLink, provider: TableLinkProvider): ITableLinkInstanceDataHelpers {
   return {
     update: async () : Promise<boolean> => {
-      return new Promise<boolean>((resolve, reject) => {
-        provider.updateLink(link, (error, actualUpdate: boolean) => {
-          if (error) {
-            return reject(error);
-          }
-          return resolve(actualUpdate);
-        });
-      });
+      return provider.updateLink(link);
     },
 
     save: async () : Promise<boolean> => {
-      return new Promise<boolean>((resolve, reject) => {
-        provider.updateLink(link, (error, actualUpdate: boolean) => {
-          // SAVE is different in update in that it only saves if changes
-          // are needed (not an error if such). UPDATE will throw if no
-          // changes are necessary to be stored.
-          if (error && error['noUpdatesRequired'] === true) {
-            return resolve(false);
-          } else if (error) {
-            return reject(error);
-          }
-          return resolve(actualUpdate);
-        });
-      });
+      try {
+        return provider.updateLink(link);
+      } catch (error) {
+        // SAVE is different in update in that it only saves if changes
+        // are needed (not an error if such). UPDATE will throw if no
+        // changes are necessary to be stored.
+        if (error && error['noUpdatesRequired'] === true) {
+          return false;
+        } else if (error) {
+          throw error;
+        }
+      }
     },
 
     delete: async () : Promise<boolean> => {
-      return new Promise<boolean>((resolve, reject) => {
-        provider.deleteLink(link, (error, actualDelete: boolean) => {
-          if (error) {
-            return reject(error);
-          }
-          return resolve(actualDelete);
-        });
-      });
+      return provider.deleteLink(link);
     },
   };
 }

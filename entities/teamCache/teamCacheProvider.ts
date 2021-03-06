@@ -1,13 +1,11 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
 import { TeamCacheEntity } from './teamCache';
-import { TeamCacheFixedQueryAll, TeamCacheFixedQueryByOrganizationId } from '.';
+import { TeamCacheFixedQueryAll, TeamCacheFixedQueryByOrganizationId, TeamCacheGetOrganizationIdsQuery, TeamCacheDeleteByOrganizationId } from '.';
 import { EntityImplementation } from './teamCache';
 
 const thisProviderType = EntityImplementation.Type;
@@ -24,6 +22,8 @@ export interface ITeamCacheProvider {
   deleteTeamCache(metadata: TeamCacheEntity): Promise<void>;
   queryAllTeams(): Promise<TeamCacheEntity[]>;
   queryTeamsByOrganizationId(organizationId: string): Promise<TeamCacheEntity[]>;
+  queryAllOrganizationIds(): Promise<string[]>;
+  deleteByOrganizationId(organizationId: string): Promise<void>;
 }
 
 export class TeamCacheProvider extends EntityMetadataBase implements ITeamCacheProvider {
@@ -42,7 +42,7 @@ export class TeamCacheProvider extends EntityMetadataBase implements ITeamCacheP
     }
     if (!metadata) {
       const error = new Error(`No metadata available for team ${teamId}`);
-      error['code'] = 404;
+      error['status'] = 404;
       throw error;
     }
     return this.deserialize<TeamCacheEntity>(thisProviderType, metadata);
@@ -79,5 +79,16 @@ export class TeamCacheProvider extends EntityMetadataBase implements ITeamCacheP
   async deleteTeamCache(metadata: TeamCacheEntity): Promise<void> {
     const entity = this.serialize(thisProviderType, metadata);
     await this._entities.deleteMetadata(entity);
+  }
+
+  async queryAllOrganizationIds(): Promise<string[]> {
+    const query = new TeamCacheGetOrganizationIdsQuery();
+    const results = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    return results.map(row => row['organizationid']);
+  }
+
+  async deleteByOrganizationId(organizationId: string): Promise<void> {
+    const query = new TeamCacheDeleteByOrganizationId(organizationId);
+    await this._entities.fixedQueryMetadata(thisProviderType, query);
   }
 }

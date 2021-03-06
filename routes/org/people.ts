@@ -1,15 +1,13 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import express = require('express');
+import express from 'express';
 import { ReposAppRequest } from '../../transitional';
 const router = express.Router();
 
-const peopleSearch = require('../peopleSearch');
+import RoutePeopleSearch from '../peopleSearch';
 
 router.use(function (req:ReposAppRequest, res, next) {
   req.individualContext.webContext.pushBreadcrumb('People');
@@ -21,6 +19,6 @@ router.use(function (req:ReposAppRequest, res, next) {
   next();
 });
 
-router.use(peopleSearch);
+router.use(RoutePeopleSearch);
 
-module.exports = router;
+export default router;

@@ -1,66 +1,76 @@
-FROM node:10-alpine AS build
+FROM node:15-alpine AS build
 
 ARG NPM_TOKEN
 
 # Make Git available for NPM and rsync in the build image
-RUN apk add --update git rsync && \
-  rm -rf /tmp/* /var/cache/apk/*
+RUN apk add --update git && rm -rf /var/cache/apk/*
 
-COPY . /tmp/
+WORKDIR /build
+COPY package.json .
+COPY package-lock.json .
 
 # Only if needed, copy .npmrc files into the container
-# COPY Dockerfile.npmrc /tmp/.npmrc
-# COPY .npmrc /tmp/.npmrc
+# COPY Dockerfile.npmrc /build/.npmrc
 
-RUN cd /tmp && npm install --production --verbose
-RUN rsync -azhqi /tmp/node_modules/ /tmp/production_node_modules
+# If you are doing local development and OK with your private tokens in the contains (CAREFUL):
+# DO NOT RECOMMEND:
+# COPY .npmrc /build/.npmrc
+
+# RUN npm install --production --verbose && mv node_modules production_node_modules
+RUN npm install --production && mv node_modules production_node_modules
+
+COPY . .
+
+# Only if needed, copy .npmrc files into the container, again...
+# COPY Dockerfile.npmrc /build/.npmrc
 
 # Dev dependencies
-RUN cd /tmp && npm install --verbose
-RUN rm -rf /tmp/.npmrc
+# RUN npm install --verbose && rm -rf .npmrc
+RUN npm install && rm -rf .npmrc
 
 # TypeScript build
-RUN cd /tmp && node ./node_modules/typescript/bin/tsc
+RUN npm run-script build
 
-FROM node:10-alpine AS run
-ENV APPDIR=/usr/src/repos
+# The open source project build needs: build the site assets sub-project
+RUN cd default-assets-package && npm install && npm run build
 
-RUN mkdir -p "${APPDIR}"
+FROM node:12-alpine AS run
 
-# Production Node.js modules
-COPY --from=build /tmp/production_node_modules "${APPDIR}/node_modules"
+ENV IS_DOCKER=1 \
+    NPM_CONFIG_LOGLEVEL=warn \
+    DEBUG=startup \
+    PORT=3000
 
-# Assets that people not using painless config may need
-COPY --from=build /tmp/data "${APPDIR}/data"
-
-# Copy built assets, app, config map
-COPY --from=build /tmp/dist "${APPDIR}"
-COPY --from=build /tmp/config "${APPDIR}/config"
-COPY --from=build /tmp/views "${APPDIR}/views"
-COPY --from=build /tmp/package.json "${APPDIR}/package.json"
-COPY --from=build /tmp/jobs/reports/exemptRepositories.json "${APPDIR}/jobs/reports/"
-COPY --from=build /tmp/jobs/reports/organizationDefinitions.json "${APPDIR}/jobs/reports/"
-COPY --from=build /tmp/jobs/reports/repositoryDefinitions.json "${APPDIR}/jobs/reports/"
-COPY --from=build /tmp/jobs/reports/teamDefinitions.json "${APPDIR}/jobs/reports/"
-COPY --from=build /tmp/jobs/reports/views "${APPDIR}/jobs/reports/views"
+EXPOSE 3000
 
 WORKDIR /usr/src/repos
 
-# COPY package.json "${APPDIR}"
-# COPY views "${APPDIR}/views"
-# COPY dist "${APPDIR}"
-# COPY public "${APPDIR}/public"
+RUN addgroup oss && adduser -D -G oss oss && chown -R oss:oss .
 
-ENV IS_DOCKER=1
-ENV DEBUG=oss-initialize
+# Production Node.js modules
+COPY --from=build --chown=oss:oss /build/production_node_modules ./node_modules
 
-ENV NPM_CONFIG_LOGLEVEL=warn
+# People not using painless config may need
+COPY --from=build --chown=oss:oss /build/data ./data
 
-ENV PORT 3000
-EXPOSE 3000
+# Copy built assets, app, config map
+COPY --from=build --chown=oss:oss /build/dist ./
 
-RUN addgroup oss && adduser -D -G oss oss \
- && chown -R oss:oss "${APPDIR}"
+# The open source project build needs: default assets should be placed
+COPY --from=build --chown=oss:oss /build/default-assets-package ../default-assets-package
+
+COPY --from=build --chown=oss:oss /build/config ./config
+COPY --from=build --chown=oss:oss /build/views ./views
+COPY --from=build --chown=oss:oss /build/package.json ./package.json
+COPY --from=build --chown=oss:oss /build/jobs/reports/views ./jobs/reports/views
+
+# Reports are not actively working in the project, but keeping these files ready
+COPY --from=build --chown=oss:oss /build/jobs/reports/exemptRepositories.json \
+     /build/jobs/reports/organizationDefinitions.json \
+     /build/jobs/reports/repositoryDefinitions.json \
+     /build/jobs/reports/teamDefinitions.json \
+     ./jobs/reports/
+
+# Host the app
 USER oss
-
 ENTRYPOINT ["npm", "run-script", "start-in-container"]

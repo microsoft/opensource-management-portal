@@ -1,9 +1,7 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import { ICorporateLinkExtended, ICorporateLinkExtendedDirectMethods } from '../../../business/corporateLink';
 import { MemoryLinkProvider } from './memoryLinkProvider';
@@ -54,6 +52,18 @@ export class CorporateMemoryLink implements ICorporateLinkExtended {
     _updateColumn(this, this._provider.propertyMapping.corporateId, value);
   }
 
+  set corporateMailAddress(value: string) {
+    _updateColumn(this, this._provider.propertyMapping.corporateMailAddress, value);
+  }
+
+  get corporateAlias() {
+    return this._entity[this._provider.propertyMapping.corporateAlias];
+  }
+
+  set corporateAlias(value: string) {
+    _updateColumn(this, this._provider.propertyMapping.corporateAlias, value);
+  }
+
   get corporateUsername(): string {
     return this._entity[this._provider.propertyMapping.corporateUsername];
   }
@@ -68,6 +78,10 @@ export class CorporateMemoryLink implements ICorporateLinkExtended {
 
   set corporateDisplayName(value: string) {
     _updateColumn(this, this._provider.propertyMapping.corporateDisplayName, value);
+  }
+
+  get corporateMailAddress() {
+    return this._entity[this._provider.propertyMapping.corporateMailAddress];
   }
 
   get thirdPartyUsername(): string {
@@ -166,41 +180,28 @@ function getDirtyColumns(self) {
 function createDataHelpers(link: CorporateMemoryLink, provider: MemoryLinkProvider): IMemoryLinkInstanceDataHelpers {
   return {
     update: async () : Promise<boolean> => {
-      return new Promise<boolean>((resolve, reject) => {
-        provider.updateLink(link, (error, actualUpdate: boolean) => {
-          if (error) {
-            return reject(error);
-          }
-          return resolve(actualUpdate);
-        });
-      });
+      await provider.updateLink(link);
+      return true;
     },
 
     save: async () : Promise<boolean> => {
-      return new Promise<boolean>((resolve, reject) => {
-        provider.updateLink(link, (error, actualUpdate: boolean) => {
-          // SAVE is different in update in that it only saves if changes
-          // are needed (not an error if such). UPDATE will throw if no
-          // changes are necessary to be stored.
-          if (error && error['noUpdatesRequired'] === true) {
-            return resolve(false);
-          } else if (error) {
-            return reject(error);
-          }
-          return resolve(actualUpdate);
-        });
-      });
+      try {
+        await provider.updateLink(link);
+      } catch (error) {
+        // SAVE is different in update in that it only saves if changes
+        // are needed (not an error if such). UPDATE will throw if no
+        // changes are necessary to be stored.
+        if (error && error['noUpdatesRequired'] === true) {
+          return false;
+        }
+        throw error;
+      }
+      return true;
     },
 
     delete: async () : Promise<boolean> => {
-      return new Promise<boolean>((resolve, reject) => {
-        provider.deleteLink(link, (error, actualDelete: boolean) => {
-          if (error) {
-            return reject(error);
-          }
-          return resolve(actualDelete);
-        });
-      });
+      await provider.deleteLink(link);
+      return true;
     },
   };
 }

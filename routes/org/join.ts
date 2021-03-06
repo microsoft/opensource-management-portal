@@ -1,20 +1,26 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
+// the changes in Further-UI-Improvements did not merge well, need to review by hand
 
-import express = require('express');
+import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest } from '../../transitional';
+import querystring from 'querystring';
+
+import { ReposAppRequest, IProviders } from '../../transitional';
 import { Team } from '../../business/team';
-import { IndividualContext } from '../../business/context2';
+import { IndividualContext } from '../../user';
 import { storeOriginalUrlAsReferrer, wrapError } from '../../utils';
-import { Organization, OrganizationMembershipState } from '../../business/organization';
+import { Organization, OrganizationMembershipState, OrganizationMembershipRole } from '../../business/organization';
 import { Operations } from '../../business/operations';
+import QueryCache from '../../business/queryCache';
+import RequireActiveGitHubSession from '../../middleware/github/requireActiveSession';
+import { jsonError } from '../../middleware/jsonError';
+import { join } from 'lodash';
 
 router.use(function (req: ReposAppRequest, res, next) {
   const organization = req.organization;
@@ -27,7 +33,9 @@ router.use(function (req: ReposAppRequest, res, next) {
   next(err);
 });
 
-function clearAuditListAndRedirect(res: express.Response, organization: Organization, onboarding: boolean, state?: OrganizationMembershipState, req?: ReposAppRequest) {
+router.use(RequireActiveGitHubSession);
+
+function clearAuditListAndRedirect(res: express.Response, organization: Organization, onboarding: boolean) {
   // Behavior change, only important to those not using GitHub's 2FA enforcement feature; no longer clearing the cache
   const url = organization.baseUrl + 'security-check' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name);
   if (state === OrganizationMembershipState.Active && req) {
@@ -36,8 +44,17 @@ function clearAuditListAndRedirect(res: express.Response, organization: Organiza
   return res.redirect(url);
 }
 
+function queryParamAsBoolean(input: string): boolean {
+  try {
+    return !!JSON.parse(input);
+  } catch (e) {
+    return false;
+  }
+}
+
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res: express.Response, next: express.NextFunction) {
   const operations = req.app.settings.operations as Operations;
+  const providers = req.app.settings.providers as IProviders;
   const organization = req.organization;
   const username = req.individualContext.getGitHubIdentity().username;
   const id = req.individualContext.getGitHubIdentity().id;
@@ -45,19 +62,21 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res: express.
   const accountDetails = await accountFromId.getDetails();
   const link = req.individualContext.link;
   const userIncreasedScopeToken = req.individualContext.webContext.tokens.gitHubWriteOrganizationToken;
-  let onboarding = req.query.onboarding;
+  let onboarding = queryParamAsBoolean(req.query.onboarding as string);
   let showTwoFactorWarning = false;
   let showApplicationPermissionWarning = false;
   let writeOrgFailureMessage = null;
   const result = await organization.getOperationalMembership(username);
   let state = result && result.state ? result.state : false;
   if (state === OrganizationMembershipState.Active) {
-    return clearAuditListAndRedirect(res, organization, onboarding, state, req);
+    await addMemberToOrganizationCache(providers.queryCache, organization, id);
+    return clearAuditListAndRedirect(res, organization, onboarding);
   } else if (state === 'pending' && userIncreasedScopeToken) {
     let updatedState;
     try {
       updatedState = await organization.acceptOrganizationInvitation(userIncreasedScopeToken);
       if (updatedState && updatedState.state === OrganizationMembershipState.Active) {
+        await addMemberToOrganizationCache(providers.queryCache, organization, id);
         return clearAuditListAndRedirect(res, organization, onboarding);
       }
     } catch (error) {
@@ -84,6 +103,7 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res: express.
     state: {
       result,
       state,
+      supportsExpressJoinExperience: true,
       hasIncreasedScope: userIncreasedScopeToken ? true : false,
       organization,
       orgAccount: userDetails,
@@ -101,13 +121,26 @@ function redirectToIncreaseScopeExperience(req, res, optionalReason) {
   storeOriginalUrlAsReferrer(req, res, '/auth/github/increased-scope', optionalReason);
 }
 
+async function addMemberToOrganizationCache(queryCache: QueryCache, organization: Organization, userId: string): Promise<void> {
+  if (queryCache && queryCache.supportsOrganizationMembership) {
+    try {
+      await queryCache.addOrUpdateOrganizationMember(organization.id.toString(), OrganizationMembershipRole.Member, userId);
+    } catch (ignored) { }
+  }
+}
+
 router.get('/express', asyncHandler(async function (req: ReposAppRequest, res: express.Response, next: express.NextFunction) {
+  const providers = req.app.settings.providers as IProviders;
   const organization = req.organization;
-  const onboarding = req.query.onboarding as boolean;
+  const onboarding = queryParamAsBoolean(req.query.onboarding as string);
   const username = req.individualContext.getGitHubIdentity().username;
+  const id = req.individualContext.getGitHubIdentity().id;
   const result = await organization.getOperationalMembership(username);
   // CONSIDER: in the callback era the error was never thrown or returned. Was that on purpose?
   const state = result && result.state ? result.state : false;
+  if (state === OrganizationMembershipState.Active) {
+    await addMemberToOrganizationCache(providers.queryCache, organization, id);
+  }
   if (state === OrganizationMembershipState.Active || state === OrganizationMembershipState.Pending) {
     res.redirect(organization.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name));
   } else if (req.individualContext.webContext.tokens.gitHubWriteOrganizationToken) {
@@ -120,14 +153,14 @@ router.get('/express', asyncHandler(async function (req: ReposAppRequest, res: e
 
 async function joinOrg(req: ReposAppRequest, res: express.Response, next: express.NextFunction) {
   const individualContext = req.individualContext as IndividualContext;
-  const organization = req.organization;
-  const onboarding = req.query.onboarding as boolean;
-  await joinOrganization(individualContext, organization, req.insights, req);
+  const organization = req.organization as Organization;
+  const onboarding = queryParamAsBoolean(req.query.onboarding as string);
+  await joinOrganization(individualContext, organization, req.insights, onboarding);
   return res.redirect(organization.baseUrl + 'join' + (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name));
 }
 
-async function joinOrganization(individualContext: IndividualContext, organization: Organization, insights, req?: ReposAppRequest): Promise<any> {
-  const invitationTeam = organization.invitationTeam as Team;
+async function joinOrganization(individualContext: IndividualContext, organization: Organization, insights, isOnboarding: boolean): Promise<any> {
+  let invitationTeam = organization.invitationTeam as Team;
   const username = individualContext.getGitHubIdentity().username;
   if (!username) {
     throw new Error('A GitHub username was not found in the user\'s link.');
@@ -146,7 +179,7 @@ async function joinOrganization(individualContext: IndividualContext, organizati
         error: error.message,
       },
     });
-    var specificMessage = error.message ? 'Error message: ' + error.message : 'Please try again later. If you continue to receive this message, please reach out for us to investigate.';
+    let specificMessage = error.message ? 'Error message: ' + error.message : 'Please try again later. If you continue to receive this message, please reach out for us to investigate.';
     if (error.code === 'ETIMEDOUT') {
       specificMessage = 'The GitHub API timed out.';
     }
@@ -167,4 +200,58 @@ async function joinOrganization(individualContext: IndividualContext, organizati
 
 router.post('/', joinOrg);
 
-module.exports = router;
+// /orgname/join/byClient
+router.post('/byClient', asyncHandler(async (req: ReposAppRequest, res: express.Response, next: express.NextFunction) => {
+  const { queryCache, insights } = req.app.settings.providers as IProviders;
+  const individualContext = req.individualContext as IndividualContext;
+  const organization = req.organization as Organization;
+  const onboarding = queryParamAsBoolean(req.query.onboarding as string);
+  try {
+    await joinOrganization(individualContext, organization, req.insights, onboarding);
+  } catch (error) {
+    return next(jsonError(error, 400));
+  }
+  let xGitHubSsoUrl: string = null;
+  try {
+    const username = individualContext.getGitHubIdentity().username;
+    const result = await organization.getOperationalMembership(username);
+    const state = result && result.state ? result.state : false;
+    if (state === OrganizationMembershipState.Pending && individualContext.hasGitHubOrganizationWriteToken()) {
+      const userIncreasedScopeToken = individualContext.webContext?.tokens?.gitHubWriteOrganizationToken;
+      const updatedState = await organization.acceptOrganizationInvitation(userIncreasedScopeToken);
+      if (updatedState && updatedState.state === OrganizationMembershipState.Active) {
+        insights?.trackEvent({
+          name: 'ClientOrgInvitationAccepted',
+        });
+        await addMemberToOrganizationCache(queryCache, organization, individualContext.getGitHubIdentity().id);
+      }
+    }
+  } catch (error) {
+    // NOT an error to bubble up, since they at least received an invitation.
+    console.warn(error);
+    if (error['x-github-sso-url']) {
+      xGitHubSsoUrl = error['x-github-sso-url'];
+      console.log(`Needs to authorize the OAuth application for SAML use by navigating to: ${xGitHubSsoUrl}`);
+    }
+    insights?.trackException({ exception: error });
+    insights?.trackEvent({
+      name: 'ClientOrgInvitationAcceptFailure',
+      properties: {
+        message: error.toString(),
+      },
+    });
+  }
+  const qs: any = {};
+  if (onboarding) {
+    qs.onboarding = onboarding;
+  } else {
+    qs.joining = organization.name;
+  }
+  if (xGitHubSsoUrl) {
+    qs.sso = xGitHubSsoUrl;
+  }
+  const q = Object.getOwnPropertyNames(qs).length > 0 ? `?${querystring.stringify(qs)}` : '';
+  return res.redirect(`/orgs/${organization.name}/join${q}`);
+}));
+
+export default router;

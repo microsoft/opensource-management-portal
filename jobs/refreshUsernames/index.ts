@@ -1,17 +1,12 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-/*eslint no-console: ["error", { allow: ["log"] }] */
+import Job from './task';
+import app from '../../app';
 
-'use strict';
-
-process.env.DEBUG = 'oss-redis,oss-github';
-
-require('painless-config-resolver')().resolve((configurationError, config) => {
-  if (configurationError) {
-    throw configurationError;
-  }
-  require('./task')(config);
+app.runJob(Job, {
+  defaultDebugOutput: 'cache,restapi',
+  insightsPrefix: 'JobRefreshUsernames',
 });

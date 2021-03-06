@@ -1,16 +1,13 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
+import fs from 'fs';
+import tmp from 'tmp';
+import zlib from 'zlib';
 
-import async = require('async');
-const fs = require('fs');
-const tmp = require('tmp');
-const zlib = require('zlib');
-
-function deflateFile(inputFilename, outputFilename, callback) {
+export function deflateFile(inputFilename: string, outputFilename: string, callback) {
   const gzip = zlib.createGzip();
   const input = fs.createReadStream(inputFilename);
   const output = fs.createWriteStream(outputFilename);
@@ -18,47 +15,47 @@ function deflateFile(inputFilename, outputFilename, callback) {
   output.on('finish', callback);
 }
 
-function getTempFilenames(count, callback) {
+function getTempFilenames(count: number, callback) {
   const filenames = [];
-  async.whilst(
-    () => filenames.length !== count,
-    (next) => {
-      tmp.tmpName((tempGenerationError, tempPath) => {
-        if (tempGenerationError) {
-          return next(tempGenerationError);
-        }
-        filenames.push(tempPath);
-        next();
-      });
-    }, function (error) {
-      if (error) {
-        return callback(error);
-      }
-      callback(null, filenames);
-    });
+  async function process() {
+    while (filenames.length !== count) {
+      filenames.push(await getNewTemporaryFilename());
+    }
+  }
+  process().then(ok => {
+    return callback(null, filenames);
+  }).catch(error => {
+    return callback(error);
+  });
 }
 
-module.exports.writeDeflatedTextFile = function writeDeflatedText(text, callback) {
+async function getNewTemporaryFilename(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    tmp.tmpName((tempGenerationError, tempPath) => {
+      return tempGenerationError ? reject(tempGenerationError) : resolve(tempPath);
+    });
+  });
+}
+
+export function writeDeflatedTextFile(text, callback) {
   // The callback will be the deflated temporary filename, removed after the process exits.
-  getTempFilenames(2, (tempFilesError, filenames) => {
+  return getTempFilenames(2, (tempFilesError, filenames) => {
     if (tempFilesError) {
       return callback(tempFilesError);
     }
     const intermediate = filenames[0];
     const deflatedPath = filenames[1];
     // Direct piping was crashing in the past so using two temporary files for robustness.
-    fs.writeFile(intermediate, text, (writeError) => {
+    return fs.writeFile(intermediate, text, (writeError) => {
       if (writeError) {
         return callback(writeError);
       }
-      deflateFile(intermediate, deflatedPath, (deflateError) => {
+      return deflateFile(intermediate, deflatedPath, (deflateError) => {
         if (deflateError) {
           return callback(deflateError);
         }
-        callback(null, deflatedPath);
+        return callback(null, deflatedPath);
       });
     });
   });
 };
-
-module.exports.deflateFile = deflateFile;

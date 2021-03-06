@@ -1,4 +1,5 @@
 {
+  "environmentName": "env://ENVIRONMENT_NAME?default=Unknown",
   "showUsers": "env://SITE_SHOW_USERS?trueIf=show",
   "showDebugFooter": "env://DEBUG_SHOW_FOOTER?trueIf=1"
 }

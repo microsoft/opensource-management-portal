@@ -1,5 +1,5 @@
 //-
-//- Copyright (c) Microsoft. All rights reserved.
+//- Copyright (c) Microsoft.
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
@@ -42,11 +42,6 @@ footer
               span.bg-danger(style='color:white;padding:2px')= config.redis.host || config.redis.tls
             h4
               | Redis Prefix: #{config.redis.prefix}
-          if config && config.github && config.github.cosmosdb
-            h4
-              | Cosmos URI: #{config.github.cosmosdb.uri}
-            h4
-              | Cosmos DB / Collection: #{config.github.cosmosdb.database} #{config.github.cosmosdb.collection}
           if config && config.data && config.data.postgres && config.data.postgres.password
             h4
               | PGSQL Database: #{config.data.postgres.host}/#{config.data.postgres.database}

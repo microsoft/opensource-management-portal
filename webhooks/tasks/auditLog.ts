@@ -1,38 +1,20 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 /*eslint no-console: ["error", { allow: ["dir", "log"] }] */
 
-'use strict';
+// AUDIT LOG: this capability is offline since the original data store was not ideal.
+// This should be rewritten to use the entity concept, and integrate with the newer
+// GitHub Enterprise Cloud capability of using GraphQL to hit the official audit log
+// for organizations, and also to import JSON-based audit export files.
 
-import moment from 'moment';
-
-interface IAuditDocument
-{
-  pk: string;
-  type: string;
-  provider: string;
-  service: string;
-  id: string;
-  action: string;
-  event: string;
-  actor: any;
-  scope?: string;
-  membership?: any;
-  member?: any;
-  team?: any;
-  changes?: any;
-  organization?: any;
-  timestamp?: any;
-  repository?: any;
-}
-
-interface ICreatedDocument
-{
-  _self?: string;
-}
+import { WebhookProcessor } from '../organizationProcessor';
+import { Operations } from '../../business/operations';
+import { Organization } from '../../business/organization';
+import { AuditLogRecord } from '../../entities/auditLogRecord/auditLogRecord';
+import { MapWebhookEventsToAuditEvents, AuditLogSource } from '../../entities/auditLogRecord';
 
 const eventTypes = new Set([
   'membership',
@@ -42,125 +24,100 @@ const eventTypes = new Set([
   'team',
 ]);
 
-async function saveDocument(client, collection, document: IAuditDocument) {
-  return new Promise(function (resolve, reject) {
-    client.createDocument(collection._self, document, (createError, docInfo) => {
-      if (createError) {
-        return reject(createError);
-      }
-      return resolve(docInfo);
-    });
-  });
-}
-
-async function getCollection(client, database, name) {
-  return new Promise(function (resolve, reject) {
-    const link = `/dbs/${database.id}/${database._colls}${name}`;
-    client.readCollection(link, (error, col) => {
-      if (error) {
-        return reject(error);
-      }
-      return resolve(col);
-    });
-  });
-}
-
-async function runAsync(operations, organization, data) {
-  const cosmos = operations.providers.cosmosdb;
-
-  const properties = data.properties;
-  const body = data.body;
-
-  const collectionName = cosmos.colNameTemp;
-  const collection = await getCollection(cosmos.client, cosmos.database, collectionName);
-
-  const partition = moment().utc().format('MMDD');
-
-  const document : IAuditDocument = {
-    pk: partition, // we always set the partitionKey for now
-    type: 'event',
-    provider: 'github',
-    service: 'repos',
-    id: properties.delivery,
-    action: body.action,
-    event: properties.event,
-    actor: {
-      id: body.sender.id,
-      login: body.sender.login,
-    },
-  };
-
-  if (body.scope) {
-    document.scope = body.scope;
+async function runAsync(operations: Operations, organization: Organization, data: any) {
+  const { auditLogRecordProvider } = operations.providers;
+  if (!auditLogRecordProvider) {
+    return;
   }
-
-  if (body.membership) {
-    document.membership = {
-      state: body.membership.state,
-      role: body.membership.role,
-      user: {
-        id: body.membership.user.id,
-        login: body.membership.user.login,
-      },
-    };
+  const { body, properties } = data;
+  const fullEventName = `${properties.event}.${body.action}`;
+  const mappedEventValue = MapWebhookEventsToAuditEvents[fullEventName];
+  if (!mappedEventValue) {
+    console.log(`unsupported audit log event: ${fullEventName}`);
+    return;
   }
-
-  if (body.member) {
-    document.member = {
-      id: body.member.id,
-      login: body.member.login,
-    };
-  }
-
-  if (body.team) {
-    document.team = {
-      id: body.team.id,
-      name: body.team.name,
-    };
-  }
-
+  const record = new AuditLogRecord();
+  record.recordSource = AuditLogSource.Webhook;
+  // UUID for now: record.recordId =
+  record.action = fullEventName;
+  record.created = properties.started || new Date();
+  record.additionalData = {};
+  let undoCandidate = false;
   if (body.changes) {
-    document.changes = body.changes;
+    const changes = body.changes;
+     record.additionalData.changes = changes;
+     if (changes?.repository?.permissions?.from?.admin === true) {
+      undoCandidate = true;
+     } else if (changes?.permission?.from === 'admin') {
+      undoCandidate = true;
+     }
   }
-
-  document.timestamp = properties.started;
-
+  if (body.scope === 'team' && body.action === 'removed' && body.member) {
+    undoCandidate = true;
+  } else if (body.event === 'team' && body.action === 'removed_from_repository') {
+    undoCandidate = true;
+  } else if (body.event === 'membership' && body.action === 'removed') {
+    undoCandidate = true;
+  } else if (fullEventName === 'member.removed') {
+    undoCandidate = true;
+  }
+  if (undoCandidate) {
+    record.additionalData.undoCandidate = undoCandidate;
+  }
+  if (body.scope) {
+    record.additionalData.scope = body.scope;
+  }
+  if (properties.delivery) {
+    record.additionalData.delivery = properties.delivery;
+  }
   if (body.organization) {
-    document.organization = {
-      id: body.organization.id,
-      login: body.organization.login,
-    };
+    record.organizationName = body.organization.login;
+    record.organizationId = body.organization.id;
   }
-
   if (body.repository) {
-    document.repository = {
-      id: body.repository.id,
-      name: body.repository.name,
-    };
+    record.repositoryName = body.repository.name;
+    record.repositoryId = body.repository.id;
   }
-
-  return await saveDocument(cosmos.client, collection, document);
+  if (body.sender) {
+    record.actorId = body.sender.id;
+    record.actorUsername = body.sender.login;
+    // do we have a link for the actor?
+  }
+  if (body.user || body.member) {
+    record.userId = body.user?.id || body.member?.id;
+    record.userUsername = body.user?.login || body.member?.login;
+    // TODO: corporate link?
+  }
+  if (body.team) {
+    record.teamId = body.team.id;
+    record.teamName = body.team.name;
+  }
+  if (body.membership) {
+  //   document.membership = {
+  //     state: body.membership.state,
+  //     role: body.membership.role,
+  //     user: {
+  //       id: body.membership.user.id,
+  //       login: body.membership.user.login,
+  //     },
+  }
+  record.inserted = new Date();
+  // console.dir(record);
+  await auditLogRecordProvider.insertRecord(record);
 }
 
-module.exports = {
-  filter: function (data) {
+export default class AuditLogRecorderWebhookProcessor implements WebhookProcessor {
+  filter(data: any) {
     let eventType = data.properties.event;
-    console.log(eventType);
-    // console.dir(data);
-    return eventTypes.has(eventType);
-  },
-  run: function (operations, organization, data, callback) {
-    if (!operations.providers.cosmosdb) {
-      return callback();
+    const has = eventTypes.has(eventType);
+    if (!has) {
+      console.log(`audit log does not support event type: ${eventType}`);
     }
+    return has;
+  }
 
-    runAsync(operations, organization, data)
-      .then((result) => {
-        console.log((result as ICreatedDocument)._self);
-        callback();
-      })
-      .catch(error => {
-        return callback(error);
-      });
-  },
-};
+  async run(operations: Operations, organization: Organization, data: any): Promise<boolean> {
+    const result = await runAsync(operations, organization, data);
+    return true;
+  }
+}

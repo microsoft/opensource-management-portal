@@ -21,7 +21,7 @@ reporting bugs or helping to triage and reproduce issues.
 ## Contributors
 
 GitHub provides the most accurate view of the contributions through its
-generated graphs feature. Simply select the "Graphs" tab and
+generated graphs feature. Select the "Graphs" tab and
 "Contributors" sub-graph.
 
 Thank you!

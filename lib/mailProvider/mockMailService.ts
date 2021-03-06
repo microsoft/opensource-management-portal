@@ -1,34 +1,39 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 //
 
-'use strict';
-
 import { v4 as uuidV4 } from 'uuid';
+import { IMail, IMailProvider } from '.';
 
-function sendMail(sentMessages, mailConfig, mailOptions, callback) {
-  const receipt = Object.assign({
-    id: uuidV4(),
-  }, mailOptions);
-  sentMessages.push(receipt);
-  callback(null, receipt.id);
-}
+export default class MockMailService implements IMailProvider {
+  html: true;
+  private sentMessages = [];
+  customServiceConfig: any;
+  appVersion: any;
 
-module.exports = function createCustomMailService(config) {
-  const sentMessages = [];
-  const customServiceConfig = config.mail.customService;
-  const appVersion = config.logging.version;
-  if (customServiceConfig.version !== 'prototype') {
-    throw new Error(`The custom mail service version "${customServiceConfig.version}" is not supported in this release.`);
-  }
-  return {
-    info: `mockMailService-${customServiceConfig.version} v${appVersion}`,
-    sendMail: sendMail.bind(undefined, sentMessages, customServiceConfig),
-    html: true,
-
-    // testability:
-    getSentMessages: function () {
-      return sentMessages;
+  constructor(config) {
+    this.customServiceConfig = config.mail.customService;
+    if (this.customServiceConfig.version !== 'prototype') {
+      throw new Error(`The custom mail service version "${this.customServiceConfig.version}" is not supported`);
     }
-  };
-};
+    this.appVersion = config.logging.version;
+  }
+
+  async initialize() {}
+  
+  get info(): string {
+    return `mockMailService-${this.customServiceConfig.version} v${this.appVersion}`;
+  }
+
+  async sendMail(mail: IMail): Promise<any> {
+    const receipt = Object.assign({
+      id: uuidV4(),
+    }, mail);
+    this.sentMessages.push(receipt);
+    return receipt.id;
+  }
+
+  getSentMessages() {
+    return this.sentMessages;
+  }
+}

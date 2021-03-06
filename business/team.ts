@@ -1,13 +1,25 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import * as common from './common';
 
 import { wrapError } from '../utils';
+
+import util from 'util';
+
+import _ from 'lodash';
+
+import { Organization, OrganizationMembershipState } from './organization';
+import { Operations } from './operations';
+import { ICacheOptions, ICacheOptionsPageLimiter, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IPagedCrossOrganizationCacheOptions, ErrorHelper } from '../transitional';
+import { TeamMember } from './teamMember';
+import { TeamRepositoryPermission } from './teamRepositoryPermission';
+import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';
+import { TeamJoinApprovalEntity } from '../entities/teamJoinApproval/teamJoinApproval';
+import { Repository } from './repository';
+import { AppPurpose } from '../github';
 
 const teamPrimaryProperties = [
   'id',
@@ -28,19 +40,20 @@ const teamSecondaryProperties = [
   'repositories_url',
 ];
 
-import _ from 'lodash';
-
-import { Organization } from './organization';
-import { Operations } from './operations';
-import { ICacheOptions, ICallback, IGetOwnerToken, ICacheOptionsPageLimiter, IPagedCacheOptions } from '../transitional';
-import { TeamMember } from './teamMember';
-import { TeamRepositoryPermission } from './teamRepositoryPermission';
-import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';
-import { TeamJoinApprovalEntity } from '../entities/teamJoinApproval/teamJoinApproval';
-import { Repository } from './repository';
+export interface IGitHubTeamBasics {
+  id: number;
+  name: string;
+  slug: string;
+}
 
 export enum GitHubRepositoryType {
   Sources = 'sources',
+}
+
+export enum TeamJsonFormat {
+  Simple, // basics
+  Detailed, // full entity
+  Augmented, // entity + corporate configuration layer
 }
 
 export interface ICheckRepositoryPermissionOptions extends ICacheOptions {
@@ -53,7 +66,7 @@ export interface IGetTeamRepositoriesOptions extends ICacheOptionsPageLimiter {
 
 export interface ITeamMembershipRoleState {
   role?: GitHubTeamRole;
-  state?: string;
+  state?: OrganizationMembershipState;
 }
 
 export interface IIsMemberOptions extends ICacheOptions {
@@ -69,18 +82,45 @@ export enum GitHubTeamRole {
   Maintainer = 'maintainer',
 }
 
+export interface ICrossOrganizationTeamMembership extends IPagedCrossOrganizationCacheOptions {
+  role?: GitHubTeamRole;
+}
+
+export interface ITeamMembershipOptions {
+  role?: GitHubTeamRole;
+}
+
 export interface IUpdateTeamMembershipOptions extends ICacheOptions {
   role?: GitHubTeamRole;
 }
+
+interface IGetMembersParameters {
+  team_slug: string;
+  org: string;
+  per_page: number;
+  role?: string;
+  pageLimit?: any;
+}
+
+interface IGetRepositoriesParameters {
+  org: string;
+  team_slug: string;
+  per_page: number;
+  pageLimit?: any;
+}
+
+// TODO: cleanup intentional memory leak
+// MEMORY_LEAK: INTENTIONAL: keep a cache going from ID to slug
+const memoryIdToSlugStore = new Map<number, string>();
 
 export class Team {
   public static PrimaryProperties = teamPrimaryProperties;
 
   private _organization: Organization;
   private _operations: Operations;
-  private _getToken: IGetOwnerToken;
+  private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
 
-  private _id: string; // CONSIDER: GitHub API teams always are numbers, not strings
+  private _id: number;
 
   private _slug?: string;
   private _name?: string;
@@ -94,9 +134,9 @@ export class Team {
   private _members_count: any;
 
   private _detailsEntity?: any;
+  private _ctorEntity?: any; // temp
 
-  get id(): string {
-    // NOTE: GitHub's library has renamed this to team_id
+  get id(): number {
     return this._id;
   }
 
@@ -132,15 +172,53 @@ export class Team {
     return this._organization;
   }
 
-  constructor(organization: Organization, entity, getToken: IGetOwnerToken, operations: Operations) {
+  constructor(organization: Organization, entity, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, operations: Operations) {
     if (!entity || !entity.id) {
       throw new Error('Team instantiation requires an incoming entity, or minimum-set entity containing an id property.');
+    }
+    if (typeof(entity.id) !== 'number') {
+      throw new Error('Team constructor entity.id must be a Number');
     }
     this._organization = organization;
     // TODO: remove assignKnownFieldsPrefixed concept, use newer field definitions instead?
     common.assignKnownFieldsPrefixed(this, entity, 'team', teamPrimaryProperties, teamSecondaryProperties);
-    this._getToken = getToken;
+    this._getAuthorizationHeader = getAuthorizationHeader;
     this._operations = operations;
+    this._ctorEntity = entity;
+  }
+
+  [util.inspect.custom](depth, options) {
+    return `GitHub Team: slug=${this._slug} id=${this.id} org=${this._organization?.name}`;
+  }
+
+  asJson(format?: TeamJsonFormat) {
+    if (format === TeamJsonFormat.Detailed || format === TeamJsonFormat.Augmented) {
+      const clone = {...this._ctorEntity, ...this._detailsEntity};
+      // technically will also include `.parent`
+      clone.organization = {
+        login: clone.organization?.login || this.organization.name,
+        id: clone.organization?.id || this.organization.id,
+      };
+      delete clone.members_url;
+      delete clone.repositories_url;
+      delete clone.cost;
+      delete clone.headers;
+      if (format === TeamJsonFormat.Detailed) {
+        return clone;
+      }
+      // Augment with corporate information
+      clone.corporateMetadata = {
+        isSystemTeam: this.isSystemTeam,
+        isBroadAccessTeam: this.isBroadAccessTeam,
+      };
+      return clone;
+    }
+    return {
+      id: this.id,
+      slug: this.slug,
+      name: this.name,
+      description: this.description,
+    };
   }
 
   get baseUrl() {
@@ -151,6 +229,18 @@ export class Team {
     return operations.baseUrl + 'teams?q=' + this._id;
   }
 
+  get absoluteBaseUrl(): string {
+    return `${this._organization.absoluteBaseUrl}teams/${this._slug || this._name}/`;
+  }
+
+  get nativeUrl() {
+    if (this._organization && this._slug) {
+      return this._organization.nativeManagementUrl + `teams/${this._slug}/`;
+    }
+    // Less ideal fallback
+    return this._organization.nativeManagementUrl + `teams/`;
+  }
+
   async ensureName(): Promise<void> {
     if (this._name && this._slug) {
       return;
@@ -158,48 +248,94 @@ export class Team {
     return await this.getDetails();
   }
 
-  getDetails(options?: ICacheOptions): Promise<any> {
-    return new Promise((resolve, reject) => {
-      options = options || {};
-      const operations = this._operations;
-      const cacheOptions = {
-        maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgTeamDetailsStaleSeconds,
-        backgroundRefresh: false,
-      };
-      if (options.backgroundRefresh !== undefined) {
-        cacheOptions.backgroundRefresh = options.backgroundRefresh;
+  async isDeleted(options?: ICacheOptions): Promise<boolean> {
+    try {
+      await this.getDetails(options);
+    } catch (maybeDeletedError) {
+      if (maybeDeletedError && maybeDeletedError.status && maybeDeletedError.status === 404) {
+        return true;
       }
-      const token = this._getToken();
-      const id = this._id;
-      if (!id) {
-        return reject(new Error('team.id required to retrieve team details'));
+    }
+    return false;
+  }
+
+  async getDetails(options?: ICacheOptions): Promise<any> {
+    options = options || {};
+    const operations = this._operations;
+    const cacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgTeamDetailsStaleSeconds,
+      backgroundRefresh: false,
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    const id = this._id;
+    if (!id) {
+      throw new Error('team.id required to retrieve team details');
+    }
+    // If the details already have been loaded, move along without refreshing
+    // CONSIDER: Either a time-based cache or ability to override the local cached behavior
+    if (this._detailsEntity) {
+      return this._detailsEntity;
+    }
+    const parameters = {
+      org_id: this.organization.id,
+      team_id: id,
+    };
+    try {
+      const entity = await operations.github.request(
+        this.authorize(AppPurpose.Data),
+        'GET /organizations/:org_id/team/:team_id', parameters, cacheOptions);
+      this._detailsEntity = entity;
+      // TODO: move beyond setting with this approach
+      common.assignKnownFieldsPrefixed(this, entity, 'team', teamPrimaryProperties, teamSecondaryProperties);
+      return entity;
+    } catch (error) {
+      if (error?.status === 403) {
+        error = new Error(`Error retrieving team details: ${error}`);
+        error.status = 403;
+        throw error;
       }
-      // If the details already have been loaded, move along without refreshing
-      // CONSIDER: Either a time-based cache or ability to override the local cached behavior
-      if (this._detailsEntity) {
-        return resolve(this._detailsEntity);
+      if (error.status && error.status === 404) {
+        error = new Error(`The GitHub team ID ${id} could not be found`);
+        error.status = 404;
+        throw error;
       }
-      const parameters = {
-        team_id: id,
-      };
-      return operations.github.call(token, 'teams.get', parameters, cacheOptions, (error, entity) => {
-        // CONSIDER: What if the team is gone? (404)
-        if (error) {
-          return reject(wrapError(error, `Could not get details about team ID ${this._id} in the GitHub organization ${this.organization.name}: ${error.message}`));
-        }
-        this._detailsEntity = entity;
-        // TODO: move beyond setting with this approach
-        common.assignKnownFieldsPrefixed(this, entity, 'team', teamPrimaryProperties, teamSecondaryProperties);
-        return resolve(entity);
-      });
-    });
+      throw wrapError(error, `Could not get details about team ID ${this._id} in the GitHub organization ${this.organization.name}: ${error.message}`);
+    }
+  }
+
+  async getChildTeams(options?: IPagedCacheOptions): Promise<Team[]> {
+    options = options || {};
+    const operations = this._operations;
+    const github = operations.github;
+    if (!this.slug) {
+      await this.getDetails();
+    }
+    const parameters = {
+      org: this.organization.name,
+      per_page: operations.defaultPageSize,
+      team_slug: this.slug,
+    };
+    const caching: IPagedCacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgTeamsStaleSeconds,
+      backgroundRefresh: true,
+      pageRequestDelay: options.pageRequestDelay || null,
+    };
+    caching.backgroundRefresh = options.backgroundRefresh;
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, AppPurpose.Data) as IGetAuthorizationHeader;
+    const teamEntities = await github.collections.getTeamChildTeams(getAuthorizationHeader, parameters, caching);
+    const teams = common.createInstances<Team>(this, this.organization.teamFromEntity, teamEntities);
+    return teams;
   }
 
   get isBroadAccessTeam(): boolean {
     const teams = this._organization.broadAccessTeams;
     // TODO: validating typing here - number or int?
-    const asNumber = parseInt(this._id, 10);
-    const res = teams.indexOf(asNumber);
+    if (typeof(this._id) !== 'number') {
+      throw new Error('Team.id must be a number');
+    }
+    const res = teams.indexOf(this._id);
     return res >= 0;
   }
 
@@ -210,116 +346,102 @@ export class Team {
   }
 
   delete(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const operations = this._operations;
-      const token = this._getToken();
-      const github = operations.github;
-      const parameters = {
-        team_id: this._id,
-      };
-      github.post(token, 'teams.delete', parameters, error => {
-        return error ? reject(error) : resolve();
-      });
-    });
+    const operations = this._operations;
+    const github = operations.github;
+    const parameters = {
+      org_id: this.organization.id,
+      team_id: this._id,
+    };
+    // alternate of teams.deleteInOrg
+    return github.requestAsPost(this.authorize(AppPurpose.Operations), 'DELETE /organizations/:org_id/team/:team_id', parameters);
   }
 
-  edit(patch): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const operations = this._operations;
-      const token = this._getToken();
-      const github = operations.github;
-      const parameters = {
-        team_id: this._id,
-      };
-      Object.assign(parameters, patch);
-      delete parameters.team_id; // do not allow patch to have team_id
-      delete parameters['id']; // // do not allow patch to have id
-      github.post(token, 'teams.update', parameters, error => {
-        return error ? reject(error) : resolve();
-      });
-    });
+  edit(patch: unknown): Promise<void> {
+    const operations = this._operations;
+    const github = operations.github;
+    const parameters = {
+      org_id: this.organization.id,
+      team_id: this._id,
+    };
+    Object.assign({}, patch, parameters);
+    // alternate of teams.editInOrg
+    return github.requestAsPost(this.authorize(AppPurpose.Operations), 'PATCH /organizations/:org_id/team/:team_id', parameters);
   }
 
   removeMembership(username: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const operations = this._operations;
-      const token = this._getToken();
-      const github = operations.github;
-      const parameters = {
-        team_id: this._id,
-        username: username,
-      };
-      github.post(token, 'teams.removeMembership', parameters, error => {
-        return error ? reject(error) : resolve();
-      });
-    });
+    const operations = this._operations;
+    const github = operations.github;
+    const parameters = {
+      org_id: this.organization.id,
+      team_id: this._id,
+      username: this._operations.validateGitHubLogin(username),
+    };
+    return github.requestAsPost(this.authorize(AppPurpose.Operations), 'DELETE /organizations/:org_id/team/:team_id/memberships/:username', parameters);
   }
 
-  addMembership(username: string, options?: IUpdateTeamMembershipOptions): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const operations = this._operations;
-      const token = this._getToken();
-      const github = operations.github;
-      options = options || {};
-      const role = options.role || GitHubTeamRole.Member;
-      const parameters = {
-        team_id: this._id,
-        username,
-        role,
-      };
-      github.post(token, 'teams.addOrUpdateMembership', parameters, (error, response) => {
-        return error ? reject(error) : resolve();
-      });
-    });
+  async addMembership(username: string, options?: IUpdateTeamMembershipOptions): Promise<any> {
+    const operations = this._operations;
+    const github = operations.github;
+    options = options || {};
+    const role = options.role || GitHubTeamRole.Member;
+    if (!this.slug) {
+      await this.getDetails();
+    }
+    const parameters = {
+      org: this.organization.name,
+      team_slug: this.slug,
+      username: this._operations.validateGitHubLogin(username),
+      role,
+    };
+    const ok = await github.post(this.authorize(AppPurpose.CustomerFacing), 'teams.addOrUpdateMembershipForUserInOrg', parameters);
+    return ok;
   }
 
   addMaintainer(username: string): Promise<void> {
     return this.addMembership(username, { role: GitHubTeamRole.Maintainer });
   }
 
-  getMembership(username: string, options: ICacheOptions): Promise<any> {
-    // TODO: proper return type
-    return new Promise((resolve, reject) => {
-      const operations = this._operations;
-      const token = this._getToken();
-      options = options || {};
-      if (!options.maxAgeSeconds) {
-        options.maxAgeSeconds = operations.defaults.orgMembershipDirectStaleSeconds;
+  async getMembership(username: string, options: ICacheOptions): Promise<ITeamMembershipRoleState | boolean> {
+    const operations = this._operations;
+    options = options || {};
+    if (!options.maxAgeSeconds) {
+      options.maxAgeSeconds = operations.defaults.orgMembershipDirectStaleSeconds;
+    }
+    // If a background refresh setting is not present, perform a live
+    // lookup with this call. This is the opposite of most of the library's
+    // general behavior.
+    if (options.backgroundRefresh === undefined) {
+      options.backgroundRefresh = false;
+    }
+    const parameters = {
+      org_id: this.organization.id,
+      team_id: this._id,
+      username: this._operations.validateGitHubLogin(username),
+    };
+    try {
+      const result = await operations.github.request(
+        this.authorize(AppPurpose.CustomerFacing),
+        'GET /organizations/:org_id/team/:team_id/memberships/:username',
+        parameters,
+        options);
+      return result;
+    } catch (error) {
+      if (error.status == /* loose */ 404) {
+        return false;
       }
-      // If a background refresh setting is not present, perform a live
-      // lookup with this call. This is the opposite of most of the library's
-      // general behavior.
-      if (options.backgroundRefresh === undefined) {
-        options.backgroundRefresh = false;
+      let reason = error.message;
+      if (error.status) {
+        reason += ' ' + error.status;
       }
-      const parameters = {
-        team_id: this._id,
-        username,
-      };
-      // TODO: this should probably be a _post_ call and not _call_ as there is no cache with GitHub
-      return operations.github.call(token, 'teams.getMembership', parameters, (error, result) => {
-        if (error && error.status == /* loose */ 404) {
-          result = false;
-          error = null;
-        }
-        if (error) {
-          let reason = error.message;
-          if (error.status) {
-            reason += ' ' + error.status;
-          }
-          const wrappedError = wrapError(error, `Trouble retrieving the membership for ${username} in team ${this._id}. ${reason}`);
-          if (error.status) {
-            wrappedError['code'] = error.status;
-            wrappedError['status'] = error.status;
-          }
-          return reject(wrappedError);
-        }
-        return resolve(result);
-      });
-    });
+      const wrappedError = wrapError(error, `Trouble retrieving the membership for ${username} in team ${this._id}.`);
+      if (error.status) {
+        wrappedError['status'] = error.status;
+      }
+      throw wrappedError;
+    }
   }
 
-  async getMembershipEfficiently(username: string, options?: IIsMemberOptions): Promise<ITeamMembershipRoleState> {
+  async getMembershipEfficiently(username: string, options?: IIsMemberOptions): Promise<ITeamMembershipRoleState | boolean> {
     // Hybrid calls are used to check for membership. Since there is
     // often a relatively fresh cache available of all of the members
     // of a team, that data source is used first to avoid a unique
@@ -334,22 +456,27 @@ export class Team {
     }
     const isMaintainer = await this.isMaintainer(username, options);
     if (isMaintainer) {
-      return { role: GitHubTeamRole.Maintainer };
+      return {
+        role: GitHubTeamRole.Maintainer,
+        state: OrganizationMembershipState.Active,
+      };
     }
     const isMember = await this.isMember(username);
     if (isMember) {
-      return { role: GitHubTeamRole.Member };
+      return {
+        role: GitHubTeamRole.Member,
+        state: OrganizationMembershipState.Active,
+      };
     }
     // Fallback to the standard membership lookup
     const membershipOptions = {
       maxAgeSeconds: operations.defaults.orgMembershipDirectStaleSeconds,
     };
     const result = await this.getMembership(username, membershipOptions);
-    // TODO: used to respond with result.role, result.state. Is state used anywhere?
-    if (!result || !result.role) {
-      return result;
+    if (result === false || (result as ITeamMembershipRoleState).role) {
+      return false;
     }
-    return { role: result.role, state: result.state };
+    return result;
   }
 
   async isMaintainer(username: string, options?: ICacheOptions): Promise<boolean> {
@@ -390,106 +517,88 @@ export class Team {
     return this.getMembers(getMemberOptions);
   }
 
-  getMembers(options?: IGetMembersOptions): Promise<TeamMember[]> {
-    return new Promise((resolve, reject) => {
-      options = options || {};
-      const operations = this._operations;
-      const token = this._getToken();
-      const github = operations.github;
-      const parameters: IGetMembersParameters = {
-        team_id: this.id,
-        per_page: operations.defaultPageSize,
-      };
-      const caching: IPagedCacheOptions = {
-        maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgMembersStaleSeconds,
-        backgroundRefresh: true,
-      };
-      if (options && options.backgroundRefresh === false) {
-        caching.backgroundRefresh = false;
+  async getMembers(options?: IGetMembersOptions): Promise<TeamMember[]> {
+    options = options || {};
+    const operations = this._operations;
+    const github = operations.github;
+    if (!this.slug) {
+      const cachedSlug = memoryIdToSlugStore.get(Number(this.id));
+      if (cachedSlug) {
+        this._slug = cachedSlug;
+      } else {
+        console.log('WARN: team.getMembers had to slowly retrieve a slug to perform the call');
+        await this.getDetails(); // octokit rest v17 requires slug or custom endpoint requests
+        if (this._slug) {
+          memoryIdToSlugStore.set(Number(this.id), this._slug);
+        }
       }
-      if (options.role) {
-        parameters.role = options.role;
+    }
+    const parameters: IGetMembersParameters = {
+      team_slug: this.slug,
+      org: this.organization.name,
+      per_page: operations.defaultPageSize,
+    };
+    const caching: IPagedCacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgMembersStaleSeconds,
+      backgroundRefresh: true,
+    };
+    if (options && options.backgroundRefresh === false) {
+      caching.backgroundRefresh = false;
+    }
+    if (options.role) {
+      parameters.role = options.role;
+    }
+    if (options.pageLimit) {
+      parameters.pageLimit = options.pageLimit;
+    }
+    // CONSIDER: Check the error object, if present, for error.status == /* loose */ 404 to alert/store telemetry on deleted teams
+    try {
+      const teamMembersEntities = await github.collections.getTeamMembers(this.authorize(AppPurpose.Data), parameters, caching);
+      const teamMembers = common.createInstances<TeamMember>(this, this.memberFromEntity, teamMembersEntities);
+      return teamMembers;
+    } catch (error) {
+      if (ErrorHelper.IsNotFound(error)) {
+        // If a previously cached slug is no longer good, remove from the leaky store
+        memoryIdToSlugStore.delete(Number(this.id));
       }
-      if (options.pageLimit) {
-        parameters.pageLimit = options.pageLimit;
-      }
-      // CONSIDER: Check the error object, if present, for error.status == /* loose */ 404 to alert/store telemetry on deleted teams
-      return github.collections.getTeamMembers(
-        token,
-        parameters,
-        caching,
-        common.createPromisedInstances<TeamMember>(this, this.memberFromEntity, resolve, reject));
-    });
+      throw error;
+    }
   }
 
-  checkRepositoryPermission(repositoryName: string, options?: ICheckRepositoryPermissionOptions): Promise<any> {
-    return new Promise((resolve, reject) => {
-      options = options || {};
-      let operations = this._operations;
-      let token = this._getToken();
-      let github = operations.github;
-      const organizationName = options.organizationName || this.organization.name;
-      const parameters: ICheckRepositoryPermissionParameters = {
-        team_id: this._id,
-        owner: organizationName,
-        repo: repositoryName,
-      };
-      const cacheOptions: ICacheOptions = {
-        maxAgeSeconds: options.maxAgeSeconds || operations.defaults.teamRepositoryPermissionStaleSeconds,
-      };
-      if (options.backgroundRefresh !== undefined) {
-        cacheOptions.backgroundRefresh = options.backgroundRefresh;
-      }
-      parameters.headers = {
-        // Alternative response for additional information, including the permission level
-        'Accept': 'application/vnd.github.v3.repository+json',
-      };
-      return github.call(token, 'teams.checkManagesRepo', parameters, cacheOptions, (error, details) => {
-        return error ? reject(error) : resolve(details && details.permissions ? details.permissions : null);
-      });
-    });
-  }
-
-  getRepositories(options?: IGetTeamRepositoriesOptions): Promise<Repository[]> {
-    return new Promise((resolve, reject) => {
-      options = options || {};
-      const operations = this._operations;
-      const token = this._getToken();
-      const github = operations.github;
-      // GitHub does not have a concept of filtering this out so we add it
-      const customTypeFilteringParameter = options.type;
-      if (customTypeFilteringParameter && customTypeFilteringParameter !== GitHubRepositoryType.Sources) {
-        return reject(new Error(`Custom \'type\' parameter is specified, but at this time only \'sources\' is a valid enum value. Value: ${customTypeFilteringParameter}`));
-      }
-      const parameters: IGetRepositoriesParameters = {
-        team_id: this._id,
-        per_page: operations.defaultPageSize,
-      };
-      const caching: IPagedCacheOptions = {
-        maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgMembersStaleSeconds,
-        backgroundRefresh: true,
-      };
-      if (options && options.backgroundRefresh === false) {
-        caching.backgroundRefresh = false;
-      }
-      if (options.pageLimit) {
-        parameters.pageLimit = options.pageLimit;
-      }
-      return github.collections.getTeamRepos(
-        token,
-        parameters,
-        caching,
-        (getTeamReposError, entities) => {
-          if (getTeamReposError) {
-            return reject(getTeamReposError);
-          }
-          if (customTypeFilteringParameter === 'sources') {
-          // Remove forks (non-sources)
-          _.remove(entities, (repo: any) => { return repo.fork; });
-          }
-          return common.returnPromisedInstances<Repository>(this, repositoryFromEntity, resolve, reject, entities, getTeamReposError);
-        });
-      });
+  async getRepositories(options?: IGetTeamRepositoriesOptions): Promise<TeamRepositoryPermission[]> {
+    options = options || {};
+    const operations = this._operations;
+    const github = operations.github;
+    // GitHub does not have a concept of filtering this out so we add it
+    const customTypeFilteringParameter = options.type;
+    if (customTypeFilteringParameter && customTypeFilteringParameter !== GitHubRepositoryType.Sources) {
+      throw new Error(`Custom \'type\' parameter is specified, but at this time only \'sources\' is a valid enum value. Value: ${customTypeFilteringParameter}`);
+    }
+    if (!this.slug) {
+      console.log('WARN: had to request team.slug slowly');
+      await this.getDetails();
+    }
+    const parameters: IGetRepositoriesParameters = {
+      org: this.organization.name,
+      team_slug: this.slug,
+      per_page: operations.defaultPageSize,
+    };
+    const caching: IPagedCacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgMembersStaleSeconds,
+      backgroundRefresh: true,
+    };
+    if (options && options.backgroundRefresh === false) {
+      caching.backgroundRefresh = false;
+    }
+    if (options.pageLimit) {
+      parameters.pageLimit = options.pageLimit;
+    }
+    const entities = await github.collections.getTeamRepos(this.authorize(AppPurpose.Data), parameters, caching);
+    if (customTypeFilteringParameter === 'sources') {
+      // Remove forks (non-sources)
+      _.remove(entities, (repo: any) => { return repo.fork; });
+    }
+    return common.createInstances<TeamRepositoryPermission>(this, teamRepositoryPermissionsFromEntity, entities);
   }
 
   async getOfficialMaintainers(): Promise<TeamMember[]> {
@@ -510,7 +619,6 @@ export class Team {
     const member = new TeamMember(
       this,
       entity,
-      this._getToken,
       this._operations);
     // CONSIDER: Cache any members in the local instance
     return member;
@@ -528,7 +636,7 @@ export class Team {
     }
     let pendingApprovals: TeamJoinApprovalEntity[] = null;
     try {
-      pendingApprovals = await approvalProvider.queryPendingApprovalsForTeam(this.id);
+      pendingApprovals = await approvalProvider.queryPendingApprovalsForTeam(this.id.toString());
     } catch(error) {
       throw wrapError(error, 'We were unable to retrieve the pending approvals list for this team. There may be a data store problem or temporary outage.');
     }
@@ -547,6 +655,11 @@ export class Team {
       updated_at: this.updated_at,
     };
   }
+
+  private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as IGetAuthorizationHeader;
+    return getAuthorizationHeader;
+  }
 }
 
 async function resolveDirectLinks(people: TeamMember[]): Promise<TeamMember[]> {
@@ -557,32 +670,11 @@ async function resolveDirectLinks(people: TeamMember[]): Promise<TeamMember[]> {
   return people;
 }
 
-function repositoryFromEntity(entity) {
+function teamRepositoryPermissionsFromEntity(entity) {
   // private, remapped "this"
   const instance = new TeamRepositoryPermission(
     this,
     entity,
-    this._getToken,
     this._operations);
   return instance;
-}
-
-interface IGetMembersParameters {
-  team_id: string;
-  per_page: number;
-  role?: string;
-  pageLimit?: any;
-}
-
-interface ICheckRepositoryPermissionParameters {
-  team_id: string;
-  owner: string;
-  repo: string;
-  headers?: any;
-}
-
-interface IGetRepositoriesParameters {
-  team_id: string;
-  per_page: number;
-  pageLimit?: any;
 }

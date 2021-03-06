@@ -1,16 +1,35 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import express = require('express');
-import { ReposAppRequest } from '../../transitional';
+import express from 'express';
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-router.get('/', function (req: ReposAppRequest, res) {
-  const organization = req.organization;
+import { ReposAppRequest, IProviders } from '../../transitional';
+import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
+import { Organization } from '../../business/organization';
+
+router.get('/', asyncHandler(async function (req: ReposAppRequest, res) {
+  const providers = req.app.settings.providers as IProviders;
+  const individualContext = req.individualContext;
+  const existingRepoId = req.query.existingrepoid as string;
+  const organization = req.organization as Organization;
+  if (organization.createRepositoriesOnGitHub) {
+    throw new Error('This organization requires that repositories are either directly created on GitHub, or by an organization owner.');
+  }
+  if (existingRepoId && organization.isNewRepositoryLockdownSystemEnabled) {
+    try {
+      const metadata = await providers.repositoryMetadataProvider.getRepositoryMetadata(existingRepoId);
+      await NewRepositoryLockdownSystem.ValidateUserCanConfigureRepository(metadata, individualContext);
+    } catch (noExistingMetadata) {
+      if (noExistingMetadata.status === 404) {
+        throw new Error('This repository does not have any metadata available regarding who can setup it up. No further actions available.');
+      }
+      throw noExistingMetadata;
+    }
+  }
   const orgName = organization.name.toLowerCase();
   req.individualContext.webContext.render({
     view: 'emberApp',
@@ -20,6 +39,6 @@ router.get('/', function (req: ReposAppRequest, res) {
       organization: organization,
     },
   });
-});
+}));
 
-module.exports = router;
+export default router;

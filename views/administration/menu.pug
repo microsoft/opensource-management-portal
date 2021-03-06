@@ -1,0 +1,24 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+.panel.panel-default
+  .panel-heading Administration
+  .list-group
+    a.list-group-item(href='/administration', class={active: view === 'administration'}) Home
+.panel.panel-default
+  .panel-heading GitHub Apps
+  .list-group
+    a.list-group-item(href='/administration/apps', class={active: view === 'administration/apps'}) Apps
+.panel.panel-default
+  .panel-heading Data
+  .list-group
+    a.list-group-item(href='/administration/contributingorgs', class={active: view === 'administration/contributingorgs'}) Contributed orgs
+
+if _corpAdminUrls
+  .panel.panel-default
+    .panel-heading Corporate apps
+    .list-group
+      each url, slug in _corpAdminUrls
+        a.list-group-item(href=url, class={active: view === 'administration/corporation/' + slug.toLowerCase()})= slug

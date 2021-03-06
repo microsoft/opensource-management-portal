@@ -1,16 +1,18 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
+import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
+import { stringOrNumberAsString } from '../../utils';
+import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { Operations } from '../../business/operations';
 
-const type = EntityMetadataType.RepositoryCache;
+const type = new EntityMetadataType('RepositoryCache');
 
 interface IRepositoryCacheProperties {
   organizationId: any;
@@ -40,10 +42,34 @@ export class RepositoryCacheEntity implements IRepositoryCacheProperties {
   constructor() {
     this.cacheUpdated = new Date();
   }
+
+  hydrateToInstance(operations: Operations) {
+    try {
+      const organization = operations.getOrganizationById(Number(this.organizationId));
+      const clone = {...this.repositoryDetails};
+      clone.id = Number(this.repositoryId); // GitHub entities are numbers
+      return organization.repository(this.repositoryName, clone);
+    } catch (noConfiguredOrganization) {
+      throw noConfiguredOrganization;
+    }  
+  }
 }
 
 export class RepositoryCacheFixedQueryAll implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryCacheGetAll;
+}
+
+export class RepositoryCacheGetOrganizationIdsQuery implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryCacheGetOrganizationIds;
+}
+
+export class RepositoryCacheDeleteByOrganizationId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryCacheDeleteByOrganizationId;
+  constructor(public organizationId: string) {
+    if (typeof(this.organizationId) !== 'string') {
+      throw new Error(`${organizationId} must be a string`);
+    }
+  }
 }
 
 export class RepositoryCacheFixedQueryByOrganizationId implements IEntityMetadataFixedQuery {
@@ -58,78 +84,74 @@ export class RepositoryCacheFixedQueryByOrganizationId implements IEntityMetadat
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => { return new RepositoryCacheEntity(); });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, repositoryId);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, new Map<string, string>([
+EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, new Map<string, string>([
   [Field.organizationId, 'orgid'],
   [Field.repositoryName, 'repoName'],
   [Field.repositoryDetails, 'repoDetails'],
   [Field.cacheUpdated, 'cached'],
 ]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.MemoryMapping, fieldNames, [repositoryId]);
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, [repositoryId]);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTableName, 'repositorycache');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresDefaultTypeColumnName, 'repositorycache');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresMapping, new Map<string, string>([
+PostgresConfiguration.SetDefaultTableName(type, 'repositorycache');
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'repositorycache');
+PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
   [Field.organizationId, (Field.organizationId as string).toLowerCase()], // net new
   [Field.repositoryName, (Field.repositoryName as string).toLowerCase()],
   [Field.repositoryDetails, (Field.repositoryDetails as string).toLowerCase()],
   [Field.cacheUpdated, (Field.cacheUpdated as string).toLowerCase()],
 ]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.PostgresMapping, fieldNames, [repositoryId]);
+PostgresConfiguration.ValidateMappings(type, fieldNames, [repositoryId]);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
   const entityTypeColumn = mapMetadataPropertiesToFields[EntityField.Type];
-  // const entityIdColumn = mapMetadataPropertiesToFields[EntityField.ID];
-  const orgIdColumn = mapMetadataPropertiesToFields[Field.organizationId];
   const entityTypeValue = getEntityTypeColumnValue(type);
-  let sql = '', values = [];
   switch (query.fixedQueryType) {
     case FixedQueryType.RepositoryCacheGetAll:
-      sql = `
-        SELECT *
-        FROM ${tableName}
-        WHERE
-          ${entityTypeColumn} = $1
-      `;
-      values = [
-        entityTypeValue,
-      ];
-      return { sql, values };
-    case FixedQueryType.RepositoryCacheGetByOrganizationId:
+      return PostgresGetAllEntities(tableName, entityTypeColumn, entityTypeValue);
+    case FixedQueryType.RepositoryCacheGetByOrganizationId: {
       const { organizationId } = query as RepositoryCacheFixedQueryByOrganizationId;
       if (!organizationId) {
         throw new Error('organizationId required');
       }
-      sql = `
-        SELECT *
-        FROM ${tableName}
-        WHERE
-          ${entityTypeColumn} = $1 AND
-          ${orgIdColumn} = $2
-      `;
-      values = [
-        entityTypeValue,
-        organizationId,
-      ];
-      return { sql, values };
-
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        organizationid: stringOrNumberAsString(organizationId),
+      });
+    }
+    case FixedQueryType.RepositoryCacheDeleteByOrganizationId: {
+      const { organizationId } = query as RepositoryCacheDeleteByOrganizationId;
+      return {
+        sql: (`DELETE FROM ${tableName} WHERE ${metadataColumnName}->>'organizationid' = $1`),
+        values: [ organizationId ],
+        skipEntityMapping: true,
+      };
+    }
+    case FixedQueryType.RepositoryCacheGetOrganizationIds: {
+      return {
+        sql: (`
+          SELECT DISTINCT(${metadataColumnName}->>'organizationid') as organizationid
+          FROM ${tableName}`),
+        values: [],
+        skipEntityMapping: true,
+      };
+    }
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
+EntityMetadataMappings.Register(type, MemorySettings.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
   switch (query.fixedQueryType) {
     case FixedQueryType.RepositoryCacheGetAll:
       return allInTypeBin;
-
-    case FixedQueryType.RepositoryCacheGetByOrganizationId:
+    case FixedQueryType.RepositoryCacheGetByOrganizationId: {
       const { organizationId } = query as RepositoryCacheFixedQueryByOrganizationId;
-      if (!repositoryId) {
+      if (!organizationId) {
         throw new Error('organizationId required');
       }
       throw new Error('Not implemented yet');
+    }
     default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for repository for the type ${type}, or is of an unknown type`);
+      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
   }
 });
 

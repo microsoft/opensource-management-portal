@@ -1,5 +1,5 @@
 //-
-//- Copyright (c) Microsoft. All rights reserved.
+//- Copyright (c) Microsoft.
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
@@ -10,7 +10,7 @@ block content
     h4 Service Account linked
 
   h3 Congratulations!
-  p Your GitHub account is now linked with your corporate identity.
+  p Your GitHub account is now linked with your #{companyName || 'corporate'} identity.
 
   table
     tbody
@@ -28,20 +28,35 @@ block content
         td Corporate identity
         td= link.corporateUsername
 
-  h3 #{companyName} open source resources
-  p.
-    Take a moment to review the docs at #[a(href=docs) #{docs}]:
-  ul
-    li Common GitHub questions, policies and resources relating to releasing open source
-    li Service account guidance
-    li Release information: checklist, review process, how to create new repos
-    li Contributor license agreement info
+  if customStrings && customStrings.linkWarningMessages
+    h3 Important notes
+    p
+      each line of customStrings.linkWarningMessages
+        = line
+        br
 
-  h3 #{companyName}'s GitHub is for open source
-  p.
-    GitHub is for building public open source communities and not for private
-    team engineering (#[a(href='https://aka.ms/githubguidelines') guidelines]).
-  p.
-    If you would like to learn about being an early adopter in the
-    #[a(href='https://aka.ms/1es/github/overview') GitHub inside Microsoft program],
-    please contact #[a(href='mailto:github-in-msft-qs@microsoft.com') github-in-msft-qs].
+  //- CONSIDER: just reuse configured footer links instead
+  if docs
+    if companyName
+      h3 #{companyName} open source resources
+    else
+      h3 Open source resources
+    p.
+      Take a moment to review the docs at #[a(href=docs) #{docs}]:
+    ul
+      li Common GitHub questions, policies and resources relating to releasing open source
+      li Service account guidance
+      li Release information: checklist, review process, how to create new repos
+      li Contributor license agreement info
+
+  if customStrings
+    if customStrings.linkInformationHeading
+      h3= customStrings.linkInformationHeading
+    if customStrings.linkInformationMessage
+      p= customStrings.linkInformationMessage
+    if customStrings.linkInformationPolicyLink
+      p: a(href=customStrings.linkInformationPolicyLink) GitHub Guidelines for #{companyName || 'the company'}
+    if customStrings.linkInformationUrl
+      p: a(href=customStrings.linkInformationUrl)= (customStrings.linkInformationUrlTitle || customStrings.linkInformationUrl)
+    if customStrings.linkInformationMail
+      p: a(href='mailto:' + customStrings.linkInformationMail)= (customStrings.linkInformationMailTitle || customStrings.linkInformationMail)

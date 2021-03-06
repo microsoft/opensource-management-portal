@@ -1,22 +1,22 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import express = require('express');
-import { ReposAppRequest } from '../../../transitional';
-import { wrapError } from '../../../utils';
+import express from 'express';
 const router = express.Router();
-const teamAdminRequired = require('./teamAdminRequired');
+
+import { ReposAppRequest, UserAlertType } from '../../../transitional';
+import { wrapError } from '../../../utils';
+
+import MiddlewareTeamAdminRequired from './teamAdminRequired';
 
 interface IRequestWithTeamAndLegacy extends ReposAppRequest {
   team2?: any;
   teamUrl?: string;
 }
 
-router.get('/', teamAdminRequired, (req: IRequestWithTeamAndLegacy, res, next) => {
+router.get('/', MiddlewareTeamAdminRequired, (req: IRequestWithTeamAndLegacy, res, next) => {
   const team2 = req.team2;
   team2.getDetails(error => {
     if (error) {
@@ -34,7 +34,7 @@ router.get('/', teamAdminRequired, (req: IRequestWithTeamAndLegacy, res, next) =
   });
 });
 
-router.post('/', teamAdminRequired, (req: IRequestWithTeamAndLegacy, res, next) => {
+router.post('/', MiddlewareTeamAdminRequired, (req: IRequestWithTeamAndLegacy, res, next) => {
   const team2 = req.team2;
   const organization = req.organization;
   const patch = {
@@ -45,7 +45,7 @@ router.post('/', teamAdminRequired, (req: IRequestWithTeamAndLegacy, res, next) 
     if (error) {
       return next(error);
     }
-    req.individualContext.webContext.saveUserAlert('Team properties updated on GitHub', 'Properties Saved', 'success');
+    req.individualContext.webContext.saveUserAlert('Team properties updated on GitHub', 'Properties Saved', UserAlertType.Success);
     team2.getDetails(getDetailsError => {
       if (getDetailsError) {
         return next(getDetailsError);
@@ -56,4 +56,4 @@ router.post('/', teamAdminRequired, (req: IRequestWithTeamAndLegacy, res, next) 
   });
 });
 
-module.exports = router;
+export default router;

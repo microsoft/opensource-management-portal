@@ -1,9 +1,7 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 interface ICampaignData {
   uri?: any;
@@ -17,7 +15,7 @@ interface ICampaignData {
   query?: any;
 }
 
-module.exports = function initializeCampaigns(app) {
+export default function initializeCampaigns(app) {
   // Use Application Insights to store simple anonymous information about campaigns
   // or events. Also fires off metrics to help understand how many campaign events
   // come through the app.

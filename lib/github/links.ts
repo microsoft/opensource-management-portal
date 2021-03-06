@@ -1,20 +1,18 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 // NOTE: Technically this file should be separate from the GitHub library
 
 import { CompositeApiContext } from './composite';
 import { createCallbackFlattenData } from './core';
-import { ILibraryContext } from '.';
+import { RestLibrary } from '.';
 
 export class LinkMethods {
-  private libraryContext: ILibraryContext;
+  private libraryContext: RestLibrary;
 
-  constructor(libraryContext: ILibraryContext) {
+  constructor(libraryContext: RestLibrary) {
     this.libraryContext = libraryContext;
   }
 

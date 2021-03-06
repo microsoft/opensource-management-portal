@@ -1,0 +1,180 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+mixin displayConfiguration(proposedDynamicSettings, allowEdit)
+
+      h6 ESSENTIALS
+      ul.list-unstyled
+        li= 'Organization Name: ' + proposedDynamicSettings.organizationName
+        li= 'Organization ID: ' + proposedDynamicSettings.organizationId
+        li= 'Internal description: ' + proposedDynamicSettings.portalDescription
+
+      h6 ADOPTION STATUS
+      if proposedDynamicSettings.active
+        p Active
+      else
+        p: em Inactive
+
+      h6 CONFIGURATION
+      ul.list-unstyled
+        li= 'Configured: ' + proposedDynamicSettings.setupDate
+        li= 'Updated: ' + proposedDynamicSettings.updated
+        li= 'Setup by ' + proposedDynamicSettings.setupByCorporateDisplayName + ' (' + proposedDynamicSettings.setupByCorporateUsername + ', id=' + proposedDynamicSettings.setupByCorporateId + ')'
+
+      h6 LEGAL ENTITIES
+      if proposedDynamicSettings.legalEntities && Array.isArray(proposedDynamicSettings.legalEntities) && proposedDynamicSettings.legalEntities.length
+        ul.list
+          each legalEntity in proposedDynamicSettings.legalEntities
+            li= legalEntity
+      else
+        p No legal entities configured.
+
+      h6 FEATURE FLAGS
+      if proposedDynamicSettings.features && Array.isArray(proposedDynamicSettings.features) && proposedDynamicSettings.features.length
+        ul.list
+          each feature in proposedDynamicSettings.features
+            li= feature
+      else
+        p No feature flags configured.
+
+      if allowEdit
+        ul.list-inline
+          li: input.form-control(placeholder='Additional feature flag', name='add-feature-flag')
+          li: input.btn.btn-sm.btn-default(type='submit', name='update', value='Add')
+
+      h6 PROPERTIES
+      if proposedDynamicSettings.properties
+        ul
+          each v, k in proposedDynamicSettings.properties
+            li= k + ': ' + v
+
+      if allowEdit
+        ul.list-inline
+          li: Add a new feature or change an existing value
+          li: input.form-control(placeholder='key:value', name='change-property')
+          li: input.btn.btn-sm.btn-default(type='submit', name='update', value='Save')
+
+      h6 SPECIAL TEAMS
+      if proposedDynamicSettings.specialTeams && Array.isArray(proposedDynamicSettings.specialTeams) && proposedDynamicSettings.specialTeams.length
+        ul.list
+          each specialTeam in proposedDynamicSettings.specialTeams
+            li= specialTeam.specialTeam + ': ' + specialTeam.teamId
+      else
+        p No special teams configured.
+
+      h6 TEMPLATES
+      if proposedDynamicSettings.templates && Array.isArray(proposedDynamicSettings.templates) && proposedDynamicSettings.templates.length
+        ul.list
+          each template in proposedDynamicSettings.templates
+            li= template
+      else
+        p No templates.
+
+      h6 GITHUB APP INSTALLATIONS
+      if proposedDynamicSettings.installations && proposedDynamicSettings.installations.length
+        ul.list-unstyled
+          each installation in proposedDynamicSettings.installations
+            li= '(app=' + installation.appId + ', installation=' + installation.installationId + ')'
+      else
+        p No installations.
+
+      //- =pre= JSON.stringify(proposedDynamicSettings, undefined, 2)
+
+
+block content
+  div.container
+    if app
+      h2= app.friendlyName
+    ul.list-inline
+      li: a.btn.btn-sm.btn-muted-more(href='../') All App organizations...
+      li: a.btn.btn-sm.btn-muted-more(href='/administration/apps') All Apps...
+
+    if organizationName
+      h1= organizationName
+
+    if !dynamicSettings && staticSettings
+      h2 Adopt this organization?
+      p This organization was previously pulling its configuration from a static configuration file. Would you like to adopt the static settings to begin migrating to dynamic configuration?
+      form(method='post')
+        input.btn.btn-primary(type='submit', name='adopt-import-settings', value='Adopt by importing static settings')
+    else if !dynamicSettings && proposedDynamicSettings
+      h2 Adopt this organization?
+      p This organization is not currently configured for this application instance. Are you sure this is your organization and you wish to add it to this instance?
+      form(method='post')
+        input.btn.btn-primary(type='submit', name='adopt-new-org', value='Adopt new organization')
+
+      hr
+      h2 Ownership option
+      p To help with onboarding, before adoption, this may be available:
+      if isUserOwner === true
+        p: strong You are an owner of this org.
+      else if isUserOwner === false
+        p: strong You are a member of this org but not an owner.
+      else
+        p: strong You are not a member of this org.
+      if userCheckError
+        p= 'User check error: ' + userCheckError.toString()
+      if !isUserOwner
+        form(method='post')
+          input.btn.btn-danger.btn-sm(type='submit', name='elevate-to-owner', value='Elevate to owner')
+
+    if proposedDynamicSettings
+      h4 Proposed imported settings
+      +displayConfiguration(proposedDynamicSettings)
+
+    if dynamicSettings
+      h4 Operations
+      form(method='post')
+        ul.list-inline
+          if dynamicSettings.active === true
+            li: input.btn.btn-default(type='submit', name='deactivate', value='Deactivate organization')
+          else
+            li: input.btn.btn-primary(type='submit', name='activate', value='Activate organization')
+
+          if installationConfigured
+            li: input.btn.btn-danger(type='submit', name='force-delete-config', value='Force delete config')
+            if dynamicSettings && dynamicSettings.installations && dynamicSettings.installations.length > 1 || dynamicSettings.active === false
+              li: input.btn.btn-default(type='submit', name='remove-configuration', value='Remove this installation from configuration')
+            else if dynamicSettings.active === false
+              li: strong The app must be deactivated all installations can be removed.
+          else
+            li
+              p: string This additional application needs to be added to the dynamic configuration for the organization.
+              input.btn.btn-primary(type='submit', name='configure', value='Add this installation to configuration')
+
+        h4 Dynamic Configuration
+        +displayConfiguration(dynamicSettings, true)
+
+    if installation
+      hr
+      h4 GitHub Installation Details
+      table.table
+        thead
+          tr
+            th Key
+            th Value
+        tbody
+          if installation.id
+            tr
+              td Installation ID
+              td= installation.id
+          if installation.account && installation.account.login
+            tr
+              td Account login
+              td= installation.account.login
+          if installation.account && installation.account.id
+            tr
+              td Account ID
+              td= installation.account.id
+          if installation.created_at
+            tr
+              td Installed
+              td= installation.created_at
+          if installation.updated_at
+            tr
+              td Updated
+              td= installation.updated_at

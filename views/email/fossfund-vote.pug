@@ -1,0 +1,110 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends email
+
+block content
+  - var moment = viewServices.moment
+  - var dateFormat = 'dddd, MMMM Do YYYY'
+
+  h3 You can now vote at #[a(href='https://aka.ms/fossfund') https://aka.ms/fossfund]
+
+  if openContributions && openContributions.length
+    p: strong Thanks for making #{openContributions.length} open source contribution#{openContributions.length === 1 ? '' : 's'} during the eligibility period.
+
+    if contributions
+      - var nominationTypes = Object.getOwnPropertyNames(contributions)
+      p #[a(href='https://aka.ms/fossfund') Contributions you've made this month]:
+      ul
+        each nt in nominationTypes
+          - var countOfThisType = contributions[nt].length
+          - var pluralSuffix = countOfThisType > 1 ? 's' : ''
+          if nt == 'self-service-contribution'
+            li Your self-attested contribution
+          if nt == 'CommitCommentEvent'
+            li Commit comment#{pluralSuffix}
+          else if nt == 'IssueCommentEvent'
+            li Issue discussion#{pluralSuffix}
+          else if nt == 'IssuesEvent'
+            li Issue#{pluralSuffix} opened/closed
+          else if nt == 'PullRequestEvent'
+            li Pull request#{pluralSuffix} created/merged
+          else if nt == 'PullRequestReviewEvent'
+            li Pull request review#{pluralSuffix}
+          else if nt == 'PullRequestReviewCommentEvent'
+            li Pull request comment#{pluralSuffix}
+          else
+            li Other contribution types
+            //- some other type
+
+  //-if otherContributionsData && otherContributionsData.length
+    p You made #{otherContributionsData.length} contribution#{otherContributionsData.length === 1 ? '' : 's'} to corporate governed repos that are not part of the FOSS Fund focus.
+
+  h2= election.title
+  p.
+    #[strong Voting ends #{moment(election.votingEnd).fromNow()}.] Eligibility period for open contributions: #{moment(election.eligibilityStart).format(dateFormat)}-#{moment(election.eligibilityEnd).format(dateFormat)}.
+  p= election.description
+
+  if userSettings && userSettings.contributionShareOptIn === true
+    //-h2 Launching soon, featuring you: the new opensource.microsoft.com
+    //-p Thanks for opting in to public data sharing. Your GitHub avatar and/or public contributions on GitHub may be featured. We will let you know when the new site launches.
+    //-p: a(href='https://aka.ms/opensource/publicdatasharing') More info at aka.ms/opensource/publicdatasharing
+  else if userSettings && userSettings.contributionShareOptIn === false
+    //-h2 The new opensource.microsoft.com site launches this month featuring many of your coworkers
+    //-p You have opted out of participating in the new site at this time. If you change your mind...
+    //-p: a(href='https://aka.ms/opensource/publicdatasharing') More info and ability to opt-in at aka.ms/opensource/publicdatasharing
+  else
+    h2 Want to be featured on the new opensource.microsoft.com site?
+    p Launched earlier this year, the new site features Microsoft employees who contribute to open source, whether part of their job, a hobby, or just something they do.
+    p If you'd like to have your GitHub avatar appear on the homepage at times, and your contributions to other projects highlighted when they're made as part of the new "ecosystem" page, you can opt-in to sharing that already-public info.
+    p: a(href='https://aka.ms/opensource/publicdatasharing') More info and ability to opt-in at aka.ms/opensource/publicdatasharing
+
+  hr
+
+  h2 Nominated projects
+  each nominee in nominees
+    h4= nominee.title
+    if nominee.web
+      p Project: #[a(href=nominee.web)= nominee.web]
+    p: a(href='https://aka.ms/fossfund') Open ballot...
+    p= nominee.description
+    if nominee.justification
+      p: small: em= nominee.justification
+
+  hr
+
+  h2 Contributing in the open
+  p We are trying to drive a change across Microsoft. We'd like to see more Microsofties contributing to open source communities, whether as part of your role, a Day of Learning project, updating project dependencies, hobbies, or pursuing off-hours projects and interests.
+
+  h2 About the FOSS Fund
+  p Microsoft's FOSS Fund gives $10,000 to the most-voted-for open source software project. Projects are nominated and selected by those at Microsoft who contribute to communities that are not primarily  Microsoft communities.
+  p Public information about the fund can be found at #[a(href='https://aka.ms/microsoftfossfund') https://aka.ms/microsoftfossfund], including previous fund winners.
+
+  h3 Nominated projects
+  p Projects must:
+  ul
+    li Be used by Microsoft
+    li Have an OSI-approved license such as MIT, Apache 2.0, GPL, etc.
+    li Must have a mechanism for receiving funds (the GitHub Sponsors team may be able to help)
+    li Cannot be a Microsoft employee-led project
+
+  h3 How to nominate a project for the next fund
+  p New FOSS Fund rounds are announced monthly via the #[a(href='https://idwebelements/GroupManagement.aspx?Group=osblast&Operation=join') osblast] discussion list.
+
+  h3 Selection eligibility
+  p Eligibility requirements:
+  ul
+    li Must have a linked GitHub account at #[a(href='https://aka.ms/opensource/portal') https://aka.ms/opensource/portal]
+    li Must be an FTE or intern
+    li Must have contributed in the open to at least one project on GitHub beyond Microsoft's governance during the eligibility period. Contributions to your own repos or to forks of Microsoft projects are not included.
+    li Contributions captured automatically include opening and merging pull requests, opening issues, discussing issues, performing code reviews of pull requests, etc.
+    li People may also self-attest other contributions using #[a(href='https://repos.opensource.microsoft.com/contributions/attestation') an attestation form].  Note: a linked GitHub account is still required for self-attestation.
+
+  h3 Where to view your contributions, nominate and vote
+  p The page at #[a(href='https://aka.ms/fossfund') https://aka.ms/fossfund] will show your contributions and other information about nominating and voting.
+
+  h3 Feedback
+  p We'd love to hear from you at #[a(href='mailto:opensource@microsoft.com') opensource@microsoft.com].
+  p Other resources of note include #[a(href='https://aka.ms/opensource') https://aka.ms/opensource] and the open source support channel on Microsoft Teams at #[a(href='https://aka.ms/opensourcechannel') https://aka.ms/opensourcechannel].

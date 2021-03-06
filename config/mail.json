@@ -6,5 +6,24 @@
     "url": "env://MAIL_CUSTOMSERVICE_URL",
     "apiKey": "env://MAIL_CUSTOMSERVICE_KEY",
     "version": "env://MAIL_CUSTOMSERVICE_VERSION"
+  }, 
+  "smtpMailService": {
+    "host": "env://MAIL_SMTP_HOST",
+    "port": "env://MAIL_SMTP_PORT",
+    "auth": {
+      "user": "env://MAIL_SMTP_USER",
+      "pass": "env://MAIL_SMTP_PASS"
+    }
+  },
+  "directoryMailService": {
+    "clientId": "env://DIRECTORY_MAIL_SERVICE_CLIENTID",
+    "clientSecret": "env://DIRECTORY_MAIL_SERVICE_CLIENTSECRET",
+    "authority": "env://DIRECTORY_MAIL_SERVICE_AUTHORITY",
+    "resource": "env://DIRECTORY_MAIL_SERVICE_RESOURCE",
+    "publisherName": "env://DIRECTORY_MAIL_SERVICE_PUBLISHERNAME",
+    "eventName": "env://DIRECTORY_MAIL_SERVICE_EVENTNAME",
+    "senderProfile": "env://DIRECTORY_MAIL_SERVICE_SENDERPROFILE",
+    "replyTo": "env://DIRECTORY_MAIL_SERVICE_REPLYTO",
+    "appName": "env://DIRECTORY_MAIL_SERVICE_APPNAME"
   }
 }

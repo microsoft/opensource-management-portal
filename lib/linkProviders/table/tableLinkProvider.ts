@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -7,20 +7,17 @@
 
 // This wrapper also implements table row encryption at rest.
 
-'use strict';
-
 import _ from 'lodash';
 import azure from 'azure-storage';
-import async from 'async';
 import { v4 as uuidV4 } from 'uuid';
 
 import { IReposError } from '../../../transitional';
-import { ILinkProvider } from '../postgres/postgresLinkProvider';
 import { ICorporateLinkProperties, ICorporateLink, ICorporateLinkExtended, CorporatePropertyNames } from '../../../business/corporateLink';
 import { CorporateTableLink } from './tableLink';
+import { ILinkProvider } from '..';
 
-const tableEntity = require('../../tableEntity');
-const tableEncryption = require('../../tableEncryption');
+import tableEntity from '../../tableEntity';
+import tableEncryption from '../../tableEncryption';
 
 const defaultThirdPartyType = 'github';
 const defaultPageSize = 500;
@@ -66,6 +63,8 @@ const linkInterfacePropertyMapping : ITableLinkProperties = {
   corporateId: 'aadoid',
   corporateUsername: 'aadupn',
   corporateDisplayName: 'aadname',
+  corporateMailAddress: 'corporateMailAddress', // NOTE: this was not part of the original table entity
+  corporateAlias: 'corporateAlias', // NOTE: this was not part of the original table entity
 
   thirdPartyId: 'ghid',
   thirdPartyUsername: 'ghu',
@@ -81,6 +80,7 @@ const coreColumns = [
   'aadoid',
   'aadupn',
   'aadname',
+  'corporateMailAddress',
   'serviceAccount',
   'serviceAccountMail',
   'linkid',
@@ -125,93 +125,71 @@ export class TableLinkProvider implements ILinkProvider {
     this._options = options;
   }
 
-  initialize(callback) {
+  async initialize(): Promise<ILinkProvider> {
     const options = this._options || {};
-
-    let table = null;
-    try {
-      table = azure.createTableService(options.account, options.key);
-    } catch (storageAccountError) {
-      return callback(storageAccountError);
-    }
-
+    let table = azure.createTableService(options.account, options.key);
     this._table = table;
     this._entityGenerator = azure.TableUtilities.entityGenerator;
-
     this._tableNamePrefix = options.prefix || '';
     this._tableName = options.tableName || `${this._tableNamePrefix}${defaultTableName}`;
-
     if (options.encryption) {
-      try {
-        configureTableEncryption(this, options);
-      } catch (encryptionInitializationError) {
-        return callback(encryptionInitializationError);
-      }
+      configureTableEncryption(this, options);
     }
-
-    const tableClient = this._table;
-
     if (options.throwIfTableMissing) {
-      tableClient.doesTableExist(this._tableName, (tableError, tableInfo) => {
-        if (!tableError && !tableInfo.exists) {
-          tableError = new Error(`The table named "${this._tableName}" does not exist. With options.throwIfTableMissing set, this error is thrown.`);
-        }
-        return callback(tableError ? tableError : null, tableError ? null : this);
-      });
+      let tableInfo = null;
+      try {
+        tableInfo = await tableDoesNotExist(table, this._tableName);
+      } catch (tableError) {
+        throw tableError;
+      }
+      if (!tableInfo.exists) {
+        throw new Error(`The table named "${this._tableName}" does not exist. With options.throwIfTableMissing set, this error is thrown.`);
+      }
     } else {
-      tableClient.createTableIfNotExists(this._tableName, callbackProvidesThisOnSuccess(this, callback));
+      await tableCreateIfNotExists(table, this._tableName);
     }
+    return this as any as ILinkProvider;
   }
 
   get thirdPartyType() {
     return this._thirdPartyType;
   }
 
-  getByThirdPartyUsername(username, callback) {
+  getByThirdPartyUsername(username: string): Promise<CorporateTableLink> {
     username = username.toLowerCase();
     // NOTE: this is not normalized in the current data set!!!!!!!!
     // TODO: NOT NORMALIZED
     // TODO: VALUES in the current table have usernames that are MIXED CASE!!!!!!
-    return getSingleLinkByProperty(this, this.propertyMapping.thirdPartyUsername, username, callback);
+    return this.getSingleLinkByProperty(this.propertyMapping.thirdPartyUsername, username) as Promise<CorporateTableLink>;
   }
 
-  getByThirdPartyId(id, callback) {
-    const self = this;
+  async getByThirdPartyId(id: string): Promise<CorporateTableLink> {
     if (typeof(id) !== 'string') {
-      id = id.toString();
+      id = (id as any).toString();
     }
     // Legacy table design: this call actually can go direct; in the
     // original implementation, the partition key is fixed and the
-    // row key is simply the string value of the GitHub user ID.
-
+    // row key is the string value of the GitHub user ID.
     // SLOW query equivalent: return getUserEntityByProperty(this, 'ghid', id, callback);
-
     const partitionKey = this._options.partitionKey;
     if (!partitionKey) {
-      return callback(new Error('No table options.partitionKey provided with a fixed partition key at this time'));
+      throw new Error('No table options.partitionKey provided with a fixed partition key at this time');
     }
-
     const tableName = this._tableName;
-
-    this._table.retrieveEntity(tableName, partitionKey, id, (getError: any, fullEntity) => {
-      if (getError && getError.statusCode === 404) {
-        return callback(null, false);
-      }
-      if (getError) {
-        return callback(getError);
-      }
-      const row = tableEntity.reduce(fullEntity);
-      const link = createLinkInstanceFromAzureTableEntity(self, row);
-      return callback(null, link);
-    });
+    const fullEntity = await tableRetrieveEntity(this._table, tableName, partitionKey, id);
+    if (fullEntity === false) {
+      return false as any as CorporateTableLink;
+    }
+    const row = tableEntity.reduce(fullEntity);
+    const link = createLinkInstanceFromAzureTableEntity(this, row);
+    return link;
   }
 
-  queryByCorporateId(id, callback) {
-    return getLinksByProperty(this, 'aadoid', id, callback);
+  queryByCorporateId(id: string): Promise<CorporateTableLink[]> {
+    return this.getLinksByProperty('aadoid', id);
   }
 
-  getAll(callback) {
-    const self = this;
+  async getAll(): Promise<CorporateTableLink[]> {
     const queryOptions = {
       columns: [
         'aadoid',
@@ -227,101 +205,93 @@ export class TableLinkProvider implements ILinkProvider {
         'Timestamp',
       ],
     };
-
-    return queryLinksTable(this, queryOptions, (error, unsorted) => {
-      if (error) {
-        return callback(error);
-      }
-
-      const sorted = _.sortBy(unsorted, ['aadupn', 'ghu']);
-      const links = createLinkInstancesFromAzureTableEntityArray(self, sorted);
-      return callback(null, links);
-    });
+    const unsorted = await queryLinksTable(this, queryOptions);
+    const sorted = _.sortBy(unsorted, ['aadupn', 'ghu']);
+    const links = createLinkInstancesFromAzureTableEntityArray(this, sorted);
+    return links;
   }
 
-  queryByCorporateUsername(username, callback) {
+  async getAllCorporateIds(): Promise<string[]> {
+    const queryOptions = {
+      columns: [
+        'aadoid',
+        'PartitionKey',
+        'RowKey',
+        'Timestamp',
+      ],
+    };
+    const results = await queryLinksTable(this, queryOptions);
+    return results.map(row => String(row.aadoid)) as string[];
+  }
+
+
+  queryByCorporateUsername(username: string): Promise<CorporateTableLink[]> {
     // ?? username = username.toLowerCase();
     // TODO: not sure if this one is normalized or not...
-    return getLinksByProperty(this, 'aadupn', username, callback);
+    return this.getLinksByProperty('aadupn', username);
   }
 
-  createLink(link: ICorporateLink, callback: (error: any, newLinkId: string) => void) {
+  async createLink(link: ICorporateLink): Promise<string> {
     const generatedLinkId = uuidV4();
     const tableName = this._tableName;
     let entity = null;
     try {
       const initialEntity = {};
       initialEntity[linkInterfacePropertyMapping.linkId] = generatedLinkId;
-
       for (let linkPropertyName of CorporatePropertyNames) {
         // linkInterfacePropertyMapping
         const tableColumnName = linkInterfacePropertyMapping[linkPropertyName];
         if (!tableColumnName) {
-          return callback(new Error(`Missing mapping from property ${linkPropertyName} to equivalent table column`), null);
+          throw new Error(`Missing mapping from property ${linkPropertyName} to equivalent table column`);
         }
         initialEntity[tableColumnName] = link[linkPropertyName];
       }
-
       const partitionKey = this._options.partitionKey;
       if (!partitionKey) {
-        return callback(new Error('No table options.partitionKey provided with a fixed partition key at this time'), null);
+        throw new Error('No table options.partitionKey provided with a fixed partition key at this time');
       }
       entity = tableEntity.create(partitionKey, link.thirdPartyId, initialEntity);
     } catch (processingError) {
-      return callback(processingError, null);
+      throw processingError;
     }
-    return this._table.insertEntity(tableName, entity, (insertError: any, inserted) => {
-      if (insertError && insertError.code === 'EntityAlreadyExists') {
-        const error: IAlreadyLinkedError = new Error('This user is already linked');
-        error.alreadyLinked = true;
-        error.innerError = insertError;
-        return callback(error, null);
-      }
-      if (insertError) {
-        return callback(insertError, null);
-      }
-      return callback(null, generatedLinkId);
-    });
+    await tableInsertEntity(this._table, tableName, entity, 'This user is already linked');
+    return generatedLinkId;
   }
 
-  updateLink(linkInstance: ICorporateLink, callback) {
+  updateLink(linkInstance: ICorporateLink): Promise<any> {
     const tl = linkInstance as CorporateTableLink;
     const replacementEntity = tl.internal().getDirectEntity();
     if (linkInstance.thirdPartyId) {
-      return this.updateLinkByThirdPartyIdLegacy(linkInstance.thirdPartyId, replacementEntity, callback);
+      return this.updateLinkByThirdPartyIdLegacy(linkInstance.thirdPartyId, replacementEntity);
     }
-    return callback(new Error('updateLink is not yet updated for linkId without a given thirdPartyId (ghid)'));
+    throw new Error('updateLink is not yet updated for linkId without a given thirdPartyId (ghid)');
   }
 
-  deleteLink(linkInstance: ICorporateLink, callback) {
+  async deleteLink(linkInstance: ICorporateLink): Promise<any> {
     // This is inefficient at this time; with the newer design centering
     // around a link ID, this has to query first.
     const tl = linkInstance as CorporateTableLink;
     const linkId = tl.id;
     if (!linkId && linkInstance.thirdPartyId) {
-      return this.deleteLinkByThirdPartyIdLegacy(linkInstance.thirdPartyId, callback);
+      return this.deleteLinkByThirdPartyIdLegacy(linkInstance.thirdPartyId);
     }
-    return getSingleLinkByProperty(this, this.propertyMapping.linkId, linkId, (queryError, link: ICorporateLink) => {
-      if (!queryError && !link) {
-        queryError = new Error(`No link found with ID ${linkId}`);
-      }
-      if (!queryError && !link.thirdPartyId) {
-        queryError = new Error(`Link ${linkId} is missing a valid thirdPartyId`);
-      }
-      if (queryError) {
-        return callback(queryError);
-      }
-      return this.deleteLinkByThirdPartyIdLegacy(link.thirdPartyId, callback);
-    });
+    const link = this.getSingleLinkByProperty(this.propertyMapping.linkId, linkId) as any as CorporateTableLink;
+    if (!link) {
+      throw new Error(`No link found with ID ${linkId}`);
+    }
+    if (!link.thirdPartyId) {
+      throw new Error(`Link ${linkId} is missing a valid thirdPartyId`);
+    }
+    return this.deleteLinkByThirdPartyIdLegacy(link.thirdPartyId);
   }
 
-  updateLinkByThirdPartyIdLegacy(thirdPartyId, replaceEntity, callback) {
+  async updateLinkByThirdPartyIdLegacy(thirdPartyId: string, replaceEntity: any): Promise<void> {
     const partitionKey = this._options.partitionKey;
     if (!partitionKey) {
-      return callback(new Error('No table options.partitionKey provided with a fixed partition key at this time'));
+      throw new Error('No table options.partitionKey provided with a fixed partition key at this time');
     }
     if (typeof(thirdPartyId) !== 'string') {
-      thirdPartyId = thirdPartyId.toString();
+      thirdPartyId = (thirdPartyId as any).toString();
     }
     const tableName = this._tableName;
     if (!replaceEntity.linkId) {
@@ -330,19 +300,19 @@ export class TableLinkProvider implements ILinkProvider {
       replaceEntity.linkId = newLinkId;
     }
     const entity = tableEntity.create(partitionKey, thirdPartyId, replaceEntity);
-    return this._table.replaceEntity(tableName, entity, callback);
+    await tableReplaceEntity(this._table, tableName, entity);
   }
 
-  deleteLinkByThirdPartyIdLegacy(thirdPartyId, callback) {
+  deleteLinkByThirdPartyIdLegacy(thirdPartyId: string): Promise<void> {
     const partitionKey = this._options.partitionKey;
     if (!partitionKey) {
-      return callback(new Error('No table options.partitionKey provided with a fixed partition key at this time'));
+      throw new Error('No table options.partitionKey provided with a fixed partition key at this time');
     }
     if (typeof(thirdPartyId) !== 'string') {
-      thirdPartyId = thirdPartyId.toString();
+      thirdPartyId = (thirdPartyId as any).toString();
     }
     const tableName = this._tableName;
-    this._table.deleteEntity(tableName, tableEntity.create(partitionKey, thirdPartyId), callback);
+    return tableDeleteEntity(this._table, tableName, partitionKey, thirdPartyId);
   }
 
   dehydrateLink(linkInstance: ICorporateLinkExtended): any {
@@ -373,7 +343,7 @@ export class TableLinkProvider implements ILinkProvider {
     }
     const clonedObject = Object.assign({}, jsonObject);
     delete clonedObject[dehydratedIdentityKey];
-    const pglink = createLinkInstanceFromHydratedEntity(this, clonedObject);
+    const pglink = this.createLinkInstanceFromHydratedEntity(clonedObject);
     return pglink;
   }
 
@@ -400,9 +370,47 @@ export class TableLinkProvider implements ILinkProvider {
     const arr = jsonArray.map(this.rehydrateLink.bind(this));
     return arr as any[] as ICorporateLink[];
   }
+
+  private createLinkInstanceFromHydratedEntity(jsonObject) {
+    const linkInternalOptions = {
+      provider: this,
+    };
+    const newLink = new CorporateTableLink(linkInternalOptions, jsonObject);
+    newLink[linkProviderInstantiationTypeProperty] = LinkInstantiatedType.Rehydrated; // in case this helps while debugging
+    return newLink;
+  }
+
+  private async getTableEntitiesByProperty(propertyName: string, value): Promise<any[]> {
+    const queryOptions = {
+      wherePropertyName: propertyName,
+      whereValue: value,
+    };
+    return queryLinksTable(this, queryOptions);
+  }
+
+  private async getLinksByProperty(propertyName, value): Promise<CorporateTableLink[]> {
+    const rows = await this.getTableEntitiesByProperty(propertyName, value);
+    const links = createLinkInstancesFromAzureTableEntityArray(this, rows);
+    return links;
+  }
+
+  private async getSingleLinkByProperty(propertyName: string, value): Promise<CorporateTableLink | boolean> {
+    const rows = await this.getTableEntitiesByProperty(propertyName, value);
+    if (rows.length <= 0) {
+      return false;
+    }
+    if (rows.length > 1) {
+      const error: IMultipleResultsError = new Error(`More than a single result were returned by the query (${rows.length})`);
+      error.multipleResults = rows.length > 0;
+      throw error;
+    }
+    const entityRow = rows[0];
+    const link = createLinkInstanceFromAzureTableEntity(this, entityRow);
+    return link;
+  }
 }
 
-function createLinkInstancesFromAzureTableEntityArray(provider: TableLinkProvider, rows: any[]) {
+function createLinkInstancesFromAzureTableEntityArray(provider: TableLinkProvider, rows: any[]): CorporateTableLink[] {
   return rows.map(createLinkInstanceFromAzureTableEntity.bind(null, provider));
 }
 
@@ -415,52 +423,6 @@ function createLinkInstanceFromAzureTableEntity(provider: TableLinkProvider, row
   return newLink;
 }
 
-function createLinkInstanceFromHydratedEntity(self, jsonObject) {
-  const linkInternalOptions = {
-    provider: self,
-  };
-  const newLink = new CorporateTableLink(linkInternalOptions, jsonObject);
-  newLink[linkProviderInstantiationTypeProperty] = LinkInstantiatedType.Rehydrated; // in case this helps while debugging
-  return newLink;
-}
-
-function getUserEntitiesByProperty(self, propertyName, value, callback) {
-  const queryOptions = {
-    wherePropertyName: propertyName,
-    whereValue: value,
-  };
-  return queryLinksTable(self, queryOptions, callback);
-}
-
-function getLinksByProperty(self, propertyName, value, callback) {
-  return getUserEntitiesByProperty(self, propertyName, value, (error, rows) => {
-    if (error) {
-      return callback(error);
-    }
-    const links = createLinkInstancesFromAzureTableEntityArray(self, rows);
-    return callback(null, links);
-  });
-}
-
-function getSingleLinkByProperty(self, propertyName, value, callback) {
-  return getUserEntitiesByProperty(self, propertyName, value, (getError, rows) => {
-    if (getError) {
-      return callback(getError);
-    }
-    if (rows.length <= 0) {
-      return callback(null, false);
-    }
-    if (rows.length > 1) {
-      const error: IMultipleResultsError = new Error(`More than a single result were returned by the query (${rows.length})`);
-      error.multipleResults = rows.length;
-      return callback(error);
-    }
-    const entityRow = rows[0];
-    const link = createLinkInstanceFromAzureTableEntity(self, entityRow);
-    return callback(null, link);
-  });
-}
-
 function getTableName(self) {
   // setup during init
   return self._tableName;
@@ -471,7 +433,8 @@ function getTableService(self): azure.TableService {
   return self._table;
 }
 
-function queryLinksTable(self, options, callback) {
+async function queryLinksTable(self: TableLinkProvider, options): Promise<any[]> {
+  const rows = [];
   function buildQuery(options) {
     let q = new azure.TableQuery();
     if (options.columns) {
@@ -484,57 +447,36 @@ function queryLinksTable(self, options, callback) {
     q = q.top(pageSize);
     return q;
   }
-
   const tableName = options.tableName || getTableName(self);
-  const rows = [];
-
   let continuationToken = null;
   let done = false;
-
-  async.whilst(
-    () => {
-      return !done;
-    },
-    next => {
-      const tableService = getTableService(self);
+  function pushQueryEntities(tableService: azure.TableService, options: any): Promise<void> {
+    return new Promise((resolve, reject) => {
       tableService.queryEntities(tableName, buildQuery(options), continuationToken, (queryError, results: azure.TableService.QueryEntitiesResult<any>) => {
         if (queryError) {
           done = true;
-          return next(queryError);
+          return reject(queryError);
         }
-
         // Is there another page of query results?
         if (results.continuationToken) {
           continuationToken = results.continuationToken;
         } else {
           done = true;
         }
-
         // NOTE: This function does not use continuation tokens or anything like that!
         const entries = results && results.entries ? results.entries : null;
         for (let i = 0; entries && i < entries.length; i++) {
           rows.push(tableEntity.reduce(entries[i]));
         }
-
-        return next(null);
+        return resolve();
       });
-    },
-    error => {
-      if (error) {
-        return callback(error);
-      }
-
-      // TODO: The legacy provider was wasting time with the following, can we normalize as part of data fixes?
-      /*
-      employees.forEach(account => {
-        if (account.aadupn) {
-          account.aadupn = account.aadupn.toLowerCase();
-        }
-      });
-      */
-
-      return callback(null, rows);
     });
+  }
+  const tableService = getTableService(self);
+  while (!done) {
+    await pushQueryEntities(tableService, buildQuery(options));
+  }
+  return rows;
 }
 
 function configureTableEncryption(self, options) {
@@ -566,12 +508,68 @@ function configureTableEncryption(self, options) {
   self._table = tableEncryption(standardTableClient, opts);
 }
 
-function callbackProvidesThisOnSuccess(self, callback) {
-  const capturedSelf = self;
-  return error => {
-    if (error) {
-      return callback(error);
-    }
-    return callback(null, capturedSelf);
-  };
+function tableDoesNotExist(tableService: azure.TableService, tableName: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    tableService.doesTableExist(tableName, (tableError, tableInfo) => {
+      if (!tableError && !tableInfo.exists) {
+        tableError = new Error(`The table named "${this._tableName}" does not exist. With options.throwIfTableMissing set, this error is thrown.`);
+      }
+      if (tableError) {
+        return reject(tableError);
+      }
+      return resolve();
+    });
+  });
+}
+
+function tableCreateIfNotExists(tableService: azure.TableService, tableName: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    tableService.createTableIfNotExists(this._tableName, error => {
+      return error ? reject(error) : resolve();
+    });
+  });
+}
+
+function tableRetrieveEntity(tableService: azure.TableService, tableName: string, partitionKey: string, rowKey: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    tableService.retrieveEntity(tableName, partitionKey, rowKey, (getError: any, fullEntity) => {
+      if (getError && getError.statusCode === 404) {
+        return resolve(false);
+      }
+      if (getError) {
+        return reject(getError);
+      }
+      return resolve(fullEntity);
+    });
+  });
+}
+
+function tableInsertEntity(tableService: azure.TableService, tableName: string, entity: any, entityAlreadyExistsErrorMessage: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    return tableService.insertEntity(tableName, entity, (insertError: any, inserted) => {
+      if (insertError && insertError.code === 'EntityAlreadyExists') {
+        const error: IAlreadyLinkedError = new Error(entityAlreadyExistsErrorMessage);
+        error.alreadyLinked = true;
+        error.innerError = insertError;
+        return reject(error);
+      }
+      return insertError ? reject(insertError) : resolve(inserted);
+    });
+  });
+}
+
+function tableReplaceEntity(tableService: azure.TableService, tableName: string, entity: any): Promise<any> {
+  return new Promise((resolve, reject) => {
+    return tableService.replaceEntity(tableName, entity, (error, ok) => {
+      return error ? reject(error) : resolve(ok);
+    });
+  });
+}
+
+function tableDeleteEntity(tableService: azure.TableService, tableName: string, partitionKey: string, rowKey: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    return this._table.deleteEntity(tableName, tableEntity.create(partitionKey, rowKey), (error, ok) => {
+      return error ? reject(error) : resolve(ok);
+    });
+  });
 }

@@ -1,15 +1,13 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import { ReposAppRequest } from "../../transitional";
+import { ReposAppRequest } from '../../transitional';
 
 const requestCachedKeyName = 'systemWidePermissions';
 
-module.exports = function addSystemWidePermissionsToRequest(req: ReposAppRequest, res, next) {
+export default function addSystemWidePermissionsToRequest(req: ReposAppRequest, res, next) {
   // Only compute once per request
   if (req[requestCachedKeyName]) {
     return next();

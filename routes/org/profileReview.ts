@@ -1,49 +1,51 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import express = require('express');
-import { ReposAppRequest } from '../../transitional';
+import express from 'express';
 const router = express.Router();
+import asyncHandler from 'express-async-handler';
+
+import { ReposAppRequest } from '../../transitional';
+import { Operations } from '../../business/operations';
 
 interface IUserProfileWarnings {
   company?: string;
   email?: string;
 }
 
-router.get('/', function (req: ReposAppRequest, res, next) {
+router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const organization = req.organization;
-  const operations = req.app.settings.operations;
+  const operations = req.app.settings.operations as Operations;
   const config = operations.config;
   const onboarding = req.query.onboarding;
   const login = req.individualContext.getGitHubIdentity().username;
-  operations.getAccountByUsername(login, (getAccountError, detailed) => {
-    if (getAccountError) {
-      return next(getAccountError);
-    }
-    const userProfileWarnings: IUserProfileWarnings = {};
-    if (!detailed.company || (detailed.company && detailed.company.toLowerCase().indexOf(config.brand.companyName.toLowerCase()) < 0)) {
-      userProfileWarnings.company = 'color:red';
-    }
-    if (!detailed.email || (detailed.email && detailed.email.toLowerCase().indexOf(config.brand.companyName.toLowerCase()) < 0)) {
-      userProfileWarnings.email = 'color:red';
-    }
-    req.individualContext.webContext.render({
-      view: 'org/profileReview',
-      title: 'Your GitHub Profile',
-      state: {
-        organization: organization,
-        userProfile: detailed,
-        userProfileWarnings: userProfileWarnings,
-        theirUsername: req.individualContext.getGitHubIdentity().username,
-        onboarding: onboarding,
-        showBreadcrumbs: onboarding === undefined,
-      },
-    });
+  let detailed = null;
+  try {
+    detailed = await operations.getAccountByUsername(login);
+  } catch (getAccountError) {
+    return next(getAccountError);
+  }
+  const userProfileWarnings: IUserProfileWarnings = {};
+  if (!detailed.company || (detailed.company && detailed.company.toLowerCase().indexOf(config.brand.companyName.toLowerCase()) < 0)) {
+    userProfileWarnings.company = 'color:red';
+  }
+  if (!detailed.email || (detailed.email && detailed.email.toLowerCase().indexOf(config.brand.companyName.toLowerCase()) < 0)) {
+    userProfileWarnings.email = 'color:red';
+  }
+  req.individualContext.webContext.render({
+    view: 'org/profileReview',
+    title: 'Your GitHub Profile',
+    state: {
+      organization,
+      userProfile: detailed,
+      userProfileWarnings,
+      theirUsername: req.individualContext.getGitHubIdentity().username,
+      onboarding,
+      showBreadcrumbs: onboarding === undefined,
+    },
   });
-});
+}));
 
-module.exports = router;
+export default router;

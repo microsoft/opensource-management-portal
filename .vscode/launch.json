@@ -1,92 +1,134 @@
 {
-  // Use IntelliSense to learn about possible Node.js debug attributes.
-  // Hover to view descriptions of existing attributes.
-  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch site",
-      "program": "${workspaceRoot}/dist/bin/www.js",
-      "cwd": "${workspaceRoot}/dist",
+      "name": "Launch site 3000",
+      "program": "${workspaceFolder}/dist/bin/www.js",
+      "cwd": "${workspaceFolder}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "pg,appinsights,oss-initialize,oss-redis-cross-org,appinsights",
-        "MORE_DEBUG": "oss-redis,oss-github",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+        "DEBUG": "startup,cosmosdb,g:server,context,cache,restapi,redis-cross-org",
+        "MORE_DEBUG": "appinsights,cache,restapi,pg,querycache,user,redis-cross-org"
       }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch site (cache optimization work)",
-      "program": "${workspaceRoot}/dist/bin/www.js",
-      "cwd": "${workspaceRoot}/dist",
+      "name": "Launch site 4000 sudo",
+      "program": "${workspaceFolder}/dist/bin/www.js",
+      "cwd": "${workspaceFolder}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "appinsights,oss-initialize,oss-cache-optimization,oss-redis-cross-org,appinsights,health",
-        "MORE_DEBUG": "oss-redis,oss-github",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Launch site (SUDO FORCE)",
-      "program": "${workspaceRoot}/dist/bin/www",
-      "console": "integratedTerminal",
-      "cwd": "${workspaceRoot}/dist",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "appinsights,oss-github,oss-initialize,oss-redis-cross-org,appinsights",
+        "PORT": "4000",
         "DEBUG_GITHUB_PORTAL_SUDO_FORCE": "1",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+        "DEBUG": "startup,cosmosdb,g:server,context,*simple-oauth2*,appinsights,insights",
+        "MORE_DEBUG": "appinsights,cache,restapi,pg,querycache,user,redis-cross-org"
       }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch site (SUDO OFF)",
-      "console": "integratedTerminal",
-      "program": "${workspaceRoot}/dist/bin/www",
-      "cwd": "${workspaceRoot}/dist",
+      "name": "Launch site 4000 sudo OFF",
+      "program": "${workspaceFolder}/dist/bin/www.js",
+      "cwd": "${workspaceFolder}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
+      "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "appinsights,oss-github,oss-initialize,oss-redis-cross-org,appinsights",
+        "PORT": "4000",
+        "DEBUG": "startup,cosmosdb,g:server,context",
         "DEBUG_GITHUB_PORTAL_SUDO_OFF": "1",
         "DEBUG_GITHUB_ORG_SUDO_OFF": "1",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+        "MORE_DEBUG": "appinsights,cache,restapi,pg,querycache,user,redis-cross-org"
       }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Local environment",
-      "program": "${workspaceRoot}/dist/localEnvironment.js",
+      "name": "Launch site + cache optimization alerts",
+      "program": "${workspaceRoot}/dist/bin/www.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "appinsights,startup,oss-cache-optimization,redis-cross-org,appinsights,health",
+        "MORE_DEBUG": "redis,restapi"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch site 3000 (SUDO FORCE)",
+      "program": "${workspaceRoot}/dist/bin/www",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "appinsights,restapi,startup,redis-cross-org,appinsights",
+        "DEBUG_GITHUB_PORTAL_SUDO_FORCE": "1"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch site 3000 (SUDO OFF)",
+      "console": "integratedTerminal",
+      "program": "${workspaceRoot}/dist/bin/www",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "appinsights,restapi,startup,redis-cross-org,appinsights",
+        "DEBUG_GITHUB_PORTAL_SUDO_OFF": "1",
+        "DEBUG_GITHUB_ORG_SUDO_OFF": "1"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Script: Local environment",
+      "program": "${workspaceRoot}/dist/scripts/localEnvironment.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "localhost",
-        "DEBUG": "oss-initialize,appinsights,oss-redis,oss-github"
+        "DEBUG": "startup"
       }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Build Repo Reports",
+      "name": "Webhook events firehose",
+      "program": "${workspaceRoot}/dist/jobs/firehose/index.js",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "cwd": "${workspaceRoot}/dist",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,querycache"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Build Repo Reports (deprecated)",
       "program": "${workspaceRoot}/dist/jobs/reports/index.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
@@ -97,27 +139,27 @@
       ],
       "env": {
         "NODE_ENV": "localhost",
-        "DEBUG": "oss-redis-off,oss-github-off,oss-initialize,appinsights"
+        "DEBUG": "redis-off,restapi-off,startup,appinsights"
       }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Firehose",
-      "program": "${workspaceRoot}/dist/jobs/firehose/index.js",
+      "name": "Job: Cleanup blob cache",
+      "program": "${workspaceRoot}/dist/jobs/cleanupBlobCache/index.js",
+      "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
       "console": "integratedTerminal",
-      "cwd": "${workspaceRoot}/dist",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
+        "DEBUG": "startup,appinsights,cache"
       }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Invitation Cleanup",
+      "name": "Job: Cleanup invitations",
       "program": "${workspaceRoot}/dist/jobs/cleanupInvites/index.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
@@ -125,13 +167,13 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
+        "DEBUG": "redis,restapi,startup,appinsights"
       }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Cleanup Tokens",
+      "name": "Job: Cleanup tokens",
       "program": "${workspaceRoot}/dist/jobs/cleanupTokens/index.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
@@ -139,13 +181,13 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
+        "DEBUG": "redis,restapi,startup,appinsights"
       }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Cleanup Extension Keys",
+      "name": "Job: Cleanup extension keys",
       "program": "${workspaceRoot}/dist/jobs/cleanupKeys/index.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
@@ -153,13 +195,13 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
+        "DEBUG": "redis,restapi,startup,appinsights"
       }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Refresh Usernames",
+      "name": "Job: User attributes hygiene",
       "program": "${workspaceRoot}/dist/jobs/refreshUsernames/index.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
@@ -167,27 +209,13 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
+        "DEBUG": "redis,restapi,startup,appinsights,cache"
       }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Refresh Query Cache",
-      "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
-      "cwd": "${workspaceRoot}/dist",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "oss-initialize,appinsights"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Job: Refresh Managers",
+      "name": "Job: Manager hygiene",
       "program": "${workspaceRoot}/dist/jobs/managers/index.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
@@ -195,7 +223,121 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
+        "DEBUG": "redis,restapi,startup,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Consistency: All",
+      "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
+      "args": [
+        "all"
+      ],
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,querycache,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Consistency: Deleted repos",
+      "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/deletedRepositories.js",
+      "args": [],
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,querycache,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Consistency: Teams",
+      "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
+      "args": [
+        "teams"
+      ],
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,querycache,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Consistency: Org members",
+      "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
+      "args": [
+        "organizations"
+      ],
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,querycache,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Consistency: Repo collaborators",
+      "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
+      "args": [
+        "collaborators"
+      ],
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,querycache,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Consistency: Team permissions",
+      "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
+      "args": [
+        "permissions"
+      ],
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,querycache,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Recent Contributions",
+      "program": "${workspaceRoot}/dist/microsoft/jobs/recentContributions/index.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,appinsights"
       }
     },
     {
@@ -209,21 +351,7 @@
       "cwd": "${workspaceRoot}/dist",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Job: Migrate metadata",
-      "program": "${workspaceRoot}/dist/jobs/migrateMetadata/index.js",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "cwd": "${workspaceRoot}/dist",
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
+        "DEBUG": "redis,restapi,startup,appinsights"
       }
     },
     {
@@ -237,7 +365,7 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "oss-redis,oss-github,oss-initialize,appinsights"
+        "DEBUG": "startup,appinsights"
       }
     },
     {
@@ -251,9 +379,40 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "production",
-        "DEBUG": "oss-initialize,appinsights,health",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0",
+        "DEBUG": "startup,appinsights,health",
         "NOTE_FOR_PUBLIC_MEMORY_PROVIDER_USE": "In-memory providers should fail in production node env by design, this entry helps validate that"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Script: Import audit CSV",
+      "program": "${workspaceRoot}/dist/jobs/importAuditLog/index.js",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "args": [
+        "c:/Users/jwilcox/Downloads/export-microsoft-1572565889.csv"
+      ],
+      "cwd": "${workspaceRoot}/dist",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "redis,restapi,startup,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Script: Postgres setup",
+      "program": "${workspaceRoot}/dist/scripts/postgres/setup.js",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "args": [],
+      "cwd": "${workspaceRoot}/dist",
+      "env": {
+        "NODE_ENV": "development,pg",
+        "DEBUG": "redis,restapi,startup,appinsights"
       }
     },
     {

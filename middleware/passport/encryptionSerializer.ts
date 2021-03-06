@@ -1,14 +1,12 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-/*eslint no-console: ["error", { allow: ["warn"] }] */
-
-import async = require('async');
+import { decryptEntity, encryptEntity } from '../../lib/encryption';
 import { wrapError } from '../../utils';
-const encryption = require('../../lib/encryption');
+
+import { LegacySerializer } from './serializer';
 
 const userEncryptedEntities = {
   azure: new Set(),
@@ -57,7 +55,7 @@ function serializeEntity(options, entityName, entity, callback) {
     encryptedPropertyNames: userEncryptedEntities[entityName],
     binaryProperties: 'base64',
   };
-  encryption.encryptEntity(partitionKey, rowKey, entity, encryptionOptions, (encryptError, encryptedEntity) => {
+  encryptEntity(partitionKey, rowKey, entity, encryptionOptions, (encryptError, encryptedEntity) => {
     if (encryptError) {
       return callback(wrapError(encryptError, 'There was a problem with the security subsystem starting your session.'));
     }
@@ -83,7 +81,7 @@ function deserializeEntity(options, entityName, entity, callback) {
     keyResolver: keyResolver,
     binaryProperties: 'base64',
   };
-  encryption.decryptEntity(partitionKey, rowKey, entity, encryptionOptions, (encryptError, decryptedEntity) => {
+  decryptEntity(partitionKey, rowKey, entity, encryptionOptions, (encryptError, decryptedEntity) => {
     if (encryptError) {
       const userError = wrapError(encryptError, 'There was a problem with the security subsystem retrieving your session.');
       userError['forceSignOut'] = true;
@@ -93,59 +91,59 @@ function deserializeEntity(options, entityName, entity, callback) {
   });
 }
 
-function serialize(options, user, done) {
-  const tasks = {};
-  for (const entityName in userEncryptedEntities) {
-    const entityPresent = user[entityName];
-    if (entityPresent !== undefined) {
-      const entityOriginalValue = entityPresent;
-      delete user[entityName];
-      tasks[entityName] = serializeEntity.bind(null, options, entityName, entityOriginalValue);
-    }
-  }
-  async.parallel(tasks, (error, results) => {
-    if (error) {
-      return done(error);
-    }
-    for (const result in results) {
-      user[result] = results[result];
-    }
-    return done(null, user);
-  });
-}
+export default class EncryptionSerializer implements LegacySerializer {
+  private options: any;
 
-function deserialize(options, user, done) {
-  const tasks = {};
-  let u = {};
-  for (const entityName in user) {
-    if (userEncryptedEntities[entityName] !== undefined) {
-      let entityValue = user[entityName];
-      tasks[entityName] = deserializeEntity.bind(null, options, entityName, entityValue);
-    }
-  }
-  async.parallel(tasks, (error, results) => {
-    if (error) {
+  serialize(config, user, done) {
+    return Promise.all(Object.getOwnPropertyNames(userEncryptedEntities).map(entityName => {
+      return new Promise((resolve, reject) => {
+        const entityPresent = user[entityName];
+        if (entityPresent !== undefined) {
+          const entityOriginalValue = entityPresent;
+          delete user[entityName];
+          return serializeEntity(this.options, entityName, entityOriginalValue, (error, value) => {
+            user[entityName] = value;
+            return error ? reject(error) : resolve(undefined);
+          });
+        } else {
+          return resolve(undefined);
+        }
+      });
+    })).then(ok => {
+      return done(null, user);
+    }).catch(error => {
       return done(error);
-    }
-    for (const result in results) {
-      u[result] = results[result];
-    }
-    for (const unencryptedEntity in user) {
-      if (userEncryptedEntities[unencryptedEntity] === undefined) {
-        u[unencryptedEntity] = user[unencryptedEntity];
+    });
+  }
+
+  deserialize(config, user, done) {
+    const u = {};
+    return Promise.all(Object.getOwnPropertyNames(user).map(entityName => {
+      return new Promise((resolve, reject) => {
+        if (userEncryptedEntities[entityName] !== undefined) {
+          let entityValue = user[entityName];
+          return deserializeEntity(this.options, entityName, entityValue, (error, result) => {
+            u[entityName] = result;
+            return error ? reject(error) : resolve(undefined);
+          });
+        } else {
+          return resolve(undefined);
+        }
+      });
+    })).then(ok => {
+      for (const unencryptedEntity in user) {
+        if (userEncryptedEntities[unencryptedEntity] === undefined) {
+          u[unencryptedEntity] = user[unencryptedEntity];
+        }
       }
+      return done(null, u);
+    }).catch(error => {
+      return done(error);
+    });
+  }
 
-    }
-    return done(null, u);
-  });
+  initialize(options: any, app: any) {
+    this.options = options;
+    app._sessionSerializer = this;
+  }
 }
-
-function initialize(options, app, serializerInstance) {
-  app._sessionSerializer = serializerInstance;
-}
-
-module.exports = {
-  serialize: serialize,
-  deserialize: deserialize,
-  initialize: initialize,
-};

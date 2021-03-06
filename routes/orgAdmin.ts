@@ -1,21 +1,21 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express = require('express');
+import express from 'express';
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
-import async = require('async');
 
 import { ReposAppRequest } from '../transitional';
 
 import { requirePortalAdministrationPermission } from '../middleware/business/administration';
-import { ILinkProvider, PostgresLinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
+import { PostgresLinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
 import { Operations, UnlinkPurpose } from '../business/operations';
 import { ICorporateLink } from '../business/corporateLink';
 import { Organization } from '../business/organization';
-import { CorporateLinkPostgres } from '../lib/linkProviders/postgres/postgresLink';
 import { Account } from '../business/account';
+import { ILinkProvider } from '../lib/linkProviders';
 
 // - - - Middleware: require that the user isa portal administrator to continue
 router.use(requirePortalAdministrationPermission);
@@ -42,13 +42,15 @@ interface IUserInformationQuery {
   link?: ICorporateLink;
   noLinkButKnownThirdPartyId?: string;
 
+  collaboratorRepositories?: string[];
+
   orgs?: Organization[];
   gitHubUserInfo?: any;
   renamedGitHubUserOutcome?: UserQueryOutcomeRenamedThirdPartyUsername;
   deletedGitHubUserOutcome?: any;
-  personEntry?: any;
   realtimeGraph?: any;
   realtimeGraphError?: any;
+  managerInfo?: any;
 }
 
 class UserQueryOutcomeRenamedThirdPartyUsername {
@@ -76,7 +78,7 @@ router.get('/', function (req: ReposAppRequest, res) {
 });
 
 async function queryByGitHubLogin(operations: Operations, graphProvider: any, redisClient: any, login: string): Promise<IUserInformationQuery> {
-  const query : IUserInformationQuery = {
+  const query: IUserInformationQuery = {
     queryByType: UserQueryByType.ByGitHubUsername,
     queryByValue: login,
   };
@@ -116,74 +118,59 @@ async function queryByGitHubLogin(operations: Operations, graphProvider: any, re
 }
 
 function getLinkByThirdPartyUsername(operations: Operations, graphProvider: any, redisClient: any, login: string): Promise<ICorporateLink> {
-  return new Promise((resolve, reject) => {
-    const linkProvider = operations.linkProvider;
-    linkProvider.getByThirdPartyUsername(login, (error, link: ICorporateLink) => {
-      return error ? reject(error) : resolve(link);
-    });
-  });
+  const linkProvider = operations.linkProvider;
+  return linkProvider.getByThirdPartyUsername(login);
 }
 
-function queryByGitHubId(operations: Operations, graphProvider: any, redisClient: any, thirdPartyId: string): Promise<IUserInformationQuery> {
-  return new Promise((resolve, reject) => {
-    const linkProvider = operations.linkProvider;
-    linkProvider.getByThirdPartyId(thirdPartyId, (error, link: ICorporateLink) => {
-      if (error) {
-        return reject(error);
-      }
-      const query : IUserInformationQuery = {
-        queryByType: UserQueryByType.ByGitHubId,
-        queryByValue: thirdPartyId,
-      };
-      if (link) {
-        query.link = link;
-      } else {
-        query.noLinkButKnownThirdPartyId = thirdPartyId;
-      }
-      return loadInformation(operations, graphProvider, redisClient, query).then(resolve).catch(reject);
-    });
-  });
-}
-
-function queryByCorporateUsername(operations: Operations, graphProvider: any, redisClient: any, upn: string): Promise<IUserInformationQuery> {
-  return new Promise((resolve, reject) => {
-    const linkProvider = operations.linkProvider;
-    linkProvider.queryByCorporateUsername(upn, function (error, links: ICorporateLink[]) {
-      if (!error && (!links || links.length !== 1)) {
-        if (!links || links.length <= 0) {
-          error = new Error(`No links were identified for the corporate username ${upn}`);
-        } else {
-          error = new Error(`Too many links (more than one) exist for the corporate username ${upn}`);
-        }
-      }
-      if (error) {
-        return reject(error);
-      }
-      const query : IUserInformationQuery = {
-        queryByType: UserQueryByType.ByCorporateUsername,
-        queryByValue: upn,
-        link: links[0],
-      };
-      return loadInformation(operations, graphProvider, redisClient, query).then(resolve).catch(reject);
-    });
-  });
-}
-
-async function loadInformation(operations: Operations, graphProvider: any, redisClient: any, query: IUserInformationQuery) : Promise<IUserInformationQuery> {
-  // Input: query type and value; pre-queried and set single link, if present
-
-  // Lookup person entry as exposed by our people data
-  const corporateUpn = query.link ? query.link.corporateUsername : null;
-  if (corporateUpn) {
-    query.personEntry = await getPersonEntryByUpn(redisClient, query.link.corporateUsername);
+async function queryByGitHubId(operations: Operations, graphProvider: any, redisClient: any, thirdPartyId: string): Promise<IUserInformationQuery> {
+  const linkProvider = operations.linkProvider;
+  const link = await linkProvider.getByThirdPartyId(thirdPartyId);
+  const query: IUserInformationQuery = {
+    queryByType: UserQueryByType.ByGitHubId,
+    queryByValue: thirdPartyId,
+  };
+  if (link) {
+    query.link = link;
+  } else {
+    query.noLinkButKnownThirdPartyId = thirdPartyId;
   }
+  return loadInformation(operations, graphProvider, redisClient, query);
+}
+
+async function queryByCorporateUsername(operations: Operations, graphProvider: any, redisClient: any, upn: string): Promise<IUserInformationQuery> {
+  const linkProvider = operations.linkProvider;
+  const links = await linkProvider.queryByCorporateUsername(upn);
+  if (!links || links.length !== 1) {
+    if (!links || links.length <= 0) {
+      throw new Error(`No links were identified for the corporate username ${upn}`);
+    } else {
+      const ids = links.map(link => link['id']);
+      throw new Error(`Too many links (more than one) exist for the corporate username ${upn}. Individual Link IDs: ${ids.join(', ')}`);
+    }
+  }
+  const query: IUserInformationQuery = {
+    queryByType: UserQueryByType.ByCorporateUsername,
+    queryByValue: upn,
+    link: links[0],
+  };
+  return loadInformation(operations, graphProvider, redisClient, query);
+}
+
+async function loadInformation(operations: Operations, graphProvider: any, redisClient: any, query: IUserInformationQuery): Promise<IUserInformationQuery> {
+  // Input: query type and value; pre-queried and set single link, if present
 
   const corporateAadId = query.link ? query.link.corporateId : null;
   if (corporateAadId) {
     try {
-      query.realtimeGraph = await getMicrosoftGraphAadIdInformation(graphProvider, corporateAadId);
+      const info = await operations.validateCorporateAccountCanLink(corporateAadId);
+      query.realtimeGraph = info.graphEntry;
     } catch (graphError) {
       query.realtimeGraphError = graphError;
+    }
+    try {
+      query.managerInfo = await operations.getCachedEmployeeManagementInformation(corporateAadId);
+    } catch (managerError) {
+      console.dir(managerError);
     }
   }
 
@@ -194,18 +181,34 @@ async function loadInformation(operations: Operations, graphProvider: any, redis
     thirdPartyId = query.gitHubUserInfo.id;
   }
   let thirdPartyUsername: string = null;
+  let account: Account = null;
   try {
     if (thirdPartyId) {
-      const account = await getGitHubAccountInformationById(operations, thirdPartyId);
+      account = await getGitHubAccountInformationById(operations, thirdPartyId);
       query.gitHubUserInfo = account;
       const login = account.login;
       if (query.link && login !== query.link.thirdPartyUsername) {
         query.renamedGitHubUserOutcome = new UserQueryOutcomeRenamedThirdPartyUsername(login, query.link.thirdPartyUsername);
       }
       thirdPartyUsername = login;
+
+      const { queryCache } = operations.providers;
+      if (queryCache && queryCache.supportsRepositoryCollaborators) {
+        const result = await queryCache.userCollaboratorRepositories(thirdPartyId);
+        const collaboratorRepositories = [];
+        for (const { repository } of result) {
+          try {
+            await repository.getDetails();
+            collaboratorRepositories.push(repository.full_name);
+          } catch (ignoreError) {
+            console.dir(ignoreError);
+          }
+        }
+        query.collaboratorRepositories = collaboratorRepositories;
+      }
     }
   } catch (ignoreGetAccountError) {
-    if (ignoreGetAccountError && ignoreGetAccountError.code == /* loose compare */ '404') {
+    if (ignoreGetAccountError && ignoreGetAccountError.status == /* loose compare */ '404') {
       thirdPartyUsername = query.link ? query.link.thirdPartyUsername : null;
       if (thirdPartyUsername) {
         let deletedAccountError = null;
@@ -213,7 +216,7 @@ async function loadInformation(operations: Operations, graphProvider: any, redis
         try {
           moreInfo = await operations.getAccountByUsername(thirdPartyUsername);
         } catch (deletedAccountCatch) {
-          if (deletedAccountCatch && deletedAccountCatch.code == /* loose compare */ '404') {
+          if (deletedAccountCatch && deletedAccountCatch.status == /* loose compare */ '404') {
             deletedAccountError = deletedAccountCatch;
             query.deletedGitHubUserOutcome = `The GitHub account '${thirdPartyUsername}' (ID ${thirdPartyId}) has been deleted`;
           } else {
@@ -232,67 +235,19 @@ async function loadInformation(operations: Operations, graphProvider: any, redis
   }
 
   // Learn about all the org memberships for the username
-  if (thirdPartyUsername) {
-    const loginMemberships = await getGitHubOrganizationMembershipInformation(operations, thirdPartyUsername);
+  if (thirdPartyUsername && account) {
+    const loginMemberships = await account.getOperationalOrganizationMemberships();
     query.orgs = loginMemberships;
   }
 
   return query;
 }
 
-async function getGitHubAccountInformationById(operations: Operations, id: string) : Promise<Account> {
+async function getGitHubAccountInformationById(operations: Operations, id: string): Promise<Account> {
   const account = operations.getAccount(id);
   await account.getDetails();
   return account;
 }
-
-async function getGitHubOrganizationMembershipInformation(operations: Operations, login: string) : Promise<Organization[]> {
-  const orgsList = operations.organizations.values();
-  const orgsUserIn: Organization[] = [];
-  for (let organization of orgsList) {
-    try {
-      const membership = await organization.getMembership(login);
-      if (membership && membership.state) {
-        orgsUserIn.push(organization);
-      }
-    } catch (ignoredError) { /* ignored */ }
-  }
-  return orgsUserIn;
-}
-
-function getPersonEntryByUpn(redisClient, upn: string) : Promise<any> {
-  return new Promise((resolve, reject) => {
-    redisClient.hget('upns', upn, (redisGetError, data) => {
-      if (redisGetError) {
-        return reject(redisGetError);
-      }
-      var person = null;
-      if (data) {
-        try {
-          person = JSON.parse(data);
-        } catch (jsonError) {
-          return reject(jsonError);
-        }
-      }
-      if (person) {
-        return resolve(person);
-      }
-      return resolve(null);
-    });
-  });
-}
-
-function getMicrosoftGraphAadIdInformation(graphProvider, aadId: string) : Promise<any> {
-  return new Promise((resolve, reject) => {
-    if (!graphProvider || !aadId) {
-      return resolve();
-    }
-    graphProvider.getUserAndManagerById(aadId, (error, info) => {
-      return error ? reject(error) : resolve(info);
-    });
-  });
-}
-
 
 router.get('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {
   const thirdPartyId = req.params.githubid;
@@ -304,7 +259,6 @@ router.get('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {
       view: 'organization/whois/result',
       title: `Whois by GitHub ID: ${thirdPartyId}`,
       state: {
-        personEntry: query.personEntry,
         info: query.gitHubUserInfo,
         realtimeGraph: query.realtimeGraph,
 
@@ -327,29 +281,26 @@ interface IIDValue {
   value: string;
 }
 
-router.get('/whois/link/:linkid', function (req: ReposAppRequest, res, next) {
+router.get('/whois/link/:linkid', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const linkId = req.params.linkid;
   const operations = req.app.settings.operations as Operations;
   const linkProvider = operations.linkProvider as PostgresLinkProvider;
-  linkProvider.getByPostgresLinkId(linkId, (getError, link: ICorporateLink) => {
-    if (getError) {
-      return next(getError);
-    }
-    return req.individualContext.webContext.render({
-      view: 'organization/whois/linkEditorPage',
-      title: `Link ${linkId}`,
-      state: {
-        query: {
-          link,
-        }
-      },
-    });
+  const link = await linkProvider.getByPostgresLinkId(linkId);
+  return req.individualContext.webContext.render({
+    view: 'organization/whois/linkEditorPage',
+    title: `Link ${linkId}`,
+    state: {
+      query: {
+        link,
+      }
+    },
   });
-});
+}));
 
-router.post('/whois/link/:linkid', function (req: ReposAppRequest, res, next) {
+router.post('/whois/link/:linkid', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const linkId = req.params.linkid;
   const isLinkDelete = req.body['delete-link'];
+  req.body['isServiceAccount'] = req.body['isServiceAccount'] === 'yes';
   const keys = [
     'corporateId',
     'corporateUsername',
@@ -357,6 +308,8 @@ router.post('/whois/link/:linkid', function (req: ReposAppRequest, res, next) {
     'thirdPartyId',
     'thirdPartyUsername',
     'thirdPartyAvatar',
+    'isServiceAccount',
+    'serviceAccountMail',
   ];
   for (const key of keys) {
     if (!isLinkDelete && !req.body[key]) {
@@ -366,57 +319,48 @@ router.post('/whois/link/:linkid', function (req: ReposAppRequest, res, next) {
   }
   const operations = req.app.settings.operations as Operations;
   const linkProvider = operations.linkProvider as PostgresLinkProvider;
-  linkProvider.getByPostgresLinkId(linkId, (getError, link: CorporateLinkPostgres) => {
-    if (getError) {
-      return next(getError);
+  const link = await linkProvider.getByPostgresLinkId(linkId);
+  const messages = [
+    `Link ID ${linkId}`,
+  ];
+  let hadUpdates = false;
+  for (const key of keys) {
+    // loose comparisons
+    if (!isLinkDelete && link[key] != req.body[key]) {
+      messages.push(`${key}: value has been updated from "${link[key]}" to "${req.body[key]}"`);
+      link[key] = req.body[key];
+      hadUpdates = true;
     }
-    const messages = [
-      `Link ID ${linkId}`,
-    ];
-    let hadUpdates = false;
-    for (const key of keys) {
-      // loose comparisons
-      if (!isLinkDelete && link[key] != req.body[key]) {
-        messages.push(`${key}: value has been updated from "${link[key]}" to "${req.body[key]}"`);
-        link[key] = req.body[key];
-        hadUpdates = true;
-      }
+  }
+  const renderOutput = function () {
+    req.individualContext.webContext.render({
+      view: 'organization/whois/linkUpdate',
+      title: `Updating link ${linkId}`,
+      state: {
+        messages,
+        linkId,
+      },
+    });
+  };
+  if (isLinkDelete) {
+    messages.push(`Deleting link ${linkId}`);
+    try {
+      await linkProvider.deleteLink(link);
+      messages.push('Link deleted OK');
+    } catch (error) {
+      messages.push(error.toString());
     }
-    const renderOutput = function () {
-      req.individualContext.webContext.render({
-        view: 'organization/whois/linkUpdate',
-        title: `Updating link ${linkId}`,
-        state: {
-          messages,
-          linkId,
-        },
-      });
-    };
-    if (isLinkDelete) {
-      messages.push(`Deleting link ${linkId}`);
-      return linkProvider.deleteLink(link, error => {
-        if (error) {
-          messages.push(error.toString());
-        } else {
-          messages.push('Link deleted OK');
-        }
-        renderOutput();
-      });
-    }
-    if (hadUpdates) {
-      messages.push('Updating values');
-      return linkProvider.updateLink(link, updateError => {
-        if (updateError) {
-          return next(updateError);
-        }
-        renderOutput();
-      });
-    } else {
-      messages.push('No link values changed, it was not updated');
-      return renderOutput();
-    }
-  });
-});
+    return renderOutput();
+  }
+  if (hadUpdates) {
+    messages.push('Updating values');
+    await linkProvider.updateLink(link);
+    return renderOutput();
+  } else {
+    messages.push('No link values changed, it was not updated');
+    return renderOutput();
+  }
+}));
 
 router.post('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {
   const thirdPartyId = req.params.githubid;
@@ -459,8 +403,7 @@ router.get('/whois/aad/:upn', function (req: ReposAppRequest, res, next) {
       view: 'organization/whois/result',
       title: `Whois by AAD UPN: ${upn}`,
       state: {
-        personEntry: query.personEntry,
-        upn: upn,
+        upn,
         info: query.gitHubUserInfo,
         realtimeGraph: query.realtimeGraph,
 
@@ -481,7 +424,6 @@ router.get('/whois/github/:username', function (req: ReposAppRequest, res, next)
       view: 'organization/whois/result',
       title: `Whois: ${login}`,
       state: {
-        personEntry: query.personEntry,
         info: query.gitHubUserInfo,
         realtimeGraph: query.realtimeGraph,
 
@@ -505,7 +447,7 @@ router.post('/whois/github/:username', function (req: ReposAppRequest, res, next
   } else if (unmarkServiceAccount) {
     action = OperationsAction.UnmarkServiceAccount;
   }
-  const identifier : IIDValue = {
+  const identifier: IIDValue = {
     type: IDValueType.Username,
     value: username,
   };
@@ -533,6 +475,7 @@ async function destructiveLogic(operations: Operations, graphProvider, redisClie
   };
   let thirdPartyUsername = identifier.type === IDValueType.Username ? identifier.value : null;
   let thirdPartyId = identifier.type === IDValueType.ID ? identifier.value : null;
+  const dataAsTerminated = req.body.dataTerminated === 'yes';
   try {
     if (!thirdPartyUsername) {
       state.messages.push('Destruction operation not requested on a username');
@@ -555,7 +498,7 @@ async function destructiveLogic(operations: Operations, graphProvider, redisClie
       idInfo = await getGitHubAccountInformationById(operations, thirdPartyId);
     } catch (idInfoError) {
       if (idInfoError.status === '404') {
-        state.messages.push(`The GitHub account was deleted by ID ${thirdPartyId}: ` + idInfoError.toString());
+        state.messages.push(`The GitHub account by ID does not exist or has been deleted: ${thirdPartyId}: ` + idInfoError.toString());
       } else {
         state.messages.push(`Could not get GitHub account information by ID ${thirdPartyId}: ` + idInfoError.toString());
       }
@@ -585,12 +528,16 @@ async function destructiveLogic(operations: Operations, graphProvider, redisClie
   if (action === OperationsAction.MarkAsServiceAccount || action === OperationsAction.UnmarkServiceAccount) {
     const linkProvider = operations.linkProvider;
     state.independentView = true; // no rendering on return
-    return modifyServiceAccount(linkProvider, linkQuery.link, action === OperationsAction.MarkAsServiceAccount, req, res, next);
+    return await modifyServiceAccount(linkProvider, linkQuery.link, action === OperationsAction.MarkAsServiceAccount, req, res, next);
   }
 
   // Account termination
-  if (linkQuery && linkQuery.link) {
-    state.results = await operations.terminateLinkAndMemberships(linkQuery.link.thirdPartyId, { purpose: UnlinkPurpose.Operations });
+  if (linkQuery && linkQuery.link && !thirdPartyId) {
+    thirdPartyId = linkQuery.link.thirdPartyId;
+  }
+  if (thirdPartyId) {
+    const purpose = dataAsTerminated ? UnlinkPurpose.Termination : UnlinkPurpose.Operations;
+    state.results = await operations.terminateLinkAndMemberships(thirdPartyId, { purpose });
   } else {
     state.messages.push('Could not terminate the account, no link was found');
   }
@@ -598,14 +545,14 @@ async function destructiveLogic(operations: Operations, graphProvider, redisClie
   return state;
 }
 
-function modifyServiceAccount(linkProvider: ILinkProvider, link: ICorporateLink, markAsServiceAccount, req, res, next) {
+async function modifyServiceAccount(linkProvider: ILinkProvider, link: ICorporateLink, markAsServiceAccount, req, res, next) {
   link.isServiceAccount = markAsServiceAccount ? true : false;
-  linkProvider.updateLink(link, updateError => {
-    if (updateError) {
-      return next(updateError);
-    }
-    res.json(link);
-  });
+  try {
+    await linkProvider.updateLink(link);
+    return res.json(link);
+  } catch (updateError) {
+    return next(updateError);
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -617,18 +564,19 @@ router.get('/bulkRepoDelete', (req: ReposAppRequest, res) => {
   });
 });
 
-router.post('/bulkRepoDelete', (req, res, next) => {
-  const operations = req.app.settings.operations;
+router.post('/bulkRepoDelete', asyncHandler(async (req, res, next) => {
+  const operations = req.app.settings.operations as Operations;
   let repositories = req.body.repositories;
+  // TODO: FEATURE FLAG: add a feature flag whether this API is available.
   if (!repositories) {
     return next(new Error('No repositories provided'));
   }
   repositories = repositories.split('\n');
   const log = [];
-  async.eachLimit(repositories, 1, (repositoryName: string, next) => {
+  for (let repositoryName of repositories) {
     repositoryName = (repositoryName || '').trim();
     if (!repositoryName.length) {
-      return next();
+      continue;
     }
     let githubcom = 'github.com';
     let ghi = repositoryName.indexOf(githubcom);
@@ -636,30 +584,23 @@ router.post('/bulkRepoDelete', (req, res, next) => {
       let name = repositoryName.substr(ghi + githubcom.length + 1);
       let divider = name.indexOf('/');
       if (divider <= 0) {
-        return next();
+        continue;
       }
       let orgName = name.substr(0, divider);
       let repoName = name.substr(divider + 1);
       const repository = operations.getOrganization(orgName).repository(repoName);
-      repository.delete((errorIsh, more) => {
-        if (errorIsh) {
-          log.push(name + ': ' + errorIsh);
-        } else {
-          let metaStatus = more && more.headers ? more.headers.status : null;
-          log.push(name + ': ' + metaStatus);
-        }
-        return next();
-      });
+      try {
+        await repository.delete();
+        // let metaStatus = more && more.headers ? more.headers.status : null;
+        log.push(`${name}: deleted`);
+      } catch (deleteError) {
+        log.push(`${name}: error: ${deleteError}`);
+      }
     } else {
       log.push(`Skipping, does not appear to be a GitHub repo URL: ${repositoryName}`);
-      return next();
     }
-  }, error => {
-    if (error) {
-      return next(error);
-    }
-    res.json(log);
-  });
-});
+  }
+  return res.json(log);
+}));
 
-module.exports = router;
+export default router;

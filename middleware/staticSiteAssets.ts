@@ -1,17 +1,16 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 /*eslint no-console: ["error", { allow: ["log", "error", "warn", "dir"] }] */
 
-'use strict';
+import appPackage from '../package.json';
 
-import appPackage = require('../package.json');
+const debug = require('debug')('startup');
 
-const debug = require('debug')('oss-initialize');
-const favicon = require('serve-favicon');
-const path = require('path');
+import favicon from 'serve-favicon';
+import path from 'path';
 
 const defaultPublicAssetsPackageName = '../../default-assets-package/';
 const staticAssetspackageName = appPackage['static-site-assets-package-name'] || defaultPublicAssetsPackageName;

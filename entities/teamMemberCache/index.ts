@@ -1,9 +1,7 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import { ITeamMemberCacheProvider, ITeamMemberCacheCreateOptions, TeamMemberCacheProvider } from './teamMemberCacheProvider';
 import { FixedQueryType, IEntityMetadataFixedQuery } from '../../lib/entityMetadataProvider/query';
@@ -16,6 +14,19 @@ export async function CreateTeamMemberCacheProviderInstance(options?: ITeamMembe
 
 export class TeamMemberCacheFixedQueryAll implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamMemberCacheGetAll;
+}
+
+export class TeamMemberCacheGetOrganizationIdsQuery implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamMemberCacheGetOrganizationIds;
+}
+
+export class TeamMemberCacheDeleteByOrganizationId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamMemberCacheDeleteByOrganizationId;
+  constructor(public organizationId: string) {
+    if (typeof(this.organizationId) !== 'string') {
+      throw new Error(`${organizationId} must be a string`);
+    }
+  }
 }
 
 export class TeamMemberCacheFixedQueryByOrganizationId implements IEntityMetadataFixedQuery {
@@ -41,6 +52,18 @@ export class TeamMemberCacheFixedQueryByUserId implements IEntityMetadataFixedQu
   constructor(public userId: string) {
     if (typeof(this.userId) !== 'string') {
       throw new Error(`${userId} must be a string`);
+    }
+  }
+}
+
+export class TeamMemberCacheFixedQueryByOrganizationIdAndUserId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamMemberCacheGetByOrganizationIdAndUserId;
+  constructor(public organizationId: string, public userId: string) {
+    if (typeof(this.userId) !== 'string') {
+      throw new Error(`userId ${userId} must be a string`);
+    }
+    if (typeof(this.organizationId) !== 'string') {
+      throw new Error(`organizationId ${organizationId} must be a string`);
     }
   }
 }

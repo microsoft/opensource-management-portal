@@ -1,5 +1,5 @@
 //-
-//- Copyright (c) Microsoft. All rights reserved.
+//- Copyright (c) Microsoft.
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
@@ -52,37 +52,16 @@ block content
         p Here is the information we have on this user. This user has a #[strong link].
       else
         p Here is the information we have on this user. This user does not appear to be linked at this time.
-
+        
       - var rg = query.realtimeGraph
-
-      .row
-        //-.col-md-6
-          h5 REDIS PEOPLE COLLECTION
-          p
-            small Daily snapshot from people feed
-          if personEntry
-            .alert.alert-success
-              h3
-                | Known person &nbsp;
-                small= upn
-              if personEntry && personEntry.alias
-                p
-                  a.btn.btn-sm.btn-default(target='_new', href='http://who/is/' + personEntry.alias)= 'http://who/is/' + personEntry.alias
-              p Based on the most recent Redis cache of the employee directory, this employee is known and active.
-              pre(style='font-size:8pt;width:50%')= JSON.stringify(personEntry, undefined, 2)
-          else
-            - var whatWeKnow = upn || info.aadupn
-            - var strippedAlias = whatWeKnow && whatWeKnow.includes('@') ? whatWeKnow.substr(0, whatWeKnow.indexOf('@')) : null
-            .alert(class=info && info.serviceAccount ? 'alert-success' : 'alert-danger')
-              h3
-                | Unknown person &nbsp;
-                small= whatWeKnow
-              p Based on the most recent Redis cache of the employee directory, there is no entry for this UPN.
-              if strippedAlias
-                p We have stripped a potential alias from the e-mail address, #{whatWeKnow}, to get to #{strippedAlias}...
-                p
-                  a.btn.btn-sm.btn-default(target='_new', href='http://who/is/' + strippedAlias)= 'http://who/is/' + strippedAlias
         .col-md-6
+          if query && query.managerInfo && query.managerInfo.managerId
+            h5 MANAGER
+            ul
+              if query.managerInfo.managerDisplayName
+                li= 'Name: ' + query.managerInfo.managerDisplayName
+              if query.managerInfo.managerMail
+                li= 'Mail: ' + query.managerInfo.managerMail
           h5 REAL-TIME MICROSOFT GRAPH
           p
             small Includes service accounts
@@ -120,7 +99,7 @@ block content
             if query.realtimeGraphError
               h4 Graph lookup returned an error
               if query.realtimeGraphError.status && query.realtimeGraphError.status == '404'
-                h5.text-danger The user could not be found in the directory graph by corporate user ID
+                .alert-danger: h5 The user could not be found in the directory graph by corporate user ID
               else
                 h5.text-danger= query.realtimeGraphError.toString()
 
@@ -140,7 +119,7 @@ block content
             td= query.gitHubUserInfo.id
 
       if query.link && query.link.corporateUsername
-        h2 #{config.brand.companyName} Directory
+        h2 #{config.brand.companyName} Linked Corporate ID
         table.table
           thead
             tr
@@ -176,6 +155,9 @@ block content
         if query.orgs.length && query.orgs.length > 0
           h1 Actions
           p.lead DANGER ZONE - NO CONFIRMATION
+          p
+            input.form-control(type='checkbox', name='dataTerminated', value='yes')
+            | as data terminated
           ul.list-inline
             li
               input.btn.btn-danger(type='submit', value=query.gitHubUserInfo && query.gitHubUserInfo.login ? 'Remove link + drop from ' + query.orgs.length + ' orgs' : 'Drop from ' + query.orgs.length + ' orgs', name='remove-all')
@@ -191,6 +173,12 @@ block content
           p.lead DANGER ZONE - NO CONFIRMATION
           p
             input.btn.btn-danger(type='submit', value='Remove link', name='remove-link-only')
+
+    if query && query.collaboratorRepositories && query.collaboratorRepositories.length
+      h2 Active individual Collaborator permissions on repos
+      ul
+        each cr in query.collaboratorRepositories
+          li= cr
 
     if query && query.link
       hr

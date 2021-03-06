@@ -1,22 +1,79 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
+import { MicrosoftGraphProvider } from './microsoftGraphProvider';
 
-import { MicrosoftGraphProvider } from "./microsoftGraphProvider";
+export enum GraphUserType {
+  Unknown = '', // most employees
+  Guest = 'Guest',
+  Member = 'Member', // some users, like LinkedIn employees, are a member
+}
+
+export interface IGraphEntry {
+  displayName: string;
+  givenName: string;
+  id: string;
+  mail: string;
+  userPrincipalName: string;
+  userType?: GraphUserType;
+  mailNickname?: string;
+  // alias?: string;
+  jobTitle?: string;
+}
+
+export interface IGraphGroupMember {
+  id: string;
+  userPrincipalName: string;
+}
+
+export interface IGraphGroup {
+  id: string;
+  displayName: string;
+  mailNickname: string;
+
+  description?: string;
+  mail?: string;
+}
+
+export interface IGraphEntryWithManager extends IGraphEntry {
+  manager: IGraphEntry;
+}
 
 export interface IGraphProvider {
-  getUserById(corporateId: string, callback);
-  getUserByIdAsync(id: string) : Promise<any>;
+  getUserById(id: string): Promise<IGraphEntry>;
+
+  getUserIdByNickname(nickname: string): Promise<string>;
+
+  getUserAndManagerById(corporateId: string, callback);
 
   getManagerById(corporateId: string, callback);
-  getUserAndManagerById(corporateId: string, callback);
+  getManagerByIdAsync(id: string): Promise<IGraphEntry>;
+  getManagementChain(corporateId: string): Promise<IGraphEntry[]>;
+
+  getMailAddressByUsername(corporateUsername: string): Promise<string>;
+  getUserIdByUsername(corporateUsername: string): Promise<string>;
+
+  getUsersBySearch(minimum3Characters: string): Promise<IGraphEntry[]>;
+  getUsersByIds(userIds: string[]): Promise<IGraphEntry[]>;
+  getUsersByMailNicknames(mailNicknames: string[]): Promise<IGraphEntry[]>;
+
+  getGroupsById(corporateId: string): Promise<string[]>;
+  getGroupsByMail(mailAddress: string): Promise<string[]>;
+  getGroupsByNickname(nickname: string): Promise<string[]>;
+  getGroupsStartingWith(minimum3Characters: string): Promise<IGraphGroup[]>;
+  getGroupMembers(corporateGroupId: string): Promise<IGraphGroupMember[]>;
+  getGroup(corporateGroupId: string): Promise<IGraphGroup>;
+
+  getToken(): Promise<string>;
 }
 
 export function CreateGraphProviderInstance(config, callback) {
-  const graphConfig = config.graph;
+  const activeDirectoryConfig = config.activeDirectory;
+  const graphConfig = Object.assign({
+    tenantId: activeDirectoryConfig.tenantId,
+  }, config.graph);
   if (!graphConfig) {
     return callback(new Error('No graph provider configuration.'));
   }
@@ -43,3 +100,14 @@ export function CreateGraphProviderInstance(config, callback) {
 
   return callback(null, providerInstance);
 };
+
+export function getUserAndManagerById(graphProvider: IGraphProvider, aadId: string): Promise<IGraphEntryWithManager> {
+  return new Promise((resolve, reject) => {
+    if (!graphProvider || !aadId) {
+      return resolve(null);
+    }
+    graphProvider.getUserAndManagerById(aadId, (error, info) => {
+      return error ? reject(error) : resolve(info);
+    });
+  });
+}

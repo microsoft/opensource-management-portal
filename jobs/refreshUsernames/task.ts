@@ -1,58 +1,30 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
-'use strict';
+import throat from 'throat';
+import { shuffle } from 'lodash';
 
-import throat = require('throat');
-
-import { createAndInitializeLinkProviderInstance } from '../../lib/linkProviders';
-import { IProviders } from '../../transitional';
-import { ILinkProvider } from '../../lib/linkProviders/postgres/postgresLinkProvider';
+import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../../lib/linkProviders';
 import { ICorporateLink } from '../../business/corporateLink';
 import { Operations, UnlinkPurpose } from '../../business/operations';
+import { sleep } from '../../utils';
+import { IReposJob, IReposJobResult } from '../../app';
 
-let insights;
-
-module.exports = function run(config) {
-  const app = require('../../app');
-  config.skipModules = new Set([
-    'web',
-  ]);
-
-  app.initializeApplication(config, null, error => {
-    if (error) {
-      throw error;
-    }
-    insights = app.settings.appInsightsClient;
-    if (!insights) {
-      throw new Error('No app insights client available');
-    }
-    refresh(config, app).then(done => {
-      console.log('done');
-      process.exit(0);
-    }).catch(error => {
-      if (insights) {
-        insights.trackException({ exception: error, properties: { name: 'JobRefreshUsernamesFailure' } });
-      }
-      throw error;
-    });
-  });
-};
-
-async function refresh(config, app) : Promise<void> {
-  const providers = app.settings.providers as IProviders;
+export default async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
   const operations = providers.operations as Operations;
+  const insights = providers.insights;
+  const config = providers.config;
   const linkProvider = await createAndInitializeLinkProviderInstance(providers, config);
   const graphProvider = providers.graphProvider;
 
   console.log('reading all links');
-  const allLinks = await getAllLinks(linkProvider);
+  const allLinks = shuffle(await getAllLinks(linkProvider));
   console.log(`READ: ${allLinks.length} links`);
-  insights.trackEvent({ name: 'JobRefreshUsernamesReadLinks', properties: { links: allLinks.length } });
+  insights.trackEvent({ name: 'JobRefreshUsernamesReadLinks', properties: { links: String(allLinks.length) } });
 
   let errors = 0;
   let notFoundErrors = 0;
@@ -62,6 +34,7 @@ async function refresh(config, app) : Promise<void> {
   let updatedUsernames = 0;
   let updatedAvatars = 0;
   let updatedAadNames = 0;
+  let updatedCorporateMails = 0;
   let updatedAadUpns = 0; // should be super rare
 
   const userDetailsThroatCount = 1;
@@ -70,33 +43,41 @@ async function refresh(config, app) : Promise<void> {
 
   const maxAgeSeconds = 24 * 60 * 60; // details can be a day out-of-date
 
-  await Promise.all(allLinks.map(throat<void, (link: ICorporateLink) => Promise<void>>(async link => {
+  const throttle = throat(userDetailsThroatCount);
+  let i = 0;
+  await Promise.all(allLinks.map((link: ICorporateLink) => throttle(async () => {
+    ++i;
+
     // Refresh GitHub username for the ID
     let id = link.thirdPartyId;
     const account = operations.getAccount(id);
+    let changed = false;
     try {
-      const refreshOptions = {
-        maxAgeSeconds,
-        backgroundRefresh: false,
-      };
-      const details = await account.getDetails(refreshOptions);
-      let changed = false;
+      try {
+        const refreshOptions = {
+          maxAgeSeconds,
+          backgroundRefresh: false,
+        };
+        const details = await account.getDetails(refreshOptions);
 
-      if (details.login && link.thirdPartyUsername !== details.login) {
-        insights.trackEvent({ name: 'JobRefreshUsernamesUpdateLogin', properties: { old: link.thirdPartyUsername, new: details.login } });
-        link.thirdPartyUsername = details.login;
-        changed = true;
-        ++updatedUsernames;
-      }
+        if (details.login && link.thirdPartyUsername !== details.login) {
+          insights.trackEvent({ name: 'JobRefreshUsernamesUpdateLogin', properties: { old: link.thirdPartyUsername, new: details.login } });
+          link.thirdPartyUsername = details.login;
+          changed = true;
+          ++updatedUsernames;
+        }
 
-      if (details.avatar_url && link.thirdPartyAvatar !== details.avatar_url) {
-        link.thirdPartyAvatar = details.avatar_url;
-        changed = true;
-        ++updatedAvatars;
+        if (details.avatar_url && link.thirdPartyAvatar !== details.avatar_url) {
+          link.thirdPartyAvatar = details.avatar_url;
+          changed = true;
+          ++updatedAvatars;
+        }
+      } catch (githubError) {
+        console.dir(githubError);
       }
 
       try {
-        const graphInfo = await graphProvider.getUserByIdAsync(link.corporateId);
+        const graphInfo = await graphProvider.getUserById(link.corporateId);
         if (graphInfo) {
           if (graphInfo.userPrincipalName && link.corporateUsername !== graphInfo.userPrincipalName) {
             link.corporateUsername = graphInfo.userPrincipalName;
@@ -108,18 +89,28 @@ async function refresh(config, app) : Promise<void> {
             changed = true;
             ++updatedAadNames;
           }
+          if (graphInfo.mail && link.corporateMailAddress !== graphInfo.mail) {
+            link.corporateMailAddress = graphInfo.mail;
+            changed = true;
+            ++updatedCorporateMails;
+          }
+          if (graphInfo.mailNickname && link.corporateAlias !== graphInfo.mailNickname.toLowerCase()) {
+            link.corporateAlias = graphInfo.mailNickname.toLowerCase();
+            changed = true;
+          }
         }
       } catch (graphLookupError) {
         // Ignore graph lookup issues, other jobs handle terminated employees
+        console.dir(graphLookupError);
       }
 
       if (changed) {
         await updateLink(linkProvider, link);
-        console.log(`Updates saved for GitHub user ID ${id}`);
+        console.log(`${i}/${allLinks.length}: Updates saved for GitHub user ID ${id}`);
         ++updates;
       }
     } catch (getDetailsError) {
-      if (getDetailsError.code == /* loose compare */ '404') {
+      if (getDetailsError.status == /* loose compare */ '404') {
         ++notFoundErrors;
         insights.trackEvent({ name: 'JobRefreshUsernamesNotFound', properties: { githubid: id, error: getDetailsError.message } });
         try {
@@ -130,17 +121,18 @@ async function refresh(config, app) : Promise<void> {
           insights.trackException({ exception: unlinkDeletedAccountError, properties: { githubid: id, event: 'JobRefreshUsernamesDeleteError' } });
         }
       } else {
+        console.dir(getDetailsError);
         ++errors;
         insights.trackException({ exception: getDetailsError, properties: { name: 'JobRefreshUsernamesError' } });
         errorList.push(getDetailsError);
-        await sleepPromise(secondsDelayAfterError * 1000);
+        await sleep(secondsDelayAfterError * 1000);
       }
       return;
     }
 
-    await sleepPromise(secondsDelayAfterSuccess * 1000);
+    await sleep(secondsDelayAfterSuccess * 1000);
 
-  }, userDetailsThroatCount)));
+  })));
 
   console.log('All done with', errors, 'errors. Not found errors:', notFoundErrors);
   console.dir(errorList);
@@ -151,34 +143,25 @@ async function refresh(config, app) : Promise<void> {
   console.log(`GitHub avatar changes: ${updatedAvatars}`);
   console.log(`AAD name changes: ${updatedAadNames}`);
   console.log(`AAD username changes: ${updatedAadUpns}`);
-  console.log();
-  insights.trackEvent({ name: 'JobRefreshUsernamesSuccess', properties: { updates, updatedUsernames, updatedAvatars, updatedAadNames, updatedAadUpns, errors } });
+  console.log(`Updated corporate mails: ${updatedCorporateMails}`);
+
+  return {
+    successProperties: {
+      updates,
+      updatedUsernames,
+      updatedAvatars,
+      updatedAadNames,
+      updatedAadUpns,
+      updatedCorporateMails,
+      errors,
+    },
+  };
 }
 
-async function updateLink(linkProvider: ILinkProvider, link: ICorporateLink) : Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    linkProvider.updateLink(link, error => {
-      if (error) {
-        return reject(error);
-      }
-      return resolve();
-    });
-  });
+function updateLink(linkProvider: ILinkProvider, link: ICorporateLink): Promise<void> {
+  return linkProvider.updateLink(link);
 }
 
-async function getAllLinks(linkProvider: ILinkProvider) : Promise<ICorporateLink[]> {
-  return new Promise<ICorporateLink[]>((resolve, reject) => {
-    linkProvider.getAll((error, links: ICorporateLink[]) => {
-      if (error) {
-        return reject(error);
-      }
-      return resolve(links);
-    });
-  });
-}
-
-function sleepPromise(ms: number): Promise<void> {
-  return new Promise<void>(resolve => {
-    setTimeout(resolve, ms);
-  });
+function getAllLinks(linkProvider: ILinkProvider): Promise<ICorporateLink[]> {
+  return linkProvider.getAll();
 }

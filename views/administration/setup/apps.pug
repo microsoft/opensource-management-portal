@@ -1,0 +1,70 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+block content
+  div.container
+
+    if orgNames.length > 0 && apps.length > 0
+      h2 By organization
+
+      table.table
+        thead
+          tr
+            th Organization
+            th Status
+            each app in apps
+              th= app.friendlyName
+            th Delete
+        tbody
+          each orgName in orgNames
+            - var entry = orgs.get(orgName)
+            tr
+              td= orgName
+              td= entry.status
+              each app in apps
+                - var install = entry.appInstallations.get(app.id)
+                if install && entry.configuredInstallations.includes(install.installationId)
+                  td: a.btn.btn-sm.btn-muted-more(href='/administration/app/' + app.id + '/installations/' + install.installationId) OK
+                else if install
+                  td: a.btn.btn-sm.btn-danger(href='/administration/app/' + app.id + '/installations/' + install.installationId) Setup required
+                else
+                  if app.slug
+                    td: a.btn.btn-sm.btn-muted(href='https://github.com/apps/' + app.slug + '/installations/new/permissions?target_id=' + entry.id, target='_new') Install
+                  else
+                    td N/A
+              td: form(method='post')
+                input(type='hidden', name='deletesettingsorgname', value=entry.organizationName)
+                input.btn.btn-sm.btn-danger(
+                  type='submit', 
+                  onclick='return confirm(\'Are you sure that you want to delete any settings for the ' + entry.organizationName + ' org?\');',
+                  value='Delete settings')
+
+    else if orgNames.length === 0 && apps.length > 0
+      p No organizations have installed the configured GitHub apps yet.
+    else
+      p No organizations have installed the GitHub app yet, and this site is not configured with any app identities.
+
+    h2 Applications
+    if apps.length > 0
+      table.table
+        thead
+          tr
+            th App ID
+            th GitHub App
+            th Purpose
+            th Manage
+        tbody
+          each app in apps
+            tr
+              td= app.id
+              td= app.slug
+              td= app.friendlyName
+              td: ul.list-inline
+                li: a.btn.btn-sm.btn-default(href=`./app/${app.id}`) Manage
+                li: a.btn.btn-sm.btn-muted(href='https://github.com/apps/' + app.slug + '/installations/new') Install in new org
+    else
+      p No apps configured.

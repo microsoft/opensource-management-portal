@@ -1,13 +1,11 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 //
-
-'use strict';
 
 const path = require('path');
 const pug = require('pug');
 
-export function RenderHtmlMail(basedir, viewName, options): Promise<string> {
+export default function RenderHtmlMail(basedir, viewName, options): Promise<string> {
   return new Promise((resolve, reject) => {
     return renderMailHtml(basedir, viewName, options, (error, html) => {
       return error ? reject(error) : resolve(html);
@@ -34,5 +32,3 @@ function renderMailHtml(basedir, viewName, options, callback) {
   }
   return callback(null, html);
 };
-
-module.exports.render = renderMailHtml;

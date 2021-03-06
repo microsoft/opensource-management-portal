@@ -1,28 +1,27 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-'use strict';
-
-const emailRender = require('../lib/emailRender');
-import express = require('express');
-import { ReposAppRequest } from '../transitional';
-import { IndividualContext } from '../business/context2';
-import { ILinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
-import { storeOriginalUrlAsReferrer, wrapError } from '../utils';
-import { ICorporateLink } from '../business/corporateLink';
-
-const isEmail = require('validator/lib/isEmail');
-
+import express from 'express';
+import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-const unlinkRoute = require('./unlink');
+import { ReposAppRequest, IProviders, IAppSession } from '../transitional';
+import { IndividualContext } from '../user';
+import { storeOriginalUrlAsReferrer, wrapError } from '../utils';
+import { ICorporateLink } from '../business/corporateLink';
+import { Operations, LinkOperationSource, SupportedLinkType } from '../business/operations';
+
+import validator from 'validator';
+
+import unlinkRoute from './unlink';
+import { jsonError } from '../middleware';
 
 interface IRequestWithSession extends ReposAppRequest {
-  session?: any;
+  session: IAppSession;
 }
 
 interface IRequestHacked extends ReposAppRequest {
@@ -38,7 +37,7 @@ router.use((req: IRequestHacked, res, next) => {
   }
 });
 
-router.use('/', function (req: ReposAppRequest, res, next) {
+router.use('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   // Make sure both account types are authenticated before showing the link pg [wi 12690]
   const individualContext = req.individualContext;
   if (!individualContext.corporateIdentity || !individualContext.getGitHubIdentity()) {
@@ -46,13 +45,13 @@ router.use('/', function (req: ReposAppRequest, res, next) {
     return res.redirect('/?signin');
   }
   return next();
-});
+}));
 
 // TODO: graph provider non-guest check should be middleware and in the link business process
 
-router.use((req: IRequestHacked, res, next) => {
+router.use(asyncHandler(async (req: IRequestHacked, res, next) => {
   const individualContext = req.individualContext as IndividualContext;
-  const providers = req.app.settings.providers;
+  const providers = req.app.settings.providers as IProviders;
   const insights = providers.insights;
   const config = providers.config;
   let validateAndBlockGuests = false;
@@ -76,27 +75,17 @@ router.use((req: IRequestHacked, res, next) => {
       aadId: aadId,
     },
   });
-  graphProvider.getUserById(aadId, (graphError, details) => {
-    if (graphError) {
-      insights.trackException({
-        exception: graphError,
-        properties: {
-          aadId: aadId,
-          name: 'LinkValidateNotGuestGraphFailure',
-        },
-      });
-      return next(graphError);
-    }
+  try {
+    const details = await graphProvider.getUserById(aadId);
     const userType = details.userType;
     const displayName = details.displayName;
     const userPrincipalName = details.userPrincipalName;
-    let block = userType === 'Guest';
+    let block = userType as string === 'Guest';
     let blockedRecord = block ? 'BLOCKED' : 'not blocked';
     // If the app is configured to check for guests, but this is a specifically permitted guest user, continue:
     if (config && config.activeDirectoryGuests && config.activeDirectoryGuests.authorizedIds && config.activeDirectoryGuests.authorizedIds.length && config.activeDirectoryGuests.authorizedIds.includes(aadId)) {
       block = false;
       blockedRecord = 'specifically authorized user ' + aadId + ' ' + userPrincipalName;
-      /// HACK !
       req.overrideLinkUserPrincipalName = userPrincipalName;
       return next(new Error('This feature is not currently available. Please reach out to support to re-enable this feature.'));
     }
@@ -114,11 +103,24 @@ router.use((req: IRequestHacked, res, next) => {
       insights.trackMetric({ name: 'LinksBlockedForGuests', value: 1 });
       return next(new Error(`This system is not available to guests. You are currently signed in as ${displayName} ${userPrincipalName}. Please sign out or try a private browser window.`));
     }
+    const manager = await providers.graphProvider.getManagerByIdAsync(aadId);
+    if (!manager || !manager.userPrincipalName) {
+      throw new Error(`You do not have an active manager entry in the directory and so cannot yet link.`);
+    }
     return next();
-  });
-});
+  } catch (graphError) {
+    insights.trackException({
+      exception: graphError,
+      properties: {
+        aadId: aadId,
+        name: 'LinkValidateNotGuestGraphFailure',
+      },
+    });
+    return next(graphError);
+  }
+}));
 
-router.get('/', function (req: ReposAppRequest, res, next) {
+router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const individualContext = req.individualContext;
   const link = individualContext.link;
   if (!individualContext.corporateIdentity && !individualContext.getGitHubIdentity()) {
@@ -130,17 +132,26 @@ router.get('/', function (req: ReposAppRequest, res, next) {
     return res.redirect('/signin/github/');
   }
   if (!link) {
-    showLinkPage(req, res);
+    return await showLinkPage(req, res);
   } else {
     req.insights.trackEvent({ name: 'LinkRouteLinkLocated' });
+    let organizations = null;
+    try {
+      organizations = await individualContext.aggregations.organizations();
+    } catch (ignoredError) {
+      /* ignore */
+    }
     return individualContext.webContext.render({
       view: 'linkConfirmed',
       title: 'You\'re already linked',
+      state: {
+        organizations,
+      }
     });
   }
-});
+}));
 
-function showLinkPage(req, res) {
+async function showLinkPage(req, res) {
   const individualContext = req.individualContext as IndividualContext;
   function render(options) {
     individualContext.webContext.render({
@@ -151,29 +162,19 @@ function showLinkPage(req, res) {
   }
   const config = req.app.settings.runtimeConfig;
   const graphProvider = req.app.settings.graphProvider;
-  if (config.authentication.scheme !== 'aad' || !graphProvider){
+  if (config.authentication.scheme !== 'aad' || !graphProvider) {
     return render(null);
   }
   const aadId = individualContext.corporateIdentity.id;
-  graphProvider.getUserAndManagerById(aadId, (error, graphUser) => {
-    // By design, we want to log the errors but do not want any individual
-    // lookup problem to break the underlying experience of letting a user
-    // link. This is important if someone is new in the company, they may
-    // not be in the graph fully yet.
-    if (error) {
-      req.insights.trackException({
-        exception: error,
-        properties: {
-          event: 'PortalLinkInformationGraphLookupError',
-        },
-      });
-    } else if (graphUser) {
-      req.insights.trackEvent({ name: graphUser.manager ? 'PortalLinkInformationGraphLookupUser' : 'PortalLinkInformationGraphLookupServiceAccount' });
-    }
-    render({
-      graphUser: graphUser,
-      isServiceAccountCandidate: graphUser && !graphUser.manager,
-    });
+  const operations = req.app.settings.operations as Operations;
+  // By design, we want to log the errors but do not want any individual
+  // lookup problem to break the underlying experience of letting a user
+  // link. This is important if someone is new in the company, they may
+  // not be in the graph fully yet.
+  const userLinkData = await operations.validateCorporateAccountCanLink(aadId);
+  render({
+    graphUser: userLinkData.graphEntry,
+    isServiceAccountCandidate: userLinkData.type === SupportedLinkType.ServiceAccount,
   });
 }
 
@@ -188,130 +189,60 @@ router.get('/enableMultipleAccounts', function (req: IRequestWithSession, res) {
   storeOriginalUrlAsReferrer(req, res, '/auth/github', 'multiple accounts enabled need to auth with GitHub again now');
 });
 
-router.post('/', linkUser);
-
-function sendWelcomeMailThenRedirect(req: ReposAppRequest, res, config, url, linkObject: ICorporateLink, mailProvider, linkedAccountMail) {
-  res.redirect(url);
-
-  if (!mailProvider || !linkedAccountMail) {
-    return;
-  }
-
-  const to = [
-    linkedAccountMail,
-  ];
-  const toAsString = to.join(', ');
-
-  const cc = [];
-  if (config.brand && config.brand.operationsEmail && linkObject.isServiceAccount) {
-    cc.push(config.brand.operationsEmail);
-  }
-
-  const mail = {
-    to: to,
-    subject: `${linkObject.corporateUsername} linked to ${linkObject.thirdPartyUsername}`,
-    correlationId: req.correlationId,
-    category: ['link', 'repos'],
-    content: undefined,
-  };
-  const contentOptions = {
-    reason: (`You are receiving this one-time e-mail because you have linked your account.
-              To stop receiving these mails, you can unlink your account.
-              This mail was sent to: ${toAsString}`),
-    headline: `Welcome to GitHub, ${linkObject.thirdPartyUsername}`,
-    notification: 'information',
-    app: `${config.brand.companyName} GitHub`,
-    companyName: config.brand.companyName,
-    docs: config.microsoftOpenSource.docs,
-    correlationId: req.correlationId,
-    link: linkObject,
-  };
-  emailRender.render(req.app.settings.runtimeConfig.typescript.appDirectory, 'link', contentOptions, (renderError, mailContent) => {
-    if (renderError) {
-      return req.insights.trackException({
-        exception: renderError,
-        properties: {
-          content: contentOptions,
-          eventName: 'LinkMailRenderFailure',
-        },
-      });
-    }
-    mail.content = mailContent;
-    mailProvider.sendMail(mail, (mailError, mailResult) => {
-      const customData = {
-        content: contentOptions,
-        receipt: mailResult,
-        eventName: undefined,
-      };
-      if (mailError) {
-        customData.eventName = 'LinkMailFailure';
-        return req.insights.trackException({ exception: mailError, properties: customData });
-      }
-      return req.insights.trackEvent({ name: 'LinkMailSuccess', properties: customData });
-    });
-  });
-}
-
-function linkUser(req, res, next) {
+router.post('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
   const individualContext = req.individualContext as IndividualContext;
-
-  // TODO: a business object should actually handle creating links with the provider
-  const linkProvider = req.app.settings.providers.linkProvider as ILinkProvider;
-  if (!linkProvider) {
-    return next(new Error('No link provider'));
+  try {
+    await interactiveLinkUser(false, individualContext, req, res, next);
+  } catch (error) {
+    return next(error);
   }
+}));
 
-  const config = req.app.settings.runtimeConfig;
+export async function interactiveLinkUser(isJson: boolean, individualContext: IndividualContext, req, res, next) {
   const isServiceAccount = req.body.sa === '1';
   const serviceAccountMail = req.body.serviceAccountMail;
-  const linkedAccountMail = req.body.sam;
-  const operations = req.app.settings.providers.operations;
-  const mailProvider = req.app.settings.mailProvider;
-  if (isServiceAccount && !isEmail(serviceAccountMail)) {
-    return next(wrapError(null, 'Please enter a valid e-mail address for the Service Account maintainer.', true));
+  const operations = req.app.settings.providers.operations as Operations;
+  if (isServiceAccount && !validator.isEmail(serviceAccountMail)) {
+    const errorMessage = 'Please enter a valid e-mail address for the Service Account maintainer.'
+    return next(isJson ? jsonError(errorMessage, 400) : wrapError(null, errorMessage, true));
   }
-  req.insights.trackEvent({ name: isServiceAccount ? 'PortalUserLinkingServiceAccountStart' : 'PortalUserLinkingStart' });
-  const metricName = isServiceAccount ? 'PortalServiceAccountLinks' : 'PortalUserLinks';
-
   let newLinkObject: ICorporateLink = null;
   try {
     newLinkObject = individualContext.createGitHubLinkObject();
   } catch (missingInformationError) {
     return next(missingInformationError);
   }
-
   if (isServiceAccount) {
     newLinkObject.isServiceAccount = true;
     newLinkObject.serviceAccountMail = serviceAccountMail;
+    const address = operations.getOperationsMailAddress();
+    const errorMessage = `Service Account linking is not available. Please reach out to ${address} for more information.`;
+    return next(isJson ? jsonError(errorMessage, 400) : new Error(errorMessage));
   }
-
-  linkProvider.createLink(newLinkObject, (createError, linkId) => {
-    if (createError) {
-      req.insights.trackException({
-        exception: createError,
-        properties: {
-          event: 'PortalUserLinkInsertLinkError',
-        },
-      });
-      return next(wrapError(createError, `We had trouble linking your corporate and GitHub accounts: ${createError.message}`));
+  try {
+    await operations.linkAccounts({
+      link: newLinkObject,
+      operationSource: LinkOperationSource.Portal,
+      correlationId: individualContext.webContext?.correlationId || 'N/A',
+      skipGitHubValidation: true, // already has been verified in the recent session
+    });
+    if (isJson) {
+      res.status(201);
+      return res.end();
+    } else {
+      return res.redirect('/?onboarding=yes');
     }
-    const eventData = newLinkObject;
-    eventData['linkId'] = linkId;
-
-    req.insights.trackEvent({ name: 'PortalUserLink' });
-    req.insights.trackMetric({ name: metricName, value: 1 });
-
-    // TODO: fireLinkEvent may need to recognize the new format!
-    operations.fireLinkEvent(eventData);
-    sendWelcomeMailThenRedirect(req, res, config, '/?onboarding=yes', newLinkObject, mailProvider, linkedAccountMail);
-  });
+  } catch (createError) {
+    const errorMessage = `We had trouble linking your corporate and GitHub accounts: ${createError.message}`;
+    return next(isJson ? jsonError(errorMessage, 500) : wrapError(createError, errorMessage));
+  }
 }
 
 router.use('/remove', unlinkRoute);
 
 router.get('/reconnect', function (req: ReposAppRequest, res, next) {
   const config = req.app.settings.runtimeConfig;
-  if (config.authentication.scheme !== 'aad'){
+  if (config.authentication.scheme !== 'aad') {
     return next(wrapError(null, 'Account reconnection is only needed for Active Directory authentication applications.', true));
   }
   // If the request comes back to the reconnect page, the authenticated app will
@@ -332,4 +263,4 @@ router.get('/reconnect', function (req: ReposAppRequest, res, next) {
   });
 });
 
-module.exports = router;
+export default router;

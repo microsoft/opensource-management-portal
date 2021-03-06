@@ -1,18 +1,9 @@
 //-
-//- Copyright (c) Microsoft. All rights reserved.
+//- Copyright (c) Microsoft.
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
 extends ../layout
-
-block additional_head
-  link(href='/css/c3.min.css', rel='stylesheet')
-  script(src='/js/d3.min.js')
-  script(src='/js/c3.min.js')
-
-block js_doc_ready
-  include ../js/metrics.js
-  | displayRepoMetrics(#{repo.id}, #{organization.id}, '#{config.brand.companyName}');
 
 mixin simplePersonView(account)
   - var shorthandName = account.login
@@ -78,14 +69,15 @@ block content
   - var languageColor = viewServices.languageColor
   - var octicon = viewServices.octicon
   - var fileSize = viewServices.fileSize
+  - var moment = viewServices.moment
 
   //- View constants
   - var maxReaders = 10
 
   //- Variables
   - var githubUrl = 'https://github.com/' + repo.full_name
-  - var cloneUrl = repo.clone_url || repo.otherFields.clone_url
-  - var sshUrl = repo.ssh_url || repo.otherFields.ssh_url
+  - var cloneUrl = repo.clone_url
+  - var sshUrl = repo.ssh_url
   - var admin = repoPermissions && repoPermissions.allowAdministration
 
   .container
@@ -97,6 +89,10 @@ block content
                 a(href='javascript:window.history.back()')
                   span(aria-hidden=true) &larr;
                   = ' Back'
+        
+        if repositoryMetadataEntity && repositoryMetadataEntity.lockdownState && repositoryMetadataEntity.lockdownState !== 'unlocked'
+          div.label.label-danger SETUP INCOMPLETE
+        
         - var hugeHeading = repo.name.length < 33
         h1(class={huge: hugeHeading})
           a(href='https://github.com/' + repo.full_name, target="_blank")= repo.name
@@ -104,6 +100,13 @@ block content
             | &nbsp;
             .label.label-warning(class={shrink66: !hugeHeading, shrink50: hugeHeading}) Private
         h6= repo.full_name.replace('/' + repo.name, '') + ' organization'
+        if repo.fork
+          h6
+            | Forked&nbsp;
+            if entity.parent && entity.parent.full_name
+                | from&nbsp;
+                a(href='https://github.com/' + entity.parent.full_name, target='_new')= entity.parent.full_name
+
         if repo.description
           p.lead=repo.description
 
@@ -138,7 +141,16 @@ block content
               li
                 != octicon('database', 13)
                 = ' ' + fileSize(repo.size * 1024)
-
+            if entity.disabled
+              li: strong DISABLED BY GITHUB
+            if repo.fork
+              li
+                != octicon('repo-forked', 15)
+                small &nbsp;fork&nbsp;
+                if entity.parent && entity.parent.full_name
+                  small
+                    | upstream:&nbsp;
+                    a(href='https://github.com/' + entity.parent.full_name, target='_new')= entity.parent.full_name
         ul.list-inline(style='margin-top:24px;margin-bottom:48px')
           li: a.btn.btn-sm.btn-muted-more(href=githubUrl, target="_blank", title='View ' + repo.full_name + ' on GitHub.com')
             = 'Open on GitHub.com '
@@ -147,9 +159,6 @@ block content
             li: a.btn.btn-sm.btn-muted-more(href='https://github.com/' + repo.full_name, target="_blank") HTTPS clone
           if sshUrl
             li: a.btn.btn-sm.btn-muted-more(href='https://github.com/' + repo.full_name, target="_blank") SSH clone
-          if repo.disasterRecoveryRepositoryUrl
-            li: a.btn.btn-sm.btn-muted-more(href=repo.disasterRecoveryRepositoryUrl, target="_blank", title='View ' + repo.full_name + '\'s backup mirror') Open VSTS mirror
-              span.bowtie
           if repo.homepage
             li: a.btn.btn-sm.btn-muted-more(href=repo.homepage, target='_new', title=repo.homepage) Homepage
 
@@ -171,6 +180,21 @@ block content
                 | Created
                 br
                 strong= repo.moment.created_at
+            if repo.default_branch
+              li
+                | Default branch
+                br
+                strong= repo.default_branch
+                if repo.default_branch === 'master' && admin
+                  span &nbsp;
+                  a.btn.btn-sm.btn-muted(href=repository.baseUrl + 'defaultBranch') Rename...
+
+        if organizationSupportsUpdatesApp && repo.default_branch !== 'main' && admin
+          .alert.alert-gray
+            p: small.
+              Guidance regarding inclusivity and the default branch name can be found at 
+              #[a(href='https://aka.ms/github/renaming', target='_new') aka.ms/github/renaming]. This 
+              repo currently has the default branch name #[strong= repo.default_branch].
 
       .col-md-4
         if admin
@@ -205,7 +229,7 @@ block content
               target='_blank'
             ) Webhooks
 
-            if repoPermissions.admin && repo.private === true
+            if repoPermissions.allowAdministration && repo.private === true
               ul.list-unstyled.list-vspace
                 li
                   form(method='post')
@@ -217,135 +241,81 @@ block content
                       onclick='return confirm(\'Are you sure that you want to make this repo public?\');'
                       title='Click to toggle this repo from private to public')
 
-          //-if extensions
-            h4 Services
-
-            ul.list-unstyled.list-vspace
-
-              if extensions.cla && extensions.cla.supported && cla && cla.legalEntity
-                li: a.btn.btn-sm.btn-muted-more(href='/' + repo.organization.name + '/repos/' + repo.name + '/extensions/cla') Configure the #{cla.legalEntity} CLA
-
     if repositoryMetadataEntity && repositoryMetadataEntity.repositoryName && repositoryMetadataEntity.organizationName
       #corporateMetadata
         hr
-        h3 Corporate metadata
-        .row
-          if repositoryMetadataEntity.releaseReviewType || repositoryMetadataEntity.releaseReviewUrl || repositoryMetadataEntity.projectType
-          .col-md-4
-            if repositoryMetadataEntity.releaseReviewType
-              p
-                | Release review type
-                br
-                if repositoryMetadataEntity.releaseReviewType == 'SmallLibrariesToolsSamples'
-                  strong Small Code Exception
-                  //- TODO: provide a link to policy
-                else
-                  strong= repositoryMetadataEntity.releaseReviewType
-            if repositoryMetadataEntity.releaseReviewJustification
-              p
-                | Justification provided
-                br
-                strong= repositoryMetadataEntity.releaseReviewJustification
-            if repositoryMetadataEntity.releaseReviewUrl
-              p
-                | Release approval work item
-                br
-                strong: a(href=repositoryMetadataEntity.releaseReviewUrl, target='_new')= repositoryMetadataEntity.releaseReviewUrl
-            if repositoryMetadataEntity.projectType
-              p
-                | Release project type
-                br
-                strong= repositoryMetadataEntity.projectType
-          if repositoryMetadataEntity.initialRepositoryDescription
-            .col-md-4
-              if repositoryMetadataEntity.initialRepositoryDescription
-                p
-                  | Description
-                  br
-                  strong= repositoryMetadataEntity.initialRepositoryDescription
-          if repositoryMetadataEntity.createdByThirdPartyUsername
-            .col-md-4
-              if repositoryMetadataEntity.createdByThirdPartyUsername
-                p
-                  | Repository created by
-                  br
-                  strong= repositoryMetadataEntity.createdByThirdPartyUsername
-        //-.row
-          .col-md-12
-            pre= JSON.stringify(repositoryMetadataEntity, undefined, 2)
 
-    #metrics
+        if repositoryMetadataEntity.lockdownState == 'locked' || repositoryMetadataEntity.lockdownState == 'administratorLocked'
+          .row: .col-md-12
+            h3
+              if repository.fork
+                | Fork Setup
+              else
+                | Repository Setup
+              = ' '
+              span.label.label-default INCOMPLETE
+
+            if repositoryMetadataEntity.lockdownState == 'locked'
+              h5 LOCKED REPOSITORY
+              if repository.fork
+                strong This repository has been approved by a corporate GitHub administrator and is waiting for the original user to finalize setting up the fork.
+              if activeUserCorporateId == repositoryMetadataEntity.createdByCorporateId
+                p You created this repository on GitHub.com but have not yet completed configuring your repository.
+                p: a.btn.btn-sm.btn-primary(href='/' + organization.name + '/wizard?existingreponame=' + repository.name + '&existingrepoid=' + repository.id) Complete repository setup
+              else
+                p
+                  small Only the individual who created the repo #{repositoryMetadataEntity.createdByCorporateUsername} can complete the setup wizard through the following link:
+                  br
+                  a.btn.btn-sm.btn-muted(href='/' + organization.name + '/wizard?existingreponame=' + repository.name + '&existingrepoid=' + repository.id) Complete repository setup
+
+            if repositoryMetadataEntity.lockdownState == 'administratorLocked'
+              h5 AWAITING MORE INFORMATION
+              p This #{repository.fork ? 'fork' : 'repository'} needs to be approved by a corporate GitHub administrator after the person who created the fork should reach out to the #[a(href='mailto:' + config.brand.operationsMail)= config.brand.operationsMail] to provide the business justification and other information:
+              ul
+                li Why an official fork is being created
+                li Information including prior communications with the upstream open source community where the idea of forking was socialized
+                li Information about how you will support this fork long-term, including responding to contributions through pull requests and issues
+                li Whether there are plans to eventually contribute the forked changes upstream and delete this fork
+                li Acknowledgement that you will help govern this fork and work with any others in this GitHub org who would also like to maintain this fork
+                li Other useful information including your business goals relating to this project
+
+              if activeUserCorporateId == repositoryMetadataEntity.createdByCorporateId
+                p If this #{repository.fork ? 'fork' : 'repository'} was an accident, you can delete this #{repository.fork ? 'fork' : 'repository'} now:
+                p: a.btn.btn-sm.btn-primary(href=href=repository.absoluteBaseUrl + 'delete') Delete now
+              else
+                p
+                  small If this #{repository.fork ? 'fork' : 'repository'} was an accident, the individual who created it, #{repositoryMetadataEntity.createdByCorporateUsername}, can delete this #{repository.fork ? 'fork' : 'repository'} using the following link:
+                  br
+                  a.btn.btn-sm.btn-muted(href=repository.absoluteBaseUrl + 'delete') Delete now
+
+          if repositoryMetadataEntity.createdByCorporateDisplayName || repositoryMetadataEntity.createdByCorporateUsername
+            .row
+              .col-md-12
+                h5 CREATED BY
+                  p
+                    if repositoryMetadataEntity.createdByCorporateDisplayName
+                      =repositoryMetadataEntity.createdByCorporateDisplayName
+                    if repositoryMetadataEntity.createdByCorporateUsername
+                      = ' / '
+                      =repositoryMetadataEntity.createdByCorporateUsername
+          hr
+
+        if repositoryMetadataEntity && repositoryMetadataEntity.repositoryName && repositoryMetadataEntity.organizationName
+          h3 Corporate metadata
+          include ../includes/corporateRepoMetadata
+
+    if config && config.microsoftOpenSource && config.microsoftOpenSource.githubInsights
       hr
-      h3 Metrics
-      .row
-        .col-md-4
-          ul.list-unstyled.list-vspace
-            li
-              a(href='https://github.com/' + repo.full_name + '/graphs/contributors', target='_new' title='Contributors to all branches')
-                != octicon('organization', 20)
-                = ' Contributors: '
-                span#contributors
-            li
-              a(href='https://github.com/' + repo.full_name + '/watchers', target='_new')
-                != octicon('eye', 20)
-                = ' Subscribers: '
-                span#subscribers
-            li
-              a(href='https://github.com/' + repo.full_name + '/issues?q=sort%3Acreated-asc', target='_new')
-                != octicon('issue-opened', 20)
-                = ' Open issues: '
-                span#openIssues
-            li
-              a(href='https://github.com/' + repo.full_name + '/issues?q=is%3Aissue+is%3Aclosed', target='_new')
-                != octicon('issue-closed', 20)
-                = ' Closed issues: '
-                span#closedIssues
-            li Assigned open issues:&nbsp;
-              strong: span#assignedOpenIssues
-            li Unassigned open issues:&nbsp;
-              strong: span#unassignedOpenIssues
-            li Average days taken to close issues:&nbsp;
-              strong: span#avgDaysToCloseIssues
-            li Average days taken for first response to open issues:&nbsp;
-              strong: span#avgDaysForFirstResponseToIssues
-            li Issues opened today:&nbsp;
-              strong: span#openedIssuesToday
-            li Issues closed today:&nbsp;
-              strong: span#closedIssuesToday
-            li
-              a(href='https://github.com/' + repo.full_name + '/pulls?q=sort%3Acreated-asc', target='_new')
-                != octicon('git-pull-request', 20)
-                = ' Pull requests: '
-                span#pullRequests
-            li Open pull requests:&nbsp;
-              strong: span#openPullRequests
-            li Closed pull requests:&nbsp;
-              strong: span#closedPullRequests
-            li Average days taken to close pull requests:&nbsp;
-              strong: span#avgDaysToClosePRs
-            li Average days taken for first response to pull requests:&nbsp;
-              strong: span#avgDaysForFirstResponseToPRs
-            li Pull requests opened today:&nbsp;
-              strong: span#prsOpenedToday
-            li Pull requests closed today:&nbsp;
-              strong: span#prsClosedToday
-            li
-              a(href='https://github.com/' + repo.full_name + '/commits', target='_new')
-                != octicon('git-commit', 20)
-                = ' Commits: '
-                span#commits
-            li Lines committed:&nbsp;
-              strong: span#linesCommitted
-            li Commits made today:&nbsp;
-              strong: span#commitsToday
-            li Lines committed today:&nbsp;
-              strong: span#linesCommittedToday
-        .col-md-6
-          h4.text-center Average response times
-          #avgResponsesChart
-        .col-md-2
-          h4#contributorsChartTitle.text-center Contributors distribution
-          #contributorsChart
+      h4 Metrics
+      p.
+        Explore GitHub data, gain insights, build your community by learning to
+        query the
+        #[a(href=config.microsoftOpenSource.githubInsights, target='_new') GitHub Insights]
+        data provided ghcrawler and CloudMine.
+        #[a(href=config.microsoftOpenSource.githubInsights, target='_new') Learn more...]
+
+    if repo && repo.id
+      p: small= 'Repository ' + repo.full_name + ' has the GitHub ID ' + repo.id
 
     if reposDataAgeInformation
       p.text-primary(style='margin-bottom:24px')
@@ -357,3 +327,6 @@ block content
           | Refreshed
         if reposDataAgeInformation.updated
           = ' ' + reposDataAgeInformation.updated
+    //-div
+      h3 Raw metadata
+      small: pre= JSON.stringify(repositoryMetadataEntity, undefined, 2)

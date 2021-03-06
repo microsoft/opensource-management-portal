@@ -1,9 +1,7 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import _ from 'lodash';
 import asyncHandler from 'express-async-handler';
@@ -12,8 +10,10 @@ import express from 'express';
 import { ReposAppRequest } from '../transitional';
 import { Operations, ICrossOrganizationMembershipByOrganization } from '../business/operations';
 import { Team } from '../business/team';
+import { UserContext } from '../user/aggregate';
+import { asNumber } from '../utils';
 
-const TeamSearch = require('../business/teamSearch');
+import TeamSearch from '../business/teamSearch';
 
 function sortOrgs(orgs) {
   return _.sortBy(orgs, ['name']);
@@ -26,7 +26,7 @@ interface IGetTeamsDataResults {
   totalMaintainerships: number;
 }
 
-async function getTeamsData(id, singleOrganizationName: string | null, operations: Operations): Promise<IGetTeamsDataResults> {
+async function getTeamsData(singleOrganizationName: string | null, operations: Operations, userContext: UserContext): Promise<IGetTeamsDataResults> {
   const options = {
     backgroundRefresh: true,
     maxAgeSeconds: 60 * 10 /* 10 minutes */,
@@ -50,8 +50,8 @@ async function getTeamsData(id, singleOrganizationName: string | null, operation
   }
 
   const yourTeamsMap = new Map();
-  const overview = await operations.getUserContext(id).getAggregatedOverview();
-  if (overview.teams && overview.teams.length) {
+  const overview = await userContext.getAggregatedOverview();
+  if (overview.teams && overview.teams.member.length) {
     reduceTeams(overview.teams, 'member', yourTeamsMap);
     reduceTeams(overview.teams, 'maintainer', yourTeamsMap);
   }
@@ -73,13 +73,13 @@ function reduceTeams(collections, property, map) {
   });
 }
 
-module.exports = asyncHandler(async function(req: ReposAppRequest, res: express.Response, next: express.NextFunction) {
+export default asyncHandler(async function(req: ReposAppRequest, res: express.Response, next: express.NextFunction) {
   const operations = req.app.settings.operations as Operations;
   const isCrossOrg = req.teamsPagerMode === 'orgs';
-  const id = req.individualContext.getGitHubIdentity().id;
+  const aggregations = req.individualContext.aggregations;
   const orgName = isCrossOrg ? null : req.organization.name.toLowerCase();
-  const { teams, yourTeamsMap, totalMemberships, totalMaintainerships } = await getTeamsData(id, isCrossOrg ? null : orgName.toLowerCase(), operations);
-  const page = req.query.page_number ? req.query.page_number : 1;
+  const { teams, yourTeamsMap, totalMemberships, totalMaintainerships } = await getTeamsData(isCrossOrg ? null : orgName.toLowerCase(), operations, aggregations);
+  const page = req.query.page_number ? asNumber(req.query.page_number) : 1;
   let phrase = req.query.q;
 
   let set = req.query.set;
@@ -118,6 +118,7 @@ module.exports = asyncHandler(async function(req: ReposAppRequest, res: express.
       },
       yourTeamsMap,
       totalMemberships,
+      onboarding: req.query.onboarding,
       totalMaintainerships,
       errorAsWarning: null, // warning /* if an error occurs that is not fatal, we may want to display information about it */,
       onboardingOrJoining,

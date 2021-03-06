@@ -1,5 +1,5 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -8,7 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const debug = require('debug')('oss-initialize');
+const debug = require('debug')('startup');
 
 const pkg = require('../package.json');
 

@@ -1,92 +1,65 @@
 //-
-//- Copyright (c) Microsoft. All rights reserved.
+//- Copyright (c) Microsoft.
 //- Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //-
 
 extends ../layout
 
 block content
+  - var moment = viewServices.moment
   .container
     .row
       .col-md-3.col-lg-3
         include ./menu
       .col-md-7.col-lg-7
-        div.container
-          if teamResponsibilities && teamResponsibilities.length && teamResponsibilities.length > 0
-            h1 Approvals for Your Review
-            div.container
-              each entry in teamResponsibilities
-                h2(style='padding-bottom: 16px')
-                  =entry.type === 'repo' ? 'New Repository' : 'Join a team'
-                  | &nbsp;
-                  small Permission Request
-                div.row
-                  div.col-md-5.col-lg-5
-                    form(method='post', action='/' + entry._teamInstance.organization.name + '/teams/' + entry._teamInstance.slug + '/approvals/' + entry.RowKey)
-                      p
-                        //-if entry.issue
-                        //- NOTE: Commenting out GitHub links with approval repos, since they have been deprecated
-                        a.btn.btn-sm.btn-muted(href='/' + entry._teamInstance.organization.name + '/teams/' + entry._teamInstance.slug + '/approvals/' + entry.RowKey)
-                          i.glyphicon.glyphicon-zoom-in
-                          | &nbsp;
-                          | View Detailed Request Page
-                      if entry.active === true
-                        p
-                          input.btn.btn-sm.btn-default(type='submit', name='approve', value='Approve')
-                        p
-                          input.btn.btn-sm.btn-primary(type='submit', name='approveWithComment', value='Approve with Comment...')
-                        p
-                          input.btn.btn-sm.btn-default(type='submit', name='deny', value='Deny...')
-                  div.col-md-7.col-lg-7
-                    p
-                      a.btn.btn-sm.btn-muted(href='https://github.com/' + entry.ghu, target='_new')= entry.ghu
-                      a.btn.btn-sm.btn-muted-more(href='mailto:' + entry.email)= entry.email ? entry.email : 'Unknown'
-                    if entry.type == 'repo' && entry.repoName
-                      h3 Repository Information
-                      blockquote
-                        p
-                          strong Name
-                          br
-                          = entry.repoName
-                        p
-                          strong Organization
-                          br
-                          = entry.org
-                        if entry.repoVisibility !== undefined
-                          p
-                            strong Visibility
-                            br
-                            = (entry.repoVisibility == 'public' ? 'Public' : 'Private')
-                    if entry.justification
-                      h3 Business Justification
-                      blockquote
-                        =entry.justification
-                hr
+        if teamResponsibilities && teamResponsibilities.length && teamResponsibilities.length > 0
+          h1 Approvals for Your Review
+          each entry in teamResponsibilities
+            h2(style='padding-bottom: 16px')
+              | Join a team
+              | &nbsp;
+              small Permission Request
+            form(method='post', action='/' + entry.team.organization.name + '/teams/' + entry.team.slug + '/approvals/' + entry.request.approvalId)
+              ul.list-inline
+                //-if entry.issue
+                //- NOTE: Commenting out GitHub links with approval repos, since they have been deprecated
+                li
+                  a.btn.btn-sm.btn-muted(href='/' + entry.team.organization.name + '/teams/' + entry.team.slug + '/approvals/' + entry.request.approvalId)
+                    i.glyphicon.glyphicon-zoom-in
+                    | &nbsp;
+                    | Details...
+                li: p
+                  a.btn.btn-sm.btn-muted(href='https://github.com/' + entry.request.thirdPartyUsername, target='_new')= entry.request.thirdPartyUsername
+                  a.btn.btn-sm.btn-muted-more(href='mailto:' + entry.corporateUsername)= entry.corporateUsername ? entry.corporateUsername : 'Unknown'
+              if entry.request.active === true
+                ul.list-inline
+                  li: input.btn.btn-sm.btn-default(type='submit', name='approve', value='Approve')
+                  li: input.btn.btn-sm.btn-primary(type='submit', name='approveWithComment', value='Approve with Comment...')
+                  li: input.btn.btn-sm.btn-default(type='submit', name='deny', value='Deny...')
+            if entry.request.created
+              h4 Requested
+              p= moment(entry.request.created).fromNow()
+            if entry.request.justification
+              h4 Business Justification
+              p= entry.request.justification
 
-          h1 Requests you have made
-          if usersRequests && usersRequests.length && usersRequests.length > 0
-            div.container
-              each myRequest in usersRequests
-                div.row(style='margin-top:24px')
-                  div.col-md-5.col-lg-5
-                    //-if myRequest._teamInstance && myRequest.issue
-                      //- NOTE: Commenting out GitHub links with approval repos, since they are deprecated
-                    form(method='post', action='/settings/approvals/' + myRequest.approvalId + '/cancel')
-                      p
-                        input.btn.btn-sm.btn-default(type='submit', value='Cancel my request')
-                  div.col-md-7.col-lg-7
-                    if myRequest.type == 'joinTeam'
-                      h3 Request to join a team
-                      h5 Organization
-                      p= myRequest.org
-                      h5 Team Name
-                      p= myRequest.teamname
-                      h5 GitHub Team ID
-                      p= myRequest.teamid
-                    if myRequest.justification
-                      h3 My Business Justification
-                      blockquote
-                        =myRequest.justification
-                hr
-          else
-            p.lead There are no active requests open at this time.
+        h1 Requests you have made
+        if usersRequests && usersRequests.length && usersRequests.length > 0
+          each myRequest in usersRequests
+            form(method='post', action='/settings/approvals/' + myRequest.request.approvalId + '/cancel')
+              p
+                input.btn.btn-sm.btn-default(type='submit', value='Cancel my request')
+              if myRequest.ticketType == 'joinTeam'
+                h3 Request to join a team
+                h5 Organization
+                p= myRequest.team.organization.name
+                h5 Team Name
+                p= myRequest.request.teamName
+                h5 GitHub Team ID
+                p= myRequest.request.teamId
+              if myRequest.request.justification
+                h3 My Business Justification
+                blockquote
+                  =myRequest.request.justification
+        else
+          p.lead There are no active requests open at this time.

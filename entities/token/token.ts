@@ -1,9 +1,7 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import azure from 'azure-storage';
 import crypto from 'crypto';
@@ -16,6 +14,8 @@ import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetad
 import { TokenGenerator } from './tokenGenerator';
 import { QueryTokensByCorporateID } from './tokenProvider';
 import { Type } from './type';
+import { TableSettings } from '../../lib/entityMetadataProvider/table';
+import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
 
 const type = Type;
 
@@ -28,6 +28,7 @@ interface ITokenEntityProperties {
   expires: any;
   source: any;
   organizationScopes: any;
+  warning: any;
   scopes: any;
 }
 
@@ -39,6 +40,7 @@ const Field: ITokenEntityProperties = {
   description: 'description',
   expires: 'expires',
   source: 'source',
+  warning: 'warning',
   organizationScopes: 'organizationScopes',
   scopes: 'scopes',
 }
@@ -51,6 +53,7 @@ export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntity
   token: string;
 
   active: boolean;
+  warning: string;
   corporateId: string;
   created: Date;
   description: string;
@@ -63,6 +66,22 @@ export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntity
 
   constructor() {
     this.created = new Date();
+  }
+
+  static CreateFromAadAuthorization({
+    appId,
+    oid,
+    scopes,
+    organizationScopes,
+  }) : PersonalAccessToken {
+    const pat = new PersonalAccessToken();
+    pat.corporateId = null;
+    pat.description = `AAD oid ${oid} app ${appId} with scopes ${scopes}`;
+    pat.source = `AAD oid ${oid} app ${appId}`;
+    pat.displayUsername = 'AAD Identity';
+    pat.organizationScopes = organizationScopes;
+    pat.scopes = scopes;
+    return pat;
   }
 
   static CreateFromAzureDevOpsTokenAuthorization({
@@ -139,7 +158,7 @@ export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntity
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => { return new PersonalAccessToken(); });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, Field.token);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableMapping, new Map<string, string>([
+EntityMetadataMappings.Register(type, TableSettings.TableMapping, new Map<string, string>([
   [Field.token, null], // RowKey
   [Field.active, 'active'],
   [Field.corporateId, 'owner'],
@@ -148,19 +167,20 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableMapping, ne
   [Field.source, 'service'],
   [Field.organizationScopes, 'orgs'],
   [Field.expires, 'expires'],
+  [Field.warning, 'warning'],
   [Field.scopes, 'apis'],
 ]));
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TablePossibleDateColumns, [
+EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [
   Field.created,
   Field.expires,
 ]);
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableDefaultTableName, 'settings');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableDefaultFixedPartitionKey, 'apiKey');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableDefaultRowKeyPrefix, 'apiKey');
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableDefaultFixedPartitionKeyNoPrefix, true);
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.TableMapping, fieldNames, []);
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultTableName, 'settings');
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKey, 'apiKey');
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultRowKeyPrefix, 'apiKey');
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKeyNoPrefix, true);
+EntityMetadataMappings.RuntimeValidateMappings(type, TableSettings.TableMapping, fieldNames, []);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, new Map<string, string>([
+EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, new Map<string, string>([
   [Field.token, Field.token],
   [Field.active, Field.active],
   [Field.corporateId, Field.corporateId],
@@ -170,11 +190,12 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryMapping, n
   [Field.active, Field.active],
   [Field.organizationScopes, Field.organizationScopes],
   [Field.expires, Field.expires],
+  [Field.warning, Field.warning],
   [Field.scopes, Field.scopes],
 ]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MetadataMappingDefinition.MemoryMapping, fieldNames, []);
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableQueries, (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
+EntityMetadataMappings.Register(type, TableSettings.TableQueries, (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
   switch (query.fixedQueryType) {
     case FixedQueryType.TokensByCorporateId:
       const { corporateId } = query as QueryTokensByCorporateID;
@@ -192,9 +213,9 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.TableQueries, (q
   }
 });
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
+EntityMetadataMappings.Register(type, MemorySettings.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
   function translatedField(type: EntityMetadataType, key: string): string {
-    const mapTeamApprovalObjectToMemoryFields = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.MemoryMapping, true);
+    const mapTeamApprovalObjectToMemoryFields = EntityMetadataMappings.GetDefinition(type, MemorySettings.MemoryMapping, true);
     const value = mapTeamApprovalObjectToMemoryFields.get(key);
     if (!value) {
       throw new Error(`No translation exists for field ${key} in memory provider`);

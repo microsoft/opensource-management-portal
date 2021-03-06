@@ -1,0 +1,88 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends email
+
+block content
+  h1 #{approvalRequest.organizationName}/#{approvalRequest.repositoryName}
+  p
+    | Repo URL:&nbsp;
+    a(href='https://github.com/' + approvalRequest.organizationName + '/' + approvalRequest.repositoryName, target='_new') https://github.com/#{approvalRequest.organizationName}/#{approvalRequest.repositoryName}
+  if api && service
+    p.lead #{approvalRequest.repositoryName} was created by #{service}
+  else if api
+    p.lead #{approvalRequest.repositoryName} was created by a service
+  else
+    if existingRepoId
+      p.lead.
+        Thanks for configuring your new <strong>#{approvalRequest.repositoryName}</strong> repo.
+    else
+      p.lead.
+        Your repo <strong>"#{approvalRequest.repositoryName}"</strong> has been created in the <strong>"#{approvalRequest.organizationName}"</strong> organization.
+  if approvalRequest.initialRepositoryVisibility == 'private'
+  if liveReposSiteUrl && approvalRequest.repoVisibility == 'private'
+    p.
+      Since the new repo is private, you may receive a 404 if you yourself are
+      not a member of one of the teams that you requested have access.
+    if !existingRepoId
+      h3 How to make your repo public
+      p.
+        At this time, the typical experience of taking a repo public directly on
+        GitHub using the admin "settings" tab for a repo is broken. We are working
+        with GitHub to get this fixed.
+      p.
+        In the meantime, you can use the internal GitHub management portal to
+        take your repo public with a single click here:
+      p: a(href=liveReposSiteUrl + approvalRequest.org + '/repos/' + approvalRequest.repoName)= liveReposSiteUrl + approvalRequest.org + '/repos/' + approvalRequest.repoName
+
+  //-if approvalRequest.initialLicense
+    h3 License
+    p= approvalRequest.initialLicense
+
+  //-if approvalRequest.releaseReviewType
+    h3 Open Source Approval
+    p
+      | Release Type: #{approvalRequest.releaseReviewType}
+      if approvalRequest.releaseReviewUrl
+        br
+        | Release Request Created: #{approvalRequest.approvalUrl}
+      if approvalRequest.releaseReviewJustification
+        br
+        | Business Justification: #{approvalRequest.releaseReviewJustification}
+  
+  if service || serviceOwner || serviceDescription
+    h3 Service information
+    p This repo was created by a service:
+    table.technical
+      thead
+        tr
+          if service
+            th Service
+          if serviceDescription
+            th Service information
+      tbody
+        tr
+          if service
+            td= service
+          if serviceDescription
+            td= serviceDescription
+
+  if results && results.length
+    h3 Operations performed
+    ul
+      each result in results
+        if result && (result.error || result.message)
+          li(style=result.error ? 'color:red' : undefined)= result.error || result.message
+
+  if managerInfo && managerInfo.managerMail
+    h3 Additional notifications
+    p For visibility, the manager #{managerInfo.managerDisplayName ? managerInfo.managerDisplayName : managerInfo.managerMail} was also notified of this new GitHub repo for open source.
+    
+  if repository && repositoryMetadataEntity && repositoryMetadataEntity.repositoryName && repositoryMetadataEntity.organizationName
+    h3 Associated corporate metadata
+    if repository
+      p This information is available at #[a(href=repository.absoluteBaseUrl)=repository.absoluteBaseUrl]
+    include ../includes/corporateRepoMetadata
+  

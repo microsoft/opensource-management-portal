@@ -1,29 +1,26 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 /*eslint no-console: ["error", { allow: ["log"] }] */
 
-'use strict';
-
 import _ from 'lodash';
-const debug = require('debug')('oss-github');
-const debugCacheOptimization = require('debug')('oss-cache-optimization');
 import moment from 'moment';
+import semver from 'semver';
 
-const querystring = require('querystring');
-const semver = require('semver');
-const url = require('url');
+const debug = require('debug')('restapi');
+const debugCacheOptimization = require('debug')('oss-cache-optimization');
 
 const debugShowStandardBehavior = false;
 const debugOutputUnregisteredEntityApis = true;
 
-import { IShouldServeCache, IntelligentEngine, ApiContext, IApiContextCacheValues, IApiContextRedisKeys, ApiContextType } from './core';
+import { IShouldServeCache, IntelligentEngine, ApiContext, IApiContextCacheValues, IApiContextRedisKeys, ApiContextType, IRestResponse, IRestMetadata } from './core';
 import { getEntityDefinitions, GitHubResponseType, ResponseBodyType } from './endpointEntities';
 
-import appPackage = require('../../package.json');
-import { ILibraryContext } from '.';
+import appPackage from '../../package.json';
+import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../transitional';
+
 const appVersion = appPackage.version;
 
 const longtermMetadataMinutes = 60 * 24 * 14; // assumed to be a long time
@@ -40,20 +37,14 @@ interface IReducedGitHubMetadata {
   updated?: any;
 }
 
-interface IHackyOptions {
-  t?: any;
-}
-
 interface IGitHubLink {
   link: string;
 }
 
 export class IntelligentGitHubEngine extends IntelligentEngine {
-
-  public static findLibaryMethod(libraryInstance, apiName) {
+  public static findLibraryMethod(libraryInstance, apiName) {
     const instance = libraryInstance;
     const combined = apiName;
-
     const i = combined.indexOf('.');
     let apiGroup = null;
     let apiMethodName = combined;
@@ -72,12 +63,42 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     return method;
   }
 
-  // were previously in the pipeline and context:
-
-  async callApi(apiContext: GitHubApiContext): Promise<any> {
+  async callApi(apiContext: GitHubApiContext, optionalMessage?: string): Promise<IRestResponse> {
     const token = apiContext.token;
+    // CONSIDER: rename apiContext.token *to* something like apiContext.authorization
+    if (typeof(token) === 'string' && (!(token as string).startsWith('token ') && !(token as string).startsWith('bearer '))) {
+      if (optionalMessage) {
+        debug(optionalMessage);
+      }
+      const warning = `API context api=${apiContext.api} does not have a token that starts with 'token [REDACTED]' or 'bearer [REDACTED], investigate this breakpoint`;
+      throw new Error(warning);
+    }
+    let authorizationHeaderValue = typeof(token) === 'string' ? token as string : null;
+    if (!authorizationHeaderValue) {
+      if (typeof(token) === 'function') {
+        const response = await token();
+        if (typeof(response) === 'string') {
+          // happens when it isn't a more modern GitHub app response
+          authorizationHeaderValue = response;
+        } else {
+          const value = response['value'];
+          if (!value) {
+            throw new Error('No value');
+          }
+          authorizationHeaderValue = value;
+          apiContext.tokenSource = response;
+        }
+      }
+    }
+    if (optionalMessage) {
+      let apiTypeSuffix = apiContext.tokenSource && apiContext.tokenSource.purpose ? ' [' + apiContext.tokenSource.purpose + ']' : '';
+      if (!apiTypeSuffix && apiContext.tokenSource && apiContext.tokenSource.source) {
+        apiTypeSuffix = ` [token source=${apiContext.tokenSource.source}]`;
+      }
+      debug(`${optionalMessage}${apiTypeSuffix}`);
+    }
     const headers = {
-      Authorization: `token ${token}`,
+      Authorization: authorizationHeaderValue,
     };
     if (apiContext.options.headers) {
       apiContext.headers = apiContext.options.headers;
@@ -97,6 +118,9 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
         args.push(argOptions.octokitRequest);
         delete argOptions.octokitRequest;
       }
+      if (argOptions.additionalDifferentiationParameters) {
+        delete argOptions.additionalDifferentiationParameters;
+      }
       argOptions.headers = headers;
       args.push(argOptions);
     }
@@ -105,9 +129,9 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     return response;
   }
 
-  processMetadataBeforeCall(apiContext, metadata) {
+  processMetadataBeforeCall(apiContext: ApiContext, metadata: IRestMetadata) {
     if (metadata && metadata.av && apiContext.libraryContext.breakingChangeGitHubPackageVersion && !semver.gte(metadata.av, apiContext.libraryContext.breakingChangeGitHubPackageVersion)) {
-      console.log(`${apiContext.redisKey.metadata} was using ${metadata.av}, which is < to ${apiContext.libraryContext.breakingChangeGitHubPackageVersion}. This is a schema break, discarding cache.`);
+      console.warn(`${apiContext.redisKey.metadata} was using ${metadata.av}, which is < to ${apiContext.libraryContext.breakingChangeGitHubPackageVersion}. This is a schema break, discarding cache.`);
       metadata = undefined;
     } else if (metadata && !metadata.av) {
       // Old version of metadata, no package version, which is required for all GitHub REST API metadata now
@@ -120,14 +144,12 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     return metadata;
   }
 
-  withResponseUpdateMetadata(apiContext: ApiContext, response: any) {
+  withResponseUpdateMetadata(apiContext: ApiContext, response: IRestResponse) {
     return response;
   }
 
-  optionalStripResponse(apiContext: ApiContext, response: any): any {
-    delete response.meta;
+  optionalStripResponse(apiContext: ApiContext, response: IRestResponse): IRestResponse {
     const clonedResponse = Object.assign({}, response);
-
     if (response.headers) {
       let clonedHeaders = StripGitHubEntity(GitHubResponseType.Headers, response.headers, 'response.headers');
       if (clonedHeaders) {
@@ -202,35 +224,35 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     return clonedResponse;
   }
 
-  reduceMetadataToCacheFromResponse(apiContext: any, response: any): any {
-    if (response) {
-      delete response.meta; // this is to avoid deprecation messages from the library
-    }
+  reduceMetadataToCacheFromResponse(apiContext: ApiContext, response: IRestResponse): any {
     const headers = response ? response.headers : null;
-    if (headers && headers.etag) {
+    if (headers?.etag) {
       let reduced: IReducedGitHubMetadata = {
         etag: headers.etag,
-        av: appVersion, // added in app v5.0.1
+        av: appVersion,
       };
       if (headers.link) {
         reduced.link = headers.link;
       }
-      // CONSIDER: can parse last-modified and store it as 'changed' UTC
-      const calledTime = apiContext.calledTime ? apiContext.calledTime.format() : moment().utc().format();
-      reduced.updated = calledTime;
+      // Updated for 2021: parse last-modified to use as a more accurate 'changed' value
+      const lastModifiedTime = headers?.['last-modified'];
+      let updated = lastModifiedTime ? new Date(lastModifiedTime) : null;
+      if (!updated) {
+        const calledTime = apiContext.calledTime ? apiContext.calledTime : new Date();
+        updated = calledTime;
+      }
+      reduced.updated = updated.toISOString();
       return reduced;
     }
     return headers;
   }
 
-  withResponseShouldCacheBeServed(apiContext: ApiContext, response: any): boolean | IShouldServeCache {
+  withResponseShouldCacheBeServed(apiContext: ApiContext, response: IRestResponse): boolean | IShouldServeCache {
     if (response === undefined) {
       throw new Error('The response was undefined and unable to process.');
     }
     if (!response.headers) {
-      console.warn('As of Octokit 15.8.0, responses must have headers on the response');
-      // return Q(false);
-      throw new Error('no response.headers!!!!');
+      throw new Error('As of Octokit 15.8.0, responses must have headers on the response');
     }
     const headers = response.headers;
     let retryAfter = headers['retry-after'];
@@ -241,31 +263,33 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     if (rateLimitRemaining) {
       apiContext.cost.github.remainingApiTokens = rateLimitRemaining;
     }
-    let statusCode = 0;
-    if (headers.status) {
-      let status = headers.status || '';
-      let i = status.indexOf(' ');
-      statusCode = parseInt(i >= 0 ? status.substr(0, i) : status);
-      headers.statusActual = statusCode;
-    }
+    const { status } = response;
     let cacheOk = false;
-    if (statusCode === 304) {
-      const displayInfo = apiContext.redisKey ? apiContext.redisKey.root : '';
-      debug(`304: Use existing cache ${displayInfo}`);
+    const displayInfo = apiContext.redisKey ? apiContext.redisKey.root : '';
+    if (status === 304 || response.notModified) {
+      let appPurposeSuffix = apiContext.tokenSource && apiContext.tokenSource.purpose ? ` [${apiContext.tokenSource.purpose}]` : '';
+      if (apiContext.tokenSource && !apiContext.tokenSource.purpose && apiContext.tokenSource.source) {
+        appPurposeSuffix = ` [token source=${apiContext.tokenSource.source}]`;
+      }
+      debug(`304:               ${displayInfo} ${appPurposeSuffix}`);
       ++apiContext.cost.github.cacheHits;
       cacheOk = true;
-    } else if (statusCode < 200 || statusCode >= 300) {
+    } else if (status !== undefined && (status < 200 || status >= 300)) {
       // The underlying library I believe actually processes these conditions as errors anyway
-      throw new Error(`Response code of ${statusCode} is not currently supported in this system.`);
+      throw new Error(`Response code of ${status} is not currently supported in this system.`);
     }
     return cacheOk;
   }
 
-  getResponseMetadata(apiContext: ApiContext, response: any): Promise<any> {
-    return Promise.resolve(response.headers);
+  getResponseMetadata(apiContext: ApiContext, response: IRestResponse): IRestMetadata {
+    const md: IRestMetadata = {
+      headers: response.headers,
+      status: response.status,
+    }
+    return md;
   }
 
-  withMetadataShouldCacheBeServed(apiContext: ApiContext, metadata: any): boolean | IShouldServeCache {
+  withMetadataShouldCacheBeServed(apiContext: ApiContext, metadata: IRestMetadata): boolean | IShouldServeCache {
     // result can be falsy OR an object; { cache: true, refresh: true }
     // cache: whether to use the cache, if available
     // refresh: whether to refresh in the background for a newer value
@@ -286,7 +310,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
         shouldServeCache = true;
         shouldServeCache = {
           cache: true,
-          remaining: 'expires in ' + moment(updatedIso).add(maxAgeSeconds, 'seconds').fromNow(),
+          remaining: 'expires ' + moment(updatedIso).add(maxAgeSeconds, 'seconds').fromNow(),
         };
         // debug('cache OK to serve as last updated was ' + updated);
       } else if (apiContext.backgroundRefresh) {
@@ -313,9 +337,9 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
       }
     } else {
       if (!metadata) {
-        debug('api: empty/no metadata ' + apiContext.redisKey.metadata);
+        debug(`NO_METADATA:       ${apiContext.redisKey.metadata} [empty]`);
       } else {
-        debug('api: no updated ' + apiContext.redisKey.metadata);
+        debug(`NO_CHANGE:         ${apiContext.redisKey.metadata} ${metadata.etag ? '[etag: ' + metadata.etag + ']' : ''}`);
       }
     }
     return shouldServeCache;
@@ -327,7 +351,7 @@ export class GitHubApiContext extends ApiContext {
   private _apiMethod: any;
   private _redisKeys: IApiContextRedisKeys;
   private _cacheValues: IApiContextCacheValues;
-  private _token: string;
+  private _token: string | IGetAuthorizationHeader | IAuthorizationHeaderValue;
 
   public fakeLink?: IGitHubLink;
 
@@ -351,7 +375,7 @@ export class GitHubApiContext extends ApiContext {
     };
   }
 
-  get token(): string {
+  get token(): string | IGetAuthorizationHeader | IAuthorizationHeaderValue {
     return this._token;
   }
 
@@ -381,7 +405,7 @@ export class GitHubApiContext extends ApiContext {
       // and is probably not needed
       throw new Error('API has already been attached to');
     }
-    const method = IntelligentGitHubEngine.findLibaryMethod(implementationLibrary, this.api);
+    const method = IntelligentGitHubEngine.findLibraryMethod(implementationLibrary, this.api);
     method['thisInstance'] = implementationLibrary; // // HACK, is there a better way?
     this._apiMethod = method;
   }
@@ -390,8 +414,16 @@ export class GitHubApiContext extends ApiContext {
     this.libraryContext = libraryContext;
   }
 
-  overrideToken(token: string) {
-    this._token = token;
+  overrideToken(token: string | IGetAuthorizationHeader | IAuthorizationHeaderValue) {
+    if (token && token['value']) {
+      const asPair = token as IAuthorizationHeaderValue;
+      this._token = asPair.value;
+      this.tokenSource = asPair;
+    } else if (typeof(token) === 'string') {
+      this._token = token as string;
+    } else {
+      this._token = token;
+    }
   }
 
   overrideApiMethod(method: any) {

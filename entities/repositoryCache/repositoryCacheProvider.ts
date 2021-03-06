@@ -1,12 +1,10 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { RepositoryCacheEntity, EntityImplementation, RepositoryCacheFixedQueryAll, RepositoryCacheFixedQueryByOrganizationId } from './repositoryCache';
+import { RepositoryCacheEntity, EntityImplementation, RepositoryCacheFixedQueryAll, RepositoryCacheFixedQueryByOrganizationId, RepositoryCacheDeleteByOrganizationId, RepositoryCacheGetOrganizationIdsQuery } from './repositoryCache';
 
 const thisProviderType = EntityImplementation.Type;
 
@@ -22,6 +20,8 @@ export interface IRepositoryCacheProvider {
   deleteRepositoryCache(metadata: RepositoryCacheEntity): Promise<void>;
   queryAllRepositories(): Promise<RepositoryCacheEntity[]>;
   queryRepositoriesByOrganizationId(organizationId: string): Promise<RepositoryCacheEntity[]>;
+  queryAllOrganizationIds(): Promise<string[]>;
+  deleteByOrganizationId(organizationId: string): Promise<void>;
 }
 
 export class RepositoryCacheProvider extends EntityMetadataBase implements IRepositoryCacheProvider {
@@ -40,7 +40,7 @@ export class RepositoryCacheProvider extends EntityMetadataBase implements IRepo
     }
     if (!metadata) {
       const error = new Error(`No metadata available for repository ${repositoryId}`);
-      error['code'] = 404;
+      error['status'] = 404;
       throw error;
     }
     return this.deserialize<RepositoryCacheEntity>(thisProviderType, metadata);
@@ -77,5 +77,16 @@ export class RepositoryCacheProvider extends EntityMetadataBase implements IRepo
   async deleteRepositoryCache(metadata: RepositoryCacheEntity): Promise<void> {
     const entity = this.serialize(thisProviderType, metadata);
     await this._entities.deleteMetadata(entity);
+  }
+
+  async queryAllOrganizationIds(): Promise<string[]> {
+    const query = new RepositoryCacheGetOrganizationIdsQuery();
+    const results = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    return results.map(row => row['organizationid']);
+  }
+
+  async deleteByOrganizationId(organizationId: string): Promise<void> {
+    const query = new RepositoryCacheDeleteByOrganizationId(organizationId);
+    await this._entities.fixedQueryMetadata(thisProviderType, query);
   }
 }

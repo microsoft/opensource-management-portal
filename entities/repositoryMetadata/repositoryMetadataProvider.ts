@@ -1,9 +1,7 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
 import { RepositoryMetadataEntity, RepositoryMetadataFixedQueryAll, RepositoryMetadataFixedQueryByRepositoryId } from './repositoryMetadata';
@@ -40,14 +38,14 @@ export class RepositoryMetadataApprovalProvider extends EntityMetadataBase imple
       const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
       if (metadatas.length > 1) {
         const error = new Error(`Only a single metadata result was expected for repository ${repositoryId}`);
-        error['code'] = 409;
+        error['status'] = 409;
         throw error;
       }
       metadata = metadatas.length === 1 ? metadatas[0] : null;
     }
     if (!metadata) {
       const error = new Error(`No metadata available for repository ${repositoryId}`);
-      error['code'] = 404;
+      error['status'] = 404;
       throw error;
     }
     return this.deserialize<RepositoryMetadataEntity>(thisProviderType, metadata);
@@ -73,9 +71,9 @@ export class RepositoryMetadataApprovalProvider extends EntityMetadataBase imple
         await this.getRepositoryMetadata(repoId);
         exists = true;
       } catch (getError) {
-        if (getError['code'] === 404) {
+        if (getError['status'] === 404) {
           // ok
-        } else if (getError['code'] === 409) {
+        } else if (getError['status'] === 409) {
           exists = true;
         } else {
           throw getError;

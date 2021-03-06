@@ -1,9 +1,7 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 // Status: Partial Functionality
 // This module wraps a table service client to provide encryption and decryption trying
@@ -14,8 +12,7 @@
 // compatible with the official Azure storage .NET library.
 // ----------------------------------------------------------------------------
 
-import async = require('async');
-const encryption = require('./encryption');
+import { decryptEntity, encryptEntity } from './encryption';
 
 function retrieveEntity() {
   const args = Array.prototype.slice.call(arguments);
@@ -30,7 +27,7 @@ function retrieveEntity() {
       return callback(error);
     }
     const reducedEntity = encryptionOptions.tableDehydrator(result);
-    encryption.decryptEntity(partitionKey, rowKey, reducedEntity, encryptionOptions, (decryptError, entity) => {
+    decryptEntity(partitionKey, rowKey, reducedEntity, encryptionOptions, (decryptError, entity) => {
       if (decryptError) {
         return callback(decryptError);
       }
@@ -49,35 +46,41 @@ function queryEntitiesCallback(encryptionOptions, callback, error, results, head
   if (!(results && results.entries && results.entries.length > 0)) {
     return callback(null, results, headers);
   }
-  const entities = results.entries;
-  async.map(entities, (row, next) => {
-    if (row === undefined || row['PartitionKey'] === undefined || row['PartitionKey']._ === undefined) {
-      return next(new Error('Entity does not have a PartitionKey.'));
-    }
-    if (row === undefined || row['RowKey'] === undefined || row['RowKey']._ === undefined) {
-      return next(new Error('Entity does not have a RowKey.'));
-    }
-    const partitionKey = row['PartitionKey']._;
-    const rowKey = row['RowKey']._;
-    let reducedEntity = null;
-    try {
-      reducedEntity = encryptionOptions.tableDehydrator(row);
-    } catch (rex) {
-      return next(rex);
-    }
-    encryption.decryptEntity(partitionKey, rowKey, reducedEntity, encryptionOptions, (decryptError, entity) => {
-      if (decryptError) {
-        return next(decryptError);
+  const process = async (entities: any[]) => {
+    const updatedEntities = [];
+    for (const row of entities) {
+      if (row === undefined || row['PartitionKey'] === undefined || row['PartitionKey']._ === undefined) {
+        throw new Error('Entity does not have a PartitionKey.');
       }
-      const hydrated = encryptionOptions.tableRehydrator(partitionKey, rowKey, entity);
-      return next(null, hydrated);
-    });
-  }, (asyncError, decryptedRows) => {
-    if (asyncError) {
-      return callback(asyncError);
+      if (row === undefined || row['RowKey'] === undefined || row['RowKey']._ === undefined) {
+        throw new Error('Entity does not have a RowKey.');
+      }
+      const partitionKey = row['PartitionKey']._;
+      const rowKey = row['RowKey']._;
+      let reducedEntity = null;
+      try {
+        reducedEntity = encryptionOptions.tableDehydrator(row);
+      } catch (rex) {
+        throw rex;
+      }
+      const entity = await (new Promise((resolve, reject) => {
+        decryptEntity(partitionKey, rowKey, reducedEntity, encryptionOptions, (decryptError, entity) => {
+          if (decryptError) {
+            return reject(decryptError);
+          }
+          const hydrated = encryptionOptions.tableRehydrator(partitionKey, rowKey, entity);
+          return resolve(hydrated);
+        });
+      }));
+      updatedEntities.push(entity);
     }
+    return updatedEntities;
+  };
+  process(results.entries).then(decryptedRows => {
     results.entries = decryptedRows;
     return callback(null, results);
+  }).catch(error => {
+    return callback(error);
   });
 }
 
@@ -99,7 +102,7 @@ function insertEntity() {
   const rowKey = entity.RowKey._;
   const reducedEntity = encryptionOptions.tableDehydrator(entity);
   const callback = args[args.length - 1];
-  encryption.encryptEntity(partitionKey, rowKey, reducedEntity, encryptionOptions, (encryptError, encryptedEntity) => {
+  encryptEntity(partitionKey, rowKey, reducedEntity, encryptionOptions, (encryptError, encryptedEntity) => {
     if (encryptError) {
       return callback(encryptError);
     }
@@ -117,7 +120,7 @@ function replaceEntity() {
   const rowKey = entity.RowKey._;
   const reducedEntity = encryptionOptions.tableDehydrator(entity);
   const callback = args[args.length - 1];
-  encryption.encryptEntity(partitionKey, rowKey, reducedEntity, encryptionOptions, (encryptError, encryptedEntity) => {
+  encryptEntity(partitionKey, rowKey, reducedEntity, encryptionOptions, (encryptError, encryptedEntity) => {
     if (encryptError) {
       return callback(encryptError);
     }
@@ -132,7 +135,7 @@ function mergeEntity() {
   return callback(new Error('Entity merge operations are not supported when using table encryption.'));
 }
 
-module.exports = function wrapTableClient(tableClient, encryptionOptions) {
+export default function wrapTableClient(tableClient, encryptionOptions) {
   const wrapped = {
     insertEntity: insertEntity.bind(undefined, tableClient, encryptionOptions),
     mergeEntity: mergeEntity.bind(undefined, tableClient, encryptionOptions),

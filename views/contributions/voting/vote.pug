@@ -1,0 +1,183 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../../layout
+
+mixin showNominee(election, nominee, iitemp, stripJsSingleQuote)
+  != '<!-- ' + iitemp + '-->'
+  //- pre= JSON.stringify(nominee, null, 2)
+  h3= nominee.title
+  ul.list-inline
+    li: form(method='post')
+      input(type='hidden', name='nominationUniqueId', value=nominee.uniqueId)
+      input.btn.btn-primary.btn-sm(
+        type='submit', 
+        value='Vote for this project', 
+        onclick='return confirm(\'Are you sure that you want to vote for ' + stripJsSingleQuote(nominee.title) + ' in the ' + stripJsSingleQuote(election.title) + '?\');',
+        title='Submit your vote for ' + nominee.title + '.')
+    if nominee.web
+      li: a.btn.btn-sm.btn-muted-more(href=nominee.web, target='_new')= nominee.web
+  p= nominee.description
+  if nominee.justification
+    p: small: em= nominee.justification
+
+block content
+  - var fileSize = viewServices.fileSize
+  - var moment = viewServices.moment
+  - var octicon = viewServices.octicon
+  - var stripJsSingleQuote = viewServices.stripJsSingleQuote
+
+  //- var startMonthName = moment(start).format('MMMM')
+  //- var previousMonthName = moment(start).subtract(1, 'months').format('MMMM')
+
+  .container
+    - var today = new Date()
+    - var votingEnd = election.votingEnd ? new Date(election.votingEnd) : null
+
+    h2= election.title
+    p= election.description
+    if votingState == 'Voted' || votingState == 'NotEligible'
+      if votingState == 'Voted'
+        h3 Thanks for voting.
+      else if votingState == 'NotEligible'
+        if doPollsOpenInFuture
+          h3 Voting is not yet open.
+        else
+          h3 You're not eligible to vote this time.
+      p
+        if vote
+          - var votedDate = new Date(vote.voted)
+          - var votedMoment = moment(votedDate)
+          = 'Thank you for your selection. You made your choice ' + votedMoment.fromNow() + '. '
+        if votingEnd && today > votingEnd
+          = totalVotes + ' selections were made. '
+        else if !doPollsOpenInFuture
+          = 'So far, ' + totalVotes + ' selections have been made. '
+        if doPollsOpenInFuture && election && election.votingStart
+          - var vs = new Date(election.votingStart)
+          - var vsm = moment(vs)
+          = 'Voting starts ' + vsm.fromNow() + '. '
+        if election && election.votingEnd
+          - var ve = new Date(election.votingEnd)
+          - var vem = moment(ve)
+          if votingEnd && today > votingEnd
+            = 'Voting ended ' + vem.fromNow() + '.'
+          else
+            = 'Voting ends ' + vem.fromNow() + '.'
+      if userSettings && corporateViews && corporateViews.contributions && corporateViews.contributions.fossfundsharing
+        include ../../corporate/contributions/fossfundsharing
+      if results
+        hr
+
+        if votingEnd && today > votingEnd
+          h4 FINAL RESULTS
+        else
+          h4 CURRENT RESULTS
+        - var count = 0
+        each result in results
+          - var nomination = result.nomination
+          - var isWinning = count == 0 ? result.votes > 0 : results[0].votes === result.votes
+          - var rawPercentOfVotes = (100 * (result.votes / totalVotes))
+          - var percentOfVotes = results.votes = /* loose */ 0 ? 0 : rawPercentOfVotes.toFixed(0)
+          - ++count
+          .row(style='margin-bottom:32px')
+            .col-md-6
+              h3= nomination.title
+              if vote && vote.nominationId == nomination.nominationId
+                p
+                  if isWinning
+                    .label.label-primary You voted for this project.
+                  else
+                    .label.label-muted You voted for this project.
+              p= nomination.description
+              if nomination.web
+                p:small Learn more about this project at #[a(href=nomination.web.trim(), target='_new')= nomination.web.trim()].
+              if nomination.justification
+                p: small: em= nomination.justification
+            .col-md-2(style='vertical-align:middle;display:block')
+              if results.votes > 0
+                h3.text-center= percentOfVotes + '%'
+                p.text-center: small= result.votes + ' vote' + (result.votes > 1 ? 's' : '')
+            .col-md-4
+                if rawPercentOfVotes > 0
+                  - var columnPercent = Math.min((rawPercentOfVotes * 2).toFixed(0), 100)
+                  div(
+                    class=isWinning ? 'ms-blue' : 'ms-green',
+                    style={
+                      display: 'block',
+                      'min-height': '40px',
+                      color: isWinning ? '#fff' : null,
+                      width: columnPercent + '%',
+                      'padding-left': '32px',
+                      'padding-top': '12px',
+                      'padding-bottom': '24px',
+                    })
+                      if isWinning
+                        h2: strong= percentOfVotes + '%'
+
+    else if votingState == 'Vote'
+      h3: strong VOTE
+
+      p
+        | You're eligible to vote. There are #{ballot.nominees.length} projects that have been nominated and authenticated for eligibility this time around.
+        if election && election.votingEnd
+          = ' '
+          - var ve = new Date(election.votingEnd)
+          - var vem = moment(ve)
+          = 'Voting ends ' + vem.fromNow() + '.'
+
+      if ballot && ballot.nominees && ballot.nominees.length
+        - var nominees = ballot.nominees
+        - var columnbreak = (nominees.length / 2) + 1
+        .row
+          - var ii = 0
+          .col-md-6.col-lg-6
+            each nominee in nominees.slice(0, columnbreak)
+              +showNominee(election, nominee, ++ii, stripJsSingleQuote)
+          .col-md-6.col-lg-6
+            each nominee in nominees.slice(columnbreak)
+              +showNominee(election, nominee, ++ii, stripJsSingleQuote)
+
+      else 
+        p The ballot has not yet been finalized. Please check back once there are more approved nominees.
+
+    else
+      p Unknown state: #{votingState}
+
+
+    if election
+      hr
+      ul.list-unstyled
+        if vote
+          li= 'You cast your vote at ' + vote.voted + '.'
+          li= 'Your vote ID is ' + vote.voteId
+        if election.eligibilityStart || election.eligibilityEnd
+          if election.eligibilityStart
+            - var es = new Date(election.eligibilityStart)
+            - var esm = moment(es)
+            li= 'Eligibility period start: ' + esm.fromNow() + ' / ' + es
+          if election.eligibilityEnd
+            - var ee = new Date(election.eligibilityEnd)
+            - var eem = moment(ee)
+            li= 'Eligibility period end: ' + eem.fromNow() + ' / ' + ee
+        if election.votingEnd
+          - var ve = new Date(election.votingEnd)
+          - var vem = moment(ve)
+          li: strong= 'Voting ends ' + vem.fromNow() + ' - ' + ve
+        li Ballot nominations are shuffled for fairness with every page load.
+        li The results of this voting exercise are subject to validation by #{config.brand.companyName}. In the event that the most-voted nominee is unable to be processed for any reason, the runner ups will be used once validated.
+
+    if election && election.electionId == 'b6e8-42e3-c242'
+      .alert.alert-gray
+        h4 A note about the March 2020 FOSS Fund
+        p Thank you #[strong so very much] for the strong support. We received over 100 nominations for the March period alone, with over 1,700 eligible employees. This is awesome.
+        p Unfortunately, for the purpose of the first month of the fund, we had to validate the entries, focusing on projects that have an ability and desire to receive funds.
+        p Many great suggestions will likely be eligible for nomination again, soon.
+        p To make the nomination experience more interactive, in the next nomination period, everyone will be able to see the projects being nominated, comment and discuss them, all in the hope of consolidating nominations around a few key projects to keep each month's ballot in the 10-20 project range. Thanks for your understanding!
+        p: em The Microsoft Open Source Programs Office and GitHub Sponsors team
+
+    //-if election
+      hr
+      pre= JSON.stringify(election, null, 2)

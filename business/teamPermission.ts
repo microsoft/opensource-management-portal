@@ -1,33 +1,47 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
+import util from 'util';
 
-import { Organization } from "./organization";
-import { Operations } from "./operations";
-import { Team } from "./team";
-import { IGetOwnerToken, ICacheOptions } from "../transitional";
-import { TeamMember } from "./teamMember";
+import { Organization } from './organization';
+import { Operations } from './operations';
+import { Team, TeamJsonFormat } from './team';
+import { GitHubTeamPrivacy, ICacheOptions } from '../transitional';
+import { TeamMember } from './teamMember';
+import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 
 export class TeamPermission {
   private _organization: Organization;
   private _operations: Operations;
-  private _getToken: IGetOwnerToken;
 
   private _team: Team;
 
-  private _permission: any;
-  private _privacy: any;
+  private _permission: GitHubRepositoryPermission;
+  private _privacy: GitHubTeamPrivacy;
 
   private _teamMembersIfSet: TeamMember[];
 
-  get permission(): any {
+  [util.inspect.custom](depth, options) {
+    return `GitHub Team Permission: team=${this.team?.slug || this.team?.id} permission=${this._permission}`;
+  }
+
+  asJson() {
+    const members = this._teamMembersIfSet;
+    return {
+      permission: this._permission,
+      privacy: this._privacy,
+      team: this._team?.asJson(TeamJsonFormat.Augmented),
+      members: members ? members.map(member => member.asJson()) : undefined,
+    }
+  }
+
+  get permission(): GitHubRepositoryPermission {
     return this._permission;
   }
 
-  get privacy(): any {
+  get privacy(): GitHubTeamPrivacy {
     return this._privacy;
   }
 
@@ -35,7 +49,7 @@ export class TeamPermission {
     return this._team;
   }
 
-  constructor(organization: Organization, entity: any, getToken: IGetOwnerToken, operations: Operations) {
+  constructor(organization: Organization, entity: any, operations: Operations) {
     this._organization = organization;
 
     this._permission = entity.permission;
@@ -47,7 +61,6 @@ export class TeamPermission {
     const id = entity.id;
     this._team = organization.team(id, entity);
 
-    this._getToken = getToken;
     this._operations = operations;
   }
 

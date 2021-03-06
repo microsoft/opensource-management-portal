@@ -1,0 +1,10 @@
+{
+  "clientId": "env://GITHUB_APP_JOBS_OAUTH_CLIENT_ID",
+  "clientSecret": "env://GITHUB_APP_JOBS_OAUTH_CLIENT_SECRET",
+  "appId": "env://GITHUB_APP_JOBS_APP_ID",
+  "appKey": "env://GITHUB_APP_JOBS_KEY",
+  "appKeyFile": "env://GITHUB_APP_JOBS_KEY_FILE",
+  "webhookSecret": "",
+  "slug": "env://GITHUB_APP_JOBS_SLUG",
+  "description": "Background jobs"
+}

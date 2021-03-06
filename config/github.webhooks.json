@@ -1,3 +1,20 @@
 {
-  "sharedSecret": "env://GITHUB_WEBHOOK_SHARED_SECRET"
+  "sharedSecret": "env://GITHUB_WEBHOOK_SHARED_SECRET",
+
+  "runtimeMinutes": "env://GITHUB_WEBHOOKS_RUNTIME_MINUTES",
+  "parallelism": "env://GITHUB_WEBHOOKS_MAX_PARALLELISM",
+  "emptyQueueDelaySeconds": "env://GITHUB_WEBHOOKS_EMPTY_DELAY_SECONDS",
+
+  "provider": "env://GITHUB_WEBHOOKS_PROVIDER",
+
+  "serviceBus": {
+    "connectionString": "env://GITHUB_WEBHOOKS_SERVICEBUS_CONNECTIONSTRING",
+    "queue": "env://GITHUB_WEBHOOKS_SERVICEBUS_QUEUE"
+  },
+
+  "azureQueues": {
+    "account": "env://GITHUB_WEBHOOKS_QUEUES_ACCOUNT",
+    "sas": "env://GITHUB_WEBHOOKS_QUEUES_SAS",
+    "queue": "env://GITHUB_WEBHOOKS_QUEUES_QUEUE"
+  }
 }

@@ -1,27 +1,24 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import express = require('express');
+import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest } from '../../../transitional';
+import { ReposAppRequest, IProviders, RequestTeamMemberAddType, UserAlertType } from '../../../transitional';
 import { Team } from '../../../business/team';
 import { TeamMember } from '../../../business/teamMember';
 
-const PeopleSearch = require('../../peopleSearch')
-
-const teamAdminRequired = require('./teamAdminRequired');
+import RoutePeopleSearch from '../../peopleSearch';
+import MiddlewareTeamAdminRequired from './teamAdminRequired';
 
 interface ILocalTeamRequest extends ReposAppRequest {
-  team2?: any;
+  team2?: Team;
   refreshedMembers?: any;
   teamUrl?: any;
-  team2AddType?: any;
+  team2AddType?: RequestTeamMemberAddType;
   team2RemoveType?: any;
 }
 
@@ -60,28 +57,30 @@ router.get('/refresh', asyncHandler(async (req: ILocalTeamRequest, res, next) =>
 router.use('/browse', (req: ILocalTeamRequest, res, next) => {
   req.team2RemoveType = 'member';
   return next();
-}, PeopleSearch);
+}, RoutePeopleSearch);
 
 // Add org members to the team
-router.use('/add', teamAdminRequired, (req: ILocalTeamRequest, res, next) => {
-  req.team2AddType = 'member';
+router.use('/add', MiddlewareTeamAdminRequired, (req: ILocalTeamRequest, res, next) => {
+  req.team2AddType = RequestTeamMemberAddType.Member;
   return next();
-}, PeopleSearch);
+}, RoutePeopleSearch);
 
-router.post('/remove', teamAdminRequired, asyncHandler(async (req: ILocalTeamRequest, res, next) => {
-  const username = req.body.username;
+router.post('/remove', MiddlewareTeamAdminRequired, asyncHandler(async (req: ILocalTeamRequest, res, next) => {
+  const { operations } = req.app.settings.providers as IProviders;
+  const username = operations.validateGitHubLogin(req.body.username);
   const team2 = req.team2 as Team;
   await team2.removeMembership(username);
-  req.individualContext.webContext.saveUserAlert(`${username} has been removed from the team ${team2.name}.`, 'Team membership update', 'success');
+  req.individualContext.webContext.saveUserAlert(`${username} has been removed from the team ${team2.name}.`, 'Team membership update', UserAlertType.Success);
   await refreshMembersAndSummary(team2, 'now');
   return res.redirect(`${req.teamUrl}members/browse/`);
 }));
 
-router.post('/add', teamAdminRequired, asyncHandler(async (req: ILocalTeamRequest, res, next) => {
+router.post('/add', MiddlewareTeamAdminRequired, asyncHandler(async (req: ILocalTeamRequest, res, next) => {
+  const { operations } = req.app.settings.providers as IProviders;
+  const username = operations.validateGitHubLogin(req.body.username);
   const organization = req.organization;
   const team2 = req.team2;
   const refreshedMembers = req.refreshedMembers;
-  const username = req.body.username;
   // Allow a one minute org cache for self-correcting validation
   const orgOptions = {
     maxAgeSeconds: 60,
@@ -112,9 +111,9 @@ router.post('/add', teamAdminRequired, asyncHandler(async (req: ILocalTeamReques
     }
   }
   await team2.addMembership(username);
-  req.individualContext.webContext.saveUserAlert(`Added ${username} to the ${team2.name} team.`, 'Team membership update', 'success');
+  req.individualContext.webContext.saveUserAlert(`Added ${username} to the ${team2.name} team.`, 'Team membership update', UserAlertType.Success);
   await refreshMembersAndSummary(team2, 'now');
   return res.redirect(req.teamUrl + 'members/browse/');
 }));
 
-module.exports = router;
+export default router;

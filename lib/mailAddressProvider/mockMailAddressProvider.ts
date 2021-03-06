@@ -1,22 +1,22 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
+import { IMailAddressProvider } from ".";
 
-module.exports = function createMailAddressProvider() {
+export default function createMailAddressProvider() {
   const upnToEmails = new Map();
   return {
-    getAddressFromUpn: (upn, callback) => {
+    getAddressFromUpn: async (upn, callback) => {
       if (upnToEmails.has(upn)) {
-        return callback(null, upnToEmails.get(upn));
+        return upnToEmails.get(upn);
       }
-      callback(new Error(`No e-mail address known for "${upn}".`));
+      throw new Error(`No e-mail address known for "${upn}".`);
     },
     // testability:
     getUpnToEmails: function () {
       return upnToEmails;
     }
-  };
-};
+  } as unknown as IMailAddressProvider;
+}

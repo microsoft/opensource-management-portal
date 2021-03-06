@@ -1,12 +1,10 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { RepositoryCollaboratorCacheEntity, EntityImplementation, RepositoryCollaboratorCacheFixedQueryAll, RepositoryCollaboratorCacheFixedQueryByOrganizationId, RepositoryCollaboratorCacheFixedQueryByUserId, RepositoryCollaboratorCacheFixedQueryByRepositoryId } from './repositoryCollaboratorCache';
+import { RepositoryCollaboratorCacheEntity, EntityImplementation, RepositoryCollaboratorCacheFixedQueryAll, RepositoryCollaboratorCacheFixedQueryByOrganizationId, RepositoryCollaboratorCacheFixedQueryByUserId, RepositoryCollaboratorCacheFixedQueryByRepositoryId, RepositoryCollaboratorCacheDeleteByOrganizationId, RepositoryCollaboratorCacheGetOrganizationIdsQuery, RepositoryCollaboratorCacheDeleteByRepositoryId } from './repositoryCollaboratorCache';
 
 const thisProviderType = EntityImplementation.Type;
 
@@ -25,6 +23,9 @@ export interface IRepositoryCollaboratorCacheProvider {
   queryCollaboratorsByOrganizationId(organizationId: string): Promise<RepositoryCollaboratorCacheEntity[]>;
   queryCollaboratorsByRepositoryId(organizationId: string): Promise<RepositoryCollaboratorCacheEntity[]>;
   queryCollaboratorsByUserId(userId: string): Promise<RepositoryCollaboratorCacheEntity[]>;
+  queryAllOrganizationIds(): Promise<string[]>;
+  deleteByOrganizationId(organizationId: string): Promise<void>;
+  deleteByRepositoryId(repositoryId: string): Promise<void>;
 }
 
 export class RepositoryCollaboratorCacheProvider extends EntityMetadataBase implements IRepositoryCollaboratorCacheProvider {
@@ -47,7 +48,7 @@ export class RepositoryCollaboratorCacheProvider extends EntityMetadataBase impl
     }
     if (!metadata) {
       const error = new Error(`No metadata available for collaborator with unique ID ${uniqueId}`);
-      error['code'] = 404;
+      error['status'] = 404;
       throw error;
     }
     return this.deserialize<RepositoryCollaboratorCacheEntity>(thisProviderType, metadata);
@@ -98,5 +99,21 @@ export class RepositoryCollaboratorCacheProvider extends EntityMetadataBase impl
   async deleteRepositoryCollaboratorCache(metadata: RepositoryCollaboratorCacheEntity): Promise<void> {
     const entity = this.serialize(thisProviderType, metadata);
     await this._entities.deleteMetadata(entity);
+  }
+
+  async queryAllOrganizationIds(): Promise<string[]> {
+    const query = new RepositoryCollaboratorCacheGetOrganizationIdsQuery();
+    const results = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    return results.map(row => row['organizationid']);
+  }
+
+  async deleteByOrganizationId(organizationId: string): Promise<void> {
+    const query = new RepositoryCollaboratorCacheDeleteByOrganizationId(organizationId);
+    await this._entities.fixedQueryMetadata(thisProviderType, query);
+  }
+
+  async deleteByRepositoryId(repositoryId: string): Promise<void> {
+    const query = new RepositoryCollaboratorCacheDeleteByRepositoryId(repositoryId);
+    await this._entities.fixedQueryMetadata(thisProviderType, query);
   }
 }

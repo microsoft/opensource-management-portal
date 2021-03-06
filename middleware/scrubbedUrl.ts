@@ -1,13 +1,11 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-// ----------------------------------------------------------------------------
 // Scrub the incoming URL value(s) in the request, replacing tokens and other
 // secrets.
-// ----------------------------------------------------------------------------
-module.exports = function (req, res, next) {
+export default function (req, res, next) {
   var url = req.originalUrl || req.url;
   var secretKeys = [
     'code',

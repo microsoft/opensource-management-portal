@@ -3,5 +3,6 @@
   "explore": "env://OPENSOURCE_EXPLORE_LINK",
   "legacyTool": "env://OPENSOURCE_LEGACY_TOOL_LINK",
   "docs": "env://OPENSOURCE_DOCS_LINK",
-  "repos": "env://OPENSOURCE_REPOS_LINK"
+  "repos": "env://OPENSOURCE_REPOS_LINK",
+  "githubInsights": "env://OPENSOURCE_GITHUB_INSIGHTS_LINK"
 }

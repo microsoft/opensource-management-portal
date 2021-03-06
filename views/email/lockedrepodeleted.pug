@@ -1,0 +1,15 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends email
+
+block content
+  - var typeDeleted = isFork ? 'fork' : 'repo'
+  p The #{typeDeleted.toLowerCase()} #{repository.name} was deleted from the #{repository.organization.name} GitHub org.
+
+  if deletedByUser
+    strong The #{typeDeleted} was deleted by the original creator of the #{typeDeleted}, #{creator}.
+  else
+    strong The #{typeDeleted} was deleted by operations as a result of a repo being accidentally created, forked, or not approved.

@@ -1,13 +1,11 @@
-import { IReposError } from "../../../transitional";
-
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
+import { IReposError } from '../../../transitional';
 
-module.exports = (req, res, next) => {
+export default function middlewareTeamAdminRequired(req, res, next) {
   const teamPermissions = req.teamPermissions;
   if (!teamPermissions) {
     return next(new Error('No team permissions information available'));

@@ -1,19 +1,18 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import express = require('express');
+import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
 import { ReposAppRequest } from '../../transitional';
 import { popSessionVariable } from '../../utils';
-const lowercaser = require('../../middleware/lowercaser');
+import lowercaser from '../../middleware/lowercaser';
 
-const teamRoute = require('./team/');
+import RouteTeam from './team/';
+import RouteTeamsPager from '../teamsPager';
 
 interface ITeamsRequest extends ReposAppRequest {
   team2?: any;
@@ -37,7 +36,7 @@ router.get('/', function (req, res, next) {
   return next();
 });
 
-router.get('/', lowercaser(['sort', 'set']), require('../teamsPager'));
+router.get('/', lowercaser(['sort', 'set']), RouteTeamsPager);
 
 router.use('/:teamSlug', asyncHandler(async (req: ITeamsRequest, res, next) => {
   const organization = req.organization;
@@ -45,9 +44,6 @@ router.use('/:teamSlug', asyncHandler(async (req: ITeamsRequest, res, next) => {
   const slug = req.params.teamSlug as string;
   try {
     const team = await organization.getTeamFromName(slug);
-    // The `req.team` variable is currently used by the "legacy"
-    // operations system, so for the time being until there is more
-    // appropriate time for refactoring, this will have to do.
     req.team2 = team;
     // Breadcrumb and path updates
     req.teamUrl = `${orgBaseUrl}teams/${team.slug}/`;
@@ -64,6 +60,6 @@ router.use('/:teamSlug', asyncHandler(async (req: ITeamsRequest, res, next) => {
   }
 }));
 
-router.use('/:teamname', teamRoute);
+router.use('/:teamname', RouteTeam);
 
-module.exports = router;
+export default router;

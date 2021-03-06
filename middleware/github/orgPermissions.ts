@@ -1,13 +1,11 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import { ReposAppRequest } from "../../transitional";
-import { wrapError } from "../../utils";
-import { OrganizationMembershipState } from "../../business/organization";
+import { ReposAppRequest } from '../../transitional';
+import { wrapError } from '../../utils';
+import { OrganizationMembershipState } from '../../business/organization';
 
 const orgPermissionsCacheKeyName = 'orgPermissions';
 const orgOwnersCacheKeyName = 'orgOwners';
@@ -18,6 +16,10 @@ export interface IRequestOrganizationPermissions {
   owner: boolean;
   sudo: boolean;
   membershipStatus: OrganizationMembershipState;
+}
+
+export function GetOrganizationPermissionsFromRequest(req: ReposAppRequest) {
+  return req[orgPermissionsCacheKeyName];
 }
 
 export async function AddOrganizationPermissionsToRequest(req: ReposAppRequest, res, next) {

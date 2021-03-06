@@ -1,25 +1,27 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-const logger = require('morgan');
+import logger from 'morgan';
+import { ReposAppRequest } from '../transitional';
 
 const encryptionMetadataKey = '_ClientEncryptionMetadata2';
 const piiFormat = ':id :method :scrubbedUrl :status :response-time ms - :res[content-length] :encryptedSession :correlationId';
 const format = ':method :scrubbedUrl :status :response-time ms - :res[content-length] :encryptedSession :correlationId';
 
-logger.token('encryptedSession', function getUserId(req) {
+logger.token('encryptedSession', function getUserId(req: ReposAppRequest) {
   const config = req.app.settings.runtimeConfig;
-  if (req.session && req.session.passport && req.session.passport.user) {
-    const userType = config.authentication.scheme === 'aad' ? 'azure' : 'github';
-    return req.session.passport.user[userType] && req.session.passport.user[userType][encryptionMetadataKey] !== undefined ? 'encrypted' : 'plain';
+  if (req.session) {
+    const sessionPassport = (req.session as any).passport;
+    if (sessionPassport && sessionPassport.user) {
+      const userType = config.authentication.scheme === 'aad' ? 'azure' : 'github';
+      return sessionPassport.user[userType] && sessionPassport.user[userType][encryptionMetadataKey] !== undefined ? 'encrypted' : 'plain';
+    }
   }
 });
 
-logger.token('id', function getUserId(req) {
+logger.token('id', function getUserId(req: ReposAppRequest) {
   const config = req.app.settings.runtimeConfig;
   if (config) {
     const userType = config.authentication.scheme === 'aad' ? 'azure' : 'github';
@@ -27,14 +29,14 @@ logger.token('id', function getUserId(req) {
   }
 });
 
-logger.token('correlationId', function getCorrelationId(req) {
+logger.token('correlationId', function getCorrelationId(req: ReposAppRequest) {
   return req.correlationId;
 });
 
-logger.token('scrubbedUrl', function getScrubbedUrl(req) {
+logger.token('scrubbedUrl', function getScrubbedUrl(req: ReposAppRequest) {
   return req.scrubbedUrl || req.originalUrl || req.url;
 });
 
-module.exports = function createLogger(config) {
+export default function createLogger(config) {
   return logger(config && config.debug && config.debug.showUsers === true ? piiFormat : format);
 };

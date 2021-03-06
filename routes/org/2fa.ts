@@ -1,17 +1,15 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import express = require('express');
+import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
 import moment from 'moment';
 
-import { ReposAppRequest } from '../../transitional';
+import { NoCacheNoBackground, ReposAppRequest } from '../../transitional';
 import { wrapError } from '../../utils';
 
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
@@ -21,12 +19,8 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
 
   req.individualContext.webContext.pushBreadcrumb('Multi-factor authentication check');
   const username = req.individualContext.getGitHubIdentity().username;
-  const cacheOptions = /* never use the cache */ {
-    backgroundRefresh: false,
-    maxAgeSeconds: -60,
-  };
   try {
-    const state = await organization.isMemberSingleFactor(username, cacheOptions);
+    const state = await organization.isMemberSingleFactor(username, NoCacheNoBackground);
     if (state === false && (req.body.validate || onboarding || joining)) {
       let url = organization.baseUrl;
       if (onboarding || joining) {
@@ -52,4 +46,4 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   }
 }));
 
-module.exports = router;
+export default router;

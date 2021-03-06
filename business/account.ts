@@ -1,23 +1,21 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-'use strict';
-
 import _ from 'lodash';
-import async from 'async';
 
 import { Operations } from './operations';
-import { ICacheOptions, IReposError } from '../transitional';
+import { ICacheOptions, IReposError, IGetAuthorizationHeader, ErrorHelper } from '../transitional';
 import * as common from './common';
 
 import { wrapError } from '../utils';
-import { ILinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
 import { ICorporateLink } from './corporateLink';
 import { Organization, OrganizationMembershipState } from './organization';
+import { AppPurpose } from '../github';
+import { ILinkProvider } from '../lib/linkProviders';
 
 interface IRemoveOrganizationMembershipsResult {
   error?: IReposError;
@@ -33,10 +31,10 @@ const secondaryAccountProperties = [];
 
 export class Account {
   private _operations: Operations;
-  private _getCentralOperationsToken: any;
+  private _getAuthorizationHeader: IGetAuthorizationHeader;
 
   private _link: ICorporateLink;
-  private _id: string;
+  private _id: number;
 
   private _login: string;
   private _avatar_url?: string;
@@ -45,7 +43,7 @@ export class Account {
 
   private _originalEntity?: any;
 
-  public get id(): string {
+  public get id(): number {
     return this._id;
   }
 
@@ -73,12 +71,23 @@ export class Account {
     return this._originalEntity ? this._originalEntity.company : undefined;
   }
 
-  constructor(entity, operations: Operations, getCentralOperationsToken) {
+  public get email(): string {
+    return this._originalEntity ? this._originalEntity.email : undefined;
+  }
+
+  public get name(): string {
+    return this._originalEntity ? this._originalEntity.name : undefined;
+  }
+
+  constructor(entity, operations: Operations, getAuthorizationHeader: IGetAuthorizationHeader) {
     common.assignKnownFieldsPrefixed(this, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
     this._originalEntity = entity;
-
     this._operations = operations;
-    this._getCentralOperationsToken = getCentralOperationsToken;
+    this._getAuthorizationHeader = getAuthorizationHeader;
+  }
+
+  getEntity() {
+    return this._originalEntity;
   }
 
   // TODO: looks like we need to be able to resolve the link in here, too, to set instance.link
@@ -128,14 +137,6 @@ export class Account {
     }
   }
 
-  getProfileCreatedDate() {
-    return this._created_at ? new Date(this._created_at) : undefined;
-  }
-
-  getProfileUpdatedDate() {
-    return this._updated_at ? new Date(this._updated_at) : undefined;
-  }
-
   // End previous functions
 
   async getDetailsAndLink(options?: ICacheOptions): Promise<Account> {
@@ -147,15 +148,75 @@ export class Account {
     }
     const operations = this._operations;
     try {
-      let link: ICorporateLink = await operations.getLinkWithOverhead(this._id, options || {});
+      let link: ICorporateLink = await operations.getLinkWithOverhead(this._id.toString(), options || {});
       if (link) {
         this._link = link;
       }
     } catch (getLinkError) {
-        // We do not assume that the link exists...
-        console.dir(getLinkError);
+      // We do not assume that the link exists...
+      console.dir(getLinkError);
     }
     return this;
+  }
+
+  async getRecentEventsFirstPage(options?: ICacheOptions): Promise<any[]> {
+    options = options || {};
+    const operations = this._operations;
+    const login = this.login;
+    if (!login) {
+      throw new Error('Must provide a GitHub login to retrieve account events.');
+    }
+    const parameters = {
+      username: login,
+    };
+    const cacheOptions: ICacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.accountDetailStaleSeconds,
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    try {
+      const entity = await operations.github.call(this.authorize(AppPurpose.Data), 'activity.listEventsForAuthenticatedUser', parameters, cacheOptions);
+      return entity;
+    } catch (error) {
+      console.dir(error);
+      throw error;
+    }
+  }
+
+  async getEvents(options?: ICacheOptions): Promise<any[]> {
+    options = options || {};
+    const operations = this._operations;
+    const login = this.login;
+    if (!login) {
+      throw new Error('Must provide a GitHub login to retrieve account events.');
+    }
+    const parameters = {
+      username: login,
+    };
+    const cacheOptions: ICacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.accountDetailStaleSeconds,
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    try {
+      const events = await operations.github.collections.getUserActivity(this.authorize(AppPurpose.Data), parameters, cacheOptions);
+      let cached = true;
+      if (events && events.cost && events.cost.github.usedApiTokens > 0) {
+        cached = false;
+      }
+      let arr = [...events];
+      arr['cached'] = cached;
+      return arr;
+    } catch (error) {
+      if (error.status && error.status === 404) {
+        error = new Error(`The GitHub user ${login} could not be found (or has been deleted)`);
+        error.status = 404;
+        throw error;
+      }
+      throw wrapError(error, `Could not get events for login ${login}: ${error.message}`);
+    }
   }
 
   async getDetailsAndDirectLink(): Promise<Account> {
@@ -171,7 +232,7 @@ export class Account {
     }
     const operations = this._operations;
     try {
-      let link = await operations.getLinkByThirdPartyId(this._id);
+      let link = await operations.getLinkByThirdPartyId(this._id.toString());
       if (link) {
         this._link = link;
       }
@@ -183,36 +244,45 @@ export class Account {
     return this;
   }
 
-  getDetails(options?: ICacheOptions): Promise<any> {
-    return new Promise((resolve, reject) => {
-      options = options || {};
-      const token = this._getCentralOperationsToken();
-      const operations = this._operations;
-      const id = this._id;
-      if (!id) {
-        return reject(new Error('Must provide a GitHub user ID to retrieve account information.'));
+  async isDeleted(options?: ICacheOptions): Promise<boolean> {
+    try {
+      await this.getDetails(options);
+    } catch (maybeDeletedError) {
+      if (maybeDeletedError && maybeDeletedError.status && maybeDeletedError.status === 404) {
+        return true;
       }
-      const parameters = {
-        id,
-      };
-      const cacheOptions: ICacheOptions = {
-        maxAgeSeconds: options.maxAgeSeconds || operations.defaults.accountDetailStaleSeconds,
-      };
-      if (options.backgroundRefresh !== undefined) {
-        cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    return false;
+  }
+
+  async getDetails(options?: ICacheOptions): Promise<any> {
+    options = options || {};
+    const operations = this._operations;
+    const id = this._id;
+    if (!id) {
+      throw new Error('Must provide a GitHub user ID to retrieve account information.');
+    }
+    const parameters = {
+      id,
+    };
+    const cacheOptions: ICacheOptions = {
+      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.accountDetailStaleSeconds,
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    try {
+      const entity = await operations.github.request(this.authorize(AppPurpose.Data), 'GET /user/:id', parameters, cacheOptions);
+      common.assignKnownFieldsPrefixed(this, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
+      return entity;
+    } catch (error) {
+      if (error.status && error.status === 404) {
+        error = new Error(`The GitHub user ID ${id} could not be found (or has been deleted)`);
+        error.status = 404;
+        throw error;
       }
-      return operations.github.request(token, 'GET /user/:id', parameters, cacheOptions, (error, entity) => {
-        if (error && error.code && error.code === 404) {
-          error = new Error(`The GitHub user ID ${id} could not be found (or was deleted)`);
-          error.code = 404;
-          return reject(error);
-        } else if (error) {
-          return reject(wrapError(error, `Could not get details about account ID ${id}: ${error.message}`));
-        }
-        common.assignKnownFieldsPrefixed(this, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
-        return resolve(entity);
-      });
-    });
+      throw wrapError(error, `Could not get details about account ID ${id}: ${error.message}`);
+    }
   }
 
   async removeLink(): Promise<any> {
@@ -279,18 +349,55 @@ export class Account {
     if (!username) {
       throw new Error(`No GitHub username available for user ID ${this._id}`);
     }
-    let currentOrganizationMemberships = [];
-    for (let organization of operations.organizations.values()) {
+    let currentOrganizationMemberships: Organization[] = [];
+    const checkOrganization = async organization => {
       try {
         const result = await organization.getOperationalMembership(username);
         if (result && result.state && (result.state === OrganizationMembershipState.Active || result.state === OrganizationMembershipState.Pending)) {
           currentOrganizationMemberships.push(organization);
         }
       } catch (ignoreErrors) {
-         // getMembershipError ignored: if there is no membership that's fine
-        }
+        // getMembershipError ignored: if there is no membership that's fine
+        console.log(`error from individual check of organization ${organization.name} membership for username ${username}: ${ignoreErrors}`);
+      }
+    };
+    const allOrganizations = Array.from(operations.organizations.values());
+    const staticOrganizations = allOrganizations.filter(org => org.hasDynamicSettings === false);
+    const dynamicOrganizations = allOrganizations.filter(org => org.hasDynamicSettings);
+    await Promise.all(dynamicOrganizations.map(checkOrganization));
+    for (let organization of staticOrganizations) {
+      await checkOrganization(organization);
     }
     return currentOrganizationMemberships;
+  }
+
+  async removeCollaboratorPermissions(): Promise<IRemoveOrganizationMembershipsResult> {
+    const history = [];
+    let error: IReposError = null;
+    const { queryCache } = this._operations.providers;
+    if (!queryCache || !queryCache.supportsRepositoryCollaborators) {
+      history.push('The account may still have Collaborator permissions to repositories');
+      return { history };
+    }
+    if (!this.login) {
+      await this.getDetails();
+    }
+    const collaborativeRepos = await queryCache.userCollaboratorRepositories(this.id.toString());
+    for (const entry of collaborativeRepos) {
+      const { repository } = entry;
+      try {
+        await repository.getDetails();
+        await repository.removeCollaborator(this.login);
+        history.push(`Removed ${this.login} as a Collaborator from the repository ${repository.full_name}`);
+      } catch (removeCollaboratorError) {
+        if (ErrorHelper.IsNotFound(removeCollaboratorError)) {
+          // The repo doesn't exist any longer, this is OK.
+        } else {
+          history.push(`Could not remove ${this.login} as a Collaborator from the repo: ${repository.full_name}`);
+        }
+      }
+    }
+    return { history, error };
   }
 
   async removeManagedOrganizationMemberships(): Promise<IRemoveOrganizationMembershipsResult> {
@@ -300,7 +407,7 @@ export class Account {
     try {
       organizations = await this.getOperationalOrganizationMemberships();
     } catch (getMembershipError) {
-      if (getMembershipError && getMembershipError.code == /* loose */ '404') {
+      if (getMembershipError && getMembershipError.status == /* loose */ '404') {
         history.push(getMembershipError.toString());
       } else if (getMembershipError) {
         throw getMembershipError;
@@ -313,26 +420,29 @@ export class Account {
     } else if (organizations) {
       history.push(`${username} is not a member of any managed organizations`);
     }
-    for (let i = 0; i < organizations.length; i++) {
-      const organization = organizations[i];
-      try {
-        await organization.removeMember(username);
-        history.push(`Removed ${username} from the ${organization.name} organization`);
-      } catch (removeError) {
-        history.push(`Error while removing ${username} from the ${organization.name} organization: ${removeError}`);
-        if (!error) {
-          error = removeError;
+    if (organizations && organizations.length) {
+      for (let i = 0; i < organizations.length; i++) {
+        const organization = organizations[i];
+        try {
+          await organization.removeMember(username);
+          history.push(`Removed ${username} from the ${organization.name} organization`);
+        } catch (removeError) {
+          history.push(`Error while removing ${username} from the ${organization.name} organization: ${removeError}`);
+          if (!error) {
+            error = removeError;
+          }
         }
       }
     }
     return { history, error };
   }
+
+  private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as IGetAuthorizationHeader;
+    return getAuthorizationHeader;
+  }
 }
 
 function deleteLink(linkProvider: ILinkProvider, link: ICorporateLink): Promise<any> {
-  return new Promise((resolve, reject) => {
-    linkProvider.deleteLink(link, (error, result) => {
-      return error ? reject(error) : resolve(result);
-    });
-  });
+  return linkProvider.deleteLink(link);
 }

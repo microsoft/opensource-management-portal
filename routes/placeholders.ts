@@ -1,9 +1,9 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express = require('express');
+import express from 'express';
 const router = express.Router();
 
 router.use('/data', (req, res) => {
@@ -21,4 +21,4 @@ router.use('/release', (req, res) => {
   res.redirect(`${exploreUrl}resources/release`);
 });
 
-module.exports = router;
+export default router;

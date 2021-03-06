@@ -1,14 +1,9 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
-
-// NOTE: this implementation is relatively temporary, with the hope that
-// TypeScript may bring some sanity in the future.
-
-'use strict';
 
 export const CorporatePropertyNames = [
   'isServiceAccount',
@@ -17,6 +12,7 @@ export const CorporatePropertyNames = [
   'corporateId',
   'corporateUsername',
   'corporateDisplayName',
+  'corporateMailAddress',
 
   'thirdPartyId',
   'thirdPartyUsername',
@@ -30,6 +26,8 @@ export interface ICorporateLinkProperties {
   corporateId: any;
   corporateUsername: any;
   corporateDisplayName: any;
+  corporateMailAddress: any;
+  corporateAlias: any;
 
   thirdPartyId: any;
   thirdPartyUsername: any;
@@ -43,6 +41,8 @@ export interface ICorporateLink extends ICorporateLinkProperties {
   corporateId: string;
   corporateUsername: string;
   corporateDisplayName: string;
+  corporateMailAddress: string;
+  corporateAlias: string;
 
   thirdPartyId: string;
   thirdPartyUsername: string;
@@ -55,4 +55,19 @@ export interface ICorporateLinkExtended {
 
 export interface ICorporateLinkExtendedDirectMethods {
   getDirectEntity: () => any;
+}
+
+export function corporateLinkToJson(link: ICorporateLink): ICorporateLink {
+  return link && {
+    corporateAlias: link.corporateAlias,
+    corporateDisplayName: link.corporateDisplayName,
+    corporateId: link.corporateId,
+    corporateMailAddress: link.corporateMailAddress,
+    corporateUsername: link.corporateUsername,
+    serviceAccountMail: link.serviceAccountMail,
+    isServiceAccount: link.isServiceAccount,
+    thirdPartyAvatar: link.thirdPartyAvatar,
+    thirdPartyId: link.thirdPartyId,
+    thirdPartyUsername: link.thirdPartyUsername,
+  };
 }

@@ -1,51 +1,21 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
-'use strict';
-
-import throat = require('throat');
+import throat from 'throat';
+import { IReposJob, IReposJobResult } from '../../app';
 
 // Revoke tokens of users that no longer resolve in the corporate graph and
 // delete tokens that have been expired 30 days.
 
 const expiredTokenDeleteThresholdDays = 30;
 
-import { IProviders } from '../../transitional';
 import { PersonalAccessToken } from '../../entities/token/token';
 import { sleep } from '../../utils';
 import { IGraphProvider } from '../../lib/graphProvider';
-
-let insights;
-
-module.exports = function run(config) {
-  const app = require('../../app');
-  config.skipModules = new Set([
-    'web',
-  ]);
-
-  app.initializeApplication(config, null, error => {
-    if (error) {
-      throw error;
-    }
-    insights = app.settings.appInsightsClient;
-    if (!insights) {
-      throw new Error('No app insights client available');
-    }
-    cleanup(config, app).then(done => {
-      console.log('done');
-      process.exit(0);
-    }).catch(error => {
-      if (insights) {
-        insights.trackException({ exception: error, properties: { name: 'JobCleanupTokensFailure' } });
-      }
-      throw error;
-    });
-  });
-};
 
 async function lookupCorporateId(graphProvider: IGraphProvider, knownUsers: Map<string, any>, corporateId: string): Promise<any> {
   let entry = knownUsers.get(corporateId);
@@ -56,7 +26,7 @@ async function lookupCorporateId(graphProvider: IGraphProvider, knownUsers: Map<
   }
 
   try {
-    const userDetails = await graphProvider.getUserByIdAsync(corporateId);
+    const userDetails = await graphProvider.getUserById(corporateId);
     if (!userDetails || !userDetails.userPrincipalName) {
       knownUsers.set(corporateId, false);
       return false;
@@ -69,8 +39,8 @@ async function lookupCorporateId(graphProvider: IGraphProvider, knownUsers: Map<
   }
 }
 
-async function cleanup(config, app) : Promise<void> {
-  const providers = app.settings.providers as IProviders;
+export default async function cleanup({ providers }: IReposJob): Promise<IReposJobResult> {
+  const insights = providers.insights;
   const graphProvider = providers.graphProvider;
   const tokenProvider = providers.tokenProvider;
 
@@ -78,7 +48,7 @@ async function cleanup(config, app) : Promise<void> {
   const allTokens = await tokenProvider.getAllTokens();
   console.log(`read ${allTokens.length}`);
 
-  insights.trackEvent({ name: 'JobCleanupTokensReadTokens', properties: { tokens: allTokens.length } });
+  insights.trackEvent({ name: 'JobCleanupTokensReadTokens', properties: { tokens: String(allTokens.length) } });
 
   let errors = 0;
 
@@ -95,7 +65,8 @@ async function cleanup(config, app) : Promise<void> {
 
   const knownUsers = new Map<string, any>();
 
-  await Promise.all(allTokens.map(throat<void, (token: PersonalAccessToken) => Promise<void>>(async pat => {
+  const throttle = throat(parallelUsers);
+  await Promise.all(allTokens.map((pat: PersonalAccessToken) => throttle(async () => {
     const isGuidMeansADash = pat.corporateId && pat.corporateId.includes('-');
     let wasUser = false;
     if (isGuidMeansADash) {
@@ -139,7 +110,7 @@ async function cleanup(config, app) : Promise<void> {
 
     await sleep(secondsDelayAfterSuccess * 1000);
 
-  }, parallelUsers)));
+  })));
 
   console.log(`deleted: ${deleted}`);
   console.log(`revokedUnresolved: ${revokedUnresolved}`);
@@ -147,11 +118,13 @@ async function cleanup(config, app) : Promise<void> {
   console.log(`serviceTokens: ${serviceTokens}`);
   console.log();
 
-  insights.trackEvent({ name: 'JobCleanupTokensSuccess', properties: {
-    deleted,
-    revokedUnresolved,
-    okUserTokens,
-    serviceTokens,
-    errors,
-  } });
+  return {
+    successProperties: {
+      deleted,
+      revokedUnresolved,
+      okUserTokens,
+      serviceTokens,
+      errors,
+    },
+  };
 }

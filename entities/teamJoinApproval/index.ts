@@ -1,9 +1,7 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import { IApprovalProvider, IApprovalProviderCreateOptions } from '../../entities/teamJoinApproval/approvalProvider';
 import { TeamJoinApprovalProvider } from '../../entities/teamJoinApproval/teamJoinApprovalProvider';

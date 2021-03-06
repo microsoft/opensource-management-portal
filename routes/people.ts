@@ -1,17 +1,15 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import express = require('express');
+import express from 'express';
 const router = express.Router();
 
 import { ReposAppRequest } from '../transitional';
 
-const peopleSearch = require('./peopleSearch');
-const systemWidePermissionsMiddleware = require('../middleware/github/systemWidePermissions');
+import RoutePeopleSearch from './peopleSearch';
+import MiddlewareSystemWidePermissions from '../middleware/github/systemWidePermissions';
 
 router.use(function (req: ReposAppRequest, res, next) {
   req.individualContext.webContext.pushBreadcrumb('People');
@@ -34,8 +32,8 @@ router.get('/github/:login', (req: ReposAppRequest, res, next) => {
 });
 
 
-router.use(systemWidePermissionsMiddleware);
+router.use(MiddlewareSystemWidePermissions);
 
-router.use(peopleSearch);
+router.use(RoutePeopleSearch);
 
-module.exports = router;
+export default router;

@@ -1,16 +1,12 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import * as common from './common';
 import { Operations } from "./operations";
 import { Team } from "./team";
-import { IGetOwnerToken } from '../transitional';
 import { ICorporateLink } from './corporateLink';
-import { IMailAddressProvider, GetAddressFromUpnAsync } from '../lib/mailAddressProvider';
 
 const memberPrimaryProperties = [
   'id',
@@ -22,10 +18,9 @@ const memberSecondaryProperties = [];
 
 export class TeamMember {
   private _team: Team;
-  private _getToken: IGetOwnerToken;
   private _operations: Operations;
   private _link: ICorporateLink;
-  private _id: string;
+  private _id: number;
   private _avatar_url: string;
   private _mailAddress: string;
   private _login: string;
@@ -39,7 +34,7 @@ export class TeamMember {
     return this._link;
   }
 
-  get id(): string {
+  get id(): number {
     return this._id;
   }
 
@@ -56,17 +51,24 @@ export class TeamMember {
   }
 
   set link(value: ICorporateLink) {
-    console.log('Setter for TeamMember::link');
+    // console.warn('TeamMember.link was set');
     this._link = value;
   }
 
-  constructor(team: Team, entity: any, getToken: IGetOwnerToken, operations: Operations) {
+  constructor(team: Team, entity: any, operations: Operations) {
     this._team = team;
     if (entity) {
       common.assignKnownFieldsPrefixed(this, entity, 'member', memberPrimaryProperties, memberSecondaryProperties);
     }
-    this._getToken = getToken;
     this._operations = operations;
+  }
+
+  asJson() {
+    return {
+      id: this.id,
+      login: this.login,
+      avatar_url: this.avatar_url,
+    };
   }
 
   // ----------------------------------------------------------------------------
@@ -90,6 +92,10 @@ export class TeamMember {
     return this._link ? this._link.corporateUsername : undefined;
   }
 
+  get mailAddress() {
+    return this._mailAddress;
+  }
+
   async getMailAddress(): Promise<string> {
     if (this._mailAddress) {
       return this._mailAddress;
@@ -97,10 +103,14 @@ export class TeamMember {
     const operations = this._operations;
     const providers = operations.providers;
     const link = await this.resolveDirectLink();
+    if (!link) {
+      return;
+    }
     if (!providers.mailAddressProvider) {
       throw new Error('No mailAddressProvider is available in this application instance');
     }
-    const mailAddress = await GetAddressFromUpnAsync(providers.mailAddressProvider, link.corporateUsername);
+    // Preventing a crash when trying to send a mail to an unlinked account
+    const mailAddress = link ? await providers.mailAddressProvider.getAddressFromUpn(link.corporateUsername) : null;
     this._mailAddress = mailAddress;
     return mailAddress;
   }
@@ -113,8 +123,11 @@ export class TeamMember {
       return this._link;
     }
     const operations = this._operations;
-    const link = await operations.graphManager.getCachedLink(this._id);
-    this._link = link;
-    return link;
+    try {
+      this._link = await operations.getLinkByThirdPartyId(this._id.toString());
+    } catch (ignoredResolutionError) {
+      console.dir(ignoredResolutionError);
+    }
+    return this._link;
   }
 }

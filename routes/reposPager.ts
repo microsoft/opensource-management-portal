@@ -1,43 +1,54 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import asyncHandler from 'express-async-handler';
 import express from 'express';
 import _ from 'lodash';
 
-import { IReposAppWithTeam } from '../transitional';
+import { IReposAppWithTeam, IProviders } from '../transitional';
 import { Operations } from '../business/operations';
 import { Repository } from '../business/repository';
 import { Team, GitHubRepositoryType } from '../business/team';
 import { RepositorySearch } from '../business/repoSearch';
+import QueryCache from '../business/queryCache';
+import { Organization } from '../business/organization';
+import { IPersonalizedUserAggregateRepositoryPermission } from '../business/graphManager';
+import { IRequestTeamPermissions } from '../middleware/github/teamPermissions';
+import { UserContext } from '../user/aggregate';
+import { asNumber, daysInMilliseconds } from '../utils';
+import { TeamRepositoryPermission } from '../business/teamRepositoryPermission';
 
 interface IGetReposAndOptionalTeamPermissionsResponse {
   reposData: Repository[];
   ageInformation?: any;
-  repoPermissions?: any;
-  userRepos?: any;
-  specificTeamRepos?: Repository[],
+  userRepos?: IPersonalizedUserAggregateRepositoryPermission[];
+  specificTeamRepos?: TeamRepositoryPermission[],
 }
 
 function sortOrgs(orgs) {
   return _.sortBy(orgs, ['name']);
 }
 
-function getRepos(crossOrgOrOrgName, operations: Operations): Promise<Repository[]> {
-  if (crossOrgOrOrgName) {
-    return operations.getOrganization(crossOrgOrOrgName).getRepositories();
+async function getRepos(organizationId: number, operations: Operations, queryCache: QueryCache): Promise<Repository[]> {
+  if (organizationId) {
+    if (queryCache && queryCache.supportsRepositories) {
+      return (await queryCache.organizationRepositories(organizationId.toString())).map(wrapper => wrapper.repository);
+    } else {
+      return operations.getOrganizationById(organizationId).getRepositories();
+    }
   } else {
+    if (queryCache && queryCache.supportsRepositories) {
+      return (await queryCache.allRepositories()).map(wrapper => wrapper.repository);
+    }
     return operations.getRepos();
   }
 }
 
-async function getReposAndOptionalTeamPermissions(orgName: string, operations: Operations, githubId: string, teamsType: string | null | undefined, team2: Team, specificTeamRepos): Promise<IGetReposAndOptionalTeamPermissionsResponse> {
+async function getReposAndOptionalTeamPermissions(organizationId: number, operations: Operations, queryCache: QueryCache, teamsType: string | null | undefined, team2: Team, specificTeamRepos, userContext: UserContext): Promise<IGetReposAndOptionalTeamPermissionsResponse> {
   // REMOVED: previously age information was avialable via getRepos(orgName, operations, (error, reposData, ageInformation). Was it really useful?
-  const reposData = await getRepos(orgName, operations);
+  const reposData = await getRepos(organizationId, operations, queryCache);
   if (!teamsType || teamsType === 'all') {
     // Retrieve the repositories for this specific repo, along with permissions information
     // NOTE: This means that for now the filtering of permissions won't work in specific team mode
@@ -47,49 +58,66 @@ async function getReposAndOptionalTeamPermissions(orgName: string, operations: O
       };
       return { reposData, specificTeamRepos: await team2.getRepositories(repoOptions) };
     } else {
-      return { reposData }; // return callback(null, reposData, ageInformation);
+      return { reposData };
     }
   }
-  // Need to retrieve cached team permissions information to pass to the search routines
-  const repoPermissions = await operations.graphManager.getReposWithTeams();
-  let options = {};
-  const userRepos = await operations.graphManager.getUserReposByTeamMemberships(githubId, options);
-  return { reposData, repoPermissions, userRepos };
+  const userRepos = await userContext.repositoryPermissions();
+  return { reposData, userRepos };
 }
 
-module.exports = asyncHandler(async function(req: IReposAppWithTeam, res: express.Response, next: express.NextFunction) {
-  const operations = req.app.settings.operations as Operations;
+export default asyncHandler(async function (req: IReposAppWithTeam, res: express.Response, next: express.NextFunction) {
+  const providers = req.app.settings.providers as IProviders;
+  const operations = providers.operations;
+  const queryCache = providers.queryCache;
+  const individualContext = req.individualContext;
   const isCrossOrg = req.reposPagerMode === 'orgs';
-  let teamsType = req.query.tt;
-  const orgName = isCrossOrg ? null : req.organization.name.toLowerCase();
+  let teamsType = req.query.tt as string;
+  const organization = req.organization as Organization;
+  const organizationId = isCrossOrg ? null : organization.id;
   // Filter by team repositories, only in sub-team views
-  const specificTeamPermissions = req.teamPermissions;
-  const team2 = req.team2;
+  const specificTeamPermissions = req.teamPermissions as IRequestTeamPermissions;
+  const team2 = req.team2 as Team;
   let specificTeamId = team2 ? team2.id : null;
-  const gitHubId = req.individualContext.getGitHubIdentity().id;
-  const { reposData, repoPermissions, userRepos, specificTeamRepos /*, ageInformation */ } = await getReposAndOptionalTeamPermissions(orgName, operations, gitHubId, teamsType, team2, specificTeamId);
+  const { reposData, userRepos, specificTeamRepos } = await getReposAndOptionalTeamPermissions(organizationId, operations, queryCache, teamsType, team2, specificTeamId, individualContext.aggregations);
 
-  const page = req.query.page_number ? req.query.page_number : 1;
+  const page = req.query.page_number ? asNumber(req.query.page_number) : 1;
 
-  let phrase = req.query.q;
+  let phrase = req.query.q as string;
 
   // TODO: Validate the type
-  let type = req.query.type;
+  let type = req.query.type as string;
   if (type !== 'public' && type !== 'private' && type !== 'source' && type !== 'fork' /*&& type !== 'mirrors' - we do not do mirror stuff */) {
     type = null;
+  }
+
+  let metadataType = req.query.mt as string;
+  if (
+    metadataType !== 'with-metadata' &&
+    metadataType !== 'without-metadata' &&
+    metadataType !== 'administrator-locked' &&
+    metadataType !== 'locked' &&
+    metadataType !== 'unlocked'
+  ) {
+    metadataType = null;
+  }
+
+  const createdSinceValue = req.query.cs ? asNumber(req.query.cs) : null;
+  let createdSince = null;
+  if (createdSinceValue) {
+    createdSince = new Date((new Date()).getTime() - daysInMilliseconds(createdSinceValue));
   }
 
   let showIds = req.query.showids === '1';
 
   let teamsSubType = null;
-  if (teamsType !== 'teamless' && teamsType !== 'myread' && teamsType !== 'mywrite' && teamsType !== 'myadmin') {
+  if (teamsType !== 'myread' && teamsType !== 'mywrite' && teamsType !== 'myadmin') {
     teamsType = null;
   } else if (teamsType === 'myread' || teamsType === 'mywrite' || teamsType === 'myadmin') {
     teamsSubType = teamsType.substr(2);
     teamsType = 'my';
   }
   // TODO: Validate the language value is in the Linguist list
-  let language = req.query.language;
+  let language = req.query.language as string;
 
   const filters = [];
   if (type) {
@@ -116,14 +144,25 @@ module.exports = asyncHandler(async function(req: IReposAppWithTeam, res: expres
   }
   if (teamsType) {
     let ttValue = teamsType === 'my' ? 'my ' + teamsSubType : teamsType;
-    if (teamsType === 'teamless') {
-      ttValue = 'no';
-    }
     filters.push({
       type: 'tt',
       value: ttValue,
       displayPrefix: 'and',
       displaySuffix: 'team permissions',
+    });
+  }
+  if (createdSince) {
+    filters.push({
+      type: 'cs',
+      value: `${createdSinceValue} days`,
+      displayPrefix: 'created within',
+    });
+  }
+  if (metadataType) {
+    const mtValue = metadataType.replace('-', ' ');
+    filters.push({
+      type: 'mt',
+      value: mtValue,
     });
   }
 
@@ -132,15 +171,19 @@ module.exports = asyncHandler(async function(req: IReposAppWithTeam, res: expres
     language,
     type,
     teamsType,
+    metadataType,
     specificTeamRepos,
     specificTeamPermissions,
+    createdSince,
     teamsSubType,
-    repoPermissions,
     userRepos,
     graphManager: operations.graphManager,
+    repositoryMetadataProvider: operations.providers.repositoryMetadataProvider,
   });
 
-  await search.search(page, req.query.sort);
+  await search.search(page, req.query.sort as string);
+
+  // await Promise.all(search.repos.map(repo => repo.getDetails()));
 
   req.individualContext.webContext.render({
     view: 'repos/',

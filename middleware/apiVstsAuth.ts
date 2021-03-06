@@ -1,15 +1,14 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 import request = require('requestretry');
 
 import { jsonError } from './jsonError';
 import { IApiRequest } from './apiReposAuth';
 import { PersonalAccessToken } from '../entities/token/token';
+import { IProviders } from '../transitional';
 
 // TODO: consider better caching
 const localMemoryCacheVstsToAadId = new Map();
@@ -29,10 +28,7 @@ export function AzureDevOpsAuthenticationMiddleware(req: IApiRequest, res, next)
     return next(new Error('VSTS collection URL is missing in the environment configuration'));
   }
 
-  const mailAddressProvider = req.app.settings.providers.mailAddressProvider;
-  if (!mailAddressProvider.getIdFromUpn) {
-    return next(new Error('The mailAddressProvider provider must expose an identity resolver function to work in this feature'));
-  }
+  const { graphProvider } = req.app.settings.providers as IProviders;
 
   const vstsCollectionUrl = config.authentication.vsts.vstsCollectionUrl;
   const connectionDataApi = `${vstsCollectionUrl}/_apis/connectiondata`;
@@ -43,12 +39,11 @@ export function AzureDevOpsAuthenticationMiddleware(req: IApiRequest, res, next)
     if (cached) {
       return callback(null, cached);
     }
-    return mailAddressProvider.getIdFromUpn(upn, (error, id) => {
-      if (error) {
-        return callback(error);
-      }
+    graphProvider.getUserIdByUsername(upn).then(id => {
       localMemoryCacheVstsToAadId.set(upn, id);
       return callback(null, id);
+    }).catch(error => {
+      return callback(error);
     });
   }
 
@@ -103,6 +98,7 @@ export function AzureDevOpsAuthenticationMiddleware(req: IApiRequest, res, next)
     } else {
       const error = jsonError(`You are not authorized to access ${vstsCollectionUrl}`, 401);
       error['authErrorMessage'] = error.message;
+      error['skipLog'] = true;
       return next(error);
     }
   });

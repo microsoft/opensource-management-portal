@@ -1,14 +1,15 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
-import express = require('express');
-import { ReposAppRequest } from '../transitional';
+import express from 'express';
 const router = express.Router();
-const lowercaser = require('../middleware/lowercaser');
+
+import lowercaser from '../middleware/lowercaser';
+import { ReposAppRequest } from '../transitional';
+
+import RouteTeamsPager from './teamsPager';
 
 router.use(function (req: ReposAppRequest, res, next) {
   req.individualContext.webContext.pushBreadcrumb('Teams');
@@ -20,6 +21,6 @@ router.use(function (req: ReposAppRequest, res, next) {
   next();
 });
 
-router.get('/', lowercaser(['sort', 'set']), require('./teamsPager'));
+router.get('/', lowercaser(['sort', 'set']), RouteTeamsPager);
 
-module.exports = router;
+export default router;

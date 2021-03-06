@@ -1,0 +1,22 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends email
+
+block content
+  p The default branch has been renamed. Please let us know if you have any feedback on the experience, this is a preview tool to make it easy for default branch renames.
+  p Do not forget to inspect continuous integration systems and other apps that likely will require updates, as well as things like badges within README files.
+
+  p: a(href='https://github.com/' + repository.organization.name + '/' + repository.name)= 'https://github.com/' + repository.organization.name + '/' + repository.name
+
+  if output
+    h3 Rename operation log
+    ul
+      each entry in output
+        if entry.error
+          li(style='color:red')= entry.error
+        if entry.message
+          li= entry.message
+

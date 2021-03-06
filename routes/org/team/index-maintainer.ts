@@ -1,16 +1,16 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express = require('express');
+import express from 'express';
+
 import { ReposAppRequest } from '../../../transitional';
 import { wrapError } from '../../../utils';
-var router = express.Router();
-var utils = require('../../../utils');
+const router = express.Router();
 
-var approvalsRoute = require('./approvals');
-var membersRoute = require('./members');
+import RouteApprovals from './approvals';
+import RouteMembers from './members';
 
 interface ILocalRequest extends ReposAppRequest {
   teamPermissions?: any;
@@ -29,7 +29,7 @@ router.use(function (req: ILocalRequest, res, next) {
   return next();
 });
 
-router.use('/approvals', approvalsRoute);
-router.use('/members', membersRoute);
+router.use('/approvals', RouteApprovals);
+router.use('/members', RouteMembers);
 
-module.exports = router;
+export default router;

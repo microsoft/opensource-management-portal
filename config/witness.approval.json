@@ -1,4 +1,0 @@
-{
-  "serviceUrl": "env://WITNESS_SVC_URL",
-  "authToken": "env://WITNESS_AUTH_TOKEN"
-}

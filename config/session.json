@@ -4,5 +4,20 @@
   "name": "env://SESSION_NAME?default=sid",
   "domain": "env://SESSION_COOKIE_DOMAIN",
   "encryption": "env://SESSION_ENCRYPTION?trueIf=encrypt",
-  "encryptionKeyId": "env://SESSION_ENCRYPTION_KEY_ID"
+  "encryptionKeyId": "env://SESSION_ENCRYPTION_KEY_ID",
+  "cosmosdb": {
+    "endpoint": "env://SESSION_COSMOSDB_ENDPOINT",
+    "key": "env://SESSION_COSMOSDB_KEY",
+    "database": "env://SESSION_COSMOSDB_DATABASE",
+    "collection": "env://SESSION_COSMOSDB_COLLECTION",
+    "ttl": "env://SESSION_COSMOSDB_TTL?type=integer&default=604800"  
+  },
+  "redis": {
+    "port": "env://REDIS_PORT",
+    "host": "env://REDIS_HOST",
+    "key": "env://REDIS_KEY",
+    "ttl": "env://REDIS_TTL?type=integer&default=604800",
+    "prefix": "env://REDIS_PREFIX",
+    "tls": "env://REDIS_TLS_HOST"  
+  }
 }

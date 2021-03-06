@@ -1,7 +1,9 @@
 import { wrapError } from "../utils";
+import { IProviders } from "../transitional";
+import { AxiosError } from "axios";
 
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
@@ -44,12 +46,12 @@ function containsNewlinesNotHtml(error) {
 const exceptionFieldsOfInterest = [
   'status',
   'statusCode',
-  'code',
   'innerMessage',
 ];
 
-module.exports = function (err, req, res, next) {
+export default function SiteErrorHandler (err, req, res, next) {
   // CONSIDER: Let's eventually decouple all of our error message improvements to another area to keep the error handler intact.
+  const { applicationProfile } = req.app.settings.providers as IProviders;
   var config = null;
   var correlationId = req.correlationId;
   var errorStatus = err ? (err.status || err.statusCode) : undefined;
@@ -113,7 +115,11 @@ module.exports = function (err, req, res, next) {
             properties: insightsProperties,
           });
         } else {
-          req.insights.trackException({ exception: err, properties: insightsProperties });
+          if (err && err['json']) {
+            // not tracking jsonErrors for now, they pollute app insights
+          } else {
+            req.insights.trackException({ exception: err, properties: insightsProperties });
+          }
         }
       }
     }
@@ -147,7 +153,6 @@ module.exports = function (err, req, res, next) {
   // Don't leak the Redis connection information.
   if (err && err.message && err.message.indexOf('Redis connection') >= 0 && err.message.indexOf('ETIMEDOUT')) {
     err.message = 'The session store was temporarily unavailable. Please try again.';
-    err.detailed = 'Azure Redis Cache';
   }
   if (res.headersSent) {
     console.error('Headers were already sent.');
@@ -157,6 +162,7 @@ module.exports = function (err, req, res, next) {
     req.logout();
   }
   var safeMessage = redactRootPaths(err.message);
+  const defaultErrorTitle = err && err.skipOops ? 'FYI' : 'Oops';
   const view = {
     message: safeMessage,
     encodedMessage: querystring.escape(safeMessage),
@@ -165,11 +171,12 @@ module.exports = function (err, req, res, next) {
     detailed: err && err.detailed ? redactRootPaths(err.detailed) : undefined,
     encodedDetailed: err && err.detailed ? querystring.escape(redactRootPaths(err.detailed)) : undefined,
     errorFancyLink: err && err.fancyLink ? err.fancyLink : undefined,
+    errorFancySecondaryLink: err && err.fancySecondaryLink ? err.fancySecondaryLink : undefined,
     errorStatus: errorStatus,
     skipLog: err.skipLog,
     skipOops: err && err.skipOops ? err.skipOops : false,
     error: {},
-    title: err.title || (err.status === 404 ? 'Not Found' : 'Oops'),
+    title: err.title || (err.status === 404 ? 'Not Found' : defaultErrorTitle),
     primaryUser: primaryUserInstance,
     user: req.user,
     config: config && config.obfuscatedConfig ? config.obfuscatedConfig : null,
@@ -182,7 +189,13 @@ module.exports = function (err, req, res, next) {
   if (err.status) {
     errStatusAsNumber = parseInt(err.status);
   }
-  const resCode = errStatusAsNumber || (err.status && typeof(err.status) === 'number' ? err.status : false) || err.statusCode || 500;
+  let resCode = errStatusAsNumber || (err.status && typeof (err.status) === 'number' ? err.status : false) || err.statusCode || 500;
+  if (err && err.isAxiosError) {
+    const axiosError = err as AxiosError;
+    if (axiosError?.response?.status) {
+      resCode = axiosError.response.status;
+    }
+  }
   res.status(resCode);
 
   // Support JSON-based error display for the API route, showing just a small
@@ -204,6 +217,14 @@ module.exports = function (err, req, res, next) {
     });
     res.json(safeError);
   } else {
-    res.render('error', view);
+    if (!applicationProfile.customErrorHandlerRender) {
+      return res.render('error', view);
+    }
+    return applicationProfile.customErrorHandlerRender(view, err, req, res, next).then(ok => {
+      // done
+    }).catch(error => {
+      console.error(error);
+      res.end();
+    });
   }
 };

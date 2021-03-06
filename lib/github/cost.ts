@@ -1,9 +1,7 @@
 //
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
-
-'use strict';
 
 function createCostContainer() {
   return {
@@ -49,7 +47,7 @@ function addCosts(a, b) {
   return a;
 }
 
-module.exports = {
+export default {
   create: createCostContainer,
   add: addCosts,
 };
