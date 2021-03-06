@@ -43,6 +43,7 @@ import { CreateGraphProviderInstance, IGraphProvider } from '../lib/graphProvide
 import initializeCorporateViews from './corporateViews';
 
 import keyVaultResolver from '../lib/keyVaultResolver';
+
 import { createMailProviderInstance } from '../lib/mailProvider/';
 import { RestLibrary } from '../lib/github';
 import { CreateRepositoryCacheProviderInstance } from '../entities/repositoryCache';

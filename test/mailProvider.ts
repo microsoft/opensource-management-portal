@@ -7,7 +7,7 @@ import 'mocha';
 
 const assert = require('chai').assert;
 
-import mailProvider from '../lib/mailProvider';
+import { createMailProviderInstance } from '../lib/mailProvider';
 
 const fakeMailProviderName = 'mockMailService';
 
@@ -37,14 +37,14 @@ describe('mailProvider', () => {
 
     it('can create a factory by configuration', () => {
       const config = createMailConfig();
-      const provider = mailProvider(config);
+      const provider = createMailProviderInstance(config);
       assert.isDefined(provider, 'provider is created');
     });
 
     it('overriding to works', async () => {
       const config = createMailConfig();
       config.mail.overrideRecipient = developer;
-      const provider = mailProvider(config);
+      const provider = createMailProviderInstance(config);
       const mail = {
         to: executive,
       };
@@ -59,7 +59,7 @@ describe('mailProvider', () => {
 
     it('mock send mail works', async () => {
       const config = createMailConfig();
-      const provider = mailProvider(config);
+      const provider = createMailProviderInstance(config);
       const mail = {
         to: executive,
       };
@@ -74,7 +74,7 @@ describe('mailProvider', () => {
 
     it('reports basic provider info and version properties', () => {
       const config = createMailConfig();
-      const provider = mailProvider(config);
+      const provider = createMailProviderInstance(config);
       assert.isTrue(provider.info.includes(fakeMailProviderName), 'provider self-registers correctly');
     });
 
@@ -84,7 +84,7 @@ describe('mailProvider', () => {
       let error = null;
       let provider = null;
       try {
-        provider = mailProvider(config);
+        provider = createMailProviderInstance(config);
       } catch (ee) {
         error = ee;
       }

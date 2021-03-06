@@ -62,13 +62,18 @@ const multipleProviders = supportMultipleAuthProviders([
   AzureDevOpsAuthenticationMiddleware,
 ]);
 
+const aadAndCustomProviders = supportMultipleAuthProviders([
+  AadApiAuthentication,
+  ReposApiAuthentication,
+]);
+
 router.use('/people', cors(), multipleProviders, apiPeople);
 router.use('/extension', cors(), multipleProviders, apiExtension);
 
 //-----------------------------------------------------------------------------
-// AUTHENTICATION: repos (specific to this app)
+// AUTHENTICATION: AAD or repos (specific to this app)
 //-----------------------------------------------------------------------------
-router.use('/:org', ReposApiAuthentication);
+router.use('/:org', aadAndCustomProviders);
 
 router.use('/:org', function (req: IApiRequest, res, next) {
   const orgName = req.params.org;
