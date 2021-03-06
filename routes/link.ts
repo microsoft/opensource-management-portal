@@ -215,7 +215,8 @@ export async function interactiveLinkUser(isJson: boolean, individualContext: In
   if (isServiceAccount) {
     newLinkObject.isServiceAccount = true;
     newLinkObject.serviceAccountMail = serviceAccountMail;
-    const errorMessage = 'Service Account linking is disabled pending corporate security updates. Please reach out to github@microsoft.com for more information.';
+    const address = operations.getOperationsMailAddress();
+    const errorMessage = `Service Account linking is not available. Please reach out to ${address} for more information.`;
     return next(isJson ? jsonError(errorMessage, 400) : new Error(errorMessage));
   }
   try {

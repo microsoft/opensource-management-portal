@@ -14,6 +14,7 @@ import { Organization } from '../../business/organization';
 
 import RenderHtmlMail from '../../lib/emailRender';
 import { IMailProvider } from '../../lib/mailProvider';
+import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 
 interface IAutomaticTeamsMail {
   to: string;
@@ -204,22 +205,26 @@ async function largeTeamPermissionPreventionWarningMail(operations: Operations, 
     return;
   }
   const basedir = operations.config.typescript.appDirectory;
-  await sendEmail(insights, basedir, mailProvider, mailAddress, {
+  const operationsMail = operations.getOperationsMailAddress();
+  const companySpecific = getCompanySpecificDeployment();
+  const largeTeamProtectionDetailsLink = companySpecific?.strings?.largeTeamProtectionDetailsLink;
+  await sendEmail(insights, basedir, mailProvider, mailAddress, operationsMail, {
     repository: repositoryBody,
-    whoChangedIt: whoChangedIt,
-    teamName: teamName,
-    reason: reason,
+    whoChangedIt,
+    teamName,
+    reason,
+    largeTeamProtectionDetailsLink,
   });
 }
 
-async function sendEmail(insights, basedir, mailProvider: IMailProvider, to, body) {
+async function sendEmail(insights, basedir, mailProvider: IMailProvider, to, operationsMail: string, body) {
   body.reason = `You are receiving this e-mail because you changed the permissions on the ${body.teamName} GitHub team, triggering this action.`;
   body.headline = 'Team permission change reverted';
   body.notification = 'warning';
   body.app = 'Microsoft GitHub';
   const mail: IAutomaticTeamsMail = {
     to,
-    cc: 'github@microsoft.com',
+    cc: operationsMail,
     subject: `Team permission change for ${body.repository.full_name} repository reverted`,
     category: ['error', 'repos'],
   };

@@ -32,6 +32,7 @@ import { IMail } from '../lib/mailProvider';
 import { ILinkProvider } from '../lib/linkProviders';
 import { getUserAndManagerById, IGraphEntryWithManager } from '../lib/graphProvider';
 import { ICacheHelper } from '../lib/caching';
+import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 
 const throwIfOrganizationIdsMissing = true;
 
@@ -769,6 +770,8 @@ export class Operations {
       correlationId,
       content: undefined,
     };
+    const companySpecific = getCompanySpecificDeployment();
+    const companySpecificStrings = companySpecific?.strings || {};
     const contentOptions = {
       reason: (`You are receiving this one-time e-mail because you have linked your account.
                 To stop receiving these mails, you can unlink your account.
@@ -779,6 +782,7 @@ export class Operations {
       correlationId,
       docs: config && config.microsoftOpenSource ? config.microsoftOpenSource.docs : null,
       companyName: config.brand.companyName,
+      customStrings: companySpecificStrings,
       link,
     };
     try {

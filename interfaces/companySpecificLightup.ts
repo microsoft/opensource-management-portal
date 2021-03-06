@@ -18,10 +18,23 @@ export interface ICompanySpecificStartupProperties {
   routes?: IAttachCompanySpecificRoutes;
   middleware?: IAttachCompanySpecificMiddleware;
   administrationSection?: ICorporationAdministrationSection;
+  strings?: IAttachCompanySpecificStrings;
 }
 
 export interface IAttachCompanySpecificMiddleware {
   repoPermissions?: ICompanySpecificRepoPermissionsMiddlewareCalls;
+}
+
+export interface IAttachCompanySpecificStrings {
+  largeTeamProtectionDetailsLink: string;
+  linkWarningMessages: string[];
+  linkInformationMessage: string;
+  linkInformationUrl: string;
+  linkInformationPolicyLink: string;
+  linkInformationMail: string;
+  linkInformationHeading: string;
+  linkInformationUrlTitle: string;
+  linkInformationMailTitle: string;
 }
 
 export interface ICorporationAdministrationSection {
