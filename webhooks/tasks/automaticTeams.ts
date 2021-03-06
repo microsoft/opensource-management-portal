@@ -209,7 +209,7 @@ async function largeTeamPermissionPreventionWarningMail(operations: Operations, 
   const companySpecific = getCompanySpecificDeployment();
   const largeTeamProtectionDetailsLink = companySpecific?.strings?.largeTeamProtectionDetailsLink;
   const config = operations.config;
-  await sendEmail(insights, basedir, mailProvider, mailAddress, operationsMail, {
+  await sendEmail(config, insights, basedir, mailProvider, mailAddress, operationsMail, {
     repository: repositoryBody,
     whoChangedIt,
     teamName,
@@ -219,11 +219,11 @@ async function largeTeamPermissionPreventionWarningMail(operations: Operations, 
   });
 }
 
-async function sendEmail(insights, basedir, mailProvider: IMailProvider, to, operationsMail: string, body) {
+async function sendEmail(config, insights, basedir, mailProvider: IMailProvider, to, operationsMail: string, body) {
   body.reason = `You are receiving this e-mail because you changed the permissions on the ${body.teamName} GitHub team, triggering this action.`;
   body.headline = 'Team permission change reverted';
   body.notification = 'warning';
-  body.app = app.settings.operations.config.brand.companyName + ' GitHub';
+  body.app = `${config.brand.companyName} GitHub`;
   const mail: IAutomaticTeamsMail = {
     to,
     cc: operationsMail,

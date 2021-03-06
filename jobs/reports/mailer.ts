@@ -124,6 +124,10 @@ async function sendReport(context: IReportsContext, mailProvider: IMailProvider,
   if (!fromAddress && !overrideSendWithPath) {
     throw new Error('No from address is configured for reports in the github.jobs.reports.mail.from value');
   }
+  const address = await recipientTypeToAddress(context, recipientKey);
+  const html = renderReport(context, report, address);
+  const isActionRequired = consolidatedActionRequired(report);
+  const notification = isActionRequired ? 'action' : 'information';
   const viewOptions = {
     html,
     headline: isActionRequired ? 'Your GitHub updates' : 'GitHub updates',
