@@ -1,7 +1,10 @@
 dist/
 node_modules/
 .DS_Store
+
 # Potential local development environment scripts
 app.yaml
 env.json
 .env
+env-orgs.json
+.secrets.env
