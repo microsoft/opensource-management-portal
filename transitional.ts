@@ -230,7 +230,7 @@ export interface IApplicationProfile {
 }
 
 export interface RedisOptions {
-  auth_pass: string;
+  auth_pass?: string;
   detect_buffers: boolean;
   tls?: {
     servername: string;
