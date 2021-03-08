@@ -1,4 +1,4 @@
 {
-  "tableName": "env://REPOS_POSTGRES_LINKS_TABLE_NAME",
+  "tableName": "env://REPOS_POSTGRES_LINKS_TABLE_NAME?default=links",
   "githubThirdPartyName": "env://REPOS_POSTGRES_LINKS_GITHUB_THIRD_PARTY_NAME?default=github"
 }
