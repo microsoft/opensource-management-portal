@@ -638,7 +638,7 @@ export class Operations {
     if (!linkProvider) {
       throw CreateError.ServerError('linkProvider required');
     }
-    if (!graphProvider) {
+    if (this.config.graph?.require === true && !graphProvider) {
       throw CreateError.ServerError('Graph provider required');
     }
     if (!options.link) {
@@ -675,7 +675,7 @@ export class Operations {
     }
 
     let mailAddress: string = null;
-    if (!options.skipCorporateValidation) {
+    if (this.config.graph?.require === true && !options.skipCorporateValidation) {
       try {
         const corporateInfo = await this.validateCorporateAccountCanLink(link.corporateId);
         const corporateAccount = corporateInfo.graphEntry;
