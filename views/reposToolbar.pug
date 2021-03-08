@@ -24,7 +24,8 @@ div.navbar.navbar-inverse
           a(href=(reposContext.organization ? '/' + reposContext.organization.name : '') + '/teams', title='Teams: GitHub permissions') Teams
         li(class={ active: reposContext.section === 'people' })
           a(href=(reposContext.organization ? '/' + reposContext.organization.name : '') + '/people', title='People: GitHub organization members') People
-        if !reposContext.organization
+        // show FOSS Fund only on the start page and only if the features.allowFossFundElections is enabled
+        if !reposContext.organization && config.features && config.features.allowFossFundElections
           li(class={ active: reposContext.section === 'contributions' })
             a(href=('/contributions')) FOSS Fund
 
