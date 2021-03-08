@@ -19,7 +19,7 @@ block content
       h1 GitHub Teams
       p.lead Across all officially managed #{config.brand.companyName} organizations
 
-if onboarding
+    if onboarding
       .alert.alert-gray
         strong You're all set for use GitHub for open source now.
         br
@@ -120,7 +120,7 @@ if onboarding
                 if next_possible
                   a(href='?page_number=' + (search.page+1) + (query.set ? '&set=' + query.set : '') + (query.phrase ? '&q=' + query.phrase : ''))
                   span(aria-hidden="true") Next &rarr;
-                else  
+                else
                   span(aria-hidden="true") Next &rarr;
 
           .container
@@ -156,7 +156,7 @@ if onboarding
                 if previous_possible
                   a(href='?page_number=' + (search.page-1) + (query.set ? '&set=' + query.set : '') + (query.phrase ? '&q=' + query.phrase : ''))
                   span(aria-hidden="true") &larr; Previous
-                else  
+                else
                   span(aria-hidden="true") &larr; Previous
               li
                 h4(style="display:inline")
@@ -165,7 +165,7 @@ if onboarding
                 if next_possible
                   a(href='?page_number=' + (search.page+1) + (query.set ? '&set=' + query.set : '') + (query.phrase ? '&q=' + query.phrase : ''))
                   span(aria-hidden="true") Next &rarr;
-                else  
+                else
                   span(aria-hidden="true") Next &rarr;
 
       .col-md-3.col-md-offset-1
