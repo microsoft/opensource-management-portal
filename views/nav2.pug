@@ -72,10 +72,10 @@ div.navbar.navbar-default(style=reposContext ? 'margin-bottom:0' : undefined)
         if config.microsoftOpenSource.docs
           li: a(href=config.microsoftOpenSource.docs) Docs
         li(class={ active: site === 'use' })
-          // check if a dedicated "use" link is configured and if that is the case use that
+          // check if a dedicated "use" link is configured and if that is the case use that, otherwise fallback to the use subpage on the explore link
           a(href=config.microsoftOpenSource.use || config.microsoftOpenSource.explore + 'use') Use
         li(class={ active: (reposContext && reposContext.releaseTab) || site === 'release' })
-          // check if a dedicated "use" link is configured and if that is the case use that
+          // check if a dedicated "release" link is configured and if that is the case use that, otherwise fallback to the release subpage on the explore link
           a(href=config.microsoftOpenSource.release || config.microsoftOpenSource.explore + 'release') Release
         li(class={ active: (reposContext && !reposContext.releaseTab) && site === 'github' })
           a(
