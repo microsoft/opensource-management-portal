@@ -1,6 +1,8 @@
 {
   "witness": "env://OPENSOURCE_WITNESS_LINK",
   "explore": "env://OPENSOURCE_EXPLORE_LINK",
+  "use": "env://OPENSOURCE_USE_LINK",
+  "release": "env://OPENSOURCE_RELEASE_LINK",
   "legacyTool": "env://OPENSOURCE_LEGACY_TOOL_LINK",
   "docs": "env://OPENSOURCE_DOCS_LINK",
   "repos": "env://OPENSOURCE_REPOS_LINK",
