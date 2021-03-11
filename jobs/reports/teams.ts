@@ -219,8 +219,8 @@ async function processTeam(context: IReportsContext, team: Team) {
       link: `https://github.com/orgs/${orgName}/teams/${slug}/members`,
       text: 'Open',
     };
-    const actionViewInPortal = context.config.microsoftOpenSource ? {
-      link: `${context.config.microsoftOpenSource.repos}${organization.name}/teams/${slug}`,
+    const actionViewInPortal = context.config.urls ? {
+      link: `${context.config.urls.repos}${organization.name}/teams/${slug}`,
       text: 'Manage team',
     } : null;
     let createdAt = team.created_at ? moment(team.created_at) : null;

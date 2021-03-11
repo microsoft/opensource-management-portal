@@ -304,15 +304,15 @@ block content
           h3 Corporate metadata
           include ../includes/corporateRepoMetadata
 
-    if config && config.microsoftOpenSource && config.microsoftOpenSource.githubInsights
+    if config && config.urls && config.urls.githubInsights
       hr
       h4 Metrics
       p.
         Explore GitHub data, gain insights, build your community by learning to
         query the
-        #[a(href=config.microsoftOpenSource.githubInsights, target='_new') GitHub Insights]
+        #[a(href=config.urls.githubInsights, target='_new') GitHub Insights]
         data provided ghcrawler and CloudMine.
-        #[a(href=config.microsoftOpenSource.githubInsights, target='_new') Learn more...]
+        #[a(href=config.urls.githubInsights, target='_new') Learn more...]
 
     if repo && repo.id
       p: small= 'Repository ' + repo.full_name + ' has the GitHub ID ' + repo.id

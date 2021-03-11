@@ -472,7 +472,7 @@ async function sendEmail(req, logic: ICustomizedNewRepositoryLogic, createContex
     version: config.logging.version,
     managerInfo,
     reposSiteUrl: reposSiteBaseUrl,
-    liveReposSiteUrl: config.microsoftOpenSource ? config.microsoftOpenSource.repos : null,
+    liveReposSiteUrl: config.urls ? config.urls.repos : null,
     api: serviceShortName, // when used by the client single-page app, this is not considered an API call
     service: serviceShortName,
     serviceOwner: apiKeyRow ? apiKeyRow.owner : undefined,

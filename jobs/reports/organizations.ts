@@ -143,7 +143,7 @@ async function getOrganizationData(context: IReportsContext) {
       const data = context.organizationData[orgName];
       data.organizationContext = organizationContext;
       function githubDirectLink(content, prefix?, suffix?, query?, alternateForOrgName?) {
-        const reposUrl = context.config.microsoftOpenSource.repos;
+        const reposUrl = context.config.urls.repos;
         const campaignSettings = context.settings.campaign;
         const q = {
           utm_source: campaignSettings.source,

@@ -6,5 +6,6 @@
   "legacyTool": "env://OPENSOURCE_LEGACY_TOOL_LINK",
   "docs": "env://OPENSOURCE_DOCS_LINK",
   "repos": "env://OPENSOURCE_REPOS_LINK",
+  "feedbackUrl": "env://OPENSOURCE_REPOS_FEEDBACK_LINK",
   "githubInsights": "env://OPENSOURCE_GITHUB_INSIGHTS_LINK"
 }

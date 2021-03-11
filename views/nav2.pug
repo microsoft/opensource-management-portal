@@ -63,50 +63,37 @@ div.navbar.navbar-default(style=reposContext ? 'margin-bottom:0' : undefined)
         span.icon-bar
         span.icon-bar
         span.icon-bar
-      a.navbar-brand(href=config.microsoftOpenSource.explore, style='font-size:16px;color:#333') Microsoft Open Source
+      if config && config.urls && config.urls && config.urls.explore
+        a.navbar-brand(href=config.urls.explore, style='font-size:16px;color:#333')
+          = config.brand && config.brand.companyPortalName ? config.brand.companyPortalName : 'GitHub Management Portal'
     // Collect the nav links, forms, and other content for toggling
     div.collapse.navbar-collapse#bs-example-navbar-collapse-1
       ul.nav.navbar-nav
-        li(class={ active: site === 'explore' })
-          a(href=config.microsoftOpenSource.explore) Explore
-        if config.microsoftOpenSource.docs
-          li: a(href=config.microsoftOpenSource.docs) Docs
-        li(class={ active: site === 'use' })
-          // check if a dedicated "use" link is configured and if that is the case use that, otherwise fallback to the use subpage on the explore link
-          a(href=config.microsoftOpenSource.use || config.microsoftOpenSource.explore + 'use') Use
-        li(class={ active: (reposContext && reposContext.releaseTab) || site === 'release' })
-          // check if a dedicated "release" link is configured and if that is the case use that, otherwise fallback to the release subpage on the explore link
-          a(href=config.microsoftOpenSource.release || config.microsoftOpenSource.explore + 'release') Release
+        if config && config.urls
+          li(class={ active: site === 'explore' }): a(href=config.urls.explore) Explore
+          if config.urls.docs
+            li: a(href=config.urls.docs) Docs
+          if config.urls.use
+            li(class={ active: site === 'use' }): a(href=config.urls.use) Use
+          if config.urls.release
+            li(class={ active: (reposContext && reposContext.releaseTab) || site === 'release' }): a(href=config.urls.release) Release
         li(class={ active: (reposContext && !reposContext.releaseTab) && site === 'github' })
           a(
             style=((reposContext && !reposContext.releaseTab) && site === 'github' && ossLink && reposContext) ? 'color:#fff;background-color:#0072C6' : undefined,
             href='/') GitHub
-        //-li(class={ active: site === 'resources' })
-          a(href=config.microsoftOpenSource.explore + 'resources') About
-        //-form.navbar-form.navbar-right
-          div.form-group
-            input.form-control(type='text', placeholder='Search')
-          //- button.btn.btn-default(type='submit') Submit
       ul.nav.navbar-nav.navbar-right
-        //-form.navbar-form.navbar-left(style='margin-right:32px')
-          div.form-group
-            input.form-control(type='text', placeholder='Search')
-          //-button.btn.btn-default(type='submit') Submit
-
-
         if sudoMode
           li
             a(href='#', title='You are a sudoer and have additional administrative capabilities')
               i.glyphicon.glyphicon-flash
-        li
-          a(href='mailto:opensource@microsoft.com?subject=Open%20Source%20Repos%20Feedback')
-            i.glyphicon.glyphicon-heart
-        //-li
-          a(href='#')
-            i.glyphicon.glyphicon-flag
-        li
-          a(href=config.microsoftOpenSource.explore)
-            i.glyphicon.glyphicon-question-sign
+        if config && config.urls && config.urls.feedbackUrl
+          li
+            a(href=config.urls.feedbackUrl)
+              i.glyphicon.glyphicon-heart
+        if config && config.urls && config.urls.explore
+          li
+            a(href=config.urls.explore)
+              i.glyphicon.glyphicon-question-sign
         li
           a(href='/settings', title='Settings')
             i.glyphicon.glyphicon-option-vertical

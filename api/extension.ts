@@ -138,7 +138,7 @@ router.get('/metadata', asyncHandler(getLocalEncryptionKeyMiddleware), (req: IAp
     serviceMessage: config.serviceMessage,
     reference: config.corporate.trainingResources ? config.corporate.trainingResources.footer : {},
     organizations: orgData,
-    site: config.microsoftOpenSource,
+    site: config.urls,
     link: undefined,
   };
 

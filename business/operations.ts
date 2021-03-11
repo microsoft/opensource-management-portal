@@ -780,7 +780,7 @@ export class Operations {
       notification: 'information',
       app: `${config.brand.companyName} GitHub`,
       correlationId,
-      docs: config && config.microsoftOpenSource ? config.microsoftOpenSource.docs : null,
+      docs: config && config.urls ? config.urls.docs : null,
       companyName: config.brand.companyName,
       customStrings: companySpecificStrings,
       link,

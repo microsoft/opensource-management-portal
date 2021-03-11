@@ -270,7 +270,7 @@ async function processRepository(context: IReportsContext, repository: Repositor
   };
   const campaignSettings = context.settings.campaign;
   function reposDirectLink(content, suffix?, alternateForRepoFullPath?): string {
-    const reposUrl = context.config.microsoftOpenSource.repos;
+    const reposUrl = context.config.urls.repos;
     const q = getCampaignData(content);
     let fullPath = `${organization.name}/repos/${repository.name}`;
     if (suffix) {
@@ -287,7 +287,7 @@ async function processRepository(context: IReportsContext, repository: Repositor
     };
   }
   function githubDirectLink(content, prefix?, suffix?, query?, alternateForRepoFullName?) {
-    const reposUrl = context.config.microsoftOpenSource.repos;
+    const reposUrl = context.config.urls.repos;
     const repoFullName = repositoryContext.name; // full_name
     const q = getCampaignData(content);
     q.go_github = null;
@@ -382,14 +382,10 @@ async function processRepository(context: IReportsContext, repository: Repositor
     link: githubDirectLink('repoShipIt', null, 'settings'),
     text: 'Ship it',
   };
-  const actionViewInPortal = context.config.microsoftOpenSource ? {
+  const actionViewInPortal = context.config.urls ? {
     link: reposDirectLink('repoDetails'),
     text: 'Details',
   } : null;
-  const actionTransfer = {
-    link: 'mailto:opensource@microsoft.com?subject=Please help transfer an old abandoned repo to an archive organization',
-    text: 'Archive',
-  };
   if (repositoryContext.administratorsByType.linked.length === 0 || repositoryContext.actionableAdministrators.length === 0) {
     addEntityToIssueType(context, repositoryContext, 'noRepositoryAdministrators', basicRepository, actionEditCollaborators, actionViewInPortal);
   }
