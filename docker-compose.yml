@@ -29,10 +29,11 @@ services:
       - portal
     volumes:
       - portal_postgres_data:/var/lib/postgresql/data
+      - ./pg.sql:/docker-entrypoint-initdb.d/pg.sql
     environment:
       POSTGRES_DB: portal-repos
       POSTGRES_USER: portal
-      POSTGRES_PWD: latrop
+      POSTGRES_PASSWORD: latrop
 
 networks:
   portal:
