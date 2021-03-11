@@ -439,7 +439,7 @@ async function processRepository(context: IReportsContext, repository: Repositor
       addEntityToIssueType(context, repositoryContext, 'expiringPrivateEngineeringExemptions', basicRepository, actionShip, actionDelete);
     }
   } else if (!repository.private && mostRecentActivityMoment.isBefore(twoYearsAgo)) {
-    addEntityToIssueType(context, repositoryContext, 'abandonedPublicRepositories', basicRepository, actionView, actionDelete /*, actionTransfer*/);
+    addEntityToIssueType(context, repositoryContext, 'abandonedPublicRepositories', basicRepository, actionView, actionDelete);
   } else if (repository.private && mostRecentActivityMoment.isBefore(twoYearsAgo)) {
     addEntityToIssueType(context, repositoryContext, 'twoYearOldPrivateRepositories', basicRepository, actionView, actionDelete);
   } else if (repository.private && createdAt.isBefore(oneYearAgo) && !privateEngineering) {

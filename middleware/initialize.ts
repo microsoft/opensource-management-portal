@@ -472,7 +472,9 @@ function connectRedis(config: any, redisConfig: any, purpose: string): Promise<r
   const redisOptions: RedisOptions = {
     detect_buffers: true,
   };
-  if (config.redis.key) redisOptions.auth_pass = config.redis.key;
+  if (config.redis.key) {
+    redisOptions.auth_pass = config.redis.key;
+  }
   if (redisConfig.tls) {
     redisOptions.tls = {
       servername: redisConfig.tls,
@@ -502,6 +504,8 @@ function connectRedis(config: any, redisConfig: any, purpose: string): Promise<r
     if (config.redis.key) {
       redisClient.auth(config.redis.key);
       debug(`authenticated to Redis for ${purpose}`);
+    } else {
+      debug(`connected to Redis for ${purpose} (unauthenticated)`);
     }
   });
 }
