@@ -1,4 +1,6 @@
-FROM node:15-alpine AS build
+ARG IMAGE_NAME=node:15-alpine
+
+FROM $IMAGE_NAME AS build
 
 ARG NPM_TOKEN
 
@@ -34,7 +36,7 @@ RUN npm run-script build
 # The open source project build needs: build the site assets sub-project
 RUN cd default-assets-package && npm install && npm run build
 
-FROM node:12-alpine AS run
+FROM $IMAGE_NAME AS run
 
 ENV IS_DOCKER=1 \
     NPM_CONFIG_LOGLEVEL=warn \
