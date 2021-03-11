@@ -19,6 +19,7 @@ services:
 
   portal-cache:
     image: redis
+    command: redis-server --protected-mode no
     networks:
       - portal
 

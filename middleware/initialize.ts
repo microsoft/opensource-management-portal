@@ -470,9 +470,9 @@ function connectRedis(config: any, redisConfig: any, purpose: string): Promise<r
   const nodeEnvironment = config && config.node ? config.node.environment : null;
   let redisClient: redis.RedisClient = null;
   const redisOptions: RedisOptions = {
-    auth_pass: redisConfig.key,
     detect_buffers: true,
   };
+  if (config.redis.key) redisOptions.auth_pass = config.redis.key;
   if (redisConfig.tls) {
     redisOptions.tls = {
       servername: redisConfig.tls,
@@ -499,8 +499,10 @@ function connectRedis(config: any, redisConfig: any, purpose: string): Promise<r
       }
     });
     // NOTE: a timeout would hang the process here
-    redisClient.auth(config.redis.key);
-    debug(`authenticated to Redis for ${purpose}`);
+    if (config.redis.key) {
+      redisClient.auth(config.redis.key);
+      debug(`authenticated to Redis for ${purpose}`);
+    }
   });
 }
 
