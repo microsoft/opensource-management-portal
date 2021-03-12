@@ -15,7 +15,6 @@ import { IndividualContext } from '../../user';
 import { Organization } from '../../business/organization';
 import { CreateRepository, ICreateRepositoryApiResult, CreateRepositoryEntrypoint } from '../createRepo';
 import { Team, GitHubTeamRole } from '../../business/team';
-import { asNumber } from '../../utils';
 
 // This file supports the client apps for creating repos.
 
@@ -51,9 +50,9 @@ router.get('/personalizedTeams', asyncHandler(async (req: ILocalApiRequest, res,
     userTeams.member.map(team => combinedTeams.set(team.id.toString(), team));
     const personalizedTeams = Array.from(combinedTeams.values()).map(combinedTeam => {
       return {
-        broad: broadTeams.has(asNumber(combinedTeam.id)),
+        broad: broadTeams.has(Number(combinedTeam.id)),
         description: combinedTeam.description,
-        id: asNumber(combinedTeam.id),
+        id: Number(combinedTeam.id),
         name: combinedTeam.name,
         role: maintainedTeams.has(combinedTeam.id.toString()) ? GitHubTeamRole.Maintainer : GitHubTeamRole.Member,
       }
@@ -78,7 +77,7 @@ router.get('/teams', asyncHandler(async (req: ILocalApiRequest, res, next) => {
       teams: organizationTeams.map(qt => {
         const team = qt.team;
         const t = team.toSimpleJsonObject();
-        if (broadTeams.has(asNumber(t.id))) {
+        if (broadTeams.has(Number(t.id))) {
           t['broad'] = true;
         }
         return t;

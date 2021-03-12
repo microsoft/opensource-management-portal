@@ -9,7 +9,7 @@ const querystring = require('querystring');
 
 import { Operations } from '../../business/operations';
 import { Organization, IAdministratorBasics, IGitHubOrganizationResponse } from '../../business/organization';
-import { requireJson, asNumber } from '../../utils';
+import { requireJson } from '../../utils';
 import { OrganizationMember } from '../../business/organizationMember';
 import { IReportsContext } from './task';
 import { ICorporateLink } from '../../business/corporateLink';
@@ -90,7 +90,7 @@ async function ensureAllUserLinks(context: IReportsContext, operations: Operatio
   for (let i = 0; i < links.length; i++) {
     const id = links[i].thirdPartyId;
     if (id) {
-      set.set(asNumber(id), links[i]);
+      set.set(Number(id), links[i]);
     }
   }
   context.linkData = set;

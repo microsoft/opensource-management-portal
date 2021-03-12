@@ -26,8 +26,8 @@ export default class PublicReposFastFilter {
   }
 
   tryGetSocialMediaImage(repository: Repository) {
-    const asNumber = Number(repository.id);
-    return this.#socialMediaImages ? this.#socialMediaImages.get(asNumber) : null;
+    const num = Number(repository.id);
+    return this.#socialMediaImages ? this.#socialMediaImages.get(num) : null;
   }
 
   async initialize() {

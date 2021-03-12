@@ -7,7 +7,7 @@ import { ReposAppRequest, IReposAppResponse, UserAlertType, IDictionary, IProvid
 
 import { ICorporateLink } from '../business/corporateLink';
 
-import { addBreadcrumb, wrapError, asNumber } from '../utils';
+import { addBreadcrumb, wrapError } from '../utils';
 import { Operations } from "../business/operations";
 import { GitHubTeamRole } from "../business/team";
 import { UserContext } from "./aggregate";
@@ -449,7 +449,7 @@ export class IndividualContext {
     if (this._aggregations) {
       return this._aggregations;
     }
-    this._aggregations = new UserContext(this._operations, this._operations.providers.queryCache, asNumber(this.getGitHubIdentity().id));
+    this._aggregations = new UserContext(this._operations, this._operations.providers.queryCache, Number(this.getGitHubIdentity().id));
     return this._aggregations;
   }
 

@@ -33,7 +33,6 @@ import { IMailProvider } from './lib/mailProvider';
 import { GitHubRepositoryPermission } from './entities/repositoryMetadata/repositoryMetadata';
 import { IOrganizationSettingProvider } from './entities/organizationSettings/organizationSettingProvider';
 import { ILinkProvider } from './lib/linkProviders';
-import { asNumber } from './utils';
 import { IAuditLogRecordProvider } from './entities/auditLogRecord/auditLogRecordProvider';
 import { ICacheHelper } from './lib/caching';
 import { ICampaignHelper } from './lib/campaigns';
@@ -504,7 +503,7 @@ export class ErrorHelper {
       if (type === 'number') {
         return status;
       } else if (type === 'string') {
-        return asNumber(status);
+        return Number(status);
       } else {
         console.warn(`Unsupported error.status type: ${type}`);
         return null;

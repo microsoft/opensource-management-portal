@@ -8,7 +8,7 @@ import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
 import { IProviders, ReposAppRequest, UserAlertType } from '../../transitional';
-import { sortByCaseInsensitive, asNumber } from '../../utils';
+import { sortByCaseInsensitive } from '../../utils';
 import GitHubApplication from '../../business/application';
 import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
 
@@ -92,7 +92,7 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
         app,
         installationId: vi.id,
       });
-      o.id = asNumber(vi.target_id);
+      o.id = Number(vi.target_id);
       if (!o.dynamicSettings && vi.target_type === 'Organization') {
         try {
           o.dynamicSettings = await organizationSettingsProvider.getOrganizationSetting(vi.target_id.toString());

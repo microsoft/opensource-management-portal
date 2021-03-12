@@ -7,7 +7,7 @@ import { Team, GitHubTeamRole, ITeamMembershipRoleState } from '../business/team
 import { Operations } from '../business/operations';
 import { IndividualContext } from '../user';
 import { ErrorHelper, NoCacheNoBackground } from '../transitional';
-import { asNumber, addArrayToSet } from '../utils';
+import { addArrayToSet } from '../utils';
 import { IMail } from '../lib/mailProvider';
 import { OrganizationMembershipState } from '../business/organization';
 
@@ -39,12 +39,12 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
 
   maximimumAllowedMembers(): number {
     const value = this.#operations.config.github?.teams?.maximumMembersToAllowUpgrade;
-    return value ? asNumber(value) : 0;
+    return value ? Number(value) : 0;
   }
 
   maximumAllowedMaintainers(): number {
     const value = this.#operations.config.github?.teams?.maximumMaintainersToAllowUpgrade;
-    return value ? asNumber(value) : 0;
+    return value ? Number(value) : 0;
   }
 
   async isTeamEligible(cacheOk?: boolean): Promise<ISelfServiceAllowedResult | string> {

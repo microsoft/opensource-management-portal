@@ -10,7 +10,7 @@ const router = express.Router();
 import { IReposError, ReposAppRequest, IProviders, UserAlertType } from '../../transitional';
 import { IApprovalProvider } from '../../entities/teamJoinApproval/approvalProvider';
 import { TeamJoinApprovalEntity } from '../../entities/teamJoinApproval/teamJoinApproval';
-import { safeLocalRedirectUrl, asNumber } from '../../utils';
+import { safeLocalRedirectUrl } from '../../utils';
 import { Operations } from '../../business/operations';
 import { Team } from '../../business/team';
 import { Organization } from '../../business/organization';
@@ -41,7 +41,7 @@ export async function Approvals_getTeamMaintainerApprovals(operations: Operation
 }
 
 async function hydrateRequest(operations: Operations, request: TeamJoinApprovalEntity): Promise<ApprovalPair> {
-  const teamIdAsNumber = asNumber(request.teamId);
+  const teamIdAsNumber = Number(request.teamId);
   const organizationName = request.organizationName;
   const team = operations.getTeamByIdWithOrganization(teamIdAsNumber, organizationName);
   await team.getDetails();
@@ -127,7 +127,7 @@ router.get('/:requestid', asyncHandler(async function (req: ReposAppRequest, res
   try {
     pendingRequest = await approvalProvider.getApprovalEntity(requestid);
     organization = operations.getOrganization(pendingRequest.organizationName);
-    team2 = organization.team(asNumber(pendingRequest.teamId));
+    team2 = organization.team(Number(pendingRequest.teamId));
     await team2.getDetails();
     const isOrgSudoer = await organization.isSudoer(username);
     isMaintainer = isOrgSudoer;

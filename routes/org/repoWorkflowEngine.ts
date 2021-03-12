@@ -10,7 +10,7 @@ import path from 'path';
 
 import recursiveReadDirectory from 'recursive-readdir';
 
-import { wrapError, sleep, asNumber } from '../../utils';
+import { wrapError, sleep } from '../../utils';
 import { Organization } from '../../business/organization';
 import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission, GitHubRepositoryPermissions } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { Repository } from '../../business/repository';
@@ -120,7 +120,7 @@ export class RepoWorkflowEngine {
       let { teamId, permission, teamName } = request.initialTeamPermissions[i];
       if (teamId && !teamName) {
         try {
-          const team = organization.team(asNumber(teamId));
+          const team = organization.team(Number(teamId));
           await team.getDetails();
           if (team.name) {
             teamName = team.name;
@@ -128,7 +128,7 @@ export class RepoWorkflowEngine {
         } catch (noFail) { /* ignore */ }
       }
       if (teamId && permission) {
-        output.push(await addTeamPermission(organization, repoName, asNumber(teamId), teamName, permission));
+        output.push(await addTeamPermission(organization, repoName, Number(teamId), teamName, permission));
       }
     }
     if (request.initialTemplate) {

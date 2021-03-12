@@ -9,7 +9,6 @@ import { Repository } from './repository';
 import { IPersonalizedUserAggregateRepositoryPermission, GraphManager } from './graphManager';
 import { IRequestTeamPermissions } from '../middleware/github/teamPermissions';
 import { GitHubRepositoryPermission, RepositoryMetadataEntity, RepositoryLockdownState } from '../entities/repositoryMetadata/repositoryMetadata';
-import { asNumber } from '../utils';
 import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repositoryMetadataProvider';
 import { TeamRepositoryPermission } from './teamRepositoryPermission';
 
@@ -135,10 +134,10 @@ export class RepositorySearch {
     }
     const mappedMetadata = new Map<number, RepositoryMetadataEntity>();
     for (const metadata of metadatas) {
-      mappedMetadata.set(asNumber(metadata.repositoryId), metadata);
+      mappedMetadata.set(Number(metadata.repositoryId), metadata);
     }
     this.repos = this.repos.filter(repo => {
-      const id = asNumber(repo.id);
+      const id = Number(repo.id);
       switch (this.metadataType) {
         case 'with-metadata': {
           return mappedMetadata.has(id);
@@ -248,14 +247,14 @@ export class RepositorySearch {
               ok = true;
             }
             if (ok) {
-              repos.add(asNumber(personalized.repository.id));
+              repos.add(Number(personalized.repository.id));
             }
           });
           break;
         }
       }
       this.repos = this.repos.filter(repo => {
-        return repos.has(asNumber(repo.id));
+        return repos.has(Number(repo.id));
       });
     }
     return this;

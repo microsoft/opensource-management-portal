@@ -8,7 +8,6 @@ import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
 import { IProviders, NoCacheNoBackground, ReposAppRequest } from '../../transitional';
-import { asNumber } from '../../utils';
 import GitHubApplication, { IGitHubAppInstallation } from '../../business/application';
 import { OrganizationSetting, IBasicGitHubAppInstallation, SpecialTeam, ISpecialTeam } from '../../entities/organizationSettings/organizationSetting';
 import { IndividualContext } from '../../user';
@@ -17,7 +16,7 @@ import { Organization, OrganizationMembershipRole, OrganizationMembershipState }
 
 router.use('/:appId', asyncHandler(async function (req, res, next) {
   const providers = req.app.settings.providers as IProviders;
-  const appId = asNumber(req.params.appId);
+  const appId = Number(req.params.appId);
   const app = providers.operations.getApplicationById(appId);
   if (app) {
     req['githubApplication'] = app;
@@ -67,7 +66,7 @@ router.use('/:appId/installations/:installationId', asyncHandler(async function 
   const installationIdString = req.params.installationId;
   const providers = req.app.settings.providers as IProviders;
   const config = req.app.settings['runtimeConfig'];
-  const installationId = asNumber(installationIdString);
+  const installationId = Number(installationIdString);
   const installation = await githubApplication.getInstallation(installationId);
   const invalidReasons = GitHubApplication.isInvalidInstallation(installation);
   if (invalidReasons.length) {
@@ -272,9 +271,9 @@ router.post('/:appId/installations/:installationId', asyncHandler(async function
             default:
               throw new Error('Unsupported team type');
           }
-          ds.specialTeams = ds.specialTeams.filter(notThisTeam => notThisTeam.teamId !== asNumber(teamId));
+          ds.specialTeams = ds.specialTeams.filter(notThisTeam => notThisTeam.teamId !== Number(teamId));
           if (isTeamAdd) {
-            ds.specialTeams.push({ teamId: asNumber(teamId), specialTeam: specialTeamType });
+            ds.specialTeams.push({ teamId: Number(teamId), specialTeam: specialTeamType });
           }
         }
         const key = changeProperty.substr(0, i).trim();

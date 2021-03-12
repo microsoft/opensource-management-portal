@@ -18,7 +18,6 @@ import { MemberSearch } from '../business/memberSearch';
 import { Team } from '../business/team';
 import { TeamMember } from '../business/teamMember';
 import { OrganizationMember } from '../business/organizationMember';
-import { asNumber } from '../utils';
 import { Organization } from '../business/organization';
 
 interface IPeopleSearchRequest extends RequestWithSystemwidePermissions {
@@ -77,7 +76,7 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
     options.filter = '2fa_disabled';
   }
   const { crossOrganizationMembers, organizationMembers, teamMembers } = org ? await getPeopleForOrganization(operations, org, options, team2) : await getPeopleAcrossOrganizations(operations, options, team2);
-  const page = req.query.page_number ? asNumber(req.query.page_number) : 1;
+  const page = req.query.page_number ? Number(req.query.page_number) : 1;
   let phrase = req.query.q as string;
   let type = req.query.type as string;
   const validTypes = new Set([

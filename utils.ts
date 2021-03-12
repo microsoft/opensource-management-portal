@@ -31,16 +31,6 @@ export function getOffsetMonthRange(offsetMonths?: number) {
   return { start: start.toJSDate(), end: end.toJSDate() };
 }
 
-export function asNumber(value: any) {
-  if (typeof(value) === 'number') {
-    return value;
-  } else if (typeof(value) === 'string') {
-    return parseInt(value, 10);
-  }
-  const typeName = typeof(value);
-  throw new Error(`Unsupported type ${typeName} for value ${value} (asNumber)`);
-}
-
 export function daysInMilliseconds(days: number): number {
   return 1000 * 60 * 60 * 24 * days;
 }

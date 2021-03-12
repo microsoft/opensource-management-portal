@@ -15,7 +15,7 @@ import { OrganizationMember } from './organizationMember';
 import { Team, GitHubTeamRole, ITeamMembershipRoleState } from './team';
 import { Repository } from "./repository";
 
-import { wrapError, asNumber } from '../utils';
+import { wrapError } from '../utils';
 import { StripGitHubEntity } from '../lib/github/restApi';
 import { GitHubResponseType } from '../lib/github/endpointEntities';
 import { AppPurpose, GitHubAppAuthenticationType } from '../github';
@@ -219,7 +219,7 @@ export class Organization {
     this._getAuthorizationHeader = getAuthorizationHeader;
     this._getSpecificAuthorizationHeader = getSpecificAuthorizationHeader;
     if (settings && settings.organizationId) {
-      this.id = asNumber(settings.organizationId);
+      this.id = Number(settings.organizationId);
     }
   }
 
@@ -1184,14 +1184,6 @@ export class Organization {
     if (throwIfMissing) {
       throw new Error(`Missing configured organization "${this.name}" special team ${specialTeam} - ${friendlyName}`);
     }
-    // const value = settings[propertyName];
-    // if (value && Array.isArray(value)) {
-    //   const asNumbers: number[] = [];
-    //   for (let i = 0; i < value.length; i++) {
-    //     asNumbers.push(parseInt(value[i], 10));
-    //   }
-    //   return asNumbers;
-    // }
     const teams: number[] = [];
     if (teamId) {
       teams.push(teamId);

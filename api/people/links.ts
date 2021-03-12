@@ -13,7 +13,7 @@ import { Operations, ICrossOrganizationMembersResult } from '../../business/oper
 import { IApiRequest } from '../../middleware/apiReposAuth';
 import postLinkApi from './link';
 import { ErrorHelper } from '../../transitional';
-import { asNumber, wrapError } from '../../utils';
+import { wrapError } from '../../utils';
 
 const router = express.Router();
 
@@ -239,7 +239,7 @@ async function getByThirdPartyId(thirdPartyId: string, apiVersion, operations: O
   const isExpandedView = extendedLinkApiVersions.includes(apiVersion);
   const entry = {
     github: {
-      id: asNumber(link.thirdPartyId),
+      id: Number(link.thirdPartyId),
       login: account.login,
       organizations: undefined,
     },

@@ -10,7 +10,7 @@ const router = express.Router();
 import { Operations } from '../business/operations';
 import { ReposAppRequest, ErrorHelper, UserAlertType } from '../transitional';
 import { AuditLogRecord } from '../entities/auditLogRecord/auditLogRecord';
-import { daysInMilliseconds, asNumber } from '../utils';
+import { daysInMilliseconds } from '../utils';
 import { AuditEvents } from '../entities/auditLogRecord';
 import { Repository } from '../business/repository';
 import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
@@ -152,13 +152,13 @@ async function undoRepoCollaboratorAdminRepoPermissionAsync(operations: Operatio
   if (!operation.organizationId) {
     throw new Error('No organization ID stored in the record');
   }
-  const organization = operations.getOrganizationById(asNumber(operation.organizationId));
+  const organization = operations.getOrganizationById(Number(operation.organizationId));
   if (!operation.repositoryId) {
     throw new Error('No repository ID');
   }
   let repository: Repository = null;
   try {
-    repository = await organization.getRepositoryById(asNumber(operation.repositoryId));
+    repository = await organization.getRepositoryById(Number(operation.repositoryId));
   } catch (getRepositoryError) {
     if (ErrorHelper.IsNotFound(getRepositoryError)) {
       throw new Error(`The repository ${operation.repositoryName} could not be retrieved by ID ${operation.repositoryId}. Has this repository been deleted?`);
@@ -204,13 +204,13 @@ async function undoTeamAdminRepoPermissionAsync(operations: Operations, entry: I
   if (!operation.organizationId) {
     throw new Error('No organization ID stored in the record');
   }
-  const organization = operations.getOrganizationById(asNumber(operation.organizationId));
+  const organization = operations.getOrganizationById(Number(operation.organizationId));
   if (!operation.repositoryId) {
     throw new Error('No repository ID');
   }
   let repository: Repository = null;
   try {
-    repository = await organization.getRepositoryById(asNumber(operation.repositoryId));
+    repository = await organization.getRepositoryById(Number(operation.repositoryId));
   } catch (getRepositoryError) {
     if (ErrorHelper.IsNotFound(getRepositoryError)) {
       throw new Error(`The repository ${operation.repositoryName} could not be retrieved by ID ${operation.repositoryId}. Has this repository been deleted?`);
@@ -220,7 +220,7 @@ async function undoTeamAdminRepoPermissionAsync(operations: Operations, entry: I
   if (!operation.teamId) {
     throw new Error('No team ID');
   }
-  const teamId = asNumber(operation.teamId);
+  const teamId = Number(operation.teamId);
   const team = organization.team(teamId);
   try {
     await team.getDetails();

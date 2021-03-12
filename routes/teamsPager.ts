@@ -11,7 +11,6 @@ import { ReposAppRequest } from '../transitional';
 import { Operations, ICrossOrganizationMembershipByOrganization } from '../business/operations';
 import { Team } from '../business/team';
 import { UserContext } from '../user/aggregate';
-import { asNumber } from '../utils';
 
 import TeamSearch from '../business/teamSearch';
 
@@ -79,7 +78,7 @@ export default asyncHandler(async function(req: ReposAppRequest, res: express.Re
   const aggregations = req.individualContext.aggregations;
   const orgName = isCrossOrg ? null : req.organization.name.toLowerCase();
   const { teams, yourTeamsMap, totalMemberships, totalMaintainerships } = await getTeamsData(isCrossOrg ? null : orgName.toLowerCase(), operations, aggregations);
-  const page = req.query.page_number ? asNumber(req.query.page_number) : 1;
+  const page = req.query.page_number ? Number(req.query.page_number) : 1;
   let phrase = req.query.q;
 
   let set = req.query.set;

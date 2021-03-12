@@ -18,7 +18,6 @@ import { IProviders, MassagePermissionsToGitHubRepositoryPermission } from '../t
 import { Organization, OrganizationMembershipRole } from './organization';
 import { OrganizationMemberCacheEntity } from '../entities/organizationMemberCache/organizationMemberCache';
 import { Operations } from './operations';
-import { asNumber } from '../utils';
 import { Team, GitHubTeamRole } from './team';
 import { TeamMemberCacheEntity } from '../entities/teamMemberCache/teamMemberCache';
 import { Repository, GitHubCollaboratorType } from './repository';
@@ -145,8 +144,8 @@ export default class QueryCache {
 
   private hydrateTeamMember(entity: TeamMemberCacheEntity): IQueryCacheTeamMembership {
     try {
-      const organization = this.operations.getOrganizationById(asNumber(entity.organizationId));
-      const team = organization.team(asNumber(entity.teamId));
+      const organization = this.operations.getOrganizationById(Number(entity.organizationId));
+      const team = organization.team(Number(entity.teamId));
       return {
         team,
         cacheEntity: entity,
@@ -419,13 +418,13 @@ export default class QueryCache {
 
   private hydrateTeam(entity: TeamCacheEntity): IQueryCacheTeam {
     try {
-      const organization = this.operations.getOrganizationById(asNumber(entity.organizationId));
+      const organization = this.operations.getOrganizationById(Number(entity.organizationId));
       const entityBasics = {...entity.teamDetails};
-      entityBasics.id = asNumber(entity.teamId);
+      entityBasics.id = Number(entity.teamId);
       entityBasics.slug = entity.teamSlug;
       entityBasics.name = entity.teamName;
       entityBasics.description = entity.teamDescription;
-      const team = organization.team(asNumber(entity.teamId), entityBasics);
+      const team = organization.team(Number(entity.teamId), entityBasics);
       return {
         team,
         cacheEntity: entity,
@@ -642,8 +641,8 @@ export default class QueryCache {
 
   private hydrateTeamPermission(cacheEntity: RepositoryTeamCacheEntity): IQueryCacheTeamRepositoryPermission {
     try {
-      const organization = this.operations.getOrganizationById(asNumber(cacheEntity.organizationId));
-      const team = organization.team(asNumber(cacheEntity.teamId));
+      const organization = this.operations.getOrganizationById(Number(cacheEntity.organizationId));
+      const team = organization.team(Number(cacheEntity.teamId));
       const iid = cacheEntity.repositoryId;
       const repository = organization.repository(cacheEntity.repositoryName, {
         id: cacheEntity.repositoryId, // a string version of repositoryId FYI
@@ -821,7 +820,7 @@ export default class QueryCache {
   }
 
   private hydrateRepositoryCollaborator(cacheEntity: RepositoryCollaboratorCacheEntity): IQueryCacheRepositoryCollaborator {
-    const organization = this.operations.getOrganizationById(asNumber(cacheEntity.organizationId));
+    const organization = this.operations.getOrganizationById(Number(cacheEntity.organizationId));
     const iid = cacheEntity.repositoryId;
     const repository = organization.repository(cacheEntity.repositoryName, {
       id: cacheEntity.repositoryId,
@@ -919,7 +918,7 @@ export default class QueryCache {
     return rawEntities.map(cacheEntity => {
       try {
         return {
-          organization: this.operations.getOrganizationById(asNumber(cacheEntity.organizationId)),
+          organization: this.operations.getOrganizationById(Number(cacheEntity.organizationId)),
           role: cacheEntity.role,
           cacheEntity,
           userId: cacheEntity.userId,

@@ -17,7 +17,7 @@ import { Organization } from '../business/organization';
 import { IPersonalizedUserAggregateRepositoryPermission } from '../business/graphManager';
 import { IRequestTeamPermissions } from '../middleware/github/teamPermissions';
 import { UserContext } from '../user/aggregate';
-import { asNumber, daysInMilliseconds } from '../utils';
+import { daysInMilliseconds } from '../utils';
 import { TeamRepositoryPermission } from '../business/teamRepositoryPermission';
 
 interface IGetReposAndOptionalTeamPermissionsResponse {
@@ -80,7 +80,7 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: express
   let specificTeamId = team2 ? team2.id : null;
   const { reposData, userRepos, specificTeamRepos } = await getReposAndOptionalTeamPermissions(organizationId, operations, queryCache, teamsType, team2, specificTeamId, individualContext.aggregations);
 
-  const page = req.query.page_number ? asNumber(req.query.page_number) : 1;
+  const page = req.query.page_number ? Number(req.query.page_number) : 1;
 
   let phrase = req.query.q as string;
 
@@ -101,7 +101,7 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: express
     metadataType = null;
   }
 
-  const createdSinceValue = req.query.cs ? asNumber(req.query.cs) : null;
+  const createdSinceValue = req.query.cs ? Number(req.query.cs) : null;
   let createdSince = null;
   if (createdSinceValue) {
     createdSince = new Date((new Date()).getTime() - daysInMilliseconds(createdSinceValue));

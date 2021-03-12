@@ -9,7 +9,7 @@ import moment from 'moment';
 
 import { IReposJob } from '../../app';
 import { AuditLogRecord } from '../../entities/auditLogRecord/auditLogRecord';
-import { sleep, asNumber } from '../../utils';
+import { sleep } from '../../utils';
 import { Operations } from '../../business/operations';
 import { Organization } from '../../business/organization';
 import { AuditLogSource } from '../../entities/auditLogRecord';
@@ -48,7 +48,7 @@ async function tryGetRepositoryId(operations: Operations, reposToIds: Map<string
       const repository = organization.repository(repoName);
       const repoDetails = await repository.getDetails();
       if (repoDetails.headers['x-ratelimit-remaining']) {
-        const rl = asNumber(repoDetails.headers['x-ratelimit-remaining']);
+        const rl = Number(repoDetails.headers['x-ratelimit-remaining']);
         if (rl < 5000) {
           console.log('Slowing down and resting a minute...');
           await sleep(1000 * 60);
@@ -100,7 +100,7 @@ export default async function migration({ providers }: IReposJob) {
   const usernamesToId = new Map<string, boolean | number>();
   const allLinks = await linkProvider.getAll();
   for (const link of allLinks) {
-    usernamesToId.set(link.thirdPartyUsername.toLowerCase(), asNumber(link.thirdPartyId));
+    usernamesToId.set(link.thirdPartyUsername.toLowerCase(), Number(link.thirdPartyId));
   }
 
   const reposToId = new Map<string, boolean | number>();

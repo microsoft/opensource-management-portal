@@ -19,7 +19,7 @@ import { GitHubTokenManager } from '../github/tokenManager';
 
 import RenderHtmlMail from '../lib/emailRender';
 
-import { wrapError, sortByCaseInsensitive, asNumber } from '../utils';
+import { wrapError, sortByCaseInsensitive } from '../utils';
 import { ICorporateLink } from './corporateLink';
 import { Repository } from './repository';
 import { RestLibrary } from '../lib/github';
@@ -301,7 +301,7 @@ export class Operations {
     if (hasModernGitHubApps && organizationSettingsProvider) {
       const dynamicOrganizations = (await organizationSettingsProvider.queryAllOrganizations()).filter(dynamicOrg => dynamicOrg.active === true && !dynamicOrg.hasFeature('ignore'));
       this._dynamicOrganizationSettings = dynamicOrganizations;
-      this._dynamicOrganizationIds = new Set(dynamicOrganizations.map(org => asNumber(org.organizationId)));
+      this._dynamicOrganizationIds = new Set(dynamicOrganizations.map(org => Number(org.organizationId)));
     }
     this._tokenManager.getAppIds().map(appId => {
       const { friendlyName } = this._tokenManager.getAppById(appId);
@@ -355,7 +355,7 @@ export class Operations {
       this._dynamicOrganizationSettings.map(entry => {
         if (entry.active) {
           const org = this.getOrganization(entry.organizationName.toLowerCase());
-          this._organizationIds.set(asNumber(entry.organizationId), org);
+          this._organizationIds.set(Number(entry.organizationId), org);
         }
       });
       // This check only runs on _static_ configuration entries, since adopted
@@ -406,7 +406,7 @@ export class Operations {
     if (!settings) {
       throw new Error(`This application is not configured for the ${name} organization`);
     }
-    const hasDynamicSettings = this._dynamicOrganizationIds && settings.organizationId && this._dynamicOrganizationIds.has(asNumber(settings.organizationId));
+    const hasDynamicSettings = this._dynamicOrganizationIds && settings.organizationId && this._dynamicOrganizationIds.has(Number(settings.organizationId));
     return new Organization(this,
       name,
       settings,
@@ -547,7 +547,7 @@ export class Operations {
   getPrimaryOrganizationName(): string {
     const id = this.config.github && this.config.github.operations && this.config.github.operations.primaryOrganizationId ? this.config.github.operations.primaryOrganizationId : null;
     if (id) {
-      return this.getOrganizationById(asNumber(id)).name;
+      return this.getOrganizationById(Number(id)).name;
     }
     return this.getOrganizationOriginalNames()[0];
   }

@@ -9,7 +9,6 @@ import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetad
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
 import { Type } from './type';
 import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresGetByID, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
-import { asNumber } from '../../utils';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
 
 export interface IBasicGitHubAppInstallation {
@@ -209,7 +208,7 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
       for (const value of arr) {
         settings.specialTeams.push({
           specialTeam: SpecialTeam.Everyone,
-          teamId: asNumber(value),
+          teamId: Number(value),
         });  
       }
     }
@@ -220,7 +219,7 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
       for (const value of arr) {
         settings.specialTeams.push({
           specialTeam: SpecialTeam.SystemRead,
-          teamId: asNumber(value),
+          teamId: Number(value),
         });  
       }
     }
@@ -231,7 +230,7 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
       for (const value of arr) {
         settings.specialTeams.push({
           specialTeam: SpecialTeam.SystemWrite,
-          teamId: asNumber(value),
+          teamId: Number(value),
         });  
       }
     }
@@ -242,7 +241,7 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
       for (const value of arr) {
         settings.specialTeams.push({
           specialTeam: SpecialTeam.SystemAdmin,
-          teamId: asNumber(value),
+          teamId: Number(value),
         });  
       }
     }
@@ -253,7 +252,7 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
       for (const value of arr) {
         settings.specialTeams.push({
           specialTeam: SpecialTeam.Sudo,
-          teamId: asNumber(value),
+          teamId: Number(value),
         });  
       }
     }
@@ -264,7 +263,7 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
       for (const value of arr) {
         settings.specialTeams.push({
           specialTeam: SpecialTeam.GlobalSudo,
-          teamId: asNumber(value),
+          teamId: Number(value),
         });  
       }
     }
