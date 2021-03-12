@@ -12,7 +12,7 @@ import { ICacheOptions, IReposError, IGetAuthorizationHeader, ErrorHelper } from
 import * as common from './common';
 
 import { wrapError } from '../utils';
-import { ICorporateLink } from './corporateLink';
+import { corporateLinkToJson, ICorporateLink } from './corporateLink';
 import { Organization, OrganizationMembershipState } from './organization';
 import { AppPurpose } from '../github';
 import { ILinkProvider } from '../lib/linkProviders';
@@ -20,6 +20,11 @@ import { ILinkProvider } from '../lib/linkProviders';
 interface IRemoveOrganizationMembershipsResult {
   error?: IReposError;
   history: string[];
+}
+
+export enum AccountJsonFormat {
+  GitHub = 'github',
+  UplevelWithLink = 'github+link',
 }
 
 const primaryAccountProperties = [
@@ -42,6 +47,32 @@ export class Account {
   private _updated_at?: any;
 
   private _originalEntity?: any;
+
+  public asJson(format: AccountJsonFormat = AccountJsonFormat.GitHub) {
+    const basic = {
+      avatar_url: this.avatar_url,
+      id: this.id,
+      login: this.login,
+      created_at: this.created_at,
+      updated_at: this.updated_at,
+    }
+    switch (format) {
+      case AccountJsonFormat.GitHub: {
+        return basic;
+      }
+      case AccountJsonFormat.UplevelWithLink: {
+        const link = this._link ? corporateLinkToJson(this._link) : undefined;
+        return {
+          account: basic,
+          isLinked: !!link,
+          link,
+        };
+      }
+      default: {
+        throw new Error(`Unsupported asJson format: ${format}`);
+      }
+    }
+  }
 
   public get id(): number {
     return this._id;
@@ -146,17 +177,18 @@ export class Account {
       // If a GitHub account is deleted, this would fail
       console.dir(getDetailsError);
     }
+    await this.tryGetLink();
+    return this;
+  }
+
+  async tryGetLink() {
     const operations = this._operations;
     try {
-      let link: ICorporateLink = await operations.getLinkWithOverhead(this._id.toString(), options || {});
-      if (link) {
-        this._link = link;
-      }
+      this._link = await operations.tryGetLink(this._id.toString());
     } catch (getLinkError) {
       // We do not assume that the link exists...
       console.dir(getLinkError);
     }
-    return this;
   }
 
   async getRecentEventsFirstPage(options?: ICacheOptions): Promise<any[]> {
@@ -220,9 +252,9 @@ export class Account {
   }
 
   async getDetailsAndDirectLink(): Promise<Account> {
-    // Instead of using the 'overhead' method (essentially cached, but from all links),
-    // this uses the provider directly to ensure an accurate immediate, but by-individual
-    // call. Most useful for verified results or when terminating accounts.
+    if (!this._operations.providers.linkProvider) {
+      throw new Error('getDetailsAndDirectLink: this method can only be called when a linkProvider is used');
+    }
     try {
       await this.getDetails();
     } catch (getDetailsError) {

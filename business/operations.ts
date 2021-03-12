@@ -1264,10 +1264,20 @@ export class Operations {
     return addresses;
   }
 
-  async getLinkWithOverhead(id: string, options?): Promise<ICorporateLink> {
-    // TODO: remove function?
-    console.log('* * * * * * * * * * * * /sd/sd/sd/sd/sd/sd getLinkWithOverhead * * * * * * * * * * * * * * * * * * * * ');
-    // This literally retrieves the cache of all links. Which is silly, but quick and easy for now.
+  async tryGetLink(id: string, options?): Promise<ICorporateLink> {
+    if (this.providers.linkProvider) {
+      try {
+        const link = await this.getLinkByThirdPartyId(id);
+        return link;
+      } catch (error) {
+        if (ErrorHelper.IsNotFound(error)) {
+          return null;
+        } else {
+          throw error;
+        }
+      }
+    }
+    // This literally retrieves the cache of all links, built from a time before link provider.
     const links = await this.getLinks(options);
     const reduced = links.filter(link => {
       // was 'ghid' in the prior implementation before link interfaces
@@ -1277,7 +1287,6 @@ export class Operations {
       throw new Error(`Multiple links were present for the same GitHub user ${id}`);
     }
     return reduced.length === 1 ? reduced[0] : null;
-    // TODO: return value went from false to null, is that new falsy ok?
   }
 
   getTeamsWithMembers(options?: ICrossOrganizationTeamMembership): Promise<any> {
