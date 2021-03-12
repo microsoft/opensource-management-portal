@@ -2,6 +2,14 @@
   "tool": "Credential Scanner",
   "suppressions": [
     {
+      "hash": "hLxaDegPBvxW8QFiVBZeXq7RErZDZP+M7ryxnpKJxKg=",
+      "_justification": "False Positive"
+    },
+    {
+      "hash": "TJAhsZMnZssesatkdIgEZTMKU0hzLv9jzufESj01AF8=",
+      "_justification": "False Positive"
+    },
+    {
       "hash": "34SQRUna0pP6Y18G6IYdIa3I9gBv2ON5ZxoCDdeHqbk=",
       "_justification": "False Positive"
     },
