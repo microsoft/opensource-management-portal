@@ -6,25 +6,25 @@
 block content
   div.container
       h2 Link editor
-      form(method='post', action='/organization/whois/link/' + query.link.id)
-        p Link ID #{query.link.id}
+      form(method='post', action='/organization/whois/link/' + (query.link && query.link.id || ""))
+        p Link ID #{query.link ? query.link.id : "None"}
         p.text-danger Careful: this data is not validated on save
         h6 Corporate ID
-        input.form-control(type='text', name='corporateId', value=query.link.corporateId)
+        input.form-control(type='text', name='corporateId', value=query.link && query.link.corporateId)
         h6 Corporate username
-        input.form-control(type='text', name='corporateUsername', value=query.link.corporateUsername)
+        input.form-control(type='text', name='corporateUsername', value=query.link && query.link.corporateUsername)
         h6 Corporate display name
-        input.form-control(type='text', name='corporateDisplayName', value=query.link.corporateDisplayName)
+        input.form-control(type='text', name='corporateDisplayName', value=query.link && query.link.corporateDisplayName)
         h6 GitHub username
-        input.form-control(type='text', name='thirdPartyUsername', value=query.link.thirdPartyUsername)
+        input.form-control(type='text', name='thirdPartyUsername', value=query.link && query.link.thirdPartyUsername || query.gitHubUserInfo.login)
         h6 GitHub user ID
-        input.form-control(type='text', name='thirdPartyId', value=query.link.thirdPartyId)
+        input.form-control(type='text', name='thirdPartyId', value=query.link && query.link.thirdPartyId || query.gitHubUserInfo.id)
         h6 GitHub user avatar
-        input.form-control(type='text', name='thirdPartyAvatar', value=query.link.thirdPartyAvatar)
+        input.form-control(type='text', name='thirdPartyAvatar', value=query.link && query.link.thirdPartyAvatar || query.gitHubUserInfo.avatar_url)
         h6 Service account designation
-        input.form-control(type='checkbox', name='isServiceAccount', value='yes', checked=query.link.isServiceAccount)
+        input.form-control(type='checkbox', name='isServiceAccount', value='yes', checked=query.link && query.link.isServiceAccount)
         h6 Service account mail
-        input.form-control(type='text', name='serviceAccountMail', value=query.link.serviceAccountMail)
+        input.form-control(type='text', name='serviceAccountMail', value=query.link && query.link.serviceAccountMail)
         p &nbsp;
         p
-          input.btn.btn-default(type='submit', value='Save link', name='save-link')
+          input.btn.btn-default(type='submit', value=(query.link ? 'Save' : 'Create') + ' link', name='save-link')

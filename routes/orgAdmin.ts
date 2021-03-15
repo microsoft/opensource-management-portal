@@ -362,6 +362,53 @@ router.post('/whois/link/:linkid', asyncHandler(async function (req: ReposAppReq
   }
 }));
 
+router.post('/whois/link/', asyncHandler(async function (req: ReposAppRequest, res, next) {
+  // set isServiceAccount to true only if it contains the value "yes", otherwise use false
+  req.body['isServiceAccount'] = req.body['isServiceAccount'] === 'yes';
+
+  // create link object with the values received from the request
+  const link:ICorporateLink  = {
+    corporateId: req.body["corporateId"],
+    corporateUsername: req.body["corporateUsername"],
+    corporateDisplayName: req.body["corporateDisplayName"],
+    thirdPartyId: req.body["thirdPartyId"],
+    thirdPartyUsername: req.body["thirdPartyUsername"],
+    thirdPartyAvatar: req.body["thirdPartyAvatar"],
+    isServiceAccount: req.body["isServiceAccount"],
+    serviceAccountMail: req.body["serviceAccountMail"],
+    // these both values are currently not transferred, but required by the link object
+    corporateMailAddress: "",
+    corporateAlias: "",
+  }
+  const messages = [];
+
+  // Add only the non empty strings to the message log
+  for (const [key, value] of Object.entries(link)) {
+    if (value) {
+    messages.push(`${key}: value has been set to "${value}"`);
+    }
+  }
+
+  const operations = req.app.settings.operations as Operations;
+  const linkProvider = operations.linkProvider as PostgresLinkProvider;
+
+  // try to create link, if it fails it will directly throw into the users face
+  const linkId = await linkProvider.createLink(link);
+  // Add the created link id to the messages
+  messages.push(`Link ID ${linkId}`)
+
+  // render the output
+  req.individualContext.webContext.render({
+      view: 'organization/whois/linkUpdate',
+      title: `Updating link ${linkId}`,
+      state: {
+        messages,
+        linkId,
+      },
+  });
+
+}));
+
 router.post('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {
   const thirdPartyId = req.params.githubid;
   const markAsServiceAccount = req.body['mark-as-service-account'];
