@@ -154,23 +154,12 @@ block content
           nav(style='margin-bottom:48px')
             ul.pager
               li.previous(class=(previous_possible ? '' : 'invisible'))
-                if previous_possible
-                  a(href='?page_number=' + (search.page-1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                a(href='?page_number=' + (search.page-1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
                   span(aria-hidden="true") &larr; Previous
-                else
-                  span(aria-hidden="true") &larr; Previous
-                  a(href='?page_number=' + (search.page-1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
-                    span(aria-hidden="true") &larr; Previous
               li
-                if search.totalItems == 1
-                  | One member
-                else
-                  | #{search.pageFirstItem.toLocaleString()} - #{search.pageLastItem.toLocaleString()} of #{search.totalItems.toLocaleString()} #{itemType}
+                | #{search.pageFirstItem.toLocaleString()} - #{search.pageLastItem.toLocaleString()} of #{search.totalItems.toLocaleString()} #{itemType}
               li.next(class=(next_possible ? '' : 'invisible'))
-                if next_possible
-                  a(href='?page_number=' + (search.page+1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
-                  span(aria-hidden="true") Next &rarr;
-                else
+                a(href='?page_number=' + (search.page+1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
                   span(aria-hidden="true") Next &rarr;
 
           .row.vertical-pad-bottom
@@ -273,7 +262,7 @@ block content
                     ul.list-inline(style='margin-top:7.5%')
                       li
                         .label.label-danger Not linked
-                
+
               .col-sm-2
                 if !organization && person.orgs
                   - var localOrgList = Object.getOwnPropertyNames(person.orgs)
@@ -294,22 +283,16 @@ block content
           nav
             ul.pager
               li.previous(class=(previous_possible ? '' : 'invisible'))
-                if previous_possible
-                  a(href='?page_number=' + (search.page-1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
-                  span(aria-hidden="true") &larr; Previous
-                else
+                a(href='?page_number=' + (search.page-1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
                   span(aria-hidden="true") &larr; Previous
               li
                 h4(style="display:inline")
                   | Page #{search.page} of #{search.totalPages}
               li.next(class=(next_possible ? '' : 'invisible'))
-                if next_possible
-                  a(href='?page_number=' + (search.page+1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
-                    span(aria-hidden="true") Next &rarr;
-                else
+                a(href='?page_number=' + (search.page+1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
                   span(aria-hidden="true") Next &rarr;
 
         hr
         p.
-          This view is cached and eventually consistent within a few hours. 
+          This view is cached and eventually consistent within a few hours.
           The presence of people in this list does not imply that they are an employee.
