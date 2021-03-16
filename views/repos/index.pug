@@ -209,18 +209,12 @@ block content
           nav(style='margin-bottom:48px')
             ul.pager
               li.previous(class=(previous_possible ? '' : 'invisible'))
-                if previous_possible
-                  a(href='?page_number=' + (search.page-1) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (query.tt ? '&tt=' + query.tt : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
-                    span(aria-hidden="true") &larr; Previous
-                else
+                a(href='?page_number=' + (search.page-1) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (query.tt ? '&tt=' + query.tt : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
                   span(aria-hidden="true") &larr; Previous
               li
                 | #{search.pageFirstRepo.toLocaleString()} - #{search.pageLastRepo.toLocaleString()} of #{search.totalRepos.toLocaleString()}
               li.next(class=(next_possible ? '' : 'invisible'))
-                if next_possible
-                  a(href='?page_number=' + (search.page+1) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (query.tt ? '&tt=' + query.tt : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
-                    span(aria-hidden="true") Next &rarr;
-                else
+                a(href='?page_number=' + (search.page+1) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (query.tt ? '&tt=' + query.tt : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
                   span(aria-hidden="true") Next &rarr;
 
           each repo in search.repos
@@ -299,19 +293,13 @@ block content
           nav
             ul.pager
               li.previous(class=(previous_possible ? '' : 'invisible'))
-                if previous_possible
-                  a(href='?page_number=' + (search.page-1) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (query.tt ? '&tt=' + query.tt : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
-                    span(aria-hidden="true") &larr; Previous
-                else
+                a(href='?page_number=' + (search.page-1) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (query.tt ? '&tt=' + query.tt : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
                   span(aria-hidden="true") &larr; Previous
               li
                 h4(style="display:inline")
                   | Page #{search.page} of #{search.totalPages}
               li.next(class=(next_possible ? '' : 'invisible'))
-                if next_possible
-                  a(href='?page_number=' + (search.page+1) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (query.tt ? '&tt=' + query.tt : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
-                    span(aria-hidden="true") Next &rarr;
-                else
+                a(href='?page_number=' + (search.page+1) + (specificTeamId ? '&teamRepos=' + specificTeamId : '') + (tag ? '&tag=' + tag : '') + (query.tt ? '&tt=' + query.tt : '') + (search.sort ? '&sort=' + search.sort : '') + (query.language ? '&language=' + search.observedLanguagesEncoded.get(query.language) : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
                   span(aria-hidden="true") Next &rarr;
 
       .col-md-3.col-md-offset-1
