@@ -53,7 +53,7 @@ export async function getComputedRepositoryPermissions(providers: IProviders, ac
   repoPermissions.isLinked = true;
   const login = activeContext.getGitHubIdentity().username;
   const organization = repository.organization;
-  const isSudoer = await organization.isSudoer(login);
+  const isSudoer = await organization.isSudoer(login, activeContext.link);
   const isPortalSudoer = await activeContext.isPortalAdministrator();
   if (isSudoer === true || isPortalSudoer === true) {
     repoPermissions.sudo = true;

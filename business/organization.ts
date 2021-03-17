@@ -18,9 +18,10 @@ import { Repository } from "./repository";
 import { wrapError } from '../utils';
 import { StripGitHubEntity } from '../lib/github/restApi';
 import { GitHubResponseType } from '../lib/github/endpointEntities';
-import { AppPurpose, GitHubAppAuthenticationType } from '../github';
+import { AppPurpose } from '../github';
 import { OrganizationSetting, SpecialTeam } from '../entities/organizationSettings/organizationSetting';
 import { ICorporateLink } from './corporateLink';
+import { createOrganizationSudoInstance, IOrganizationSudo } from '../features';
 
 export interface IAccountBasics {
   id: number;
@@ -204,10 +205,13 @@ export class Organization {
 
   private _entity: IGitHubOrganizationResponse;
 
+  private _organizationSudo: IOrganizationSudo;
+
   id: number;
   uncontrolled: boolean;
 
   constructor(operations: Operations, name: string, settings: OrganizationSetting, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader, public hasDynamicSettings: boolean) {
+    const providers = operations.providers;
     this._name = settings.organizationName || name;
     this._baseUrl = `${operations.baseUrl}${this.name}/`;
     this._nativeUrl = `https://github.com/${this.name}/`;
@@ -221,6 +225,7 @@ export class Organization {
     if (settings && settings.organizationId) {
       this.id = Number(settings.organizationId);
     }
+    this._organizationSudo = createOrganizationSudoInstance(providers, this);
   }
 
   get baseUrl(): string {
@@ -787,37 +792,8 @@ export class Organization {
     }
   }
 
-  async isSudoer(username: string): Promise<boolean> {
-    const sudoerTeam = this.sudoersTeam;
-    if (!sudoerTeam) {
-      return false;
-    }
-    const appConfig = this._operations.config;
-    if (appConfig.github.debug && appConfig.github.debug.orgSudoOff) {
-      console.warn('DEBUG WARNING: Organization sudo support is turned off in the current environment');
-      return false;
-    }
-    let membership: GitHubTeamRole = null;
-    try {
-      const response = await sudoerTeam.getMembershipEfficiently(username);
-      if (response && (response as ITeamMembershipRoleState).role) {
-        membership = (response as ITeamMembershipRoleState).role;
-      }
-    } catch (getMembershipError) {
-      // The team for sudoers may have been deleted, which is not an error
-      if (getMembershipError && getMembershipError.status == /* loose */ 404) {
-        return false;
-      }
-      throw getMembershipError;
-    }
-    const isKnownMembership = membership === GitHubTeamRole.Member || membership === GitHubTeamRole.Maintainer;
-    if (membership && isKnownMembership) {
-      return isKnownMembership;
-    } else if (membership) {
-      throw new Error(`Cannot determine sudo status for ${username}, unrecognized membership type: ${membership}`);
-    } else {
-      return false;
-    }
+  async isSudoer(username: string, link: ICorporateLink): Promise<boolean> {
+    return await this._organizationSudo.isSudoer(username, link);
   }
 
   async acceptOrganizationInvitation(userToken: string): Promise<IOrganizationMembership> {

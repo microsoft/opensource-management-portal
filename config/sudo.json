@@ -1,0 +1,7 @@
+{
+  "organization": {
+    "off": "env://DEBUG_GITHUB_ORG_SUDO_OFF?trueIf=1",
+    "defaultProviderName": "env://SUDO_ORGANIZATION_PROVIDER_DEFAULT_NAME?default=githubteams",
+    "allowUniqueProvidersByOrganization": "env://SUDO_ORGANIZATION_PROVIDER_ALLOW_UNIQUE?trueIf=1"
+  }
+}

@@ -4,14 +4,26 @@
 //
 
 import { Router } from 'express';
+import { Organization } from '../business';
 import { Repository } from '../business/repository';
+import { OrganizationSudo } from '../features/sudo';
 import { IContextualRepositoryPermissions } from '../middleware/github/repoPermissions';
 import { IDictionary, IProviders } from '../transitional';
 import { IndividualContext } from '../user';
 
+// We're great at long variable names at Microsoft!
+
 export interface IAttachCompanySpecificRoutes {
   connectAuthenticatedRoutes: (router: Router, reactRoute: any) => void;
   connectCorporateApiRoutes: (router: Router) => void;
+}
+
+export interface ICompanySpecificFeatureOrganizationSudo {
+  tryCreateInstance: (providers: IProviders, organization: Organization) => OrganizationSudo;
+}
+
+export interface ICompanySpecificFeatures {
+  organizationSudo?: ICompanySpecificFeatureOrganizationSudo;
 }
 
 export interface ICompanySpecificStartupProperties {
@@ -19,6 +31,7 @@ export interface ICompanySpecificStartupProperties {
   middleware?: IAttachCompanySpecificMiddleware;
   administrationSection?: ICorporationAdministrationSection;
   strings?: IAttachCompanySpecificStrings;
+  features?: ICompanySpecificFeatures;
 }
 
 export interface IAttachCompanySpecificMiddleware {

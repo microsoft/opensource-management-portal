@@ -129,7 +129,7 @@ router.get('/:requestid', asyncHandler(async function (req: ReposAppRequest, res
     organization = operations.getOrganization(pendingRequest.organizationName);
     team2 = organization.team(Number(pendingRequest.teamId));
     await team2.getDetails();
-    const isOrgSudoer = await organization.isSudoer(username);
+    const isOrgSudoer = await organization.isSudoer(username, req.individualContext?.link);
     isMaintainer = isOrgSudoer;
     const maintainers = await team2.getOfficialMaintainers();
     if (!isMaintainer) {

@@ -65,6 +65,7 @@ export interface IGraphProvider {
   getGroupsStartingWith(minimum3Characters: string): Promise<IGraphGroup[]>;
   getGroupMembers(corporateGroupId: string): Promise<IGraphGroupMember[]>;
   getGroup(corporateGroupId: string): Promise<IGraphGroup>;
+  isUserInGroup(corporateId: string, securityGroupId: string): Promise<boolean>;
 
   getToken(): Promise<string>;
 }

@@ -4,5 +4,6 @@
   "allowUnauthorizedForkLockdownSystem": "env://FEATURE_FLAG_ALLOW_UNAUTHORIZED_FORK_LOCKDOWN_SYSTEM?trueIf=1",
   "allowUnauthorizedTransferLockdownSystem": "env://FEATURE_FLAG_ALLOW_UNAUTHORIZED_TRANSFER_LOCKDOWN_SYSTEM?trueIf=1",
   "allowUndoSystem": "env://FEATURE_FLAG_ALLOW_UNDO_SYSTEM?trueIf=1",
+  "allowOrganizationSudo": "env://FEATURE_FLAG_ALLOW_ORG_SUDO?trueIf=1&default=1",
   "allowFossFundElections": "env://FEATURE_FLAG_FOSS_FUND_ELECTIONS?trueIf=1"
 }
