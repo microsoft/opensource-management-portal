@@ -101,7 +101,7 @@ export async function AddTeamPermissionsToRequest(req: ReposAppRequest, res, nex
     if (!organization) {
       return next(new Error('organization required'));
     }
-    const isSudoer = await organization.isSudoer(login);
+    const isSudoer = await organization.isSudoer(login, activeContext.link);
     const isPortalSudoer = await activeContext.isPortalAdministrator();
 
     // Indicate that the user is has sudo rights

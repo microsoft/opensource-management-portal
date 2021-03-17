@@ -55,6 +55,12 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     }
   }
 
+  async isUserInGroup(corporateId: string, securityGroupId: string): Promise<boolean> {
+    // TODO: refactor for efficient use of Microsoft Graph's checkMemberObjects https://docs.microsoft.com/en-us/graph/api/group-checkmemberobjects?view=graph-rest-1.0&tabs=http
+    const members = await this.getGroupMembers(securityGroupId);
+    return members.filter(m => m.id === corporateId).length > 0;
+  }
+
   getManagerById(aadId, callback) {
     this.getTokenThenEntity(aadId, 'manager', callback);
   }

@@ -14,7 +14,7 @@ import { RepositoryMetadataEntity, GitHubRepositoryVisibility, RepositoryLockdow
 import { IndividualContext } from '../user';
 import { daysInMilliseconds } from '../utils';
 
-import moment = require('moment');
+import moment from 'moment';
 
 const botBracket = '[bot]';
 

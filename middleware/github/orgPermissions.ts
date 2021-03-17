@@ -27,8 +27,9 @@ export async function AddOrganizationPermissionsToRequest(req: ReposAppRequest, 
   if (req[orgPermissionsCacheKeyName]) {
     return next();
   }
-  const login = req.individualContext.getGitHubIdentity().username;
-  const ghIdAsString = req.individualContext.getGitHubIdentity().id;
+  const individualContext = req.individualContext;
+  const login = individualContext.getGitHubIdentity().username;
+  const ghIdAsString = individualContext.getGitHubIdentity().id;
   const id = ghIdAsString ? parseInt(ghIdAsString, 10) : null;
   const organization = req.organization;
   const orgPermissions: IRequestOrganizationPermissions = {
@@ -41,8 +42,8 @@ export async function AddOrganizationPermissionsToRequest(req: ReposAppRequest, 
     return next(new Error(`While your technical GitHub ID ${id} is known, your GitHub username is not currently known.`));
   }
   req[orgPermissionsCacheKeyName] = orgPermissions;
-  const isSudoer = await organization.isSudoer(login);
-  const isPortalSudoer = await req.individualContext.isPortalAdministrator();
+  const isSudoer = await organization.isSudoer(login, individualContext.link);
+  const isPortalSudoer = await individualContext.isPortalAdministrator();
 
   // Indicate that the user is has sudo rights
   if (isSudoer === true || isPortalSudoer === true) {
