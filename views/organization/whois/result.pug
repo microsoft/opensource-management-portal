@@ -52,7 +52,7 @@ block content
         p Here is the information we have on this user. This user has a #[strong link].
       else
         p Here is the information we have on this user. This user does not appear to be linked at this time.
-        
+
       - var rg = query.realtimeGraph
         .col-md-6
           if query && query.managerInfo && query.managerInfo.managerId
@@ -180,6 +180,6 @@ block content
         each cr in query.collaboratorRepositories
           li= cr
 
-    if query && query.link
+    if query
       hr
       include ./linkEditor
