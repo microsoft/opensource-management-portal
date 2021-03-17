@@ -11,6 +11,10 @@ export interface IOrganizationSudo {
   isSudoer(githubLogin: string, link?: ICorporateLink): Promise<boolean>;
 }
 
+export interface IPortalSudo {
+  isSudoer(githubLogin: string, link?: ICorporateLink): Promise<boolean>;
+}
+
 export abstract class OrganizationSudo implements IOrganizationSudo {
   constructor(protected providers: IProviders, protected organization: Organization) {}
   abstract isSudoer(githubLogin: string, link?: ICorporateLink): Promise<boolean>;
@@ -27,6 +31,8 @@ export abstract class OrganizationSudo implements IOrganizationSudo {
 }
 
 export { OrganizationFeatureSecurityGroupProperty } from './securityGroup';
+
+export * from './portal';
 
 import { OrganizationSudoNoop } from './noop';
 import { OrganizationSudoSecurityGroup } from './securityGroup';

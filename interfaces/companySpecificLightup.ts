@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import { Organization } from '../business';
 import { Repository } from '../business/repository';
-import { OrganizationSudo } from '../features/sudo';
+import { IOrganizationSudo, IPortalSudo } from '../features/sudo';
 import { IContextualRepositoryPermissions } from '../middleware/github/repoPermissions';
 import { IDictionary, IProviders } from '../transitional';
 import { IndividualContext } from '../user';
@@ -19,11 +19,16 @@ export interface IAttachCompanySpecificRoutes {
 }
 
 export interface ICompanySpecificFeatureOrganizationSudo {
-  tryCreateInstance: (providers: IProviders, organization: Organization) => OrganizationSudo;
+  tryCreateInstance: (providers: IProviders, organization: Organization) => IOrganizationSudo;
+}
+
+export interface ICompanySpecificFeaturePortalSudo {
+  tryCreateInstance: (providers: IProviders) => IPortalSudo;
 }
 
 export interface ICompanySpecificFeatures {
   organizationSudo?: ICompanySpecificFeatureOrganizationSudo;
+  portalSudo?: ICompanySpecificFeaturePortalSudo;
 }
 
 export interface ICompanySpecificStartupProperties {
