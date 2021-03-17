@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest } from '../transitional';
+import { IProviders, ReposAppRequest } from '../transitional';
 
 import { requirePortalAdministrationPermission } from '../middleware/business/administration';
 import { PostgresLinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
@@ -363,29 +363,35 @@ router.post('/whois/link/:linkid', asyncHandler(async function (req: ReposAppReq
 }));
 
 router.post('/whois/link/', asyncHandler(async function (req: ReposAppRequest, res, next) {
+  const { config } = req.app.settings as IProviders;
+  const allowAdministratorManualLinking = config?.features?.allowAdministratorManualLinking;
+  if (!allowAdministratorManualLinking) {
+    return next(new Error('The manual linking feature is not enabled'));
+  }
+
   // set isServiceAccount to true only if it contains the value "yes", otherwise use false
   req.body['isServiceAccount'] = req.body['isServiceAccount'] === 'yes';
 
   // create link object with the values received from the request
   const link:ICorporateLink  = {
-    corporateId: req.body["corporateId"],
-    corporateUsername: req.body["corporateUsername"],
-    corporateDisplayName: req.body["corporateDisplayName"],
-    thirdPartyId: req.body["thirdPartyId"],
-    thirdPartyUsername: req.body["thirdPartyUsername"],
-    thirdPartyAvatar: req.body["thirdPartyAvatar"],
-    isServiceAccount: req.body["isServiceAccount"],
-    serviceAccountMail: req.body["serviceAccountMail"],
+    corporateId: req.body['corporateId'],
+    corporateUsername: req.body['corporateUsername'],
+    corporateDisplayName: req.body['corporateDisplayName'],
+    thirdPartyId: req.body['thirdPartyId'],
+    thirdPartyUsername: req.body['thirdPartyUsername'],
+    thirdPartyAvatar: req.body['thirdPartyAvatar'],
+    isServiceAccount: req.body['isServiceAccount'],
+    serviceAccountMail: req.body['serviceAccountMail'],
     // these both values are currently not transferred, but required by the link object
-    corporateMailAddress: "",
-    corporateAlias: "",
+    corporateMailAddress: '',
+    corporateAlias: '',
   }
-  const messages = [];
 
+  const messages = [];
   // Add only the non empty strings to the message log
   for (const [key, value] of Object.entries(link)) {
     if (value) {
-    messages.push(`${key}: value has been set to "${value}"`);
+      messages.push(`${key}: value has been set to "${value}"`);
     }
   }
 
@@ -406,7 +412,6 @@ router.post('/whois/link/', asyncHandler(async function (req: ReposAppRequest, r
         linkId,
       },
   });
-
 }));
 
 router.post('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {

@@ -14,3 +14,11 @@ helping support a large organization with a set of trusted users configured at t
 level to reduce persistent owner permissions.
 
 [Review the sudo feature docs](sudo/sudo.md)
+
+## Administrative features
+
+### Manual linking
+
+Allows an administrator to create links manually, for service accounts or other
+purposes. To opt-in to this capability being available for system administrators,
+set the `FEATURE_FLAG_ALLOW_ADMIN_MANUAL_LINKING` environment variable to `1`.
