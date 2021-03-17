@@ -1,5 +1,5 @@
 
-# sudo / organization sudo
+# organization sudo
 
 Organization-level sudo allows users that are not technically organization owners on 
 GitHub to perform administrative actions that the portal provides, such as managing repos, 
@@ -38,3 +38,35 @@ approach, or use a different company-internal system for these decisions.
 
 There is an environmental off-switch enabled that can turn off sudo, allowing for testing 
 as a regular user in local environments. That env variable name is `DEBUG_GITHUB_ORG_SUDO_OFF`.
+
+# portal sudo
+
+Portal sudo applies sudo for all organizations configured within the application. 
+Used by system administrators typically.
+
+The original design was to use the sudo configuration from the first/primary GitHub org
+that was configured in the environment.
+
+## Feature flag: FEATURE_FLAG_ALLOW_PORTAL_SUDO
+
+> This feature is not on by default.
+
+To opt in to the feature, set the value to `1`.
+
+## Configuration: providerName
+
+Can be:
+
+- `primaryorg` (default): use the sudo configuration from the primary/first-configured org
+- `none` or '': no portal-wide sudo
+- `securitygroup`: use a security group to determine if a linked user is a portal administrator
+
+For the security group provider, configuration should set `SUDO_PORTAL_SECURITY_GROUP_ID` to the 
+security group ID to use.
+
+## Debug flags
+
+Two environment variables designed for development work exist:
+
+- `DEBUG_GITHUB_PORTAL_SUDO_OFF`: set to `1` to turn off portal sudo
+- `DEBUG_GITHUB_PORTAL_SUDO_FORCE`: set to `1` to turn portal sudo on for ALL users

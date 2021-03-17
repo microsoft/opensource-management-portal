@@ -33,6 +33,7 @@ import { ILinkProvider } from '../lib/linkProviders';
 import { getUserAndManagerById, IGraphEntryWithManager } from '../lib/graphProvider';
 import { ICacheHelper } from '../lib/caching';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
+import { createPortalSudoInstance, IPortalSudo } from '../features';
 
 const throwIfOrganizationIdsMissing = true;
 
@@ -195,6 +196,7 @@ export class Operations {
   private _initialized: Date;
   private _dynamicOrganizationSettings: OrganizationSetting[];
   private _dynamicOrganizationIds: Set<number>;
+  private _portalSudo: IPortalSudo;
 
   get initialized(): Date {
     return this._initialized;
@@ -316,6 +318,7 @@ export class Operations {
     if (throwIfOrganizationIdsMissing) {
       this.getOrganizationIds();
     }
+    this._portalSudo = createPortalSudoInstance(this._providers);
     return this;
   }
 
@@ -1398,6 +1401,13 @@ export class Operations {
 
   get systemAccountsByUsername(): string[] {
     return this._config.github && this._config.github.systemAccounts ? this._config.github.systemAccounts.logins : [];
+  }
+
+  isPortalSudoer(githubLogin: string, link: ICorporateLink) {
+    if (!this._initialized) {
+      throw new Error('The application is not yet initialized');
+    }
+    return this._portalSudo.isSudoer(githubLogin, link);
   }
 
   isSystemAccountByUsername(username: string): boolean {

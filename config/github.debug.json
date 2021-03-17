@@ -1,4 +1,0 @@
-{
-  "portalSudoOff": "env://DEBUG_GITHUB_PORTAL_SUDO_OFF?trueIf=1",
-  "portalSudoForce": "env://DEBUG_GITHUB_PORTAL_SUDO_FORCE?trueIf=1"
-}

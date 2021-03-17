@@ -504,8 +504,8 @@ export class IndividualContext {
   async isPortalAdministrator(): Promise<boolean> {
     const operations = this._operations;
     const ghi = this.getGitHubIdentity().username;
-    const isAdmin = await legacyCallbackIsPortalAdministrator(operations, ghi);
-    this._isPortalAdministrator = isAdmin;
+    const link = this._link;
+    this._isPortalAdministrator = await operations.isPortalSudoer(ghi, link);
     return this._isPortalAdministrator;
   }
 
@@ -515,47 +515,5 @@ export class IndividualContext {
 
   getInitialViewObject() {
     return Object.assign({}, this._initialView);
-  }
-}
-
-async function legacyCallbackIsPortalAdministrator(operations: Operations, gitHubUsername: string): Promise<boolean> {
-  const config = operations.config;
-  // ----------------------------------------------------------------------------
-  // SECURITY METHOD:
-  // Determine whether the authenticated user is an Administrator of the org. At
-  // this time there is a special "portal sudoers" team that is used. The GitHub
-  // admin flag is not used [any longer] for performance reasons to reduce REST
-  // calls to GitHub.
-  // ----------------------------------------------------------------------------
-  if (config.github.debug && config.github.debug.portalSudoOff) {
-    console.warn('DEBUG WARNING: Portal sudo support is turned off in the current environment');
-    return false;
-  }
-
-  if (config.github.debug && config.github.debug.portalSudoForce) {
-    console.warn('DEBUG WARNING: Portal sudo is turned on for all users in the current environment');
-    return true;
-  }
-
-  /*
-  var self = this;
-  if (self.entities && self.entities.primaryMembership) {
-      var pm = self.entities.primaryMembership;
-      if (pm.role && pm.role === 'admin') {
-          return callback(null, true);
-      }
-  }
-  */
-  const primaryName = operations.getPrimaryOrganizationName();
-  const primaryOrganization = operations.getOrganization(primaryName);
-  const sudoTeam = primaryOrganization.systemSudoersTeam;
-  if (!sudoTeam) {
-    return false;
-  }
-  try {
-    const isMember = await sudoTeam.isMember(gitHubUsername);
-    return (isMember === true || isMember === GitHubTeamRole.Member || isMember === GitHubTeamRole.Maintainer);
-  } catch (error) {
-    throw wrapError(error, 'We had trouble querying GitHub for important team management information. Please try again later or report this issue.');
   }
 }
