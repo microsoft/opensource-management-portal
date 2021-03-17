@@ -46,9 +46,14 @@ function getSigningKeys(header, callback) {
   const client = jwksClient({
     jwksUri: 'https://login.microsoftonline.com/common/discovery/keys',
   });
-  client.getSigningKey(header.kid, function (err, key) {
+  client.getSigningKey(header.kid).then(key => {
+    if (!key) {
+      return callback(new Error('no signing key'));
+    }
     const signingKey = key['publicKey'] || key['rsaPublicKey']; // typings claim these are not valid properties
     return callback(null, signingKey);
+  }).catch(err => {
+    return callback(err);
   });
 }
 
