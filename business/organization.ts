@@ -265,7 +265,18 @@ export class Organization {
       name: this.name,
       priority: this.priority,
       privateEngineering: this.privateEngineering,
+      management: this.getManagementApproach(),
     };
+  }
+
+  getManagementApproach() {
+    // TEMP: not long-term as designed
+    let management = null;
+    if (this.hasDynamicSettings) {
+      const val = this.getDynamicSettings().getProperty('management') as string;
+      management = val;
+    }
+    return management;
   }
 
   getEntity() {
