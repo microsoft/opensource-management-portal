@@ -3,4 +3,21 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-export * from './companySpecificLightup';
+import { IProviders } from '../transitional';
+import { IAttachCompanySpecificRoutes, IAttachCompanySpecificMiddleware, ICorporationAdministrationSection, IAttachCompanySpecificStrings, ICompanySpecificFeatures } from './companySpecific';
+
+export * from './companySpecific';
+
+// We're great at long variable names!
+
+export interface ICompanySpecificStartupProperties {
+  routes?: IAttachCompanySpecificRoutes;
+  middleware?: IAttachCompanySpecificMiddleware;
+  administrationSection?: ICorporationAdministrationSection;
+  strings?: IAttachCompanySpecificStrings;
+  features?: ICompanySpecificFeatures;
+}
+
+export type ICompanySpecificStartupFunction = (config: any, p: IProviders, rootdir: string) => Promise<void>;
+
+export type ICompanySpecificStartup = ICompanySpecificStartupFunction & ICompanySpecificStartupProperties;

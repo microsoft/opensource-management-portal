@@ -7,16 +7,29 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { apiContextMiddleware, AddLinkToRequest, requireAccessTokenClient, setIdentity, jsonError } from '../../middleware';
-import { ReposAppRequest } from '../../transitional';
+import { IProviders, ReposAppRequest } from '../../transitional';
 
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 
 import RouteClientNewRepo from './newRepo';
 
+import RouteContext from './context';
+import RouteOrganizations from './organizations';
+import RouteLinking from './linking';
+import RouteSession from './session';
+import RouteBanner from './banner';
+import RouteCrossOrganizationPeople from './people';
+import RouteCrossOrganizationRepos from './repos';
+import RouteCrossOrganizationTeams from './teams';
+
 const router = express.Router();
 
 router.use((req: ReposAppRequest, res, next) => {
-  return req.isAuthenticated() ? next() : next(jsonError('Session is not authenticated', 401));
+  const { config } = req.app.settings.providers as IProviders;
+  if (config?.features?.allowApiClient) {
+    return req.isAuthenticated() ? next() : next(jsonError('Session is not authenticated', 401));
+  }
+  return next(jsonError('Client API features unavailable', 403));
 });
 
 router.use(asyncHandler(requireAccessTokenClient));
@@ -26,8 +39,18 @@ router.use(asyncHandler(AddLinkToRequest));
 
 router.use('/newRepo', RouteClientNewRepo);
 
+router.use('/context', RouteContext);
+
+router.use('/banner', RouteBanner);
+router.use('/orgs', RouteOrganizations);
+router.use('/link', RouteLinking);
+router.use('/signout', RouteSession);
+router.use('/people', RouteCrossOrganizationPeople);
+router.use('/repos', RouteCrossOrganizationRepos);
+router.use('/teams', RouteCrossOrganizationTeams);
+
 const dynamicStartupInstance = getCompanySpecificDeployment();
-dynamicStartupInstance?.routes?.connectCorporateApiRoutes && dynamicStartupInstance.routes.connectCorporateApiRoutes(router);
+dynamicStartupInstance?.routes?.api?.index && dynamicStartupInstance?.routes?.api?.index(router);
 
 router.use((req, res, next) => {
   return next(jsonError('The resource or endpoint you are looking for is not there', 404));
