@@ -24,6 +24,11 @@ variable value to `1`.
   - Purpose: Locks repositories that are forks until they are approved by an administrator
   - Requirements: depends on the new repo lockdown system already being enabled and in use
 
+- allowApiClient
+
+  - Variable: `FEATURE_FLAG_ALLOW_API_CLIENT`
+  - Purpose: Allows session-based client APIs, used for powering a modern front-end app connected to the site
+
 ## Temporary features
 
 An optional set of features are being developed for use in summer 2020 as part
