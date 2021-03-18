@@ -363,8 +363,8 @@ router.post('/whois/link/:linkid', asyncHandler(async function (req: ReposAppReq
 }));
 
 router.post('/whois/link/', asyncHandler(async function (req: ReposAppRequest, res, next) {
-  const { config } = req.app.settings as IProviders;
-  const allowAdministratorManualLinking = config?.features?.allowAdministratorManualLinking;
+  const { operations } = req.app.settings.providers as IProviders;
+  const allowAdministratorManualLinking = operations?.config?.features?.allowAdministratorManualLinking;
   if (!allowAdministratorManualLinking) {
     return next(new Error('The manual linking feature is not enabled'));
   }
@@ -395,7 +395,6 @@ router.post('/whois/link/', asyncHandler(async function (req: ReposAppRequest, r
     }
   }
 
-  const operations = req.app.settings.operations as Operations;
   const linkProvider = operations.linkProvider as PostgresLinkProvider;
 
   // try to create link, if it fails it will directly throw into the users face
