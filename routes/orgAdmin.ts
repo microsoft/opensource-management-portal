@@ -363,7 +363,7 @@ router.post('/whois/link/:linkid', asyncHandler(async function (req: ReposAppReq
 }));
 
 router.post('/whois/link/', asyncHandler(async function (req: ReposAppRequest, res, next) {
-  const operations = req.app.settings.operations as Operations;
+  const { operations } = req.app.settings.providers as IProviders;
   const allowAdministratorManualLinking = operations?.config?.features?.allowAdministratorManualLinking;
   if (!allowAdministratorManualLinking) {
     return next(new Error('The manual linking feature is not enabled'));
