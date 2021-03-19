@@ -11,6 +11,7 @@ export * from './companySpecific';
 // We're great at long variable names!
 
 export interface ICompanySpecificStartupProperties {
+  isCompanySpecific: true;
   routes?: IAttachCompanySpecificRoutes;
   middleware?: IAttachCompanySpecificMiddleware;
   administrationSection?: ICorporationAdministrationSection;

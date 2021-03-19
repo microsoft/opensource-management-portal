@@ -4,7 +4,7 @@
 //
 
 import path from 'path';
-import { ICompanySpecificStartup } from '../interfaces';
+import { ICompanySpecificStartup, ICompanySpecificStartupProperties } from '../interfaces';
 
 import AppPackage from '../package.json';
 
@@ -26,8 +26,12 @@ function getCompanySpecificDeployment(): ICompanySpecificStartup {
     return instance;
   }
   try {
-    const dynamicInclude = require(path.join(__dirname, '..', name));
+    const pn = path.join(__dirname, '..', name);
+    const dynamicInclude = require(pn);
     const entrypoint = dynamicInclude && dynamicInclude.default ? dynamicInclude.default : dynamicInclude;
+    if (!(entrypoint as ICompanySpecificStartupProperties).isCompanySpecific) {
+      throw new Error(`The ${name} company-specific call did not include the 'isCompanySpecific' moniker. Check for circular dependencies: ${pn}`);
+    }
     instance = entrypoint;
     return instance;
   } catch (includeError) {

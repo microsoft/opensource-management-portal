@@ -50,7 +50,7 @@ export interface IReposJobOptions {
   treatGitHubAppAsBackground?: boolean;
 }
 
-const app = express() as unknown as IReposApplication;
+const app = express() as any as IReposApplication;
 
 require('debug')('startup')('starting...');
 

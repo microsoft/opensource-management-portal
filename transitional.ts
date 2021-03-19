@@ -272,6 +272,11 @@ export interface IReposAppWithTeam extends ReposAppRequest {
   teamUrl: string;
 }
 
+export enum LocalApiRepoAction {
+  Delete = 'delete',
+  Archive = 'archive',
+}
+
 export interface ReposAppRequest extends Request {
   // passport
   isAuthenticated(): boolean;

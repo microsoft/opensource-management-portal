@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../../middleware/jsonError';
-import { ErrorHelper, IProviders, ReposAppRequest } from '../../../transitional';
+import { ErrorHelper, IProviders, LocalApiRepoAction, ReposAppRequest } from '../../../transitional';
 import { Repository } from '../../../business/repository';
 import { IndividualContext } from '../../../user';
 import NewRepositoryLockdownSystem from '../../../features/newRepositoryLockdown';
@@ -16,11 +16,6 @@ import { renameRepositoryDefaultBranchEndToEnd } from '../../../routes/org/repos
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
 
 import RouteRepoPermissions from './repoPermissions';
-
-export enum LocalApiRepoAction {
-  Delete = 'delete',
-  Archive = 'archive',
-}
 
 type RequestWithRepo = ReposAppRequest & {
   repository: Repository;
@@ -223,6 +218,7 @@ router.delete('/', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler
 }));
 
 router.use('*', (req, res, next) => {
+  console.warn(req.baseUrl);
   return next(jsonError('no API or function available within this specific repo', 404));
 });
 

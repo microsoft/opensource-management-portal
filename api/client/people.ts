@@ -6,8 +6,6 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { IndividualContext } from '../../user';
-import LeakyLocalCache, { getLinksLightCache } from './leakyLocalCache';
 import { corporateLinkToJson, ICorporateLink, ICrossOrganizationMembersResult, MemberSearch, Operations, Organization } from '../../business';
 import { jsonError } from '../../middleware';
 import { ReposAppRequest, IProviders } from '../../transitional';
@@ -15,75 +13,12 @@ import JsonPager from './jsonPager';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 
 import RouteGetPerson from './person';
+import { equivalentLegacyPeopleSearch } from './peopleSearch';
 
 const router = express.Router();
 
 const deployment = getCompanySpecificDeployment();
-
-// BAD PRACTICE: leaky local cache
-// CONSIDER: use a better approach
-const leakyLocalCachePeople = new LeakyLocalCache<boolean, ICrossOrganizationMembersResult>();
-
-async function getPeopleAcrossOrganizations(operations: Operations) {
-  const value = leakyLocalCachePeople.get(true);
-  if (value) {
-    return { crossOrganizationMembers: value };
-  }
-  const crossOrganizationMembers = await operations.getMembers();
-  leakyLocalCachePeople.set(true, crossOrganizationMembers);
-  return { crossOrganizationMembers };
-}
-
-export async function equivalentLegacyPeopleSearch(req: ReposAppRequest) {
-  const { operations } = req.app.settings.providers as IProviders;
-  const links = await getLinksLightCache(operations);
-  const org = req.organization ? req.organization.name : null;
-  const orgId = req.organization ? (req.organization as Organization).id : null;
-  const { crossOrganizationMembers } = await getPeopleAcrossOrganizations(operations);
-  const page = req.query.page_number ? Number(req.query.page_number) : 1;
-  let phrase = req.query.q as string;
-  let type = req.query.type as string;
-  const validTypes = new Set([
-    'linked',
-    'active',
-    'unlinked',
-    'former',
-    'serviceAccount',
-    'unknownAccount',
-    'owners',
-  ]);
-  if (!validTypes.has(type)) {
-    type = null;
-  }
-  const filters = [];
-  if (type) {
-    filters.push({
-      type: 'type',
-      value: type,
-      displayValue: type === 'former' ? 'formerly known' : type,
-      displaySuffix: 'members',
-    });
-  }
-  if (phrase) {
-    filters.push({
-      type: 'phrase',
-      value: phrase,
-      displayPrefix: 'matching',
-    });
-  }
-  const search = new MemberSearch({
-    phrase,
-    type,
-    pageSize: 1000000, // we'll slice it locally
-    links,
-    providers: operations.providers,
-    orgId,
-    crossOrganizationMembers,
-    isOrganizationScoped: false,
-  });
-  await search.search(page, req.query.sort as string);
-  return search;
-}
+deployment?.routes?.api?.people && deployment.routes.api.people(router);
 
 interface ISimpleAccount {
   login: string;
