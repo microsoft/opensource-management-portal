@@ -10,7 +10,7 @@ import { TeamJsonFormat, Team, Organization } from '../../../business';
 import { TeamJoinApprovalEntity } from '../../../entities/teamJoinApproval/teamJoinApproval';
 import { jsonError } from '../../../middleware';
 import { ApprovalPair, Approvals_getTeamMaintainerApprovals, Approvals_getUserRequests, closeOldRequest } from '../../../routes/settings/approvals';
-import { ReposAppRequest, IProviders } from '../../../transitional';
+import { ReposAppRequest, getProviders } from '../../../transitional';
 import { IndividualContext } from '../../../user';
 
 const router = express.Router();
@@ -23,7 +23,7 @@ const approvalPairToJson = (pair: ApprovalPair) => {
 };
 
 router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { approvalProvider, operations } = req.app.settings.providers as IProviders;
+  const { approvalProvider, operations } = getProviders(req);
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   if (!activeContext.link) {
     return res.json({
@@ -56,7 +56,7 @@ router.get('/:approvalId', asyncHandler(async (req: ReposAppRequest, res, next) 
   if (!activeContext.link) {
     return res.json({});
   }
-  const { approvalProvider, operations } = req.app.settings.providers as IProviders;
+  const { approvalProvider, operations } = getProviders(req);
   const corporateId = activeContext.corporateIdentity.id;
   let request: TeamJoinApprovalEntity = null;
   try {

@@ -4,14 +4,15 @@
 //
 
 import logger from 'morgan';
-import { ReposAppRequest } from '../transitional';
+
+import { getProviders, ReposAppRequest } from '../transitional';
 
 const encryptionMetadataKey = '_ClientEncryptionMetadata2';
 const piiFormat = ':id :method :scrubbedUrl :status :response-time ms - :res[content-length] :encryptedSession :correlationId';
 const format = ':method :scrubbedUrl :status :response-time ms - :res[content-length] :encryptedSession :correlationId';
 
 logger.token('encryptedSession', function getUserId(req: ReposAppRequest) {
-  const config = req.app.settings.runtimeConfig;
+  const config = getProviders(req).config;;
   if (req.session) {
     const sessionPassport = (req.session as any).passport;
     if (sessionPassport && sessionPassport.user) {
@@ -22,7 +23,7 @@ logger.token('encryptedSession', function getUserId(req: ReposAppRequest) {
 });
 
 logger.token('id', function getUserId(req: ReposAppRequest) {
-  const config = req.app.settings.runtimeConfig;
+  const config = getProviders(req).config;;
   if (config) {
     const userType = config.authentication.scheme === 'aad' ? 'azure' : 'github';
     return req.user && req.user[userType] && req.user[userType].username ? req.user[userType].username : undefined;

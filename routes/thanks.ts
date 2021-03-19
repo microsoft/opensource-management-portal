@@ -5,6 +5,7 @@
 
 //import * as thisPackage from '../package.json';
 import thisPackage = require('../package.json');
+import { getProviders, ReposAppRequest } from '../transitional';
 // var thisPackage = require('/package.json');
 
 var express = require('express');
@@ -32,9 +33,10 @@ function getPackageInfo(config) {
   return cachedPackageInformation;
 }
 
-router.get('/', function (req, res) {
-  var config = req.app.settings.runtimeConfig.obfuscatedConfig;
-  var components = getPackageInfo(config);
+router.get('/', function (req: ReposAppRequest, res) {
+  const { config: completeConfig} = getProviders(req);
+  const config = completeConfig.obfuscatedConfig;
+  const components = getPackageInfo(config);
   res.render('thanks', {
     config: config,
     components: components,

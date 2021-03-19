@@ -9,7 +9,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders, IAppSession } from '../transitional';
+import { ReposAppRequest, IProviders, IAppSession, getProviders } from '../transitional';
 import { IndividualContext } from '../user';
 import { storeOriginalUrlAsReferrer, wrapError } from '../utils';
 import { ICorporateLink } from '../business/corporateLink';
@@ -29,7 +29,7 @@ interface IRequestHacked extends ReposAppRequest {
 }
 
 router.use((req: IRequestHacked, res, next) => {
-  const config = req.app.settings.runtimeConfig;
+  const config = getProviders(req).config;;
   if (config && config.github && config.github.links && config.github.links.provider && config.github.links.provider.linkingOfflineMessage) {
     return next(new Error(`Linking is temporarily offline: ${config.github.links.provider.linkingOfflineMessage}`));
   } else {
@@ -51,7 +51,7 @@ router.use('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
 
 router.use(asyncHandler(async (req: IRequestHacked, res, next) => {
   const individualContext = req.individualContext as IndividualContext;
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const insights = providers.insights;
   const config = providers.config;
   let validateAndBlockGuests = false;
@@ -151,7 +151,7 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   }
 }));
 
-async function showLinkPage(req, res) {
+async function showLinkPage(req: ReposAppRequest, res) {
   const individualContext = req.individualContext as IndividualContext;
   function render(options) {
     individualContext.webContext.render({
@@ -160,13 +160,12 @@ async function showLinkPage(req, res) {
       optionalObject: options || {},
     })
   }
-  const config = req.app.settings.runtimeConfig;
-  const graphProvider = req.app.settings.graphProvider;
+  const { config, graphProvider } = getProviders(req);
   if (config.authentication.scheme !== 'aad' || !graphProvider) {
     return render(null);
   }
   const aadId = individualContext.corporateIdentity.id;
-  const operations = req.app.settings.operations as Operations;
+  const { operations } = getProviders(req);
   // By design, we want to log the errors but do not want any individual
   // lookup problem to break the underlying experience of letting a user
   // link. This is important if someone is new in the company, they may
@@ -201,7 +200,7 @@ router.post('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
 export async function interactiveLinkUser(isJson: boolean, individualContext: IndividualContext, req, res, next) {
   const isServiceAccount = req.body.sa === '1';
   const serviceAccountMail = req.body.serviceAccountMail;
-  const operations = req.app.settings.providers.operations as Operations;
+  const { operations } = getProviders(req);
   if (isServiceAccount && !validator.isEmail(serviceAccountMail)) {
     const errorMessage = 'Please enter a valid e-mail address for the Service Account maintainer.'
     return next(isJson ? jsonError(errorMessage, 400) : wrapError(null, errorMessage, true));
@@ -241,7 +240,7 @@ export async function interactiveLinkUser(isJson: boolean, individualContext: In
 router.use('/remove', unlinkRoute);
 
 router.get('/reconnect', function (req: ReposAppRequest, res, next) {
-  const config = req.app.settings.runtimeConfig;
+  const config = getProviders(req).config;;
   if (config.authentication.scheme !== 'aad') {
     return next(wrapError(null, 'Account reconnection is only needed for Active Directory authentication applications.', true));
   }

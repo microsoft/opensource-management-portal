@@ -7,15 +7,15 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { IProviders, NoCacheNoBackground, ReposAppRequest } from '../../transitional';
+import { getProviders, IProviders, NoCacheNoBackground, ReposAppRequest } from '../../transitional';
 import GitHubApplication, { IGitHubAppInstallation } from '../../business/application';
 import { OrganizationSetting, IBasicGitHubAppInstallation, SpecialTeam, ISpecialTeam } from '../../entities/organizationSettings/organizationSetting';
 import { IndividualContext } from '../../user';
 import { Operations } from '../../business/operations';
 import { Organization, OrganizationMembershipRole, OrganizationMembershipState } from '../../business/organization';
 
-router.use('/:appId', asyncHandler(async function (req, res, next) {
-  const providers = req.app.settings.providers as IProviders;
+router.use('/:appId', asyncHandler(async function (req: ReposAppRequest, res, next) {
+  const providers = getProviders(req);
   const appId = Number(req.params.appId);
   const app = providers.operations.getApplicationById(appId);
   if (app) {
@@ -64,8 +64,7 @@ function getOrganizationConfiguration(config: any, orgName: string) {
 router.use('/:appId/installations/:installationId', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const githubApplication = req['githubApplication'] as GitHubApplication;
   const installationIdString = req.params.installationId;
-  const providers = req.app.settings.providers as IProviders;
-  const config = req.app.settings['runtimeConfig'];
+  const { config, organizationSettingsProvider } = getProviders(req);
   const installationId = Number(installationIdString);
   const installation = await githubApplication.getInstallation(installationId);
   const invalidReasons = GitHubApplication.isInvalidInstallation(installation);
@@ -74,7 +73,6 @@ router.use('/:appId/installations/:installationId', asyncHandler(async function 
   }
   const organizationId = installation.account.id;
   const organizationName = installation.account.login;
-  const organizationSettingsProvider = providers.organizationSettingsProvider;
   let settings: OrganizationSetting = null;
   try {
     settings = await organizationSettingsProvider.getOrganizationSetting(organizationId.toString());
@@ -156,7 +154,7 @@ router.post('/:appId/installations/:installationId', asyncHandler(async function
   if (!hasImportButtonClicked && !hasElevationButtonClicked && !forceDeleteConfig && !hasCreateButtonClicked && !activate && !deactivate && !removeConfiguration && !addConfiguration && !updateConfig) {
     return next(new Error('No supported POST parameters present'));
   }
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const githubApplication = req['githubApplication'] as GitHubApplication;
   const individualContext = req.individualContext;
   const login = individualContext.getGitHubIdentity().username;
@@ -310,7 +308,7 @@ router.post('/:appId/installations/:installationId', asyncHandler(async function
 
 router.get('/:appId/installations/:installationId', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const githubApplication = req['githubApplication'] as GitHubApplication;
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const individualContext = req.individualContext;
   const {
     staticSettings,

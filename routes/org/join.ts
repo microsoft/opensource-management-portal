@@ -11,16 +11,14 @@ const router = express.Router();
 
 import querystring from 'querystring';
 
-import { ReposAppRequest, IProviders } from '../../transitional';
+import { ReposAppRequest, getProviders } from '../../transitional';
 import { Team } from '../../business/team';
 import { IndividualContext } from '../../user';
 import { storeOriginalUrlAsReferrer, wrapError } from '../../utils';
-import { Organization, OrganizationMembershipState, OrganizationMembershipRole } from '../../business/organization';
-import { Operations } from '../../business/operations';
+import { Organization, OrganizationMembershipState, OrganizationMembershipRole } from '../../business';
 import QueryCache from '../../business/queryCache';
 import RequireActiveGitHubSession from '../../middleware/github/requireActiveSession';
 import { jsonError } from '../../middleware/jsonError';
-import { join } from 'lodash';
 
 router.use(function (req: ReposAppRequest, res, next) {
   const organization = req.organization;
@@ -53,8 +51,8 @@ function queryParamAsBoolean(input: string): boolean {
 }
 
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res: express.Response, next: express.NextFunction) {
-  const operations = req.app.settings.operations as Operations;
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
+  const { operations } = providers;
   const organization = req.organization;
   const username = req.individualContext.getGitHubIdentity().username;
   const id = req.individualContext.getGitHubIdentity().id;
@@ -130,7 +128,7 @@ async function addMemberToOrganizationCache(queryCache: QueryCache, organization
 }
 
 router.get('/express', asyncHandler(async function (req: ReposAppRequest, res: express.Response, next: express.NextFunction) {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const organization = req.organization;
   const onboarding = queryParamAsBoolean(req.query.onboarding as string);
   const username = req.individualContext.getGitHubIdentity().username;
@@ -202,7 +200,7 @@ router.post('/', joinOrg);
 
 // /orgname/join/byClient
 router.post('/byClient', asyncHandler(async (req: ReposAppRequest, res: express.Response, next: express.NextFunction) => {
-  const { queryCache, insights } = req.app.settings.providers as IProviders;
+  const { queryCache, insights } = getProviders(req);
   const individualContext = req.individualContext as IndividualContext;
   const organization = req.organization as Organization;
   const onboarding = queryParamAsBoolean(req.query.onboarding as string);

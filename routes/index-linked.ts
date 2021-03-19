@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders, CreateError, hasStaticReactClientApp } from '../transitional';
+import { ReposAppRequest, CreateError, hasStaticReactClientApp, getProviders } from '../transitional';
 import { IndividualContext } from '../user';
 import { storeOriginalUrlAsVariable } from '../utils';
 import { AuthorizeOnlyCorporateAdministrators } from '../middleware/business/corporateAdministrators';
@@ -20,8 +20,7 @@ import RouteRepos from './repos';
 import RouteLegacyOrganizationAdministration from './orgAdmin';
 
 import unlinkRoute from './unlink';
-import { Organization } from '../business/organization';
-import { Repository } from '../business/repository';
+import { Organization, Repository } from '../business';
 
 import orgsRoute from './orgs';
 import { injectReactClient } from '../middleware';
@@ -63,10 +62,10 @@ router.use('/repos', reactRoute || RouteRepos);
 router.use('/undo', RouteUndo);
 router.use('/administration', AuthorizeOnlyCorporateAdministrators, RouteAdministration);
 
-router.use('/https?*github.com/:org/:repo', asyncHandler(async (req, res, next) => {
+router.use('/https?*github.com/:org/:repo', asyncHandler(async (req: ReposAppRequest, res, next) => {
   // Helper method to allow pasting a GitHub URL into the app to go to a repo
   const { org, repo } = req.params;
-  const { operations } = req.app.settings.providers as IProviders;
+  const { operations } = getProviders(req);
   if (org && repo) {
     let organization: Organization = null;
     try {

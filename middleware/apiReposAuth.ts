@@ -13,7 +13,7 @@ import basicAuth from 'basic-auth';
 import crypto from 'crypto';
 
 import { jsonError } from './jsonError';
-import { IProviders, ReposAppRequest } from '../transitional';
+import { getProviders, IProviders, ReposAppRequest } from '../transitional';
 import { PersonalAccessToken } from '../entities/token/token';
 
 export const wrapErrorForImmediateUserError = (err: Error) => {
@@ -40,7 +40,7 @@ export default function ReposApiAuthentication(req: IApiRequest, res, next) {
   sha1.update(key);
   const hashValue = sha1.digest('hex');
 
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const tokenProvider = providers.tokenProvider;
 
   const apiEventProperties = {
@@ -69,14 +69,10 @@ export default function ReposApiAuthentication(req: IApiRequest, res, next) {
     if (tokenError && warning) {
       apiEventProperties.warning = warning;
     }
-    const insights = req.insights || (req.app.settings.providers as IProviders).insights;
-    if (insights) {
-      insights.trackEvent({ name: eventName, properties: apiEventProperties });
-    }
+    const insights = getProviders(req).insights;
+    insights?.trackEvent({ name: eventName, properties: apiEventProperties });
     if (tokenError) {
-      if (insights) {
-        insights.trackMetric({ name: 'ApiInvalidKey', value: 1 });
-      }
+      insights?.trackMetric({ name: 'ApiInvalidKey', value: 1 });
       tokenError.skipLog = true;
       return next(jsonError(tokenError.statusCode === 404 ? 'Key not authorized' : tokenError.message, 401));
     }
@@ -84,23 +80,17 @@ export default function ReposApiAuthentication(req: IApiRequest, res, next) {
       tokenError = jsonError(warning || 'Key revoked', 403);
       wrapErrorForImmediateUserError(tokenError);
       tokenError.authErrorMessage = tokenError.message;
-      if (insights) {
-        req.insights.trackMetric({ name: 'ApiRevokedKeyAttempt', value: 1 });
-      }
+      insights?.trackMetric({ name: 'ApiRevokedKeyAttempt', value: 1 });
       return next(tokenError);
     }
     if (token.isExpired()) {
       tokenError = jsonError(warning || 'A revoked key attempted to use an API', 403);
       wrapErrorForImmediateUserError(tokenError);
       tokenError.authErrorMessage = tokenError.message;
-      if (insights) {
-        req.insights.trackMetric({ name: 'ApiExpiredKeyAttempt', value: 1 });
-      }
+      insights?.trackMetric({ name: 'ApiExpiredKeyAttempt', value: 1 });
       return next(tokenError);
     }
-    if (insights) {
-      req.insights.trackMetric({ name: 'ApiRequest', value: 1 });
-    }
+    insights?.trackMetric({ name: 'ApiRequest', value: 1 });
     req.apiKeyToken = token;
     req.apiKeyProviderName = 'repos';
     return next();

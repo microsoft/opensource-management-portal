@@ -11,7 +11,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders, UserAlertType, hasStaticReactClientApp } from '../transitional';
+import { ReposAppRequest, UserAlertType, hasStaticReactClientApp, getProviders } from '../transitional';
 
 import { Organization } from '../business/organization';
 
@@ -60,7 +60,7 @@ dynamicStartupInstance?.routes?.connectAuthenticatedRoutes && dynamicStartupInst
 router.use('/settings', SettingsRoute);
 
 router.get('/news', (req: ReposAppRequest, res, next) => {
-  const config = req.app.settings.runtimeConfig;
+  const config = getProviders(req).config;;
   if (config && config.news && config.news.all && config.news.all.length) {
     return req.individualContext.webContext.render({
       view: 'news',
@@ -79,9 +79,9 @@ router.get('/', reactRoute || asyncHandler(async function (req: ReposAppRequest,
   const onboarding = req.query.onboarding !== undefined;
   const individualContext = req.individualContext;
   const link = individualContext.link;
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const operations = providers.operations;
-  const config = req.app.settings.runtimeConfig;
+  const config = getProviders(req).config;;
   if (!link) {
     if (!individualContext.getGitHubIdentity()) {
       return individualContext.webContext.render({

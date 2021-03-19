@@ -6,15 +6,15 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { jsonError } from '../../middleware/jsonError';
-import { ErrorHelper, IProviders, ReposAppRequest } from '../../transitional';
+import { jsonError } from '../../middleware';
+import { ErrorHelper, getProviders, ReposAppRequest } from '../../transitional';
 
 import RouteOrganization from './organization';
 
 const router = express.Router();
 
 router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { operations } = req.app.settings.providers as IProviders;
+  const { operations } = getProviders(req);
   try {
     const orgs = operations.getOrganizations();
     const dd = orgs.map(org => { return org.asClientJson(); });
@@ -25,7 +25,7 @@ router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
 }));
 
 router.use('/:orgName', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { operations } = req.app.settings.providers as IProviders;
+  const { operations } = getProviders(req);
   const { orgName } = req.params;
   try {
     const org = operations.getOrganization(orgName);

@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders } from '../../transitional';
+import { ReposAppRequest, getProviders } from '../../transitional';
 import { AddLinkToRequest } from '../../middleware/links/';
 
 import approvalsRoute from './approvals';
@@ -21,7 +21,7 @@ import campaignsRoute from './campaigns';
 router.use(asyncHandler(AddLinkToRequest));
 
 router.get('/', asyncHandler( async (req: ReposAppRequest, res) => {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const link = req.individualContext.link;
   let legalContactInformation = null;
   try {

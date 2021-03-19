@@ -5,18 +5,16 @@
 
 import express from 'express';
 import asyncHandler from 'express-async-handler';
-import { corporateLinkToJson, ICorporateLink } from '../../../business/corporateLink';
-import { OrganizationMember } from '../../../business/organizationMember';
-import { TeamJsonFormat } from '../../../business/team';
-import { TeamRepositoryPermission } from '../../../business/teamRepositoryPermission';
+
 import { getContextualTeam } from '../../../middleware/github/teamPermissions';
 
-import { jsonError } from '../../../middleware/jsonError';
+import { jsonError } from '../../../middleware';
 import { sortRepositoriesByNameCaseInsensitive } from '../../../routes/org/team';
-import { IProviders, NoCacheNoBackground, ReposAppRequest } from '../../../transitional';
+import { getProviders, NoCacheNoBackground, ReposAppRequest } from '../../../transitional';
 import JsonPager from '../jsonPager';
 import { getLinksLightCache } from '../leakyLocalCache';
 import { equivalentLegacyPeopleSearch } from './people';
+import { TeamJsonFormat, TeamRepositoryPermission, OrganizationMember, corporateLinkToJson, ICorporateLink } from '../../../business';
 
 const router = express.Router();
 
@@ -68,7 +66,7 @@ router.get('/members', asyncHandler(async (req: ReposAppRequest, res, next) => {
 }));
 
 router.get('/maintainers', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { operations } = req.app.settings.providers as IProviders;
+  const { operations } = getProviders(req);
   try {
     const forceRefresh = !!req.query.refresh;
     const team = getContextualTeam(req);

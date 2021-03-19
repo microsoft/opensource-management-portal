@@ -8,13 +8,13 @@ import asyncHandler from 'express-async-handler';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders } from '../../transitional';
+import { ReposAppRequest, getProviders } from '../../transitional';
 
 import RouteApp from './app';
 import RouteApps from './apps';
 
 router.use('*', asyncHandler(async function (req: ReposAppRequest, res, next) {
-  const { corporateAdministrationProfile } = req.app.settings.providers as IProviders;
+  const { corporateAdministrationProfile } = getProviders(req);
   if (corporateAdministrationProfile && corporateAdministrationProfile.urls) {
     req.individualContext.setInitialViewProperty('_corpAdminUrls', corporateAdministrationProfile.urls);
   }

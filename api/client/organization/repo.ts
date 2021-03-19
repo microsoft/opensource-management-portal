@@ -6,9 +6,9 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { jsonError } from '../../../middleware/jsonError';
-import { ErrorHelper, IProviders, LocalApiRepoAction, ReposAppRequest } from '../../../transitional';
-import { Repository } from '../../../business/repository';
+import { jsonError } from '../../../middleware';
+import { ErrorHelper, getProviders, LocalApiRepoAction, ReposAppRequest } from '../../../transitional';
+import { Repository } from '../../../business';
 import { IndividualContext } from '../../../user';
 import NewRepositoryLockdownSystem from '../../../features/newRepositoryLockdown';
 import { AddRepositoryPermissionsToRequest, getContextualRepositoryPermissions } from '../../../middleware/github/repoPermissions';
@@ -68,7 +68,7 @@ router.get('/exists', asyncHandler(async (req: RequestWithRepo, res, next) => {
 }));
 
 router.patch('/renameDefaultBranch', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: RequestWithRepo, res, next) {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const repoPermissions = getContextualRepositoryPermissions(req);
   const targetBranchName = req.body.default_branch;
@@ -83,7 +83,7 @@ router.patch('/renameDefaultBranch', asyncHandler(AddRepositoryPermissionsToRequ
 
 router.post('/archive', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: RequestWithRepo, res, next) {
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const { insights } = providers;
   const repoPermissions = getContextualRepositoryPermissions(req);
   if (!repoPermissions.allowAdministration) {
@@ -140,7 +140,7 @@ router.post('/archive', asyncHandler(AddRepositoryPermissionsToRequest), asyncHa
 
 router.delete('/', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: RequestWithRepo, res, next) {
   // NOTE: duplicated code from /routes/org/repos.ts
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const { insights } = providers;
   const insightsPrefix = 'DeleteRepo';
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
@@ -209,7 +209,7 @@ router.delete('/', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler
     }
     return next(jsonError(noExistingMetadata, 404));
   }
-  const { operations, repositoryMetadataProvider } = req.app.settings.providers as IProviders;
+  const { operations, repositoryMetadataProvider } = getProviders(req);
   const lockdownSystem = new NewRepositoryLockdownSystem({ operations, organization, repository, repositoryMetadataProvider });
   await lockdownSystem.deleteLockedRepository(false /* delete for any reason */, true /* deleted by the original user instead of ops */);
   return res.json({

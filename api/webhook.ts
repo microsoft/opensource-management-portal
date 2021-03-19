@@ -5,25 +5,27 @@
 
 import express from 'express';
 import asyncHandler from 'express-async-handler';
-import { jsonError } from '../middleware';
 
 import moment from 'moment';
-import { ReposAppRequest } from '../transitional';
-const router = express.Router();
+
+import { jsonError } from '../middleware';
+import { getProviders, ReposAppRequest } from '../transitional';
 
 import OrganizationWebhookProcessor from '../webhooks/organizationProcessor';
+
+const router = express.Router();
 
 interface IRequestWithRaw extends ReposAppRequest {
   _raw?: any;
 }
 
 router.use(asyncHandler(async (req: IRequestWithRaw, res, next) => {
+  const { operations } = getProviders(req);
   const body = req.body;
   const orgName = body && body.organization && body.organization.login ? body.organization.login : null;
   if (!orgName) {
     return next(jsonError(new Error('No organization login in the body'), 400));
   }
-  const operations = req.app.settings.providers.operations;
   try {
     if (!req.organization) {
       req.organization = operations.getOrganization(orgName);

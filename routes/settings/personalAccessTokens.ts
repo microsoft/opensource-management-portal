@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { IResponseForSettingsPersonalAccessTokens, ReposAppRequest, IProviders } from '../../transitional';
+import { ReposAppRequest, getProviders } from '../../transitional';
 import { PersonalAccessToken } from '../../entities/token/token';
 
 interface IPersonalAccessTokenForDisplay {
@@ -46,7 +46,7 @@ function translateTableToEntities(personalAccessTokens: PersonalAccessToken[]): 
 }
 
 function getPersonalAccessTokens(req: ReposAppRequest, res, next) {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const tokenProvider = providers.tokenProvider;
   const corporateId = req.individualContext.corporateIdentity.id;
   tokenProvider.queryTokensForCorporateId(corporateId).then(tokens => {
@@ -75,7 +75,7 @@ router.use(getPersonalAccessTokens);
 router.get('/', view);
 
 function createToken(req: ReposAppRequest, res, next) {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const tokenProvider = providers.tokenProvider;
   const insights = req.insights;
   const description = req.body.description;
@@ -126,7 +126,7 @@ router.post('/create', createToken);
 router.post('/extension', createToken);
 
 router.post('/delete', asyncHandler(async (req: IRequestForSettingsPersonalAccessTokens, res, next) => {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const tokenProvider = providers.tokenProvider;
   const revokeAll = req.body.revokeAll === '1';
   const revokeIdentifier = req.body.revoke;

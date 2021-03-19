@@ -4,7 +4,7 @@
 //
 
 import { Organization, MemberSearch, ICrossOrganizationMembersResult, Operations } from '../../business';
-import { IProviders, ReposAppRequest } from '../../transitional';
+import { getProviders, ReposAppRequest } from '../../transitional';
 import LeakyLocalCache, { getLinksLightCache } from './leakyLocalCache';
 
 // BAD PRACTICE: leaky local cache
@@ -22,7 +22,7 @@ export async function getPeopleAcrossOrganizations(operations: Operations) {
 }
 
 export async function equivalentLegacyPeopleSearch(req: ReposAppRequest) {
-  const { operations } = req.app.settings.providers as IProviders;
+  const { operations } = getProviders(req);
   const links = await getLinksLightCache(operations);
   const org = req.organization ? req.organization.name : null;
   const orgId = req.organization ? (req.organization as Organization).id : null;

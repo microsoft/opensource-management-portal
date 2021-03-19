@@ -6,10 +6,10 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { jsonError } from '../../middleware/jsonError';
-import { ICorporateLink } from '../../business/corporateLink';
-import { Operations, UnlinkPurpose } from '../../business/operations';
+import { jsonError } from '../../middleware';
+import { ICorporateLink, UnlinkPurpose } from '../../business';
 import { IApiRequest } from '../../middleware/apiReposAuth';
+import { getProviders } from '../../transitional';
 
 const router = express.Router();
 
@@ -29,9 +29,8 @@ router.use(function (req: ILinksApiRequestWithUnlink, res, next) {
 });
 
 router.use('/github/id/:id', asyncHandler(async (req: ILinksApiRequestWithUnlink, res, next) => {
+  const { operations } = getProviders(req);
   const id = req.params.id;
-
-  const operations = req.app.settings.operations as Operations;
   try {
     const link = await operations.linkProvider.getByThirdPartyId(id);
     if (!link) {
@@ -49,7 +48,7 @@ router.use('*', (req: ILinksApiRequestWithUnlink, res, next) => {
 });
 
 router.delete('*', (req: ILinksApiRequestWithUnlink, res, next) => {
-  const operations = req.app.settings.operations as Operations;
+  const { operations } = getProviders(req);
   const link = req.unlink;
   let purpose: UnlinkPurpose = null;
   try {

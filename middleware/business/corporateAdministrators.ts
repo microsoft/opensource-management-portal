@@ -6,9 +6,7 @@
 // This route does not use the portal administrator team but instead an explicit
 // approved list of corporate usernames.
 
-import express from 'express';
-
-import { ReposAppRequest } from '../../transitional';
+import { getProviders, ReposAppRequest } from '../../transitional';
 
 import { wrapError } from '../../utils';
 
@@ -18,7 +16,7 @@ function denyRoute(next) {
 
 export function AuthorizeOnlyCorporateAdministrators(req: ReposAppRequest, res, next) {
   const individualContext = req.individualContext;
-  const config = req.app.settings.runtimeConfig;
+  const config = getProviders(req).config;;
   const administrators: string[] = config && config.administrators && config.administrators.corporateUsernames ? config.administrators.corporateUsernames : null;
   const username = individualContext.corporateIdentity.username;
   let isAuthorized = false;

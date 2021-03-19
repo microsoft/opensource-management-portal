@@ -8,7 +8,7 @@ import asyncHandler from 'express-async-handler';
 
 import { IndividualContext } from '../../user';
 import { jsonError } from '../../middleware';
-import { IProviders, ReposAppRequest } from '../../transitional';
+import { getProviders, ReposAppRequest } from '../../transitional';
 import { unlinkInteractive } from '../../routes/unlink';
 import { interactiveLinkUser } from '../../routes/link';
 
@@ -16,7 +16,7 @@ const router = express.Router();
 
 async function validateLinkOk(req: ReposAppRequest, res, next) {
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const insights = providers.insights;
   const config = providers.config;
   let validateAndBlockGuests = false;

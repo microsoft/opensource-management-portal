@@ -10,7 +10,7 @@ import { Organization } from '../../../business';
 
 import { jsonError } from '../../../middleware';
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
-import { ErrorHelper, IProviders, ReposAppRequest } from '../../../transitional';
+import { ErrorHelper, getProviders, IProviders, ReposAppRequest } from '../../../transitional';
 import { IndividualContext } from '../../../user';
 
 import RouteApprovals from './approvals';
@@ -27,7 +27,7 @@ deployment?.routes?.api?.context?.index && deployment?.routes?.api?.context?.ind
 router.use('/approvals', RouteApprovals);
 
 router.get('/', (req: ReposAppRequest, res) => {
-  const { config } = req.app.settings.providers as IProviders;
+  const { config } = getProviders(req);
   const { continuousDeployment } = config;
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const isGitHubAuthenticated = !!activeContext.getSessionBasedGitHubIdentity()?.id;
@@ -43,7 +43,7 @@ router.get('/', (req: ReposAppRequest, res) => {
 });
 
 router.get('/accountDetails', asyncHandler(async (req: ReposAppRequest, res) => {
-  const { operations} = req.app.settings.providers as IProviders;
+  const { operations} = getProviders(req);
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const gh = activeContext.getGitHubIdentity();
   if (!gh || !gh.id) {
@@ -63,7 +63,7 @@ router.get('/teams', RouteTeams);
 
 router.use('/orgs/:orgName', asyncHandler(async (req: ReposAppRequest, res, next) => {
   const { orgName } = req.params;
-  const { operations } = req.app.settings.providers as  IProviders;
+  const { operations } = getProviders(req);
   // const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   // if (!activeContext.link) {
   //   return next(jsonError('Account is not linked', 400));

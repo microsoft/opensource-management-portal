@@ -10,7 +10,7 @@ const router = express.Router();
 import querystring from 'querystring';
 import { injectReactClient, TryFallbackToBlob } from '../middleware';
 
-import { hasStaticReactClientApp, IReposRequestWithOrganization } from '../transitional';
+import { getProviders, hasStaticReactClientApp, IReposRequestWithOrganization } from '../transitional';
 import { wrapError } from '../utils';
 
 import orgRoute from './org/';
@@ -29,7 +29,7 @@ async function forwardToOrganizationRoutes (req: IReposRequestWithOrganization, 
   // This middleware contains both the original GitHub operations types
   // as well as the newer implementation. In time this will peel apart.
   const orgName = req.params.orgName;
-  const operations = req.app.settings.operations;
+  const { operations } = getProviders(req);
   try {
     const organization = operations.getOrganization(orgName);
     req.organization = organization;

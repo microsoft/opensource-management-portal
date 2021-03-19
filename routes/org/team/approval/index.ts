@@ -7,9 +7,8 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders, UserAlertType } from '../../../../transitional';
-import { wrapError } from '../../../../utils';
-import { Team } from '../../../../business/team';
+import { ReposAppRequest, IProviders, UserAlertType, getProviders } from '../../../../transitional';
+import { Team } from '../../../../business';
 import { PermissionWorkflowEngine } from '../approvals';
 import RenderHtmlMail from '../../../../lib/emailRender';
 import { IndividualContext } from '../../../../user';
@@ -61,7 +60,7 @@ router.get('/setNote/:action', function (req: ILocalRequest, res) {
 });
 
 router.post('/', asyncHandler(async (req: ILocalRequest, res, next) => {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const { individualContext } = req;
   const engine = req.approvalEngine as PermissionWorkflowEngine;
   let message = req.body.text as string;

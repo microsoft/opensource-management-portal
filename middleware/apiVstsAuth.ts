@@ -8,13 +8,13 @@ import request = require('requestretry');
 import { jsonError } from './jsonError';
 import { IApiRequest } from './apiReposAuth';
 import { PersonalAccessToken } from '../entities/token/token';
-import { IProviders } from '../transitional';
+import { getProviders } from '../transitional';
 
 // TODO: consider better caching
 const localMemoryCacheVstsToAadId = new Map();
 
 export function AzureDevOpsAuthenticationMiddleware(req: IApiRequest, res, next) {
-  const config = req.app.settings.runtimeConfig;
+  const config = getProviders(req).config;;
   if (!config) {
     return next(new Error('Missing configuration for the application'));
   }
@@ -28,7 +28,7 @@ export function AzureDevOpsAuthenticationMiddleware(req: IApiRequest, res, next)
     return next(new Error('VSTS collection URL is missing in the environment configuration'));
   }
 
-  const { graphProvider } = req.app.settings.providers as IProviders;
+  const { graphProvider } = getProviders(req);
 
   const vstsCollectionUrl = config.authentication.vsts.vstsCollectionUrl;
   const connectionDataApi = `${vstsCollectionUrl}/_apis/connectiondata`;

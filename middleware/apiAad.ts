@@ -9,7 +9,7 @@ import jwksClient from 'jwks-rsa';
 import { isJsonError, jsonError } from './jsonError';
 import { IApiRequest, wrapErrorForImmediateUserError } from './apiReposAuth';
 import { PersonalAccessToken } from '../entities/token/token';
-import { IProviders } from '../transitional';
+import { getProviders } from '../transitional';
 
 // TODO: Caching of signing keys
 
@@ -58,7 +58,7 @@ function getSigningKeys(header, callback) {
 }
 
 async function validateAadAuthorization(req: IApiRequest): Promise<void> {
-  const { config, insights } = req.app.settings.providers as IProviders;
+  const { config, insights } = getProviders(req);
 
   const allowedTenants = (config?.microsoft?.api?.aad?.authorizedTenants || '').split(',');
   if (!allowedTenants) {

@@ -7,7 +7,7 @@ import express, { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders } from '../../transitional';
+import { ReposAppRequest, IProviders, getProviders } from '../../transitional';
 import { Team } from '../../business/team';
 import { IRequestOrganizationPermissions, AddOrganizationPermissionsToRequest } from '../../middleware/github/orgPermissions';
 import { OrganizationMembershipState } from '../../business/organization';
@@ -42,10 +42,11 @@ router.use(function (req: ReposAppRequest, res, next) {
 
 // Campaign-related redirect to take the user to GitHub
 router.get('/', (req: ReposAppRequest, res, next) => {
-  if (!req.app.settings.providers || !req.app.settings.providers.campaign) {
+  const providers = getProviders(req);
+  if (!providers || !providers.campaign) {
     return next();
   }
-  return req.app.settings.providers.campaign.redirectGitHubMiddleware(req, res, next, () => {
+  return providers.campaign.redirectGitHubMiddleware(req, res, next, () => {
     return req.organization ? req.organization.name : null;
   });
 });
@@ -84,7 +85,7 @@ router.use(asyncHandler(async (req: ILocalOrgRequest, res, next) => {
 // Org membership required endpoints:
 
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const approvalProvider = providers.approvalProvider;
   const organization = req.organization;
   const username = req.individualContext.getGitHubIdentity().username;

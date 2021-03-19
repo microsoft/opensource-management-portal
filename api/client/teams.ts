@@ -5,12 +5,10 @@
 
 import express from 'express';
 import asyncHandler from 'express-async-handler';
-import { ICrossOrganizationMembershipByOrganization, Operations } from '../../business/operations';
-import { Team, TeamJsonFormat } from '../../business/team';
 
-import { jsonError } from '../../middleware/jsonError';
-import { IProviders, ReposAppRequest } from '../../transitional';
-
+import { ICrossOrganizationMembershipByOrganization, Operations, Team, TeamJsonFormat } from '../../business';
+import { jsonError } from '../../middleware';
+import { getProviders, ReposAppRequest } from '../../transitional';
 import JsonPager from './jsonPager';
 
 const router = express.Router();
@@ -36,7 +34,7 @@ async function getCrossOrganizationTeams(operations: Operations): Promise<Team[]
 }
 
 router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { operations } = req.app.settings.providers as IProviders;
+  const { operations } = getProviders(req);
   const pager = new JsonPager<Team>(req, res);
   const q: string = (req.query.q ? req.query.q as string : null) || '';
   try {

@@ -7,10 +7,9 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders, UserAlertType } from '../../transitional';
+import { ReposAppRequest, UserAlertType, getProviders } from '../../transitional';
 import { wrapError } from '../../utils';
 import { Organization, OrganizationMembershipState } from '../../business/organization';
-import { Operations } from '../../business/operations';
 
 interface IOrganizationMembershipState {
   state: OrganizationMembershipState;
@@ -26,7 +25,6 @@ interface ILocalLeaveRequest extends ReposAppRequest {
 
 router.use(asyncHandler(async (req: ILocalLeaveRequest, res, next) => {
   const organization = req.organization as Organization;
-  const operations = req.app.settings.operations as Operations;
   req.orgLeave = {
     state: null,
   };
@@ -57,7 +55,7 @@ router.get('/', function (req: ILocalLeaveRequest, res) {
 
 router.post('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const organization = req.organization;
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const operations = providers.operations;
   const username = req.individualContext.getGitHubIdentity().username;
   const id = req.individualContext.getGitHubIdentity().id;

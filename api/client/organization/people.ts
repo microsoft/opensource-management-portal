@@ -6,17 +6,11 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { jsonError } from '../../../middleware/jsonError';
-import { IProviders, NoCacheNoBackground, ReposAppRequest } from '../../../transitional';
-import { Organization } from '../../../business/organization';
-import { MemberSearch } from '../../../business/memberSearch';
-import { Operations } from '../../../business/operations';
-import { corporateLinkToJson } from '../../../business/corporateLink';
-import { OrganizationMember } from '../../../business/organizationMember';
-import { Team } from '../../../business/team';
-import { TeamMember } from '../../../business/teamMember';
+import { jsonError } from '../../../middleware';
+import { getProviders, NoCacheNoBackground, ReposAppRequest } from '../../../transitional';
 import LeakyLocalCache, { getLinksLightCache } from '../leakyLocalCache';
 import JsonPager from '../jsonPager';
+import { OrganizationMember, TeamMember, Operations, Team, Organization, MemberSearch, corporateLinkToJson } from '../../../business';
 
 const router = express.Router();
 
@@ -59,7 +53,7 @@ type PeopleSearchOptions = {
 }
 
 export async function equivalentLegacyPeopleSearch(req: ReposAppRequest, options?: PeopleSearchOptions) {
-  const { operations } = req.app.settings.providers as IProviders;
+  const { operations } = getProviders(req);
   const links = await getLinksLightCache(operations);
   const org = req.organization ? req.organization.name : null;
   const orgId = req.organization ? (req.organization as Organization).id : null;

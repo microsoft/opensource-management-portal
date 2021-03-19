@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IProviders, ReposAppRequest } from '../../transitional';
+import { getProviders, IProviders, ReposAppRequest } from '../../transitional';
 import { Repository } from '../../business/repository';
 import { IndividualContext } from '../../user';
 import { GitHubCollaboratorPermissionLevel } from '../../business/repositoryPermission';
@@ -85,7 +85,7 @@ export async function AddRepositoryPermissionsToRequest(req: ReposAppRequest, re
   }
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const repository = req[requestScopedRepositoryKeyName] as Repository;
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const permissions = await getComputedRepositoryPermissions(providers, activeContext, repository);
   req[repoPermissionsCacheKeyName] = permissions;
   return next();

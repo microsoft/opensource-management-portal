@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { IProviders, ReposAppRequest } from '../transitional';
+import { getProviders, IProviders, ReposAppRequest } from '../transitional';
 
 import { requirePortalAdministrationPermission } from '../middleware/business/administration';
 import { PostgresLinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
@@ -77,19 +77,19 @@ router.get('/', function (req: ReposAppRequest, res) {
   })
 });
 
-async function queryByGitHubLogin(operations: Operations, graphProvider: any, redisClient: any, login: string): Promise<IUserInformationQuery> {
+async function queryByGitHubLogin(providers: IProviders, login: string): Promise<IUserInformationQuery> {
+  const { operations } = providers;
   const query: IUserInformationQuery = {
     queryByType: UserQueryByType.ByGitHubUsername,
     queryByValue: login,
   };
-  const linkProvider = operations.linkProvider;
   let gitHubAccountInfo = null;
   try {
     gitHubAccountInfo = await operations.getAccountByUsername(login);
   } catch (error) {
     // They may have renamed their GitHub username, but the ID is the same as it was before...
     if (error && error.statusCode === 404) {
-      const linkByOldName = await getLinkByThirdPartyUsername(operations, graphProvider, redisClient, login) as ICorporateLink;
+      const linkByOldName = await getLinkByThirdPartyUsername(providers, login) as ICorporateLink;
       if (linkByOldName && linkByOldName.thirdPartyId) {
         const anotherTryGitHubId = linkByOldName.thirdPartyId;
         query.link = linkByOldName;
@@ -104,7 +104,7 @@ async function queryByGitHubLogin(operations: Operations, graphProvider: any, re
   }
   if (!query.link && gitHubAccountInfo && gitHubAccountInfo.login) {
     try {
-      query.link = await getLinkByThirdPartyUsername(operations, graphProvider, redisClient, gitHubAccountInfo.login);
+      query.link = await getLinkByThirdPartyUsername(providers, gitHubAccountInfo.login);
     } catch (queryByLoginAttempt) {
       query.noLinkButKnownThirdPartyId = gitHubAccountInfo.id;
       if (queryByLoginAttempt.status == 404 /* loose*/) {
@@ -114,16 +114,16 @@ async function queryByGitHubLogin(operations: Operations, graphProvider: any, re
       }
     }
   }
-  return loadInformation(operations, graphProvider, redisClient, query);
+  return loadInformation(providers, query);
 }
 
-function getLinkByThirdPartyUsername(operations: Operations, graphProvider: any, redisClient: any, login: string): Promise<ICorporateLink> {
-  const linkProvider = operations.linkProvider;
+function getLinkByThirdPartyUsername(providers: IProviders, login: string): Promise<ICorporateLink> {
+  const linkProvider = providers.linkProvider;
   return linkProvider.getByThirdPartyUsername(login);
 }
 
-async function queryByGitHubId(operations: Operations, graphProvider: any, redisClient: any, thirdPartyId: string): Promise<IUserInformationQuery> {
-  const linkProvider = operations.linkProvider;
+async function queryByGitHubId(providers: IProviders, thirdPartyId: string): Promise<IUserInformationQuery> {
+  const { linkProvider } = providers;
   const link = await linkProvider.getByThirdPartyId(thirdPartyId);
   const query: IUserInformationQuery = {
     queryByType: UserQueryByType.ByGitHubId,
@@ -134,11 +134,11 @@ async function queryByGitHubId(operations: Operations, graphProvider: any, redis
   } else {
     query.noLinkButKnownThirdPartyId = thirdPartyId;
   }
-  return loadInformation(operations, graphProvider, redisClient, query);
+  return loadInformation(providers, query);
 }
 
-async function queryByCorporateUsername(operations: Operations, graphProvider: any, redisClient: any, upn: string): Promise<IUserInformationQuery> {
-  const linkProvider = operations.linkProvider;
+async function queryByCorporateUsername(providers: IProviders, upn: string): Promise<IUserInformationQuery> {
+  const linkProvider = providers.linkProvider;
   const links = await linkProvider.queryByCorporateUsername(upn);
   if (!links || links.length !== 1) {
     if (!links || links.length <= 0) {
@@ -153,12 +153,12 @@ async function queryByCorporateUsername(operations: Operations, graphProvider: a
     queryByValue: upn,
     link: links[0],
   };
-  return loadInformation(operations, graphProvider, redisClient, query);
+  return loadInformation(providers, query);
 }
 
-async function loadInformation(operations: Operations, graphProvider: any, redisClient: any, query: IUserInformationQuery): Promise<IUserInformationQuery> {
+async function loadInformation(providers: IProviders, query: IUserInformationQuery): Promise<IUserInformationQuery> {
   // Input: query type and value; pre-queried and set single link, if present
-
+  const { operations } = providers;
   const corporateAadId = query.link ? query.link.corporateId : null;
   if (corporateAadId) {
     try {
@@ -251,19 +251,15 @@ async function getGitHubAccountInformationById(operations: Operations, id: strin
 
 router.get('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {
   const thirdPartyId = req.params.githubid;
-  const operations = req.app.settings.providers.operations as Operations;
-  const graphProvider = req.app.settings.providers.graphProvider;
-  const redisClient = req.app.settings.providers.redisClient;
-  queryByGitHubId(operations, graphProvider, redisClient, thirdPartyId).then(query => {
+  const providers = getProviders(req);
+  queryByGitHubId(providers, thirdPartyId).then(query => {
     req.individualContext.webContext.render({
       view: 'organization/whois/result',
       title: `Whois by GitHub ID: ${thirdPartyId}`,
       state: {
         info: query.gitHubUserInfo,
         realtimeGraph: query.realtimeGraph,
-
         postUrl: `/organization/whois/id/${thirdPartyId}`,
-
         // new-style
         query,
       },
@@ -283,7 +279,7 @@ interface IIDValue {
 
 router.get('/whois/link/:linkid', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const linkId = req.params.linkid;
-  const operations = req.app.settings.operations as Operations;
+  const { operations } = getProviders(req);
   const linkProvider = operations.linkProvider as PostgresLinkProvider;
   const link = await linkProvider.getByPostgresLinkId(linkId);
   return req.individualContext.webContext.render({
@@ -317,7 +313,7 @@ router.post('/whois/link/:linkid', asyncHandler(async function (req: ReposAppReq
     }
     break;
   }
-  const operations = req.app.settings.operations as Operations;
+  const { operations } = getProviders(req);
   const linkProvider = operations.linkProvider as PostgresLinkProvider;
   const link = await linkProvider.getByPostgresLinkId(linkId);
   const messages = [
@@ -363,7 +359,7 @@ router.post('/whois/link/:linkid', asyncHandler(async function (req: ReposAppReq
 }));
 
 router.post('/whois/link/', asyncHandler(async function (req: ReposAppRequest, res, next) {
-  const { operations } = req.app.settings.providers as IProviders;
+  const { operations } = getProviders(req);
   const allowAdministratorManualLinking = operations?.config?.features?.allowAdministratorManualLinking;
   if (!allowAdministratorManualLinking) {
     return next(new Error('The manual linking feature is not enabled'));
@@ -417,9 +413,7 @@ router.post('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {
   const thirdPartyId = req.params.githubid;
   const markAsServiceAccount = req.body['mark-as-service-account'];
   const unmarkServiceAccount = req.body['unmark-service-account'];
-  const operations = req.app.settings.operations as Operations;
-  const graphProvider = req.app.settings.providers.graphProvider;
-  const redisClient = req.app.settings.providers.redisClient;
+  const providers = getProviders(req);
   let action = OperationsAction.DestroyLink;
   if (markAsServiceAccount) {
     action = OperationsAction.MarkAsServiceAccount;
@@ -430,7 +424,7 @@ router.post('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {
     type: IDValueType.ID,
     value: thirdPartyId,
   };
-  destructiveLogic(operations, graphProvider, redisClient, idValue, action, req, res, next).then(state => {
+  destructiveLogic(providers, idValue, action, req, res, next).then(state => {
     if (state.independentView) {
       return;
     }
@@ -446,10 +440,8 @@ router.post('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {
 
 router.get('/whois/aad/:upn', function (req: ReposAppRequest, res, next) {
   const upn = req.params.upn;
-  const operations = req.app.settings.providers.operations as Operations;
-  const graphProvider = req.app.settings.providers.graphProvider;
-  const redisClient = req.app.settings.providers.redisClient;
-  queryByCorporateUsername(operations, graphProvider, redisClient, upn).then(query => {
+  const providers = getProviders(req);
+  queryByCorporateUsername(providers, upn).then(query => {
     req.individualContext.webContext.render({
       view: 'organization/whois/result',
       title: `Whois by AAD UPN: ${upn}`,
@@ -467,17 +459,14 @@ router.get('/whois/aad/:upn', function (req: ReposAppRequest, res, next) {
 
 router.get('/whois/github/:username', function (req: ReposAppRequest, res, next) {
   const login = req.params.username;
-  const operations = req.app.settings.providers.operations;
-  const graphProvider = req.app.settings.providers.graphProvider;
-  const redisClient = req.app.settings.providers.redisClient;
-  queryByGitHubLogin(operations, graphProvider, redisClient, login).then(query => {
+  const providers = getProviders(req);
+  queryByGitHubLogin(providers, login).then(query => {
     req.individualContext.webContext.render({
       view: 'organization/whois/result',
       title: `Whois: ${login}`,
       state: {
         info: query.gitHubUserInfo,
         realtimeGraph: query.realtimeGraph,
-
         // new-style
         query,
       },
@@ -489,9 +478,7 @@ router.post('/whois/github/:username', function (req: ReposAppRequest, res, next
   const username = req.params.username;
   const markAsServiceAccount = req.body['mark-as-service-account'];
   const unmarkServiceAccount = req.body['unmark-service-account'];
-  const operations = req.app.settings.operations as Operations;
-  const graphProvider = req.app.settings.providers.graphProvider;
-  const redisClient = req.app.settings.providers.redisClient;
+  const providers = getProviders(req);
   let action = OperationsAction.DestroyLink;
   if (markAsServiceAccount) {
     action = OperationsAction.MarkAsServiceAccount;
@@ -502,7 +489,7 @@ router.post('/whois/github/:username', function (req: ReposAppRequest, res, next
     type: IDValueType.Username,
     value: username,
   };
-  destructiveLogic(operations, graphProvider, redisClient, identifier, action, req, res, next).then(state => {
+  destructiveLogic(providers, identifier, action, req, res, next).then(state => {
     if (state.independentView) {
       return;
     }
@@ -516,7 +503,8 @@ router.post('/whois/github/:username', function (req: ReposAppRequest, res, next
   });
 });
 
-async function destructiveLogic(operations: Operations, graphProvider, redisClient, identifier: IIDValue, action: OperationsAction, req, res, next): Promise<any> {
+async function destructiveLogic(providers: IProviders, identifier: IIDValue, action: OperationsAction, req, res, next): Promise<any> {
+  const { operations } = providers;
   let usernameInfo = null;
   let state = {
     results: null,
@@ -559,7 +547,7 @@ async function destructiveLogic(operations: Operations, graphProvider, redisClie
   let linkQuery = null;
   if (thirdPartyId) {
     try {
-      linkQuery = await queryByGitHubId(operations, graphProvider, redisClient, thirdPartyId);
+      linkQuery = await queryByGitHubId(providers, thirdPartyId);
     } catch (oops) {
       console.dir(oops);
       state.messages.push(`Could not find a corporate link by their GitHub user ID of ${thirdPartyId}`);
@@ -567,7 +555,7 @@ async function destructiveLogic(operations: Operations, graphProvider, redisClie
         state.messages.push(`Will try next by their GitHub username: ${usernameInfo.login}`);
       }
       try {
-        linkQuery = await queryByGitHubLogin(operations, graphProvider, redisClient, thirdPartyUsername);
+        linkQuery = await queryByGitHubLogin(providers, thirdPartyUsername);
         state.messages.push(`Did find a link by their login on GitHub, ${thirdPartyUsername}. Will terminate this ID.`);
       } catch (linkByUsernameError) {
         state.messages.push(`Could not find a link by login, ${thirdPartyUsername}. Hmm.`);
@@ -615,8 +603,8 @@ router.get('/bulkRepoDelete', (req: ReposAppRequest, res) => {
   });
 });
 
-router.post('/bulkRepoDelete', asyncHandler(async (req, res, next) => {
-  const operations = req.app.settings.operations as Operations;
+router.post('/bulkRepoDelete', asyncHandler(async (req: ReposAppRequest, res, next) => {
+  const { operations } = getProviders(req);
   let repositories = req.body.repositories;
   // TODO: FEATURE FLAG: add a feature flag whether this API is available.
   if (!repositories) {

@@ -8,7 +8,7 @@ import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
 import { Operations } from '../business/operations';
-import { ReposAppRequest, ErrorHelper, UserAlertType } from '../transitional';
+import { ReposAppRequest, ErrorHelper, UserAlertType, getProviders } from '../transitional';
 import { AuditLogRecord } from '../entities/auditLogRecord/auditLogRecord';
 import { daysInMilliseconds } from '../utils';
 import { AuditEvents } from '../entities/auditLogRecord';
@@ -243,7 +243,7 @@ async function undoTeamAdminRepoPermissionAsync(operations: Operations, entry: I
 }
 
 router.use(asyncHandler(async function (req: IHaveUndoCandiates, res, next) {
-  const operations = req.app.settings.providers.operations as Operations;
+  const { operations } = getProviders(req);
   if (!operations.allowUndoSystem) {
     res.status(404);
     return next(new Error('This feature is unavailable in this application instance'));
@@ -269,7 +269,7 @@ router.use(asyncHandler(async function (req: IHaveUndoCandiates, res, next) {
 }));
 
 router.post('/', asyncHandler(async (req: IHaveUndoCandiates, res, next) => {
-  const operations = req.app.settings.providers.operations as Operations;
+  const { operations } = getProviders(req);
   const insights = operations.insights;
   const link = req.individualContext.link;
   const githubId = req.individualContext.getGitHubIdentity().id;
@@ -326,7 +326,7 @@ router.post('/', asyncHandler(async (req: IHaveUndoCandiates, res, next) => {
 }));
 
 router.get('/', asyncHandler(async (req: IHaveUndoCandiates, res, next) => {
-  const operations = req.app.settings.providers.operations as Operations;
+  const { operations } = getProviders(req);
   const insights = operations.insights;
   insights?.trackMetric({ name: 'UndoPageViews', value: 1 });
   return req.individualContext.webContext.render({

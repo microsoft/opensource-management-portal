@@ -6,9 +6,9 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { jsonError } from '../../../middleware/jsonError';
-import { IProviders, ReposAppRequest } from '../../../transitional';
-import { Repository } from '../../../business/repository';
+import { jsonError } from '../../../middleware';
+import { getProviders, IProviders, ReposAppRequest } from '../../../transitional';
+import { Repository } from '../../../business';
 
 import RouteRepo from './repo';
 import JsonPager from '../jsonPager';
@@ -17,7 +17,7 @@ const router = express.Router();
 
 router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
   const { organization } = req;
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const pager = new JsonPager<Repository>(req, res);
   const searchOptions = {
     q: (req.query.q || '') as string,

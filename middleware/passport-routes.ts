@@ -7,18 +7,20 @@ import querystring from 'querystring';
 
 import { redirectToReferrer, storeReferrer } from '../utils';
 import { getGithubAppConfigurationOptions } from './passport/githubStrategy';
-import { IProviders, IReposError } from '../transitional';
+import { getProviders, IAppSession, IReposError, ReposAppRequest } from '../transitional';
 
-function newSessionAfterAuthentication(req, res, next) {
+function newSessionAfterAuthentication(req: ReposAppRequest, res, next) {
   // Same site issues
   if (req.query && req.query.failure === 'invalid') {
     console.log('Invalid callback from AAD. Likely a SameSite issue.');
-    const { config } = req.app.settings.providers as IProviders;
+    const { config } = getProviders(req);
     if (config?.session?.name) {
       try {
       const sessionName = config.session.name;
       res.clearCookie(sessionName);
-      req.session.destroy();
+      return req.session.destroy(() => {
+        return res.redirect('/');
+      });
       } catch (warnError) {
         console.warn(warnError);
       }
@@ -177,8 +179,8 @@ export default function configurePassport(app, passport, initialConfig) {
       });
     });
 
-    app.get('/auth/github/join', (req, res) => {
-      var config = req.app.settings.runtimeConfig;
+    app.get('/auth/github/join', (req: ReposAppRequest, res) => {
+      const { config } = getProviders(req);
       var authorizeRelativeUrl = req.app.settings['runtime/passport/github/authorizeUrl'].replace('https://github.com', '');
       var joinUrl = 'https://github.com/join?' + querystring.stringify({
         return_to: `${authorizeRelativeUrl}?` + querystring.stringify({
@@ -193,17 +195,18 @@ export default function configurePassport(app, passport, initialConfig) {
     });
   }
 
-  function signoutPage(req, res) {
-    var config = req.app.settings.runtimeConfig;
+  function signoutPage(req: ReposAppRequest, res) {
+    const { config } = getProviders(req);
     req.logout();
     if (req.session) {
-      delete req.session.enableMultipleAccounts;
-      delete req.session.selectedGithubId;
+      const session = req.session as IAppSession
+      delete session.enableMultipleAccounts;
+      delete session.selectedGithubId;
     }
     if (config.authentication.scheme === 'github') {
       res.redirect('https://github.com/logout');
     } else {
-      var unlinked = req.query.unlink !== undefined;
+      const unlinked = req.query.unlink !== undefined;
       res.render('message', {
         message: unlinked ? `Your ${config.brand.companyName} and GitHub accounts have been unlinked. You no longer have access to any ${config.brand.companyName} organizations, and you have been signed out of this portal.` : 'Goodbye',
         title: 'Goodbye',
@@ -221,7 +224,7 @@ export default function configurePassport(app, passport, initialConfig) {
   // Expanded GitHub auth scope routes
 
   function blockIncreasedScopeForModernApps(req, res, next) {
-    const config = req.app.settings.runtimeConfig;
+    const config = getProviders(req).config;;
     const { modernAppInUse } = getGithubAppConfigurationOptions(config);
     if (modernAppInUse) {
       return next(new Error('This site is using the newer GitHub App model and so the increased-scope routes are no longer applicable to it'));
@@ -270,8 +273,8 @@ export default function configurePassport(app, passport, initialConfig) {
   // links from apps that temporarily prevent sessions. Technically this seems to
   // impact Windows users who use Word to open links to the site. Collecting
   // telemetry for now.
-  app.get('/auth/azure/callback', (req, res, next) => {
-    const insights = req.app.settings.providers.insights;
+  app.get('/auth/azure/callback', (req: ReposAppRequest, res, next) => {
+    const { insights } = getProviders(req);
     const isAuthenticated = req.isAuthenticated();
     if (insights) {
       insights.trackEvent({

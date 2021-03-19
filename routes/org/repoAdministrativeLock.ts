@@ -9,7 +9,7 @@ const router = express.Router();
 
 import _ from 'lodash';
 
-import { ReposAppRequest, IProviders, UserAlertType } from '../../transitional';
+import { ReposAppRequest, UserAlertType, getProviders } from '../../transitional';
 import { Repository } from '../../business/repository';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { Organization } from '../../business/organization';
@@ -42,7 +42,7 @@ router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
 }));
 
 router.post('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const operations = providers.operations;
   const repository = req['repository'] as Repository;
   const entity = repository.getEntity();
