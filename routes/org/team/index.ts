@@ -9,7 +9,7 @@ const router = express.Router();
 
 import throat from 'throat';
 
-import { ReposAppRequest, IProviders, UserAlertType } from '../../../transitional';
+import { ReposAppRequest, IProviders, UserAlertType, getProviders } from '../../../transitional';
 import { wrapError } from '../../../utils';
 import { ICorporateLink } from '../../../business/corporateLink';
 import { Team, GitHubRepositoryType, ITeamMembershipRoleState, GitHubTeamRole } from '../../../business/team';
@@ -55,7 +55,7 @@ interface ILocalRequest extends ReposAppRequest {
 }
 
 router.use(asyncHandler(async (req: ILocalRequest, res, next) => {
-  const { operations } = req.app.settings.providers as IProviders;
+  const { operations } = getProviders(req);
   const login = req.individualContext.getGitHubIdentity().username;
   const team2 = req.team2 as Team;
   try {
@@ -72,7 +72,7 @@ router.use(asyncHandler(async (req: ILocalRequest, res, next) => {
 }));
 
 router.use(asyncHandler(async (req: ILocalRequest, res, next) => {
-  const approvalProvider = req.app.settings.providers.approvalProvider as IApprovalProvider;
+  const { approvalProvider } = getProviders(req);
   const team2 = req.team2 as Team;
   if (!approvalProvider) {
     return next(new Error('No approval provider instance available'));
@@ -180,7 +180,7 @@ router.post('/join', asyncHandler(async (req: ILocalRequest, res, next) => {
   }
   const activeContext = req.individualContext;
   const team2 = req.team2 as Team;
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const justification = req.body.justification as string;
   const hostname = req.hostname;
   const outcome = await submitTeamJoinRequest(providers, activeContext, team2, justification, activeContext.webContext.correlationId, hostname);
@@ -447,7 +447,7 @@ enum BasicTeamViewPage {
 }
 
 async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
 
   const showManagementFeatures = parseInt(req.query['inline-management'] as string) == 1;
 
@@ -457,7 +457,7 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
   const membershipStatus = req.membershipStatus;
   const membershipState = req.membershipState;
   const team2 = req.team2 as Team;
-  const operations = req.app.settings.operations as Operations;
+  const { operations } = getProviders(req);
   const organization = req.organization as Organization;
 
   const teamMaintainers = req.teamMaintainers as TeamMember[];

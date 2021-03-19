@@ -3,13 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IProviders, ReposAppRequest } from '../../transitional';
+import { getProviders, ReposAppRequest } from '../../transitional';
 import { IndividualContext } from '../../user';
 import { jsonError } from '../jsonError';
 
 export default async function getCorporateAliasFromActiveContext(req: ReposAppRequest) {
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-  const { graphProvider } = req.app.settings.providers as IProviders;
+  const { graphProvider } = getProviders(req);
   if (!activeContext.corporateIdentity || !activeContext.corporateIdentity.id) {
     throw jsonError('No corporate identity', 401);
   }

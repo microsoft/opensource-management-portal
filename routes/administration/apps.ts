@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { IProviders, ReposAppRequest, UserAlertType } from '../../transitional';
+import { getProviders, ReposAppRequest, UserAlertType } from '../../transitional';
 import { sortByCaseInsensitive } from '../../utils';
 import GitHubApplication from '../../business/application';
 import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
@@ -33,7 +33,7 @@ interface IByOrgView {
 }
 
 router.post('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const { deletesettingsorgname } = req.body;
   if (!deletesettingsorgname) {
     return next(new Error('Not able to complete this operation'));
@@ -58,7 +58,7 @@ router.post('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
 }));
 
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const operations = providers.operations;
   const apps = providers.operations.getApplications();
   const individualContext = req.individualContext;

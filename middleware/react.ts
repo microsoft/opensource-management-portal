@@ -3,14 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import path from 'path';
+import express from 'express';
 import fs from 'fs';
+import path from 'path';
 
 import appPackage from '../package.json';
 
 import { getStaticBlobCacheFallback } from '../lib/staticBlobCacheFallback';
-import { IProviders, ReposAppRequest } from '../transitional';
-import express from 'express';
+import { getProviders, ReposAppRequest } from '../transitional';
 
 const staticReactPackageNameKey = 'static-react-package-name';
 const staticClientPackageName = appPackage[staticReactPackageNameKey];
@@ -55,7 +55,7 @@ export async function TryFallbackToBlob(req: ReposAppRequest, res: express.Respo
   if (!req.path) {
     return false;
   }
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const baseUrl = '/react' + req.originalUrl;
   if (localFallbackBlobCache.has(baseUrl)) {
     providers.insights.trackEvent({name: 'FallbackToBlob', properties: { baseUrl }});

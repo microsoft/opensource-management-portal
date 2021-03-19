@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { apiContextMiddleware, AddLinkToRequest, requireAccessTokenClient, setIdentity, jsonError } from '../../middleware';
-import { IProviders, ReposAppRequest } from '../../transitional';
+import { getProviders, ReposAppRequest } from '../../transitional';
 
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 
@@ -25,7 +25,7 @@ import RouteCrossOrganizationTeams from './teams';
 const router = express.Router();
 
 router.use((req: ReposAppRequest, res, next) => {
-  const { config } = req.app.settings.providers as IProviders;
+  const { config } = getProviders(req);
   if (config?.features?.allowApiClient) {
     return req.isAuthenticated() ? next() : next(jsonError('Session is not authenticated', 401));
   }

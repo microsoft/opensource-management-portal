@@ -7,7 +7,7 @@ import _ from 'lodash';
 import asyncHandler from 'express-async-handler';
 import express from 'express';
 
-import { ReposAppRequest } from '../transitional';
+import { getProviders, ReposAppRequest } from '../transitional';
 import { Operations, ICrossOrganizationMembershipByOrganization } from '../business/operations';
 import { Team } from '../business/team';
 import { UserContext } from '../user/aggregate';
@@ -73,7 +73,7 @@ function reduceTeams(collections, property, map) {
 }
 
 export default asyncHandler(async function(req: ReposAppRequest, res: express.Response, next: express.NextFunction) {
-  const operations = req.app.settings.operations as Operations;
+  const { operations } = getProviders(req);
   const isCrossOrg = req.teamsPagerMode === 'orgs';
   const aggregations = req.individualContext.aggregations;
   const orgName = isCrossOrg ? null : req.organization.name.toLowerCase();

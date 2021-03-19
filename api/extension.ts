@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { IProviders } from '../transitional';
+import { getProviders, IProviders } from '../transitional';
 import { setIdentity } from '../middleware/business/authentication';
 import { AddLinkToRequest } from '../middleware/links';
 import { jsonError } from '../middleware';
@@ -66,7 +66,7 @@ router.use(asyncHandler(AddLinkToRequest));
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 router.get('/', (req: IApiRequest, res) => {
-  const operations = req.app.settings.providers.operations;
+  const { operations } = getProviders(req);
 
   // Basic info route, used to validate new users
   const apiContext = req.apiContext;
@@ -122,7 +122,7 @@ router.get('/metadata', asyncHandler(getLocalEncryptionKeyMiddleware), (req: IAp
   const apiContext = req.apiContext;
 
   const localKey = res.localKey;
-  const operations = req.app.settings.providers.operations;
+  const { operations } = getProviders(req);
   const ghi = apiContext.getGitHubIdentity();
   const id = ghi ? ghi.id : null;
   const login = ghi ? ghi.username : null;
@@ -183,7 +183,7 @@ function getSanitizedOrganizations(operations) {
 }
 
 async function getLocalEncryptionKeyMiddleware(req: IApiRequest, res, next): Promise<void> {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const localExtensionKeyProvider = providers.localExtensionKeyProvider;
   const apiKeyToken = req.apiKeyToken;
   const insights = req.insights;

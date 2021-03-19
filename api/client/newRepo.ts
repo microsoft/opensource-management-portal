@@ -4,7 +4,7 @@
 //
 
 import express from 'express';
-import { ReposAppRequest } from '../../transitional';
+import { getProviders, ReposAppRequest } from '../../transitional';
 import { jsonError } from '../../middleware/jsonError';
 
 import newOrgRepo from './newOrgRepo';
@@ -12,7 +12,7 @@ const router = express.Router();
 
 router.use('/org/:org', (req: ReposAppRequest, res, next) => {
   const orgName = req.params.org;
-  const operations = req.app.settings.providers.operations;
+  const { operations } = getProviders(req);
   try {
     req.organization = operations.getOrganization(orgName);
   } catch (noOrganization) {

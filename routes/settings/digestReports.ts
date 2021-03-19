@@ -6,7 +6,7 @@
 import express from 'express';
 const router = express.Router();
 
-import { RequestWithSystemwidePermissions } from '../../transitional';
+import { getProviders, RequestWithSystemwidePermissions } from '../../transitional';
 import { IndividualContext } from '../../user';
 
 // import { buildConsolidatedMap as buildRecipientMap } from '../../jobs/reports/consolidated';
@@ -35,7 +35,7 @@ router.use((req: IRequestWithDigestReports, res, next) => {
   // when the Redis server is the same for both reports and the
   // app
 
-  const providers = req.app.settings.providers;
+  const providers = getProviders(req);
   const config = providers.config;
 
   const reportConfig = config && config.github && config.github.jobs ? config.github.jobs.reports : {};

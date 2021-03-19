@@ -299,6 +299,10 @@ export interface ReposAppRequest extends Request {
   oauthAccessToken: AccessToken;
 }
 
+export function getProviders(req: ReposAppRequest) {
+  return req.app.settings.providers as IProviders;
+}
+
 export interface IReposAppResponse extends Response {
 }
 
@@ -556,6 +560,7 @@ interface IAppSessionProperties extends Session {
   passport: any;
   id: string;
   alerts?: IUserAlert[];
+  referer: string;
 }
 
 export interface IAppSession extends IAppSessionProperties {}

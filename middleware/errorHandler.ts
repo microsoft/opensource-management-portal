@@ -1,7 +1,3 @@
-import { wrapError } from "../utils";
-import { IProviders } from "../transitional";
-import { AxiosError } from "axios";
-
 //
 // Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
@@ -9,7 +5,11 @@ import { AxiosError } from "axios";
 
 /*eslint no-console: ["error", { allow: ["error", "log"] }] */
 
-const querystring = require('querystring');
+import querystring from 'querystring';
+import { AxiosError } from 'axios';
+
+import { wrapError } from '../utils';
+import { getProviders } from '../transitional';
 
 function redactRootPathsFromString(string, path) {
   if (typeof string === 'string' && string.includes && string.split) {
@@ -51,8 +51,7 @@ const exceptionFieldsOfInterest = [
 
 export default function SiteErrorHandler (err, req, res, next) {
   // CONSIDER: Let's eventually decouple all of our error message improvements to another area to keep the error handler intact.
-  const { applicationProfile } = req.app.settings.providers as IProviders;
-  var config = null;
+  const { applicationProfile, config } = getProviders(req);
   var correlationId = req.correlationId;
   var errorStatus = err ? (err.status || err.statusCode) : undefined;
   // Per GitHub: https://developer.github.com/v3/oauth/#bad-verification-code
@@ -73,8 +72,7 @@ export default function SiteErrorHandler (err, req, res, next) {
     err = wrapError(err, 'The GitHub API is temporarily down. Please try again soon.', false);
   }
   var primaryUserInstance = req.user ? req.user.github : null;
-  if (req && req.app && req.app.settings && req.app.settings.runtimeConfig) {
-    config = req.app.settings.runtimeConfig;
+  if (config) {
     if (config.authentication.scheme !== 'github') {
       primaryUserInstance = req.user ? req.user.azure : null;
     }

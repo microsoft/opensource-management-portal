@@ -7,10 +7,10 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders, CreateError, UserAlertType } from '../../transitional';
+import { ReposAppRequest, CreateError, UserAlertType, getProviders } from '../../transitional';
 
 router.use('/:campaignGroupId', (req:  ReposAppRequest, res: any, next) => {
-  const { config } = req.app.settings.providers as IProviders;
+  const { config } = getProviders(req);
   const knownCampaignGroups = (config?.campaigns?.groups || '').toLowerCase().split(',');
   req.params.campaignGroupId = req.params.campaignGroupId.toLowerCase();
   const { campaignGroupId } = req.params;
@@ -29,7 +29,7 @@ router.get('/:campaignGroupId/subscribe', asyncHandler(async (req: ReposAppReque
 }));
 
 router.get('/:campaignGroupId', asyncHandler(async (req: ReposAppRequest, res: any, next) => {
-  const { campaignStateProvider } = req.app.settings.providers as IProviders;
+  const { campaignStateProvider } = getProviders(req);
   if (!campaignStateProvider) {
     return next(new Error('This app is not configured for campaign management'));
   }
@@ -46,7 +46,7 @@ router.get('/:campaignGroupId', asyncHandler(async (req: ReposAppRequest, res: a
 }));
 
 async function modifySubscription(isUnsubscribing: boolean, req: ReposAppRequest, res: any, next: any) {
-  const { campaignStateProvider } = req.app.settings.providers as IProviders;
+  const { campaignStateProvider } = getProviders(req);
   if (!campaignStateProvider) {
     return next(new Error('This app is not configured for campaign management'));
   }

@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders, RequestTeamMemberAddType, UserAlertType } from '../../../transitional';
+import { ReposAppRequest, RequestTeamMemberAddType, UserAlertType, getProviders } from '../../../transitional';
 import { Team } from '../../../business/team';
 import { TeamMember } from '../../../business/teamMember';
 
@@ -66,7 +66,7 @@ router.use('/add', MiddlewareTeamAdminRequired, (req: ILocalTeamRequest, res, ne
 }, RoutePeopleSearch);
 
 router.post('/remove', MiddlewareTeamAdminRequired, asyncHandler(async (req: ILocalTeamRequest, res, next) => {
-  const { operations } = req.app.settings.providers as IProviders;
+  const { operations } = getProviders(req);
   const username = operations.validateGitHubLogin(req.body.username);
   const team2 = req.team2 as Team;
   await team2.removeMembership(username);
@@ -76,7 +76,7 @@ router.post('/remove', MiddlewareTeamAdminRequired, asyncHandler(async (req: ILo
 }));
 
 router.post('/add', MiddlewareTeamAdminRequired, asyncHandler(async (req: ILocalTeamRequest, res, next) => {
-  const { operations } = req.app.settings.providers as IProviders;
+  const { operations } = getProviders(req);
   const username = operations.validateGitHubLogin(req.body.username);
   const organization = req.organization;
   const team2 = req.team2;

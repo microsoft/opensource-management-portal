@@ -9,7 +9,7 @@
 
 import _ from 'lodash';
 import { jsonError } from '../middleware';
-import { ICustomizedNewRepositoryLogic, INewRepositoryContext, IProviders } from '../transitional';
+import { getProviders, ICustomizedNewRepositoryLogic, INewRepositoryContext, IProviders } from '../transitional';
 import { ICreateRepositoryResult, Organization } from '../business/organization';
 import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission, RepositoryLockdownState } from '../entities/repositoryMetadata/repositoryMetadata';
 import RenderHtmlMail from '../lib/emailRender';
@@ -53,7 +53,7 @@ export async function CreateRepository(req, logic: ICustomizedNewRepositoryLogic
   if (!req.organization) {
     throw jsonError(new Error('No organization available in the route.'), 400);
   }
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const operations = providers.operations;
   const mailProvider = providers.mailProvider;
   const repositoryMetadataProvider = providers.repositoryMetadataProvider;
@@ -136,7 +136,7 @@ export async function CreateRepository(req, logic: ICustomizedNewRepositoryLogic
   }
   let repository: Repository = null;
   if (!existingRepoId) {
-    req.app.settings.providers.insights.trackEvent({
+    providers.insights?.trackEvent({
       name: 'ApiRepoTryCreateForOrg',
       properties: {
         parameterName: parameters.name,
@@ -153,7 +153,7 @@ export async function CreateRepository(req, logic: ICustomizedNewRepositoryLogic
         repository = organization.repositoryFromEntity(createResult.repository);
       }
     } catch (error) {
-      req.app.settings.providers.insights.trackEvent({
+      providers.insights?.trackEvent({
         name: 'ApiRepoCreateForOrgGitHubFailure',
         properties: {
           parameterName: parameters.name,
@@ -185,7 +185,7 @@ export async function CreateRepository(req, logic: ICustomizedNewRepositoryLogic
       throw jsonError(error, error.status || 500);
     }
     response = createResult.response;
-    req.app.settings.providers.insights.trackEvent({
+    providers.insights?.trackEvent({
       name: 'ApiRepoCreateForOrg',
       properties: {
         parameterName: parameters.name,
@@ -220,7 +220,7 @@ export async function CreateRepository(req, logic: ICustomizedNewRepositoryLogic
       const account = await operations.getAccountByUsername(metadata.createdByThirdPartyUsername);
       metadata.createdByThirdPartyId = account.id.toString();
     } catch (noAvailableUsername) {
-      req.app.settings.providers.insights.trackEvent({
+      providers.insights?.trackEvent({
         name: 'ApiRepoCreateInvalidUsername',
         properties: {
           username: metadata.createdByThirdPartyUsername,
@@ -399,7 +399,7 @@ function downgradeBroadAccessTeams(organization, teams) {
 }
 
 async function sendEmail(req, logic: ICustomizedNewRepositoryLogic, createContext: INewRepositoryContext, mailProvider: IMailProvider, apiKeyRow, correlationId: string, repoCreateResults, approvalRequest: RepositoryMetadataEntity, msProperties, existingRepoId: any, repository: Repository, createdUserLink: ICorporateLink): Promise<void> {
-  const { config, operations, viewServices } = req.app.settings.providers as IProviders;
+  const { config, operations, viewServices } = getProviders(req);
   const excludeNotificationsValue = config.notifications?.reposNotificationExcludeForUsers;
   let excludeNotifications = [];
   if (excludeNotificationsValue) {
@@ -481,7 +481,7 @@ async function sendEmail(req, logic: ICustomizedNewRepositoryLogic, createContex
     isNotBootstrap: true,
   };
   try {
-    mail.content = await RenderHtmlMail(req.app.settings.runtimeConfig.typescript.appDirectory, emailTemplate, contentOptions);
+    mail.content = await RenderHtmlMail(config.typescript.appDirectory, emailTemplate, contentOptions);
   } catch (renderError) {
     req.insights.trackException({
       exception: renderError,
@@ -514,7 +514,7 @@ async function sendEmail(req, logic: ICustomizedNewRepositoryLogic, createContex
     additionalMail.to = operationsMails;
     contentOptions.reason = `You are receiving this e-mail as the operations contact address(es) ${operationsMails.join(', ')}. A repo has been created or classified.`;
     try {
-      additionalMail.content = await RenderHtmlMail(req.app.settings.runtimeConfig.typescript.appDirectory, emailTemplate, contentOptions);
+      additionalMail.content = await RenderHtmlMail(config.typescript.appDirectory, emailTemplate, contentOptions);
     } catch (renderError) {
       console.dir(renderError);
       return;

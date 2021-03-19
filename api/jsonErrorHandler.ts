@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IProviders } from '../transitional';
+import { getProviders } from '../transitional';
 
 export default function JsonErrorHandler(err, req, res, next) {
   if (err && err['json']) {
@@ -20,7 +20,7 @@ export default function JsonErrorHandler(err, req, res, next) {
   res.json({
     message: err && err.message ? err.message : 'Error',
   });
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   if (providers && providers.insights) {
     providers.insights.trackException({ exception: err });
   }

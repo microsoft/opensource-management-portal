@@ -9,16 +9,16 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { IProviders, ReposAppRequest } from '../transitional';
+import { getProviders, ReposAppRequest } from '../transitional';
 import { wrapError } from '../utils';
-import { Operations, UnlinkPurpose } from '../business/operations';
+import { UnlinkPurpose } from '../business/operations';
 import { OrganizationMembershipState } from '../business/organization';
 import { IndividualContext } from '../user';
 import { jsonError } from '../middleware';
 
 router.use(asyncHandler(async function (req: ReposAppRequest, res, next) {
   const memberOfOrganizations = [];
-  const operations = req.app.settings.providers.operations as Operations;
+  const { operations } = getProviders(req);
   const ghi = req.individualContext.getGitHubIdentity();
   if (!ghi || !ghi.username) {
     return next(new Error('GitHub identity required'));
@@ -46,7 +46,7 @@ router.use(asyncHandler(async function (req: ReposAppRequest, res, next) {
 router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
   const link = req.individualContext.link;
   const id = req.individualContext.getGitHubIdentity().id;
-  const operations = req.app.settings.providers.operations as Operations;
+  const { operations } = getProviders(req);
   const account = operations.getAccount(id);
   const currentOrganizationMemberships = await account.getOperationalOrganizationMemberships();
   if (link && id) {
@@ -64,7 +64,7 @@ router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
 
 export async function unlinkInteractive(isJson: boolean, individualContext: IndividualContext, req: ReposAppRequest, res, next) {
   const id = individualContext.getGitHubIdentity().id;
-  const { operations, insights } = req.app.settings.providers as IProviders;
+  const { operations, insights } = getProviders(req);
   const terminationOptions = {
     reason: 'User used the unlink function on the web site',
     purpose: UnlinkPurpose.Self,

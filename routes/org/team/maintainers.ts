@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders, RequestTeamMemberAddType, UserAlertType, NoCacheNoBackground } from '../../../transitional';
+import { ReposAppRequest, RequestTeamMemberAddType, UserAlertType, NoCacheNoBackground, getProviders } from '../../../transitional';
 import { Team } from '../../../business/team';
 import { TeamMember } from '../../../business/teamMember';
 
@@ -70,7 +70,7 @@ router.use('/add', MiddlewareTeamAdminRequired, (req: ILocalRequest, res, next) 
 });
 
 router.post('/add', MiddlewareTeamAdminRequired, asyncHandler(async function (req: ILocalRequest, res, next) {
-  const { operations } = req.app.settings.providers as IProviders;
+  const { operations } = getProviders(req);
   const login = operations.validateGitHubLogin(req.body.username);
   const team2 = req.team2 as Team;
   await team2.addMaintainer(login);

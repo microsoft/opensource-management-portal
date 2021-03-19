@@ -12,7 +12,7 @@ import lowercaser from '../../middleware/lowercaser';
 
 import { Collaborator, GitHubCollaboratorAffiliationQuery, ICorporateLink, ITemporaryCommandOutput, Organization, OrganizationMember, Repository, TeamPermission } from '../../business';
 
-import { ReposAppRequest, IProviders, UserAlertType, CreateError, NoCacheNoBackground } from '../../transitional';
+import { ReposAppRequest, IProviders, UserAlertType, CreateError, NoCacheNoBackground, getProviders } from '../../transitional';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { AddRepositoryPermissionsToRequest, getContextualRepositoryPermissions, IContextualRepositoryPermissions } from '../../middleware/github/repoPermissions';
 
@@ -171,7 +171,7 @@ router.get('/:repoName/delete', asyncHandler(async function (req: ILocalRequest,
 router.post('/:repoName/delete', asyncHandler(async function (req: ILocalRequest, res, next) {
   // NOTE: this code is also duplicated for now in the client/internal/* folder
   // CONSIDER: de-duplicate
-  const { operations, repositoryMetadataProvider } = req.app.settings.providers as IProviders;
+  const { operations, repositoryMetadataProvider } = getProviders(req);
   const { organization, repository } = req;
   const lockdownSystem = new NewRepositoryLockdownSystem({ operations, organization, repository, repositoryMetadataProvider });
   await lockdownSystem.deleteLockedRepository(false /* delete for any reason */, true /* deleted by the original user instead of ops */);
@@ -187,7 +187,7 @@ export interface IRenameOutput {
 router.post('/:repoName/defaultBranch', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: ILocalRequest, res, next) {
   try {
     const targetBranchName = req.body.targetBranchName || 'main';
-    const providers = req.app.settings.providers as IProviders;
+    const providers = getProviders(req);
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     const repoPermissions = getContextualRepositoryPermissions(req);
     const repository = req.repository as Repository;
@@ -263,7 +263,7 @@ router.post('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), async
 }));
 
 router.get('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: ILocalRequest, res, next) {
-  const { linkProvider, config, graphProvider } = req.app.settings.providers as IProviders;
+  const { linkProvider, config, graphProvider } = getProviders(req);
   const repoPermissions = req.repoPermissions;
   const referer = req.headers.referer as string;
   const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
@@ -465,7 +465,7 @@ router.get('/:repoName/permissions', asyncHandler(AddRepositoryPermissionsToRequ
 }));
 
 router.get('/:repoName/history', asyncHandler(async function (req: ILocalRequest, res, next) {
-  const { auditLogRecordProvider } = req.app.settings.providers as IProviders;
+  const { auditLogRecordProvider } = getProviders(req);
   const referer = req.headers.referer as string;
   const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
   const organization = req.organization;

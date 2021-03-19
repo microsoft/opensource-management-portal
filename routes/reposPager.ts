@@ -7,7 +7,7 @@ import asyncHandler from 'express-async-handler';
 import express from 'express';
 import _ from 'lodash';
 
-import { IReposAppWithTeam, IProviders } from '../transitional';
+import { IReposAppWithTeam, getProviders } from '../transitional';
 import { Operations } from '../business/operations';
 import { Repository } from '../business/repository';
 import { Team, GitHubRepositoryType } from '../business/team';
@@ -66,7 +66,7 @@ async function getReposAndOptionalTeamPermissions(organizationId: number, operat
 }
 
 export default asyncHandler(async function (req: IReposAppWithTeam, res: express.Response, next: express.NextFunction) {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const operations = providers.operations;
   const queryCache = providers.queryCache;
   const individualContext = req.individualContext;

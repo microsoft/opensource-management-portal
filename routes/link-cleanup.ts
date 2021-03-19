@@ -145,14 +145,14 @@ router.use((req: ReposAppRequest, res, next) => {
 // });
 
 // function unlink(req, link, callback) {
-//   const operations = req.app.settings.providers.operations;
+//   const { operations, insights, redisClient, config, githubLibrary } = getProviders(req);
 //   const options = {
-//     config: req.app.settings.runtimeConfig,
-//     redisClient: req.app.settings.providers.redisClient,
-//     githubLibrary: req.app.settings.githubLibrary,
-//     operations: operations,
-//     link: link,
-//     insights: req.insights,
+//     config,
+//     redisClient,
+//     githubLibrary,
+//     operations,
+//     link,
+//     insights,
 //   };
 //   new OpenSourceUserContext(options, function (contextError, unlinkContext) {
 //     if (contextError) {
@@ -161,23 +161,6 @@ router.use((req: ReposAppRequest, res, next) => {
 //     const account = operations.getAccount(unlinkContext.id.github);
 //     const reason = 'Link-cleanup, voluntary unlinking';
 //     account.terminate({ reason: reason }, callback);
-//   });
-// }
-
-// function invalidateCache(req, link, callback) {
-//   const options = {
-//     config: req.app.settings.runtimeConfig,
-//     redisClient: req.app.settings.providers.redisClient,
-//     githubLibrary: req.app.settings.githubLibrary,
-//     operations: req.app.settings.providers.operations,
-//     link: link,
-//     insights: req.insights,
-//   };
-//   new OpenSourceUserContext(options, function (contextError, unlinkContext) {
-//     if (contextError) {
-//       return callback(contextError);
-//     }
-//     return callback();
 //   });
 // }
 

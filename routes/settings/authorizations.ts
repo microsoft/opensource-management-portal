@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, ICallback } from '../../transitional';
+import { ReposAppRequest, getProviders } from '../../transitional';
 import { ICorporateLink } from '../../business/corporateLink';
 import { Operations } from '../../business/operations';
 
@@ -54,7 +54,7 @@ function createValidator(operations: Operations, link: ICorporateLink, token: st
 router.use((req: IRequestWithAuthorizations, res, next) => {
   // This is a lightweight, temporary implementation of authorization management to help clear
   // stored session tokens for apps like GitHub, VSTS, etc.
-  const operations = req.app.settings.providers.operations as Operations;
+  const { operations } = getProviders(req);
   const link = req.individualContext.link;
   const authorizations = [];
   if (req.individualContext.webContext.tokens.gitHubReadToken) {

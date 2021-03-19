@@ -3,11 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IProviders } from '../../transitional';
-import { jsonError } from '../../middleware/jsonError';
+import { getProviders } from '../../transitional';
+import { jsonError } from '../../middleware';
 import { IApiRequest } from '../../middleware/apiReposAuth';
-import { ICorporateLink } from '../../business/corporateLink';
-import { LinkOperationSource } from '../../business/operations';
+import { ICorporateLink, LinkOperationSource } from '../../business';
 
 const linkScope = 'link';
 
@@ -16,7 +15,7 @@ const supportedApiVersions = new Set([
 ]);
 
 export default async function postLinkApi(req: IApiRequest, res, next) {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const { operations } = providers;
   const token = req.apiKeyToken;
   const apiVersion = (req.query['api-version'] || req.headers['api-version']) as string;

@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders, UserAlertType, ErrorHelper } from '../../transitional';
+import { ReposAppRequest, UserAlertType, ErrorHelper, getProviders } from '../../transitional';
 import { UserSettings } from '../../entities/userSettings';
 
 export interface IRequestWithUserSettings extends ReposAppRequest {
@@ -16,7 +16,7 @@ export interface IRequestWithUserSettings extends ReposAppRequest {
 
 async function getSettings(req: IRequestWithUserSettings, res, next) {
   const corporateId = req.individualContext.corporateIdentity.id;
-  const { userSettingsProvider } = req.app.settings.providers as IProviders;
+  const { userSettingsProvider } = getProviders(req);
   if (!req.userSettings) {
     let settings: UserSettings = null;
     try {
@@ -61,7 +61,7 @@ router.post('/', asyncHandler(async function (req: IRequestWithUserSettings, res
   if (!changed) {
     return next(new Error('No change to sharing setting.'));
   }
-  const { userSettingsProvider } = req.app.settings.providers as IProviders;
+  const { userSettingsProvider } = getProviders(req);
   await userSettingsProvider.updateUserSettings(req.userSettings);
   const message = isOptIn ? 'You have opted in to sharing of contribution data.' : 'You have opted out of sharing contribution data.';
   const title = isOptIn ? 'Opt-in saved' : 'Opt-out';

@@ -9,7 +9,7 @@ const router = express.Router();
 
 import _ from 'lodash';
 
-import { ReposAppRequest, IProviders } from '../../transitional';
+import { ReposAppRequest, IProviders, getProviders } from '../../transitional';
 import { jsonError } from '../../middleware/jsonError';
 import { IndividualContext } from '../../user';
 import { Organization } from '../../business/organization';
@@ -66,7 +66,7 @@ router.get('/personalizedTeams', asyncHandler(async (req: ILocalApiRequest, res,
 }));
 
 router.get('/teams', asyncHandler(async (req: ILocalApiRequest, res, next) => {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const queryCache = providers.queryCache;
   const organization = req.organization as Organization;
   const broadTeams = new Set(organization.broadAccessTeams);
@@ -119,6 +119,7 @@ router.get('/teams', asyncHandler(async (req: ILocalApiRequest, res, next) => {
 }));
 
 router.get('/repo/:repo', asyncHandler(async (req: ILocalApiRequest, res) => {
+  const { insights } = getProviders(req);
   const repoName = req.params.repo;
   let error = null;
   try {
@@ -128,7 +129,7 @@ router.get('/repo/:repo', asyncHandler(async (req: ILocalApiRequest, res) => {
     res.status(404).end();
     error = repoDetailsError;
   }
-  req.app.settings.providers.insights.trackEvent({
+  insights?.trackEvent({
     name: 'ApiClientNewRepoValidateAvailability',
     properties: {
       found: error ? true : false,
@@ -140,7 +141,7 @@ router.get('/repo/:repo', asyncHandler(async (req: ILocalApiRequest, res) => {
 
 export async function discoverUserIdentities(req: ReposAppRequest, res, next) {
   const apiContext = req.apiContext as IndividualContext;
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const mailAddressProvider = providers.mailAddressProvider;
   // Try and also learn if we know their e-mail address to send the new repo mail to
   const upn = apiContext.corporateIdentity.username;
@@ -160,10 +161,10 @@ export async function discoverUserIdentities(req: ReposAppRequest, res, next) {
 router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(createRepositoryFromClient));
 
 export async function createRepositoryFromClient(req: ILocalApiRequest, res, next) {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const { insights, diagnosticsDrop, customizedNewRepositoryLogic } = providers;
   const individualContext = req.individualContext || req.apiContext;
-  const config = req.app.settings.runtimeConfig;
+  const config = getProviders(req).config;;
   const organization = req.organization as Organization;
   const existingRepoId = req.body.existingrepoid;
   const correlationId = req.correlationId;

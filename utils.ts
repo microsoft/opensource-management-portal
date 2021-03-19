@@ -9,7 +9,7 @@ import path = require('path');
 
 import { URL } from 'url';
 
-import { IReposError } from './transitional';
+import { getProviders, IAppSession, IReposError, ReposAppRequest } from './transitional';
 import { DateTime } from 'luxon';
 
 const zlib = require('zlib');
@@ -95,20 +95,20 @@ interface IStoreReferrerEventDetails {
   redirect?: string;
 }
 
-export function storeReferrer(req, res, redirect, optionalReason) {
+export function storeReferrer(req: ReposAppRequest, res, redirect, optionalReason) {
+  const { insights } = getProviders(req);
   const eventDetails : IStoreReferrerEventDetails = {
     method: 'storeReferrer',
     reason: optionalReason || 'unknown reason',
   };
-  if (req.session && req.headers && req.headers.referer && req.session.referer !== undefined && !req.headers.referer.includes('/signout') && !req.session.referer) {
-    req.session.referer = req.headers.referer;
+  const session = req.session as IAppSession;
+  if (session && req.headers && req.headers.referer && session.referer !== undefined && !req.headers.referer.includes('/signout') && !session.referer) {
+    session.referer = req.headers.referer;
     eventDetails.referer = req.headers.referer;
   }
   if (redirect) {
     eventDetails.redirect = redirect;
-    if (req.insights) {
-      req.insights.trackEvent({ name: 'RedirectWithReferrer', properties: eventDetails });
-    }
+    insights?.trackEvent({ name: 'RedirectWithReferrer', properties: eventDetails });
     res.redirect(redirect);
   }
 };

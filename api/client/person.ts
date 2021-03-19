@@ -5,13 +5,13 @@
 
 import asyncHandler from 'express-async-handler';
 
-import { jsonError } from '../../middleware/jsonError';
-import { IProviders, ReposAppRequest } from '../../transitional';
+import { jsonError } from '../../middleware';
+import { getProviders, ReposAppRequest } from '../../transitional';
 
 import { AccountJsonFormat } from '../../business';
 
 export default asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const { operations, queryCache } = providers;
   const login = req.params.login as string;
   try {

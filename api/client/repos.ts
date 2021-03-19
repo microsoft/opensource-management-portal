@@ -5,18 +5,17 @@
 
 import express from 'express';
 import asyncHandler from 'express-async-handler';
-import { Repository } from '../../business/repository';
 
-import { jsonError } from '../../middleware/jsonError';
-import { IProviders, ReposAppRequest } from '../../transitional';
-
+import { Repository } from '../../business';
+import { jsonError } from '../../middleware';
+import { getProviders, ReposAppRequest } from '../../transitional';
 import JsonPager from './jsonPager';
 import { RepositorySearchSortOrder, searchRepos } from './organization/repos';
 
 const router = express.Router();
 
 router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const pager = new JsonPager<Repository>(req, res);
   const searchOptions = {
     q: (req.query.q || '') as string,

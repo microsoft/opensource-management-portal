@@ -7,12 +7,12 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders } from '../../transitional';
+import { ReposAppRequest, getProviders } from '../../transitional';
 import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
 import { Organization } from '../../business/organization';
 
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res) {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const individualContext = req.individualContext;
   const existingRepoId = req.query.existingrepoid as string;
   const organization = req.organization as Organization;

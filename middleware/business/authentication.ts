@@ -8,7 +8,7 @@
 import _ from 'lodash';
 const debug = require('debug')('user');
 
-import { IAppSession, IProviders, ReposAppRequest } from '../../transitional';
+import { getProviders, IAppSession, ReposAppRequest } from '../../transitional';
 import { ICorporateIdentity, IGitHubIdentity, IndividualContext, GitHubIdentitySource } from '../../user';
 import { storeOriginalUrlAsReferrer } from '../../utils';
 
@@ -28,7 +28,7 @@ export async function requireAccessTokenClient(req: ReposAppRequest, res, next) 
     return next();
   }
   // This code currently assumes you're using AAD.
-  const { authorizationCodeClient } = req.app.settings.providers as IProviders;
+  const { authorizationCodeClient } = getProviders(req);
   if (!req.user.azure) {
     console.warn('Not an Azure authenticated user');
     return signoutThenSignIn(req, res);
@@ -58,12 +58,12 @@ function signoutThenSignIn(req, res) {
 }
 
 function redirectToSignIn(req, res) {
-  const config = req.app.settings.runtimeConfig;
+  const config = getProviders(req).config;;
   storeOriginalUrlAsReferrer(req, res, config.authentication.scheme === 'github' ? '/auth/github' : '/auth/azure', 'user is not authenticated and needs to authenticate');
 }
 
 export function requireAuthenticatedUserOrSignIn(req: ReposAppRequest, res, next) {
-  const config = req.app.settings.runtimeConfig;
+  const config = getProviders(req).config;;
   if (req.isAuthenticated()) {
     const expectedAuthenticationProperty = config.authentication.scheme === 'github' ? 'github' : 'azure';
     if (req.user && !req.user[expectedAuthenticationProperty]) {
@@ -123,7 +123,7 @@ export function setIdentity(req: ReposAppRequest, res, next) {
   }
   debug(s);
 
-  // const insights = req.app.settings.providers.insights;
+  // const { insights } = getProviders(req);
 
   activeContext.corporateIdentity = corporateIdentity;
   activeContext.setSessionBasedGitHubIdentity(gitHubIdentity);

@@ -9,7 +9,7 @@ const router = express.Router();
 
 import cors from 'cors';
 
-import { ReposAppRequest, IProviders } from '../transitional';
+import { ReposAppRequest, getProviders } from '../transitional';
 
 import { jsonError } from '../middleware';
 import { IApiRequest } from '../middleware/apiReposAuth';
@@ -91,7 +91,7 @@ router.use('/:org', function (req: IApiRequest, res, next) {
     return next(jsonError('The key is not authorized to use the repo create APIs', 401));
   }
 
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const operations = providers.operations;
   let organization = null;
   try {
@@ -104,7 +104,7 @@ router.use('/:org', function (req: IApiRequest, res, next) {
 });
 
 router.post('/:org/repos', asyncHandler(async function (req: ReposAppRequest, res, next) {
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const convergedObject = Object.assign({}, req.headers);
   req.insights.trackEvent({ name: 'ApiRepoCreateRequest', properties: convergedObject });
   Object.assign(convergedObject, req.body);

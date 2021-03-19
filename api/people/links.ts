@@ -12,7 +12,7 @@ import { ICorporateLink } from '../../business/corporateLink';
 import { Operations, ICrossOrganizationMembersResult } from '../../business/operations';
 import { IApiRequest } from '../../middleware/apiReposAuth';
 import postLinkApi from './link';
-import { ErrorHelper } from '../../transitional';
+import { ErrorHelper, getProviders } from '../../transitional';
 import { wrapError } from '../../utils';
 
 const router = express.Router();
@@ -39,7 +39,7 @@ router.use(function (req: IApiRequest, res, next) {
 router.post('/', asyncHandler(postLinkApi));
 
 router.get('/', asyncHandler(async (req: IApiRequest, res, next) => {
-  const operations = req.app.settings.operations;
+  const { operations } = getProviders(req);
   const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
   const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
   const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps);
@@ -53,7 +53,7 @@ router.get('/:linkid', asyncHandler(async (req: IApiRequest, res, next) => {
     return next(jsonError('This API is not supported by the API version you are using.', 400));
   }
   const linkid = req.params.linkid.toLowerCase();
-  const operations = req.app.settings.operations as Operations;
+  const { operations } = getProviders(req);
   const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
   const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
   if (operations.providers.queryCache && operations.providers.queryCache.supportsOrganizationMembership) {
@@ -93,7 +93,7 @@ router.get('/github/:username', asyncHandler(async (req: IApiRequest, res, next)
     return next(jsonError('This API is not supported by the API version you are using.', 400));
   }
   const username = req.params.username.toLowerCase();
-  const operations = req.app.settings.operations as Operations;
+  const { operations } = getProviders(req);
   const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
   const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
   if (operations.providers.queryCache && operations.providers.queryCache.supportsOrganizationMembership) {
@@ -128,7 +128,7 @@ router.get('/github/:username', asyncHandler(async (req: IApiRequest, res, next)
 
 router.get('/aad/userPrincipalName/:upn', asyncHandler(async (req: IApiRequest, res, next) => {
   const upn = req.params.upn;
-  const operations = req.app.settings.operations as Operations;
+  const { operations } = getProviders(req);
   const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
   const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
   if (operations.providers.queryCache && operations.providers.queryCache.supportsOrganizationMembership) {
@@ -184,7 +184,7 @@ router.get('/aad/:id', asyncHandler(async (req: IApiRequest, res, next) => {
   const id = req.params.id;
   const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
   const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
-  const operations = req.app.settings.operations as Operations;
+  const { operations } = getProviders(req);
   if (operations.providers.queryCache && operations.providers.queryCache.supportsOrganizationMembership) {
     // faster implementation
     const links = await operations.providers.linkProvider.queryByCorporateId(id);

@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { getProviders } from '../transitional';
+
 interface ICampaignData {
   uri?: any;
   sub?: any;
@@ -55,7 +57,7 @@ export default function initializeCampaigns(app) {
       return;
     }
 
-    const providers = req.app.settings.providers;
+    const providers = getProviders(req);
     const insights = providers.insights;
     if (!insights) {
       return;
@@ -101,7 +103,7 @@ export default function initializeCampaigns(app) {
       const uri = `${base}${prefixPortion}${identity}${sub}${queryPortion}`;
       res.redirect(uri);
 
-      const insights = req.app.settings.providers.insights;
+      const { insights } = getProviders(req);
       if (goGithubQuery) {
         data.query = goGithubQuery;
       }

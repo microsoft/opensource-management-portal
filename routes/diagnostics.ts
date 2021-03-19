@@ -4,12 +4,13 @@
 //
 
 import express from 'express';
-import { IAppSession } from '../transitional';
+import { getProviders, IAppSession, ReposAppRequest } from '../transitional';
 const router = express.Router();
 
 const redacted = '*****';
 
 interface IRequestWithSession extends express.Request {
+  app: any;
   session: IAppSession;
   user: any;
 }
@@ -23,8 +24,8 @@ interface ISafeUserView {
 }
 
 router.get('/', (req: IRequestWithSession, res) => {
+  const { config } = getProviders(req as any as ReposAppRequest);
   const sessionPrefix = req['sessionStore'] && req['sessionStore'].prefix ? req['sessionStore'].prefix + ':' : null;
-  let config = req.app.settings.runtimeConfig;
   const sessionIndex = sessionPrefix ? `${sessionPrefix}${req.session.id}` : req.session.id;
   let safeUserView: ISafeUserView = {
     cookies: req.cookies,

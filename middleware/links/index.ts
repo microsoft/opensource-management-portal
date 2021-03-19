@@ -6,9 +6,8 @@
 // Within the context, tries to resolve a link if it _can_. It does not force that a user is linked!
 
 import { IndividualContext } from '../../user';
-import { ReposAppRequest, IReposError } from "../../transitional";
-import { wrapError } from "../../utils";
-import { ILinkProvider } from '../../lib/linkProviders';
+import { ReposAppRequest, IReposError, getProviders } from '../../transitional';
+import { wrapError } from '../../utils';
 
 export function RequireLinkMatchesGitHubSessionExceptPrefixedRoute(prefix: string) {
   return requireLinkMatchesGitHubSession.bind(null, prefix);
@@ -61,26 +60,6 @@ function requireLinkMatchesGitHubSession(allowedPrefix: string, req: ReposAppReq
 }
 
 export async function AddLinkToRequest(req, res, next) {
-  // TODO: BEFORE MERGE TO PROD:
-  // Link cleanup logic and routes which may or may not be important
-  // Important: link cleanup needs, if any
-  // Not important: multi-user links
-  // if (error && (error.tooManyLinks === true || error.anotherAccount === true)) {
-  //   // The only URL permitted in this state is the cleanup endpoint and special multiple-account endpoint
-  //   if (req.url === '/link/cleanup' || req.url === '/link/enableMultipleAccounts' || req.url.startsWith('/placeholder')) {
-  //     return next();
-  //   }
-  //   insights.trackEvent({
-  //     name: 'LinkCleanupRedirect',
-  //     properties: {
-  //       message: error.toString(),
-  //       tooManyLinks: error.tooManyLinks === true ? 'too many' : 'no',
-  //       anotherAccount: error.anotherAccount === true ? 'another account' : 'no',
-  //     },
-  //   });
-  //   return res.redirect('/link/cleanup');
-  // }
-
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const contextName = req.individualContext ? 'Individual User Context' : 'API Context';
   if (!activeContext) {
@@ -96,7 +75,7 @@ export async function AddLinkToRequest(req, res, next) {
   if (!corporateId) {
     return next(new Error('No corporate user information'));
   }
-  const linkProvider = req.app.settings.providers.linkProvider as ILinkProvider;
+  const { linkProvider } = getProviders(req);
   if (!linkProvider) {
     return next(new Error('No link provider'));
   }

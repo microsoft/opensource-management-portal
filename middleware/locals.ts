@@ -5,18 +5,17 @@
 
 import os from 'os';
 
-// ----------------------------------------------------------------------------
-// Set local variables that we want every view to share.
-// ----------------------------------------------------------------------------
-export default function (req, res, next) {
+import { getProviders, ReposAppRequest } from '../transitional';
+
+export default function (req: ReposAppRequest, res, next) {
+  const { config, viewServices } = getProviders(req);
   req.app.locals.correlationId = req.correlationId;
   req.app.locals.scrubbedUrl = req.scrubbedUrl;
   req.app.locals.serverAddress = req.hostname;
   req.app.locals.serverName = os.hostname();
   req.app.locals.websiteHostname = process.env.WEBSITE_HOSTNAME;
-  req.app.locals.appInsightsKey = req.app.settings && req.app.settings.runtimeConfig && req.app.settings.runtimeConfig.telemetry ? req.app.settings.runtimeConfig.telemetry.applicationInsightsKey : null;
-  req.app.locals.googleAnalyticsKey = req.app.settings && req.app.settings.runtimeConfig && req.app.settings.runtimeConfig.telemetry ? req.app.settings.runtimeConfig.telemetry.googleAnalyticsKey : null;
-  req.app.locals.viewServices = req.app.settings.viewServices;
-
+  req.app.locals.appInsightsKey = config?.telemetry?.applicationInsightsKey;
+  req.app.locals.googleAnalyticsKey = config?.telemetry?.googleAnalyticsKey;
+  req.app.locals.viewServices = viewServices;
   return next();
 };

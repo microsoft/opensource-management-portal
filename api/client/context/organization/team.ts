@@ -5,6 +5,7 @@
 
 import express from 'express';
 import asyncHandler from 'express-async-handler';
+
 import { ITeamMembershipRoleState, OrganizationMembershipState } from '../../../../business';
 import { TeamJoinApprovalEntity } from '../../../../entities/teamJoinApproval/teamJoinApproval';
 import { jsonError } from '../../../../middleware';
@@ -12,7 +13,7 @@ import { AddTeamMembershipToRequest, AddTeamPermissionsToRequest, getContextualT
 import { submitTeamJoinRequest } from '../../../../routes/org/team';
 import { postActionDecision, TeamApprovalDecision } from '../../../../routes/org/team/approval';
 import { PermissionWorkflowEngine } from '../../../../routes/org/team/approvals';
-import { IProviders, ReposAppRequest } from '../../../../transitional';
+import { getProviders, ReposAppRequest } from '../../../../transitional';
 import { IndividualContext } from '../../../../user';
 
 const router = express.Router();
@@ -37,7 +38,7 @@ router.get('/permissions',
 );
 
 router.get('/join/request', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { approvalProvider } = req.app.settings.providers as IProviders;
+  const { approvalProvider } = getProviders(req);
   const team = getContextualTeam(req);
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   let request: TeamJoinApprovalEntity = null;
@@ -55,7 +56,7 @@ router.post('/join',
   asyncHandler(AddTeamMembershipToRequest),
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     try {
-      const providers = req.app.settings.providers as IProviders;
+      const providers = getProviders(req);
       const { approvalProvider } = providers;
       const membership = getTeamMembershipFromRequest(req);
       if (!membership.isLinked) {
@@ -95,7 +96,7 @@ router.post('/join/approvals/:approvalId',
     if (!permissions.allowAdministration) {
       return next(jsonError('you do not have permission to administer this team', 401));
     }
-    const providers = req.app.settings.providers as IProviders;
+    const providers = getProviders(req);
     const { approvalProvider, operations } = providers;
     const team = getContextualTeam(req);
     const request = await approvalProvider.getApprovalEntity(id);
@@ -145,7 +146,7 @@ router.get('/join/approvals/:approvalId',
   if (!permissions.allowAdministration) {
     return next(jsonError('you do not have permission to administer this team', 401));
   }
-  const providers = req.app.settings.providers as IProviders;
+  const providers = getProviders(req);
   const { approvalProvider, operations } = providers;
   const team = getContextualTeam(req);
   const request = await approvalProvider.getApprovalEntity(id);
@@ -158,7 +159,7 @@ router.get('/join/approvals/:approvalId',
 router.get('/join/approvals', 
   asyncHandler(AddTeamPermissionsToRequest),
   asyncHandler(async (req: ReposAppRequest, res, next) => {
-    const { approvalProvider } = req.app.settings.providers as IProviders;
+    const { approvalProvider } = getProviders(req);
     const team = getContextualTeam(req);
     const permissions = getTeamPermissionsFromRequest(req);
     let response: ITeamApprovalsJsonResponse = {

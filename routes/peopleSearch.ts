@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { RequestWithSystemwidePermissions, RequestTeamMemberAddType } from '../transitional';
+import { RequestWithSystemwidePermissions, RequestTeamMemberAddType, getProviders } from '../transitional';
 
 import { ensureAllLinksInMemory, getAllLinksFromRequest } from '../middleware/business/allLinks';
 
@@ -65,7 +65,7 @@ async function getPeopleAcrossOrganizations(operations: Operations, options, tea
 
 router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequest, res, next) => {
   const linksFromMiddleware = getAllLinksFromRequest(req);
-  const operations = req.app.settings.operations as Operations;
+  const { operations } = getProviders(req);
   const org = req.organization ? req.organization.name : null;
   const orgId = req.organization ? (req.organization as Organization).id : null;
   const isPortalSudoer = req.systemWidePermissions && req.systemWidePermissions.allowAdministration === true;

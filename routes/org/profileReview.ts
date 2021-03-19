@@ -7,8 +7,7 @@ import express from 'express';
 const router = express.Router();
 import asyncHandler from 'express-async-handler';
 
-import { ReposAppRequest } from '../../transitional';
-import { Operations } from '../../business/operations';
+import { getProviders, ReposAppRequest } from '../../transitional';
 
 interface IUserProfileWarnings {
   company?: string;
@@ -17,7 +16,7 @@ interface IUserProfileWarnings {
 
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const organization = req.organization;
-  const operations = req.app.settings.operations as Operations;
+  const { operations } = getProviders(req);
   const config = operations.config;
   const onboarding = req.query.onboarding;
   const login = req.individualContext.getGitHubIdentity().username;

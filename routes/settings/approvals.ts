@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { IReposError, ReposAppRequest, IProviders, UserAlertType } from '../../transitional';
+import { IReposError, ReposAppRequest, UserAlertType, getProviders } from '../../transitional';
 import { IApprovalProvider } from '../../entities/teamJoinApproval/approvalProvider';
 import { TeamJoinApprovalEntity } from '../../entities/teamJoinApproval/teamJoinApproval';
 import { safeLocalRedirectUrl } from '../../utils';
@@ -65,8 +65,7 @@ export async function Approvals_getUserRequests(operations: Operations, thirdPar
 }
 
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
-  const operations = req.app.settings.providers.operations as Operations;
-  const approvalProvider = req.app.settings.providers.approvalProvider as IApprovalProvider;
+  const { approvalProvider, operations } = getProviders(req);
   if (!approvalProvider) {
     return next(new Error('No approval provider instance available'));
   }
@@ -86,7 +85,7 @@ router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
 }));
 
 router.post('/:requestid/cancel', function (req: ReposAppRequest, res, next) {
-  const approvalProvider = req.app.settings.providers.approvalProvider as IApprovalProvider;
+  const { approvalProvider } = getProviders(req);
   if (!approvalProvider) {
     return next(new Error('No approval provider instance available'));
   }
@@ -115,7 +114,7 @@ router.post('/:requestid/cancel', function (req: ReposAppRequest, res, next) {
 
 router.get('/:requestid', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const requestid = req.params.requestid;
-  const { approvalProvider, operations } = req.app.settings.providers as IProviders;
+  const { approvalProvider, operations } = getProviders(req);
   req.individualContext.webContext.pushBreadcrumb('Your Request');
   let isMaintainer = false;
   let pendingRequest: TeamJoinApprovalEntity = null;
@@ -171,8 +170,8 @@ router.get('/:requestid', asyncHandler(async function (req: ReposAppRequest, res
 }));
 
 export function closeOldRequest(isJsonClient: boolean, pendingRequest: TeamJoinApprovalEntity, req: ReposAppRequest, res, next) {
-  const { approvalProvider } = req.app.settings.providers as IProviders;
-  const config = req.app.settings.runtimeConfig;
+  const { approvalProvider } = getProviders(req);
+  const config = getProviders(req).config;;
   const repoApprovalTypesValues = config.github.approvalTypes.repo;
   if (repoApprovalTypesValues.length === 0) {
     return next(new Error('No repo approval providers configured.'));

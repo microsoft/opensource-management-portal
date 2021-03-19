@@ -9,7 +9,7 @@ const router = express.Router();
 
 import RouteApproval from './approval';
 
-import { IRequestTeams, ReposAppRequest } from '../../../transitional';
+import { getProviders, IRequestTeams, ReposAppRequest } from '../../../transitional';
 import { wrapError } from '../../../utils';
 import { Team } from '../../../business/team';
 import { IApprovalProvider } from '../../../entities/teamJoinApproval/approvalProvider';
@@ -111,8 +111,7 @@ interface IRequestPlusApprovalEngine extends IRequestTeams {
 router.use('/:requestid', asyncHandler(async function (req: IRequestPlusApprovalEngine, res, next) {
   const team = req.team2 as Team;
   const requestid = req.params.requestid;
-  const operations = req.app.settings.providers.operations as Operations;
-  const approvalProvider = req.app.settings.providers.approvalProvider as IApprovalProvider;
+  const { approvalProvider, operations } = getProviders(req);
   if (!approvalProvider) {
     return next(new Error('No approval provider instance available'));
   }
