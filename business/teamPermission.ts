@@ -6,15 +6,14 @@
 import util from 'util';
 
 import { Organization } from './organization';
-import { Operations } from './operations';
 import { Team, TeamJsonFormat } from './team';
-import { GitHubTeamPrivacy, ICacheOptions } from '../transitional';
+import { GitHubTeamPrivacy, ICacheOptions, IOperationsInstance } from '../transitional';
 import { TeamMember } from './teamMember';
 import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 
 export class TeamPermission {
   private _organization: Organization;
-  private _operations: Operations;
+  private _operations: IOperationsInstance;
 
   private _team: Team;
 
@@ -49,7 +48,7 @@ export class TeamPermission {
     return this._team;
   }
 
-  constructor(organization: Organization, entity: any, operations: Operations) {
+  constructor(organization: Organization, entity: any, operations: IOperationsInstance) {
     this._organization = organization;
 
     this._permission = entity.permission;

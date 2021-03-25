@@ -9,7 +9,7 @@ const router = express.Router();
 
 import { ReposAppRequest, getProviders } from '../../transitional';
 import { ICorporateLink } from '../../business/corporateLink';
-import { Operations } from '../../business/operations';
+import { Operations } from '../../business';
 
 interface IRequestWithAuthorizations extends ReposAppRequest {
   authorizations?: any;

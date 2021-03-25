@@ -7,14 +7,14 @@
 
 import fs from 'fs';
 import path from 'path';
-
 import recursiveReadDirectory from 'recursive-readdir';
 
 import { wrapError, sleep } from '../../utils';
-import { Organization } from '../../business/organization';
+import { Organization } from '../../business';
 import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission, GitHubRepositoryPermissions } from '../../entities/repositoryMetadata/repositoryMetadata';
-import { Repository } from '../../business/repository';
+import { Repository } from '../../business';
 import { CreateRepositoryEntrypoint } from '../../api/createRepo';
+import { CoreCapability, IOperationsProviders, throwIfNotCapable } from '../../transitional';
 
 export interface IApprovalPackage {
   id: string;
@@ -87,7 +87,8 @@ export class RepoWorkflowEngine {
 
   editPost(req, res, next) {
     const { operations } = this.organization.getLegacySystemObjects();
-    const repositoryMetadataProvider = operations.providers.repositoryMetadataProvider;
+    const ops = throwIfNotCapable<IOperationsProviders>(operations, CoreCapability.Providers);
+    const repositoryMetadataProvider = ops.providers.repositoryMetadataProvider;
     const visibility = req.body.repoVisibility;
     if (!(visibility == 'public' || visibility == 'private')) {
       return next(new Error('Visibility for the repo request must be provided.'));
@@ -269,7 +270,8 @@ async function readFileToBase64(templatePath: string, templateName: string, file
 
 async function addTemplateWebHook(organization: Organization, repositoryName: string, templateName: string): Promise<IRepositoryWorkflowOutput> {
   const { operations } = organization.getLegacySystemObjects();
-  const config = operations.config;
+  const ops = throwIfNotCapable<IOperationsProviders>(operations, CoreCapability.Providers);
+  const config = ops.providers.config;
   const definitions = config.github.templates.definitions;
   const templateData = definitions ? definitions[templateName] : null;
   if (!templateData || ! templateData.webhook) {
@@ -321,7 +323,8 @@ async function removeOrganizationCollaboratorTask(organization: Organization, cr
 
 async function createAddTemplateFilesTask(organization: Organization, repoName: string, templateName: string, isUnlockingExistingRepository: boolean, isFork: boolean, isTransfer: boolean): Promise<IRepositoryWorkflowOutput> {
   const { operations } = organization.getLegacySystemObjects();
-  const config = operations.config;
+  const ops = throwIfNotCapable<IOperationsProviders>(operations, CoreCapability.Providers);
+  const config = ops.providers.config;
   const templatePath = config.github.templates.directory;
   const userName = config.github.user.initialCommit.username;
   const token = config.github.user.initialCommit.token;
@@ -434,7 +437,8 @@ async function addAdministratorCollaboratorsTask(organization: Organization, rep
 
 async function addTemplateCollaborators(organization: Organization, repositoryName: string, templateName: string): Promise<IRepositoryWorkflowOutput> {
   const { operations } = organization.getLegacySystemObjects();
-  const config = operations.config;
+  const ops = throwIfNotCapable<IOperationsProviders>(operations, CoreCapability.Providers);
+  const config = ops.providers.config;
   const definitions = config.github.templates.definitions;
   const templateData = definitions ? definitions[templateName] : null;
   if (!templateData || ! templateData.collaborators) {

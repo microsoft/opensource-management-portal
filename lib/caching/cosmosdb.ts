@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ICacheHelper } from ".";
-import { CosmosClient, Database, Container } from "@azure/cosmos";
-import BlobCache, { IBlobCacheOptions } from "./blob";
-import { sleep } from "../../utils";
-import { ErrorHelper } from "../../transitional";
+import { ICacheHelper } from '.';
+import { CosmosClient, Database, Container } from '@azure/cosmos';
+import BlobCache, { IBlobCacheOptions } from './blob';
+import { sleep } from '../../utils';
+import { ErrorHelper, sha256 } from '../../transitional';
 
 const debug = require('debug')('cache');
 
@@ -16,6 +16,7 @@ export interface ICosmosCacheOptions {
   key: string;
   database?: string;
   collection?: string;
+  prefix?: string;
 
   blobFallback?: IBlobCacheOptions;
 }
@@ -31,20 +32,41 @@ export default class CosmosCache implements ICacheHelper {
   private _database: Database;
   private _collection: Container;
   private _blobCache: BlobCache;
+  private _keyPrefix: string;
 
   constructor(options: ICosmosCacheOptions) {
     this._options = options;
+    this._keyPrefix = options.prefix || '';
     if (options.blobFallback && options.blobFallback.key) {
       this._blobCache = new BlobCache(options.blobFallback);
     }
+  }
+
+  cloneWithPrefix(newPrefix: string) {
+    const options = Object.assign({}, this._options, {
+      prefix: newPrefix,
+    });
+    return new CosmosCache(options);
   }
 
   get expiringBlobCache() {
     return this._blobCache;
   }
 
+  private safetyKey(str: string) {
+    return str.replace(/[%:\\\/\?#]/g, '');
+  }
+
   private key(key: string) {
-    return key.replace(/[\\\/\?#]/g, '');
+    // https://graph.microsoft.com/v1.0/groups/ec78f98a-6e8c-4685-87f6-6fa18fd86183/transitiveMembers?%24select=id%2CuserPrincipalName
+    const value = this.safetyKey(this._keyPrefix + key);
+    if (value.length > 255) {
+      const hash = sha256(value);
+      debug(`hash ${hash} overrides long key length=${value.length} key=${value}`);
+      const newKey = value.substr(0, 20) + '_longkeyhash_' + hash.replace('=', '');
+      return this.safetyKey(newKey);
+    }
+    return value;
   }
 
   async initialize() {
@@ -107,46 +129,43 @@ export default class CosmosCache implements ICacheHelper {
       console.dir(cosmosError);
       throw cosmosError;
     }
-    if (response.resource) {
-      if (response.resource.blobKey) {
-        if (!this._blobCache) {
-          return null; // or throw
-        }
-        const compressed = response.resource.compress && response.resource.compress === true;
-        return compressed ?
-          await this._blobCache.getObjectCompressed(response.resource.blobKey) :
-          await this._blobCache.getObject(response.resource.blobKey);
+    if (response.resource?.blobKey) {
+      if (!this._blobCache) {
+        return null; // or throw
       }
-      if (response.resource.chunks && response.resource.chunk) {
-        const num = response.resource.chunks as number;
-        debug('LARGE retrieval: ' + num + ' chunks found');
-        const chunky = response.resource;
-        let combined = response.resource.chunk;
-        for (let i = 1; i < num; i++) {
-          const ck = this.key(`${key}_c${i}`);
-          const innerChunk = await this._collection.item(ck, ck).read();
-          combined += innerChunk.resource.chunk;
-        }
-        const clone = JSON.parse(combined);
-        if (clone[objectIdKeyReplacement]) {
-          clone.id = clone[objectIdKeyReplacement];
-          delete clone[objectIdKeyReplacement];
-        }
-        return clone;
+      const compressed = response.resource.compress && response.resource.compress === true;
+      return compressed ?
+        await this._blobCache.getObjectCompressed(response.resource.blobKey) :
+        await this._blobCache.getObject(response.resource.blobKey);
+    } else if (response.resource?.chunks && response.resource.chunk) {
+      const num = response.resource.chunks as number;
+      debug('LARGE retrieval: ' + num + ' chunks found');
+      const chunky = response.resource;
+      let combined = response.resource.chunk;
+      for (let i = 1; i < num; i++) {
+        const ck = this.key(`${key}_c${i}`);
+        const innerChunk = await this._collection.item(ck, ck).read();
+        combined += innerChunk.resource.chunk;
       }
-      const clone = Object.assign({}, response.resource);
-      delete clone._attachments;
-      delete clone._etag;
-      delete clone._rid;
-      delete clone._self;
-      delete clone._ts;
-      delete clone.ttl;
+      const clone = JSON.parse(combined);
       if (clone[objectIdKeyReplacement]) {
         clone.id = clone[objectIdKeyReplacement];
         delete clone[objectIdKeyReplacement];
       }
       return clone;
     }
+    const clone = Object.assign({}, response.resource);
+    delete clone._attachments;
+    delete clone._etag;
+    delete clone._rid;
+    delete clone._self;
+    delete clone._ts;
+    delete clone.ttl;
+    if (clone[objectIdKeyReplacement]) {
+      clone.id = clone[objectIdKeyReplacement];
+      delete clone[objectIdKeyReplacement];
+    }
+    return clone;
   }
 
   getObjectCompressed(key: string): Promise<any> {
@@ -171,7 +190,7 @@ export default class CosmosCache implements ICacheHelper {
 
   async setObject(key: string, object: any): Promise<void> {
     this.throwIfNotInitialized();
-    const originalKey = key;
+    const originalKey = this._keyPrefix + key;
     key = this.key(key);
     debug(`COSMOS SET OBJECT: ${key}`);
     let approxSize: number = 0;

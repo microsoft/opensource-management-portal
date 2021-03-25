@@ -3,13 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Team, GitHubTeamRole, ITeamMembershipRoleState } from '../business/team';
-import { Operations } from '../business/operations';
+import { Team, GitHubTeamRole, ITeamMembershipRoleState } from '../business';
+import { Operations } from '../business';
 import { IndividualContext } from '../user';
 import { ErrorHelper, NoCacheNoBackground } from '../transitional';
 import { addArrayToSet } from '../utils';
 import { IMail } from '../lib/mailProvider';
-import { OrganizationMembershipState } from '../business/organization';
+import { OrganizationMembershipState } from '../business';
 
 interface ISelfServiceAllowedResult {
   currentMaintainerCount: number;

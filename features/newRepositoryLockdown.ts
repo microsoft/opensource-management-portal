@@ -3,10 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Operations, ICachedEmployeeInformation } from '../business/operations';
-import { Organization } from '../business/organization';
-import { Repository, GitHubCollaboratorAffiliationQuery } from '../business/repository';
-import { Team } from '../business/team';
+import { Operations, ICachedEmployeeInformation } from '../business';
+import { Organization } from '../business';
+import { Repository, GitHubCollaboratorAffiliationQuery } from '../business';
+import { Team } from '../business';
 import { ICorporateLink } from '../business/corporateLink';
 import { IMail } from '../lib/mailProvider';
 import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repositoryMetadataProvider';

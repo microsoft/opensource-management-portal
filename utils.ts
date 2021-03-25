@@ -35,6 +35,19 @@ export function daysInMilliseconds(days: number): number {
   return 1000 * 60 * 60 * 24 * days;
 }
 
+export function getCurrentQuarter() {
+  const now = new Date();
+  const quarter = Math.floor((now.getMonth() / 3));
+  return quarter;
+}
+
+export function getQuarterRange(quarterOfYear: number /* zero-based */) {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), quarterOfYear * 3, 1);
+  const end = new Date(now.getFullYear(), start.getMonth() + 3, 0);
+  return [start, end];
+}
+
 export function stringOrNumberAsString(value: any) {
   if (typeof(value) === 'number') {
     return (value as number).toString();

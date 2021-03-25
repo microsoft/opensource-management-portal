@@ -4,9 +4,8 @@
 //
 
 import MockMailService from './mockMailService';
-import IrisMailService from './customMailService';
 import SmtpMailService from './smtpMailService';
-import DirectoryMailService from './directoryMailService';
+import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 
 export interface IMail {
   from?: string;
@@ -66,6 +65,15 @@ function patchOverride(provider, newToAddress, htmlOrNot) {
 }
 
 export function createMailProviderInstance(config): IMailProvider {
+  const deployment = getCompanySpecificDeployment();
+  let mailProvider: IMailProvider = null;
+  if (deployment?.features?.mailProvider?.tryCreateInstance) {
+    mailProvider = deployment.features.mailProvider.tryCreateInstance(config);
+    if (mailProvider) {
+      return mailProvider;
+    }
+  }
+
   const mailConfig = config.mail;
   if (mailConfig === undefined) {
     return;
@@ -74,18 +82,9 @@ export function createMailProviderInstance(config): IMailProvider {
   if (!provider) {
     return;
   }
-  let mailProvider: IMailProvider = null;
   switch (provider) {
-    case 'customMailService': {
-      mailProvider = new IrisMailService(config);
-      break;
-    }
     case 'smtpMailService': {
       mailProvider = new SmtpMailService(config);
-      break;
-    }
-    case 'directory': {
-      mailProvider = new DirectoryMailService(config.mail?.directoryMailService);
       break;
     }
     case 'mockMailService': {

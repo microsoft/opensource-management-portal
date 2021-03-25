@@ -11,7 +11,7 @@ block content
   p This is the raw data updated by a user. We can cleanup this template later if we need to.
 
   if details && details.repository
-    h3= details.repository.organization.name + '/' + details.repository.name
+    h3= details.organization.name + '/' + details.repository.name
 
   if isMailToUser
     p

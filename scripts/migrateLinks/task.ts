@@ -20,6 +20,7 @@ import throat from 'throat';
 import app, { IReposJob } from '../../app';
 import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../../lib/linkProviders';
 import { ICorporateLink } from '../../business/corporateLink';
+import { ErrorHelper } from '../../transitional';
 
 const parallelWorkLimit = 5;
 
@@ -93,7 +94,7 @@ async function getThirdPartyLink(linkProvider: ILinkProvider, thirdPartyId: stri
   try {
     return await linkProvider.getByThirdPartyId(thirdPartyId);
   } catch (error) {
-    if (error && error['status'] === 404) {
+    if (ErrorHelper.IsNotFound(error)) {
       return null;
     }
     throw error;

@@ -8,11 +8,10 @@
 // COLLABORATOR on a repository
 
 import { WebhookProcessor } from "../organizationProcessor";
-import { Operations } from "../../business/operations";
-import { Organization } from "../../business/organization";
+import { Operations } from "../../business";
+import { Organization } from "../../business";
 import { IProviders } from "../../transitional";
-import { GitHubCollaboratorType } from "../../business/repository";
-import { GitHubRepositoryPermission } from "../../entities/repositoryMetadata/repositoryMetadata";
+import { GitHubCollaboratorType } from "../../business";
 
 export default class MemberWebhookProcessor implements WebhookProcessor {
   filter(data: any) {

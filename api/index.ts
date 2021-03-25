@@ -21,11 +21,12 @@ import apiWebhook from './webhook';
 import apiPeople from './people';
 
 import AadApiAuthentication from '../middleware/apiAad';
-import { AzureDevOpsAuthenticationMiddleware } from '../middleware/apiVstsAuth';
+import AzureDevOpsAuthenticationMiddleware from '../middleware/apiVstsAuth';
 import ReposApiAuthentication from '../middleware/apiReposAuth';
 import { CreateRepository, CreateRepositoryEntrypoint } from './createRepo';
 import supportMultipleAuthProviders from '../middleware/supportMultipleAuthProviders';
 import JsonErrorHandler from './jsonErrorHandler';
+import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 
 const hardcodedApiVersions = [
   '2019-10-01',
@@ -73,6 +74,9 @@ router.use('/extension', cors(), multipleProviders, apiExtension);
 //-----------------------------------------------------------------------------
 // AUTHENTICATION: AAD or repos (specific to this app)
 //-----------------------------------------------------------------------------
+const dynamicStartupInstance = getCompanySpecificDeployment();
+dynamicStartupInstance?.routes?.api?.index && dynamicStartupInstance?.routes?.api?.rootIndex(router);
+
 router.use('/:org', aadAndCustomProviders);
 
 router.use('/:org', function (req: IApiRequest, res, next) {

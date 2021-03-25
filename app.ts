@@ -156,6 +156,7 @@ app.runJob = async function (job: (job: IReposJob) => Promise<IReposJobResult | 
     }
   } catch (jobError) {
     console.error(`The job failed: ${jobError}`);
+    console.dir(jobError);
     quitInTenSeconds(false);
     if (options.insightsPrefix && app.providers.insights) {
       try {

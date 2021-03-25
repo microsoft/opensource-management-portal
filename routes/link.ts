@@ -9,11 +9,11 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders, IAppSession, getProviders } from '../transitional';
+import { ReposAppRequest, IAppSession, getProviders } from '../transitional';
 import { IndividualContext } from '../user';
 import { storeOriginalUrlAsReferrer, wrapError } from '../utils';
 import { ICorporateLink } from '../business/corporateLink';
-import { Operations, LinkOperationSource, SupportedLinkType } from '../business/operations';
+import { LinkOperationSource, SupportedLinkType } from '../business';
 
 import validator from 'validator';
 
@@ -103,7 +103,7 @@ router.use(asyncHandler(async (req: IRequestHacked, res, next) => {
       insights.trackMetric({ name: 'LinksBlockedForGuests', value: 1 });
       return next(new Error(`This system is not available to guests. You are currently signed in as ${displayName} ${userPrincipalName}. Please sign out or try a private browser window.`));
     }
-    const manager = await providers.graphProvider.getManagerByIdAsync(aadId);
+    const manager = await providers.graphProvider.getManagerById(aadId);
     if (!manager || !manager.userPrincipalName) {
       throw new Error(`You do not have an active manager entry in the directory and so cannot yet link.`);
     }

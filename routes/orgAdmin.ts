@@ -11,10 +11,10 @@ import { getProviders, IProviders, ReposAppRequest } from '../transitional';
 
 import { requirePortalAdministrationPermission } from '../middleware/business/administration';
 import { PostgresLinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
-import { Operations, UnlinkPurpose } from '../business/operations';
-import { ICorporateLink } from '../business/corporateLink';
-import { Organization } from '../business/organization';
-import { Account } from '../business/account';
+import { Operations, UnlinkPurpose } from '../business';
+import { ICorporateLink } from '../business';
+import { Organization } from '../business';
+import { Account } from '../business';
 import { ILinkProvider } from '../lib/linkProviders';
 
 // - - - Middleware: require that the user isa portal administrator to continue
@@ -279,8 +279,8 @@ interface IIDValue {
 
 router.get('/whois/link/:linkid', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const linkId = req.params.linkid;
-  const { operations } = getProviders(req);
-  const linkProvider = operations.linkProvider as PostgresLinkProvider;
+  const { linkProvider: lp } = getProviders(req);
+  const linkProvider = lp as PostgresLinkProvider;
   const link = await linkProvider.getByPostgresLinkId(linkId);
   return req.individualContext.webContext.render({
     view: 'organization/whois/linkEditorPage',
@@ -313,8 +313,8 @@ router.post('/whois/link/:linkid', asyncHandler(async function (req: ReposAppReq
     }
     break;
   }
-  const { operations } = getProviders(req);
-  const linkProvider = operations.linkProvider as PostgresLinkProvider;
+  const { linkProvider: lp } = getProviders(req);
+  const linkProvider = lp as PostgresLinkProvider;
   const link = await linkProvider.getByPostgresLinkId(linkId);
   const messages = [
     `Link ID ${linkId}`,
@@ -391,7 +391,7 @@ router.post('/whois/link/', asyncHandler(async function (req: ReposAppRequest, r
     }
   }
 
-  const linkProvider = operations.linkProvider as PostgresLinkProvider;
+  const linkProvider = operations.providers.linkProvider as PostgresLinkProvider;
 
   // try to create link, if it fails it will directly throw into the users face
   const linkId = await linkProvider.createLink(link);
@@ -565,7 +565,7 @@ async function destructiveLogic(providers: IProviders, identifier: IIDValue, act
 
   // Service Account settings (not so destructive)
   if (action === OperationsAction.MarkAsServiceAccount || action === OperationsAction.UnmarkServiceAccount) {
-    const linkProvider = operations.linkProvider;
+    const linkProvider = operations.providers.linkProvider;
     state.independentView = true; // no rendering on return
     return await modifyServiceAccount(linkProvider, linkQuery.link, action === OperationsAction.MarkAsServiceAccount, req, res, next);
   }

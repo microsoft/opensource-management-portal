@@ -11,11 +11,9 @@ import RouteApproval from './approval';
 
 import { getProviders, IRequestTeams, ReposAppRequest } from '../../../transitional';
 import { wrapError } from '../../../utils';
-import { Team } from '../../../business/team';
-import { IApprovalProvider } from '../../../entities/teamJoinApproval/approvalProvider';
+import { Team } from '../../../business';
 import { TeamJoinApprovalEntity } from '../../../entities/teamJoinApproval/teamJoinApproval';
-import { Operations } from '../../../business/operations';
-import { Account } from '../../../business/account';
+import { Account } from '../../../business';
 
 // Not a great place for these, should move into independent files eventually...
 

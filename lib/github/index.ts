@@ -15,6 +15,7 @@ import { LinkMethods } from './links';
 import RedisHelper from '../caching/redis';
 import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../transitional';
 import { ILinkProvider } from '../linkProviders';
+import { ICacheHelper } from '../caching';
 
 export enum CacheMode {
   ValidateCache = 'ValidateCache',
@@ -31,11 +32,16 @@ export interface IGitHubPostFunction {
 // also trigger a discard.
 const breakingChangeGitHubPackageVersion = '6.0.0';
 
+interface IRestLibraryOptions {
+  config: any;
+  cacheProvider: ICacheHelper;
+  github?: Octokit;
+  baseUrl?: string;
+}
+
 export class RestLibrary {
-  public redis: RedisHelper; // TODO: confirm RedisClient is correct
-  private insights?: any;
-  private linkProvider: ILinkProvider;
-  private github: any;
+  public cacheProvider: ICacheHelper;
+  private github: Octokit;
 
   private _collections: RestCollections;
   private _links: LinkMethods;
@@ -47,18 +53,12 @@ export class RestLibrary {
   public breakingChangeGitHubPackageVersion: string;
   public compositeEngine?: CompositeIntelligentEngine;
 
-  constructor(options) {
-    const redis = options.redis;
-    if (!redis) {
+  constructor(options: IRestLibraryOptions) {
+    const cacheProvider = options.cacheProvider;
+    if (!cacheProvider) {
       throw new Error('No Redis instance provided to the GitHub library context constructor.');
     }
-    this.redis = redis;
-
-    const linkProvider = options.linkProvider as ILinkProvider;
-    if (!linkProvider) {
-      throw new Error('No link provider included in the options to the library context constructor');
-    }
-    this.linkProvider = linkProvider;
+    this.cacheProvider = cacheProvider;
 
     let config = options.config;
     if (!config) {
@@ -72,9 +72,9 @@ export class RestLibrary {
     }
     let github = options.github;
     if (!github) {
-      let githubApi = options.GitHubApi || Octokit;
-      github = new githubApi({
+      github = new Octokit({
         userAgent,
+        baseUrl: options.baseUrl,
       });
     }
     this.github = github;

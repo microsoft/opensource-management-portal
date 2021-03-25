@@ -4,14 +4,20 @@
 //
 
 import { Repository } from './repository';
-import { IPurposefulGetAuthorizationHeader, ICacheOptions, IGetAuthorizationHeader } from '../transitional';
-import { Operations } from './operations';
+import { IPurposefulGetAuthorizationHeader, ICacheOptions, IGetAuthorizationHeader, IOperationsInstance, throwIfNotGitHubCapable } from '../transitional';
 import { wrapError } from '../utils';
 import { AppPurpose } from '../github';
+import { CacheDefault, getMaxAgeSeconds } from '.';
 
 export enum GitHubIssueState {
   Closed = 'closed',
   Open = 'open',
+}
+
+export enum GitHubIssueQuery {
+  Closed = 'closed',
+  Open = 'open',
+  All = 'all',
 }
 
 export interface IIssueLabel {
@@ -25,7 +31,7 @@ export interface IIssueLabel {
 }
 
 export class RepositoryIssue {
-  private _operations: Operations;
+  private _operations: IOperationsInstance;
   private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
 
   private _number: number;
@@ -33,7 +39,7 @@ export class RepositoryIssue {
 
   private _entity: any;
 
-  constructor(repository: Repository, issueNumber: number, operations: Operations, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, entity?: any) {
+  constructor(repository: Repository, issueNumber: number, operations: IOperationsInstance, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, entity?: any) {
     this._getAuthorizationHeader = getAuthorizationHeader;
     this._repository = repository;
     this._number = issueNumber;
@@ -64,17 +70,19 @@ export class RepositoryIssue {
   }
 
   async update(patch: any): Promise<any> {
+    const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = Object.assign(patch, {
       owner: this.repository.organization.name,
       repo: this.repository.name,
       issue_number: this.number,
     });
     // Operations has issue write permissions
-    const details = await this._operations.github.post(this.authorize(AppPurpose.Operations), 'issues.update', parameters);
+    const details = await operations.github.post(this.authorize(AppPurpose.Operations), 'issues.update', parameters);
     return details;
   }
 
   async comment(commentBody: string): Promise<any> {
+    const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = Object.assign({
       body: commentBody,
     }, {
@@ -83,7 +91,7 @@ export class RepositoryIssue {
       issue_number: this.number,
     });
     // Operations has issue write permissions
-    const comment = await this._operations.github.post(this.authorize(AppPurpose.Operations), 'issues.createComment', parameters);
+    const comment = await operations.github.post(this.authorize(AppPurpose.Operations), 'issues.createComment', parameters);
     return comment;
   }
 
@@ -92,7 +100,7 @@ export class RepositoryIssue {
       return this._entity;
     }
     options = options || {};
-    const operations = this._operations;
+    const operations = throwIfNotGitHubCapable(this._operations);
     if (!this._repository.name) {
       throw new Error('repository.name required');
     }
@@ -103,7 +111,7 @@ export class RepositoryIssue {
     };
     const cacheOptions: ICacheOptions = {
       // NOTE: just reusing repo details stale time
-      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgRepoDetailsStaleSeconds,
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;

@@ -4,23 +4,25 @@
 //
 
 import { Response, Request } from 'express';
-
 import redis from 'redis';
+import crypto from 'crypto';
 import { Pool as PostgresPool } from 'pg';
-
 import type { TelemetryClient } from 'applicationinsights';
+import { AccessToken, AuthorizationCode } from 'simple-oauth2';
+import { Session } from 'express-session';
+import githubUsernameRegex from 'github-username-regex';
 
 import { IndividualContext } from './user';
 import { IApprovalProvider } from './entities/teamJoinApproval/approvalProvider';
-import { Operations } from './business/operations';
+import { GitHubIssueQuery, ICorporateLink, Operations } from './business';
 import { ITokenProvider } from './entities/token';
 import { IMailAddressProvider } from './lib/mailAddressProvider';
 import { IRepositoryMetadataProvider } from './entities/repositoryMetadata/repositoryMetadataProvider';
 import { ILocalExtensionKeyProvider } from './entities/localExtensionKey';
-import { Organization } from './business/organization';
+import { Organization } from './business';
 import { IGraphProvider } from './lib/graphProvider';
 import { RestLibrary } from './lib/github';
-import { Team } from './business/team';
+import { Team } from './business';
 import { IRepositoryCacheProvider } from './entities/repositoryCache/repositoryCacheProvider';
 import { IRepositoryCollaboratorCacheProvider } from './entities/repositoryCollaboratorCache/repositoryCollaboratorCacheProvider';
 import { ITeamCacheProvider } from './entities/teamCache/teamCacheProvider';
@@ -40,14 +42,14 @@ import { ICorporateContactProvider } from './lib/corporateContactProvider';
 import { IQueueProcessor } from './lib/queues';
 import { IReposApplication } from './app';
 import { IUserSettingsProvider } from './entities/userSettings';
-import { AccessToken, AuthorizationCode } from 'simple-oauth2';
 
 import appPackage from './package.json';
 import BlobCache from './lib/caching/blob';
-import { Session } from 'express-session';
 import { ICreateRepositoryApiResult } from './api/createRepo';
 import { Repository } from './business/repository';
 import { ICorporationAdministrationSection } from './interfaces';
+import { GitHubSortDirection } from './lib/github/collections';
+import { AxiosError } from 'axios';
 const packageVariableName = 'static-react-package-name';
 
 export function hasStaticReactClientApp() {
@@ -93,6 +95,119 @@ export interface IAuthorizationHeaderValue {
   source?: string;
 }
 
+export interface ICacheDefaultTimes {
+  orgReposStaleSeconds: number;
+  orgRepoTeamsStaleSeconds: number;
+  orgRepoCollaboratorsStaleSeconds: number;
+  orgRepoCollaboratorStaleSeconds: number;
+  orgRepoDetailsStaleSeconds: number;
+  orgTeamsStaleSeconds: number;
+  orgTeamDetailsStaleSeconds: number;
+  orgTeamsSlugLookupStaleSeconds: number;
+  orgMembersStaleSeconds: number;
+  teamMaintainersStaleSeconds: number;
+  orgMembershipStaleSeconds: number;
+  orgMembershipDirectStaleSeconds: number;
+  crossOrgsReposStaleSecondsPerOrg: number;
+  crossOrgsReposParallelCalls: number;
+  crossOrgsMembersStaleSecondsPerOrg: number;
+  crossOrgsMembersParallelCalls: number;
+  corporateLinksStaleSeconds: number;
+  repoBranchesStaleSeconds: number;
+  repoPullsStaleSeconds: number;
+  accountDetailStaleSeconds: number;
+  teamDetailStaleSeconds: number;
+  orgRepoWebhooksStaleSeconds: number;
+  teamRepositoryPermissionStaleSeconds: number;
+}
+
+export enum CoreCapability {
+  GitHubRestApi = 'GitHub REST API', // IOperationsGitHubRestLibrary
+  DefaultCacheTimes = 'Default cache times', // IOperationsDefaultCacheTimes
+  GitHubCentralOperations = 'GitHub central operations', // IOperationsCentralOperationsToken
+  Urls = 'urls', // IOperationsUrls
+  LockdownFeatureFlags = 'Lockdown feature flags', // IOperationsLockdownFeatureFlags
+  Providers = 'Providers', // IOperationsProviders
+  LegalEntities = 'Legal entities', // IOperationsLegalEntities
+  ServiceAccounts = 'Service Accounts', // IOperationsServiceAccounts
+  Links = 'Links', // IOperationsLinks
+  Templates = 'Templates', // IOperationsTemplates
+}
+
+export interface IOperationsInstance {
+  hasCapability(capability: CoreCapability): boolean;
+  throwIfNotCompatible(capability: CoreCapability): void;
+} // Messy but allows for optional use with a cast
+
+export interface IOperationsLegalEntities {
+  getDefaultLegalEntities(): string[];
+}
+
+export interface IOperationsTemplates {
+  getDefaultRepositoryTemplateNames(): string[];
+}
+
+export interface IOperationsProviders {
+  providers: IProviders;
+}
+
+export interface IOperationsLinks {
+  getLinks(options?: any): Promise<ICorporateLink[]>;
+  getLinkByThirdPartyId(thirdPartyId: string): Promise<ICorporateLink>;
+  getLinkByThirdPartyUsername(username: string): Promise<ICorporateLink>;
+  tryGetLink(login: string): Promise<ICorporateLink>;
+  fireLinkEvent(value): Promise<void>;
+  fireUnlinkEvent(value): Promise<void>;
+}
+
+export interface IOperationsServiceAccounts {
+  isSystemAccountByUsername(login: string): boolean;
+}
+
+export interface IOperationsGitHubRestLibrary {
+  github: RestLibrary;
+}
+
+export interface IOperationsDefaultCacheTimes {
+  defaults: ICacheDefaultTimes;
+}
+
+export interface IOperationsUrls {
+  baseUrl: string;
+  absoluteBaseUrl: string;
+}
+
+export interface IOperationsLockdownFeatureFlags {
+  allowUnauthorizedNewRepositoryLockdownSystemFeature(): boolean;
+  allowUnauthorizedForkLockdownSystemFeature(): boolean;
+  allowTransferLockdownSystemFeature(): boolean;
+}
+
+export interface IOperationsCentralOperationsToken {
+  getCentralOperationsToken(): IPurposefulGetAuthorizationHeader; // IGetAuthorizationHeader ?;
+  getAccountByUsername(username: string, options?: ICacheOptions): Promise<Account>;
+}
+
+export function operationsIsCapable<T>(operations: IOperationsInstance, capability: CoreCapability): operations is IOperationsInstance & T {
+  return operations.hasCapability(capability);
+}
+
+export function operationsWithCapability<T>(operations: IOperationsInstance, capability: CoreCapability): T & IOperationsInstance {
+  if (operationsIsCapable<T>(operations, capability)) {
+    return operations as T & IOperationsInstance;
+  }
+  return null;
+}
+
+export function throwIfNotCapable<T>(operations: IOperationsInstance, capability: CoreCapability) {
+  operations.throwIfNotCompatible(capability);
+  return operations as any as T & IOperationsInstance;
+}
+
+export function throwIfNotGitHubCapable(operations: IOperationsInstance) {
+  return throwIfNotCapable<IOperationsGitHubRestLibrary & IOperationsInstance>(operations, CoreCapability.GitHubRestApi);
+}
+
 export interface IGetAuthorizationHeader {
   (): Promise<IAuthorizationHeaderValue>;
 }
@@ -116,6 +231,24 @@ export interface ICacheOptions {
 
 export interface IPagedCacheOptions extends ICacheOptions {
   pageRequestDelay?: number | null | undefined; // FUTURE: could be a function, too
+}
+
+export enum GetIssuesSort {
+  Created = 'created',
+  Updated = 'updated',
+  Comments = 'comments',
+}
+
+export interface IRepositoryGetIssuesOptions extends IPagedCacheOptions {
+  since?: Date;
+  direction?: GitHubSortDirection;
+  sort?: GetIssuesSort;
+  labels?: string;
+  mentioned?: string;
+  creator?: string;
+  assignee?: string; // user | 'none' | '*'
+  state?: GitHubIssueQuery;
+  milestone?: number | string; // '*'
 }
 
 export interface IPagedCrossOrganizationCacheOptions extends IPagedCacheOptions {
@@ -440,8 +573,8 @@ export class CreateError {
     return error;
   }
 
-  static NotFound(message: string): Error {
-    return CreateError.CreateStatusCodeError(404, message);
+  static NotFound(message: string, innerError?: Error): Error {
+    return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(404, message), innerError);
   }
 
   static ParameterRequired(parameterName: string, optionalDetails?: string): Error {
@@ -449,8 +582,8 @@ export class CreateError {
     return CreateError.CreateStatusCodeError(400, optionalDetails ? `${msg}: ${optionalDetails}` : msg);
   }
 
-  static InvalidParameters(message: string): Error {
-    return CreateError.CreateStatusCodeError(400, message);
+  static InvalidParameters(message: string, innerError?: Error): Error {
+    return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(400, message), innerError);
   }
 
   static NotAuthenticated(message: string): Error {
@@ -461,8 +594,8 @@ export class CreateError {
     return CreateError.CreateStatusCodeError(403, message);
   }
 
-  static ServerError(message: string): Error {
-    return CreateError.CreateStatusCodeError(500, message);
+  static ServerError(message: string, innerError?: Error): Error {
+    return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(500, message), innerError);
   }
 }
 
@@ -478,6 +611,13 @@ export class ErrorHelper {
     const err = new Error(message);
     err['innerError'] = innerError;
     return err;
+  }
+
+  public static SetInnerError(error: Error, innerError: Error) {
+    if (error && innerError) {
+      error['innerError'] = innerError;
+    }
+    return error;
   }
 
   public static HasStatus(error: Error): boolean {
@@ -506,8 +646,15 @@ export class ErrorHelper {
   }
 
   public static GetStatus(error: Error): number {
-    if (error && error['status']) {
-      const status = error['status'];
+    const asAny = error as any;
+    if (asAny?.isAxiosError === true) {
+      const axiosError = asAny as AxiosError;
+      if (axiosError?.response?.status) {
+        return axiosError.response.status;
+      }
+    }
+    if (asAny?.status) {
+      const status = asAny.status;
       const type = typeof (status);
       if (type === 'number') {
         return status;
@@ -563,6 +710,11 @@ interface IAppSessionProperties extends Session {
   referer: string;
 }
 
+export function sha256(str: string) {
+  const hash = crypto.createHash('sha256').update(str).digest('base64');
+  return hash;
+}
+
 export interface IAppSession extends IAppSessionProperties {}
 
 export interface ICustomizedNewRepositoryLogic {
@@ -572,6 +724,14 @@ export interface ICustomizedNewRepositoryLogic {
   stripRequestBody(context: INewRepositoryContext, body: any): void;
   afterRepositoryCreated(context: INewRepositoryContext, corporateId: string, success: ICreateRepositoryApiResult): Promise<void>;
   shouldNotifyManager(context: INewRepositoryContext, corporateId: string): boolean;
+  getNewMailViewProperties(context: INewRepositoryContext, repository: Repository): Promise<ICustomizedNewRepoProperties>;
+}
+
+export interface ICustomizedNewRepoProperties {
+  viewProperties: any;
+  to?: string[];
+  cc?: string[];
+  bcc?: string[];
 }
 
 export interface ICustomizedTeamPermissionsWebhookLogic {
@@ -580,4 +740,15 @@ export interface ICustomizedTeamPermissionsWebhookLogic {
 
 export interface INewRepositoryContext {
   isCustomContext: boolean;
+}
+
+export function validateGitHubLogin(username: string) {
+  // There are some legitimate usernames at GitHub that have a dash
+  // in them. While GitHub no longer allows this for new accounts,
+  // they are grandfathered in.
+  if (!githubUsernameRegex.test(username) && !username.endsWith('-')) {
+    console.warn(`Invalid GitHub username format: ${username}`);
+    // throw new Error(`Invalid GitHub username format: ${username}`);
+  }
+  return username;
 }

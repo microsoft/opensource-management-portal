@@ -27,6 +27,7 @@ export interface IGitHubAppConfiguration {
   webhookSecret?: string;
   slug?: string;
   description?: string;
+  baseUrl: string;
 }
 
 export interface IGitHubAppsOptions {

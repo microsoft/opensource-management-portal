@@ -12,7 +12,7 @@ import lowercaser from '../../middleware/lowercaser';
 
 import { Collaborator, GitHubCollaboratorAffiliationQuery, ICorporateLink, ITemporaryCommandOutput, Organization, OrganizationMember, Repository, TeamPermission } from '../../business';
 
-import { ReposAppRequest, IProviders, UserAlertType, CreateError, NoCacheNoBackground, getProviders } from '../../transitional';
+import { ReposAppRequest, IProviders, UserAlertType, CreateError, NoCacheNoBackground, getProviders, ErrorHelper } from '../../transitional';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { AddRepositoryPermissionsToRequest, getContextualRepositoryPermissions, IContextualRepositoryPermissions } from '../../middleware/github/repoPermissions';
 
@@ -291,7 +291,9 @@ router.get('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncH
     try {
       createdUserLink = await linkProvider.getByThirdPartyId(createdByThirdPartyId);
     } catch (linkError) {
-      console.dir(linkError);
+      if (!ErrorHelper.IsNotFound(linkError)) {
+        console.dir(linkError);
+      }
     }
   }
   const createdByCorporateId = repositoryMetadataEntity && repositoryMetadataEntity.createdByCorporateId ? repositoryMetadataEntity.createdByCorporateId : null;

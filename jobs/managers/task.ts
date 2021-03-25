@@ -13,10 +13,9 @@ import throat from 'throat';
 import { IReposJob, IReposJobResult } from '../../app';
 import { createAndInitializeLinkProviderInstance } from '../../lib/linkProviders';
 import { ICorporateLink } from '../../business/corporateLink';
-import { ICachedEmployeeInformation, RedisPrefixManagerInfoCache } from '../../business/operations';
+import { ICachedEmployeeInformation, RedisPrefixManagerInfoCache } from '../../business';
 import { sleep } from '../../utils';
 import { IMicrosoftIdentityServiceBasics } from '../../lib/corporateContactProvider';
-import { getUserAndManager } from '../../lib/graphProvider/microsoftGraphProvider';
 
 export default async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
   const graphProvider = providers.graphProvider;
@@ -63,7 +62,7 @@ export default async function refresh({ providers }: IReposJob): Promise<IReposJ
     }
     let info = null, infoError = null;
     try {
-      info = await getUserAndManager(graphProvider, employeeDirectoryId);
+      info = await graphProvider.getUserAndManagerById(employeeDirectoryId);
       if (link.isServiceAccount) {
         console.log();
         // console.dir(info);

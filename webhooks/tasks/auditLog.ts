@@ -11,8 +11,8 @@
 // for organizations, and also to import JSON-based audit export files.
 
 import { WebhookProcessor } from '../organizationProcessor';
-import { Operations } from '../../business/operations';
-import { Organization } from '../../business/organization';
+import { Operations } from '../../business';
+import { Organization } from '../../business';
 import { AuditLogRecord } from '../../entities/auditLogRecord/auditLogRecord';
 import { MapWebhookEventsToAuditEvents, AuditLogSource } from '../../entities/auditLogRecord';
 

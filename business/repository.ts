@@ -6,9 +6,8 @@
 import moment from 'moment';
 
 import { wrapError } from '../utils';
-import { Operations } from './operations';
 import { IAccountBasics, Organization } from './organization';
-import { ICacheOptions, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, ErrorHelper, NoCacheNoBackground } from '../transitional';
+import { ICacheOptions, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, NoCacheNoBackground, IOperationsInstance, throwIfNotGitHubCapable, throwIfNotCapable, IOperationsProviders, CoreCapability, operationsWithCapability, IOperationsCentralOperationsToken, IOperationsServiceAccounts, IRepositoryGetIssuesOptions } from '../transitional';
 import * as common from './common';
 import { RepositoryPermission } from './repositoryPermission';
 import { Collaborator } from './collaborator';
@@ -18,6 +17,7 @@ import { AppPurpose } from '../github';
 import { IListPullsParameters, GitHubPullRequestState, GitHubPullRequestSort, GitHubSortDirection } from '../lib/github/collections';
 import { RepositoryIssue } from './repositoryIssue';
 import { IGitHubTeamBasics } from './team';
+import { CacheDefault, DefaultPageSize, getMaxAgeSeconds, getPageSize } from '.';
 
 export interface IGitHubCollaboratorInvitation {
   id: string;
@@ -300,7 +300,7 @@ export class Repository {
 
   private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
   private _getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader;
-  private _operations: Operations;
+  private _operations: IOperationsInstance;
 
   private _organization: Organization;
 
@@ -372,7 +372,7 @@ export class Repository {
     return this.organization.absoluteBaseUrl + 'repos/' + this.name + '/';
   }
 
-  constructor(organization: Organization, entity: any, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader, operations: Operations) {
+  constructor(organization: Organization, entity: any, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader, operations: IOperationsInstance) {
     this._organization = organization;
     this._entity = entity;
     this._baseUrl = organization.baseUrl + 'repos/' + this.name + '/';
@@ -414,7 +414,7 @@ export class Repository {
 
   async getDetails(options?: ICacheOptions): Promise<any> {
     options = options || {};
-    const operations = this._operations;
+    const operations = throwIfNotGitHubCapable(this._operations);
     if (this.id && !this.name) {
       try {
         const lookupById = await this.organization.getRepositoryById(this.id);
@@ -429,7 +429,7 @@ export class Repository {
       repo: this.name,
     };
     const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgRepoDetailsStaleSeconds,
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
@@ -449,7 +449,8 @@ export class Repository {
   }
 
   async getRepositoryMetadata(): Promise<RepositoryMetadataEntity> {
-    const repositoryMetadataProvider = this._operations.providers.repositoryMetadataProvider;
+    const operations = throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers);
+    const repositoryMetadataProvider = operations.providers.repositoryMetadataProvider;
     try {
       return await repositoryMetadataProvider.getRepositoryMetadata(this.id.toString());
     } catch (getMetadataError) {
@@ -459,19 +460,19 @@ export class Repository {
 
   async getBranches(cacheOptions: IGetBranchesOptions): Promise<IGitHubBranch[]> {
     cacheOptions = cacheOptions || {};
-    const operations = this._operations;
+    const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
     const parameters: IGetBranchesParameters = {
       owner: this.organization.name,
       repo: this.name,
-      per_page: operations.defaultPageSize,
+      per_page: getPageSize(operations),
     };
     if (cacheOptions.protected !== undefined) {
       parameters.protected = cacheOptions.protected;
     }
     delete cacheOptions.protected;
     if (!cacheOptions.maxAgeSeconds) {
-      cacheOptions.maxAgeSeconds = operations.defaults.repoBranchesStaleSeconds;
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.repoBranchesStaleSeconds);
     }
     if (cacheOptions.backgroundRefresh === undefined) {
       cacheOptions.backgroundRefresh = true;
@@ -482,14 +483,14 @@ export class Repository {
   async getPulls(options?: IGetPullsOptions): Promise<any> {
     await this.organization.requireUpdatesApp('getPulls');
     // CONSIDER: might really need to probe for the app and pick which has pull request access
-    const operations = this._operations;
+    const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
     const cacheOptions: ICacheOptions = {};
     const parameters: IListPullsParameters = Object.assign({},
       options || {}, {
       owner: this.organization.name,
       repo: this.name,
-      per_page: operations.defaultPageSize,
+      per_page: getPageSize(operations),
     });
     if (options && options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
@@ -500,7 +501,7 @@ export class Repository {
       delete parameters['maxAgeSeconds'];
     }
     if (cacheOptions.maxAgeSeconds === undefined) {
-      cacheOptions.maxAgeSeconds = operations.defaults.repoPullsStaleSeconds;
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.repoPullsStaleSeconds);
     }
     if (cacheOptions.backgroundRefresh === undefined) {
       cacheOptions.backgroundRefresh = true;
@@ -517,7 +518,7 @@ export class Repository {
       path: path,
       ref: ref,
     };
-    const operations = this._operations
+    const operations = throwIfNotGitHubCapable(this._operations);
     return operations.github.call(this.authorize(AppPurpose.Data), 'repos.getContent', parameters);
   }
 
@@ -528,7 +529,8 @@ export class Repository {
       repo: this.name,
       ref: `heads/${branchName}`,
     };
-    const data = await this._operations.github.requestAsPost(this.authorize(AppPurpose.Updates), 'GET /repos/:owner/:repo/git/ref/:ref', options);
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const data = await operations.github.requestAsPost(this.authorize(AppPurpose.Updates), 'GET /repos/:owner/:repo/git/ref/:ref', options);
     return data.object.sha;
   }
 
@@ -593,13 +595,14 @@ export class Repository {
 
   async patchPullRequestBranch(number: string, targetBranch: string): Promise<void> {
     await this.organization.requireUpdatesApp('patchPullRequestBranch');
+    const operations = throwIfNotGitHubCapable(this._operations);
     const options = {
       owner: this.organization.name,
       repo: this.name,
       pull_number: number,
       base: targetBranch,
     };
-    await this._operations.github.requestAsPost(this.authorize(AppPurpose.Updates), 'PATCH /repos/:owner/:repo/pulls/:pull_number', options);
+    await operations.github.requestAsPost(this.authorize(AppPurpose.Updates), 'PATCH /repos/:owner/:repo/pulls/:pull_number', options);
   }
 
   async createNewBranch(sha: string, newBranchName: string): Promise<void> {
@@ -610,11 +613,13 @@ export class Repository {
       ref: `refs/heads/${newBranchName}`,
       sha,
     };
-    await this._operations.github.requestAsPost(this.authorize(AppPurpose.Updates), 'POST /repos/:owner/:repo/git/refs', options);
+    const operations = throwIfNotGitHubCapable(this._operations);
+    await operations.github.requestAsPost(this.authorize(AppPurpose.Updates), 'POST /repos/:owner/:repo/git/refs', options);
   }
 
   async updateBranchProtectionRule(id: string, newPattern: string): Promise<void> {
     await this.organization.requireUpdatesApp('updateBranchProtectionRule');
+    const operations = throwIfNotGitHubCapable(this._operations);
     const mutation = `mutation($branchProtectionRuleId:ID!,$pattern:String!) {
       updateBranchProtectionRule (input:{branchProtectionRuleId:$branchProtectionRuleId,pattern:$pattern}) {
         branchProtectionRule {
@@ -624,7 +629,7 @@ export class Repository {
       }
     }`;
     try {
-      await this._operations.github.graphql(
+      await operations.github.graphql(
         this.authorize(AppPurpose.Updates),
         mutation,
         {
@@ -648,12 +653,13 @@ export class Repository {
         }
       }
     }`;
+    const operations = throwIfNotGitHubCapable(this._operations);
     try {
       const {
         repository: {
           branchProtectionRules: { nodes: branchProtectionRules },
         },
-      }  = await this._operations.github.graphql(
+      }  = await operations.github.graphql(
         this.authorize(AppPurpose.Updates),
         query,
         {
@@ -670,7 +676,7 @@ export class Repository {
     // NOTE: GitHub has a "100-item limit" currently. This is an object response and not
     // technically paginated.
     cacheOptions = cacheOptions || {};
-    const operations = this._operations;
+    const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
     const parameters = {
       owner: this.organization.name,
@@ -697,7 +703,8 @@ export class Repository {
       name: this.name,
       default_branch: defaultBranchName,
     };
-    await this._operations.github.requestAsPost(this.authorize(AppPurpose.Updates), 'PATCH /repos/:owner/:repo', options);
+    const operations = throwIfNotGitHubCapable(this._operations);
+    await operations.github.requestAsPost(this.authorize(AppPurpose.Updates), 'PATCH /repos/:owner/:repo', options);
   }
 
   async deleteBranch(branchName: string): Promise<void> {
@@ -707,24 +714,28 @@ export class Repository {
       repo: this.name,
       ref: `heads/${branchName}`,
     };
-    await this._operations.github.requestAsPost(this.authorize(AppPurpose.Updates), 'DELETE /repos/:owner/:repo/git/refs/:ref', options);
+    const operations = throwIfNotGitHubCapable(this._operations);
+    await operations.github.requestAsPost(this.authorize(AppPurpose.Updates), 'DELETE /repos/:owner/:repo/git/refs/:ref', options);
   }
 
   async getPages(options?: ICacheOptions): Promise<any> {
     options = options || {};
-    const operations = this._operations;
+    const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
     };
     const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgRepoDetailsStaleSeconds,
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     try {
-      const token = this._operations.authorizeCentralOperationsToken();
+      // CONSIDER: need a fallback authentication approach: try and app for a specific capability (the installation knows) and fallback to central ops
+      // const centralOps = operationsWithCapability<IOperationsCentralOperationsToken>(operations, CoreCapability.GitHubCentralOperations);
+      const tokenSource = this._getSpecificAuthorizationHeader(AppPurpose.Data); // centralOps ? centralOps.getCentralOperationsToken()(AppPurpose.Data) : 
+      const token = await tokenSource;
       return await operations.github.call(token, 'repos.getPages', parameters, cacheOptions);
     } catch (error) {
       const notFound = error.status && error.status == /* loose */ 404;
@@ -738,7 +749,7 @@ export class Repository {
 
   async checkCollaborator(username: string, cacheOptions?: ICacheOptions): Promise<boolean> {
     cacheOptions = cacheOptions || {};
-    const operations = this._operations;
+    const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
@@ -747,7 +758,7 @@ export class Repository {
       allowEmptyResponse: true,
     };
     if (!cacheOptions.maxAgeSeconds) {
-      cacheOptions.maxAgeSeconds = operations.defaults.orgRepoTeamsStaleSeconds;
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.orgRepoTeamsStaleSeconds);
     }
     if (cacheOptions.backgroundRefresh === undefined) {
       cacheOptions.backgroundRefresh = true;
@@ -781,7 +792,7 @@ export class Repository {
   async getCollaborator(username: string, cacheOptions?: ICacheOptions): Promise<RepositoryPermission> {
     // This call is used in customer-facing sites by permissions middleware
     cacheOptions = cacheOptions || {};
-    const operations = this._operations;
+    const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
     const parameters = {
       owner: this.organization.name,
@@ -801,17 +812,17 @@ export class Repository {
 
   async listContributors(cacheOptions?: IListContributorsOptions): Promise<any[]> {
     cacheOptions = cacheOptions || {};
-    const operations = this._operations;
+    const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
-      per_page: operations.defaultPageSize,
+      per_page: getPageSize(operations),
       anon: cacheOptions.anon || false,
     };
     delete cacheOptions.anon;
     if (!cacheOptions.maxAgeSeconds) {
-      cacheOptions.maxAgeSeconds = operations.defaults.orgRepoCollaboratorsStaleSeconds;
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.orgRepoCollaboratorsStaleSeconds);
     }
     if (cacheOptions.backgroundRefresh === undefined) {
       cacheOptions.backgroundRefresh = true;
@@ -823,17 +834,17 @@ export class Repository {
 
   async getCollaborators(cacheOptions?: IGetCollaboratorsOptions): Promise<Collaborator[]> {
     cacheOptions = cacheOptions || {};
-    const operations = this._operations;
+    const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
-      per_page: operations.defaultPageSize,
+      per_page: getPageSize(operations),
       affiliation: cacheOptions.affiliation || GitHubCollaboratorAffiliationQuery.All,
     };
     delete cacheOptions.affiliation;
     if (!cacheOptions.maxAgeSeconds) {
-      cacheOptions.maxAgeSeconds = operations.defaults.orgRepoCollaboratorsStaleSeconds;
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.orgRepoCollaboratorsStaleSeconds);
     }
     if (cacheOptions.backgroundRefresh === undefined) {
       cacheOptions.backgroundRefresh = true;
@@ -845,7 +856,8 @@ export class Repository {
 
   async addCollaborator(username: string, permission: GitHubRepositoryPermission): Promise<IGitHubCollaboratorInvitation> {
     // BREAKING CHANGE in the GitHub API: as of August 2017, this is "inviteCollaborator', it does not automatically add
-    const github = this._operations.github;
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const github = operations.github;
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
@@ -866,7 +878,8 @@ export class Repository {
     const parameters = {
       invitation_id: invitationId,
     };
-    return this._operations.github.post(alternateTokenHeader, 'repos.acceptInvitation', parameters);
+    const operations = throwIfNotGitHubCapable(this._operations);
+    return operations.github.post(alternateTokenHeader, 'repos.acceptInvitation', parameters);
   }
 
   removeCollaborator(username: string): Promise<any> {
@@ -875,7 +888,8 @@ export class Repository {
       repo: this.name,
       username: username,
     };
-    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.removeCollaborator', parameters);
+    const operations = throwIfNotGitHubCapable(this._operations);
+    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.removeCollaborator', parameters);
   }
 
   delete(): Promise<void> {
@@ -883,10 +897,12 @@ export class Repository {
       owner: this.organization.name,
       repo: this.name,
     };
-    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.delete', parameters);
+    const operations = throwIfNotGitHubCapable(this._operations);
+    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.delete', parameters);
   }
 
   createFile(path: string, base64Content: string, commitMessage: string, options?: ICreateFileOptions): Promise<any> {
+    const operations = throwIfNotGitHubCapable(this._operations);
     const parameters: ICreateFileParameters = Object.assign({
       owner: this.organization.name,
       repo: this.name,
@@ -904,10 +920,11 @@ export class Repository {
       parameters.committer = options.committer;
     }
     const alternateHeader = options.alternateToken ? `token ${options.alternateToken}` : null;
-    return this._operations.github.post(alternateHeader || this.authorize(AppPurpose.Operations), 'repos.createOrUpdateFileContents', parameters);
+    return operations.github.post(alternateHeader || this.authorize(AppPurpose.Operations), 'repos.createOrUpdateFileContents', parameters);
   }
 
   getFile(path: string, options?: IGitHubGetFileOptions): Promise<IGitHubFileContents> {
+    const operations = throwIfNotGitHubCapable(this._operations);
     const parameters: IGitHubGetFileParameters = Object.assign({
       owner: this.organization.name,
       repo: this.name,
@@ -917,10 +934,11 @@ export class Repository {
       parameters.ref = options.ref;
     }
     // const alternateHeader = options.alternateToken ? `token ${options.alternateToken}` : null;
-    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.getContent', parameters);
+    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.getContent', parameters);
   }
 
   getFiles(path: string, options?: IGitHubGetFileOptions): Promise<IGitHubFileContents[]> {
+    const operations = throwIfNotGitHubCapable(this._operations);
     const parameters: IGitHubGetFileParameters = Object.assign({
       owner: this.organization.name,
       repo: this.name,
@@ -930,10 +948,11 @@ export class Repository {
       parameters.ref = options.ref;
     }
     // const alternateHeader = options.alternateToken ? `token ${options.alternateToken}` : null;
-    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.getContent', parameters);
+    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.getContent', parameters);
   }
 
   async setTeamPermission(teamId: number, newPermission: GitHubRepositoryPermission): Promise<any> {
+    const operations = throwIfNotGitHubCapable(this._operations);
     const team = this.organization.team(teamId);
     // CONSIDER: note the performance penalty on the slug resolution; the alternate path has not been working for GitHub Apps
     await team.getDetails();
@@ -945,11 +964,12 @@ export class Repository {
       permission: newPermission,
     };
     // alternate version of: 'teams.octokit.teams.addOrUpdateRepoPermissionsInOrg': 'PUT /organizations/:org_id/team/:team_id/repos/:owner/:repo'
-    const result = await this._operations.github.post(this.authorize(AppPurpose.Operations), 'teams.addOrUpdateRepoPermissionsInOrg', options);
+    const result = await operations.github.post(this.authorize(AppPurpose.Operations), 'teams.addOrUpdateRepoPermissionsInOrg', options);
     return result;
   }
 
   removeTeamPermission(teamId: number): Promise<any> {
+    const operations = throwIfNotGitHubCapable(this._operations);
     const options = {
       org_id: this.organization.id.toString(),
       team_id: teamId,
@@ -957,18 +977,18 @@ export class Repository {
       repo: this.name,
     };
     // alternate version of: 'teams.removeRepoInOrg'
-    return this._operations.github.requestAsPost(this.authorize(AppPurpose.Operations), 'DELETE /organizations/:org_id/team/:team_id/repos/:owner/:repo', options);
+    return operations.github.requestAsPost(this.authorize(AppPurpose.Operations), 'DELETE /organizations/:org_id/team/:team_id/repos/:owner/:repo', options);
   }
 
   async getWebhooks(options?: ICacheOptions): Promise<any> {
     options = options || {};
-    const operations = this._operations
+    const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
     };
     const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: options.maxAgeSeconds || operations.defaults.orgRepoWebhooksStaleSeconds,
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoWebhooksStaleSeconds, options),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
@@ -977,15 +997,17 @@ export class Repository {
   }
 
   deleteWebhook(webhookId: string): Promise<any> {
+    const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
       id: webhookId,
     };
-    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.deleteWebhook', parameters);
+    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.deleteWebhook', parameters);
   }
 
   createWebhook(options: ICreateWebhookOptions): Promise<any> {
+    const operations = throwIfNotGitHubCapable(this._operations);
     delete options['owner'];
     delete options['repo'];
     const parameters = Object.assign({
@@ -1006,11 +1028,12 @@ export class Repository {
         content_type: 'json',
       };
     }
-    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.createWebhook', parameters);
+    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.createWebhook', parameters);
   }
 
   async editPublicPrivate(options): Promise<void> {
     options = options || {};
+    const operations = throwIfNotGitHubCapable(this._operations);
     if (options.private !== true && options.private !== false) {
       throw new Error('editPublicPrivate.options requires private to be set to true or false');
     }
@@ -1021,34 +1044,33 @@ export class Repository {
       private: options.private,
     });
     // BUG: GitHub Apps do not work with locking down no repository permissions as documented here: https://github.community/t5/GitHub-API-Development-and/GitHub-App-cannot-patch-repo-visibility-in-org-with-repo/m-p/33448#M3150
-    // const token = this._operations.authorizeCentralOperationsToken();
+    // const token = this._operations.getCentralOperationsToken();
     // return this._operations.github.post(token, 'repos.update', parameters);
-    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
+    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
   }
 
   async archive(): Promise<void> {
+    const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = Object.assign({
       owner: this.organization.name,
       repo: this.name,
     }, {
       archived: true,
     });
-    //const token = this._operations.authorizeCentralOperationsToken();
-    //return this._operations.github.post(token, 'repos.update', parameters);
-    return this._operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
+    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
   }
 
   async getTeamPermissions(cacheOptions?: IPagedCacheOptions): Promise<TeamPermission[]> {
     cacheOptions = cacheOptions || {};
-    const operations = this._operations;
+    const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
-      per_page: operations.defaultPageSize,
+      per_page: getPageSize(operations),
     };
     if (!cacheOptions.maxAgeSeconds) {
-      cacheOptions.maxAgeSeconds = operations.defaults.orgRepoTeamsStaleSeconds;
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.orgRepoTeamsStaleSeconds);
     }
     if (cacheOptions.backgroundRefresh === undefined) {
       cacheOptions.backgroundRefresh = true;
@@ -1060,7 +1082,7 @@ export class Repository {
 
   async checkTeamManages(teamId: string, cacheOptions?: ICacheOptions): Promise<boolean> {
     cacheOptions = cacheOptions || {};
-    const operations = this._operations;
+    const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
       owner: this.organization.name,
       org_id: this.organization.id.toString(),
@@ -1070,7 +1092,7 @@ export class Repository {
       allowEmptyResponse: true,
     };
     if (!cacheOptions.maxAgeSeconds) {
-      cacheOptions.maxAgeSeconds = operations.defaults.orgRepoTeamsStaleSeconds;
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.orgRepoTeamsStaleSeconds);
     }
     if (cacheOptions.backgroundRefresh === undefined) {
       cacheOptions.backgroundRefresh = true;
@@ -1090,7 +1112,7 @@ export class Repository {
   async enableSecretScanning(): Promise<boolean> {
     // NOTE: this is an experimental API as part of the program public beta, and likely not available
     // to most users. Expect this call to fail.
-    const operations = this._operations;
+    const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
       repo_id: this.id.toString(),
     };
@@ -1107,7 +1129,7 @@ export class Repository {
 
   async getSecretScanningAlerts(cacheOptions?: ICacheOptions): Promise<IGitHubSecretScanningAlert[]> {
     cacheOptions = cacheOptions || {};
-    const operations = this._operations;
+    const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
       // repo_id: this.id.toString(),
       owner: this.organization.name,
@@ -1138,12 +1160,12 @@ export class Repository {
     // NOTE: this is an experimental API as part of the program public beta, and likely not available
     // to most users. Expect this call to fail.
     cacheOptions = cacheOptions || {};
-    const operations = this._operations;
+    const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
       repo_id: this.id.toString(),
     };
     if (!cacheOptions.maxAgeSeconds) {
-      cacheOptions.maxAgeSeconds = operations.defaults.orgRepoTeamsStaleSeconds;
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.orgRepoTeamsStaleSeconds);
     }
     if (cacheOptions.backgroundRefresh === undefined) {
       cacheOptions.backgroundRefresh = true;
@@ -1160,12 +1182,16 @@ export class Repository {
   }
 
   async getAdministrators(excludeOwners = true, excludeBroadAndSystemTeams = true): Promise<string[]> {
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const opsSystemAccounts = operationsWithCapability<IOperationsServiceAccounts>(operations, CoreCapability.ServiceAccounts);
     const owners = await this._organization.getOwners();
     const ownersSet = new Set<string>(owners.map(o => o.login.toLowerCase()));
     const actualCollaborators = await this.getCollaborators({ affiliation: GitHubCollaboratorAffiliationQuery.Direct });
     let collaborators = actualCollaborators.filter(c => c.permissions?.admin === true);
     // No system accounts or owners
-    collaborators = collaborators.filter(c => false === this._operations.isSystemAccountByUsername(c.login));
+    if (opsSystemAccounts) {
+      collaborators = collaborators.filter(c => false === opsSystemAccounts.isSystemAccountByUsername(c.login));
+    }
     if (excludeOwners) {
       collaborators = collaborators.filter(c => false === ownersSet.has(c.login.toLowerCase()));
     }
@@ -1181,7 +1207,7 @@ export class Repository {
       for (let j = 0; j < members.length; j++) {
         const tm = members[j];
         const login = tm.login.toLowerCase();
-        if (!ownersSet.has(login) && !this._operations.isSystemAccountByUsername(login)) {
+        if (!ownersSet.has(login) && (!opsSystemAccounts || !opsSystemAccounts.isSystemAccountByUsername(login))) {
           users.add(login.toLowerCase());
         }
       }
@@ -1190,13 +1216,17 @@ export class Repository {
   }
 
   async getPushers(): Promise<string[]> {
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const opsSystemAccounts = operationsWithCapability<IOperationsServiceAccounts>(operations, CoreCapability.ServiceAccounts);
     // duplicated code from getAdministrators
     const owners = await this._organization.getOwners();
     const ownersSet = new Set<string>(owners.map(o => o.login.toLowerCase()));
     const actualCollaborators = await this.getCollaborators({ affiliation: GitHubCollaboratorAffiliationQuery.Direct });
     let collaborators = actualCollaborators.filter(c => c.permissions?.push === true);
     // No system accounts or owners
-    collaborators = collaborators.filter(c => false === this._operations.isSystemAccountByUsername(c.login));
+    if (opsSystemAccounts) {
+      collaborators = collaborators.filter(c => false === opsSystemAccounts.isSystemAccountByUsername(c.login));
+    }
     collaborators = collaborators.filter(c => false === ownersSet.has(c.login.toLowerCase()));
     const users = new Set<string>(collaborators.map(c => c.login.toLowerCase()));
     let teams = (await this.getTeamPermissions()).filter(tp => tp.permission === 'push');
@@ -1210,7 +1240,7 @@ export class Repository {
       for (let j = 0; j < members.length; j++) {
         const tm = members[j];
         const login = tm.login.toLowerCase();
-        if (!ownersSet.has(login) && !this._operations.isSystemAccountByUsername(login)) {
+        if (!ownersSet.has(login) && (!opsSystemAccounts || !opsSystemAccounts.isSystemAccountByUsername(login))) {
           users.add(login.toLowerCase());
         }
       }
@@ -1223,12 +1253,16 @@ export class Repository {
     if (!this.private) {
       return [];
     }
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const opsSystemAccounts = operationsWithCapability<IOperationsServiceAccounts>(operations, CoreCapability.ServiceAccounts);
     const owners = await this._organization.getOwners();
     const ownersSet = new Set<string>(owners.map(o => o.login.toLowerCase()));
     const actualCollaborators = await this.getCollaborators({ affiliation: GitHubCollaboratorAffiliationQuery.Direct });
     let collaborators = actualCollaborators.filter(c => c.permissions?.pull === true);
     // No system accounts or owners
-    collaborators = collaborators.filter(c => false === this._operations.isSystemAccountByUsername(c.login));
+    if (opsSystemAccounts) {
+      collaborators = collaborators.filter(c => false === opsSystemAccounts.isSystemAccountByUsername(c.login));
+    }
     if (excludeBroadTeamsAndOwners) {
       collaborators = collaborators.filter(c => false === ownersSet.has(c.login.toLowerCase()));
     }
@@ -1244,7 +1278,7 @@ export class Repository {
       for (let j = 0; j < members.length; j++) {
         const tm = members[j];
         const login = tm.login.toLowerCase();
-        if (!ownersSet.has(login) && !this._operations.isSystemAccountByUsername(login)) {
+        if (!ownersSet.has(login) && (!opsSystemAccounts || !opsSystemAccounts.isSystemAccountByUsername(login))) {
           users.add(login.toLowerCase());
         }
       }
@@ -1290,12 +1324,42 @@ export class Repository {
     return this._awesomeness;
   }
 
+  async getIssues(options?: IRepositoryGetIssuesOptions): Promise<RepositoryIssue[]> {
+    options = options || {};
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const github = operations.github;
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      per_page: getPageSize(operations),
+      milestone: options.milestone,
+      state: options.state,
+      assignee: options.assignee,
+      creator: options.creator,
+      mentioned: options.mentioned,
+      labels: options.labels,
+      sort: options.sort,
+      direction: options.direction,
+      since: options.since ? options.since.toISOString() : undefined,
+    };
+    const cacheOptions: IPagedCacheOptions = {
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoTeamsStaleSeconds, options),
+      backgroundRefresh: options.backgroundRefresh !== undefined ? options.backgroundRefresh : true,
+      pageRequestDelay: options.pageRequestDelay,
+    };
+    let issuesAndPullRequests = await github.collections.getRepoIssues(this.authorize(AppPurpose.Data), parameters, cacheOptions);
+    let issuesOnly = issuesAndPullRequests.filter(r => !r.pull_request);
+    const issues = common.createInstances<RepositoryIssue>(this, issueFromEntity, issuesOnly);
+    return issues;
+  }
+
   issue(issueNumber: number, optionalEntity?: any): RepositoryIssue {
     const issue = new RepositoryIssue(this, issueNumber, this._operations, this._getAuthorizationHeader, optionalEntity);
     return issue;
   }
 
   async createIssue(title: string, body: string): Promise<RepositoryIssue> {
+    const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
@@ -1303,11 +1367,18 @@ export class Repository {
       body,
     };
     // Operations has issue write permissions
-    const details = await this._operations.github.post(this.authorize(AppPurpose.Operations), 'issues.create', parameters);
+    const details = await operations.github.post(this.authorize(AppPurpose.Operations), 'issues.create', parameters);
     const issueNumber = details.number as number;
     const issue = new RepositoryIssue(this, issueNumber, this._operations, this._getAuthorizationHeader, details);
     return issue;
   }
+}
+
+function issueFromEntity(entity) {
+  // 'this' is bound for this function to be a private method
+  const operations = this._operations;
+  const permission = new RepositoryIssue(this, entity.number, operations, this._getAuthorizationHeader, entity);
+  return permission;
 }
 
 function teamPermissionFromEntity(entity) {

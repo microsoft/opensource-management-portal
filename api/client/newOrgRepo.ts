@@ -274,8 +274,6 @@ export async function createRepositoryFromClient(req: ILocalApiRequest, res, nex
     }
     return next(createRepositoryError);
   }
-  // before success, was: Number(existingRepoId || success.github.id)
-  await customizedNewRepositoryLogic?.afterRepositoryCreated(customContext, corporateId, success);
   let message = success.github ? `Your new repo, ${success.github.name}, has been created:` : 'Your repo request has been submitted.';
   if (existingRepoId && success.github) {
     message = `Your repository ${success.github.name} is classified and the repo is now ready, unlocked, with your selected team permissions assigned.`;

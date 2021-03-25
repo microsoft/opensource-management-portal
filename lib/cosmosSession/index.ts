@@ -5,7 +5,7 @@
 
 import { CosmosClient, Database, Container } from '@azure/cosmos';
 import { Store } from 'express-session';
-import { IAppSession } from '../../transitional';
+import { ErrorHelper, IAppSession } from '../../transitional';
 
 export interface ICosmosSessionProviderOptions {
   endpoint: string;
@@ -86,7 +86,11 @@ export default class CosmosSessionStore extends Store {
         return callback();
       }
     }).catch(error => {
-      console.dir(error);
+      if (ErrorHelper.IsNotFound(error)) {
+        // this is OK
+      } else {
+        console.dir(error);
+      }
       if (callback) {
         return callback();
         // We do not bubble any errors here.

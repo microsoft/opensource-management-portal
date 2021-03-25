@@ -3,9 +3,27 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Operations } from './operations';
-import { IGetAuthorizationHeader, ICacheOptions } from '../transitional';
+import { IGetAuthorizationHeader, ICacheOptions, IOperationsGitHubRestLibrary, IOperationsDefaultCacheTimes } from '../transitional';
 import { wrapError } from '../utils';
+
+export interface IGitHubAppInstallationPermissions {
+  issues: string; // write, ?
+  metadata: string; // read, ...
+  administration: string; // write, ...
+}
+
+export interface IGitHubWebhookEnterprise {
+  id: number;
+  slug: string;
+  name: string;
+  node_id: string;
+  avatar_url: string;
+  description: string;
+  website_url: string;
+  html_url: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface IGitHubAppInstallation {
   id: number;
@@ -16,9 +34,11 @@ export interface IGitHubAppInstallation {
   app_id: number;
   target_id: number;
   target_type: string;
-  permissions: unknown;
+  permissions: IGitHubAppInstallationPermissions;
   events: string[];
   repository_selection: string;
+  created_at: string;
+  updated_at: string;
 }
 
 const primaryInstallationProperties = [
@@ -32,7 +52,7 @@ const primaryInstallationProperties = [
 ];
 
 export default class GitHubApplication {
-  constructor(private operations: Operations, public id: number, public slug: string, public friendlyName: string, private getAuthorizationHeader: IGetAuthorizationHeader) {
+  constructor(private operations: IOperationsGitHubRestLibrary & IOperationsDefaultCacheTimes, public id: number, public slug: string, public friendlyName: string, private getAuthorizationHeader: IGetAuthorizationHeader) {
   }
 
   static PrimaryInstallationProperties = primaryInstallationProperties;

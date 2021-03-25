@@ -6,10 +6,10 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { jsonError } from '../../middleware/jsonError';
-import { MemberSearch } from '../../business/memberSearch';
-import { ICorporateLink } from '../../business/corporateLink';
-import { Operations, ICrossOrganizationMembersResult } from '../../business/operations';
+import { jsonError } from '../../middleware';
+import { MemberSearch } from '../../business';
+import { ICorporateLink } from '../../business';
+import { Operations, ICrossOrganizationMembersResult } from '../../business';
 import { IApiRequest } from '../../middleware/apiReposAuth';
 import postLinkApi from './link';
 import { ErrorHelper, getProviders } from '../../transitional';
@@ -112,7 +112,7 @@ router.get('/github/:username', asyncHandler(async (req: IApiRequest, res, next)
       req.insights.trackMetric({ name: 'ApiRequestLinkByGitHubUsername', value: 1 });
       return res.json(entry);
     } catch (entryError) {
-      return next(jsonError(entryError, 500));
+      return next(jsonError(entryError, ErrorHelper.GetStatus(entryError) || 500));
     }
   }
   const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps);
@@ -143,7 +143,9 @@ router.get('/aad/userPrincipalName/:upn', asyncHandler(async (req: IApiRequest, 
           r.push(entry);
         }
       } catch (partialIgnoreError) {
-        console.dir(partialIgnoreError);
+        if (!ErrorHelper.IsNotFound(partialIgnoreError)) {
+          console.dir(partialIgnoreError);
+        }
       }
     }
     req.insights.trackEvent({
@@ -197,7 +199,9 @@ router.get('/aad/:id', asyncHandler(async (req: IApiRequest, res, next) => {
           r.push(entry);
         }
       } catch (partialIgnoreError) {
-        console.dir(partialIgnoreError);
+        if (!ErrorHelper.IsNotFound(partialIgnoreError)) {
+          console.dir(partialIgnoreError);
+        }
       }
     }
     req.insights.trackMetric({ name: 'ApiRequestLinkByAadId', value: 1 });
@@ -224,8 +228,12 @@ async function getByThirdPartyId(thirdPartyId: string, apiVersion, operations: O
   try {
     link = await providers.linkProvider.getByThirdPartyId(thirdPartyId);
   } catch (linksError) {
-    linksError = wrapError(linksError, 'There was a problem retrieving link information to display alongside the member.');
-    throw jsonError(linksError, 500);
+    if (ErrorHelper.IsNotFound(linksError)) {
+      throw jsonError(`${thirdPartyId} is not linked`, 404);
+    } else {
+      linksError = wrapError(linksError, 'There was a problem retrieving link information to display alongside the member.');
+      throw jsonError(linksError, 500);
+    }
   }
   const account = operations.getAccount(thirdPartyId);
   await account.getDetails();
