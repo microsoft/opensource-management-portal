@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-/*eslint no-console: ["error", { allow: ["warn"] }] */
+/*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
 import axios from 'axios';
 import throat from 'throat';
@@ -131,9 +131,9 @@ export interface IOperationsOptions extends IOperationsCoreOptions {
   // mailProvider: IMailProvider;
 }
 
-export class Operations 
+export class Operations
   extends
-    OperationsCore 
+    OperationsCore
   implements
     IOperationsLegalEntities,
     IOperationsServiceAccounts,

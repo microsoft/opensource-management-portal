@@ -5,7 +5,7 @@
 
 // ORGANIZATION membership and ownership
 
-/*eslint no-console: ["error", { allow: ["dir", "log"] }] */
+/*eslint no-console: ["error", { allow: ["dir", "log", "warn"] }] */
 
 import { Operations } from '../../business';
 import { Organization, OrganizationMembershipRole, OrganizationMembershipState } from '../../business';

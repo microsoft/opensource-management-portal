@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-/*eslint no-console: ["error", { allow: ["dir", "warn"] }] */
+/*eslint no-console: ["error", { allow: ["dir", "warn", "log"] }] */
 
 import _ from 'lodash';
 const debug = require('debug')('restapi');
