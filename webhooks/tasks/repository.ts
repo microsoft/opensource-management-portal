@@ -5,7 +5,7 @@
 
 // REPOSITORY created or updated
 
-/*eslint no-console: ["error", { allow: ["dir", "log"] }] */
+/*eslint no-console: ["error", { allow: ["dir", "log", "warn"] }] */
 
 import { WebhookProcessor } from "../organizationProcessor";
 import { Operations } from "../../business";

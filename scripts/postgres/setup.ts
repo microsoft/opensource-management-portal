@@ -9,7 +9,7 @@ import { Client } from 'pg';
 import fs from 'fs';
 import path from 'path';
 
-/*eslint no-console: ["error", { allow: ["warn", "log", "dir"] }] */
+/*eslint no-console: ["error", { allow: ["warn", "log", "dir", "error"] }] */
 
 initialize();
 
@@ -18,7 +18,7 @@ async function setup() {
 
   const server = await prompt('postgres server: ');
   const adminUsername = await prompt('admin user: ');
-  const adminPassword = await prompt.password('admin password: ');  
+  const adminPassword = await prompt.password('admin password: ');
   const client = new Client({
     user: adminUsername,
     host: server,
