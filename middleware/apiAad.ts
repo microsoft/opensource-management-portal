@@ -17,6 +17,7 @@ interface IConfigAadApiApprovedAppsOrOids {
   scopes: {
     read: {
       links: string;
+      maintainers: string;
     },
     create: {
       repos: string;
@@ -34,6 +35,7 @@ export default function AadApiMiddleware(req: IApiRequest, res, next) {
     return isJsonError(err) ? next(err) : jsonError(err, 500);
   });
 }
+
 function callJwtVerify(token: string, options?: jwt.VerifyOptions) {
   return new Promise((resolve, reject) => {
     return jwt.verify(token, getSigningKeys, options, (err, payload) => {
@@ -132,8 +134,9 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     const scopes = [];
 
     // Any app that has a valid scope can call the API, but may not be scoped and will error out in the API tier
-    const approvedAppsToCreateRepos = [...approvedApps?.scopes?.create?.repos?.split(',')];
-    const approvedAppsToReadLinks = [...approvedApps?.scopes?.read?.links?.split(',')];
+    const approvedAppsToCreateRepos = approvedApps?.scopes?.create?.repos ? [...approvedApps.scopes.create.repos.split(',')] : [];
+    const approvedAppsToReadLinks = approvedApps?.scopes?.read?.links ? [...approvedApps.scopes.read.links.split(',')] : [];
+    const approvedAppsToReadMaintainers = approvedApps?.scopes?.read?.maintainers ? [...approvedApps.scopes.read.maintainers.split(',')] : [];
 
     const approvedOidsToCreateRepos = [...approvedOids?.scopes?.create?.repos?.split(',')];
     const approvedOidsToReadLinks = [...approvedOids?.scopes?.read?.links?.split(',')];
@@ -144,7 +147,8 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     ];
     const appIds = [ // hacky temporary design for pulling from config
       ...approvedAppsToCreateRepos,
-      ...approvedAppsToReadLinks
+      ...approvedAppsToReadLinks,
+      ...approvedAppsToReadMaintainers,
     ];
     const isAppApproved = appIds.includes(appid);
     const isOidApproved = oids.includes(oid);
@@ -158,13 +162,15 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     if (isAppApproved && approvedAppsToReadLinks.includes(appid)) {
       scopes.push('links');
     }
+    if (isAppApproved && approvedAppsToReadMaintainers.includes(appid)) {
+      scopes.push('maintainers');
+    }
     if (isOidApproved && approvedOidsToCreateRepos.includes(oid)) {
       scopes.push('createRepo');
     }
     if (isOidApproved && approvedOidsToReadLinks.includes(oid)) {
       scopes.push('links');
     }
-
     const apiToken = PersonalAccessToken.CreateFromAadAuthorization({
       appId: appid,
       oid,
@@ -173,7 +179,6 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     });
     req.apiKeyToken = apiToken;
     req.apiKeyProviderName = 'aad';
-
     insights?.trackEvent({
       name: 'ApiAadAppAuthorized',
       properties: Object.assign({}, decodedToken as any, {

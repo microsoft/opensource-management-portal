@@ -29,10 +29,10 @@ router.use(function (req: ILinksApiRequestWithUnlink, res, next) {
 });
 
 router.use('/github/id/:id', asyncHandler(async (req: ILinksApiRequestWithUnlink, res, next) => {
-  const { operations } = getProviders(req);
+  const { linkProvider } = getProviders(req);
   const id = req.params.id;
   try {
-    const link = await operations.linkProvider.getByThirdPartyId(id);
+    const link = await linkProvider.getByThirdPartyId(id);
     if (!link) {
       throw new Error(`Could not locate a link for GitHub user ID ${id}`);
     }

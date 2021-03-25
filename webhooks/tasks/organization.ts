@@ -7,8 +7,8 @@
 
 /*eslint no-console: ["error", { allow: ["dir", "log"] }] */
 
-import { Operations } from '../../business/operations';
-import { Organization, OrganizationMembershipRole, OrganizationMembershipState } from '../../business/organization';
+import { Operations } from '../../business';
+import { Organization, OrganizationMembershipRole, OrganizationMembershipState } from '../../business';
 import { IProviders, NoCacheNoBackground } from '../../transitional';
 import { WebhookProcessor } from '../organizationProcessor';
 

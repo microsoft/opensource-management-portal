@@ -14,11 +14,11 @@ import { ensureAllLinksInMemory, getAllLinksFromRequest } from '../middleware/bu
 import lowercaser from '../middleware/lowercaser';
 
 import { Operations, ICrossOrganizationMembersResult } from '../business/operations';
-import { MemberSearch } from '../business/memberSearch';
-import { Team } from '../business/team';
-import { TeamMember } from '../business/teamMember';
-import { OrganizationMember } from '../business/organizationMember';
-import { Organization } from '../business/organization';
+import { MemberSearch } from '../business';
+import { Team } from '../business';
+import { TeamMember } from '../business';
+import { OrganizationMember } from '../business';
+import { Organization } from '../business';
 
 interface IPeopleSearchRequest extends RequestWithSystemwidePermissions {
   organization?: any;

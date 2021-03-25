@@ -12,7 +12,7 @@ import CosmosSessionStore from '../lib/cosmosSession';
 import { IProviders, InnerError, RedisOptions, IApplicationProfile } from '../transitional';
 import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../lib/linkProviders';
 
-import { Operations } from '../business/operations';
+import { Operations } from '../business';
 import { createAndInitializeEntityMetadataProviderInstance, IEntityMetadataProvidersOptions } from '../lib/entityMetadataProvider';
 import { createAndInitializeRepositoryMetadataProviderInstance } from '../entities/repositoryMetadata';
 
@@ -20,7 +20,7 @@ import { createMailAddressProviderInstance, IMailAddressProvider } from '../lib/
 
 import ErrorRoutes from './error-routes';
 
-import redis = require('redis');
+import redis from 'redis';
 import { Pool as PostgresPool } from 'pg';
 
 const redisMock = require('redis-mock');
@@ -73,6 +73,7 @@ import RouteHsts from './hsts';
 import RouteSslify from './sslify';
 
 import MiddlewareIndex from '.';
+import { ICacheHelper } from '../lib/caching';
 
 const DefaultApplicationProfile: IApplicationProfile = {
   applicationName: 'GitHub Management Portal',
@@ -106,7 +107,7 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
     throw new Error('No cache provider available');
   }
 
-  providers.graphProvider = await createGraphProvider(config);
+  providers.graphProvider = await createGraphProvider(providers, config);
   app.set('graphProvider', providers.graphProvider);
 
   providers.mailAddressProvider = await createMailAddressProvider(config, providers);
@@ -117,7 +118,7 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
   debug(`mail provider type=${config.mail.provider} ${mailInitializedMessage}`);
   providers.mailProvider = mailProvider;
 
-  providers.github = await configureGitHubLibrary(app, providers.cacheProvider, providers.linkProvider, config);
+  providers.github = configureGitHubLibrary(providers.cacheProvider, config);
   app.set('github', providers.github);
 
   // always check if config exists to prevent crashing because of trying to access an undefined object
@@ -234,7 +235,8 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
   }
 
   try {
-    const operations = await (new Operations(providers)).initialize();
+    const operations = new Operations({ providers, github: providers.github });
+    await operations.initialize();
     app.set('operations', operations);
     providers.operations = operations;
   } catch (ignoredError2) {
@@ -248,15 +250,13 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
   }
 }
 
-function configureGitHubLibrary(app, redis, linkProvider: ILinkProvider, config): RestLibrary {
+function configureGitHubLibrary(cacheProvider: ICacheHelper, config): RestLibrary {
   if (config && config.github && config.github.operations && !config.github.operations.centralOperationsToken) {
     debug('WARNING: no central GitHub operations token is defined, some library operations may not succeed. ref: config.github.operations.centralOperationsToken var: GITHUB_CENTRAL_OPERATIONS_TOKEN');
   }
   const libraryContext = new RestLibrary({
     config,
-    redis,
-    insights: app.get('appInsightsClient'),
-    linkProvider,
+    cacheProvider,
   });
   return libraryContext;
 }
@@ -401,12 +401,12 @@ export default async function initialize(app: IReposApplication, express, rootdi
   return app;
 }
 
-function createGraphProvider(config: any): Promise<IGraphProvider> {
+function createGraphProvider(providers: IProviders, config: any): Promise<IGraphProvider> {
   return new Promise((resolve, reject) => {
     // The graph provider is optional. A graph provider can connect to a
     // corporate directory to validate or lookup employees and other
     // directory members at runtime to gather additional information.
-    CreateGraphProviderInstance(config, (providerInitError: Error, provider: IGraphProvider) => {
+    CreateGraphProviderInstance(providers, config, (providerInitError: Error, provider: IGraphProvider) => {
       if (providerInitError) {
         debug(`No org chart graph provider configured: ${providerInitError.message}`);
         if (config.graph?.require === true) {
@@ -527,7 +527,9 @@ async function dynamicStartup(config: any, providers: IProviders, rootdir: strin
       if (typeof(entrypoint) !== 'function') {
         throw new Error(`Entrypoint ${p} is not a function`);
       }
-      (entrypoint as CompanyStartupEntrypoint).call(null, config, providers, rootdir);
+      const promise = (entrypoint as CompanyStartupEntrypoint).call(null, config, providers, rootdir) as Promise<void>;
+      await promise;
+      debug(`Company-specific startup complete (${p})`);
     } catch (dynamicLoadError) {
       throw new Error(`config.startup.path=${p} could not successfully load: ${dynamicLoadError}`);
     }

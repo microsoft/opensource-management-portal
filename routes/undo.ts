@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { Operations } from '../business/operations';
+import { Operations } from '../business';
 import { ReposAppRequest, ErrorHelper, UserAlertType, getProviders } from '../transitional';
 import { AuditLogRecord } from '../entities/auditLogRecord/auditLogRecord';
 import { daysInMilliseconds } from '../utils';

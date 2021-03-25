@@ -30,6 +30,12 @@ export enum GitHubPullRequestState {
   All = 'all',
 }
 
+export enum GitHubIssueState {
+  Open = 'open',
+  Closed = 'closed',
+  All = 'all',
+}
+
 export enum GitHubPullRequestSort {
   Created = 'created',
   Updated = 'updated',
@@ -159,6 +165,10 @@ export class RestCollections {
       additionalDifferentiationParameters: parameters,
     };
     return this.generalizedCollectionWithFilter(`appInstallations`, 'apps.listInstallations', appInstallDetailsToCopy, token, projectedOptions, cacheOptions);
+  }
+
+  getRepoIssues(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any[]> {
+    return this.generalizedCollectionWithFilter('repoIssues', 'issues.listForRepo', null, token, options, cacheOptions);
   }
 
   getRepoTeams(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any> {

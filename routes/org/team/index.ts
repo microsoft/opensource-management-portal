@@ -11,15 +11,14 @@ import throat from 'throat';
 
 import { ReposAppRequest, IProviders, UserAlertType, getProviders } from '../../../transitional';
 import { wrapError } from '../../../utils';
-import { ICorporateLink } from '../../../business/corporateLink';
-import { Team, GitHubRepositoryType, ITeamMembershipRoleState, GitHubTeamRole } from '../../../business/team';
-import { Organization } from '../../../business/organization';
-import { IApprovalProvider } from '../../../entities/teamJoinApproval/approvalProvider';
-import { Operations } from '../../../business/operations';
+import { ICorporateLink } from '../../../business';
+import { Team, GitHubRepositoryType, ITeamMembershipRoleState, GitHubTeamRole } from '../../../business';
+import { Organization } from '../../../business';
+import { Operations } from '../../../business';
 import { TeamJoinApprovalEntity } from '../../../entities/teamJoinApproval/teamJoinApproval';
 import { AddTeamPermissionsToRequest, IRequestTeamPermissions } from '../../../middleware/github/teamPermissions';
 import { AddOrganizationPermissionsToRequest, GetOrganizationPermissionsFromRequest } from '../../../middleware/github/orgPermissions';
-import { TeamMember } from '../../../business/teamMember';
+import { TeamMember } from '../../../business';
 import SelfServiceTeamMemberToMaintainerUpgrades from '../../../features/teamMemberToMaintainerUpgrade';
 import RouteMembers from './members';
 import RouteReposPager from '../../reposPager';
@@ -31,7 +30,7 @@ import RouteLeave from './leave';
 import lowercaser from '../../../middleware/lowercaser';
 
 import RouteMaintainer from './index-maintainer';
-import { Repository } from '../../../business/repository';
+import { Repository } from '../../../business';
 import { IndividualContext } from '../../../user';
 
 const FirstPageMembersCap = 25;
@@ -633,7 +632,7 @@ function addLinkToList(array: TeamMember[], linksMap: Map<number, ICorporateLink
 }
 
 async function resolveMailAddresses(operations: Operations, array: TeamMember[]): Promise<void> {
-  const mailAddressProvider = operations.mailAddressProvider;
+  const mailAddressProvider = operations.providers.mailAddressProvider;
   if (!mailAddressProvider) {
     return;
   }

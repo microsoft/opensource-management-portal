@@ -3,10 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IProviders } from '../../transitional';
-import { Operations } from '../../business/operations';
-
 import { Strategy as GithubStrategy } from 'passport-github';
+
+import { IProviders } from '../../transitional';
+import { Operations } from '../../business';
 
 function githubResponseToSubset(app, modernAppInUse: boolean, accessToken: string, refreshToken: string, profile, done) {
   const config = app.settings.runtimeConfig;

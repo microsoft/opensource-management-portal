@@ -63,7 +63,7 @@ async function validateLinkOk(req: ReposAppRequest, res, next) {
       insights?.trackException({exception: err});
       return next(err);
     }
-    const manager = await providers.graphProvider.getManagerByIdAsync(aadId);
+    const manager = await providers.graphProvider.getManagerById(aadId);
     if (!manager || !manager.userPrincipalName) {
       return next(jsonError('You do not have an active manager entry in the directory, so cannot yet use this app to link.', 400));
     }
@@ -91,7 +91,6 @@ router.post('/',
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     return interactiveLinkUser(true, activeContext, req, res, next);
   }));
-
 
 router.use('*', (req: ReposAppRequest, res, next) => {
   return next(jsonError('API or route not found', 404));

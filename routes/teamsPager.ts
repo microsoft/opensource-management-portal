@@ -8,8 +8,8 @@ import asyncHandler from 'express-async-handler';
 import express from 'express';
 
 import { getProviders, ReposAppRequest } from '../transitional';
-import { Operations, ICrossOrganizationMembershipByOrganization } from '../business/operations';
-import { Team } from '../business/team';
+import { Operations, ICrossOrganizationMembershipByOrganization } from '../business';
+import { Team } from '../business';
 import { UserContext } from '../user/aggregate';
 
 import TeamSearch from '../business/teamSearch';

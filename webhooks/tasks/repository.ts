@@ -8,8 +8,8 @@
 /*eslint no-console: ["error", { allow: ["dir", "log"] }] */
 
 import { WebhookProcessor } from "../organizationProcessor";
-import { Operations } from "../../business/operations";
-import { Organization } from "../../business/organization";
+import { Operations } from "../../business";
+import { Organization } from "../../business";
 import NewRepositoryLockdownSystem from "../../features/newRepositoryLockdown";
 
 export default class RepositoryWebhookProcessor implements WebhookProcessor {

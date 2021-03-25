@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Operations } from '../business/operations';
+import { Operations } from '../business';
 import { SettleToStateValue, isPermissionBetterThan, ErrorHelper } from '../transitional';
 
 import LinkManager from './linkManager';

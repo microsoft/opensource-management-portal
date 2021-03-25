@@ -5,10 +5,9 @@
 
 /* eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
-const querystring = require('querystring');
+import querystring from 'querystring';
 
-import { Operations } from '../../business/operations';
-import { Organization, IAdministratorBasics, IGitHubOrganizationResponse } from '../../business/organization';
+import { Operations, Organization, IAdministratorBasics, IGitHubOrganizationResponse } from '../../business';
 import { requireJson } from '../../utils';
 import { OrganizationMember } from '../../business/organizationMember';
 import { IReportsContext } from './task';

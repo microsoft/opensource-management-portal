@@ -4,7 +4,7 @@
 //
 
 import { IProviders } from '../transitional';
-import { IAttachCompanySpecificRoutes, IAttachCompanySpecificMiddleware, ICorporationAdministrationSection, IAttachCompanySpecificStrings, ICompanySpecificFeatures } from './companySpecific';
+import { IAttachCompanySpecificRoutes, IAttachCompanySpecificMiddleware, ICorporationAdministrationSection, IAttachCompanySpecificStrings, ICompanySpecificFeatures, IAttachCompanySpecificViews } from './companySpecific';
 
 export * from './companySpecific';
 
@@ -17,6 +17,7 @@ export interface ICompanySpecificStartupProperties {
   administrationSection?: ICorporationAdministrationSection;
   strings?: IAttachCompanySpecificStrings;
   features?: ICompanySpecificFeatures;
+  views?: IAttachCompanySpecificViews;
 }
 
 export type ICompanySpecificStartupFunction = (config: any, p: IProviders, rootdir: string) => Promise<void>;

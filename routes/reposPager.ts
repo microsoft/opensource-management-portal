@@ -8,9 +8,9 @@ import express from 'express';
 import _ from 'lodash';
 
 import { IReposAppWithTeam, getProviders } from '../transitional';
-import { Operations } from '../business/operations';
-import { Repository } from '../business/repository';
-import { Team, GitHubRepositoryType } from '../business/team';
+import { Operations } from '../business';
+import { Repository } from '../business';
+import { Team, GitHubRepositoryType } from '../business';
 import { RepositorySearch } from '../business/repoSearch';
 import QueryCache from '../business/queryCache';
 import { Organization } from '../business/organization';

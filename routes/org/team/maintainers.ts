@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, RequestTeamMemberAddType, UserAlertType, NoCacheNoBackground, getProviders } from '../../../transitional';
+import { ReposAppRequest, RequestTeamMemberAddType, UserAlertType, NoCacheNoBackground, getProviders, validateGitHubLogin } from '../../../transitional';
 import { Team } from '../../../business/team';
 import { TeamMember } from '../../../business/teamMember';
 
@@ -71,7 +71,7 @@ router.use('/add', MiddlewareTeamAdminRequired, (req: ILocalRequest, res, next) 
 
 router.post('/add', MiddlewareTeamAdminRequired, asyncHandler(async function (req: ILocalRequest, res, next) {
   const { operations } = getProviders(req);
-  const login = operations.validateGitHubLogin(req.body.username);
+  const login = validateGitHubLogin(req.body.username);
   const team2 = req.team2 as Team;
   await team2.addMaintainer(login);
   req.individualContext.webContext.saveUserAlert(`Added ${login} as a team maintainer`, team2.name + ' membership updated', UserAlertType.Success);

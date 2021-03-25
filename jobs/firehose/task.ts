@@ -16,6 +16,8 @@ import ProcessOrganizationWebhook, { IGitHubWebhookProperties } from '../../webh
 import { IProviders } from '../../transitional';
 import { sleep, quitInTenSeconds } from '../../utils';
 import { IQueueMessage } from '../../lib/queues';
+import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
+import { IGitHubAppInstallation, IGitHubWebhookEnterprise } from '../../business';
 
 const runningAsOngoingDeployment = true;
 
@@ -144,7 +146,13 @@ export default async function firehose({ providers, started }: IReposJob): Promi
       const totalSeconds = moment.utc().diff(logicAppStarted) / 1000;
       insights.trackMetric({ name: 'JobFirehoseQueueDelay', value: totalSeconds });
     }
+    let deletedAlready = false;
     const acknowledgeEvent = function () {
+      if (deletedAlready) {
+        console.warn(`[message ${message.identifier} was already deleted]`);
+        return;
+      }
+      deletedAlready = true;
       console.log(`[message ${message.identifier}] deleted`);
       webhookQueueProcessor.deleteMessage(message).then(ok => {
         ++processedEvents;
@@ -155,11 +163,19 @@ export default async function firehose({ providers, started }: IReposJob): Promi
     const webhook = message.body as any;
     const eventType = message.customProperties['event'] || '';
     let organization = null;
-    const installationBody = webhook.installation;
+    const installation = webhook.installation as IGitHubAppInstallation;
+    const enterprise = webhook.enterprise as IGitHubWebhookEnterprise;
     let orgName = null;
-    if (installationBody) {
-      if (installationBody.target_type && installationBody.target_type === 'Organization') {
-        const id = installationBody.target_id;
+    const deployment = getCompanySpecificDeployment();
+    let processedElsewhere = deployment?.features?.firehose?.processWebhook ? await deployment.features.firehose.processWebhook(providers, webhook, eventType, enterprise, installation, acknowledgeEvent) : false;
+    if (processedElsewhere === true) {
+      console.log(`[the webhook was processed by a company-specific handler: ${message.identifier}]`);
+      acknowledgeEvent();
+      return;
+    }
+    if (installation) {
+      if (installation.target_type && installation.target_type === 'Organization') {
+        const id = installation.target_id;
         try {
           const orgById = operations.getOrganizationById(id);
           orgName = orgById.name;
@@ -168,8 +184,8 @@ export default async function firehose({ providers, started }: IReposJob): Promi
           acknowledgeEvent();
           return;
         }
-      } else if (installationBody.target_type) {
-        console.log(`invalid target type ${installationBody.target_type} for installation id=${installationBody.id}`)
+      } else if (installation.target_type) {
+        console.log(`invalid target type ${installation.target_type} for installation id=${installation.id}`)
         acknowledgeEvent();
         return;
       }

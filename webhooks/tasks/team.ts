@@ -8,10 +8,10 @@
 // TEAM changes
 
 import moment from 'moment';
+
 import { WebhookProcessor } from '../organizationProcessor';
-import { Operations } from '../../business/operations';
-import { Organization } from '../../business/organization';
-import { GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { Operations } from '../../business';
+import { Organization } from '../../business';
 import { permissionsObjectToValue } from '../../transitional';
 
 // When teams are added or removed on GitHub, refresh the organization's list of

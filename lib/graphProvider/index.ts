@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { IProviders } from '../../transitional';
 import { MicrosoftGraphProvider } from './microsoftGraphProvider';
 
 export enum GraphUserType {
@@ -46,10 +47,9 @@ export interface IGraphProvider {
 
   getUserIdByNickname(nickname: string): Promise<string>;
 
-  getUserAndManagerById(corporateId: string, callback);
+  getUserAndManagerById(corporateId: string): Promise<IGraphEntryWithManager>;
 
-  getManagerById(corporateId: string, callback);
-  getManagerByIdAsync(id: string): Promise<IGraphEntry>;
+  getManagerById(corporateId: string): Promise<IGraphEntry>;
   getManagementChain(corporateId: string): Promise<IGraphEntry[]>;
 
   getMailAddressByUsername(corporateUsername: string): Promise<string>;
@@ -70,7 +70,7 @@ export interface IGraphProvider {
   getToken(): Promise<string>;
 }
 
-export function CreateGraphProviderInstance(config, callback) {
+export function CreateGraphProviderInstance(providers: IProviders, config: any, callback) {
   const activeDirectoryConfig = config.activeDirectory;
   const graphConfig = Object.assign({
     tenantId: activeDirectoryConfig.tenantId,
@@ -86,6 +86,9 @@ export function CreateGraphProviderInstance(config, callback) {
   try {
     switch (provider) {
       case 'microsoftGraphProvider':
+        if (providers?.cacheProvider) {
+          graphConfig.cacheProvider = providers.cacheProvider;
+        }
         providerInstance = new MicrosoftGraphProvider(graphConfig);
         break;
       default:
@@ -101,14 +104,3 @@ export function CreateGraphProviderInstance(config, callback) {
 
   return callback(null, providerInstance);
 };
-
-export function getUserAndManagerById(graphProvider: IGraphProvider, aadId: string): Promise<IGraphEntryWithManager> {
-  return new Promise((resolve, reject) => {
-    if (!graphProvider || !aadId) {
-      return resolve(null);
-    }
-    graphProvider.getUserAndManagerById(aadId, (error, info) => {
-      return error ? reject(error) : resolve(info);
-    });
-  });
-}

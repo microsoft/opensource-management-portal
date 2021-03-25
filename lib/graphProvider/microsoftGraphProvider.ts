@@ -6,11 +6,12 @@
 // This code adopted from our existing jobs code
 
 import cache from 'memory-cache';
-import request from 'request';
+import axios, { AxiosError } from 'axios';
 import querystring from 'querystring';
 
 import { IGraphProvider, IGraphEntry, IGraphEntryWithManager, IGraphGroupMember, IGraphGroup, GraphUserType } from '.';
 import { ErrorHelper, CreateError } from '../../transitional';
+import { ICacheHelper } from '../caching';
 
 export interface IMicrosoftGraphProviderOptions {
   tokenCacheSeconds?: string | number;
@@ -18,10 +19,12 @@ export interface IMicrosoftGraphProviderOptions {
   clientSecret: string;
   tokenEndpoint?: string;
   tenantId?: string;
+  cacheProvider?: ICacheHelper;
 }
 
 const graphBaseUrl = 'https://graph.microsoft.com/v1.0/';
 const odataNextLink = '@odata.nextLink';
+const defaultCachePeriodMinutes = 60;
 
 interface IGraphOptions {
   selectValues?: string;
@@ -36,6 +39,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
   #_staticManagerEntryCacheById: Map<string, IGraphEntryWithManager>;
   #_tenantId: string;
   #_tokenEndpoint: string;
+  #_cache: ICacheHelper;
 
   public clientId: string;
 
@@ -47,6 +51,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     this.#_clientSecret = graphOptions.clientSecret;
     this.#_tenantId = graphOptions.tenantId;
     this.#_tokenEndpoint = graphOptions.tokenEndpoint;
+    this.#_cache = graphOptions.cacheProvider;
     if (!this.clientId) {
       throw new Error('MicrosoftGraphProvider: clientId required');
     }
@@ -61,22 +66,27 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     return members.filter(m => m.id === corporateId).length > 0;
   }
 
-  getManagerById(aadId, callback) {
-    this.getTokenThenEntity(aadId, 'manager', callback);
+  private async getTokenThenEntity(aadId: string, resource: string): Promise<unknown> {
+    const accessToken = await this.getToken();
+    return await this.getUserByIdLookup(aadId, accessToken, resource);
   }
 
-  getUserAndManagerById(aadId, callback) {
-    this.getTokenThenEntity(aadId, null, (error, user) => {
-      if (error) {
-        return callback(error);
+  async getManagerById(aadId: string) {
+    const entity = await this.getTokenThenEntity(aadId, 'manager') as IGraphEntry;
+    return entity;
+  }
+
+  async getUserAndManagerById(aadId: string): Promise<IGraphEntryWithManager> {
+    const entity = await this.getTokenThenEntity(aadId, null) as IGraphEntryWithManager;
+    try {
+      const manager = await this.getTokenThenEntity(aadId, 'manager') as IGraphEntry;
+      if (manager) {
+        entity.manager = manager;
       }
-      this.getTokenThenEntity(aadId, 'manager', (noManager, manager) => {
-        if (!error && manager) {
-          user.manager = manager;
-        }
-        callback(null, user);
-      });
-    });
+    } catch (warning) {
+      console.warn(warning);
+    }
+    return entity;
   }
 
   async getManagementChain(corporateId: string): Promise<IGraphEntryWithManager[]> {
@@ -105,37 +115,21 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     if (entry) {
       return entry;
     }
-    entry = await this.getUserAndManagerAsync(corporateId);
+    entry = await this.getUserAndManagerById(corporateId);
     this.#_staticManagerEntryCacheById.set(corporateId, entry);
     return entry;
   }
 
   async getUserById(id: string): Promise<IGraphEntry> {
-    return new Promise<IGraphEntry>((resolve, reject) => {
-      return this.getTokenThenEntity(id, null, (err, info) => {
-        if (err && err['status'] === 404) {
-          return resolve(null);
-        } else if (err) {
-          return reject(err);
-        }
-        return resolve(info as IGraphEntry);
-      });
-    });
-  }
-
-  async getManagerByIdAsync(id: string): Promise<IGraphEntry> {
-    return new Promise<IGraphEntry>((resolve, reject) => {
-      this.getManagerById(id, (err, info) => {
-        if (err && err['status'] === 404) {
-          // console.log('User not found in the directory');
-          return resolve(null);
-        }
-        if (err) {
-          return reject(err);
-        }
-        return resolve(info as IGraphEntry);
-      });
-    });
+    try {
+      const info = await this.getTokenThenEntity(id, null);
+      return info as IGraphEntry;
+    } catch (error) {
+      if (ErrorHelper.IsNotFound(error)) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   async getGroup(corporateGroupId: string): Promise<IGraphGroup> {
@@ -188,19 +182,27 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     if (!response || response.length === 0) {
       return null;
     }
-    return response.map(entry => entry.id)[0];
+    if (Array.isArray(response)) {
+      return response.map(entry => entry.id)[0];
+    }
+    const subResponse = (response as any).value ? (response as any).value : [];
+    return subResponse.map(entry => entry.id)[0];
   }
 
   async getUsersByIds(userIds: string[]): Promise<IGraphEntry[]> {
     if (!userIds || userIds.length === 0) {
       return [];
     }
-    const response = await this.lookupInGraph([
+    let response = await this.lookupInGraph([
       'users',
     ], {
       filterValues: userIds.map(id => `id eq '${id.trim()}'`).join(' or '),
       selectValues: 'id,displayName,mailNickname,mail,userPrincipalName,userType,jobTitle',
     }) as any[];
+    // caching issues...
+    if (!response.filter && (response as any).value?.filter) {
+      response = (response as any).value;
+    }  
     return response.filter(e => e.userType !== GraphUserType.Guest).map(entry => {
       return {
         id: entry.id,
@@ -215,12 +217,15 @@ export class MicrosoftGraphProvider implements IGraphProvider {
   }
 
   async getUsersByMailNicknames(mailNicknames: string[]): Promise<IGraphEntry[]> {
-    const response = await this.lookupInGraph([
+    let response = await this.lookupInGraph([
       'users',
     ], {
       filterValues: mailNicknames.map(alias => `mailNickname eq '${alias.trim()}'`).join(' or '),
       selectValues: 'id,displayName,mailNickname,mail,userPrincipalName,userType,jobTitle',
     }) as any[];
+    if (!response.filter && (response as any).value?.filter) {
+      response = (response as any).value;
+    }
     return response.filter(e => e.userType !== GraphUserType.Guest).map(entry => {
       return {
         id: entry.id,
@@ -239,12 +244,15 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       throw new Error(`Minimum 3 characters required: ${minimum3Characters}`);
     }
     minimum3Characters = minimum3Characters.replace(/'/g, '\'\'');
-    const response = await this.lookupInGraph([
+    let response = await this.lookupInGraph([
       'users',
     ], {
       filterValues: `startswith(givenName, '${minimum3Characters}') or startswith(surname, '${minimum3Characters}') or startswith(displayName, '${minimum3Characters}') or startswith(mailNickname, '${minimum3Characters}') or startswith(mail, '${minimum3Characters}')`,
       selectValues: 'id,displayName,mailNickname,mail,userPrincipalName,userType,jobTitle',
     }) as any[];
+    if (!response.filter && (response as any).value?.filter) {
+      response = (response as any).value;
+    }
     return response.filter(e => e.userType !== GraphUserType.Guest).map(entry => {
       return {
         id: entry.id,
@@ -266,7 +274,12 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     ], {
       selectValues: 'id,userPrincipalName',
     }) as any[];
-    return response.map(entry => { return { id: entry.id, userPrincipalName: entry.userPrincipalName } });
+    // may be a caching bug:
+    if (Array.isArray(response)) {
+      return response.map(entry => { return { id: entry.id, userPrincipalName: entry.userPrincipalName } });  
+    }
+    const subResponse = (response as any).value ? (response as any).value : [];
+    return subResponse.map(entry => { return { id: entry.id, userPrincipalName: entry.userPrincipalName } });
   }
 
   async getGroupsStartingWith(minimum3Characters: string): Promise<IGraphGroup[]> {
@@ -274,22 +287,28 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       throw new Error(`Minimum 3 characters required: ${minimum3Characters}`);
     }
     // NOTE: this is currently explicitly looking for Security Groups only
-    const response = await this.lookupInGraph([
+    let response = await this.lookupInGraph([
       'groups',
     ], {
       filterValues: `securityEnabled eq true and (startswith(displayName, '${minimum3Characters}') or startswith(mailNickname, '${minimum3Characters}'))`,
       selectValues: 'id,displayName,mailNickname',
     }) as any[];
+    if (!response.filter && (response as any).value?.filter) {
+      response = (response as any).value;
+    }
     return response.map(entry => { return { id: entry.id, mailNickname: entry.mailNickname, displayName: entry.displayName } });
   }
 
   async getGroupsByMail(groupMailAddress: string): Promise<string[]> {
-    const response = await this.lookupInGraph([
+    let response = await this.lookupInGraph([
       'groups',
     ], {
       filterValues: `mail eq '${groupMailAddress}'`,
       selectValues: 'id',
     }) as any[];
+    if (!response.filter && (response as any).value?.filter) {
+      response = (response as any).value;
+    }
     return response.map(entry => entry.id);
   }
 
@@ -307,85 +326,50 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     return response;
   }
 
-  private async getUserAndManagerAsync(employeeDirectoryId: string): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      this.getUserAndManagerById(employeeDirectoryId, (err, info) => {
-        if (err) {
-          return reject(err);
-        }
-        return resolve(info);
-      });
-    });
-  }
-
-  private getGraphOptions(accessToken) {
-    return {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      json: true,
-    };
-  }
-
-  private async getRequestOptionsWithToken(): Promise<any> {
-    const token = await this.getToken();
-    return {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      json: true,
-    };
-  }
-
-  async getToken(): Promise<string> {
-    return new Promise((resolve, reject) => {
-      this.getTokenByCallback((error, token) => {
-        return error ? reject(error) : resolve(token);
-      });
-    });
-  }
-
-  private getTokenByCallback(callback) {
-    const tokenKey = this.clientId;
-    const token = cache.get(tokenKey);
-    if (token) {
-      return callback(null, token);
-    }
-    this.getGraphAccessToken((error, t) => {
-      if (error) {
-        return callback(error);
-      }
-      cache.put(tokenKey, t, this.#_tokenCacheMilliseconds);
-      return callback(null, t);
-    });
-  }
-
-  private getUserByIdLookup(aadId, options, subResource, callback) {
-    if (!callback && typeof (subResource) === 'function') {
-      callback = subResource;
-      subResource = null;
-    }
+  private async getUserByIdLookup(aadId: string, token: string, subResource: string): Promise<any> {
     const extraPath = subResource ? `/${subResource}` : '';
     const url = `https://graph.microsoft.com/v1.0/users/${aadId}${extraPath}?$select=id,mailNickname,userType,displayName,givenName,mail,userPrincipalName`;
-    request.get(url, options, (err, response, body) => {
-      if (err) {
-        return callback(err, null);
-      } else if (response.statusCode === 404) {
-        let err404 = new Error(`user not found in the corporate directory with the ID '${aadId}'`);
-        err404['status'] = 404;
-        return callback(err404, null);
-      } else if (response.statusCode >= 400) {
-        return callback(new Error(`Invalid status code: ${response.statusCode}`), null);
-      } else if (body === undefined) {
-        let err404 = new Error(`user not found in the corporate directory with the ID '${aadId}'`);
-        err404['status'] = 404;
-        return callback(err404, null);
-      } else if (body.error) {
-        return callback(new Error(body.error.message), null);
-      } else {
-        return callback(null, body);
+    if (this.#_cache) {
+      try {
+        const cached = await this.#_cache.getObject(url);
+        if (cached?.value) {
+          return cached.value;
+        }
+      } catch (error) {
+        console.warn(error);
       }
-    });
+    }
+    try {
+      const response = await axios({
+        url,
+        method: 'get',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!response.data) {
+        throw CreateError.NotFound(`user not found in the directory: ${aadId}`);
+      }
+      if (response.data.error?.message) {
+        throw CreateError.InvalidParameters(response.data.error.message);
+      }
+      if (this.#_cache) {
+        this.#_cache.setObjectWithExpire(url, {value: response.data}, defaultCachePeriodMinutes).then(ok => {}).catch(err => {});
+      }
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      if (axiosError?.response) {
+        if (axiosError.response?.status === 404) {
+          throw CreateError.NotFound(`User not found in the corporate directory with the ID '${aadId}'`, axiosError);
+        } else if (axiosError.response?.status >= 500) {
+          throw CreateError.ServerError('Graph server error', axiosError);
+        } else if (axiosError.response?.status >= 400) {
+          throw CreateError.InvalidParameters('Incorrect graph parameters', axiosError);
+        }
+      }
+      throw error;
+    }
   }
 
   private async lookupInGraph(entityPath: string[], options: IGraphOptions): Promise<any> {
@@ -404,6 +388,17 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     let hasArray = false;
     let value = null;
     let url = `${graphBaseUrl}${subUrl}?${querystring.stringify(queries)}`;
+    let originalUrl = url;
+    try {
+      if (this.#_cache) {
+        value = await this.#_cache.getObject(url);
+        if (value?.cache) {
+          return value.cache as any;
+        }
+      }
+    } catch (error) {
+      console.warn(error);
+    }
     let pages = 0;
     do {
       const body = await this.request(url, options.body);
@@ -424,93 +419,120 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       ++pages;
       url = body && body[odataNextLink] ? body[odataNextLink] : null;
     } while (url);
+    if (this.#_cache) {
+      try {
+        this.#_cache.setObjectWithExpire(originalUrl, {cache: value}, defaultCachePeriodMinutes).then(ok => {}).catch(err => {
+          console.warn(err);
+        });
+      } catch (error) {
+        console.warn(error);
+      }
+    }
     return value;
   }
 
   private async request(url: string, body?: any): Promise<any> {
-    const requestOptions = await this.getRequestOptionsWithToken();
-    if (body) {
-      requestOptions.body = body;
-    }
-    requestOptions.method = body ? 'post' : 'get';
-    return await new Promise((resolve, reject) => {
-      request(url, requestOptions, (err, response, body) => {
-        if (err) {
-          return reject(err);
-        } else if (response.statusCode === 404) {
-          return reject(CreateError.NotFound(url));
-        } else if (response.statusCode >= 400) {
-          const extraMessage = body && body.error && body.error.message ? body.error.message + ' ' : '';
-          const err = new Error(`${extraMessage}Response code ${response.statusCode}`);
-          ErrorHelper.EnsureHasStatus(err, response.statusCode);
-          return reject(err);
-        } else if (body === undefined) {
-          const err = new Error('Empty body');
-          return reject(err);
-        } else if (body.error) {
-          return reject(new Error(body.error.message));
-        } else {
-          return resolve(body);
+    const token = await this.getToken();
+    const method = body ? 'post' : 'get';
+    if (this.#_cache && method === 'get') {
+      try {
+        const value = await this.#_cache.getObject(url);
+        if (value?.cache) {
+          return value.cache as any;
         }
+      } catch (error) {
+        console.warn(error);
+      }
+    }
+    try {
+      const response = await axios({
+        url,
+        method,
+        data: method === 'post' ? body : undefined,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
-    });
+      if (!response.data) {
+        throw CreateError.ServerError('Empty response');
+      }
+      if (response.data.error?.message) {
+        throw CreateError.InvalidParameters(response.data.error.message);
+      }
+      if (this.#_cache && method === 'get') {
+        this.#_cache.setObjectWithExpire(url, {cache: response.data}, defaultCachePeriodMinutes).then(ok => {}).catch(err => {});
+      }
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      if (axiosError?.response) {
+        if (axiosError.response?.status === 404) {
+          const err = CreateError.NotFound('Not found', axiosError);
+          err['url'] = url;
+          throw error;
+        } else if (axiosError.response?.status >= 500) {
+          const err = CreateError.ServerError('Graph server error', axiosError);
+          err['url'] = url;
+          throw err;
+        } else if (axiosError.response?.status >= 400) {
+          throw CreateError.InvalidParameters('Incorrect graph parameters', axiosError);
+        }
+      }
+      error['url'] = url;
+      throw error;
+    }
   }
 
-  private getGraphAccessToken(callback) {
+  async getToken() {
     const clientId = this.clientId;
     const clientSecret = this.#_clientSecret;
     if (!clientId || !clientSecret) {
-      return callback(null, new Error('The graph provider requires an AAD clientId and clientSecret.'));
+      throw new Error('The graph provider requires an AAD clientId and clientSecret.');
+    }
+    const tokenKey = this.clientId;
+    const token = cache.get(tokenKey) as string;
+    if (token) {
+      return token;
     }
     const tokenEndpoint = this.#_tokenEndpoint || `https://login.microsoftonline.com/${this.#_tenantId}/oauth2/token`;
     // These are the parameters necessary for the OAuth 2.0 Client Credentials Grant Flow.
     // For more information, see Service to Service Calls Using Client Credentials (https://msdn.microsoft.com/library/azure/dn645543.aspx).
-    const requestParams = {
-      'grant_type': 'client_credentials',
-      'client_id': clientId,
-      'client_secret': clientSecret,
-      'resource': 'https://graph.microsoft.com'
-    };
-    request.post({
-      url: tokenEndpoint,
-      form: requestParams
-    }, function (err, response, body) {
-      if (err) {
-        return callback(err, null);
+    try {
+      const qs = {
+        grant_type: 'client_credentials',
+        client_id: clientId,
+        client_secret: clientSecret,
+        resource: 'https://graph.microsoft.com',
+      };
+      const response = await axios.post(tokenEndpoint, querystring.stringify(qs), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
+      if (!response.data) {
+        throw CreateError.ServerError('Empty response');
       }
-      const parsedBody = JSON.parse(body);
-      if (parsedBody.error) {
-        return callback(new Error(parsedBody.error.message ? parsedBody.error.message : parsedBody.error), null);
-      } else {
-        return callback(null, parsedBody.access_token);
+      if (!response.data.access_token) {
+        throw CreateError.InvalidParameters('No access token');
       }
-    });
+      if (response.data.error?.message) {
+        throw CreateError.InvalidParameters(response.data.error.message);
+      }
+      const accessToken = response.data.access_token as string;
+      cache.put(tokenKey, accessToken, this.#_tokenCacheMilliseconds);
+      return accessToken;
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      if (axiosError?.response) {
+        if (axiosError.response?.status === 404) {
+          throw CreateError.NotFound('Not found', axiosError);
+        } else if (axiosError.response?.status >= 500) {
+          throw CreateError.ServerError('Graph server error', axiosError);
+        } else if (axiosError.response?.status >= 400) {
+          throw CreateError.InvalidParameters('Incorrect graph parameters', axiosError);
+        }
+      }
+      throw error;
+    }
   }
-
-  private getTokenThenEntity(aadId, resource, callback) {
-    this.getTokenByCallback((error, token) => {
-      if (error) {
-        return callback(error);
-      }
-      this.getUserByIdLookup(aadId, this.getGraphOptions(token), resource, callback);
-    });
-  }
-}
-
-export function getUserAndManager(graphProvider, employeeDirectoryId: string): Promise<any> {
-  const timeoutMs = 18000;
-  let timeout = new Promise((resolve, reject) => {
-    let id = setTimeout(() => {
-      clearTimeout(id);
-      return reject(`User and manager request timed out in ${timeoutMs}ms`);
-    }, timeoutMs);
-  });
-  return Promise.race([new Promise<any>((resolve, reject) => {
-    graphProvider.getUserAndManagerById(employeeDirectoryId, (err: Error, info: any) => {
-      if (err) {
-        return reject(err);
-      }
-      return resolve(info);
-    });
-  }), timeout]);
 }

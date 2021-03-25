@@ -10,8 +10,8 @@ import _ from 'lodash';
 const crypto = require('crypto');
 const secureCompare = require('secure-compare');
 
-import { Operations } from '../business/operations';
-import { Organization } from '../business/organization';
+import { Operations } from '../business';
+import { Organization } from '../business';
 
 import Tasks from './tasks';
 import { sleep } from '../utils';
