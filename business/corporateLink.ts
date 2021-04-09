@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { ICorporateLink } from '../interfaces';
+
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
 export const CorporatePropertyNames = [
@@ -18,44 +20,6 @@ export const CorporatePropertyNames = [
   'thirdPartyUsername',
   'thirdPartyAvatar',
 ];
-
-export interface ICorporateLinkProperties {
-  isServiceAccount: any;
-  serviceAccountMail: any;
-
-  corporateId: any;
-  corporateUsername: any;
-  corporateDisplayName: any;
-  corporateMailAddress: any;
-  corporateAlias: any;
-
-  thirdPartyId: any;
-  thirdPartyUsername: any;
-  thirdPartyAvatar: any;
-}
-
-export interface ICorporateLink extends ICorporateLinkProperties {
-  isServiceAccount: boolean;
-  serviceAccountMail: string;
-
-  corporateId: string;
-  corporateUsername: string;
-  corporateDisplayName: string;
-  corporateMailAddress: string;
-  corporateAlias: string;
-
-  thirdPartyId: string;
-  thirdPartyUsername: string;
-  thirdPartyAvatar: string;
-}
-
-export interface ICorporateLinkExtended {
-  internal: () => ICorporateLinkExtendedDirectMethods,
-}
-
-export interface ICorporateLinkExtendedDirectMethods {
-  getDirectEntity: () => any;
-}
 
 export function corporateLinkToJson(link: ICorporateLink): ICorporateLink {
   return link && {

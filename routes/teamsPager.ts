@@ -7,12 +7,13 @@ import _ from 'lodash';
 import asyncHandler from 'express-async-handler';
 import express from 'express';
 
-import { getProviders, ReposAppRequest } from '../transitional';
-import { Operations, ICrossOrganizationMembershipByOrganization } from '../business';
+import { getProviders } from '../transitional';
+import { Operations } from '../business';
 import { Team } from '../business';
 import { UserContext } from '../user/aggregate';
 
 import TeamSearch from '../business/teamSearch';
+import { ICrossOrganizationMembershipByOrganization, ReposAppRequest } from '../interfaces';
 
 function sortOrgs(orgs) {
   return _.sortBy(orgs, ['name']);

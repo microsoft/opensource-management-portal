@@ -12,7 +12,7 @@ const thisProviderType = EntityImplementation.Type;
 
 export class LocalExtensionKeyProvider extends EntityMetadataBase implements ILocalExtensionKeyProvider {
   constructor(options: ILocalExtensionKeyProviderOptions) {
-    super(options);
+    super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }
 

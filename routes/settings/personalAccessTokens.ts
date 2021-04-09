@@ -7,8 +7,9 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, getProviders } from '../../transitional';
+import { getProviders } from '../../transitional';
 import { PersonalAccessToken } from '../../entities/token/token';
+import { ReposAppRequest } from '../../interfaces';
 
 interface IPersonalAccessTokenForDisplay {
   active: boolean;

@@ -3,10 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-//import * as thisPackage from '../package.json';
+import { ReposAppRequest } from '../interfaces';
 import thisPackage = require('../package.json');
-import { getProviders, ReposAppRequest } from '../transitional';
-// var thisPackage = require('/package.json');
+import { getProviders } from '../transitional';
 
 var express = require('express');
 var router = express.Router();

@@ -67,14 +67,16 @@ function patchOverride(provider, newToAddress, htmlOrNot) {
 export function createMailProviderInstance(config): IMailProvider {
   const deployment = getCompanySpecificDeployment();
   let mailProvider: IMailProvider = null;
+  const mailConfig = config.mail;
   if (deployment?.features?.mailProvider?.tryCreateInstance) {
     mailProvider = deployment.features.mailProvider.tryCreateInstance(config);
     if (mailProvider) {
+      if (mailConfig.overrideRecipient) {
+        patchOverride(mailProvider, mailConfig.overrideRecipient, mailProvider.html);
+      }    
       return mailProvider;
     }
   }
-
-  const mailConfig = config.mail;
   if (mailConfig === undefined) {
     return;
   }

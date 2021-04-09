@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-/*eslint no-console: ["error", { allow: ["warn", "dir"] }] */
+/*eslint no-console: ["error", { allow: ["warn"] }] */
 
 import fs from 'fs';
 import path from 'path';
@@ -11,10 +11,11 @@ import recursiveReadDirectory from 'recursive-readdir';
 
 import { wrapError, sleep } from '../../utils';
 import { Organization } from '../../business';
-import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission, GitHubRepositoryPermissions } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { RepositoryMetadataEntity, GitHubRepositoryPermission, GitHubRepositoryPermissions } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { Repository } from '../../business';
 import { CreateRepositoryEntrypoint } from '../../api/createRepo';
-import { CoreCapability, IOperationsProviders, throwIfNotCapable } from '../../transitional';
+import { CoreCapability, IOperationsProviders, IOperationsRepositoryMetadataProvider, throwIfNotCapable } from '../../interfaces';
+import { ErrorHelper } from '../../transitional';
 
 export interface IApprovalPackage {
   id: string;
@@ -40,6 +41,10 @@ export interface IRepositoryWorkflowOutput {
   message?: string;
 }
 
+export interface IRepoWorkflowEngineOptions {
+  shouldRenameDefaultBranch: boolean;
+}
+
 export class RepoWorkflowEngine {
   organization: Organization;
   request: RepositoryMetadataEntity;
@@ -55,7 +60,10 @@ export class RepoWorkflowEngine {
   private renameDefaultBranchTo: string;
   private renameDefaultBranchExcludeIfApiCall: boolean;
 
-  constructor(organization: Organization, approvalPackage: IApprovalPackage) {
+  private _options: IRepoWorkflowEngineOptions;
+
+  constructor(organization: Organization, approvalPackage: IApprovalPackage, options?: IRepoWorkflowEngineOptions) {
+    this._options = options;
     this.request = approvalPackage.repositoryMetadata;
     // this.user = approvalPackage.requestingUser;
     this.id = approvalPackage.id;
@@ -87,14 +95,14 @@ export class RepoWorkflowEngine {
 
   editPost(req, res, next) {
     const { operations } = this.organization.getLegacySystemObjects();
-    const ops = throwIfNotCapable<IOperationsProviders>(operations, CoreCapability.Providers);
-    const repositoryMetadataProvider = ops.providers.repositoryMetadataProvider;
+    const ops = throwIfNotCapable<IOperationsRepositoryMetadataProvider>(operations, CoreCapability.RepositoryMetadataProvider);
+    const repositoryMetadataProvider = ops.repositoryMetadataProvider;
     const visibility = req.body.repoVisibility;
-    if (!(visibility == 'public' || visibility == 'private')) {
+    if (!(visibility === 'public' || visibility === 'private' || visibility === 'internal')) {
       return next(new Error('Visibility for the repo request must be provided.'));
     }
     this.request.repositoryName = req.body.repoName;
-    this.request.initialRepositoryVisibility = visibility === 'public' ? GitHubRepositoryVisibility.Public : GitHubRepositoryVisibility.Private;
+    this.request.initialRepositoryVisibility = visibility; // visibility === 'public' ? GitHubRepositoryVisibility.Public : GitHubRepositoryVisibility.Private;
     this.request.initialRepositoryDescription = req.body.repoDescription;
     // this ... repoUrl = req.body.repoUrl
     repositoryMetadataProvider.updateRepositoryMetadata(this.request).then(ok => {
@@ -145,42 +153,44 @@ export class RepoWorkflowEngine {
     // GitHub adds the creator of a repo as an admin directly now, but we don't need that...
     output.push(await removeOrganizationCollaboratorTask(organization, this.createResponse));
     // TEMPORARY: default branch rename work
-    let shouldRenameDefaultBranch = !!this.renameDefaultBranchTo;
-    let repoData = this.createResponse;
-    if (!repoData || !repoData['default_branch']) {
-      repoData = await organization.repository(repoName).getDetails();
-    }
-    const currentDefaultBranchName = repoData['default_branch'];
-    if (!currentDefaultBranchName) {
-      output.push({ error: 'No default branch name known for the current repo by response type' });
-      shouldRenameDefaultBranch = false;
-    }
-    if (shouldRenameDefaultBranch && currentDefaultBranchName === this.renameDefaultBranchTo) {
-      shouldRenameDefaultBranch = false;
-      output.push({ message: `The default branch name is '${this.renameDefaultBranchTo}'.`});
-    }
-    if (shouldRenameDefaultBranch && this.isFork) {
-      shouldRenameDefaultBranch = false;
-      output.push({ message: `As a fork, the default branch will not be automatically renamed to '${this.renameDefaultBranchTo}'.`});
-    }
-    if (shouldRenameDefaultBranch && this.isTransfer) {
-      shouldRenameDefaultBranch = false;
-      output.push({ message: `As a transfer, the default branch will not be automatically renamed to '${this.renameDefaultBranchTo}'.`});
-    }
-    if (shouldRenameDefaultBranch && !request.initialGitIgnoreTemplate && !request.initialTemplate) {
-      output.push({ message: 'Without a .gitignore or template, there are no commits to change the default branch'});
-      shouldRenameDefaultBranch = false;
-    }
-    if (shouldRenameDefaultBranch && this.renameDefaultBranchExcludeIfApiCall && this.createEntrypoint === CreateRepositoryEntrypoint.Api) {
-      shouldRenameDefaultBranch = false;
-      output.push({ message: `The branch will not be automatically renamed to '${this.renameDefaultBranchTo}' because the repository has been created by an API call.`});
-    }
-    if (shouldRenameDefaultBranch && !(await this.organization.supportsUpdatesApp())) {
-      shouldRenameDefaultBranch = false;
-      output.push({ message: `The branch will not be automatically renamed to '${this.renameDefaultBranchTo}' because the ${this.organization.name} organization is not currently configured for modifying repository contents.`});
-    }
-    if (shouldRenameDefaultBranch) {
-      output.push(await renameDefaultBranchTask(organization, repoName, currentDefaultBranchName, this.renameDefaultBranchTo));
+    if (this._options?.shouldRenameDefaultBranch) {
+      let shouldRenameDefaultBranch = !!this.renameDefaultBranchTo;
+      let repoData = this.createResponse;
+      if (!repoData || !repoData['default_branch']) {
+        repoData = await organization.repository(repoName).getDetails();
+      }
+      const currentDefaultBranchName = repoData['default_branch'];
+      if (!currentDefaultBranchName) {
+        output.push({ error: 'No default branch name known for the current repo by response type' });
+        shouldRenameDefaultBranch = false;
+      }
+      if (shouldRenameDefaultBranch && currentDefaultBranchName === this.renameDefaultBranchTo) {
+        shouldRenameDefaultBranch = false;
+        output.push({ message: `The default branch name is '${this.renameDefaultBranchTo}'.`});
+      }
+      if (shouldRenameDefaultBranch && this.isFork) {
+        shouldRenameDefaultBranch = false;
+        output.push({ message: `As a fork, the default branch will not be automatically renamed to '${this.renameDefaultBranchTo}'.`});
+      }
+      if (shouldRenameDefaultBranch && this.isTransfer) {
+        shouldRenameDefaultBranch = false;
+        output.push({ message: `As a transfer, the default branch will not be automatically renamed to '${this.renameDefaultBranchTo}'.`});
+      }
+      if (shouldRenameDefaultBranch && !request.initialGitIgnoreTemplate && !request.initialTemplate) {
+        output.push({ message: 'Without a .gitignore or template, there are no commits to change the default branch'});
+        shouldRenameDefaultBranch = false;
+      }
+      if (shouldRenameDefaultBranch && this.renameDefaultBranchExcludeIfApiCall && this.createEntrypoint === CreateRepositoryEntrypoint.Api) {
+        shouldRenameDefaultBranch = false;
+        output.push({ message: `The branch will not be automatically renamed to '${this.renameDefaultBranchTo}' because the repository has been created by an API call.`});
+      }
+      if (shouldRenameDefaultBranch && !(await this.organization.supportsUpdatesApp())) {
+        shouldRenameDefaultBranch = false;
+        output.push({ message: `The branch will not be automatically renamed to '${this.renameDefaultBranchTo}' because the ${this.organization.name} organization is not currently configured for modifying repository contents.`});
+      }
+      if (shouldRenameDefaultBranch) {
+        output.push(await renameDefaultBranchTask(organization, repoName, currentDefaultBranchName, this.renameDefaultBranchTo));
+      }
     }
     // END TEMPORARY: default branch rename work
     // Add any administrator logins as invited, if present
@@ -286,7 +296,7 @@ async function addTemplateWebHook(organization: Organization, repositoryName: st
   let message = null;
   const friendlyName = webhookFriendlyName || webhook;
   try {
-    const webhookConnected = await repository.createWebhook({
+    await repository.createWebhook({
       config: {
         url: webhook,
         content_type: 'json',
@@ -317,7 +327,13 @@ async function removeOrganizationCollaboratorTask(organization: Organization, cr
     const repositoryName = createResponse.name;
     const repository = organization.repository(repositoryName, createResponse);
     await repository.removeCollaborator(createAccount.login);
-  } catch (ignoredError) { /* ignored */ }
+  } catch (ignoredError) {
+    if (ErrorHelper.GetStatus(ignoredError) === 400) {
+      // GitHub App in use
+    } else {
+      console.warn(`removeOrganizationCollaboratorTask ignored error: ${ignoredError}`);
+    }
+  }
   return result;
 }
 

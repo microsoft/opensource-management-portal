@@ -5,111 +5,30 @@
 
 import moment from 'moment';
 
-import { wrapError } from '../utils';
-import { IAccountBasics, Organization } from './organization';
-import { ICacheOptions, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, NoCacheNoBackground, IOperationsInstance, throwIfNotGitHubCapable, throwIfNotCapable, IOperationsProviders, CoreCapability, operationsWithCapability, IOperationsCentralOperationsToken, IOperationsServiceAccounts, IRepositoryGetIssuesOptions } from '../transitional';
 import * as common from './common';
-import { RepositoryPermission } from './repositoryPermission';
-import { Collaborator } from './collaborator';
-import { TeamPermission } from './teamPermission';
+import { Organization, getMaxAgeSeconds, CacheDefault, getPageSize, RepositoryPermission, Collaborator, TeamPermission, RepositoryIssue } from '.';
 import { RepositoryMetadataEntity, GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 import { AppPurpose } from '../github';
-import { IListPullsParameters, GitHubPullRequestState, GitHubPullRequestSort, GitHubSortDirection } from '../lib/github/collections';
-import { RepositoryIssue } from './repositoryIssue';
-import { IGitHubTeamBasics } from './team';
-import { CacheDefault, DefaultPageSize, getMaxAgeSeconds, getPageSize } from '.';
+import { IPurposefulGetAuthorizationHeader, IOperationsInstance, ICacheOptions, throwIfNotGitHubCapable, throwIfNotCapable, IOperationsProviders, CoreCapability, IGetBranchesOptions, IGitHubBranch, IGetPullsOptions, IGetContentOptions, ITemporaryCommandOutput, NoCacheNoBackground, IGitHubProtectedBranchConfiguration, IRepositoryBranchAccessProtections, IListContributorsOptions, IGetCollaboratorsOptions, GitHubCollaboratorAffiliationQuery, IGitHubCollaboratorInvitation, IAlternateTokenRequiredOptions, ICreateWebhookOptions, IPagedCacheOptions, IGitHubSecretScanningAlert, operationsWithCapability, IOperationsServiceAccounts, IGetAuthorizationHeader, IRepositoryGetIssuesOptions, IOperationsRepositoryMetadataProvider, IOperationsUrls } from '../interfaces';
+import { IListPullsParameters, GitHubPullRequestState } from '../lib/github/collections';
 
-export interface IGitHubCollaboratorInvitation {
-  id: string;
-  permissions: GitHubRepositoryPermission;
-  created_at: string; // Date
-  url: string; // API url
-  html_url: string; // user-facing URL
+import { wrapError } from '../utils';
+
+interface IRepositoryMoments {
+  created?: moment.Moment;
+  updated?: moment.Moment;
+  pushed?: moment.Moment;
 }
 
-export interface IAlternateTokenRequiredOptions extends ICacheOptions {
-  alternateToken: string;
+interface IRepositoryMomentsAgo {
+  created?: string;
+  updated?: string;
+  pushed?: string;
 }
 
-export interface IGetBranchesOptions extends ICacheOptions {
-  protected?: boolean;
-}
-
-export interface IGetContentOptions extends ICacheOptions {
-  branch?: string;
-  tag?: string;
-  ref?: string;
-}
-
-export enum GitHubCollaboratorAffiliationQuery {
-  All = 'all',
-  Outside = 'outside',
-  Direct = 'direct',
-}
-
-export enum GitHubCollaboratorType {
-  Outside = 'outside',
-  Direct = 'direct',
-}
-
-export interface IListContributorsOptions extends IPagedCacheOptions {
-  anon?: boolean;
-}
-
-export interface IGetCollaboratorsOptions extends IPagedCacheOptions {
-  affiliation?: GitHubCollaboratorAffiliationQuery;
-}
-
-export interface IGitHubProtectedBranchConfiguration {
-  id: string;
+interface IProtectedBranchRule {
   pattern: string;
-}
-
-export interface IGetPullsOptions extends ICacheOptions {
-  state?: GitHubPullRequestState;
-  head?: string;
-  base?: string;
-  sort?: GitHubPullRequestSort;
-  direction?: GitHubSortDirection;
-}
-
-export interface ICreateWebhookOptions {
-  name?: string;
-  active?: boolean;
-  config?: {
-    url?: string;
-    content_type?: string;
-    secret?: string;
-    insecure_ssl?: string;
-  };
-  url?: string;
-  events?: string[];
-}
-
-export enum SecretScanningState {
-  Resolved = 'resolved',
-  Open = 'open',
-}
-
-export enum SecretScanningResolution {
-  FalsePositive = 'false_positive',
-  WontFix = 'wont_fix',
-  Revoked = 'revoked',
-  UsedInTests = 'used_in_tests',
-}
-
-export interface IGitHubSecretScanningAlert {
-  number: number;
-  created_at: string;
-  url: string;
-  html_url: string;
-  state: SecretScanningState;
-  resolution?: SecretScanningResolution;
-  resolved_at?: string;
-  resolved_by?: any;
-  secret_type: string;
-  secret: string;
-}
+};
 
 interface IGitHubGetFileParameters {
   owner: string;
@@ -170,105 +89,6 @@ interface IGetBranchesParameters {
   protected?: boolean;
 }
 
-export interface IGitHubBranch {
-  name: string;
-  commit: {
-    sha: string;
-    url: string;
-  };
-  protected: boolean;
-}
-
-export interface IGitHubBranchDetailed {
-  name: string;
-  commit: {
-    sha: string;
-    node_id: string;
-    commit: {
-      author: {
-        name: string;
-        date: string; // iso8601
-        email: string;
-      };
-      url: string;
-      message: string;
-      tree: {
-        sha: string;
-        url: string;
-      };
-      committer: {
-        name: string;
-        date: string;
-        email: string;
-      };
-      verification: {
-        verified: boolean;
-        reason: string; // 'unsigned', ...
-        signature: unknown;
-        payload: unknown;
-      };
-      comment_count: number;
-    };
-    author: unknown; // basic user, avatar, id, etc.
-    parents: unknown[];
-    url: string;
-    committer: unknown; // basic user
-    protected: boolean;
-    protection: {
-      enabled: boolean;
-      required_status_checks: {
-        enforcement_level: 'non_admins' | 'admins',
-        contexts: string[];
-      };
-    };
-    protection_url: string;
-  };
-}
-
-export interface IRepositoryBranchAccessProtections {
-  allow_deletions: {
-    enabled: boolean;
-  };
-  allow_force_pushes: {
-    enabled: boolean;
-  }
-  enforce_admins: {
-    enabled: boolean;
-    url: string;
-  }
-  required_linear_history: {
-    enabled: boolean;
-  }
-  restrictions: {
-    users: IAccountBasics[];
-    teams: IGitHubTeamBasics[];
-    apps: unknown[];
-  }
-  url: string;
-}
-
-interface IRepositoryMoments {
-  created?: moment.Moment;
-  updated?: moment.Moment;
-  pushed?: moment.Moment;
-}
-
-interface IRepositoryMomentsAgo {
-  created?: string;
-  updated?: string;
-  pushed?: string;
-}
-
-
-export interface ITemporaryCommandOutput {
-  error?: Error;
-  message?: string;
-};
-
-interface IProtectedBranchRule {
-  pattern: string;
-};
-
 const safeEntityFieldsForJsonSend = [
   'fork',
   'name',
@@ -295,6 +115,9 @@ const safeEntityFieldsForJsonSend = [
 export class Repository {
   private _entity: any;
   private _baseUrl: string;
+  private _absoluteBaseUrl: string;
+  private _nativeUrl: string;
+  private _nativeManagementUrl: string;
 
   private _awesomeness: number;
 
@@ -369,13 +192,28 @@ export class Repository {
   }
 
   get absoluteBaseUrl(): string {
-    return this.organization.absoluteBaseUrl + 'repos/' + this.name + '/';
+    return this._absoluteBaseUrl;
+  }
+
+  get nativeUrl() {
+    return this._nativeUrl;
+  }
+
+  get nativeManagementUrl() {
+    return this._nativeManagementUrl;
   }
 
   constructor(organization: Organization, entity: any, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader, operations: IOperationsInstance) {
     this._organization = organization;
     this._entity = entity;
-    this._baseUrl = organization.baseUrl + 'repos/' + this.name + '/';
+    this._nativeUrl = organization.nativeUrl + this.name + '/';
+    this._nativeManagementUrl = organization.nativeUrl + this.name + '/';
+    let repositoriesDeliminator = 'repos/';
+    if (operations.hasCapability(CoreCapability.Urls)) {
+      repositoriesDeliminator = operationsWithCapability<IOperationsUrls>(operations, CoreCapability.Urls).repositoriesDeliminator;
+    }
+    this._absoluteBaseUrl = organization.absoluteBaseUrl + repositoriesDeliminator + this.name + '/';
+    this._baseUrl = organization.baseUrl + repositoriesDeliminator + this.name + '/';
     this._getAuthorizationHeader = getAuthorizationHeader;
     this._getSpecificAuthorizationHeader = getSpecificAuthorizationHeader;
     this._operations = operations;
@@ -424,9 +262,12 @@ export class Repository {
         throw getByIdError;
       }
     }
+    const previewMediaTypes = operations['previewMediaTypes'] || {}; // TEMPORARY MEDIA TYPE HACK
+    const mediaType = previewMediaTypes?.repository?.getDetails ? { previews: [previewMediaTypes.repository.getDetails]} : undefined;
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
+      mediaType,
     };
     const cacheOptions: ICacheOptions = {
       maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
@@ -449,8 +290,8 @@ export class Repository {
   }
 
   async getRepositoryMetadata(): Promise<RepositoryMetadataEntity> {
-    const operations = throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers);
-    const repositoryMetadataProvider = operations.providers.repositoryMetadataProvider;
+    const operations = throwIfNotCapable<IOperationsRepositoryMetadataProvider>(this._operations, CoreCapability.RepositoryMetadataProvider);
+    const repositoryMetadataProvider = operations.repositoryMetadataProvider;
     try {
       return await repositoryMetadataProvider.getRepositoryMetadata(this.id.toString());
     } catch (getMetadataError) {
@@ -745,6 +586,16 @@ export class Repository {
       }
       throw error;
     }
+  }
+
+  async updatePullRequest(pullNumber: number, update: any): Promise<void> {
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const parameters = Object.assign({
+      owner: this.organization.name,
+      repo: this.name,
+      pull_number: pullNumber,
+    }, update);
+    await operations.github.post(this.authorize(AppPurpose.Operations), 'pulls.update', parameters);
   }
 
   async checkCollaborator(username: string, cacheOptions?: ICacheOptions): Promise<boolean> {

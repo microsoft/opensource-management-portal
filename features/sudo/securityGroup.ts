@@ -4,8 +4,9 @@
 //
 
 import { OrganizationSudo } from '.';
-import { ICorporateLink, Organization } from '../../business';
-import { ErrorHelper, IProviders } from '../../transitional';
+import { Organization } from '../../business';
+import { IProviders, ICorporateLink } from '../../interfaces';
+import { ErrorHelper } from '../../transitional';
 
 export const OrganizationFeatureSecurityGroupProperty = 'orgsudosecuritygroup';
 

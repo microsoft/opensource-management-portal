@@ -6,7 +6,8 @@
 import express from 'express';
 const router = express.Router();
 
-import { getProviders, ReposAppRequest } from '../transitional';
+import { ReposAppRequest } from '../interfaces';
+import { getProviders } from '../transitional';
 
 // These are Microsoft-specific, we'll remove these eventually.
 // TODO: remove from open source version since not helpful having random routes in place

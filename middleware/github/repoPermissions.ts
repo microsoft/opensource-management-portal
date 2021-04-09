@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { getProviders, IProviders, ReposAppRequest } from '../../transitional';
+import { getProviders } from '../../transitional';
 import { Repository } from '../../business/repository';
 import { IndividualContext } from '../../user';
-import { GitHubCollaboratorPermissionLevel } from '../../business/repositoryPermission';
 import getCompanySpecificDeployment from '../companySpecificDeployment';
+import { ReposAppRequest, IProviders, GitHubCollaboratorPermissionLevel } from '../../interfaces';
 
 const repoPermissionsCacheKeyName = 'repoPermissions';
 const requestScopedRepositoryKeyName = 'repository';

@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Json, IDictionary } from '../../transitional';
+import { Json, IDictionary } from '../../interfaces';
 
 export interface IQueueMessage {
   body: Json;

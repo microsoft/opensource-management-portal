@@ -3,18 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Operations, ICachedEmployeeInformation } from '../business';
-import { Organization } from '../business';
-import { Repository, GitHubCollaboratorAffiliationQuery } from '../business';
-import { Team } from '../business';
-import { ICorporateLink } from '../business/corporateLink';
-import { IMail } from '../lib/mailProvider';
+import moment from 'moment';
+
+import { Operations, Organization, Repository, Team } from '../business';
 import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repositoryMetadataProvider';
 import { RepositoryMetadataEntity, GitHubRepositoryVisibility, RepositoryLockdownState } from '../entities/repositoryMetadata/repositoryMetadata';
 import { IndividualContext } from '../user';
 import { daysInMilliseconds } from '../utils';
-
-import moment from 'moment';
+import { ICorporateLink, ICachedEmployeeInformation, GitHubCollaboratorAffiliationQuery } from '../interfaces';
+import { IMail } from '../lib/mailProvider';
 
 const botBracket = '[bot]';
 

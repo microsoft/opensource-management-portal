@@ -7,9 +7,9 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, RequestTeamMemberAddType, UserAlertType, NoCacheNoBackground, getProviders, validateGitHubLogin } from '../../../transitional';
-import { Team } from '../../../business/team';
-import { TeamMember } from '../../../business/teamMember';
+import { getProviders, validateGitHubLogin } from '../../../transitional';
+import { ReposAppRequest, RequestTeamMemberAddType, NoCacheNoBackground, UserAlertType } from '../../../interfaces';
+import { Team, TeamMember } from '../../../business';
 
 import MiddlewareTeamAdminRequired from './teamAdminRequired';
 

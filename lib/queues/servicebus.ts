@@ -7,10 +7,10 @@ import serviceBus from 'azure-sb';
 import moment from 'moment';
 
 import { IQueueMessage, IQueueProcessor } from '.';
-import { IDictionary, Json } from '../../transitional';
+import { IDictionary, Json } from '../../interfaces';
 
 const EnqueuedTimeUtc = 'EnqueuedTimeUtc';
-const DeliveryCount = 'DeliveryCount';
+// const DeliveryCount = 'DeliveryCount';
 
 const PeekLockOption = {
   isPeekLock: true,

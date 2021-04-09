@@ -3,13 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { getCentralOperationsAuthorizationHeader } from '..';
-
 import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
 import { GitHubAppAuthenticationType, AppPurpose } from '../../github';
 import { GitHubTokenManager } from '../../github/tokenManager';
+import { IProviders, ICacheDefaultTimes, IOperationsInstance, ICacheOptions, CoreCapability, IOperationsDefaultCacheTimes, IOperationsGitHubRestLibrary, IOperationsUrls, IOperationsProviders, throwIfNotGitHubCapable, throwIfNotCapable, IOperationsCentralOperationsToken, IAuthorizationHeaderValue, IOperationsNewRepositoryTaskOptions } from '../../interfaces';
 import { RestLibrary } from '../../lib/github';
-import { CoreCapability, CreateError, IAuthorizationHeaderValue, ICacheDefaultTimes, ICacheOptions, IOperationsCentralOperationsToken, IOperationsDefaultCacheTimes, IOperationsGitHubRestLibrary, IOperationsInstance, IOperationsProviders, IOperationsUrls, IProviders, throwIfNotCapable, throwIfNotGitHubCapable } from '../../transitional';
+import { IRepoWorkflowEngineOptions } from '../../routes/org/repoWorkflowEngine';
+import { CreateError } from '../../transitional';
 import { wrapError } from '../../utils';
 import { Account } from '../account';
 import GitHubApplication from '../application';
@@ -17,6 +17,7 @@ import GitHubApplication from '../application';
 export interface IOperationsCoreOptions {
   github: RestLibrary;
   providers: IProviders;
+  baseUrl?: string;
 }
 
 export enum CacheDefault {
@@ -107,13 +108,20 @@ export abstract class OperationsCore
     IOperationsUrls,
     IOperationsDefaultCacheTimes,
     IOperationsProviders,
+    IOperationsNewRepositoryTaskOptions,
     IOperationsInstance {
   private _github: RestLibrary;
   private _defaults: ICacheDefaultTimes;
   private _applicationIds: Map<number, GitHubApplication>;
   private _initialized: Date;
   protected _baseUrl: string;
+  protected _nativeUrl: string;
+  protected _nativeManagementUrl: string;
+  protected _newRepoOptions: IRepoWorkflowEngineOptions;
+  protected _organizationsDeliminator = '';
+  protected _repositoriesDeliminator = 'repos/'
   private _providers: IProviders;
+  protected _skuName: string;
 
   private _capabilities: Set<CoreCapability>;
 
@@ -122,7 +130,10 @@ export abstract class OperationsCore
     const providers = options.providers;
     this._github = options.github || providers.github;
     this._applicationIds = new Map();
-    this._baseUrl = '/ae';
+    this._baseUrl = '/';
+    this._nativeUrl = 'https://github.com/';
+    this._nativeManagementUrl = 'https://github.com/orgs/'
+    this._skuName = 'GitHub';
     this._providers = providers;
     this._capabilities = new Set();
 
@@ -130,6 +141,7 @@ export abstract class OperationsCore
     this.addCapability(CoreCapability.DefaultCacheTimes);
     this.addCapability(CoreCapability.Urls);
     this.addCapability(CoreCapability.Providers);
+    this.addCapability(CoreCapability.NewRepositoryTaskOptions);
   }
 
   protected addCapability(capability: CoreCapability) {
@@ -148,7 +160,15 @@ export abstract class OperationsCore
     }
   };
 
+  public get newRepositoryTaskOptions() {
+    return this._newRepoOptions;
+  }
+
   protected abstract get tokenManager(): GitHubTokenManager;
+
+  public get githubSkuName() {
+    return this._skuName;
+  }
 
   async getAccountByUsername(username: string, options?: ICacheOptions): Promise<Account> {
     options = options || {};
@@ -168,7 +188,6 @@ export abstract class OperationsCore
     }
     try {
       const getHeaderFunction = centralOperations.getCentralOperationsToken();
-      // const getHeaderFunction = getCentralOperationsAuthorizationHeader(operations);
       const authorizationHeader = await getHeaderFunction(AppPurpose.Data);
       const entity = await operations.github.call(authorizationHeader, 'users.getByUsername', parameters, cacheOptions);
       const account = new Account(entity, this, getHeaderFunction.bind(null, AppPurpose.Data));
@@ -195,12 +214,32 @@ export abstract class OperationsCore
     return this.providers.insights;
   }
 
+  get nativeUrl() {
+    return this._nativeUrl;
+  }
+
+  get nativeManagementUrl() {
+    return this._nativeManagementUrl;
+  }
+
+  get organizationsDeliminator() {
+    return this._organizationsDeliminator;
+  }
+
+  get repositoriesDeliminator() {
+    return this._repositoriesDeliminator;
+  }
+
   get baseUrl(): string {
     return this._baseUrl;
   }
 
   get absoluteBaseUrl(): string {
-    let baseUrl = this.config && this.config.webServer && this.config.webServer.baseUrl ? this.config.webServer.baseUrl : null;
+    let baseUrlRoot = this.config && this.config.webServer && this.config.webServer.baseUrl ? this.config.webServer.baseUrl as string : null;
+    if (baseUrlRoot && baseUrlRoot.endsWith('/')) {
+      baseUrlRoot = baseUrlRoot.substr(0, baseUrlRoot.length - 1);
+    }
+    let baseUrl = baseUrlRoot + this.baseUrl;
     if (baseUrl) {
       return baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
     }

@@ -7,7 +7,7 @@
 
 import throat from 'throat';
 
-import { IReposJob, IReposJobResult } from '../../app';
+import { IReposJob, IReposJobResult } from '../../interfaces';
 import { sleep } from '../../utils';
 import { IGraphProvider } from '../../lib/graphProvider';
 import { LocalExtensionKey } from '../../entities/localExtensionKey/localExtensionKey';

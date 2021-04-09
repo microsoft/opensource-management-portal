@@ -8,7 +8,7 @@ import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataPro
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
 import { GitHubRepositoryPermission } from '../repositoryMetadata/repositoryMetadata';
-import { GitHubCollaboratorType } from '../../business/repository';
+import { GitHubCollaboratorType } from '../../interfaces';
 import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';

@@ -8,9 +8,10 @@ import asyncHandler from 'express-async-handler';
 
 import { IndividualContext } from '../../user';
 import { jsonError } from '../../middleware';
-import { getProviders, ReposAppRequest } from '../../transitional';
+import { getProviders } from '../../transitional';
 import { unlinkInteractive } from '../../routes/unlink';
 import { interactiveLinkUser } from '../../routes/link';
+import { ReposAppRequest } from '../../interfaces';
 
 const router = express.Router();
 

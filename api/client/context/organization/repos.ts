@@ -5,11 +5,11 @@
 
 import express from 'express';
 import asyncHandler from 'express-async-handler';
-import { OrganizationMembershipState, Repository } from '../../../../business';
+import { Repository } from '../../../../business';
 import { jsonError } from '../../../../middleware';
 import { setContextualRepository } from '../../../../middleware/github/repoPermissions';
 
-import { ReposAppRequest } from '../../../../transitional';
+import { OrganizationMembershipState, ReposAppRequest } from '../../../../interfaces';
 import { IndividualContext } from '../../../../user';
 import { createRepositoryFromClient } from '../../newOrgRepo';
 

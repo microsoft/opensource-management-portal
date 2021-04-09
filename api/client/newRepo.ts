@@ -4,11 +4,14 @@
 //
 
 import express from 'express';
-import { getProviders, ReposAppRequest } from '../../transitional';
+const router = express.Router();
+
+import { getProviders } from '../../transitional';
 import { jsonError } from '../../middleware/jsonError';
 
 import newOrgRepo from './newOrgRepo';
-const router = express.Router();
+import { ReposAppRequest } from '../../interfaces';
+
 
 router.use('/org/:org', (req: ReposAppRequest, res, next) => {
   const orgName = req.params.org;

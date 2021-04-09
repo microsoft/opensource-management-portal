@@ -10,7 +10,7 @@ import RouteRepos from './repos';
 import RouteTeams from './teams';
 import RoutePeople from './people';
 import RouteNewRepoMetadata from './newRepoMetadata';
-import { ReposAppRequest } from '../../../transitional';
+import { ReposAppRequest } from '../../../interfaces';
 import { jsonError } from '../../../middleware';
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
 

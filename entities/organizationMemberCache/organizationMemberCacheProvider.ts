@@ -29,7 +29,7 @@ export interface IOrganizationMemberCacheProvider {
 
 export class OrganizationMemberCacheProvider extends EntityMetadataBase implements IOrganizationMemberCacheProvider {
   constructor(options: IOrganizationMemberCacheCreateOptions) {
-    super(options);
+    super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }
 

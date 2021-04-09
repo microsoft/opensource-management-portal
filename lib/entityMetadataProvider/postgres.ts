@@ -17,7 +17,8 @@ import { IEntityMetadata, EntityMetadataType, EntityMetadataTypes } from './enti
 import { PostgresPoolQuerySingleRowAsync, PostgresPoolQueryAsync } from '../postgresHelpers';
 import { IEntityMetadataFixedQuery } from './query';
 import { EntityMetadataMappings, MetadataMappingDefinition, MetadataMappingDefinitionBase } from './declarations';
-import { CreateError, IDictionary } from '../../transitional';
+import { CreateError } from '../../transitional';
+import { IDictionary } from '../../interfaces';
 
 const MetadataColumnName = 'metadata';
 
@@ -278,16 +279,24 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
   private _entityTypeToTableNamesMapping: any;
   private _entityTypeToColumnValuesMapping: any;
 
+  #_options: IPostgresEntityMetadataProviderOptions;
+
   constructor(options: IPostgresEntityMetadataProviderOptions) {
     if (!options) {
       throw new Error('IPostgresEntityMetadataProviderOptions required');
     }
+    this.#_options = options;
     this._pool = options.pool;
     if (!this._pool) {
       throw new Error('PostgresEntityMetadataProvider requires a Postgres pool')
     }
     this._entityTypeToTableNamesMapping = Object.assign(defaultTableNames(), (options.entityTypeToTableNamesMapping || {}));
     this._entityTypeToColumnValuesMapping = Object.assign(defaultTypeColumnNames(), (options.entityTypeToColumnValuesMapping || {}));
+  }
+
+  cloneAsNewInstance(): PostgresEntityMetadataProvider {
+    const clone = new PostgresEntityMetadataProvider(this.#_options);
+    return clone;
   }
 
   async initialize(): Promise<void> {}
@@ -460,6 +469,14 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
       }
       return approval;
     };
+  }
+
+  setTableName(type: EntityMetadataType, tableName: string) {
+    this._entityTypeToTableNamesMapping[type.typeName] = tableName;
+  }
+
+  clearTableNames() {
+    this._entityTypeToTableNamesMapping = {};
   }
 
   private getEntityTypeColumnValue(type: EntityMetadataType): string {

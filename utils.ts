@@ -4,15 +4,13 @@
 //
 
 import express from 'express';
-import fs = require('fs');
-import path = require('path');
-
+import fs from 'fs';
+import path from 'path';
 import { URL } from 'url';
-
-import { getProviders, IAppSession, IReposError, ReposAppRequest } from './transitional';
 import { DateTime } from 'luxon';
-
-const zlib = require('zlib');
+import zlib from 'zlib';
+import { ReposAppRequest, IAppSession, IReposError } from './interfaces';
+import { getProviders } from './transitional';
 
 const compressionOptions = {
   type: 'gzip',
@@ -382,7 +380,7 @@ export function quitInTenSeconds(successful: boolean) {
 export function gzipString(value: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const val = Buffer.from(value);
-    zlib.gzip(val, compressionOptions, (gzipError, compressed: Buffer) => {
+    zlib.gzip(val, (gzipError, compressed: Buffer) => {
       return gzipError ? reject(gzipError) : resolve(compressed);
     });
   });
@@ -392,7 +390,7 @@ export function gunzipBuffer(buffer: Buffer): Promise<string> {
   return new Promise((resolve, reject) => {
     zlib.gunzip(buffer, (unzipError, unzipped) => {
       // Fallback if there is a data error (i.e. it's not compressed)
-      if (unzipError && unzipError.errno === zlib.Z_DATA_ERROR) {
+      if (unzipError && (unzipError as any)?.errno === zlib.Z_DATA_ERROR) {
         const originalValue = buffer.toString();
         return resolve(originalValue);
       } else if (unzipError) {

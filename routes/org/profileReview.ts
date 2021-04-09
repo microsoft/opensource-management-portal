@@ -7,7 +7,8 @@ import express from 'express';
 const router = express.Router();
 import asyncHandler from 'express-async-handler';
 
-import { getProviders, ReposAppRequest } from '../../transitional';
+import { ReposAppRequest } from '../../interfaces';
+import { getProviders } from '../../transitional';
 
 interface IUserProfileWarnings {
   company?: string;

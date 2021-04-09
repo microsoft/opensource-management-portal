@@ -3,18 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import _ from 'lodash';
-import asyncHandler from 'express-async-handler';
 import express from 'express';
+import asyncHandler from 'express-async-handler';
+const router = express.Router();
+
+import _ from 'lodash';
 import moment from 'moment';
 
 import lowercaser from '../../middleware/lowercaser';
-
-import { Collaborator, GitHubCollaboratorAffiliationQuery, ICorporateLink, ITemporaryCommandOutput, Organization, OrganizationMember, Repository, TeamPermission } from '../../business';
-
-import { ReposAppRequest, IProviders, UserAlertType, CreateError, NoCacheNoBackground, getProviders, ErrorHelper } from '../../transitional';
-import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
-import { AddRepositoryPermissionsToRequest, getContextualRepositoryPermissions, IContextualRepositoryPermissions } from '../../middleware/github/repoPermissions';
 
 import routeAdministrativeLock from './repoAdministrativeLock';
 import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
@@ -22,7 +18,11 @@ import { IGraphEntry } from '../../lib/graphProvider';
 import { IMail } from '../../lib/mailProvider';
 import { IndividualContext } from '../../user';
 
-const router = express.Router();
+import { Repository, Collaborator, TeamPermission, Organization, OrganizationMember } from '../../business';
+import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { ReposAppRequest, GitHubCollaboratorAffiliationQuery, UserAlertType, ITemporaryCommandOutput, IProviders, NoCacheNoBackground, ICorporateLink, getRepositoryMetadataProvider } from '../../interfaces';
+import { AddRepositoryPermissionsToRequest, getContextualRepositoryPermissions, IContextualRepositoryPermissions } from '../../middleware/github/repoPermissions';
+import { getProviders, CreateError, ErrorHelper } from '../../transitional';
 
 import RouteReposPager from '../reposPager';
 
@@ -171,8 +171,9 @@ router.get('/:repoName/delete', asyncHandler(async function (req: ILocalRequest,
 router.post('/:repoName/delete', asyncHandler(async function (req: ILocalRequest, res, next) {
   // NOTE: this code is also duplicated for now in the client/internal/* folder
   // CONSIDER: de-duplicate
-  const { operations, repositoryMetadataProvider } = getProviders(req);
+  const { operations } = getProviders(req);
   const { organization, repository } = req;
+  const repositoryMetadataProvider = getRepositoryMetadataProvider(operations);
   const lockdownSystem = new NewRepositoryLockdownSystem({ operations, organization, repository, repositoryMetadataProvider });
   await lockdownSystem.deleteLockedRepository(false /* delete for any reason */, true /* deleted by the original user instead of ops */);
   req.individualContext.webContext.saveUserAlert(`You deleted your repo, ${repository.full_name}.`, 'Repo deleted', UserAlertType.Success);

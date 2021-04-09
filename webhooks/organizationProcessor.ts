@@ -6,9 +6,8 @@
 /*eslint no-console: ["error", { allow: ["warn", "log", "dir"] }] */
 
 import _ from 'lodash';
-
-const crypto = require('crypto');
-const secureCompare = require('secure-compare');
+import crypto from 'crypto';
+import secureCompare from 'secure-compare';
 
 import { Operations } from '../business';
 import { Organization } from '../business';

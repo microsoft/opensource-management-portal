@@ -4,40 +4,9 @@
 //
 
 import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
+import { IRepositoryMetadata, IRepositoryMetadataPermissionPair } from '../interfaces';
 
 const currentRepositoryMetadataSchema = 'rm1.0';
-
-export interface IRepositoryMetadataPermissionPair {
-  id: string;
-  permission: GitHubRepositoryPermission;
-}
-
-export interface IRepositoryMetadata {
-  schema: string;
-
-  apiVersion: string;
-  correlationId: string;
-
-  id: string;
-
-  created: Date;
-
-  name: string;
-  description: string;
-  visibility: string;
-
-  policy: string;
-  policyUrl: string;
-
-  license: string;
-  legalEntity: string;
-
-  template: string;
-  gitIgnoreTemplate: string;
-
-  teamPermissions: IRepositoryMetadataPermissionPair[];
-
-}
 
 export function ParseRepositoryMetadataSchema(fields: any): IRepositoryMetadata {
   if (fields.schema === currentRepositoryMetadataSchema) {

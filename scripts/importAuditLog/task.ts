@@ -7,12 +7,12 @@ import fs from 'fs';
 import csv from 'csv-parser';
 import moment from 'moment';
 
-import { IReposJob } from '../../app';
 import { AuditLogRecord } from '../../entities/auditLogRecord/auditLogRecord';
 import { sleep } from '../../utils';
 import { Operations } from '../../business/operations';
 import { Organization } from '../../business/organization';
 import { AuditLogSource } from '../../entities/auditLogRecord';
+import { IReposJob } from '../../interfaces';
 
 const restingBeforeRequestMs = 200;
 

@@ -5,11 +5,11 @@
 
 // ORGANIZATION membership and ownership
 
-/*eslint no-console: ["error", { allow: ["dir", "log", "warn"] }] */
+/*eslint no-console: ["error", { allow: ["dir", "log"] }] */
 
 import { Operations } from '../../business';
-import { Organization, OrganizationMembershipRole, OrganizationMembershipState } from '../../business';
-import { IProviders, NoCacheNoBackground } from '../../transitional';
+import { Organization } from '../../business';
+import { OrganizationMembershipRole, IProviders, NoCacheNoBackground, OrganizationMembershipState } from '../../interfaces';
 import { WebhookProcessor } from '../organizationProcessor';
 
 // NOTE: unfortunately role changes from admin->member or member->admin do not fire GitHub hooks

@@ -6,11 +6,11 @@
 import _ from 'lodash';
 
 import { v4 as uuidV4 } from 'uuid';
-import { IReposError } from '../../../transitional';
-import { ICorporateLinkProperties, ICorporateLink, ICorporateLinkExtended, CorporatePropertyNames } from '../../../business/corporateLink';
+import { ICorporateLink, ICorporateLinkExtended, ICorporateLinkProperties, IReposError } from '../../../interfaces';
 
 import { CorporateMemoryLink } from './memoryLink';
 import { ILinkProvider } from '..';
+import { CorporatePropertyNames } from '../../../business';
 
 const defaultThirdPartyType = 'github';
 const defaultPageSize = 500;

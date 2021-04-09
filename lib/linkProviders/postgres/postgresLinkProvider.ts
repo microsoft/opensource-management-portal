@@ -21,8 +21,7 @@ const onlySupportedThirdPartyType = 'github';
 
 import { v4 as uuidV4 } from 'uuid';
 
-import { InnerError } from '../../../transitional';
-import { ICorporateLinkProperties, ICorporateLink, ICorporateLinkExtended } from '../../../business/corporateLink';
+import { ICorporateLink, ICorporateLinkExtended, ICorporateLinkProperties, InnerError } from '../../../interfaces';
 
 import { CorporateLinkPostgres } from './postgresLink';
 import { PostgresPoolQueryAsync, PostgresPoolQuerySingleRowAsync } from '../../postgresHelpers';

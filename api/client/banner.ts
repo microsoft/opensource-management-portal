@@ -4,9 +4,10 @@
 //
 
 import express from 'express';
+import { ReposAppRequest } from '../../interfaces';
 
 import { jsonError } from '../../middleware';
-import { getProviders, ReposAppRequest } from '../../transitional';
+import { getProviders } from '../../transitional';
 
 const router = express.Router();
 

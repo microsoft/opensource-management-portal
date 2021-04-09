@@ -14,7 +14,7 @@ import semver from 'semver';
 const debug = require('debug')('restapi');
 
 import { IShouldServeCache, ApiContext, IntelligentEngine, IApiContextRedisKeys, IApiContextCacheValues, ApiContextType, IRestMetadata, IRestResponse } from './core';
-import { IGetAuthorizationHeader } from '../../transitional';
+import { IGetAuthorizationHeader } from '../../interfaces';
 
 import appPackage from '../../package.json';
 

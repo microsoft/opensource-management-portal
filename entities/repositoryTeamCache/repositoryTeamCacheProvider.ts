@@ -4,7 +4,7 @@
 //
 
 import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { RepositoryTeamCacheEntity, EntityImplementation, RepositoryTeamCacheFixedQueryAll, RepositoryTeamCacheFixedQueryByOrganizationId, RepositoryTeamCacheFixedQueryByTeamId, RepositoryTeamCacheFixedQueryByRepositoryId, RepositoryTeamCacheFixedQueryByTeamIds, RepositoryTeamCacheDeleteByOrganizationId, RepositoryTeamCacheGetOrganizationIdsQuery, RepositoryTeamCacheDeleteByRepositoryId } from './repositoryTeamCache';
+import { RepositoryTeamCacheEntity, EntityImplementation, RepositoryTeamCacheFixedQueryAll, RepositoryTeamCacheFixedQueryByTeamId, RepositoryTeamCacheFixedQueryByRepositoryId, RepositoryTeamCacheFixedQueryByTeamIds, RepositoryTeamCacheDeleteByOrganizationId, RepositoryTeamCacheGetOrganizationIdsQuery, RepositoryTeamCacheDeleteByRepositoryId } from './repositoryTeamCache';
 
 const thisProviderType = EntityImplementation.Type;
 
@@ -30,7 +30,7 @@ export interface IRepositoryTeamCacheProvider {
 
 export class RepositoryTeamCacheProvider extends EntityMetadataBase implements IRepositoryTeamCacheProvider {
   constructor(options: IRepositoryTeamCacheCreateOptions) {
-    super(options);
+    super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }
 

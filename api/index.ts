@@ -9,7 +9,7 @@ const router = express.Router();
 
 import cors from 'cors';
 
-import { ReposAppRequest, getProviders } from '../transitional';
+import { getProviders } from '../transitional';
 
 import { jsonError } from '../middleware';
 import { IApiRequest } from '../middleware/apiReposAuth';
@@ -27,6 +27,7 @@ import { CreateRepository, CreateRepositoryEntrypoint } from './createRepo';
 import supportMultipleAuthProviders from '../middleware/supportMultipleAuthProviders';
 import JsonErrorHandler from './jsonErrorHandler';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
+import { ReposAppRequest } from '../interfaces';
 
 const hardcodedApiVersions = [
   '2019-10-01',
@@ -109,6 +110,7 @@ router.use('/:org', function (req: IApiRequest, res, next) {
 
 router.post('/:org/repos', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const providers = getProviders(req);
+  const organization = req.organization;
   const convergedObject = Object.assign({}, req.headers);
   req.insights.trackEvent({ name: 'ApiRepoCreateRequest', properties: convergedObject });
   Object.assign(convergedObject, req.body);
@@ -116,8 +118,39 @@ router.post('/:org/repos', asyncHandler(async function (req: ReposAppRequest, re
   delete convergedObject.authorization;
   const logic = providers.customizedNewRepositoryLogic;
   const customContext = logic?.createContext(req);
+  /*
+  removed approvals from primary method:
+
+  // Validate approval types
+  const msApprovalType = msProperties.approvalType;
+  if (!msApprovalType) {
+    throw jsonError(new Error('Missing corporate approval type information'), 422);
+  }
+  if (hardcodedApprovalTypes.indexOf(msApprovalType) < 0) {
+    throw jsonError(new Error('The provided approval type is not supported'), 422);
+  }
+  // Validate specifics of what is in the approval
+  switch (msApprovalType) {
+    case 'NewReleaseReview':
+    case 'ExistingReleaseReview':
+      if (!msProperties.approvalUrl) {
+        throw jsonError(new Error('Approval URL for the release review is required when using the release review approval type'), 422);
+      }
+      break;
+    case 'SmallLibrariesToolsSamples':
+      break;
+    case 'Exempt':
+      if (!msProperties.justification) {
+        throw jsonError(new Error('Justification is required when using the exempted approval type'), 422);
+      }
+      break;
+    default:
+      throw jsonError(new Error('The requested approval type is not currently supported.'), 422);
+  }
+
+  */
   try {
-    const repoCreateResponse = await CreateRepository(req, logic, customContext, convergedObject, CreateRepositoryEntrypoint.Api);
+    const repoCreateResponse = await CreateRepository(req, organization, logic, customContext, convergedObject, CreateRepositoryEntrypoint.Api);
     res.status(201);
     req.insights.trackEvent({
       name: 'ApiRepoCreateRequestSuccess', properties: {

@@ -5,7 +5,7 @@
 
 // This is a Microsoft-specific piece of middleware.
 
-import { ReposAppRequest } from '../../transitional';
+import { ReposAppRequest } from '../../interfaces';
 
 export function AuthorizeOnlyFullTimeEmployeesAndInterns(req: ReposAppRequest, res, next) {
   const individualContext = req.individualContext;

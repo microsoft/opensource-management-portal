@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { apiContextMiddleware, AddLinkToRequest, requireAccessTokenClient, setIdentity, jsonError } from '../../middleware';
-import { getProviders, ReposAppRequest } from '../../transitional';
+import { getProviders } from '../../transitional';
 
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 
@@ -21,6 +21,7 @@ import RouteBanner from './banner';
 import RouteCrossOrganizationPeople from './people';
 import RouteCrossOrganizationRepos from './repos';
 import RouteCrossOrganizationTeams from './teams';
+import { ReposAppRequest } from '../../interfaces';
 
 const router = express.Router();
 

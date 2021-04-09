@@ -12,9 +12,7 @@ import { CompositeIntelligentEngine } from './composite';
 import { RestCollections } from './collections';
 import { CrossOrganizationCollator } from './crossOrganization';
 import { LinkMethods } from './links';
-import RedisHelper from '../caching/redis';
-import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../transitional';
-import { ILinkProvider } from '../linkProviders';
+import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../interfaces';
 import { ICacheHelper } from '../caching';
 
 export enum CacheMode {
@@ -212,9 +210,12 @@ export class RestLibrary {
       const finalized = massageData(value);
       return finalized;
     } catch (error) {
-      console.log(error.message);
+      console.log(`API ${api} POST error: ${error.message}`);
       if (error.status) {
         console.log(`Status: ${error.status}`);
+      }
+      if (error?.headers['x-github-request-id']) {
+        console.log(`Request ID: ${error.headers['x-github-request-id']}`);
       }
       if (error.headers && error.headers['x-ratelimit-remaining']) {
         console.log(`Rate limit remaining: ${error.headers['x-ratelimit-remaining']}`);

@@ -22,9 +22,9 @@ export interface IRepositoryMetadataProvider {
   clearAllRepositoryMetadatas(): Promise<void>;
 }
 
-export class RepositoryMetadataApprovalProvider extends EntityMetadataBase implements IRepositoryMetadataProvider {
+export class RepositoryMetadataProvider extends EntityMetadataBase implements IRepositoryMetadataProvider {
   constructor(options: IRepositoryMetadataCreateOptions) {
-    super(options);
+    super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }
 

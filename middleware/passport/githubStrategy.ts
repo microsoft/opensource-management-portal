@@ -5,7 +5,7 @@
 
 import { Strategy as GithubStrategy } from 'passport-github';
 
-import { IProviders } from '../../transitional';
+import { IProviders } from '../../interfaces';
 import { Operations } from '../../business';
 
 function githubResponseToSubset(app, modernAppInUse: boolean, accessToken: string, refreshToken: string, profile, done) {

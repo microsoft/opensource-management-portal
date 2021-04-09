@@ -5,7 +5,7 @@
 
 const debug = require('debug')('pg');
 
-import { InnerError } from '../transitional';
+import { InnerError } from '../interfaces';
 
 export function PostgresPoolQuerySingleRow(pool, sql: string, values: any[], callback) {
   PostgresPoolQuery(pool, sql, values, (error, results) => {

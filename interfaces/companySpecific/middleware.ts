@@ -5,7 +5,7 @@
 
 import { Repository } from '../../business';
 import { IContextualRepositoryPermissions } from '../../middleware/github/repoPermissions';
-import { IProviders } from '../../transitional';
+import { IProviders } from '../../interfaces';
 import { IndividualContext } from '../../user';
 
 export interface ICompanySpecificRepoPermissionsMiddlewareCalls {

@@ -5,10 +5,12 @@
 
 import express from 'express';
 import asyncHandler from 'express-async-handler';
-import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 const router = express.Router();
 
-import { ReposAppRequest, getProviders } from '../../transitional';
+import { ReposAppRequest } from '../../interfaces';
+import { getProviders } from '../../transitional';
+
+import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 
 import RouteApp from './app';
 import RouteApps from './apps';

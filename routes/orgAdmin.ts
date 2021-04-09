@@ -7,15 +7,15 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { getProviders, IProviders, ReposAppRequest } from '../transitional';
+import { getProviders } from '../transitional';
 
 import { requirePortalAdministrationPermission } from '../middleware/business/administration';
 import { PostgresLinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
-import { Operations, UnlinkPurpose } from '../business';
-import { ICorporateLink } from '../business';
+import { Operations } from '../business';
 import { Organization } from '../business';
 import { Account } from '../business';
 import { ILinkProvider } from '../lib/linkProviders';
+import { ICorporateLink, ReposAppRequest, IProviders, UnlinkPurpose } from '../interfaces';
 
 // - - - Middleware: require that the user isa portal administrator to continue
 router.use(requirePortalAdministrationPermission);

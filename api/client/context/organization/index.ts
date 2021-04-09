@@ -5,10 +5,10 @@
 
 import express from 'express';
 import asyncHandler from 'express-async-handler';
-import { GitHubTeamRole, Organization, OrganizationMembershipRole, Team, TeamJsonFormat } from '../../../../business';
+import { Organization, Team } from '../../../../business';
+import { ReposAppRequest, OrganizationMembershipRole, TeamJsonFormat, GitHubTeamRole } from '../../../../interfaces';
 import { jsonError } from '../../../../middleware';
 import getCompanySpecificDeployment from '../../../../middleware/companySpecificDeployment';
-import { ReposAppRequest } from '../../../../transitional';
 import { IndividualContext } from '../../../../user';
 
 import RouteRepos from './repos';

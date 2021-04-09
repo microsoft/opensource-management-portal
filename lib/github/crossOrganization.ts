@@ -9,9 +9,7 @@ import { IRestResponse, IIntelligentCacheResponseArray, flattenData } from './co
 import { CompositeApiContext } from './composite';
 import { RestLibrary } from '.';
 import { RestCollections } from './collections';
-import { IGetOrganizationMembersOptions } from '../../business/organization';
-import { ITeamMembershipOptions } from '../../business/team';
-import { ICacheOptions, IPagedCrossOrganizationCacheOptions, IPurposefulGetAuthorizationHeader } from '../../transitional';
+import { ICacheOptions, IGetOrganizationMembersOptions, IPagedCrossOrganizationCacheOptions, IPurposefulGetAuthorizationHeader, ITeamMembershipOptions } from '../../interfaces';
 import { AppPurpose } from '../../github';
 
 interface IOrganizationsResponse extends IRestResponse {

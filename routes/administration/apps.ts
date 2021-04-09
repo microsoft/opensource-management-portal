@@ -7,10 +7,11 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { getProviders, ReposAppRequest, UserAlertType } from '../../transitional';
+import { getProviders } from '../../transitional';
 import { sortByCaseInsensitive } from '../../utils';
 import GitHubApplication from '../../business/application';
 import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
+import { ReposAppRequest, UserAlertType } from '../../interfaces';
 
 interface IByOrgViewAppInstallation {
   app: GitHubApplication;

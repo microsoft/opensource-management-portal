@@ -4,6 +4,7 @@
 //
 
 import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
+import { IGitHubCollaboratorPermissions } from '../interfaces';
 import * as common from './common';
 
 const memberPrimaryProperties = [
@@ -12,13 +13,6 @@ const memberPrimaryProperties = [
   'permissions',
   'avatar_url',
 ];
-
-export interface IGitHubCollaboratorPermissions {
-  admin: boolean;
-  pull: boolean;
-  push: boolean;
-  // triage and maintain do not appear today by the GitHub API (sigh), it's in V4 GraphQL but not in V3 REST
-}
 
 export class Collaborator {
   public static PrimaryProperties = memberPrimaryProperties;

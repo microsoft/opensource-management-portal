@@ -4,10 +4,9 @@
 //
 
 import express from 'express';
-import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../middleware/jsonError';
-import { IAppSession, ReposAppRequest } from '../../transitional';
+import { IAppSession, ReposAppRequest } from '../../interfaces';
 
 const router = express.Router();
 

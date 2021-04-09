@@ -3,37 +3,33 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-/*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
+/*eslint no-console: ["error", { allow: ["warn"] }] */
 
 import axios from 'axios';
 import throat from 'throat';
-
-import { ICacheOptions, IMapPlusMetaCost, IPagedCrossOrganizationCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IAuthorizationHeaderValue, IDictionary, CreateError, ErrorHelper, setImmediateAsync, IOperationsGitHubRestLibrary, ICacheDefaultTimes, IOperationsDefaultCacheTimes, IOperationsCentralOperationsToken, IOperationsLegalEntities, CoreCapability, IOperationsServiceAccounts, IOperationsTemplates, IOperationsLinks, IOperationsLockdownFeatureFlags } from '../../transitional';
 
 import { Account } from '../account';
 import { GraphManager } from '../graphManager';
 import { Organization } from '../organization';
 import { GitHubTokenManager } from '../../github/tokenManager';
-
 import RenderHtmlMail from '../../lib/emailRender';
-
 import { wrapError, sortByCaseInsensitive } from '../../utils';
-import { ICorporateLink } from '../corporateLink';
 import { Repository } from '../repository';
 import { RestLibrary } from '../../lib/github';
-import { Team, ICrossOrganizationTeamMembership } from '../team';
 import { GitHubAppAuthenticationType } from '../../github';
 import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
 import { OrganizationSettingProvider } from '../../entities/organizationSettings/organizationSettingProvider';
 import { IMail } from '../../lib/mailProvider';
 import { ILinkProvider } from '../../lib/linkProviders';
-import { IGraphEntryWithManager } from '../../lib/graphProvider';
 import { ICacheHelper } from '../../lib/caching';
 import { createPortalSudoInstance, IPortalSudo } from '../../features';
 import { IOperationsCoreOptions, OperationsCore } from './core';
-
 import { linkAccounts as linkAccountsMethod } from './link';
 import { sendTerminatedAccountMail as sendTerminatedAccountMailMethod} from './unlinkMail';
+import { CoreCapability, ICachedEmployeeInformation, ICacheOptions, ICorporateLink, ICreatedLinkOutcome, ICreateLinkOptions, ICrossOrganizationMembershipByOrganization, ICrossOrganizationTeamMembership, IGetAuthorizationHeader, IMapPlusMetaCost, IOperationsCentralOperationsToken, IOperationsHierarchy, IOperationsLegalEntities, IOperationsLinks, IOperationsLockdownFeatureFlags, IOperationsNotifications, IOperationsRepositoryMetadataProvider, IOperationsServiceAccounts, IOperationsTemplates, IPagedCrossOrganizationCacheOptions, IPromisedLinks, IPurposefulGetAuthorizationHeader, ISupportedLinkTypeOutcome, IUnlinkMailStatus, SupportedLinkType, UnlinkPurpose } from '../../interfaces';
+import { CreateError, ErrorHelper } from '../../transitional';
+import { Team } from '../team';
+import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
 
 export * from './core';
 
@@ -48,78 +44,7 @@ export const RedisPrefixManagerInfoCache = 'employeewithmanager:';
 
 const defaultGitHubPageSize = 100;
 
-export interface IUnlinkMailStatus {
-  to: string[];
-  bcc: string[];
-  receipt: string;
-}
-
-export enum SupportedLinkType {
-  User = 'user',
-  ServiceAccount = 'serviceAccount',
-}
-
-export interface ISupportedLinkTypeOutcome {
-  type: SupportedLinkType;
-  graphEntry: IGraphEntryWithManager;
-}
-
-export enum UnlinkPurpose {
-  Unknown = 'unknown',
-  Termination = 'termination', // no longer listed as an employee
-  Self = 'self', // the user self-service unlink themselves
-  Operations = 'operations', // operational support
-  Deleted = 'deleted', // the GitHub account has been deleted or does not exist
-};
-
-export enum LinkOperationSource {
-  Portal = 'portal',
-  Api = 'api',
-}
-
-export interface ICreateLinkOptions {
-  link: ICorporateLink;
-  operationSource: LinkOperationSource;
-  skipCorporateValidation?: boolean;
-  skipGitHubValidation?: boolean;
-  skipSendingMail?: boolean;
-  eventProperties?: IDictionary<string>;
-  correlationId?: string;
-}
-
-export interface ICreatedLinkOutcome {
-  linkId: string;
-  resourceLink?: string;
-}
-
-export interface ICrossOrganizationMembershipBasics {
-  id: string;
-  login: string;
-  avatar_url: string;
-}
-
-export interface ICrossOrganizationMembershipByOrganization {
-  id: number; // ?
-  orgs?: ICrossOrganizationMembershipBasics[]; // TODO: WARNING: This typing is incorrect. The object properties are the org name.
-}
-
-interface IPromisedLinks {
-  headers: {
-    type: 'links',
-  },
-  data: ICorporateLink[],
-}
-
 export interface ICrossOrganizationMembersResult extends Map<number, ICrossOrganizationMembershipByOrganization> { }
-
-export interface ICachedEmployeeInformation {
-  id: string;
-  displayName: string;
-  userPrincipalName: string;
-  managerId: string;
-  managerDisplayName: string;
-  managerMail: string;
-}
 
 export interface IOperationsOptions extends IOperationsCoreOptions {
   // cacheProvider: ICacheHelper;
@@ -129,16 +54,21 @@ export interface IOperationsOptions extends IOperationsCoreOptions {
   // linkProvider: ILinkProvider;
   // mailAddressProvider: IMailAddressProvider;
   // mailProvider: IMailProvider;
+  repositoryMetadataProvider: IRepositoryMetadataProvider;
 }
 
-export class Operations
+export class Operations 
   extends
-    OperationsCore
+    OperationsCore 
   implements
     IOperationsLegalEntities,
     IOperationsServiceAccounts,
     IOperationsTemplates,
     IOperationsLinks,
+    IOperationsNotifications,
+    IOperationsHierarchy,
+    IOperationsCentralOperationsToken,
+    IOperationsRepositoryMetadataProvider,
     IOperationsLockdownFeatureFlags
  {
   private _cache: ICacheHelper;
@@ -154,6 +84,7 @@ export class Operations
   private _dynamicOrganizationIds: Set<number>;
   private _portalSudo: IPortalSudo;
   private _tokenManager: GitHubTokenManager;
+  private _repositoryMetadataProvider: IRepositoryMetadataProvider;
 
   get graphManager(): GraphManager {
     return this._graphManager;
@@ -173,12 +104,18 @@ export class Operations
     this.addCapability(CoreCapability.Links);
     this.addCapability(CoreCapability.LockdownFeatureFlags);
     this.addCapability(CoreCapability.GitHubCentralOperations);
+    this.addCapability(CoreCapability.RepositoryMetadataProvider);
+    this.addCapability(CoreCapability.Hiearchy);
+    this.addCapability(CoreCapability.Notifications);
 
     const providers = options.providers;
     const config = providers.config;
     this._cache = providers.cacheProvider;
-    this._baseUrl = '/';
     this._graphManager = new GraphManager(this);
+    if (!options.repositoryMetadataProvider) {
+      throw new Error('repositoryMetadataProvider required');
+    }
+    this._repositoryMetadataProvider = options.repositoryMetadataProvider;
     this._uncontrolledOrganizations = new Map();
     this._defaultPageSize = this.config && this.config.github && this.config.github.api && this.config.github.api.defaultPageSize ? this.config.github.api.defaultPageSize : defaultGitHubPageSize;
     const hasModernGitHubApps = config.github?.app;
@@ -192,10 +129,18 @@ export class Operations
     });
     this._dynamicOrganizationIds = new Set();
     this._dynamicOrganizationSettings = [];
+
+    this._newRepoOptions = {
+      shouldRenameDefaultBranch: true,
+    };
   }
 
   protected get tokenManager() {
     return this._tokenManager;
+  }
+
+  get repositoryMetadataProvider() {
+    return this._repositoryMetadataProvider;
   }
 
   async initialize() {
