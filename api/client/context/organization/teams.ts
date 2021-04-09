@@ -8,7 +8,7 @@ import asyncHandler from 'express-async-handler';
 import { Team } from '../../../../business';
 import { jsonError } from '../../../../middleware';
 import { setContextualTeam } from '../../../../middleware/github/teamPermissions';
-import { ReposAppRequest } from '../../../../transitional';
+import { ReposAppRequest } from '../../../../interfaces';
 
 import RouteTeam from './team';
 

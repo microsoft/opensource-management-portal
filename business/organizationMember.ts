@@ -3,9 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { IOperationsInstance, ICorporateLink, throwIfNotCapable, IOperationsLinks, CoreCapability, IOperationsProviders } from '../interfaces';
 import { Organization } from './organization';
-import { ICorporateLink } from './corporateLink';
-import { CoreCapability, IOperationsInstance, IOperationsLinks, IOperationsProviders, throwIfNotCapable } from '../transitional';
 
 export class OrganizationMember {
   private _organization: Organization;

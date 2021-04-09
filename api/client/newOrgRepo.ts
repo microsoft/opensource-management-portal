@@ -9,12 +9,13 @@ const router = express.Router();
 
 import _ from 'lodash';
 
-import { ReposAppRequest, IProviders, getProviders } from '../../transitional';
+import { getProviders } from '../../transitional';
 import { jsonError } from '../../middleware/jsonError';
 import { IndividualContext } from '../../user';
 import { Organization } from '../../business/organization';
 import { CreateRepository, ICreateRepositoryApiResult, CreateRepositoryEntrypoint } from '../createRepo';
-import { Team, GitHubTeamRole } from '../../business/team';
+import { Team } from '../../business/team';
+import { GitHubTeamRole, ReposAppRequest } from '../../interfaces';
 
 // This file supports the client apps for creating repos.
 
@@ -162,10 +163,10 @@ router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(cr
 
 export async function createRepositoryFromClient(req: ILocalApiRequest, res, next) {
   const providers = getProviders(req);
-  const { insights, diagnosticsDrop, customizedNewRepositoryLogic } = providers;
+  const { insights, diagnosticsDrop, customizedNewRepositoryLogic, graphProvider } = providers;
   const individualContext = req.individualContext || req.apiContext;
   const config = getProviders(req).config;;
-  const organization = req.organization as Organization;
+  const organization = (req.organization || (req as any).aeOrganization) as Organization;
   const existingRepoId = req.body.existingrepoid;
   const correlationId = req.correlationId;
   const debugValues = req.body.debugValues || {};
@@ -208,24 +209,30 @@ export async function createRepositoryFromClient(req: ILocalApiRequest, res, nex
     body['ms.onBehalfOf'] = req.apiContext.getGitHubIdentity().username;
   }
   // these fields do not need translation: name, description, private
+  let isApproved = customizedNewRepositoryLogic ? customizedNewRepositoryLogic.skipApproval(customContext, body) : false;
   const approvalTypesToIds = config.github.approvalTypes.fields.approvalTypesToIds;
-  if (approvalTypesToIds[body.approvalType]) {
-    body.approvalType = approvalTypesToIds[body.approvalType];
-  } else {
-    let valid = false;
-    Object.getOwnPropertyNames(approvalTypesToIds).forEach(key => {
-      if (approvalTypesToIds[key] === body.approvalType) {
-        valid = true;
+  if (!isApproved) {
+    if (approvalTypesToIds[body.approvalType]) {
+      body.approvalType = approvalTypesToIds[body.approvalType];
+    } else {
+      let valid = false;
+      Object.getOwnPropertyNames(approvalTypesToIds).forEach(key => {
+        if (approvalTypesToIds[key] === body.approvalType) {
+          valid = true;
+        }
+      })
+      if (!valid) {
+        return next(jsonError('The approval type is not supported or approved at this time', 400));
       }
-    })
-    if (!valid) {
-      return next(jsonError('The approval type is not supported or approved at this time', 400));
     }
   }
   // Property supporting private repos from the client
   if (body.visibility === 'private') {
     body.private = true;
     delete body.visibility;
+  } else if (body.visibility === 'internal') {
+    // visibility: internal is legitimate for GHEC or GHAE users
+    body.private = true;
   }
   translateValue(body, 'approvalType', 'ms.approval');
   translateValue(body, 'approvalUrl', 'ms.approval-url');
@@ -233,19 +240,43 @@ export async function createRepositoryFromClient(req: ILocalApiRequest, res, nex
   translateValue(body, 'legalEntity', 'ms.entity');
   translateValue(body, 'projectType', 'ms.project-type');
   // Team permissions
-  if (!body.selectedAdminTeams || !body.selectedAdminTeams.length) {
-    return next(jsonError('No administration team(s) provided in the request', 400));
+  let sufficientTeamsOk = false;  
+  if (customizedNewRepositoryLogic?.sufficientTeamsConfigured) {
+    sufficientTeamsOk = customizedNewRepositoryLogic.sufficientTeamsConfigured(customContext, body);
+  }
+  if (!sufficientTeamsOk) {
+    if (!body.selectedAdminTeams || !body.selectedAdminTeams.length) {
+      return next(jsonError('No administration team(s) provided in the request', 400));
+    }
   }
   translateTeams(body);
-  // Initial repo contents and license
-  const templates = _.keyBy(organization.getRepositoryCreateMetadata().templates, 'id');
-  const template = templates[body.template];
-  // if (!template) {
-    // return next(jsonError('There was a configuration problem, the template metadata was not available for this request', 400));
-  // }
-  translateValue(body, 'template', 'ms.template');
-  body['ms.license'] = template && (template.spdx || template.name); // Today this is the "template name" or SPDX if available
-  translateValue(body, 'gitIgnoreTemplate', 'gitignore_template');
+  try {
+    // Initial repo contents and license
+    const templates = _.keyBy(organization.getRepositoryCreateMetadata().templates, 'id');
+    const template = templates[body.template];
+    // if (!template) {
+      // return next(jsonError('There was a configuration problem, the template metadata was not available for this request', 400));
+    // }
+    translateValue(body, 'template', 'ms.template');
+    body['ms.license'] = template && (template.spdx || template.name); // Today this is the "template name" or SPDX if available
+    translateValue(body, 'gitIgnoreTemplate', 'gitignore_template');
+  } catch (templateError) {
+    insights?.trackException({ exception: templateError });
+    console.warn(`Optional template error: ${templateError}`);
+  }
+  if (!body['ms.notify']) {
+    try {
+      if (graphProvider && individualContext?.corporateIdentity?.id) {
+        const info = await graphProvider.getUserById(individualContext.corporateIdentity.id);
+        if (info?.mail) {
+          body['ms.notify'] = info.mail;
+        }
+      }
+    } catch (graphError) {
+      insights?.trackException({ exception: graphError });
+      console.warn(`Retrieving user mail address error: ${graphError}`);  
+    }
+  }
   if (!body['ms.notify']) {
     body['ms.notify'] = individualContext?.link?.corporateMailAddress || req.knownRequesterMailAddress || config.brand.operationsMail || config.brand.supportMail;
   }
@@ -260,7 +291,9 @@ export async function createRepositoryFromClient(req: ILocalApiRequest, res, nex
   });
   let success: ICreateRepositoryApiResult = null;
   try {
-    success = await CreateRepository(req, customizedNewRepositoryLogic, customContext, body, CreateRepositoryEntrypoint.Client, individualContext);
+    const newRepositoryParameters = customizedNewRepositoryLogic?.additionalCreateRepositoryParameters ?
+      Object.assign(body, customizedNewRepositoryLogic.additionalCreateRepositoryParameters(customContext)) : body;
+    success = await CreateRepository(req, organization, customizedNewRepositoryLogic, customContext, newRepositoryParameters, CreateRepositoryEntrypoint.Client, individualContext);
   } catch (createRepositoryError) {
     insights.trackEvent({
       name: 'ApiClientNewOrgRepoError',
@@ -304,18 +337,24 @@ function translateTeams(body) {
   let admin = body.selectedAdminTeams;
   let write = body.selectedWriteTeams;
   let read = body.selectedReadTeams;
+  let maintain = body.selectedMaintainTeams;
 
   // Remove teams with higher privileges already
+  _.pullAll(maintain, admin);
+  _.pullAll(maintain, write);
+  _.pullAll(maintain, read);
   _.pullAll(write, admin);
   _.pullAll(read, admin);
   _.pullAll(read, write);
 
   body['ms.teams'] = {
-    admin: admin,
+    maintain,
+    admin,
     push: write,
     pull: read,
   };
 
+  delete body.selectedMaintainTeams;
   delete body.selectedAdminTeams;
   delete body.selectedWriteTeams;
   delete body.selectedReadTeams;

@@ -5,7 +5,8 @@
 
 import logger from 'morgan';
 
-import { getProviders, ReposAppRequest } from '../transitional';
+import { ReposAppRequest } from '../interfaces';
+import { getProviders } from '../transitional';
 
 const encryptionMetadataKey = '_ClientEncryptionMetadata2';
 const piiFormat = ':id :method :scrubbedUrl :status :response-time ms - :res[content-length] :encryptedSession :correlationId';

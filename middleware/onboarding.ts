@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IProviders } from '../transitional';
+import { IProviders } from '../interfaces';
 
 /*eslint no-console: ["error", { allow: ["log", "dir"] }] */
 

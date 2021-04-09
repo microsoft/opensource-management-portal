@@ -6,10 +6,10 @@
 import util from 'util';
 
 import { Organization } from './organization';
-import { Team, TeamJsonFormat } from './team';
-import { GitHubTeamPrivacy, ICacheOptions, IOperationsInstance } from '../transitional';
 import { TeamMember } from './teamMember';
 import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
+import { Team } from '.';
+import { IOperationsInstance, GitHubTeamPrivacy, TeamJsonFormat, IGetMembersOptions } from '../interfaces';
 
 export class TeamPermission {
   private _organization: Organization;
@@ -77,7 +77,7 @@ export class TeamPermission {
     }
   }
 
-  async resolveTeamMembers(options?: ICacheOptions): Promise<void> {
+  async resolveTeamMembers(options?: IGetMembersOptions): Promise<void> {
     this._teamMembersIfSet = await this.team.getMembers(options);
   }
 }

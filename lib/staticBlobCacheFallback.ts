@@ -8,7 +8,8 @@ import {
   StorageSharedKeyCredential,
   ContainerClient,
 } from '@azure/storage-blob';
-import { IProviders } from '../transitional';
+
+import { IProviders } from '../interfaces';
 
 const debug = require('debug')('cache');
 

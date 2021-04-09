@@ -3,10 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { IOperationsInstance, ICorporateLink, throwIfNotCapable, IOperationsProviders, CoreCapability, IOperationsLinks } from '../interfaces';
 import * as common from './common';
 import { Team } from './team';
-import { ICorporateLink } from './corporateLink';
-import { CoreCapability, IOperationsInstance, IOperationsLinks, IOperationsProviders, throwIfNotCapable } from '../transitional';
 
 const memberPrimaryProperties = [
   'id',

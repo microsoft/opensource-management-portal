@@ -6,7 +6,7 @@
 import { QueueServiceClient, QueueClient, DequeuedMessageItem } from '@azure/storage-queue';
 
 import { IQueueMessage, IQueueProcessor } from '.';
-import { Json, IDictionary } from '../../transitional';
+import { Json, IDictionary } from '../../interfaces';
 
 export interface IAzureQueuesProcessorOptions {
   account: string;

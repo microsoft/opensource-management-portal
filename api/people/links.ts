@@ -7,9 +7,8 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../middleware';
-import { MemberSearch } from '../../business';
-import { ICorporateLink } from '../../business';
-import { Operations, ICrossOrganizationMembersResult } from '../../business';
+import { ICrossOrganizationMembersResult, MemberSearch, Operations } from '../../business';
+import { ICorporateLink } from '../../interfaces';
 import { IApiRequest } from '../../middleware/apiReposAuth';
 import postLinkApi from './link';
 import { ErrorHelper, getProviders } from '../../transitional';
@@ -224,6 +223,7 @@ router.get('/aad/:id', asyncHandler(async (req: IApiRequest, res, next) => {
 
 async function getByThirdPartyId(thirdPartyId: string, apiVersion, operations: Operations, skipOrganizations: boolean, showTimestamps: boolean, showLinkIds?: boolean): Promise<any> {
   const providers = operations.providers;
+  const { graphProvider } = providers;
   let link: ICorporateLink = null;
   try {
     link = await providers.linkProvider.getByThirdPartyId(thirdPartyId);
@@ -273,19 +273,16 @@ async function getByThirdPartyId(thirdPartyId: string, apiVersion, operations: O
       entry.serviceAccountContact = link.serviceAccountMail;
     }
   }
-  if (providers.corporateContactProvider) {
-    const contacts = await providers.corporateContactProvider.lookupContacts(link.corporateUsername);
-    if (contacts) {
-      const corporatePropertyName = apiVersion === '2016-12-01' ? 'corporate' : 'aad'; // This was renamed to be provider name-based
-      entry[corporatePropertyName] = {
-        alias: contacts.alias,
-        preferredName: link.corporateDisplayName,
-        userPrincipalName: link.corporateUsername,
-        emailAddress: contacts.emailAddress,
-      };
-      const corporateIdPropertyName = apiVersion === '2016-12-01' ? 'aadId' : 'id'; // Now just 'id'
-      entry[corporatePropertyName][corporateIdPropertyName] = link.corporateId;
-    }
+  if (link?.corporateAlias || link?.corporateDisplayName || link?.corporateMailAddress || link?.corporateUsername) {
+    const corporatePropertyName = apiVersion === '2016-12-01' ? 'corporate' : 'aad'; // This was renamed to be provider name-based
+    entry[corporatePropertyName] = {
+      alias: link?.corporateAlias,
+      preferredName: link?.corporateDisplayName,
+      userPrincipalName: link?.corporateUsername,
+      emailAddress: link?.corporateMailAddress,
+    };
+    const corporateIdPropertyName = apiVersion === '2016-12-01' ? 'aadId' : 'id'; // Now just 'id'
+    entry[corporatePropertyName][corporateIdPropertyName] = link.corporateId;
   }
   return entry;
 }

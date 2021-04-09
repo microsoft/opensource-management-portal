@@ -5,16 +5,16 @@
 
 import express from 'express';
 import asyncHandler from 'express-async-handler';
-import { Organization } from '../../../business/organization';
-import { Team, TeamJsonFormat } from '../../../business/team';
-import { setContextualTeam } from '../../../middleware/github/teamPermissions';
 
+import { Organization } from '../../../business/organization';
+import { setContextualTeam } from '../../../middleware/github/teamPermissions';
 import { jsonError } from '../../../middleware/jsonError';
-import { ReposAppRequest } from '../../../transitional';
+import { ReposAppRequest, TeamJsonFormat } from '../../../interfaces';
 import JsonPager from '../jsonPager';
 import LeakyLocalCache from '../leakyLocalCache';
 
 import RouteTeam from './team';
+import { Team } from '../../../business';
 
 const router = express.Router();
 
@@ -54,7 +54,14 @@ async function getTeamsForOrganization(organization: Organization): Promise<Team
 }
 
 router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { organization } = req;
+  return await getClientApiOrganizationTeamsResponse(req, res, next);
+}));
+
+export async function getClientApiOrganizationTeamsResponse(req: ReposAppRequest, res, next) {
+  const organization = (req.organization || (req as any).aeOrganization) as Organization;
+  if (!organization) {
+    return next(jsonError('No available organization'), 400);
+  }
   const pager = new JsonPager<Team>(req, res);
   const q: string = (req.query.q ? req.query.q as string : null) || '';
   try {
@@ -75,7 +82,7 @@ router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
     console.dir(repoError);
     return next(jsonError(repoError));
   }
-}));
+};
 
 router.use('*', (req, res, next) => {
   return next(jsonError('no API or function available within this team', 404));

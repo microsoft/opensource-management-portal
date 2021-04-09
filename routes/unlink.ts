@@ -9,12 +9,11 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { getProviders, ReposAppRequest } from '../transitional';
+import { getProviders } from '../transitional';
 import { wrapError } from '../utils';
-import { UnlinkPurpose } from '../business';
-import { OrganizationMembershipState } from '../business';
 import { IndividualContext } from '../user';
 import { jsonError } from '../middleware';
+import { ReposAppRequest, OrganizationMembershipState, UnlinkPurpose } from '../interfaces';
 
 router.use(asyncHandler(async function (req: ReposAppRequest, res, next) {
   const memberOfOrganizations = [];

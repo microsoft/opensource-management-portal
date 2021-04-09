@@ -5,33 +5,12 @@
 
 import * as common from './common';
 import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
+import { GitHubCollaboratorPermissionLevel, ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission } from '../interfaces';
 
 const repoPermissionProperties = [
   'permission',
   'user',
 ];
-
-export enum GitHubCollaboratorPermissionLevel {
-  Admin = 'admin',
-  Write = 'write',
-  Read = 'read',
-  None = 'none',
-}
-
-export function ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission(level: GitHubCollaboratorPermissionLevel): GitHubRepositoryPermission {
-  switch (level) {
-    case GitHubCollaboratorPermissionLevel.None:
-      return null;
-    case GitHubCollaboratorPermissionLevel.Admin:
-      return GitHubRepositoryPermission.Admin;
-    case GitHubCollaboratorPermissionLevel.Write:
-      return GitHubRepositoryPermission.Push;
-    case GitHubCollaboratorPermissionLevel.Read:
-      return GitHubRepositoryPermission.Pull;
-    default:
-      throw new Error(`ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission unrecognized value ${level} cannot be translated`);
-  }
-}
 
 export class RepositoryPermission {
   private _id: string;

@@ -5,14 +5,12 @@
 
 import moment from 'moment';
 
-import { ICorporateLink } from './corporateLink';
-import { ICacheOptions, ILocalCacheOptions, IPagedCrossOrganizationCacheOptions, isPermissionBetterThan } from '../transitional';
 import { Operations } from './operations';
-import { IGetOrganizationMembersOptions, OrganizationMembershipRoleQuery } from './organization';
-import { ICrossOrganizationTeamMembership, GitHubTeamRole } from './team';
 import { Repository } from './repository';
 import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 import { TeamRepositoryPermission } from './teamRepositoryPermission';
+import { ICorporateLink, IGetOrganizationMembersOptions, OrganizationMembershipRoleQuery, GitHubTeamRole, ICrossOrganizationTeamMembership, ICacheOptions, IPagedCrossOrganizationCacheOptions } from '../interfaces';
+import { isPermissionBetterThan } from '../transitional';
 
 interface ILocalLinksCache {
   updated: moment.Moment;

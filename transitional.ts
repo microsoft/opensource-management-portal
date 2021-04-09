@@ -3,53 +3,18 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Response, Request } from 'express';
-import redis from 'redis';
+import { Response } from 'express';
 import crypto from 'crypto';
-import { Pool as PostgresPool } from 'pg';
-import type { TelemetryClient } from 'applicationinsights';
-import { AccessToken, AuthorizationCode } from 'simple-oauth2';
-import { Session } from 'express-session';
 import githubUsernameRegex from 'github-username-regex';
+import { AxiosError } from 'axios';
 
-import { IndividualContext } from './user';
-import { IApprovalProvider } from './entities/teamJoinApproval/approvalProvider';
-import { GitHubIssueQuery, ICorporateLink, Operations } from './business';
-import { ITokenProvider } from './entities/token';
-import { IMailAddressProvider } from './lib/mailAddressProvider';
-import { IRepositoryMetadataProvider } from './entities/repositoryMetadata/repositoryMetadataProvider';
-import { ILocalExtensionKeyProvider } from './entities/localExtensionKey';
-import { Organization } from './business';
-import { IGraphProvider } from './lib/graphProvider';
-import { RestLibrary } from './lib/github';
-import { Team } from './business';
-import { IRepositoryCacheProvider } from './entities/repositoryCache/repositoryCacheProvider';
-import { IRepositoryCollaboratorCacheProvider } from './entities/repositoryCollaboratorCache/repositoryCollaboratorCacheProvider';
-import { ITeamCacheProvider } from './entities/teamCache/teamCacheProvider';
-import { ITeamMemberCacheProvider } from './entities/teamMemberCache/teamMemberCacheProvider';
-import { IRepositoryTeamCacheProvider } from './entities/repositoryTeamCache/repositoryTeamCacheProvider';
-import { IOrganizationMemberCacheProvider } from './entities/organizationMemberCache/organizationMemberCacheProvider';
-import { AppPurpose } from './github';
-import QueryCache from './business/queryCache';
-import { IMailProvider } from './lib/mailProvider';
 import { GitHubRepositoryPermission } from './entities/repositoryMetadata/repositoryMetadata';
-import { IOrganizationSettingProvider } from './entities/organizationSettings/organizationSettingProvider';
-import { ILinkProvider } from './lib/linkProviders';
-import { IAuditLogRecordProvider } from './entities/auditLogRecord/auditLogRecordProvider';
-import { ICacheHelper } from './lib/caching';
-import { ICampaignHelper } from './lib/campaigns';
-import { ICorporateContactProvider } from './lib/corporateContactProvider';
-import { IQueueProcessor } from './lib/queues';
-import { IReposApplication } from './app';
-import { IUserSettingsProvider } from './entities/userSettings';
 
 import appPackage from './package.json';
-import BlobCache from './lib/caching/blob';
 import { ICreateRepositoryApiResult } from './api/createRepo';
 import { Repository } from './business/repository';
-import { ICorporationAdministrationSection } from './interfaces';
-import { GitHubSortDirection } from './lib/github/collections';
-import { AxiosError } from 'axios';
+import { IDictionary, IFunctionPromise, IProviders, ISettledValue, ReposAppRequest, SettledState } from './interfaces';
+import { Organization } from './business';
 const packageVariableName = 'static-react-package-name';
 
 export function hasStaticReactClientApp() {
@@ -57,308 +22,6 @@ export function hasStaticReactClientApp() {
   if (process.env.ENABLE_REACT_CLIENT && staticClientPackageName) {
     return staticClientPackageName;
   }
-}
-
-export interface ICallback<T> {
-  (error: IReposError, result?: T): void;
-}
-
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [property: string]: Json }
-  | Json[];
-
-export interface IGetOwnerToken {
-  (): string;
-}
-
-export enum RequestTeamMemberAddType {
-  Member = 'member',
-  Maintainer = 'maintainer',
-}
-
-export enum GitHubTeamPrivacy {
-  Closed = 'closed',
-  Secret = 'secret',
-}
-
-export interface IPurposefulGetAuthorizationHeader {
-  (purpose: AppPurpose): Promise<IAuthorizationHeaderValue>;
-}
-
-export interface IAuthorizationHeaderValue {
-  value: string;
-  purpose: AppPurpose;
-  source?: string;
-}
-
-export interface ICacheDefaultTimes {
-  orgReposStaleSeconds: number;
-  orgRepoTeamsStaleSeconds: number;
-  orgRepoCollaboratorsStaleSeconds: number;
-  orgRepoCollaboratorStaleSeconds: number;
-  orgRepoDetailsStaleSeconds: number;
-  orgTeamsStaleSeconds: number;
-  orgTeamDetailsStaleSeconds: number;
-  orgTeamsSlugLookupStaleSeconds: number;
-  orgMembersStaleSeconds: number;
-  teamMaintainersStaleSeconds: number;
-  orgMembershipStaleSeconds: number;
-  orgMembershipDirectStaleSeconds: number;
-  crossOrgsReposStaleSecondsPerOrg: number;
-  crossOrgsReposParallelCalls: number;
-  crossOrgsMembersStaleSecondsPerOrg: number;
-  crossOrgsMembersParallelCalls: number;
-  corporateLinksStaleSeconds: number;
-  repoBranchesStaleSeconds: number;
-  repoPullsStaleSeconds: number;
-  accountDetailStaleSeconds: number;
-  teamDetailStaleSeconds: number;
-  orgRepoWebhooksStaleSeconds: number;
-  teamRepositoryPermissionStaleSeconds: number;
-}
-
-export enum CoreCapability {
-  GitHubRestApi = 'GitHub REST API', // IOperationsGitHubRestLibrary
-  DefaultCacheTimes = 'Default cache times', // IOperationsDefaultCacheTimes
-  GitHubCentralOperations = 'GitHub central operations', // IOperationsCentralOperationsToken
-  Urls = 'urls', // IOperationsUrls
-  LockdownFeatureFlags = 'Lockdown feature flags', // IOperationsLockdownFeatureFlags
-  Providers = 'Providers', // IOperationsProviders
-  LegalEntities = 'Legal entities', // IOperationsLegalEntities
-  ServiceAccounts = 'Service Accounts', // IOperationsServiceAccounts
-  Links = 'Links', // IOperationsLinks
-  Templates = 'Templates', // IOperationsTemplates
-}
-
-export interface IOperationsInstance {
-  hasCapability(capability: CoreCapability): boolean;
-  throwIfNotCompatible(capability: CoreCapability): void;
-} // Messy but allows for optional use with a cast
-
-export interface IOperationsLegalEntities {
-  getDefaultLegalEntities(): string[];
-}
-
-export interface IOperationsTemplates {
-  getDefaultRepositoryTemplateNames(): string[];
-}
-
-export interface IOperationsProviders {
-  providers: IProviders;
-}
-
-export interface IOperationsLinks {
-  getLinks(options?: any): Promise<ICorporateLink[]>;
-  getLinkByThirdPartyId(thirdPartyId: string): Promise<ICorporateLink>;
-  getLinkByThirdPartyUsername(username: string): Promise<ICorporateLink>;
-  tryGetLink(login: string): Promise<ICorporateLink>;
-  fireLinkEvent(value): Promise<void>;
-  fireUnlinkEvent(value): Promise<void>;
-}
-
-export interface IOperationsServiceAccounts {
-  isSystemAccountByUsername(login: string): boolean;
-}
-
-export interface IOperationsGitHubRestLibrary {
-  github: RestLibrary;
-}
-
-export interface IOperationsDefaultCacheTimes {
-  defaults: ICacheDefaultTimes;
-}
-
-export interface IOperationsUrls {
-  baseUrl: string;
-  absoluteBaseUrl: string;
-}
-
-export interface IOperationsLockdownFeatureFlags {
-  allowUnauthorizedNewRepositoryLockdownSystemFeature(): boolean;
-  allowUnauthorizedForkLockdownSystemFeature(): boolean;
-  allowTransferLockdownSystemFeature(): boolean;
-}
-
-export interface IOperationsCentralOperationsToken {
-  getCentralOperationsToken(): IPurposefulGetAuthorizationHeader; // IGetAuthorizationHeader ?;
-  getAccountByUsername(username: string, options?: ICacheOptions): Promise<Account>;
-}
-
-export function operationsIsCapable<T>(operations: IOperationsInstance, capability: CoreCapability): operations is IOperationsInstance & T {
-  return operations.hasCapability(capability);
-}
-
-export function operationsWithCapability<T>(operations: IOperationsInstance, capability: CoreCapability): T & IOperationsInstance {
-  if (operationsIsCapable<T>(operations, capability)) {
-    return operations as T & IOperationsInstance;
-  }
-  return null;
-}
-
-export function throwIfNotCapable<T>(operations: IOperationsInstance, capability: CoreCapability) {
-  operations.throwIfNotCompatible(capability);
-  return operations as any as T & IOperationsInstance;
-}
-
-export function throwIfNotGitHubCapable(operations: IOperationsInstance) {
-  return throwIfNotCapable<IOperationsGitHubRestLibrary & IOperationsInstance>(operations, CoreCapability.GitHubRestApi);
-}
-
-export interface IGetAuthorizationHeader {
-  (): Promise<IAuthorizationHeaderValue>;
-}
-
-export interface IFunctionPromise<T> {
-  (): Promise<T>;
-}
-
-export interface PromiseResolve<T> {
-  (resolve: T[]): void;
-}
-
-export interface PromiseReject {
-  (reject?: any): void;
-}
-
-export interface ICacheOptions {
-  backgroundRefresh?: any | null | undefined;
-  maxAgeSeconds?: number | null | undefined;
-}
-
-export interface IPagedCacheOptions extends ICacheOptions {
-  pageRequestDelay?: number | null | undefined; // FUTURE: could be a function, too
-}
-
-export enum GetIssuesSort {
-  Created = 'created',
-  Updated = 'updated',
-  Comments = 'comments',
-}
-
-export interface IRepositoryGetIssuesOptions extends IPagedCacheOptions {
-  since?: Date;
-  direction?: GitHubSortDirection;
-  sort?: GetIssuesSort;
-  labels?: string;
-  mentioned?: string;
-  creator?: string;
-  assignee?: string; // user | 'none' | '*'
-  state?: GitHubIssueQuery;
-  milestone?: number | string; // '*'
-}
-
-export interface IPagedCrossOrganizationCacheOptions extends IPagedCacheOptions {
-  individualMaxAgeSeconds?: number | null | undefined;
-  individualRequestDelay?: number | null | undefined; // FUTURE: could be a function, too
-}
-
-export interface ILocalCacheOptions extends ICacheOptions {
-  localMaxAgeSeconds?: number;
-}
-
-export interface ICacheOptionsPageLimiter extends ICacheOptions {
-  pageLimit?: number;
-}
-
-export interface IMapPlusMetaCost extends Map<any, any> {
-  headers?: any;
-  cost?: IReposRestRedisCacheCost;
-}
-
-export interface IReposRestRedisCacheCost {
-  github: {
-    cacheHits: number;
-    remainingApiTokens: string;
-    restApiCalls: number;
-    usedApiTokens: number;
-  };
-  local: {
-    cacheHits: number;
-    cacheMisses: number;
-  };
-  redis: {
-    cacheHits: number;
-    cacheMisses: number;
-    expireCalls: number;
-    getCalls: number;
-    setCalls: number;
-  };
-}
-
-export interface IDictionary<TValue> {
-  [id: string]: TValue;
-}
-
-export const NoCacheNoBackground = { backgroundRefresh: false, maxAgeSeconds: -1 };
-
-export interface IProviders {
-  app: IReposApplication;
-  applicationProfile: IApplicationProfile;
-  authorizationCodeClient?: AuthorizationCode;
-  corporateAdministrationProfile?: ICorporationAdministrationSection;
-  corporateViews?: any;
-  approvalProvider?: IApprovalProvider;
-  auditLogRecordProvider?: IAuditLogRecordProvider;
-  basedir?: string;
-  campaignStateProvider?: ICampaignHelper;
-  campaign?: any; // campaign redirection route, poor variable name
-  corporateContactProvider?: ICorporateContactProvider;
-  config?: any;
-  customizedNewRepositoryLogic?: ICustomizedNewRepositoryLogic;
-  customizedTeamPermissionsWebhookLogic?: ICustomizedTeamPermissionsWebhookLogic;
-  diagnosticsDrop?: BlobCache;
-  healthCheck?: any;
-  keyEncryptionKeyResolver?: any;
-  github?: RestLibrary;
-  graphProvider?: IGraphProvider;
-  insights?: TelemetryClient;
-  linkProvider?: ILinkProvider;
-  localExtensionKeyProvider?: ILocalExtensionKeyProvider;
-  mailAddressProvider?: IMailAddressProvider;
-  mailProvider?: IMailProvider;
-  operations?: Operations;
-  organizationMemberCacheProvider?: IOrganizationMemberCacheProvider;
-  organizationSettingsProvider?: IOrganizationSettingProvider;
-  postgresPool?: PostgresPool;
-  queryCache?: QueryCache;
-  webhookQueueProcessor?: IQueueProcessor;
-  sessionRedisClient?: redis.RedisClient;
-  cacheProvider?: ICacheHelper;
-  repositoryCacheProvider?: IRepositoryCacheProvider;
-  repositoryCollaboratorCacheProvider?: IRepositoryCollaboratorCacheProvider;
-  repositoryMetadataProvider?: IRepositoryMetadataProvider;
-  repositoryTeamCacheProvider?: IRepositoryTeamCacheProvider;
-  session?: any;
-  teamCacheProvider?: ITeamCacheProvider;
-  teamMemberCacheProvider?: ITeamMemberCacheProvider;
-  userSettingsProvider?: IUserSettingsProvider;
-  tokenProvider?: ITokenProvider;
-  viewServices?: any;
-  //redis?: RedisHelper;
-  //redisClient?: redis.RedisClient;
-}
-
-export enum UserAlertType {
-  Success = 'success',
-  Warning = 'warning',
-  Danger = 'danger',
-}
-
-export interface IApplicationProfile {
-  applicationName: string;
-  customErrorHandlerRender?: (errorView: any, err: Error, req: any, res: any, next: any) => Promise<void>;
-  customRoutes?: () => Promise<void>;
-  logDependencies: boolean;
-  serveClientAssets: boolean;
-  serveStaticAssets: boolean;
-  validate?: () => Promise<void>;
-  startup?: (providers: IProviders) => Promise<void>;
-  sessions: boolean;
-  webServer: boolean;
 }
 
 export interface RedisOptions {
@@ -369,87 +32,8 @@ export interface RedisOptions {
   }
 }
 
-export interface InnerError extends Error {
-  inner?: Error;
-}
-
-export interface IReposError extends Error {
-  skipLog?: boolean;
-  status?: any; // status?: number;
-  code?: any; // not sure this is used any longer by libraries
-  originalUrl?: any;
-  detailed?: any;
-  redirect?: string;
-  skipOops?: boolean;
-  fancyLink?: {
-    link: string;
-    title: string;
-  };
-  fancySecondaryLink?: {
-    link: string;
-    title: string;
-  };
-  innerError?: IReposError;
-}
-
-export interface IReposAppContext {
-  section?: string;
-  pivotDirectlyToOtherOrg?: string;
-  releaseTab?: boolean;
-  organization?: Organization;
-}
-
-export interface IReposAppWithTeam extends ReposAppRequest {
-  teamPermissions?: any;
-  team2?: Team;
-  teamUrl: string;
-}
-
-export enum LocalApiRepoAction {
-  Delete = 'delete',
-  Archive = 'archive',
-}
-
-export interface ReposAppRequest extends Request {
-  // passport
-  isAuthenticated(): boolean;
-  user: any;
-
-  // our extensions
-  insights?: any;
-  reposContext?: IReposAppContext;
-  currentOrganizationMemberships?: any; // needs a redesign
-  teamsPagerMode?: string;
-  reposPagerMode?: string;
-  link?: any; // not sure when this is set
-  organization?: Organization;
-  correlationId?: string;
-  scrubbedUrl?: string;
-
-  // FUTURE:
-  apiContext: IndividualContext;
-  individualContext: IndividualContext;
-  oauthAccessToken: AccessToken;
-}
-
 export function getProviders(req: ReposAppRequest) {
   return req.app.settings.providers as IProviders;
-}
-
-export interface IReposAppResponse extends Response {
-}
-
-export interface IReposRequestWithOrganization extends ReposAppRequest {
-  organization?: any;
-}
-
-export interface IRequestTeams extends ReposAppRequest {
-  team2?: any;
-  teamUrl?: any;
-}
-
-export interface RequestWithSystemwidePermissions extends ReposAppRequest {
-  systemWidePermissions?: any;
 }
 
 export interface IResponseForSettingsPersonalAccessTokens extends Response {
@@ -553,17 +137,6 @@ export function MassagePermissionsToGitHubRepositoryPermission(value: string): G
     default:
       throw new Error(`Invalid ${value} GitHub repository permission [massagePermissionsToGitHubRepositoryPermission]`);
   }
-}
-
-export interface ISettledValue<T> {
-  reason?: any;
-  value?: T;
-  state: SettledState;
-}
-
-export enum SettledState {
-  Fulfilled = 'fulfilled',
-  Rejected = 'rejected',
 }
 
 export class CreateError {
@@ -692,39 +265,22 @@ export function stripDistFolderName(dirname: string) {
   return dirname;
 }
 
-export interface IUserAlert {
-  message: string;
-  title: string;
-  context: UserAlertType;
-  optionalLink: string;
-  optionalCaption: string;
-
-}
-
-interface IAppSessionProperties extends Session {
-  enableMultipleAccounts: boolean;
-  selectedGithubId: string;
-  passport: any;
-  id: string;
-  alerts?: IUserAlert[];
-  referer: string;
-}
-
 export function sha256(str: string) {
   const hash = crypto.createHash('sha256').update(str).digest('base64');
   return hash;
 }
-
-export interface IAppSession extends IAppSessionProperties {}
 
 export interface ICustomizedNewRepositoryLogic {
   createContext(req: any): INewRepositoryContext;
   getAdditionalTelemetryProperties(context: INewRepositoryContext): IDictionary<string>;
   validateRequest(context: INewRepositoryContext, req: any): Promise<void>;
   stripRequestBody(context: INewRepositoryContext, body: any): void;
-  afterRepositoryCreated(context: INewRepositoryContext, corporateId: string, success: ICreateRepositoryApiResult): Promise<void>;
+  afterRepositoryCreated(context: INewRepositoryContext, corporateId: string, success: ICreateRepositoryApiResult, organization: Organization): Promise<void>;
   shouldNotifyManager(context: INewRepositoryContext, corporateId: string): boolean;
   getNewMailViewProperties(context: INewRepositoryContext, repository: Repository): Promise<ICustomizedNewRepoProperties>;
+  sufficientTeamsConfigured(context: INewRepositoryContext, body: any): boolean;
+  skipApproval(context: INewRepositoryContext, body: any): boolean;
+  additionalCreateRepositoryParameters(context: INewRepositoryContext): any;
 }
 
 export interface ICustomizedNewRepoProperties {

@@ -16,10 +16,9 @@
 // LINK_MIGRATION_OVERWRITE  values : 'overwrite', 'skip'
 
 import throat from 'throat';
+import { IReposJob, ICorporateLink } from '../../interfaces';
 
-import app, { IReposJob } from '../../app';
 import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../../lib/linkProviders';
-import { ICorporateLink } from '../../business/corporateLink';
 import { ErrorHelper } from '../../transitional';
 
 const parallelWorkLimit = 5;

@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { IProviders, LocalApiRepoAction } from '../..';
 import { Repository } from '../../../business';
-import { IProviders, LocalApiRepoAction } from '../../../transitional';
 import { IndividualContext } from '../../../user';
 
 export interface ICompanySpecificRepositoryStateStatus {}

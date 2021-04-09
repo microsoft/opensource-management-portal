@@ -5,7 +5,7 @@
 
 import asyncHandler from 'express-async-handler';
 
-import { ReposAppRequest } from '../../../transitional';
+import { ReposAppRequest } from '../../../interfaces';
 import { IndividualContext } from '../../../user';
 
 export default asyncHandler(async (req: ReposAppRequest, res) => {

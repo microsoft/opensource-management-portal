@@ -6,7 +6,7 @@
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
 import throat from 'throat';
-import { IReposJob, IReposJobResult } from '../../app';
+import { IReposJob, IReposJobResult } from '../../interfaces';
 
 // Revoke tokens of users that no longer resolve in the corporate graph and
 // delete tokens that have been expired 30 days.

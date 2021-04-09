@@ -5,7 +5,7 @@
 
 import { AppPurpose, IGitHubAppConfiguration, IGitHubAppsOptions, GitHubAppAuthenticationType } from '.';
 import { GitHubAppTokens } from './appTokens';
-import { IAuthorizationHeaderValue } from '../transitional';
+import { IAuthorizationHeaderValue } from '../interfaces';
 import { OrganizationSetting } from '../entities/organizationSettings/organizationSetting';
 import { readFileToText } from '../utils';
 

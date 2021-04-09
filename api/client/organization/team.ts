@@ -10,11 +10,12 @@ import { getContextualTeam } from '../../../middleware/github/teamPermissions';
 
 import { jsonError } from '../../../middleware';
 import { sortRepositoriesByNameCaseInsensitive } from '../../../routes/org/team';
-import { getProviders, NoCacheNoBackground, ReposAppRequest } from '../../../transitional';
+import { getProviders } from '../../../transitional';
 import JsonPager from '../jsonPager';
 import { getLinksLightCache } from '../leakyLocalCache';
 import { equivalentLegacyPeopleSearch } from './people';
-import { TeamJsonFormat, TeamRepositoryPermission, OrganizationMember, corporateLinkToJson, ICorporateLink } from '../../../business';
+import { TeamRepositoryPermission, OrganizationMember, corporateLinkToJson } from '../../../business';
+import { ReposAppRequest, TeamJsonFormat, NoCacheNoBackground, ICorporateLink } from '../../../interfaces';
 
 const router = express.Router();
 

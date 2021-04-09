@@ -3,8 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IProviders } from '../../transitional';
-import { ICorporateLink, ICorporateLinkExtended } from '../../business/corporateLink';
+import { ICorporateLink, ICorporateLinkExtended, IProviders } from '../../interfaces';
 
 import createMemoryProvider from './memory';
 import createPostgresProvider from './postgres';

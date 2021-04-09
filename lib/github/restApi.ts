@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-/*eslint no-console: ["error", { allow: ["log", "warn"] }] */
+/*eslint no-console: ["error", { allow: ["log"] }] */
 
 import _ from 'lodash';
 import moment from 'moment';
@@ -19,7 +19,7 @@ import { IShouldServeCache, IntelligentEngine, ApiContext, IApiContextCacheValue
 import { getEntityDefinitions, GitHubResponseType, ResponseBodyType } from './endpointEntities';
 
 import appPackage from '../../package.json';
-import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../transitional';
+import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../interfaces';
 
 const appVersion = appPackage.version;
 

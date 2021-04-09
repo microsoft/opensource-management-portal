@@ -8,8 +8,7 @@ import wrapOrCreateInsightsConsoleClient from '../lib/insights';
 const debug = require('debug')('startup');
 
 import { setup as appInsightsSetup, defaultClient } from 'applicationinsights';
-import { IReposApplication } from '../app';
-import { IProviders, ReposAppRequest } from '../transitional';
+import { IReposApplication, IProviders, ReposAppRequest } from '../interfaces';
 
 function ignoreKubernetesProbes(envelope/* , context */) {
   if ('RequestData' === envelope.data.baseType) {

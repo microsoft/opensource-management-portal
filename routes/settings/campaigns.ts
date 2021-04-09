@@ -7,7 +7,8 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, CreateError, UserAlertType, getProviders } from '../../transitional';
+import { ReposAppRequest, UserAlertType } from '../../interfaces';
+import { CreateError, getProviders } from '../../transitional';
 
 router.use('/:campaignGroupId', (req:  ReposAppRequest, res: any, next) => {
   const { config } = getProviders(req);

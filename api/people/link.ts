@@ -6,7 +6,7 @@
 import { getProviders } from '../../transitional';
 import { jsonError } from '../../middleware';
 import { IApiRequest } from '../../middleware/apiReposAuth';
-import { ICorporateLink, LinkOperationSource } from '../../business';
+import { ICorporateLink, LinkOperationSource } from '../../interfaces';
 
 const linkScope = 'link';
 

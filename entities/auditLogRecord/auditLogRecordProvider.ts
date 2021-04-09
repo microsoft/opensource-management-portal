@@ -26,7 +26,7 @@ export interface IAuditLogRecordProvider {
 
 export class AuditLogRecordProvider extends EntityMetadataBase implements IAuditLogRecordProvider {
   constructor(options: IAuditLogRecordProviderCreateOptions) {
-    super(options);
+    super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }
 

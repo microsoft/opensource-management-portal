@@ -6,22 +6,14 @@
 /* eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
 import _ from 'lodash';
+import moment from 'moment';
+import querystring from 'querystring';
 
 import AutomaticTeamsWebhookProcessor from '../../webhooks/tasks/automaticTeams';
-
-import moment from 'moment';
-
-const querystring = require('querystring');
-
-import { Repository, GitHubCollaboratorAffiliationQuery } from '../../business/repository';
 import { requireJson, sleep } from '../../utils';
-import { Operations } from '../../business/operations';
-import { Organization } from '../../business/organization';
 import { IReportsContext } from './task';
-import { Collaborator } from '../../business/collaborator';
-import { ICorporateLink } from '../../business/corporateLink';
-import { Team } from '../../business/team';
-import { TeamPermission } from '../../business/teamPermission';
+import { Collaborator, Operations, Organization, Repository, Team, TeamPermission } from '../../business';
+import { ICorporateLink, GitHubCollaboratorAffiliationQuery } from '../../interfaces';
 
 const projectPlaceholder = '[project]\\';
 
@@ -276,7 +268,7 @@ async function processRepository(context: IReportsContext, repository: Repositor
     if (suffix) {
       fullPath + '/' + suffix;
     }
-    return reposUrl + (alternateForRepoFullPath || fullPath) + '?' + querystring.stringify(q);
+    return reposUrl + (alternateForRepoFullPath || fullPath) + '?' + querystring.stringify(q as any);
   }
   function getCampaignData(content): ICampaignData {
     return {
@@ -300,7 +292,7 @@ async function processRepository(context: IReportsContext, repository: Repositor
     if (query) {
       q.go_github_query = query;
     }
-    return reposUrl + (alternateForRepoFullName || repoFullName) + '?' + querystring.stringify(q);
+    return reposUrl + (alternateForRepoFullName || repoFullName) + '?' + querystring.stringify(q as any);
   }
   if (!context.repositoryData) {
     context.repositoryData = [];

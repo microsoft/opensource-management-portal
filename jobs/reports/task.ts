@@ -16,7 +16,7 @@ import fileSize from 'file-size';
 import moment from 'moment-timezone';
 import path from 'path';
 
-import app, { IReposJob, IReposJobResult } from '../../app';
+import app from '../../app';
 
 // import { buildConsolidatedMap as buildRecipientMap } from './consolidated';
 
@@ -26,12 +26,10 @@ import { build as teamsBuild, consolidate as teamsConsolidate, process as teamsP
 
 import mailer from './mailer';
 
-import { Operations } from '../../business/operations';
+import { Operations, Repository, Team } from '../../business';
 import { ICacheHelper } from '../../lib/caching';
-import { ICorporateLink } from '../../business/corporateLink';
+import { ICorporateLink, IReposJob, IReposJobResult } from '../../interfaces';
 import { writeTextToFile } from '../../utils';
-import { Repository } from '../../business/repository';
-import { Team } from '../../business/team';
 import { writeDeflatedTextFile } from './fileCompression';
 
 // Debug-related values for convienience

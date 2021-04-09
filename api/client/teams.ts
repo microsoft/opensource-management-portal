@@ -6,9 +6,10 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { ICrossOrganizationMembershipByOrganization, Operations, Team, TeamJsonFormat } from '../../business';
+import { Operations, Team } from '../../business';
+import { ICrossOrganizationMembershipByOrganization, ReposAppRequest, TeamJsonFormat } from '../../interfaces';
 import { jsonError } from '../../middleware';
-import { getProviders, ReposAppRequest } from '../../transitional';
+import { getProviders } from '../../transitional';
 import JsonPager from './jsonPager';
 
 const router = express.Router();

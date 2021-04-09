@@ -4,8 +4,10 @@
 //
 
 import express from 'express';
-import { getProviders, IAppSession, ReposAppRequest } from '../transitional';
 const router = express.Router();
+
+import { IAppSession, ReposAppRequest } from '../interfaces';
+import { getProviders } from '../transitional';
 
 const redacted = '*****';
 

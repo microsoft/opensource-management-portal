@@ -3,20 +3,20 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import redis = require('redis');
-import { ICacheHelper } from '.';
+import redis from 'redis';
+import zlib from 'zlib';
 
 const debug = require('debug')('redis');
 const debugCrossOrganization = require('debug')('redis-cross-org');
 
-const zlib = require('zlib');
+import { ICacheHelper } from '.';
 
-const compressionOptions = {
-  type: 'gzip',
-  params: {
-    level: zlib.Z_BEST_SPEED,
-  },
-};
+// const compressionOptions = {
+//   type: 'gzip',
+//   params: {
+//     level: zlib.Z_BEST_SPEED,
+//   },
+// };
 
 export interface ISetCompressedOptions {
   minutesToExpire?: number;
@@ -73,7 +73,7 @@ export default class RedisHelper implements ICacheHelper {
         }
         zlib.gunzip(buffer, (unzipError, unzipped) => {
           // Fallback if there is a data error (i.e. it's not compressed)
-          if (unzipError && unzipError.errno === zlib.Z_DATA_ERROR) {
+          if ((unzipError as any)?.errno === zlib.Z_DATA_ERROR) {
             const originalValue = buffer.toString();
             return process.nextTick(resolve, originalValue);
           } else if (unzipError) {
@@ -100,7 +100,7 @@ export default class RedisHelper implements ICacheHelper {
     }
     const val = Buffer.from(value);
     return new Promise((resolve, reject) => {
-      zlib.gzip(val, compressionOptions, (gzipError, compressed) => {
+      zlib.gzip(val, (gzipError, compressed) => {
         if (gzipError) {
           return reject(gzipError);
         }
@@ -109,9 +109,9 @@ export default class RedisHelper implements ICacheHelper {
           return error ? reject(error) : resolve(ok);
         };
         if (minutesToExpire) {
-          this._redis.set(bufferKey as any as string /* Buffer key type to make TypeScript happy */, compressed, 'EX', minutesToExpire * 60, finalize);
+          this._redis.set(bufferKey as any as string /* Buffer key type to make TypeScript happy */, compressed as any, 'EX', minutesToExpire * 60, finalize);
         } else {
-          this._redis.set(bufferKey as any as string /* Buffer key type to make TypeScript happy */, compressed, finalize);
+          this._redis.set(bufferKey as any as string /* Buffer key type to make TypeScript happy */, compressed as any, finalize);
         }
       });
     });

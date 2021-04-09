@@ -5,7 +5,7 @@
 
 import { Team } from './team';
 import { Repository } from './repository';
-import { IOperationsInstance } from '../transitional';
+import { IOperationsInstance } from '../interfaces';
 
 export class TeamRepositoryPermission {
   private _team: Team;

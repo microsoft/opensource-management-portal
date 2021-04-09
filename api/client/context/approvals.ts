@@ -6,11 +6,12 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { TeamJsonFormat, Team, Organization } from '../../../business';
+import { Team, Organization } from '../../../business';
 import { TeamJoinApprovalEntity } from '../../../entities/teamJoinApproval/teamJoinApproval';
+import { TeamJsonFormat, ReposAppRequest } from '../../../interfaces';
 import { jsonError } from '../../../middleware';
 import { ApprovalPair, Approvals_getTeamMaintainerApprovals, Approvals_getUserRequests, closeOldRequest } from '../../../routes/settings/approvals';
-import { ReposAppRequest, getProviders } from '../../../transitional';
+import { getProviders } from '../../../transitional';
 import { IndividualContext } from '../../../user';
 
 const router = express.Router();

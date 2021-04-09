@@ -6,11 +6,11 @@
 import azure from 'azure-storage';
 
 import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvider';
-import { IEntityMetadata, EntityMetadataType } from '../../lib/entityMetadataProvider/entityMetadata';
+import { IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
 import { Type } from './type';
-import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresGetByID, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
+import { PostgresGetAllEntities, PostgresGetByID, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
 import { TableSettings } from '../../lib/entityMetadataProvider/table';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
 
@@ -52,6 +52,7 @@ export interface IInitialTeamPermission {
 export enum GitHubRepositoryVisibility {
   Public = 'public',
   Private = 'private',
+  Internal = 'internal',
 }
 
 interface IRepositoryMetadataProperties {

@@ -6,8 +6,8 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 
+import { ICorporateLink, UnlinkPurpose } from '../../interfaces';
 import { jsonError } from '../../middleware';
-import { ICorporateLink, UnlinkPurpose } from '../../business';
 import { IApiRequest } from '../../middleware/apiReposAuth';
 import { getProviders } from '../../transitional';
 

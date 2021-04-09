@@ -3,7 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { getProviders, ReposAppRequest } from '../../transitional';
+import { ReposAppRequest } from '../../interfaces';
+import { getProviders } from '../../transitional';
 import { wrapError } from '../../utils';
 
 const cachedLinksRequestKeyName = 'cachedLinks';

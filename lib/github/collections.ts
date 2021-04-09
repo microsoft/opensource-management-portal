@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-/*eslint no-console: ["error", { allow: ["warn"] }] */
+/*eslint no-console: ["error', { allow: ["warn"] }] */
 
 import _ from 'lodash';
 
@@ -14,7 +14,7 @@ import { IRestResponse, flattenData } from './core';
 import { CompositeApiContext, CompositeIntelligentEngine } from './composite';
 import { Collaborator } from '../../business/collaborator';
 import { Team } from '../../business/team';
-import { IPagedCacheOptions, IGetAuthorizationHeader, IDictionary } from '../../transitional';
+import { IPagedCacheOptions, IGetAuthorizationHeader, IDictionary } from '../../interfaces';
 import { RestLibrary } from '.';
 import { sleep } from '../../utils';
 import GitHubApplication from '../../business/application';

@@ -5,7 +5,7 @@
 
 import { IMailProvider, IMail } from ".";
 
-const nodemailer = require('nodemailer');
+import nodemailer from 'nodemailer';
 
 export default class SmtpMailService implements IMailProvider {
   private _config: any;

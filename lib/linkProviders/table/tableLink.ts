@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ICorporateLinkExtended, ICorporateLinkExtendedDirectMethods } from '../../../business/corporateLink';
+import { ICorporateLinkExtendedDirectMethods, ICorporateLinkExtended } from '../../../interfaces';
 import { TableLinkProvider } from './tableLinkProvider';
 
 export interface IInternalTableLinkOptions {

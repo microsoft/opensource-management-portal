@@ -6,8 +6,9 @@
 import express from 'express';
 const router = express.Router();
 
-import { getProviders, RequestWithSystemwidePermissions } from '../../transitional';
+import { getProviders } from '../../transitional';
 import { IndividualContext } from '../../user';
+import { RequestWithSystemwidePermissions } from '../../interfaces';
 
 // import { buildConsolidatedMap as buildRecipientMap } from '../../jobs/reports/consolidated';
 // const buildRecipientMap = require('../../jobs/reports/consolidated').buildRecipientMap;

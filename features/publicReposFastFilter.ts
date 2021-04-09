@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IProviders } from '../transitional';
-import { Repository } from '../business/repository';
+import { IProviders } from '../interfaces';
+import { Repository } from '../business';
 
 // TODO: refresh occassionally.
 

@@ -1,8 +1,9 @@
-import app, { IReposJob, IReposJobResult } from '../../app';
+import app from '../../app';
 import { Organization } from '../../business/organization';
 import { RepositoryCollaboratorCacheEntity } from '../../entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
 import { RepositoryTeamCacheEntity } from '../../entities/repositoryTeamCache/repositoryTeamCache';
-import { ErrorHelper, IProviders } from '../../transitional';
+import { IProviders, IReposJob, IReposJobResult } from '../../interfaces';
+import { ErrorHelper } from '../../transitional';
 import { sleep } from '../../utils';
 
 const killBitHours = 8;

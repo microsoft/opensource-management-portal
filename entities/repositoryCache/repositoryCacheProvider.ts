@@ -26,7 +26,7 @@ export interface IRepositoryCacheProvider {
 
 export class RepositoryCacheProvider extends EntityMetadataBase implements IRepositoryCacheProvider {
   constructor(options: IRepositoryCacheCreateOptions) {
-    super(options);
+    super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }
 

@@ -3,28 +3,24 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-/*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
+/*eslint no-console: ["error", { allow: ["warn"] }] */
 
 import _ from 'lodash';
 
-import { ICacheOptions, IReposError, IGetAuthorizationHeader, ErrorHelper, IOperationsInstance, operationsWithCapability, CoreCapability, IOperationsProviders, throwIfNotCapable, IOperationsLinks, throwIfNotGitHubCapable } from '../transitional';
 import * as common from './common';
 
 import { wrapError } from '../utils';
-import { corporateLinkToJson, ICorporateLink } from './corporateLink';
-import { Organization, OrganizationMembershipState } from './organization';
+import { corporateLinkToJson } from './corporateLink';
+import { Organization } from './organization';
 import { AppPurpose } from '../github';
 import { ILinkProvider } from '../lib/linkProviders';
 import { CacheDefault, getMaxAgeSeconds } from '.';
+import { AccountJsonFormat, CoreCapability, ICacheOptions, ICorporateLink, IGetAuthorizationHeader, IOperationsInstance, IOperationsLinks, IOperationsProviders, IReposError, operationsWithCapability, OrganizationMembershipState, throwIfNotCapable, throwIfNotGitHubCapable } from '../interfaces';
+import { ErrorHelper } from '../transitional';
 
 interface IRemoveOrganizationMembershipsResult {
   error?: IReposError;
   history: string[];
-}
-
-export enum AccountJsonFormat {
-  GitHub = 'github',
-  UplevelWithLink = 'github+link',
 }
 
 const primaryAccountProperties = [

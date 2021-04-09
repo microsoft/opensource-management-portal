@@ -7,7 +7,7 @@ import express from 'express';
 const router = express.Router();
 
 import lowercaser from '../middleware/lowercaser';
-import { ReposAppRequest } from '../transitional';
+import { ReposAppRequest } from '../interfaces';
 
 import RouteTeamsPager from './teamsPager';
 

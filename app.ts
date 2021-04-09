@@ -4,51 +4,12 @@
 //
 
 import express from 'express';
-import { Application } from 'express';
-
 import { hostname } from 'os';
 
-import { IProviders } from './transitional';
+import { IReposApplication, IReposJob, IReposJobOptions, IReposJobResult } from './interfaces';
+
 import initialize from './middleware/initialize';
 import { quitInTenSeconds } from './utils';
-
-export interface IReposApplication extends Application {
-  // Standard Express
-  set(settingName: string, settingValue: any);
-
-  // Local things
-  providers: IProviders;
-  config: any;
-  isBackgroundJob: boolean;
-
-  startServer: () => Promise<void>;
-
-  initializeApplication: (config: any, configurationError: Error) => Promise<IReposApplication>;
-  initializeJob: (config: any, configurationError: Error) => Promise<IReposApplication>;
-  startupApplication: () => Promise<IReposApplication>;
-  startupJob: () => Promise<IReposApplication>;
-  runJob: (job: (job: IReposJob) => Promise<IReposJobResult | void>, options?: IReposJobOptions) => Promise<IReposApplication>;
-}
-
-export interface IReposJob {
-  app: IReposApplication;
-  started: Date;
-  providers: IProviders;
-  parameters: any;
-  args: string[];
-}
-
-export interface IReposJobResult {
-  successProperties?: any;
-}
-
-export interface IReposJobOptions {
-  timeoutMinutes?: number;
-  defaultDebugOutput?: string;
-  insightsPrefix?: string;
-  parameters?: any;
-  treatGitHubAppAsBackground?: boolean;
-}
 
 const app = express() as any as IReposApplication;
 

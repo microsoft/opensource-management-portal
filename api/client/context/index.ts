@@ -7,10 +7,11 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { Organization } from '../../../business';
+import { ReposAppRequest } from '../../../interfaces';
 
 import { jsonError } from '../../../middleware';
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
-import { ErrorHelper, getProviders, IProviders, ReposAppRequest } from '../../../transitional';
+import { ErrorHelper, getProviders } from '../../../transitional';
 import { IndividualContext } from '../../../user';
 
 import RouteApprovals from './approvals';

@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ICreatedLinkOutcome, ICreateLinkOptions, LinkOperationSource, SupportedLinkType } from '.';
-import { ICorporateLink, Operations } from '..';
+import { Operations } from '.';
+import { ICreateLinkOptions, ICreatedLinkOutcome, LinkOperationSource, SupportedLinkType, ICorporateLink } from '../../interfaces';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 import { CreateError, ErrorHelper, setImmediateAsync } from '../../transitional';
 

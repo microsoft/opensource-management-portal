@@ -5,9 +5,8 @@
 
 import asyncHandler from 'express-async-handler';
 
-import { ReposAppRequest } from '../../../transitional';
+import { ReposAppRequest, TeamJsonFormat } from '../../../interfaces';
 import { IndividualContext } from '../../../user';
-import { TeamJsonFormat } from '../../../business';
 
 export default asyncHandler(async (req: ReposAppRequest, res, next) => {
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;

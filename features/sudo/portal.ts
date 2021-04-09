@@ -4,9 +4,10 @@
 //
 
 import { IPortalSudo } from '.';
-import { ICorporateLink, Organization } from '../../business';
+import { Organization } from '../../business';
+import { IProviders, ICorporateLink } from '../../interfaces';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
-import { ErrorHelper, IProviders } from '../../transitional';
+import { ErrorHelper } from '../../transitional';
 
 abstract class PortalSudoBase {
   constructor(private providers: IProviders) { }

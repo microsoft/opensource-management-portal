@@ -3,14 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import querystring from 'querystring';
+
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import querystring from 'querystring';
+import { IReposRequestWithOrganization } from '../interfaces';
 import { injectReactClient, TryFallbackToBlob } from '../middleware';
-
-import { getProviders, hasStaticReactClientApp, IReposRequestWithOrganization } from '../transitional';
+import { getProviders, hasStaticReactClientApp } from '../transitional';
 import { wrapError } from '../utils';
 
 import orgRoute from './org/';

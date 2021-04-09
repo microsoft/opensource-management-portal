@@ -11,8 +11,8 @@ import _ from 'lodash';
 import azure from 'azure-storage';
 import { v4 as uuidV4 } from 'uuid';
 
-import { IReposError } from '../../../transitional';
-import { ICorporateLinkProperties, ICorporateLink, ICorporateLinkExtended, CorporatePropertyNames } from '../../../business/corporateLink';
+import { ICorporateLink, ICorporateLinkExtended, ICorporateLinkProperties, IReposError } from '../../../interfaces';
+import { CorporatePropertyNames } from '../../../business/corporateLink';
 import { CorporateTableLink } from './tableLink';
 import { ILinkProvider } from '..';
 

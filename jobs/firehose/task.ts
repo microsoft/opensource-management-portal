@@ -10,14 +10,12 @@
 import moment from 'moment';
 import os from 'os';
 
-import App, { IReposJob, IReposJobResult } from '../../app';
-
+import App from '../../app';
 import ProcessOrganizationWebhook, { IGitHubWebhookProperties } from '../../webhooks/organizationProcessor';
-import { IProviders } from '../../transitional';
-import { sleep, quitInTenSeconds } from '../../utils';
+import { IGitHubAppInstallation, IGitHubWebhookEnterprise, IProviders, IReposJob, IReposJobResult } from '../../interfaces';
+import { sleep } from '../../utils';
 import { IQueueMessage } from '../../lib/queues';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
-import { IGitHubAppInstallation, IGitHubWebhookEnterprise } from '../../business';
 
 const runningAsOngoingDeployment = true;
 
@@ -28,6 +26,7 @@ export default async function firehose({ providers, started }: IReposJob): Promi
   const config = providers.config;
   const jobMinutesFrequency = config.github.webhooks.runtimeMinutes ? parseInt(config.github.webhooks.runtimeMinutes) : 5;
   let runtimeSeconds = (jobMinutesFrequency - 1) * 60 + 30 /* 30 second flex in the last minute instead of 60s */;
+  config.github?.webhooks?.serviceBus?.queue && console.log(`bus: ${config.github.webhooks.serviceBus.queue}`);
   if (runningAsOngoingDeployment) {
     console.log('webhook processor is configured to keep running, it will not exit');
   } else {

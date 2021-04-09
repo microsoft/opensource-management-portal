@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest } from '../../transitional';
+import { ReposAppRequest } from '../../interfaces';
 import { popSessionVariable } from '../../utils';
 import lowercaser from '../../middleware/lowercaser';
 

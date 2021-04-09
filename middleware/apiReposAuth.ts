@@ -13,8 +13,9 @@ import basicAuth from 'basic-auth';
 import crypto from 'crypto';
 
 import { jsonError } from './jsonError';
-import { getProviders, IProviders, ReposAppRequest } from '../transitional';
+import { getProviders } from '../transitional';
 import { PersonalAccessToken } from '../entities/token/token';
+import { ReposAppRequest } from '../interfaces';
 
 export const wrapErrorForImmediateUserError = (err: Error) => {
   (err as any).immediate = true;

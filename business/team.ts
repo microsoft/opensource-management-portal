@@ -9,14 +9,14 @@ import _ from 'lodash';
 import * as common from './common';
 
 import { wrapError } from '../utils';
-import { Organization, OrganizationMembershipState } from './organization';
-import { ICacheOptions, ICacheOptionsPageLimiter, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IPagedCrossOrganizationCacheOptions, ErrorHelper, IOperationsInstance, throwIfNotCapable, IOperationsUrls, CoreCapability, throwIfNotGitHubCapable, validateGitHubLogin, IOperationsProviders } from '../transitional';
 import { TeamMember } from './teamMember';
 import { TeamRepositoryPermission } from './teamRepositoryPermission';
 import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';
 import { TeamJoinApprovalEntity } from '../entities/teamJoinApproval/teamJoinApproval';
 import { AppPurpose } from '../github';
-import { CacheDefault, getMaxAgeSeconds, getPageSize } from '.';
+import { CacheDefault, getMaxAgeSeconds, getPageSize, Organization } from '.';
+import { IOperationsInstance, IPurposefulGetAuthorizationHeader, TeamJsonFormat, throwIfNotCapable, IOperationsUrls, CoreCapability, ICacheOptions, throwIfNotGitHubCapable, IPagedCacheOptions, IGetAuthorizationHeader, IUpdateTeamMembershipOptions, GitHubTeamRole, ITeamMembershipRoleState, IIsMemberOptions, OrganizationMembershipState, IGetMembersOptions, ICacheOptionsPageLimiter, IGetTeamRepositoriesOptions, GitHubRepositoryType, IOperationsProviders } from '../interfaces';
+import { validateGitHubLogin, ErrorHelper } from '../transitional';
 
 const teamPrimaryProperties = [
   'id',
@@ -36,60 +36,6 @@ const teamSecondaryProperties = [
   'members_url',
   'repositories_url',
 ];
-
-export interface IGitHubTeamBasics {
-  id: number;
-  name: string;
-  slug: string;
-}
-
-export enum GitHubRepositoryType {
-  Sources = 'sources',
-}
-
-export enum TeamJsonFormat {
-  Simple, // basics
-  Detailed, // full entity
-  Augmented, // entity + corporate configuration layer
-}
-
-export interface ICheckRepositoryPermissionOptions extends ICacheOptions {
-  organizationName?: string;
-}
-
-export interface IGetTeamRepositoriesOptions extends ICacheOptionsPageLimiter {
-  type?: GitHubRepositoryType;
-}
-
-export interface ITeamMembershipRoleState {
-  role?: GitHubTeamRole;
-  state?: OrganizationMembershipState;
-}
-
-export interface IIsMemberOptions extends ICacheOptions {
-  role?: GitHubTeamRole;
-}
-
-export interface IGetMembersOptions extends ICacheOptionsPageLimiter {
-  role?: GitHubTeamRole;
-}
-
-export enum GitHubTeamRole {
-  Member = 'member',
-  Maintainer = 'maintainer',
-}
-
-export interface ICrossOrganizationTeamMembership extends IPagedCrossOrganizationCacheOptions {
-  role?: GitHubTeamRole;
-}
-
-export interface ITeamMembershipOptions {
-  role?: GitHubTeamRole;
-}
-
-export interface IUpdateTeamMembershipOptions extends ICacheOptions {
-  role?: GitHubTeamRole;
-}
 
 interface IGetMembersParameters {
   team_slug: string;

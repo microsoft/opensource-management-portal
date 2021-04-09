@@ -7,8 +7,7 @@ const debug = require('debug')('startup');
 
 import path from 'path';
 
-import { IReposApplication } from '../app';
-import { IApplicationProfile } from '../transitional';
+import { IApplicationProfile, IReposApplication } from '../interfaces';
 
 export default async function initializeAlternateApps(config, app: IReposApplication, appName: string): Promise<IApplicationProfile> {
   const appPath = path.resolve(path.join(__dirname, '..', appName, '/'));

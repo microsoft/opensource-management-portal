@@ -3,7 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Account, ICachedEmployeeInformation, IUnlinkMailStatus, Operations, UnlinkPurpose } from '..';
+import { Operations } from '.';
+import { Account } from '../account';
+import { UnlinkPurpose, IUnlinkMailStatus, ICachedEmployeeInformation } from '../../interfaces';
 
 export async function sendTerminatedAccountMail(operations: Operations, account: Account, purpose: UnlinkPurpose, details: string[], errorsCount: number): Promise<IUnlinkMailStatus> {
   if (!operations.providers.mailProvider || !account.link || !account.link.corporateId) {

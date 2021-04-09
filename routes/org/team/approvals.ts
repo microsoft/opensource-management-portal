@@ -9,11 +9,12 @@ const router = express.Router();
 
 import RouteApproval from './approval';
 
-import { getProviders, IRequestTeams, ReposAppRequest } from '../../../transitional';
+import { getProviders } from '../../../transitional';
 import { wrapError } from '../../../utils';
 import { Team } from '../../../business';
 import { TeamJoinApprovalEntity } from '../../../entities/teamJoinApproval/teamJoinApproval';
 import { Account } from '../../../business';
+import { ReposAppRequest, IRequestTeams } from '../../../interfaces';
 
 // Not a great place for these, should move into independent files eventually...
 

@@ -28,7 +28,7 @@ export interface ITeamCacheProvider {
 
 export class TeamCacheProvider extends EntityMetadataBase implements ITeamCacheProvider {
   constructor(options: ITeamCacheCreateOptions) {
-    super(options);
+    super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }
 

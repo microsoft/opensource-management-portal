@@ -6,8 +6,7 @@
 import express from 'express';
 const router = express.Router();
 
-import { ReposAppRequest } from '../../transitional';
-import { IndividualContext } from '../../user';
+import { ReposAppRequest } from '../../interfaces';
 
 import { wrapError } from '../../utils';
 

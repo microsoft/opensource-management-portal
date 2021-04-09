@@ -14,71 +14,22 @@
 // to address key issues there by leveraging the entity provider setup and other
 // jobs.
 
-import { IProviders, MassagePermissionsToGitHubRepositoryPermission } from '../transitional';
-import { Organization, OrganizationMembershipRole } from './organization';
+import Debug from 'debug';
+
+import { MassagePermissionsToGitHubRepositoryPermission } from '../transitional';
 import { OrganizationMemberCacheEntity } from '../entities/organizationMemberCache/organizationMemberCache';
 import { Operations } from './operations';
-import { Team, GitHubTeamRole } from './team';
 import { TeamMemberCacheEntity } from '../entities/teamMemberCache/teamMemberCache';
-import { Repository, GitHubCollaboratorType } from './repository';
 import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 
-import Debug from 'debug';
 import { TeamCacheEntity } from '../entities/teamCache/teamCache';
 import { RepositoryTeamCacheEntity } from '../entities/repositoryTeamCache/repositoryTeamCache';
 import { RepositoryCacheEntity } from '../entities/repositoryCache/repositoryCache';
 import { RepositoryCollaboratorCacheEntity } from '../entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
+import { Repository } from '.';
+import { IProviders, IQueryCacheTeamMembership, QueryCacheOperation, GitHubTeamRole, IQueryCacheRepository, IQueryCacheTeam, IQueryCacheTeamRepositoryPermission, IQueryCacheRepositoryCollaborator, GitHubCollaboratorType, OrganizationMembershipRole, IQueryCacheOrganizationMembership } from '../interfaces';
 
 const debug = Debug('querycache');
-
-export enum QueryCacheOperation {
-  New = 'new',
-  Update = 'update',
-  Delete = 'delete',
-}
-
-export interface IQueryCacheTeamMembership {
-  team: Team;
-  role: GitHubTeamRole;
-  // debug aides:
-  cacheEntity: TeamMemberCacheEntity;
-  userId: string;
-  login: string;
-}
-
-export interface IQueryCacheTeam {
-  team: Team;
-  cacheEntity: TeamCacheEntity;
-}
-
-export interface IQueryCacheRepository {
-  repository: Repository;
-  cacheEntity: RepositoryCacheEntity;
-}
-
-export interface IQueryCacheOrganizationMembership {
-  organization: Organization;
-  role: OrganizationMembershipRole;
-  // debug aides:
-  // cacheEntity: OrganizationMemberCacheEntity;
-  userId: string;
-}
-
-export interface IQueryCacheRepositoryCollaborator {
-  repository: Repository;
-  affiliation: GitHubCollaboratorType;
-  permission: GitHubRepositoryPermission;
-  // debug aides:
-  cacheEntity: RepositoryCollaboratorCacheEntity;
-  userId: string;
-}
-
-export interface IQueryCacheTeamRepositoryPermission {
-  repository: Repository;
-  team: Team;
-  permission: GitHubRepositoryPermission;
-  cacheEntity: RepositoryTeamCacheEntity;
-}
 
 export default class QueryCache {
   private _providers: IProviders;

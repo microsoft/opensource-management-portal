@@ -4,11 +4,11 @@
 //
 
 import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvider';
-import { IEntityMetadata, EntityMetadataType } from '../../lib/entityMetadataProvider/entityMetadata';
+import { IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
 import { Type } from './type';
-import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresGetByID, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
+import { PostgresGetAllEntities, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
 
 export interface IBasicGitHubAppInstallation {
