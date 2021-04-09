@@ -9,7 +9,7 @@ const router = express.Router();
 
 import moment from 'moment';
 
-import { NoCacheNoBackground, ReposAppRequest } from '../../transitional';
+import { NoCacheNoBackground, ReposAppRequest } from '../../interfaces';
 import { wrapError } from '../../utils';
 
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {

@@ -7,12 +7,12 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { getProviders, NoCacheNoBackground, ReposAppRequest } from '../../transitional';
-import GitHubApplication, { IGitHubAppInstallation } from '../../business/application';
+import { getProviders } from '../../transitional';
 import { OrganizationSetting, IBasicGitHubAppInstallation, SpecialTeam } from '../../entities/organizationSettings/organizationSetting';
 import { IndividualContext } from '../../user';
-import { Operations } from '../../business';
-import { Organization, OrganizationMembershipRole, OrganizationMembershipState } from '../../business';
+import { Operations, Organization } from '../../business';
+import GitHubApplication from '../../business/application';
+import { ReposAppRequest, IGitHubAppInstallation, OrganizationMembershipRole, OrganizationMembershipState, NoCacheNoBackground } from '../../interfaces';
 
 router.use('/:appId', asyncHandler(async function (req: ReposAppRequest, res, next) {
   const providers = getProviders(req);

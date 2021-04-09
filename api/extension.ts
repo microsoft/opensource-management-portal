@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { getProviders, IProviders } from '../transitional';
+import { getProviders } from '../transitional';
 import { setIdentity } from '../middleware/business/authentication';
 import { AddLinkToRequest } from '../middleware/links';
 import { jsonError } from '../middleware';

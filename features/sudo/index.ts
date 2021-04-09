@@ -3,9 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import type { ICorporateLink, Organization } from '../../business';
+import type { Organization } from '../../business';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
-import { IProviders } from '../../transitional';
+import { ICorporateLink, IProviders } from '../../interfaces';
 
 export interface IOrganizationSudo {
   isSudoer(githubLogin: string, link?: ICorporateLink): Promise<boolean>;

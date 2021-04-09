@@ -3,14 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-/*eslint no-console: ["error", { allow: ["dir", "warn", "log"] }] */
+/*eslint no-console: ["error", { allow: ["dir", "warn"] }] */
 
 import _ from 'lodash';
 const debug = require('debug')('restapi');
 import { v4 as uuidV4 } from 'uuid';
 import moment from 'moment';
+
 import { RestLibrary } from '.';
-import { IAuthorizationHeaderValue, ErrorHelper, IDictionary } from '../../transitional';
+import { IAuthorizationHeaderValue } from '../../interfaces';
 import { sleep } from '../../utils';
 
 import cost from './cost';

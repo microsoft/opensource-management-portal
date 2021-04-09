@@ -4,7 +4,7 @@
 //
 
 import { IPortalSudo } from '../../../features';
-import { IProviders } from '../../../transitional';
+import { IProviders } from '../../../interfaces';
 
 export interface ICompanySpecificFeaturePortalSudo {
   tryCreateInstance: (providers: IProviders) => IPortalSudo;

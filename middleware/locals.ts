@@ -4,8 +4,9 @@
 //
 
 import os from 'os';
+import { ReposAppRequest } from '../interfaces';
 
-import { getProviders, ReposAppRequest } from '../transitional';
+import { getProviders } from '../transitional';
 
 export default function (req: ReposAppRequest, res, next) {
   const { config, viewServices } = getProviders(req);

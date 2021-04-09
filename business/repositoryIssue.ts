@@ -4,31 +4,10 @@
 //
 
 import { Repository } from './repository';
-import { IPurposefulGetAuthorizationHeader, ICacheOptions, IGetAuthorizationHeader, IOperationsInstance, throwIfNotGitHubCapable } from '../transitional';
 import { wrapError } from '../utils';
 import { AppPurpose } from '../github';
 import { CacheDefault, getMaxAgeSeconds } from '.';
-
-export enum GitHubIssueState {
-  Closed = 'closed',
-  Open = 'open',
-}
-
-export enum GitHubIssueQuery {
-  Closed = 'closed',
-  Open = 'open',
-  All = 'all',
-}
-
-export interface IIssueLabel {
-  id: number;
-  node_id: string;
-  // url: string;
-  name: string;
-  description?: string;
-  color?: string;
-  default?: boolean;
-}
+import { IOperationsInstance, IPurposefulGetAuthorizationHeader, GitHubIssueState, IIssueLabel, throwIfNotGitHubCapable, ICacheOptions, IGetAuthorizationHeader } from '../interfaces';
 
 export class RepositoryIssue {
   private _operations: IOperationsInstance;

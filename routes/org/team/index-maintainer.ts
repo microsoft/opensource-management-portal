@@ -5,7 +5,7 @@
 
 import express from 'express';
 
-import { ReposAppRequest } from '../../../transitional';
+import { ReposAppRequest } from '../../../interfaces';
 import { wrapError } from '../../../utils';
 const router = express.Router();
 

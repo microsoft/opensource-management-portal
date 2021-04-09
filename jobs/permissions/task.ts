@@ -8,9 +8,9 @@
 import { shuffle } from 'lodash';
 
 import { TeamPermission } from '../../business/teamPermission';
-import { IReposJob, IReposJobResult } from '../../app';
+import { IReposJob, IReposJobResult } from '../../interfaces';
 import AutomaticTeamsWebhookProcessor from '../../webhooks/tasks/automaticTeams';
-import { GitHubRepositoryPermission, RepositoryLockdownState, RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { sleep } from '../../utils';
 import { ErrorHelper } from '../../transitional';
 
@@ -27,7 +27,7 @@ const maxParallelism = 1;
 const delayBetweenSeconds = 1;
 
 export default async function permissionsRun({ providers }: IReposJob) : Promise<IReposJobResult> {
-  const { operations, repositoryMetadataProvider } = providers;
+  const { operations } = providers;
   for (const organization of shuffle(Array.from(operations.organizations.values()))) {
     console.log(`Reviewing permissions for all repos in ${organization.name}...`);
     try {

@@ -7,8 +7,9 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, UserAlertType, ErrorHelper, getProviders } from '../../transitional';
+import { ErrorHelper, getProviders } from '../../transitional';
 import { UserSettings } from '../../entities/userSettings';
+import { ReposAppRequest, UserAlertType } from '../../interfaces';
 
 export interface IRequestWithUserSettings extends ReposAppRequest {
   userSettings?: UserSettings;

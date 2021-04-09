@@ -4,11 +4,10 @@
 //
 
 import asyncHandler from 'express-async-handler';
+import { ReposAppRequest, AccountJsonFormat } from '../../interfaces';
 
 import { jsonError } from '../../middleware';
-import { getProviders, ReposAppRequest } from '../../transitional';
-
-import { AccountJsonFormat } from '../../business';
+import { getProviders } from '../../transitional';
 
 export default asyncHandler(async (req: ReposAppRequest, res, next) => {
   const providers = getProviders(req);

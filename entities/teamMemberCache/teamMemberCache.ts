@@ -8,7 +8,7 @@ import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataPro
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
 import { TeamMemberCacheFixedQueryByOrganizationId, TeamMemberCacheFixedQueryByUserId, TeamMemberCacheFixedQueryByTeamId, TeamMemberCacheFixedQueryByOrganizationIdAndUserId, TeamMemberCacheDeleteByOrganizationId } from '.';
-import { GitHubTeamRole } from '../../business/team';
+import { GitHubTeamRole } from '../../interfaces';
 import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';

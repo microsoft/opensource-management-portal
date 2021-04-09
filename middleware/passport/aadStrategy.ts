@@ -6,10 +6,10 @@
 const debug = require('debug')('startup');
 
 import { AuthorizationCode } from 'simple-oauth2';
-
-import { IProviders } from '../../transitional';
-
 import { OIDCStrategy } from 'passport-azure-ad';
+
+import { IProviders } from '../../interfaces';
+
 import { GraphUserType } from '../../lib/graphProvider';
 
 interface IPassportUserWithAAD {

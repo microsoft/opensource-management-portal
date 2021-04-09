@@ -7,18 +7,13 @@ import asyncHandler from 'express-async-handler';
 import express from 'express';
 import _ from 'lodash';
 
-import { IReposAppWithTeam, getProviders } from '../transitional';
-import { Operations } from '../business';
-import { Repository } from '../business';
-import { Team, GitHubRepositoryType } from '../business';
-import { RepositorySearch } from '../business/repoSearch';
-import QueryCache from '../business/queryCache';
-import { Organization } from '../business/organization';
-import { IPersonalizedUserAggregateRepositoryPermission } from '../business/graphManager';
-import { IRequestTeamPermissions } from '../middleware/github/teamPermissions';
-import { UserContext } from '../user/aggregate';
 import { daysInMilliseconds } from '../utils';
-import { TeamRepositoryPermission } from '../business/teamRepositoryPermission';
+import { Repository, IPersonalizedUserAggregateRepositoryPermission, TeamRepositoryPermission, Operations, Team, Organization, RepositorySearch } from '../business';
+import QueryCache from '../business/queryCache';
+import { GitHubRepositoryType, IReposAppWithTeam } from '../interfaces';
+import { IRequestTeamPermissions } from '../middleware/github/teamPermissions';
+import { getProviders } from '../transitional';
+import { UserContext } from '../user/aggregate';
 
 interface IGetReposAndOptionalTeamPermissionsResponse {
   reposData: Repository[];
@@ -178,7 +173,7 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: express
     teamsSubType,
     userRepos,
     graphManager: operations.graphManager,
-    repositoryMetadataProvider: operations.providers.repositoryMetadataProvider,
+    repositoryMetadataProvider: operations.repositoryMetadataProvider,
   });
 
   await search.search(page, req.query.sort as string);

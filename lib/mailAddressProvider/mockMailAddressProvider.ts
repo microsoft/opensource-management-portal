@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IMailAddressProvider } from ".";
+import { IMailAddressProvider } from '.';
 
 export default function createMailAddressProvider() {
   const upnToEmails = new Map();

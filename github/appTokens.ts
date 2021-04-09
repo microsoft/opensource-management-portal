@@ -4,12 +4,12 @@
 //
 
 import { request } from '@octokit/request';
-import { createAppAuth } from '@octokit/auth-app';
-import { AuthOptions, Authentication } from '@octokit/auth-app/dist-types/types';
+import { createAppAuth, InstallationAccessTokenAuthentication } from '@octokit/auth-app';
+import { AuthOptions, Authentication, AppAuthentication } from '@octokit/auth-app/dist-types/types';
 import { AuthInterface } from '@octokit/types';
 
 import { AppPurpose } from '.';
-import { IAuthorizationHeaderValue } from '../transitional';
+import { IAuthorizationHeaderValue } from '../interfaces';
 
 interface IInstallationToken {
   installationId: number;
@@ -58,8 +58,8 @@ export class GitHubAppTokens {
   }
 
   async getAppAuthenticationToken() {
-    const details = await this._appAuth({ type: 'app' });
-    const token = details.token;
+    const details = await this._appAuth({ type: 'app'});
+    const token = (details as AppAuthentication).token;
     return token;
   }
 
@@ -84,12 +84,12 @@ export class GitHubAppTokens {
     const requiredValidityPeriod = new Date(now.getTime() + ValidityOffsetAfterNowMilliseconds);
     const latestToken = this.getLatestValidToken(installationId, requiredValidityPeriod);
     if (latestToken) {
-      return { value: latestToken.headerValue, purpose: this.purpose };
+      return { value: latestToken.headerValue, purpose: this.purpose, installationId, organizationName, source: `Existing installation ID ${installationId} token for ${organizationName}` };
     }
     try {
       const requestedToken = await this.requestInstallationToken(installationId, organizationName);
       this.getInstallationTokens(installationId).push(requestedToken);
-      return { value: requestedToken.headerValue, purpose: this.purpose };
+      return { value: requestedToken.headerValue, purpose: this.purpose, installationId, organizationName, source: `New token for ${organizationName} organization via installation ID ${installationId}` };
     } catch (error) {
       console.warn(`Error retrieving installation token ID ${installationId} for organization ${organizationName}`);
       throw error;
@@ -101,7 +101,7 @@ export class GitHubAppTokens {
       const requested = new Date();
       const installationAppAuth = this.getOrCreateInstallationAuthFunction(installationId);
       const installationTokenDetails = await installationAppAuth({ type: 'installation' });
-      const installationToken = installationTokenDetails.token;
+      const installationToken = (installationTokenDetails as InstallationAccessTokenAuthentication).token;
       const headerValue = `token ${installationToken}`;
       const expiresFromDetails = (installationTokenDetails as any).expiresAt;
       const expires = expiresFromDetails ? new Date(expiresFromDetails) : (new Date(requested.getTime() + InstallationTokenLifetimeMilliseconds));

@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Team } from '../business/team';
-import { IProviders } from '../transitional';
+import { Team } from '../business';
+import { IProviders } from '../interfaces';
 
 export class GraphTeamSync {
   #team: Team;

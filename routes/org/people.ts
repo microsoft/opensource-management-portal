@@ -4,8 +4,9 @@
 //
 
 import express from 'express';
-import { ReposAppRequest } from '../../transitional';
 const router = express.Router();
+
+import { ReposAppRequest } from '../../interfaces';
 
 import RoutePeopleSearch from '../peopleSearch';
 

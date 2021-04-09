@@ -6,7 +6,8 @@
 import express from 'express';
 const router = express.Router();
 
-import { getProviders, ReposAppRequest } from '../transitional';
+import { getProviders } from '../transitional';
+import { ReposAppRequest } from '../interfaces';
 
 import RoutePeopleSearch from './peopleSearch';
 import MiddlewareSystemWidePermissions from '../middleware/github/systemWidePermissions';

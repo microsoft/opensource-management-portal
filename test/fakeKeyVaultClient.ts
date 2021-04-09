@@ -4,31 +4,34 @@
 //
 
 import { v4 as uuidV4 } from 'uuid';
+import { IDictionary } from '../interfaces';
 
 let storedKeys = new Map();
 
-function storeSecret(secretName, secretValue, tags) {
+function storeSecret(secretName: string, secretValue: string, tags: IDictionary<string>) {
   const version = uuidV4();
   const id = `https://fakekeyvault/secrets/${secretName}/${version}`;
   const secret = {
-    id: id,
+    id,
     value: secretValue,
-    tags: tags,
+    tags,
   };
   storedKeys.set(id, secret);
   return id;
 }
 
-function getSecret(secretId, callback) {
-  if (storedKeys.has(secretId)) {
-    return callback(null, storedKeys.get(secretId));
+function getSecret(vaultUri: string, secretId: string, secretVersion: string, callback) {
+  const id = `https://fakekeyvault/secrets/${secretId}/${secretVersion}`;
+  const val = storedKeys.get(id);
+  if (val !== undefined) {
+    return callback(null, val);
   }
   return callback(new Error('Secret not found.'));
 }
 
-module.exports = function createFake() {
+export default () => {
   return {
-    storeSecret: storeSecret,
-    getSecret: getSecret,
+    getSecret,
+    storeSecret,
   };
 };

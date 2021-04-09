@@ -6,9 +6,9 @@
 import express from 'express';
 const router = express.Router();
 
-import { ReposAppRequest } from '../transitional';
-
+import { ReposAppRequest } from '../interfaces';
 import lowercaser from '../middleware/lowercaser';
+
 import RouteReposPager from './reposPager';
 
 router.use(function (req: ReposAppRequest, res, next) {

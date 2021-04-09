@@ -9,11 +9,10 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IAppSession, getProviders } from '../transitional';
+import { ReposAppRequest, IAppSession, SupportedLinkType, ICorporateLink, LinkOperationSource } from '../interfaces';
+import { getProviders } from '../transitional';
 import { IndividualContext } from '../user';
 import { storeOriginalUrlAsReferrer, wrapError } from '../utils';
-import { ICorporateLink } from '../business/corporateLink';
-import { LinkOperationSource, SupportedLinkType } from '../business';
 
 import validator from 'validator';
 

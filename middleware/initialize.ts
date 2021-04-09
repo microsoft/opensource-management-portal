@@ -9,8 +9,8 @@ import path from 'path';
 
 import CosmosSessionStore from '../lib/cosmosSession';
 
-import { IProviders, InnerError, RedisOptions, IApplicationProfile } from '../transitional';
-import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../lib/linkProviders';
+import { RedisOptions } from '../transitional';
+import { createAndInitializeLinkProviderInstance } from '../lib/linkProviders';
 
 import { Operations } from '../business';
 import { createAndInitializeEntityMetadataProviderInstance, IEntityMetadataProvidersOptions } from '../lib/entityMetadataProvider';
@@ -64,7 +64,6 @@ import createCorporateContactProviderInstance from '../lib/corporateContactProvi
 import { IQueueProcessor } from '../lib/queues';
 import ServiceBusQueueProcessor from '../lib/queues/servicebus';
 import AzureQueuesProcessor from '../lib/queues/azurequeue';
-import { IReposApplication } from '../app';
 import { UserSettingsProvider } from '../entities/userSettings';
 import getCompanySpecificDeployment from './companySpecificDeployment';
 
@@ -74,6 +73,7 @@ import RouteSslify from './sslify';
 
 import MiddlewareIndex from '.';
 import { ICacheHelper } from '../lib/caching';
+import { IApplicationProfile, IProviders, IReposApplication, InnerError } from '../interfaces';
 
 const DefaultApplicationProfile: IApplicationProfile = {
   applicationName: 'GitHub Management Portal',
@@ -163,9 +163,8 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
     }
   }
   providers['_temp:nameToInstance'] = providerNameToInstance;
-  // providers.entityMetadata = await createAndInitializeEntityMetadataProviderInstance(app, config, providers);
+  providers.defaultEntityMetadataProvider = defaultProvider;
   providers.approvalProvider = await createAndInitializeApprovalProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.teamjoin) });
-  providers.repositoryMetadataProvider = await createAndInitializeRepositoryMetadataProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.repositorymetadata) });
   providers.tokenProvider = await createTokenProvider({ entityMetadataProvider: providerNameToInstance(config.entityProviders.tokens) });
   providers.localExtensionKeyProvider = await CreateLocalExtensionKeyProvider({ entityMetadataProvider: providerNameToInstance(config.entityProviders.localextensionkey) });
   providers.organizationMemberCacheProvider = await CreateOrganizationMemberCacheProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.organizationmembercache) });
@@ -235,7 +234,8 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
   }
 
   try {
-    const operations = new Operations({ providers, github: providers.github });
+    const repositoryMetadataProvider = await createAndInitializeRepositoryMetadataProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.repositorymetadata) });
+    const operations = new Operations({ providers, repositoryMetadataProvider, github: providers.github });
     await operations.initialize();
     app.set('operations', operations);
     providers.operations = operations;

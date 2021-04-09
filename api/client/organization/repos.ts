@@ -7,11 +7,12 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../../middleware';
-import { getProviders, IProviders, ReposAppRequest } from '../../../transitional';
+import { getProviders } from '../../../transitional';
 import { Repository } from '../../../business';
 
 import RouteRepo from './repo';
 import JsonPager from '../jsonPager';
+import { ReposAppRequest, IProviders } from '../../../interfaces';
 
 const router = express.Router();
 

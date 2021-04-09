@@ -5,7 +5,9 @@
 
 import { CosmosClient, Database, Container } from '@azure/cosmos';
 import { Store } from 'express-session';
-import { ErrorHelper, IAppSession } from '../../transitional';
+
+import { IAppSession } from '../../interfaces';
+import { ErrorHelper } from '../../transitional';
 
 export interface ICosmosSessionProviderOptions {
   endpoint: string;

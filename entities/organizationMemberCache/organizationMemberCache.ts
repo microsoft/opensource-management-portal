@@ -7,7 +7,7 @@ import { EntityField } from '../../lib/entityMetadataProvider/entityMetadataProv
 import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
-import { OrganizationMembershipRole } from '../../business/organization';
+import { OrganizationMembershipRole } from '../../interfaces';
 import { stringOrNumberAsString } from '../../utils';
 import { PostgresJsonEntityQuery, PostgresGetAllEntities, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';

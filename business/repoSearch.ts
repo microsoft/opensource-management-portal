@@ -6,29 +6,13 @@
 import querystring from 'querystring';
 
 import { Repository } from './repository';
-import { IPersonalizedUserAggregateRepositoryPermission, GraphManager } from './graphManager';
-import { IRequestTeamPermissions } from '../middleware/github/teamPermissions';
+import { IPersonalizedUserAggregateRepositoryPermission } from './graphManager';
 import { GitHubRepositoryPermission, RepositoryMetadataEntity, RepositoryLockdownState } from '../entities/repositoryMetadata/repositoryMetadata';
 import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repositoryMetadataProvider';
 import { TeamRepositoryPermission } from './teamRepositoryPermission';
+import { IRepositorySearchOptions } from '../interfaces';
 
 const defaultPageSize = 20; // GitHub.com seems to use a value around 33
-
-export interface IRepositorySearchOptions {
-  pageSize?: number;
-  phrase?: string;
-  type?: string;
-  language?: string;
-  userRepos?: IPersonalizedUserAggregateRepositoryPermission[];
-  teamsType?: string; // ?
-  teamsSubType?: string; // ?
-  specificTeamRepos?: TeamRepositoryPermission[];
-  specificTeamPermissions?: IRequestTeamPermissions;
-  graphManager?: GraphManager;
-  repositoryMetadataProvider?: IRepositoryMetadataProvider;
-  createdSince?: Date;
-  metadataType?: string;
-}
 
 export class RepositorySearch {
   repos: Repository[];

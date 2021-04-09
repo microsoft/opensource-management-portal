@@ -9,7 +9,7 @@ import asyncHandler from 'express-async-handler';
 import { AddRepositoryPermissionsToRequest, getContextualRepositoryPermissions } from '../../../../middleware/github/repoPermissions';
 import { jsonError } from '../../../../middleware';
 import getCompanySpecificDeployment from '../../../../middleware/companySpecificDeployment';
-import { ReposAppRequest } from '../../../../transitional';
+import { ReposAppRequest } from '../../../../interfaces';
 
 const router = express.Router();
 

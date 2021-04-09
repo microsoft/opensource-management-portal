@@ -11,8 +11,7 @@ import { Operations, Organization, IAdministratorBasics, IGitHubOrganizationResp
 import { requireJson } from '../../utils';
 import { OrganizationMember } from '../../business/organizationMember';
 import { IReportsContext } from './task';
-import { ICorporateLink } from '../../business/corporateLink';
-import { NoCacheNoBackground } from '../../transitional';
+import { ICorporateLink, NoCacheNoBackground } from '../../interfaces';
 
 const definitions = requireJson('jobs/reports/organizationDefinitions.json');
 

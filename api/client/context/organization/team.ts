@@ -6,14 +6,14 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { ITeamMembershipRoleState, OrganizationMembershipState } from '../../../../business';
 import { TeamJoinApprovalEntity } from '../../../../entities/teamJoinApproval/teamJoinApproval';
+import { ReposAppRequest, OrganizationMembershipState, ITeamMembershipRoleState } from '../../../../interfaces';
 import { jsonError } from '../../../../middleware';
 import { AddTeamMembershipToRequest, AddTeamPermissionsToRequest, getContextualTeam, getTeamMembershipFromRequest, getTeamPermissionsFromRequest } from '../../../../middleware/github/teamPermissions';
 import { submitTeamJoinRequest } from '../../../../routes/org/team';
 import { postActionDecision, TeamApprovalDecision } from '../../../../routes/org/team/approval';
 import { PermissionWorkflowEngine } from '../../../../routes/org/team/approvals';
-import { getProviders, ReposAppRequest } from '../../../../transitional';
+import { getProviders } from '../../../../transitional';
 import { IndividualContext } from '../../../../user';
 
 const router = express.Router();

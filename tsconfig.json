@@ -14,10 +14,13 @@
       "es2020"
     ],
     "types": [
-      "mocha"
+      "jest"
     ]
   },
-  "exclude": [],
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ],
   "include": [
     "./*.ts",
     "./api/**/*",

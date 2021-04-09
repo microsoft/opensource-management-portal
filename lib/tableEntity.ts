@@ -5,7 +5,9 @@
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-const entityGenerator = require('azure-storage').TableUtilities.entityGenerator;
+import { TableUtilities } from 'azure-storage';
+
+const entityGenerator = TableUtilities.entityGenerator;
 
 function reduceEntity(instance) {
   if (instance === undefined || instance === null) {

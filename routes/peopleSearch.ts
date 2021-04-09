@@ -7,11 +7,9 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { RequestWithSystemwidePermissions, RequestTeamMemberAddType, getProviders } from '../transitional';
-
+import { getProviders } from '../transitional';
+import { RequestWithSystemwidePermissions, RequestTeamMemberAddType } from '../interfaces';
 import { ensureAllLinksInMemory, getAllLinksFromRequest } from '../middleware/business/allLinks';
-
-import lowercaser from '../middleware/lowercaser';
 
 import { Operations, ICrossOrganizationMembersResult } from '../business/operations';
 import { MemberSearch } from '../business';
@@ -19,6 +17,8 @@ import { Team } from '../business';
 import { TeamMember } from '../business';
 import { OrganizationMember } from '../business';
 import { Organization } from '../business';
+
+import lowercaser from '../middleware/lowercaser';
 
 interface IPeopleSearchRequest extends RequestWithSystemwidePermissions {
   organization?: any;

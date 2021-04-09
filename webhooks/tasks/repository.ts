@@ -5,12 +5,13 @@
 
 // REPOSITORY created or updated
 
-/*eslint no-console: ["error", { allow: ["dir", "log", "warn"] }] */
+/*eslint no-console: ["error", { allow: ["dir", "log"] }] */
 
 import { WebhookProcessor } from "../organizationProcessor";
 import { Operations } from "../../business";
 import { Organization } from "../../business";
 import NewRepositoryLockdownSystem from "../../features/newRepositoryLockdown";
+import { getRepositoryMetadataProvider } from "../../interfaces";
 
 export default class RepositoryWebhookProcessor implements WebhookProcessor {
   filter(data: any) {
@@ -98,7 +99,7 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
     if (isNewOrTransferred && event.sender.login && event.sender.id && organization.isNewRepositoryLockdownSystemEnabled()) {
       try {
         const repository = organization.repository(event.repository.name, event.repository);
-        const repositoryMetadataProvider = operations.providers.repositoryMetadataProvider;
+        const repositoryMetadataProvider = getRepositoryMetadataProvider(organization.operations);
         const lockdownSystem = new NewRepositoryLockdownSystem({ operations, organization, repository, repositoryMetadataProvider });
         const wasLockedDown = await lockdownSystem.lockdownIfNecessary(action, event.sender.login, event.sender.id, transferSourceLogin);
         console.log(wasLockedDown ?

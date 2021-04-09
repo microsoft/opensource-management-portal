@@ -3,14 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { v4 } from 'uuid';
+
 import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvider';
-import { IEntityMetadata, EntityMetadataType } from '../../lib/entityMetadataProvider/entityMetadata';
+import { IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
 import { Type } from './type';
-import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresGetByID, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
-import { IDictionary } from '../../transitional';
-import { v4 } from 'uuid';
+import { PostgresJsonEntityQuery, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
+import { IDictionary } from '../../interfaces';
 import { AuditLogSource } from '.';
 import { stringOrNumberAsString } from '../../utils';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';

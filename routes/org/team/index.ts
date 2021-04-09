@@ -9,16 +9,9 @@ const router = express.Router();
 
 import throat from 'throat';
 
-import { ReposAppRequest, IProviders, UserAlertType, getProviders } from '../../../transitional';
+import { getProviders } from '../../../transitional';
 import { wrapError } from '../../../utils';
-import { ICorporateLink } from '../../../business';
-import { Team, GitHubRepositoryType, ITeamMembershipRoleState, GitHubTeamRole } from '../../../business';
-import { Organization } from '../../../business';
-import { Operations } from '../../../business';
 import { TeamJoinApprovalEntity } from '../../../entities/teamJoinApproval/teamJoinApproval';
-import { AddTeamPermissionsToRequest, IRequestTeamPermissions } from '../../../middleware/github/teamPermissions';
-import { AddOrganizationPermissionsToRequest, GetOrganizationPermissionsFromRequest } from '../../../middleware/github/orgPermissions';
-import { TeamMember } from '../../../business';
 import SelfServiceTeamMemberToMaintainerUpgrades from '../../../features/teamMemberToMaintainerUpgrade';
 import RouteMembers from './members';
 import RouteReposPager from '../../reposPager';
@@ -30,8 +23,11 @@ import RouteLeave from './leave';
 import lowercaser from '../../../middleware/lowercaser';
 
 import RouteMaintainer from './index-maintainer';
-import { Repository } from '../../../business';
+import { Operations, Organization, Repository, Team, TeamMember } from '../../../business';
 import { IndividualContext } from '../../../user';
+import { ReposAppRequest, GitHubTeamRole, ITeamMembershipRoleState, UserAlertType, IProviders, ICorporateLink, GitHubRepositoryType } from '../../../interfaces';
+import { AddOrganizationPermissionsToRequest, GetOrganizationPermissionsFromRequest } from '../../../middleware/github/orgPermissions';
+import { AddTeamPermissionsToRequest, IRequestTeamPermissions } from '../../../middleware/github/teamPermissions';
 
 const FirstPageMembersCap = 25;
 const ParallelMailAddressLookups = 4;

@@ -34,11 +34,14 @@ export interface IEntityMetadataBaseOptions {
 }
 
 export abstract class EntityMetadataBase {
+  private _entityType: EntityMetadataType = null;
+
   protected _entities: IEntityMetadataProvider;
   protected _serialize: Map<EntityMetadataType, IEntityMetadataSerializationHelper>;
   protected _deserialize: Map<EntityMetadataType, IEntityMetadataDeserializationHelper>;
 
-  constructor(options: IEntityMetadataBaseOptions) {
+  constructor(type: EntityMetadataType, options: IEntityMetadataBaseOptions) {
+    this._entityType = type;
     this._entities = options.entityMetadataProvider;
   }
 
@@ -82,5 +85,9 @@ export abstract class EntityMetadataBase {
       }
       this._deserialize.set(type, this._entities.getDeserializationHelper(type));
     }
+  }
+
+  static GetTypeFromProvider(provider: EntityMetadataBase | any): EntityMetadataType {
+    return provider?._entityType;
   }
 }

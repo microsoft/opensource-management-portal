@@ -111,7 +111,7 @@ export interface IUserSettingsProvider {
 
 export class UserSettingsProvider extends EntityMetadataBase implements IUserSettingsProvider {
   constructor(options: IUserSettingsProviderCreateOptions) {
-    super(options);
+    super(thisProviderType, options);
   }
 
   async initialize() {}

@@ -7,9 +7,10 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 
 import moment from 'moment';
+import { ReposAppRequest } from '../interfaces';
 
 import { jsonError } from '../middleware';
-import { getProviders, ReposAppRequest } from '../transitional';
+import { getProviders } from '../transitional';
 
 import OrganizationWebhookProcessor from '../webhooks/organizationProcessor';
 

@@ -4,33 +4,14 @@
 //
 
 import _ from 'lodash';
+import { IProviders, ICorporateLink, RequestTeamMemberAddType, IMemberSearchOptions, ICrossOrganizationMembershipByOrganization } from '../interfaces';
 
-import { ICorporateLink } from './corporateLink';
 import { OrganizationMember } from './organizationMember';
-import { ICrossOrganizationMembersResult, ICrossOrganizationMembershipBasics, ICrossOrganizationMembershipByOrganization } from './operations';
-import { IProviders, RequestTeamMemberAddType } from '../transitional';
-import { TeamMember } from './teamMember';
 
 const earlyProfileFetchTypes = new Set(['former', 'active', 'unknownAccount']);
 
 const defaultPageSize = 33; // GitHub.com seems to use a value around 33
 const earlyFetchPageBreak = 200;
-
-export interface IMemberSearchOptions {
-  providers: IProviders;
-
-  organizationMembers?: OrganizationMember[];
-  crossOrganizationMembers?: ICrossOrganizationMembersResult;
-
-  isOrganizationScoped?: boolean;
-  links?: ICorporateLink[];
-  pageSize?: number;
-  phrase?: string;
-  type?: string; // TODO: should be an enum eventually
-  orgId?: string | number;
-  team2AddType?: RequestTeamMemberAddType;
-  teamMembers?: TeamMember[];
-}
 
 export class MemberSearch {
   #providers: IProviders;

@@ -14,7 +14,7 @@ export interface ITeamJoinApprovalProviderOptions extends IEntityMetadataBaseOpt
 
 export class TeamJoinApprovalProvider extends EntityMetadataBase implements IApprovalProvider {
   constructor(options: ITeamJoinApprovalProviderOptions) {
-    super(options);
+    super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }
 

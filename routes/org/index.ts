@@ -7,12 +7,12 @@ import express, { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders, getProviders } from '../../transitional';
-import { Team } from '../../business/team';
-import { IRequestOrganizationPermissions, AddOrganizationPermissionsToRequest } from '../../middleware/github/orgPermissions';
-import { OrganizationMembershipState } from '../../business/organization';
+import { getProviders } from '../../transitional';
 import { IAggregateUserSummary } from '../../user/aggregate';
 import { TeamJoinApprovalEntity } from '../../entities/teamJoinApproval/teamJoinApproval';
+import { Team } from '../../business';
+import { ReposAppRequest, OrganizationMembershipState } from '../../interfaces';
+import { IRequestOrganizationPermissions, AddOrganizationPermissionsToRequest } from '../../middleware/github/orgPermissions';
 
 import RouteRepos from './repos';
 import RouteTeams from './teams';

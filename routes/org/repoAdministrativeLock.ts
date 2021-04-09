@@ -9,11 +9,12 @@ const router = express.Router();
 
 import _ from 'lodash';
 
-import { ReposAppRequest, UserAlertType, getProviders } from '../../transitional';
+import { getProviders } from '../../transitional';
 import { Repository } from '../../business/repository';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { Organization } from '../../business/organization';
 import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
+import { getRepositoryMetadataProvider, ReposAppRequest, UserAlertType } from '../../interfaces';
 
 router.use('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
   const organization = req.organization as Organization;
@@ -55,7 +56,7 @@ router.post('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
   if (!actionDelete && !actionUnlock) {
     return next(new Error('No action selected'));
   }
-  const repositoryMetadataProvider = providers.repositoryMetadataProvider;
+  const repositoryMetadataProvider = getRepositoryMetadataProvider(operations);
   const organization = repository.organization;
   const lockdownSystem = new NewRepositoryLockdownSystem({ operations, organization, repository, repositoryMetadataProvider });
   if (actionUnlock) {

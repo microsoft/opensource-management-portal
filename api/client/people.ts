@@ -6,9 +6,9 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { corporateLinkToJson, ICorporateLink, ICrossOrganizationMembersResult, MemberSearch, Operations, Organization } from '../../business';
+import { corporateLinkToJson } from '../../business';
 import { jsonError } from '../../middleware';
-import { ReposAppRequest, IProviders } from '../../transitional';
+import { ICorporateLink, ReposAppRequest } from '../../interfaces';
 import JsonPager from './jsonPager';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 

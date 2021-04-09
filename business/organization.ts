@@ -4,11 +4,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-/*eslint no-console: ["error", { allow: ["warn", "log"] }] */
+/*eslint no-console: ["error", { allow: ["warn"] }] */
 
 import _ from 'lodash';
 
-import { IReposError, ICacheOptions, IPagedCacheOptions, IGetAuthorizationHeader, IPurposefulGetAuthorizationHeader, IReposRestRedisCacheCost, IAuthorizationHeaderValue, ErrorHelper, CreateError, NoCacheNoBackground, IOperationsUrls, IOperationsInstance, CoreCapability, operationsIsCapable, operationsWithCapability, throwIfNotCapable, throwIfNotGitHubCapable, IOperationsLockdownFeatureFlags, IOperationsProviders, IOperationsLegalEntities, IOperationsServiceAccounts, IOperationsLinks, IOperationsCentralOperationsToken, IOperationsTemplates } from '../transitional';
 import * as common from './common';
 import { OrganizationMember } from './organizationMember';
 import { Team } from './team';
@@ -19,107 +18,11 @@ import { StripGitHubEntity } from '../lib/github/restApi';
 import { GitHubResponseType } from '../lib/github/endpointEntities';
 import { AppPurpose } from '../github';
 import { OrganizationSetting, SpecialTeam } from '../entities/organizationSettings/organizationSetting';
-import { ICorporateLink } from './corporateLink';
 import { createOrganizationSudoInstance, IOrganizationSudo } from '../features';
-import { CacheDefault, DefaultPageSize, getMaxAgeSeconds, getPageSize, OperationsCore } from './operations/core';
-
-export interface IAccountBasics {
-  id: number;
-  login: string;
-  avatar_url: string;
-  created_at: any;
-  updated_at: any;
-}
-
-export interface ICreateRepositoryResult {
-  response: any;
-  repository: Repository;
-}
-
-export enum OrganizationMembershipState {
-  Active = 'active',
-  Pending = 'pending',
-}
-
-export enum OrganizationMembershipRole {
-  Member = 'member',
-  Admin = 'admin',
-}
-
-export enum OrganizationMembershipRoleQuery {
-  Member = 'member',
-  Admin = 'admin',
-  All = 'all',
-}
-
-export enum OrganizationMembershipTwoFactorFilter {
-  AllMembers = 'all',
-  TwoFactorOff = '2fa_disabled',
-}
-
-export enum GitHubAuditLogInclude {
-  Web = 'web',
-  Git = 'git',
-  All = 'all',
-}
-
-export interface GitHubAuditLogEntry {
-  '@timestamp': number;
-  action: string;
-  actor: string;
-  created_at: number;
-  event: string;
-  head_branch?: string;
-  head_sha?: string;
-  name?: string;
-  org: string;
-  repo: string;
-  started_at: string;
-  trigger_id?: string;
-  workflow_id?: number;
-  workflow_run_id?: number;
-  user?: string;
-}
-
-export interface GitHubAuditLogFormattedEntryMvp {
-  pretty: string;
-  raw: GitHubAuditLogEntry;
-}
-
-export enum GitHubAuditLogOrder {
-  Ascending = 'asc',
-  Descending = 'desc',
-}
-
-export interface IGetOrganizationAuditLogOptions extends ICacheOptions {
-  phrase?: string;
-  include?: GitHubAuditLogInclude;
-  after?: string;
-  before?: string;
-  order?: GitHubAuditLogOrder;
-  per_page?: number;
-}
-
-export interface IGetOrganizationMembersOptions extends IPagedCacheOptions {
-  filter?: OrganizationMembershipTwoFactorFilter;
-  role?: OrganizationMembershipRoleQuery;
-}
-
-export interface IAddOrganizationMembershipOptions extends ICacheOptions {
-  role?: OrganizationMembershipRole;
-}
-
-export interface IOrganizationMemberPair {
-  member?: OrganizationMember;
-  link?: ICorporateLink;
-}
-
-export interface IOrganizationMembership {
-  state: OrganizationMembershipState;
-  role: OrganizationMembershipRole;
-  organization: any;
-  user: any;
-}
+import { CacheDefault, getMaxAgeSeconds, getPageSize, OperationsCore } from './operations/core';
+import { CoreCapability, GitHubAuditLogEntry, IAccountBasics, IAddOrganizationMembershipOptions, IAuthorizationHeaderValue, ICacheOptions, ICorporateLink, ICreateRepositoryResult, IGetAuthorizationHeader, IGetOrganizationAuditLogOptions, IGetOrganizationMembersOptions, IOperationsCentralOperationsToken, IOperationsInstance, IOperationsLegalEntities, IOperationsLinks, IOperationsLockdownFeatureFlags, IOperationsProviders, IOperationsServiceAccounts, IOperationsTemplates, IOperationsUrls, IOrganizationMemberPair, IOrganizationMembership, IPagedCacheOptions, IPurposefulGetAuthorizationHeader, IReposError, IReposRestRedisCacheCost, NoCacheNoBackground, operationsIsCapable, operationsWithCapability, OrganizationMembershipRoleQuery, OrganizationMembershipTwoFactorFilter, throwIfNotCapable, throwIfNotGitHubCapable } from '../interfaces';
+import { CreateError, ErrorHelper } from '../transitional';
+import { jsonError } from '../middleware';
 
 interface IGetMembersParameters {
   org: string;
@@ -214,7 +117,7 @@ export class Organization {
     this._name = settings.organizationName || name;
     this._operations = operations;
     this._settings = settings;
-    this._usesGitHubApp = hasDynamicSettings;
+    this._usesGitHubApp = hasDynamicSettings; // NOTE: technically not entirely correct: a non-dynamic setting app can still use GitHub Apps...
     this._getAuthorizationHeader = getAuthorizationHeader;
     this._getSpecificAuthorizationHeader = getSpecificAuthorizationHeader;
     if (settings && settings.organizationId) {
@@ -222,8 +125,8 @@ export class Organization {
     }
     if (operationsIsCapable<IOperationsUrls>(operations, CoreCapability.Urls)) {
       this._baseUrl = `${operations.baseUrl}${this.name}/`;
-      this._nativeUrl = `https://github.com/${this.name}/`;
-      this._nativeManagementUrl = `https://github.com/orgs/${this.name}/`;
+      this._nativeUrl = `${operations.nativeUrl}${this.name}/`;
+      this._nativeManagementUrl = `${operations.nativeManagementUrl}organizations/${this.name}/`;
     }
     const withProviders = operations as OperationsCore;
     if (withProviders?.providers) {
@@ -245,7 +148,7 @@ export class Organization {
 
   get absoluteBaseUrl(): string {
     const operations = throwIfNotCapable<IOperationsUrls>(this._operations, CoreCapability.Urls);
-    return operations.absoluteBaseUrl + this.name + '/';
+    return operations.absoluteBaseUrl + operations.organizationsDeliminator + this.name + '/';
   }
 
   get name(): string {
@@ -258,6 +161,10 @@ export class Organization {
 
   get usesApp(): boolean {
     return this._usesGitHubApp;
+  }
+
+  get operations() {
+    return this._operations;
   }
 
   asClientJson() {
@@ -735,7 +642,12 @@ export class Organization {
     const operations = throwIfNotGitHubCapable(this._operations);
     // LEARN: what happens if this is a bot account?
     try {
-      const entity = await operations.github.post(this.authorize(AppPurpose.Operations), 'users.getAuthenticated', {});
+      const header = this.authorize(AppPurpose.Operations);
+      const value = await header();
+      if (value?.installationId) {
+        throw jsonError(`GitHub Apps are being used`, 400);
+      }
+      const entity = await operations.github.post(header, 'users.getAuthenticated', {});
       return entity as IAccountBasics;
     } catch (error) {
       throw wrapError(error, 'Could not get details about the authenticated account');

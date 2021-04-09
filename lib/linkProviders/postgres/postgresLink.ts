@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ICorporateLink } from '../../../business/corporateLink';
+import { ICorporateLink } from '../../../interfaces';
 import { PostgresLinkProvider } from './postgresLinkProvider';
 
 export interface IInternalPostgresLinkOptions {

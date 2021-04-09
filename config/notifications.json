@@ -2,5 +2,7 @@
   "linksMailAddress": "env://GITHUB_NOTIFICATIONS_LINK_MAIL",
   "reposMailAddress": "env://GITHUB_NOTIFICATIONS_REPOS_MAIL",
   "reposNotificationExcludeForUsers": "env://GITHUB_NOTIFICATIONS_REPOS_EXCLUDE_FOR_USERS",
-  "reposNotificationExcludeManagerForUserIds": "env://GITHUB_NOTIFICATIONS_REPOS_EXCLUDE_MANAGER_FOR_IDS"
+  "reposNotificationExcludeManagerForUserIds": "env://GITHUB_NOTIFICATIONS_REPOS_EXCLUDE_MANAGER_FOR_IDS",
+
+  "skipDedicatedNewRepoMail": "env://SKIP_NEW_REPO_NOTIFICATIONS?trueIf=1"
 }

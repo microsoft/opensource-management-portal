@@ -30,7 +30,7 @@ export interface IRepositoryCollaboratorCacheProvider {
 
 export class RepositoryCollaboratorCacheProvider extends EntityMetadataBase implements IRepositoryCollaboratorCacheProvider {
   constructor(options: IRepositoryCollaboratorCacheCreateOptions) {
-    super(options);
+    super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }
 

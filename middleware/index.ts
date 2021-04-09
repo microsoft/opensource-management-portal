@@ -16,7 +16,7 @@ export * from './links';
 export * from './business';
 export * from './jsonError';
 
-import { hasStaticReactClientApp, IProviders, stripDistFolderName } from '../transitional';
+import { hasStaticReactClientApp, stripDistFolderName } from '../transitional';
 import { StaticClientApp } from './staticClientApp';
 import { StaticReactClientApp } from './staticClientApp2';
 import { StaticSiteFavIcon, StaticSiteAssets } from './staticSiteAssets';
@@ -33,6 +33,7 @@ import RouteScrubbedUrl from './scrubbedUrl';
 import RouteLogger from './logger';
 import RouteLocals from './locals';
 import RoutePassport from './passport-routes';
+import { IProviders } from '../interfaces';
 
 export default function initMiddleware(app, express, config, dirname, initializationError) {
   config = config || {};

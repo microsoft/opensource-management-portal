@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../../middleware/jsonError';
-import { ReposAppRequest } from '../../../transitional';
+import { ReposAppRequest } from '../../../interfaces';
 
 const router = express.Router();
 

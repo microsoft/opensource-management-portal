@@ -7,9 +7,10 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, UserAlertType, getProviders } from '../../transitional';
+import { getProviders } from '../../transitional';
 import { wrapError } from '../../utils';
-import { Organization, OrganizationMembershipState } from '../../business/organization';
+import { Organization } from '../../business';
+import { OrganizationMembershipState, ReposAppRequest, UserAlertType } from '../../interfaces';
 
 interface IOrganizationMembershipState {
   state: OrganizationMembershipState;
