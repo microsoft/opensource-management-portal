@@ -5,9 +5,9 @@
 
 // the changes in Further-UI-Improvements did not merge well, need to review by hand
 
-import express from 'express';
+import express, { Router } from 'express';
 import asyncHandler from 'express-async-handler';
-const router = express.Router();
+const router: Router = Router();
 
 import querystring from 'querystring';
 
