@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express, { Router } from 'express';
+import express, { Router, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
@@ -19,7 +19,7 @@ import { PersonalAccessToken } from '../entities/token/token';
 
 const thisApiScopeName = 'extension';
 
-interface IExtensionResponse extends express.Response {
+interface IExtensionResponse extends Response {
   localKey?: any;
 }
 
