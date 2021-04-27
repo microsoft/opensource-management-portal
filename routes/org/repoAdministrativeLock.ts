@@ -4,7 +4,7 @@
 //
 
 import asyncHandler from 'express-async-handler';
-import express, { Router } from 'express';
+import { Router } from 'express';
 const router: Router = Router();
 
 import _ from 'lodash';

@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express, { Router, Response } from 'express';
+import { Router, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 

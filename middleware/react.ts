@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express, { Response } from 'express';
+import { Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 

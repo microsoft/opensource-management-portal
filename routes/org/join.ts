@@ -5,7 +5,7 @@
 
 // the changes in Further-UI-Improvements did not merge well, need to review by hand
 
-import express, { Router, Response, NextFunction } from 'express';
+import { Router, Response, NextFunction } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 

@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express, { Router } from 'express';
+import { Router } from 'express';
 
 import { jsonError } from '../../middleware/jsonError';
 import { IAppSession, ReposAppRequest } from '../../interfaces';

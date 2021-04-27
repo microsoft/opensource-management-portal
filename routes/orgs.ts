@@ -5,7 +5,7 @@
 
 import querystring from 'querystring';
 
-import express, { Router } from 'express';
+import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 

@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express, { Router, Request } from 'express';
+import { Router, Request } from 'express';
 const router: Router = Router();
 
 import { IAppSession, ReposAppRequest } from '../interfaces';
