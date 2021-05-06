@@ -6,8 +6,7 @@
 import azure from 'azure-storage';
 import crypto from 'crypto';
 
-import {
-  IObjectWithDefinedKeys } from '../../lib/entityMetadataProvider/entityMetadataProvider';
+import { EntityField, IObjectWithDefinedKeys } from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { MetadataMappingDefinition, EntityMetadataMappings } from '../../lib/entityMetadataProvider/declarations';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
@@ -16,6 +15,7 @@ import { QueryTokensByCorporateID } from './tokenProvider';
 import { Type } from './type';
 import { TableSettings } from '../../lib/entityMetadataProvider/table';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { PostgresConfiguration, PostgresJsonEntityQuery, PostgresSettings } from '../../lib/entityMetadataProvider/postgres';
 
 const type = Type;
 
@@ -174,6 +174,41 @@ EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [
   Field.created,
   Field.expires,
 ]);
+
+PostgresConfiguration.SetDefaultTableName(type, 'usersettings');
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'apiKey');
+PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
+  [Field.token, Field.token],
+  [Field.active, Field.active],
+  [Field.corporateId, Field.corporateId],
+  [Field.created, Field.created],
+  [Field.description, Field.description],
+  [Field.source, Field.source],
+  [Field.active, Field.active],
+  [Field.organizationScopes, Field.organizationScopes],
+  [Field.expires, new Date(Field.expires)],
+  [Field.warning, Field.warning],
+  [Field.scopes, Field.scopes],
+]));
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
+  const entityTypeColumn = mapMetadataPropertiesToFields[EntityField.Type];
+  const entityTypeValue = getEntityTypeColumnValue(type);
+  switch (query.fixedQueryType) {
+    case FixedQueryType.TokensByCorporateId:
+      const { corporateId } = query as QueryTokensByCorporateID;
+      if (!corporateId) {
+        throw new Error('corporateId required');
+      }
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+        corporateId: corporateId,
+      }, Field.created.toLowerCase(), true);
+    case FixedQueryType.TokensGetAll:
+      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {}, Field.created.toLowerCase(), true);
+    default:
+      throw new Error(`The fixed query type ${type} is not supported currently by this provider, or is of an unknown type`);
+  }
+});
+
 EntityMetadataMappings.Register(type, TableSettings.TableDefaultTableName, 'settings');
 EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKey, 'apiKey');
 EntityMetadataMappings.Register(type, TableSettings.TableDefaultRowKeyPrefix, 'apiKey');
