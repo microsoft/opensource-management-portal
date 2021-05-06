@@ -188,4 +188,57 @@ CREATE INDEX IF NOT EXISTS voting_electionid ON voting ((metadata->>'electionid'
 CREATE INDEX IF NOT EXISTS voting_results ON voting ((metadata->>'electionid'), (metadata->>'nominationid'));
 CREATE INDEX IF NOT EXISTS voting_gin ON voting USING gin (metadata jsonb_path_ops);
 
+CREATE TABLE IF NOT EXISTS repositories (
+  entitytype text,
+  entityid text,
+  metadata jsonb,
+
+  repositoryid bigint,
+  organizationid bigint,
+  cached timestamptz,
+  name text,
+  organizationlogin text,
+  fullname text,
+  private boolean,
+  visibility text,
+  fork boolean,
+  archived boolean,
+  disabled boolean,
+  pushedat timestamptz,
+  createdat timestamptz,
+  updatedat timestamptz,
+  description text,
+  homepage text,
+  language text,
+  forkscount integer,
+  stargazerscount integer,
+  watcherscount integer,
+  size bigint,
+  defaultbranch text,
+  openissuescount integer,
+  topics text[],
+  hasissues boolean,
+  hasprojects boolean,
+  haswiki boolean,
+  haspages boolean,
+  hasdownloads boolean,
+  subscriberscount integer,
+  networkcount integer,
+  license text,
+  parentid bigint,
+  parentname text,
+  parentorganizationname text,
+  parentorganizationid bigint,
+
+  PRIMARY KEY(entitytype, entityid)
+);
+
+CREATE INDEX IF NOT EXISTS repositories_byid ON repositories (repositoryid);
+CREATE INDEX IF NOT EXISTS repositories_by_org ON repositories (organizationid);
+CREATE INDEX IF NOT EXISTS repositories_byidpriv ON repositories (repositoryid, private);
+CREATE INDEX IF NOT EXISTS repositories_byidvis ON repositories (repositoryid, visibility);
+CREATE INDEX IF NOT EXISTS repositories_by_created ON repositories (createdat);
+CREATE INDEX IF NOT EXISTS repositories_by_updated ON repositories (updatedat);
+CREATE INDEX IF NOT EXISTS repositories_by_pushed ON repositories (pushedat);
+
 COMMIT;

@@ -13,6 +13,7 @@ import { IPurposefulGetAuthorizationHeader, IOperationsInstance, ICacheOptions, 
 import { IListPullsParameters, GitHubPullRequestState } from '../lib/github/collections';
 
 import { wrapError } from '../utils';
+import { RepositoryActions } from './repositoryActions';
 
 interface IRepositoryMoments {
   created?: moment.Moment;
@@ -248,6 +249,10 @@ export class Repository {
       }
     }
     return false;
+  }
+
+  get actions() {
+    return new RepositoryActions(this, this._getAuthorizationHeader, this._getSpecificAuthorizationHeader, this._operations);
   }
 
   async getDetails(options?: ICacheOptions): Promise<any> {

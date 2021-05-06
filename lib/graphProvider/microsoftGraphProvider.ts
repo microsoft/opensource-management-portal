@@ -216,6 +216,31 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     });
   }
 
+
+  async getDirectReports(corporateIdOrUpn: string): Promise<IGraphEntry[]> {
+    let response = await this.lookupInGraph([
+      'users',
+      corporateIdOrUpn,
+      'directReports',
+    ], {
+      selectValues: 'id,displayName,mailNickname,mail,userPrincipalName,userType,jobTitle',
+    }) as any[];
+    if (!response.filter && (response as any).value?.filter) {
+      response = (response as any).value;
+    }
+    return response.filter(e => e.userType !== GraphUserType.Guest).map(entry => {
+      return {
+        id: entry.id,
+        mailNickname: entry.mailNickname,
+        displayName: entry.displayName,
+        mail: entry.mail,
+        givenName: entry.givenName,
+        userPrincipalName: entry.userPrincipalName,
+        jobTitle: entry.jobTitle,
+      }
+    });
+  }
+
   async getUsersByMailNicknames(mailNicknames: string[]): Promise<IGraphEntry[]> {
     let response = await this.lookupInGraph([
       'users',
@@ -328,7 +353,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
 
   private async getUserByIdLookup(aadId: string, token: string, subResource: string): Promise<any> {
     const extraPath = subResource ? `/${subResource}` : '';
-    const url = `https://graph.microsoft.com/v1.0/users/${aadId}${extraPath}?$select=id,mailNickname,userType,displayName,givenName,mail,userPrincipalName`;
+    const url = `https://graph.microsoft.com/v1.0/users/${aadId}${extraPath}?$select=id,mailNickname,userType,displayName,givenName,mail,userPrincipalName,jobTitle`;
     if (this.#_cache) {
       try {
         const cached = await this.#_cache.getObject(url);

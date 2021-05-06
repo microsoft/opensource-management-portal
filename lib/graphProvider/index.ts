@@ -52,6 +52,8 @@ export interface IGraphProvider {
   getManagerById(corporateId: string): Promise<IGraphEntry>;
   getManagementChain(corporateId: string): Promise<IGraphEntry[]>;
 
+  getDirectReports(corporateIdOrUpn: string): Promise<IGraphEntry[]>;
+
   getMailAddressByUsername(corporateUsername: string): Promise<string>;
   getUserIdByUsername(corporateUsername: string): Promise<string>;
 

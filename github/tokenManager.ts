@@ -58,6 +58,7 @@ export class GitHubTokenManager {
     await this.initializeApp(AppPurpose.Data, this.#options.dataApp);
     await this.initializeApp(AppPurpose.BackgroundJobs, this.#options.backgroundJobs);
     await this.initializeApp(AppPurpose.Updates, this.#options.updatesApp);
+    await this.initializeApp(AppPurpose.Security, this.#options.securityApp);
   }
 
   organizationSupportsAnyPurpose(organizationName: string, organizationSettings?: OrganizationSetting) {
