@@ -266,10 +266,13 @@ export class Organization {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
+    const previewMediaTypes = operations['previewMediaTypes'] || {}; // TEMPORARY MEDIA TYPE HACK
+    const mediaType = previewMediaTypes?.repository?.getDetails ? { previews: [previewMediaTypes.repository.list]} : undefined;
     const parameters = {
       org: this.name,
       type: 'all',
       per_page: getPageSize(operations),
+      mediaType,
     };
     const caching = {
       maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgReposStaleSeconds, options),

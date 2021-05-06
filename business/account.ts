@@ -56,6 +56,17 @@ export class Account {
       case AccountJsonFormat.GitHub: {
         return basic;
       }
+      case AccountJsonFormat.GitHubDetailedWithLink: {
+        const cloneEntity = Object.assign({}, this._originalEntity || {});
+        delete cloneEntity.cost;
+        delete cloneEntity.headers;
+        const link = this._link ? corporateLinkToJson(this._link) : undefined;
+        return {
+          account: cloneEntity,
+          isLinked: !!link,
+          link,
+        };
+      }
       case AccountJsonFormat.UplevelWithLink: {
         const link = this._link ? corporateLinkToJson(this._link) : undefined;
         return {

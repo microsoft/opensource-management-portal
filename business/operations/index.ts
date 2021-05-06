@@ -125,6 +125,7 @@ export class Operations
       dataApp: hasModernGitHubApps ? config.github.app.data : null,
       backgroundJobs: hasModernGitHubApps ? config.github.app.jobs : null,
       updatesApp: hasModernGitHubApps ? config.github.app.updates : null,
+      securityApp: hasModernGitHubApps ? config.github.app.security : null,
       app: this.providers.app,
     });
     this._dynamicOrganizationIds = new Set();
@@ -161,6 +162,16 @@ export class Operations
     }
     this._portalSudo = createPortalSudoInstance(this.providers);
     return this;
+  }
+
+  get previewMediaTypes() {
+    return {
+      repository: {
+        // this will allow GitHub Enterprise Cloud "visibility" fields to appear
+        getDetails: 'nebula-preview',
+        list: 'nebula-preview',
+      },
+    };
   }
 
   get organizationNames(): string[] {

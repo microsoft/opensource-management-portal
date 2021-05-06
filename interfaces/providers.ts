@@ -36,6 +36,7 @@ import { IMailProvider } from '../lib/mailProvider';
 import { IQueueProcessor } from '../lib/queues';
 import { ICustomizedNewRepositoryLogic, ICustomizedTeamPermissionsWebhookLogic } from '../transitional';
 import { IEntityMetadataProvider } from '../lib/entityMetadataProvider';
+import { IRepositoryProvider } from '../entities/repository';
 
 export interface IProviders {
   app: IReposApplication;
@@ -71,6 +72,7 @@ export interface IProviders {
   webhookQueueProcessor?: IQueueProcessor;
   sessionRedisClient?: redis.RedisClient;
   cacheProvider?: ICacheHelper;
+  repositoryProvider?: IRepositoryProvider;
   repositoryCacheProvider?: IRepositoryCacheProvider;
   repositoryCollaboratorCacheProvider?: IRepositoryCollaboratorCacheProvider;
   // repositoryMetadataProvider?: IRepositoryMetadataProvider;

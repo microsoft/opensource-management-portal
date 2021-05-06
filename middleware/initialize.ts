@@ -74,6 +74,7 @@ import RouteSslify from './sslify';
 import MiddlewareIndex from '.';
 import { ICacheHelper } from '../lib/caching';
 import { IApplicationProfile, IProviders, IReposApplication, InnerError } from '../interfaces';
+import initializeRepositoryProvider from '../entities/repository';
 
 const DefaultApplicationProfile: IApplicationProfile = {
   applicationName: 'GitHub Management Portal',
@@ -176,6 +177,7 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
   providers.teamMemberCacheProvider = await CreateTeamMemberCacheProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.teammembercache) });
   providers.auditLogRecordProvider = await createAndInitializeAuditLogRecordProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.auditlogrecord) });
   providers.userSettingsProvider = new UserSettingsProvider({ entityMetadataProvider: providerNameToInstance(config.entityProviders.usersettings) });
+  providers.repositoryProvider = await initializeRepositoryProvider({ entityMetadataProvider: providerNameToInstance(config.entityProviders.repository) });
   await providers.userSettingsProvider.initialize();
   providers.queryCache = new QueryCache(providers);
   if (config.campaigns && config.campaigns.provider === 'cosmosdb') {

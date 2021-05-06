@@ -11,6 +11,7 @@ export enum AppPurpose {
   Operations = 'Operations',
   BackgroundJobs = 'BackgroundJobs', // "secondary" / "default" fallback
   Updates = 'Updates',
+  Security = 'Security',
 }
 
 export enum GitHubAppAuthenticationType {
@@ -36,5 +37,6 @@ export interface IGitHubAppsOptions {
   customerFacingApp?: IGitHubAppConfiguration;
   operationsApp?: IGitHubAppConfiguration;
   updatesApp?: IGitHubAppConfiguration;
+  securityApp?: IGitHubAppConfiguration;
   app: IReposApplication;
 }

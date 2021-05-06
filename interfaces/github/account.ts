@@ -6,6 +6,7 @@
 export enum AccountJsonFormat {
   GitHub = 'github',
   UplevelWithLink = 'github+link',
+  GitHubDetailedWithLink = 'detailed+link',
 }
 
 export interface IAccountBasics {

@@ -184,6 +184,14 @@ export class PostgresConfiguration {
     }
   }
 
+  static StripRowInternals(type: EntityMetadataType, rowWithEntityValues: unknown) {
+    return stripEntityIdentities(type, rowWithEntityValues);
+  }
+
+  static RowToMetadataObject(type: EntityMetadataType, row: unknown) {
+    return rowToMetadataObject(type, row);
+  }
+
   static MapFieldsToColumnNamesFromListLowercased(type: EntityMetadataType, fieldNames: string[]) {
     PostgresConfiguration.MapFieldsToColumnNames(type, new Map(fieldNames.map(fieldName => {
       return [fieldName, fieldName];
@@ -205,6 +213,41 @@ interface IPostgresGetQueries {
 export interface IPostgresQuery {
   sql: string;
   values: any;
+}
+
+function stripEntityIdentities(type: EntityMetadataType, entity: any) {
+  let entityTypeString = null;
+  let entityCreated = null;
+  let entityId = null;
+  if (MapMetadataPropertiesToFields.entityType) {
+    entityTypeString = entity[MapMetadataPropertiesToFields.entityType];
+    delete entity[MapMetadataPropertiesToFields.entityType];
+  }
+  if (MapMetadataPropertiesToFields.entityId) {
+    entityId = entity[MapMetadataPropertiesToFields.entityId];
+    delete entity[MapMetadataPropertiesToFields.entityId];
+  }
+  if (MapMetadataPropertiesToFields.entityCreated) {
+    entityCreated = entity[MapMetadataPropertiesToFields.entityCreated];
+    delete entity[MapMetadataPropertiesToFields.entityCreated];
+  }
+  const internals = PostgresInternals.instance(type);
+  const { metadata, native, leftovers } = internals.extractRowToFieldObjects(entity, MetadataColumnName, false);
+  const combined = {...metadata, ...native};
+  const entityFieldNames = Object.getOwnPropertyNames(combined);
+  return { entity: combined, entityTypeString, entityId, entityCreated, entityFieldNames, leftovers };
+}
+
+function rowToMetadataObject(type: EntityMetadataType, row: any): IEntityMetadata {
+  const { entity, entityId, entityCreated, entityFieldNames } = stripEntityIdentities(type, row);
+  const entityIdentity: IEntityMetadata = {
+    entityType: type,
+    entityId,
+    entityFieldNames,
+    entityCreated,
+  };
+  const newMetadataObject: IEntityMetadata = Object.assign(entity, entityIdentity);
+  return newMetadataObject;
 }
 
 export function PostgresGetAllEntities(tableName: string, entityTypeColumn: string, entityTypeValue: string): IPostgresQuery {
@@ -507,38 +550,11 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
   }
 
   private stripEntityIdentities(type: EntityMetadataType, entity: any) {
-    let entityTypeString = null;
-    let entityCreated = null;
-    let entityId = null;
-    if (MapMetadataPropertiesToFields.entityType) {
-      entityTypeString = entity[MapMetadataPropertiesToFields.entityType];
-      delete entity[MapMetadataPropertiesToFields.entityType];
-    }
-    if (MapMetadataPropertiesToFields.entityId) {
-      entityId = entity[MapMetadataPropertiesToFields.entityId];
-      delete entity[MapMetadataPropertiesToFields.entityId];
-    }
-    if (MapMetadataPropertiesToFields.entityCreated) {
-      entityCreated = entity[MapMetadataPropertiesToFields.entityCreated];
-      delete entity[MapMetadataPropertiesToFields.entityCreated];
-    }
-    const internals = PostgresInternals.instance(type);
-    const { metadata, native, leftovers } = internals.extractRowToFieldObjects(entity, MetadataColumnName, false);
-    const combined = {...metadata, ...native};
-    const entityFieldNames = Object.getOwnPropertyNames(combined);
-    return { entity: combined, entityTypeString, entityId, entityCreated, entityFieldNames, leftovers };
+    return stripEntityIdentities(type, entity);
   }
 
   private rowToMetadataObject(type: EntityMetadataType, row: any): IEntityMetadata {
-    const { entity, entityId, entityCreated, entityFieldNames } = this.stripEntityIdentities(type, row);
-    const entityIdentity: IEntityMetadata = {
-      entityType: type,
-      entityId,
-      entityFieldNames,
-      entityCreated,
-    };
-    const newMetadataObject: IEntityMetadata = Object.assign(entity, entityIdentity);
-    return newMetadataObject;
+    return rowToMetadataObject(type, row);
   }
 
   private async sqlQueryToMetadataArray(type, sql, values, skipEntityMapping): Promise<IEntityMetadata[]> {

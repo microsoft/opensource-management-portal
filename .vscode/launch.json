@@ -331,6 +331,20 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Job: Repositories Table (13)",
+      "program": "${workspaceRoot}/dist/jobs/repositories.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Job: Migrate links",
       "program": "${workspaceRoot}/dist/jobs/migrateLinks/index.js",
       "preLaunchTask": "tsbuild",
