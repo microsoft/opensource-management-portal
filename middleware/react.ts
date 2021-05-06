@@ -10,7 +10,8 @@ import path from 'path';
 import appPackage from '../package.json';
 
 import { getStaticBlobCacheFallback } from '../lib/staticBlobCacheFallback';
-import { getProviders, ReposAppRequest } from '../transitional';
+import { getProviders } from '../transitional';
+import { ReposAppRequest } from '../interfaces';
 
 const staticReactPackageNameKey = 'static-react-package-name';
 const staticClientPackageName = appPackage[staticReactPackageNameKey];

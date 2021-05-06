@@ -19,7 +19,7 @@ import { IShouldServeCache, IntelligentEngine, ApiContext, IApiContextCacheValue
 import { getEntityDefinitions, GitHubResponseType, ResponseBodyType } from './endpointEntities';
 
 import appPackage from '../../package.json';
-import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../transitional';
+import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../interfaces';
 
 const appVersion = appPackage.version;
 

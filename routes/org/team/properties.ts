@@ -6,7 +6,7 @@
 import express from 'express';
 const router = express.Router();
 
-import { ReposAppRequest, UserAlertType } from '../../../transitional';
+import { ReposAppRequest, UserAlertType } from '../../../interfaces';
 import { wrapError } from '../../../utils';
 
 import MiddlewareTeamAdminRequired from './teamAdminRequired';

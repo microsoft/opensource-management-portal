@@ -3,7 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import request = require('request');
+import axios, { AxiosError } from 'axios';
+
+import { CreateError } from '../transitional';
 import { ICacheHelper } from './caching';
 
 const DefaultCacheMinutesPerContact = 120;
@@ -143,23 +145,25 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
     const headers = {
       Authorization: authToken
     };
-    return { url, headers, json: true };
+    return { url, headers };
   }
 
-  callIdentityService(corporateUsername: string): Promise<IMicrosoftIdentityServiceResponse> {
-    return new Promise((resolve, reject) => {
-      const options = this.getIdentityServiceRequestOptions(`/user/${corporateUsername}`);
-      request.get(options, (error, response, entry: IMicrosoftIdentityServiceResponse) => {
-        if (response && response.statusCode === 404) {
-          return resolve(null);
-        } else if (response && response.statusCode >= 300) {
-          error = new Error(`Response code: ${response.statusCode}`)
-        }
-        if (entry && !error && entry['error'] && entry['error']['message']) {
-          error = new Error(entry['error']['message']);
-        }
-        return error ? reject(error) : resolve(entry);
-      });
-    });
+  async callIdentityService(corporateUsername: string): Promise<IMicrosoftIdentityServiceResponse> {
+    try {
+      const response = await axios(this.getIdentityServiceRequestOptions(`/user/${corporateUsername}`));
+      if (response.data.error?.message) {
+        throw CreateError.InvalidParameters(response.data.error.message);
+      }
+      const entity = response.data as IMicrosoftIdentityServiceResponse;
+      return entity;
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      if (axiosError?.response?.status === 404) {
+        return null;
+      } else if (axiosError?.response?.status >= 300) {
+        throw CreateError.CreateStatusCodeError(axiosError.response.status, `Response code: ${axiosError.response.status}`);
+      }
+      throw error;
+    }
   }
 }

@@ -8,19 +8,19 @@
 // configuration that can be used instead of the hardcoded values within.
 
 import _ from 'lodash';
+
 import { jsonError } from '../middleware';
-import { getProviders, ICustomizedNewRepositoryLogic, INewRepositoryContext, IProviders } from '../transitional';
-import { ICreateRepositoryResult, Organization } from '../business/organization';
+import { getProviders, ICustomizedNewRepoProperties, ICustomizedNewRepositoryLogic, INewRepositoryContext } from '../transitional';
+import { Organization, Repository } from '../business';
 import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission, RepositoryLockdownState } from '../entities/repositoryMetadata/repositoryMetadata';
 import RenderHtmlMail from '../lib/emailRender';
 
-import { RepoWorkflowEngine, IRepositoryWorkflowOutput, IApprovalPackage } from '../routes/org/repoWorkflowEngine';
+import { RepoWorkflowEngine, IRepositoryWorkflowOutput, IApprovalPackage, IRepoWorkflowEngineOptions } from '../routes/org/repoWorkflowEngine';
 import { IMailProvider } from '../lib/mailProvider';
 import { IndividualContext } from '../user';
 import NewRepositoryLockdownSystem from '../features/newRepositoryLockdown';
-import { ICachedEmployeeInformation } from '../business/operations';
-import { Repository } from '../business/repository';
-import { ICorporateLink } from '../business/corporateLink';
+import { ICreateRepositoryResult, ICorporateLink, ICachedEmployeeInformation, ReposAppRequest, getRepositoryMetadataProvider, CoreCapability, operationsWithCapability, IOperationsGitHubRestLibrary, IOperationsNewRepositoryTaskOptions, IOperationsHierarchy, IOperationsNotifications } from '../interfaces';
+import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 
 const supportedLicenseExpressions = [
   'mit',
@@ -42,6 +42,7 @@ export interface ICreateRepositoryApiResult {
   name: string;
   repositoryId: number;
   organizationName: string;
+  notified?: string[];
 }
 
 export enum CreateRepositoryEntrypoint {
@@ -49,14 +50,17 @@ export enum CreateRepositoryEntrypoint {
   Client = 'client',
 }
 
-export async function CreateRepository(req, logic: ICustomizedNewRepositoryLogic, createContext: INewRepositoryContext, bodyOverride: unknown, entrypoint: CreateRepositoryEntrypoint, individualContext?: IndividualContext): Promise<ICreateRepositoryApiResult> {
-  if (!req.organization) {
+export interface IReposAppRequestWithCreateResponse extends ReposAppRequest {
+  repoCreateResponse?: ICreateRepositoryApiResult;
+}
+
+export async function CreateRepository(req, organization: Organization, logic: ICustomizedNewRepositoryLogic, createContext: INewRepositoryContext, bodyOverride: unknown, entrypoint: CreateRepositoryEntrypoint, individualContext?: IndividualContext): Promise<ICreateRepositoryApiResult> {
+  if (!organization) {
     throw jsonError(new Error('No organization available in the route.'), 400);
   }
   const providers = getProviders(req);
-  const operations = providers.operations;
-  const mailProvider = providers.mailProvider;
-  const repositoryMetadataProvider = providers.repositoryMetadataProvider;
+  const { operations, mailProvider, insights  } = providers;
+  const repositoryMetadataProvider = getRepositoryMetadataProvider(organization.operations);
   const ourFields = [
     'ms.onBehalfOf',
     'ms.license',
@@ -100,34 +104,7 @@ export async function CreateRepository(req, logic: ICustomizedNewRepositoryLogic
   if (msProperties.administrators && !Array.isArray(msProperties.administrators)) {
     throw jsonError(new Error('Administrators must be an array of logins'), 422);
   }
-  // Validate approval types
-  const msApprovalType = msProperties.approvalType;
-  if (!msApprovalType) {
-    throw jsonError(new Error('Missing corporate approval type information'), 422);
-  }
-  if (hardcodedApprovalTypes.indexOf(msApprovalType) < 0) {
-    throw jsonError(new Error('The provided approval type is not supported'), 422);
-  }
-  // Validate specifics of what is in the approval
-  switch (msApprovalType) {
-    case 'NewReleaseReview':
-    case 'ExistingReleaseReview':
-      if (!msProperties.approvalUrl) {
-        throw jsonError(new Error('Approval URL for the release review is required when using the release review approval type'), 422);
-      }
-      break;
-    case 'SmallLibrariesToolsSamples':
-      break;
-    case 'Exempt':
-      if (!msProperties.justification) {
-        throw jsonError(new Error('Justification is required when using the exempted approval type'), 422);
-      }
-      break;
-    default:
-      throw jsonError(new Error('The requested approval type is not currently supported.'), 422);
-  }
-  parameters.org = req.organization.name;
-  const organization = operations.getOrganization(parameters.org);
+  parameters.org = organization.name;
   const existingRepoId = req.body.existingrepoid;
   let metadata: RepositoryMetadataEntity
   let response: any = null;
@@ -142,6 +119,7 @@ export async function CreateRepository(req, logic: ICustomizedNewRepositoryLogic
         parameterName: parameters.name,
         description: parameters.description,
         private: parameters.private,
+        visibility: parameters.visibility,
         org: parameters.org,
         entrypoint,
       },
@@ -232,8 +210,12 @@ export async function CreateRepository(req, logic: ICustomizedNewRepositoryLogic
     metadata.repositoryName = response.name;
     metadata.repositoryId = response.id;
     metadata.initialRepositoryDescription = response.description;
-    metadata.initialRepositoryVisibility = response.private ? GitHubRepositoryVisibility.Private : GitHubRepositoryVisibility.Public;
-    metadata.organizationName = req.organization.name.toLowerCase();
+    if (response.visibility === GitHubRepositoryVisibility.Internal) {
+      metadata.initialRepositoryVisibility = GitHubRepositoryVisibility.Internal;
+    } else {
+      metadata.initialRepositoryVisibility = response.private ? GitHubRepositoryVisibility.Private : GitHubRepositoryVisibility.Public;
+    }
+    metadata.organizationName = organization.name.toLowerCase();
     if (organization.id) {
       metadata.organizationId = organization.id.toString();
     }
@@ -280,8 +262,18 @@ export async function CreateRepository(req, logic: ICustomizedNewRepositoryLogic
   metadata.projectType = msProperties.projectType;
   metadata.initialCorrelationId = req.correlationId;
   // team permissions
-  const teamTypes = ['pull', 'push', 'admin'];
-  const typeValues = [GitHubRepositoryPermission.Pull, GitHubRepositoryPermission.Push, GitHubRepositoryPermission.Admin];
+  const teamTypes = [
+    'pull',
+    'push',
+    'admin',
+    'maintain',
+  ];
+  const typeValues = [
+    GitHubRepositoryPermission.Pull,
+    GitHubRepositoryPermission.Push,
+    GitHubRepositoryPermission.Admin,
+    GitHubRepositoryPermission.Maintain,
+  ];
   downgradeBroadAccessTeams(organization, msProperties.teams || {});
   for (let i = 0; msProperties.teams && i < teamTypes.length; i++) {
     const teamType = teamTypes[i];
@@ -310,10 +302,10 @@ export async function CreateRepository(req, logic: ICustomizedNewRepositoryLogic
         message: insertRequestError && insertRequestError.message ? insertRequestError.message : insertRequestError,
       },
     });
-    if (!req.organization || !metadata || !metadata.repositoryName) {
+    if (!organization || !metadata || !metadata.repositoryName) {
       throw insertRequestError; // if GitHub never returned
     }
-    const newlyCreatedRepo = (req.organization as Organization).repository(metadata.repositoryName);
+    const newlyCreatedRepo = (organization as Organization).repository(metadata.repositoryName);
     await newlyCreatedRepo.delete();
     throw err;
   }
@@ -344,7 +336,11 @@ export async function CreateRepository(req, logic: ICustomizedNewRepositoryLogic
   }
   // END TEMPORARY FEATURE: default branch work
   // req.approvalRequest['ms.approvalId'] = requestId; // TODO: is this ever used?
-  const repoWorkflow = new RepoWorkflowEngine(req.organization as Organization, approvalPackage);
+  let newRepoOptions: IRepoWorkflowEngineOptions = undefined;
+  if (operations.hasCapability(CoreCapability.NewRepositoryTaskOptions)) {
+    newRepoOptions = operationsWithCapability<IOperationsNewRepositoryTaskOptions>(operations, CoreCapability.NewRepositoryTaskOptions).newRepositoryTaskOptions;
+  }
+  const repoWorkflow = new RepoWorkflowEngine(organization, approvalPackage, newRepoOptions);
   let output = [];
   try {
     output = await generateAndRunSecondaryTasks(repoWorkflow);
@@ -355,6 +351,13 @@ export async function CreateRepository(req, logic: ICustomizedNewRepositoryLogic
     req.repoCreateResponse = { tasks: null };
   }
   req.repoCreateResponse.tasks = output;
+  if (logic?.afterRepositoryCreated) {
+    try {
+      await logic.afterRepositoryCreated(createContext, individualContext?.corporateIdentity?.id, req.repoCreateResponse, organization);
+    } catch (ignoredCustomError) {
+      insights?.trackException({ exception: ignoredCustomError });
+    }
+  }
   if (msProperties.notify && mailProvider) {
     try {
       let createdUserLink: ICorporateLink = individualContext?.link || null;
@@ -367,6 +370,7 @@ export async function CreateRepository(req, logic: ICustomizedNewRepositoryLogic
       }
       await sendEmail(req, logic, createContext, mailProvider, req.apiKeyRow, req.correlationId, output, repoWorkflow.request, msProperties, existingRepoId, repository, createdUserLink);
     } catch (mailSendError) {
+      insights?.trackException({ exception: mailSendError });
       console.dir(mailSendError);
     }
   }
@@ -398,9 +402,12 @@ function downgradeBroadAccessTeams(organization, teams) {
   }
 }
 
-async function sendEmail(req, logic: ICustomizedNewRepositoryLogic, createContext: INewRepositoryContext, mailProvider: IMailProvider, apiKeyRow, correlationId: string, repoCreateResults, approvalRequest: RepositoryMetadataEntity, msProperties, existingRepoId: any, repository: Repository, createdUserLink: ICorporateLink): Promise<void> {
-  const { config, operations, viewServices } = getProviders(req);
+async function sendEmail(req: IReposAppRequestWithCreateResponse, logic: ICustomizedNewRepositoryLogic, createContext: INewRepositoryContext, mailProvider: IMailProvider, apiKeyRow, correlationId: string, repoCreateResults, approvalRequest: RepositoryMetadataEntity, msProperties, existingRepoId: any, repository: Repository, createdUserLink: ICorporateLink): Promise<void> {
+  const { config, insights, viewServices } = getProviders(req);
+  const deployment = getCompanySpecificDeployment();
+  const emailTemplate = deployment?.views?.email?.repository?.new || 'newRepository';
   const excludeNotificationsValue = config.notifications?.reposNotificationExcludeForUsers;
+  const operations = repository.organization.operations;
   let excludeNotifications = [];
   if (excludeNotificationsValue) {
     excludeNotifications = excludeNotificationsValue.split(',');
@@ -408,15 +415,16 @@ async function sendEmail(req, logic: ICustomizedNewRepositoryLogic, createContex
   if (approvalRequest.createdByCorporateUsername && excludeNotifications && excludeNotifications.includes(approvalRequest.createdByCorporateUsername.toLowerCase())) {
     return;
   }
-  const emails = msProperties.notify.split(',');
+  const emails = msProperties?.notify && (msProperties.notify as string).split(',');
   let targetType = repoCreateResults.fork ? 'Fork' : 'Repo';
   if (!repoCreateResults.fork && approvalRequest.transferSource) {
     targetType = 'Transfer';
   }
   let managerInfo: ICachedEmployeeInformation = null;
-  if (approvalRequest.createdByCorporateId) {
+  if (operations.hasCapability(CoreCapability.Hiearchy) && approvalRequest.createdByCorporateId) {
     try {
-      managerInfo = await operations.getCachedEmployeeManagementInformation(approvalRequest.createdByCorporateId);
+      const opsHierarchy = operationsWithCapability<IOperationsHierarchy>(operations, CoreCapability.Hiearchy);
+      managerInfo = await opsHierarchy.getCachedEmployeeManagementInformation(approvalRequest.createdByCorporateId);
     } catch (ignoreError) {
       console.dir(ignoreError);
     }
@@ -427,16 +435,31 @@ async function sendEmail(req, logic: ICustomizedNewRepositoryLogic, createContex
   if (existingRepoId) {
     subject = `${approvalRequest.repositoryName} ${targetType.toLowerCase()} ready`;
   }
-  const emailTemplate = 'newRepository';
   const displayHostname = req.hostname;
   const approvalScheme = displayHostname === 'localhost' && config.webServer.allowHttp === true ? 'http' : 'https';
   const reposSiteBaseUrl = `${approvalScheme}://${displayHostname}/`;
+  if (repository) {
+    try {
+      await repository.getDetails();
+    } catch (getDetailsErrorIgnored) {
+      console.dir(getDetailsErrorIgnored);
+    }
+  }
+  let additionalViewProperties: ICustomizedNewRepoProperties = null;
+  try {
+    if (createContext && logic) {
+      additionalViewProperties = await logic.getNewMailViewProperties(createContext, repository);
+    }
+  } catch (err) {
+    insights?.trackException({ exception: err });
+    console.warn(err);
+  }
   const mail = {
-    to: emails,
-    cc: undefined,
+    to: [...emails, ...additionalViewProperties?.to],
+    cc: additionalViewProperties?.cc,
+    bcc: additionalViewProperties?.bcc,
     subject,
-    correlationId: correlationId,
-    category: ['error', 'repos'],
+    correlationId,
     content: undefined,
   };
   if (managerInfo && managerInfo.managerMail) {
@@ -445,18 +468,16 @@ async function sendEmail(req, logic: ICustomizedNewRepositoryLogic, createContex
       shouldSend = logic.shouldNotifyManager(createContext, approvalRequest.createdByCorporateId);
     }
     if (shouldSend) {
-      mail.cc = managerInfo.managerMail;
+      if (mail.cc) {
+        mail.cc.push(managerInfo.managerMail);
+      } else {
+        mail.cc = [managerInfo.managerMail];
+      }
     }
   }
-  if (repository) {
-    try {
-      await repository.getDetails();
-    } catch (getDetailsErrorIgnored) {
-      console.dir(getDetailsErrorIgnored);
-    }
-  }
-  const app = config.brand?.companyName ? `${config.brand.companyName} GitHub` : 'GitHub';
-  const contentOptions = {
+  const skuName = operations.hasCapability(CoreCapability.GitHubRestApi) ? operationsWithCapability<IOperationsGitHubRestLibrary>(operations, CoreCapability.GitHubRestApi).githubSkuName : 'GitHub';
+  const app = config.brand?.companyName ? `${config.brand.companyName} ${skuName}` : skuName;
+  const contentOptions = Object.assign(additionalViewProperties?.viewProperties || {} /* allow a custom provider to override */, {
     reason: `You are receiving this e-mail because the new repository request included the e-mail notification address(es) ${msProperties.notify}, or, you are the manager of the person who created the repo.`,
     headline,
     notification: 'information',
@@ -479,7 +500,7 @@ async function sendEmail(req, logic: ICustomizedNewRepositoryLogic, createContex
     serviceDescription: apiKeyRow ? apiKeyRow.description : undefined,
     viewServices,
     isNotBootstrap: true,
-  };
+  });
   try {
     mail.content = await RenderHtmlMail(config.typescript.appDirectory, emailTemplate, contentOptions);
   } catch (renderError) {
@@ -499,18 +520,28 @@ async function sendEmail(req, logic: ICustomizedNewRepositoryLogic, createContex
   };
   const additionalMail = {...mail};
   try {
+    insights?.trackEvent({ name: 'ApiRepoSendMail', properties: {
+      to: JSON.stringify(mail.to || ''),
+      cc: JSON.stringify(mail.to || ''),
+      bcc: JSON.stringify(mail.to || ''),
+    }});
     customData.receipt = await mailProvider.sendMail(mail);
-    req.insights.trackEvent({ name: 'ApiRepoCreateMailSuccess', properties: customData });
+    insights?.trackEvent({ name: 'ApiRepoCreateMailSuccess', properties: customData });
     req.repoCreateResponse.notified = emails;
     } catch (mailError) {
     customData.eventName = 'ApiRepoCreateMailFailure';
-    req.insights.trackException({ exception: mailError, properties: customData });
+    insights?.trackException({ exception: mailError, properties: customData });
   }
   // send to operations, too
   delete additionalMail.cc;
-  const notifyMailAddress = operations.getRepositoriesNotificationMailAddress();
+  let notifyMailAddress: string = null;
+  const skipAdditionalSend = config?.notifications?.skipDedicatedNewRepoMail;
+  if (operations.hasCapability(CoreCapability.Notifications)) {
+    const opsNotifications = operationsWithCapability<IOperationsNotifications>(operations, CoreCapability.Notifications);
+    notifyMailAddress = opsNotifications.getRepositoriesNotificationMailAddress();
+  }
   const operationsMails = notifyMailAddress ? [ notifyMailAddress ] : [];
-  if (operationsMails && operationsMails.length) {
+  if (!skipAdditionalSend && operationsMails && operationsMails.length) {
     additionalMail.to = operationsMails;
     contentOptions.reason = `You are receiving this e-mail as the operations contact address(es) ${operationsMails.join(', ')}. A repo has been created or classified.`;
     try {

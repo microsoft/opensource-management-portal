@@ -3,20 +3,16 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ReposAppRequest, IReposAppResponse, UserAlertType, IDictionary, IProviders, IAppSession } from '../transitional';
+import pugLoad from 'pug-load';
+import fs from 'fs';
+import objectPath from 'object-path';
 
-import { ICorporateLink } from '../business/corporateLink';
+const debug = require('debug')('context');
 
 import { addBreadcrumb } from '../utils';
 import { Operations } from '../business/operations';
 import { UserContext } from './aggregate';
-
-import pugLoad from 'pug-load';
-import fs from 'fs';
-
-import objectPath from 'object-path';
-
-const debug = require('debug')('context');
+import { ReposAppRequest, IReposAppResponse, IProviders, UserAlertType, IAppSession, ICorporateLink, IDictionary } from '../interfaces';
 
 // - - - identity
 

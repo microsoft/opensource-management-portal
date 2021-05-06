@@ -8,9 +8,9 @@
 const teamTypes = ['read', 'write', 'admin'];
 const defaultLargeAdminTeamSize = 250;
 
-import { Operations } from '../../business/operations';
 import { WebhookProcessor } from '../organizationProcessor';
-import { Organization } from '../../business/organization';
+import { Operations } from '../../business';
+import { Organization } from '../../business';
 
 import RenderHtmlMail from '../../lib/emailRender';
 import { IMailProvider } from '../../lib/mailProvider';

@@ -16,10 +16,11 @@ import { getProviders } from '../transitional';
 interface IConfigAadApiApprovedAppsOrOids {
   scopes: {
     read: {
-      links: string;
+      links: string[] | string;
+      maintainers: string[] | string;
     },
     create: {
-      repos: string;
+      repos: string[] | string;
     },
   },
 }
@@ -34,6 +35,7 @@ export default function AadApiMiddleware(req: IApiRequest, res, next) {
     return isJsonError(err) ? next(err) : jsonError(err, 500);
   });
 }
+
 function callJwtVerify(token: string, options?: jwt.VerifyOptions) {
   return new Promise((resolve, reject) => {
     return jwt.verify(token, getSigningKeys, options, (err, payload) => {
@@ -57,10 +59,8 @@ function getSigningKeys(header, callback) {
   });
 }
 
-async function validateAadAuthorization(req: IApiRequest): Promise<void> {
-  const { config, insights } = getProviders(req);
-
-  const allowedTenants = (config?.microsoft?.api?.aad?.authorizedTenants || '').split(',');
+export function getAadApiConfiguration(config: any) {
+  const allowedTenants = Array.isArray(config?.microsoft?.api?.aad?.authorizedTenants) ? config.microsoft.api.aad.authorizedTenants : (config?.microsoft?.api?.aad?.authorizedTenants || '').split(',');
   if (!allowedTenants) {
     throw jsonError('App not configured for authorizing specific tenants', 500);
   }
@@ -71,14 +71,59 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
   }
 
   let approvedApps = config?.microsoft?.api?.aad?.approvedApps as IConfigAadApiApprovedAppsOrOids;
-  if (!approvedApps) {
+  if (approvedApps === undefined) {
     throw jsonError('AAD API app authentication is not configured', 500);
   }
 
   let approvedOids = config?.microsoft?.api?.aad?.approvedOids as IConfigAadApiApprovedAppsOrOids;
-  if (!approvedApps) {
+  if (approvedApps === undefined) {
     throw jsonError('AAD API OID authentication is not configured', 500);
   }
+
+  // Any app that has a valid scope can call the API, but may not be scoped and will error out in the API tier
+  const approvedAppsToCreateRepos = Array.isArray(approvedApps?.scopes?.create?.repos) ? approvedApps?.scopes?.create?.repos : (approvedApps?.scopes?.create?.repos?.split ? [...approvedApps.scopes.create.repos.split(',')] : []);
+  const approvedAppsToReadLinks = Array.isArray(approvedApps?.scopes?.read?.links) ? approvedApps?.scopes?.read?.links : (approvedApps?.scopes?.read?.links?.split ? [...approvedApps.scopes.read.links.split(',')] : []);
+  const approvedAppsToReadMaintainers = Array.isArray(approvedApps?.scopes?.read?.maintainers) ? approvedApps?.scopes?.read?.maintainers : (approvedApps?.scopes?.read?.maintainers?.split ? [...approvedApps.scopes.read.maintainers.split(',')] : []);
+
+  const approvedOidsToCreateRepos = Array.isArray(approvedOids?.scopes?.create?.repos) ? approvedOids?.scopes?.create?.repos : (approvedOids?.scopes?.create?.repos?.split ? [...approvedOids?.scopes?.create?.repos?.split(',')] : []);
+  const approvedOidsToReadLinks = Array.isArray(approvedOids?.scopes?.read?.links) ? approvedOids?.scopes?.read?.links : (approvedOids?.scopes?.read?.links?.split ? [...approvedOids?.scopes?.read?.links.split(',')] : []);
+
+  const oids = [
+    ...approvedOidsToCreateRepos,
+    ...approvedOidsToReadLinks,
+  ];
+  const appIds = [ // hacky temporary design for pulling from config
+    ...approvedAppsToCreateRepos,
+    ...approvedAppsToReadLinks,
+    ...approvedAppsToReadMaintainers,
+  ];
+
+  return {
+    allowedTenants,
+    reposApiAudienceIdentity,
+    oids,
+    appIds,
+    approvedAppsToCreateRepos,
+    approvedAppsToReadLinks,
+    approvedAppsToReadMaintainers,
+    approvedOidsToCreateRepos,
+    approvedOidsToReadLinks,
+  };
+}
+
+async function validateAadAuthorization(req: IApiRequest): Promise<void> {
+  const { config, insights } = getProviders(req);
+  const {
+    allowedTenants,
+    reposApiAudienceIdentity,
+    oids,
+    appIds,
+    approvedAppsToCreateRepos,
+    approvedAppsToReadLinks,
+    approvedAppsToReadMaintainers,
+    approvedOidsToCreateRepos,
+    approvedOidsToReadLinks,
+  } = getAadApiConfiguration(config);
 
   const authorizationHeader = req.headers.authorization;
   if (!authorizationHeader) {
@@ -131,21 +176,6 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
 
     const scopes = [];
 
-    // Any app that has a valid scope can call the API, but may not be scoped and will error out in the API tier
-    const approvedAppsToCreateRepos = [...approvedApps?.scopes?.create?.repos?.split(',')];
-    const approvedAppsToReadLinks = [...approvedApps?.scopes?.read?.links?.split(',')];
-
-    const approvedOidsToCreateRepos = [...approvedOids?.scopes?.create?.repos?.split(',')];
-    const approvedOidsToReadLinks = [...approvedOids?.scopes?.read?.links?.split(',')];
-
-    const oids = [
-      ...approvedOidsToCreateRepos,
-      ...approvedOidsToReadLinks,
-    ];
-    const appIds = [ // hacky temporary design for pulling from config
-      ...approvedAppsToCreateRepos,
-      ...approvedAppsToReadLinks
-    ];
     const isAppApproved = appIds.includes(appid);
     const isOidApproved = oids.includes(oid);
     const notAuthorized = isAppApproved === false && isOidApproved === false;
@@ -158,13 +188,15 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     if (isAppApproved && approvedAppsToReadLinks.includes(appid)) {
       scopes.push('links');
     }
+    if (isAppApproved && approvedAppsToReadMaintainers.includes(appid)) {
+      scopes.push('maintainers');
+    }
     if (isOidApproved && approvedOidsToCreateRepos.includes(oid)) {
       scopes.push('createRepo');
     }
     if (isOidApproved && approvedOidsToReadLinks.includes(oid)) {
       scopes.push('links');
     }
-
     const apiToken = PersonalAccessToken.CreateFromAadAuthorization({
       appId: appid,
       oid,
@@ -173,7 +205,6 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     });
     req.apiKeyToken = apiToken;
     req.apiKeyProviderName = 'aad';
-
     insights?.trackEvent({
       name: 'ApiAadAppAuthorized',
       properties: Object.assign({}, decodedToken as any, {

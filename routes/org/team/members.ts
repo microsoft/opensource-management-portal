@@ -7,9 +7,9 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, RequestTeamMemberAddType, UserAlertType, getProviders } from '../../../transitional';
-import { Team } from '../../../business/team';
-import { TeamMember } from '../../../business/teamMember';
+import { Team, TeamMember } from '../../../business';
+import { ReposAppRequest, RequestTeamMemberAddType, UserAlertType } from '../../../interfaces';
+import { getProviders, validateGitHubLogin } from '../../../transitional';
 
 import RoutePeopleSearch from '../../peopleSearch';
 import MiddlewareTeamAdminRequired from './teamAdminRequired';
@@ -67,7 +67,7 @@ router.use('/add', MiddlewareTeamAdminRequired, (req: ILocalTeamRequest, res, ne
 
 router.post('/remove', MiddlewareTeamAdminRequired, asyncHandler(async (req: ILocalTeamRequest, res, next) => {
   const { operations } = getProviders(req);
-  const username = operations.validateGitHubLogin(req.body.username);
+  const username = validateGitHubLogin(req.body.username);
   const team2 = req.team2 as Team;
   await team2.removeMembership(username);
   req.individualContext.webContext.saveUserAlert(`${username} has been removed from the team ${team2.name}.`, 'Team membership update', UserAlertType.Success);
@@ -77,7 +77,7 @@ router.post('/remove', MiddlewareTeamAdminRequired, asyncHandler(async (req: ILo
 
 router.post('/add', MiddlewareTeamAdminRequired, asyncHandler(async (req: ILocalTeamRequest, res, next) => {
   const { operations } = getProviders(req);
-  const username = operations.validateGitHubLogin(req.body.username);
+  const username = validateGitHubLogin(req.body.username);
   const organization = req.organization;
   const team2 = req.team2;
   const refreshedMembers = req.refreshedMembers;

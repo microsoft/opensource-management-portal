@@ -4,15 +4,13 @@
 //
 
 import express from 'express';
-import fs = require('fs');
-import path = require('path');
-
+import fs from 'fs';
+import path from 'path';
 import { URL } from 'url';
-
-import { getProviders, IAppSession, IReposError, ReposAppRequest } from './transitional';
 import { DateTime } from 'luxon';
-
-const zlib = require('zlib');
+import zlib from 'zlib';
+import { ReposAppRequest, IAppSession, IReposError } from './interfaces';
+import { getProviders } from './transitional';
 
 const compressionOptions = {
   type: 'gzip',
@@ -33,6 +31,19 @@ export function getOffsetMonthRange(offsetMonths?: number) {
 
 export function daysInMilliseconds(days: number): number {
   return 1000 * 60 * 60 * 24 * days;
+}
+
+export function getCurrentQuarter() {
+  const now = new Date();
+  const quarter = Math.floor((now.getMonth() / 3));
+  return quarter;
+}
+
+export function getQuarterRange(quarterOfYear: number /* zero-based */) {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), quarterOfYear * 3, 1);
+  const end = new Date(now.getFullYear(), start.getMonth() + 3, 0);
+  return [start, end];
 }
 
 export function stringOrNumberAsString(value: any) {
@@ -369,7 +380,7 @@ export function quitInTenSeconds(successful: boolean) {
 export function gzipString(value: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const val = Buffer.from(value);
-    zlib.gzip(val, compressionOptions, (gzipError, compressed: Buffer) => {
+    zlib.gzip(val, (gzipError, compressed: Buffer) => {
       return gzipError ? reject(gzipError) : resolve(compressed);
     });
   });
@@ -379,7 +390,7 @@ export function gunzipBuffer(buffer: Buffer): Promise<string> {
   return new Promise((resolve, reject) => {
     zlib.gunzip(buffer, (unzipError, unzipped) => {
       // Fallback if there is a data error (i.e. it's not compressed)
-      if (unzipError && unzipError.errno === zlib.Z_DATA_ERROR) {
+      if (unzipError && (unzipError as any)?.errno === zlib.Z_DATA_ERROR) {
         const originalValue = buffer.toString();
         return resolve(originalValue);
       } else if (unzipError) {

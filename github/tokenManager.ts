@@ -5,7 +5,7 @@
 
 import { AppPurpose, IGitHubAppConfiguration, IGitHubAppsOptions, GitHubAppAuthenticationType } from '.';
 import { GitHubAppTokens } from './appTokens';
-import { IAuthorizationHeaderValue } from '../transitional';
+import { IAuthorizationHeaderValue } from '../interfaces';
 import { OrganizationSetting } from '../entities/organizationSettings/organizationSetting';
 import { readFileToText } from '../utils';
 
@@ -58,6 +58,7 @@ export class GitHubTokenManager {
     await this.initializeApp(AppPurpose.Data, this.#options.dataApp);
     await this.initializeApp(AppPurpose.BackgroundJobs, this.#options.backgroundJobs);
     await this.initializeApp(AppPurpose.Updates, this.#options.updatesApp);
+    await this.initializeApp(AppPurpose.Security, this.#options.securityApp);
   }
 
   organizationSupportsAnyPurpose(organizationName: string, organizationSettings?: OrganizationSetting) {
@@ -138,7 +139,8 @@ export class GitHubTokenManager {
       throw new Error(`appKey or appKeyFile required for ${purpose} GitHub App configuration`);
     }
     const friendlyName = appConfig.description || 'Unknown';
-    const app = fromLocalFile ? GitHubAppTokens.CreateFromString(purpose, friendlyName, appId, key) : GitHubAppTokens.CreateFromBase64EncodedFileString(purpose, friendlyName, appId, key);
+    const baseUrl = appConfig.baseUrl;
+    const app = fromLocalFile ? GitHubAppTokens.CreateFromString(purpose, friendlyName, appId, key, baseUrl) : GitHubAppTokens.CreateFromBase64EncodedFileString(purpose, friendlyName, appId, key, baseUrl);
     this._apps.set(purpose, app);
     this._appsById.set(appId, app);
     this._appSlugs.set(appId, appConfig.slug);

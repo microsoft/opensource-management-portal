@@ -3,23 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Operations } from './operations';
-import { IGetAuthorizationHeader, ICacheOptions } from '../transitional';
+import { IOperationsGitHubRestLibrary, IOperationsDefaultCacheTimes, IGetAuthorizationHeader, IGitHubAppInstallation, ICacheOptions } from '../interfaces';
 import { wrapError } from '../utils';
-
-export interface IGitHubAppInstallation {
-  id: number;
-  account: {
-    login: string;
-    id: number;
-  },
-  app_id: number;
-  target_id: number;
-  target_type: string;
-  permissions: unknown;
-  events: string[];
-  repository_selection: string;
-}
 
 const primaryInstallationProperties = [
   'id',
@@ -32,7 +17,7 @@ const primaryInstallationProperties = [
 ];
 
 export default class GitHubApplication {
-  constructor(private operations: Operations, public id: number, public slug: string, public friendlyName: string, private getAuthorizationHeader: IGetAuthorizationHeader) {
+  constructor(private operations: IOperationsGitHubRestLibrary & IOperationsDefaultCacheTimes, public id: number, public slug: string, public friendlyName: string, private getAuthorizationHeader: IGetAuthorizationHeader) {
   }
 
   static PrimaryInstallationProperties = primaryInstallationProperties;

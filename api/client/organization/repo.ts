@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../../middleware';
-import { ErrorHelper, getProviders, LocalApiRepoAction, ReposAppRequest } from '../../../transitional';
+import { ErrorHelper, getProviders } from '../../../transitional';
 import { Repository } from '../../../business';
 import { IndividualContext } from '../../../user';
 import NewRepositoryLockdownSystem from '../../../features/newRepositoryLockdown';
@@ -16,6 +16,7 @@ import { renameRepositoryDefaultBranchEndToEnd } from '../../../routes/org/repos
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
 
 import RouteRepoPermissions from './repoPermissions';
+import { ReposAppRequest, LocalApiRepoAction, getRepositoryMetadataProvider } from '../../../interfaces';
 
 type RequestWithRepo = ReposAppRequest & {
   repository: Repository;
@@ -209,7 +210,8 @@ router.delete('/', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler
     }
     return next(jsonError(noExistingMetadata, 404));
   }
-  const { operations, repositoryMetadataProvider } = getProviders(req);
+  const { operations } = getProviders(req);
+  const repositoryMetadataProvider = getRepositoryMetadataProvider(operations);
   const lockdownSystem = new NewRepositoryLockdownSystem({ operations, organization, repository, repositoryMetadataProvider });
   await lockdownSystem.deleteLockedRepository(false /* delete for any reason */, true /* deleted by the original user instead of ops */);
   return res.json({

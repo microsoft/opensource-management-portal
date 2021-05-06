@@ -6,7 +6,8 @@
 import express from 'express';
 const router = express.Router();
 
-import { getProviders, ReposAppRequest } from '../transitional';
+import { ReposAppRequest } from '../interfaces';
+import { getProviders } from '../transitional';
 
 router.get('/', (req: ReposAppRequest, res) => {
   const config = getProviders(req).config;

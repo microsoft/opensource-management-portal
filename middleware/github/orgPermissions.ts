@@ -3,9 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ReposAppRequest } from '../../transitional';
+import { OrganizationMembershipState, ReposAppRequest } from '../../interfaces';
 import { wrapError } from '../../utils';
-import { OrganizationMembershipState } from '../../business/organization';
 
 const orgPermissionsCacheKeyName = 'orgPermissions';
 const orgOwnersCacheKeyName = 'orgOwners';

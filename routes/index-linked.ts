@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, CreateError, hasStaticReactClientApp, getProviders } from '../transitional';
+import { CreateError, hasStaticReactClientApp, getProviders } from '../transitional';
 import { IndividualContext } from '../user';
 import { storeOriginalUrlAsVariable } from '../utils';
 import { AuthorizeOnlyCorporateAdministrators } from '../middleware/business/corporateAdministrators';
@@ -24,6 +24,7 @@ import { Organization, Repository } from '../business';
 
 import orgsRoute from './orgs';
 import { injectReactClient } from '../middleware';
+import { ReposAppRequest } from '../interfaces';
 
 const hasReactApp = hasStaticReactClientApp();
 const reactRoute = hasReactApp ? injectReactClient() : undefined;

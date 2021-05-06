@@ -13,7 +13,7 @@ const thisProviderType = Type;
 
 export class TokenProvider extends EntityMetadataBase implements ITokenProvider {
   constructor(options: ITokenProviderCreateOptions) {
-    super(options);
+    super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }
 

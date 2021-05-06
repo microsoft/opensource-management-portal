@@ -7,7 +7,7 @@
 
 import moment from 'moment';
 
-import { IReposJob } from '../../app';
+import { IReposJob } from '../../interfaces';
 
 // Organization invitations cleanup: remove any invitations that are older than a
 // set period of time from the organization.

@@ -5,8 +5,7 @@
 
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
-import { IReposError } from '../transitional';
-import { IReposApplication } from '../app';
+import { IReposApplication, IReposError } from '../interfaces';
 import RouteErrorHandler from './errorHandler';
 
 export default async function configureErrorRoutes(app: IReposApplication, initializationError: Error) {

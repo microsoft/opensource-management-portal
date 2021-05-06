@@ -6,9 +6,10 @@
 /*eslint no-console: ["error", { allow: ["warn"] }] */
 
 import _ from 'lodash';
+import { ReposAppRequest, IAppSession } from '../../interfaces';
 const debug = require('debug')('user');
 
-import { getProviders, IAppSession, ReposAppRequest } from '../../transitional';
+import { getProviders } from '../../transitional';
 import { ICorporateIdentity, IGitHubIdentity, IndividualContext, GitHubIdentitySource } from '../../user';
 import { storeOriginalUrlAsReferrer } from '../../utils';
 

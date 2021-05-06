@@ -3,17 +3,12 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Operations } from '../business/operations';
-import { SettleToStateValue, isPermissionBetterThan, ErrorHelper } from '../transitional';
-
-import LinkManager from './linkManager';
-import { Team, GitHubTeamRole } from '../business/team';
-import { Organization, OrganizationMembershipRoleQuery, OrganizationMembershipRole } from '../business/organization';
-import { Repository } from '../business/repository';
-import QueryCache, { IQueryCacheTeamRepositoryPermission } from '../business/queryCache';
-import { IPersonalizedUserAggregateRepositoryPermission } from '../business/graphManager';
-import { TeamRepositoryPermission } from '../business/teamRepositoryPermission';
+import { IPersonalizedUserAggregateRepositoryPermission, Operations, Organization, Repository, Team, TeamRepositoryPermission } from '../business';
+import QueryCache from '../business/queryCache';
 import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
+import { IQueryCacheTeamRepositoryPermission, OrganizationMembershipRole, GitHubTeamRole, OrganizationMembershipRoleQuery } from '../interfaces';
+import { SettleToStateValue, isPermissionBetterThan, ErrorHelper } from '../transitional';
+import LinkManager from './linkManager';
 
 // PLANNING once consolidated
 // TODO: expose a combined 'teams in' which is maint + member

@@ -7,7 +7,8 @@ import querystring from 'querystring';
 
 import { redirectToReferrer, storeReferrer } from '../utils';
 import { getGithubAppConfigurationOptions } from './passport/githubStrategy';
-import { getProviders, IAppSession, IReposError, ReposAppRequest } from '../transitional';
+import { getProviders } from '../transitional';
+import { ReposAppRequest, IAppSession, IReposError } from '../interfaces';
 
 function newSessionAfterAuthentication(req: ReposAppRequest, res, next) {
   // Same site issues

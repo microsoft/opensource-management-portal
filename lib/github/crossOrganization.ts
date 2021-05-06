@@ -9,8 +9,8 @@ import { IRestResponse, IIntelligentCacheResponseArray, flattenData } from './co
 import { CompositeApiContext } from './composite';
 import { RestLibrary } from '.';
 import { RestCollections } from './collections';
-import { IGetOrganizationMembersOptions } from '../../business/organization';
-import { ITeamMembershipOptions } from '../../business/team';
+import { ICacheOptions, IGetOrganizationMembersOptions, IPagedCrossOrganizationCacheOptions, IPurposefulGetAuthorizationHeader, ITeamMembershipOptions } from '../../interfaces';
+import { AppPurpose } from '../../github';
 
 interface IOrganizationsResponse extends IRestResponse {
   orgs?: any;
@@ -37,18 +37,18 @@ export class CrossOrganizationCollator {
     this.collectionsClient = collectionsClient;
   }
 
-  async orgMembers(orgsAndTokens, options: IGetOrganizationMembersOptions, cacheOptions): Promise<any> {
+  async orgMembers(orgsAndTokens: Map<string, IPurposefulGetAuthorizationHeader>, options: IGetOrganizationMembersOptions, cacheOptions: ICacheOptions): Promise<any> {
     options['apiTypePrefix'] = 'github.x#';
     const data = await this.getCrossOrganizationMethod(orgsAndTokens, 'orgMembers', 'getOrgMembers', options, cacheOptions);
     return flattenData(data);
   }
 
-  async teams(orgsAndTokens, options, cacheOptions) {
+  async teams(orgsAndTokens: Map<string, IPurposefulGetAuthorizationHeader>, options, cacheOptions) {
     const allTeams = await this.getAllTeams(orgsAndTokens, options, cacheOptions);
     return flattenData(allTeams);
   }
 
-  async teamMembers(orgsAndTokens, options: ITeamMembershipOptions, cacheOptions): Promise<any> {
+  async teamMembers(orgsAndTokens: Map<string, IPurposefulGetAuthorizationHeader>, options: ITeamMembershipOptions, cacheOptions: ICacheOptions): Promise<any> {
     options['apiTypePrefix'] = 'github.x#';
     const capturedThis = this;
     const generalizedData = await this.generalizedCollectionMethod(
@@ -60,12 +60,12 @@ export class CrossOrganizationCollator {
     return flattenData(generalizedData);
   }
 
-  async repos(orgsAndTokens, options, cacheOptions): Promise<any> {
+  async repos(orgsAndTokens: Map<string, IPurposefulGetAuthorizationHeader>, options, cacheOptions: ICacheOptions): Promise<any> {
     const allRepos = await this.getAllRepos(orgsAndTokens, options, cacheOptions);
     return flattenData(allRepos);
   }
 
-  async repoCollaborators(orgsAndTokens, options, cacheOptions): Promise<any> {
+  async repoCollaborators(orgsAndTokens: Map<string, IPurposefulGetAuthorizationHeader>, options, cacheOptions: ICacheOptions): Promise<any> {
     options.apiTypePrefix = 'github.x#';
     const capturedThis =  this;
     const generalizedData = await this.generalizedCollectionMethod(
@@ -77,7 +77,7 @@ export class CrossOrganizationCollator {
     return flattenData(generalizedData);
   }
 
-  async repoTeams(orgsAndTokens, options, cacheOptions): Promise<any> {
+  async repoTeams(orgsAndTokens: Map<string, IPurposefulGetAuthorizationHeader>, options, cacheOptions: ICacheOptions): Promise<any> {
     options.apiTypePrefix = 'github.x#';
     const capturedThis =  this;
     const generalizedData = await this.generalizedCollectionMethod(
@@ -89,7 +89,7 @@ export class CrossOrganizationCollator {
     return flattenData(generalizedData);
   }
 
-  private generalizedCollectionMethod(token, apiName, method, options, cacheOptions?): Promise<any> { // IIntelligentEngineResponse
+  private async generalizedCollectionMethod(token, apiName, method, options, cacheOptions?: ICacheOptions): Promise<any> { // IIntelligentEngineResponse
     cacheOptions = cacheOptions || {};
     const apiContext = new CompositeApiContext(apiName, method, options);
     apiContext.maxAgeSeconds = cacheOptions.maxAgeSeconds || 600;
@@ -98,10 +98,11 @@ export class CrossOrganizationCollator {
     if (cacheOptions.backgroundRefresh) {
       apiContext.backgroundRefresh = true;
     }
-    return this.libraryContext.compositeEngine.execute(apiContext);
+    const res = await this.libraryContext.compositeEngine.execute(apiContext);
+    return res;
   }
 
-  private async getCrossOrganizationMethod(orgsAndTokens, apiName: string, methodName: string, options, cacheOptions): Promise<any> {
+  private async getCrossOrganizationMethod(orgsAndTokens: Map<string, IPurposefulGetAuthorizationHeader>, apiName: string, methodName: string, options, cacheOptions: IPagedCrossOrganizationCacheOptions): Promise<any> {
     const method = this.collectionsClient[methodName];
     if (!method) {
       throw new Error(`No method called ${method} defined in the collections client.`);
@@ -113,10 +114,9 @@ export class CrossOrganizationCollator {
         orgs: {},
         data: undefined,
       };
-      // values.headers = {};
-      // values.orgs = {};
-      for (let orgName in orgsAndTokens) {
-        const token = orgsAndTokens[orgName];
+      const organizations = Array.from(orgsAndTokens.keys());
+      for (let orgName of organizations) {
+        const token = orgsAndTokens.get(orgName);
         const localOptions = Object.assign({}, options);
         localOptions.org = orgName;
         if (!localOptions.per_page) {
@@ -127,7 +127,7 @@ export class CrossOrganizationCollator {
           localCacheOptions.maxAgeSeconds = localCacheOptions.individualMaxAgeSeconds;
         }
         try {
-          const orgValues = await method.call(capturedThis.collectionsClient, token, localOptions, localCacheOptions);
+          const orgValues = await method.call(capturedThis.collectionsClient, token.bind(null, AppPurpose.Data), localOptions, localCacheOptions);
           if (!orgValues) {
             throw new Error('No result');
           }
@@ -148,10 +148,10 @@ export class CrossOrganizationCollator {
       delete values.headers;
       return dataObject;
     };
-    return this.generalizedCollectionMethod(orgsAndTokens, apiName, crossOrgMethod, options, cacheOptions);
+    return await this.generalizedCollectionMethod(orgsAndTokens, apiName, crossOrgMethod, options, cacheOptions);
   }
 
-  private crossOrganizationCollection(capturedThis: CrossOrganizationCollator, orgsAndTokens, options, cacheOptions, innerKeyType, outerFunction, collectionMethodName: string, collectionKey, optionalSetOrganizationLogin) {
+  private crossOrganizationCollection(capturedThis: CrossOrganizationCollator, orgsAndTokens: Map<string, IPurposefulGetAuthorizationHeader>, options, cacheOptions: IPagedCrossOrganizationCacheOptions, innerKeyType, outerFunction, collectionMethodName: string, collectionKey, optionalSetOrganizationLogin) {
     return async (): Promise<any> => {
       const entities = [] as IIntelligentCacheResponseArray;
       entities.headers = {};
@@ -200,14 +200,14 @@ export class CrossOrganizationCollator {
           const localOptions = Object.assign(localOptionsTarget, options);
           delete localOptions.maxAgeSeconds;
           delete localOptions.backgroundRefresh;
-          const token = orgsAndTokens[orgName.toLowerCase()];
+          const token = orgsAndTokens.get(orgName.toLowerCase()) as IPurposefulGetAuthorizationHeader;
           if (!token) {
             throw new Error(`No token available for the organization ${orgName}`);
           }
           let innerEntities = null;
           let collectionsError = null;
           try {
-            innerEntities = await this.collectionsClient[collectionMethodName](token, localOptions, localCacheOptions);
+            innerEntities = await this.collectionsClient[collectionMethodName](token(AppPurpose.Data), localOptions, localCacheOptions);
           } catch (error) {
             // This is a silent error for now, because there
             // are valid scenarios, i.e. team deletion, to consider.
@@ -238,13 +238,13 @@ export class CrossOrganizationCollator {
     }
   }
 
-  private async getAllTeams(orgsAndTokens, options, cacheOptions): Promise<any> {
+  private async getAllTeams(orgsAndTokens: Map<string, IPurposefulGetAuthorizationHeader>, options, cacheOptions: IPagedCrossOrganizationCacheOptions): Promise<any> {
     options.apiTypePrefix = 'github.x#';
     const data = await this.getCrossOrganizationMethod(orgsAndTokens, 'teams', 'getOrgTeams', options, cacheOptions);
     return data;
   }
 
-  private async getAllRepos(orgsAndTokens, options, cacheOptions): Promise<any> {
+  private async getAllRepos(orgsAndTokens: Map<string, IPurposefulGetAuthorizationHeader>, options, cacheOptions: IPagedCrossOrganizationCacheOptions): Promise<any> {
     options.apiTypePrefix = 'github.x#';
     const data = await this.getCrossOrganizationMethod(orgsAndTokens, 'repos', 'getOrgRepos', options, cacheOptions);
     return data;

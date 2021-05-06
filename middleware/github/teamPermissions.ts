@@ -3,10 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ReposAppRequest } from '../../transitional';
-import { GitHubTeamRole, ITeamMembershipRoleState, Team } from '../../business/team';
+import { Team } from '../../business';
+import { GitHubTeamRole, ITeamMembershipRoleState, OrganizationMembershipState, ReposAppRequest } from '../../interfaces';
 import { IndividualContext } from '../../user';
-import { OrganizationMembershipState } from '../../business/organization';
 
 // --- team2 context
 

@@ -6,7 +6,7 @@
 /*eslint no-console: ["error", { allow: ["warn", "dir", "log"] }] */
 
 import BlobCache from '../../lib/caching/blob';
-import { IReposJob } from '../../app';
+import { IReposJob } from '../../interfaces';
 
 export default async function go({ providers }: IReposJob): Promise<void> {
   for (const providerName in providers) {

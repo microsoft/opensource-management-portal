@@ -14,7 +14,7 @@ import { IRestResponse, flattenData } from './core';
 import { CompositeApiContext, CompositeIntelligentEngine } from './composite';
 import { Collaborator } from '../../business/collaborator';
 import { Team } from '../../business/team';
-import { IPagedCacheOptions, IGetAuthorizationHeader, IDictionary } from '../../transitional';
+import { IPagedCacheOptions, IGetAuthorizationHeader, IDictionary } from '../../interfaces';
 import { RestLibrary } from '.';
 import { sleep } from '../../utils';
 import GitHubApplication from '../../business/application';
@@ -25,6 +25,12 @@ export interface IGetAppInstallationsParameters {
 }
 
 export enum GitHubPullRequestState {
+  Open = 'open',
+  Closed = 'closed',
+  All = 'all',
+}
+
+export enum GitHubIssueState {
   Open = 'open',
   Closed = 'closed',
   All = 'all',
@@ -159,6 +165,10 @@ export class RestCollections {
       additionalDifferentiationParameters: parameters,
     };
     return this.generalizedCollectionWithFilter(`appInstallations`, 'apps.listInstallations', appInstallDetailsToCopy, token, projectedOptions, cacheOptions);
+  }
+
+  getRepoIssues(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any[]> {
+    return this.generalizedCollectionWithFilter('repoIssues', 'issues.listForRepo', null, token, options, cacheOptions);
   }
 
   getRepoTeams(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any> {

@@ -3,10 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { IOperationsInstance, ICorporateLink, throwIfNotCapable, IOperationsProviders, CoreCapability, IOperationsLinks } from '../interfaces';
 import * as common from './common';
-import { Operations } from "./operations";
-import { Team } from "./team";
-import { ICorporateLink } from './corporateLink';
+import { Team } from './team';
 
 const memberPrimaryProperties = [
   'id',
@@ -18,7 +17,7 @@ const memberSecondaryProperties = [];
 
 export class TeamMember {
   private _team: Team;
-  private _operations: Operations;
+  private _operations: IOperationsInstance;
   private _link: ICorporateLink;
   private _id: number;
   private _avatar_url: string;
@@ -55,7 +54,7 @@ export class TeamMember {
     this._link = value;
   }
 
-  constructor(team: Team, entity: any, operations: Operations) {
+  constructor(team: Team, entity: any, operations: IOperationsInstance) {
     this._team = team;
     if (entity) {
       common.assignKnownFieldsPrefixed(this, entity, 'member', memberPrimaryProperties, memberSecondaryProperties);
@@ -100,7 +99,7 @@ export class TeamMember {
     if (this._mailAddress) {
       return this._mailAddress;
     }
-    const operations = this._operations;
+    const operations = throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers);
     const providers = operations.providers;
     const link = await this.resolveDirectLink();
     if (!link) {
@@ -122,7 +121,7 @@ export class TeamMember {
     if (this._link) {
       return this._link;
     }
-    const operations = this._operations;
+    const operations = throwIfNotCapable<IOperationsLinks>(this._operations, CoreCapability.Links);
     try {
       this._link = await operations.getLinkByThirdPartyId(this._id.toString());
     } catch (ignoredResolutionError) {

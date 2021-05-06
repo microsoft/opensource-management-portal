@@ -7,7 +7,7 @@
 
 import _ from 'lodash';
 
-import { ICallback, PromiseResolve, PromiseReject } from '../transitional';
+import { PromiseResolve, PromiseReject, ICallback } from '../interfaces';
 
 export function assignKnownFieldsPrefixed(self, entity, type, primaryProperties, secondaryProperties?, prefix?: string) {
   prefix = prefix || '_';

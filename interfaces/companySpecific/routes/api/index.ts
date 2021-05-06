@@ -6,6 +6,7 @@
 import { ConnectRouter } from '..';
 
 export interface IAttachCompanySpecificRoutesApi {
+  rootIndex?: ConnectRouter;
   index?: ConnectRouter;
   context?: IAttachCompanySpecificRoutesApiContextual;
   organization?: IAttachCompanySpecificRoutesApiOrganization;

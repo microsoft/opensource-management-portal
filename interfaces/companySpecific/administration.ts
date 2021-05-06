@@ -4,7 +4,8 @@
 //
 
 import { Router } from 'express';
-import { IDictionary } from '../../transitional';
+
+import { IDictionary } from '../../interfaces';
 
 export interface ICorporationAdministrationSection {
   urls: IDictionary<string>;

@@ -34,9 +34,9 @@ if repositoryMetadataEntity.releaseReviewType
         p Additional repository associated with an existing official release
       else if repositoryMetadataEntity.releaseReviewType == 'Exempt'
         if createdCorporateDisplayName
-          p #{createdCorporateDisplayName} indicated this project is exempt from corporate GitHub policy
+          p #{createdCorporateDisplayName} indicated this project does not comply with corporate GitHub policy
         else
-          p The user indicated this project is exempt from corporate GitHub policy
+          p The user indicated this project does not comply with corporate GitHub policy
       else
         p= repositoryMetadataEntity.releaseReviewType
 if repositoryMetadataEntity.projectType
@@ -61,21 +61,21 @@ if repositoryMetadataEntity.releaseReviewJustification
   .row
     +groupTitle('Business justification')
     .col-md-9
-      if repository.private && repositoryMetadataEntity.releaseReviewJustification == 'Policy exception: Team project'
+      if repository.private && repositoryMetadataEntity.releaseReviewJustification == 'Policy violation: Team project'
         if createdCorporateDisplayName
           p This repository is a private engineering team project. #{createdCorporateDisplayName} acknowledged that this should be stored in an approved engineering system other than GitHub but proceeded with repository configuration.
         else
           p This is a private engineering / team project that should be located in an approved engineering system.
-      else if repository.private === false && repositoryMetadataEntity.releaseReviewJustification == 'Policy exception: Team project'
+      else if repository.private === false && repositoryMetadataEntity.releaseReviewJustification == 'Policy violation: Team project'
         p When created, the repository was marked as being a team project, and the repo creator acknowledged that the scenario may not comply with corporate GitHub policy.
-      else if repositoryMetadataEntity.releaseReviewJustification == 'Policy exception: Personal project'
+      else if repositoryMetadataEntity.releaseReviewJustification == 'Policy violation: Personal project'
         p This is a personal or individual repository that may not comply with corporate GitHub policies. #{createdCorporateDisplayName} acknowledged understanding corporate GitHub policy when creating the repository.
-      else if repository.private && repositoryMetadataEntity.releaseReviewJustification == 'Policy exception: Inner-source / Internal shared source'
+      else if repository.private && repositoryMetadataEntity.releaseReviewJustification == 'Policy violation: InnerSource / Internal shared source'
         if createdCorporateDisplayName
           p This repository is #[a(href='https://aka.ms/innersource') innersource] (private engineering) that should be located in an approved engineering system; #{createdCorporateDisplayName} acknowledged the policy but proceeded with repository configuration.
         else
           p This is a private engineering / team project that should be located in an approved engineering system. It was configured as an #[a(href='https://aka.ms/innersource') innersource] project.
-      else if repository.private === false && repositoryMetadataEntity.releaseReviewJustification == 'Policy exception: Inner-source / Internal shared source'
+      else if repository.private === false && repositoryMetadataEntity.releaseReviewJustification == 'Policy violation: InnerSource / Internal shared source'
         if createdCorporateDisplayName
           p This repository is public, but was marked as an #[a(href='https://aka.ms/innersource') innersource] project. #{createdCorporateDisplayName} assigned this justification.
         else

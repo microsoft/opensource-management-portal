@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IReposError } from '../../../transitional';
+import { IReposError } from '../../../interfaces';
 
 export default function middlewareTeamAdminRequired(req, res, next) {
   const teamPermissions = req.teamPermissions;

@@ -154,12 +154,12 @@ block content
           nav(style='margin-bottom:48px')
             ul.pager
               li.previous(class=(previous_possible ? '' : 'invisible'))
-                a(href='?page_number=' + (search.page-1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                a(href='?page_number=' + (search.page-1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : '') + (query.pageSize ? '&pageSize=' + query.pageSize : ''))
                   span(aria-hidden="true") &larr; Previous
               li
                 | #{search.pageFirstItem.toLocaleString()} - #{search.pageLastItem.toLocaleString()} of #{search.totalItems.toLocaleString()} #{itemType}
               li.next(class=(next_possible ? '' : 'invisible'))
-                a(href='?page_number=' + (search.page+1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : ''))
+                a(href='?page_number=' + (search.page+1) + (query.twoFactor ? '&twoFactor=' + query.twoFactor : '') + (search.sort ? '&sort=' + search.sort : '') + (query.type ? '&type=' + query.type : '') + (query.phrase ? '&q=' + query.phrase : '') + (query.pageSize ? '&pageSize=' + query.pageSize : ''))
                   span(aria-hidden="true") Next &rarr;
 
           .row.vertical-pad-bottom
@@ -296,3 +296,4 @@ block content
         p.
           This view is cached and eventually consistent within a few hours.
           The presence of people in this list does not imply that they are an employee.
+          

@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, UserAlertType } from '../../../transitional';
+import { ReposAppRequest, UserAlertType } from '../../../interfaces';
 import { Organization } from '../../../business/organization';
 import { Team } from '../../../business/team';
 

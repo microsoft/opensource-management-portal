@@ -7,11 +7,12 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, IProviders, UserAlertType, getProviders } from '../../../../transitional';
+import { getProviders } from '../../../../transitional';
 import { Team } from '../../../../business';
 import { PermissionWorkflowEngine } from '../approvals';
 import RenderHtmlMail from '../../../../lib/emailRender';
 import { IndividualContext } from '../../../../user';
+import { ReposAppRequest, UserAlertType, IProviders } from '../../../../interfaces';
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: any;

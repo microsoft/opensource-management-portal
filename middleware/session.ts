@@ -4,12 +4,12 @@
 //
 
 import debug = require('debug');
-import { IProviders } from '../transitional';
-const dbg = debug('startup');
-
 import session from 'express-session';
-
 import ConnectRedis from 'connect-redis';
+
+import { IProviders } from '../interfaces';
+
+const dbg = debug('startup');
 
 const saltNotSet = 'session-salt-not-set-warning';
 

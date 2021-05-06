@@ -35,7 +35,7 @@ export default class JsonPager<T> {
     const requestedPageSize = query.pageSize ? Number(query.pageSize) : defaultPageSize;
     const requestedPage = query.page ? Number(query.page) : 0;
     this.pageSize = Math.min(requestedPageSize, maxPageSize);
-    const page = requestedPage || 1;
+    const page = requestedPage || 0;
     if (page < 0 || isNaN(page)) {
       throw jsonError('Invalid page', 400);
     }
@@ -43,10 +43,11 @@ export default class JsonPager<T> {
   }
 
   slice(array: T[]) {
+    // now this is zero-based indexing
     this.total = array.length;
     this.lastPage = Math.ceil(this.total / this.pageSize);
     // TODO: this can go past the end, i.e. search while on page 7, it will not return page 1 results
-    this.begin = ((this.page - 1) * this.pageSize);
+    this.begin = this.page * this.pageSize;
     this.end = this.begin + this.pageSize;
     const subset = array.slice(this.begin, this.end);
     this.subsetReturnSize = subset.length;
@@ -57,11 +58,12 @@ export default class JsonPager<T> {
     if (mappedValues && mappedValues.length !== this.subsetReturnSize) {
       console.warn(`The mapped values length ${mappedValues.length} !== ${this.subsetReturnSize} that was computed`);
     }
+    const pageCount = this.lastPage;
     return this.res.json({
       values: mappedValues,
       total: this.total,
-      lastPage: this.lastPage,
-      nextPage: this.page + 1, // TODO: should not return if it's the end of the road
+      lastPage: pageCount - 1,
+      nextPage: this.page + 1 >= pageCount ? this.page : this.page + 1,
       page: this.page,
       pageSize: this.pageSize,
     });
@@ -70,5 +72,17 @@ export default class JsonPager<T> {
   sliceAndSend(array: T[]) {
     const subset = this.slice(array);
     return this.sendJson(subset);
+  }
+
+  static FromSqlParameters(pageSize: number, page: number, total: number) {
+    // let's keep this math in a single place
+    const pageCount = Math.ceil(total / pageSize);
+    return {
+      total,
+      page,
+      pageSize,
+      lastPage: pageCount - 1,
+      nextPage: page + 1 >= pageCount ? page : page + 1,
+    };
   }
 }

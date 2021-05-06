@@ -7,15 +7,15 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { Operations } from '../business/operations';
-import { ReposAppRequest, ErrorHelper, UserAlertType, getProviders } from '../transitional';
+import { Operations, Repository } from '../business';
+import { ErrorHelper, getProviders } from '../transitional';
 import { AuditLogRecord } from '../entities/auditLogRecord/auditLogRecord';
 import { daysInMilliseconds } from '../utils';
 import { AuditEvents } from '../entities/auditLogRecord';
-import { Repository } from '../business/repository';
 import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 import { IGitHubIdentity, IndividualContext } from '../user';
 import { IMail } from '../lib/mailProvider';
+import { ReposAppRequest, UserAlertType } from '../interfaces';
 
 const validDaysBeforeNow = 21;
 

@@ -9,8 +9,9 @@ import _ from 'lodash';
 const debug = require('debug')('restapi');
 import { v4 as uuidV4 } from 'uuid';
 import moment from 'moment';
+
 import { RestLibrary } from '.';
-import { IAuthorizationHeaderValue, ErrorHelper, IDictionary } from '../../transitional';
+import { IAuthorizationHeaderValue } from '../../interfaces';
 import { sleep } from '../../utils';
 
 import cost from './cost';
@@ -209,7 +210,7 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
 
   protected async tryGetCachedResult(apiContext: ApiContext): Promise<IRestResponse> {
     const key = this.redisKeyBodyVersion(apiContext);
-    let response = (await apiContext.libraryContext.redis.getObjectCompressed(key)) as IRestResponse;
+    let response = (await apiContext.libraryContext.cacheProvider.getObjectCompressed(key)) as IRestResponse;
     this.recordRedisCost(apiContext, 'get', response);
     return response;
   }
@@ -251,7 +252,7 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
       apiContext.generatedRefreshId = refreshId;
       debug(`refresh in the background starting for ${apiContext.redisKey.metadata} was updated ${apiContext.metadata.updated} and seconds of ${apiContext.maxAgeSeconds}`);
       // TODO: use proper next tick to kick this off?
-      const setReturnValue = await apiContext.libraryContext.redis.setObjectWithExpire(apiContext.redisKey.metadata, currentMetadata, apiContext.cacheValues.longtermMetadata);
+      const setReturnValue = await apiContext.libraryContext.cacheProvider.setObjectWithExpire(apiContext.redisKey.metadata, currentMetadata, apiContext.cacheValues.longtermMetadata);
       // Remove the values in case the refresh uses the metadata
       delete currentMetadata.refreshing;
       delete currentMetadata.refreshId;
@@ -278,7 +279,7 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
       return;
     }
     debug('Expiring older cached response');
-    const cost = await apiContext.libraryContext.redis.expire(
+    const cost = await apiContext.libraryContext.cacheProvider.expire(
       this.redisKeyBodyVersion(apiContext, apiContext.etag),
       apiContext.cacheValues.acceleratedExpiration);
     this.recordRedisCost(apiContext, 'expire', cost);
@@ -290,7 +291,7 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
       return;
     }
     const key = this.redisKeyBodyVersion(apiContext, apiContext.etag);
-    await apiContext.libraryContext.redis.delete(key);
+    await apiContext.libraryContext.cacheProvider.delete(key);
   }
 
   protected async slideObjectExpirationWindow(apiContext: ApiContext): Promise<void> {
@@ -299,7 +300,7 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
       return;
     }
     debug(`Sliding expiration window for ${this.redisKeyBodyVersion(apiContext, apiContext.etag)}`)
-    const cost = await apiContext.libraryContext.redis.expire(
+    const cost = await apiContext.libraryContext.cacheProvider.expire(
       this.redisKeyBodyVersion(apiContext, apiContext.etag),
       apiContext.cacheValues.longtermResponse);
     this.recordRedisCost(apiContext, 'expire', cost);
@@ -307,7 +308,7 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
 
   protected async storeMetadata(apiContext: ApiContext, response: IRestResponse): Promise<void> {
     const reducedMetadata = this.reduceMetadataToCacheFromResponse(apiContext, response);
-    const cost = await apiContext.libraryContext.redis.setObjectWithExpire(
+    const cost = await apiContext.libraryContext.cacheProvider.setObjectWithExpire(
       apiContext.redisKey.metadata,
       reducedMetadata,
       apiContext.cacheValues.longtermMetadata);
@@ -321,7 +322,7 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
     } catch (noKey) {
       return;
     }
-    const cost = await apiContext.libraryContext.redis.setObjectCompressedWithExpire(
+    const cost = await apiContext.libraryContext.cacheProvider.setObjectCompressedWithExpire(
       key,
       response,
       apiContext.cacheValues.longtermResponse);
@@ -432,7 +433,7 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
     if (!redisKey) {
       throw new Error('No Redis key provided in apiContext.redisKey.metadata');
     }
-    const cachedMetadata: IRestMetadata = await apiContext.libraryContext.redis.getObject(redisKey) as IRestMetadata;
+    const cachedMetadata: IRestMetadata = await apiContext.libraryContext.cacheProvider.getObject(redisKey) as IRestMetadata;
     // debug('Cached metadata retrieved');
     this.recordRedisCost(apiContext, 'get', cachedMetadata);
     return cachedMetadata;

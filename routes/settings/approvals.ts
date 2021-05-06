@@ -7,14 +7,15 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { IReposError, ReposAppRequest, UserAlertType, getProviders } from '../../transitional';
 import { IApprovalProvider } from '../../entities/teamJoinApproval/approvalProvider';
 import { TeamJoinApprovalEntity } from '../../entities/teamJoinApproval/teamJoinApproval';
 import { safeLocalRedirectUrl } from '../../utils';
-import { Operations } from '../../business/operations';
-import { Team } from '../../business/team';
-import { Organization } from '../../business/organization';
+import { Operations } from '../../business';
+import { Team } from '../../business';
+import { Organization } from '../../business';
 import { IAggregateUserTeams } from '../../user/aggregate';
+import { ReposAppRequest, IReposError, UserAlertType } from '../../interfaces';
+import { getProviders } from '../../transitional';
 
 export interface ApprovalPair {
   team: Team;

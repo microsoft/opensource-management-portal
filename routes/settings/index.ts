@@ -7,8 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, getProviders } from '../../transitional';
-import { AddLinkToRequest } from '../../middleware/links/';
+import { getProviders } from '../../transitional';
 
 import approvalsRoute from './approvals';
 import authorizationsRoute from './authorizations';
@@ -17,6 +16,8 @@ import personalAccessTokensRoute from './personalAccessTokens';
 
 import contributionDataRoute from './contributionData';
 import campaignsRoute from './campaigns';
+import { AddLinkToRequest } from '../../middleware';
+import { ReposAppRequest } from '../../interfaces';
 
 router.use(asyncHandler(AddLinkToRequest));
 

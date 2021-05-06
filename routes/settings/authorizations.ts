@@ -7,9 +7,9 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, getProviders } from '../../transitional';
-import { ICorporateLink } from '../../business/corporateLink';
-import { Operations } from '../../business/operations';
+import { getProviders } from '../../transitional';
+import { Operations } from '../../business';
+import { ReposAppRequest, ICorporateLink } from '../../interfaces';
 
 interface IRequestWithAuthorizations extends ReposAppRequest {
   authorizations?: any;

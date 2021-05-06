@@ -4,8 +4,9 @@
 //
 
 import { OrganizationSudo } from '.';
-import { GitHubTeamRole, ICorporateLink, ITeamMembershipRoleState, Organization } from '../../business';
-import { ErrorHelper, IProviders } from '../../transitional';
+import { Organization } from '../../business';
+import { IProviders, ICorporateLink, GitHubTeamRole, ITeamMembershipRoleState } from '../../interfaces';
+import { ErrorHelper } from '../../transitional';
 
 export class OrganizationSudoGitHubTeams extends OrganizationSudo {
   constructor(providers: IProviders, organization: Organization) {

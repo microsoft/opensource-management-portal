@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ICallback } from '../../transitional';
-
 import microsoftMailAddressProvider from './microsoftMailAddressProvider';
 import mockMailAddressProvider from './mockMailAddressProvider';
 import passthroughMailAddressProvider from './passthroughMailAddressProvider';

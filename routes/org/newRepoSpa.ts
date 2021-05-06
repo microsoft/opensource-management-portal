@@ -7,21 +7,23 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, getProviders } from '../../transitional';
-import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
+import { getRepositoryMetadataProvider, ReposAppRequest } from '../../interfaces';
+import { getProviders } from '../../transitional';
 import { Organization } from '../../business/organization';
+import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
 
 router.get('/', asyncHandler(async function (req: ReposAppRequest, res) {
   const providers = getProviders(req);
   const individualContext = req.individualContext;
   const existingRepoId = req.query.existingrepoid as string;
   const organization = req.organization as Organization;
+  const repositoryMetadataProvider = getRepositoryMetadataProvider(organization.operations);
   if (organization.createRepositoriesOnGitHub) {
     throw new Error('This organization requires that repositories are either directly created on GitHub, or by an organization owner.');
   }
   if (existingRepoId && organization.isNewRepositoryLockdownSystemEnabled) {
     try {
-      const metadata = await providers.repositoryMetadataProvider.getRepositoryMetadata(existingRepoId);
+      const metadata = await repositoryMetadataProvider.getRepositoryMetadata(existingRepoId);
       await NewRepositoryLockdownSystem.ValidateUserCanConfigureRepository(metadata, individualContext);
     } catch (noExistingMetadata) {
       if (noExistingMetadata.status === 404) {

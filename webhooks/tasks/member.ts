@@ -7,12 +7,9 @@
 
 // COLLABORATOR on a repository
 
-import { WebhookProcessor } from "../organizationProcessor";
-import { Operations } from "../../business/operations";
-import { Organization } from "../../business/organization";
-import { IProviders } from "../../transitional";
-import { GitHubCollaboratorType } from "../../business/repository";
-import { GitHubRepositoryPermission } from "../../entities/repositoryMetadata/repositoryMetadata";
+import { WebhookProcessor } from '../organizationProcessor';
+import { Operations, Organization } from '../../business';
+import { IProviders, GitHubCollaboratorType } from '../../interfaces';
 
 export default class MemberWebhookProcessor implements WebhookProcessor {
   filter(data: any) {

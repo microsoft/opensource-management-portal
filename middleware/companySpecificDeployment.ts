@@ -4,8 +4,8 @@
 //
 
 import path from 'path';
-import { ICompanySpecificStartup, ICompanySpecificStartupProperties } from '../interfaces';
 
+import { ICompanySpecificStartup, ICompanySpecificStartupProperties } from '../interfaces';
 import AppPackage from '../package.json';
 
 let instance = null;

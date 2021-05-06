@@ -5,7 +5,7 @@
 
 import { Organization } from '../../../business';
 import { IOrganizationSudo } from '../../../features';
-import { IProviders } from '../../../transitional';
+import { IProviders } from '../../../interfaces';
 
 export interface ICompanySpecificFeatureOrganizationSudo {
   tryCreateInstance: (providers: IProviders, organization: Organization) => IOrganizationSudo;

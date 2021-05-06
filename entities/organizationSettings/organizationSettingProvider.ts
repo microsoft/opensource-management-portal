@@ -4,7 +4,7 @@
 //
 
 import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { OrganizationSetting, OrganizationSettingFixedQueryAll, OrganizationSettingFixedQueryMostRecentlyUpdatedActive } from './organizationSetting';
+import { OrganizationSetting, OrganizationSettingFixedQueryAll } from './organizationSetting';
 import { EntityImplementation } from './organizationSetting';
 
 const thisProviderType = EntityImplementation.Type;
@@ -24,7 +24,7 @@ export interface IOrganizationSettingProvider {
 
 export class OrganizationSettingProvider extends EntityMetadataBase implements IOrganizationSettingProvider {
   constructor(options: IOrganizationSettingCreateOptions) {
-    super(options);
+    super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }
 

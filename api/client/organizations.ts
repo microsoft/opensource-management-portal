@@ -7,7 +7,8 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../middleware';
-import { ErrorHelper, getProviders, ReposAppRequest } from '../../transitional';
+import { ErrorHelper, getProviders } from '../../transitional';
+import { ReposAppRequest } from '../../interfaces';
 
 import RouteOrganization from './organization';
 

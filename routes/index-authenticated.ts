@@ -11,7 +11,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { ReposAppRequest, UserAlertType, hasStaticReactClientApp, getProviders } from '../transitional';
+import { hasStaticReactClientApp, getProviders } from '../transitional';
 
 import { Organization } from '../business/organization';
 
@@ -29,6 +29,7 @@ const reactRoute = hasReactApp ? injectReactClient() : undefined;
 
 import RoutePlaceholders from './placeholders';
 import RouteReleasesSpa from './releasesSpa';
+import { ReposAppRequest, UserAlertType } from '../interfaces';
 
 // - - - Middleware: require that they have a passport - - -
 router.use(requireAuthenticatedUserOrSignIn);

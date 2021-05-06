@@ -9,12 +9,11 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { getProviders, ReposAppRequest } from '../transitional';
+import { getProviders } from '../transitional';
 import { wrapError } from '../utils';
-import { UnlinkPurpose } from '../business/operations';
-import { OrganizationMembershipState } from '../business/organization';
 import { IndividualContext } from '../user';
 import { jsonError } from '../middleware';
+import { ReposAppRequest, OrganizationMembershipState, UnlinkPurpose } from '../interfaces';
 
 router.use(asyncHandler(async function (req: ReposAppRequest, res, next) {
   const memberOfOrganizations = [];
@@ -74,7 +73,7 @@ export async function unlinkInteractive(isJson: boolean, individualContext: Indi
   try {
     history = await operations.terminateLinkAndMemberships(id, terminationOptions);
   } catch (exception) {
-    insights.trackException({ exception } );
+    insights?.trackException({ exception } );
     error = exception;
   }
   const hadErrors = error ? 'had errors' : 'no';
@@ -86,7 +85,7 @@ export async function unlinkInteractive(isJson: boolean, individualContext: Indi
     const historyKey = `log${i + 1}`;
     eventData[historyKey] = history[i];
   }
-  insights.trackEvent({ name: 'PortalUserUnlink', properties: eventData });
+  insights?.trackEvent({ name: 'PortalUserUnlink', properties: eventData });
   if (error) {
     const errorMessage = 'You were successfully removed from all of your organizations. However, a failure happened during a data housecleaning operation with GitHub. Double check that you are happy with your current membership status on GitHub.com before continuing.';
     return next(isJson ? jsonError(errorMessage, 400) : wrapError(error, errorMessage));

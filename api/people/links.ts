@@ -6,10 +6,9 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { jsonError } from '../../middleware/jsonError';
-import { MemberSearch } from '../../business/memberSearch';
-import { ICorporateLink } from '../../business/corporateLink';
-import { Operations, ICrossOrganizationMembersResult } from '../../business/operations';
+import { jsonError } from '../../middleware';
+import { ICrossOrganizationMembersResult, MemberSearch, Operations } from '../../business';
+import { ICorporateLink } from '../../interfaces';
 import { IApiRequest } from '../../middleware/apiReposAuth';
 import postLinkApi from './link';
 import { ErrorHelper, getProviders } from '../../transitional';
@@ -112,7 +111,7 @@ router.get('/github/:username', asyncHandler(async (req: IApiRequest, res, next)
       req.insights.trackMetric({ name: 'ApiRequestLinkByGitHubUsername', value: 1 });
       return res.json(entry);
     } catch (entryError) {
-      return next(jsonError(entryError, 500));
+      return next(jsonError(entryError, ErrorHelper.GetStatus(entryError) || 500));
     }
   }
   const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps);
@@ -143,7 +142,9 @@ router.get('/aad/userPrincipalName/:upn', asyncHandler(async (req: IApiRequest, 
           r.push(entry);
         }
       } catch (partialIgnoreError) {
-        console.dir(partialIgnoreError);
+        if (!ErrorHelper.IsNotFound(partialIgnoreError)) {
+          console.dir(partialIgnoreError);
+        }
       }
     }
     req.insights.trackEvent({
@@ -197,7 +198,9 @@ router.get('/aad/:id', asyncHandler(async (req: IApiRequest, res, next) => {
           r.push(entry);
         }
       } catch (partialIgnoreError) {
-        console.dir(partialIgnoreError);
+        if (!ErrorHelper.IsNotFound(partialIgnoreError)) {
+          console.dir(partialIgnoreError);
+        }
       }
     }
     req.insights.trackMetric({ name: 'ApiRequestLinkByAadId', value: 1 });
@@ -220,12 +223,17 @@ router.get('/aad/:id', asyncHandler(async (req: IApiRequest, res, next) => {
 
 async function getByThirdPartyId(thirdPartyId: string, apiVersion, operations: Operations, skipOrganizations: boolean, showTimestamps: boolean, showLinkIds?: boolean): Promise<any> {
   const providers = operations.providers;
+  const { graphProvider } = providers;
   let link: ICorporateLink = null;
   try {
     link = await providers.linkProvider.getByThirdPartyId(thirdPartyId);
   } catch (linksError) {
-    linksError = wrapError(linksError, 'There was a problem retrieving link information to display alongside the member.');
-    throw jsonError(linksError, 500);
+    if (ErrorHelper.IsNotFound(linksError)) {
+      throw jsonError(`${thirdPartyId} is not linked`, 404);
+    } else {
+      linksError = wrapError(linksError, 'There was a problem retrieving link information to display alongside the member.');
+      throw jsonError(linksError, 500);
+    }
   }
   const account = operations.getAccount(thirdPartyId);
   await account.getDetails();
@@ -265,19 +273,16 @@ async function getByThirdPartyId(thirdPartyId: string, apiVersion, operations: O
       entry.serviceAccountContact = link.serviceAccountMail;
     }
   }
-  if (providers.corporateContactProvider) {
-    const contacts = await providers.corporateContactProvider.lookupContacts(link.corporateUsername);
-    if (contacts) {
-      const corporatePropertyName = apiVersion === '2016-12-01' ? 'corporate' : 'aad'; // This was renamed to be provider name-based
-      entry[corporatePropertyName] = {
-        alias: contacts.alias,
-        preferredName: link.corporateDisplayName,
-        userPrincipalName: link.corporateUsername,
-        emailAddress: contacts.emailAddress,
-      };
-      const corporateIdPropertyName = apiVersion === '2016-12-01' ? 'aadId' : 'id'; // Now just 'id'
-      entry[corporatePropertyName][corporateIdPropertyName] = link.corporateId;
-    }
+  if (link?.corporateAlias || link?.corporateDisplayName || link?.corporateMailAddress || link?.corporateUsername) {
+    const corporatePropertyName = apiVersion === '2016-12-01' ? 'corporate' : 'aad'; // This was renamed to be provider name-based
+    entry[corporatePropertyName] = {
+      alias: link?.corporateAlias,
+      preferredName: link?.corporateDisplayName,
+      userPrincipalName: link?.corporateUsername,
+      emailAddress: link?.corporateMailAddress,
+    };
+    const corporateIdPropertyName = apiVersion === '2016-12-01' ? 'aadId' : 'id'; // Now just 'id'
+    entry[corporatePropertyName][corporateIdPropertyName] = link.corporateId;
   }
   return entry;
 }

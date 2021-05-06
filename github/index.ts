@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IReposApplication } from '../app';
+import { IReposApplication } from '../interfaces';
 
 export enum AppPurpose {
   Data = 'Data',
@@ -11,6 +11,7 @@ export enum AppPurpose {
   Operations = 'Operations',
   BackgroundJobs = 'BackgroundJobs', // "secondary" / "default" fallback
   Updates = 'Updates',
+  Security = 'Security',
 }
 
 export enum GitHubAppAuthenticationType {
@@ -27,6 +28,7 @@ export interface IGitHubAppConfiguration {
   webhookSecret?: string;
   slug?: string;
   description?: string;
+  baseUrl: string;
 }
 
 export interface IGitHubAppsOptions {
@@ -35,5 +37,6 @@ export interface IGitHubAppsOptions {
   customerFacingApp?: IGitHubAppConfiguration;
   operationsApp?: IGitHubAppConfiguration;
   updatesApp?: IGitHubAppConfiguration;
+  securityApp?: IGitHubAppConfiguration;
   app: IReposApplication;
 }

@@ -16,7 +16,7 @@ import fileSize from 'file-size';
 import moment from 'moment-timezone';
 import path from 'path';
 
-import app, { IReposJob, IReposJobResult } from '../../app';
+import app from '../../app';
 
 // import { buildConsolidatedMap as buildRecipientMap } from './consolidated';
 
@@ -26,12 +26,10 @@ import { build as teamsBuild, consolidate as teamsConsolidate, process as teamsP
 
 import mailer from './mailer';
 
-import { Operations } from '../../business/operations';
+import { Operations, Repository, Team } from '../../business';
 import { ICacheHelper } from '../../lib/caching';
-import { ICorporateLink } from '../../business/corporateLink';
+import { ICorporateLink, IReposJob, IReposJobResult } from '../../interfaces';
 import { writeTextToFile } from '../../utils';
-import { Repository } from '../../business/repository';
-import { Team } from '../../business/team';
 import { writeDeflatedTextFile } from './fileCompression';
 
 // Debug-related values for convienience
@@ -144,7 +142,7 @@ async function buildReport(context): Promise<void> {
 }
 
 export default async function run({ providers, started }: IReposJob): Promise<IReposJobResult> {
-  const config = providers.config;
+  const { mailProvider, operations, config } = providers;
   const okToContinue = (config && config.github && config.github.jobs && config.github.jobs.reports && config.github.jobs.reports.enabled === true);
   if (!okToContinue) {
     console.log('config.github.jobs.reports.enabled is not set');
@@ -168,8 +166,7 @@ export default async function run({ providers, started }: IReposJob): Promise<IR
       hostname: os.hostname(),
     },
   });
-  const operations = providers.operations as Operations;
-  if (!operations.mailProvider) {
+  if (!mailProvider) {
     throw new Error('No mail provider available');
   }
   const reportConfig = config && config.github && config.github.jobs ? config.github.jobs.reports : {};
@@ -186,7 +183,7 @@ export default async function run({ providers, started }: IReposJob): Promise<IR
     started: moment().format(),
     organizationData: {},
     settings: {
-      basedir: operations.config.typescript.appDirectory,
+      basedir: config.typescript.appDirectory,
       slice: slice || undefined,
       parallelRepoProcessing: 2,
       repoDelayAfter: 200, // 200ms to wait between repo actions, to help reduce GitHub load

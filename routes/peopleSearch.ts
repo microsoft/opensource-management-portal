@@ -7,18 +7,18 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { RequestWithSystemwidePermissions, RequestTeamMemberAddType, getProviders } from '../transitional';
-
+import { getProviders } from '../transitional';
+import { RequestWithSystemwidePermissions, RequestTeamMemberAddType } from '../interfaces';
 import { ensureAllLinksInMemory, getAllLinksFromRequest } from '../middleware/business/allLinks';
 
-import lowercaser from '../middleware/lowercaser';
-
 import { Operations, ICrossOrganizationMembersResult } from '../business/operations';
-import { MemberSearch } from '../business/memberSearch';
-import { Team } from '../business/team';
-import { TeamMember } from '../business/teamMember';
-import { OrganizationMember } from '../business/organizationMember';
-import { Organization } from '../business/organization';
+import { MemberSearch } from '../business';
+import { Team } from '../business';
+import { TeamMember } from '../business';
+import { OrganizationMember } from '../business';
+import { Organization } from '../business';
+
+import lowercaser from '../middleware/lowercaser';
 
 interface IPeopleSearchRequest extends RequestWithSystemwidePermissions {
   organization?: any;
@@ -77,6 +77,7 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
   }
   const { crossOrganizationMembers, organizationMembers, teamMembers } = org ? await getPeopleForOrganization(operations, org, options, team2) : await getPeopleAcrossOrganizations(operations, options, team2);
   const page = req.query.page_number ? Number(req.query.page_number) : 1;
+  const pageSize = req.query.pageSize ? Number(req.query.pageSize) : undefined;
   let phrase = req.query.q as string;
   let type = req.query.type as string;
   const validTypes = new Set([
@@ -124,6 +125,7 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
     links: linksFromMiddleware,
     providers: operations.providers,
     orgId,
+    pageSize,
     organizationMembers,
     crossOrganizationMembers,
     isOrganizationScoped: !!org, // Whether this view is specific to an org or not
@@ -149,6 +151,7 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
         phrase,
         twoFactor,
         type,
+        pageSize,
       },
       organization: req.organization || undefined,
       lightupSudoerLink: type === 'former' && isPortalSudoer,

@@ -5,11 +5,9 @@
 
 /*eslint no-console: ["error", { allow: ["dir", "log"] }] */
 
-import { WebhookProcessor } from "../organizationProcessor";
-import { Operations } from "../../business/operations";
-import { Organization } from "../../business/organization";
-import { IProviders } from "../../transitional";
-import { GitHubTeamRole } from "../../business/team";
+import { WebhookProcessor } from '../organizationProcessor';
+import { Operations, Organization } from '../../business';
+import { IProviders, GitHubTeamRole } from '../../interfaces';
 
 export default class MembershipWebhookProcessor implements WebhookProcessor {
   filter(data: any) {

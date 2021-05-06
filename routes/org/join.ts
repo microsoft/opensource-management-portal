@@ -11,14 +11,14 @@ const router = express.Router();
 
 import querystring from 'querystring';
 
-import { ReposAppRequest, getProviders } from '../../transitional';
-import { Team } from '../../business/team';
+import { getProviders } from '../../transitional';
 import { IndividualContext } from '../../user';
 import { storeOriginalUrlAsReferrer, wrapError } from '../../utils';
-import { Organization, OrganizationMembershipState, OrganizationMembershipRole } from '../../business';
-import QueryCache from '../../business/queryCache';
 import RequireActiveGitHubSession from '../../middleware/github/requireActiveSession';
 import { jsonError } from '../../middleware/jsonError';
+import { Organization, Team } from '../../business';
+import QueryCache from '../../business/queryCache';
+import { ReposAppRequest, OrganizationMembershipState, OrganizationMembershipRole } from '../../interfaces';
 
 router.use(function (req: ReposAppRequest, res, next) {
   const organization = req.organization;

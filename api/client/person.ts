@@ -4,21 +4,29 @@
 //
 
 import asyncHandler from 'express-async-handler';
+import { ReposAppRequest, AccountJsonFormat } from '../../interfaces';
+import { IGraphEntry } from '../../lib/graphProvider';
 
 import { jsonError } from '../../middleware';
-import { getProviders, ReposAppRequest } from '../../transitional';
-
-import { AccountJsonFormat } from '../../business';
+import { getProviders } from '../../transitional';
 
 export default asyncHandler(async (req: ReposAppRequest, res, next) => {
   const providers = getProviders(req);
-  const { operations, queryCache } = providers;
+  const { operations, queryCache, graphProvider } = providers;
   const login = req.params.login as string;
+  let corporateEntry: IGraphEntry = null;
   try {
     const account = await operations.getAccountByUsername(login);
     const idAsString = String(account.id);
     await account.tryGetLink();
-    const json = account.asJson(AccountJsonFormat.UplevelWithLink);
+    try {
+      if (graphProvider && account.link?.corporateId) {
+        corporateEntry = await graphProvider.getUserById(account.link.corporateId);
+      }
+    } catch (ignoreError) {
+      //
+    }
+    const json = account.asJson(AccountJsonFormat.GitHubDetailedWithLink);
     const orgs = await queryCache.userOrganizations(idAsString);
     const teams = await queryCache.userTeams(idAsString);
     for (let team of teams) {
@@ -57,7 +65,7 @@ export default asyncHandler(async (req: ReposAppRequest, res, next) => {
           private: c.repository.private,
         };
       }),
-    }, json);
+    }, json, { corporateEntry });
     return res.json(combined);
   } catch (error) {
     return next(jsonError(`login ${login} error: ${error}`, 500));
