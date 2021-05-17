@@ -3,26 +3,27 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import fakeKeyVaultClient from './fakeKeyVaultClient';
+import { createFakeVaults } from './fakeKeyVaultClient';
 
-import keyVaultConfigurationResolver from 'painless-config-resolver/lib/keyVaultConfigurationResolver';
+import createAndWrapKeyVaultClient from '../lib/config/keyVaultConfigurationResolver';
 
-function createFakeWithKeys() {
-  const keyVaultClient = fakeKeyVaultClient();
-  const secretId = keyVaultClient.storeSecret('test', 'big secret', {
+const testVaultUri = 'https://fake.vault';
+
+async function createFakeWithKeys() {
+  const keyVault = createFakeVaults();
+  const keyVaultClient = await keyVault.getSecretClient(testVaultUri);
+  const secretId = keyVault.storeSecret(testVaultUri, 'test', 'big secret', {
     tag1: 'p1',
     tag2: 'and tag 2',
   });
-  const keyVaultResolver = keyVaultConfigurationResolver(keyVaultClient);
+  const keyVaultResolver = createAndWrapKeyVaultClient(keyVault as any);
   return { keyVaultClient, secretId, keyVaultResolver };
 }
 
 describe('configuration', () => {
-  // config as code: tests have moved to the refactored npm, painless-config-as-code
-
   describe('keyVaultHelper', () => {
     it('non-URL values passthrough', async () => {
-      const { keyVaultClient, secretId, keyVaultResolver } = createFakeWithKeys();
+      const { keyVaultClient, secretId, keyVaultResolver } = await createFakeWithKeys();
       const config = {
         a: 'animal',
         b: 'bat',
@@ -39,7 +40,7 @@ describe('configuration', () => {
     });
 
     it('keyvault:// protocol works', async () => {
-      const { keyVaultClient, secretId, keyVaultResolver } = createFakeWithKeys();
+      const { keyVaultClient, secretId, keyVaultResolver } = await createFakeWithKeys();
       const keyVaultSchemeSecretId = secretId.replace('https://', 'keyvault://');
       const config = {
         bigPasscode: keyVaultSchemeSecretId,
@@ -49,7 +50,7 @@ describe('configuration', () => {
     });
 
     it('deeply nested KeyVault URLs work', async () => {
-      const { keyVaultClient, secretId, keyVaultResolver } = createFakeWithKeys();
+      const { keyVaultClient, secretId, keyVaultResolver } = await createFakeWithKeys();
       const keyVaultSchemeSecretId = secretId.replace('https://', 'keyvault://');
       const config = {
         deep: {
@@ -69,20 +70,21 @@ describe('configuration', () => {
     });
 
     it('keyvault:// tag properties work', async () => {
-      const { keyVaultClient, secretId, keyVaultResolver } = createFakeWithKeys();
+      const { keyVaultClient, secretId, keyVaultResolver } = await createFakeWithKeys();
       const keyVaultSchemeSecretId = secretId.replace('https://', 'keyvault://');
       const keyVaultSchemeSecretIdWithTag = secretId.replace('https://', 'keyvault://tag1@');
       const config = {
         taggedProperty: keyVaultSchemeSecretIdWithTag,
         kvProperty: keyVaultSchemeSecretId,
       };
+      console.dir(config);
       await keyVaultResolver.getObjectSecrets(config);
       expect(config.kvProperty).toEqual('big secret');
       expect(config.taggedProperty).toEqual('p1');
     });
 
     it('keyvault:// tag properties return undefined if missing', async () => {
-      const { keyVaultClient, secretId, keyVaultResolver } = createFakeWithKeys();
+      const { keyVaultClient, secretId, keyVaultResolver } = await createFakeWithKeys();
       const keyVaultSchemeSecretIdWithTag = secretId.replace('https://', 'keyvault://undefinedtagthing@');
       const config = {
         taggedProperty: keyVaultSchemeSecretIdWithTag,
@@ -92,7 +94,7 @@ describe('configuration', () => {
     });
 
     it('URL values passthrough', async () => {
-      const { keyVaultClient, secretId, keyVaultResolver } = createFakeWithKeys();
+      const { keyVaultClient, secretId, keyVaultResolver } = await createFakeWithKeys();
       const config = {
         a: secretId,
       };
@@ -101,7 +103,7 @@ describe('configuration', () => {
     });
 
     it('keyvault:// on an invalid secret stops processing', async () => {
-      const { keyVaultResolver } = createFakeWithKeys();
+      const { keyVaultResolver } = await createFakeWithKeys();
       const config = {
         a: 'keyvault://invalid/secrets/hello/1',
       };

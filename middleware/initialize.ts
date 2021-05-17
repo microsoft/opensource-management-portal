@@ -42,7 +42,7 @@ import { CreateLocalExtensionKeyProvider } from '../entities/localExtensionKey';
 import { CreateGraphProviderInstance, IGraphProvider } from '../lib/graphProvider/';
 import initializeCorporateViews from './corporateViews';
 
-import keyVaultResolver from '../lib/keyVaultResolver';
+import keyVaultResolver, { IKeyVaultSecretResolver } from '../lib/keyVaultResolver';
 
 import { createMailProviderInstance } from '../lib/mailProvider/';
 import { RestLibrary } from '../lib/github';
@@ -330,11 +330,12 @@ export default async function initialize(app: IReposApplication, express, rootdi
   }
   if (!exception) {
     const kvConfig = {
-      clientId: config && config.activeDirectory ? config.activeDirectory.clientId : null,
-      clientSecret: config && config.activeDirectory ? config.activeDirectory.clientSecret : null,
+      clientId: config?.activeDirectory?.clientId,
+      clientSecret: config?.activeDirectory?.clientSecret,
+      tenantId: config?.activeDirectory?.tenantId,
     };
     providers.config = config;
-    let keyEncryptionKeyResolver = null;
+    let keyEncryptionKeyResolver: IKeyVaultSecretResolver = null;
     try {
       const keyVaultClient = keyVault(kvConfig);
       keyEncryptionKeyResolver = keyVaultResolver(keyVaultClient);

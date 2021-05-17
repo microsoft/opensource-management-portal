@@ -4,6 +4,7 @@
 //
 
 import passport from 'passport';
+import { IKeyVaultSecretResolver } from '../lib/keyVaultResolver';
 
 import createAADStrategy from './passport/aadStrategy';
 import createGithubStrategy from './passport/githubStrategy';
@@ -55,7 +56,7 @@ export default function (app, config) {
 
   const serializerOptions = {
     config: config,
-    keyResolver: app.get('keyEncryptionKeyResolver'),
+    keyResolver: app.get('keyEncryptionKeyResolver') as IKeyVaultSecretResolver,
   };
 
   passport.serializeUser(serializer.serialize(serializerOptions));

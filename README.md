@@ -135,7 +135,7 @@ Please see the [docs/api.md](docs/api.md) file for information about the current
 
 ### Bare minimum local development environment
 
-If you place a JSON file `env.json` above the directory of your cloned repo
+If you place a JSON file `.env` above the directory of your cloned repo
 (to prevent committing secrets to your repo by accident or in your editor),
 you can configure the following extreme minimum working set to use the app.
 
@@ -143,17 +143,17 @@ The central operations token is a personal access token that is a **org owner**
 of the GitHub org(s) being managed.
 
 ```
-  "DEBUG_ALLOW_HTTP": "1",
-  "GITHUB_CENTRAL_OPERATIONS_TOKEN": "a github token for the app",
-  "GITHUB_ORGANIZATIONS_FILE": "../../env-orgs.json",
-  "GITHUB_CLIENT_ID" : "your client id",
-  "GITHUB_CLIENT_SECRET" : "your client secret",
-  "GITHUB_CALLBACK_URL" : "http://localhost:3000/auth/github/callback",
-  "AAD_CLIENT_ID": "your corporate app id",
-  "AAD_REDIRECT_URL" : "http://localhost:3000/auth/azure/callback",
-  "AAD_CLIENT_SECRET" : "a secret for the corporate app",
-  "AAD_TENANT_ID" : "your tenant id",
-  "AAD_ISSUER": "https://sts.windows.net/your tenant id/",
+DEBUG_ALLOW_HTTP=1
+GITHUB_CENTRAL_OPERATIONS_TOKEN=a github token for the app
+GITHUB_ORGANIZATIONS_FILE=../../env-orgs.json
+GITHUB_CLIENT_ID=your client id
+GITHUB_CLIENT_SECRET=your client secret
+GITHUB_CALLBACK_URL=http://localhost:3000/auth/github/callback
+AAD_CLIENT_ID=your corporate app id
+AAD_REDIRECT_URL=http://localhost:3000/auth/azure/callback
+AAD_CLIENT_SECRET=a secret for the corporate app
+AAD_TENANT_ID=your tenant id
+AAD_ISSUER=https://sts.windows.net/your tenant id/
 ```
 
 In this mode memory providers are used, including a mocked Redis client. Note

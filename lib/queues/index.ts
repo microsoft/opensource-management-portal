@@ -17,4 +17,6 @@ export interface IQueueProcessor {
 
   receiveMessages(): Promise<IQueueMessage[]>;
   deleteMessage(message: IQueueMessage): Promise<void>;
+
+  supportsMultipleThreads: boolean;
 }

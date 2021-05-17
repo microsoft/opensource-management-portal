@@ -6,11 +6,9 @@
 // This is a Node.js implementation of client-side table entity encryption,
 // compatible with the official Azure storage .NET library.
 
-import azure from 'azure-storage';
+import { TableEntityResult } from '@azure/data-tables';
 import crypto from 'crypto';
 import jose from 'node-jose';
-
-const entityGenerator = azure.TableUtilities.entityGenerator;
 
 // Azure Storage .NET client library - entity encryption keys:
 //
@@ -197,8 +195,10 @@ function bufferFromBase64String(val) {
 
 function translateBuffersToBase64(properties) {
   for (const key in properties) {
-    if (Buffer.isBuffer(properties[key]['_'])) {
-      properties[key] = entityGenerator.String(base64StringFromBuffer(properties[key]['_']));
+    const value = properties[key];
+    if (Buffer.isBuffer(value)) {
+      const asBuffer = value as Buffer;
+      properties[key] = base64StringFromBuffer(asBuffer);
     }
   }
   return properties;
@@ -239,16 +239,19 @@ function encryptProperties(encryptionResolver, contentEncryptionKey, contentEncr
   const propertyNames = Object.getOwnPropertyNames(unencryptedProperties);
   try {
     for (const property of propertyNames) {
-      const wrappedValue = unencryptedProperties[property];
+      let wrappedValue = unencryptedProperties[property];
+      if (typeof(wrappedValue) === 'object' && wrappedValue.type && wrappedValue.value) {
+        wrappedValue = wrappedValue.value;
+      }
       if (property === tableEncryptionKeyDetails || property === tableEncryptionPropertyDetails) {
         return callback(new Error('A table encryption property is present in the entity properties to consider for encryption. The property must be removed.'));
       }
-      if (!wrappedValue['_']) {
-        return callback(new Error(`Property named ${property} is not from a table entity object. Should support ${property}._.`));
+      if (wrappedValue === undefined) {
+        return callback(new Error(`Property named ${property} is not from a table entity object.`));
       }
-      const value = wrappedValue['_'];
-      if (property === 'PartitionKey' || property === 'RowKey') {
-        encryptedProperties[property] = wrappedValue; // {'_': value};
+      const value = wrappedValue;
+      if (property === 'partitionKey' || property === 'rowKey') {
+        encryptedProperties[property] = wrappedValue;
         continue;
       }
       if (property === 'Timestamp') {
@@ -267,7 +270,7 @@ function encryptProperties(encryptionResolver, contentEncryptionKey, contentEncr
       }
       const encryptedValue = encryptProperty(contentEncryptionKey, contentEncryptionIV, partitionKey, rowKey, property, value);
       encryptedPropertiesList.push(property);
-      encryptedProperties[property] = entityGenerator.Binary(encryptedValue);
+      encryptedProperties[property] = encryptedValue; // entityGenerator.Binary(encryptedValue);
     }
   } catch (outerError) {
     return callback(outerError);
@@ -287,9 +290,9 @@ function decryptProperties(allEntityProperties, encryptedPropertyNames, partitio
       decryptedProperties[key] = allEntityProperties[key];
       continue;
     }
-    const innerValue = allEntityProperties[key]['_'];
+    const innerValue = allEntityProperties[key];
     const value = decryptProperty(aesAlgorithm, contentEncryptionKey, contentEncryptionIV, partitionKey, rowKey, key, innerValue);
-    decryptedProperties[key] = {'_': value.toString('utf8')};
+    decryptedProperties[key] = value.toString('utf8');
   }
   return decryptedProperties;
 }
@@ -340,8 +343,19 @@ function encryptTableEntityCallback(partitionKey: string, rowKey: string, proper
             return callback(null, encryptedProperties);
           }
           const metadataSerialized = JSON.stringify(encryptionPropertyDetailsSet);
-          encryptedProperties[tableEncryptionPropertyDetails] = entityGenerator.Binary(encryptProperty(contentEncryptionKey, contentEncryptionIV, partitionKey, rowKey, tableEncryptionPropertyDetails, metadataSerialized));
-          encryptedProperties[tableEncryptionKeyDetails] = entityGenerator.String(JSON.stringify(createEncryptionData(keyEncryptionKeyId, jose.util.asBuffer(wrappedContentEncryptionKey), contentEncryptionIV, keyWrappingAlgorithm)));
+          encryptedProperties[tableEncryptionPropertyDetails] = encryptProperty(
+            contentEncryptionKey,
+            contentEncryptionIV,
+            partitionKey,
+            rowKey,
+            tableEncryptionPropertyDetails,
+            metadataSerialized); // entityGenerator.Binary(
+          encryptedProperties[tableEncryptionKeyDetails] = JSON.stringify(
+            createEncryptionData(
+              keyEncryptionKeyId,
+              jose.util.asBuffer(wrappedContentEncryptionKey),
+              contentEncryptionIV,
+              keyWrappingAlgorithm)); // entityGenerator.String(
           if (returnBinaryProperties === 'base64') {
             translateBuffersToBase64(encryptedProperties);
           }
@@ -359,7 +373,7 @@ export interface ITableEncryptionOperationOptions {
   binaryProperties: string;
 }
 
-export function decryptTableEntity(partitionKey: string, rowKey: string, tableEntity: any, encryptionOptions: ITableEncryptionOperationOptions): Promise<any> {
+export function decryptTableEntity(partitionKey: string, rowKey: string, tableEntity: any, encryptionOptions: ITableEncryptionOperationOptions): Promise<TableEntityResult<object>> {
   return new Promise((resolve, reject) => {
     decryptTableEntityCallback(partitionKey, rowKey, tableEntity, encryptionOptions, (decryptError, decryptedEntity) => {
       return decryptError ? reject(decryptError) : resolve(decryptedEntity);
@@ -375,8 +389,8 @@ function decryptTableEntityCallback(partitionKey: string, rowKey: string, proper
   if (returnBinaryProperties !== 'base64' && returnBinaryProperties !== 'buffer') {
     return callback(new Error('The binary properties value is not valid. Please provide "buffer" or "base64".'));
   }
-  let detailsValue = properties[tableEncryptionKeyDetails] ? properties[tableEncryptionKeyDetails]['_'] : undefined;
-  if (detailsValue === undefined) {
+  let detailsValue = properties[tableEncryptionKeyDetails];
+  if (!detailsValue) {
     return callback(null, properties);
   }
   let tableEncryptionKey = null;
@@ -404,7 +418,7 @@ function decryptTableEntityCallback(partitionKey: string, rowKey: string, proper
         return callback(unwrapError);
       }
       const metadataIV = computeTruncatedColumnHash(iv, partitionKey, rowKey, tableEncryptionPropertyDetails);
-      const tableEncryptionDetails = bufferFromBase64String(properties[tableEncryptionPropertyDetails]['_']);
+      const tableEncryptionDetails = bufferFromBase64String(properties[tableEncryptionPropertyDetails]);
       try {
         const decryptedPropertiesSet = decryptValue(aesAlgorithm, contentEncryptionKey, metadataIV, tableEncryptionDetails);
         const json = decryptedPropertiesSet.toString('utf8');

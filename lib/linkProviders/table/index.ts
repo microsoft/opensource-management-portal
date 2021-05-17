@@ -3,9 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { IProviders } from '../../../interfaces';
 import { TableLinkProvider } from './tableLinkProvider';
 
-export default function createTableProvider(providers, config) {
+export default function createTableProvider(providers: IProviders, config) {
   let tableOptions = config && config.github && config.github.links ? config.github.links.table : null;
   if (!tableOptions) {
     throw new Error('TableLinkProvider requires config.github.links.table');
@@ -16,7 +17,7 @@ export default function createTableProvider(providers, config) {
   const modernTableOptions = Object.assign({}, tableOptions);
   modernTableOptions.encryption = {
     encryptionKeyId: tableOptions.encryptionKeyId,
-    keyEncryptionKeyResolver: keyEncryptionKeyResolver,
+    keyEncryptionKeyResolver,
   };
 
   const originalTablePrefix = config.github.links.table.prefix || '';

@@ -12,10 +12,20 @@ const debug = require('debug')('startup');
 import favicon from 'serve-favicon';
 import path from 'path';
 
-const defaultPublicAssetsPackageName = '../../default-assets-package/';
+const defaultPublicAssetsPackageName = '../default-assets-package/';
 const staticAssetspackageName = appPackage['static-site-assets-package-name'] || defaultPublicAssetsPackageName;
 
-const ospoAssetsDistPath = require(staticAssetspackageName);
+let ospoAssetsDistPath = null;
+try {
+  ospoAssetsDistPath = require(staticAssetspackageName);
+} catch(error) {
+  // To support test scenarios and also TypeScript deployment in containers,
+  // when a non-package but path is being used, try the local inplace path
+  // before attempting to move up a parent. Only when the default is used.
+  if (staticAssetspackageName === defaultPublicAssetsPackageName) {
+    ospoAssetsDistPath = require('../' + staticAssetspackageName);
+  }
+}
 const ospoAssetsPackage = require(`${staticAssetspackageName}/package.json`);
 
 export function StaticSiteAssets(app, express) {

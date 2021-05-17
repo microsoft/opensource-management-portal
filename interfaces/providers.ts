@@ -37,6 +37,7 @@ import { IQueueProcessor } from '../lib/queues';
 import { ICustomizedNewRepositoryLogic, ICustomizedTeamPermissionsWebhookLogic } from '../transitional';
 import { IEntityMetadataProvider } from '../lib/entityMetadataProvider';
 import { IRepositoryProvider } from '../entities/repository';
+import { IKeyVaultSecretResolver } from '../lib/keyVaultResolver';
 
 export interface IProviders {
   app: IReposApplication;
@@ -56,7 +57,7 @@ export interface IProviders {
   defaultEntityMetadataProvider?: IEntityMetadataProvider;
   diagnosticsDrop?: BlobCache;
   healthCheck?: any;
-  keyEncryptionKeyResolver?: any;
+  keyEncryptionKeyResolver?: IKeyVaultSecretResolver;
   github?: RestLibrary;
   graphProvider?: IGraphProvider;
   insights?: TelemetryClient;

@@ -3,7 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import azure from 'azure-storage';
 import crypto from 'crypto';
 
 import {
@@ -13,6 +12,7 @@ import { MetadataMappingDefinition, EntityMetadataMappings } from '../../lib/ent
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { TableSettings } from '../../lib/entityMetadataProvider/table';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { odata, TableEntityQueryOptions } from '@azure/data-tables';
 
 const type = new EntityMetadataType('LocalExtensionKey');
 
@@ -90,11 +90,14 @@ EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMappin
 
 EntityMetadataMappings.Register(type, TableSettings.TableQueries, (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
   switch (query.fixedQueryType) {
-    case FixedQueryType.LocalExtensionKeysGetAll:
-        return new azure.TableQuery()
-          .where('PartitionKey eq ?', fixedPartitionKey);
-    default:
+    case FixedQueryType.LocalExtensionKeysGetAll: {
+      return {
+        filter: odata`PartitionKey eq ${fixedPartitionKey}`,
+      } as TableEntityQueryOptions;
+    }
+    default: {
       throw new Error(`The fixed query type ${query.fixedQueryType} is not supported currently by this ${type} provider`);
+    }
   }
 });
 

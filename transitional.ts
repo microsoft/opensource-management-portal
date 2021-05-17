@@ -25,6 +25,10 @@ export function hasStaticReactClientApp() {
   }
 }
 
+export function assertUnreachable(nothing: never): never {
+  throw new Error('This is never expected.');
+}
+
 export interface RedisOptions {
   auth_pass?: string;
   detect_buffers: boolean;
@@ -151,6 +155,10 @@ export class CreateError {
     return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(404, message), innerError);
   }
 
+  static Conflict(message: string, innerError?: Error): Error {
+    return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(409, message), innerError);
+  }
+
   static ParameterRequired(parameterName: string, optionalDetails?: string): Error {
     const msg = `${parameterName} required`;
     return CreateError.CreateStatusCodeError(400, optionalDetails ? `${msg}: ${optionalDetails}` : msg);
@@ -226,6 +234,9 @@ export class ErrorHelper {
       if (axiosError?.response?.status) {
         return axiosError.response.status;
       }
+    }
+    if (asAny?.statusCode && typeof(asAny.statusCode) === 'number') {
+      return asAny.statusCode as number;
     }
     if (asAny?.status) {
       const status = asAny.status;

@@ -6,7 +6,7 @@
 import crypto from 'crypto';
 import { v4 as uuidV4 } from 'uuid';
 
-import { decryptEntity, encryptEntity } from '../lib/encryption';
+import { decryptEntityAsync, encryptEntityAsync, IEncryptionOptions } from '../lib/encryption';
 
 const standardTimeout = 5000;
 
@@ -16,16 +16,16 @@ function generate32bitKey(callback) {
 
 describe('encryption', () => {
   describe('encryptEntity', () => {
-    it('unencrypted entities can be processed', done => {
-      expect.assertions(2);
+    it('unencrypted entities can be processed', (done) => {
+      expect.assertions(1);
       let dynamicKeyId = uuidV4();
       generate32bitKey((error, key) => {
         let keyEncryptionKeys = {
           [dynamicKeyId]: key,
         };
-        let sampleEncryptionOptions = {
+        let sampleEncryptionOptions: IEncryptionOptions = {
           keyEncryptionKeyId: dynamicKeyId,
-          encryptedPropertyNames: ['secret'],
+          encryptedPropertyNames: new Set(['secret']),
           keyEncryptionKeys: keyEncryptionKeys,
         };
         let entity = {
@@ -36,9 +36,9 @@ describe('encryption', () => {
         };
         let partitionKey = 'partition' + uuidV4();
         let rowKey = 'row' + uuidV4();
-        decryptEntity(partitionKey, rowKey, entity, sampleEncryptionOptions, (anotherError, roundtripEntity) => {
-          expect(anotherError).toBeFalsy();
-          expect(entity).toEqual(roundtripEntity);
+        const roundtripEntity = decryptEntityAsync(partitionKey, rowKey, entity, sampleEncryptionOptions).then(ok => {
+          expect(entity).toEqual(roundtripEntity);  
+        }).catch(err => {
           done();
         });
       });
@@ -51,9 +51,9 @@ describe('encryption', () => {
         const keyEncryptionKeys = {
           [dynamicKeyId]: key,
         };
-        const sampleEncryptionOptions = {
+        const sampleEncryptionOptions: IEncryptionOptions = {
           keyEncryptionKeyId: dynamicKeyId,
-          encryptedPropertyNames: ['secret', 'superSecret'],
+          encryptedPropertyNames: new Set(['secret', 'superSecret']),
           keyEncryptionKeys,
         };
         const secretEntity = {
@@ -64,26 +64,29 @@ describe('encryption', () => {
         };
         const partitionKey = 'partition' + uuidV4();
         const rowKey = 'row' + uuidV4();
-        encryptEntity(partitionKey, rowKey, secretEntity, sampleEncryptionOptions, (error, encryptedEntity) => {
+        encryptEntityAsync(partitionKey, rowKey, secretEntity, sampleEncryptionOptions).then(
+          encryptedEntity => {
           expect(error).toBeFalsy();
           expect(encryptedEntity).toBeDefined();
           expect(encryptedEntity['_ClientEncryptionMetadata1']).toBeDefined();
           expect(encryptedEntity['_ClientEncryptionMetadata2']).toBeDefined();
+          done();
+        }).catch(() => {
           done();
         });
       });
     }, standardTimeout),
 
     it('should be able to decrypt itself', done => {
-      expect.assertions(4);
+      expect.assertions(3);
       let dynamicKeyId = uuidV4();
       generate32bitKey((error, key) => {
         let keyEncryptionKeys = {
           [dynamicKeyId]: key,
         };
-        let sampleEncryptionOptions = {
+        let sampleEncryptionOptions: IEncryptionOptions = {
           keyEncryptionKeyId: dynamicKeyId,
-          encryptedPropertyNames: ['secret', 'superSecret'],
+          encryptedPropertyNames: new Set(['secret', 'superSecret']),
           keyEncryptionKeys: keyEncryptionKeys,
         };
         let secretEntity = {
@@ -94,15 +97,14 @@ describe('encryption', () => {
         };
         let partitionKey = 'partition' + uuidV4();
         let rowKey = 'row' + uuidV4();
-        encryptEntity(partitionKey, rowKey, secretEntity, sampleEncryptionOptions, (error, encryptedEntity) => {
+        encryptEntityAsync(partitionKey, rowKey, secretEntity, sampleEncryptionOptions).then(encryptedEntity => {
           expect(error).toBeFalsy();
-          expect(encryptEntity).not.toEqual(secretEntity);
-          decryptEntity(partitionKey, rowKey, encryptedEntity, sampleEncryptionOptions, (anotherError, roundtripEntity) => {
-            expect(anotherError).toBeFalsy();
+          expect(encryptedEntity).not.toEqual(secretEntity);
+          decryptEntityAsync(partitionKey, rowKey, encryptedEntity as any, sampleEncryptionOptions).then(roundtripEntity => {
             expect(roundtripEntity).toEqual(secretEntity);
             done();
-          });
-        });
+          }).catch(err => done(err));
+        }).catch(err => done(err));
       });
     }, standardTimeout);
   });

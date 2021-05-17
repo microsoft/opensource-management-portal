@@ -3,10 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import azure from 'azure-storage';
 import crypto from 'crypto';
 
-import { EntityField, IObjectWithDefinedKeys } from '../../lib/entityMetadataProvider/entityMetadataProvider';
+import {
+  IObjectWithDefinedKeys } from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { MetadataMappingDefinition, EntityMetadataMappings } from '../../lib/entityMetadataProvider/declarations';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
@@ -15,7 +15,7 @@ import { QueryTokensByCorporateID } from './tokenProvider';
 import { Type } from './type';
 import { TableSettings } from '../../lib/entityMetadataProvider/table';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
-import { PostgresConfiguration, PostgresJsonEntityQuery, PostgresSettings } from '../../lib/entityMetadataProvider/postgres';
+import { odata, TableEntityQueryOptions } from '@azure/data-tables';
 
 const type = Type;
 
@@ -174,41 +174,6 @@ EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [
   Field.created,
   Field.expires,
 ]);
-
-PostgresConfiguration.SetDefaultTableName(type, 'usersettings');
-EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'apiKey');
-PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
-  [Field.token, Field.token],
-  [Field.active, Field.active],
-  [Field.corporateId, Field.corporateId],
-  [Field.created, Field.created],
-  [Field.description, Field.description],
-  [Field.source, Field.source],
-  [Field.active, Field.active],
-  [Field.organizationScopes, Field.organizationScopes],
-  [Field.expires, new Date(Field.expires)],
-  [Field.warning, Field.warning],
-  [Field.scopes, Field.scopes],
-]));
-EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
-  const entityTypeColumn = mapMetadataPropertiesToFields[EntityField.Type];
-  const entityTypeValue = getEntityTypeColumnValue(type);
-  switch (query.fixedQueryType) {
-    case FixedQueryType.TokensByCorporateId:
-      const { corporateId } = query as QueryTokensByCorporateID;
-      if (!corporateId) {
-        throw new Error('corporateId required');
-      }
-      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
-        corporateId: corporateId,
-      }, Field.created.toLowerCase(), true);
-    case FixedQueryType.TokensGetAll:
-      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {}, Field.created.toLowerCase(), true);
-    default:
-      throw new Error(`The fixed query type ${type} is not supported currently by this provider, or is of an unknown type`);
-  }
-});
-
 EntityMetadataMappings.Register(type, TableSettings.TableDefaultTableName, 'settings');
 EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKey, 'apiKey');
 EntityMetadataMappings.Register(type, TableSettings.TableDefaultRowKeyPrefix, 'apiKey');
@@ -232,19 +197,23 @@ EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMappin
 
 EntityMetadataMappings.Register(type, TableSettings.TableQueries, (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
   switch (query.fixedQueryType) {
-    case FixedQueryType.TokensByCorporateId:
+    case FixedQueryType.TokensByCorporateId: {
       const { corporateId } = query as QueryTokensByCorporateID;
       if (!corporateId) {
         throw new Error('corporateId required');
       }
-      return new azure.TableQuery()
-        .where('PartitionKey eq ?', fixedPartitionKey)
-        .and('owner eq ?string?', corporateId);
-    case FixedQueryType.TokensGetAll:
-        return new azure.TableQuery()
-          .where('PartitionKey eq ?', fixedPartitionKey);
-    default:
+      return {
+        filter: odata`PartitionKey eq ${fixedPartitionKey} and owner eq ${corporateId}`,
+      } as TableEntityQueryOptions;
+    }
+    case FixedQueryType.TokensGetAll: {
+      return {
+        filter: odata`PartitionKey eq ${fixedPartitionKey}`,
+      } as TableEntityQueryOptions;
+    }
+    default: {
       throw new Error(`The fixed query type ${type} is not supported currently by this provider, or is of an unknown type`);
+    }
   }
 });
 

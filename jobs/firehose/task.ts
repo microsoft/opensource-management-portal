@@ -56,7 +56,11 @@ export default async function firehose({ providers, started }: IReposJob): Promi
     throw new Error('No webhookQueueProcessor available');
   }
   // let parallelism = messagesInQueue > maxParallelism / 2 ? maxParallelism : Math.min(5, maxParallelism);
-  let parallelism = maxParallelism;
+  const supportsMultipleThreads = webhookQueueProcessor.supportsMultipleThreads;
+  if (!supportsMultipleThreads) {
+    console.log('The queue provider does not support multiple concurrent threads');
+  }
+  let parallelism = supportsMultipleThreads ? maxParallelism : 1;
   const sliceDelayPerThread =  emptyQueueDelaySeconds/ parallelism;
   console.log(`Parallelism for this run will be ${parallelism} logical threads, offset by ${sliceDelayPerThread}s`);
   // const insights = app.settings.appInsightsClient;

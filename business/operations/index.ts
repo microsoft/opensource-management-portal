@@ -30,6 +30,7 @@ import { CoreCapability, ICachedEmployeeInformation, ICacheOptions, ICorporateLi
 import { CreateError, ErrorHelper } from '../../transitional';
 import { Team } from '../team';
 import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
+import { isAuthorizedSystemAdministrator } from './administration';
 
 export * from './core';
 
@@ -706,6 +707,20 @@ export class Operations
     });
   }
 
+  async getLinksMapFromThirdPartyIds(thirdPartyIds: string[]): Promise<Map<number, ICorporateLink>> {
+    const map = new Map<number, ICorporateLink>();
+    if (thirdPartyIds.length === 0) {
+      return map;
+    }
+    const group = await this.getLinksFromThirdPartyIds(thirdPartyIds);
+    for (let link of group) {
+      if (link && link.thirdPartyId) {
+        map.set(Number(link.thirdPartyId), link);
+      }
+    }
+    return map;
+  }
+
   async getLinksFromThirdPartyIds(thirdPartyIds: string[]): Promise<ICorporateLink[]> {
     const corporateLinks: ICorporateLink[] = [];
     const throttle = throat(ParallelLinkLookup);
@@ -911,6 +926,13 @@ export class Operations
 
   get systemAccountsByUsername(): string[] {
     return this.config?.github?.systemAccounts ? this.config.github.systemAccounts.logins : [];
+  }
+
+  isSystemAdministrator(corporateId: string, corporateUsername: string) {
+    if (!this.initialized) {
+      throw new Error('The application is not yet initialized');
+    }
+    return isAuthorizedSystemAdministrator(this.providers, corporateId, corporateUsername);
   }
 
   isPortalSudoer(githubLogin: string, link: ICorporateLink) {
