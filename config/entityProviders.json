@@ -17,6 +17,6 @@
 
     "usersettings": "env://ENTITY_PROVIDER_USERSETTINGS?default=firstconfigured",
 
-    "tokens": "env://ENTITY_PROVIDER_TOKENS?default=firstconfigured",
+    "tokens": "env://ENTITY_PROVIDER_TOKENS?default=table",
     "localextensionkey": "env://ENTITY_PROVIDER_LOCALEXTENSIONKEY?default=table"
 }

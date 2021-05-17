@@ -6,24 +6,109 @@
 import { Operations } from '.';
 import { Account } from '../account';
 import { UnlinkPurpose, IUnlinkMailStatus, ICachedEmployeeInformation } from '../../interfaces';
+import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
+import { assertUnreachable } from '../../transitional';
 
 export async function sendTerminatedAccountMail(operations: Operations, account: Account, purpose: UnlinkPurpose, details: string[], errorsCount: number): Promise<IUnlinkMailStatus> {
-  if (!operations.providers.mailProvider || !account.link || !account.link.corporateId) {
+  const { config, mailProvider, insights } = operations.providers;
+  if (!mailProvider || !account.link || !account.link.corporateId) {
     return null;
   }
+  const link = account.link;
+  const companySpecific = getCompanySpecificDeployment();
 
   purpose = purpose || UnlinkPurpose.Unknown;
+  let sendNoticeToLinkHolder = false;
+  switch (purpose) {
+    case UnlinkPurpose.Deleted:
+    case UnlinkPurpose.Operations:
+    case UnlinkPurpose.Self: {
+      sendNoticeToLinkHolder = true;
+      break;
+    }
+    case UnlinkPurpose.Unknown:
+    case UnlinkPurpose.Termination: {
+      sendNoticeToLinkHolder = false;
+      break;
+    }
+    default: {
+      assertUnreachable(purpose);
+    }
+  }
+
+  const operationsMail = operations.getLinksNotificationMailAddress();
+  let displayName = link.corporateDisplayName || link.corporateUsername || link.corporateId;
+  let subjectPrefix = '';
+  let subjectSuffix = '';
+  let headline = `${displayName} has been unlinked from GitHub`;
+  switch (purpose) {
+    case UnlinkPurpose.Self:
+      headline = `${displayName} unlinked themselves from GitHub`;
+      subjectPrefix = 'FYI: ';
+      subjectSuffix = ' [self-service remove]';
+      break;
+    case UnlinkPurpose.Deleted:
+      subjectPrefix = 'FYI: ';
+      subjectSuffix = '[account deleted]';
+      headline = `${displayName} deleted their GitHub account`;
+      break;
+    case UnlinkPurpose.Operations:
+      subjectPrefix = 'FYI: ';
+      subjectSuffix = ' [corporate GitHub operations]';
+      break;
+    case UnlinkPurpose.Termination:
+      subjectPrefix = '[UNLINKED] ';
+      headline = `${displayName} is not an active employee`;
+      break;
+    case UnlinkPurpose.Unknown:
+    default:
+      subjectSuffix = ' [unknown]';
+      break;
+  }
+
+  if (sendNoticeToLinkHolder) {
+    try {
+      const mail = {
+        to: link.corporateMailAddress || link.corporateUsername || operationsMail,
+        cc: (link.corporateMailAddress || link.corporateUsername) ? operationsMail : [],
+        subject: `${subjectPrefix}${link.corporateUsername || displayName} unlinked from GitHub ${subjectSuffix}`.trim(),
+        content: undefined,
+      };
+      const viewName = companySpecific?.views?.email?.linking?.unlink || 'unlink';
+      mail.content = await operations.emailRender(viewName, {
+        reason: (`This is a mandatory notice: your GitHub account and corporate identity have been unlinked. This mail was sent to: ${link.corporateMailAddress || link.corporateUsername}`),
+        headline,
+        notification: 'information',
+        app: `${config.brand.companyName} GitHub`,
+        link: account.link,
+        companyName: config.brand.companyName,
+        purpose,
+        details,
+      });
+      const selfReceipt = await operations.sendMail(Object.assign(mail));
+      insights?.trackEvent({
+        name: 'UnlinkMailSentToAccount',
+        properties: {
+          purpose,
+          corporateId: link.corporateId,
+          viewName,
+          selfReceipt,
+        },
+      });
+    } catch (sendNoticeError) {
+      insights?.trackException({ exception: sendNoticeError });
+      console.warn(sendNoticeError);
+    }
+  }
 
   let errorMode = errorsCount > 0;
 
-  let operationsMail = operations.getLinksNotificationMailAddress();
   if (!operationsMail && errorMode) {
     return;
   }
   let operationsArray = operationsMail.split(',');
 
   let cachedEmployeeManagementInfo: ICachedEmployeeInformation = null;
-  let displayName = account.link.corporateDisplayName || account.link.corporateUsername || account.link.corporateId;
   let upn = account.link.corporateUsername || account.link.corporateId;
   try {
     cachedEmployeeManagementInfo = await operations.getCachedEmployeeManagementInformation(account.link.corporateId);
@@ -61,35 +146,6 @@ export async function sendTerminatedAccountMail(operations: Operations, account:
     bcc.push(...operationsArray);
   }
   const toAsString = to.join(', ');
-
-  let subjectPrefix = '';
-  let subjectSuffix = '';
-  let headline = `${displayName} has been unlinked from GitHub`;
-  switch (purpose) {
-    case UnlinkPurpose.Self:
-      headline = `${displayName} unlinked themselves from GitHub`;
-      subjectPrefix = 'FYI: ';
-      subjectSuffix = ' [self-service remove]';
-      break;
-    case UnlinkPurpose.Deleted:
-      subjectPrefix = 'FYI: ';
-      subjectSuffix = '[account deleted]';
-      headline = `${displayName} deleted their GitHub account`;
-      break;
-    case UnlinkPurpose.Operations:
-      subjectPrefix = 'FYI: ';
-      subjectSuffix = ' [corporate GitHub operations]';
-      break;
-    case UnlinkPurpose.Termination:
-      subjectPrefix = '[UNLINKED] ';
-      headline = `${displayName} may not be an active employee`;
-      break;
-    case UnlinkPurpose.Unknown:
-    default:
-      subjectSuffix = ' [unknown]';
-      break;
-  }
-  const config = operations.providers.config;
   const mail = {
     to,
     bcc,
@@ -97,7 +153,8 @@ export async function sendTerminatedAccountMail(operations: Operations, account:
     category: ['link'],
     content: undefined,
   };
-  mail.content = await operations.emailRender('managerunlink', {
+  const managerViewName = companySpecific?.views?.email?.linking?.unlinkManager || 'managerunlink';
+  mail.content = await operations.emailRender(managerViewName, {
     reason: (`As a manager you receive one-time security-related messages regarding your direct reports who have linked their GitHub account to the company.
               This mail was sent to: ${toAsString}`),
     headline,

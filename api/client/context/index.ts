@@ -14,18 +14,19 @@ import getCompanySpecificDeployment from '../../../middleware/companySpecificDep
 import { ErrorHelper, getProviders } from '../../../transitional';
 import { IndividualContext } from '../../../user';
 
-import RouteApprovals from './approvals';
-import RouteIndividualContextualOrganization from './organization';
-import RouteOrgs from './orgs';
-import RouteRepos from './repos';
-import RouteTeams from './teams';
+import routeApprovals from './approvals';
+import routeIndividualContextualOrganization from './organization';
+import routeOrgs from './orgs';
+import routeRepos from './repos';
+import routeTeams from './teams';
+import routeAdministration from './administration';
 
 const router = express.Router();
 
 const deployment = getCompanySpecificDeployment();
 deployment?.routes?.api?.context?.index && deployment?.routes?.api?.context?.index(router);
 
-router.use('/approvals', RouteApprovals);
+router.use('/approvals', routeApprovals);
 
 router.get('/', (req: ReposAppRequest, res) => {
   const { config } = getProviders(req);
@@ -56,11 +57,11 @@ router.get('/accountDetails', asyncHandler(async (req: ReposAppRequest, res) => 
   res.json(accountDetails);
 }));
 
-router.get('/orgs', RouteOrgs);
+router.use('/administration', routeAdministration);
 
-router.get('/repos', RouteRepos);
-
-router.get('/teams', RouteTeams);
+router.get('/orgs', routeOrgs);
+router.get('/repos', routeRepos);
+router.get('/teams', routeTeams);
 
 router.use('/orgs/:orgName', asyncHandler(async (req: ReposAppRequest, res, next) => {
   const { orgName } = req.params;
@@ -84,7 +85,7 @@ router.use('/orgs/:orgName', asyncHandler(async (req: ReposAppRequest, res, next
   }
 }));
 
-router.use('/orgs/:orgName', RouteIndividualContextualOrganization);
+router.use('/orgs/:orgName', routeIndividualContextualOrganization);
 
 router.use('*', (req: ReposAppRequest, res, next) => {
   return next(jsonError('Contextual API or route not found', 404));

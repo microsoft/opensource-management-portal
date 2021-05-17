@@ -8,6 +8,7 @@ import { hostname } from 'os';
 
 import { IReposApplication, IReposJob, IReposJobOptions, IReposJobResult } from './interfaces';
 
+import configResolver from './lib/config';
 import initialize from './middleware/initialize';
 import { quitInTenSeconds } from './utils';
 
@@ -28,7 +29,7 @@ app.initializeJob = function initializeJob(config, configurationError) {
 async function startup(startupApplication: boolean) {
   let painlessConfigResolver = null;
   try {
-    painlessConfigResolver = require('painless-config-resolver')();
+    painlessConfigResolver = configResolver();
   } catch (error) {
     console.warn('Painless config resolver initialization error:');
     console.error(error);

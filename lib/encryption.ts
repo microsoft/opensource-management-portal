@@ -3,13 +3,26 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-// ----------------------------------------------------------------------------
 // This is a Node.js implementation of client-side table entity encryption,
-// compatible with the official Azure storage .NET library.
-// ----------------------------------------------------------------------------
+// compatible with the official Azure storage .NET library. Note that the
+// original .NET library had a major logic bug in the ordering of parameters
+// prior to encryption which persists to today and that logic is the same
+// here as a result.
 
 import crypto from 'crypto';
 import jose from 'node-jose';
+import { IKeyVaultSecretResolver } from './keyVaultResolver';
+
+export interface IEncryptionOptions {
+  keyEncryptionKeyId?: string;
+  keyResolver?: IKeyVaultSecretResolver;
+  encryptionResolver?: object;
+  encryptedPropertyNames?: Set<string>;
+  binaryProperties?: 'buffer' | 'base64';
+  keyEncryptionKeys?: object;
+  tableDehydrator?: (instance: any) => any;
+  tableRehydrator?: (partitionKey: string, rowKey: string, obj?: any, callback?: any) => any;
+}
 
 // ----------------------------------------------------------------------------
 // Azure Storage .NET client library - entity encryption keys:
@@ -75,32 +88,35 @@ function generate32bitKey(callback) {
   crypto.randomBytes(azureStorageContentEncryptionKeyBytes, callback);
 }
 
-function generateContentEncryptionKey(callback) {
-  crypto.randomBytes(azureStorageContentEncryptionIVBytes, (cryptoError, contentEncryptionIV) => {
-    if (cryptoError) {
-      return callback(cryptoError);
-    }
-    generate32bitKey((createKeyError, contentEncryptionKey) => {
-      if (createKeyError) {
-        return callback(createKeyError);
+type ContentEncryptionPair = {
+  contentEncryptionIV: Buffer;
+  contentEncryptionKey: any;
+};
+
+function generateContentEncryptionKey(): Promise<ContentEncryptionPair> {
+  return new Promise((resolve, reject) => {
+    crypto.randomBytes(azureStorageContentEncryptionIVBytes, (cryptoError, contentEncryptionIV) => {
+      if (cryptoError) {
+        return reject(cryptoError);
       }
-      callback(null, contentEncryptionIV, contentEncryptionKey);
+      generate32bitKey((createKeyError, contentEncryptionKey) => {
+        if (createKeyError) {
+          return reject(createKeyError);
+        }
+        return resolve({contentEncryptionIV, contentEncryptionKey});
+      });
     });
   });
 }
 
-function wrapContentKey(keyWrappingAlgorithm, keyEncryptionKey, contentEncryptionKey, callback) {
-  jose.JWA.encrypt(keyWrappingAlgorithm, keyEncryptionKey, contentEncryptionKey)
-    .then((result) => {
-      return callback(null, result.data);
-    }, callback);
+async function wrapContentKey(keyWrappingAlgorithm, keyEncryptionKey, contentEncryptionKey) {
+  const result = await jose.JWA.encrypt(keyWrappingAlgorithm, keyEncryptionKey, contentEncryptionKey);
+  return result.data;
 }
 
-function unwrapContentKey(keyWrappingAlgorithm, keyEncryptionKey, wrappedContentKeyEncryptedKey, callback) {
-  jose.JWA.decrypt(keyWrappingAlgorithm, keyEncryptionKey, wrappedContentKeyEncryptedKey)
-    .then((contentEncryptionKey) => {
-      return callback(null, contentEncryptionKey);
-    }, callback);
+async function unwrapContentKey(keyWrappingAlgorithm, keyEncryptionKey, wrappedContentKeyEncryptedKey) {
+  const contentEncryptionKey = await jose.JWA.decrypt(keyWrappingAlgorithm, keyEncryptionKey, wrappedContentKeyEncryptedKey);
+  return contentEncryptionKey;
 }
 
 // ----------------------------------------------------------------------------
@@ -143,29 +159,25 @@ function validateEncryptionData(encryptionData) {
   }
 }
 
-function resolveKeyEncryptionKeyFromOptions(encryptionOptions, keyId, callback) {
+async function resolveKeyEncryptionKeyFromOptions(encryptionOptions: IEncryptionOptions, keyId: string) {
   if (!encryptionOptions) {
-    return callback(new Error('Encryption options must be specified.'));
+    throw new Error('Encryption options must be specified.');
   }
   if (!keyId) {
     throw new Error('No key encryption key ID provided.');
   }
   if ((!encryptionOptions.keyEncryptionKeys || typeof encryptionOptions.keyEncryptionKeys !== 'object') && (!encryptionOptions.keyResolver || typeof encryptionOptions.keyResolver !== 'function')) {
-    return callback(new Error('Encryption options must provide either a "keyResolver" function or "keyEncryptionKeys" object.'));
+    throw new Error('Encryption options must provide either a "keyResolver" function or "keyEncryptionKeys" object.');
   }
-  const resolver = encryptionOptions.keyResolver || function (keyId, callback) {
+  const resolver = encryptionOptions.keyResolver || async function (keyId: string) {
     const key = encryptionOptions.keyEncryptionKeys[keyId];
-    callback(null, key);
+    return key;
   };
-  resolver(keyId, (resolveError, key) => {
-    if (resolveError) {
-      return callback(resolveError);
-    }
-    if (!key) {
-      return callback(new Error(`We were not able to retrieve a key with identifier "${keyId}".`));
-    }
-    return callback(null, bufferFromBase64String(key));
-  });
+  const key = await resolver(keyId);
+  if (!key) {
+    throw new Error(`We were not able to retrieve a key with identifier "${keyId}".`);
+  }
+  return bufferFromBase64String(key);
 }
 
 // ----------------------------------------------------------------------------
@@ -219,7 +231,7 @@ function translateBuffersToBase64(properties) {
 function createDefaultEncryptionResolver(propertiesToEncrypt) {
   const encryptedKeySet = new Set(propertiesToEncrypt);
   // Default resolver does not use partition/row, but user could
-  return (partition, row, name) => {
+  return (partition: string, row: string, name: string) => {
     return encryptedKeySet.has(name);
   };
 }
@@ -239,11 +251,11 @@ function decryptProperty(aesAlgorithm, contentEncryptionKey, contentEncryptionIV
   return decryptValue(aesAlgorithm, contentEncryptionKey, columnIV, bufferFromBase64String(encryptedValue));
 }
 
-function encryptProperties(encryptionResolver, contentEncryptionKey, contentEncryptionIV, partitionKey, rowKey, unencryptedProperties, callback) {
+async function encryptProperties(encryptionResolver, contentEncryptionKey, contentEncryptionIV, partitionKey, rowKey, unencryptedProperties) {
   const encryptedProperties = {};
   const encryptedPropertiesList = [];
   if (!unencryptedProperties) {
-    return callback(new Error('The entity properties are not set.'));
+    throw new Error('The entity properties are not set.');
   }
   const propertyNames = Object.getOwnPropertyNames(unencryptedProperties);
   try {
@@ -275,9 +287,9 @@ function encryptProperties(encryptionResolver, contentEncryptionKey, contentEncr
       encryptedProperties[property] = encryptedValue;
     }
   } catch (asyncError) {
-    return callback(asyncError);
+    throw asyncError;
   }
-  return callback(null, encryptedProperties, encryptedPropertiesList);
+  return { encryptedProperties, encryptedPropertiesList };
 }
 
 function decryptProperties(allEntityProperties, encryptedPropertyNames, partitionKey, rowKey, contentEncryptionKey, encryptionData, contentEncryptionIV) {
@@ -298,105 +310,81 @@ function decryptProperties(allEntityProperties, encryptedPropertyNames, partitio
   return decryptedProperties;
 }
 
-export function encryptEntity(partitionKey, rowKey, properties, encryptionOptions, callback) {
+export async function encryptEntityAsync(partitionKey: string, rowKey: string, properties: object, encryptionOptions: IEncryptionOptions) {
   if (!partitionKey || !rowKey || !properties) {
-    return callback(new Error('Must provide a partition key, row key and properties for the entity.'));
+    throw new Error('Must provide a partition key, row key and properties for the entity.');
   }
   const returnBinaryProperties = encryptionOptions.binaryProperties || 'buffer';
   if (returnBinaryProperties !== 'base64' && returnBinaryProperties !== 'buffer') {
-    return callback(new Error('The binary properties value is not valid. Please provide "buffer" or "base64".'));
+    throw new Error('The binary properties value is not valid. Please provide "buffer" or "base64".');
   }
   const keyEncryptionKeyId = encryptionOptions.keyEncryptionKeyId;
-  resolveKeyEncryptionKeyFromOptions(encryptionOptions, keyEncryptionKeyId, (keyLocateError, keyEncryptionKey) => {
-    if (keyLocateError) {
-      return callback(keyLocateError);
+  const keyEncryptionKey = await resolveKeyEncryptionKeyFromOptions(encryptionOptions, keyEncryptionKeyId);
+  let encryptionResolver = encryptionOptions.encryptionResolver;
+  if (!encryptionResolver) {
+    const propertiesToEncrypt = encryptionOptions.encryptedPropertyNames;
+    if (!propertiesToEncrypt) {
+      throw new Error('Encryption options must contain either a list of properties to encrypt or an encryption resolver.');
     }
-    let encryptionResolver = encryptionOptions.encryptionResolver;
-    if (!encryptionResolver) {
-      const propertiesToEncrypt = encryptionOptions.encryptedPropertyNames;
-      if (!propertiesToEncrypt) {
-        return callback(new Error('Encryption options must contain either a list of properties to encrypt or an encryption resolver.'));
-      }
-      encryptionResolver = createDefaultEncryptionResolver(propertiesToEncrypt);
-    }
-    generateContentEncryptionKey((generateKeyError, contentEncryptionIV, contentEncryptionKey) => {
-      if (generateKeyError) {
-        return callback(generateKeyError);
-      }
-      const keyWrappingAlgorithm = azureStorageKeyWrappingAlgorithm;
-      wrapContentKey(keyWrappingAlgorithm, keyEncryptionKey, contentEncryptionKey, (wrapError, wrappedContentEncryptionKey) => {
-        if (wrapError) {
-          return callback(wrapError);
-        }
-        encryptProperties(encryptionResolver, contentEncryptionKey, contentEncryptionIV, partitionKey, rowKey, properties, (encryptError, encryptedProperties, encryptionPropertyDetailsSet) => {
-          if (encryptError) {
-            return callback(encryptError);
-          }
-          if (encryptionPropertyDetailsSet.length === 0) {
-            return callback(null, encryptedProperties);
-          }
-          const metadataSerialized = JSON.stringify(encryptionPropertyDetailsSet);
-          encryptedProperties[tableEncryptionPropertyDetails] = encryptProperty(contentEncryptionKey, contentEncryptionIV, partitionKey, rowKey, tableEncryptionPropertyDetails, metadataSerialized);
-          encryptedProperties[tableEncryptionKeyDetails] = JSON.stringify(createEncryptionData(keyEncryptionKeyId, jose.util.asBuffer(wrappedContentEncryptionKey), contentEncryptionIV, keyWrappingAlgorithm));
-          if (returnBinaryProperties === 'base64') {
-            translateBuffersToBase64(encryptedProperties);
-          }
-          return callback(null, encryptedProperties);
-        });
-      });
-    });
-  });
+    encryptionResolver = createDefaultEncryptionResolver(propertiesToEncrypt);
+  }
+  const { contentEncryptionIV, contentEncryptionKey } = await generateContentEncryptionKey();
+  const keyWrappingAlgorithm = azureStorageKeyWrappingAlgorithm;
+  const wrappedContentEncryptionKey = await wrapContentKey(keyWrappingAlgorithm, keyEncryptionKey, contentEncryptionKey);
+  const { encryptedProperties, encryptedPropertiesList } = await encryptProperties(encryptionResolver, contentEncryptionKey, contentEncryptionIV, partitionKey, rowKey, properties);
+  if (encryptedPropertiesList.length === 0) {
+    return encryptedProperties;
+  }
+  const metadataSerialized = JSON.stringify(encryptedPropertiesList);
+  encryptedProperties[tableEncryptionPropertyDetails] = encryptProperty(contentEncryptionKey, contentEncryptionIV, partitionKey, rowKey, tableEncryptionPropertyDetails, metadataSerialized);
+  encryptedProperties[tableEncryptionKeyDetails] = JSON.stringify(createEncryptionData(keyEncryptionKeyId, jose.util.asBuffer(wrappedContentEncryptionKey), contentEncryptionIV, keyWrappingAlgorithm));
+  if (returnBinaryProperties === 'base64') {
+    translateBuffersToBase64(encryptedProperties);
+  }
+  return encryptedProperties;
 }
 
-export function decryptEntity(partitionKey, rowKey, properties, encryptionOptions, callback) {
+export async function decryptEntityAsync(partitionKey, rowKey, properties, encryptionOptions) {
   if (!partitionKey || !rowKey || !properties) {
-    return callback(new Error('A partition key, row key and properties must be provided.'));
+    throw new Error('A partition key, row key and properties must be provided.');
   }
   const returnBinaryProperties = encryptionOptions.binaryProperties || 'buffer';
   if (returnBinaryProperties !== 'base64' && returnBinaryProperties !== 'buffer') {
-    return callback(new Error('The binary properties value is not valid. Please provide "buffer" or "base64".'));
+    throw new Error('The binary properties value is not valid. Please provide "buffer" or "base64".');
   }
   let detailsValue = properties[tableEncryptionKeyDetails];
   if (detailsValue === undefined) {
-    return callback(null, properties);
+    return properties;
   }
   let tableEncryptionKey = null;
   try {
     tableEncryptionKey = JSON.parse(detailsValue);
   } catch (parseError) {
-    return callback(parseError);
+    throw parseError;
   }
   const iv = bufferFromBase64String(tableEncryptionKey.ContentEncryptionIV);
   const wrappedContentKey = tableEncryptionKey.WrappedContentKey;
   if (wrappedContentKey.Algorithm !== azureStorageKeyWrappingAlgorithm) {
-    return callback(new Error(`The key wrapping algorithm "${wrappedContentKey.Algorithm}" is not tested or supported in this library.`));
+    throw new Error(`The key wrapping algorithm "${wrappedContentKey.Algorithm}" is not tested or supported in this library.`);
   }
   const keyWrappingAlgorithm = wrappedContentKey.Algorithm;
   const wrappedContentKeyIdentifier = wrappedContentKey.KeyId;
   const wrappedContentKeyEncryptedKey = bufferFromBase64String(wrappedContentKey.EncryptedKey);
   const aesAlgorithm = openSslFromNetFrameworkAlgorithm(tableEncryptionKey.EncryptionAgent.EncryptionAlgorithm);
-  resolveKeyEncryptionKeyFromOptions(encryptionOptions, wrappedContentKeyIdentifier, (kvkLocateError, kvk) => {
-    if (kvkLocateError) {
-      return callback(kvkLocateError);
+  const kvk = await resolveKeyEncryptionKeyFromOptions(encryptionOptions, wrappedContentKeyIdentifier);
+  const keyEncryptionKeyValue = bufferFromBase64String(kvk);
+  const contentEncryptionKey = await unwrapContentKey(keyWrappingAlgorithm, keyEncryptionKeyValue, wrappedContentKeyEncryptedKey);
+  const metadataIV = computeTruncatedColumnHash(iv, partitionKey, rowKey, tableEncryptionPropertyDetails);
+  const tableEncryptionDetails = bufferFromBase64String(properties[tableEncryptionPropertyDetails]);
+  try {
+    const decryptedPropertiesSet = decryptValue(aesAlgorithm, contentEncryptionKey, metadataIV, tableEncryptionDetails);
+    const listOfEncryptedProperties = JSON.parse(decryptedPropertiesSet.toString('utf8'));
+    const decrypted = decryptProperties(properties, new Set(listOfEncryptedProperties), partitionKey, rowKey, contentEncryptionKey, tableEncryptionKey, iv);
+    if (returnBinaryProperties === 'base64') {
+      translateBuffersToBase64(decrypted);
     }
-    const keyEncryptionKeyValue = bufferFromBase64String(kvk);
-    unwrapContentKey(keyWrappingAlgorithm, keyEncryptionKeyValue, wrappedContentKeyEncryptedKey, (unwrapError, contentEncryptionKey) => {
-      if (unwrapError) {
-        return callback(unwrapError);
-      }
-      const metadataIV = computeTruncatedColumnHash(iv, partitionKey, rowKey, tableEncryptionPropertyDetails);
-      const tableEncryptionDetails = bufferFromBase64String(properties[tableEncryptionPropertyDetails]);
-      try {
-        const decryptedPropertiesSet = decryptValue(aesAlgorithm, contentEncryptionKey, metadataIV, tableEncryptionDetails);
-        const listOfEncryptedProperties = JSON.parse(decryptedPropertiesSet.toString('utf8'));
-        const decrypted = decryptProperties(properties, new Set(listOfEncryptedProperties), partitionKey, rowKey, contentEncryptionKey, tableEncryptionKey, iv);
-        if (returnBinaryProperties === 'base64') {
-          translateBuffersToBase64(decrypted);
-        }
-        return callback(null, decrypted);
-      } catch (error) {
-        return callback(error);
-      }
-    });
-  });
+    return decrypted;
+  } catch (error) {
+    throw error;
+  }
 }

@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import azure from 'azure-storage';
-
 import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
@@ -13,6 +11,7 @@ import { Type } from './type';
 import { PostgresGetAllEntities, PostgresGetByID, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
 import { TableSettings } from '../../lib/entityMetadataProvider/table';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { odata, TableEntityQueryOptions } from '@azure/data-tables';
 
 const type = Type;
 
@@ -336,24 +335,23 @@ PostgresConfiguration.ValidateMappings(type, fieldNames, [repositoryId]);
 
 EntityMetadataMappings.Register(type, TableSettings.TableQueries, (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
   switch (query.fixedQueryType) {
-    case FixedQueryType.AllRepositoryMetadata:
-      return new azure.TableQuery()
-        .where('PartitionKey eq ?', fixedPartitionKey)
-        .and('tickettype eq ?string?', 'repo');
-
-    case FixedQueryType.RepositoryMetadataByRepositoryId:
+    case FixedQueryType.AllRepositoryMetadata: {
+      return {
+        filter: odata`  PartitionKey eq ${fixedPartitionKey} and tickettype eq 'repo'  `,
+      } as TableEntityQueryOptions;
+    }
+    case FixedQueryType.RepositoryMetadataByRepositoryId: {
       const { repositoryId } = query as RepositoryMetadataFixedQueryByRepositoryId;
       if (!repositoryId) {
         throw new Error('repositoryId required');
       }
-      const qtpid = new azure.TableQuery()
-        .where('PartitionKey eq ?', fixedPartitionKey)
-        .and('tickettype eq ?string?', 'repo')
-        .and(`${azureTableRepositoryIdField} eq ?string?`, repositoryId);
-      return qtpid;
-
-    default:
+      return {
+        filter: odata`  PartitionKey eq ${fixedPartitionKey} and tickettype eq 'repo' and ` + azureTableRepositoryIdField + odata` eq ${repositoryId} `,
+      } as TableEntityQueryOptions;
+    }
+    default: {
       throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
+    }
   }
 });
 

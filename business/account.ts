@@ -315,6 +315,7 @@ export class Account {
     try {
       const entity = await operations.github.request(this.authorize(AppPurpose.Data), 'GET /user/:id', parameters, cacheOptions);
       common.assignKnownFieldsPrefixed(this, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
+      this._originalEntity = entity;
       return entity;
     } catch (error) {
       if (error.status && error.status === 404) {
@@ -435,8 +436,12 @@ export class Account {
       const { repository } = entry;
       try {
         await repository.getDetails();
-        await repository.removeCollaborator(this.login);
-        history.push(`Removed ${this.login} as a Collaborator from the repository ${repository.full_name}`);
+        if (repository.archived) {
+          history.push(`FYI: previous access to an archived repository ${repository.full_name}`);
+        } else {
+          await repository.removeCollaborator(this.login);
+          history.push(`Removed ${this.login} as a Collaborator from the repository ${repository.full_name}`);
+        }
       } catch (removeCollaboratorError) {
         if (ErrorHelper.IsNotFound(removeCollaboratorError)) {
           // The repo doesn't exist any longer, this is OK.
@@ -464,7 +469,7 @@ export class Account {
     const username = this._login;
     if (organizations && organizations.length > 1) {
       const asText = _.map(organizations, org => { return org.name; }).join(', ');
-      history.push(`${username} is a member of the following organizations: ${asText}`);
+      history.push(`${username} was a member of the following organizations: ${asText}`);
     } else if (organizations) {
       history.push(`${username} is not a member of any managed organizations`);
     }

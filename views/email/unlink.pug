@@ -1,0 +1,40 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends email
+
+block content
+
+  h3 Your GitHub link has been removed.
+
+  if purpose == 'self'
+    p You unlinked your own account.
+
+  if purpose == 'operations'
+    p Your account was unlinked by corporate GitHub account operations, possibly working through a support issue. Please reach out if you have any questions.
+
+  if purpose == 'termination'
+    p Your account is no longer active.
+
+  if purpose == 'deleted'
+    p Your GitHub account has been deleted or no longer exists.
+
+  h3 Removed GitHub account
+  table
+    tbody
+      tr
+        td GitHub account
+        td= link.thirdPartyUsername
+      tr
+        td Corporate identity
+        td= link.corporateUsername
+
+  if details
+    h3 Operations
+    p Log of operations performed with GitHub and other operational open source systems. These may be helpful if there are additional questions for support.
+    ul
+      each det in details
+        li= det
+        

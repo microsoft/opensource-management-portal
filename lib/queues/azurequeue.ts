@@ -47,6 +47,8 @@ export default class AzureQueuesProcessor implements IQueueProcessor {
   #options: IAzureQueuesProcessorOptions = null;
   #initialized: boolean;
 
+  supportsMultipleThreads: true;
+
   constructor(options: IAzureQueuesProcessorOptions) {
     if (!options.account) {
       throw new Error('options.account required');

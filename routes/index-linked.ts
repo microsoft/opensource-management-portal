@@ -61,7 +61,7 @@ router.use('/repos', reactRoute || RouteRepos);
 
 // Routes not yet available in the client
 router.use('/undo', RouteUndo);
-router.use('/administration', AuthorizeOnlyCorporateAdministrators, RouteAdministration);
+router.use('/administration', asyncHandler(AuthorizeOnlyCorporateAdministrators), RouteAdministration);
 
 router.use('/https?*github.com/:org/:repo', asyncHandler(async (req: ReposAppRequest, res, next) => {
   // Helper method to allow pasting a GitHub URL into the app to go to a repo

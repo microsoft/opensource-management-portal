@@ -5,6 +5,8 @@
 The configuration story for this application has been evolving over time. At this time, the
 following configuration elements are available at this time, each with a distinct purpose.
 
+Primary configuration is provided by `.env` files or process/container environment variables and volume files.
+
 A GitHub organization(s) configuration file in JSON format is required as of version 4.2.0 of the app.
 
 - Environment Variables (see `configuration.js` for details)
@@ -115,7 +117,7 @@ to include a restart of the app service.
 
 ## Minimum Configuration
 
-If you place a JSON file `env.json` above the directory of your cloned repo
+If you place a `.env` file above the directory of your cloned repo
 (to prevent committing secrets to your repo by accident or in your editor),
 you can configure the following extreme minimum working set to use the app.
 

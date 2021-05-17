@@ -4,22 +4,26 @@
 //
 
 import { URL }  from 'url';
+import { IGetKeyVaultSecretClient } from '../middleware/keyVault';
 
-const cachedKeys = new Map();
+const cachedKeys = new Map<string, string>();
 const cacheKeysInMemory = true;
 
 const secretsPath = '/secrets/';
 
-function keyVaultSecretResolver(keyVaultClient, id, callback) {
+export type IKeyVaultSecretResolver = (id: string) => Promise<string>;
+
+async function keyVaultSecretResolver(keyVaultClient: IGetKeyVaultSecretClient, id: string) {
   const cachedKey = cachedKeys.get(id);
   if (cachedKey !== undefined) {
-    return callback(null, cachedKey);
+    return cachedKey;
   }
   const secretUrl = new URL(id);
   const vaultBaseUrl = secretUrl.origin;
+  const secretClient = keyVaultClient.getSecretClientForVault(vaultBaseUrl);
   const i = secretUrl.pathname.indexOf(secretsPath);
   if (i < 0) {
-    return callback(new Error('The requested resource must be a KeyVault secret'));
+    throw new Error('The requested resource must be a KeyVault secret');
   }
   let secretName = secretUrl.pathname.substr(i + secretsPath.length);
   let version = '';
@@ -28,18 +32,18 @@ function keyVaultSecretResolver(keyVaultClient, id, callback) {
     version = secretName.substr(versionIndex + 1);
     secretName = secretName.substr(0, versionIndex);
   }
-  keyVaultClient.getSecret(vaultBaseUrl, secretName, version, (getSecretError, secretResponse) => {
-    if (getSecretError) {
-      return callback(getSecretError);
-    }
+  try {
+    const secretResponse = await secretClient.getSecret(secretName, { version });
     const secretValue = secretResponse.value;
     if (cacheKeysInMemory === true) {
       cachedKeys.set(id, secretValue);
     }
-    return callback(null, secretValue);
-  });
+    return secretValue;
+  } catch (error) {
+    throw error;
+  }
 }
 
-export default function createKeyVaultResolver(keyVaultClient) {
-  return keyVaultSecretResolver.bind(undefined, keyVaultClient);
+export default function createKeyVaultResolver(keyVaultClient: IGetKeyVaultSecretClient) {
+  return keyVaultSecretResolver.bind(undefined, keyVaultClient) as IKeyVaultSecretResolver;
 };
