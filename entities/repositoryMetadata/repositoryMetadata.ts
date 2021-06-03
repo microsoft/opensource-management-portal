@@ -74,6 +74,7 @@ interface IRepositoryMetadataProperties {
   initialAdministrators: any;
   initialRepositoryDescription: any;
   initialRepositoryVisibility: any;
+  initialRepositoryHomepage: any;
 
   initialLicense: any;
   initialTemplate: any;
@@ -115,6 +116,7 @@ const Field: IRepositoryMetadataProperties = {
   initialTemplate: 'initialTemplate',
   initialGitIgnoreTemplate: 'initialGitIgnoreTemplate',
   initialCorrelationId: 'initialCorrelationId',
+  initialRepositoryHomepage: 'initialRepositoryHomepage',
   projectType: 'projectType',
   releaseReviewJustification: 'releaseReviewJustification',
   releaseReviewType: 'releaseReviewType',
@@ -148,6 +150,7 @@ export class RepositoryMetadataEntity implements IRepositoryMetadataProperties {
   initialTemplate: string;
   initialGitIgnoreTemplate: string;
   initialCorrelationId: string;
+  initialRepositoryHomepage: string;
 
   projectType: string;
   releaseReviewJustification: string;
@@ -239,6 +242,7 @@ EntityMetadataMappings.Register(type, TableSettings.TableMapping, new Map<string
 
   [Field.initialRepositoryDescription, 'repoDescription'],
   [Field.initialRepositoryVisibility, 'repoVisibility'],
+  [Field.initialRepositoryHomepage, 'repoHomepage'],
 
   [Field.initialLicense, 'license'],
   [Field.initialTemplate, 'template'],
@@ -278,6 +282,7 @@ EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, new Map<stri
 
   [Field.initialRepositoryDescription, 'repoDescription'],
   [Field.initialRepositoryVisibility, 'repoVisibility'],
+  [Field.initialRepositoryHomepage, 'repoHomepage'],
 
   [Field.initialLicense, 'license'],
   [Field.initialTemplate, 'template'],
@@ -317,6 +322,7 @@ PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
 
   [Field.initialRepositoryDescription, (Field.initialRepositoryDescription as string).toLowerCase()],
   [Field.initialRepositoryVisibility, (Field.initialRepositoryVisibility as string).toLowerCase()],
+  [Field.initialRepositoryHomepage, (Field.initialRepositoryHomepage as string).toLowerCase()],
 
   [Field.initialLicense, (Field.initialLicense as string).toLowerCase()],
   [Field.initialTemplate, (Field.initialTemplate as string).toLowerCase()],

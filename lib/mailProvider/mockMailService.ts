@@ -2,7 +2,7 @@
 // Copyright (c) Microsoft.
 //
 
-import { v4 as uuidV4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { IMail, IMailProvider } from '.';
 
 export default class MockMailService implements IMailProvider {
@@ -27,7 +27,7 @@ export default class MockMailService implements IMailProvider {
 
   async sendMail(mail: IMail): Promise<any> {
     const receipt = Object.assign({
-      id: uuidV4(),
+      id: randomUUID(),
     }, mail);
     this.sentMessages.push(receipt);
     return receipt.id;

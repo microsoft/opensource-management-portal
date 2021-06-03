@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { v4 as uuidV4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 import { IObjectWithDefinedKeys } from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
@@ -110,7 +110,7 @@ export class TeamJoinApprovalEntity implements IObjectWithDefinedKeys, ITeamJoin
   ticketType?: string;
 
   constructor() {
-    this.approvalId = uuidV4();
+    this.approvalId = randomUUID();
     this.ticketType = this.type();
   }
 

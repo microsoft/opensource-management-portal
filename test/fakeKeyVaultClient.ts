@@ -4,7 +4,7 @@
 //
 
 import { GetSecretOptions } from '@azure/keyvault-secrets';
-import { v4 as uuidV4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { IDictionary } from '../interfaces';
 import { jsonError } from '../middleware';
 
@@ -46,7 +46,7 @@ export function createFakeVaults() {
     },
     storeSecret: (vaultUrl: string, secretName: string, secretValue: string, tags: IDictionary<string>) => {
       validateVaultUrl(vaultUrl);
-      const version = uuidV4();
+      const version = randomUUID();
       const id = `${vaultUrl}/secrets/${secretName}/${version}`;
       const secret = {
         id,

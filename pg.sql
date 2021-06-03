@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS events (
 
   created timestamptz,
   isopencontribution boolean,
+  isowncontribution boolean,
   usercorporateid text,
   action text,
   userusername text,
@@ -39,6 +40,7 @@ CREATE TABLE IF NOT EXISTS events (
   repositoryid text,
   inserted timestamptz,
   updated timestamptz,
+  checked timestamptz,
 
   metadata jsonb,
   PRIMARY KEY(entitytype, entityid)
@@ -57,6 +59,13 @@ CREATE INDEX IF NOT EXISTS events_opencontributions_range ON events (created, is
 CREATE INDEX IF NOT EXISTS events_orgname ON events (organizationname);
 CREATE INDEX IF NOT EXISTS events_orgid ON events (organizationid);
 CREATE INDEX IF NOT EXISTS events_repoid ON events (repositoryid);
+
+ALTER TABLE events ADD COLUMN isowncontribution boolean;
+ALTER TABLE events ADD COLUMN checked timestamptz;
+
+CREATE INDEX IF NOT EXISTS events_c_isowncontribution ON events (isowncontribution);
+CREATE INDEX IF NOT EXISTS events_checked ON events (checked);
+CREATE INDEX IF NOT EXISTS events_c_cid_checked ON events (usercorporateid);
 
 CREATE TABLE IF NOT EXISTS approvals (
   entitytype text,

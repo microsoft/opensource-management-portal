@@ -9,6 +9,8 @@
 import { TableEntityResult } from '@azure/data-tables';
 import crypto from 'crypto';
 import jose from 'node-jose';
+import { IEncryptionOptions } from '../encryption';
+import { IKeyVaultSecretResolver } from '../keyVaultResolver';
 
 // Azure Storage .NET client library - entity encryption keys:
 //
@@ -136,7 +138,7 @@ function validateEncryptionData(encryptionData) {
   }
 }
 
-function resolveKeyEncryptionKeyFromOptions(encryptionOptions, keyId, callback) {
+function resolveKeyEncryptionKeyFromOptions(encryptionOptions: IEncryptionOptions | ITableEncryptionOperationOptions, keyId: string, callback) {
   if (!encryptionOptions) {
     return callback(new Error('Encryption options must be specified.'));
   }
@@ -146,18 +148,17 @@ function resolveKeyEncryptionKeyFromOptions(encryptionOptions, keyId, callback) 
   if ((!encryptionOptions.keyEncryptionKeys || typeof encryptionOptions.keyEncryptionKeys !== 'object') && (!encryptionOptions.keyResolver || typeof encryptionOptions.keyResolver !== 'function')) {
     return callback(new Error('Encryption options must provide either a "keyResolver" function or "keyEncryptionKeys" object.'));
   }
-  const resolver = encryptionOptions.keyResolver || function (keyId, callback) {
+  const resolver = encryptionOptions.keyResolver || async function (keyId) {
     const key = encryptionOptions.keyEncryptionKeys[keyId];
-    callback(null, key);
+    return key;
   };
-  resolver(keyId, (resolveError, key) => {
-    if (resolveError) {
-      return callback(resolveError);
-    }
+  resolver(keyId).then(key => {
     if (!key) {
       return callback(new Error(`Could not retrieve a key with identifier "${keyId}".`));
     }
     return callback(null, bufferFromBase64String(key));
+  }).catch(error => {
+    return callback(error);
   });
 }
 
@@ -368,16 +369,21 @@ function encryptTableEntityCallback(partitionKey: string, rowKey: string, proper
 
 export interface ITableEncryptionOperationOptions {
   keyEncryptionKeyId: string;
-  keyResolver: any;
+  keyResolver: IKeyVaultSecretResolver;
   encryptedPropertyNames: Set<string>;
   binaryProperties: string;
+  keyEncryptionKeys?: object;
 }
 
 export function decryptTableEntity(partitionKey: string, rowKey: string, tableEntity: any, encryptionOptions: ITableEncryptionOperationOptions): Promise<TableEntityResult<object>> {
   return new Promise((resolve, reject) => {
-    decryptTableEntityCallback(partitionKey, rowKey, tableEntity, encryptionOptions, (decryptError, decryptedEntity) => {
-      return decryptError ? reject(decryptError) : resolve(decryptedEntity);
-    });
+    try {
+      decryptTableEntityCallback(partitionKey, rowKey, tableEntity, encryptionOptions, (decryptError, decryptedEntity) => {
+        return decryptError ? reject(decryptError) : resolve(decryptedEntity);
+      });
+    } catch (error) {
+      return reject(error);
+    }
   });
 }
 

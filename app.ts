@@ -73,8 +73,9 @@ app.runJob = async function (job: (job: IReposJob) => Promise<IReposJobResult | 
   if (options.defaultDebugOutput && !process.env.DEBUG) {
     process.env.DEBUG = options.defaultDebugOutput;
   }
-  if (options.treatGitHubAppAsBackground !== false) {
-    app.isBackgroundJob = true;
+  app.isBackgroundJob = true;
+  if (options.enableAllGitHubApps) {
+    app.enableAllGitHubApps = true;
   }
   try {
     await app.startupJob();

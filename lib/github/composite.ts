@@ -7,7 +7,7 @@
 
 // Composite method/filter/call memoization
 
-import { v4 as uuidV4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import moment from 'moment';
 import semver from 'semver';
 
@@ -220,7 +220,7 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
       changed = apiContext.previouslyChanged;
     }
     headers.changed = changed;
-    headers.etag = apiContext.generatedRefreshId || uuidV4();
+    headers.etag = apiContext.generatedRefreshId || randomUUID();
     delete headers.dirty;
     return headers;
   }

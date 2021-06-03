@@ -25,5 +25,5 @@ app.runJob(async function ({ providers }: IReposJob) {
   await go(providers);
   return {};
 }, {
-  treatGitHubAppAsBackground: false,
+  enableAllGitHubApps: true,
 });

@@ -7,7 +7,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 const router = express.Router();
 
-import { getProviders } from '../../../../transitional';
+import { ErrorHelper, getProviders } from '../../../../transitional';
 import { Team } from '../../../../business';
 import { PermissionWorkflowEngine } from '../approvals';
 import RenderHtmlMail from '../../../../lib/emailRender';
@@ -136,7 +136,13 @@ export async function postActionDecision(providers: IProviders, individualContex
   const pendingRequest = engine.request;
   try {
     const upn = pendingRequest.corporateUsername;
-    userMailAddress = await mailAddressProvider.getAddressFromUpn(upn);
+    try {
+      userMailAddress = await mailAddressProvider.getAddressFromUpn(upn);
+    } catch (error) {
+      if (!ErrorHelper.IsNotFound(error)) {
+        throw error;
+      }
+    }
     pendingRequest.decision = action;
     pendingRequest.active = false;
     pendingRequest.decisionTime = new Date();
@@ -172,7 +178,7 @@ export async function postActionDecision(providers: IProviders, individualContex
       service: (config.brand?.companyName || 'Corporate') + ' GitHub',
       companyName: config.brand.companyName,
     };
-    if (!engine.getDecisionEmailViewName || !engine.getDecisionEmailSubject) {
+    if (!userMailAddress || !engine.getDecisionEmailViewName || !engine.getDecisionEmailSubject) {
       return { message, redirect: teamBaseUrl };
     }
     // req.individualContext.webContext.saveUserAlert('Thanks for your ' + action.toUpperCase() + ' decision.', engine.typeName, 'success');

@@ -15,12 +15,14 @@ import { Organization, Repository } from '../business';
 import { RepositoryMetadataEntity, GitHubRepositoryVisibility, GitHubRepositoryPermission, RepositoryLockdownState } from '../entities/repositoryMetadata/repositoryMetadata';
 import RenderHtmlMail from '../lib/emailRender';
 
-import { RepoWorkflowEngine, IRepositoryWorkflowOutput, IApprovalPackage, IRepoWorkflowEngineOptions } from '../routes/org/repoWorkflowEngine';
+import { RepoWorkflowEngine, IRepositoryWorkflowOutput, IApprovalPackage } from '../routes/org/repoWorkflowEngine';
 import { IMailProvider } from '../lib/mailProvider';
 import { IndividualContext } from '../user';
 import NewRepositoryLockdownSystem from '../features/newRepositoryLockdown';
-import { ICreateRepositoryResult, ICorporateLink, ICachedEmployeeInformation, ReposAppRequest, getRepositoryMetadataProvider, CoreCapability, operationsWithCapability, IOperationsGitHubRestLibrary, IOperationsNewRepositoryTaskOptions, IOperationsHierarchy, IOperationsNotifications } from '../interfaces';
+import { ICreateRepositoryResult, ICorporateLink, ICachedEmployeeInformation, ReposAppRequest, getRepositoryMetadataProvider, CoreCapability, operationsWithCapability, IOperationsGitHubRestLibrary, IOperationsHierarchy, IOperationsNotifications } from '../interfaces';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
+
+const defaultMailView = 'newRepository';
 
 const supportedLicenseExpressions = [
   'mit',
@@ -112,6 +114,7 @@ export async function CreateRepository(req, organization: Organization, logic: I
     throw jsonError(new Error(`Repository ID ${existingRepoId} provided for a repository within the ${organization.name} org that is not configured for existing repository classification`), 422);
   }
   let repository: Repository = null;
+  let repoCreateResponse: ICreateRepositoryApiResult = null;
   if (!existingRepoId) {
     providers.insights?.trackEvent({
       name: 'ApiRepoTryCreateForOrg',
@@ -210,6 +213,7 @@ export async function CreateRepository(req, organization: Organization, logic: I
     metadata.repositoryName = response.name;
     metadata.repositoryId = response.id;
     metadata.initialRepositoryDescription = response.description;
+    metadata.initialRepositoryHomepage = response.homepage;
     if (response.visibility === GitHubRepositoryVisibility.Internal) {
       metadata.initialRepositoryVisibility = GitHubRepositoryVisibility.Internal;
     } else {
@@ -243,7 +247,7 @@ export async function CreateRepository(req, organization: Organization, logic: I
     }
     repository = repositoryByName;
     metadata.lockdownState = RepositoryLockdownState.Unlocked;
-    const repoCreateResponse: ICreateRepositoryApiResult = {
+    repoCreateResponse = {
       github: response,
       name: response && response.name ? response.name : undefined,
       repositoryId: Number(existingRepoId),
@@ -323,24 +327,11 @@ export async function CreateRepository(req, organization: Organization, logic: I
     isUnlockingExistingRepository: existingRepoId,
     isFork: response ? response.fork : false,
     isTransfer: metadata && metadata.transferSource ? true : false,
-    // TEMPORARY:
+    repoCreateResponse,
     createEntrypoint: entrypoint,
-    renameDefaultBranchTo: null,
-    renameDefaultBranchExcludeIfApiCall: null,
   };
-  // TEMPORARY FEATURE: through end of 2020, default branch work
-  const config = providers.config;
-  if (config?.github?.newRepos?.renameDefaultBranchFlag === true) {
-    approvalPackage.renameDefaultBranchTo = config.github.newRepos.renameDefaultBranchTo;
-    approvalPackage.renameDefaultBranchExcludeIfApiCall = config.github.newRepos.renameDefaultBranchExcludeApiCreates;
-  }
-  // END TEMPORARY FEATURE: default branch work
   // req.approvalRequest['ms.approvalId'] = requestId; // TODO: is this ever used?
-  let newRepoOptions: IRepoWorkflowEngineOptions = undefined;
-  if (operations.hasCapability(CoreCapability.NewRepositoryTaskOptions)) {
-    newRepoOptions = operationsWithCapability<IOperationsNewRepositoryTaskOptions>(operations, CoreCapability.NewRepositoryTaskOptions).newRepositoryTaskOptions;
-  }
-  const repoWorkflow = new RepoWorkflowEngine(organization, approvalPackage, newRepoOptions);
+  const repoWorkflow = new RepoWorkflowEngine(providers, organization, approvalPackage);
   let output = [];
   try {
     output = await generateAndRunSecondaryTasks(repoWorkflow);
@@ -405,7 +396,7 @@ function downgradeBroadAccessTeams(organization, teams) {
 async function sendEmail(req: IReposAppRequestWithCreateResponse, logic: ICustomizedNewRepositoryLogic, createContext: INewRepositoryContext, mailProvider: IMailProvider, apiKeyRow, correlationId: string, repoCreateResults, approvalRequest: RepositoryMetadataEntity, msProperties, existingRepoId: any, repository: Repository, createdUserLink: ICorporateLink): Promise<void> {
   const { config, insights, viewServices } = getProviders(req);
   const deployment = getCompanySpecificDeployment();
-  const emailTemplate = deployment?.views?.email?.repository?.new || 'newRepository';
+  const emailTemplate = deployment?.views?.email?.repository?.new || defaultMailView;
   const excludeNotificationsValue = config.notifications?.reposNotificationExcludeForUsers;
   const operations = repository.organization.operations;
   let excludeNotifications = [];

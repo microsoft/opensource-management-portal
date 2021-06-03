@@ -7,6 +7,7 @@ export interface IAttachCompanySpecificViews {
   email?: {
     repository?: {
       new?: string;
+      newDirect?: string;
     },
     linking?: {
       link?: string;

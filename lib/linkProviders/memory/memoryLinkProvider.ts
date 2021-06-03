@@ -4,8 +4,8 @@
 //
 
 import _ from 'lodash';
+import { randomUUID } from 'crypto';
 
-import { v4 as uuidV4 } from 'uuid';
 import { ICorporateLink, ICorporateLinkExtended, ICorporateLinkProperties, IReposError } from '../../../interfaces';
 
 import { CorporateMemoryLink } from './memoryLink';
@@ -122,7 +122,7 @@ export class MemoryLinkProvider implements ILinkProvider {
   }
 
   async createLink(link: ICorporateLink): Promise<string> {
-    const generatedLinkId = uuidV4();
+    const generatedLinkId = randomUUID();
     const initialEntity = {};
     initialEntity[linkInterfacePropertyMapping.memoryLinkId] = generatedLinkId;
     for (let linkPropertyName of CorporatePropertyNames) {

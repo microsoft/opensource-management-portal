@@ -6,8 +6,8 @@
 /*eslint no-console: ["error", { allow: ["dir", "warn"] }] */
 
 import _ from 'lodash';
+import { randomUUID } from 'crypto';
 const debug = require('debug')('restapi');
-import { v4 as uuidV4 } from 'uuid';
 import moment from 'moment';
 
 import { RestLibrary } from '.';
@@ -246,7 +246,7 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
     // Potential data loss/consistency problem: upsert/overwrite
     try {
       let refreshing = moment().utc().format();
-      let refreshId = uuidV4();
+      let refreshId = randomUUID();
       currentMetadata.refreshing = refreshing;
       currentMetadata.refreshId = refreshId;
       apiContext.generatedRefreshId = refreshId;

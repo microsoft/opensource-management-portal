@@ -12,12 +12,6 @@ block content
       Hi,#[br]
       Your GitHub repository has been approved by an administrator and is almost ready. Please complete the setup wizard for the #{lockdownMailContent.repository.name} repo to configure permissions and other settings.
 
-    if lockdownMailContent.repository && lockdownMailContent.repository.private
-      p
-        strong PRIVATE REPO NOTE:
-        br
-        | The repository is private. Your access to the repository will be restored once you complete the repository setup wizard. Until then you will see a 404 Not Found HTTP error message.
-
     h3 Gain access to the repo
     p
       a(href=lockdownMailContent.linkToClassifyRepository, target='_new', style='font-size: 36px') Finish setting up #{lockdownMailContent.repository.name}

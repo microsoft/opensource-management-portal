@@ -76,7 +76,6 @@ export interface IProviders {
   repositoryProvider?: IRepositoryProvider;
   repositoryCacheProvider?: IRepositoryCacheProvider;
   repositoryCollaboratorCacheProvider?: IRepositoryCollaboratorCacheProvider;
-  // repositoryMetadataProvider?: IRepositoryMetadataProvider;
   repositoryTeamCacheProvider?: IRepositoryTeamCacheProvider;
   session?: any;
   teamCacheProvider?: ITeamCacheProvider;

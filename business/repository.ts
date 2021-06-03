@@ -40,6 +40,12 @@ interface IGitHubGetFileParameters {
   alternateToken?: string;
 }
 
+interface IGitHubGetReadmeParameters {
+  owner: string;
+  repo: string;
+  ref?: string;
+}
+
 interface IGitHubFileContents {
   type: string;
   encoding: 'base64';
@@ -73,6 +79,10 @@ interface ICreateFileParameters {
 }
 
 interface IGitHubGetFileOptions {
+  ref?: string;
+}
+
+interface IGitHubGetReadmeOptions extends ICacheOptions {
   ref?: string;
 }
 
@@ -355,18 +365,35 @@ export class Repository {
     return github.collections.getRepoPullRequests(this.authorize(AppPurpose.Updates), parameters, cacheOptions);
   }
 
-  async getContent(path: string, options?: IGetContentOptions): Promise<any> {
+  getReadme(options?: IGitHubGetReadmeOptions): Promise<IGitHubFileContents> {
     options = options || {};
-    const ref = options.branch || options.tag || options.ref || 'master';
-    const parameters = {
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const parameters: IGitHubGetReadmeParameters = {
       owner: this.organization.name,
       repo: this.name,
-      path: path,
-      ref: ref,
+      ref: options?.ref || undefined,
     };
-    const operations = throwIfNotGitHubCapable(this._operations);
-    return operations.github.call(this.authorize(AppPurpose.Data), 'repos.getContent', parameters);
+    if (options && options.ref) {
+      parameters.ref = options.ref;
+    }
+    const cacheOptions: ICacheOptions = {};
+    if (options?.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+      delete parameters['backgroundRefresh'];
+    }
+    if (options?.maxAgeSeconds !== undefined) {
+      cacheOptions.maxAgeSeconds = options.maxAgeSeconds;
+      delete parameters['maxAgeSeconds'];
+    }
+    if (cacheOptions?.maxAgeSeconds === undefined) {
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds);
+    }
+    if (cacheOptions?.backgroundRefresh === undefined) {
+      cacheOptions.backgroundRefresh = true;
+    }
+    return operations.github.call(this.authorize(AppPurpose.Operations), 'repos.getReadme', parameters, cacheOptions);
   }
+
 
   async getLastCommitToBranch(branchName: string): Promise<string> {
     await this.organization.requireUpdatesApp('getLastCommitToBranch');
@@ -758,6 +785,7 @@ export class Repository {
   }
 
   createFile(path: string, base64Content: string, commitMessage: string, options?: ICreateFileOptions): Promise<any> {
+    options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters: ICreateFileParameters = Object.assign({
       owner: this.organization.name,
@@ -766,16 +794,16 @@ export class Repository {
       message: commitMessage,
       content: base64Content,
     }, options);
-    if (options && options.sha) {
+    if (options?.sha) {
       parameters.sha = options.sha;
     }
-    if (options && options.branch) {
+    if (options?.branch) {
       parameters.branch = options.branch;
     }
-    if (options && options.committer) {
+    if (options?.committer) {
       parameters.committer = options.committer;
     }
-    const alternateHeader = options.alternateToken ? `token ${options.alternateToken}` : null;
+    const alternateHeader = options?.alternateToken ? `token ${options.alternateToken}` : null;
     return operations.github.post(alternateHeader || this.authorize(AppPurpose.Operations), 'repos.createOrUpdateFileContents', parameters);
   }
 
@@ -790,7 +818,7 @@ export class Repository {
       parameters.ref = options.ref;
     }
     // const alternateHeader = options.alternateToken ? `token ${options.alternateToken}` : null;
-    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.getContent', parameters);
+    return operations.github.call(this.authorize(AppPurpose.Operations), 'repos.getContent', parameters);
   }
 
   getFiles(path: string, options?: IGitHubGetFileOptions): Promise<IGitHubFileContents[]> {
@@ -912,6 +940,15 @@ export class Repository {
       repo: this.name,
     }, {
       archived: true,
+    });
+    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
+  }
+
+  async update(patch?: any): Promise<void> {
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const parameters = Object.assign(patch, {
+      owner: this.organization.name,
+      repo: this.name,
     });
     return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
   }

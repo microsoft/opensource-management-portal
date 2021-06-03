@@ -4,7 +4,7 @@
 //
 
 import _ from 'lodash';
-import { v4 as uuidV4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 import { GetTableEntityResponse, odata, TableClient, TableEntityQueryOptions, TableEntityResult, TableServiceClient, TablesSharedKeyCredential } from '@azure/data-tables';
 
@@ -268,7 +268,7 @@ export class TableLinkProvider implements ILinkProvider {
   }
 
   async createLink(link: ICorporateLink): Promise<string> {
-    const generatedLinkId = uuidV4();
+    const generatedLinkId = randomUUID();
     let entity = null;
     try {
       const initialEntity = {};
@@ -330,7 +330,7 @@ export class TableLinkProvider implements ILinkProvider {
     }
     if (!replaceEntity.linkId) {
       console.log('Generated a new linkId as part of an update operation');
-      const newLinkId = uuidV4();
+      const newLinkId = randomUUID();
       replaceEntity.linkId = newLinkId;
     }
     const entity = tableEntity.create(partitionKey, thirdPartyId, replaceEntity);

@@ -4,7 +4,7 @@
 //
 
 import crypto from 'crypto';
-import { v4 as uuidV4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 import { decryptEntityAsync, encryptEntityAsync, IEncryptionOptions } from '../lib/encryption';
 
@@ -18,7 +18,7 @@ describe('encryption', () => {
   describe('encryptEntity', () => {
     it('unencrypted entities can be processed', (done) => {
       expect.assertions(1);
-      let dynamicKeyId = uuidV4();
+      let dynamicKeyId = randomUUID();
       generate32bitKey((error, key) => {
         let keyEncryptionKeys = {
           [dynamicKeyId]: key,
@@ -34,8 +34,8 @@ describe('encryption', () => {
           secret: 'this is a secret',
           superSecret: 'the password is password',
         };
-        let partitionKey = 'partition' + uuidV4();
-        let rowKey = 'row' + uuidV4();
+        let partitionKey = 'partition' + randomUUID();
+        let rowKey = 'row' + randomUUID();
         const roundtripEntity = decryptEntityAsync(partitionKey, rowKey, entity, sampleEncryptionOptions).then(ok => {
           expect(entity).toEqual(roundtripEntity);  
         }).catch(err => {
@@ -46,7 +46,7 @@ describe('encryption', () => {
 
     it('should have encryption metadata', done => {
       expect.assertions(4);
-      const dynamicKeyId = uuidV4();
+      const dynamicKeyId = randomUUID();
       generate32bitKey((error, key) => {
         const keyEncryptionKeys = {
           [dynamicKeyId]: key,
@@ -62,8 +62,8 @@ describe('encryption', () => {
           secret: 'this is a secret',
           superSecret: 'the password is password',
         };
-        const partitionKey = 'partition' + uuidV4();
-        const rowKey = 'row' + uuidV4();
+        const partitionKey = 'partition' + randomUUID();
+        const rowKey = 'row' + randomUUID();
         encryptEntityAsync(partitionKey, rowKey, secretEntity, sampleEncryptionOptions).then(
           encryptedEntity => {
           expect(error).toBeFalsy();
@@ -79,7 +79,7 @@ describe('encryption', () => {
 
     it('should be able to decrypt itself', done => {
       expect.assertions(3);
-      let dynamicKeyId = uuidV4();
+      let dynamicKeyId = randomUUID();
       generate32bitKey((error, key) => {
         let keyEncryptionKeys = {
           [dynamicKeyId]: key,
@@ -95,8 +95,8 @@ describe('encryption', () => {
           secret: 'this is a secret',
           superSecret: 'the password is password',
         };
-        let partitionKey = 'partition' + uuidV4();
-        let rowKey = 'row' + uuidV4();
+        let partitionKey = 'partition' + randomUUID();
+        let rowKey = 'row' + randomUUID();
         encryptEntityAsync(partitionKey, rowKey, secretEntity, sampleEncryptionOptions).then(encryptedEntity => {
           expect(error).toBeFalsy();
           expect(encryptedEntity).not.toEqual(secretEntity);

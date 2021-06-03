@@ -72,13 +72,15 @@ export enum CoreCapability {
   Links = 'Links', // IOperationsLinks
   Templates = 'Templates', // IOperationsTemplates
   RepositoryMetadataProvider = 'RepositoryMetadataProvider', // IOperationsRepositoryMetadataProvider
-  NewRepositoryTaskOptions = 'NewRepositoryTaskOptions', // IOperationsNewRepositoryTaskOptions
   Hiearchy = 'Hierarchy', // IOperationsHierarchy
   Notifications = 'Notifications', // IOperationsNotifications
 }
 
-export interface IAlternateTokenRequiredOptions extends ICacheOptions {
-  alternateToken: string;
+export interface IAlternateTokenOption {
+  alternateToken: string;  
+}
+
+export interface IAlternateTokenRequiredOptions extends ICacheOptions, IAlternateTokenOption {
 }
 
 export interface IPagedCrossOrganizationCacheOptions extends IPagedCacheOptions {

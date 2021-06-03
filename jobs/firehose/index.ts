@@ -9,4 +9,5 @@ import app from '../../app';
 app.runJob(Job, {
   defaultDebugOutput: 'redis,restapi,querycache',
   insightsPrefix: 'JobFirehose',
+  enableAllGitHubApps: true,
 });

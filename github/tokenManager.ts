@@ -37,7 +37,7 @@ interface InstallationIdPurposePair {
 
 export class GitHubTokenManager {
   #options: IGitHubAppsOptions;
-  private static _isBackgroundJob: boolean;
+  private static _forceBackgroundTokens: boolean;
   // private _appConfiguration = new Map<AppPurpose, IGitHubAppConfiguration>();
   private _apps = new Map<AppPurpose, GitHubAppTokens>();
   private _appsById = new Map<number, GitHubAppTokens>();
@@ -49,7 +49,7 @@ export class GitHubTokenManager {
       throw new Error('options required');
     }
     this.#options = options;
-    GitHubTokenManager._isBackgroundJob = options.app.isBackgroundJob;
+    GitHubTokenManager._forceBackgroundTokens = options.app.isBackgroundJob && !options.app.enableAllGitHubApps;
   }
 
   async initialize() {
@@ -105,7 +105,7 @@ export class GitHubTokenManager {
     if (!organizationSettings) {
       return null;
     }
-    let order = GitHubTokenManager._isBackgroundJob === true ? fallbackBackgroundJobPriorities : [preferredPurpose, ...fallbackPurposePriorities];
+    let order = GitHubTokenManager._forceBackgroundTokens === true ? fallbackBackgroundJobPriorities : [preferredPurpose, ...fallbackPurposePriorities];
     if (appAuthenticationType === GitHubAppAuthenticationType.ForceSpecificInstallation) {
       order = [ preferredPurpose ];
     }

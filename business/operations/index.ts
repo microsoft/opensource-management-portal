@@ -131,10 +131,6 @@ export class Operations
     });
     this._dynamicOrganizationIds = new Set();
     this._dynamicOrganizationSettings = [];
-
-    this._newRepoOptions = {
-      shouldRenameDefaultBranch: true,
-    };
   }
 
   protected get tokenManager() {

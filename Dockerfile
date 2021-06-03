@@ -1,4 +1,4 @@
-ARG IMAGE_NAME=node:15-alpine
+ARG IMAGE_NAME=node:16-alpine
 
 FROM $IMAGE_NAME AS build
 

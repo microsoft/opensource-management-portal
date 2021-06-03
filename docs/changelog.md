@@ -4,6 +4,7 @@
 
 ## 2021
 
+- 7.1.0: new column for repository metadata, initialrepositoryhomepage
 - `painless-config` removed, please use `.env` (dotenv) going forward. The painless-config-resolver lib basically has moved into this project.
 - New "company-specific deployment" support to conditionally branch or include alternate logic when present
 

@@ -33,12 +33,6 @@ block content
         Hi,#[br]
         You just #{action} a GitHub repository, #{lockdownMailContent.repository.name}. Complete the setup wizard to configure the repo permissions and release information.
 
-    if lockdownMailContent.repository && lockdownMailContent.repository.private
-      p
-        strong Private repository:
-        br
-        | Your access to the repository will be restored once you complete the new repository wizard. Until then you will see a 404 Not Found HTTP error message.
-
     if isTransfer && transferSourceRepositoryLogin
       h3 Incoming transfer from #{transferSourceRepositoryLogin}
 

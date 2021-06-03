@@ -14,7 +14,7 @@
 
 import { Edm, ListEntitiesResponse, odata, TableClient, TableEntity, TableEntityQueryOptions, TableEntityResult, TableServiceClient, TablesSharedKeyCredential } from '@azure/data-tables';
 
-import { v4 as uuidV4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 const debugShowTableOperations = false;
 
@@ -522,7 +522,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
         // CONSIDER: it might be best if the serialization helpers took options, and so only when
         // a new object is being created through the appropriate code path would this identify
         // get created.
-        object[idFieldName] = uuidV4(); // new entity to insert
+        object[idFieldName] = randomUUID(); // new entity to insert
       }
       const entity = SerializeObjectToEntityMetadata(type, idFieldName, object, mapObjectToTableFields, true /* numbers to strings */, false /* throw if missing translations */, true /* ignore private variables */);
       if (specializedSerializer) {
