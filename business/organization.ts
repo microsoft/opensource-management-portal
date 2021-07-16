@@ -126,7 +126,7 @@ export class Organization {
     if (operationsIsCapable<IOperationsUrls>(operations, CoreCapability.Urls)) {
       this._baseUrl = `${operations.baseUrl}${this.name}/`;
       this._nativeUrl = `${operations.nativeUrl}${this.name}/`;
-      this._nativeManagementUrl = `${operations.nativeManagementUrl}organizations/${this.name}/`;
+      this._nativeManagementUrl = `${operations.nativeManagementUrl}${this.name}/`;
     }
     const withProviders = operations as OperationsCore;
     if (withProviders?.providers) {
