@@ -42,20 +42,23 @@ export default function initializeAppInsights(app: IReposApplication, config) {
     return;
   }
   const providers = app.settings.providers as IProviders;
-  let key: string = config.telemetry && config.telemetry.applicationInsightsKey ? config.telemetry.applicationInsightsKey : null;
+  let cs: string = config?.telemetry?.applicationInsightsConnectionString || config?.telemetry?.applicationInsightsKey;
   // Override the key with a job-specific one if this is a job execution instead
-  if (config.telemetry && config.telemetry.jobsApplicationInsightsKey && config.isJobInternal === true) {
-    key = config.telemetry.jobsApplicationInsightsKey;
+  let jobCs: string = config?.telemetry?.jobsApplicationInsightsConnectionString || config?.telemetry?.jobsApplicationInsightsKey;
+  if (jobCs && config.isJobInternal === true) {
+    cs = jobCs;
   }
-  if (key) {
-    const instance = providers.applicationProfile.logDependencies ? appInsightsSetup(key) : appInsightsSetup(key).setAutoCollectDependencies(false);
+  if (cs) {
+    const instance = providers.applicationProfile.logDependencies ? appInsightsSetup(cs) : appInsightsSetup(cs).setAutoCollectDependencies(false);
     defaultClient.addTelemetryProcessor(ignoreKubernetesProbes);
     defaultClient.addTelemetryProcessor(filterTelemetry);
     instance.start();
     client = defaultClient;
-    debug(`insights telmetry will use identifier: ${key.substr(0,6)}`);
+    const configuredInstrumentationKey = client?.config?.instrumentationKey;
+    const configuredEndpoint = client?.config?.endpointUrl;
+    debug(`insights telmetry will use identifier: ${configuredInstrumentationKey.substr(0,6)} and endpoint ${configuredEndpoint}`);
   } else {
-    debug(`insights telmetry is not configured with a key`);
+    debug('insights telmetry is not configured with a key or connection string');
   }
 
   app.use((req: ReposAppRequest, res, next) => {

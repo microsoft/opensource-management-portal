@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { AppPurpose, IGitHubAppConfiguration, IGitHubAppsOptions, GitHubAppAuthenticationType } from '.';
+import { AppPurpose, IGitHubAppConfiguration, IGitHubAppsOptions, GitHubAppAuthenticationType, AllAvailableAppPurposes, AppPurposeToConfigurationName } from '.';
 import { GitHubAppTokens } from './appTokens';
 import { IAuthorizationHeaderValue } from '../interfaces';
 import { OrganizationSetting } from '../entities/organizationSettings/organizationSetting';
@@ -53,12 +53,12 @@ export class GitHubTokenManager {
   }
 
   async initialize() {
-    await this.initializeApp(AppPurpose.CustomerFacing, this.#options.customerFacingApp);
-    await this.initializeApp(AppPurpose.Operations, this.#options.operationsApp);
-    await this.initializeApp(AppPurpose.Data, this.#options.dataApp);
-    await this.initializeApp(AppPurpose.BackgroundJobs, this.#options.backgroundJobs);
-    await this.initializeApp(AppPurpose.Updates, this.#options.updatesApp);
-    await this.initializeApp(AppPurpose.Security, this.#options.securityApp);
+    for (let appPurpose of AllAvailableAppPurposes) {
+      const configurationValue = this.#options.configurations.get(appPurpose);
+      if (configurationValue) {
+        await this.initializeApp(appPurpose, configurationValue);
+      }
+    }
   }
 
   organizationSupportsAnyPurpose(organizationName: string, organizationSettings?: OrganizationSetting) {

@@ -10,7 +10,10 @@ import { CacheDefault, getMaxAgeSeconds } from '.';
 import { IOperationsInstance, IPurposefulGetAuthorizationHeader, GitHubIssueState, IIssueLabel, throwIfNotGitHubCapable, ICacheOptions, IGetAuthorizationHeader } from '../interfaces';
 import { ErrorHelper } from '../transitional';
 
-export class RepositoryIssue {
+// Pull requests are issues but not all issues are pull requests. So this is mostly a clone of repositoryIssue.ts
+// right now, with slightly different endpoints.
+
+export class RepositoryPullRequest {
   private _operations: IOperationsInstance;
   private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
 
@@ -19,10 +22,10 @@ export class RepositoryIssue {
 
   private _entity: any;
 
-  constructor(repository: Repository, issueNumber: number, operations: IOperationsInstance, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, entity?: any) {
+  constructor(repository: Repository, pullRequestNumber: number, operations: IOperationsInstance, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, entity?: any) {
     this._getAuthorizationHeader = getAuthorizationHeader;
     this._repository = repository;
-    this._number = issueNumber;
+    this._number = pullRequestNumber;
     this._operations = operations;
     if (entity) {
       this._entity = entity;
@@ -57,22 +60,8 @@ export class RepositoryIssue {
       issue_number: this.number,
     });
     // Operations has issue write permissions
-    const details = await operations.github.post(this.authorize(AppPurpose.Operations), 'issues.update', parameters);
+    const details = await operations.github.post(this.authorize(AppPurpose.Operations), 'pulls.update', parameters);
     return details;
-  }
-
-  async comment(commentBody: string): Promise<any> {
-    const operations = throwIfNotGitHubCapable(this._operations);
-    const parameters = Object.assign({
-      body: commentBody,
-    }, {
-      owner: this.repository.organization.name,
-      repo: this.repository.name,
-      issue_number: this.number,
-    });
-    // Operations has issue write permissions
-    const comment = await operations.github.post(this.authorize(AppPurpose.Operations), 'issues.createComment', parameters);
-    return comment;
   }
 
   async getComment(commentId: string): Promise<any> {
@@ -82,7 +71,7 @@ export class RepositoryIssue {
       repo: this.repository.name,
       comment_id: commentId,
     });
-    const comment = await operations.github.post(this.authorize(AppPurpose.Operations), 'issues.getComment', parameters);
+    const comment = await operations.github.post(this.authorize(AppPurpose.Operations), 'pulls.getReviewComment', parameters);
     return comment;
   }
 
@@ -98,6 +87,44 @@ export class RepositoryIssue {
     }
   }
 
+  async getReview(reviewId: string): Promise<any> {
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const parameters = Object.assign({
+      owner: this.repository.organization.name,
+      repo: this.repository.name,
+      pull_number: this.number,
+      review_id: reviewId,
+    });
+    const comment = await operations.github.post(this.authorize(AppPurpose.Operations), 'pulls.getReview', parameters);
+    return comment;
+  }
+
+  async isReviewDeleted(reviewId: string) {
+    try {
+      await this.getReview(reviewId);
+      return false;
+    } catch (error) {
+      if (ErrorHelper.IsNotFound(error)) {
+        return true;
+      }
+      throw error;
+    }
+  }
+
+  // async comment(commentBody: string): Promise<any> {
+  //   const operations = throwIfNotGitHubCapable(this._operations);
+  //   const parameters = Object.assign({
+  //     body: commentBody,
+  //   }, {
+  //     owner: this.repository.organization.name,
+  //     repo: this.repository.name,
+  //     issue_number: this.number,
+  //   });
+  //   // Operations has issue write permissions
+  //   const comment = await operations.github.post(this.authorize(AppPurpose.Operations), 'issues.createComment', parameters);
+  //   return comment;
+  // }
+
   async getDetails(options?: ICacheOptions, okToUseLocalEntity: boolean = true): Promise<any> {
     if (okToUseLocalEntity && this._entity) {
       return this._entity;
@@ -110,7 +137,7 @@ export class RepositoryIssue {
     const parameters = {
       owner: this._repository.organization.name,
       repo: this._repository.name,
-      issue_number: this._number,
+      pull_number: this._number,
     };
     const cacheOptions: ICacheOptions = {
       // NOTE: just reusing repo details stale time
@@ -120,12 +147,12 @@ export class RepositoryIssue {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     try {
-      const entity = await operations.github.call(this.authorize(AppPurpose.Data), 'issues.get', parameters, cacheOptions);
+      const entity = await operations.github.call(this.authorize(AppPurpose.Data), 'pulls.get', parameters, cacheOptions);
       this._entity = entity;
       return entity;
     } catch (error) {
       const notFound = error.status && error.status == /* loose */ 404;
-      error = wrapError(error, notFound ? 'The issue could not be found.' : `Could not get details about the issue. ${error.status}`, notFound);
+      error = wrapError(error, notFound ? 'The PR could not be found.' : `Could not get details about the PR. ${error.status}`, notFound);
       if (notFound) {
         error.status = 404;
       }
@@ -140,6 +167,7 @@ export class RepositoryIssue {
       if (ErrorHelper.IsNotFound(maybeDeletedError)) {
         return true;
       }
+      throw maybeDeletedError;
     }
     return false;
   }

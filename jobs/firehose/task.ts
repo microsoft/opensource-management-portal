@@ -7,9 +7,8 @@
 
 // Webhook firehose processing specific to repos
 
-import moment from 'moment';
 import os from 'os';
-
+import { DateTime } from 'luxon';
 import App from '../../app';
 import ProcessOrganizationWebhook, { IGitHubWebhookProperties } from '../../webhooks/organizationProcessor';
 import { IGitHubAppInstallation, IGitHubWebhookEnterprise, IProviders, IReposJob, IReposJobResult } from '../../interfaces';
@@ -18,6 +17,8 @@ import { IQueueMessage } from '../../lib/queues';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 
 const runningAsOngoingDeployment = true;
+
+const hardAbortMs = 1000 * 60 * 5; // 5 minutes
 
 export default async function firehose({ providers, started }: IReposJob): Promise<IReposJobResult> {
   let processedEventTypes = {};
@@ -31,7 +32,7 @@ export default async function firehose({ providers, started }: IReposJob): Promi
     console.log('webhook processor is configured to keep running, it will not exit');
   } else {
     setTimeout(() => {
-      const finishing = moment().utc().format();
+      const finishing = DateTime.utc().toISO();
       console.log(`Ending run after ${runtimeSeconds}s at ${finishing} after finding ${interestingEvents} events of interest and processing ${processedEvents}`);
       console.dir(processedEventTypes);
       process.exit(0);
@@ -118,45 +119,56 @@ export default async function firehose({ providers, started }: IReposJob): Promi
   async function iterate(providers: IProviders, threadNumber: number): Promise<void> {
     const { webhookQueueProcessor } = providers;
     let messages: IQueueMessage[] = null;
+    let intervalHandle = setTimeout(hardAbort, hardAbortMs);
     try {
       messages = await webhookQueueProcessor.receiveMessages();
     } catch (getError) {
+      clearTimeout(intervalHandle);
       console.dir(getError);
       await sleep(emptyQueueDelaySeconds * 1000 * 5);
       return;
     }
+    clearTimeout(intervalHandle);
     if (!messages || messages.length === 0) {
-      console.log(`[${threadNumber}] [empty queue] peek in ${emptyQueueDelaySeconds}s`);
+      console.log(`[${threadNumber}] [empty queue ${(new Date).toISOString()}] peek in ${emptyQueueDelaySeconds}s`);
       await sleep(emptyQueueDelaySeconds * 1000);
       return;
     }
-    for (const message of messages) {
-      try {
-        await handle(providers, message);
-      } catch (handleError) {
-        console.dir(handleError);
-        await sleep(emptyQueueDelaySeconds * 1000);
+    intervalHandle = setTimeout(hardAbort, hardAbortMs);
+    try {
+      for (const message of messages) {
+        try {
+          await handle(providers, message);
+        } catch (handleError) {
+          console.dir(handleError);
+          await sleep(emptyQueueDelaySeconds * 1000);
+        }
       }
+    } catch (timeoutError) {
+      console.warn(timeoutError);
+    } finally {
+      clearTimeout(intervalHandle);
     }
   }
 
   async function handle(providers: IProviders, message: IQueueMessage): Promise<void> {
     const { operations, insights, webhookQueueProcessor } = providers;
-    const logicAppStarted = message.customProperties.started ? moment.utc(message.customProperties.started) : null;
+    let totalSeconds: number = null;
+    const logicAppStarted = message.customProperties.started ? DateTime.fromISO(message.customProperties.started) : null;
     if (logicAppStarted) {
       // const enqueued = lockedMessage && lockedMessage.brokerProperties ? lockedMessage.brokerProperties.EnqueuedTimeUtc : null;
       // const serviceBusDelay = moment.utc(enqueued, 'ddd, DD MMM YYYY HH:mm:ss'); // console.log('delays - bus delay: ' + serviceBusDelay.fromNow() + ', logic app to now: ' + logicAppStarted.fromNow() + ', total ms: ' + totalMs.toString());
-      const totalSeconds = moment.utc().diff(logicAppStarted) / 1000;
+      totalSeconds = DateTime.utc().diff(logicAppStarted, 'seconds').seconds;
       insights.trackMetric({ name: 'JobFirehoseQueueDelay', value: totalSeconds });
     }
     let deletedAlready = false;
     const acknowledgeEvent = function () {
       if (deletedAlready) {
-        console.warn(`[message ${message.identifier} was already deleted]`);
+        console.warn(`[message ${message.identifier} was already deleted] [start latency ${totalSeconds}s]`);
         return;
       }
       deletedAlready = true;
-      console.log(`[message ${message.identifier}] deleted`);
+      console.log(`[message ${message.identifier}] deleted [start latency ${totalSeconds}s]`);
       webhookQueueProcessor.deleteMessage(message).then(ok => {
         ++processedEvents;
       }).catch(deleteError => {
@@ -250,4 +262,9 @@ export default async function firehose({ providers, started }: IReposJob): Promi
       console.warn(processingError);
     }
   }
+}
+
+function hardAbort() {
+  console.warn(`Extremely long time elapsed, hard-aborting the process at ${new Date()}`);
+  process.exit(1);
 }

@@ -16,7 +16,7 @@ import RenderHtmlMail from '../../lib/emailRender';
 import { wrapError, sortByCaseInsensitive } from '../../utils';
 import { Repository } from '../repository';
 import { RestLibrary } from '../../lib/github';
-import { GitHubAppAuthenticationType } from '../../github';
+import { AllAvailableAppPurposes, AppPurpose, AppPurposeToConfigurationName, GitHubAppAuthenticationType, IGitHubAppConfiguration } from '../../github';
 import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
 import { OrganizationSettingProvider } from '../../entities/organizationSettings/organizationSettingProvider';
 import { IMail } from '../../lib/mailProvider';
@@ -120,13 +120,18 @@ export class Operations
     this._uncontrolledOrganizations = new Map();
     this._defaultPageSize = this.config && this.config.github && this.config.github.api && this.config.github.api.defaultPageSize ? this.config.github.api.defaultPageSize : defaultGitHubPageSize;
     const hasModernGitHubApps = config.github?.app;
+    const purposesToConfigurations = new Map<AppPurpose, IGitHubAppConfiguration>();
+    if (hasModernGitHubApps) {
+      for (let purpose of AllAvailableAppPurposes) {
+        const configKey = AppPurposeToConfigurationName[purpose];
+        const configValue = config.github.app[configKey];
+        if (configValue) {
+          purposesToConfigurations.set(purpose, configValue);
+        }
+      }
+    }
     this._tokenManager = new GitHubTokenManager({
-      customerFacingApp: hasModernGitHubApps ? config.github.app.ui : null,
-      operationsApp: hasModernGitHubApps ? config.github.app.operations : null,
-      dataApp: hasModernGitHubApps ? config.github.app.data : null,
-      backgroundJobs: hasModernGitHubApps ? config.github.app.jobs : null,
-      updatesApp: hasModernGitHubApps ? config.github.app.updates : null,
-      securityApp: hasModernGitHubApps ? config.github.app.security : null,
+      configurations: purposesToConfigurations,
       app: this.providers.app,
     });
     this._dynamicOrganizationIds = new Set();
@@ -322,6 +327,20 @@ export class Operations
     emptySettings.operationsNotes = `Uncontrolled Organization - ${organizationName}`;
     const centralOperationsToken = this.config.github.operations.centralOperationsToken;
     const org = this.createOrganization(organizationName, emptySettings, centralOperationsToken, GitHubAppAuthenticationType.ForceSpecificInstallation);
+    this._uncontrolledOrganizations.set(organizationName, org);
+    org.uncontrolled = true;
+    return org;
+  }
+
+  getPublicOnlyAccessOrganization(organizationName: string, organizationId?: number): Organization {
+    organizationName = organizationName.toLowerCase();
+    const emptySettings = new OrganizationSetting();
+    emptySettings.operationsNotes = `Uncontrolled public organization - ${organizationName}`;
+    const publicAccessToken = this.config.github.operations.publicAccessToken;
+    if (!publicAccessToken) {
+      throw new Error('not configured for public read-only tokens');
+    }
+    const org = this.createOrganization(organizationName, emptySettings, publicAccessToken, GitHubAppAuthenticationType.ForceSpecificInstallation);
     this._uncontrolledOrganizations.set(organizationName, org);
     org.uncontrolled = true;
     return org;
@@ -954,6 +973,11 @@ export class Operations
     return func;
   }
 
+  getPublicReadOnlyToken(): IGetAuthorizationHeader {
+    const func = getReadOnlyAuthorizationHeader.bind(null, this) as IGetAuthorizationHeader;
+    return func;
+  }
+
   getAccount(id: string) {
     const entity = { id };
     return new Account(entity, this, getCentralOperationsAuthorizationHeader.bind(null, this));
@@ -1057,6 +1081,22 @@ async function fireEvent(config, configurationName, value): Promise<IFireEventRe
     }
   }
   return results;
+}
+
+export function getReadOnlyAuthorizationHeader(self: Operations): IPurposefulGetAuthorizationHeader {
+  const s = (self || this) as Operations;
+  if (s.config?.github?.operations?.publicAccessToken) {
+    const capturedToken = s.config.github.operations.publicAccessToken;
+    return async () => {
+      return {
+        value: `token ${capturedToken}`,
+        purpose: null,
+        source: 'public read-only token',
+      };
+    };
+  } else {
+    throw new Error('No public read-only token configured.');
+  }
 }
 
 export function getCentralOperationsAuthorizationHeader(self: Operations): IPurposefulGetAuthorizationHeader {

@@ -37,7 +37,7 @@ export default class CosmosCache implements ICacheHelper {
   constructor(options: ICosmosCacheOptions) {
     this._options = options;
     this._keyPrefix = options.prefix || '';
-    if (options.blobFallback && options.blobFallback.key) {
+    if (options.blobFallback && options.blobFallback.account) {
       this._blobCache = new BlobCache(options.blobFallback);
     }
   }

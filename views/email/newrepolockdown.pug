@@ -17,10 +17,10 @@ block content
       p.
         Hi,#[br]
         You just forked a GitHub repo, #{lockdownMailContent.repository.name}, into the official #{lockdownMailContent.organization.name} GitHub org. To contribute to an upstream project, typically you should fork the repo directly into your individual GitHub account.
-      if operationsMail
-        h3 Please contact operations with more information
-        p: strong Action required: you must e-mail #[a(href='mailto:' + operationsMail)= operationsMail] and provide more information to unlock this fork
-      p Please provide the following information to open source GitHub operations:
+      if forkUnlockMail
+        h3 Please contact #{forkUnlockMail} with more information
+        p: strong Action required: you must e-mail #[a(href='mailto:' + forkUnlockMail)= forkUnlockMail] and provide more information to unlock this fork
+      p Please provide the following information to help make sure this is a social/community-friendly fork and gain approval:
       ul
         li Why an official fork is being created
         li Information including prior communications with the upstream open source community where the idea of forking was socialized
@@ -78,8 +78,8 @@ block content
             td= lockdownMailContent.link.corporateUsername
 
     if isForkAdministratorLocked
-      h4 For operations use
-      p When ready to manage this request, please use the following URL: #[a(href=lockdownMailContent.repository.absoluteBaseUrl + 'administrativeLock')= lockdownMailContent.repository.absoluteBaseUrl + 'administrativeLock'].
+      h4 For operations use only
+      p When ready to manage this request, please approve at: #[a(href=linkToAdministrativeUnlockRepository)= linkToAdministrativeUnlockRepository].
 
   else if isMailToOperations
     if isForkAdministratorLocked

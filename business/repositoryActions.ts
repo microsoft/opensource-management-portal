@@ -8,6 +8,24 @@ import { getPageSize, getMaxAgeSeconds, CacheDefault } from '.';
 import { AppPurpose } from '../github';
 import { IPurposefulGetAuthorizationHeader, IOperationsInstance, IGetBranchesOptions, IGitHubBranch, throwIfNotGitHubCapable, IGetPullsOptions, ICacheOptions, IGetAuthorizationHeader } from '../interfaces';
 
+export interface IGitHubActionWorkflowsResponse {
+  total_count: number;
+  workflows: IGitHubActionWorkflow[];
+}
+
+export interface IGitHubActionWorkflow {
+  id: number;
+  node_id: string;
+  name: string;
+  path: string;
+  state: 'active' | 'disabled_manually' | 'disabled_inactivity'; // or ?
+  created_at: string; // Date
+  updated_at: string; // Date
+  url: string;
+  html_url: string;
+  badge_url: string;
+}
+
 export class RepositoryActions {
   private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
   private _getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader;
@@ -22,7 +40,7 @@ export class RepositoryActions {
     this._operations = operations;
   }
 
-  async getWorkflow(workflowId: number, cacheOptions?: ICacheOptions): Promise<any> {
+  async getWorkflow(workflowId: number, cacheOptions?: ICacheOptions): Promise<IGitHubActionWorkflow> {
     cacheOptions = cacheOptions || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
@@ -38,7 +56,7 @@ export class RepositoryActions {
       cacheOptions.backgroundRefresh = true;
     }
     const entity = await github.call(this.authorize(AppPurpose.Security), 'actions.getWorkflow', parameters, cacheOptions);
-    return entity;
+    return entity as IGitHubActionWorkflow;
   }
 
   async getRepositorySecrets(): Promise<any> {
@@ -52,7 +70,7 @@ export class RepositoryActions {
     return entity;
   }
 
-  async getWorkflows(cacheOptions?: ICacheOptions): Promise<any> {
+  async getWorkflows(cacheOptions?: ICacheOptions): Promise<IGitHubActionWorkflowsResponse> {
     cacheOptions = cacheOptions || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
@@ -67,8 +85,9 @@ export class RepositoryActions {
     if (cacheOptions.backgroundRefresh === undefined) {
       cacheOptions.backgroundRefresh = true;
     }
-    const entity = await github.call(this.authorize(AppPurpose.Security), 'actions.listRepoWorkflows', parameters, cacheOptions);
-    return entity;
+    // was: AppPurpose.Security before adding this newer app type
+    const entity = await github.call(this.authorize(AppPurpose.ActionsData), 'actions.listRepoWorkflows', parameters, cacheOptions);
+    return entity as IGitHubActionWorkflowsResponse;
   }
 
   private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {

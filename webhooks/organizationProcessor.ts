@@ -113,9 +113,9 @@ export default async function ProcessOrganizationWebhook(options: IProcessOrgani
   const work = Tasks.filter(task => task.filter(event));
   if (work.length > 0) {
     ++interestingEvents;
-    console.log(`[* interesting event found: ${event.properties.event} (${work.length} interested tasks)]`);
+    console.log(`[* interesting event: ${event.properties.event} (${work.length} interested tasks)]`);
   } else {
-    console.log(`[skipping event: ${event.properties.event}]`);
+    console.log(`[uninteresting event: ${event.properties.event}]`);
   }
 
   for (let processor of work) {
@@ -140,13 +140,13 @@ export default async function ProcessOrganizationWebhook(options: IProcessOrgani
               const difference = resetDate.getTime() - now.getTime();
               console.log(`[rate limit sleep] This thread will sleep for the remainder of this limit, ${difference}ms, until ${resetDate}`);
               await sleep(difference);
-              console.log('[resuming from rate limit sleep]');             
+              console.log('[resuming from rate limit sleep]');
             }
-          }  
+          }
         }
       } else {
         console.log('Processor ran into an error with an event:');
-        console.dir(processInitializationError);  
+        console.dir(processInitializationError);
       }
     }
   }

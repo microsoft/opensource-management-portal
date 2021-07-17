@@ -214,11 +214,11 @@ export class RestLibrary {
       if (error.status) {
         console.log(`Status: ${error.status}`);
       }
-      if (error?.headers['x-github-request-id']) {
-        console.log(`Request ID: ${error.headers['x-github-request-id']}`);
+      if (error?.response?.headers['x-github-request-id']) {
+        console.log(`Request ID: ${error.response.headers['x-github-request-id']}`);
       }
-      if (error.headers && error.headers['x-ratelimit-remaining']) {
-        console.log(`Rate limit remaining: ${error.headers['x-ratelimit-remaining']}`);
+      if (error?.response?.headers['x-ratelimit-remaining']) {
+        console.log(`Rate limit remaining: ${error.response.headers['x-ratelimit-remaining']}`);
       }
       if (error.request) {
         console.dir(error.request);
