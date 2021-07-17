@@ -8,20 +8,25 @@
 
 import { ReposAppRequest } from '../../interfaces';
 import { getProviders } from '../../transitional';
+import { IndividualContext } from '../../user';
 import { wrapError } from '../../utils';
+import { jsonError } from '../jsonError';
 
-function denyRoute(next) {
-  next(wrapError(null, 'These aren\'t the droids you are looking for. You do not have permission to be here.', true));
+function denyRoute(next, isApi: boolean) {
+  if (isApi) {
+    return next(jsonError('This API is unavailable for you', 403));
+  }
+  return next(wrapError(null, 'These aren\'t the droids you are looking for. You do not have permission to be here.', true));
 }
 
 export async function AuthorizeOnlyCorporateAdministrators(req: ReposAppRequest, res, next) {
   const { operations } = getProviders(req);
-  const individualContext = req.individualContext;
-  const corporateId = individualContext.corporateIdentity?.id;
-  const corporateUsername = individualContext.corporateIdentity?.username;
+  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+  const corporateId = activeContext.corporateIdentity?.id;
+  const corporateUsername = activeContext.corporateIdentity?.username;
   if (await operations.isSystemAdministrator(corporateId, corporateUsername)) {
     return next();
   }
   res.header('x-username', corporateUsername);
-  return denyRoute(next);
+  return denyRoute(next, !!req.apiContext);
 }

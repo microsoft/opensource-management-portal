@@ -14,6 +14,8 @@ import { IListPullsParameters, GitHubPullRequestState } from '../lib/github/coll
 
 import { wrapError } from '../utils';
 import { RepositoryActions } from './repositoryActions';
+import { RepositoryPullRequest } from './repositoryPullRequest';
+import { ErrorHelper } from '../transitional';
 
 interface IRepositoryMoments {
   created?: moment.Moment;
@@ -282,8 +284,10 @@ export class Repository {
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
-      mediaType,
     };
+    if (mediaType) {
+      (parameters as any).mediaType = mediaType;
+    }
     const cacheOptions: ICacheOptions = {
       maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
     };
@@ -1246,6 +1250,11 @@ export class Repository {
     return issues;
   }
 
+  pullRequest(pullRequestNumber: number, optionalEntity?: any): RepositoryPullRequest {
+    const pr = new RepositoryPullRequest(this, pullRequestNumber, this._operations, this._getAuthorizationHeader, optionalEntity);
+    return pr;
+  }
+
   issue(issueNumber: number, optionalEntity?: any): RepositoryIssue {
     const issue = new RepositoryIssue(this, issueNumber, this._operations, this._getAuthorizationHeader, optionalEntity);
     return issue;
@@ -1264,6 +1273,29 @@ export class Repository {
     const issueNumber = details.number as number;
     const issue = new RepositoryIssue(this, issueNumber, this._operations, this._getAuthorizationHeader, details);
     return issue;
+  }
+
+  async getCommitComment(commentId: string): Promise<any> {
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const parameters = Object.assign({
+      owner: this.organization.name,
+      repo: this.name,
+      comment_id: commentId,
+    });
+    const comment = await operations.github.post(this.authorize(AppPurpose.Operations), 'repos.getCommitComment', parameters);
+    return comment;
+  }
+
+  async isCommitCommentDeleted(commentId: string) {
+    try {
+      await this.getCommitComment(commentId);
+      return false;
+    } catch (error) {
+      if (ErrorHelper.IsNotFound(error)) {
+        return true;
+      }
+      throw error;
+    }
   }
 }
 

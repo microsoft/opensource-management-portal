@@ -84,7 +84,11 @@ export class MicrosoftGraphProvider implements IGraphProvider {
         entity.manager = manager;
       }
     } catch (warning) {
-      console.warn(warning);
+      if (ErrorHelper.IsNotFound(warning)) {
+        console.warn(`User not found with AAD ID ${aadId}`);
+      } else {
+        console.warn(warning);
+      }
     }
     return entity;
   }
@@ -177,6 +181,23 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       'users',
     ], {
       filterValues: `mailNickname eq '${encodeURIComponent(nickname)}'`,
+      selectValues: 'id',
+    }) as any[];
+    if (!response || response.length === 0) {
+      return null;
+    }
+    if (Array.isArray(response)) {
+      return response.map(entry => entry.id)[0];
+    }
+    const subResponse = (response as any).value ? (response as any).value : [];
+    return subResponse.map(entry => entry.id)[0];
+  }
+
+  async getUserIdByMail(mail: string): Promise<string> {
+    const response = await this.lookupInGraph([
+      'users',
+    ], {
+      filterValues: `mail eq '${encodeURIComponent(mail)}'`,
       selectValues: 'id',
     }) as any[];
     if (!response || response.length === 0) {
@@ -361,7 +382,9 @@ export class MicrosoftGraphProvider implements IGraphProvider {
           return cached.value;
         }
       } catch (error) {
-        console.warn(error);
+        if (!ErrorHelper.IsNotFound(error)) {
+          console.warn(error);
+        }
       }
     }
     try {
@@ -373,7 +396,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
         },
       });
       if (!response.data) {
-        throw CreateError.NotFound(`user not found in the directory: ${aadId}`);
+        throw CreateError.NotFound(`${subResource || 'user'} not in directory for ${aadId}`);
       }
       if (response.data.error?.message) {
         throw CreateError.InvalidParameters(response.data.error.message);
@@ -386,7 +409,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       const axiosError = error as AxiosError;
       if (axiosError?.response) {
         if (axiosError.response?.status === 404) {
-          throw CreateError.NotFound(`User not found in the corporate directory with the ID '${aadId}'`, axiosError);
+          throw CreateError.NotFound(`${subResource || 'user'} not in the directory for '${aadId}'`, axiosError);
         } else if (axiosError.response?.status >= 500) {
           throw CreateError.ServerError('Graph server error', axiosError);
         } else if (axiosError.response?.status >= 400) {

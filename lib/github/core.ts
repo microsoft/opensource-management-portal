@@ -384,7 +384,7 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
       response = (await this.callApi(apiContext, `GET:               ${displayKey}`)) as IRestResponse;
     } catch (error) {
       if (error && error.status && error.status === 304) {
-        const liveHeaders = error.headers || {};
+        const liveHeaders = error.response?.headers || {};
         const headers = {};
         for (let i = 0; i < headerKeysWanted.length; i++) {
           const key = headerKeysWanted[i];

@@ -9,7 +9,7 @@ import { Operations, Organization, Repository, Team } from '../business';
 import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repositoryMetadataProvider';
 import { RepositoryMetadataEntity, GitHubRepositoryVisibility, RepositoryLockdownState, GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 import { IndividualContext } from '../user';
-import { daysInMilliseconds, sleep } from '../utils';
+import { daysInMilliseconds } from '../utils';
 import { ICorporateLink, ICachedEmployeeInformation, GitHubCollaboratorAffiliationQuery } from '../interfaces';
 import { IMail } from '../lib/mailProvider';
 import { ErrorHelper } from '../transitional';
@@ -40,6 +40,7 @@ interface IMailToLockdownRepo {
   repository: Repository;
   linkToClassifyRepository: string;
   linkToDeleteRepository: string;
+  linkToAdministrativeUnlockRepository: string;
   mailAddress?: string;
   link?: ICorporateLink;
   isForkAdministratorLocked: boolean;
@@ -129,6 +130,9 @@ export default class NewRepositoryLockdownSystem {
   async removeAdministrativeLock(): Promise<void> {
     if (!this.organization.isNewRepositoryLockdownSystemEnabled()) {
       throw new Error('lockdown system not enabled');
+    }
+    if (!this.repository.id) {
+      await this.repository.getDetails();
     }
     const repositoryMetadata = await this.repositoryMetadataProvider.getRepositoryMetadata(this.repository.id.toString());
     if (repositoryMetadata.lockdownState !== RepositoryLockdownState.AdministratorLocked) {
@@ -377,7 +381,7 @@ export default class NewRepositoryLockdownSystem {
       lockdownLog.push(`While writing repository metadata an error: ${metadataSystemError.message}`);
     }
     let patchChanges: IRepoPatch = {};
-    if (!isForkAdministratorLocked && !this.repository.private) {
+    if (!isForkAdministratorLocked && !isTransfer && !this.repository.private) {
       lockdownLog.push('Preparing to hide the public repository pending setup (V2)');
       patchChanges.private = true;
     }
@@ -405,6 +409,7 @@ export default class NewRepositoryLockdownSystem {
     }
     let mailSentToCreator = false;
     const operationsMails = [ this.operations.getRepositoriesNotificationMailAddress() ];
+    const defaultAdministrativeUnlockUrl = `${this.repository.absoluteBaseUrl}administrativeLock`;
     const lockdownMailContent: IMailToLockdownRepo = {
       username,
       log: lockdownLog,
@@ -412,6 +417,7 @@ export default class NewRepositoryLockdownSystem {
       repository: this.repository,
       linkToDeleteRepository: this.repository.absoluteBaseUrl + 'delete',
       linkToClassifyRepository: setupUrl,
+      linkToAdministrativeUnlockRepository: companySpecific?.urls?.getAdministrativeUnlockUrl(this.repository) || defaultAdministrativeUnlockUrl,
       mailAddress: null,
       link,
       isForkAdministratorLocked,
@@ -419,6 +425,7 @@ export default class NewRepositoryLockdownSystem {
     lockdownLog.push(`The repo can be unlocked at ${lockdownMailContent.linkToClassifyRepository}`);
     const repoActionType = this.repository.fork ? 'forked' : (isTransfer ? 'transferred' : 'created');
     const stateVerb = isTransfer ? 'transferred' : 'new';
+    const forkUnlockMail = this.operations.config.brand?.forkApprovalMail || this.operations.config.brand?.operationsMail;
     if (link) {
       try {
         const mailAddress = link.corporateMailAddress || await this.operations.getMailAddressFromCorporateUsername(link.corporateUsername);
@@ -458,7 +465,9 @@ export default class NewRepositoryLockdownSystem {
               isMailToCreator: true,
               lockdownMailContent,
               isForkAdministratorLocked,
+              linkToAdministrativeUnlockRepository: companySpecific?.urls?.getAdministrativeUnlockUrl(this.repository) || defaultAdministrativeUnlockUrl,
               action,
+              forkUnlockMail,
               operationsMail: operationsMails.join(','),
               transferSourceRepositoryLogin,
             }),
@@ -490,6 +499,7 @@ export default class NewRepositoryLockdownSystem {
             app: `${this.operations.config.brand.companyName} GitHub`,
             isMailToOperations: true,
             lockdownMailContent,
+            forkUnlockMail,
             transferSourceRepositoryLogin,
             action,
             mailSentToCreator,

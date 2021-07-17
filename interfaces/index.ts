@@ -15,7 +15,7 @@ export * from './queryCache';
 export * from './providers';
 export * from './web';
 
-import { IAttachCompanySpecificRoutes, IAttachCompanySpecificMiddleware, ICorporationAdministrationSection, IAttachCompanySpecificStrings, ICompanySpecificFeatures, IAttachCompanySpecificViews } from './companySpecific';
+import { IAttachCompanySpecificRoutes, IAttachCompanySpecificMiddleware, ICorporationAdministrationSection, IAttachCompanySpecificStrings, ICompanySpecificFeatures, IAttachCompanySpecificViews, IAttachCompanySpecificUrls } from './companySpecific';
 import { IProviders } from './providers';
 
 // We're great at long variable names!
@@ -28,6 +28,7 @@ export interface ICompanySpecificStartupProperties {
   strings?: IAttachCompanySpecificStrings;
   features?: ICompanySpecificFeatures;
   views?: IAttachCompanySpecificViews;
+  urls?: IAttachCompanySpecificUrls;
 }
 
 export type ICompanySpecificStartupFunction = (config: any, p: IProviders, rootdir: string) => Promise<void>;

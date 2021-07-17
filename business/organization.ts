@@ -266,14 +266,16 @@ export class Organization {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
-    const previewMediaTypes = operations['previewMediaTypes'] || {}; // TEMPORARY MEDIA TYPE HACK
-    const mediaType = previewMediaTypes?.repository?.getDetails ? { previews: [previewMediaTypes.repository.list]} : undefined;
+    const previewMediaTypes = operations['previewMediaTypes'] || null; // TEMPORARY MEDIA TYPE HACK
+    const mediaType = previewMediaTypes?.repository?.list ? { previews: [previewMediaTypes.repository.list]} : {};
     const parameters = {
       org: this.name,
       type: 'all',
       per_page: getPageSize(operations),
-      mediaType,
     };
+    if (mediaType) {
+      (parameters as any).mediaType = mediaType;
+    }
     const caching = {
       maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgReposStaleSeconds, options),
       backgroundRefresh: true,
@@ -729,8 +731,8 @@ export class Organization {
       return response;
     } catch (error) {
       const wrappedError = wrapError(error, `Could not accept your invitation for the ${this.name} organization on GitHub`);
-      if (error.status === 403 && error.headers && error.headers['x-github-sso']) {
-        const xGitHubSso = error.headers['x-github-sso'] as string;
+      if (error.status === 403 && error.response?.headers && error.response.headers['x-github-sso']) {
+        const xGitHubSso = error.response.headers['x-github-sso'] as string;
         const i = xGitHubSso.indexOf('url=');
         if (i >= 0) {
           const remainder = xGitHubSso.substr(i + 4);

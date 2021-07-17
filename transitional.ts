@@ -211,6 +211,11 @@ export class ErrorHelper {
     return (statusNumber && statusNumber === 404);
   }
 
+  public static IsUnavailableForExternalLegalRequest(error: Error): boolean {
+    const statusNumber = ErrorHelper.GetStatus(error);
+    return (statusNumber && statusNumber === 451); // https://developer.github.com/changes/2016-03-17-the-451-status-code-is-now-supported/
+  }
+
   public static IsConflict(error: Error): boolean {
     const statusNumber = ErrorHelper.GetStatus(error);
     if (statusNumber && statusNumber === 409) {

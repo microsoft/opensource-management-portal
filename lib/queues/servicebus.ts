@@ -14,6 +14,7 @@ import { IDictionary, Json } from '../../interfaces';
 // an inefficient implementation since subscribe() is not being used directly yet.
 
 const defaultMessagesPerRequest = 5; // could be configurable in the future
+const maxWaitTimeInMs = 30 /* seconds */ * 1000;
 
 export interface IServiceBusQueueProcessorOptions {
   queue: string;
@@ -80,7 +81,9 @@ export default class ServiceBusQueueProcessor implements IQueueProcessor {
     }
 
     try {
-      const messages = await this.#receiver.receiveMessages(defaultMessagesPerRequest);
+      const messages = await this.#receiver.receiveMessages(defaultMessagesPerRequest, {
+        maxWaitTimeInMs,
+      });
       return messages.map(message => new ServiceBusMessage(message));
     } catch (error) {
       // if empty, return empty array

@@ -65,8 +65,15 @@ export function getAadApiConfiguration(config: any) {
     throw jsonError('App not configured for authorizing specific tenants', 500);
   }
 
-  const reposApiAudienceIdentity = config?.microsoft?.api?.aad?.apiAppScope;
-  if (!reposApiAudienceIdentity) {
+  let reposApiAudienceIdentities = config?.microsoft?.api?.aad?.apiAppScopes ? (config.microsoft.api.aad.apiAppScopes as string).split(',') : null;
+  if (!reposApiAudienceIdentities) {
+    const reposApiAudienceIdentity = config?.microsoft?.api?.aad?.apiAppScope ? [config.microsoft.api.aad.apiAppScope] : null;
+    if (!reposApiAudienceIdentity) {
+      throw jsonError('App not configured for authorizing APIs via AAD', 500);
+    }
+    reposApiAudienceIdentities = reposApiAudienceIdentity;
+  }
+  if (!reposApiAudienceIdentities) {
     throw jsonError('App not configured for authorizing APIs via AAD', 500);
   }
 
@@ -100,7 +107,7 @@ export function getAadApiConfiguration(config: any) {
 
   return {
     allowedTenants,
-    reposApiAudienceIdentity,
+    reposApiAudienceIdentities,
     oids,
     appIds,
     approvedAppsToCreateRepos,
@@ -115,7 +122,7 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
   const { config, insights } = getProviders(req);
   const {
     allowedTenants,
-    reposApiAudienceIdentity,
+    reposApiAudienceIdentities,
     oids,
     appIds,
     approvedAppsToCreateRepos,
@@ -161,7 +168,7 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     // [X] nbr, exp times (jwt verifies this)
     // [X] appid: the client app [*we check our list for this]
     const validationOptions = {
-      audience: reposApiAudienceIdentity,
+      audience: reposApiAudienceIdentities,
       issuer,
     };
 

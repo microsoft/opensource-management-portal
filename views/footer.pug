@@ -13,10 +13,6 @@ footer
         .col-md-6.col-lg-6
           if correlationId
             h4 Correlation ID: #{correlationId}
-          if config && config.telemetry && config.telemetry.applicationInsightsKey
-            h4 AppInsights: Instrumented
-          if config && config.telemetry && config.telemetry.googleAnalyticsKey
-            h4 Google Analytics: Tracking
           if config && config.authentication.scheme
             h4
               | Primary Authentication: #{config.authentication.scheme === 'github' ? 'GitHub' : 'Azure Active Directory'}

@@ -56,6 +56,7 @@ export interface IGraphProvider {
 
   getMailAddressByUsername(corporateUsername: string): Promise<string>;
   getUserIdByUsername(corporateUsername: string): Promise<string>;
+  getUserIdByMail(mail: string): Promise<string>;
 
   getUsersBySearch(minimum3Characters: string): Promise<IGraphEntry[]>;
   getUsersByIds(userIds: string[]): Promise<IGraphEntry[]>;
