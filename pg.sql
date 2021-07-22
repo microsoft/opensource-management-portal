@@ -60,8 +60,8 @@ CREATE INDEX IF NOT EXISTS events_orgname ON events (organizationname);
 CREATE INDEX IF NOT EXISTS events_orgid ON events (organizationid);
 CREATE INDEX IF NOT EXISTS events_repoid ON events (repositoryid);
 
-ALTER TABLE events ADD COLUMN isowncontribution boolean;
-ALTER TABLE events ADD COLUMN checked timestamptz;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS isowncontribution boolean;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS checked timestamptz;
 
 CREATE INDEX IF NOT EXISTS events_c_isowncontribution ON events (isowncontribution);
 CREATE INDEX IF NOT EXISTS events_checked ON events (checked);
