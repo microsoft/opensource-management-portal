@@ -93,7 +93,7 @@
     "node-jose": "2.0.0",
     "nodemailer": "6.6.3",
     "oauth": "0.9.x",
-    "object-path": "0.11.5",
+    "object-path": "0.11.6",
     "octicons": "5.0.1",
     "package-lock.json": "1.0.0",
     "pascal-case": "^3.1.2",
