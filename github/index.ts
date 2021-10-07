@@ -13,6 +13,7 @@ export enum AppPurpose {
   Updates = 'Updates',
   Security = 'Security',
   ActionsData = 'ActionsData',
+  Onboarding = 'Onboarding',
 }
 
 export const AllAvailableAppPurposes = [
@@ -23,7 +24,12 @@ export const AllAvailableAppPurposes = [
   AppPurpose.Updates,
   AppPurpose.Security,
   AppPurpose.ActionsData,
+  AppPurpose.Onboarding,
 ];
+
+export const GitHubAppPurposesExemptFromAllRepositoriesSelection = [
+  AppPurpose.Onboarding,
+]
 
 export const AppPurposeToConfigurationName = {
   [AppPurpose.Data]: 'data',
@@ -33,6 +39,7 @@ export const AppPurposeToConfigurationName = {
   [AppPurpose.Updates]: 'updates',
   [AppPurpose.Security]: 'security',
   [AppPurpose.ActionsData]: 'actions',
+  [AppPurpose.Onboarding]: 'onboarding',
 }
 
 export enum GitHubAppAuthenticationType {
