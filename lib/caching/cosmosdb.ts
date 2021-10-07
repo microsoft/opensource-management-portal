@@ -246,10 +246,10 @@ export default class CosmosCache implements ICacheHelper {
       } else {
         let tries = 0;
         let success = false;
-        while (success === false && tries < 10 ) {
+        while (success === false && tries < 10) {
           ++tries;
           try {
-            await this._collection.items.upsert(item);  
+            await this._collection.items.upsert(item);
             success = true;
           } catch (cosmosError) {
             if (cosmosError && cosmosError.code && cosmosError.code === 429) {
@@ -334,11 +334,11 @@ export default class CosmosCache implements ICacheHelper {
 
   private throwIfNotInitialized() {
     if (!this._initialized) {
-      throw new Error('This provider must be initialized before it can be used');
+      throw new Error('Cosmos caching provider must be initialized before it can be used');
     }
   }
 }
 
 const bytes = (s) => {
-  return ~-encodeURI(s).split(/%..|./).length
-}
+  return ~-encodeURI(s).split(/%..|./).length;
+};

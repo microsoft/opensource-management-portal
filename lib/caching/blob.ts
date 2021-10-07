@@ -305,7 +305,7 @@ export default class BlobCache implements ICacheHelper {
 
   private throwIfNotInitialized() {
     if (!this._initialized) {
-      throw new Error('This provider must be initialized before it can be used');
+      throw new Error('Blob caching provider must be initialized before it can be used');
     }
   }
 }
