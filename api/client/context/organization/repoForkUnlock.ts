@@ -24,7 +24,10 @@ router.use(asyncHandler(async (req: ReposAppRequest, res, next) => {
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const isOrgSudoer = await organization.isSudoer(activeContext.getGitHubIdentity().username, activeContext.link);
   if (!isOrgSudoer) {
-    return next(jsonError('You do not have sudo permission for this organization', 403));
+    const isPortalSudoer = await activeContext.isPortalAdministrator();
+    if (!isPortalSudoer) {
+      return next(jsonError('You do not have sudo permission for this organization', 403));
+    }
   }
   return next();
 }));
