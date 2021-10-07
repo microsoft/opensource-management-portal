@@ -46,7 +46,7 @@ export default function initMiddleware(app, express, config, dirname, initializa
 
   app.set('views', path.join(appDirectory, 'views'));
   app.set('view engine', 'pug');
-  
+
   // const pugCustomLoadPlugin = {
   //   XXresolve(filename, source, loadOptions) {
   //     console.log();
@@ -74,7 +74,7 @@ export default function initMiddleware(app, express, config, dirname, initializa
   //     throw noFileError;
   //   }
   // };
-  
+
   //app.engine('pug', pug.__express);
   app.set('view cache', process.env.NODE_ENV !== 'development'); // CONSIDER: pull from config instead
   app.disable('x-powered-by');

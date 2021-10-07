@@ -9,6 +9,7 @@ import { redirectToReferrer, storeReferrer } from '../utils';
 import { getGithubAppConfigurationOptions } from './passport/githubStrategy';
 import { getProviders } from '../transitional';
 import { ReposAppRequest, IAppSession, IReposError } from '../interfaces';
+import getCompanySpecificDeployment from './companySpecificDeployment';
 
 function newSessionAfterAuthentication(req: ReposAppRequest, res, next) {
   // Same site issues
@@ -50,6 +51,9 @@ function newSessionAfterAuthentication(req: ReposAppRequest, res, next) {
 }
 
 export default function configurePassport(app, passport, initialConfig) {
+  const companySpecific = getCompanySpecificDeployment();
+  companySpecific?.passport?.attach(app, initialConfig, passport);
+
   app.get('/signin', function (req, res, next) {
     if (req.isAuthenticated()) {
       const username = req.user?.azure?.username;
