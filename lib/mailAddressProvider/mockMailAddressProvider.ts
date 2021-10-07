@@ -5,10 +5,10 @@
 
 import { IMailAddressProvider } from '.';
 
-export default function createMailAddressProvider() {
+export default function createMailAddressProvider() : IMailAddressProvider{
   const upnToEmails = new Map();
   return {
-    getAddressFromUpn: async (upn, callback) => {
+    getAddressFromUpn: async (upn: string) => {
       if (upnToEmails.has(upn)) {
         return upnToEmails.get(upn);
       }
