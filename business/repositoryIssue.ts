@@ -6,7 +6,7 @@
 import { Repository } from './repository';
 import { wrapError } from '../utils';
 import { AppPurpose } from '../github';
-import { CacheDefault, getMaxAgeSeconds } from '.';
+import { CacheDefault, getMaxAgeSeconds, Operations } from '.';
 import { IOperationsInstance, IPurposefulGetAuthorizationHeader, GitHubIssueState, IIssueLabel, throwIfNotGitHubCapable, ICacheOptions, IGetAuthorizationHeader } from '../interfaces';
 import { ErrorHelper } from '../transitional';
 
@@ -147,5 +147,12 @@ export class RepositoryIssue {
   private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
     const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as IGetAuthorizationHeader;
     return getAuthorizationHeader;
+  }
+
+  static async CreateFromContentUrl(operations: IOperationsInstance, url: string) {
+    const ops = operations as Operations;
+    const repository = ops.getRepositoryWithOrganizationFromUrl(url);
+    const response = await repository.organization.requestUrl(url);
+    return repository.issue(response.number, response);
   }
 }
