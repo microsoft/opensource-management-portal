@@ -78,26 +78,26 @@ export default async function ProcessOrganizationWebhook(options: IProcessOrgani
   // try {
   //   await verifySignatures(properties.signature, organization.webhookSharedSecrets, rawBody);
   // } catch (validationError) {
-    // NO LONGER VALIDATING SIG
-    // if (validationError) {
-    //   if (operations && operations.insights) {
-    //     const possibleOrganization = body && body.organization ? body.organization.login : 'unknown-org';
-    //     console.warn(`incorrect hook signature - ${possibleOrganization} organization`);
-    //     operations.insights.trackMetric({ name: 'WebhookIncorrectSecrets', value: 1 });
-    //     operations.insights.trackEvent({
-    //       name: 'WebhookIncorrectSecret',
-    //       properties: {
-    //         org: possibleOrganization,
-    //         delivery: properties.delivery,
-    //         event: properties.event,
-    //         signature: properties.signature,
-    //         approximateTime: properties.started.toISOString(),
-    //         computedHash: validationError.computedHash,
-    //       },
-    //     });
-    //   }
-    //   return callback(validationError);
-    // }
+  // NO LONGER VALIDATING SIG
+  // if (validationError) {
+  //   if (operations && operations.insights) {
+  //     const possibleOrganization = body && body.organization ? body.organization.login : 'unknown-org';
+  //     console.warn(`incorrect hook signature - ${possibleOrganization} organization`);
+  //     operations.insights.trackMetric({ name: 'WebhookIncorrectSecrets', value: 1 });
+  //     operations.insights.trackEvent({
+  //       name: 'WebhookIncorrectSecret',
+  //       properties: {
+  //         org: possibleOrganization,
+  //         delivery: properties.delivery,
+  //         event: properties.event,
+  //         signature: properties.signature,
+  //         approximateTime: properties.started.toISOString(),
+  //         computedHash: validationError.computedHash,
+  //       },
+  //     });
+  //   }
+  //   return callback(validationError);
+  // }
   //}
 
   // In a bus scenario, if a short timeout window is used for queue

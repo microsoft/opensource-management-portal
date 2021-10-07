@@ -1,12 +1,9 @@
 {
     "auditlogrecord": "env://ENTITY_PROVIDER_AUDITLOG?default=firstconfigured",
     "eventrecord": "env://ENTITY_PROVIDER_EVENT?default=firstconfigured",
-
     "teamjoin": "env://ENTITY_PROVIDER_TEAM_JOIN?default=firstconfigured",
     "repositorymetadata": "env://ENTITY_PROVIDER_REPOSITORY_METADATA?default=firstconfigured",
-
     "organizationsettings": "env://ENTITY_PROVIDER_ORGANIZATION_SETTINGS?default=firstconfigured",
-
     "organizationmembercache": "env://ENTITY_PROVIDER_ORGANIZATION_MEMBER_CACHE?default=firstconfigured",
     "repository": "env://ENTITY_PROVIDER_REPOSITORY?default=firstconfigured",
     "repositorycache": "env://ENTITY_PROVIDER_REPOSITORY_CACE?default=firstconfigured",
@@ -14,9 +11,7 @@
     "repositoryteamcache": "env://ENTITY_PROVIDER_REPOSITORY_TEAM_CACHE?default=firstconfigured",
     "teamcache": "env://ENTITY_PROVIDER_TEAM_CACHE?default=firstconfigured",
     "teammembercache": "env://ENTITY_PROVIDER_TEAM_MEMBER_CACHE?default=firstconfigured",
-
     "usersettings": "env://ENTITY_PROVIDER_USERSETTINGS?default=firstconfigured",
-
     "tokens": "env://ENTITY_PROVIDER_TOKENS?default=firstconfigured",
     "localextensionkey": "env://ENTITY_PROVIDER_LOCALEXTENSIONKEY?default=table"
 }

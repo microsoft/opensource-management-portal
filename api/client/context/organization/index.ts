@@ -88,7 +88,7 @@ router.get('/personalizedTeams', asyncHandler(async (req: ReposAppRequest, res, 
     const organization = req.organization as Organization;
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
-      return res.json({personalizedTeams: []});
+      return res.json({ personalizedTeams: [] });
     }
     const userAggregateContext = activeContext.aggregations;
     const maintainedTeams = new Set<string>();
@@ -129,7 +129,7 @@ const toSanitizedUser = user => {
     id: user.id,
     login: user.login,
     avatar_url: user.avatar_url,
-  }
+  };
 };
 const toSanitizedOrg = org => {
   if (!org || !org.login) {
@@ -140,7 +140,7 @@ const toSanitizedOrg = org => {
     login: org.login,
     avatar_url: org.avatar_url,
     description: org.description,
-  }
+  };
 };
 
 export default router;

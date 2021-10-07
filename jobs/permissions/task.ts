@@ -17,14 +17,14 @@ import { ErrorHelper } from '../../transitional';
 // regularly but is not looking to answer "the truth" - it will use the cache of repos and other
 // assets to not abuse GitHub and its API exhaustively. Over time repos will converge to having
 // the right permissions.
-//
+// 
 // If a repository is "compliance locked", the system teams are not enforced until the lock is removed.
 
 const maxParallelism = 1;
 
 const delayBetweenSeconds = 1;
 
-export default async function permissionsRun({ providers }: IReposJob) : Promise<IReposJobResult> {
+export default async function permissionsRun({ providers }: IReposJob): Promise<IReposJobResult> {
   const { operations } = providers;
   for (const organization of shuffle(Array.from(operations.organizations.values()))) {
     console.log(`Reviewing permissions for all repos in ${organization.name}...`);

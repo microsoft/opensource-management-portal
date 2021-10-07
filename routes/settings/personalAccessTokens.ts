@@ -108,9 +108,9 @@ function createToken(req: ReposAppRequest, res, next) {
     });
     const newKey = token.getPrivateKey();
     getPersonalAccessTokens(req, res, () => {
-        res.newKey = newKey;
-        return view(req, res);
-      });
+      res.newKey = newKey;
+      return view(req, res);
+    });
   }).catch(insertError => {
     insights.trackEvent({
       name: 'ReposCreateTokenFailure',

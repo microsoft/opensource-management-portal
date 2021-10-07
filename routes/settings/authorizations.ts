@@ -16,7 +16,7 @@ interface IRequestWithAuthorizations extends ReposAppRequest {
 }
 
 function createValidator(operations: Operations, link: ICorporateLink, token: string) {
-  return async function(): Promise<any> {
+  return async function (): Promise<any> {
     let data = null;
     let valid = true;
     let headers = null;

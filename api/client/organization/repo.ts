@@ -105,7 +105,7 @@ router.post('/archive', asyncHandler(AddRepositoryPermissionsToRequest), asyncHa
     const currentRepositoryState = deployment?.features?.repositoryActions?.getCurrentRepositoryState ? (await deployment.features.repositoryActions.getCurrentRepositoryState(providers, repository)) : null;
     await repository.archive();
     if (deployment?.features?.repositoryActions?.sendActionReceipt) {
-      deployment.features.repositoryActions.sendActionReceipt(providers, activeContext, repository, LocalApiRepoAction.Archive, currentRepositoryState).then(ok => {}).catch(() => {});
+      deployment.features.repositoryActions.sendActionReceipt(providers, activeContext, repository, LocalApiRepoAction.Archive, currentRepositoryState).then(ok => { }).catch(() => { });
     }
     insights?.trackMetric({
       name: `${insightsPrefix}s`,
@@ -161,7 +161,7 @@ router.delete('/', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler
       const currentRepositoryState = deployment?.features?.repositoryActions?.getCurrentRepositoryState ? (await deployment.features.repositoryActions.getCurrentRepositoryState(providers, repository)) : null;
       await repository.delete();
       if (deployment?.features?.repositoryActions?.sendActionReceipt) {
-        deployment.features.repositoryActions.sendActionReceipt(providers, activeContext, repository, LocalApiRepoAction.Delete, currentRepositoryState).then(ok => {}).catch(() => {});
+        deployment.features.repositoryActions.sendActionReceipt(providers, activeContext, repository, LocalApiRepoAction.Delete, currentRepositoryState).then(ok => { }).catch(() => { });
       }
       insights?.trackMetric({
         name: `${insightsPrefix}s`,

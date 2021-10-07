@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express from 'express';
+import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../../../middleware';
@@ -14,7 +14,7 @@ import { IndividualContext } from '../../../../user';
 import { ErrorHelper, getProviders } from '../../../../transitional';
 import NewRepositoryLockdownSystem from '../../../../features/newRepositoryLockdown';
 
-const router = express.Router();
+const router: Router = Router();
 
 router.use(asyncHandler(async (req: ReposAppRequest, res, next) => {
   const organization = req.organization as Organization;

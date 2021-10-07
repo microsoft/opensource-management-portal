@@ -43,7 +43,7 @@ const Field: ITokenEntityProperties = {
   warning: 'warning',
   organizationScopes: 'organizationScopes',
   scopes: 'scopes',
-}
+};
 
 const fieldNames = Object.getOwnPropertyNames(Field);
 
@@ -73,7 +73,7 @@ export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntity
     oid,
     scopes,
     organizationScopes,
-  }) : PersonalAccessToken {
+  }): PersonalAccessToken {
     const pat = new PersonalAccessToken();
     pat.corporateId = null;
     pat.description = `AAD oid ${oid} app ${appId} with scopes ${scopes}`;
@@ -90,7 +90,7 @@ export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntity
     displayUsername,
     source,
     scopes,
-  }) : PersonalAccessToken {
+  }): PersonalAccessToken {
     const pat = new PersonalAccessToken();
     pat.corporateId = corporateId;
     pat.description = description;
@@ -102,7 +102,7 @@ export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntity
 
   static CreateNewToken(): PersonalAccessToken {
     const pat = new PersonalAccessToken();
-    const { key,  token } = TokenGenerator.Generate();
+    const { key, token } = TokenGenerator.Generate();
     pat.token = token;
     pat._key = key;
     return pat;
@@ -264,15 +264,16 @@ EntityMetadataMappings.Register(type, MemorySettings.MemoryQueries, (query: IEnt
   const columnCorporateId = translatedField(type, Field.corporateId);
   switch (query.fixedQueryType) {
     case FixedQueryType.TokensByCorporateId:
-        const { corporateId } = query as QueryTokensByCorporateID;
-        return allInTypeBin.filter(entity => {
-          return entity[columnCorporateId] && entity[columnCorporateId] === corporateId;
-        });
+      const { corporateId } = query as QueryTokensByCorporateID;
+      return allInTypeBin.filter(entity => {
+        return entity[columnCorporateId] && entity[columnCorporateId] === corporateId;
+      });
     case FixedQueryType.TokensGetAll:
       return allInTypeBin;
     default:
       throw new Error('fixed query type not implemented in the memory provider');
-  }});
+  }
+});
 
 // Runtime validation of FieldNames
 for (let i = 0; i < fieldNames.length; i++) {
@@ -283,6 +284,6 @@ for (let i = 0; i < fieldNames.length; i++) {
 }
 
 export const EntityImplementation = {
-  EnsureDefinitions: () => {},
+  EnsureDefinitions: () => { },
   Type: type,
 };

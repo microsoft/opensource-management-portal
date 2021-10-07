@@ -21,6 +21,7 @@ import { CacheDefault, getMaxAgeSeconds, getPageSize, OperationsCore } from './o
 import { CoreCapability, GitHubAuditLogEntry, IAccountBasics, IAddOrganizationMembershipOptions, IAuthorizationHeaderValue, ICacheOptions, ICacheOptionsWithPurpose, ICorporateLink, ICreateRepositoryResult, IGetAuthorizationHeader, IGetOrganizationAuditLogOptions, IGetOrganizationMembersOptions, IOperationsCentralOperationsToken, IOperationsInstance, IOperationsLegalEntities, IOperationsLinks, IOperationsLockdownFeatureFlags, IOperationsProviders, IOperationsServiceAccounts, IOperationsTemplates, IOperationsUrls, IOrganizationMemberPair, IOrganizationMembership, IPagedCacheOptions, IPurposefulGetAuthorizationHeader, IReposError, IReposRestRedisCacheCost, NoCacheNoBackground, operationsIsCapable, operationsWithCapability, OrganizationMembershipRoleQuery, OrganizationMembershipTwoFactorFilter, throwIfNotCapable, throwIfNotGitHubCapable } from '../interfaces';
 import { CreateError, ErrorHelper } from '../transitional';
 import { jsonError } from '../middleware';
+import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 
 interface IGetMembersParameters {
   org: string;
@@ -265,7 +266,7 @@ export class Organization {
     const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
     const previewMediaTypes = operations['previewMediaTypes'] || null; // TEMPORARY MEDIA TYPE HACK
-    const mediaType = previewMediaTypes?.repository?.list ? { previews: [previewMediaTypes.repository.list]} : {};
+    const mediaType = previewMediaTypes?.repository?.list ? { previews: [previewMediaTypes.repository.list] } : {};
     const parameters = {
       org: this.name,
       type: 'all',
@@ -316,7 +317,7 @@ export class Organization {
   }
 
   get privateEngineering(): boolean {
-    return this._settings.hasFeature('privateEngineering')|| false;
+    return this._settings.hasFeature('privateEngineering') || false;
   }
 
   get externalMembersPermitted(): boolean {
@@ -531,7 +532,7 @@ export class Organization {
     }
   }
 
-  
+
 
   getRepositoryCreateMetadata(options?: any) {
     const operations = throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers);
@@ -922,7 +923,7 @@ export class Organization {
       return {
         member,
         link: links.get(member.login.toLowerCase()),
-      }
+      };
     });
   }
 
@@ -989,7 +990,7 @@ export class Organization {
             }
           }
           await queryCache.removeOrganizationMember(this.id.toString(), optionalId);
-        } catch (ignored) {}
+        } catch (ignored) { }
       }
     } catch (error) {
       throw wrapError(error, `Could not remove the organization member ${login}`);
@@ -1057,13 +1058,13 @@ export class Organization {
     const limitedTypeTemplates = [];
     ts.forEach(templateId => {
       const td = templateDefinitions[templateId];
-      const candidateTemplate = Object.assign({id: templateId}, td);
+      const candidateTemplate = Object.assign({ id: templateId }, td);
       let template = null;
       if (candidateTemplate.legalEntity) {
         for (let i = 0; i < legalEntities.length && !template; i++) {
           if (legalEntities[i].toLowerCase() === candidateTemplate.legalEntity.toLowerCase()) {
             template = candidateTemplate;
-            template.legalEntities = [ template.legalEntity ];
+            template.legalEntities = [template.legalEntity];
             delete template.legalEntity;
           }
         }

@@ -24,10 +24,10 @@ export function injectReactClient() {
     }
     const staticModernReactApp = require(staticClientPackageName);
     const previewClientFolder = staticModernReactApp;
-    if (typeof(previewClientFolder) !== 'string') {
+    if (typeof (previewClientFolder) !== 'string') {
       throw new Error(`The return value of the preview package ${staticClientPackageName} must be a string/path`);
     }
-    indexPageContent = fs.readFileSync(path.join(previewClientFolder, 'client.html'), {encoding: 'utf8'});
+    indexPageContent = fs.readFileSync(path.join(previewClientFolder, 'client.html'), { encoding: 'utf8' });
   } catch (hostClientError) {
     console.error(`The static client could not be loaded via package ${staticClientPackageName}. Note that index.html needs to be named client.html in build/.`);
     throw hostClientError;
@@ -49,7 +49,7 @@ export function injectReactClient() {
 type CacheBuffer = {
   buffer: Buffer;
   contentType: string;
-}
+};
 const localFallbackBlobCache = new Map<string, CacheBuffer>();
 
 export async function TryFallbackToBlob(req: ReposAppRequest, res: Response): Promise<boolean> {
@@ -59,7 +59,7 @@ export async function TryFallbackToBlob(req: ReposAppRequest, res: Response): Pr
   const providers = getProviders(req);
   const baseUrl = '/react' + req.originalUrl;
   if (localFallbackBlobCache.has(baseUrl)) {
-    providers.insights.trackEvent({name: 'FallbackToBlob', properties: { baseUrl }});
+    providers.insights.trackEvent({ name: 'FallbackToBlob', properties: { baseUrl } });
     const entry = localFallbackBlobCache.get(baseUrl);
     if (entry.contentType) {
       res.contentType(entry.contentType);
@@ -70,7 +70,7 @@ export async function TryFallbackToBlob(req: ReposAppRequest, res: Response): Pr
   const fallbackBlob = await getStaticBlobCacheFallback(providers);
   const [buffer, contentType] = await fallbackBlob.get(baseUrl);
   if (buffer) {
-    providers.insights.trackEvent({name: 'FallbackToBlob', properties: { baseUrl }});
+    providers.insights.trackEvent({ name: 'FallbackToBlob', properties: { baseUrl } });
     localFallbackBlobCache.set(baseUrl, { buffer, contentType });
     if (contentType) {
       res.contentType(contentType);

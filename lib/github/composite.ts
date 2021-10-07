@@ -148,7 +148,7 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
   }
 
   withResponseShouldCacheBeServed(apiContext: ApiContext, response: IRestResponse) {
-    if (typeof(response) === 'function') {
+    if (typeof (response) === 'function') {
       throw new Error('The response must not be a function');
     }
     if (response === undefined) {

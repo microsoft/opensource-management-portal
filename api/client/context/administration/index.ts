@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express from 'express';
+import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 import { Organization } from '../../../../business/organization';
 import { ReposAppRequest } from '../../../../interfaces';
@@ -13,7 +13,7 @@ import { IndividualContext } from '../../../../user';
 
 import routeIndividualOrganization from './organization';
 
-const router = express.Router();
+const router: Router = Router();
 
 interface IRequestWithAdministration extends ReposAppRequest {
   isSystemAdministrator: boolean;
@@ -43,7 +43,7 @@ router.get('/', asyncHandler(async (req: IRequestWithAdministration, res, next) 
 
 router.use((req: IRequestWithAdministration, res, next) => {
   return req.isSystemAdministrator ? next() : next(jsonError('Not authorized', 403));
-})
+});
 
 router.use('/organization/:orgName', asyncHandler(async (req: ReposAppRequest, res, next) => {
   const { orgName } = req.params;

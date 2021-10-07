@@ -51,7 +51,7 @@ async function getPeopleForOrganization(operations: Operations, org: string, opt
 type PeopleSearchOptions = {
   team: Team;
   forceRefresh: boolean;
-}
+};
 
 export async function equivalentLegacyPeopleSearch(req: ReposAppRequest, options?: PeopleSearchOptions) {
   const { operations } = getProviders(req);
@@ -115,11 +115,11 @@ router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
     const members = searcher.members;
     const slice = pager.slice(members);
     return pager.sendJson(slice.map(organizationMember => {
-        const obj = Object.assign({
-          link: organizationMember.link ? corporateLinkToJson(organizationMember.link) : null,
-        }, organizationMember.getEntity());
-        return obj;
-      }),
+      const obj = Object.assign({
+        link: organizationMember.link ? corporateLinkToJson(organizationMember.link) : null,
+      }, organizationMember.getEntity());
+      return obj;
+    }),
     );
   } catch (repoError) {
     console.dir(repoError);

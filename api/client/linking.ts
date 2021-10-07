@@ -61,7 +61,7 @@ async function validateLinkOk(req: ReposAppRequest, res, next) {
     if (block) {
       insights.trackMetric({ name: 'LinksBlockedForGuests', value: 1 });
       const err = jsonError(`This system is not available to guests. You are currently signed in as ${displayName} ${userPrincipalName}. Please sign out or try a private browser window.`, 400);
-      insights?.trackException({exception: err});
+      insights?.trackException({ exception: err });
       return next(err);
     }
     const manager = await providers.graphProvider.getManagerById(aadId);

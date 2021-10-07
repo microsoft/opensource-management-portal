@@ -6,5 +6,5 @@
 import { Repository } from '../../business';
 
 export interface IAttachCompanySpecificUrls {
-  getAdministrativeUnlockUrl(repository: Repository): string;
+  getAdministrativeUnlockUrl?(repository: Repository): string;
 }

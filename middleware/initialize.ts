@@ -456,8 +456,8 @@ export function ConnectPostgresPool(postgresConfigSection: any): Promise<Postgre
             }
             debug(`connected to Postgres (${postgresConfigSection.host} ${postgresConfigSection.database} as ${postgresConfigSection.user}) and a pool of ${postgresConfigSection.max} clients is available in providers.postgresPool`);
             return resolve(pool);
-          })
-        })
+          });
+        });
       } else {
         return resolve(undefined);
       }
@@ -525,7 +525,7 @@ async function dynamicStartup(config: any, providers: IProviders, rootdir: strin
     try {
       const dynamicInclude = require(path.join(rootdir, p));
       const entrypoint = dynamicInclude && dynamicInclude.default ? dynamicInclude.default : dynamicInclude;
-      if (typeof(entrypoint) !== 'function') {
+      if (typeof (entrypoint) !== 'function') {
         throw new Error(`Entrypoint ${p} is not a function`);
       }
       const promise = (entrypoint as CompanyStartupEntrypoint).call(null, config, providers, rootdir) as Promise<void>;

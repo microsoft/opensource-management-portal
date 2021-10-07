@@ -49,12 +49,12 @@ async function runAsync(operations: Operations, organization: Organization, data
   let undoCandidate = false;
   if (body.changes) {
     const changes = body.changes;
-     record.additionalData.changes = changes;
-     if (changes?.repository?.permissions?.from?.admin === true) {
+    record.additionalData.changes = changes;
+    if (changes?.repository?.permissions?.from?.admin === true) {
       undoCandidate = true;
-     } else if (changes?.permission?.from === 'admin') {
+    } else if (changes?.permission?.from === 'admin') {
       undoCandidate = true;
-     }
+    }
   }
   if (body.scope === 'team' && body.action === 'removed' && body.member) {
     undoCandidate = true;
@@ -97,13 +97,13 @@ async function runAsync(operations: Operations, organization: Organization, data
     record.teamName = body.team.name;
   }
   if (body.membership) {
-  //   document.membership = {
-  //     state: body.membership.state,
-  //     role: body.membership.role,
-  //     user: {
-  //       id: body.membership.user.id,
-  //       login: body.membership.user.login,
-  //     },
+    //   document.membership = {
+    //     state: body.membership.state,
+    //     role: body.membership.role,
+    //     user: {
+    //       id: body.membership.user.id,
+    //       login: body.membership.user.login,
+    //     },
   }
   record.inserted = new Date();
   // console.dir(record);

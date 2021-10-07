@@ -20,7 +20,7 @@ router.get('/', RequireActiveGitHubSession, asyncHandler(async function (req: Re
   const onboarding = req.query.onboarding;
   const joining = req.query.joining;
   const username = req.individualContext.getGitHubIdentity().username;
-  const hasWriteToken = !! req.individualContext.webContext.tokens.gitHubWriteOrganizationToken;
+  const hasWriteToken = !!req.individualContext.webContext.tokens.gitHubWriteOrganizationToken;
   let result = null;
   try {
     result = await organization.checkPublicMembership(username);

@@ -53,9 +53,9 @@ function mergeIntoEntity(entity: any, obj: any, callback?) {
       }
       const value = obj[key];
       if (typeof value === 'string') {
-        entity[key] = { type: 'String', value: obj[key]} as Edm<'String'>;
+        entity[key] = { type: 'String', value: obj[key] } as Edm<'String'>;
       } else if (value === true || value === false) {
-        entity[key] = { type: 'Boolean', value} as Edm<'Boolean'>;
+        entity[key] = { type: 'Boolean', value } as Edm<'Boolean'>;
       } else if (Buffer.isBuffer(value)) {
         const asBuffer = value as Buffer;
         entity[key] = { type: 'Binary', value: asBuffer.buffer } as Edm<'Binary'>;
@@ -68,7 +68,7 @@ function mergeIntoEntity(entity: any, obj: any, callback?) {
       } else {
         console.warn('Consider whether a new entity merge clause is required for key ' + key + ' of type:' + typeof value);
         if (value?.toString) {
-          entity[key] = { type: 'String', value: value.toString()} as Edm<'String'>;
+          entity[key] = { type: 'String', value: value.toString() } as Edm<'String'>;
         } else {
           entity[key] = { type: 'String', value: String(value) } as Edm<'String'>;
         }

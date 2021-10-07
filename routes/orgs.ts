@@ -26,7 +26,7 @@ if (hasReactApp) {
 
 router.use('/:orgName', asyncHandler(forwardToOrganizationRoutes));
 
-async function forwardToOrganizationRoutes (req: IReposRequestWithOrganization, res, next) {
+async function forwardToOrganizationRoutes(req: IReposRequestWithOrganization, res, next) {
   // This middleware contains both the original GitHub operations types
   // as well as the newer implementation. In time this will peel apart.
   const orgName = req.params.orgName;

@@ -21,7 +21,7 @@ import { ReposAppRequest } from '../../interfaces';
 
 router.use(asyncHandler(AddLinkToRequest));
 
-router.get('/', asyncHandler( async (req: ReposAppRequest, res) => {
+router.get('/', asyncHandler(async (req: ReposAppRequest, res) => {
   const providers = getProviders(req);
   const link = req.individualContext.link;
   let legalContactInformation = null;

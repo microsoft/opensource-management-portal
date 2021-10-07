@@ -23,7 +23,7 @@ import RouteCrossOrganizationRepos from './repos';
 import RouteCrossOrganizationTeams from './teams';
 import { ReposAppRequest } from '../../interfaces';
 
-const router: Router = Router()
+const router: Router = Router();
 
 router.use((req: ReposAppRequest, res, next) => {
   const { config } = getProviders(req);

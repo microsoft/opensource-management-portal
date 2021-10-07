@@ -47,7 +47,7 @@ const exceptionFieldsOfInterest = [
   'innerMessage',
 ];
 
-export default function SiteErrorHandler (err, req, res, next) {
+export default function SiteErrorHandler(err, req, res, next) {
   // CONSIDER: Let's eventually decouple all of our error message improvements to another area to keep the error handler intact.
   const { applicationProfile, config } = getProviders(req);
   var correlationId = req.correlationId;

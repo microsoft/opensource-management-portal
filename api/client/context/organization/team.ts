@@ -74,7 +74,7 @@ router.post('/join',
       if (request) {
         return res.json({ error: 'You already have a pending team join request' });
       }
-      //
+      // 
       const justification = (req.body.justification || '') as string;
       const hostname = req.hostname;
       const correlationId = req.correlationId;
@@ -138,23 +138,23 @@ router.post('/join/approvals/:approvalId',
 router.get('/join/approvals/:approvalId',
   asyncHandler(AddTeamPermissionsToRequest),
   asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { approvalId: id } = req.params;
-  if (!id) {
-    return next(jsonError('invalid approval', 400));
-  }
-  const permissions = getTeamPermissionsFromRequest(req);
-  if (!permissions.allowAdministration) {
-    return next(jsonError('you do not have permission to administer this team', 401));
-  }
-  const providers = getProviders(req);
-  const { approvalProvider, operations } = providers;
-  const team = getContextualTeam(req);
-  const request = await approvalProvider.getApprovalEntity(id);
-  if (String(request.teamId) !== String(team.id)) {
-    return next(jsonError('mismatch on team', 400));
-  }
-  return res.json({ approval: request });
-}));
+    const { approvalId: id } = req.params;
+    if (!id) {
+      return next(jsonError('invalid approval', 400));
+    }
+    const permissions = getTeamPermissionsFromRequest(req);
+    if (!permissions.allowAdministration) {
+      return next(jsonError('you do not have permission to administer this team', 401));
+    }
+    const providers = getProviders(req);
+    const { approvalProvider, operations } = providers;
+    const team = getContextualTeam(req);
+    const request = await approvalProvider.getApprovalEntity(id);
+    if (String(request.teamId) !== String(team.id)) {
+      return next(jsonError('mismatch on team', 400));
+    }
+    return res.json({ approval: request });
+  }));
 
 router.get('/join/approvals',
   asyncHandler(AddTeamPermissionsToRequest),
@@ -170,7 +170,7 @@ router.get('/join/approvals',
       response.approvals = await approvalProvider.queryPendingApprovalsForTeam(String(team.id));
     }
     return res.json(response);
-}));
+  }));
 
 router.post('/role/:login',
   asyncHandler(AddTeamPermissionsToRequest),
@@ -186,7 +186,7 @@ router.post('/role/:login',
     }
     const team = getContextualTeam(req);
     try {
-      const currentRole = await team.getMembership(login, { backgroundRefresh : false, maxAgeSeconds: -1 });
+      const currentRole = await team.getMembership(login, { backgroundRefresh: false, maxAgeSeconds: -1 });
       if (!currentRole || (currentRole as ITeamMembershipRoleState).state !== OrganizationMembershipState.Active) {
         return next(jsonError(`${login} is not currently a member of the team`, 400));
       }

@@ -71,7 +71,7 @@ export async function unlinkInteractive(isJson: boolean, individualContext: Indi
   try {
     history = await operations.terminateLinkAndMemberships(id, terminationOptions);
   } catch (exception) {
-    insights?.trackException({ exception } );
+    insights?.trackException({ exception });
     error = exception;
   }
   const hadErrors = error ? 'had errors' : 'no';

@@ -52,13 +52,13 @@ router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
     const members = searcher.members as unknown as ICrossOrganizationSearchedMember[];
     const slice = pager.slice(members);
     return pager.sendJson(slice.map(xMember => {
-        const obj = Object.assign({
-          link: xMember.link ? corporateLinkToJson(xMember.link) : null,
-          id: xMember.id,
-          organizations: xMember.orgs ? Object.getOwnPropertyNames(xMember.orgs) : [],
-        }, xMember.account || { id: xMember.id });
-        return obj;
-      }),
+      const obj = Object.assign({
+        link: xMember.link ? corporateLinkToJson(xMember.link) : null,
+        id: xMember.id,
+        organizations: xMember.orgs ? Object.getOwnPropertyNames(xMember.orgs) : [],
+      }, xMember.account || { id: xMember.id });
+      return obj;
+    }),
     );
   } catch (repoError) {
     console.dir(repoError);

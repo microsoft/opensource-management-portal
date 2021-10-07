@@ -3,11 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Request, Response } from 'express';
+import { Response, Request, Router } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
-import { DateTime } from 'luxon';
 import zlib from 'zlib';
 import { ReposAppRequest, IAppSession, IReposError } from './interfaces';
 import { getProviders } from './transitional';
@@ -17,12 +16,12 @@ export function daysInMilliseconds(days: number): number {
 }
 
 export function stringOrNumberAsString(value: any) {
-  if (typeof(value) === 'number') {
+  if (typeof (value) === 'number') {
     return (value as number).toString();
-  } else if (typeof(value) === 'string') {
+  } else if (typeof (value) === 'string') {
     return value;
   }
-  const typeName = typeof(value);
+  const typeName = typeof (value);
   throw new Error(`Unsupported type ${typeName} for value ${value} (stringOrNumberAsString)`);
 }
 
@@ -78,7 +77,7 @@ interface IStoreReferrerEventDetails {
 
 export function storeReferrer(req: ReposAppRequest, res, redirect, optionalReason) {
   const { insights } = getProviders(req);
-  const eventDetails : IStoreReferrerEventDetails = {
+  const eventDetails: IStoreReferrerEventDetails = {
     method: 'storeReferrer',
     reason: optionalReason || 'unknown reason',
   };

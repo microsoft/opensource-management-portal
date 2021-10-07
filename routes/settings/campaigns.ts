@@ -10,7 +10,7 @@ const router: Router = Router();
 import { ReposAppRequest, UserAlertType } from '../../interfaces';
 import { CreateError, getProviders } from '../../transitional';
 
-router.use('/:campaignGroupId', (req:  ReposAppRequest, res: any, next) => {
+router.use('/:campaignGroupId', (req: ReposAppRequest, res: any, next) => {
   const { config } = getProviders(req);
   const knownCampaignGroups = (config?.campaigns?.groups || '').toLowerCase().split(',');
   req.params.campaignGroupId = req.params.campaignGroupId.toLowerCase();
@@ -40,7 +40,7 @@ router.get('/:campaignGroupId', asyncHandler(async (req: ReposAppRequest, res: a
   }
   const corporateId = req.individualContext.corporateIdentity.id;
   if (!corporateId) {
-    return next (new Error('Corporate authentcation and identity required'));
+    return next(new Error('Corporate authentcation and identity required'));
   }
   const currentState = await campaignStateProvider.getState(corporateId, campaignGroupId);
   return res.json(currentState);
@@ -58,7 +58,7 @@ async function modifySubscription(isUnsubscribing: boolean, req: ReposAppRequest
   }
   const corporateId = req.individualContext.corporateIdentity.id;
   if (!corporateId) {
-    return next (new Error('Corporate authentcation and identity required'));
+    return next(new Error('Corporate authentcation and identity required'));
   }
   const currentState = await campaignStateProvider.getState(corporateId, campaignGroupId);
   if (currentState && currentState.optOut && isUnsubscribing) {

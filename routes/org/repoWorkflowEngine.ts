@@ -121,7 +121,7 @@ export class RepoWorkflowEngine {
     if (login && this.repository) {
       try {
         await this.repository.removeCollaborator(login);
-        this.log.push({ message: `Temporary committer ${login} removed`});
+        this.log.push({ message: `Temporary committer ${login} removed` });
       } catch (error) {
         this.log.push({ error: new Error(`Error removing committer ${login}: ${error}`) });
       }
@@ -275,7 +275,7 @@ export class RepoWorkflowEngine {
     this.log.push({ error, message });
   }
 
-  async getFileContents(templateRoot:string, templatePath: string, templateName: string, absoluteFileNames: string[]): Promise<IFileContents[]> {
+  async getFileContents(templateRoot: string, templatePath: string, templateName: string, absoluteFileNames: string[]): Promise<IFileContents[]> {
     const contents = [];
     for (let i = 0; i < absoluteFileNames.length; i++) {
       const absoluteFileName = absoluteFileNames[i];
@@ -293,7 +293,7 @@ export class RepoWorkflowEngine {
       });
     });
   }
-  
+
   async readFileToBase64(templatePath: string, templateName: string, fileName: string): Promise<IFileContents> {
     return new Promise((resolve, reject) => {
       fs.readFile(path.join(templatePath, templateName, fileName), (error, file) => {
@@ -310,13 +310,13 @@ export class RepoWorkflowEngine {
   }
 
   async addTemplateWebHook(templateName: string): Promise<void> {
-    const { config } = this.providers;    
+    const { config } = this.providers;
     const definitions = config.github.templates.definitions;
     const templateData = definitions ? definitions[templateName] : null;
-    if (!templateData || ! templateData.webhook) {
+    if (!templateData || !templateData.webhook) {
       return null;
     }
-    
+
     const webhook = templateData.webhook;
     const webhookSharedSecret = templateData.webhookSharedSecret;
     const webhookEvents = templateData.webhookEvents;
@@ -380,20 +380,20 @@ export class RepoWorkflowEngine {
           const item = fileContents[i];
           let sha = null;
           // if (isUnlockingExistingRepository) {
-            try {
-              const fileDescription = await this.repository.getFile(item.path);
-              if (fileDescription && fileDescription.sha) {
-                sha = fileDescription.sha;
-              }
-            } catch (getFileError) {
-              if (getFileError.status === 404) {
-                // often the file will not exist, that's great.
-              } else {
-                throw getFileError;
-              }
+          try {
+            const fileDescription = await this.repository.getFile(item.path);
+            if (fileDescription && fileDescription.sha) {
+              sha = fileDescription.sha;
             }
+          } catch (getFileError) {
+            if (getFileError.status === 404) {
+              // often the file will not exist, that's great.
+            } else {
+              throw getFileError;
+            }
+          }
           // }
-          const fileOptions = sha ? {...alternateTokenOptions, sha} : alternateTokenOptions;
+          const fileOptions = sha ? { ...alternateTokenOptions, sha } : alternateTokenOptions;
           const message = sha ? `${item.path} updated to template` : `${item.path} committed`;
           await this.repository.createFile(item.path, item.content, message, fileOptions);
           uploadedFiles.push(item.path);
@@ -401,13 +401,13 @@ export class RepoWorkflowEngine {
       } catch (error) {
         const notUploaded = fileContents.map(fc => fc.path).filter(f => !uploadedFiles.includes(f));
         if (uploadedFiles.length) {
-          this.log.push({error, message: `Initial commit of ${uploadedFiles.join(', ')} template files to the ${this.repository.name} repo partially succeeded. Not uploaded: ${notUploaded.join(', ')}. Error: ${error.message}`});
+          this.log.push({ error, message: `Initial commit of ${uploadedFiles.join(', ')} template files to the ${this.repository.name} repo partially succeeded. Not uploaded: ${notUploaded.join(', ')}. Error: ${error.message}` });
         } else {
-          this.log.push({error, message: `Initial commit of template file(s) to the ${this.repository.name} repo failed. Not uploaded: ${notUploaded.join(', ')}. Error: ${error.message}.`});
+          this.log.push({ error, message: `Initial commit of template file(s) to the ${this.repository.name} repo failed. Not uploaded: ${notUploaded.join(', ')}. Error: ${error.message}.` });
         }
       }
     } catch (error) {
-      this.log.push({error});
+      this.log.push({ error });
     }
   }
 
@@ -432,7 +432,7 @@ export class RepoWorkflowEngine {
     } else {
       message = messages.join(', ');
     }
-    this.log.push({error, message });
+    this.log.push({ error, message });
   }
 
   async resetOriginalProperties(patch: any): Promise<void> {
@@ -445,7 +445,7 @@ export class RepoWorkflowEngine {
     } catch (err) {
       error = new Error(`Error patching: ${err}`);
     }
-    this.log.push({error, message});
+    this.log.push({ error, message });
   }
 
   async tryResetReadme(initialDescription: string): Promise<void> {
@@ -469,14 +469,14 @@ export class RepoWorkflowEngine {
         error = new Error(`Could not reset README content: ${err}`);
       }
     }
-    this.log.push({error, message});
+    this.log.push({ error, message });
   }
 
   async addTemplateCollaborators(templateName: string): Promise<void> {
     const { config } = this.providers;
     const definitions = config.github.templates.definitions;
     const templateData = definitions ? definitions[templateName] : null;
-    if (!templateData || ! templateData.collaborators) {
+    if (!templateData || !templateData.collaborators) {
       return null;
     }
     const collaborators = templateData.collaborators;
@@ -506,6 +506,6 @@ export class RepoWorkflowEngine {
     } else {
       message = messages.join(', ');
     }
-    this.log.push({error, message});
+    this.log.push({ error, message });
   }
 }

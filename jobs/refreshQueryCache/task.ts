@@ -76,13 +76,13 @@ async function refreshOrganization(
 
   if (refreshSet === 'all' || refreshSet === 'organizations') {
     try {
-      const organizationAdmins = await organization.getMembers({...slowRequestCacheOptions, role: OrganizationMembershipRoleQuery.Admin });
+      const organizationAdmins = await organization.getMembers({ ...slowRequestCacheOptions, role: OrganizationMembershipRoleQuery.Admin });
       updateConsistencyStats(result.consistencyStats,
         await cacheOrganizationMembers(queryCache, organizationId, organizationAdmins, OrganizationMembershipRole.Admin));
       const memberIds = new Set<string>(organizationAdmins.map(admin => admin.id.toString()));
       await sleep(sleepBetweenSteps);
 
-      const organizationMembers = await organization.getMembers({...slowRequestCacheOptions, role: OrganizationMembershipRoleQuery.Member });
+      const organizationMembers = await organization.getMembers({ ...slowRequestCacheOptions, role: OrganizationMembershipRoleQuery.Member });
       console.log(`${organizationIndex}: organization ${organization.name} has ${organizationAdmins.length} admins and ${organizationMembers.length} members`);
       updateConsistencyStats(result.consistencyStats,
         await cacheOrganizationMembers(queryCache, organizationId, organizationMembers, OrganizationMembershipRole.Member));
@@ -120,7 +120,7 @@ async function refreshOrganization(
             await queryCache.addOrUpdateTeam(organizationId, team.id.toString(), teamDetailsData));
 
           const teamMaintainers = await team.getMaintainers(slowRequestCacheOptions);
-          const maintainers = new Set<number>(teamMaintainers.map(maintainer => maintainer.id ));
+          const maintainers = new Set<number>(teamMaintainers.map(maintainer => maintainer.id));
           updateConsistencyStats(result.consistencyStats,
             await cacheTeamMembers(queryCache, organizationId, team, teamMaintainers, GitHubTeamRole.Maintainer));
 
@@ -159,7 +159,7 @@ async function refreshOrganization(
       });
       updateConsistencyStats(result.consistencyStats,
         await cleanupFormerTeams(queryCache, organization, potentialFormerTeams));
-    } catch(refreshTeamsError) {
+    } catch (refreshTeamsError) {
       console.log(`error while refreshing teams in ${organization.name} org`);
       console.dir(refreshTeamsError);
     }
@@ -197,13 +197,13 @@ async function refreshOrganization(
         }
 
         if (refreshSet === 'all' || refreshSet === 'collaborators') {
-          const outsideOptions: IGetCollaboratorsOptions = {...slowRequestCacheOptions, affiliation: GitHubCollaboratorAffiliationQuery.Outside };
+          const outsideOptions: IGetCollaboratorsOptions = { ...slowRequestCacheOptions, affiliation: GitHubCollaboratorAffiliationQuery.Outside };
           const outsideRepoCollaborators = await repository.getCollaborators(outsideOptions);
           const collaboratorIds = new Set(outsideRepoCollaborators.map(orc => orc.id.toString()));
           updateConsistencyStats(result.consistencyStats,
             await cacheRepositoryCollaborators(queryCache, organizationId, repository, outsideRepoCollaborators, GitHubCollaboratorType.Outside));
-          const outsideSet = new Set<number>(outsideRepoCollaborators.map(outsider => outsider.id ));
-          const directOptions: IGetCollaboratorsOptions = {...slowRequestCacheOptions, affiliation: GitHubCollaboratorAffiliationQuery.Direct };
+          const outsideSet = new Set<number>(outsideRepoCollaborators.map(outsider => outsider.id));
+          const directOptions: IGetCollaboratorsOptions = { ...slowRequestCacheOptions, affiliation: GitHubCollaboratorAffiliationQuery.Direct };
           const directRepoCollaborators = await repository.getCollaborators(directOptions);
           directRepoCollaborators.map(drc => collaboratorIds.add(drc.id.toString()));
           const insideDirectCollaborators = directRepoCollaborators.filter(collaborator => !outsideSet.has(collaborator.id));
@@ -422,7 +422,7 @@ async function cacheRepositoryCollaborators(queryCache: QueryCache, organization
   return operations.filter(real => real);
 }
 
-export default async function refresh({ providers, args }: IReposJob) : Promise<IReposJobResult> {
+export default async function refresh({ providers, args }: IReposJob): Promise<IReposJobResult> {
   const operations = providers.operations as Operations;
   const insights = providers.insights;
   const repositoryCacheProvider = providers.repositoryCacheProvider;
@@ -479,21 +479,21 @@ export default async function refresh({ providers, args }: IReposJob) : Promise<
   };
   let processedOrgs = 0;
   const staticOrgs = orgs.filter(org => org.hasDynamicSettings === false);
-  const dynamicOrgs =  orgs.filter(org => org.hasDynamicSettings === true);
+  const dynamicOrgs = orgs.filter(org => org.hasDynamicSettings === true);
   async function organizationProcessed(organization: Organization): Promise<void> {
     await sleep(sleepBetweenSteps);
     console.log(`organization ${++organizationWorkerCount}/${orgs.length}: refreshing ${organization.name}`);
     const orgResult = await refreshOrganization(organizationWorkerCount, operations, refreshSet, queryCache, organization);
     if (orgResult) {
-      const resultsAsLog = {...orgResult, ...orgResult.consistencyStats};
+      const resultsAsLog = { ...orgResult, ...orgResult.consistencyStats };
       delete resultsAsLog.consistencyStats;
       allUpStats['delete'] += orgResult.consistencyStats['delete'];
       allUpStats['update'] += orgResult.consistencyStats['update'];
       allUpStats['new'] += orgResult.consistencyStats['new'];
-      insights.trackEvent({ name: 'QueryCacheOrganizationConsistencyResults', properties: resultsAsLog as any as { [key: string]: string } });
+      insights.trackEvent({ name: 'QueryCacheOrganizationConsistencyResults', properties: resultsAsLog as any as { [key: string]: string; } });
 
       console.log('--------------------------------------------------');
-      console.log(`${organization.name} processed - eventual consistency`)
+      console.log(`${organization.name} processed - eventual consistency`);
       console.log(`${++processedOrgs} organizations visited in this group`);
       console.log(`Added: ${orgResult.consistencyStats['new']}`);
       console.log(`Removed: ${orgResult.consistencyStats['delete']}`);
@@ -501,7 +501,7 @@ export default async function refresh({ providers, args }: IReposJob) : Promise<
       console.log('--------------------------------------------------');
     } else {
       console.log('--------------------------------------------------');
-      console.log(`${organization.name} failed processing`)
+      console.log(`${organization.name} failed processing`);
       console.log(`${++processedOrgs} organizations visited in this group`);
       console.log('--------------------------------------------------');
     }
@@ -550,14 +550,16 @@ export default async function refresh({ providers, args }: IReposJob) : Promise<
   console.log(`Updated:      ${allUpStats['update']}`);
   console.log(`Removed orgs: ${removedOrganizations}`);
   console.log('--------------------------------------------------');
-  insights.trackEvent({ name: 'JobRefreshQueryCacheSuccess', properties: {
-    allUpNew: allUpStats['new'].toString(),
-    allUpDelete: allUpStats['delete'].toString(),
-    allUpUpdate: allUpStats['update'].toString(),
-  }});
-  insights.trackMetric({ name: 'QueryCacheConsistencyAdds', value: allUpStats['new']});
-  insights.trackMetric({ name: 'QueryCacheConsistencyDeletes', value: allUpStats['delete']});
-  insights.trackMetric({ name: 'QueryCacheConsistencyUpdates', value: allUpStats['update']});
+  insights.trackEvent({
+    name: 'JobRefreshQueryCacheSuccess', properties: {
+      allUpNew: allUpStats['new'].toString(),
+      allUpDelete: allUpStats['delete'].toString(),
+      allUpUpdate: allUpStats['update'].toString(),
+    }
+  });
+  insights.trackMetric({ name: 'QueryCacheConsistencyAdds', value: allUpStats['new'] });
+  insights.trackMetric({ name: 'QueryCacheConsistencyDeletes', value: allUpStats['delete'] });
+  insights.trackMetric({ name: 'QueryCacheConsistencyUpdates', value: allUpStats['update'] });
   return {
     successProperties: {
       adds: allUpStats['new'],
@@ -579,7 +581,7 @@ function updateConsistencyStats(stats: IConsistencyStats, outcomes: QueryCacheOp
       return;
     }
     const stringKey = outcome as string;
-    if (stats[stringKey] === undefined || typeof(stats[stringKey]) !== 'number') {
+    if (stats[stringKey] === undefined || typeof (stats[stringKey]) !== 'number') {
       throw new Error(`invalid outcome ${stringKey}`);
     }
     ++stats[stringKey];

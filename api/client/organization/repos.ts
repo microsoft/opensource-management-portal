@@ -23,7 +23,7 @@ router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
   const searchOptions = {
     q: (req.query.q || '') as string,
     type: (req.query.type || '') as string, // CONSIDER: TS: stronger typing
-  }
+  };
   try {
     const repos = await searchRepos(providers, String(organization.id), RepositorySearchSortOrder.Updated, searchOptions);
     const slice = pager.slice(repos);
@@ -108,8 +108,8 @@ function getFilter(type: RepoListSearchType): RepoFilterFunction {
 type RepoSortFunction = (a: Repository, b: Repository) => number;
 
 function sortDates(fieldName: string, a: Repository, b: Repository): number { // Inverted sort (newest first)
-  const aa = a[fieldName] ? (typeof(a[fieldName]) === 'string' ? new Date(a[fieldName]) : a[fieldName]) : new Date(0);
-  const bb = b[fieldName] ? (typeof(b[fieldName]) === 'string' ? new Date(b[fieldName]) : b[fieldName]) : new Date(0);
+  const aa = a[fieldName] ? (typeof (a[fieldName]) === 'string' ? new Date(a[fieldName]) : a[fieldName]) : new Date(0);
+  const bb = b[fieldName] ? (typeof (b[fieldName]) === 'string' ? new Date(b[fieldName]) : b[fieldName]) : new Date(0);
   return aa == bb ? 0 : (aa < bb) ? 1 : -1;
 }
 
@@ -125,7 +125,7 @@ function getSorter(search: RepositorySearchSortOrder): RepoSortFunction {
       return sortDates.bind(null, 'updated_at');
     }
     case RepositorySearchSortOrder.Forks: {
-      return (a, b) => { return b.forks_count - a.forks_count };
+      return (a, b) => { return b.forks_count - a.forks_count; };
     }
     case RepositorySearchSortOrder.Name: {
       return (a, b) => {
