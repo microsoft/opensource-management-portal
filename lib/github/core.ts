@@ -15,6 +15,7 @@ import { IAuthorizationHeaderValue } from '../../interfaces';
 import { sleep } from '../../utils';
 
 import cost from './cost';
+import { ErrorHelper } from '../../transitional';
 
 const delayBeforeRefreshMilliseconds = 1000;
 
@@ -232,7 +233,14 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
     }
     debug('Cache miss.');
     if (result) {
-      this.evict(apiContext).then(() => { console.log('(evicted)' )}).catch(err => { console.warn(`(eviction error: ${err})`)});
+      this.evict(apiContext)
+        .then(() => {
+          console.log('(evicted)' )})
+        .catch(err => {
+          if (!ErrorHelper.IsNotFound(err)) {
+            console.warn(`(eviction error: ${err})`);
+          }
+        });
     }
     ++apiContext.cost.redis.cacheMisses;
     delete apiContext.etag;
