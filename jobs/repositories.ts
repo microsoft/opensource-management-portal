@@ -13,7 +13,7 @@
 import throat from 'throat';
 
 import app from '../app';
-import { Organization, Repository } from '../business';
+import { Organization, Repository, sortByRepositoryDate } from '../business';
 import { IRepositoryProvider, RepositoryEntity } from '../entities/repository';
 import { IProviders, IReposJob, IReposJobResult } from '../interfaces';
 import { ErrorHelper } from '../transitional';
@@ -45,7 +45,7 @@ async function processOrganization(providers: IProviders, organization: Organiza
   const { repositoryProvider } = providers;
   try {
     let repos = await organization.getRepositories();
-    repos = repos.sort(sortDates);
+    repos = repos.sort(sortByRepositoryDate);
     for (let i = 0; i < repos.length; i++) {
       const repo = repos[i];
       const prefix = `org ${orgIndex}/${orgsLength}: repo ${i}/${repos.length}: `;
@@ -149,33 +149,6 @@ async function tryGetRepositoryEntity(repositoryProvider: IRepositoryProvider, r
     throw error;
   }
 }
-
-function sortDates(a: Repository, b: Repository): number { // Inverted sort (newest first)
-  const aa = getRecentDate(a);
-  const bb = getRecentDate(b);
-  return aa == bb ? 0 : (aa < bb) ? 1 : -1;
-}
-
-function getRecentDate(repo: Repository) {
-  const dates: Date[] = [
-    getAsDate(repo, 'created_at'),
-    getAsDate(repo, 'pushed_at'),
-    getAsDate(repo, 'updated_at'),
-  ].sort();
-  return dates[dates.length - 1];
-}
-
-function getAsDate(repo: Repository, fieldName: string) {
-  if (repo[fieldName]) {
-    const val = repo[fieldName];
-    if (typeof(val) === 'string') {
-      return new Date(val);
-    }
-    return val;
-  }
-  return new Date(0);
-}
-
 
 app.runJob(
   refreshRepositories, { timeoutMinutes: 320, defaultDebugOutput: 'restapi', insightsPrefix: 'JobRefreshRepositories' });

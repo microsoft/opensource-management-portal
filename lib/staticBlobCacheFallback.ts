@@ -94,7 +94,7 @@ export default class StaticBlobCacheFallback {
 
   private throwIfNotInitialized() {
     if (!this._initialized) {
-      throw new Error('This provider must be initialized before it can be used');
+      throw new Error('Static blob cache provider must be initialized before it can be used');
     }
   }
 }

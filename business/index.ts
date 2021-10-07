@@ -25,3 +25,4 @@ export * from './teamMember';
 export * from './teamPermission';
 export * from './teamRepositoryPermission';
 export * from './teamSearch';
+export * from './repositories';

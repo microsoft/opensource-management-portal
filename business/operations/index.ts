@@ -1005,9 +1005,30 @@ export class Operations
     return organization.team(id, entity);
   }
 
-  getRepositoryWithOrganization(name: string, organizationName: string, entity?: any): Repository {
+  getOrganizationFromUrl(url: string): Organization {
+    const asUrl = new URL(url);
+    const paths = asUrl.pathname.split('/').filter(real => real);
+    if (paths[0] !== 'repos') {
+      throw CreateError.InvalidParameters(`At this time, the first path segment must be "repos": ${url}`);
+    }
+    const orgName = paths[1];
+    return this.getOrganization(orgName);
+  }
+
+  getRepositoryWithOrganizationFromUrl(url: string): Repository {
+    const asUrl = new URL(url);
+    const paths = asUrl.pathname.split('/').filter(real => real);
+    if (paths[0] !== 'repos') {
+      throw CreateError.InvalidParameters(`At this time, the first path segment must be "repos": ${url}`);
+    }
+    const orgName = paths[1];
+    const repoName = paths[2];
+    return this.getRepositoryWithOrganization(repoName, orgName);
+  }
+
+  getRepositoryWithOrganization(repositoryName: string, organizationName: string, entity?: any): Repository {
     const organization = this.getOrganization(organizationName);
-    return organization.repository(name, entity);
+    return organization.repository(repositoryName, entity);
   }
 
   async sendMail(mail: IMail): Promise<any> {
