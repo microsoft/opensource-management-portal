@@ -34,9 +34,10 @@ export default class GitHubApplication {
     if (installation.target_type !== 'Organization') {
       invalid.push(`Installation has an unsupported target type of ${installation.target_type}.`);
     }
-    if (installation.repository_selection && installation.repository_selection !== 'all') {
-      invalid.push(`This app can only be installed at the organization scope (all repos), please update the settings for the installation.`);
-    }
+    // CONSIDER: this is useful to warn about, but to allow same-app repo-scope...
+    // if (installation.repository_selection && installation.repository_selection !== 'all') {
+    //   invalid.push(`This app can only be installed at the organization scope (all repos), please update the settings for the installation.`);
+    // }
     return invalid;
   }
 
