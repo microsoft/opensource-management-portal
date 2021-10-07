@@ -74,7 +74,7 @@ router.get('/', function (req: ReposAppRequest, res) {
   req.individualContext.webContext.render({
     view: 'organization/index',
     title: 'Organization Dashboard',
-  })
+  });
 });
 
 async function queryByGitHubLogin(providers: IProviders, login: string): Promise<IUserInformationQuery> {
@@ -369,7 +369,7 @@ router.post('/whois/link/', asyncHandler(async function (req: ReposAppRequest, r
   req.body['isServiceAccount'] = req.body['isServiceAccount'] === 'yes';
 
   // create link object with the values received from the request
-  const link:ICorporateLink  = {
+  const link: ICorporateLink = {
     corporateId: req.body['corporateId'],
     corporateUsername: req.body['corporateUsername'],
     corporateDisplayName: req.body['corporateDisplayName'],
@@ -381,7 +381,7 @@ router.post('/whois/link/', asyncHandler(async function (req: ReposAppRequest, r
     // these both values are currently not transferred, but required by the link object
     corporateMailAddress: '',
     corporateAlias: '',
-  }
+  };
 
   const messages = [];
   // Add only the non empty strings to the message log
@@ -396,16 +396,16 @@ router.post('/whois/link/', asyncHandler(async function (req: ReposAppRequest, r
   // try to create link, if it fails it will directly throw into the users face
   const linkId = await linkProvider.createLink(link);
   // Add the created link id to the messages
-  messages.push(`Link ID ${linkId}`)
+  messages.push(`Link ID ${linkId}`);
 
   // render the output
   req.individualContext.webContext.render({
-      view: 'organization/whois/linkUpdate',
-      title: `Updating link ${linkId}`,
-      state: {
-        messages,
-        linkId,
-      },
+    view: 'organization/whois/linkUpdate',
+    title: `Updating link ${linkId}`,
+    state: {
+      messages,
+      linkId,
+    },
   });
 }));
 

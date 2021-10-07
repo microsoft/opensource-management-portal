@@ -15,7 +15,7 @@ interface IOrganizationsResponse extends IRestResponse {
 }
 
 interface ICrossOrganizationDataResponse extends IRestResponse {
-//  data?: any;
+  //  data?: any;
 }
 
 interface ILocalOptionsParameters {
@@ -65,7 +65,7 @@ export class CrossOrganizationCollator {
 
   async repoCollaborators(orgsAndTokens: Map<string, IPurposefulGetAuthorizationHeader>, options, cacheOptions: ICacheOptions): Promise<any> {
     options.apiTypePrefix = 'github.x#';
-    const capturedThis =  this;
+    const capturedThis = this;
     const generalizedData = await this.generalizedCollectionMethod(
       orgsAndTokens,
       'repoCollaborators',
@@ -77,7 +77,7 @@ export class CrossOrganizationCollator {
 
   async repoTeams(orgsAndTokens: Map<string, IPurposefulGetAuthorizationHeader>, options, cacheOptions: ICacheOptions): Promise<any> {
     options.apiTypePrefix = 'github.x#';
-    const capturedThis =  this;
+    const capturedThis = this;
     const generalizedData = await this.generalizedCollectionMethod(
       orgsAndTokens,
       'repoTeams',
@@ -233,7 +233,7 @@ export class CrossOrganizationCollator {
         delete entities.headers;
       }
       return projectedToDataEntity;
-    }
+    };
   }
 
   private async getAllTeams(orgsAndTokens: Map<string, IPurposefulGetAuthorizationHeader>, options, cacheOptions: IPagedCrossOrganizationCacheOptions): Promise<any> {

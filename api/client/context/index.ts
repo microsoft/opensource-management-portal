@@ -45,7 +45,7 @@ router.get('/', (req: ReposAppRequest, res) => {
 });
 
 router.get('/accountDetails', asyncHandler(async (req: ReposAppRequest, res) => {
-  const { operations} = getProviders(req);
+  const { operations } = getProviders(req);
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const gh = activeContext.getGitHubIdentity();
   if (!gh || !gh.id) {

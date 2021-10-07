@@ -91,7 +91,7 @@ function finalizeUndoEvents(operations: Operations, identity: IGitHubIdentity, r
       operation: record,
       supported: false,
     };
-    switch(record.action) {
+    switch (record.action) {
       // Dropped collaborator admin on a repository
       case AuditEvents.Repository.EditMember: {
         entry.title = 'Repository permission edited';
@@ -351,7 +351,7 @@ function nextTickAsyncSendMail(operations: Operations, context: IndividualContex
 }
 
 async function sendUndoMailNotification(operations: Operations, context: IndividualContext, undoEntry: IUndoEntry, undoOutcome: IUndoOutcome) {
-  const operationsMails = [ operations.getOperationsMailAddress() ];
+  const operationsMails = [operations.getOperationsMailAddress()];
   const ghi = context.getGitHubIdentity();
   const link = context.link;
   const details = {
@@ -384,7 +384,7 @@ async function sendUndoMailNotification(operations: Operations, context: Individ
     }
   }
   if (!link) {
-    throw new Error('No link for the individual context, no mail can be sent')
+    throw new Error('No link for the individual context, no mail can be sent');
   }
   try {
     const mailAddress = await operations.getMailAddressFromCorporateUsername(link.corporateUsername);

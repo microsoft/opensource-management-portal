@@ -19,12 +19,12 @@
     "organization"
   ],
   "scripts": {
-    "lint:js": "eslint .",
+    "offline-lint:js": "eslint .",
     "start": "node ./dist/bin/www",
     "start-in-container": "node ./bin/www",
     "start-4000": "PORT=4000 DEBUG=startup node ./dist/bin/www",
     "test": "jest",
-    "test:ci": "npm run lint:js && jest --watchAll=false --reporters=default --reporters=jest-junit",
+    "test:ci": "jest --watchAll=false --reporters=default --reporters=jest-junit",
     "build": "./node_modules/typescript/bin/tsc"
   },
   "jest-junit": {
@@ -148,13 +148,13 @@
     "@types/simple-oauth2": "4.1.1",
     "@types/unzipper": "0.10.4",
     "@types/validator": "13.6.3",
-    "@typescript-eslint/eslint-plugin": "^4.21.0",
-    "@typescript-eslint/parser": "^4.21.0",
-    "eslint": "^7.24.0",
+    "@typescript-eslint/eslint-plugin": "4.33.0",
+    "@typescript-eslint/parser": "4.33.0",
+    "eslint": "7.32.0",
     "jest": "27.2.4",
     "jest-junit": "12.3.0",
-    "ts-node": "10.2.1",
     "ts-jest": "27.0.5",
+    "ts-node": "10.2.1",
     "typescript": "4.4.3"
   }
 }

@@ -64,18 +64,18 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
   async callApi(apiContext: GitHubApiContext, optionalMessage?: string): Promise<IRestResponse> {
     const token = apiContext.token;
     // CONSIDER: rename apiContext.token *to* something like apiContext.authorization
-    if (typeof(token) === 'string' && (!(token as string).startsWith('token ') && !(token as string).startsWith('bearer '))) {
+    if (typeof (token) === 'string' && (!(token as string).startsWith('token ') && !(token as string).startsWith('bearer '))) {
       if (optionalMessage) {
         debug(optionalMessage);
       }
       const warning = `API context api=${apiContext.api} does not have a token that starts with 'token [REDACTED]' or 'bearer [REDACTED], investigate this breakpoint`;
       throw new Error(warning);
     }
-    let authorizationHeaderValue = typeof(token) === 'string' ? token as string : null;
+    let authorizationHeaderValue = typeof (token) === 'string' ? token as string : null;
     if (!authorizationHeaderValue) {
-      if (typeof(token) === 'function') {
+      if (typeof (token) === 'function') {
         const response = await token();
-        if (typeof(response) === 'string') {
+        if (typeof (response) === 'string') {
           // happens when it isn't a more modern GitHub app response
           authorizationHeaderValue = response;
         } else {
@@ -283,7 +283,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     const md: IRestMetadata = {
       headers: response.headers,
       status: response.status,
-    }
+    };
     return md;
   }
 
@@ -417,7 +417,7 @@ export class GitHubApiContext extends ApiContext {
       const asPair = token as IAuthorizationHeaderValue;
       this._token = asPair.value;
       this.tokenSource = asPair;
-    } else if (typeof(token) === 'string') {
+    } else if (typeof (token) === 'string') {
       this._token = token as string;
     } else {
       this._token = token;
@@ -449,7 +449,7 @@ function createApiContextForGithub(api: any, options: any): GitHubApiContext {
 
 export function StripGitHubEntity(entityType: GitHubResponseType, incomingEntity: any, keyOrName: string): any | null {
   let entityClone = null;
-  if (!incomingEntity || typeof(incomingEntity) !== 'object') {
+  if (!incomingEntity || typeof (incomingEntity) !== 'object') {
     return; // no change
   }
   const keepers = entityData.entityPropertiesToKeep.get(entityType) || emptySet;

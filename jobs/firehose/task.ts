@@ -60,7 +60,7 @@ export default async function firehose({ providers, started }: IReposJob): Promi
     console.log('The queue provider does not support multiple concurrent threads');
   }
   let parallelism = supportsMultipleThreads ? maxParallelism : 1;
-  const sliceDelayPerThread =  emptyQueueDelaySeconds/ parallelism;
+  const sliceDelayPerThread = emptyQueueDelaySeconds / parallelism;
   console.log(`Parallelism for this run will be ${parallelism} logical threads, offset by ${sliceDelayPerThread}s`);
   // const insights = app.settings.appInsightsClient;
   if (insights) {
@@ -106,7 +106,7 @@ export default async function firehose({ providers, started }: IReposJob): Promi
       const insights = app.settings.appInsightsClient;
       insights.trackException({ exception: error });
       insights.trackEvent({
-        name:'JobFirehoseFatalError',
+        name: 'JobFirehoseFatalError',
         properties: {
           message: error.message,
         },
@@ -198,7 +198,7 @@ export default async function firehose({ providers, started }: IReposJob): Promi
           return;
         }
       } else if (installation.target_type) {
-        console.log(`invalid target type ${installation.target_type} for installation id=${installation.id}`)
+        console.log(`invalid target type ${installation.target_type} for installation id=${installation.id}`);
         acknowledgeEvent();
         return;
       }

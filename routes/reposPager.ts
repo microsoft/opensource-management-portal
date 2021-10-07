@@ -4,7 +4,7 @@
 //
 
 import asyncHandler from 'express-async-handler';
-import { Response, NextFunction } from 'express';
+import { NextFunction, Response } from 'express';
 import _ from 'lodash';
 
 import { daysInMilliseconds } from '../utils';

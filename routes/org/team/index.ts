@@ -150,7 +150,7 @@ router.post('/selfServiceMaintainerUpgrade', asyncHandler(async (req: ILocalRequ
   }
   const individualContext = req.individualContext;
   try {
-    await selfServiceTeamMemberToMaintainerUpgrades.validateUserCanSelfServicePromote(individualContext)
+    await selfServiceTeamMemberToMaintainerUpgrades.validateUserCanSelfServicePromote(individualContext);
   } catch (notEligible) {
     return next(notEligible);
   }
@@ -195,7 +195,7 @@ export async function submitTeamJoinRequest(
   optionalJustification: string,
   correlationId: string,
   hostname: string
-  ): Promise<ITeamJoinRequestSubmitOutcome> {
+): Promise<ITeamJoinRequestSubmitOutcome> {
   const { approvalProvider, config, mailProvider, mailAddressProvider, insights, operations } = providers;
   const organization = team.organization;
   const broadAccessTeams = new Set(organization.broadAccessTeams);
@@ -204,7 +204,7 @@ export async function submitTeamJoinRequest(
   }
   const username = activeContext.getGitHubIdentity().username;
   if (!username) {
-    return { error: new Error('Active context required')};
+    return { error: new Error('Active context required') };
   }
   if (broadAccessTeams.has(team.id)) {
     try {

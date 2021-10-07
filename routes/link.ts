@@ -155,7 +155,7 @@ async function showLinkPage(req: ReposAppRequest, res) {
       view: 'link',
       title: 'Link GitHub with corporate identity',
       optionalObject: options || {},
-    })
+    });
   }
   const { config, graphProvider } = getProviders(req);
   if (config.authentication.scheme !== 'aad' || !graphProvider) {
@@ -199,7 +199,7 @@ export async function interactiveLinkUser(isJson: boolean, individualContext: In
   const serviceAccountMail = req.body.serviceAccountMail;
   const { operations } = getProviders(req);
   if (isServiceAccount && !validator.isEmail(serviceAccountMail)) {
-    const errorMessage = 'Please enter a valid e-mail address for the Service Account maintainer.'
+    const errorMessage = 'Please enter a valid e-mail address for the Service Account maintainer.';
     return next(isJson ? jsonError(errorMessage, 400) : wrapError(null, errorMessage, true));
   }
   let newLinkObject: ICorporateLink = null;

@@ -215,7 +215,7 @@ export class RestCollections {
     while (!done) {
       const method = githubCall;
       const args = [];
-      const currentToken = typeof(token) === 'string' ? token : await token();
+      const currentToken = typeof (token) === 'string' ? token : await token();
       args.push(currentToken);
       const clonedOptions = Object.assign({}, options);
       if (++currentPage > 1) {
@@ -252,7 +252,7 @@ export class RestCollections {
         debug(`Retry-After header was present. Delaying before next page ${delaySeconds}s.`);
         await sleep(delaySeconds * 1000);
       } else if (pageRequestDelay) {
-        const to = typeof(pageRequestDelay);
+        const to = typeof (pageRequestDelay);
         let evaluatedTime = 0;
         if (to === 'number') {
           evaluatedTime = pageRequestDelay as number;
@@ -309,7 +309,7 @@ export class RestCollections {
       return {
         data: filteredData,
         requests,
-      }
+      };
     } catch (error) {
       throw error;
     }

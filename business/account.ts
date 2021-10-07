@@ -49,7 +49,7 @@ export class Account {
       login: this.login,
       created_at: this.created_at,
       updated_at: this.updated_at,
-    }
+    };
     switch (format) {
       case AccountJsonFormat.GitHub: {
         return basic;

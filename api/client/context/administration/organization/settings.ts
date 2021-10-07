@@ -3,14 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express from 'express';
+import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 import { OrganizationSetting } from '../../../../../entities/organizationSettings/organizationSetting';
 import { ReposAppRequest } from '../../../../../interfaces';
 import { jsonError } from '../../../../../middleware';
 import { ErrorHelper, getProviders } from '../../../../../transitional';
 
-const router = express.Router();
+const router: Router = Router();
 
 interface IOrganizationSettings extends ReposAppRequest {
   dynamicSettings: OrganizationSetting;
@@ -67,7 +67,7 @@ router.put('/feature/:flag', asyncHandler(async (req: IOrganizationSettings, res
       flag,
       currentFeatureFlags: features.join(', '),
     },
-  })
+  });
   if (features.includes(flag)) {
     return next(jsonError(`flag "${flag}" is already set`, 400));
   }
@@ -96,7 +96,7 @@ router.delete('/feature/:flag', asyncHandler(async (req: IOrganizationSettings, 
       flag,
       currentFeatureFlags: features.join(', '),
     },
-  })
+  });
   if (!features.includes(flag)) {
     return next(jsonError(`flag "${flag}" is not set`, 400));
   }
@@ -144,7 +144,7 @@ router.put('/property/:propertyName', asyncHandler(async (req: IOrganizationSett
   if (!newValue) {
     return next(jsonError('body.value required', 400));
   }
-  if (typeof(newValue) !== 'string') {
+  if (typeof (newValue) !== 'string') {
     return next(jsonError('body.value must be a string value', 400));
   }
   const propertyName = req.params.propertyName as string;
@@ -156,7 +156,7 @@ router.put('/property/:propertyName', asyncHandler(async (req: IOrganizationSett
       currentProperties: JSON.stringify(properties),
       currentPropertyValue,
     },
-  })
+  });
   const updateDescription = `Changing property ${propertyName} value from "${currentPropertyValue}" to "${newValue}"`;
   dynamicSettings.properties[propertyName] = newValue;
   try {
@@ -187,7 +187,7 @@ router.delete('/property/:propertyName', asyncHandler(async (req: IOrganizationS
       currentProperties: JSON.stringify(properties),
       currentPropertyValue,
     },
-  })
+  });
   if (properties[propertyName] === undefined) {
     return next(jsonError(`property "${propertyName}" is not set`, 400));
   }

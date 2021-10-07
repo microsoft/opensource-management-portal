@@ -5,7 +5,7 @@
 
 import _ from 'lodash';
 import asyncHandler from 'express-async-handler';
-import { Response, NextFunction } from 'express';
+import { NextFunction, Response } from 'express';
 
 import { getProviders } from '../transitional';
 import { Operations } from '../business';
@@ -73,7 +73,7 @@ function reduceTeams(collections, property, map) {
   });
 }
 
-export default asyncHandler(async function(req: ReposAppRequest, res: Response, next: NextFunction) {
+export default asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const { operations } = getProviders(req);
   const isCrossOrg = req.teamsPagerMode === 'orgs';
   const aggregations = req.individualContext.aggregations;

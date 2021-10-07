@@ -23,7 +23,7 @@ import { ICacheHelper } from '../../lib/caching';
 import { createPortalSudoInstance, IPortalSudo } from '../../features';
 import { IOperationsCoreOptions, OperationsCore } from './core';
 import { linkAccounts as linkAccountsMethod } from './link';
-import { sendTerminatedAccountMail as sendTerminatedAccountMailMethod} from './unlinkMail';
+import { sendTerminatedAccountMail as sendTerminatedAccountMailMethod } from './unlinkMail';
 import { CoreCapability, ICachedEmployeeInformation, ICacheOptions, ICorporateLink, ICreatedLinkOutcome, ICreateLinkOptions, ICrossOrganizationMembershipByOrganization, ICrossOrganizationTeamMembership, IGetAuthorizationHeader, IMapPlusMetaCost, IOperationsCentralOperationsToken, IOperationsHierarchy, IOperationsLegalEntities, IOperationsLinks, IOperationsLockdownFeatureFlags, IOperationsNotifications, IOperationsRepositoryMetadataProvider, IOperationsServiceAccounts, IOperationsTemplates, IPagedCrossOrganizationCacheOptions, IPromisedLinks, IPurposefulGetAuthorizationHeader, ISupportedLinkTypeOutcome, IUnlinkMailStatus, SupportedLinkType, UnlinkPurpose } from '../../interfaces';
 import { CreateError, ErrorHelper } from '../../transitional';
 import { Team } from '../team';
@@ -58,18 +58,17 @@ export interface IOperationsOptions extends IOperationsCoreOptions {
 
 export class Operations
   extends
-    OperationsCore
+  OperationsCore
   implements
-    IOperationsLegalEntities,
-    IOperationsServiceAccounts,
-    IOperationsTemplates,
-    IOperationsLinks,
-    IOperationsNotifications,
-    IOperationsHierarchy,
-    IOperationsCentralOperationsToken,
-    IOperationsRepositoryMetadataProvider,
-    IOperationsLockdownFeatureFlags
- {
+  IOperationsLegalEntities,
+  IOperationsServiceAccounts,
+  IOperationsTemplates,
+  IOperationsLinks,
+  IOperationsNotifications,
+  IOperationsHierarchy,
+  IOperationsCentralOperationsToken,
+  IOperationsRepositoryMetadataProvider,
+  IOperationsLockdownFeatureFlags {
   private _cache: ICacheHelper;
   private _graphManager: GraphManager;
   private _organizationNames: string[];

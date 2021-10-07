@@ -135,11 +135,11 @@ router.get('/', lowercaser(['sort']), asyncHandler(async (req: IPeopleSearchRequ
 
   await search.search(page, req.query.sort as string);
   let maillist = '';
-  search.members.forEach(function(element) {
+  search.members.forEach(function (element) {
     if (maillist != '' && element.link != undefined) {
-      maillist = maillist + ', '
+      maillist = maillist + ', ';
     }
-    maillist += element.link && element.link.corporateUsername || ""
+    maillist += element.link && element.link.corporateUsername || "";
   });
   req.individualContext.webContext.render({
     view: 'people/',

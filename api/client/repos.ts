@@ -21,7 +21,7 @@ router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
   const searchOptions = {
     q: (req.query.q || '') as string,
     type: (req.query.type || '') as string, // CONSIDER: TS: stronger typing
-  }
+  };
   try {
     const repos = await searchRepos(providers, null, RepositorySearchSortOrder.Updated, searchOptions);
     const slice = pager.slice(repos);

@@ -56,7 +56,7 @@ router.get('/personalizedTeams', asyncHandler(async (req: ILocalApiRequest, res,
         id: Number(combinedTeam.id),
         name: combinedTeam.name,
         role: maintainedTeams.has(combinedTeam.id.toString()) ? GitHubTeamRole.Maintainer : GitHubTeamRole.Member,
-      }
+      };
     });
     return res.json({
       personalizedTeams,
@@ -220,7 +220,7 @@ export async function createRepositoryFromClient(req: ILocalApiRequest, res, nex
         if (approvalTypesToIds[key] === body.approvalType) {
           valid = true;
         }
-      })
+      });
       if (!valid) {
         return next(jsonError('The approval type is not supported or approved at this time', 400));
       }
@@ -255,7 +255,7 @@ export async function createRepositoryFromClient(req: ILocalApiRequest, res, nex
     const templates = _.keyBy(organization.getRepositoryCreateMetadata().templates, 'id');
     const template = templates[body.template];
     // if (!template) {
-      // return next(jsonError('There was a configuration problem, the template metadata was not available for this request', 400));
+    // return next(jsonError('There was a configuration problem, the template metadata was not available for this request', 400));
     // }
     translateValue(body, 'template', 'ms.template');
     body['ms.license'] = template && (template.spdx || template.name); // Today this is the "template name" or SPDX if available

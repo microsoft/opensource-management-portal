@@ -51,8 +51,8 @@ router.use('/:teamSlug', asyncHandler(async (req: ITeamsRequest, res, next) => {
     return next();
   } catch (getTeamError) {
     if (getTeamError && getTeamError.slug) {
-    // Redirect if a name was provided when a slug is more appropriate
-    return res.redirect(`${orgBaseUrl}teams/${getTeamError.slug}`);
+      // Redirect if a name was provided when a slug is more appropriate
+      return res.redirect(`${orgBaseUrl}teams/${getTeamError.slug}`);
     }
     if (getTeamError) {
       return next(getTeamError);

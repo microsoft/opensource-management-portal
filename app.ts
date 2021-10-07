@@ -24,7 +24,7 @@ app.initializeJob = function initializeJob(config, configurationError) {
     'web',
   ]);
   return initialize(app, express, __dirname, config, configurationError);
-}
+};
 
 async function startup(startupApplication: boolean) {
   let painlessConfigResolver = null;
@@ -139,6 +139,6 @@ app.runJob = async function (job: (job: IReposJob) => Promise<IReposJobResult | 
   console.log('The job was successful.');
   quitInTenSeconds(true);
   return app;
-}
+};
 
 export default app;

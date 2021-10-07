@@ -27,8 +27,8 @@ export enum ApiContextType {
 }
 
 export interface IRestResponseHeaders {
-   etag?: string;
-   link?: unknown;
+  etag?: string;
+  link?: unknown;
 }
 
 const headerKeysWanted = [
@@ -165,7 +165,7 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
   abstract callApi(apiContext: ApiContext, optionalMessage?: string): Promise<IRestResponse>;
   abstract withResponseUpdateMetadata(apiContext: ApiContext, response: IRestResponse): IRestResponse;
 
-  abstract withResponseShouldCacheBeServed(apiContext: ApiContext, response: IRestResponse) : boolean | IShouldServeCache;
+  abstract withResponseShouldCacheBeServed(apiContext: ApiContext, response: IRestResponse): boolean | IShouldServeCache;
   abstract withMetadataShouldCacheBeServed(apiContext: ApiContext, metadata: IRestMetadata): boolean | IShouldServeCache;
   abstract reduceMetadataToCacheFromResponse(apiContext: ApiContext, response: IRestResponse): IRestMetadata;
   abstract getResponseMetadata(apiContext: ApiContext, response: IRestResponse): IRestMetadata;
@@ -182,7 +182,7 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
         console.dir(err);
       }
     };
-    backgroundAsyncWork().then(ok => {}).catch(() => {});
+    backgroundAsyncWork().then(ok => { }).catch(() => { });
     return this.finalizeResult(apiContext, response);
   }
 
@@ -222,9 +222,9 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
       if (optionalCacheDecisions && optionalCacheDecisions.refresh === true) {
         // NOTE: this kicks off the refresh and so does not await
         debug('Starting a background refresh');
-        this.backgroundRefreshAsync(apiContext, apiContext.metadata).then(ok => {}).catch(() => {});
+        this.backgroundRefreshAsync(apiContext, apiContext.metadata).then(ok => { }).catch(() => { });
       } else {
-        this.slideObjectExpirationWindow(apiContext).then(ok => {}).catch(() => {});
+        this.slideObjectExpirationWindow(apiContext).then(ok => { }).catch(() => { });
       }
       debug('Finalizing result');
       return this.finalizeResult(apiContext, result);
@@ -233,7 +233,8 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
     if (result) {
       this.evict(apiContext)
         .then(() => {
-          console.log('(evicted)' )})
+          console.log('(evicted)');
+        })
         .catch(err => {
           if (!ErrorHelper.IsNotFound(err)) {
             console.warn(`(eviction error: ${err})`);
@@ -305,7 +306,7 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
       debug('Could not slide the window, no etag stored in the context.');
       return;
     }
-    debug(`Sliding expiration window for ${this.redisKeyBodyVersion(apiContext, apiContext.etag)}`)
+    debug(`Sliding expiration window for ${this.redisKeyBodyVersion(apiContext, apiContext.etag)}`);
     const cost = await apiContext.libraryContext.cacheProvider.expire(
       this.redisKeyBodyVersion(apiContext, apiContext.etag),
       apiContext.cacheValues.longtermResponse);
@@ -458,7 +459,7 @@ function normalizedOptionsString(options) {
   if (options.additionalDifferentiationParameters) {
     additional = options.additionalDifferentiationParameters;
   }
-  let opts = {...options, ...additional};
+  let opts = { ...options, ...additional };
   if (opts.additionalDifferentiationParameters) {
     delete opts.additionalDifferentiationParameters;
   }

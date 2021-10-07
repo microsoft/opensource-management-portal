@@ -148,12 +148,12 @@ function teamTooLargeForPurpose(teamId, isAdmin, isPush, organization, teamSize,
 
 function translateSpecialToGitHub(ourTerm) {
   switch (ourTerm) {
-  case 'admin':
-    return 'admin';
-  case 'write':
-    return 'push';
-  case 'read':
-    return 'pull';
+    case 'admin':
+      return 'admin';
+    case 'write':
+      return 'push';
+    case 'read':
+      return 'pull';
   }
   throw new Error(`Unknown team type ${ourTerm}`);
 }
@@ -231,7 +231,7 @@ async function sendEmail(config, insights, basedir, mailProvider: IMailProvider,
   let mailContent = null;
   try {
     mailContent = await RenderHtmlMail(basedir, 'largeTeamProtected', body);
-  } catch(renderError) {
+  } catch (renderError) {
     insights.trackException({
       exception: renderError,
       properties: {

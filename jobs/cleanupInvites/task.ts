@@ -12,7 +12,7 @@ import { IReposJob } from '../../interfaces';
 
 const defaultMaximumInvitationAgeDays = 4;
 
-export default async function cleanup({ providers }: IReposJob) : Promise<void> {
+export default async function cleanup({ providers }: IReposJob): Promise<void> {
   const insights = providers.insights;
   let maximumInvitationAgeDays = defaultMaximumInvitationAgeDays;
   const { config, operations } = providers;

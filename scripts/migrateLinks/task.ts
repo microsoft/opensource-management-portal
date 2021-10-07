@@ -21,7 +21,7 @@ import { ErrorHelper } from '../../transitional';
 
 const parallelWorkLimit = 5;
 
-export default async function migration({ providers }: IReposJob) : Promise<void> {
+export default async function migration({ providers }: IReposJob): Promise<void> {
   // const sourceLinkProvider = providers.linkProvider;
   const config = providers.config;
   const sourceLinkProviderName = 'table';
@@ -87,7 +87,7 @@ export default async function migration({ providers }: IReposJob) : Promise<void
   console.log();
 }
 
-async function getThirdPartyLink(linkProvider: ILinkProvider, thirdPartyId: string) : Promise<ICorporateLink> {
+async function getThirdPartyLink(linkProvider: ILinkProvider, thirdPartyId: string): Promise<ICorporateLink> {
   try {
     return await linkProvider.getByThirdPartyId(thirdPartyId);
   } catch (error) {
@@ -98,7 +98,7 @@ async function getThirdPartyLink(linkProvider: ILinkProvider, thirdPartyId: stri
   }
 }
 
-async function getUserIdByUpn(graphProvider, upn: string) : Promise<string> {
+async function getUserIdByUpn(graphProvider, upn: string): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     graphProvider.getUserById(upn, (err, info) => {
       if (err && err['status'] === 404) {

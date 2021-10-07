@@ -21,7 +21,7 @@ Expired blobs:   ${stats.expired}
 Blobs processed: ${stats.processedBlobs}
 Pages processed: ${stats.processedPages}
 Errors:          ${stats.errors.length}
-`)
+`);
           if (stats.errors.length) {
             console.dir(stats.errors);
           }

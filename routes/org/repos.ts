@@ -165,7 +165,7 @@ router.get('/:repoName/delete', asyncHandler(async function (req: ILocalRequest,
     state: {
       repo: req.repository,
     },
-  })
+  });
 }));
 
 router.post('/:repoName/delete', asyncHandler(async function (req: ILocalRequest, res, next) {
@@ -230,7 +230,7 @@ export async function renameRepositoryDefaultBranchEndToEnd(providers: IProvider
         console.error(`Background refresh error: ${error}`);
         return resolve();
       });
-    })
+    });
   }
   const output = await repository.renameDefaultBranch(targetBranchName);
   if (waitForRefresh) {
