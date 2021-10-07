@@ -50,7 +50,7 @@ export function requireJson(nameFromRoot: string): any {
 // ----------------------------------------------------------------------------
 // Returns an integer, random, between low and high (exclusive) - [low, high)
 // ----------------------------------------------------------------------------
-export function randomInteger(low, high) {
+export function randomInteger(low: number, high: number) {
   return Math.floor(Math.random() * (high - low) + low);
 };
 
