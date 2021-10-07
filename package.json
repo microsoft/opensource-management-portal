@@ -114,7 +114,7 @@
     "semver": "7.3.5",
     "serve-favicon": "2.5.0",
     "simple-oauth2": "4.2.0",
-    "strip-json-comments": "3.1.1",
+    "strip-json-comments": "4.0.0",
     "throat": "6.0.1",
     "tmp-promise": "3.0.2",
     "unzipper": "^0.10.11",
