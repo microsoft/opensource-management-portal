@@ -29,6 +29,14 @@ variable value to `1`.
   - Variable: `FEATURE_FLAG_ALLOW_API_CLIENT`
   - Purpose: Allows session-based client APIs, used for powering a modern front-end app connected to the site
 
+- exposeWebhookIngestionEndpoint
+
+  - Variable: `EXPOSE_WEBHOOK_INGESTION_ENDPOINT`
+  - Value: set to `1` to enable the `/api/webhook`/ endpoint that ingests GitHub webhook event bodies.
+  - Default: `0`
+  - Risk/notes: when exposing this endpoint, webhook signature validation should also be performed. At this time, the webhook signature verification code is incomplete.
+  - Recommendation: use a more secure route, such as the queue-based firehose processing method.
+
 ## Temporary features
 
 An optional set of features are being developed for use in summer 2020 as part
