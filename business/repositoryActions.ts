@@ -90,6 +90,44 @@ export class RepositoryActions {
     return entity as IGitHubActionWorkflowsResponse;
   }
 
+  async getWorkflowRuns(workflowId: string | number, cacheOptions?: ICacheOptions): Promise<any> {
+    cacheOptions = cacheOptions || {};
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const github = operations.github;
+    const parameters = {
+      owner: this._repository.organization.name,
+      repo: this._repository.name,
+      workflow_id: String(workflowId),
+    };
+    if (!cacheOptions.maxAgeSeconds) {
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.repoBranchesStaleSeconds /* not specific */);
+    }
+    if (cacheOptions.backgroundRefresh === undefined) {
+      cacheOptions.backgroundRefresh = true;
+    }
+    const entity = await github.call(this.authorize(AppPurpose.ActionsData), 'actions.listWorkflowRuns', parameters, cacheOptions);
+    return entity;
+  }
+
+  async getWorkflowUsage(workflowId: string | number, cacheOptions?: ICacheOptions): Promise<any> {
+    cacheOptions = cacheOptions || {};
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const github = operations.github;
+    const parameters = {
+      owner: this._repository.organization.name,
+      repo: this._repository.name,
+      workflow_id: String(workflowId),
+    };
+    if (!cacheOptions.maxAgeSeconds) {
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.repoBranchesStaleSeconds /* not specific */);
+    }
+    if (cacheOptions.backgroundRefresh === undefined) {
+      cacheOptions.backgroundRefresh = true;
+    }
+    const entity = await github.call(this.authorize(AppPurpose.ActionsData), 'actions.getWorkflowUsage', parameters, cacheOptions);
+    return entity;
+  }
+
   private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
     const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(this, purpose) as IGetAuthorizationHeader;
     return getAuthorizationHeader;
