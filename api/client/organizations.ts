@@ -25,6 +25,18 @@ router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
   }
 }));
 
+router.get('/list.txt', asyncHandler(async (req: ReposAppRequest, res, next) => {
+  const { operations } = getProviders(req);
+  try {
+    const orgs = operations.getOrganizations();
+    const dd = orgs.map(org => { return org.name.toLowerCase(); });
+    res.contentType('text/txt');
+    res.send(dd.sort().join('\n'));
+  } catch (error) {
+    throw jsonError(error, 400);
+  }
+}));
+
 router.use('/:orgName', asyncHandler(async (req: ReposAppRequest, res, next) => {
   const { operations } = getProviders(req);
   const { orgName } = req.params;

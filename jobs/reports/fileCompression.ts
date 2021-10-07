@@ -4,8 +4,8 @@
 //
 
 import fs from 'fs';
-import tmp from 'tmp';
 import zlib from 'zlib';
+import tmp from 'tmp-promise';
 
 export function deflateFile(inputFilename: string, outputFilename: string, callback) {
   const gzip = zlib.createGzip();
@@ -19,21 +19,14 @@ function getTempFilenames(count: number, callback) {
   const filenames = [];
   async function process() {
     while (filenames.length !== count) {
-      filenames.push(await getNewTemporaryFilename());
+      const result = await tmp.file();
+      filenames.push(result.path);
     }
   }
   process().then(ok => {
     return callback(null, filenames);
   }).catch(error => {
     return callback(error);
-  });
-}
-
-async function getNewTemporaryFilename(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    tmp.tmpName((tempGenerationError, tempPath) => {
-      return tempGenerationError ? reject(tempGenerationError) : resolve(tempPath);
-    });
   });
 }
 

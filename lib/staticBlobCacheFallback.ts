@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { DefaultAzureCredential } from '@azure/identity';
 import {
   BlobServiceClient,
   StorageSharedKeyCredential,
@@ -50,16 +51,17 @@ export default class StaticBlobCacheFallback {
     if (!account) {
       throw new Error('options.account required');
     }
-    if (!key) {
-      throw new Error('options.key required');
-    }
     if (!this._options.container) {
       throw new Error('options.container required');
     }
-    const sharedKeyCredential = new StorageSharedKeyCredential(account, key);
+    if (!key) {
+      // TODO: remove after validation
+      console.log('Temporary note: using DefaultAzureCredential without a key');
+    }
+    const credential = key ? new StorageSharedKeyCredential(account, key) : new DefaultAzureCredential();
     this._client = new BlobServiceClient(
       `https://${account}.blob.core.windows.net`,
-      sharedKeyCredential,
+      credential,
     );
     try {
       this._container = this._client.getContainerClient(this._options.container);
@@ -92,7 +94,7 @@ export default class StaticBlobCacheFallback {
 
   private throwIfNotInitialized() {
     if (!this._initialized) {
-      throw new Error('This provider must be initialized before it can be used');
+      throw new Error('Static blob cache provider must be initialized before it can be used');
     }
   }
 }

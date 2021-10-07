@@ -10,10 +10,9 @@
 // report providers. It is OK for a provider in the pipeline to depend on the data
 // collected before its execution.
 
-import azure from 'azure-storage';
 import os from 'os';
 import fileSize from 'file-size';
-import moment from 'moment-timezone';
+import moment from 'moment';
 import path from 'path';
 
 import app from '../../app';
@@ -358,57 +357,6 @@ async function dataLakeUpload(context: IReportsContext) {
       }
     }
   }
-  if (dataLakeOutput.length) {
-    insights.trackEvent({ name: 'JobReportsReportDataLakeSaving' });
-    return saveDataLakeOutput(context, dataLakeOutput);
-  } else {
-    insights.trackEvent({ name: 'JobReportsReportDataLakeEmptyReport' });
-    return context;
-  }
-}
-
-function saveDataLakeOutput(context: IReportsContext, dataLakeOutput: string[]): Promise<IReportsContext> {
-  // Each line of the file is its own independent JSON object
-  const text = dataLakeOutput.join('\r\n');
-  const insights = context.insights;
-  const dla = context.settings.dataLakeAccount;
-  if (!dla) {
-    return Promise.reject(new Error('Missing Azure Data Lake / Azure Storage Account information'));
-  }
-  return new Promise((resolve, reject) => {
-    const backupBlobService = azure.createBlobService(dla.account, dla.key);
-    const containerName = dla.containerName;
-    backupBlobService.createContainerIfNotExists(containerName, (createContainerError) => {
-      if (createContainerError) {
-        insights.trackException({ exception: createContainerError });
-        return reject(createContainerError);
-      }
-      const blobPrefix = dla.blobPrefix || 'consolidatedReports';
-      const backupBlobName = `${blobPrefix}_${moment.utc().format('YYYY_MM_DD')}.json.gz`;
-      writeDeflatedTextFile(text, (writeError, deflatedTempPath) => {
-        if (writeError) {
-          insights.trackException({ exception: writeError });
-          return reject(writeError);
-        }
-        backupBlobService.createBlockBlobFromLocalFile(containerName, backupBlobName, deflatedTempPath, cloudError => {
-          if (cloudError) {
-            insights.trackException({ exception: cloudError });
-            return reject(cloudError);
-          }
-          // Successful
-          insights.trackEvent({
-            name: 'JobReportsReportDataLakeBackup',
-            properties: {
-              filename: backupBlobName,
-              containerName: containerName,
-              account: dla.account,
-            },
-          });
-          return resolve(context);
-        });
-      });
-    });
-  });
 }
 
 async function storeReports(context: IReportsContext): Promise<IReportsContext> {
@@ -417,7 +365,7 @@ async function storeReports(context: IReportsContext): Promise<IReportsContext> 
   const consolidatedSchemaVersion = context.settings.consolidatedSchemaVersion;
   report.metadata = {
     started: context.started,
-    startedText: moment(context.started).tz('America/Los_Angeles').format(reportGeneratedFormat),
+    startedText: moment(context.started).format(reportGeneratedFormat),
     finished: moment().format(),
     version: consolidatedSchemaVersion,
   };

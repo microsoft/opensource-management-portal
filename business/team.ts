@@ -322,7 +322,7 @@ export class Team {
     return github.requestAsPost(this.authorize(AppPurpose.Operations), 'DELETE /organizations/:org_id/team/:team_id/memberships/:username', parameters);
   }
 
-  async addMembership(username: string, options?: IUpdateTeamMembershipOptions): Promise<any> {
+  async addMembership(username: string, options?: IUpdateTeamMembershipOptions): Promise<ITeamMembershipRoleState> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
     options = options || {};
@@ -337,10 +337,10 @@ export class Team {
       role,
     };
     const ok = await github.post(this.authorize(AppPurpose.CustomerFacing), 'teams.addOrUpdateMembershipForUserInOrg', parameters);
-    return ok;
+    return ok as ITeamMembershipRoleState;
   }
 
-  addMaintainer(username: string): Promise<void> {
+  addMaintainer(username: string): Promise<ITeamMembershipRoleState> {
     return this.addMembership(username, { role: GitHubTeamRole.Maintainer });
   }
 

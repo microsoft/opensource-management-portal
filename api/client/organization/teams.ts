@@ -37,15 +37,15 @@ router.use('/:teamSlug', asyncHandler(async (req: ReposAppRequest, res, next) =>
 
 router.use('/:teamSlug', RouteTeam);
 
-async function getTeamsForOrganization(organization: Organization): Promise<Team[]> {
+async function getTeamsForOrganization(organization: Organization, tryRecentRefresh: boolean): Promise<Team[]> {
   const cached = leakyLocalCache.get(organization.id);
-  if (cached) {
+  if (cached && !tryRecentRefresh) {
     return cached;
   }
   const options = {
-    backgroundRefresh: true,
-    maxAgeSeconds: 60 * 10 /* 10 minutes */,
-    individualMaxAgeSeconds: 60 * 30 /* 30 minutes */,
+    backgroundRefresh: !tryRecentRefresh,
+    maxAgeSeconds: tryRecentRefresh ? 0 : 60 * 10 /* 10 minutes */,
+    individualMaxAgeSeconds: tryRecentRefresh ? 0 : 60 * 30 /* 30 minutes */,
   };
   let list: Team[] = null;
   list = await organization.getTeams(options);
@@ -64,10 +64,11 @@ export async function getClientApiOrganizationTeamsResponse(req: ReposAppRequest
   }
   const pager = new JsonPager<Team>(req, res);
   const q: string = (req.query.q ? req.query.q as string : null) || '';
+  const forceRefresh = req.query.refresh === '1';
   try {
     // TODO: need to do lots of caching to make this awesome!
     // const repos = await organization.getRepositories();
-    let teams = await getTeamsForOrganization(organization);
+    let teams = await getTeamsForOrganization(organization, forceRefresh);
     if (q) {
       teams = teams.filter(team => {
         let string = ((team.name || '') + (team.description || '') + (team.id || '') + (team.slug || '')).toLowerCase();

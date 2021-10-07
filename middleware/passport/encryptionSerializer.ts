@@ -3,10 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { decryptEntity, encryptEntity } from '../../lib/encryption';
+import { decryptEntityAsync, encryptEntityAsync, IEncryptionOptions } from '../../lib/encryption';
 import { wrapError } from '../../utils';
-
 import { LegacySerializer } from './serializer';
+
+// NOTE TO DEVELOPERS: we are no longer using encrypted sessions at our company
+// and so this codepath is rarely used. We may want to consider removing this
+// entirely to simplify the project and all its many knobs and levers.
 
 const userEncryptedEntities = {
   azure: new Set(),
@@ -49,17 +52,16 @@ function serializeEntity(options, entityName, entity, callback) {
   if (keyResolver === undefined) {
     return callback(new Error('A key resolver must be supplied to use encryption.'));
   }
-  const encryptionOptions = {
+  const encryptionOptions: IEncryptionOptions = {
     keyEncryptionKeyId: config.session.encryptionKeyId,
     keyResolver: keyResolver,
     encryptedPropertyNames: userEncryptedEntities[entityName],
     binaryProperties: 'base64',
   };
-  encryptEntity(partitionKey, rowKey, entity, encryptionOptions, (encryptError, encryptedEntity) => {
-    if (encryptError) {
-      return callback(wrapError(encryptError, 'There was a problem with the security subsystem starting your session.'));
-    }
-    callback(null, encryptedEntity);
+  return encryptEntityAsync(partitionKey, rowKey, entity, encryptionOptions).then(encryptedEntity => {
+    return callback(null, encryptedEntity);
+  }).catch(encryptError => {
+    return callback(wrapError(encryptError, 'There was a problem with the security subsystem starting your session.'));
   });
 }
 
@@ -77,17 +79,16 @@ function deserializeEntity(options, entityName, entity, callback) {
   if (keyResolver === undefined) {
     return callback(new Error('A key resolver must be supplied to encrypt/decrypt.'));
   }
-  const encryptionOptions = {
+  const encryptionOptions: IEncryptionOptions = {
     keyResolver: keyResolver,
     binaryProperties: 'base64',
   };
-  decryptEntity(partitionKey, rowKey, entity, encryptionOptions, (encryptError, decryptedEntity) => {
-    if (encryptError) {
-      const userError = wrapError(encryptError, 'There was a problem with the security subsystem retrieving your session.');
-      userError['forceSignOut'] = true;
-      return callback(userError);
-    }
-    callback(null, decryptedEntity);
+  return decryptEntityAsync(partitionKey, rowKey, entity, encryptionOptions).then(decryptedEntity => {
+    return callback(null, decryptedEntity);
+  }).catch(decryptError => {
+    const userError = wrapError(decryptError, 'There was a problem with the security subsystem retrieving your session.');
+    userError['forceSignOut'] = true;
+    return callback(userError);
   });
 }
 

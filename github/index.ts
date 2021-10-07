@@ -11,6 +11,35 @@ export enum AppPurpose {
   Operations = 'Operations',
   BackgroundJobs = 'BackgroundJobs', // "secondary" / "default" fallback
   Updates = 'Updates',
+  Security = 'Security',
+  ActionsData = 'ActionsData',
+  Onboarding = 'Onboarding',
+}
+
+export const AllAvailableAppPurposes = [
+  AppPurpose.Data,
+  AppPurpose.CustomerFacing,
+  AppPurpose.Operations,
+  AppPurpose.BackgroundJobs,
+  AppPurpose.Updates,
+  AppPurpose.Security,
+  AppPurpose.ActionsData,
+  AppPurpose.Onboarding,
+];
+
+export const GitHubAppPurposesExemptFromAllRepositoriesSelection = [
+  AppPurpose.Onboarding,
+]
+
+export const AppPurposeToConfigurationName = {
+  [AppPurpose.Data]: 'data',
+  [AppPurpose.CustomerFacing]: 'ui',
+  [AppPurpose.Operations]: 'operations',
+  [AppPurpose.BackgroundJobs]: 'jobs',
+  [AppPurpose.Updates]: 'updates',
+  [AppPurpose.Security]: 'security',
+  [AppPurpose.ActionsData]: 'actions',
+  [AppPurpose.Onboarding]: 'onboarding',
 }
 
 export enum GitHubAppAuthenticationType {
@@ -31,10 +60,6 @@ export interface IGitHubAppConfiguration {
 }
 
 export interface IGitHubAppsOptions {
-  backgroundJobs?: IGitHubAppConfiguration;
-  dataApp?: IGitHubAppConfiguration;
-  customerFacingApp?: IGitHubAppConfiguration;
-  operationsApp?: IGitHubAppConfiguration;
-  updatesApp?: IGitHubAppConfiguration;
   app: IReposApplication;
+  configurations: Map<AppPurpose, IGitHubAppConfiguration>;
 }

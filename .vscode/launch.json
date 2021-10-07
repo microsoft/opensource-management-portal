@@ -70,6 +70,20 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Background Job: Firehose",
+      "program": "${workspaceRoot}/dist/jobs/firehose/index.js",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "cwd": "${workspaceRoot}/dist",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,querycache"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Launch site + cache optimization alerts",
       "program": "${workspaceRoot}/dist/bin/www.js",
       "cwd": "${workspaceRoot}/dist",
@@ -130,32 +144,15 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Webhook events firehose",
-      "program": "${workspaceRoot}/dist/jobs/firehose/index.js",
+      "name": "Job: Cleanup invitations",
+      "program": "${workspaceRoot}/dist/jobs/cleanupInvites/index.js",
+      "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
       "console": "integratedTerminal",
-      "cwd": "${workspaceRoot}/dist",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "startup,querycache"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Job: Build Repo Reports (deprecated)",
-      "program": "${workspaceRoot}/dist/jobs/reports/index.js",
-      "cwd": "${workspaceRoot}/dist",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "runtimeArgs": [
-        "--max-old-space-size=4096"
-      ],
-      "env": {
-        "NODE_ENV": "localhost",
-        "DEBUG": "redis-off,restapi-off,startup,appinsights"
+        "DEBUG": "redis,restapi,startup,appinsights"
       }
     },
     {
@@ -170,20 +167,6 @@
       "env": {
         "NODE_ENV": "development",
         "DEBUG": "startup,appinsights,cache"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Job: Cleanup invitations",
-      "program": "${workspaceRoot}/dist/jobs/cleanupInvites/index.js",
-      "cwd": "${workspaceRoot}/dist",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "redis,restapi,startup,appinsights"
       }
     },
     {
@@ -317,8 +300,8 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Recent Contributions (12)",
-      "program": "${workspaceRoot}/dist/microsoft/jobs/recentContributions/index.js",
+      "name": "Job: Repositories Table (13)",
+      "program": "${workspaceRoot}/dist/jobs/repositories.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
@@ -401,6 +384,23 @@
       "env": {
         "NODE_ENV": "development,pg",
         "DEBUG": "redis,restapi,startup,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Build Repo Reports (deprecated)",
+      "program": "${workspaceRoot}/dist/jobs/reports/index.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "runtimeArgs": [
+        "--max-old-space-size=4096"
+      ],
+      "env": {
+        "NODE_ENV": "localhost",
+        "DEBUG": "redis-off,restapi-off,startup,appinsights"
       }
     },
     {

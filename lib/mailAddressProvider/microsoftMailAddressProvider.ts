@@ -6,7 +6,7 @@
 import { IProviders } from '../../interfaces';
 import { IMailAddressProvider } from '.';
 
-export default function createMailAddressProvider(options) {
+export default function createMailAddressProvider(options) : IMailAddressProvider{
   const config = options.config;
   if (!config.identity || !config.identity.url || !config.identity.pat) {
     throw new Error('Not configured for the Identity service');
@@ -16,7 +16,7 @@ export default function createMailAddressProvider(options) {
     throw new Error('The microsoftMailAddressProvider requires that all provider instances are passed in as options');
   }
   return {
-    getAddressFromUpn: (upn: string) => {
+    getAddressFromUpn: async (upn: string) => {
       return providers.graphProvider.getMailAddressByUsername(upn);
     },
   } as IMailAddressProvider;

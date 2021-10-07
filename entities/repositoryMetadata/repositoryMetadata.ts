@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import azure from 'azure-storage';
-
 import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
@@ -13,6 +11,7 @@ import { Type } from './type';
 import { PostgresGetAllEntities, PostgresGetByID, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
 import { TableSettings } from '../../lib/entityMetadataProvider/table';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { odata, TableEntityQueryOptions } from '@azure/data-tables';
 
 const type = Type;
 
@@ -75,6 +74,7 @@ interface IRepositoryMetadataProperties {
   initialAdministrators: any;
   initialRepositoryDescription: any;
   initialRepositoryVisibility: any;
+  initialRepositoryHomepage: any;
 
   initialLicense: any;
   initialTemplate: any;
@@ -116,6 +116,7 @@ const Field: IRepositoryMetadataProperties = {
   initialTemplate: 'initialTemplate',
   initialGitIgnoreTemplate: 'initialGitIgnoreTemplate',
   initialCorrelationId: 'initialCorrelationId',
+  initialRepositoryHomepage: 'initialRepositoryHomepage',
   projectType: 'projectType',
   releaseReviewJustification: 'releaseReviewJustification',
   releaseReviewType: 'releaseReviewType',
@@ -149,6 +150,7 @@ export class RepositoryMetadataEntity implements IRepositoryMetadataProperties {
   initialTemplate: string;
   initialGitIgnoreTemplate: string;
   initialCorrelationId: string;
+  initialRepositoryHomepage: string;
 
   projectType: string;
   releaseReviewJustification: string;
@@ -240,6 +242,7 @@ EntityMetadataMappings.Register(type, TableSettings.TableMapping, new Map<string
 
   [Field.initialRepositoryDescription, 'repoDescription'],
   [Field.initialRepositoryVisibility, 'repoVisibility'],
+  [Field.initialRepositoryHomepage, 'repoHomepage'],
 
   [Field.initialLicense, 'license'],
   [Field.initialTemplate, 'template'],
@@ -279,6 +282,7 @@ EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, new Map<stri
 
   [Field.initialRepositoryDescription, 'repoDescription'],
   [Field.initialRepositoryVisibility, 'repoVisibility'],
+  [Field.initialRepositoryHomepage, 'repoHomepage'],
 
   [Field.initialLicense, 'license'],
   [Field.initialTemplate, 'template'],
@@ -318,6 +322,7 @@ PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
 
   [Field.initialRepositoryDescription, (Field.initialRepositoryDescription as string).toLowerCase()],
   [Field.initialRepositoryVisibility, (Field.initialRepositoryVisibility as string).toLowerCase()],
+  [Field.initialRepositoryHomepage, (Field.initialRepositoryHomepage as string).toLowerCase()],
 
   [Field.initialLicense, (Field.initialLicense as string).toLowerCase()],
   [Field.initialTemplate, (Field.initialTemplate as string).toLowerCase()],
@@ -336,24 +341,23 @@ PostgresConfiguration.ValidateMappings(type, fieldNames, [repositoryId]);
 
 EntityMetadataMappings.Register(type, TableSettings.TableQueries, (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
   switch (query.fixedQueryType) {
-    case FixedQueryType.AllRepositoryMetadata:
-      return new azure.TableQuery()
-        .where('PartitionKey eq ?', fixedPartitionKey)
-        .and('tickettype eq ?string?', 'repo');
-
-    case FixedQueryType.RepositoryMetadataByRepositoryId:
+    case FixedQueryType.AllRepositoryMetadata: {
+      return {
+        filter: odata`  PartitionKey eq ${fixedPartitionKey} and tickettype eq 'repo'  `,
+      } as TableEntityQueryOptions;
+    }
+    case FixedQueryType.RepositoryMetadataByRepositoryId: {
       const { repositoryId } = query as RepositoryMetadataFixedQueryByRepositoryId;
       if (!repositoryId) {
         throw new Error('repositoryId required');
       }
-      const qtpid = new azure.TableQuery()
-        .where('PartitionKey eq ?', fixedPartitionKey)
-        .and('tickettype eq ?string?', 'repo')
-        .and(`${azureTableRepositoryIdField} eq ?string?`, repositoryId);
-      return qtpid;
-
-    default:
+      return {
+        filter: odata`  PartitionKey eq ${fixedPartitionKey} and tickettype eq 'repo' and ` + azureTableRepositoryIdField + odata` eq ${repositoryId} `,
+      } as TableEntityQueryOptions;
+    }
+    default: {
       throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
+    }
   }
 });
 

@@ -3,8 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IEntityMetadataProvider } from "./entityMetadataProvider";
-import { EntityMetadataType, EntityMetadataBase } from "./entityMetadata";
+import { IEntityMetadataProvider } from './entityMetadataProvider';
+import { EntityMetadataType, EntityMetadataBase } from './entityMetadata';
+
+// Newer "entity" implementations have fully decoupled and no longer use this single query type.
+// No need to add anything here going forward.
 
 export enum FixedQueryType {
   // Team join

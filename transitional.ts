@@ -7,6 +7,7 @@ import { Response } from 'express';
 import crypto from 'crypto';
 import githubUsernameRegex from 'github-username-regex';
 import { AxiosError } from 'axios';
+import { DateTime } from 'luxon';
 
 import { GitHubRepositoryPermission } from './entities/repositoryMetadata/repositoryMetadata';
 
@@ -24,16 +25,25 @@ export function hasStaticReactClientApp() {
   }
 }
 
+export function assertUnreachable(nothing: never): never {
+  throw new Error('This is never expected.');
+}
+
 export interface RedisOptions {
   auth_pass?: string;
   detect_buffers: boolean;
   tls?: {
     servername: string;
-  }
+  };
 }
 
 export function getProviders(req: ReposAppRequest) {
   return req.app.settings.providers as IProviders;
+}
+
+export function isWebhookIngestionEndpointEnabled(req: ReposAppRequest) {
+  const { config } = getProviders(req);
+  return config?.features?.exposeWebhookIngestionEndpoint === true;
 }
 
 export interface IResponseForSettingsPersonalAccessTokens extends Response {
@@ -150,6 +160,10 @@ export class CreateError {
     return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(404, message), innerError);
   }
 
+  static Conflict(message: string, innerError?: Error): Error {
+    return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(409, message), innerError);
+  }
+
   static ParameterRequired(parameterName: string, optionalDetails?: string): Error {
     const msg = `${parameterName} required`;
     return CreateError.CreateStatusCodeError(400, optionalDetails ? `${msg}: ${optionalDetails}` : msg);
@@ -202,6 +216,11 @@ export class ErrorHelper {
     return (statusNumber && statusNumber === 404);
   }
 
+  public static IsUnavailableForExternalLegalRequest(error: Error): boolean {
+    const statusNumber = ErrorHelper.GetStatus(error);
+    return (statusNumber && statusNumber === 451); // https://developer.github.com/changes/2016-03-17-the-451-status-code-is-now-supported/
+  }
+
   public static IsConflict(error: Error): boolean {
     const statusNumber = ErrorHelper.GetStatus(error);
     if (statusNumber && statusNumber === 409) {
@@ -225,6 +244,12 @@ export class ErrorHelper {
       if (axiosError?.response?.status) {
         return axiosError.response.status;
       }
+    }
+    if (asAny?.statusCode && typeof (asAny.statusCode) === 'number') {
+      return asAny.statusCode as number;
+    }
+    if (asAny?.code && typeof (asAny.code) === 'number') {
+      return asAny.code as number;
     }
     if (asAny?.status) {
       const status = asAny.status;
@@ -281,6 +306,10 @@ export interface ICustomizedNewRepositoryLogic {
   sufficientTeamsConfigured(context: INewRepositoryContext, body: any): boolean;
   skipApproval(context: INewRepositoryContext, body: any): boolean;
   additionalCreateRepositoryParameters(context: INewRepositoryContext): any;
+}
+
+export function splitSemiColonCommas(value: string) {
+  return value ? value.replace(/;/g, ',').split(',') : [];
 }
 
 export interface ICustomizedNewRepoProperties {

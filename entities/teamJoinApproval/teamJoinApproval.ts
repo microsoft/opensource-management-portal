@@ -3,8 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { v4 as uuidV4 } from 'uuid';
-import azure from 'azure-storage';
+import { randomUUID } from 'crypto';
 
 import { IObjectWithDefinedKeys } from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
@@ -14,6 +13,7 @@ import { stringOrNumberAsString, stringOrNumberArrayAsStringArray } from '../../
 import { PostgresGetAllEntities, PostgresJsonEntityQuery, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
 import { TableSettings } from '../../lib/entityMetadataProvider/table';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { odata, TableEntityQueryOptions } from '@azure/data-tables';
 
 const type = new EntityMetadataType('TeamJoinRequest');
 
@@ -110,7 +110,7 @@ export class TeamJoinApprovalEntity implements IObjectWithDefinedKeys, ITeamJoin
   ticketType?: string;
 
   constructor() {
-    this.approvalId = uuidV4();
+    this.approvalId = randomUUID();
     this.ticketType = this.type();
   }
 
@@ -285,58 +285,52 @@ export class TeamJoinRequestFixedQueryAllActiveRequests implements IEntityMetada
 
 EntityMetadataMappings.Register(type, TableSettings.TableQueries, (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
   switch (query.fixedQueryType) {
-    case FixedQueryType.ActiveTeamJoinApprovalsByTeams:
+    case FixedQueryType.ActiveTeamJoinApprovalsByTeams: {
       const { ids } = query as TeamJoinRequestFixedQueryByTeams;
       if (!ids || !Array.isArray(ids)) {
         throw new Error('ids must be an Array');
       }
-      const qids = new azure.TableQuery()
-        .where('PartitionKey eq ?', fixedPartitionKey)
-        .and('tickettype eq ?string?', 'joinTeam')
-        .and('active eq ?', true);
-      const args = [ids.map(id => {
-        return 'teamid eq ?string?';
-      }).join(' or ')].concat(ids);
-      const temp = qids.and.apply(qids, args);
-      return temp;
+      return {
+        filter: odata`PartitionKey eq ${fixedPartitionKey} and tickettype eq 'joinTeam' and active eq true and (` + 
 
-    case FixedQueryType.AllActiveTeamJoinApprovals:
-      return new azure.TableQuery()
-        .where('PartitionKey eq ?', fixedPartitionKey)
-        .and('tickettype eq ?string?', 'joinTeam')
-        .and('active eq ?', true);
+        ids.map(id => {
+          return odata`teamid eq ${id}`;
+        }).join(' or ')
 
-    case FixedQueryType.AllTeamJoinApprovals:
-      return new azure.TableQuery()
-        .where('PartitionKey eq ?', fixedPartitionKey)
-        .and('tickettype eq ?string?', 'joinTeam');
-
-    case FixedQueryType.ActiveTeamJoinApprovalsByTeam:
+        + ')',
+      } as TableEntityQueryOptions;
+    }
+    case FixedQueryType.AllActiveTeamJoinApprovals: {
+      return {
+        filter: odata`PartitionKey eq ${fixedPartitionKey} and tickettype eq 'joinTeam' and active eq true`,
+      } as TableEntityQueryOptions;
+    }
+    case FixedQueryType.AllTeamJoinApprovals: {
+      return {
+        filter: odata`PartitionKey eq ${fixedPartitionKey} and tickettype eq 'joinTeam'`,
+      } as TableEntityQueryOptions;
+    }
+    case FixedQueryType.ActiveTeamJoinApprovalsByTeam: {
       const { id } = query as TeamJoinRequestFixedQueryByTeam;
       if (!id) {
         throw new Error('id required');
       }
-      const qid = new azure.TableQuery()
-        .where('PartitionKey eq ?', fixedPartitionKey)
-        .and('tickettype eq ?string?', 'joinTeam')
-        .and('active eq ?', true)
-        .and('teamid eq ?string?', id);
-      return qid;
-
-    case FixedQueryType.ActiveTeamJoinApprovalsByThirdPartyId:
+      return {
+        filter: odata`PartitionKey eq ${fixedPartitionKey} and tickettype eq 'joinTeam' and active eq true and teamid eq ${id}`,
+      } as TableEntityQueryOptions;
+    }
+    case FixedQueryType.ActiveTeamJoinApprovalsByThirdPartyId: {
       const { thirdPartyId } = query as TeamJoinRequestFixedQueryByThirdPartyUserId;
       if (!thirdPartyId) {
         throw new Error('thirdPartyId required');
       }
-      const qtpid = new azure.TableQuery()
-        .where('PartitionKey eq ?', fixedPartitionKey)
-        .and('tickettype eq ?string?', 'joinTeam')
-        .and('active eq ?', true)
-        .and('ghid eq ?string?', thirdPartyId);
-      return qtpid;
-
-    default:
+      return {
+        filter: odata`PartitionKey eq ${fixedPartitionKey} and tickettype eq 'joinTeam' and active eq true and ghid eq ${thirdPartyId}`,
+      } as TableEntityQueryOptions;
+    }
+    default: {
       throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`);
+    }
   }
 });
 

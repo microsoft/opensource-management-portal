@@ -20,7 +20,7 @@ import { AppPurpose } from '../github';
 import { OrganizationSetting, SpecialTeam } from '../entities/organizationSettings/organizationSetting';
 import { createOrganizationSudoInstance, IOrganizationSudo } from '../features';
 import { CacheDefault, getMaxAgeSeconds, getPageSize, OperationsCore } from './operations/core';
-import { CoreCapability, GitHubAuditLogEntry, IAccountBasics, IAddOrganizationMembershipOptions, IAuthorizationHeaderValue, ICacheOptions, ICorporateLink, ICreateRepositoryResult, IGetAuthorizationHeader, IGetOrganizationAuditLogOptions, IGetOrganizationMembersOptions, IOperationsCentralOperationsToken, IOperationsInstance, IOperationsLegalEntities, IOperationsLinks, IOperationsLockdownFeatureFlags, IOperationsProviders, IOperationsServiceAccounts, IOperationsTemplates, IOperationsUrls, IOrganizationMemberPair, IOrganizationMembership, IPagedCacheOptions, IPurposefulGetAuthorizationHeader, IReposError, IReposRestRedisCacheCost, NoCacheNoBackground, operationsIsCapable, operationsWithCapability, OrganizationMembershipRoleQuery, OrganizationMembershipTwoFactorFilter, throwIfNotCapable, throwIfNotGitHubCapable } from '../interfaces';
+import { CoreCapability, GitHubAuditLogEntry, IAccountBasics, IAddOrganizationMembershipOptions, IAuthorizationHeaderValue, ICacheOptions, ICacheOptionsWithPurpose, ICorporateLink, ICreateRepositoryResult, IGetAuthorizationHeader, IGetOrganizationAuditLogOptions, IGetOrganizationMembersOptions, IOperationsCentralOperationsToken, IOperationsInstance, IOperationsLegalEntities, IOperationsLinks, IOperationsLockdownFeatureFlags, IOperationsProviders, IOperationsServiceAccounts, IOperationsTemplates, IOperationsUrls, IOrganizationMemberPair, IOrganizationMembership, IPagedCacheOptions, IPurposefulGetAuthorizationHeader, IReposError, IReposRestRedisCacheCost, NoCacheNoBackground, operationsIsCapable, operationsWithCapability, OrganizationMembershipRoleQuery, OrganizationMembershipTwoFactorFilter, throwIfNotCapable, throwIfNotGitHubCapable } from '../interfaces';
 import { CreateError, ErrorHelper } from '../transitional';
 import { jsonError } from '../middleware';
 
@@ -126,7 +126,7 @@ export class Organization {
     if (operationsIsCapable<IOperationsUrls>(operations, CoreCapability.Urls)) {
       this._baseUrl = `${operations.baseUrl}${this.name}/`;
       this._nativeUrl = `${operations.nativeUrl}${this.name}/`;
-      this._nativeManagementUrl = `${operations.nativeManagementUrl}organizations/${this.name}/`;
+      this._nativeManagementUrl = `${operations.nativeManagementUrl}${this.name}/`;
     }
     const withProviders = operations as OperationsCore;
     if (withProviders?.providers) {
@@ -266,11 +266,16 @@ export class Organization {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
+    const previewMediaTypes = operations['previewMediaTypes'] || null; // TEMPORARY MEDIA TYPE HACK
+    const mediaType = previewMediaTypes?.repository?.list ? { previews: [previewMediaTypes.repository.list]} : {};
     const parameters = {
       org: this.name,
       type: 'all',
       per_page: getPageSize(operations),
     };
+    if (mediaType) {
+      (parameters as any).mediaType = mediaType;
+    }
     const caching = {
       maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgReposStaleSeconds, options),
       backgroundRefresh: true,
@@ -528,6 +533,8 @@ export class Organization {
     }
   }
 
+  
+
   getRepositoryCreateMetadata(options?: any) {
     const operations = throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers);
     const settings = this._settings;
@@ -698,6 +705,7 @@ export class Organization {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     try {
+      // TODO: consider using the generic GET request method below
       const entities = await operations.github.request(this.authorize(AppPurpose.Data), 'GET /orgs/:org/audit-log', parameters, cacheOptions) as GitHubAuditLogEntry[];
       // common.assignKnownFieldsPrefixed(this, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
       return entities;
@@ -709,6 +717,23 @@ export class Organization {
       }
       throw wrapError(error, `Could not get the audit log for the ${this.name} org: ${error.message}`);
     }
+  }
+
+  async requestUrl(url: string, options?: ICacheOptionsWithPurpose): Promise<any> {
+    options = options || {};
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const parameters = {};
+    const cacheOptions: ICacheOptions = {
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.accountDetailStaleSeconds, options, 60),
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    const purpose = options.purpose || AppPurpose.Data;
+    const asUrl = new URL(url);
+    const relativeUrl = asUrl.pathname;
+    const value = await operations.github.request(this.authorizeSpecificPurpose(purpose), `GET ${relativeUrl}`, parameters, cacheOptions);
+    return value;
   }
 
   async isSudoer(username: string, link: ICorporateLink): Promise<boolean> {
@@ -726,8 +751,8 @@ export class Organization {
       return response;
     } catch (error) {
       const wrappedError = wrapError(error, `Could not accept your invitation for the ${this.name} organization on GitHub`);
-      if (error.status === 403 && error.headers && error.headers['x-github-sso']) {
-        const xGitHubSso = error.headers['x-github-sso'] as string;
+      if (error.status === 403 && error.response?.headers && error.response.headers['x-github-sso']) {
+        const xGitHubSso = error.response.headers['x-github-sso'] as string;
         const i = xGitHubSso.indexOf('url=');
         if (i >= 0) {
           const remainder = xGitHubSso.substr(i + 4);
@@ -991,6 +1016,11 @@ export class Organization {
 
   private authorize(purpose: AppPurpose): IGetAuthorizationHeader {
     const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as IGetAuthorizationHeader;
+    return getAuthorizationHeader;
+  }
+
+  private authorizeSpecificPurpose(purpose: AppPurpose): IGetAuthorizationHeader {
+    const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(this, purpose) as IGetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 

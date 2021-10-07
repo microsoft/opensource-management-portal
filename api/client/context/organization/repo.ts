@@ -11,12 +11,16 @@ import { jsonError } from '../../../../middleware';
 import getCompanySpecificDeployment from '../../../../middleware/companySpecificDeployment';
 import { ReposAppRequest } from '../../../../interfaces';
 
+import routeForkUnlock from './repoForkUnlock';
+
 const router: Router = Router();
 
 router.get('/permissions', AddRepositoryPermissionsToRequest, asyncHandler(async (req: ReposAppRequest, res, next) => {
   const permissions = getContextualRepositoryPermissions(req);
   return res.json(permissions);
 }));
+
+router.use('/manage/fork', routeForkUnlock);
 
 const deployment = getCompanySpecificDeployment();
 deployment?.routes?.api?.context?.organization?.repo && deployment?.routes?.api?.context?.organization?.repo(router);

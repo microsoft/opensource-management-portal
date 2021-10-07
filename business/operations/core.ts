@@ -6,9 +6,8 @@
 import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
 import { GitHubAppAuthenticationType, AppPurpose } from '../../github';
 import { GitHubTokenManager } from '../../github/tokenManager';
-import { IProviders, ICacheDefaultTimes, IOperationsInstance, ICacheOptions, CoreCapability, IOperationsDefaultCacheTimes, IOperationsGitHubRestLibrary, IOperationsUrls, IOperationsProviders, throwIfNotGitHubCapable, throwIfNotCapable, IOperationsCentralOperationsToken, IAuthorizationHeaderValue, IOperationsNewRepositoryTaskOptions } from '../../interfaces';
+import { IProviders, ICacheDefaultTimes, IOperationsInstance, ICacheOptions, CoreCapability, IOperationsDefaultCacheTimes, IOperationsGitHubRestLibrary, IOperationsUrls, IOperationsProviders, throwIfNotGitHubCapable, throwIfNotCapable, IOperationsCentralOperationsToken, IAuthorizationHeaderValue } from '../../interfaces';
 import { RestLibrary } from '../../lib/github';
-import { IRepoWorkflowEngineOptions } from '../../routes/org/repoWorkflowEngine';
 import { CreateError } from '../../transitional';
 import { wrapError } from '../../utils';
 import { Account } from '../account';
@@ -108,7 +107,6 @@ export abstract class OperationsCore
     IOperationsUrls,
     IOperationsDefaultCacheTimes,
     IOperationsProviders,
-    IOperationsNewRepositoryTaskOptions,
     IOperationsInstance {
   private _github: RestLibrary;
   private _defaults: ICacheDefaultTimes;
@@ -117,7 +115,6 @@ export abstract class OperationsCore
   protected _baseUrl: string;
   protected _nativeUrl: string;
   protected _nativeManagementUrl: string;
-  protected _newRepoOptions: IRepoWorkflowEngineOptions;
   protected _organizationsDeliminator = '';
   protected _repositoriesDeliminator = 'repos/'
   private _providers: IProviders;
@@ -141,7 +138,6 @@ export abstract class OperationsCore
     this.addCapability(CoreCapability.DefaultCacheTimes);
     this.addCapability(CoreCapability.Urls);
     this.addCapability(CoreCapability.Providers);
-    this.addCapability(CoreCapability.NewRepositoryTaskOptions);
   }
 
   protected addCapability(capability: CoreCapability) {
@@ -159,10 +155,6 @@ export abstract class OperationsCore
       throw new Error(`The operations implementation is not capable of supporting ${capability}`);
     }
   };
-
-  public get newRepositoryTaskOptions() {
-    return this._newRepoOptions;
-  }
 
   protected abstract get tokenManager(): GitHubTokenManager;
 

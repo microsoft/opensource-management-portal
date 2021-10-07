@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { v4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
@@ -105,7 +105,7 @@ export class AuditLogRecord implements IAuditLogRecordProperties {
   teamId: string;
 
   constructor() {
-    this.recordId = v4();
+    this.recordId = randomUUID();
   }
 }
 

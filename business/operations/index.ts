@@ -16,7 +16,7 @@ import RenderHtmlMail from '../../lib/emailRender';
 import { wrapError, sortByCaseInsensitive } from '../../utils';
 import { Repository } from '../repository';
 import { RestLibrary } from '../../lib/github';
-import { GitHubAppAuthenticationType } from '../../github';
+import { AllAvailableAppPurposes, AppPurpose, AppPurposeToConfigurationName, GitHubAppAuthenticationType, IGitHubAppConfiguration } from '../../github';
 import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
 import { OrganizationSettingProvider } from '../../entities/organizationSettings/organizationSettingProvider';
 import { IMail } from '../../lib/mailProvider';
@@ -30,6 +30,7 @@ import { CoreCapability, ICachedEmployeeInformation, ICacheOptions, ICorporateLi
 import { CreateError, ErrorHelper } from '../../transitional';
 import { Team } from '../team';
 import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
+import { isAuthorizedSystemAdministrator } from './administration';
 
 export * from './core';
 
@@ -119,20 +120,22 @@ export class Operations
     this._uncontrolledOrganizations = new Map();
     this._defaultPageSize = this.config && this.config.github && this.config.github.api && this.config.github.api.defaultPageSize ? this.config.github.api.defaultPageSize : defaultGitHubPageSize;
     const hasModernGitHubApps = config.github?.app;
+    const purposesToConfigurations = new Map<AppPurpose, IGitHubAppConfiguration>();
+    if (hasModernGitHubApps) {
+      for (let purpose of AllAvailableAppPurposes) {
+        const configKey = AppPurposeToConfigurationName[purpose];
+        const configValue = config.github.app[configKey];
+        if (configValue) {
+          purposesToConfigurations.set(purpose, configValue);
+        }
+      }
+    }
     this._tokenManager = new GitHubTokenManager({
-      customerFacingApp: hasModernGitHubApps ? config.github.app.ui : null,
-      operationsApp: hasModernGitHubApps ? config.github.app.operations : null,
-      dataApp: hasModernGitHubApps ? config.github.app.data : null,
-      backgroundJobs: hasModernGitHubApps ? config.github.app.jobs : null,
-      updatesApp: hasModernGitHubApps ? config.github.app.updates : null,
+      configurations: purposesToConfigurations,
       app: this.providers.app,
     });
     this._dynamicOrganizationIds = new Set();
     this._dynamicOrganizationSettings = [];
-
-    this._newRepoOptions = {
-      shouldRenameDefaultBranch: true,
-    };
   }
 
   protected get tokenManager() {
@@ -161,6 +164,16 @@ export class Operations
     }
     this._portalSudo = createPortalSudoInstance(this.providers);
     return this;
+  }
+
+  get previewMediaTypes() {
+    return {
+      repository: {
+        // this will allow GitHub Enterprise Cloud "visibility" fields to appear
+        getDetails: 'nebula-preview',
+        list: 'nebula-preview',
+      },
+    };
   }
 
   get organizationNames(): string[] {
@@ -314,6 +327,20 @@ export class Operations
     emptySettings.operationsNotes = `Uncontrolled Organization - ${organizationName}`;
     const centralOperationsToken = this.config.github.operations.centralOperationsToken;
     const org = this.createOrganization(organizationName, emptySettings, centralOperationsToken, GitHubAppAuthenticationType.ForceSpecificInstallation);
+    this._uncontrolledOrganizations.set(organizationName, org);
+    org.uncontrolled = true;
+    return org;
+  }
+
+  getPublicOnlyAccessOrganization(organizationName: string, organizationId?: number): Organization {
+    organizationName = organizationName.toLowerCase();
+    const emptySettings = new OrganizationSetting();
+    emptySettings.operationsNotes = `Uncontrolled public organization - ${organizationName}`;
+    const publicAccessToken = this.config.github.operations.publicAccessToken;
+    if (!publicAccessToken) {
+      throw new Error('not configured for public read-only tokens');
+    }
+    const org = this.createOrganization(organizationName, emptySettings, publicAccessToken, GitHubAppAuthenticationType.ForceSpecificInstallation);
     this._uncontrolledOrganizations.set(organizationName, org);
     org.uncontrolled = true;
     return org;
@@ -695,6 +722,20 @@ export class Operations
     });
   }
 
+  async getLinksMapFromThirdPartyIds(thirdPartyIds: string[]): Promise<Map<number, ICorporateLink>> {
+    const map = new Map<number, ICorporateLink>();
+    if (thirdPartyIds.length === 0) {
+      return map;
+    }
+    const group = await this.getLinksFromThirdPartyIds(thirdPartyIds);
+    for (let link of group) {
+      if (link && link.thirdPartyId) {
+        map.set(Number(link.thirdPartyId), link);
+      }
+    }
+    return map;
+  }
+
   async getLinksFromThirdPartyIds(thirdPartyIds: string[]): Promise<ICorporateLink[]> {
     const corporateLinks: ICorporateLink[] = [];
     const throttle = throat(ParallelLinkLookup);
@@ -902,6 +943,13 @@ export class Operations
     return this.config?.github?.systemAccounts ? this.config.github.systemAccounts.logins : [];
   }
 
+  isSystemAdministrator(corporateId: string, corporateUsername: string) {
+    if (!this.initialized) {
+      throw new Error('The application is not yet initialized');
+    }
+    return isAuthorizedSystemAdministrator(this.providers, corporateId, corporateUsername);
+  }
+
   isPortalSudoer(githubLogin: string, link: ICorporateLink) {
     if (!this.initialized) {
       throw new Error('The application is not yet initialized');
@@ -922,6 +970,11 @@ export class Operations
 
   getCentralOperationsToken(): IGetAuthorizationHeader {
     const func = getCentralOperationsAuthorizationHeader.bind(null, this) as IGetAuthorizationHeader;
+    return func;
+  }
+
+  getPublicReadOnlyToken(): IGetAuthorizationHeader {
+    const func = getReadOnlyAuthorizationHeader.bind(null, this) as IGetAuthorizationHeader;
     return func;
   }
 
@@ -952,9 +1005,30 @@ export class Operations
     return organization.team(id, entity);
   }
 
-  getRepositoryWithOrganization(name: string, organizationName: string, entity?: any): Repository {
+  getOrganizationFromUrl(url: string): Organization {
+    const asUrl = new URL(url);
+    const paths = asUrl.pathname.split('/').filter(real => real);
+    if (paths[0] !== 'repos') {
+      throw CreateError.InvalidParameters(`At this time, the first path segment must be "repos": ${url}`);
+    }
+    const orgName = paths[1];
+    return this.getOrganization(orgName);
+  }
+
+  getRepositoryWithOrganizationFromUrl(url: string): Repository {
+    const asUrl = new URL(url);
+    const paths = asUrl.pathname.split('/').filter(real => real);
+    if (paths[0] !== 'repos') {
+      throw CreateError.InvalidParameters(`At this time, the first path segment must be "repos": ${url}`);
+    }
+    const orgName = paths[1];
+    const repoName = paths[2];
+    return this.getRepositoryWithOrganization(repoName, orgName);
+  }
+
+  getRepositoryWithOrganization(repositoryName: string, organizationName: string, entity?: any): Repository {
     const organization = this.getOrganization(organizationName);
-    return organization.repository(name, entity);
+    return organization.repository(repositoryName, entity);
   }
 
   async sendMail(mail: IMail): Promise<any> {
@@ -1028,6 +1102,22 @@ async function fireEvent(config, configurationName, value): Promise<IFireEventRe
     }
   }
   return results;
+}
+
+export function getReadOnlyAuthorizationHeader(self: Operations): IPurposefulGetAuthorizationHeader {
+  const s = (self || this) as Operations;
+  if (s.config?.github?.operations?.publicAccessToken) {
+    const capturedToken = s.config.github.operations.publicAccessToken;
+    return async () => {
+      return {
+        value: `token ${capturedToken}`,
+        purpose: null,
+        source: 'public read-only token',
+      };
+    };
+  } else {
+    throw new Error('No public read-only token configured.');
+  }
 }
 
 export function getCentralOperationsAuthorizationHeader(self: Operations): IPurposefulGetAuthorizationHeader {

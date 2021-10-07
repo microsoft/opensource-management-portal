@@ -4,6 +4,8 @@
 //
 
 import passport from 'passport';
+import { IKeyVaultSecretResolver } from '../lib/keyVaultResolver';
+import getCompanySpecificDeployment from './companySpecificDeployment';
 
 import createAADStrategy from './passport/aadStrategy';
 import createGithubStrategy from './passport/githubStrategy';
@@ -15,6 +17,9 @@ export default function (app, config) {
   if (!supportedAuth.includes(config.authentication.scheme)) {
     throw new Error(`Unsupported primary authentication scheme type "${config.authentication.scheme}"`);
   }
+
+  const companySpecific = getCompanySpecificDeployment();
+  companySpecific?.passport?.configure(app, config, passport);
 
   // Always set up GitHub strategies
   const githubStrategies = createGithubStrategy(app, config);
@@ -55,7 +60,7 @@ export default function (app, config) {
 
   const serializerOptions = {
     config: config,
-    keyResolver: app.get('keyEncryptionKeyResolver'),
+    keyResolver: app.get('keyEncryptionKeyResolver') as IKeyVaultSecretResolver,
   };
 
   passport.serializeUser(serializer.serialize(serializerOptions));

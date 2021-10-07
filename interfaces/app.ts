@@ -27,6 +27,7 @@ export interface IReposApplication extends Application {
   providers: IProviders;
   config: any;
   isBackgroundJob: boolean;
+  enableAllGitHubApps: boolean;
 
   startServer: () => Promise<void>;
 
@@ -54,5 +55,5 @@ export interface IReposJobOptions {
   defaultDebugOutput?: string;
   insightsPrefix?: string;
   parameters?: any;
-  treatGitHubAppAsBackground?: boolean;
+  enableAllGitHubApps?: boolean;
 }

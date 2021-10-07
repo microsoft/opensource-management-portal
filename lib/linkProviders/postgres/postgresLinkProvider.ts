@@ -19,7 +19,7 @@
 
 const onlySupportedThirdPartyType = 'github';
 
-import { v4 as uuidV4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 import { ICorporateLink, ICorporateLinkExtended, ICorporateLinkProperties, InnerError } from '../../../interfaces';
 
@@ -218,7 +218,7 @@ export class PostgresLinkProvider implements ILinkProvider {
 
   async createLink(link: ICorporateLink): Promise<string> {
     const self = this;
-    const linkId = uuidV4(); // primary key protected
+    const linkId = randomUUID(); // primary key protected
     if (!link.thirdPartyId || !link.thirdPartyUsername || !link.corporateId || !link.corporateUsername) {
       throw new Error('Missing a required value');
     }

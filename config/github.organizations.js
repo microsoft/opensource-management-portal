@@ -23,7 +23,7 @@ const defaultEnvironmentTypeName = 'github.organizations';
 
 function getModuleConfiguration(environmentInstances, environmentType, environmentName) {
   if (!environmentInstances) {
-    throw new Error(`${organizationsEnvironmentVariableName} configured but no environment instances were loaded by the painless-config-as-code system`);
+    throw new Error(`${organizationsEnvironmentVariableName} configured but no environment instances were loaded by the config system`);
   }
   if (!environmentType) {
     throw new Error('No GitHub organizations environment type configured');
@@ -71,7 +71,7 @@ module.exports = (graphApi) => {
       throw notFound;
     }
   } else if (organizationsEnvironmentName && !environmentInstances) {
-    throw new Error(`${organizationsEnvironmentVariableName} configured but no environment instances were loaded by the painless-config-as-code system`);
+    throw new Error(`${organizationsEnvironmentVariableName} configured but no environment instances were loaded by the config system`);
   } else if (organizationsEnvironmentName) {
     contents = getModuleConfiguration(environmentInstances, organizationsEnvironmentType, organizationsEnvironmentName);
   }

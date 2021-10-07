@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { AppPurpose, IGitHubAppConfiguration, IGitHubAppsOptions, GitHubAppAuthenticationType } from '.';
+import { AppPurpose, IGitHubAppConfiguration, IGitHubAppsOptions, GitHubAppAuthenticationType, AllAvailableAppPurposes, AppPurposeToConfigurationName } from '.';
 import { GitHubAppTokens } from './appTokens';
 import { IAuthorizationHeaderValue } from '../interfaces';
 import { OrganizationSetting } from '../entities/organizationSettings/organizationSetting';
@@ -37,7 +37,7 @@ interface InstallationIdPurposePair {
 
 export class GitHubTokenManager {
   #options: IGitHubAppsOptions;
-  private static _isBackgroundJob: boolean;
+  private static _forceBackgroundTokens: boolean;
   // private _appConfiguration = new Map<AppPurpose, IGitHubAppConfiguration>();
   private _apps = new Map<AppPurpose, GitHubAppTokens>();
   private _appsById = new Map<number, GitHubAppTokens>();
@@ -49,15 +49,16 @@ export class GitHubTokenManager {
       throw new Error('options required');
     }
     this.#options = options;
-    GitHubTokenManager._isBackgroundJob = options.app.isBackgroundJob;
+    GitHubTokenManager._forceBackgroundTokens = options.app.isBackgroundJob && !options.app.enableAllGitHubApps;
   }
 
   async initialize() {
-    await this.initializeApp(AppPurpose.CustomerFacing, this.#options.customerFacingApp);
-    await this.initializeApp(AppPurpose.Operations, this.#options.operationsApp);
-    await this.initializeApp(AppPurpose.Data, this.#options.dataApp);
-    await this.initializeApp(AppPurpose.BackgroundJobs, this.#options.backgroundJobs);
-    await this.initializeApp(AppPurpose.Updates, this.#options.updatesApp);
+    for (let appPurpose of AllAvailableAppPurposes) {
+      const configurationValue = this.#options.configurations.get(appPurpose);
+      if (configurationValue) {
+        await this.initializeApp(appPurpose, configurationValue);
+      }
+    }
   }
 
   organizationSupportsAnyPurpose(organizationName: string, organizationSettings?: OrganizationSetting) {
@@ -104,7 +105,7 @@ export class GitHubTokenManager {
     if (!organizationSettings) {
       return null;
     }
-    let order = GitHubTokenManager._isBackgroundJob === true ? fallbackBackgroundJobPriorities : [preferredPurpose, ...fallbackPurposePriorities];
+    let order = GitHubTokenManager._forceBackgroundTokens === true ? fallbackBackgroundJobPriorities : [preferredPurpose, ...fallbackPurposePriorities];
     if (appAuthenticationType === GitHubAppAuthenticationType.ForceSpecificInstallation) {
       order = [ preferredPurpose ];
     }

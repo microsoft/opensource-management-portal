@@ -6,8 +6,9 @@
 import { Repository } from './repository';
 import { wrapError } from '../utils';
 import { AppPurpose } from '../github';
-import { CacheDefault, getMaxAgeSeconds } from '.';
+import { CacheDefault, getMaxAgeSeconds, Operations } from '.';
 import { IOperationsInstance, IPurposefulGetAuthorizationHeader, GitHubIssueState, IIssueLabel, throwIfNotGitHubCapable, ICacheOptions, IGetAuthorizationHeader } from '../interfaces';
+import { ErrorHelper } from '../transitional';
 
 export class RepositoryIssue {
   private _operations: IOperationsInstance;
@@ -74,8 +75,31 @@ export class RepositoryIssue {
     return comment;
   }
 
-  async getDetails(options?: ICacheOptions): Promise<any> {
-    if (this._entity) {
+  async getComment(commentId: string): Promise<any> {
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const parameters = Object.assign({
+      owner: this.repository.organization.name,
+      repo: this.repository.name,
+      comment_id: commentId,
+    });
+    const comment = await operations.github.post(this.authorize(AppPurpose.Operations), 'issues.getComment', parameters);
+    return comment;
+  }
+
+  async isCommentDeleted(commentId: string) {
+    try {
+      await this.getComment(commentId);
+      return false;
+    } catch (error) {
+      if (ErrorHelper.IsNotFound(error)) {
+        return true;
+      }
+      throw error;
+    }
+  }
+
+  async getDetails(options?: ICacheOptions, okToUseLocalEntity: boolean = true): Promise<any> {
+    if (okToUseLocalEntity && this._entity) {
       return this._entity;
     }
     options = options || {};
@@ -101,7 +125,7 @@ export class RepositoryIssue {
       return entity;
     } catch (error) {
       const notFound = error.status && error.status == /* loose */ 404;
-      error = wrapError(error, notFound ? 'The issue could not be found.' : 'Could not get details about the issue.', notFound);
+      error = wrapError(error, notFound ? 'The issue could not be found.' : `Could not get details about the issue. ${error.status}`, notFound);
       if (notFound) {
         error.status = 404;
       }
@@ -111,9 +135,9 @@ export class RepositoryIssue {
 
   async isDeleted(options?: ICacheOptions): Promise<boolean> {
     try {
-      await this.getDetails(options);
+      await this.getDetails(options, false /* do not use local entity instance */);
     } catch (maybeDeletedError) {
-      if (maybeDeletedError && maybeDeletedError.status && maybeDeletedError.status === 404) {
+      if (ErrorHelper.IsNotFound(maybeDeletedError)) {
         return true;
       }
     }
@@ -123,5 +147,12 @@ export class RepositoryIssue {
   private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
     const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as IGetAuthorizationHeader;
     return getAuthorizationHeader;
+  }
+
+  static async CreateFromContentUrl(operations: IOperationsInstance, url: string) {
+    const ops = operations as Operations;
+    const repository = ops.getRepositoryWithOrganizationFromUrl(url);
+    const response = await repository.organization.requestUrl(url);
+    return repository.issue(response.number, response);
   }
 }

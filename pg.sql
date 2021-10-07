@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS events (
 
   created timestamptz,
   isopencontribution boolean,
+  isowncontribution boolean,
   usercorporateid text,
   action text,
   userusername text,
@@ -39,6 +40,7 @@ CREATE TABLE IF NOT EXISTS events (
   repositoryid text,
   inserted timestamptz,
   updated timestamptz,
+  checked timestamptz,
 
   metadata jsonb,
   PRIMARY KEY(entitytype, entityid)
@@ -57,6 +59,13 @@ CREATE INDEX IF NOT EXISTS events_opencontributions_range ON events (created, is
 CREATE INDEX IF NOT EXISTS events_orgname ON events (organizationname);
 CREATE INDEX IF NOT EXISTS events_orgid ON events (organizationid);
 CREATE INDEX IF NOT EXISTS events_repoid ON events (repositoryid);
+
+ALTER TABLE events ADD COLUMN IF NOT EXISTS isowncontribution boolean;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS checked timestamptz;
+
+CREATE INDEX IF NOT EXISTS events_c_isowncontribution ON events (isowncontribution);
+CREATE INDEX IF NOT EXISTS events_checked ON events (checked);
+CREATE INDEX IF NOT EXISTS events_c_cid_checked ON events (usercorporateid);
 
 CREATE TABLE IF NOT EXISTS approvals (
   entitytype text,
@@ -187,5 +196,58 @@ CREATE INDEX IF NOT EXISTS voting_active ON voting ((metadata->>'active'));
 CREATE INDEX IF NOT EXISTS voting_electionid ON voting ((metadata->>'electionid'));
 CREATE INDEX IF NOT EXISTS voting_results ON voting ((metadata->>'electionid'), (metadata->>'nominationid'));
 CREATE INDEX IF NOT EXISTS voting_gin ON voting USING gin (metadata jsonb_path_ops);
+
+CREATE TABLE IF NOT EXISTS repositories (
+  entitytype text,
+  entityid text,
+  metadata jsonb,
+
+  repositoryid bigint,
+  organizationid bigint,
+  cached timestamptz,
+  name text,
+  organizationlogin text,
+  fullname text,
+  private boolean,
+  visibility text,
+  fork boolean,
+  archived boolean,
+  disabled boolean,
+  pushedat timestamptz,
+  createdat timestamptz,
+  updatedat timestamptz,
+  description text,
+  homepage text,
+  language text,
+  forkscount integer,
+  stargazerscount integer,
+  watcherscount integer,
+  size bigint,
+  defaultbranch text,
+  openissuescount integer,
+  topics text[],
+  hasissues boolean,
+  hasprojects boolean,
+  haswiki boolean,
+  haspages boolean,
+  hasdownloads boolean,
+  subscriberscount integer,
+  networkcount integer,
+  license text,
+  parentid bigint,
+  parentname text,
+  parentorganizationname text,
+  parentorganizationid bigint,
+
+  PRIMARY KEY(entitytype, entityid)
+);
+
+CREATE INDEX IF NOT EXISTS repositories_byid ON repositories (repositoryid);
+CREATE INDEX IF NOT EXISTS repositories_by_org ON repositories (organizationid);
+CREATE INDEX IF NOT EXISTS repositories_byidpriv ON repositories (repositoryid, private);
+CREATE INDEX IF NOT EXISTS repositories_byidvis ON repositories (repositoryid, visibility);
+CREATE INDEX IF NOT EXISTS repositories_by_created ON repositories (createdat);
+CREATE INDEX IF NOT EXISTS repositories_by_updated ON repositories (updatedat);
+CREATE INDEX IF NOT EXISTS repositories_by_pushed ON repositories (pushedat);
 
 COMMIT;

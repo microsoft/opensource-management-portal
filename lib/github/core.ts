@@ -6,8 +6,8 @@
 /*eslint no-console: ["error", { allow: ["dir", "warn"] }] */
 
 import _ from 'lodash';
+import { randomUUID } from 'crypto';
 const debug = require('debug')('restapi');
-import { v4 as uuidV4 } from 'uuid';
 import moment from 'moment';
 
 import { RestLibrary } from '.';
@@ -15,6 +15,7 @@ import { IAuthorizationHeaderValue } from '../../interfaces';
 import { sleep } from '../../utils';
 
 import cost from './cost';
+import { ErrorHelper } from '../../transitional';
 
 const delayBeforeRefreshMilliseconds = 1000;
 
@@ -232,7 +233,14 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
     }
     debug('Cache miss.');
     if (result) {
-      this.evict(apiContext).then(() => { console.log('(evicted)' )}).catch(err => { console.warn(`(eviction error: ${err})`)});
+      this.evict(apiContext)
+        .then(() => {
+          console.log('(evicted)' )})
+        .catch(err => {
+          if (!ErrorHelper.IsNotFound(err)) {
+            console.warn(`(eviction error: ${err})`);
+          }
+        });
     }
     ++apiContext.cost.redis.cacheMisses;
     delete apiContext.etag;
@@ -246,7 +254,7 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
     // Potential data loss/consistency problem: upsert/overwrite
     try {
       let refreshing = moment().utc().format();
-      let refreshId = uuidV4();
+      let refreshId = randomUUID();
       currentMetadata.refreshing = refreshing;
       currentMetadata.refreshId = refreshId;
       apiContext.generatedRefreshId = refreshId;
@@ -384,7 +392,7 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
       response = (await this.callApi(apiContext, `GET:               ${displayKey}`)) as IRestResponse;
     } catch (error) {
       if (error && error.status && error.status === 304) {
-        const liveHeaders = error.headers || {};
+        const liveHeaders = error.response?.headers || {};
         const headers = {};
         for (let i = 0; i < headerKeysWanted.length; i++) {
           const key = headerKeysWanted[i];

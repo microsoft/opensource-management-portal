@@ -8,4 +8,6 @@ export * from './features';
 export * from './middleware';
 export * from './strings';
 export * from './administration';
+export * from './passport';
 export * from './views';
+export * from './urls';

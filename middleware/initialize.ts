@@ -42,7 +42,7 @@ import { CreateLocalExtensionKeyProvider } from '../entities/localExtensionKey';
 import { CreateGraphProviderInstance, IGraphProvider } from '../lib/graphProvider/';
 import initializeCorporateViews from './corporateViews';
 
-import keyVaultResolver from '../lib/keyVaultResolver';
+import keyVaultResolver, { IKeyVaultSecretResolver } from '../lib/keyVaultResolver';
 
 import { createMailProviderInstance } from '../lib/mailProvider/';
 import { RestLibrary } from '../lib/github';
@@ -74,6 +74,7 @@ import RouteSslify from './sslify';
 import MiddlewareIndex from '.';
 import { ICacheHelper } from '../lib/caching';
 import { IApplicationProfile, IProviders, IReposApplication, InnerError } from '../interfaces';
+import initializeRepositoryProvider from '../entities/repository';
 
 const DefaultApplicationProfile: IApplicationProfile = {
   applicationName: 'GitHub Management Portal',
@@ -176,6 +177,7 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
   providers.teamMemberCacheProvider = await CreateTeamMemberCacheProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.teammembercache) });
   providers.auditLogRecordProvider = await createAndInitializeAuditLogRecordProviderInstance({ entityMetadataProvider: providerNameToInstance(config.entityProviders.auditlogrecord) });
   providers.userSettingsProvider = new UserSettingsProvider({ entityMetadataProvider: providerNameToInstance(config.entityProviders.usersettings) });
+  providers.repositoryProvider = await initializeRepositoryProvider({ entityMetadataProvider: providerNameToInstance(config.entityProviders.repository) });
   await providers.userSettingsProvider.initialize();
   providers.queryCache = new QueryCache(providers);
   if (config.campaigns && config.campaigns.provider === 'cosmosdb') {
@@ -328,11 +330,12 @@ export default async function initialize(app: IReposApplication, express, rootdi
   }
   if (!exception) {
     const kvConfig = {
-      clientId: config && config.activeDirectory ? config.activeDirectory.clientId : null,
-      clientSecret: config && config.activeDirectory ? config.activeDirectory.clientSecret : null,
+      clientId: config?.activeDirectory?.clientId,
+      clientSecret: config?.activeDirectory?.clientSecret,
+      tenantId: config?.activeDirectory?.tenantId,
     };
     providers.config = config;
-    let keyEncryptionKeyResolver = null;
+    let keyEncryptionKeyResolver: IKeyVaultSecretResolver = null;
     try {
       const keyVaultClient = keyVault(kvConfig);
       keyEncryptionKeyResolver = keyVaultResolver(keyVaultClient);

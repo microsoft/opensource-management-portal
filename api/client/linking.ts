@@ -8,7 +8,7 @@ import asyncHandler from 'express-async-handler';
 
 import { IndividualContext } from '../../user';
 import { jsonError } from '../../middleware';
-import { getProviders } from '../../transitional';
+import { ErrorHelper, getProviders } from '../../transitional';
 import { unlinkInteractive } from '../../routes/unlink';
 import { interactiveLinkUser } from '../../routes/link';
 import { ReposAppRequest } from '../../interfaces';
@@ -77,7 +77,7 @@ async function validateLinkOk(req: ReposAppRequest, res, next) {
         name: 'LinkValidateNotGuestGraphFailure',
       },
     });
-    return next(jsonError('Generic graph error', 500));
+    return next(jsonError(graphError.toString() || 'Generic lookup error', ErrorHelper.GetStatus(graphError) || 500));
   }
 }
 

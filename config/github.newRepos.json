@@ -1,7 +1,0 @@
-{
-  ".note": "This file is temporary as part of the summer 2020 branch renaming happening across the Git ecosystem",
-
-  "renameDefaultBranchFlag": "env://GITHUB_NEW_REPOS_RENAME_DEFAULT_BRANCH?trueIf=1",
-  "renameDefaultBranchExcludeApiCreates": "env://GITHUB_NEW_REPOS_RENAME_DEFAULT_BRANCH_EXCLUDE_API?trueIf=1",
-  "renameDefaultBranchTo": "env://GITHUB_NEW_REPOS_DEFAULT_BRANCH_NAME?default=main"
-}

@@ -46,7 +46,7 @@ export default class CosmosHelper {
     this._client = new CosmosClient({ endpoint, key });
     this._database = (await this._client.databases.createIfNotExists({ id: this._options.database })).database;
     this._collection = (await this._database.containers.createIfNotExists({ id: this._options.collection })).container;
-    this._initialized = true;    
+    this._initialized = true;
   }
 
   async getObject(partitionKey: string, documentId: string): Promise<any> {
@@ -85,7 +85,7 @@ export default class CosmosHelper {
 
   private throwIfNotInitialized() {
     if (!this._initialized) {
-      throw new Error('This provider must be initialized before it can be used');
+      throw new Error('Cosmos provider must be initialized before it can be used');
     }
   }
 }

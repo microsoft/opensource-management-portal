@@ -10,12 +10,12 @@ export interface ICacheOptions {
   maxAgeSeconds?: number | null | undefined;
 }
 
-export interface IPagedCacheOptions extends ICacheOptions {
-  pageRequestDelay?: number | null | undefined; // FUTURE: could be a function, too
+export interface ICacheOptionsWithPurpose extends ICacheOptions {
+  purpose?: AppPurpose;
 }
 
-export interface IGetOwnerToken {
-  (): string;
+export interface IPagedCacheOptions extends ICacheOptions {
+  pageRequestDelay?: number | null | undefined; // FUTURE: could be a function, too
 }
 
 export interface IPurposefulGetAuthorizationHeader {
@@ -72,13 +72,15 @@ export enum CoreCapability {
   Links = 'Links', // IOperationsLinks
   Templates = 'Templates', // IOperationsTemplates
   RepositoryMetadataProvider = 'RepositoryMetadataProvider', // IOperationsRepositoryMetadataProvider
-  NewRepositoryTaskOptions = 'NewRepositoryTaskOptions', // IOperationsNewRepositoryTaskOptions
   Hiearchy = 'Hierarchy', // IOperationsHierarchy
   Notifications = 'Notifications', // IOperationsNotifications
 }
 
-export interface IAlternateTokenRequiredOptions extends ICacheOptions {
-  alternateToken: string;
+export interface IAlternateTokenOption {
+  alternateToken: string;  
+}
+
+export interface IAlternateTokenRequiredOptions extends ICacheOptions, IAlternateTokenOption {
 }
 
 export interface IPagedCrossOrganizationCacheOptions extends IPagedCacheOptions {

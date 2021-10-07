@@ -31,6 +31,8 @@ interface IGraphOptions {
   filterValues?: string;
   orderBy?: string;
   body?: any;
+  count?: boolean;
+  consistencyLevel?: 'eventual',
 }
 
 export class MicrosoftGraphProvider implements IGraphProvider {
@@ -84,7 +86,11 @@ export class MicrosoftGraphProvider implements IGraphProvider {
         entity.manager = manager;
       }
     } catch (warning) {
-      console.warn(warning);
+      if (ErrorHelper.IsNotFound(warning)) {
+        console.warn(`User not found with AAD ID ${aadId}`);
+      } else {
+        console.warn(warning);
+      }
     }
     return entity;
   }
@@ -189,6 +195,25 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     return subResponse.map(entry => entry.id)[0];
   }
 
+  async getUserIdByMail(mail: string): Promise<string> {
+    const response = await this.lookupInGraph([
+      'users',
+    ], {
+      filterValues: `mail eq '${mail}'`, // encodeURIComponent(
+      selectValues: 'id',
+      count: true,
+      consistencyLevel: 'eventual',
+    }) as any[];
+    if (!response || response.length === 0) {
+      return null;
+    }
+    if (Array.isArray(response)) {
+      return response.map(entry => entry.id)[0];
+    }
+    const subResponse = (response as any).value ? (response as any).value : [];
+    return subResponse.map(entry => entry.id)[0];
+  }
+
   async getUsersByIds(userIds: string[]): Promise<IGraphEntry[]> {
     if (!userIds || userIds.length === 0) {
       return [];
@@ -203,6 +228,31 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     if (!response.filter && (response as any).value?.filter) {
       response = (response as any).value;
     }  
+    return response.filter(e => e.userType !== GraphUserType.Guest).map(entry => {
+      return {
+        id: entry.id,
+        mailNickname: entry.mailNickname,
+        displayName: entry.displayName,
+        mail: entry.mail,
+        givenName: entry.givenName,
+        userPrincipalName: entry.userPrincipalName,
+        jobTitle: entry.jobTitle,
+      }
+    });
+  }
+
+
+  async getDirectReports(corporateIdOrUpn: string): Promise<IGraphEntry[]> {
+    let response = await this.lookupInGraph([
+      'users',
+      corporateIdOrUpn,
+      'directReports',
+    ], {
+      selectValues: 'id,displayName,mailNickname,mail,userPrincipalName,userType,jobTitle',
+    }) as any[];
+    if (!response.filter && (response as any).value?.filter) {
+      response = (response as any).value;
+    }
     return response.filter(e => e.userType !== GraphUserType.Guest).map(entry => {
       return {
         id: entry.id,
@@ -328,7 +378,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
 
   private async getUserByIdLookup(aadId: string, token: string, subResource: string): Promise<any> {
     const extraPath = subResource ? `/${subResource}` : '';
-    const url = `https://graph.microsoft.com/v1.0/users/${aadId}${extraPath}?$select=id,mailNickname,userType,displayName,givenName,mail,userPrincipalName`;
+    const url = `https://graph.microsoft.com/v1.0/users/${aadId}${extraPath}?$select=id,mailNickname,userType,displayName,givenName,mail,userPrincipalName,jobTitle`;
     if (this.#_cache) {
       try {
         const cached = await this.#_cache.getObject(url);
@@ -336,7 +386,9 @@ export class MicrosoftGraphProvider implements IGraphProvider {
           return cached.value;
         }
       } catch (error) {
-        console.warn(error);
+        if (!ErrorHelper.IsNotFound(error)) {
+          console.warn(error);
+        }
       }
     }
     try {
@@ -348,7 +400,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
         },
       });
       if (!response.data) {
-        throw CreateError.NotFound(`user not found in the directory: ${aadId}`);
+        throw CreateError.NotFound(`${subResource || 'user'} not in directory for ${aadId}`);
       }
       if (response.data.error?.message) {
         throw CreateError.InvalidParameters(response.data.error.message);
@@ -361,7 +413,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       const axiosError = error as AxiosError;
       if (axiosError?.response) {
         if (axiosError.response?.status === 404) {
-          throw CreateError.NotFound(`User not found in the corporate directory with the ID '${aadId}'`, axiosError);
+          throw CreateError.NotFound(`${subResource || 'user'} not in the directory for '${aadId}'`, axiosError);
         } else if (axiosError.response?.status >= 500) {
           throw CreateError.ServerError('Graph server error', axiosError);
         } else if (axiosError.response?.status >= 400) {
@@ -393,7 +445,11 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       if (this.#_cache) {
         value = await this.#_cache.getObject(url);
         if (value?.cache) {
-          return value.cache as any;
+          if (Array.isArray(value.cache) && value.cache.length === 0) {
+            // live lookup still
+          } else {
+            return value.cache as any;
+          }
         }
       }
     } catch (error) {
@@ -401,7 +457,8 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     }
     let pages = 0;
     do {
-      const body = await this.request(url, options.body);
+      const consistencyLevel = options.consistencyLevel;
+      const body = await this.request(url, options.body, consistencyLevel);
       if (body.value && pages === 0) {
         hasArray = body && body.value && Array.isArray(body.value);
         if (hasArray) {
@@ -431,27 +488,36 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     return value;
   }
 
-  private async request(url: string, body?: any): Promise<any> {
+  private async request(url: string, body?: any, eventualConsistency?: string): Promise<any> {
     const token = await this.getToken();
     const method = body ? 'post' : 'get';
     if (this.#_cache && method === 'get') {
       try {
         const value = await this.#_cache.getObject(url);
         if (value?.cache) {
-          return value.cache as any;
+          if (Array.isArray(value.cache) && value.cache.length === 0) {
+            // live lookup still
+          } else {
+            return value.cache as any;
+          }
         }
       } catch (error) {
         console.warn(error);
       }
     }
     try {
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        // ConsistencyLevel: undefined,
+      };
+      if (eventualConsistency) {
+        // headers.ConsistencyLevel = eventualConsistency;
+      }
       const response = await axios({
         url,
         method,
         data: method === 'post' ? body : undefined,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       });
       if (!response.data) {
         throw CreateError.ServerError('Empty response');

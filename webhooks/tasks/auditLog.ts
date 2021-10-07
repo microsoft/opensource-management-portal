@@ -24,6 +24,12 @@ const eventTypes = new Set([
   'team',
 ]);
 
+const knownEventTypesToIgnore = new Set([
+  'fork',
+  'watch',
+  'star',
+]);
+
 async function runAsync(operations: Operations, organization: Organization, data: any) {
   const { auditLogRecordProvider } = operations.providers;
   if (!auditLogRecordProvider) {
@@ -110,7 +116,7 @@ export default class AuditLogRecorderWebhookProcessor implements WebhookProcesso
   filter(data: any) {
     let eventType = data.properties.event;
     const has = eventTypes.has(eventType);
-    if (!has) {
+    if (!has && !knownEventTypesToIgnore.has(eventType)) {
       console.log(`audit log does not support event type: ${eventType}`);
     }
     return has;

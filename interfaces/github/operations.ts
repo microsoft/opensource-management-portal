@@ -8,7 +8,6 @@ import { IProviders, ICorporateLink, ICachedEmployeeInformation } from '..';
 import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
 import { RestLibrary } from '../../lib/github';
 import { Account } from '../../business';
-import { IRepoWorkflowEngineOptions } from '../../routes/org/repoWorkflowEngine';
 
 export interface IOperationsInstance {
   hasCapability(capability: CoreCapability): boolean;
@@ -58,10 +57,6 @@ export interface IOperationsGitHubRestLibrary {
 
 export interface IOperationsDefaultCacheTimes {
   defaults: ICacheDefaultTimes;
-}
-
-export interface IOperationsNewRepositoryTaskOptions {
-  newRepositoryTaskOptions: IRepoWorkflowEngineOptions;
 }
 
 export interface IOperationsHierarchy {

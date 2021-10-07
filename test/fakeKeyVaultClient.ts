@@ -3,35 +3,64 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { v4 as uuidV4 } from 'uuid';
+import { GetSecretOptions } from '@azure/keyvault-secrets';
+import { randomUUID } from 'crypto';
 import { IDictionary } from '../interfaces';
+import { jsonError } from '../middleware';
 
-let storedKeys = new Map();
-
-function storeSecret(secretName: string, secretValue: string, tags: IDictionary<string>) {
-  const version = uuidV4();
-  const id = `https://fakekeyvault/secrets/${secretName}/${version}`;
-  const secret = {
-    id,
-    value: secretValue,
-    tags,
-  };
-  storedKeys.set(id, secret);
-  return id;
-}
-
-function getSecret(vaultUri: string, secretId: string, secretVersion: string, callback) {
-  const id = `https://fakekeyvault/secrets/${secretId}/${secretVersion}`;
-  const val = storedKeys.get(id);
-  if (val !== undefined) {
-    return callback(null, val);
-  }
-  return callback(new Error('Secret not found.'));
-}
-
-export default () => {
-  return {
-    getSecret,
-    storeSecret,
-  };
+type FakeSecret = {
+  id: string, // old
+  name: string,
+  value: string,
+  properties?: {
+    tags: IDictionary<string>,
+  },
 };
+
+function validateVaultUrl(vaultUrl: string) {
+  if (!vaultUrl.startsWith('https://')) {
+    throw new Error(`vaultUrl needs to start with https://: ${vaultUrl}`);
+  }
+  if (vaultUrl.endsWith('/')) {
+    throw new Error(`vaultUrl should not have a trailing slash: ${vaultUrl}`);
+  }
+}
+
+export function createFakeVaults() {
+  const storedSecrets = new Map<string, FakeSecret>();
+
+  return {
+    getSecretClient: async (vaultUrl: string) => {
+      validateVaultUrl(vaultUrl);
+      return {
+        getSecret: async (secretName: string, props?: GetSecretOptions) => {
+          const secretVersion = props?.version || 'latest';
+          const id = `${vaultUrl}/secrets/${secretName}/${secretVersion}`;
+          const val = storedSecrets.get(id);
+          if (val !== undefined) {
+            return val;
+          }
+          throw jsonError(`Secret ${id} not found`, 404);
+        } ,
+      };
+    },
+    storeSecret: (vaultUrl: string, secretName: string, secretValue: string, tags: IDictionary<string>) => {
+      validateVaultUrl(vaultUrl);
+      const version = randomUUID();
+      const id = `${vaultUrl}/secrets/${secretName}/${version}`;
+      const secret = {
+        id,
+        name: secretName,
+        value: secretValue,
+        properties: {
+          tags,
+        },
+      };
+
+      storedSecrets.set(id, secret);
+      const latestId = `${vaultUrl}/secrets/${secretName}/latest`;
+      storedSecrets.set(latestId, secret);
+      return id;
+    }
+  }
+}

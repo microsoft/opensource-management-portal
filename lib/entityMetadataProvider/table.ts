@@ -12,12 +12,21 @@
 // Partitioning: none. For historical reasons around scale, only a fixed pkey
 // is used for this product.
 
-import azure from 'azure-storage';
-import { v4 as uuidV4 } from 'uuid';
+import { Edm, ListEntitiesResponse, odata, TableClient, TableEntity, TableEntityQueryOptions, TableEntityResult, TableServiceClient, TablesSharedKeyCredential } from '@azure/data-tables';
+
+import { randomUUID } from 'crypto';
 
 const debugShowTableOperations = false;
 
 const emptyString = '';
+
+type AzureDataTablesQueryResponse = ListEntitiesResponse<object> // or ? ListEntitiesResponse<TableEntityResult<object>>;
+
+// haven't validated yet
+interface IMaybeContinuationToken {
+  nextPartitionKey?: string;
+  nextRowKey?: string;
+}
 
 import {
   IEntityMetadataProvider,
@@ -31,10 +40,12 @@ import { IEntityMetadata, EntityMetadataType, EntityMetadataTypes } from './enti
 import { IEntityMetadataFixedQuery } from './query';
 import { MetadataMappingDefinition, EntityMetadataMappings, MetadataMappingDefinitionBase } from './declarations';
 import { encryptTableEntity, decryptTableEntity, ITableEncryptionOperationOptions } from './tableEncryption';
+import { CreateError, ErrorHelper } from '../../transitional';
+import { IKeyVaultSecretResolver } from '../keyVaultResolver';
 
 export interface ITableEncryptionOptions {
   keyEncryptionKeyId: string;
-  keyResolver: unknown;
+  keyResolver: IKeyVaultSecretResolver;
 }
 
 export interface ITableEntityMetadataProviderOptions {
@@ -71,19 +82,17 @@ export const TableSettings = {
 }
 
 const TableClientProperties = new Set([
-    'Timestamp',
-    'PartitionKey',
-    'RowKey',
-    '.metadata',
+    'timestamp',
+    'partitionKey',
+    'rowKey',
+    // former client: '.metadata',
+    'odata.metadata',
+    'etag',
 ]);
 
 interface ITableEntity {
-  RowKey: ITableStringValue;
-  PartitionKey: ITableStringValue;
-}
-
-interface ITableStringValue {
-  _: string;
+  rowKey: string;
+  partitionKey: string;
 }
 
 export class TableEntityMetadataProvider implements IEntityMetadataProvider {
@@ -92,8 +101,9 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
 
   private _storageAccountName: string;
 
-  private _table: azure.TableService;
-  private _entityGenerator: any;
+  private _azureTableServiceClient: TableServiceClient;
+  private _azureTables: Map<string, TableClient> = new Map();
+  private _azureTablesCredential: TablesSharedKeyCredential;
 
   private _tableNameMapping: any;
   private _fixedPartitionKeyMapping: any;
@@ -129,12 +139,24 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     this._typeToEncryptionOptions = new Map();
     this._encryptionOptions = options.encryption;
     try {
-      this._table = azure.createTableService(this._storageAccountName, storageAccountKey);
-      this._entityGenerator = azure.TableUtilities.entityGenerator;
+      this._azureTablesCredential = new TablesSharedKeyCredential(this._storageAccountName, storageAccountKey);
+      this._azureTableServiceClient = new TableServiceClient(
+        `https://${this._storageAccountName}.table.core.windows.net`,
+        this._azureTablesCredential,
+      );
     } catch (storageAccountError) {
       throw storageAccountError;
     }
     this._initializedTables = new Map();
+  }
+
+  private getTableClient(tableName: string) {
+    let client = this._azureTables.get(tableName);
+    if (!client) {
+      client = new TableClient(`https://${this._storageAccountName}.table.core.windows.net`, tableName, this._azureTablesCredential);
+      this._azureTables.set(tableName, client);
+    }
+    return client;
   }
 
   supportsPointQueryForType(type: EntityMetadataType): boolean {
@@ -145,7 +167,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
       // ID. Then, a few years later, 'repoId' was set to the new
       // repo ID, which is more durable than repository names which
       // can change. By not supporting point queries for the repository
-      // type, a query is used for get operations instead.
+      // type, a query is used for get operations instead. Which... is slow.
       return false;
     }
     return true;
@@ -301,26 +323,29 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
       return value;
     }
     if (typeof value === 'string') {
-      return this._entityGenerator.String(value);
+      return { type: 'String', value } as Edm<'String'>;
     } else if (value === true || value === false) {
-      return this._entityGenerator.Boolean(value);
+      return { type: 'Boolean', value } as Edm<'Boolean'>;
     } else if (Buffer.isBuffer(value)) {
-      return this._entityGenerator.Binary(value);
+      const asBuffer = value as Buffer;
+      const binaryValue = asBuffer.buffer;
+      return { type: 'Binary', value: binaryValue } as Edm<'Binary'>;
     } else if (value instanceof Date) {
       if (!isFinite(value as any)) {
         return undefined;
       }
-      return this._entityGenerator.DateTime(value);
+      return { type: 'DateTime', value: (value as Date).toISOString() } as Edm<'DateTime'>;
     } else if (typeof value === 'number') {
       // NOTE: OPINIONATED: we store all numbers are strings in Azure Table...
-      return this._entityGenerator.String(value.toString());
+      const numberAsString = String(value as number);
+      return { type: 'String', value: numberAsString } as Edm<'String'>;
     }
     throw new Error(`The key ${key} in the entity is of an unsupported type: ${typeof value}`);
   }
 
-  private tableEntityToMetadataObject(type: EntityMetadataType, tableEntity: any): IEntityMetadata {
-    const id = this.rowKeyToEntityId(type, tableEntity.RowKey._);
-    const created = tableEntity.Timestamp._;
+  private tableEntityToMetadataObject(type: EntityMetadataType, tableEntity: TableEntityResult<object>): IEntityMetadata {
+    const id = this.rowKeyToEntityId(type, tableEntity.rowKey);
+    const created = tableEntity.timestamp;
     const reducedObject = this.reduceTableEntityToObject(tableEntity);
     const keys = Object.getOwnPropertyNames(reducedObject);
     const newMetadataObject: IEntityMetadata = Object.assign(reducedObject, {
@@ -341,39 +366,40 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
       if (TableClientProperties.has(column)) { // Timestamp, PartitionKey, RowKey, .metadata
         continue;
       }
-      if (tableEntity[column] && tableEntity[column]._ !== undefined) {
-        newObject[column] = tableEntity[column]._;
-      }
+      const value = tableEntity[column];
+      newObject[column] = value?.type && value?.value ? value.value : value;
     }
     return newObject;
   }
 
   private createRowEntity(partitionKey: string, rowKey: string): ITableEntity {
     return {
-      PartitionKey: this._entityGenerator.String(partitionKey),
-      RowKey: this._entityGenerator.String(rowKey),
+      partitionKey,
+      rowKey,
     };
   }
 
-  private async tableQueryToMetadataArray(type: EntityMetadataType, tableName: string, azureTableQuery: any): Promise<IEntityMetadata[]> {
+  private async tableQueryToMetadataArray(type: EntityMetadataType, tableName: string, azureTableQuery: TableEntityQueryOptions): Promise<IEntityMetadata[]> {
     const tableEntities = await this.tableQueryAllEntities(type, tableName, azureTableQuery);
-    return tableEntities.map(tableEntity => {
+    const mapped = tableEntities.map(tableEntity => {
       return this.tableEntityToMetadataObject(type, tableEntity);
     });
+    return mapped;
   }
 
-  private async tableQueryAllEntities(type: EntityMetadataType, tableName: string, azureTableQuery: azure.TableQuery): Promise<any[]> {
+  private async tableQueryAllEntities(type: EntityMetadataType, tableName: string, azureTableQuery: TableEntityQueryOptions): Promise<any[]> {
     const rows = [];
-    let continuationToken = null;
+    let continuationToken: IMaybeContinuationToken = null;
     if (debugShowTableOperations) {
       displayTableQuery('TABLE QUERY', this._storageAccountName, tableName, azureTableQuery, null, debugShowTableOperations);
     }
     do {
       const resultSet = await this.tableQueryEntities(type, tableName, azureTableQuery, continuationToken);
-      if (resultSet.entries) {
-        rows.push(... resultSet.entries);
+      if (resultSet.length > 0) {
+        rows.push(...resultSet);
       }
-      continuationToken = resultSet.continuationToken;
+      // NOTE: this could be much more efficient with the newer async-iterable data-tables implementation...
+      continuationToken = getContinuationToken(resultSet);
     } while (continuationToken !== null);
     if (debugShowTableOperations) {
       console.log(`Total rows returned: ${rows.length}`);
@@ -381,23 +407,26 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     return rows;
   }
 
-  private async tableQueryEntities(type: EntityMetadataType, tableName: string, azureTableQuery: any, continuationToken?: string): Promise<azure.TableService.QueryEntitiesResult<ITableEntity>> {
+  private async tableQueryEntities(type: EntityMetadataType, tableName: string, azureTableQuery: TableEntityQueryOptions, continuationToken?: IMaybeContinuationToken): Promise<AzureDataTablesQueryResponse> {
     const results = await this.tableQueryEntitiesAsync(tableName, azureTableQuery, continuationToken);
     const encryptedColumnNames = this.isTypeEncrypted(type);
     if (encryptedColumnNames) {
       const encryptionOptions = this.getEncryptionOptionsForType(type);
-      const decryptedEntries = await this.decryptQueryResults(type, encryptionOptions, results.entries);
-      results.entries = decryptedEntries;
+      const decryptedEntries = await this.decryptQueryResults(type, encryptionOptions, results);
+      results.length = 0;
+      for (let i = 0; i < decryptedEntries.length; i++) {
+        results.push(decryptedEntries[i]);
+      }
     }
     return results;
   }
 
-  private async decryptQueryResults(type: EntityMetadataType, encryptionOptions: ITableEncryptionOperationOptions, results: ITableEntity[]): Promise<ITableEntity[]> {
-    const decrypted = [];
+  private async decryptQueryResults(type: EntityMetadataType, encryptionOptions: ITableEncryptionOperationOptions, results: AzureDataTablesQueryResponse): Promise<TableEntityResult<object>[]> {
+    const decrypted: TableEntityResult<object>[] = [];
     // sync; throat may be a better call if encrypted queries are common
     for (let i = 0; i < results.length; i++) {
       const entity = results[i];
-      const decryptedEntity = await decryptTableEntity(entity.PartitionKey._, entity.RowKey._, entity, encryptionOptions);
+      const decryptedEntity = await decryptTableEntity(entity.partitionKey, entity.rowKey, entity, encryptionOptions);
       decrypted.push(decryptedEntity);
     }
     return decrypted;
@@ -406,7 +435,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
   private async tableReplaceEntity(type: EntityMetadataType, tableName: string, entity: ITableEntity): Promise<any> {
     const encryptedColumnNames = this.isTypeEncrypted(type);
     if (encryptedColumnNames) {
-      entity = await encryptTableEntity(entity.PartitionKey._, entity.RowKey._, entity, this.getEncryptionOptionsForType(type));
+      entity = await encryptTableEntity(entity.partitionKey, entity.rowKey, entity, this.getEncryptionOptionsForType(type));
     }
     const result = await this.tableReplaceEntityAsync(tableName, entity);
     if (debugShowTableOperations) {
@@ -418,10 +447,19 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
   private async tableInsertEntity(type: EntityMetadataType, tableName: string, entity: ITableEntity): Promise<any> {
     const encryptedColumnNames = this.isTypeEncrypted(type);
     if (encryptedColumnNames) {
-      entity = await encryptTableEntity(entity.PartitionKey._, entity.RowKey._, entity, this.getEncryptionOptionsForType(type));
+      entity = await encryptTableEntity(entity.partitionKey, entity.rowKey, entity, this.getEncryptionOptionsForType(type));
     }
-    const result = await this.tableInsertEntityAsync(tableName, entity);
-    displayTableRow('TABLE INSERT', this._storageAccountName, tableName, entity, result['.metadata'].etag, debugShowTableOperations);
+    let result = null;
+    try {
+      result = await this.tableInsertEntityAsync(tableName, entity);
+    } catch (error) {
+      if (ErrorHelper.IsConflict(error)) {
+        throw CreateError.Conflict(`Entity already exists in table ${tableName} partition ${entity.partitionKey} row ${entity.rowKey}`, error);
+      }
+      throw error;
+    }
+    const etag = result?.etag;
+    displayTableRow('TABLE INSERT', this._storageAccountName, tableName, entity, etag, debugShowTableOperations);
     return result;
   }
 
@@ -436,37 +474,31 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
   }
 
   private async tableDeleteEntity(tableName: string, partitionKey: string, rowKey: string): Promise<any> {
-    const entity = this.createRowEntity(partitionKey, rowKey);
-    return new Promise((resolve, reject) => {
-      this._table.deleteEntity(tableName, entity, (error, result) => {
-        return error ? reject(error) : resolve(result);
-      });
-    });
+    const tableClient = this.getTableClient(tableName);
+    return await tableClient.deleteEntity(partitionKey, rowKey);
   }
 
   private async tableCreateIfNotExists(type: EntityMetadataType, tableName: string): Promise<boolean> {
-    return new Promise<boolean>((resolve, reject) => {
-      this._table.createTableIfNotExists(tableName, (error, result) => {
-        if (!error) {
-          this._initializedTables.set(type, tableName);
-        }
-        return error ? reject(error) : resolve(result.created);
-      });
-    });
+    try {
+      await this._azureTableServiceClient.createTable(tableName);
+      this._initializedTables.set(type, tableName);
+      return true;
+    } catch (error) {
+      if (error.statusCode === 409) {
+        // already exists
+        return false;
+      }
+      console.warn(`tableCreateIfNotExists error: tableName=${tableName}, error=${error}`);
+      throw error;
+    }
   }
 
   private async tableDeleteEntireTable(type: EntityMetadataType, tableName: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-      // WARNING: a table can technically support multiple types of metadata.
-      // This call may be more destructive than you would like as it can
-      // delete other types.
-      this._table.deleteTable(tableName, (error, result) => {
-        if (!error) {
-          this._initializedTables.delete(type);
-        }
-        return error ? reject(error) : resolve(result);
-      });
-    });
+    // WARNING: a table can technically support multiple types of metadata.
+    // This call may be more destructive than you would like as it can
+    // delete other types.
+    await this._azureTableServiceClient.deleteTable(tableName);
+    this._initializedTables.delete(type);
   }
 
   private createQueryFromFixedQueryEnum(type: EntityMetadataType, query: IEntityMetadataFixedQuery): any {
@@ -490,7 +522,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
         // CONSIDER: it might be best if the serialization helpers took options, and so only when
         // a new object is being created through the appropriate code path would this identify
         // get created.
-        object[idFieldName] = uuidV4(); // new entity to insert
+        object[idFieldName] = randomUUID(); // new entity to insert
       }
       const entity = SerializeObjectToEntityMetadata(type, idFieldName, object, mapObjectToTableFields, true /* numbers to strings */, false /* throw if missing translations */, true /* ignore private variables */);
       if (specializedSerializer) {
@@ -544,35 +576,35 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
   }
 
   private async tableReplaceEntityAsync(tableName: string, entity: any): Promise<any> {
-    return new Promise((resolve, reject) => {
-      this._table.replaceEntity(tableName, entity, (error, result) => {
-        return error ? reject(error) : resolve(result);
-      });
-    });
+    const tableClient = this.getTableClient(tableName);
+    await tableClient.updateEntity(entity, 'Replace');
   }
 
   private async tableInsertEntityAsync(tableName: string, entity: any): Promise<any> {
-    return new Promise((resolve, reject) => {
-      this._table.insertEntity(tableName, entity, (error, result) => {
-        return error ? reject(error) : resolve(result);
-      });
-    });
+    const tableClient = this.getTableClient(tableName);
+    return await tableClient.createEntity(entity);
   }
 
   private async tableRetrieveEntityAsync(type: EntityMetadataType, tableName: string, partitionKey: string, rowKey: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-      this._table.retrieveEntity(tableName, partitionKey, rowKey, (error, tableEntity) => {
-        return error ? reject(error) : resolve(tableEntity);
-      });
-    });
+    const tableClient = this.getTableClient(tableName);
+    const tableEntity = await tableClient.getEntity(partitionKey, rowKey);
+    return tableEntity;
   }
 
-  private async tableQueryEntitiesAsync(tableName: string, azureTableQuery: any, continuationToken?: string): Promise<azure.TableService.QueryEntitiesResult<ITableEntity>> {
-    return new Promise((resolve, reject) => {
-      this._table.queryEntities(tableName, azureTableQuery, (continuationToken || null) as unknown as azure.TableService.TableContinuationToken, (error, results: azure.TableService.QueryEntitiesResult<ITableEntity>) => {
-        return error ? reject(error) : resolve(results);
-      });
+  private async tableQueryEntitiesAsync(tableName: string, azureTableQuery: TableEntityQueryOptions, continuationToken?: IMaybeContinuationToken): Promise<AzureDataTablesQueryResponse> {
+    const tableClient = this.getTableClient(tableName);
+    const listResults = tableClient.listEntities({
+      queryOptions: azureTableQuery,
+      nextPartitionKey: continuationToken?.nextPartitionKey,
+      nextRowKey: continuationToken?.nextRowKey,
     });
+    const iterateByPage = listResults.byPage();
+    let singleResponse: AzureDataTablesQueryResponse = [];
+    for await (const page of iterateByPage) {
+      singleResponse = page;
+      break;
+    }
+    return singleResponse;
   }
 }
 
@@ -609,7 +641,14 @@ function mergeMaps(mapA: Map<string, string>, mapB: Map<string, string>) {
   return new Map([...mapA, ...mapB]);
 }
 
-function tryGetDate(value) {
+function getContinuationToken(result: AzureDataTablesQueryResponse): IMaybeContinuationToken {
+  if (result.nextPartitionKey || result.nextRowKey) {
+    return { nextPartitionKey: result.nextPartitionKey, nextRowKey: result.nextRowKey };
+  }
+  return null;
+}
+
+function tryGetDate(value: any) {
   if (!value) {
     return;
   }
@@ -628,7 +667,7 @@ function tryGetDate(value) {
   // undefined
 }
 
-function displayTableQuery(header: string, accountName: string, tableName: string, query: azure.TableQuery, footer?: string, output: boolean = true) {
+function displayTableQuery(header: string, accountName: string, tableName: string, query: TableEntityQueryOptions, footer?: string, output: boolean = true) {
   const entity = {};
   if (query['_where'] && Array.isArray(query['_where'])) {
     const w = (query['_where'] as string[]);
@@ -648,10 +687,13 @@ function displayTableRow(header: string, accountName: string, tableName: string,
   const list = [];
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];
-    if (key === '.metadata') {
+    if (key === 'odata.metadata') {
       continue;
     }
-    const value = entity[key]['_']; // type would be entity['$']
+    let value = entity[key];
+    if (value?.type && value?.value) {
+      value = value.value;
+    }
     list.push(`${key}=${value}`);
   }
   if (header) {

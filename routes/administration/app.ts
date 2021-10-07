@@ -244,12 +244,15 @@ router.post('/:appId/installations/:installationId', asyncHandler(async function
           const colonIndex = changeTeamPropertyValue.indexOf(':');
           const teamType = changeTeamPropertyValue.substr(0, colonIndex);
           const teamId = changeTeamPropertyValue.substr(colonIndex + 1);
-          if (!['systemAdmin', 'systemWrite', 'systemRead', 'sudo'].includes(teamType)) {
+          if (!['systemAdmin', 'systemWrite', 'systemRead', 'sudo', 'everyone'].includes(teamType)) {
             // explicitly now allowing globalSudo to be set here
             throw new Error(`Unsupported team type: ${teamType}`);
           }
           let specialTeamType: SpecialTeam = null;
           switch (teamType) {
+            case 'everyone':
+              specialTeamType = SpecialTeam.Everyone;
+              break;
             case 'systemAdmin':
               specialTeamType = SpecialTeam.SystemAdmin;
               break;
@@ -263,9 +266,9 @@ router.post('/:appId/installations/:installationId', asyncHandler(async function
               specialTeamType = SpecialTeam.Sudo;
               break;
             // case 'globalSudo':
-              // specialTeamType = SpecialTeam.GlobalSudo;
-              // explicitly now allowing globalSudo to be set here
-              // break;
+            // specialTeamType = SpecialTeam.GlobalSudo;
+            // explicitly now allowing globalSudo to be set here
+            // break;
             default:
               throw new Error('Unsupported team type');
           }

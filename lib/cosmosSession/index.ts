@@ -138,7 +138,7 @@ export default class CosmosSessionStore extends Store {
 
   private throwIfNotInitialized() {
     if (!this._initialized) {
-      throw new Error('This provider must be initialized before it can be used');
+      throw new Error('Cosmos session provider must be initialized before it can be used');
     }
   }
 

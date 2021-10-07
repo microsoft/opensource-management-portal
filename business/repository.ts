@@ -13,6 +13,10 @@ import { IPurposefulGetAuthorizationHeader, IOperationsInstance, ICacheOptions, 
 import { IListPullsParameters, GitHubPullRequestState } from '../lib/github/collections';
 
 import { wrapError } from '../utils';
+import { RepositoryActions } from './repositoryActions';
+import { RepositoryPullRequest } from './repositoryPullRequest';
+import { ErrorHelper } from '../transitional';
+import { augmentInertiaPreview, RepositoryProject } from './repositoryProject';
 
 interface IRepositoryMoments {
   created?: moment.Moment;
@@ -26,9 +30,17 @@ interface IRepositoryMomentsAgo {
   pushed?: string;
 }
 
+interface INewIssueOptions {
+  assignee?: string;
+}
+
 interface IProtectedBranchRule {
   pattern: string;
 };
+
+interface IGitHubNewProjectOptions {
+  body?: string;
+}
 
 interface IGitHubGetFileParameters {
   owner: string;
@@ -37,6 +49,12 @@ interface IGitHubGetFileParameters {
   ref?: string;
 
   alternateToken?: string;
+}
+
+interface IGitHubGetReadmeParameters {
+  owner: string;
+  repo: string;
+  ref?: string;
 }
 
 interface IGitHubFileContents {
@@ -72,6 +90,10 @@ interface ICreateFileParameters {
 }
 
 interface IGitHubGetFileOptions {
+  ref?: string;
+}
+
+interface IGitHubGetReadmeOptions extends ICacheOptions {
   ref?: string;
 }
 
@@ -250,6 +272,10 @@ export class Repository {
     return false;
   }
 
+  get actions() {
+    return new RepositoryActions(this, this._getAuthorizationHeader, this._getSpecificAuthorizationHeader, this._operations);
+  }
+
   async getDetails(options?: ICacheOptions): Promise<any> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
@@ -267,8 +293,10 @@ export class Repository {
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
-      mediaType,
     };
+    if (mediaType) {
+      (parameters as any).mediaType = mediaType;
+    }
     const cacheOptions: ICacheOptions = {
       maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
     };
@@ -350,17 +378,33 @@ export class Repository {
     return github.collections.getRepoPullRequests(this.authorize(AppPurpose.Updates), parameters, cacheOptions);
   }
 
-  async getContent(path: string, options?: IGetContentOptions): Promise<any> {
+  getReadme(options?: IGitHubGetReadmeOptions): Promise<IGitHubFileContents> {
     options = options || {};
-    const ref = options.branch || options.tag || options.ref || 'master';
-    const parameters = {
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const parameters: IGitHubGetReadmeParameters = {
       owner: this.organization.name,
       repo: this.name,
-      path: path,
-      ref: ref,
+      ref: options?.ref || undefined,
     };
-    const operations = throwIfNotGitHubCapable(this._operations);
-    return operations.github.call(this.authorize(AppPurpose.Data), 'repos.getContent', parameters);
+    if (options && options.ref) {
+      parameters.ref = options.ref;
+    }
+    const cacheOptions: ICacheOptions = {};
+    if (options?.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+      delete parameters['backgroundRefresh'];
+    }
+    if (options?.maxAgeSeconds !== undefined) {
+      cacheOptions.maxAgeSeconds = options.maxAgeSeconds;
+      delete parameters['maxAgeSeconds'];
+    }
+    if (cacheOptions?.maxAgeSeconds === undefined) {
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds);
+    }
+    if (cacheOptions?.backgroundRefresh === undefined) {
+      cacheOptions.backgroundRefresh = true;
+    }
+    return operations.github.call(this.authorize(AppPurpose.Operations), 'repos.getReadme', parameters, cacheOptions);
   }
 
   async getLastCommitToBranch(branchName: string): Promise<string> {
@@ -753,6 +797,7 @@ export class Repository {
   }
 
   createFile(path: string, base64Content: string, commitMessage: string, options?: ICreateFileOptions): Promise<any> {
+    options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters: ICreateFileParameters = Object.assign({
       owner: this.organization.name,
@@ -761,16 +806,16 @@ export class Repository {
       message: commitMessage,
       content: base64Content,
     }, options);
-    if (options && options.sha) {
+    if (options?.sha) {
       parameters.sha = options.sha;
     }
-    if (options && options.branch) {
+    if (options?.branch) {
       parameters.branch = options.branch;
     }
-    if (options && options.committer) {
+    if (options?.committer) {
       parameters.committer = options.committer;
     }
-    const alternateHeader = options.alternateToken ? `token ${options.alternateToken}` : null;
+    const alternateHeader = options?.alternateToken ? `token ${options.alternateToken}` : null;
     return operations.github.post(alternateHeader || this.authorize(AppPurpose.Operations), 'repos.createOrUpdateFileContents', parameters);
   }
 
@@ -785,10 +830,11 @@ export class Repository {
       parameters.ref = options.ref;
     }
     // const alternateHeader = options.alternateToken ? `token ${options.alternateToken}` : null;
-    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.getContent', parameters);
+    return operations.github.call(this.authorize(AppPurpose.Operations), 'repos.getContent', parameters);
   }
 
-  getFiles(path: string, options?: IGitHubGetFileOptions): Promise<IGitHubFileContents[]> {
+  async getFiles(path: string, options?: IGitHubGetFileOptions, cacheOptions?: ICacheOptions): Promise<IGitHubFileContents[]> {
+    cacheOptions = cacheOptions || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters: IGitHubGetFileParameters = Object.assign({
       owner: this.organization.name,
@@ -799,7 +845,20 @@ export class Repository {
       parameters.ref = options.ref;
     }
     // const alternateHeader = options.alternateToken ? `token ${options.alternateToken}` : null;
-    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.getContent', parameters);
+    try {
+      const xyz = await operations.github.call(this.authorize(AppPurpose.Security), 'repos.getContent', parameters, cacheOptions);
+      if (Array.isArray(xyz)) {
+        return Array.from(xyz);
+      }
+      return xyz;
+    } catch (error) {
+      if (!ErrorHelper.IsNotFound(error)) {
+        console.dir(error);
+        console.warn(error);
+        throw error;
+      }
+      return [];
+    }
   }
 
   async setTeamPermission(teamId: number, newPermission: GitHubRepositoryPermission): Promise<any> {
@@ -907,6 +966,15 @@ export class Repository {
       repo: this.name,
     }, {
       archived: true,
+    });
+    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
+  }
+
+  async update(patch?: any): Promise<void> {
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const parameters = Object.assign(patch, {
+      owner: this.organization.name,
+      repo: this.name,
     });
     return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
   }
@@ -1142,6 +1210,11 @@ export class Repository {
     return getAuthorizationHeader;
   }
 
+  private specificAuthorization(purpose: AppPurpose): IGetAuthorizationHeader | string {
+    const getSpecificHeader = this._getSpecificAuthorizationHeader.bind(this, purpose) as IGetAuthorizationHeader;
+    return getSpecificHeader;
+  }
+
   public static SortByAwesomeness(a: Repository, b: Repository) {
     return b.computeAwesomeness() - a.computeAwesomeness();
   }
@@ -1204,25 +1277,111 @@ export class Repository {
     return issues;
   }
 
+  async getProjects(options?: IPagedCacheOptions): Promise<RepositoryProject[]> {
+    // NOTE: currently only available for the "Onboarding" app
+    options = options || {};
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const github = operations.github;
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      per_page: getPageSize(operations),
+      // supported but not in the type now: state: options.state,
+    };
+    augmentInertiaPreview(parameters);
+    const cacheOptions: IPagedCacheOptions = {
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoTeamsStaleSeconds, options),
+      backgroundRefresh: options.backgroundRefresh !== undefined ? options.backgroundRefresh : true,
+      pageRequestDelay: options.pageRequestDelay,
+    };
+    const projectsRaw = await github.collections.getRepoProjects(this.specificAuthorization(AppPurpose.Onboarding), parameters, cacheOptions);
+    const projects = common.createInstances<RepositoryProject>(this, projectFromEntity, projectsRaw);
+    return projects;
+  }
+
+  async createProject(projectName: string, options?: IGitHubNewProjectOptions): Promise<RepositoryProject> {
+    options = options || {};
+    const operations = throwIfNotGitHubCapable(this._operations);
+    delete (options as any).owner;
+    delete (options as any).repo;
+    delete (options as any).name;
+    const orgName = this.organization.name;
+    const repositoryName = this.name;
+    const parameters = Object.assign({
+      owner: orgName,
+      repo: repositoryName,
+      name: projectName,
+    }, options);
+    augmentInertiaPreview(parameters);
+    const details = await operations.github.post(this.specificAuthorization(AppPurpose.Onboarding), 'projects.createForRepo', parameters);
+    const newProject = new RepositoryProject(this, details.id, operations, this._getAuthorizationHeader, this._getSpecificAuthorizationHeader, details);
+    return newProject;
+  }
+
+  pullRequest(pullRequestNumber: number, optionalEntity?: any): RepositoryPullRequest {
+    const pr = new RepositoryPullRequest(this, pullRequestNumber, this._operations, this._getAuthorizationHeader, optionalEntity);
+    return pr;
+  }
+
+  project(projectId: number, optionalEntity?: any): RepositoryProject {
+    const project = new RepositoryProject(this, projectId, this._operations, this._getAuthorizationHeader, this._getSpecificAuthorizationHeader, optionalEntity);
+    return project;
+  }
+
   issue(issueNumber: number, optionalEntity?: any): RepositoryIssue {
     const issue = new RepositoryIssue(this, issueNumber, this._operations, this._getAuthorizationHeader, optionalEntity);
     return issue;
   }
 
-  async createIssue(title: string, body: string): Promise<RepositoryIssue> {
+  async createIssue(title: string, body: string, options?: INewIssueOptions, overriddenPurpose?: AppPurpose): Promise<RepositoryIssue> {
     const operations = throwIfNotGitHubCapable(this._operations);
-    const parameters = {
+    options = options || {};
+    delete (options as any).owner;
+    delete (options as any).repo;
+    delete (options as any).title;
+    delete (options as any).body;
+    const parameters = Object.assign({
       owner: this.organization.name,
       repo: this.name,
       title,
       body,
-    };
-    // Operations has issue write permissions
-    const details = await operations.github.post(this.authorize(AppPurpose.Operations), 'issues.create', parameters);
+    }, options);
+    const purpose = overriddenPurpose || AppPurpose.Operations; // Operations has issue write permissions
+    const details = await operations.github.post(overriddenPurpose ? this.specificAuthorization(purpose) : this.authorize(purpose), 'issues.create', parameters);
     const issueNumber = details.number as number;
     const issue = new RepositoryIssue(this, issueNumber, this._operations, this._getAuthorizationHeader, details);
     return issue;
   }
+
+  async getCommitComment(commentId: string): Promise<any> {
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const parameters = Object.assign({
+      owner: this.organization.name,
+      repo: this.name,
+      comment_id: commentId,
+    });
+    const comment = await operations.github.post(this.authorize(AppPurpose.Operations), 'repos.getCommitComment', parameters);
+    return comment;
+  }
+
+  async isCommitCommentDeleted(commentId: string) {
+    try {
+      await this.getCommitComment(commentId);
+      return false;
+    } catch (error) {
+      if (ErrorHelper.IsNotFound(error)) {
+        return true;
+      }
+      throw error;
+    }
+  }
+}
+
+function projectFromEntity(entity) {
+  // 'this' is bound for this function to be a private method
+  const operations = this._operations;
+  const permission = new RepositoryProject(this, entity.id, operations, this._getAuthorizationHeader, this._getSpecificAuthorizationHeader, entity);
+  return permission;
 }
 
 function issueFromEntity(entity) {

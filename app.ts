@@ -8,6 +8,7 @@ import { hostname } from 'os';
 
 import { IReposApplication, IReposJob, IReposJobOptions, IReposJobResult } from './interfaces';
 
+import configResolver from './lib/config';
 import initialize from './middleware/initialize';
 import { quitInTenSeconds } from './utils';
 
@@ -28,7 +29,7 @@ app.initializeJob = function initializeJob(config, configurationError) {
 async function startup(startupApplication: boolean) {
   let painlessConfigResolver = null;
   try {
-    painlessConfigResolver = require('painless-config-resolver')();
+    painlessConfigResolver = configResolver();
   } catch (error) {
     console.warn('Painless config resolver initialization error:');
     console.error(error);
@@ -72,8 +73,9 @@ app.runJob = async function (job: (job: IReposJob) => Promise<IReposJobResult | 
   if (options.defaultDebugOutput && !process.env.DEBUG) {
     process.env.DEBUG = options.defaultDebugOutput;
   }
-  if (options.treatGitHubAppAsBackground !== false) {
-    app.isBackgroundJob = true;
+  app.isBackgroundJob = true;
+  if (options.enableAllGitHubApps) {
+    app.enableAllGitHubApps = true;
   }
   try {
     await app.startupJob();

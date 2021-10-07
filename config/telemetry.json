@@ -1,5 +1,7 @@
 {
   "applicationInsightsKey": "env://APPINSIGHTS_INSTRUMENTATION_KEY",
-  "jobsApplicationInsightsKey": "env://JOBS_APPINSIGHTS_INSTRUMENTATION_KEY",
+  "applicationInsightsConnectionString": "env://APPINSIGHTS_INSTRUMENTATION_CS",
+  "jobsApplicationInsightsConnectionKey": "env://JOBS_APPINSIGHTS_INSTRUMENTATION_KEY",
+  "jobsApplicationInsightsConnectionString": "env://JOBS_APPINSIGHTS_INSTRUMENTATION_CS",
   "googleAnalyticsKey": "env://GOOGLE_ANALYTICS_KEY"
 }

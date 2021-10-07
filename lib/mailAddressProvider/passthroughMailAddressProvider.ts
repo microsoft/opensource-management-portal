@@ -3,10 +3,12 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-export default function createMailAddressProvider() {
+import { IMailAddressProvider } from '.';
+
+export default function createMailAddressProvider() : IMailAddressProvider {
   return {
-    getAddressFromUpn: (upn, callback) => {
-      return callback(null, upn);
+    getAddressFromUpn: async (upn: string) => {
+      return upn;
     },
   };
 }

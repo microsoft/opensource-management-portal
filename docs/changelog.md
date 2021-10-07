@@ -2,6 +2,12 @@
 
 # Changes
 
+## 2021
+
+- 7.1.0: new column for repository metadata, initialrepositoryhomepage
+- `painless-config` removed, please use `.env` (dotenv) going forward. The painless-config-resolver lib basically has moved into this project.
+- New "company-specific deployment" support to conditionally branch or include alternate logic when present
+
 ## 2020
 
 - August 2020: Postgres added `corporatemail` as a new property; for performance reasons, looking up mail addresses, which are relatively static, has been a performance issue. This field is not required: a mail address lookup fallback will likely be in place for a while.

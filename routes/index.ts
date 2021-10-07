@@ -22,7 +22,6 @@ import AuthenticatedRoute from './index-authenticated';
 
 router.use('/thanks', ThanksRoute);
 router.use('/myinfo', MyInfoRoute);
-router.use('/explore', ExploreRoute);
 
 import { hasStaticReactClientApp } from '../transitional';
 import { injectReactClient } from '../middleware';
@@ -30,6 +29,7 @@ import { injectReactClient } from '../middleware';
 const hasReactApp = hasStaticReactClientApp();
 const reactRoute = hasReactApp ? injectReactClient() : undefined;
 router.use('/approvals', reactRoute || ApprovalsRoute); // redirects into settings for site users
+router.use('/explore', reactRoute || ExploreRoute);
 
 router.use(AuthenticatedRoute);
 

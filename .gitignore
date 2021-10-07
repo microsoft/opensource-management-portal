@@ -8,3 +8,4 @@ env.json
 .env
 env-orgs.json
 .secrets.env
+.gdn

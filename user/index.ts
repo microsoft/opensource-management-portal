@@ -85,7 +85,8 @@ export class SessionUserProperties {
   }
 
   setValue(keyPath: string, value: string): boolean {
-    return objectPath.set(this._sessionUserProperties, keyPath, value);
+    objectPath.set(this._sessionUserProperties, keyPath, value);
+    return true;
   }
 }
 

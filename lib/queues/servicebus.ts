@@ -3,18 +3,18 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import serviceBus from 'azure-sb';
-import moment from 'moment';
+import { DateTime } from 'luxon';
+import { ServiceBusClient, ServiceBusReceivedMessage, ServiceBusReceiver } from '@azure/service-bus';
 
 import { IQueueMessage, IQueueProcessor } from '.';
 import { IDictionary, Json } from '../../interfaces';
 
-const EnqueuedTimeUtc = 'EnqueuedTimeUtc';
-// const DeliveryCount = 'DeliveryCount';
+// NOTE: in May 2021 this file was moved to the newer generation of Azure SDK dependencies,
+// which brings in AMQP under the covers instead of the HTTP REST approach; this is therefore
+// an inefficient implementation since subscribe() is not being used directly yet.
 
-const PeekLockOption = {
-  isPeekLock: true,
-};
+const defaultMessagesPerRequest = 5; // could be configurable in the future
+const maxWaitTimeInMs = 30 /* seconds */ * 1000;
 
 export interface IServiceBusQueueProcessorOptions {
   queue: string;
@@ -22,20 +22,18 @@ export interface IServiceBusQueueProcessorOptions {
 }
 
 export class ServiceBusMessage implements IQueueMessage {
-  #lockedMessage: serviceBus.Azure.ServiceBus.Message = null;
-  constructor(message: serviceBus.Azure.ServiceBus.Message) {
+  #lockedMessage: ServiceBusReceivedMessage = null;
+  constructor(message: ServiceBusReceivedMessage) {
     this.#lockedMessage = message;
     this.brokerProperties = Object.assign({}, message) as unknown as IDictionary<string>;
-    if (message.brokerProperties[EnqueuedTimeUtc]) {
-      const originalEventQueued = moment(message.brokerProperties[EnqueuedTimeUtc]);
-      const now = moment();
-      this.enqueuedSecondsAgo = now.diff(originalEventQueued, 'seconds', true);
+    if (message.enqueuedTimeUtc) {
+      this.enqueuedSecondsAgo = DateTime.fromJSDate(message.enqueuedTimeUtc).diffNow().seconds;
     }
     // let deliveryCount = message.brokerProperties[DeliveryCount] !== undefined ? message.brokerProperties[DeliveryCount] : null;
-    this.identifier = message.brokerProperties.MessageId;
-    this.customProperties = message.customProperties;
+    this.identifier = message.messageId && typeof(message.messageId) === 'string' ? message.messageId : undefined;
+    this.customProperties = message.applicationProperties as IDictionary<string>;
     this.unparsedBody = message.body;
-    this.body = JSON.parse(message.body);
+    this.body = typeof(message.body) === 'string' ? JSON.parse(message.body) : this.unparsedBody; // newer library parses JSON automatically
   }
 
   body: Json;
@@ -53,8 +51,11 @@ export class ServiceBusMessage implements IQueueMessage {
 
 export default class ServiceBusQueueProcessor implements IQueueProcessor {
   #options: IServiceBusQueueProcessorOptions;
-  #service: serviceBus.ServiceBusService;
+  #service: ServiceBusClient;
+  #receiver: ServiceBusReceiver;
   #initialized: boolean;
+
+  supportsMultipleThreads: false;
 
   constructor(options: IServiceBusQueueProcessorOptions) {
     if (!options.connectionString) {
@@ -67,48 +68,41 @@ export default class ServiceBusQueueProcessor implements IQueueProcessor {
   }
   
   async initialize(): Promise<void> {
-    this.#service = serviceBus.createServiceBusService(this.#options.connectionString);
+    const options = this.#options;
+    const service = new ServiceBusClient(options.connectionString);
+    this.#service = service;
+    this.#receiver = service.createReceiver(options.queue, { receiveMode: 'peekLock' });
     this.#initialized = true;
   }
 
-  receiveMessages(): Promise<ServiceBusMessage[]> {
+  async receiveMessages(): Promise<ServiceBusMessage[]> {
     if (!this.#initialized) {
-      return Promise.reject(new Error('Provider not initialized'));
+      throw new Error('Provider not initialized');
     }
-    return new Promise((resolve, reject) => {
-      return this.#service.receiveQueueMessage(this.#options.queue, PeekLockOption, (peekError, lockedMessage) => {
-        if ((peekError as unknown) === 'No messages to receive' || (!peekError && !lockedMessage)) {
-          return resolve([]);
-        } else if (peekError) {
-          return reject(peekError);
-        }
-        try {
-          const envelope = new ServiceBusMessage(lockedMessage);
-          return resolve([ envelope ]);
-        } catch (error) {
-          return reject(error);
-        }
+
+    try {
+      const messages = await this.#receiver.receiveMessages(defaultMessagesPerRequest, {
+        maxWaitTimeInMs,
       });
-    });
+      return messages.map(message => new ServiceBusMessage(message));
+    } catch (error) {
+      // if empty, return empty array
+
+      console.warn(error);
+    }
   }
 
   async deleteMessage(message: IQueueMessage): Promise<void> {
     if (!this.#initialized) {
-      return Promise.reject(new Error('Provider not initialized'));
+      throw new Error('Provider not initialized');
     }
-    return new Promise((resolve, reject) => {
-      try {
-        const assumedType = message as ServiceBusMessage;
-        const lockedMessage = assumedType.lockedMessage();
-        return this.#service.deleteMessage(lockedMessage, (error, deleteResponse) => {
-          if (error) {
-            console.warn(deleteResponse || error);
-          }
-          return error ? reject(error) : resolve();
-        });
-      } catch (deleteError) {
-        return reject(deleteError);
-      }
-    });
+    const assumedType = message as ServiceBusMessage;
+    const lockedMessage = assumedType.lockedMessage();
+    try {
+      await this.#receiver.completeMessage(lockedMessage);
+    } catch (deleteError) {
+      console.warn(`Delete error: ${deleteError}`)
+      throw deleteError;
+    }
   }
 }

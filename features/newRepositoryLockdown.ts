@@ -3,17 +3,27 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import moment from 'moment';
+import { DateTime } from 'luxon';
 
 import { Operations, Organization, Repository, Team } from '../business';
 import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repositoryMetadataProvider';
-import { RepositoryMetadataEntity, GitHubRepositoryVisibility, RepositoryLockdownState } from '../entities/repositoryMetadata/repositoryMetadata';
+import { RepositoryMetadataEntity, GitHubRepositoryVisibility, RepositoryLockdownState, GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 import { IndividualContext } from '../user';
 import { daysInMilliseconds } from '../utils';
 import { ICorporateLink, ICachedEmployeeInformation, GitHubCollaboratorAffiliationQuery } from '../interfaces';
 import { IMail } from '../lib/mailProvider';
+import { ErrorHelper } from '../transitional';
+import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 
 const botBracket = '[bot]';
+
+const defaultMailTemplate = 'newrepolockdown';
+
+interface IRepoPatch {
+  private?: boolean;
+  description?: string;
+  homepage?: string;
+}
 
 interface IMailToRemoveAdministrativeLock {
   organization: Organization;
@@ -30,10 +40,15 @@ interface IMailToLockdownRepo {
   repository: Repository;
   linkToClassifyRepository: string;
   linkToDeleteRepository: string;
+  linkToAdministrativeUnlockRepository: string;
   mailAddress?: string;
   link?: ICorporateLink;
   isForkAdministratorLocked: boolean;
 }
+
+export const setupRepositorySubstring = 'To gain access, please finish setting up this repository now at: ';
+
+export const setupRepositoryReadmeSubstring = '# Repository setup required';
 
 export interface INewRepositoryLockdownSystemOptions {
   operations: Operations;
@@ -82,7 +97,8 @@ export default class NewRepositoryLockdownSystem {
     const isLockedForkOrNotSetupYet = metadata.lockdownState === RepositoryLockdownState.AdministratorLocked || metadata.lockdownState === RepositoryLockdownState.Locked;
     const isWindowOk = (new Date()) <= new Date((new Date(repository.created_at)).getTime() + daysInMilliseconds(daysAfterCreateToAllowSelfDelete));
     if (!isWindowOk && !isLockedForkOrNotSetupYet) {
-      throw new Error(`The ${repository.name} repo was created ${moment(repository.created_at).fromNow()}. Repos can only be deleted by their creator ${daysAfterCreateToAllowSelfDelete} days after being created.`);
+      const asDate = new Date(repository.created_at);
+      throw new Error(`The ${repository.name} repo was created ${DateTime.fromJSDate(asDate).toLocaleString(DateTime.DATE_SHORT)}. Repos can only be deleted by their creator ${daysAfterCreateToAllowSelfDelete} days after being created.`);
     }
   }
 
@@ -115,6 +131,9 @@ export default class NewRepositoryLockdownSystem {
   async removeAdministrativeLock(): Promise<void> {
     if (!this.organization.isNewRepositoryLockdownSystemEnabled()) {
       throw new Error('lockdown system not enabled');
+    }
+    if (!this.repository.id) {
+      await this.repository.getDetails();
     }
     const repositoryMetadata = await this.repositoryMetadataProvider.getRepositoryMetadata(this.repository.id.toString());
     if (repositoryMetadata.lockdownState !== RepositoryLockdownState.AdministratorLocked) {
@@ -278,6 +297,7 @@ export default class NewRepositoryLockdownSystem {
     if (!this.organization.isNewRepositoryLockdownSystemEnabled()) {
       return false;
     }
+    const companySpecific = getCompanySpecificDeployment();
     const lockdownForks = this.organization.isForkLockdownSystemEnabled();
     const lockdownTransfers = this.organization.isTransferLockdownSystemEnabled();
     lockdownLog.push(`Confirmed that the ${this.organization.name} organization has opted in to the new repository lockdown system`);
@@ -287,18 +307,19 @@ export default class NewRepositoryLockdownSystem {
     if (lockdownTransfers) {
       lockdownLog.push('Confirmed that the additional transfer lockdown feature is enabled for this org');
     }
+    const setupUrl = `${this.organization.absoluteBaseUrl}wizard?existingreponame=${this.repository.name}&existingrepoid=${this.repository.id}`;
     let isTransfer = action === 'transferred';
     if (isTransfer && !lockdownTransfers) {
       return false; // no need to do special transfer logic
     }
     if (isTransfer && transferSourceRepositoryLogin) {
-      try {
-        const sourceOrganization = this.operations.getOrganization(transferSourceRepositoryLogin);
+      const isInternalTransfer = this.operations.isManagedOrganization(transferSourceRepositoryLogin);
+      if (isInternalTransfer) {
         // BUSINESS RULE: If the organization is configured in the system, no need to lock it down...
         // CONSIDER: should there be a feature flag for this behavior, to allow managed-to-managed org transfers without lockdown?
         // CONSIDER: notify operations that a transfer happened
         return false;
-      } catch (notManagedOrganization) { /* ignore */ }
+      }
     }
     const lowercaseUsername = username.toLowerCase();
     // any repository created by a bot *is ok* and will not be locked down. If this is an issue, having an approved list of permitted bots to create repos would be one way to approach this loophole. Non-bot users cannot have brackets in their names.
@@ -313,7 +334,7 @@ export default class NewRepositoryLockdownSystem {
       return false;
     }
     lockdownLog.push(`Confirmed that the repository was not ${action} by any of the system accounts: ${Array.from(systemAccounts.values()).join(', ')}`);
-    await this.lockdownRepository(lockdownLog, systemAccounts);
+    await this.lockdownRepository(lockdownLog, systemAccounts, username);
     let link: ICorporateLink = null;
     try {
       link = await this.operations.getLinkByThirdPartyId(thirdPartyId.toString());
@@ -321,6 +342,12 @@ export default class NewRepositoryLockdownSystem {
       lockdownLog.push(`No corporate link available for the GitHub username ${username} that created the repository`);
     }
     let isForkAdministratorLocked = false;
+    let isForkParentManagedBySystem = false;
+    let upstreamLogin = this.repository.parent?.owner?.login;
+    if (!upstreamLogin && this.repository?.fork === true) {
+      const moreEntity = await this.repository.getDetails();
+      upstreamLogin = moreEntity?.parent?.owner?.login;
+    }
     try {
       // Repository metadata is used to lock down the security of the repository system. Only
       // a complete system administrator or the initial creator of a repository is able to
@@ -336,6 +363,10 @@ export default class NewRepositoryLockdownSystem {
         lockdownState = RepositoryLockdownState.AdministratorLocked;
         isForkAdministratorLocked = true;
         lockdownLog.push('The repository is a fork and will be administrator locked');
+        if (upstreamLogin && this.operations.isManagedOrganization(upstreamLogin)) {
+          lockdownLog.push(`The parent organization, ${upstreamLogin}, is also an organization managed by the company.`);
+          isForkParentManagedBySystem = true;
+        }
       }
       if (repositoryMetadata) {
         lockdownLog.push(`Repository metadata already exists for repository ID ${this.repository.id}`);
@@ -351,6 +382,7 @@ export default class NewRepositoryLockdownSystem {
         repositoryMetadata.organizationName = this.organization.name;
         repositoryMetadata.organizationId = this.organization.id.toString();
         repositoryMetadata.initialRepositoryDescription = this.repository.description;
+        repositoryMetadata.initialRepositoryHomepage = this.repository.homepage;
         repositoryMetadata.initialRepositoryVisibility = this.repository.private ? GitHubRepositoryVisibility.Private : GitHubRepositoryVisibility.Public;
         await this.repositoryMetadataProvider.createRepositoryMetadata(repositoryMetadata);
         lockdownLog.push(`Created the initial repository metadata indicating the repo was created by ${username}`);
@@ -359,15 +391,44 @@ export default class NewRepositoryLockdownSystem {
       console.dir(metadataSystemError);
       lockdownLog.push(`While writing repository metadata an error: ${metadataSystemError.message}`);
     }
+    let patchChanges: IRepoPatch = {};
+    if (!isForkAdministratorLocked && !isTransfer && !this.repository.private) {
+      lockdownLog.push('Preparing to hide the public repository pending setup (V2)');
+      patchChanges.private = true;
+    }
+    if (!isForkAdministratorLocked) {
+      lockdownLog.push('Updating the description and web site to point at the setup wizard (V2)');
+      lockdownLog.push(`Will direct the user to ${setupUrl}`);
+      patchChanges.description = `${setupRepositorySubstring} ${setupUrl}`;
+      patchChanges.homepage = setupUrl;
+    }
+    if (Object.getOwnPropertyNames(patchChanges).length > 0) {
+      try {
+        const descriptiveUpdate = Object.getOwnPropertyNames(patchChanges).map(key => {
+          return `${key}=${patchChanges[key]}`
+        }).join(', ');
+        lockdownLog.push(`Updating repository with patch ${descriptiveUpdate}`);
+        await this.repository.update(patchChanges);
+      } catch (hideError) {
+        lockdownLog.push(`Error while trying to update the new repo: ${hideError} (V2)`);
+      }
+    }
+    try {
+      await this.tryCreateReadme(this.repository, lockdownLog);
+    } catch (readmeError) {
+      lockdownLog.push(`Error with README updates: ${readmeError}`);
+    }
     let mailSentToCreator = false;
     const operationsMails = [ this.operations.getRepositoriesNotificationMailAddress() ];
+    const defaultAdministrativeUnlockUrl = `${this.repository.absoluteBaseUrl}administrativeLock`;
     const lockdownMailContent: IMailToLockdownRepo = {
       username,
       log: lockdownLog,
       organization: this.organization,
       repository: this.repository,
       linkToDeleteRepository: this.repository.absoluteBaseUrl + 'delete',
-      linkToClassifyRepository: `${this.organization.absoluteBaseUrl}wizard?existingreponame=${this.repository.name}&existingrepoid=${this.repository.id}`,
+      linkToClassifyRepository: setupUrl,
+      linkToAdministrativeUnlockRepository: companySpecific?.urls?.getAdministrativeUnlockUrl(this.repository) || defaultAdministrativeUnlockUrl,
       mailAddress: null,
       link,
       isForkAdministratorLocked,
@@ -375,6 +436,7 @@ export default class NewRepositoryLockdownSystem {
     lockdownLog.push(`The repo can be unlocked at ${lockdownMailContent.linkToClassifyRepository}`);
     const repoActionType = this.repository.fork ? 'forked' : (isTransfer ? 'transferred' : 'created');
     const stateVerb = isTransfer ? 'transferred' : 'new';
+    const forkUnlockMail = this.operations.config.brand?.forkApprovalMail || this.operations.config.brand?.operationsMail;
     if (link) {
       try {
         const mailAddress = link.corporateMailAddress || await this.operations.getMailAddressFromCorporateUsername(link.corporateUsername);
@@ -401,10 +463,11 @@ export default class NewRepositoryLockdownSystem {
           } catch (managerInfoError) {
             console.dir(managerInfoError);
           }
+          const mailView = companySpecific?.views?.email?.repository?.newDirect || defaultMailTemplate;
           const mailToCreator: IMail = {
             to: mailAddress,
             subject,
-            content: await this.operations.emailRender('newrepolockdown', {
+            content: await this.operations.emailRender(mailView, {
               reason: (`You just ${repoActionType} a repository on GitHub and have additional actions required to gain access to continue to use it after classification.
                         ${reasonInfo}.`),
               headline: isForkAdministratorLocked ? 'Fork approval required' : `Setup your ${stateVerb} repository`,
@@ -413,7 +476,11 @@ export default class NewRepositoryLockdownSystem {
               isMailToCreator: true,
               lockdownMailContent,
               isForkAdministratorLocked,
+              isForkParentManagedBySystem,
+              upstreamLogin,
+              linkToAdministrativeUnlockRepository: companySpecific?.urls?.getAdministrativeUnlockUrl(this.repository) || defaultAdministrativeUnlockUrl,
               action,
+              forkUnlockMail,
               operationsMail: operationsMails.join(','),
               transferSourceRepositoryLogin,
             }),
@@ -445,6 +512,7 @@ export default class NewRepositoryLockdownSystem {
             app: `${this.operations.config.brand.companyName} GitHub`,
             isMailToOperations: true,
             lockdownMailContent,
+            forkUnlockMail,
             transferSourceRepositoryLogin,
             action,
             mailSentToCreator,
@@ -470,7 +538,7 @@ export default class NewRepositoryLockdownSystem {
     return true;
   }
 
-  async lockdownRepository(log: string[], systemAccounts: Set<string>): Promise<void> {
+  async lockdownRepository(log: string[], systemAccounts: Set<string>, creatorLogin: string): Promise<void> {
     try {
       const specialPermittedTeams = new Set([
         ...this.organization.specialRepositoryPermissionTeams.admin,
@@ -489,7 +557,16 @@ export default class NewRepositoryLockdownSystem {
         if (systemAccounts.has(collaborator.login.toLowerCase())) {
           log.push(`System account ${collaborator.login} will continue to have repository access`);
         } else {
-          await this.tryDropCollaborator(this.repository, collaborator.login, log);
+          if (collaborator.login.toLowerCase() !== creatorLogin.toLowerCase()) {
+            await this.tryDropCollaborator(this.repository, collaborator.login, log);
+          } else {
+            // Downgrade the creator to only having READ access (V2)
+            if (collaborator.permissions.admin || collaborator.permissions.push) {
+              await this.tryDowngradeCollaborator(this.repository, collaborator.login, log);
+            } else {
+              log.push(`V2: Creator login ${collaborator.login} does not have administrative access (rare), not downgrading`);
+            }
+          }
         }
       }
       log.push('Lockdown of permissions complete');
@@ -513,6 +590,46 @@ export default class NewRepositoryLockdownSystem {
       log.push(`Lockdown removed collaborator login=${login} from the repository ${repository.name} in organization ${repository.organization.name}`);
     } catch (lockdownError) {
       log.push(`Error while removing collaborator login=${login} from the repository ${repository.name} in organization ${repository.organization.name}: ${lockdownError.message}`);
+    }
+  }
+
+  async tryDowngradeCollaborator(repository: Repository, login: string, log: string[]): Promise<void> {
+    try {
+      await repository.addCollaborator(login, GitHubRepositoryPermission.Pull);
+      log.push(`V2: Lockdown downgraded collaborator login=${login} from the repository ${repository.name} in organization ${repository.organization.name} to READ/pull`);
+    } catch (lockdownError) {
+      log.push(`V2: Error while downgrading collaborator login=${login} from the repository ${repository.name} in organization ${repository.organization.name} to READ/pull: ${lockdownError.message}`);
+    }
+  }
+
+  async tryCreateReadme(repository: Repository, log: string[]): Promise<void> {
+    try {
+      await repository.getReadme();
+      log.push(`V2: The repository already has a README Markdown file, not placing a new one.`);
+      return;
+
+    } catch (getContentError) {
+      if (ErrorHelper.IsNotFound(getContentError)) {
+        log.push(`V2: The repo doesn't have a README.md file yet, placing an initial one.`);
+      } else {
+        log.push(`V2: Error while checking for an existing README.md file: ${getContentError}`);
+      }
+    }
+
+    try {
+      const setupRepositoryReadme = (`${setupRepositoryReadmeSubstring} :wave:
+      
+Please visit the website URL :point_right: for this repository to complete the setup of this repository and configure access controls.`);
+
+      const readmeBuffer = Buffer.from(setupRepositoryReadme, 'utf-8');
+      const base64Content = readmeBuffer.toString('base64');
+      await repository.createFile('README.md', base64Content, `README.md: Setup instructions`);
+    } catch (writeFileError) {
+      if (ErrorHelper.GetStatus(writeFileError) === 422) {
+        // they selected to have a README created
+      } else {
+        log.push(`V2: Error while attempting to place a README.md file: ${writeFileError}`);
+      }
     }
   }
 }
