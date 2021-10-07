@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import moment from 'moment';
+import { DateTime } from 'luxon';
 
 import { Operations, Organization, Repository, Team } from '../business';
 import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repositoryMetadataProvider';
@@ -97,7 +97,8 @@ export default class NewRepositoryLockdownSystem {
     const isLockedForkOrNotSetupYet = metadata.lockdownState === RepositoryLockdownState.AdministratorLocked || metadata.lockdownState === RepositoryLockdownState.Locked;
     const isWindowOk = (new Date()) <= new Date((new Date(repository.created_at)).getTime() + daysInMilliseconds(daysAfterCreateToAllowSelfDelete));
     if (!isWindowOk && !isLockedForkOrNotSetupYet) {
-      throw new Error(`The ${repository.name} repo was created ${moment(repository.created_at).fromNow()}. Repos can only be deleted by their creator ${daysAfterCreateToAllowSelfDelete} days after being created.`);
+      const asDate = new Date(repository.created_at);
+      throw new Error(`The ${repository.name} repo was created ${DateTime.fromJSDate(asDate).toLocaleString(DateTime.DATE_SHORT)}. Repos can only be deleted by their creator ${daysAfterCreateToAllowSelfDelete} days after being created.`);
     }
   }
 
@@ -312,13 +313,13 @@ export default class NewRepositoryLockdownSystem {
       return false; // no need to do special transfer logic
     }
     if (isTransfer && transferSourceRepositoryLogin) {
-      try {
-        const sourceOrganization = this.operations.getOrganization(transferSourceRepositoryLogin);
+      const isInternalTransfer = this.operations.isManagedOrganization(transferSourceRepositoryLogin);
+      if (isInternalTransfer) {
         // BUSINESS RULE: If the organization is configured in the system, no need to lock it down...
         // CONSIDER: should there be a feature flag for this behavior, to allow managed-to-managed org transfers without lockdown?
         // CONSIDER: notify operations that a transfer happened
         return false;
-      } catch (notManagedOrganization) { /* ignore */ }
+      }
     }
     const lowercaseUsername = username.toLowerCase();
     // any repository created by a bot *is ok* and will not be locked down. If this is an issue, having an approved list of permitted bots to create repos would be one way to approach this loophole. Non-bot users cannot have brackets in their names.
@@ -341,6 +342,12 @@ export default class NewRepositoryLockdownSystem {
       lockdownLog.push(`No corporate link available for the GitHub username ${username} that created the repository`);
     }
     let isForkAdministratorLocked = false;
+    let isForkParentManagedBySystem = false;
+    let upstreamLogin = this.repository.parent?.owner?.login;
+    if (!upstreamLogin && this.repository?.fork === true) {
+      const moreEntity = await this.repository.getDetails();
+      upstreamLogin = moreEntity?.parent?.owner?.login;
+    }
     try {
       // Repository metadata is used to lock down the security of the repository system. Only
       // a complete system administrator or the initial creator of a repository is able to
@@ -356,6 +363,10 @@ export default class NewRepositoryLockdownSystem {
         lockdownState = RepositoryLockdownState.AdministratorLocked;
         isForkAdministratorLocked = true;
         lockdownLog.push('The repository is a fork and will be administrator locked');
+        if (upstreamLogin && this.operations.isManagedOrganization(upstreamLogin)) {
+          lockdownLog.push(`The parent organization, ${upstreamLogin}, is also an organization managed by the company.`);
+          isForkParentManagedBySystem = true;
+        }
       }
       if (repositoryMetadata) {
         lockdownLog.push(`Repository metadata already exists for repository ID ${this.repository.id}`);
@@ -465,6 +476,8 @@ export default class NewRepositoryLockdownSystem {
               isMailToCreator: true,
               lockdownMailContent,
               isForkAdministratorLocked,
+              isForkParentManagedBySystem,
+              upstreamLogin,
               linkToAdministrativeUnlockRepository: companySpecific?.urls?.getAdministrativeUnlockUrl(this.repository) || defaultAdministrativeUnlockUrl,
               action,
               forkUnlockMail,
