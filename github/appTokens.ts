@@ -5,8 +5,7 @@
 
 import { request } from '@octokit/request';
 import { createAppAuth, InstallationAccessTokenAuthentication } from '@octokit/auth-app';
-import { AuthOptions, Authentication, AppAuthentication } from '@octokit/auth-app/dist-types/types';
-import { AuthInterface } from '@octokit/types';
+import { AppAuthentication, AuthInterface } from '@octokit/auth-app/dist-types/types';
 
 import { AppPurpose } from '.';
 import { IAuthorizationHeaderValue } from '../interfaces';
@@ -20,7 +19,7 @@ interface IInstallationToken {
   headerValue: string;
 }
 
-type OctokitAuthFunction = AuthInterface<[AuthOptions], Authentication>;
+//type OctokitAuthFunction = AuthInterface<[AuthOptions], Authentication>;
 
 const InstallationTokenLifetimeMilliseconds = 1000 * 60 * 60;
 const ValidityOffsetAfterNowMilliseconds = 1000 * 120; // how long to require validity in the future
@@ -29,8 +28,8 @@ export class GitHubAppTokens {
   #privateKey: string;
   private _appId: number;
   public purpose: AppPurpose;
-  private _appAuth: OctokitAuthFunction;
-  private _installationAuth = new Map<number, OctokitAuthFunction>();
+  private _appAuth: AuthInterface;
+  private _installationAuth = new Map<number, AuthInterface>();
   private _tokensByInstallation = new Map<number, IInstallationToken[]>();
   private _baseUrl: string;
 
