@@ -31,6 +31,8 @@ interface IGraphOptions {
   filterValues?: string;
   orderBy?: string;
   body?: any;
+  count?: boolean;
+  consistencyLevel?: 'eventual',
 }
 
 export class MicrosoftGraphProvider implements IGraphProvider {
@@ -197,8 +199,10 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     const response = await this.lookupInGraph([
       'users',
     ], {
-      filterValues: `mail eq '${encodeURIComponent(mail)}'`,
+      filterValues: `mail eq '${mail}'`, // encodeURIComponent(
       selectValues: 'id',
+      count: true,
+      consistencyLevel: 'eventual',
     }) as any[];
     if (!response || response.length === 0) {
       return null;
@@ -441,7 +445,11 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       if (this.#_cache) {
         value = await this.#_cache.getObject(url);
         if (value?.cache) {
-          return value.cache as any;
+          if (Array.isArray(value.cache) && value.cache.length === 0) {
+            // live lookup still
+          } else {
+            return value.cache as any;
+          }
         }
       }
     } catch (error) {
@@ -449,7 +457,8 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     }
     let pages = 0;
     do {
-      const body = await this.request(url, options.body);
+      const consistencyLevel = options.consistencyLevel;
+      const body = await this.request(url, options.body, consistencyLevel);
       if (body.value && pages === 0) {
         hasArray = body && body.value && Array.isArray(body.value);
         if (hasArray) {
@@ -479,27 +488,36 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     return value;
   }
 
-  private async request(url: string, body?: any): Promise<any> {
+  private async request(url: string, body?: any, eventualConsistency?: string): Promise<any> {
     const token = await this.getToken();
     const method = body ? 'post' : 'get';
     if (this.#_cache && method === 'get') {
       try {
         const value = await this.#_cache.getObject(url);
         if (value?.cache) {
-          return value.cache as any;
+          if (Array.isArray(value.cache) && value.cache.length === 0) {
+            // live lookup still
+          } else {
+            return value.cache as any;
+          }
         }
       } catch (error) {
         console.warn(error);
       }
     }
     try {
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        // ConsistencyLevel: undefined,
+      };
+      if (eventualConsistency) {
+        // headers.ConsistencyLevel = eventualConsistency;
+      }
       const response = await axios({
         url,
         method,
         data: method === 'post' ? body : undefined,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       });
       if (!response.data) {
         throw CreateError.ServerError('Empty response');
