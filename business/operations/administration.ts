@@ -20,7 +20,7 @@ export async function isAuthorizedSystemAdministrator(providers: IProviders, cor
           name: `${insightsPrefix}AuthorizedGroupMembership`,
           properties: {
             corporateId: corporateId,
-            securityGroupId: this._groupId,
+            securityGroupId: groupId,
           },
         });
         return true;
@@ -35,7 +35,7 @@ export async function isAuthorizedSystemAdministrator(providers: IProviders, cor
             className: 'OperationsAdministration',
             callName: 'isAuthorizedSytemAdministrator',
             corporateId: corporateId,
-            securityGroupId: this._groupId,
+            securityGroupId: groupId,
           },
         });
       }
