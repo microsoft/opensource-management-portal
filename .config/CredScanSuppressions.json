@@ -20,6 +20,10 @@
     {
       "hash": "nZjSPG++Bq0/TJj+9dADaf/gBad25Z96fl/1VRLALhk=",
       "_justification": "False Positive"
+    },
+    {
+      "hash": "z6MZfMZShooXGSnEnLvjfLbS9oxk2VGxKkzOZqrIr0k=",
+      "_justification": "NPM test file"
     }
   ]
 }
