@@ -171,6 +171,10 @@ export class RestCollections {
     return this.generalizedCollectionWithFilter('repoIssues', 'issues.listForRepo', null, token, options, cacheOptions);
   }
 
+  getRepoProjects(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any[]> {
+    return this.generalizedCollectionWithFilter('repoProjects', 'projects.listForRepo', null, token, options, cacheOptions);
+  }
+
   getRepoTeams(token: string | IGetAuthorizationHeader, options, cacheOptions: IPagedCacheOptions): Promise<any> {
     return this.generalizedCollectionWithFilter('repoTeamPermissions', 'repos.listTeams', teamPermissionsToCopy, token, options, cacheOptions);
   }
