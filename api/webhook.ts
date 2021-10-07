@@ -10,7 +10,7 @@ import moment from 'moment';
 import { ReposAppRequest } from '../interfaces';
 
 import { jsonError } from '../middleware';
-import { getProviders } from '../transitional';
+import { getProviders, isWebhookIngestionEndpointEnabled } from '../transitional';
 
 import OrganizationWebhookProcessor from '../webhooks/organizationProcessor';
 
@@ -21,6 +21,10 @@ interface IRequestWithRaw extends ReposAppRequest {
 }
 
 router.use(asyncHandler(async (req: IRequestWithRaw, res, next) => {
+  if (!isWebhookIngestionEndpointEnabled(req)) {
+    return next(jsonError('This feature is currently disabled. Only queue-based firehose ingestion will work at this time.', 401));
+  }
+
   const { operations } = getProviders(req);
   const body = req.body;
   const orgName = body && body.organization && body.organization.login ? body.organization.login : null;

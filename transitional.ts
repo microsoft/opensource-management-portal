@@ -34,11 +34,16 @@ export interface RedisOptions {
   detect_buffers: boolean;
   tls?: {
     servername: string;
-  }
+  };
 }
 
 export function getProviders(req: ReposAppRequest) {
   return req.app.settings.providers as IProviders;
+}
+
+export function isWebhookIngestionEndpointEnabled(req: ReposAppRequest) {
+  const { config } = getProviders(req);
+  return config?.features?.exposeWebhookIngestionEndpoint === true;
 }
 
 export interface IResponseForSettingsPersonalAccessTokens extends Response {
@@ -240,8 +245,11 @@ export class ErrorHelper {
         return axiosError.response.status;
       }
     }
-    if (asAny?.statusCode && typeof(asAny.statusCode) === 'number') {
+    if (asAny?.statusCode && typeof (asAny.statusCode) === 'number') {
       return asAny.statusCode as number;
+    }
+    if (asAny?.code && typeof (asAny.code) === 'number') {
+      return asAny.code as number;
     }
     if (asAny?.status) {
       const status = asAny.status;
@@ -298,6 +306,10 @@ export interface ICustomizedNewRepositoryLogic {
   sufficientTeamsConfigured(context: INewRepositoryContext, body: any): boolean;
   skipApproval(context: INewRepositoryContext, body: any): boolean;
   additionalCreateRepositoryParameters(context: INewRepositoryContext): any;
+}
+
+export function splitSemiColonCommas(value: string) {
+  return value ? value.replace(/;/g, ',').split(',') : [];
 }
 
 export interface ICustomizedNewRepoProperties {
