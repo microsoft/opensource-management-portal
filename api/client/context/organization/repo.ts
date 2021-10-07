@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express from 'express';
+import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { AddRepositoryPermissionsToRequest, getContextualRepositoryPermissions } from '../../../../middleware/github/repoPermissions';
@@ -13,7 +13,7 @@ import { ReposAppRequest } from '../../../../interfaces';
 
 import routeForkUnlock from './repoForkUnlock';
 
-const router = express.Router();
+const router: Router = Router();
 
 router.get('/permissions', AddRepositoryPermissionsToRequest, asyncHandler(async (req: ReposAppRequest, res, next) => {
   const permissions = getContextualRepositoryPermissions(req);
