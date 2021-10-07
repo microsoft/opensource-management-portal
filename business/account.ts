@@ -124,6 +124,10 @@ export class Account {
     this._getAuthorizationHeader = getAuthorizationHeader;
   }
 
+  overrideAuthorization(getAuthorizationHeader: IGetAuthorizationHeader) {
+    this._getAuthorizationHeader = getAuthorizationHeader;
+  }
+
   getEntity() {
     return this._originalEntity;
   }
