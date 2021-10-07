@@ -74,7 +74,7 @@ interface IAppSessionProperties extends Session {
   referer: string;
 }
 
-export interface IAppSession extends IAppSessionProperties {}
+export interface IAppSession extends IAppSessionProperties { }
 
 export interface IReposAppResponse extends Response {
 }

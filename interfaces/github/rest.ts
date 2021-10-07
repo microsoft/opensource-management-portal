@@ -10,12 +10,12 @@ export interface ICacheOptions {
   maxAgeSeconds?: number | null | undefined;
 }
 
-export interface IPagedCacheOptions extends ICacheOptions {
-  pageRequestDelay?: number | null | undefined; // FUTURE: could be a function, too
+export interface ICacheOptionsWithPurpose extends ICacheOptions {
+  purpose?: AppPurpose;
 }
 
-export interface IGetOwnerToken {
-  (): string;
+export interface IPagedCacheOptions extends ICacheOptions {
+  pageRequestDelay?: number | null | undefined; // FUTURE: could be a function, too
 }
 
 export interface IPurposefulGetAuthorizationHeader {

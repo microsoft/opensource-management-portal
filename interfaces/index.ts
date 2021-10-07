@@ -16,6 +16,7 @@ export * from './providers';
 export * from './web';
 
 import { IAttachCompanySpecificRoutes, IAttachCompanySpecificMiddleware, ICorporationAdministrationSection, IAttachCompanySpecificStrings, ICompanySpecificFeatures, IAttachCompanySpecificViews, IAttachCompanySpecificUrls } from './companySpecific';
+import { ICompanySpecificPassportMiddleware } from './companySpecific/passport';
 import { IProviders } from './providers';
 
 // We're great at long variable names!
@@ -27,6 +28,7 @@ export interface ICompanySpecificStartupProperties {
   administrationSection?: ICorporationAdministrationSection;
   strings?: IAttachCompanySpecificStrings;
   features?: ICompanySpecificFeatures;
+  passport?: ICompanySpecificPassportMiddleware;
   views?: IAttachCompanySpecificViews;
   urls?: IAttachCompanySpecificUrls;
 }
