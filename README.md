@@ -1,6 +1,6 @@
-# opensource-portal
+# opensource-management-portal
 
-> Microsoft's GitHub-at-scale management portal
+> Microsoft's Open Source Management Portal
 
 This Node.js application is a part of the suite of services provided by
 the Open Source Programs Office at Microsoft to enable large-scale GitHub
@@ -10,19 +10,29 @@ Key features center around opinionated takes on at-scale management, with an emp
 
 - __Linking__: the concept of associating a GitHub identity with an authenticated identity in another provider, for example an Azure Active Directory user
 - __Self-service GitHub organization join__: one-click GitHub organization joining for authorized users
-- __Cross-organization functionality__: consolidated views across a set of managed GitHub organizations including people, repos, teams
+- __Cross-organization functionality__: consolidated + transparent views across a set of managed GitHub organizations including people, repos, teams
 
 > An introduction to this project is available in this 2015 post by Jeff Wilcox:   [http://www.jeff.wilcox.name/2015/11/azure-on-github/](http://www.jeff.wilcox.name/2015/11/azure-on-github/)
 
-Starting in 2020, the application pivoted to help scale better:
+Improvements made a few years back include:
 
 - The portal works best as a GitHub App instead of the older GitHub OAuth app model
 - The app can be installed as multiple parallel apps (user-facing, operations, background jobs, and data) to ensure that key user experiences continue to function even if a background job or other task exhausts available REST API reosurces
 - When combined with a near-realtime webhook feed, the app tracks updates for views in a database instead of through REST API caches.
 
+While the default application experience is a server-rendered old-school site,
+at Microsoft a modern React front-end sits on top of this backend that just serves
+REST API requests.
+
+We'd love to eventually open source the React front-end; while there are some cool
+React server-side-and-frontend frameworks like Next.js, we have chosen not to take
+such a dependency. It feels overly complicated to have the React client in this
+open repository right now, and would likely be a sidecar project (separate repo)
+when we do get that ready.
+
 ## Node app
 
-- Node.js LTS (v10+)
+- Node.js LTS (v16+)
 - TypeScript
 
 Native promises and await/async are being introduced into the codebase. Older callback-based
@@ -32,8 +42,37 @@ code using libraries such as `async` or the promise library `q` have been remove
 
 - At least one of your own GitHub organizations
 - Bring your own cache system (built-in providers for Redis, Cosmos DB, and Azure storage)
-- Azure Active Directory, or hack your own Passport provider in
+- Azure Active Directory, or hack your own Passport provider in (and help us extend the concept to be more generic and useful for Google auth, Okta, etc.)
 - Data storage for links, etc.: either Azure Storage _or_ Postgres
+
+## Firehose + query cache webhook processing
+
+While the original portal works fine for very small GitHub presences, it
+was designed around the idea that the cache would fill, while respecting the
+GitHub REST API by using [Conditional Requests](https://docs.github.com/en/rest/overview/resources-in-the-rest-api#conditional-requests), and being very
+eventually consistent.
+
+However, the REST API v3 (non-GraphQL client) maximum size for a page of results
+is 100 entries, which ... is very painful if you have tens of thousands of anything.
+
+The "firehose" is designed to be run either within the app itself, or as a secondary
+app processing results. At Microsoft, we use a service bus to process webhook events
+from GitHub, since we have a robust webhook ingestion mechanism elsewhere. The 
+firehose runs as a daemon that pulls off the queue and works to keep the "query cache" primed with newer information than the REST API may have in some cases.
+
+What this improves:
+
+- The user views of the orgs, repos, teams they are added to and have access to
+- Cross-organization views and querying
+
+The firehose and query cache are _not_ used for important or auth-style scenarios:
+
+- Query cache is not used to make permission decisions
+- Query cache is not used to authorize access to administrative functions
+
+We did at one point design the idea of having a `/webhook` endpoint and validating
+the webhook signatures before processing hooks for simple app hosting, but it's
+slightly broken right now.
 
 ## Dev prep, build, deploy
 
@@ -42,6 +81,15 @@ code using libraries such as `async` or the promise library `q` have been remove
 #### Install Node packages
 
 Make sure to include dev dependencies.
+
+The default assets package is a _super ancient_ Bootstrap and jQuery app that
+in theory provides basic skin for the site, favicons, graphics, etc. However,
+it's ... really, really, really old. Microsoft discards the default-assets-package,
+using a different set of assets, so you've been mildly warned.
+
+The `main` module of the defined default-assets-package should resolve to the
+path to serve content from. Since the default version uses Grunt to build the
+assets, it returns the `__dirname` + `/public`, which is the output/built location for Grunt.
 
 ```
 npm install
@@ -107,15 +155,15 @@ config                   jobs                     node_modules             trans
 
 ### Test
 
-This project basically has _no tests_.
+This project basically has _very few tests_, and aspirations to start using Jest better.
 
 # Work to be done
 
+- Support more interesting cloud and data providers
+- Support other authentication technologies
+- More tests
+- Ship the front-end UI to the world as open source
 - Continuing to refactor out Microsoft-specific things when possible
-- Tests
-- Proper model/view/API system
-- Front-end UI
-
 
 # Implementation Details
 
@@ -163,19 +211,31 @@ without a Redis Cache behind the scenes is going to have 100% cache misses for
 GitHub metadata. Consider configuring a development or local Redis server to
 keep cached data around.
 
+> The built-in Redis mock will likely be removed when we move to the next
+> major semver of the Node Redis library.
+
 ## LICENSE
 
 [MIT License](LICENSE)
 
-## Contributions welcome
+## Contributing
 
-Happy to have contributions, though please consider reviewing the CONTRIBUTING.MD file, the code of conduct,
-and then also open a work item to help discuss the features or functionality ahead of kicking off any such
-work.
+This project welcomes contributions and suggestions.  Most contributions require you to agree to a
+Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
+the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
 
-This project has adopted the [Microsoft Open Source Code of
-Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct
-FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com)
-with any additional questions or comments.
+When you submit a pull request, a CLA bot will automatically determine whether you need to provide
+a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
+provided by the bot. You will only need to do this once across all repos using our CLA.
+
+This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
+For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
+contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+
+## Trademarks
+
+This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
+trademarks or logos is subject to and must follow 
+[Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
+Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
+Any use of third-party trademarks or logos are subject to those third-party's policies.
