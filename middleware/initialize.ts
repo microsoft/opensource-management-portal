@@ -113,9 +113,13 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
   app.set('mailAddressProvider', providers.mailAddressProvider);
 
   const mailProvider = createMailProviderInstance(config);
-  const mailInitializedMessage = await mailProvider.initialize();
-  debug(`mail provider type=${config.mail.provider} ${mailInitializedMessage}`);
-  providers.mailProvider = mailProvider;
+  if (mailProvider) {
+    const mailInitializedMessage = await mailProvider.initialize();
+    debug(`mail provider type=${config.mail.provider} ${mailInitializedMessage}`);
+    providers.mailProvider = mailProvider;
+  } else {
+    debug(`mail provider *NOT* initialized, type=${config.mail.provider}`);
+  }
 
   providers.github = configureGitHubLibrary(providers.cacheProvider, config);
   app.set('github', providers.github);

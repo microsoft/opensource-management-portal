@@ -8,6 +8,8 @@ import { Strategy as GithubStrategy } from 'passport-github';
 import { IProviders } from '../../interfaces';
 import { Operations } from '../../business';
 
+const debug = require('debug')('startup');
+
 export const gitHubStrategyName = 'github';
 export const githubIncreasedScopeStrategyName = 'expanded-github-scope';
 export const githubStrategyUserPropertyName = 'github';
@@ -17,7 +19,7 @@ function githubResponseToSubset(app, modernAppInUse: boolean, accessToken: strin
   const config = app.settings.runtimeConfig;
   const { useIncreasedScopeLegacyAppIfNeeded } = getGithubAppConfigurationOptions(config);
   const providers = app.settings.providers as IProviders;
-  if (config && config.impersonation && config.impersonation.githubId) {
+  if (config?.impersonation?.githubId) {
     const operations = providers.operations as Operations;
     const impersonationId = config.impersonation.githubId;
     const account = operations.getAccount(impersonationId);
@@ -69,8 +71,8 @@ function githubResponseToIncreasedScopeSubset(modernAppInUse: boolean, accessTok
 }
 
 export function getGithubAppConfigurationOptions(config) {
-  let legacyOAuthApp = config.github.oauth2 && config.github.oauth2.clientId && config.github.oauth2.clientSecret ? config.github.oauth2 : null;
-  const customerFacingApp = config.github.app && config.github.app.ui && config.github.app.ui.clientId && config.github.app.ui.clientSecret ? config.github.app.ui : null;
+  let legacyOAuthApp = config?.github?.oauth2?.clientId && config?.github?.oauth2?.clientSecret ? config.github.oauth2 : null;
+  const customerFacingApp = config.github.app?.ui?.clientId && config.github.app.ui.clientSecret ? config.github.app.ui : null;
   const useCustomerFacingGithubAppIfPresent = config.github.oauth2.useCustomerFacingGitHubAppIfPresent === true;
   const useIncreasedScopeLegacyAppIfNeeded = config.github.oauth2.useIncreasedScopeCustomerFacingIfNeeded === true;
   if (useCustomerFacingGithubAppIfPresent && customerFacingApp) {
@@ -87,15 +89,21 @@ export function getGithubAppConfigurationOptions(config) {
 export default function createGithubStrategy(app, config) {
   let strategies = {};
   const { modernAppInUse, githubAppConfiguration, useIncreasedScopeLegacyAppIfNeeded } = getGithubAppConfigurationOptions(config);
+  if (!githubAppConfiguration?.clientId) {
+    // CONSIDER: for development, this might be fine, but it might be important
+    // to be configurable whether this is a fatal startup error or a stdout warning. 
+    debug('No GitHub App configured, linking will not be available.');
+    return strategies;
+  }
   if (modernAppInUse) {
-    console.log(`GitHub App for customer-facing OAuth in use, client ID=${githubAppConfiguration.clientId}`);
+    debug(`GitHub App for customer-facing OAuth in use, client ID=${githubAppConfiguration?.clientId}`);
   } else {
-    console.log(`Legacy GitHub OAuth app being used for customers, client ID=${githubAppConfiguration.clientId}`);
+    debug(`Legacy GitHub OAuth app being used for customers, client ID=${githubAppConfiguration?.clientId}`);
   }
   const writeOrgScopes = ['write:org'];
   const scope = useIncreasedScopeLegacyAppIfNeeded && !modernAppInUse ? writeOrgScopes : [];
   if (useIncreasedScopeLegacyAppIfNeeded && !modernAppInUse) {
-    console.log(`Legacy GitHub OAuth app will use the expanded token with org-write scope`);
+    debug(`Legacy GitHub OAuth app will use the expanded token with org-write scope`);
   }
   // GitHub Passport session setup.
   let githubOptions = {

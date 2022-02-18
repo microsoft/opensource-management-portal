@@ -72,10 +72,14 @@ function activeDirectorySubset(app, config, client: AuthorizationCode, iss, sub,
 
 export default function createAADStrategy(app, config) {
   const { redirectUrl, tenantId, clientId, clientSecret } = config.activeDirectory;
+  if (!clientId) {
+    debug('No Azure Active Directory clientID configured, corporate authentication will be unavailable.');
+    return {};
+  }
   const providers = app.settings.providers as IProviders;
   const aadAuthority = `https://login.microsoftonline.com/${tenantId}/`;
-  const aadMetadata = 'v2.0/.well-known/openid-configuration'; // used to use: .well-known/openid-configuration
-  const identityMetadata = `${aadAuthority}${aadMetadata}`;
+  // const aadMetadata = 'v2.0/.well-known/openid-configuration'; // used to use: .well-known/openid-configuration
+  // const identityMetadata = `${aadAuthority}${aadMetadata}`;
   const originalIdentityMetadata = `${aadAuthority}.well-known/openid-configuration`;
   const authorizePath = 'oauth2/v2.0/authorize';
   const tokenPath = 'oauth2/v2.0/token';
