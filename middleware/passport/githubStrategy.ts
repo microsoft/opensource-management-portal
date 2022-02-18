@@ -8,6 +8,11 @@ import { Strategy as GithubStrategy } from 'passport-github';
 import { IProviders } from '../../interfaces';
 import { Operations } from '../../business';
 
+export const gitHubStrategyName = 'github';
+export const githubIncreasedScopeStrategyName = 'expanded-github-scope';
+export const githubStrategyUserPropertyName = 'github';
+export const githubIncreasedScopeStrategyUserPropertyName = 'githubIncreasedScope';
+
 function githubResponseToSubset(app, modernAppInUse: boolean, accessToken: string, refreshToken: string, profile, done) {
   const config = app.settings.runtimeConfig;
   const { useIncreasedScopeLegacyAppIfNeeded } = getGithubAppConfigurationOptions(config);
@@ -101,11 +106,11 @@ export default function createGithubStrategy(app, config) {
     userAgent: 'passport-azure-oss-portal-for-github' // CONSIDER: User agent should be configured.
   };
   if (githubAppConfiguration.callbackUrl) {
-    githubOptions.callbackURL = githubAppConfiguration.callbackUrl
+    githubOptions.callbackURL = githubAppConfiguration.callbackUrl;
   }
   let githubPassportStrategy = new GithubStrategy(githubOptions, githubResponseToSubset.bind(null, app, modernAppInUse));
   // Validate the borrow some parameters from the GitHub passport library
-  strategies['github'] = githubPassportStrategy;
+  strategies[gitHubStrategyName] = githubPassportStrategy;
   // Expanded OAuth-scope GitHub access for org membership writes.
   if (!modernAppInUse) { // new GitHub Apps no longer have a separate scope concept
     let expandedGithubScopeStrategy = new GithubStrategy({
@@ -115,7 +120,7 @@ export default function createGithubStrategy(app, config) {
       scope: writeOrgScopes,
       userAgent: 'passport-azure-oss-portal-for-github' // CONSIDER: User agent should be configured.
     }, githubResponseToIncreasedScopeSubset.bind(null, modernAppInUse));
-    strategies['expanded-github-scope'] = expandedGithubScopeStrategy;
+    strategies[githubIncreasedScopeStrategyName] = expandedGithubScopeStrategy;
   }
   return strategies;
 }

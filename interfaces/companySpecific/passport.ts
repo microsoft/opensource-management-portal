@@ -4,8 +4,9 @@
 //
 
 import { PassportStatic } from 'passport';
+import { IAuthenticationHelperMethods } from '../../middleware/passport-routes';
 
 export interface ICompanySpecificPassportMiddleware {
   configure?: (app: any, config: any, passport: PassportStatic) => void;
-  attach?: (app: any, config: any, passport: PassportStatic) => void;
+  attach?: (app: any, config: any, passport: PassportStatic, helpers: IAuthenticationHelperMethods) => void;
 }

@@ -1088,7 +1088,7 @@ async function fireEvent(config, configurationName, value): Promise<IFireEventRe
         url: httpUrl,
         value,
         headers: response.headers,
-        body: response.data,
+        body: response.data as any, // axios returns unknown now
         statusCode: response.status,
       });
     } catch (ignoredTechnicalError) {

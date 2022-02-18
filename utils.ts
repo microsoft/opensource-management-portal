@@ -64,10 +64,8 @@ export function safeLocalRedirectUrl(path: string) {
   return url.search ? `${url.pathname}${url.search}` : url.pathname;
 }
 
-// ----------------------------------------------------------------------------
 // Session utility: Store the referral URL, if present, and redirect to a new
 // location.
-// ----------------------------------------------------------------------------
 interface IStoreReferrerEventDetails {
   method: string;
   reason: string;

@@ -4,7 +4,7 @@
 //
 
 import { ReposAppRequest } from '../interfaces';
-import thisPackage = require('../package.json');
+import thisPackage from '../package.json';
 import { getProviders } from '../transitional';
 
 var express = require('express');
@@ -33,7 +33,7 @@ function getPackageInfo(config) {
 }
 
 router.get('/', function (req: ReposAppRequest, res) {
-  const { config: completeConfig} = getProviders(req);
+  const { config: completeConfig } = getProviders(req);
   const config = completeConfig.obfuscatedConfig;
   const components = getPackageInfo(config);
   res.render('thanks', {

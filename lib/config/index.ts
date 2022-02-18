@@ -33,9 +33,9 @@ export interface IPainlessConfigGet {
 
 type Resolver = (object: any) => Promise<void>;
 
-type Resolvers = Resolver[] & { environment?: IPainlessConfigGet }
+type Resolvers = Resolver[] & { environment?: IPainlessConfigGet; };
 
-export type InnerError = Error & { innerError?: Error };
+export type InnerError = Error & { innerError?: Error; };
 
 export interface ILibraryOptions {
   options?: IProviderOptions;
@@ -148,7 +148,7 @@ function initialize(libraryOptions?: ILibraryOptions) {
   const environmentProvider = resolvers.environment as IPainlessConfigGet;
   return {
     resolve: async function (options: IProviderOptions) {
-      if (typeof(options) === 'function') {
+      if (typeof (options) === 'function') {
         const deprecatedCallback = options as any as (err: Error) => void;
         return deprecatedCallback(new Error('This library no longer supports callbacks. Please use native JavaScript promises, i.e. const config = await painlessConfigResolver.resolve();'));
       }
@@ -159,7 +159,7 @@ function initialize(libraryOptions?: ILibraryOptions) {
         throw new Error('No configuration "graph" provided as an option to this library. Unless using a configuration graph provider, the graph option must be included.');
       }
       try {
-      // Synchronously, in order, resolve the graph
+        // Synchronously, in order, resolve the graph
         for (const resolver of resolvers) {
           await resolver(graph);
         }

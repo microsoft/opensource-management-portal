@@ -10,8 +10,9 @@ const debug = require('debug')('user');
 import { getProviders } from '../../transitional';
 import { ICorporateIdentity, IGitHubIdentity, IndividualContext, GitHubIdentitySource } from '../../user';
 import { storeOriginalUrlAsReferrer } from '../../utils';
+import getCompanySpecificDeployment from '../companySpecificDeployment';
 
-export function requireAuthenticatedUserOrSignInExcluding(exclusionPaths: string[], req: ReposAppRequest, res, next) {
+export async function requireAuthenticatedUserOrSignInExcluding(exclusionPaths: string[], req: ReposAppRequest, res, next) {
   const baseUrl = req.baseUrl;
   for (let i = 0; i < exclusionPaths.length; i++) {
     if (baseUrl.startsWith(exclusionPaths[i])) {
@@ -19,7 +20,7 @@ export function requireAuthenticatedUserOrSignInExcluding(exclusionPaths: string
       return next();
     }
   }
-  return requireAuthenticatedUserOrSignIn(req, res, next);
+  return await requireAuthenticatedUserOrSignIn(req, res, next);
 }
 
 export async function requireAccessTokenClient(req: ReposAppRequest, res, next) {
@@ -61,8 +62,10 @@ function redirectToSignIn(req, res) {
   storeOriginalUrlAsReferrer(req, res, config.authentication.scheme === 'github' ? '/auth/github' : '/auth/azure', 'user is not authenticated and needs to authenticate');
 }
 
-export function requireAuthenticatedUserOrSignIn(req: ReposAppRequest, res, next) {
-  const config = getProviders(req).config;;
+export async function requireAuthenticatedUserOrSignIn(req: ReposAppRequest, res, next) {
+  const companySpecific = getCompanySpecificDeployment();
+  const providers = getProviders(req);
+  const { config } = providers;
   if (req.isAuthenticated()) {
     const expectedAuthenticationProperty = config.authentication.scheme === 'github' ? 'github' : 'azure';
     if (req.user && !req.user[expectedAuthenticationProperty]) {
@@ -75,7 +78,11 @@ export function requireAuthenticatedUserOrSignIn(req: ReposAppRequest, res, next
     }
     return next();
   }
-  return redirectToSignIn(req, res);
+  let shouldRedirectToSignIn = true;
+  if (companySpecific?.middleware?.authentication?.shouldRedirectToSignIn) {
+    shouldRedirectToSignIn = await companySpecific.middleware.authentication.shouldRedirectToSignIn(providers, req);
+  }
+  return shouldRedirectToSignIn ? redirectToSignIn(req, res) : next();
 }
 
 export function setIdentity(req: ReposAppRequest, res, next) {

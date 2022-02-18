@@ -6,7 +6,7 @@
       "_justification": "False Positive"
     },
     {
-      "hash": "TJAhsZMnZssesatkdIgEZTMKU0hzLv9jzufESj01AF8=",
+      "hash": "685Lp+i0A3x0phHq7swhGxOsUNrMy8Qk9RxCCmcqOKo=",
       "_justification": "False Positive"
     },
     {
@@ -24,6 +24,10 @@
     {
       "hash": "z6MZfMZShooXGSnEnLvjfLbS9oxk2VGxKkzOZqrIr0k=",
       "_justification": "NPM test file"
+    },
+    {
+      "hash": "TJAhsZMnZssesatkdIgEZTMKU0hzLv9jzufESj01AF8=",
+      "_justification": "False Positive previous scanner version"
     }
   ]
 }

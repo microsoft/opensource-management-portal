@@ -57,7 +57,7 @@ mixin displayEvents(contributions, truncateDisplay, truncateAt)
                               small= issue.title
                       if action !== 'created'
                         li: strong= action
-                      if comment.body && comment.body.length
+                      if comment && comment.body && comment.body.length
                         li(style='margin-top:8px;margin-bottom:8px')
                           small= 'Comment: '
                           small: strong
@@ -136,11 +136,12 @@ mixin displayEvents(contributions, truncateDisplay, truncateAt)
                             a(target='_new', href='https://github.com/' + repo.name + '/commit/' + comment.commit_id + '#commitcomment-' + comment.id)
                               = 'Comment on commit ' + comment.commit_id
                       li(style='margin-top:8px;margin-bottom:8px')
-                        small= 'Comment: '
-                        small: strong
-                          =comment.body.substr(0, 45)
-                          if (comment.body.length > 44)
-                            = '...'
+                        if comment && comment.body && comment.body.substr
+                          small= 'Comment: '
+                          small: strong
+                            =comment.body.substr(0, 45)
+                            if (comment.body.length > 44)
+                              = '...'
                 else if contributionType == 'PullRequestReviewCommentEvent'
                   if comment && pr
                     ul.list-unstyled
