@@ -4,17 +4,23 @@
 //
 
 import appPackage from '../package.json';
+import appRoot from 'app-root-path';
 
 const debug = require('debug')('startup');
 
 import favicon from 'serve-favicon';
 import path from 'path';
 
-const defaultPublicAssetsPackageName = '../../default-assets-package/';
-const staticAssetspackageName = appPackage['static-site-assets-package-name'] || defaultPublicAssetsPackageName;
+import { CreateError } from '../transitional';
 
-const ospoAssetsDistPath = require(staticAssetspackageName);
-const ospoAssetsPackage = require(`${staticAssetspackageName}/package.json`);
+const appRootPath = appRoot.toString();
+
+const defaultPublicAssetsPackageFolder = 'default-assets-package/';
+const staticAssetsPackageName = appPackage['static-site-assets-package-name'] || defaultPublicAssetsPackageFolder;
+const isDefaultPath = staticAssetsPackageName === defaultPublicAssetsPackageFolder;
+
+const ospoAssetsDistPath = false === isDefaultPath ? require(staticAssetsPackageName) : require(path.join(appRootPath, defaultPublicAssetsPackageFolder));
+const ospoAssetsPackage = false === isDefaultPath ? require(`${staticAssetsPackageName}/package.json`) : require(path.join(appRootPath, defaultPublicAssetsPackageFolder, 'package.json'));
 
 export function StaticSiteAssets(app, express) {
   // Serve/host the static site assets from our private NPM
@@ -24,10 +30,15 @@ export function StaticSiteAssets(app, express) {
 };
 
 export function StaticSiteFavIcon(app) {
+  const faviconPath = path.join(ospoAssetsDistPath, 'favicon.ico');
   try {
-    app.use(favicon(path.join(ospoAssetsDistPath, 'favicon.ico')));
+    app.use(favicon(faviconPath));
   } catch (nofavicon) {
-    console.error(`The static site assets in "${ospoAssetsDistPath}" does not include a favicon. You may need to run 'npm install' in the package folder first.`);
-    throw nofavicon;
+    if (nofavicon?.code === 'ENOENT') {
+      console.error(`There is no favorite icon in the static site assets path, "${ospoAssetsDistPath}".\nIf the static assets require a build, you may need to run 'npm install' in the package folder first.`);
+      throw CreateError.NotFound(`No favicon.ico in ${ospoAssetsDistPath}`, nofavicon);
+    } else {
+      throw nofavicon;
+    }
   }
 }
