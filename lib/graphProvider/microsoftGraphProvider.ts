@@ -227,7 +227,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     // caching issues...
     if (!response.filter && (response as any).value?.filter) {
       response = (response as any).value;
-    }  
+    }
     return response.filter(e => e.userType !== GraphUserType.Guest).map(entry => {
       return {
         id: entry.id,
@@ -237,7 +237,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
         givenName: entry.givenName,
         userPrincipalName: entry.userPrincipalName,
         jobTitle: entry.jobTitle,
-      }
+      };
     });
   }
 
@@ -262,7 +262,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
         givenName: entry.givenName,
         userPrincipalName: entry.userPrincipalName,
         jobTitle: entry.jobTitle,
-      }
+      };
     });
   }
 
@@ -285,7 +285,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
         givenName: entry.givenName,
         userPrincipalName: entry.userPrincipalName,
         jobTitle: entry.jobTitle,
-      }
+      };
     });
   }
 
@@ -312,7 +312,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
         givenName: entry.givenName,
         userPrincipalName: entry.userPrincipalName,
         jobTitle: entry.jobTitle,
-      }
+      };
     });
   }
 
@@ -326,10 +326,10 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     }) as any[];
     // may be a caching bug:
     if (Array.isArray(response)) {
-      return response.map(entry => { return { id: entry.id, userPrincipalName: entry.userPrincipalName } });  
+      return response.map(entry => { return { id: entry.id, userPrincipalName: entry.userPrincipalName }; });
     }
     const subResponse = (response as any).value ? (response as any).value : [];
-    return subResponse.map(entry => { return { id: entry.id, userPrincipalName: entry.userPrincipalName } });
+    return subResponse.map(entry => { return { id: entry.id, userPrincipalName: entry.userPrincipalName }; });
   }
 
   async getGroupsStartingWith(minimum3Characters: string): Promise<IGraphGroup[]> {
@@ -346,7 +346,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     if (!response.filter && (response as any).value?.filter) {
       response = (response as any).value;
     }
-    return response.map(entry => { return { id: entry.id, mailNickname: entry.mailNickname, displayName: entry.displayName } });
+    return response.map(entry => { return { id: entry.id, mailNickname: entry.mailNickname, displayName: entry.displayName }; });
   }
 
   async getGroupsByMail(groupMailAddress: string): Promise<string[]> {
@@ -377,6 +377,9 @@ export class MicrosoftGraphProvider implements IGraphProvider {
   }
 
   private async getUserByIdLookup(aadId: string, token: string, subResource: string): Promise<any> {
+    if (!aadId) {
+      throw CreateError.InvalidParameters('No user ID provided to lookup');
+    }
     const extraPath = subResource ? `/${subResource}` : '';
     const url = `https://graph.microsoft.com/v1.0/users/${aadId}${extraPath}?$select=id,mailNickname,userType,displayName,givenName,mail,userPrincipalName,jobTitle`;
     if (this.#_cache) {
@@ -402,11 +405,11 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       if (!response.data) {
         throw CreateError.NotFound(`${subResource || 'user'} not in directory for ${aadId}`);
       }
-      if (response.data.error?.message) {
-        throw CreateError.InvalidParameters(response.data.error.message);
+      if ((response.data as any).error?.message) { // axios returns unknown now
+        throw CreateError.InvalidParameters((response.data as any).error.message);
       }
       if (this.#_cache) {
-        this.#_cache.setObjectWithExpire(url, {value: response.data}, defaultCachePeriodMinutes).then(ok => {}).catch(err => {});
+        this.#_cache.setObjectWithExpire(url, { value: response.data }, defaultCachePeriodMinutes).then(ok => { }).catch(err => { });
       }
       return response.data;
     } catch (error) {
@@ -478,7 +481,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     } while (url);
     if (this.#_cache) {
       try {
-        this.#_cache.setObjectWithExpire(originalUrl, {cache: value}, defaultCachePeriodMinutes).then(ok => {}).catch(err => {
+        this.#_cache.setObjectWithExpire(originalUrl, { cache: value }, defaultCachePeriodMinutes).then(ok => { }).catch(err => {
           console.warn(err);
         });
       } catch (error) {
@@ -522,11 +525,11 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       if (!response.data) {
         throw CreateError.ServerError('Empty response');
       }
-      if (response.data.error?.message) {
-        throw CreateError.InvalidParameters(response.data.error.message);
+      if ((response.data as any).error?.message) { // axios returns unknown now
+        throw CreateError.InvalidParameters((response.data as any).error.message); // axios returns unknown now
       }
       if (this.#_cache && method === 'get') {
-        this.#_cache.setObjectWithExpire(url, {cache: response.data}, defaultCachePeriodMinutes).then(ok => {}).catch(err => {});
+        this.#_cache.setObjectWithExpire(url, { cache: response.data }, defaultCachePeriodMinutes).then(ok => { }).catch(err => { });
       }
       return response.data;
     } catch (error) {
@@ -578,13 +581,14 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       if (!response.data) {
         throw CreateError.ServerError('Empty response');
       }
-      if (!response.data.access_token) {
+      const data = response.data as any; // axios returns unknown now
+      if (!data.access_token) {
         throw CreateError.InvalidParameters('No access token');
       }
-      if (response.data.error?.message) {
-        throw CreateError.InvalidParameters(response.data.error.message);
+      if (data.error?.message) {
+        throw CreateError.InvalidParameters(data.error.message);
       }
-      const accessToken = response.data.access_token as string;
+      const accessToken = data.access_token as string;
       cache.put(tokenKey, accessToken, this.#_tokenCacheMilliseconds);
       return accessToken;
     } catch (error) {
@@ -594,6 +598,10 @@ export class MicrosoftGraphProvider implements IGraphProvider {
           throw CreateError.NotFound('Not found', axiosError);
         } else if (axiosError.response?.status >= 500) {
           throw CreateError.ServerError('Graph server error', axiosError);
+        } else if (axiosError.response?.status === 401) {
+          throw CreateError.NotAuthenticated('Invalid authorization to access to the graph');
+        } else if (axiosError.response?.status === 403) {
+          throw CreateError.NotAuthorized('Not authorized to access the graph');
         } else if (axiosError.response?.status >= 400) {
           throw CreateError.InvalidParameters('Incorrect graph parameters', axiosError);
         }

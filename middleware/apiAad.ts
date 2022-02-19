@@ -91,18 +91,22 @@ export function getAadApiConfiguration(config: any) {
   const approvedAppsToCreateRepos = Array.isArray(approvedApps?.scopes?.create?.repos) ? approvedApps?.scopes?.create?.repos : (approvedApps?.scopes?.create?.repos?.split ? [...approvedApps.scopes.create.repos.split(',')] : []);
   const approvedAppsToReadLinks = Array.isArray(approvedApps?.scopes?.read?.links) ? approvedApps?.scopes?.read?.links : (approvedApps?.scopes?.read?.links?.split ? [...approvedApps.scopes.read.links.split(',')] : []);
   const approvedAppsToReadMaintainers = Array.isArray(approvedApps?.scopes?.read?.maintainers) ? approvedApps?.scopes?.read?.maintainers : (approvedApps?.scopes?.read?.maintainers?.split ? [...approvedApps.scopes.read.maintainers.split(',')] : []);
+  const approvedAppsToReadJitConfirms = Array.isArray(approvedApps?.scopes?.read?.['jit/confirm']) ? approvedApps?.scopes?.read?.['jit/confirm'] : (approvedApps?.scopes?.read?.['jit/confirm']?.split ? [...approvedApps.scopes.read['jit/confirm'].split(',')] : []);
 
   const approvedOidsToCreateRepos = Array.isArray(approvedOids?.scopes?.create?.repos) ? approvedOids?.scopes?.create?.repos : (approvedOids?.scopes?.create?.repos?.split ? [...approvedOids?.scopes?.create?.repos?.split(',')] : []);
   const approvedOidsToReadLinks = Array.isArray(approvedOids?.scopes?.read?.links) ? approvedOids?.scopes?.read?.links : (approvedOids?.scopes?.read?.links?.split ? [...approvedOids?.scopes?.read?.links.split(',')] : []);
+  const approvedOidsToReadJitConfirms = Array.isArray(approvedOids?.scopes?.read?.['jit/confirm']) ? approvedOids?.scopes?.read?.['jit/confirm'] : (approvedOids?.scopes?.read?.['jit/confirm']?.split ? [...approvedOids.scopes.read['jit/confirm'].split(',')] : []);
 
   const oids = [
     ...approvedOidsToCreateRepos,
     ...approvedOidsToReadLinks,
+    ...approvedOidsToReadJitConfirms,
   ];
   const appIds = [ // hacky temporary design for pulling from config
     ...approvedAppsToCreateRepos,
     ...approvedAppsToReadLinks,
     ...approvedAppsToReadMaintainers,
+    ...approvedAppsToReadJitConfirms,
   ];
 
   return {
@@ -115,6 +119,8 @@ export function getAadApiConfiguration(config: any) {
     approvedAppsToReadMaintainers,
     approvedOidsToCreateRepos,
     approvedOidsToReadLinks,
+    approvedAppsToReadJitConfirms,
+    approvedOidsToReadJitConfirms,
   };
 }
 
@@ -130,6 +136,8 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     approvedAppsToReadMaintainers,
     approvedOidsToCreateRepos,
     approvedOidsToReadLinks,
+    approvedAppsToReadJitConfirms,
+    approvedOidsToReadJitConfirms,
   } = getAadApiConfiguration(config);
 
   const authorizationHeader = req.headers.authorization;
@@ -198,12 +206,19 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     if (isAppApproved && approvedAppsToReadMaintainers.includes(appid)) {
       scopes.push('maintainers');
     }
+    if (isAppApproved && approvedAppsToReadJitConfirms.includes(appid)) {
+      scopes.push('jit/confirm');
+    }
     if (isOidApproved && approvedOidsToCreateRepos.includes(oid)) {
       scopes.push('createRepo');
     }
     if (isOidApproved && approvedOidsToReadLinks.includes(oid)) {
       scopes.push('links');
     }
+    if (isOidApproved && approvedOidsToReadJitConfirms.includes(oid)) {
+      scopes.push('jit/confirm');
+    }
+
     const apiToken = PersonalAccessToken.CreateFromAadAuthorization({
       appId: appid,
       oid,

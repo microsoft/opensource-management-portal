@@ -12,6 +12,9 @@ import { IProviders } from '../../interfaces';
 
 import { GraphUserType } from '../../lib/graphProvider';
 
+export const aadStrategyName = 'azure-active-directory';
+export const aadStrategyUserPropertyName = 'azure';
+
 interface IPassportUserWithAAD {
   azure?: IAADUser;
 }
@@ -33,7 +36,7 @@ async function login(app, config, client: AuthorizationCode, iss, sub, profile, 
     const impersonationResult = await graphProvider.getUserById(impersonationCorporateId);
     console.warn(`IMPERSONATION: id=${impersonationResult.id} upn=${impersonationResult.userPrincipalName} name=${impersonationResult.displayName} graphIsNotImpersonatedAs=${profile.upn}`);
     return {
-      azure: {
+      azure: { // aadStrategyUserPropertyName
         displayName: impersonationResult.displayName,
         oid: impersonationResult.id,
         username: impersonationResult.userPrincipalName,
@@ -45,12 +48,12 @@ async function login(app, config, client: AuthorizationCode, iss, sub, profile, 
     const lookupResult = await graphProvider.getUserById(profile.oid);
     if (lookupResult && lookupResult.userType === GraphUserType.Guest) {
       const err = new Error(`This application does not permit guests. You are currently signed in to Active Directory as: ${lookupResult.userPrincipalName}`);
-      insights?.trackException({exception: err});
+      insights?.trackException({ exception: err });
       throw err;
     }
   }
   return {
-    azure: {
+    azure: { // aadStrategyUserPropertyName
       displayName: profile.displayName,
       oid: profile.oid,
       username: profile.upn,
@@ -69,10 +72,14 @@ function activeDirectorySubset(app, config, client: AuthorizationCode, iss, sub,
 
 export default function createAADStrategy(app, config) {
   const { redirectUrl, tenantId, clientId, clientSecret } = config.activeDirectory;
+  if (!clientId) {
+    debug('No Azure Active Directory clientID configured, corporate authentication will be unavailable.');
+    return {};
+  }
   const providers = app.settings.providers as IProviders;
   const aadAuthority = `https://login.microsoftonline.com/${tenantId}/`;
-  const aadMetadata =  'v2.0/.well-known/openid-configuration'; // used to use: .well-known/openid-configuration
-  const identityMetadata = `${aadAuthority}${aadMetadata}`;
+  // const aadMetadata = 'v2.0/.well-known/openid-configuration'; // used to use: .well-known/openid-configuration
+  // const identityMetadata = `${aadAuthority}${aadMetadata}`;
   const originalIdentityMetadata = `${aadAuthority}.well-known/openid-configuration`;
   const authorizePath = 'oauth2/v2.0/authorize';
   const tokenPath = 'oauth2/v2.0/token';
@@ -122,5 +129,5 @@ export default function createAADStrategy(app, config) {
     }
     return originalFailWithLog.call(this, args);
   };
-  return { 'azure-active-directory': aadStrategy };
+  return { [aadStrategyName]: aadStrategy };
 }

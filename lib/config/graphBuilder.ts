@@ -6,7 +6,7 @@
 import { promises as fs } from 'fs';
 import objectPath from 'object-path';
 import path from 'path';
-import stripJsonComments from 'strip-json-comments';
+import { jsonc } from 'jsonc';
 import { ILibraryOptions } from '.';
 
 const supportedExtensions = new Map([
@@ -17,7 +17,7 @@ const supportedExtensions = new Map([
 
 async function scriptProcessor(api: ILibraryOptions, config: any, p: string) {
   const script = require(p);
-  return typeof(script) === 'function' ? script(api, config) : script;
+  return typeof (script) === 'function' ? script(api, config) : script;
 }
 
 async function jsonProcessor(api: ILibraryOptions, config: any, p: string) {
@@ -26,7 +26,7 @@ async function jsonProcessor(api: ILibraryOptions, config: any, p: string) {
 
 async function jsoncProcessor(api: ILibraryOptions, config: any, p: string) {
   const contents = await fs.readFile(p, 'utf8');
-  const stripped = stripJsonComments(contents);
+  const stripped = jsonc.parse(contents);
   return JSON.parse(stripped);
 }
 
@@ -57,7 +57,7 @@ export default async (api: ILibraryOptions, dirPath: string) => {
     }
     try {
       const value = await processor(api, config, file);
-      if (value && typeof(value) === 'string' && value === dirPath) {
+      if (value && typeof (value) === 'string' && value === dirPath) {
         // Skip the index.js for local hybrid package scenarios
       } else if (value !== undefined) {
         objectPath.set(config, nodeName, value);

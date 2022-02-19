@@ -48,7 +48,7 @@ const vstsAuth = asyncHandler(async (req: IApiRequest, res, next) => {
         'X-TFS-FedAuthRedirect': 'Suppress',
       },
     });
-    const body = response.data;
+    const body = response.data as any; // axios returns unknown now
     if (!body.authenticatedUser || !body.authenticatedUser.isActive) {
       const error = jsonError('The user is no longer active or authenticated', 401);
       error['authErrorMessage'] = error.message;

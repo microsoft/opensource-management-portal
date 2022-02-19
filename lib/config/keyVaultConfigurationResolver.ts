@@ -99,7 +99,7 @@ type AzureAuthenticationPair = {
   clientId: string;
   clientSecret: string;
   tenantId: string;
-}
+};
 
 export interface IKeyVaultConfigurationOptions {
   getClientCredentials?: () => Promise<AzureAuthenticationPair>;
@@ -126,22 +126,22 @@ function createAndWrapKeyVaultClient(options: IKeyVaultConfigurationOptions) {
     return client;
   });
   return {
-    getObjectSecrets: function(object: any) {
+    getObjectSecrets: function (object: any) {
       return getSecretsFromVault(getSecretClient, object);
     },
-  }
+  };
 }
 
 type VaultSettings = {
   tag: string;
   uri: string;
-}
+};
 
 async function getSecretsFromVault(getSecretClient: (vault: string) => Promise<SecretClient>, object: any) {
   let paths = null;
   try {
     paths = identifyKeyVaultValuePaths(object);
-  } catch(parseError) {
+  } catch (parseError) {
     throw parseError;
   }
   // Build a unique list of secrets, fetch them at once
@@ -157,7 +157,7 @@ async function getSecretsFromVault(getSecretClient: (vault: string) => Promise<S
       const vaultUrl = `https://${value.hostname}`;
       const uri = value.toString(); // url.format(value);
       uniqueUriToVault.set(uri, vaultUrl);
-      pathProperties.set(path, {uri, tag});
+      pathProperties.set(path, { uri, tag });
       uniqueUris.add(uri);
     }
     const secretStash = new Map<string, KeyVaultSecret>();
@@ -177,7 +177,7 @@ async function getSecretsFromVault(getSecretClient: (vault: string) => Promise<S
       }
     }
     for (const path in paths) {
-      const {uri, tag} = pathProperties.get(path);
+      const { uri, tag } = pathProperties.get(path);
       const secretResponse = secretStash.get(uri);
       let value = undefined;
       if (!tag) {
@@ -185,7 +185,7 @@ async function getSecretsFromVault(getSecretClient: (vault: string) => Promise<S
       } else if (secretResponse?.properties?.tags) {
         value = secretResponse?.properties?.tags[tag];
       }
-      objectPath.set(object, path, value);  
+      objectPath.set(object, path, value);
     }
   } catch (error) {
     console.warn(error);

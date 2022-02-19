@@ -8,7 +8,7 @@ import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
 import { ReposAppRequest, IAppSession, SupportedLinkType, ICorporateLink, LinkOperationSource } from '../interfaces';
-import { getProviders } from '../transitional';
+import { getProviders, splitSemiColonCommas } from '../transitional';
 import { IndividualContext } from '../user';
 import { storeOriginalUrlAsReferrer, wrapError } from '../utils';
 
@@ -80,11 +80,14 @@ router.use(asyncHandler(async (req: IRequestHacked, res, next) => {
     let block = userType as string === 'Guest';
     let blockedRecord = block ? 'BLOCKED' : 'not blocked';
     // If the app is configured to check for guests, but this is a specifically permitted guest user, continue:
-    if (config && config.activeDirectoryGuests && config.activeDirectoryGuests.authorizedIds && config.activeDirectoryGuests.authorizedIds.length && config.activeDirectoryGuests.authorizedIds.includes(aadId)) {
-      block = false;
-      blockedRecord = 'specifically authorized user ' + aadId + ' ' + userPrincipalName;
-      req.overrideLinkUserPrincipalName = userPrincipalName;
-      return next(new Error('This feature is not currently available. Please reach out to support to re-enable this feature.'));
+    if (config?.activeDirectoryGuests) {
+      const authorizedGuests = Array.isArray(config.activeDirectoryGuests) ? config.activeDirectoryGuests as string[] : splitSemiColonCommas(config.activeDirectoryGuests);
+      if (!authorizedGuests.includes(aadId)) {
+        block = false;
+        blockedRecord = 'specifically authorized user ' + aadId + ' ' + userPrincipalName;
+        req.overrideLinkUserPrincipalName = userPrincipalName;
+        return next(new Error('This feature is not currently available. Please reach out to support to re-enable this feature.'));
+      }
     }
     insights.trackEvent({
       name: 'LinkValidateNotGuestGraphSuccess',

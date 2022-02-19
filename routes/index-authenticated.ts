@@ -30,7 +30,7 @@ import RouteReleasesSpa from './releasesSpa';
 import { ReposAppRequest, UserAlertType } from '../interfaces';
 
 // - - - Middleware: require that they have a passport - - -
-router.use(requireAuthenticatedUserOrSignIn);
+router.use(asyncHandler(requireAuthenticatedUserOrSignIn));
 router.use(asyncHandler(requireAccessTokenClient));
 // - - - Middleware: set the identities we have authenticated  - - -
 router.use(setIdentity);

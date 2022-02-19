@@ -23,6 +23,7 @@ export interface ICorporateContactInformation {
   managerDisplayName?: string;
   alias?: string;
   emailAddress?: string;
+  legal?: string;
 }
 
 export interface ICorporateContactProvider {
@@ -76,9 +77,9 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
     if (this.#cacheHelper) {
       try {
         response = await this.#cacheHelper.getObject(cacheKey);
-      } catch (ignoreError){ /* ignored */ }
+      } catch (ignoreError) { /* ignored */ }
     }
-    if (!response) {
+    if (!response || !Object.keys(response).length) {
       response = await this.callIdentityService(corporateUsername);
       if (this.#cacheHelper && response) {
         // kicks off an async operation
@@ -104,6 +105,7 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
       emailAddress: response.emailAddress,
       managerUsername,
       managerDisplayName,
+      legal: response.legal
     };
   }
 
@@ -150,9 +152,9 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
 
   async callIdentityService(corporateUsername: string): Promise<IMicrosoftIdentityServiceResponse> {
     try {
-      const response = await axios(this.getIdentityServiceRequestOptions(`/user/${corporateUsername}`));
-      if (response.data.error?.message) {
-        throw CreateError.InvalidParameters(response.data.error.message);
+      const response = await axios(this.getIdentityServiceRequestOptions(`/${corporateUsername}`));
+      if ((response.data as any).error?.message) {  // axios returns unknown now
+        throw CreateError.InvalidParameters((response.data as any).error.message);
       }
       const entity = response.data as IMicrosoftIdentityServiceResponse;
       return entity;

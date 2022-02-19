@@ -5,7 +5,7 @@
 
 import { Repository, Team } from '../../business';
 import { IContextualRepositoryPermissions } from '../../middleware/github/repoPermissions';
-import { IProviders } from '../../interfaces';
+import { IProviders, ReposAppRequest } from '../../interfaces';
 import { IndividualContext } from '../../user';
 import { IRequestTeamPermissions } from '../../middleware/github/teamPermissions';
 
@@ -19,7 +19,12 @@ export interface ICompanySpecificTeamPermissionsMiddlewareCalls {
   afterPermissionsComputed?: (providers: IProviders, permissions: IRequestTeamPermissions, activeContext: IndividualContext, team: Team) => Promise<void>;
 }
 
+export interface ICompanySpecificAuthenticationCalls {
+  shouldRedirectToSignIn?: (providers: IProviders, req: ReposAppRequest) => Promise<boolean>;
+}
+
 export interface IAttachCompanySpecificMiddleware {
   repoPermissions?: ICompanySpecificRepoPermissionsMiddlewareCalls;
   teamPermissions?: ICompanySpecificTeamPermissionsMiddlewareCalls;
+  authentication: ICompanySpecificAuthenticationCalls;
 }

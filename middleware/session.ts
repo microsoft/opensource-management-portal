@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import debug = require('debug');
+import debug from 'debug';
 import session from 'express-session';
 import ConnectRedis from 'connect-redis';
 

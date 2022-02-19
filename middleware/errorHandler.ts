@@ -8,6 +8,7 @@ import { AxiosError } from 'axios';
 
 import { wrapError } from '../utils';
 import { getProviders } from '../transitional';
+import { isJsonError } from '.';
 
 function redactRootPathsFromString(string, path) {
   if (typeof string === 'string' && string.includes && string.split) {
@@ -122,7 +123,8 @@ export default function SiteErrorHandler(err, req, res, next) {
   }
   if (err !== undefined && err.skipLog !== true) {
     console.log('Error: ' + (err && err.message ? err.message : 'Error is undefined.'));
-    if (err.stack) {
+    const isJson = isJsonError(err);
+    if (err.stack && !isJson) {
       console.error(err.stack);
     }
     if (err.innerError) {
