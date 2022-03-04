@@ -1052,7 +1052,7 @@ export class Operations
 
   async emailRender(emailViewName: string, contentOptions: any): Promise<string> {
     const appDirectory = this.config.typescript.appDirectory;
-    return await RenderHtmlMail(appDirectory, emailViewName, contentOptions);
+    return await RenderHtmlMail(appDirectory, emailViewName, contentOptions, this.config);
   }
 }
 

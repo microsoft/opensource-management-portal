@@ -73,7 +73,7 @@ export function createMailProviderInstance(config): IMailProvider {
     if (mailProvider) {
       if (mailConfig.overrideRecipient) {
         patchOverride(mailProvider, mailConfig.overrideRecipient, mailProvider.html);
-      }    
+      }
       return mailProvider;
     }
   }
@@ -86,7 +86,7 @@ export function createMailProviderInstance(config): IMailProvider {
   }
   switch (provider) {
     case 'smtpMailService': {
-      mailProvider = new SmtpMailService(config);
+      mailProvider = new SmtpMailService(mailConfig);
       break;
     }
     case 'mockMailService': {
