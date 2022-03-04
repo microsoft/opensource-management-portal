@@ -25,7 +25,7 @@ interface IReportRenderOptions {
   to: string;
   github: {
     consolidated: any;
-  }
+  };
   pretty?: boolean;
   basedir?: string;
   viewServices: any;
@@ -137,7 +137,7 @@ async function sendReport(context: IReportsContext, mailProvider: IMailProvider,
     notification,
   };
   const basedir = context.settings.basedir;
-  const mailContent = await emailRender(basedir, 'report', viewOptions);
+  const mailContent = await emailRender(basedir, 'report', viewOptions, app.config);
   // Store the e-mail instead of sending
   if (overrideSendWithPath) {
     const filename = path.join(overrideSendWithPath, `${address}.html`);
