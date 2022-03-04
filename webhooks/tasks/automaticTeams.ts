@@ -232,7 +232,7 @@ async function sendEmail(config, insights, basedir, mailProvider: IMailProvider,
   };
   let mailContent = null;
   try {
-    mailContent = await RenderHtmlMail(basedir, 'largeTeamProtected', body);
+    mailContent = await RenderHtmlMail(basedir, 'largeTeamProtected', body, config);
   } catch(renderError) {
     insights.trackException({
       exception: renderError,
