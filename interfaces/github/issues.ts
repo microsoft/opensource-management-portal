@@ -40,7 +40,7 @@ export interface IRepositoryGetIssuesOptions extends IPagedCacheOptions {
   labels?: string;
   mentioned?: string;
   creator?: string;
-  assignee?: string; // user | 'none' | '*'
+  assignee?: string; // user | 'none' | '*' // NOTE: this field was deprecated in 2020 (not sure when), replaced by assignees array
   state?: GitHubIssueQuery;
   milestone?: number | string; // '*'
 }

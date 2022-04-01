@@ -43,6 +43,7 @@ export class GitHubTokenManager {
   private _appsById = new Map<number, GitHubAppTokens>();
   private _appIdToPurpose = new Map<number, AppPurpose>();
   private _appSlugs = new Map<number, string>();
+  private _forceInstanceTokensToPurpose: AppPurpose;
 
   constructor(options: IGitHubAppsOptions) {
     if (!options) {
@@ -50,6 +51,10 @@ export class GitHubTokenManager {
     }
     this.#options = options;
     GitHubTokenManager._forceBackgroundTokens = options.app.isBackgroundJob && !options.app.enableAllGitHubApps;
+  }
+
+  forceInstanceTokensToPurpose(purpose: AppPurpose) {
+    this._forceInstanceTokensToPurpose = purpose;
   }
 
   async initialize() {
@@ -102,12 +107,18 @@ export class GitHubTokenManager {
   }
 
   private getPrioritizedOrganizationInstallationId(preferredPurpose: AppPurpose, organizationName: string, organizationSettings: OrganizationSetting, appAuthenticationType: GitHubAppAuthenticationType): InstallationIdPurposePair {
+    if (this._forceInstanceTokensToPurpose) {
+      if (this._forceInstanceTokensToPurpose !== preferredPurpose) {
+        // console.log(`This instance of TokenManager forced the purpose to ${this._forceInstanceTokensToPurpose} from ${preferredPurpose}`);
+      }
+      preferredPurpose = this._forceInstanceTokensToPurpose;
+    }
     if (!organizationSettings) {
       return null;
     }
     let order = GitHubTokenManager._forceBackgroundTokens === true ? fallbackBackgroundJobPriorities : [preferredPurpose, ...fallbackPurposePriorities];
     if (appAuthenticationType === GitHubAppAuthenticationType.ForceSpecificInstallation) {
-      order = [ preferredPurpose ];
+      order = [preferredPurpose];
     }
     for (const purpose of order) {
       if (organizationSettings && organizationSettings.installations) {
@@ -119,13 +130,14 @@ export class GitHubTokenManager {
         }
       }
     }
+    return null;
   }
 
   private async initializeApp(purpose: AppPurpose, appConfig: IGitHubAppConfiguration) {
     if (!appConfig || !appConfig.appId) {
       return;
     }
-    const appId = typeof(appConfig.appId) === 'number' ? appConfig.appId : parseInt(appConfig.appId, 10);
+    const appId = typeof (appConfig.appId) === 'number' ? appConfig.appId : parseInt(appConfig.appId, 10);
     if (this._appsById.has(appId)) {
       return;
     }

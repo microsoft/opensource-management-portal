@@ -31,7 +31,8 @@ interface IRepositoryMomentsAgo {
 }
 
 interface INewIssueOptions {
-  assignee?: string;
+  // assignee?: string;
+  assignees?: string[];
 }
 
 interface IProtectedBranchRule {
@@ -73,7 +74,7 @@ interface IGitHubFileContents {
     git: string;
     self: string;
     html: string;
-  }
+  };
 }
 
 interface ICreateFileParameters {
@@ -289,7 +290,7 @@ export class Repository {
       }
     }
     const previewMediaTypes = operations['previewMediaTypes'] || {}; // TEMPORARY MEDIA TYPE HACK
-    const mediaType = previewMediaTypes?.repository?.getDetails ? { previews: [previewMediaTypes.repository.getDetails]} : undefined;
+    const mediaType = previewMediaTypes?.repository?.getDetails ? { previews: [previewMediaTypes.repository.getDetails] } : undefined;
     const parameters = {
       owner: this.organization.name,
       repo: this.name,
@@ -426,7 +427,7 @@ export class Repository {
     try {
       await this.getDetails(NoCacheNoBackground);
       if (this.default_branch === newBranchName) {
-        return [ { message: `The default branch is already '${newBranchName}' for the repo ${this.full_name}. No further action required.` } ];
+        return [{ message: `The default branch is already '${newBranchName}' for the repo ${this.full_name}. No further action required.` }];
       }
       const currentBranchName = this.default_branch;
       const sha = await this.getLastCommitToBranch(currentBranchName);
@@ -452,18 +453,18 @@ export class Repository {
         base: currentBranchName,
       });
       if (pulls.length === 0) {
-        output.push( { message: `No open pull requests targeting '${currentBranchName}' to update.` });
+        output.push({ message: `No open pull requests targeting '${currentBranchName}' to update.` });
       } else {
-        output.push( { message: `There are ${pulls.length} open pull requests targeting '${currentBranchName}' that will be updated to '${newBranchName}'.` });
+        output.push({ message: `There are ${pulls.length} open pull requests targeting '${currentBranchName}' that will be updated to '${newBranchName}'.` });
       }
       for (const pull of pulls) {
         try {
           await this.patchPullRequestBranch(pull.number, newBranchName);
-          output.push( { message: `Pull request #${pull.number} has been updated to target '${newBranchName}' (URL: https://github.com/${this.full_name}/pull/${pull.number}, title: '${pull.title}').` });
+          output.push({ message: `Pull request #${pull.number} has been updated to target '${newBranchName}' (URL: https://github.com/${this.full_name}/pull/${pull.number}, title: '${pull.title}').` });
         } catch (pullError) {
           // To keep the operation going, failed pulls do not short-circuit the process
-          output.push( { message: `Pull request #${pull.number} could not be updated to target '${newBranchName}. Please inspect https://github.com/${this.full_name}/pull/${pull.number}.` });
-          output.push( { error: pullError } );
+          output.push({ message: `Pull request #${pull.number} could not be updated to target '${newBranchName}. Please inspect https://github.com/${this.full_name}/pull/${pull.number}.` });
+          output.push({ error: pullError });
         }
       }
       output.push({ message: `Setting the default branch of the repo ${this.full_name} to '${newBranchName}'.` });
@@ -544,14 +545,14 @@ export class Repository {
         repository: {
           branchProtectionRules: { nodes: branchProtectionRules },
         },
-      }  = await operations.github.graphql(
+      } = await operations.github.graphql(
         this.authorize(AppPurpose.Updates),
         query,
         {
           owner: this.organization.name,
           repo: this.name,
         });
-        return branchProtectionRules as IGitHubProtectedBranchConfiguration[];
+      return branchProtectionRules as IGitHubProtectedBranchConfiguration[];
     } catch (error) {
       throw error;
     }
@@ -819,7 +820,8 @@ export class Repository {
     return operations.github.post(alternateHeader || this.authorize(AppPurpose.Operations), 'repos.createOrUpdateFileContents', parameters);
   }
 
-  getFile(path: string, options?: IGitHubGetFileOptions): Promise<IGitHubFileContents> {
+  getFile(path: string, options?: IGitHubGetFileOptions, cacheOptions?: ICacheOptions): Promise<IGitHubFileContents> {
+    cacheOptions = cacheOptions || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters: IGitHubGetFileParameters = Object.assign({
       owner: this.organization.name,
@@ -830,7 +832,7 @@ export class Repository {
       parameters.ref = options.ref;
     }
     // const alternateHeader = options.alternateToken ? `token ${options.alternateToken}` : null;
-    return operations.github.call(this.authorize(AppPurpose.Operations), 'repos.getContent', parameters);
+    return operations.github.call(this.authorize(AppPurpose.Operations), 'repos.getContent', parameters, cacheOptions);
   }
 
   async getFiles(path: string, options?: IGitHubGetFileOptions, cacheOptions?: ICacheOptions): Promise<IGitHubFileContents[]> {
@@ -1020,7 +1022,7 @@ export class Repository {
       // this is the alternate form of 'teams.checkPermissionsForRepoInOrg'
       await operations.github.requestAsPost(this.authorize(AppPurpose.Data), 'GET /organizations/:org_id/team/:team_id/repos/:owner/:repo', parameters);
       return true;
-   } catch (error) {
+    } catch (error) {
       if (error && error.status == /* loose */ 404) {
         return false;
       }
@@ -1038,7 +1040,7 @@ export class Repository {
     try {
       await operations.github.requestAsPost(this.authorize(AppPurpose.Operations), 'PUT /repositories/:repo_id/secret-scanning', parameters);
       return true;
-   } catch (error) {
+    } catch (error) {
       if (error && error.status == /* loose */ 404 && error.message === 'Secret scanning is disabled') {
         return false;
       }
@@ -1067,7 +1069,7 @@ export class Repository {
       // using requestAsPost to _not cache_ the secrets for now
       const response = await operations.github.requestAsPost(this.authorize(AppPurpose.Data), 'GET /repos/:owner/:repo/secret-scanning/alerts', parameters);
       return response as IGitHubSecretScanningAlert[];
-   } catch (error) {
+    } catch (error) {
       if (error && error.status == /* loose */ 404 && error.message === 'Secret scanning is disabled on this repository.') {
         throw error;
       }
@@ -1092,7 +1094,7 @@ export class Repository {
     try {
       await operations.github.requestAsPost(this.authorize(AppPurpose.Operations), 'GET /repositories/:repo_id/secret-scanning', parameters);
       return true;
-   } catch (error) {
+    } catch (error) {
       if (error && error.status == /* loose */ 404 && error.message === 'Secret scanning is disabled') {
         return false;
       }
@@ -1228,7 +1230,7 @@ export class Repository {
     const pushHalfLife = 42 * Math.E * Math.pow(10, -15);
     const starAwesomeness = (10 + Math.PI) * Math.pow(10, 13);
     const maxValue = 32767;
-    if(!repo.pushed_at) {
+    if (!repo.pushed_at) {
       return 0;
     }
     const pushTicks = (moment.utc().valueOf() - moment.utc(repo.pushed_at).valueOf()) * 10000;

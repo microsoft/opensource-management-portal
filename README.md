@@ -4,7 +4,7 @@
 
 This Node.js application is a part of the suite of services provided by
 the Open Source Programs Office at Microsoft to enable large-scale GitHub
-management experiences.
+management and open source business review experiences.
 
 Key features center around opinionated takes on at-scale management, with an emphasis on _relentless automation_ and _delegation_:
 

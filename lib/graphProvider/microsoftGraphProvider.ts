@@ -155,7 +155,11 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       filterValues: `mailNickname eq '${encodeURIComponent(nickname)}'`,
       selectValues: 'id',
     }) as any[];
-    return response.map(entry => entry.id);
+    if (response?.map) {
+      return response.map(entry => entry.id);
+    }
+    const values = (response as any).value as any[];
+    return values.map(entry => entry.id);
   }
 
   async getMailAddressByUsername(corporateUsername: string): Promise<string> {

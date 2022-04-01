@@ -62,6 +62,16 @@ export class RepositoryProject {
     return details;
   }
 
+  async delete(): Promise<boolean> {
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const parameters = {
+      project_id: this.id,
+    };
+    augmentInertiaPreview(parameters);
+    await operations.github.post(this.authorizeSpecificPurpose(this._purpose), 'projects.delete', parameters);
+    return true;
+  }
+
   async createColumn(name: string): Promise<RepositoryProjectColumn> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {

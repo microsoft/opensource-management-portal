@@ -103,11 +103,11 @@ export function getMaxAgeSeconds(operations: IOperationsInstance, cacheDefault: 
 
 export abstract class OperationsCore
   implements
-    IOperationsGitHubRestLibrary,
-    IOperationsUrls,
-    IOperationsDefaultCacheTimes,
-    IOperationsProviders,
-    IOperationsInstance {
+  IOperationsGitHubRestLibrary,
+  IOperationsUrls,
+  IOperationsDefaultCacheTimes,
+  IOperationsProviders,
+  IOperationsInstance {
   private _github: RestLibrary;
   private _defaults: ICacheDefaultTimes;
   private _applicationIds: Map<number, GitHubApplication>;
@@ -116,7 +116,7 @@ export abstract class OperationsCore
   protected _nativeUrl: string;
   protected _nativeManagementUrl: string;
   protected _organizationsDeliminator = '';
-  protected _repositoriesDeliminator = 'repos/'
+  protected _repositoriesDeliminator = 'repos/';
   private _providers: IProviders;
   protected _skuName: string;
 
@@ -129,7 +129,7 @@ export abstract class OperationsCore
     this._applicationIds = new Map();
     this._baseUrl = '/';
     this._nativeUrl = 'https://github.com/';
-    this._nativeManagementUrl = 'https://github.com/orgs/'
+    this._nativeManagementUrl = 'https://github.com/orgs/';
     this._skuName = 'GitHub';
     this._providers = providers;
     this._capabilities = new Set();
@@ -144,6 +144,12 @@ export abstract class OperationsCore
     if (capability) {
       this._capabilities.add(capability);
     }
+  }
+
+  getRelativeApiUrl(apiUrl: string) {
+    const asUrl = new URL(apiUrl);
+    const relativeUrl = asUrl.pathname;
+    return relativeUrl;
   }
 
   hasCapability(capability: CoreCapability): boolean {

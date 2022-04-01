@@ -8,7 +8,7 @@ import { wrapError } from '../utils';
 import { AppPurpose } from '../github';
 import { CacheDefault, getMaxAgeSeconds, Operations } from '.';
 import { IOperationsInstance, IPurposefulGetAuthorizationHeader, GitHubIssueState, IIssueLabel, throwIfNotGitHubCapable, ICacheOptions, IGetAuthorizationHeader } from '../interfaces';
-import { ErrorHelper } from '../transitional';
+import { CreateError, ErrorHelper } from '../transitional';
 
 export class RepositoryIssue {
   private _operations: IOperationsInstance;
@@ -151,6 +151,9 @@ export class RepositoryIssue {
 
   static async CreateFromContentUrl(operations: IOperationsInstance, url: string) {
     const ops = operations as Operations;
+    if (!ops.getRepositoryWithOrganizationFromUrl) {
+      throw CreateError.ServerError('The operations instance does not support returning repositories from URL');
+    }
     const repository = ops.getRepositoryWithOrganizationFromUrl(url);
     const response = await repository.organization.requestUrl(url);
     return repository.issue(response.number, response);

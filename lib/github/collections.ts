@@ -105,8 +105,8 @@ const pullDetailsToCopy = [
   'closed_at',
   'merged_at',
   'merge_commit_sha',
-  'assignee',
-  // assignees
+  'assignee', // << NOTE: this was deprecated in 2020 (? not sure on date)
+  'assignees',
   // requested_reviewers
   // requested_teams
   'head', // PERF: large user of list storage

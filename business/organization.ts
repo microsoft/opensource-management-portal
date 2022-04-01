@@ -729,8 +729,15 @@ export class Organization {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     const purpose = options.purpose || AppPurpose.Data;
-    const asUrl = new URL(url);
-    const relativeUrl = asUrl.pathname;
+
+    let relativeUrl = '/';
+    const asOperations = operations as OperationsCore;
+    if (asOperations?.getRelativeApiUrl) {
+      relativeUrl = asOperations.getRelativeApiUrl(url);
+    } else {
+      const asUrl = new URL(url);
+      relativeUrl = asUrl.pathname;
+    }
     const value = await operations.github.request(this.authorizeSpecificPurpose(purpose), `GET ${relativeUrl}`, parameters, cacheOptions);
     return value;
   }
