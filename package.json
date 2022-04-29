@@ -111,7 +111,7 @@
     "pg-escape": "0.2.0",
     "pug": "3.0.2",
     "recursive-readdir": "2.2.2",
-    "redis": "3.1.2",
+    "redis": "4.0.6",
     "redis-mock": "0.56.3",
     "secure-compare": "3.0.1",
     "semver": "7.3.5",
