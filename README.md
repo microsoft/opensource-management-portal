@@ -12,7 +12,7 @@ Key features center around opinionated takes on at-scale management, with an emp
 - __Self-service GitHub organization join__: one-click GitHub organization joining for authorized users
 - __Cross-organization functionality__: consolidated + transparent views across a set of managed GitHub organizations including people, repos, teams
 
-> An introduction to this project is available in this 2015 post by Jeff Wilcox:   [http://www.jeff.wilcox.name/2015/11/azure-on-github/](http://www.jeff.wilcox.name/2015/11/azure-on-github/)
+> An introduction to this project is available in this 2015 post by Jeff Wilcox:   [https://jeffwilcox.blog/2015/11/azure-on-github/](https://jeffwilcox.blog/2015/11/azure-on-github/) 
 
 Improvements made a few years back include:
 
