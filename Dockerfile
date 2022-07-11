@@ -59,7 +59,7 @@ COPY --from=build --chown=oss:oss /build/data ./data
 COPY --from=build --chown=oss:oss /build/dist ./
 
 # The open source project build needs: default assets should be placed
-COPY --from=build --chown=oss:oss /build/default-assets-package ../default-assets-package
+COPY --from=build --chown=oss:oss /build/default-assets-package ./default-assets-package
 
 COPY --from=build --chown=oss:oss /build/config ./config
 COPY --from=build --chown=oss:oss /build/views ./views
@@ -68,10 +68,10 @@ COPY --from=build --chown=oss:oss /build/jobs/reports/views ./jobs/reports/views
 
 # Reports are not actively working in the project, but keeping these files ready
 COPY --from=build --chown=oss:oss /build/jobs/reports/exemptRepositories.json \
-     /build/jobs/reports/organizationDefinitions.json \
-     /build/jobs/reports/repositoryDefinitions.json \
-     /build/jobs/reports/teamDefinitions.json \
-     ./jobs/reports/
+    /build/jobs/reports/organizationDefinitions.json \
+    /build/jobs/reports/repositoryDefinitions.json \
+    /build/jobs/reports/teamDefinitions.json \
+    ./jobs/reports/
 
 # Host the app
 USER oss
