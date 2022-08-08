@@ -52,7 +52,7 @@
     "@azure/data-tables": "12.0.0-beta.2",
     "@azure/identity": "2.0.1",
     "@azure/keyvault-secrets": "4.3.0",
-    "@azure/service-bus": "7.4.0",
+    "@azure/service-bus": "7.7.0",
     "@azure/storage-blob": "12.8.0",
     "@azure/storage-file-share": "12.8.0",
     "@azure/storage-queue": "12.7.0",
