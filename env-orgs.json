@@ -2,6 +2,7 @@
   {
     "name" : "NIHGOV",
     "id" : 2710462,
+    "type": "public",
     "description" : "NIHGOV"
   }
 ]
