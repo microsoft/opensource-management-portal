@@ -102,7 +102,7 @@
     "octicons": "5.0.1",
     "package-lock.json": "1.0.0",
     "pascal-case": "3.1.2",
-    "passport": "0.5.2",
+    "passport": "0.6.0",
     "passport-azure-ad": "4.3.1",
     "passport-github": "1.1.0",
     "passport-strategy": "1.x.x",
