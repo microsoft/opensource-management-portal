@@ -51,7 +51,7 @@
     "@azure/cosmos": "3.17.1",
     "@azure/data-tables": "13.2.0",
     "@azure/identity": "3.0.0",
-    "@azure/keyvault-secrets": "4.3.0",
+    "@azure/keyvault-secrets": "4.6.0",
     "@azure/service-bus": "7.7.1",
     "@azure/storage-blob": "12.8.0",
     "@azure/storage-file-share": "12.8.0",
