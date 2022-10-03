@@ -150,7 +150,7 @@
     "@types/semver": "7.3.9",
     "@types/simple-oauth2": "4.1.1",
     "@types/unzipper": "0.10.5",
-    "@types/validator": "13.7.2",
+    "@types/validator": "13.7.7",
     "@typescript-eslint/eslint-plugin": "5.17.0",
     "@typescript-eslint/parser": "5.36.2",
     "eslint": "8.24.0",
