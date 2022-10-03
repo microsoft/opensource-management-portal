@@ -54,7 +54,7 @@
     "@azure/keyvault-secrets": "4.6.0",
     "@azure/service-bus": "7.7.1",
     "@azure/storage-blob": "12.8.0",
-    "@azure/storage-file-share": "12.8.0",
+    "@azure/storage-file-share": "12.11.0",
     "@azure/storage-queue": "12.7.0",
     "@octokit/auth-app": "3.6.1",
     "@octokit/rest": "18.12.0",
