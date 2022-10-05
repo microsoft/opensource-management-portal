@@ -38,14 +38,14 @@ jobs:
           cd ..
           echo $PWD
           ls -lah
-          tar -czf output.tar.gz ./opensource-management-portal
+          tar -czf output.tar.gz ./github-portal
           ls -lah
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v2
         with:
           name: node-app
-          path: /home/runner/work/opensource-management-portal/output.tar.gz
+          path: /home/runner/work/github-portal/output.tar.gz
 
   deploy:
     runs-on: ubuntu-latest
