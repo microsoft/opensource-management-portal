@@ -1,0 +1,14 @@
+[
+  {
+    "name" : "NIHGOV",
+    "id" : 2710462,
+    "type": ["public", "private"],
+    "description" : "NIH…Turning Discovery Into Health®"
+  },
+    {
+    "name" : "STRIDES",
+    "id" : 69810051,
+    "type": ["public", "private"],
+    "description" : "NIH Science and Technology Research Infrastructure for Discovery, Experimentation, and Sustainability (STRIDES) Initiative"
+  }
+]
