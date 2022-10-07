@@ -64,14 +64,11 @@ COPY --from=build /build/data ./data
 COPY --from=build /build/dist ./
 
 # The open source project build needs: default assets should be placed
-COPY --from=build --chown=oss:oss /build/default-assets-package ./default-assets-package
+COPY --from=build /build/default-assets-package ./default-assets-package
 
-COPY --from=build --chown=oss:oss /build/config ./config
-COPY --from=build --chown=oss:oss /build/views ./views
-COPY --from=build --chown=oss:oss /build/package.json ./package.json
-
-# Host the app
-USER oss
+COPY --from=build /build/config ./config
+COPY --from=build /build/views ./views
+COPY --from=build /build/package.json ./package.json
 
 # Only if needed, copy environment
 # COPY --from=build /build/.environment ./.environment
