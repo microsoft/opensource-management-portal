@@ -20,16 +20,18 @@ export const CorporatePropertyNames = [
 ];
 
 export function corporateLinkToJson(link: ICorporateLink): ICorporateLink {
-  return link && {
-    corporateAlias: link.corporateAlias,
-    corporateDisplayName: link.corporateDisplayName,
-    corporateId: link.corporateId,
-    corporateMailAddress: link.corporateMailAddress,
-    corporateUsername: link.corporateUsername,
-    serviceAccountMail: link.serviceAccountMail,
-    isServiceAccount: link.isServiceAccount,
-    thirdPartyAvatar: link.thirdPartyAvatar,
-    thirdPartyId: link.thirdPartyId,
-    thirdPartyUsername: link.thirdPartyUsername,
-  };
+  return (
+    link && {
+      corporateAlias: link.corporateAlias,
+      corporateDisplayName: link.corporateDisplayName,
+      corporateId: link.corporateId,
+      corporateMailAddress: link.corporateMailAddress,
+      corporateUsername: link.corporateUsername,
+      serviceAccountMail: link.serviceAccountMail,
+      isServiceAccount: link.isServiceAccount,
+      thirdPartyAvatar: link.thirdPartyAvatar,
+      thirdPartyId: link.thirdPartyId,
+      thirdPartyUsername: link.thirdPartyUsername,
+    }
+  );
 }

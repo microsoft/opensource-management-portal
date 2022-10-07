@@ -15,7 +15,15 @@ export * from './queryCache';
 export * from './providers';
 export * from './web';
 
-import { IAttachCompanySpecificRoutes, IAttachCompanySpecificMiddleware, ICorporationAdministrationSection, IAttachCompanySpecificStrings, ICompanySpecificFeatures, IAttachCompanySpecificViews, IAttachCompanySpecificUrls } from './companySpecific';
+import {
+  IAttachCompanySpecificRoutes,
+  IAttachCompanySpecificMiddleware,
+  ICorporationAdministrationSection,
+  IAttachCompanySpecificStrings,
+  ICompanySpecificFeatures,
+  IAttachCompanySpecificViews,
+  IAttachCompanySpecificUrls,
+} from './companySpecific';
 import { ICompanySpecificPassportMiddleware } from './companySpecific/passport';
 import { IProviders } from './providers';
 
@@ -33,6 +41,11 @@ export interface ICompanySpecificStartupProperties {
   urls?: IAttachCompanySpecificUrls;
 }
 
-export type ICompanySpecificStartupFunction = (config: any, p: IProviders, rootdir: string) => Promise<void>;
+export type ICompanySpecificStartupFunction = (
+  config: any,
+  p: IProviders,
+  rootdir: string
+) => Promise<void>;
 
-export type ICompanySpecificStartup = ICompanySpecificStartupFunction & ICompanySpecificStartupProperties;
+export type ICompanySpecificStartup = ICompanySpecificStartupFunction &
+  ICompanySpecificStartupProperties;

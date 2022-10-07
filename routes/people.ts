@@ -33,7 +33,6 @@ router.get('/github/:login', (req: ReposAppRequest, res, next) => {
   });
 });
 
-
 router.use(MiddlewareSystemWidePermissions);
 
 router.use(RoutePeopleSearch);

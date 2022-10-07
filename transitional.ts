@@ -14,7 +14,14 @@ import { GitHubRepositoryPermission } from './entities/repositoryMetadata/reposi
 import appPackage from './package.json';
 import { ICreateRepositoryApiResult } from './api/createRepo';
 import { Repository } from './business/repository';
-import { IDictionary, IFunctionPromise, IProviders, ISettledValue, ReposAppRequest, SettledState } from './interfaces';
+import {
+  IDictionary,
+  IFunctionPromise,
+  IProviders,
+  ISettledValue,
+  ReposAppRequest,
+  SettledState,
+} from './interfaces';
 import { Organization } from './business';
 const packageVariableName = 'static-react-package-name';
 
@@ -62,7 +69,9 @@ interface IExistingIdentityError extends Error {
 }
 
 function tooManyLinksError(self, userLinks, callback) {
-  const tooManyLinksError: ITooManyLinksError = new Error(`This account has ${userLinks.length} linked GitHub accounts.`);
+  const tooManyLinksError: ITooManyLinksError = new Error(
+    `This account has ${userLinks.length} linked GitHub accounts.`
+  );
   tooManyLinksError.links = userLinks;
   tooManyLinksError.tooManyLinks = true;
   return callback(tooManyLinksError, self);
@@ -70,22 +79,31 @@ function tooManyLinksError(self, userLinks, callback) {
 
 function existingGitHubIdentityError(self, link, requestUser, callback) {
   const endUser = requestUser.azure.displayName || requestUser.azure.username;
-  const anotherGitHubAccountError: IExistingIdentityError = new Error(`${endUser}, there is a different GitHub account linked to your corporate identity.`);
+  const anotherGitHubAccountError: IExistingIdentityError = new Error(
+    `${endUser}, there is a different GitHub account linked to your corporate identity.`
+  );
   anotherGitHubAccountError.anotherAccount = true;
   anotherGitHubAccountError.link = link;
   anotherGitHubAccountError.skipLog = true;
   return callback(anotherGitHubAccountError, self);
 }
 
-export function SettleToStateValue<T>(promise: Promise<T>): Promise<ISettledValue<T>> {
-  return promise.then(value => {
-    return { value, state: SettledState.Fulfilled };
-  }, reason => {
-    return { reason, state: SettledState.Rejected };
-  });
+export function SettleToStateValue<T>(
+  promise: Promise<T>
+): Promise<ISettledValue<T>> {
+  return promise.then(
+    (value) => {
+      return { value, state: SettledState.Fulfilled };
+    },
+    (reason) => {
+      return { reason, state: SettledState.Rejected };
+    }
+  );
 }
 
-export function permissionsObjectToValue(permissions): GitHubRepositoryPermission {
+export function permissionsObjectToValue(
+  permissions
+): GitHubRepositoryPermission {
   if (permissions.admin === true) {
     return GitHubRepositoryPermission.Admin;
   } else if (permissions.push === true) {
@@ -97,14 +115,21 @@ export function permissionsObjectToValue(permissions): GitHubRepositoryPermissio
   } else if (permissions.pull === true) {
     return GitHubRepositoryPermission.Pull;
   }
-  throw new Error(`Unsupported GitHubRepositoryPermission value inside permissions`);
+  throw new Error(
+    `Unsupported GitHubRepositoryPermission value inside permissions`
+  );
 }
 
-export function isPermissionBetterThan(currentBest: GitHubRepositoryPermission, newConsideration: GitHubRepositoryPermission) {
+export function isPermissionBetterThan(
+  currentBest: GitHubRepositoryPermission,
+  newConsideration: GitHubRepositoryPermission
+) {
   if (!currentBest) {
     return true;
   }
-  const comparison = MassagePermissionsToGitHubRepositoryPermission(currentBest);
+  const comparison = MassagePermissionsToGitHubRepositoryPermission(
+    currentBest
+  );
   switch (MassagePermissionsToGitHubRepositoryPermission(newConsideration)) {
     case GitHubRepositoryPermission.Admin:
       return true;
@@ -119,7 +144,10 @@ export function isPermissionBetterThan(currentBest: GitHubRepositoryPermission, 
       }
       break;
     case GitHubRepositoryPermission.Pull:
-      if (comparison === null || comparison === GitHubRepositoryPermission.None) {
+      if (
+        comparison === null ||
+        comparison === GitHubRepositoryPermission.None
+      ) {
         return true;
       }
       break;
@@ -132,7 +160,9 @@ export function isPermissionBetterThan(currentBest: GitHubRepositoryPermission, 
   return false;
 }
 
-export function MassagePermissionsToGitHubRepositoryPermission(value: string): GitHubRepositoryPermission {
+export function MassagePermissionsToGitHubRepositoryPermission(
+  value: string
+): GitHubRepositoryPermission {
   // collaborator level APIs return a more generic read/write value, lead to some bad caches in the past...
   // TODO: support new collaboration values as they come online for Enterprise Cloud!
   switch (value) {
@@ -149,7 +179,9 @@ export function MassagePermissionsToGitHubRepositoryPermission(value: string): G
     case 'read':
       return GitHubRepositoryPermission.Pull;
     default:
-      throw new Error(`Invalid ${value} GitHub repository permission [massagePermissionsToGitHubRepositoryPermission]`);
+      throw new Error(
+        `Invalid ${value} GitHub repository permission [massagePermissionsToGitHubRepositoryPermission]`
+      );
   }
 }
 
@@ -161,20 +193,35 @@ export class CreateError {
   }
 
   static NotFound(message: string, innerError?: Error): Error {
-    return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(404, message), innerError);
+    return ErrorHelper.SetInnerError(
+      CreateError.CreateStatusCodeError(404, message),
+      innerError
+    );
   }
 
   static Conflict(message: string, innerError?: Error): Error {
-    return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(409, message), innerError);
+    return ErrorHelper.SetInnerError(
+      CreateError.CreateStatusCodeError(409, message),
+      innerError
+    );
   }
 
-  static ParameterRequired(parameterName: string, optionalDetails?: string): Error {
+  static ParameterRequired(
+    parameterName: string,
+    optionalDetails?: string
+  ): Error {
     const msg = `${parameterName} required`;
-    return CreateError.CreateStatusCodeError(400, optionalDetails ? `${msg}: ${optionalDetails}` : msg);
+    return CreateError.CreateStatusCodeError(
+      400,
+      optionalDetails ? `${msg}: ${optionalDetails}` : msg
+    );
   }
 
   static InvalidParameters(message: string, innerError?: Error): Error {
-    return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(400, message), innerError);
+    return ErrorHelper.SetInnerError(
+      CreateError.CreateStatusCodeError(400, message),
+      innerError
+    );
   }
 
   static NotAuthenticated(message: string): Error {
@@ -186,7 +233,10 @@ export class CreateError {
   }
 
   static ServerError(message: string, innerError?: Error): Error {
-    return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(500, message), innerError);
+    return ErrorHelper.SetInnerError(
+      CreateError.CreateStatusCodeError(500, message),
+      innerError
+    );
   }
 }
 
@@ -217,12 +267,12 @@ export class ErrorHelper {
 
   public static IsNotFound(error: Error): boolean {
     const statusNumber = ErrorHelper.GetStatus(error);
-    return (statusNumber && statusNumber === 404);
+    return statusNumber && statusNumber === 404;
   }
 
   public static IsUnavailableForExternalLegalRequest(error: Error): boolean {
     const statusNumber = ErrorHelper.GetStatus(error);
-    return (statusNumber && statusNumber === 451); // https://developer.github.com/changes/2016-03-17-the-451-status-code-is-now-supported/
+    return statusNumber && statusNumber === 451; // https://developer.github.com/changes/2016-03-17-the-451-status-code-is-now-supported/
   }
 
   public static IsConflict(error: Error): boolean {
@@ -249,15 +299,15 @@ export class ErrorHelper {
         return axiosError.response.status;
       }
     }
-    if (asAny?.statusCode && typeof (asAny.statusCode) === 'number') {
+    if (asAny?.statusCode && typeof asAny.statusCode === 'number') {
       return asAny.statusCode as number;
     }
-    if (asAny?.code && typeof (asAny.code) === 'number') {
+    if (asAny?.code && typeof asAny.code === 'number') {
       return asAny.code as number;
     }
     if (asAny?.status) {
       const status = asAny.status;
-      const type = typeof (status);
+      const type = typeof status;
       if (type === 'number') {
         return status;
       } else if (type === 'string') {
@@ -274,7 +324,7 @@ export class ErrorHelper {
 export function setImmediateAsync(f: IFunctionPromise<void>): void {
   const safeCall = () => {
     try {
-      f().catch(error => {
+      f().catch((error) => {
         console.warn(`setImmediateAsync caught error: ${error}`);
       });
     } catch (ignoredFailure) {
@@ -301,12 +351,25 @@ export function sha256(str: string) {
 
 export interface ICustomizedNewRepositoryLogic {
   createContext(req: any): INewRepositoryContext;
-  getAdditionalTelemetryProperties(context: INewRepositoryContext): IDictionary<string>;
+  getAdditionalTelemetryProperties(
+    context: INewRepositoryContext
+  ): IDictionary<string>;
   validateRequest(context: INewRepositoryContext, req: any): Promise<void>;
   stripRequestBody(context: INewRepositoryContext, body: any): void;
-  afterRepositoryCreated(context: INewRepositoryContext, corporateId: string, success: ICreateRepositoryApiResult, organization: Organization): Promise<void>;
-  shouldNotifyManager(context: INewRepositoryContext, corporateId: string): boolean;
-  getNewMailViewProperties(context: INewRepositoryContext, repository: Repository): Promise<ICustomizedNewRepoProperties>;
+  afterRepositoryCreated(
+    context: INewRepositoryContext,
+    corporateId: string,
+    success: ICreateRepositoryApiResult,
+    organization: Organization
+  ): Promise<void>;
+  shouldNotifyManager(
+    context: INewRepositoryContext,
+    corporateId: string
+  ): boolean;
+  getNewMailViewProperties(
+    context: INewRepositoryContext,
+    repository: Repository
+  ): Promise<ICustomizedNewRepoProperties>;
   sufficientTeamsConfigured(context: INewRepositoryContext, body: any): boolean;
   skipApproval(context: INewRepositoryContext, body: any): boolean;
   additionalCreateRepositoryParameters(context: INewRepositoryContext): any;

@@ -77,13 +77,15 @@ export enum CoreCapability {
 }
 
 export interface IAlternateTokenOption {
-  alternateToken: string;  
+  alternateToken: string;
 }
 
-export interface IAlternateTokenRequiredOptions extends ICacheOptions, IAlternateTokenOption {
-}
+export interface IAlternateTokenRequiredOptions
+  extends ICacheOptions,
+    IAlternateTokenOption {}
 
-export interface IPagedCrossOrganizationCacheOptions extends IPagedCacheOptions {
+export interface IPagedCrossOrganizationCacheOptions
+  extends IPagedCacheOptions {
   individualMaxAgeSeconds?: number | null | undefined;
   individualRequestDelay?: number | null | undefined; // FUTURE: could be a function, too
 }
@@ -121,4 +123,7 @@ export interface IReposRestRedisCacheCost {
   };
 }
 
-export const NoCacheNoBackground = { backgroundRefresh: false, maxAgeSeconds: -1 };
+export const NoCacheNoBackground = {
+  backgroundRefresh: false,
+  maxAgeSeconds: -1,
+};

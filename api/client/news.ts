@@ -12,11 +12,13 @@ import { ReposAppRequest } from '../../interfaces';
 
 const router: Router = Router();
 
-router.get('/',
+router.get(
+  '/',
   asyncHandler(async (req: ReposAppRequest, res) => {
     const { config } = getProviders(req);
     return res.json({ articles: config?.news?.all || [] });
-  }));
+  })
+);
 
 router.use('*', (req: ReposAppRequest, res, next) => {
   return next(jsonError('API or route not found within news', 404));

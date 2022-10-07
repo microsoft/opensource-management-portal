@@ -10,11 +10,11 @@ const defaultPageSize = 30;
 
 type Response = {
   json: (obj: any) => void;
-}
+};
 
 type Request = {
   query: any;
-}
+};
 
 export default class JsonPager<T> {
   pageSize: number;
@@ -32,7 +32,9 @@ export default class JsonPager<T> {
   constructor(req: Request, res: Response) {
     this.res = res;
     const { query } = req;
-    const requestedPageSize = query.pageSize ? Number(query.pageSize) : defaultPageSize;
+    const requestedPageSize = query.pageSize
+      ? Number(query.pageSize)
+      : defaultPageSize;
     const requestedPage = query.page ? Number(query.page) : 0;
     this.pageSize = Math.min(requestedPageSize, maxPageSize);
     const page = requestedPage || 0;
@@ -56,7 +58,9 @@ export default class JsonPager<T> {
 
   sendJson(mappedValues: any[]) {
     if (mappedValues && mappedValues.length !== this.subsetReturnSize) {
-      console.warn(`The mapped values length ${mappedValues.length} !== ${this.subsetReturnSize} that was computed`);
+      console.warn(
+        `The mapped values length ${mappedValues.length} !== ${this.subsetReturnSize} that was computed`
+      );
     }
     const pageCount = this.lastPage;
     return this.res.json({

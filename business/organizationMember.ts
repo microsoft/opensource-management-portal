@@ -3,7 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IOperationsInstance, ICorporateLink, throwIfNotCapable, IOperationsLinks, CoreCapability, IOperationsProviders } from '../interfaces';
+import {
+  IOperationsInstance,
+  ICorporateLink,
+  throwIfNotCapable,
+  IOperationsLinks,
+  CoreCapability,
+  IOperationsProviders,
+} from '../interfaces';
 import { Organization } from './organization';
 
 export class OrganizationMember {
@@ -16,7 +23,11 @@ export class OrganizationMember {
   public link: ICorporateLink; // Allow get and set on the object
   public corporate: any;
 
-  constructor(organization: Organization, entity: any, operations: IOperationsInstance) {
+  constructor(
+    organization: Organization,
+    entity: any,
+    operations: IOperationsInstance
+  ) {
     this._organization = organization;
     if (entity) {
       this._entity = entity;
@@ -70,19 +81,31 @@ export class OrganizationMember {
     if (!this.id) {
       throw new Error('No organization member ID');
     }
-    const operations = throwIfNotCapable<IOperationsLinks>(this._operations, CoreCapability.Links);
-    const opsProvs = throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers);
+    const operations = throwIfNotCapable<IOperationsLinks>(
+      this._operations,
+      CoreCapability.Links
+    );
+    const opsProvs = throwIfNotCapable<IOperationsProviders>(
+      this._operations,
+      CoreCapability.Providers
+    );
     const link = await operations.getLinkByThirdPartyId(String(this.id));
     if (!link || !link.corporateId) {
       throw new Error(`Organization member ID ${this.id} is not linked.`);
     }
     if (!link.corporateUsername) {
-      throw new Error(`Organization member ID ${this.id} is linked to corporate ID ${link.corporateId} but does not have a corporate username.`);
+      throw new Error(
+        `Organization member ID ${this.id} is linked to corporate ID ${link.corporateId} but does not have a corporate username.`
+      );
     }
     const providers = opsProvs.providers;
     if (!providers.mailAddressProvider) {
-      throw new Error('No mailAddressProvider is available in this application instance');
+      throw new Error(
+        'No mailAddressProvider is available in this application instance'
+      );
     }
-    return providers.mailAddressProvider.getAddressFromUpn(link.corporateUsername);
+    return providers.mailAddressProvider.getAddressFromUpn(
+      link.corporateUsername
+    );
   }
 }

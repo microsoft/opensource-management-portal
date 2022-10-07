@@ -41,15 +41,29 @@ router.use('/client', apiClient);
 router.use('/webhook', apiWebhook);
 
 router.use((req: IApiRequest, res, next) => {
-  const apiVersion = (req.query['api-version'] || req.headers['api-version']) as string;
+  const apiVersion = (req.query['api-version'] ||
+    req.headers['api-version']) as string;
   if (!apiVersion) {
-    return next(jsonError('This endpoint requires that an API Version be provided.', 422));
+    return next(
+      jsonError('This endpoint requires that an API Version be provided.', 422)
+    );
   }
   if (apiVersion.toLowerCase() === '2016-09-22_Preview'.toLowerCase()) {
-    return next(jsonError('This endpoint no longer supports the original preview version. Please update your client to use a newer version such as ' + hardcodedApiVersions[0], 422));
+    return next(
+      jsonError(
+        'This endpoint no longer supports the original preview version. Please update your client to use a newer version such as ' +
+          hardcodedApiVersions[0],
+        422
+      )
+    );
   }
   if (hardcodedApiVersions.indexOf(apiVersion.toLowerCase()) < 0) {
-    return next(jsonError('This endpoint does not support the API version you provided at this time.', 422));
+    return next(
+      jsonError(
+        'This endpoint does not support the API version you provided at this time.',
+        422
+      )
+    );
   }
   req.apiVersion = apiVersion;
   return next();
@@ -76,24 +90,39 @@ router.use('/extension', cors(), multipleProviders, apiExtension);
 // AUTHENTICATION: AAD or repos (specific to this app)
 //-----------------------------------------------------------------------------
 const dynamicStartupInstance = getCompanySpecificDeployment();
-dynamicStartupInstance?.routes?.api?.index && dynamicStartupInstance?.routes?.api?.rootIndex(router);
+dynamicStartupInstance?.routes?.api?.index &&
+  dynamicStartupInstance?.routes?.api?.rootIndex(router);
 
 router.use('/:org', aadAndCustomProviders);
 
 router.use('/:org', function (req: IApiRequest, res, next) {
   const orgName = req.params.org;
   if (!req.apiKeyToken.organizationScopes) {
-    return next(jsonError('There is a problem with the key configuration (no organization scopes)', 412));
+    return next(
+      jsonError(
+        'There is a problem with the key configuration (no organization scopes)',
+        412
+      )
+    );
   }
   // '*'' is authorized for all organizations in this configuration environment
   if (!req.apiKeyToken.hasOrganizationScope(orgName)) {
-    return next(jsonError('The key is not authorized for this organization', 401));
+    return next(
+      jsonError('The key is not authorized for this organization', 401)
+    );
   }
   if (!req.apiKeyToken.scopes) {
-    return next(jsonError('There is a problem with the key configuration (no specific API scopes)', 412));
+    return next(
+      jsonError(
+        'There is a problem with the key configuration (no specific API scopes)',
+        412
+      )
+    );
   }
   if (!req.apiKeyToken.hasScope('createRepo')) {
-    return next(jsonError('The key is not authorized to use the repo create APIs', 401));
+    return next(
+      jsonError('The key is not authorized to use the repo create APIs', 401)
+    );
   }
 
   const providers = getProviders(req);
@@ -108,17 +137,22 @@ router.use('/:org', function (req: IApiRequest, res, next) {
   return next();
 });
 
-router.post('/:org/repos', asyncHandler(async function (req: ReposAppRequest, res, next) {
-  const providers = getProviders(req);
-  const organization = req.organization;
-  const convergedObject = Object.assign({}, req.headers);
-  req.insights.trackEvent({ name: 'ApiRepoCreateRequest', properties: convergedObject });
-  Object.assign(convergedObject, req.body);
-  delete convergedObject.access_token;
-  delete convergedObject.authorization;
-  const logic = providers.customizedNewRepositoryLogic;
-  const customContext = logic?.createContext(req);
-  /*
+router.post(
+  '/:org/repos',
+  asyncHandler(async function (req: ReposAppRequest, res, next) {
+    const providers = getProviders(req);
+    const organization = req.organization;
+    const convergedObject = Object.assign({}, req.headers);
+    req.insights.trackEvent({
+      name: 'ApiRepoCreateRequest',
+      properties: convergedObject,
+    });
+    Object.assign(convergedObject, req.body);
+    delete convergedObject.access_token;
+    delete convergedObject.authorization;
+    const logic = providers.customizedNewRepositoryLogic;
+    const customContext = logic?.createContext(req);
+    /*
   removed approvals from primary method:
 
   // Validate approval types
@@ -149,24 +183,36 @@ router.post('/:org/repos', asyncHandler(async function (req: ReposAppRequest, re
   }
 
   */
-  try {
-    const repoCreateResponse = await CreateRepository(req, organization, logic, customContext, convergedObject, CreateRepositoryEntrypoint.Api);
-    res.status(201);
-    req.insights.trackEvent({
-      name: 'ApiRepoCreateRequestSuccess', properties: {
-        request: JSON.stringify(convergedObject),
-        response: JSON.stringify(repoCreateResponse),
-      }
-    });
-    return res.json(repoCreateResponse);
-  } catch (error) {
-    const data = { ...convergedObject };
-    data.error = error.message;
-    data.encodedError = JSON.stringify(error);
-    req.insights.trackEvent({ name: 'ApiRepoCreateFailed', properties: data });
-    return next(error);
-  }
-}));
+    try {
+      const repoCreateResponse = await CreateRepository(
+        req,
+        organization,
+        logic,
+        customContext,
+        convergedObject,
+        CreateRepositoryEntrypoint.Api
+      );
+      res.status(201);
+      req.insights.trackEvent({
+        name: 'ApiRepoCreateRequestSuccess',
+        properties: {
+          request: JSON.stringify(convergedObject),
+          response: JSON.stringify(repoCreateResponse),
+        },
+      });
+      return res.json(repoCreateResponse);
+    } catch (error) {
+      const data = { ...convergedObject };
+      data.error = error.message;
+      data.encodedError = JSON.stringify(error);
+      req.insights.trackEvent({
+        name: 'ApiRepoCreateFailed',
+        properties: data,
+      });
+      return next(error);
+    }
+  })
+);
 
 router.use(JsonErrorHandler);
 

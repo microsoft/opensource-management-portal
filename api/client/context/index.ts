@@ -24,15 +24,18 @@ import routeAdministration from './administration';
 const router: Router = Router();
 
 const deployment = getCompanySpecificDeployment();
-deployment?.routes?.api?.context?.index && deployment?.routes?.api?.context?.index(router);
+deployment?.routes?.api?.context?.index &&
+  deployment?.routes?.api?.context?.index(router);
 
 router.use('/approvals', routeApprovals);
 
 router.get('/', (req: ReposAppRequest, res) => {
   const { config } = getProviders(req);
   const { continuousDeployment } = config;
-  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-  const isGitHubAuthenticated = !!activeContext.getSessionBasedGitHubIdentity()?.id;
+  const activeContext = (req.individualContext ||
+    req.apiContext) as IndividualContext;
+  const isGitHubAuthenticated = !!activeContext.getSessionBasedGitHubIdentity()
+    ?.id;
   const data = {
     corporateIdentity: activeContext.corporateIdentity,
     githubIdentity: activeContext.getGitHubIdentity(),
@@ -45,49 +48,60 @@ router.get('/', (req: ReposAppRequest, res) => {
   return res.json(data);
 });
 
-router.get('/specialized/multipleLinkGitHubIdentities', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { operations } = getProviders(req);
-  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-  const links = (activeContext?.link ? [activeContext.link, ...activeContext.additionalLinks] : []).map(link => link.thirdPartyUsername);
-  const response = {
-    deletedOrChangedUsernames: [],
-    logins: [],
-  };
-  for (const username of links) {
-    try {
-      const details = await operations.getAccountByUsername(username);
-      if (details) {
-        const json = details.asJson();
-        response.logins.push(json);
-      } else {
+router.get(
+  '/specialized/multipleLinkGitHubIdentities',
+  asyncHandler(async (req: ReposAppRequest, res, next) => {
+    const { operations } = getProviders(req);
+    const activeContext = (req.individualContext ||
+      req.apiContext) as IndividualContext;
+    const links = (activeContext?.link
+      ? [activeContext.link, ...activeContext.additionalLinks]
+      : []
+    ).map((link) => link.thirdPartyUsername);
+    const response = {
+      deletedOrChangedUsernames: [],
+      logins: [],
+    };
+    for (const username of links) {
+      try {
+        const details = await operations.getAccountByUsername(username);
+        if (details) {
+          const json = details.asJson();
+          response.logins.push(json);
+        } else {
+          response.deletedOrChangedUsernames.push(username);
+        }
+      } catch (error) {
+        // we don't want to interrupt this if they deleted an account
+        console.warn(error);
         response.deletedOrChangedUsernames.push(username);
       }
-    } catch (error) {
-      // we don't want to interrupt this if they deleted an account
-      console.warn(error);
-      response.deletedOrChangedUsernames.push(username);
     }
-  }
-  return res.json(response);
-}));
+    return res.json(response);
+  })
+);
 
-router.get('/accountDetails', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { operations } = getProviders(req);
-  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-  try {
-    const gh = activeContext.getGitHubIdentity();
-    if (gh?.id) {
-      const accountFromId = operations.getAccount(gh.id);
-      const accountDetails = await accountFromId.getDetails();
-      res.json(accountDetails);
-    } else {
-      res.status(400);
-      res.end();
+router.get(
+  '/accountDetails',
+  asyncHandler(async (req: ReposAppRequest, res, next) => {
+    const { operations } = getProviders(req);
+    const activeContext = (req.individualContext ||
+      req.apiContext) as IndividualContext;
+    try {
+      const gh = activeContext.getGitHubIdentity();
+      if (gh?.id) {
+        const accountFromId = operations.getAccount(gh.id);
+        const accountDetails = await accountFromId.getDetails();
+        res.json(accountDetails);
+      } else {
+        res.status(400);
+        res.end();
+      }
+    } catch (error) {
+      return next(error);
     }
-  } catch (error) {
-    return next(error);
-  }
-}));
+  })
+);
 
 router.use('/administration', routeAdministration);
 
@@ -95,27 +109,30 @@ router.get('/orgs', routeOrgs);
 router.get('/repos', routeRepos);
 router.get('/teams', routeTeams);
 
-router.use('/orgs/:orgName', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { orgName } = req.params;
-  const { operations } = getProviders(req);
-  // const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-  // if (!activeContext.link) {
-  //   return next(jsonError('Account is not linked', 400));
-  // }
-  let organization: Organization = null;
-  try {
-    organization = operations.getOrganization(orgName);
-    // CONSIDER: what if they are not currently a member of the org?
-    req.organization = organization;
-    return next();
-  } catch (noOrgError) {
-    if (ErrorHelper.IsNotFound(noOrgError)) {
-      res.status(404);
-      return res.end();
+router.use(
+  '/orgs/:orgName',
+  asyncHandler(async (req: ReposAppRequest, res, next) => {
+    const { orgName } = req.params;
+    const { operations } = getProviders(req);
+    // const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+    // if (!activeContext.link) {
+    //   return next(jsonError('Account is not linked', 400));
+    // }
+    let organization: Organization = null;
+    try {
+      organization = operations.getOrganization(orgName);
+      // CONSIDER: what if they are not currently a member of the org?
+      req.organization = organization;
+      return next();
+    } catch (noOrgError) {
+      if (ErrorHelper.IsNotFound(noOrgError)) {
+        res.status(404);
+        return res.end();
+      }
+      return next(jsonError(noOrgError, 500));
     }
-    return next(jsonError(noOrgError, 500));
-  }
-}));
+  })
+);
 
 router.use('/orgs/:orgName', routeIndividualContextualOrganization);
 

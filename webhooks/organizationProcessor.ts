@@ -20,7 +20,11 @@ interface IValidationError extends Error {
 
 export abstract class WebhookProcessor {
   abstract filter(data: any): boolean;
-  abstract run(operations: Operations, organization: Organization, data: any): Promise<boolean>;
+  abstract run(
+    operations: Operations,
+    organization: Organization,
+    data: any
+  ): Promise<boolean>;
 }
 
 export interface IOrganizationWebhookEvent {
@@ -43,7 +47,9 @@ export interface IProcessOrganizationWebhookOptions {
   acknowledgeValidEvent?: any;
 }
 
-export default async function ProcessOrganizationWebhook(options: IProcessOrganizationWebhookOptions): Promise<any> {
+export default async function ProcessOrganizationWebhook(
+  options: IProcessOrganizationWebhookOptions
+): Promise<any> {
   const operations = options.operations;
   if (!operations) {
     throw new Error('No operations instance provided');
@@ -69,11 +75,18 @@ export default async function ProcessOrganizationWebhook(options: IProcessOrgani
   const body = event.body;
   const rawBody = event.rawBody || JSON.stringify(body);
   const properties = event.properties;
-  if (!properties || !properties.delivery || !properties.signature || !properties.event) {
+  if (
+    !properties ||
+    !properties.delivery ||
+    !properties.signature ||
+    !properties.event
+  ) {
     if (options.acknowledgeValidEvent) {
       options.acknowledgeValidEvent();
     }
-    throw new Error('Missing event properties - delivery, signature, and/or event');
+    throw new Error(
+      'Missing event properties - delivery, signature, and/or event'
+    );
   }
   // try {
   //   await verifySignatures(properties.signature, organization.webhookSharedSecrets, rawBody);
@@ -108,10 +121,12 @@ export default async function ProcessOrganizationWebhook(options: IProcessOrgani
     options.acknowledgeValidEvent();
   }
   let interestingEvents = 0;
-  const work = Tasks.filter(task => task.filter(event));
+  const work = Tasks.filter((task) => task.filter(event));
   if (work.length > 0) {
     ++interestingEvents;
-    console.log(`[* interesting event: ${event.properties.event} (${work.length} interested tasks)]`);
+    console.log(
+      `[* interesting event: ${event.properties.event} (${work.length} interested tasks)]`
+    );
   } else {
     console.log(`[uninteresting event: ${event.properties.event}]`);
   }
@@ -128,7 +143,9 @@ export default async function ProcessOrganizationWebhook(options: IProcessOrgani
           const rateLimitRemaining = headers['x-ratelimit-remaining'];
           const rateLimitReset = headers['x-ratelimit-reset'];
           if (rateLimit !== undefined) {
-            console.log(`rate limit=${rateLimit}, remaining=${rateLimitRemaining}`);
+            console.log(
+              `rate limit=${rateLimit}, remaining=${rateLimitRemaining}`
+            );
           }
           if (rateLimitReset) {
             const resetValue = Number(rateLimitReset);
@@ -136,7 +153,9 @@ export default async function ProcessOrganizationWebhook(options: IProcessOrgani
             const now = new Date();
             if (resetDate > now) {
               const difference = resetDate.getTime() - now.getTime();
-              console.log(`[rate limit sleep] This thread will sleep for the remainder of this limit, ${difference}ms, until ${resetDate}`);
+              console.log(
+                `[rate limit sleep] This thread will sleep for the remainder of this limit, ${difference}ms, until ${resetDate}`
+              );
               await sleep(difference);
               console.log('[resuming from rate limit sleep]');
             }
@@ -151,7 +170,11 @@ export default async function ProcessOrganizationWebhook(options: IProcessOrgani
   return interestingEvents;
 }
 
-async function verifySignatures(signature, hookSecrets: string[], rawBody): Promise<void> {
+async function verifySignatures(
+  signature,
+  hookSecrets: string[],
+  rawBody
+): Promise<void> {
   // To ease local development and simple scenarios, if no shared secrets are
   // configured, they are not required.
   if (!hookSecrets || !hookSecrets.length) {
@@ -171,7 +194,9 @@ async function verifySignatures(signature, hookSecrets: string[], rawBody): Prom
     }
     computedSignatures.push(computedHash);
   }
-  const validationError: IValidationError = new Error('The signature could not be verified');
+  const validationError: IValidationError = new Error(
+    'The signature could not be verified'
+  );
   validationError.statusCode = 401;
   validationError.computedHash = computedSignatures.join(', ');
   throw validationError;

@@ -3,11 +3,24 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ICacheOptions, IPagedCacheOptions, IAccountBasics, IGitHubTeamBasics } from '.';
-import { IPersonalizedUserAggregateRepositoryPermission, TeamRepositoryPermission, GraphManager } from '../../business';
+import {
+  ICacheOptions,
+  IPagedCacheOptions,
+  IAccountBasics,
+  IGitHubTeamBasics,
+} from '.';
+import {
+  IPersonalizedUserAggregateRepositoryPermission,
+  TeamRepositoryPermission,
+  GraphManager,
+} from '../../business';
 import { GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
-import { GitHubPullRequestState, GitHubPullRequestSort, GitHubSortDirection } from '../../lib/github/collections';
+import {
+  GitHubPullRequestState,
+  GitHubPullRequestSort,
+  GitHubSortDirection,
+} from '../../lib/github/collections';
 import { IRequestTeamPermissions } from '../../middleware/github/teamPermissions';
 
 export interface IGitHubCollaboratorInvitation {
@@ -120,7 +133,7 @@ export interface IGitHubBranchDetailed {
     protection: {
       enabled: boolean;
       required_status_checks: {
-        enforcement_level: 'non_admins' | 'admins',
+        enforcement_level: 'non_admins' | 'admins';
         contexts: string[];
       };
     };
@@ -134,26 +147,26 @@ export interface IRepositoryBranchAccessProtections {
   };
   allow_force_pushes: {
     enabled: boolean;
-  }
+  };
   enforce_admins: {
     enabled: boolean;
     url: string;
-  }
+  };
   required_linear_history: {
     enabled: boolean;
-  }
+  };
   restrictions: {
     users: IAccountBasics[];
     teams: IGitHubTeamBasics[];
     apps: unknown[];
-  }
+  };
   url: string;
 }
 
 export interface ITemporaryCommandOutput {
   error?: Error;
   message?: string;
-};
+}
 
 export interface IRepositorySearchOptions {
   pageSize?: number;
@@ -178,7 +191,9 @@ export enum GitHubCollaboratorPermissionLevel {
   None = 'none',
 }
 
-export function ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission(level: GitHubCollaboratorPermissionLevel): GitHubRepositoryPermission {
+export function ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission(
+  level: GitHubCollaboratorPermissionLevel
+): GitHubRepositoryPermission {
   switch (level) {
     case GitHubCollaboratorPermissionLevel.None:
       return null;
@@ -189,6 +204,8 @@ export function ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermis
     case GitHubCollaboratorPermissionLevel.Read:
       return GitHubRepositoryPermission.Pull;
     default:
-      throw new Error(`ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission unrecognized value ${level} cannot be translated`);
+      throw new Error(
+        `ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission unrecognized value ${level} cannot be translated`
+      );
   }
 }

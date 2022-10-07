@@ -3,7 +3,12 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { CoreCapability, ICacheDefaultTimes, IPurposefulGetAuthorizationHeader, ICacheOptions } from '.';
+import {
+  CoreCapability,
+  ICacheDefaultTimes,
+  IPurposefulGetAuthorizationHeader,
+  ICacheOptions,
+} from '.';
 import { IProviders, ICorporateLink, ICachedEmployeeInformation } from '..';
 import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
 import { RestLibrary } from '../../lib/github';
@@ -60,7 +65,9 @@ export interface IOperationsDefaultCacheTimes {
 }
 
 export interface IOperationsHierarchy {
-  getCachedEmployeeManagementInformation(corporateId: string): Promise<ICachedEmployeeInformation>;
+  getCachedEmployeeManagementInformation(
+    corporateId: string
+  ): Promise<ICachedEmployeeInformation>;
 }
 
 export interface IOperationsUrls {
@@ -80,25 +87,40 @@ export interface IOperationsLockdownFeatureFlags {
 
 export interface IOperationsCentralOperationsToken {
   getCentralOperationsToken(): IPurposefulGetAuthorizationHeader; // IGetAuthorizationHeader ?;
-  getAccountByUsername(username: string, options?: ICacheOptions): Promise<Account>;
+  getAccountByUsername(
+    username: string,
+    options?: ICacheOptions
+  ): Promise<Account>;
 }
 
-export function operationsIsCapable<T>(operations: IOperationsInstance, capability: CoreCapability): operations is IOperationsInstance & T {
+export function operationsIsCapable<T>(
+  operations: IOperationsInstance,
+  capability: CoreCapability
+): operations is IOperationsInstance & T {
   return operations.hasCapability(capability);
 }
 
-export function operationsWithCapability<T>(operations: IOperationsInstance, capability: CoreCapability): T & IOperationsInstance {
+export function operationsWithCapability<T>(
+  operations: IOperationsInstance,
+  capability: CoreCapability
+): T & IOperationsInstance {
   if (operationsIsCapable<T>(operations, capability)) {
     return operations as T & IOperationsInstance;
   }
   return null;
 }
 
-export function throwIfNotCapable<T>(operations: IOperationsInstance, capability: CoreCapability) {
+export function throwIfNotCapable<T>(
+  operations: IOperationsInstance,
+  capability: CoreCapability
+) {
   operations.throwIfNotCompatible(capability);
-  return operations as any as T & IOperationsInstance;
+  return (operations as any) as T & IOperationsInstance;
 }
 
 export function throwIfNotGitHubCapable(operations: IOperationsInstance) {
-  return throwIfNotCapable<IOperationsGitHubRestLibrary & IOperationsInstance>(operations, CoreCapability.GitHubRestApi);
+  return throwIfNotCapable<IOperationsGitHubRestLibrary & IOperationsInstance>(
+    operations,
+    CoreCapability.GitHubRestApi
+  );
 }

@@ -8,5 +8,9 @@ import { IProviders } from '../../../interfaces';
 import { IndividualContext } from '../../../user';
 
 export interface ICompanySpecificFeatureOrganizationJoinAcl {
-  tryAuthorizeOrganizationJoin: (providers: IProviders, organization: Organization, activeContext: IndividualContext) => Promise<boolean>;
+  tryAuthorizeOrganizationJoin: (
+    providers: IProviders,
+    organization: Organization,
+    activeContext: IndividualContext
+  ) => Promise<boolean>;
 }

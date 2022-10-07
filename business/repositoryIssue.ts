@@ -7,7 +7,15 @@ import { Repository } from './repository';
 import { wrapError } from '../utils';
 import { AppPurpose } from '../github';
 import { CacheDefault, getMaxAgeSeconds, Operations } from '.';
-import { IOperationsInstance, IPurposefulGetAuthorizationHeader, GitHubIssueState, IIssueLabel, throwIfNotGitHubCapable, ICacheOptions, IGetAuthorizationHeader } from '../interfaces';
+import {
+  IOperationsInstance,
+  IPurposefulGetAuthorizationHeader,
+  GitHubIssueState,
+  IIssueLabel,
+  throwIfNotGitHubCapable,
+  ICacheOptions,
+  IGetAuthorizationHeader,
+} from '../interfaces';
 import { CreateError, ErrorHelper } from '../transitional';
 
 export class RepositoryIssue {
@@ -19,7 +27,13 @@ export class RepositoryIssue {
 
   private _entity: any;
 
-  constructor(repository: Repository, issueNumber: number, operations: IOperationsInstance, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, entity?: any) {
+  constructor(
+    repository: Repository,
+    issueNumber: number,
+    operations: IOperationsInstance,
+    getAuthorizationHeader: IPurposefulGetAuthorizationHeader,
+    entity?: any
+  ) {
     this._getAuthorizationHeader = getAuthorizationHeader;
     this._repository = repository;
     this._number = issueNumber;
@@ -29,10 +43,18 @@ export class RepositoryIssue {
     }
   }
 
-  get id(): number { return this._entity?.id as number; }
-  get title(): string { return this._entity?.title as string; }
-  get body(): string { return this._entity.body as string; }
-  get state(): GitHubIssueState { return this._entity?.state as GitHubIssueState; }
+  get id(): number {
+    return this._entity?.id as number;
+  }
+  get title(): string {
+    return this._entity?.title as string;
+  }
+  get body(): string {
+    return this._entity.body as string;
+  }
+  get state(): GitHubIssueState {
+    return this._entity?.state as GitHubIssueState;
+  }
   get labels(): IIssueLabel[] {
     if (this._entity) {
       return this._entity.labels as IIssueLabel[];
@@ -41,9 +63,13 @@ export class RepositoryIssue {
     }
   }
 
-  get number(): number { return this._number; }
+  get number(): number {
+    return this._number;
+  }
 
-  getEntity(): any { return this._entity; }
+  getEntity(): any {
+    return this._entity;
+  }
 
   get repository(): Repository {
     return this._repository;
@@ -57,21 +83,32 @@ export class RepositoryIssue {
       issue_number: this.number,
     });
     // Operations has issue write permissions
-    const details = await operations.github.post(this.authorize(AppPurpose.Operations), 'issues.update', parameters);
+    const details = await operations.github.post(
+      this.authorize(AppPurpose.Operations),
+      'issues.update',
+      parameters
+    );
     return details;
   }
 
   async comment(commentBody: string): Promise<any> {
     const operations = throwIfNotGitHubCapable(this._operations);
-    const parameters = Object.assign({
-      body: commentBody,
-    }, {
-      owner: this.repository.organization.name,
-      repo: this.repository.name,
-      issue_number: this.number,
-    });
+    const parameters = Object.assign(
+      {
+        body: commentBody,
+      },
+      {
+        owner: this.repository.organization.name,
+        repo: this.repository.name,
+        issue_number: this.number,
+      }
+    );
     // Operations has issue write permissions
-    const comment = await operations.github.post(this.authorize(AppPurpose.Operations), 'issues.createComment', parameters);
+    const comment = await operations.github.post(
+      this.authorize(AppPurpose.Operations),
+      'issues.createComment',
+      parameters
+    );
     return comment;
   }
 
@@ -82,7 +119,11 @@ export class RepositoryIssue {
       repo: this.repository.name,
       comment_id: commentId,
     });
-    const comment = await operations.github.post(this.authorize(AppPurpose.Operations), 'issues.getComment', parameters);
+    const comment = await operations.github.post(
+      this.authorize(AppPurpose.Operations),
+      'issues.getComment',
+      parameters
+    );
     return comment;
   }
 
@@ -98,7 +139,10 @@ export class RepositoryIssue {
     }
   }
 
-  async getDetails(options?: ICacheOptions, okToUseLocalEntity: boolean = true): Promise<any> {
+  async getDetails(
+    options?: ICacheOptions,
+    okToUseLocalEntity: boolean = true
+  ): Promise<any> {
     if (okToUseLocalEntity && this._entity) {
       return this._entity;
     }
@@ -114,18 +158,33 @@ export class RepositoryIssue {
     };
     const cacheOptions: ICacheOptions = {
       // NOTE: just reusing repo details stale time
-      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
+      maxAgeSeconds: getMaxAgeSeconds(
+        operations,
+        CacheDefault.orgRepoDetailsStaleSeconds,
+        options
+      ),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     try {
-      const entity = await operations.github.call(this.authorize(AppPurpose.Data), 'issues.get', parameters, cacheOptions);
+      const entity = await operations.github.call(
+        this.authorize(AppPurpose.Data),
+        'issues.get',
+        parameters,
+        cacheOptions
+      );
       this._entity = entity;
       return entity;
     } catch (error) {
       const notFound = error.status && error.status == /* loose */ 404;
-      error = wrapError(error, notFound ? 'The issue could not be found.' : `Could not get details about the issue. ${error.status}`, notFound);
+      error = wrapError(
+        error,
+        notFound
+          ? 'The issue could not be found.'
+          : `Could not get details about the issue. ${error.status}`,
+        notFound
+      );
       if (notFound) {
         error.status = 404;
       }
@@ -135,7 +194,10 @@ export class RepositoryIssue {
 
   async isDeleted(options?: ICacheOptions): Promise<boolean> {
     try {
-      await this.getDetails(options, false /* do not use local entity instance */);
+      await this.getDetails(
+        options,
+        false /* do not use local entity instance */
+      );
     } catch (maybeDeletedError) {
       if (ErrorHelper.IsNotFound(maybeDeletedError)) {
         return true;
@@ -145,14 +207,22 @@ export class RepositoryIssue {
   }
 
   private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
-    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as IGetAuthorizationHeader;
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(
+      this,
+      purpose
+    ) as IGetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 
-  static async CreateFromContentUrl(operations: IOperationsInstance, url: string) {
+  static async CreateFromContentUrl(
+    operations: IOperationsInstance,
+    url: string
+  ) {
     const ops = operations as Operations;
     if (!ops.getRepositoryWithOrganizationFromUrl) {
-      throw CreateError.ServerError('The operations instance does not support returning repositories from URL');
+      throw CreateError.ServerError(
+        'The operations instance does not support returning repositories from URL'
+      );
     }
     const repository = ops.getRepositoryWithOrganizationFromUrl(url);
     const response = await repository.organization.requestUrl(url);

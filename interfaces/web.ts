@@ -62,7 +62,6 @@ export interface IUserAlert {
   context: UserAlertType;
   optionalLink: string;
   optionalCaption: string;
-
 }
 
 interface IAppSessionProperties extends Session {
@@ -74,10 +73,9 @@ interface IAppSessionProperties extends Session {
   referer: string;
 }
 
-export interface IAppSession extends IAppSessionProperties { }
+export interface IAppSession extends IAppSessionProperties {}
 
-export interface IReposAppResponse extends Response {
-}
+export interface IReposAppResponse extends Response {}
 
 export interface IReposRequestWithOrganization extends ReposAppRequest {
   organization?: any;

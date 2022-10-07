@@ -12,7 +12,12 @@ import { aadStrategyUserPropertyName } from './aadStrategy';
 
 const aadPassportStrategyName = 'azure-active-directory';
 
-export function attachAadPassportRoutes(app, config: any, passport: PassportStatic, helpers: IPrimaryAuthenticationHelperMethods) {
+export function attachAadPassportRoutes(
+  app,
+  config: any,
+  passport: PassportStatic,
+  helpers: IPrimaryAuthenticationHelperMethods
+) {
   app.get('/signin', function (req: ReposAppRequest, res, next) {
     if (req.isAuthenticated()) {
       const username = req.user?.azure?.username;
@@ -22,39 +27,64 @@ export function attachAadPassportRoutes(app, config: any, passport: PassportStat
         return res.redirect(nextDestination);
       }
     }
-    return helpers.storeReferrer(req, res, '/auth/azure', 'signin page hit, need to go authenticate');
+    return helpers.storeReferrer(
+      req,
+      res,
+      '/auth/azure',
+      'signin page hit, need to go authenticate'
+    );
   });
 
   // SameSite cookie auth fixes, will regenerate even more sessions before proceeding to redirect to AAD...
-  app.get('/auth/azure', (req: ReposAppRequest, res: Response, next: NextFunction) => {
-    const currentlyStoredSessionReferer = (req as any).session?.referer || undefined;
-    const additionalAuthRedirect = (req.session as any).additionalAuthRedirect;
-    if (!req.session) {
-      return next();
+  app.get(
+    '/auth/azure',
+    (req: ReposAppRequest, res: Response, next: NextFunction) => {
+      const currentlyStoredSessionReferer =
+        (req as any).session?.referer || undefined;
+      const additionalAuthRedirect = (req.session as any)
+        .additionalAuthRedirect;
+      if (!req.session) {
+        return next();
+      }
+      return req.session.regenerate(function (err) {
+        if (err) {
+          return next(err);
+        }
+        if (currentlyStoredSessionReferer && req.session) {
+          (req as any).session.referer = currentlyStoredSessionReferer;
+        }
+        if (additionalAuthRedirect && req.session) {
+          (req as any).session.additionalAuthRedirect = additionalAuthRedirect;
+        }
+        return next();
+      });
     }
-    return req.session.regenerate(function (err) {
-      if (err) {
-        return next(err);
-      }
-      if (currentlyStoredSessionReferer && req.session) {
-        (req as any).session.referer = currentlyStoredSessionReferer;
-      }
-      if (additionalAuthRedirect && req.session) {
-        (req as any).session.additionalAuthRedirect = additionalAuthRedirect;
-      }
-      return next();
-    });
-  });
+  );
 
   // Actual AAD sign-in
-  app.get('/auth/azure', passport.authenticate(aadPassportStrategyName, { keepSessionInfo: true /* we manually regenerate for XSS */ }));
+  app.get(
+    '/auth/azure',
+    passport.authenticate(aadPassportStrategyName, {
+      keepSessionInfo: true /* we manually regenerate for XSS */,
+    })
+  );
 
-  app.post('/auth/azure/callback',
-    passport.authenticate(aadPassportStrategyName, { keepSessionInfo: true /* we manually regenerate for XSS */ }),
+  app.post(
+    '/auth/azure/callback',
+    passport.authenticate(aadPassportStrategyName, {
+      keepSessionInfo: true /* we manually regenerate for XSS */,
+    }),
     helpers.newSessionAfterAuthentication,
     (req: ReposAppRequest, res: Response, next: NextFunction) => {
-      helpers.afterAuthentication(true /* primary app authentication */, aadStrategyUserPropertyName, req, res, next);
-    });
+      helpers.afterAuthentication(
+        true /* primary app authentication */,
+        aadStrategyUserPropertyName,
+        req,
+        res,
+        next
+      );
+    }
+  );
 
   // HTTP GET at the callback URL is used for a warning for certain users who launch
   // links from apps that temporarily prevent sessions. Technically this seems to
@@ -72,7 +102,10 @@ export function attachAadPassportRoutes(app, config: any, passport: PassportStat
       },
     });
     const messageError: IReposError = new Error(
-      isAuthenticated ? 'Authentication initially failed, but you are good to go now.' : 'Authentication failed, possibly due to SameSite cookie issues with newer browsers.');
+      isAuthenticated
+        ? 'Authentication initially failed, but you are good to go now.'
+        : 'Authentication failed, possibly due to SameSite cookie issues with newer browsers.'
+    );
     messageError.skipLog = true;
     messageError.status = 400;
     if (isAuthenticated) {
@@ -87,10 +120,24 @@ export function attachAadPassportRoutes(app, config: any, passport: PassportStat
   });
 
   app.get('/signin/azure', function (req: ReposAppRequest, res: Response) {
-    helpers.storeReferrer(req, res, '/auth/azure', 'request for the /signin/azure page, need to authenticate');
+    helpers.storeReferrer(
+      req,
+      res,
+      '/auth/azure',
+      'request for the /signin/azure page, need to authenticate'
+    );
   });
 
-  app.get('/signout/azure', (req: ReposAppRequest, res: Response, next: NextFunction) => {
-    return helpers.signout(true /* primary authentication */, [aadStrategyUserPropertyName], req, res, next);
-  });
+  app.get(
+    '/signout/azure',
+    (req: ReposAppRequest, res: Response, next: NextFunction) => {
+      return helpers.signout(
+        true /* primary authentication */,
+        [aadStrategyUserPropertyName],
+        req,
+        res,
+        next
+      );
+    }
+  );
 }

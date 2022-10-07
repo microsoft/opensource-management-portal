@@ -5,17 +5,33 @@
 
 import crypto from 'crypto';
 
-import { EntityField, IObjectWithDefinedKeys } from '../../lib/entityMetadataProvider/entityMetadataProvider';
-import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
-import { MetadataMappingDefinition, EntityMetadataMappings } from '../../lib/entityMetadataProvider/declarations';
-import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
+import {
+  EntityField,
+  IObjectWithDefinedKeys,
+} from '../../lib/entityMetadataProvider/entityMetadataProvider';
+import {
+  EntityMetadataType,
+  IEntityMetadata,
+} from '../../lib/entityMetadataProvider/entityMetadata';
+import {
+  MetadataMappingDefinition,
+  EntityMetadataMappings,
+} from '../../lib/entityMetadataProvider/declarations';
+import {
+  IEntityMetadataFixedQuery,
+  FixedQueryType,
+} from '../../lib/entityMetadataProvider/query';
 import { TokenGenerator } from './tokenGenerator';
 import { QueryTokensByCorporateID } from './tokenProvider';
 import { Type } from './type';
 import { TableSettings } from '../../lib/entityMetadataProvider/table';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
 import { odata, TableEntityQueryOptions } from '@azure/data-tables';
-import { PostgresConfiguration, PostgresJsonEntityQuery, PostgresSettings } from '../../lib/entityMetadataProvider/postgres';
+import {
+  PostgresConfiguration,
+  PostgresJsonEntityQuery,
+  PostgresSettings,
+} from '../../lib/entityMetadataProvider/postgres';
 
 const type = Type;
 
@@ -47,7 +63,8 @@ const Field: ITokenEntityProperties = {
 
 const fieldNames = Object.getOwnPropertyNames(Field);
 
-export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntityProperties {
+export class PersonalAccessToken
+  implements IObjectWithDefinedKeys, ITokenEntityProperties {
   private _key: string;
 
   token: string;
@@ -122,7 +139,11 @@ export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntity
 
   getIdentifier() {
     const concat = this.created + this.token;
-    return crypto.createHash('sha1').update(concat).digest('hex').substring(0, 10);
+    return crypto
+      .createHash('sha1')
+      .update(concat)
+      .digest('hex')
+      .substring(0, 10);
   }
 
   isExpired(): boolean {
@@ -132,7 +153,7 @@ export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntity
       return false;
     }
     const now = new Date();
-    return (this.expires < now);
+    return this.expires < now;
   }
 
   hasScope(scope: string) {
@@ -140,7 +161,7 @@ export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntity
       return false;
     }
     const apis = this.scopes.toLowerCase().split(',');
-    return (apis.includes(scope.toLowerCase()));
+    return apis.includes(scope.toLowerCase());
   }
 
   hasOrganizationScope(orgName: string) {
@@ -151,129 +172,229 @@ export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntity
       return true;
     }
     const orgList = this.organizationScopes.toLowerCase().split(',');
-    return (orgList.includes(orgName.toLowerCase()));
+    return orgList.includes(orgName.toLowerCase());
   }
 }
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => { return new PersonalAccessToken(); });
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, Field.token);
+EntityMetadataMappings.Register(
+  type,
+  MetadataMappingDefinition.EntityInstantiate,
+  () => {
+    return new PersonalAccessToken();
+  }
+);
+EntityMetadataMappings.Register(
+  type,
+  MetadataMappingDefinition.EntityIdColumnName,
+  Field.token
+);
 
-EntityMetadataMappings.Register(type, TableSettings.TableMapping, new Map<string, string>([
-  [Field.token, null], // RowKey
-  [Field.active, 'active'],
-  [Field.corporateId, 'owner'],
-  [Field.created, 'entityCreated'],
-  [Field.description, 'description'],
-  [Field.source, 'service'],
-  [Field.organizationScopes, 'orgs'],
-  [Field.expires, 'expires'],
-  [Field.warning, 'warning'],
-  [Field.scopes, 'apis'],
-]));
+EntityMetadataMappings.Register(
+  type,
+  TableSettings.TableMapping,
+  new Map<string, string>([
+    [Field.token, null], // RowKey
+    [Field.active, 'active'],
+    [Field.corporateId, 'owner'],
+    [Field.created, 'entityCreated'],
+    [Field.description, 'description'],
+    [Field.source, 'service'],
+    [Field.organizationScopes, 'orgs'],
+    [Field.expires, 'expires'],
+    [Field.warning, 'warning'],
+    [Field.scopes, 'apis'],
+  ])
+);
 EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [
   Field.created,
   Field.expires,
 ]);
 
 PostgresConfiguration.SetDefaultTableName(type, 'usersettings');
-EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'apiKey');
-PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
-  [Field.token, Field.token],
-  [Field.active, Field.active],
-  [Field.corporateId, Field.corporateId],
-  [Field.created, Field.created],
-  [Field.description, Field.description],
-  [Field.source, Field.source],
-  [Field.active, Field.active],
-  [Field.organizationScopes, Field.organizationScopes],
-  [Field.expires, new Date(Field.expires)],
-  [Field.warning, Field.warning],
-  [Field.scopes, Field.scopes],
-]));
-EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
-  const entityTypeColumn = mapMetadataPropertiesToFields[EntityField.Type];
-  const entityTypeValue = getEntityTypeColumnValue(type);
-  switch (query.fixedQueryType) {
-    case FixedQueryType.TokensByCorporateId:
-      const { corporateId } = query as QueryTokensByCorporateID;
-      if (!corporateId) {
-        throw new Error('corporateId required');
+EntityMetadataMappings.Register(
+  type,
+  PostgresSettings.PostgresDefaultTypeColumnName,
+  'apiKey'
+);
+PostgresConfiguration.MapFieldsToColumnNames(
+  type,
+  new Map<string, string>([
+    [Field.token, Field.token],
+    [Field.active, Field.active],
+    [Field.corporateId, Field.corporateId],
+    [Field.created, Field.created],
+    [Field.description, Field.description],
+    [Field.source, Field.source],
+    [Field.active, Field.active],
+    [Field.organizationScopes, Field.organizationScopes],
+    [Field.expires, new Date(Field.expires)],
+    [Field.warning, Field.warning],
+    [Field.scopes, Field.scopes],
+  ])
+);
+EntityMetadataMappings.Register(
+  type,
+  PostgresSettings.PostgresQueries,
+  (
+    query: IEntityMetadataFixedQuery,
+    mapMetadataPropertiesToFields: string[],
+    metadataColumnName: string,
+    tableName: string,
+    getEntityTypeColumnValue
+  ) => {
+    const entityTypeColumn = mapMetadataPropertiesToFields[EntityField.Type];
+    const entityTypeValue = getEntityTypeColumnValue(type);
+    switch (query.fixedQueryType) {
+      case FixedQueryType.TokensByCorporateId:
+        const { corporateId } = query as QueryTokensByCorporateID;
+        if (!corporateId) {
+          throw new Error('corporateId required');
+        }
+        return PostgresJsonEntityQuery(
+          tableName,
+          entityTypeColumn,
+          entityTypeValue,
+          metadataColumnName,
+          {
+            corporateId: corporateId,
+          },
+          Field.created.toLowerCase(),
+          true
+        );
+      case FixedQueryType.TokensGetAll:
+        return PostgresJsonEntityQuery(
+          tableName,
+          entityTypeColumn,
+          entityTypeValue,
+          metadataColumnName,
+          {},
+          Field.created.toLowerCase(),
+          true
+        );
+      default:
+        throw new Error(
+          `The fixed query type ${type} is not supported currently by this provider, or is of an unknown type`
+        );
+    }
+  }
+);
+
+EntityMetadataMappings.Register(
+  type,
+  TableSettings.TableDefaultTableName,
+  'settings'
+);
+EntityMetadataMappings.Register(
+  type,
+  TableSettings.TableDefaultFixedPartitionKey,
+  'apiKey'
+);
+EntityMetadataMappings.Register(
+  type,
+  TableSettings.TableDefaultRowKeyPrefix,
+  'apiKey'
+);
+EntityMetadataMappings.Register(
+  type,
+  TableSettings.TableDefaultFixedPartitionKeyNoPrefix,
+  true
+);
+EntityMetadataMappings.RuntimeValidateMappings(
+  type,
+  TableSettings.TableMapping,
+  fieldNames,
+  []
+);
+
+EntityMetadataMappings.Register(
+  type,
+  MemorySettings.MemoryMapping,
+  new Map<string, string>([
+    [Field.token, Field.token],
+    [Field.active, Field.active],
+    [Field.corporateId, Field.corporateId],
+    [Field.created, Field.created],
+    [Field.description, Field.description],
+    [Field.source, Field.source],
+    [Field.active, Field.active],
+    [Field.organizationScopes, Field.organizationScopes],
+    [Field.expires, Field.expires],
+    [Field.warning, Field.warning],
+    [Field.scopes, Field.scopes],
+  ])
+);
+EntityMetadataMappings.RuntimeValidateMappings(
+  type,
+  MemorySettings.MemoryMapping,
+  fieldNames,
+  []
+);
+
+EntityMetadataMappings.Register(
+  type,
+  TableSettings.TableQueries,
+  (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
+    switch (query.fixedQueryType) {
+      case FixedQueryType.TokensByCorporateId: {
+        const { corporateId } = query as QueryTokensByCorporateID;
+        if (!corporateId) {
+          throw new Error('corporateId required');
+        }
+        return {
+          filter: odata`PartitionKey eq ${fixedPartitionKey} and owner eq ${corporateId}`,
+        } as TableEntityQueryOptions;
       }
-      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
-        corporateId: corporateId,
-      }, Field.created.toLowerCase(), true);
-    case FixedQueryType.TokensGetAll:
-      return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {}, Field.created.toLowerCase(), true);
-    default:
-      throw new Error(`The fixed query type ${type} is not supported currently by this provider, or is of an unknown type`);
-  }
-});
-
-EntityMetadataMappings.Register(type, TableSettings.TableDefaultTableName, 'settings');
-EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKey, 'apiKey');
-EntityMetadataMappings.Register(type, TableSettings.TableDefaultRowKeyPrefix, 'apiKey');
-EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKeyNoPrefix, true);
-EntityMetadataMappings.RuntimeValidateMappings(type, TableSettings.TableMapping, fieldNames, []);
-
-EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, new Map<string, string>([
-  [Field.token, Field.token],
-  [Field.active, Field.active],
-  [Field.corporateId, Field.corporateId],
-  [Field.created, Field.created],
-  [Field.description, Field.description],
-  [Field.source, Field.source],
-  [Field.active, Field.active],
-  [Field.organizationScopes, Field.organizationScopes],
-  [Field.expires, Field.expires],
-  [Field.warning, Field.warning],
-  [Field.scopes, Field.scopes],
-]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
-
-EntityMetadataMappings.Register(type, TableSettings.TableQueries, (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
-  switch (query.fixedQueryType) {
-    case FixedQueryType.TokensByCorporateId: {
-      const { corporateId } = query as QueryTokensByCorporateID;
-      if (!corporateId) {
-        throw new Error('corporateId required');
+      case FixedQueryType.TokensGetAll: {
+        return {
+          filter: odata`PartitionKey eq ${fixedPartitionKey}`,
+        } as TableEntityQueryOptions;
       }
-      return {
-        filter: odata`PartitionKey eq ${fixedPartitionKey} and owner eq ${corporateId}`,
-      } as TableEntityQueryOptions;
-    }
-    case FixedQueryType.TokensGetAll: {
-      return {
-        filter: odata`PartitionKey eq ${fixedPartitionKey}`,
-      } as TableEntityQueryOptions;
-    }
-    default: {
-      throw new Error(`The fixed query type ${type} is not supported currently by this provider, or is of an unknown type`);
+      default: {
+        throw new Error(
+          `The fixed query type ${type} is not supported currently by this provider, or is of an unknown type`
+        );
+      }
     }
   }
-});
+);
 
-EntityMetadataMappings.Register(type, MemorySettings.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
-  function translatedField(type: EntityMetadataType, key: string): string {
-    const mapTeamApprovalObjectToMemoryFields = EntityMetadataMappings.GetDefinition(type, MemorySettings.MemoryMapping, true);
-    const value = mapTeamApprovalObjectToMemoryFields.get(key);
-    if (!value) {
-      throw new Error(`No translation exists for field ${key} in memory provider`);
+EntityMetadataMappings.Register(
+  type,
+  MemorySettings.MemoryQueries,
+  (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
+    function translatedField(type: EntityMetadataType, key: string): string {
+      const mapTeamApprovalObjectToMemoryFields = EntityMetadataMappings.GetDefinition(
+        type,
+        MemorySettings.MemoryMapping,
+        true
+      );
+      const value = mapTeamApprovalObjectToMemoryFields.get(key);
+      if (!value) {
+        throw new Error(
+          `No translation exists for field ${key} in memory provider`
+        );
+      }
+      return value;
     }
-    return value;
+    const columnCorporateId = translatedField(type, Field.corporateId);
+    switch (query.fixedQueryType) {
+      case FixedQueryType.TokensByCorporateId:
+        const { corporateId } = query as QueryTokensByCorporateID;
+        return allInTypeBin.filter((entity) => {
+          return (
+            entity[columnCorporateId] &&
+            entity[columnCorporateId] === corporateId
+          );
+        });
+      case FixedQueryType.TokensGetAll:
+        return allInTypeBin;
+      default:
+        throw new Error(
+          'fixed query type not implemented in the memory provider'
+        );
+    }
   }
-  const columnCorporateId = translatedField(type, Field.corporateId);
-  switch (query.fixedQueryType) {
-    case FixedQueryType.TokensByCorporateId:
-      const { corporateId } = query as QueryTokensByCorporateID;
-      return allInTypeBin.filter(entity => {
-        return entity[columnCorporateId] && entity[columnCorporateId] === corporateId;
-      });
-    case FixedQueryType.TokensGetAll:
-      return allInTypeBin;
-    default:
-      throw new Error('fixed query type not implemented in the memory provider');
-  }
-});
+);
 
 // Runtime validation of FieldNames
 for (let i = 0; i < fieldNames.length; i++) {
@@ -284,6 +405,6 @@ for (let i = 0; i < fieldNames.length; i++) {
 }
 
 export const EntityImplementation = {
-  EnsureDefinitions: () => { },
+  EnsureDefinitions: () => {},
   Type: type,
 };

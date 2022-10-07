@@ -8,7 +8,15 @@ import { NextFunction, Response } from 'express';
 import _ from 'lodash';
 
 import { daysInMilliseconds } from '../utils';
-import { Repository, IPersonalizedUserAggregateRepositoryPermission, TeamRepositoryPermission, Operations, Team, Organization, RepositorySearch } from '../business';
+import {
+  Repository,
+  IPersonalizedUserAggregateRepositoryPermission,
+  TeamRepositoryPermission,
+  Operations,
+  Team,
+  Organization,
+  RepositorySearch,
+} from '../business';
 import QueryCache from '../business/queryCache';
 import { GitHubRepositoryType, IReposAppWithTeam } from '../interfaces';
 import { IRequestTeamPermissions } from '../middleware/github/teamPermissions';
@@ -19,29 +27,45 @@ interface IGetReposAndOptionalTeamPermissionsResponse {
   reposData: Repository[];
   ageInformation?: any;
   userRepos?: IPersonalizedUserAggregateRepositoryPermission[];
-  specificTeamRepos?: TeamRepositoryPermission[],
+  specificTeamRepos?: TeamRepositoryPermission[];
 }
 
 function sortOrgs(orgs) {
   return _.sortBy(orgs, ['name']);
 }
 
-async function getRepos(organizationId: number, operations: Operations, queryCache: QueryCache): Promise<Repository[]> {
+async function getRepos(
+  organizationId: number,
+  operations: Operations,
+  queryCache: QueryCache
+): Promise<Repository[]> {
   if (organizationId) {
     if (queryCache && queryCache.supportsRepositories) {
-      return (await queryCache.organizationRepositories(organizationId.toString())).map(wrapper => wrapper.repository);
+      return (
+        await queryCache.organizationRepositories(organizationId.toString())
+      ).map((wrapper) => wrapper.repository);
     } else {
       return operations.getOrganizationById(organizationId).getRepositories();
     }
   } else {
     if (queryCache && queryCache.supportsRepositories) {
-      return (await queryCache.allRepositories()).map(wrapper => wrapper.repository);
+      return (await queryCache.allRepositories()).map(
+        (wrapper) => wrapper.repository
+      );
     }
     return operations.getRepos();
   }
 }
 
-async function getReposAndOptionalTeamPermissions(organizationId: number, operations: Operations, queryCache: QueryCache, teamsType: string | null | undefined, team2: Team, specificTeamRepos, userContext: UserContext): Promise<IGetReposAndOptionalTeamPermissionsResponse> {
+async function getReposAndOptionalTeamPermissions(
+  organizationId: number,
+  operations: Operations,
+  queryCache: QueryCache,
+  teamsType: string | null | undefined,
+  team2: Team,
+  specificTeamRepos,
+  userContext: UserContext
+): Promise<IGetReposAndOptionalTeamPermissionsResponse> {
   // REMOVED: previously age information was avialable via getRepos(orgName, operations, (error, reposData, ageInformation). Was it really useful?
   const reposData = await getRepos(organizationId, operations, queryCache);
   if (!teamsType || teamsType === 'all') {
@@ -51,7 +75,10 @@ async function getReposAndOptionalTeamPermissions(organizationId: number, operat
       const repoOptions = {
         type: GitHubRepositoryType.Sources,
       };
-      return { reposData, specificTeamRepos: await team2.getRepositories(repoOptions) };
+      return {
+        reposData,
+        specificTeamRepos: await team2.getRepositories(repoOptions),
+      };
     } else {
       return { reposData };
     }
@@ -60,7 +87,11 @@ async function getReposAndOptionalTeamPermissions(organizationId: number, operat
   return { reposData, userRepos };
 }
 
-export default asyncHandler(async function (req: IReposAppWithTeam, res: Response, next: NextFunction) {
+export default asyncHandler(async function (
+  req: IReposAppWithTeam,
+  res: Response,
+  next: NextFunction
+) {
   const providers = getProviders(req);
   const operations = providers.operations;
   const queryCache = providers.queryCache;
@@ -73,7 +104,19 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
   const specificTeamPermissions = req.teamPermissions as IRequestTeamPermissions;
   const team2 = req.team2 as Team;
   let specificTeamId = team2 ? team2.id : null;
-  const { reposData, userRepos, specificTeamRepos } = await getReposAndOptionalTeamPermissions(organizationId, operations, queryCache, teamsType, team2, specificTeamId, individualContext.aggregations);
+  const {
+    reposData,
+    userRepos,
+    specificTeamRepos,
+  } = await getReposAndOptionalTeamPermissions(
+    organizationId,
+    operations,
+    queryCache,
+    teamsType,
+    team2,
+    specificTeamId,
+    individualContext.aggregations
+  );
 
   const page = req.query.page_number ? Number(req.query.page_number) : 1;
 
@@ -81,7 +124,12 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
 
   // TODO: Validate the type
   let type = req.query.type as string;
-  if (type !== 'public' && type !== 'private' && type !== 'source' && type !== 'fork' /*&& type !== 'mirrors' - we do not do mirror stuff */) {
+  if (
+    type !== 'public' &&
+    type !== 'private' &&
+    type !== 'source' &&
+    type !== 'fork' /*&& type !== 'mirrors' - we do not do mirror stuff */
+  ) {
     type = null;
   }
 
@@ -99,15 +147,25 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
   const createdSinceValue = req.query.cs ? Number(req.query.cs) : null;
   let createdSince = null;
   if (createdSinceValue) {
-    createdSince = new Date((new Date()).getTime() - daysInMilliseconds(createdSinceValue));
+    createdSince = new Date(
+      new Date().getTime() - daysInMilliseconds(createdSinceValue)
+    );
   }
 
   let showIds = req.query.showids === '1';
 
   let teamsSubType = null;
-  if (teamsType !== 'myread' && teamsType !== 'mywrite' && teamsType !== 'myadmin') {
+  if (
+    teamsType !== 'myread' &&
+    teamsType !== 'mywrite' &&
+    teamsType !== 'myadmin'
+  ) {
     teamsType = null;
-  } else if (teamsType === 'myread' || teamsType === 'mywrite' || teamsType === 'myadmin') {
+  } else if (
+    teamsType === 'myread' ||
+    teamsType === 'mywrite' ||
+    teamsType === 'myadmin'
+  ) {
     teamsSubType = teamsType.substr(2);
     teamsType = 'my';
   }
@@ -184,7 +242,9 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
     view: 'repos/',
     title: 'Repos',
     state: {
-      organizations: isCrossOrg ? sortOrgs(operations.getOrganizations(operations.organizationNames)) : undefined,
+      organizations: isCrossOrg
+        ? sortOrgs(operations.getOrganizations(operations.organizationNames))
+        : undefined,
       organization: isCrossOrg ? undefined : req.organization,
       search,
       filters,

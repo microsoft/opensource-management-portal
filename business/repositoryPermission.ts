@@ -5,12 +5,12 @@
 
 import * as common from './common';
 import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
-import { GitHubCollaboratorPermissionLevel, ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission } from '../interfaces';
+import {
+  GitHubCollaboratorPermissionLevel,
+  ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission,
+} from '../interfaces';
 
-const repoPermissionProperties = [
-  'permission',
-  'user',
-];
+const repoPermissionProperties = ['permission', 'user'];
 
 export class RepositoryPermission {
   private _id: string;
@@ -20,18 +20,31 @@ export class RepositoryPermission {
 
   constructor(entity: unknown) {
     if (entity) {
-      common.assignKnownFieldsPrefixed(this, entity, 'repositoryPermission', repoPermissionProperties);
+      common.assignKnownFieldsPrefixed(
+        this,
+        entity,
+        'repositoryPermission',
+        repoPermissionProperties
+      );
       if (this._user) {
         this._id = this._user.id;
       }
     }
   }
 
-  get id(): string { return this._id; }
-  get permission(): GitHubCollaboratorPermissionLevel { return this._permission; }
-  get user(): any { return this._user; }
+  get id(): string {
+    return this._id;
+  }
+  get permission(): GitHubCollaboratorPermissionLevel {
+    return this._permission;
+  }
+  get user(): any {
+    return this._user;
+  }
 
   public asGitHubRepositoryPermission(): GitHubRepositoryPermission {
-    return ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission(this._permission);
+    return ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission(
+      this._permission
+    );
   }
 }

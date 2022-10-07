@@ -13,7 +13,10 @@ import { Team } from '../business';
 import { UserContext } from '../user/aggregate';
 
 import TeamSearch from '../business/teamSearch';
-import { ICrossOrganizationMembershipByOrganization, ReposAppRequest } from '../interfaces';
+import {
+  ICrossOrganizationMembershipByOrganization,
+  ReposAppRequest,
+} from '../interfaces';
 
 function sortOrgs(orgs) {
   return _.sortBy(orgs, ['name']);
@@ -26,7 +29,11 @@ interface IGetTeamsDataResults {
   totalMaintainerships: number;
 }
 
-async function getTeamsData(singleOrganizationName: string | null, operations: Operations, userContext: UserContext): Promise<IGetTeamsDataResults> {
+async function getTeamsData(
+  singleOrganizationName: string | null,
+  operations: Operations,
+  userContext: UserContext
+): Promise<IGetTeamsDataResults> {
   const options = {
     backgroundRefresh: true,
     maxAgeSeconds: 60 * 10 /* 10 minutes */,
@@ -40,13 +47,15 @@ async function getTeamsData(singleOrganizationName: string | null, operations: O
     list = [];
     const crossOrgTeams = await operations.getCrossOrganizationTeams(options);
     const allReducedTeams = Array.from(crossOrgTeams.values());
-    allReducedTeams.forEach((reducedTeam: ICrossOrganizationMembershipByOrganization) => {
-      const orgs = Object.getOwnPropertyNames(reducedTeam.orgs);
-      const firstOrg = orgs[0];
-      const organization = operations.getOrganization(firstOrg);
-      const entry = organization.teamFromEntity(reducedTeam.orgs[firstOrg]);
-      list.push(entry);
-    });
+    allReducedTeams.forEach(
+      (reducedTeam: ICrossOrganizationMembershipByOrganization) => {
+        const orgs = Object.getOwnPropertyNames(reducedTeam.orgs);
+        const firstOrg = orgs[0];
+        const organization = operations.getOrganization(firstOrg);
+        const entry = organization.teamFromEntity(reducedTeam.orgs[firstOrg]);
+        list.push(entry);
+      }
+    );
   }
 
   const yourTeamsMap = new Map();
@@ -58,8 +67,14 @@ async function getTeamsData(singleOrganizationName: string | null, operations: O
   return {
     teams: list,
     yourTeamsMap,
-    totalMemberships: overview.teams && overview.teams.member ? overview.teams.member.length : 0,
-    totalMaintainerships: overview.teams && overview.teams.maintainer ? overview.teams.maintainer.length : 0,
+    totalMemberships:
+      overview.teams && overview.teams.member
+        ? overview.teams.member.length
+        : 0,
+    totalMaintainerships:
+      overview.teams && overview.teams.maintainer
+        ? overview.teams.maintainer.length
+        : 0,
   };
 }
 
@@ -68,17 +83,30 @@ function reduceTeams(collections, property, map) {
     return;
   }
   const values = collections[property];
-  values.forEach(team => {
+  values.forEach((team) => {
     map.set(team.id, property);
   });
 }
 
-export default asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
+export default asyncHandler(async function (
+  req: ReposAppRequest,
+  res: Response,
+  next: NextFunction
+) {
   const { operations } = getProviders(req);
   const isCrossOrg = req.teamsPagerMode === 'orgs';
   const aggregations = req.individualContext.aggregations;
   const orgName = isCrossOrg ? null : req.organization.name.toLowerCase();
-  const { teams, yourTeamsMap, totalMemberships, totalMaintainerships } = await getTeamsData(isCrossOrg ? null : orgName.toLowerCase(), operations, aggregations);
+  const {
+    teams,
+    yourTeamsMap,
+    totalMemberships,
+    totalMaintainerships,
+  } = await getTeamsData(
+    isCrossOrg ? null : orgName.toLowerCase(),
+    operations,
+    aggregations
+  );
   const page = req.query.page_number ? Number(req.query.page_number) : 1;
   let phrase = req.query.q;
 
@@ -108,7 +136,9 @@ export default asyncHandler(async function (req: ReposAppRequest, res: Response,
     view: 'teams/',
     title: 'Teams',
     state: {
-      organizations: isCrossOrg ? sortOrgs(operations.getOrganizations(operations.organizationNames)) : undefined,
+      organizations: isCrossOrg
+        ? sortOrgs(operations.getOrganizations(operations.organizationNames))
+        : undefined,
       organization: isCrossOrg ? undefined : req.organization,
       search,
       filters,

@@ -21,7 +21,11 @@ export function GetOrganizationPermissionsFromRequest(req: ReposAppRequest) {
   return req[orgPermissionsCacheKeyName];
 }
 
-export async function AddOrganizationPermissionsToRequest(req: ReposAppRequest, res, next) {
+export async function AddOrganizationPermissionsToRequest(
+  req: ReposAppRequest,
+  res,
+  next
+) {
   // Only compute once per request
   if (req[orgPermissionsCacheKeyName]) {
     return next();
@@ -38,7 +42,11 @@ export async function AddOrganizationPermissionsToRequest(req: ReposAppRequest, 
     membershipStatus: null,
   };
   if (id && !login) {
-    return next(new Error(`While your technical GitHub ID ${id} is known, your GitHub username is not currently known.`));
+    return next(
+      new Error(
+        `While your technical GitHub ID ${id} is known, your GitHub username is not currently known.`
+      )
+    );
   }
   req[orgPermissionsCacheKeyName] = orgPermissions;
   const isSudoer = await organization.isSudoer(login, individualContext.link);
@@ -75,8 +83,14 @@ export async function AddOrganizationPermissionsToRequest(req: ReposAppRequest, 
   };
 
   try {
-    const membershipStatus = await organization.getMembership(login, membershipCacheOptions);
-    orgPermissions.membershipStatus = membershipStatus && membershipStatus.state ? membershipStatus.state : null;
+    const membershipStatus = await organization.getMembership(
+      login,
+      membershipCacheOptions
+    );
+    orgPermissions.membershipStatus =
+      membershipStatus && membershipStatus.state
+        ? membershipStatus.state
+        : null;
     return next();
   } catch (getMembershipError) {
     // if (getMembershipError && getMembershipError.innerError && getMembershipError.innerError.status === 404) {
@@ -84,6 +98,11 @@ export async function AddOrganizationPermissionsToRequest(req: ReposAppRequest, 
     //   membershipStatus = null;
     // }
     const reason = getMembershipError.message;
-    return next(wrapError(getMembershipError, `Unable to successfully validate whether you are already a member of the ${organization.name} organization on GitHub. ${reason}`));
+    return next(
+      wrapError(
+        getMembershipError,
+        `Unable to successfully validate whether you are already a member of the ${organization.name} organization on GitHub. ${reason}`
+      )
+    );
   }
 }

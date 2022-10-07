@@ -10,18 +10,27 @@ import { IndividualContext } from '../../user';
 
 const cachedCorporateMailRequestKey = '__corporateMail';
 
-export async function getCorporateMailFromRequest(req: ReposAppRequest): Promise<string> {
+export async function getCorporateMailFromRequest(
+  req: ReposAppRequest
+): Promise<string> {
   if (req[cachedCorporateMailRequestKey]) {
     return req[cachedCorporateMailRequestKey];
   }
-  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+  const activeContext = (req.individualContext ||
+    req.apiContext) as IndividualContext;
   const providers = getProviders(req);
-  const corporateAlias = await getCorporateMailFromActiveContext(providers, activeContext);
+  const corporateAlias = await getCorporateMailFromActiveContext(
+    providers,
+    activeContext
+  );
   req[cachedCorporateMailRequestKey] = corporateAlias;
   return corporateAlias;
 }
 
-export async function getCorporateMailFromActiveContext(providers: IProviders, activeContext: IndividualContext): Promise<string> {
+export async function getCorporateMailFromActiveContext(
+  providers: IProviders,
+  activeContext: IndividualContext
+): Promise<string> {
   const { graphProvider } = providers;
   if (!activeContext.corporateIdentity || !activeContext.corporateIdentity.id) {
     throw jsonError('No corporate identity', 401);

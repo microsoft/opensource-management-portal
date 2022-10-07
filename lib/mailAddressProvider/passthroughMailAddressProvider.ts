@@ -5,7 +5,7 @@
 
 import { IMailAddressProvider } from '.';
 
-export default function createMailAddressProvider() : IMailAddressProvider {
+export default function createMailAddressProvider(): IMailAddressProvider {
   return {
     getAddressFromUpn: async (upn: string) => {
       return upn;

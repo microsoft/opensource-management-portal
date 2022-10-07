@@ -3,16 +3,20 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ICorporateLink, ICorporateLinkExtended, IProviders } from '../../interfaces';
+import {
+  ICorporateLink,
+  ICorporateLinkExtended,
+  IProviders,
+} from '../../interfaces';
 
 import createMemoryProvider from './memory';
 import createPostgresProvider from './postgres';
 import createTableProvider from './table';
 
 const linkProviders = {
-  'memory': createMemoryProvider,
-  'postgres': createPostgresProvider,
-  'table': createTableProvider,
+  memory: createMemoryProvider,
+  postgres: createPostgresProvider,
+  table: createTableProvider,
 };
 
 const defaultProviderName = 'memory';
@@ -49,8 +53,12 @@ export interface ILinkProviderCreateOptions {
   overrideProviderType?: string;
 }
 
-export async function createAndInitializeLinkProviderInstance(providers, config, overrideProviderType?: string): Promise<ILinkProvider> {
-  const linkProviderOptions : ILinkProviderCreateOptions = {
+export async function createAndInitializeLinkProviderInstance(
+  providers,
+  config,
+  overrideProviderType?: string
+): Promise<ILinkProvider> {
+  const linkProviderOptions: ILinkProviderCreateOptions = {
     providers,
     config,
   };
@@ -62,10 +70,15 @@ export async function createAndInitializeLinkProviderInstance(providers, config,
   return provider;
 }
 
-export function createLinkProviderInstance(linkProviderCreateOptions: ILinkProviderCreateOptions): ILinkProvider {
+export function createLinkProviderInstance(
+  linkProviderCreateOptions: ILinkProviderCreateOptions
+): ILinkProvider {
   const config = linkProviderCreateOptions.config;
   const providers = linkProviderCreateOptions.providers;
-  const provider = linkProviderCreateOptions.overrideProviderType || config.github.links.provider.name || defaultProviderName;
+  const provider =
+    linkProviderCreateOptions.overrideProviderType ||
+    config.github.links.provider.name ||
+    defaultProviderName;
   // FUTURE: should also include a parameter for "what kind of third-party", i.e. 'github' to create
   let found = false;
   const providerNames = Object.getOwnPropertyNames(linkProviders);
@@ -81,8 +94,10 @@ export function createLinkProviderInstance(linkProviderCreateOptions: ILinkProvi
       }
       return providerInstance;
     }
-  };
+  }
   if (found === false) {
-    throw new Error(`The link provider "${provider}" is not implemented or configured at this time.`);
+    throw new Error(
+      `The link provider "${provider}" is not implemented or configured at this time.`
+    );
   }
 }

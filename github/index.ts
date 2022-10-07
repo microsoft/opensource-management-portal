@@ -29,7 +29,7 @@ export const AllAvailableAppPurposes = [
 
 export const GitHubAppPurposesExemptFromAllRepositoriesSelection = [
   AppPurpose.Onboarding,
-]
+];
 
 export const AppPurposeToConfigurationName = {
   [AppPurpose.Data]: 'data',
@@ -40,7 +40,7 @@ export const AppPurposeToConfigurationName = {
   [AppPurpose.Security]: 'security',
   [AppPurpose.ActionsData]: 'actions',
   [AppPurpose.Onboarding]: 'onboarding',
-}
+};
 
 export enum GitHubAppAuthenticationType {
   ForceSpecificInstallation = 'force',
