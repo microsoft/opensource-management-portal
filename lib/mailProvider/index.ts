@@ -87,7 +87,7 @@ export function createMailProviderInstance(config): IMailProvider {
   }
   switch (provider) {
     case 'smtpMailService': {
-      mailProvider = new SmtpMailService(config);
+      mailProvider = new SmtpMailService(mailConfig);
       break;
     }
     case 'mockMailService': {

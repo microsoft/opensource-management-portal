@@ -185,7 +185,7 @@ export async function postActionDecision(providers: IProviders, individualContex
     const getDecisionEmailViewName = engine.getDecisionEmailViewName();
     let content = null;
     try {
-      content = await RenderHtmlMail(config.typescript.appDirectory, getDecisionEmailViewName, contentOptions);
+      content = await RenderHtmlMail(config.typescript.appDirectory, getDecisionEmailViewName, contentOptions, config);
     } catch (renderError) {
     }
     if (content) {
