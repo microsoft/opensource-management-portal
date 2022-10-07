@@ -101,21 +101,25 @@ export function permissionsObjectToValue(permissions): GitHubRepositoryPermissio
 }
 
 export function isPermissionBetterThan(currentBest: GitHubRepositoryPermission, newConsideration: GitHubRepositoryPermission) {
-  switch (newConsideration) {
+  if (!currentBest) {
+    return true;
+  }
+  const comparison = MassagePermissionsToGitHubRepositoryPermission(currentBest);
+  switch (MassagePermissionsToGitHubRepositoryPermission(newConsideration)) {
     case GitHubRepositoryPermission.Admin:
       return true;
     case GitHubRepositoryPermission.Maintain:
-      if (currentBest !== GitHubRepositoryPermission.Admin) {
+      if (comparison !== GitHubRepositoryPermission.Admin) {
         return true;
       }
       break;
     case GitHubRepositoryPermission.Push:
-      if (currentBest !== GitHubRepositoryPermission.Admin) {
+      if (comparison !== GitHubRepositoryPermission.Admin) {
         return true;
       }
       break;
     case GitHubRepositoryPermission.Pull:
-      if (currentBest === null || currentBest === GitHubRepositoryPermission.None) {
+      if (comparison === null || comparison === GitHubRepositoryPermission.None) {
         return true;
       }
       break;

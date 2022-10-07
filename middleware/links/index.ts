@@ -84,11 +84,11 @@ export async function AddLinkToRequest(req, res, next) {
   if (links.length === 0) {
     return next();
   }
+  // No longer blocking multiple links. "Guess" on the most recent link.
+  const selectedLink = links.length > 1 ? links[links.length - 1] : links[0];
   if (links.length > 1) {
-    // TODO: are multiple links selected through a session or web context setting, or ?
-    return next(new Error('You cannot have multiple GitHub accounts'));
+    activeContext.setAdditionalLinks(links.filter(l => l.thirdPartyId !== selectedLink.thirdPartyId));
   }
-  const selectedLink = links[0];
   activeContext.link = selectedLink;
   return next();
 }

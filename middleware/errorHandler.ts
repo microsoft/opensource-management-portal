@@ -157,7 +157,10 @@ export default function SiteErrorHandler(err, req, res, next) {
     return next(err);
   }
   if (err && err.forceSignOut === true && req && req.logout) {
-    req.logout();
+    req.logout({ keepSessionInfo: false }, () => {
+      const { insights } = getProviders(req);
+      insights?.trackException({ exception: err });
+    });
   }
   var safeMessage = redactRootPaths(err.message);
   const defaultErrorTitle = err && err.skipOops ? 'FYI' : 'Oops';

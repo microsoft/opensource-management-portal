@@ -14,6 +14,7 @@ import { hasStaticReactClientApp, getProviders } from '../transitional';
 import { Organization } from '../business/organization';
 
 import { AddLinkToRequest, injectReactClient, requireAccessTokenClient, requireAuthenticatedUserOrSignIn, RequireLinkMatchesGitHubSessionExceptPrefixedRoute, setIdentity } from '../middleware';
+import { blockEnterpriseManagedUsersAuthentication } from '../middleware/github/blockEnterpriseManagedUsers';
 
 import linkRoute from './link';
 import linkedUserRoute from './index-linked';
@@ -37,6 +38,8 @@ router.use(setIdentity);
 // - - - Middleware: resolve whether the corporate user has a link - - -
 router.use(asyncHandler(AddLinkToRequest));
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+router.use(asyncHandler(blockEnterpriseManagedUsersAuthentication));
 
 router.use('/placeholder', RoutePlaceholders);
 router.use('/link/cleanup', reactRoute || linkCleanupRoute);

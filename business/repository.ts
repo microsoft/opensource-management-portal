@@ -304,8 +304,16 @@ export class Repository {
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
+    if ((options as any).noConditionalRequests === true) {
+      (cacheOptions as any).noConditionalRequests = true;
+    }
     try {
-      const entity = await operations.github.call(this.authorize(AppPurpose.Data), 'repos.get', parameters, cacheOptions);
+      let entity: any = undefined;
+      if ((cacheOptions as any)?.noConditionalRequests === true) {
+        entity = await operations.github.post(this.authorize(AppPurpose.Data), 'repos.get', parameters);
+      } else {
+        entity = await operations.github.call(this.authorize(AppPurpose.Operations), 'repos.get', parameters, cacheOptions);
+      }
       this._entity = entity;
       return entity;
     } catch (error) {
@@ -1030,15 +1038,16 @@ export class Repository {
     }
   }
 
-  async enableSecretScanning(): Promise<boolean> {
-    // NOTE: this is an experimental API as part of the program public beta, and likely not available
-    // to most users. Expect this call to fail.
-    const operations = throwIfNotGitHubCapable(this._operations);
-    const parameters = {
-      repo_id: this.id.toString(),
+  async enableSecretScanning(enablePushProtection?: boolean): Promise<boolean> {
+    const pushProtectionValue = enablePushProtection !== undefined ? !!enablePushProtection : true;
+    const patch = {
+      security_and_analysis: {
+        secret_scanning: { status: 'enabled' },
+        secret_scanning_push_protection: { status: pushProtectionValue ? 'enabled' : 'disabled' },
+      },
     };
     try {
-      await operations.github.requestAsPost(this.authorize(AppPurpose.Operations), 'PUT /repositories/:repo_id/secret-scanning', parameters);
+      await this.update(patch);
       return true;
     } catch (error) {
       if (error && error.status == /* loose */ 404 && error.message === 'Secret scanning is disabled') {

@@ -42,6 +42,14 @@ export class GitHubAppTokens {
     return new GitHubAppTokens(purpose, friendlyName, applicationId, value, baseUrl);
   }
 
+  get appId() {
+    return this._appId;
+  }
+
+  getPrivateCertificate() {
+    return this.#privateKey;
+  }
+
   constructor(purpose: AppPurpose, public friendlyName: string, appId: number, privateKey: string, baseUrl?: string) {
     this.#privateKey = privateKey;
     this._appId = appId;
@@ -57,7 +65,7 @@ export class GitHubAppTokens {
   }
 
   async getAppAuthenticationToken() {
-    const details = await this._appAuth({ type: 'app'});
+    const details = await this._appAuth({ type: 'app' });
     const token = (details as AppAuthentication).token;
     return token;
   }
@@ -121,9 +129,9 @@ export class GitHubAppTokens {
   private getLatestValidToken(installationId: number, timeTokenMustBeValid: Date): IInstallationToken {
     let tokens = this.getInstallationTokens(installationId);
     const count = tokens.length;
-    tokens = tokens.filter(tokenValidFilter.bind(null, timeTokenMustBeValid )).sort(sortByLatestToken);
+    tokens = tokens.filter(tokenValidFilter.bind(null, timeTokenMustBeValid)).sort(sortByLatestToken);
     if (tokens.length !== count) {
-      this.replaceInstallationTokens(installationId, tokens);  
+      this.replaceInstallationTokens(installationId, tokens);
     }
     return tokens.length > 0 ? tokens[0] : null;
   }

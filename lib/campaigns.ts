@@ -18,6 +18,8 @@ export interface ICampaignHelper {
   optOut(corporateId: string, campaignGroupId: string): Promise<void>;
   clearOptOut(corporateId: string, campaignGroupId: string): Promise<void>;
   setSent(corporateId: string, campaignGroupId: string, campaignId: string): Promise<void>;
+  setAny<T>(corporateId: string, campaignGroupId: string, campaignId: string, data: T): Promise<void>;
+  getAny(documentId: string, partitionKey?: string): Promise<any>;
   clearSent(corporateId: string, campaignGroupId: string, campaignId: string): Promise<void>;
   // 
   deleteOops(corporateId: string, campaignGroupId: string): Promise<void>;
@@ -92,6 +94,24 @@ export class StatefulCampaignProvider implements ICampaignHelper {
       sent: (new Date()).toISOString(),
     });
     await this.#cosmosHelper.setObject(value);
+  }
+
+  async setAny<T>(corporateId: string, campaignGroupId: string, campaignId: string, data: T) {
+    const value = Object.assign(this.baseObject(corporateId, campaignGroupId, campaignId), {
+      data
+    });
+    await this.#cosmosHelper.setObject(value);
+  }
+
+  async getAny(documentId: string, partitionKey: string = '') {
+    try {
+      const data = await this.#cosmosHelper.getObject(partitionKey, documentId);
+
+      return data;
+    } catch (err) {
+      console.error(err);
+      throw new Error('Unexpected exception in StatefulCampaignProvider.getAny');
+    }
   }
 
   async deleteOops(corporateId: string, campaignGroupId: string): Promise<void> {

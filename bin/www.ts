@@ -35,7 +35,7 @@ function normalizePort(val) {
 const port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
 
-debugInitialization('initializing app & configuration');
+// debugInitialization('initializing app & configuration');
 
 app.startServer = function startWebServer(): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -71,7 +71,7 @@ app.startServer = function startWebServer(): Promise<void> {
       server.on('listening', () => {
         const addr = server.address();
         const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
-        debug('Listening on ' + bind);
+        debug('listening on ' + bind);
         return resolve();
       });
       server.listen(port);
@@ -82,5 +82,5 @@ app.startServer = function startWebServer(): Promise<void> {
 };
 
 app.startupApplication().then(async function ready() {
-  debugInitialization('Web app is up.');
+  debugInitialization('web app is up.');
 });

@@ -52,9 +52,14 @@ export async function requireAccessTokenClient(req: ReposAppRequest, res, next) 
   return next();
 }
 
-function signoutThenSignIn(req, res) {
-  req.logout();
-  return redirectToSignIn(req, res);
+function signoutThenSignIn(req: ReposAppRequest, res) {
+  const { insights } = getProviders(req);
+  req.logout({ keepSessionInfo: false }, (err) => {
+    if (err) {
+      insights?.trackException({ exception: err });
+    }
+    return redirectToSignIn(req, res);
+  });
 }
 
 function redirectToSignIn(req, res) {

@@ -9,3 +9,5 @@ env.json
 env-orgs.json
 .secrets.env
 .gdn
+feedscan
+feedscan*

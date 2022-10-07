@@ -73,6 +73,7 @@ export class Operations
   private _graphManager: GraphManager;
   private _organizationNames: string[];
   private _organizations: Map<string, Organization>;
+  private _invisibleOrganizations: Map<string, Organization>;
   private _uncontrolledOrganizations: Map<string, Organization>;
   private _organizationOriginalNames: any;
   private _organizationNamesWithAuthorizationHeaders: Map<string, IPurposefulGetAuthorizationHeader>;
@@ -131,6 +132,7 @@ export class Operations
       configurations: purposesToConfigurations,
       app: this.providers.app,
     });
+    GitHubTokenManager.RegisterManagerForOperations(this, this._tokenManager);
     this._dynamicOrganizationIds = new Set();
     this._dynamicOrganizationSettings = [];
   }
@@ -149,9 +151,12 @@ export class Operations
     // const hasConfiguredOrganizations = this.config.github.organizations && this.config.github.organizations.length;
     const organizationSettingsProvider = this.providers.organizationSettingsProvider;
     if (hasModernGitHubApps && organizationSettingsProvider) {
-      const dynamicOrganizations = (await organizationSettingsProvider.queryAllOrganizations()).filter(dynamicOrg => dynamicOrg.active === true && !dynamicOrg.hasFeature('ignore'));
-      this._dynamicOrganizationSettings = dynamicOrganizations;
-      this._dynamicOrganizationIds = new Set(dynamicOrganizations.map(org => Number(org.organizationId)));
+      const dynamicOrganizations = (await organizationSettingsProvider.queryAllOrganizations()).filter(dynamicOrg => dynamicOrg.active === true);
+      const unignoredDynamicOrganizations = dynamicOrganizations.filter(d =>
+        !d.hasFeature('ignore') ||
+        (d.hasFeature('ignore') && d.hasFeature('invisible')));
+      this._dynamicOrganizationSettings = unignoredDynamicOrganizations;
+      this._dynamicOrganizationIds = new Set(unignoredDynamicOrganizations.map(org => Number(org.organizationId)));
     }
     if (this._dynamicOrganizationSettings && organizationSettingsProvider) {
       DynamicRestartCheckHandle = setInterval(restartAfterDynamicConfigurationUpdate.bind(null, 10, 120, this.initialized, organizationSettingsProvider), 1000 * SecondsBetweenOrganizationSettingUpdatesCheck);
@@ -178,9 +183,11 @@ export class Operations
       const names = [];
       const processed = new Set<string>();
       for (const dynamic of this._dynamicOrganizationSettings) {
-        const lowercase = dynamic.organizationName.toLowerCase();
-        processed.add(lowercase);
-        names.push(lowercase);
+        if (!dynamic.hasFeature('invisible')) {
+          const lowercase = dynamic.organizationName.toLowerCase();
+          processed.add(lowercase);
+          names.push(lowercase);
+        }
       }
       for (let i = 0; i < this.config.github.organizations.length; i++) {
         const lowercase = this.config.github.organizations[i].name.toLowerCase();
@@ -199,7 +206,7 @@ export class Operations
       const organizations = this.organizations;
       this._organizationIds = new Map();
       this._dynamicOrganizationSettings.map(entry => {
-        if (entry.active) {
+        if (entry.active && !entry.hasFeature('invisible')) {
           const org = this.getOrganization(entry.organizationName.toLowerCase());
           this._organizationIds.set(Number(entry.organizationId), org);
         }
@@ -270,7 +277,7 @@ export class Operations
         const name = names[i];
         let dynamicSettings: OrganizationSetting = null;
         this._dynamicOrganizationSettings.map(dos => {
-          if (dos.active && dos.organizationName.toLowerCase() === name.toLowerCase()) {
+          if (dos.active && dos.organizationName.toLowerCase() === name.toLowerCase() && !dos.hasFeature('invisible')) {
             dynamicSettings = dos;
           }
         });
@@ -309,6 +316,28 @@ export class Operations
 
   getUnconfiguredOrganization(settings: OrganizationSetting): Organization {
     return this.createOrganization(settings.organizationName.toLowerCase(), settings, null, GitHubAppAuthenticationType.BestAvailable);
+  }
+
+  // An invisible organization does not appear in the cross-organization
+  // views or arrays provided by operations. However, they can still be
+  // retrieved directly and connected to live tokens and objects.
+  getInvisibleOrganization(name: string) {
+    if (!this._invisibleOrganizations) {
+      this._invisibleOrganizations = new Map();
+    }
+    const lowercase = name.toLowerCase();
+    if (this._invisibleOrganizations.has(lowercase)) {
+      return this._invisibleOrganizations.get(lowercase);
+    }
+    let dynamicSettings: OrganizationSetting = null;
+    this._dynamicOrganizationSettings.map(dos => {
+      if (dos.active && dos.organizationName.toLowerCase() === lowercase && dos.hasFeature('invisible')) {
+        dynamicSettings = dos;
+      }
+    });
+    const organization = this.createOrganization(name, dynamicSettings, null, GitHubAppAuthenticationType.BestAvailable);
+    this._invisibleOrganizations.set(name, organization);
+    return organization;
   }
 
   getUncontrolledOrganization(organizationName: string, organizationId?: number): Organization {
@@ -382,7 +411,7 @@ export class Operations
       const names: string[] = [];
       const visited = new Set<string>();
       for (const entry of this._dynamicOrganizationSettings) {
-        if (entry.active) {
+        if (entry.active && !entry.hasFeature('invisible')) {
           names.push(entry.organizationName);
           const lowercase = entry.organizationName.toLowerCase();
           visited.add(lowercase);
@@ -419,7 +448,7 @@ export class Operations
       const visited = new Set<string>();
       for (const entry of this._dynamicOrganizationSettings) {
         const lowercase = entry.organizationName.toLowerCase();
-        if (entry.active && !visited.has(lowercase)) {
+        if (entry.active && !visited.has(lowercase) && !entry.hasFeature('invisible')) {
           visited.add(lowercase);
           const orgInstance = this.getOrganization(lowercase);
           const token = orgInstance.getAuthorizationHeader();
@@ -679,6 +708,26 @@ export class Operations
       }
     }
     return repos;
+  }
+
+  async getRepoById(repoId: number, options?: ICacheOptions): Promise<Repository> {
+    const cacheOptions = options || {
+      maxAgeSeconds: this.defaults.crossOrgsReposStaleSecondsPerOrg,
+    };
+    const orgs = this.organizations.values();
+    let repository: Repository;
+
+    for (const organization of orgs) {
+      try {
+        repository = await organization.getRepositoryById(repoId, cacheOptions);
+
+        if (repository) {
+          return repository;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
   }
 
   getLinks(options?: any): Promise<ICorporateLink[]> {

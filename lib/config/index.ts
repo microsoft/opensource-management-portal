@@ -50,6 +50,7 @@ export interface IProviderOptions {
   applicationRoot?: string;
   skipDotEnv?: boolean;
   directoryName?: string;
+  moduleDirectoryName?: string;
   treatErrorsAsWarnings?: boolean;
   requireConfigurationDirectory?: boolean;
   graph?: any;
