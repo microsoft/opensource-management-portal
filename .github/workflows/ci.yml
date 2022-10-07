@@ -26,3 +26,7 @@ jobs:
 
     - name: Run tests
       run: npm test
+
+    - name: Build container
+      run: |
+        docker build .
