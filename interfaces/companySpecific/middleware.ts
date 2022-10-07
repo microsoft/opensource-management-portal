@@ -10,17 +10,38 @@ import { IndividualContext } from '../../user';
 import { IRequestTeamPermissions } from '../../middleware/github/teamPermissions';
 
 export interface ICompanySpecificRepoPermissionsMiddlewareCalls {
-  afterPermissionsInitialized?: (providers: IProviders, permissions: IContextualRepositoryPermissions, activeContext: IndividualContext) => void;
-  afterPermissionsComputed?: (providers: IProviders, permissions: IContextualRepositoryPermissions, activeContext: IndividualContext, repository: Repository) => Promise<void>;
+  afterPermissionsInitialized?: (
+    providers: IProviders,
+    permissions: IContextualRepositoryPermissions,
+    activeContext: IndividualContext
+  ) => void;
+  afterPermissionsComputed?: (
+    providers: IProviders,
+    permissions: IContextualRepositoryPermissions,
+    activeContext: IndividualContext,
+    repository: Repository
+  ) => Promise<void>;
 }
 
 export interface ICompanySpecificTeamPermissionsMiddlewareCalls {
-  afterPermissionsInitialized?: (providers: IProviders, permissions: IRequestTeamPermissions, activeContext: IndividualContext) => void;
-  afterPermissionsComputed?: (providers: IProviders, permissions: IRequestTeamPermissions, activeContext: IndividualContext, team: Team) => Promise<void>;
+  afterPermissionsInitialized?: (
+    providers: IProviders,
+    permissions: IRequestTeamPermissions,
+    activeContext: IndividualContext
+  ) => void;
+  afterPermissionsComputed?: (
+    providers: IProviders,
+    permissions: IRequestTeamPermissions,
+    activeContext: IndividualContext,
+    team: Team
+  ) => Promise<void>;
 }
 
 export interface ICompanySpecificAuthenticationCalls {
-  shouldRedirectToSignIn?: (providers: IProviders, req: ReposAppRequest) => Promise<boolean>;
+  shouldRedirectToSignIn?: (
+    providers: IProviders,
+    req: ReposAppRequest
+  ) => Promise<boolean>;
 }
 
 export interface IAttachCompanySpecificMiddleware {

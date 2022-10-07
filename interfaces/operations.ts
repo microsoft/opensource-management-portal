@@ -28,7 +28,7 @@ export enum UnlinkPurpose {
   Self = 'self', // the user self-service unlink themselves
   Operations = 'operations', // operational support
   Deleted = 'deleted', // the GitHub account has been deleted or does not exist
-};
+}
 
 export enum LinkOperationSource {
   Portal = 'portal',
@@ -63,7 +63,7 @@ export interface ICrossOrganizationMembershipByOrganization {
 
 export interface IPromisedLinks {
   headers: {
-    type: 'links',
-  },
-  data: ICorporateLink[],
+    type: 'links';
+  };
+  data: ICorporateLink[];
 }

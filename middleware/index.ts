@@ -33,9 +33,18 @@ import RouteLocals from './locals';
 import RoutePassport from './passport-routes';
 import { IProviders } from '../interfaces';
 
-export default function initMiddleware(app, express, config, dirname, initializationError) {
+export default function initMiddleware(
+  app,
+  express,
+  config,
+  dirname,
+  initializationError
+) {
   config = config || {};
-  const appDirectory = config && config.typescript && config.typescript.appDirectory ? config.typescript.appDirectory : stripDistFolderName(dirname);
+  const appDirectory =
+    config && config.typescript && config.typescript.appDirectory
+      ? config.typescript.appDirectory
+      : stripDistFolderName(dirname);
   const providers = app.get('providers') as IProviders;
   const applicationProfile = providers.applicationProfile;
   if (initializationError) {
@@ -117,7 +126,10 @@ export default function initMiddleware(app, express, config, dirname, initializa
     if (!initializationError) {
       if (applicationProfile.sessions) {
         RoutePassport(app, passport, config);
-        if (config.github.organizations.onboarding && config.github.organizations.onboarding.length) {
+        if (
+          config.github.organizations.onboarding &&
+          config.github.organizations.onboarding.length
+        ) {
           debug('Onboarding helper loaded');
           Onboard(app, config);
         }
@@ -131,4 +143,4 @@ export default function initMiddleware(app, express, config, dirname, initializa
   } else {
     providers.healthCheck.ready = true; // Ready to accept traffic
   }
-};
+}

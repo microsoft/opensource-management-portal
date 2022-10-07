@@ -35,7 +35,11 @@ const keyVaultProtocol = 'keyvault:';
 const httpsProtocol = 'https:';
 const secretsPath = '/secrets/';
 
-async function getSecret(secretClient: SecretClient, secretStash: Map<string, KeyVaultSecret>, secretId: string) {
+async function getSecret(
+  secretClient: SecretClient,
+  secretStash: Map<string, KeyVaultSecret>,
+  secretId: string
+) {
   const cached = secretStash.get(secretId);
   if (cached) {
     return cached;
@@ -53,7 +57,9 @@ async function getSecret(secretClient: SecretClient, secretStash: Map<string, Ke
     secretName = secretName.substr(0, versionIndex);
   }
   try {
-    const secretResponse = await secretClient.getSecret(secretName, { version: version || undefined });
+    const secretResponse = await secretClient.getSecret(secretName, {
+      version: version || undefined,
+    });
     secretStash.set(secretId, secretResponse);
     return secretResponse;
   } catch (keyVaultValidationError) {
@@ -67,8 +73,7 @@ function getUrlIfVault(value) {
     if (keyVaultUrl.protocol === keyVaultProtocol) {
       return keyVaultUrl;
     }
-  }
-  catch (typeError) {
+  } catch (typeError) {
     /* ignore */
   }
   return undefined;
@@ -80,7 +85,10 @@ function identifyKeyVaultValuePaths(node: any, prefix?: string) {
   for (const property in node) {
     const value = node[property];
     if (typeof value === 'object') {
-      Object.assign(paths, identifyKeyVaultValuePaths(value, prefix + property));
+      Object.assign(
+        paths,
+        identifyKeyVaultValuePaths(value, prefix + property)
+      );
       continue;
     }
     if (typeof value !== 'string') {
@@ -113,18 +121,24 @@ function createAndWrapKeyVaultClient(options: IKeyVaultConfigurationOptions) {
   const vaultToClient = new Map<string, SecretClient>();
   let cachedOptions: AzureAuthenticationPair = null;
   let cachedCredentials = null;
-  const getSecretClient = options.getSecretClient || (async (vault: string) => {
-    if (!cachedOptions) {
-      cachedOptions = await options.getClientCredentials();
-      cachedCredentials = new ClientSecretCredential(cachedOptions.tenantId, cachedOptions.clientId, cachedOptions.clientSecret);
-    }
-    let client = vaultToClient.get(vault);
-    if (!client) {
-      client = new SecretClient(vault, cachedCredentials);
-      vaultToClient.set(vault, client);
-    }
-    return client;
-  });
+  const getSecretClient =
+    options.getSecretClient ||
+    (async (vault: string) => {
+      if (!cachedOptions) {
+        cachedOptions = await options.getClientCredentials();
+        cachedCredentials = new ClientSecretCredential(
+          cachedOptions.tenantId,
+          cachedOptions.clientId,
+          cachedOptions.clientSecret
+        );
+      }
+      let client = vaultToClient.get(vault);
+      if (!client) {
+        client = new SecretClient(vault, cachedCredentials);
+        vaultToClient.set(vault, client);
+      }
+      return client;
+    });
   return {
     getObjectSecrets: function (object: any) {
       return getSecretsFromVault(getSecretClient, object);
@@ -137,7 +151,10 @@ type VaultSettings = {
   uri: string;
 };
 
-async function getSecretsFromVault(getSecretClient: (vault: string) => Promise<SecretClient>, object: any) {
+async function getSecretsFromVault(
+  getSecretClient: (vault: string) => Promise<SecretClient>,
+  object: any
+) {
   let paths = null;
   try {
     paths = identifyKeyVaultValuePaths(object);
@@ -168,7 +185,11 @@ async function getSecretsFromVault(getSecretClient: (vault: string) => Promise<S
         if (!value) {
           const vaultUrl = uniqueUriToVault.get(uniqueSecretId);
           const secretClient = await getSecretClient(vaultUrl);
-          const value = await getSecret(secretClient, secretStash, uniqueSecretId);
+          const value = await getSecret(
+            secretClient,
+            secretStash,
+            uniqueSecretId
+          );
           secretStash.set(uniqueSecretId, value);
         }
       } catch (resolveSecretError) {

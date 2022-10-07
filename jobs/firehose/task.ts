@@ -8,8 +8,16 @@
 import os from 'os';
 import { DateTime } from 'luxon';
 import App from '../../app';
-import ProcessOrganizationWebhook, { IGitHubWebhookProperties } from '../../webhooks/organizationProcessor';
-import { IGitHubAppInstallation, IGitHubWebhookEnterprise, IProviders, IReposJob, IReposJobResult } from '../../interfaces';
+import ProcessOrganizationWebhook, {
+  IGitHubWebhookProperties,
+} from '../../webhooks/organizationProcessor';
+import {
+  IGitHubAppInstallation,
+  IGitHubWebhookEnterprise,
+  IProviders,
+  IReposJob,
+  IReposJobResult,
+} from '../../interfaces';
 import { sleep } from '../../utils';
 import { IQueueMessage } from '../../lib/queues';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
@@ -18,32 +26,52 @@ const runningAsOngoingDeployment = true;
 
 const hardAbortMs = 1000 * 60 * 5; // 5 minutes
 
-export default async function firehose({ providers, started }: IReposJob): Promise<IReposJobResult> {
+export default async function firehose({
+  providers,
+  started,
+}: IReposJob): Promise<IReposJobResult> {
   let processedEventTypes = {};
   let interestingEvents = 0;
   let processedEvents = 0;
   const config = providers.config;
-  const jobMinutesFrequency = config.github.webhooks.runtimeMinutes ? parseInt(config.github.webhooks.runtimeMinutes) : 5;
-  let runtimeSeconds = (jobMinutesFrequency - 1) * 60 + 30 /* 30 second flex in the last minute instead of 60s */;
-  config.github?.webhooks?.serviceBus?.queue && console.log(`bus: ${config.github.webhooks.serviceBus.queue}`);
+  const jobMinutesFrequency = config.github.webhooks.runtimeMinutes
+    ? parseInt(config.github.webhooks.runtimeMinutes)
+    : 5;
+  let runtimeSeconds =
+    (jobMinutesFrequency - 1) * 60 +
+    30; /* 30 second flex in the last minute instead of 60s */
+  config.github?.webhooks?.serviceBus?.queue &&
+    console.log(`bus: ${config.github.webhooks.serviceBus.queue}`);
   if (runningAsOngoingDeployment) {
-    console.log('webhook processor is configured to keep running, it will not exit');
+    console.log(
+      'webhook processor is configured to keep running, it will not exit'
+    );
   } else {
     setTimeout(() => {
       const finishing = DateTime.utc().toISO();
-      console.log(`Ending run after ${runtimeSeconds}s at ${finishing} after finding ${interestingEvents} events of interest and processing ${processedEvents}`);
+      console.log(
+        `Ending run after ${runtimeSeconds}s at ${finishing} after finding ${interestingEvents} events of interest and processing ${processedEvents}`
+      );
       console.dir(processedEventTypes);
       process.exit(0);
     }, runtimeSeconds * 1000);
   }
 
-  const maxParallelism = config.github.webhooks.parallelism ? parseInt(config.github.webhooks.parallelism) : 2;
-  const emptyQueueDelaySeconds = config.github.webhooks.emptyQueueDelaySeconds ? parseInt(config.github.webhooks.emptyQueueDelaySeconds) : 10;
+  const maxParallelism = config.github.webhooks.parallelism
+    ? parseInt(config.github.webhooks.parallelism)
+    : 2;
+  const emptyQueueDelaySeconds = config.github.webhooks.emptyQueueDelaySeconds
+    ? parseInt(config.github.webhooks.emptyQueueDelaySeconds)
+    : 10;
 
   if (runningAsOngoingDeployment) {
-    console.log(`Webhooks processor started ${started} and will run with empty delays of ${emptyQueueDelaySeconds}s`);
+    console.log(
+      `Webhooks processor started ${started} and will run with empty delays of ${emptyQueueDelaySeconds}s`
+    );
   } else {
-    console.log(`Job started ${started} and will run for ${runtimeSeconds}s with empty delays of ${emptyQueueDelaySeconds}s`);
+    console.log(
+      `Job started ${started} and will run for ${runtimeSeconds}s with empty delays of ${emptyQueueDelaySeconds}s`
+    );
   }
   const insights = providers.insights;
   const webhooksConfig = config.github.webhooks;
@@ -57,11 +85,15 @@ export default async function firehose({ providers, started }: IReposJob): Promi
   // let parallelism = messagesInQueue > maxParallelism / 2 ? maxParallelism : Math.min(5, maxParallelism);
   const supportsMultipleThreads = webhookQueueProcessor.supportsMultipleThreads;
   if (!supportsMultipleThreads) {
-    console.log('The queue provider does not support multiple concurrent threads');
+    console.log(
+      'The queue provider does not support multiple concurrent threads'
+    );
   }
   let parallelism = supportsMultipleThreads ? maxParallelism : 1;
   const sliceDelayPerThread = emptyQueueDelaySeconds / parallelism;
-  console.log(`Parallelism for this run will be ${parallelism} logical threads, offset by ${sliceDelayPerThread}s`);
+  console.log(
+    `Parallelism for this run will be ${parallelism} logical threads, offset by ${sliceDelayPerThread}s`
+  );
   // const insights = app.settings.appInsightsClient;
   if (insights) {
     insights.trackEvent({
@@ -91,7 +123,12 @@ export default async function firehose({ providers, started }: IReposJob): Promi
 
   // -- end of job startup --
 
-  async function createThread(app, providers: IProviders, threadNumber: number, startupDelay: number): Promise<void> {
+  async function createThread(
+    app,
+    providers: IProviders,
+    threadNumber: number,
+    startupDelay: number
+  ): Promise<void> {
     if (startupDelay > 0) {
       const ms = startupDelay * 1000;
       console.log(`[thread ${threadNumber}] delay ${ms}ms`);
@@ -114,7 +151,10 @@ export default async function firehose({ providers, started }: IReposJob): Promi
     }
   }
 
-  async function iterate(providers: IProviders, threadNumber: number): Promise<void> {
+  async function iterate(
+    providers: IProviders,
+    threadNumber: number
+  ): Promise<void> {
     const { webhookQueueProcessor } = providers;
     let messages: IQueueMessage[] = null;
     let intervalHandle = setTimeout(hardAbort, hardAbortMs);
@@ -128,7 +168,9 @@ export default async function firehose({ providers, started }: IReposJob): Promi
     }
     clearTimeout(intervalHandle);
     if (!messages || messages.length === 0) {
-      console.log(`[${threadNumber}] [empty queue ${(new Date).toISOString()}] peek in ${emptyQueueDelaySeconds}s`);
+      console.log(
+        `[${threadNumber}] [empty queue ${new Date().toISOString()}] peek in ${emptyQueueDelaySeconds}s`
+      );
       await sleep(emptyQueueDelaySeconds * 1000);
       return;
     }
@@ -149,29 +191,44 @@ export default async function firehose({ providers, started }: IReposJob): Promi
     }
   }
 
-  async function handle(providers: IProviders, message: IQueueMessage): Promise<void> {
+  async function handle(
+    providers: IProviders,
+    message: IQueueMessage
+  ): Promise<void> {
     const { operations, insights, webhookQueueProcessor } = providers;
     let totalSeconds: number = null;
-    const logicAppStarted = message.customProperties.started ? DateTime.fromISO(message.customProperties.started) : null;
+    const logicAppStarted = message.customProperties.started
+      ? DateTime.fromISO(message.customProperties.started)
+      : null;
     if (logicAppStarted) {
       // const enqueued = lockedMessage && lockedMessage.brokerProperties ? lockedMessage.brokerProperties.EnqueuedTimeUtc : null;
       // const serviceBusDelay = moment.utc(enqueued, 'ddd, DD MMM YYYY HH:mm:ss'); // console.log('delays - bus delay: ' + serviceBusDelay.fromNow() + ', logic app to now: ' + logicAppStarted.fromNow() + ', total ms: ' + totalMs.toString());
       totalSeconds = DateTime.utc().diff(logicAppStarted, 'seconds').seconds;
-      insights.trackMetric({ name: 'JobFirehoseQueueDelay', value: totalSeconds });
+      insights.trackMetric({
+        name: 'JobFirehoseQueueDelay',
+        value: totalSeconds,
+      });
     }
     let deletedAlready = false;
     const acknowledgeEvent = function () {
       if (deletedAlready) {
-        console.warn(`[message ${message.identifier} was already deleted] [start latency ${totalSeconds}s]`);
+        console.warn(
+          `[message ${message.identifier} was already deleted] [start latency ${totalSeconds}s]`
+        );
         return;
       }
       deletedAlready = true;
-      console.log(`[message ${message.identifier}] deleted [start latency ${totalSeconds}s]`);
-      webhookQueueProcessor.deleteMessage(message).then(ok => {
-        ++processedEvents;
-      }).catch(deleteError => {
-        console.dir(deleteError);
-      });
+      console.log(
+        `[message ${message.identifier}] deleted [start latency ${totalSeconds}s]`
+      );
+      webhookQueueProcessor
+        .deleteMessage(message)
+        .then((ok) => {
+          ++processedEvents;
+        })
+        .catch((deleteError) => {
+          console.dir(deleteError);
+        });
     };
     const webhook = message.body as any;
     const eventType = message.customProperties['event'] || '';
@@ -180,14 +237,28 @@ export default async function firehose({ providers, started }: IReposJob): Promi
     const enterprise = webhook.enterprise as IGitHubWebhookEnterprise;
     let orgName = null;
     const deployment = getCompanySpecificDeployment();
-    let processedElsewhere = deployment?.features?.firehose?.processWebhook ? await deployment.features.firehose.processWebhook(providers, webhook, eventType, enterprise, installation, acknowledgeEvent) : false;
+    let processedElsewhere = deployment?.features?.firehose?.processWebhook
+      ? await deployment.features.firehose.processWebhook(
+          providers,
+          webhook,
+          eventType,
+          enterprise,
+          installation,
+          acknowledgeEvent
+        )
+      : false;
     if (processedElsewhere === true) {
-      console.log(`[the webhook was processed by a company-specific handler: ${message.identifier}]`);
+      console.log(
+        `[the webhook was processed by a company-specific handler: ${message.identifier}]`
+      );
       acknowledgeEvent();
       return;
     }
     if (installation) {
-      if (installation.target_type && installation.target_type === 'Organization') {
+      if (
+        installation.target_type &&
+        installation.target_type === 'Organization'
+      ) {
         const id = installation.target_id;
         try {
           const orgById = operations.getOrganizationById(id);
@@ -198,7 +269,9 @@ export default async function firehose({ providers, started }: IReposJob): Promi
           return;
         }
       } else if (installation.target_type) {
-        console.log(`invalid target type ${installation.target_type} for installation id=${installation.id}`);
+        console.log(
+          `invalid target type ${installation.target_type} for installation id=${installation.id}`
+        );
         acknowledgeEvent();
         return;
       }
@@ -244,7 +317,7 @@ export default async function firehose({ providers, started }: IReposJob): Promi
       operations,
       organization,
       event: {
-        properties: (message.customProperties as unknown as IGitHubWebhookProperties),
+        properties: (message.customProperties as unknown) as IGitHubWebhookProperties,
         rawBody: message.unparsedBody,
         body: message.body,
       },
@@ -263,6 +336,8 @@ export default async function firehose({ providers, started }: IReposJob): Promi
 }
 
 function hardAbort() {
-  console.warn(`Extremely long time elapsed, hard-aborting the process at ${new Date()}`);
+  console.warn(
+    `Extremely long time elapsed, hard-aborting the process at ${new Date()}`
+  );
   process.exit(1);
 }

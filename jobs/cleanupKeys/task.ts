@@ -10,7 +10,11 @@ import { sleep } from '../../utils';
 import { IGraphProvider } from '../../lib/graphProvider';
 import { LocalExtensionKey } from '../../entities/localExtensionKey/localExtensionKey';
 
-async function lookupCorporateId(graphProvider: IGraphProvider, knownUsers: Map<string, any>, corporateId: string): Promise<any> {
+async function lookupCorporateId(
+  graphProvider: IGraphProvider,
+  knownUsers: Map<string, any>,
+  corporateId: string
+): Promise<any> {
   let entry = knownUsers.get(corporateId);
   if (entry === false) {
     return false;
@@ -32,7 +36,9 @@ async function lookupCorporateId(graphProvider: IGraphProvider, knownUsers: Map<
   }
 }
 
-export default async function cleanup({ providers }: IReposJob): Promise<IReposJobResult> {
+export default async function cleanup({
+  providers,
+}: IReposJob): Promise<IReposJobResult> {
   const graphProvider = providers.graphProvider;
   const localExtensionKeyProvider = providers.localExtensionKeyProvider;
   const insights = providers.insights;
@@ -41,7 +47,10 @@ export default async function cleanup({ providers }: IReposJob): Promise<IReposJ
   const allKeys = await localExtensionKeyProvider.getAllKeys();
   console.log(`read ${allKeys.length}`);
 
-  insights.trackEvent({ name: 'JobCleanupTokensKeysTokens', properties: { tokens: String(allKeys.length) } });
+  insights.trackEvent({
+    name: 'JobCleanupTokensKeysTokens',
+    properties: { tokens: String(allKeys.length) },
+  });
 
   let errors = 0;
 
@@ -54,28 +63,37 @@ export default async function cleanup({ providers }: IReposJob): Promise<IReposJ
   const knownUsers = new Map<string, any>();
 
   const throttle = throat(parallelUsers);
-  await Promise.all(allKeys.map((key: LocalExtensionKey) => throttle(async () => {
-    const corporateId = key.corporateId;
-    const userStatus = await lookupCorporateId(graphProvider, knownUsers, corporateId);
-    if (!userStatus) {
-      try {
-        ++deleted;
-        console.log(`${deleted}: Deleting key for ${corporateId} that could not be found`);
-        await localExtensionKeyProvider.delete(key);
-      } catch (tokenDeleteError) {
-        --deleted;
-        console.dir(tokenDeleteError);
-        ++errors;
-        insights.trackException({ exception: tokenDeleteError });
-      }
-    } else {
-      ++okUserTokens;
-      console.log(`${okUserTokens}: valid`);
-    }
+  await Promise.all(
+    allKeys.map((key: LocalExtensionKey) =>
+      throttle(async () => {
+        const corporateId = key.corporateId;
+        const userStatus = await lookupCorporateId(
+          graphProvider,
+          knownUsers,
+          corporateId
+        );
+        if (!userStatus) {
+          try {
+            ++deleted;
+            console.log(
+              `${deleted}: Deleting key for ${corporateId} that could not be found`
+            );
+            await localExtensionKeyProvider.delete(key);
+          } catch (tokenDeleteError) {
+            --deleted;
+            console.dir(tokenDeleteError);
+            ++errors;
+            insights.trackException({ exception: tokenDeleteError });
+          }
+        } else {
+          ++okUserTokens;
+          console.log(`${okUserTokens}: valid`);
+        }
 
-    await sleep(secondsDelayAfterSuccess * 1000);
-
-  })));
+        await sleep(secondsDelayAfterSuccess * 1000);
+      })
+    )
+  );
 
   console.log(`deleted: ${deleted}`);
   console.log(`okUserTokens: ${okUserTokens}`);

@@ -18,9 +18,11 @@ export class OrganizationSudoSecurityGroup extends OrganizationSudo {
       return null;
     }
     const settings = organization.getDynamicSettings();
-  
+
     // Security group flips on security groups
-    const val = settings.getProperty(OrganizationFeatureSecurityGroupProperty) as string;
+    const val = settings.getProperty(
+      OrganizationFeatureSecurityGroupProperty
+    ) as string;
     if (val) {
       return OrganizationSudoSecurityGroup.providerName;
     }
@@ -44,7 +46,9 @@ export class OrganizationSudoSecurityGroup extends OrganizationSudo {
     if (!settings) {
       return false;
     }
-    const securityGroupId = settings.getProperty(OrganizationFeatureSecurityGroupProperty) as string;
+    const securityGroupId = settings.getProperty(
+      OrganizationFeatureSecurityGroupProperty
+    ) as string;
     if (!securityGroupId) {
       return false;
     }
@@ -65,7 +69,8 @@ export class OrganizationSudoSecurityGroup extends OrganizationSudo {
         return true;
       }
     } catch (error) {
-      if (ErrorHelper.IsNotFound(error)) { // security groups do get deleted and should not bring down any system in that case
+      if (ErrorHelper.IsNotFound(error)) {
+        // security groups do get deleted and should not bring down any system in that case
         return false;
       }
       console.warn(error);

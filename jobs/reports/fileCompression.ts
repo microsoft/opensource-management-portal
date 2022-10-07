@@ -7,7 +7,11 @@ import fs from 'fs';
 import zlib from 'zlib';
 import tmp from 'tmp-promise';
 
-export function deflateFile(inputFilename: string, outputFilename: string, callback) {
+export function deflateFile(
+  inputFilename: string,
+  outputFilename: string,
+  callback
+) {
   const gzip = zlib.createGzip();
   const input = fs.createReadStream(inputFilename);
   const output = fs.createWriteStream(outputFilename);
@@ -23,11 +27,13 @@ function getTempFilenames(count: number, callback) {
       filenames.push(result.path);
     }
   }
-  process().then(ok => {
-    return callback(null, filenames);
-  }).catch(error => {
-    return callback(error);
-  });
+  process()
+    .then((ok) => {
+      return callback(null, filenames);
+    })
+    .catch((error) => {
+      return callback(error);
+    });
 }
 
 export function writeDeflatedTextFile(text, callback) {
@@ -51,4 +57,4 @@ export function writeDeflatedTextFile(text, callback) {
       });
     });
   });
-};
+}

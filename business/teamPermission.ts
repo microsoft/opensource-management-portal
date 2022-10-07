@@ -9,7 +9,12 @@ import { Organization } from './organization';
 import { TeamMember } from './teamMember';
 import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 import { Team } from '.';
-import { IOperationsInstance, GitHubTeamPrivacy, TeamJsonFormat, IGetMembersOptions } from '../interfaces';
+import {
+  IOperationsInstance,
+  GitHubTeamPrivacy,
+  TeamJsonFormat,
+  IGetMembersOptions,
+} from '../interfaces';
 
 export class TeamPermission {
   private _organization: Organization;
@@ -23,7 +28,9 @@ export class TeamPermission {
   private _teamMembersIfSet: TeamMember[];
 
   [util.inspect.custom](depth, options) {
-    return `GitHub Team Permission: team=${this.team?.slug || this.team?.id} permission=${this._permission}`;
+    return `GitHub Team Permission: team=${
+      this.team?.slug || this.team?.id
+    } permission=${this._permission}`;
   }
 
   asJson() {
@@ -32,8 +39,8 @@ export class TeamPermission {
       permission: this._permission,
       privacy: this._privacy,
       team: this._team?.asJson(TeamJsonFormat.Augmented),
-      members: members ? members.map(member => member.asJson()) : undefined,
-    }
+      members: members ? members.map((member) => member.asJson()) : undefined,
+    };
   }
 
   get permission(): GitHubRepositoryPermission {
@@ -48,7 +55,11 @@ export class TeamPermission {
     return this._team;
   }
 
-  constructor(organization: Organization, entity: any, operations: IOperationsInstance) {
+  constructor(
+    organization: Organization,
+    entity: any,
+    operations: IOperationsInstance
+  ) {
     this._organization = organization;
 
     this._permission = entity.permission;
@@ -68,7 +79,9 @@ export class TeamPermission {
   }
 
   get relativePortalLink() {
-    return `/${this._organization.name}/teams/${this._team.slug || this._team.name}/`;
+    return `/${this._organization.name}/teams/${
+      this._team.slug || this._team.name
+    }/`;
   }
 
   get members(): TeamMember[] {

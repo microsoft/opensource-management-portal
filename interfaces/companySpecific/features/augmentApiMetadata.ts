@@ -7,5 +7,9 @@ import { Organization } from '../../../business';
 import { IProviders } from '../../../interfaces';
 
 export interface ICompanySpecificAugmentApiMetadata {
-  augmentOrganizationClientJson: (providers: IProviders, organization: Organization, standardJsonMetadata: any) => any;
+  augmentOrganizationClientJson: (
+    providers: IProviders,
+    organization: Organization,
+    standardJsonMetadata: any
+  ) => any;
 }

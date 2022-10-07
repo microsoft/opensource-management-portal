@@ -4,7 +4,11 @@
 //
 
 import { DateTime } from 'luxon';
-import { ServiceBusClient, ServiceBusReceivedMessage, ServiceBusReceiver } from '@azure/service-bus';
+import {
+  ServiceBusClient,
+  ServiceBusReceivedMessage,
+  ServiceBusReceiver,
+} from '@azure/service-bus';
 
 import { IQueueMessage, IQueueProcessor } from '.';
 import { IDictionary, Json } from '../../interfaces';
@@ -25,15 +29,26 @@ export class ServiceBusMessage implements IQueueMessage {
   #lockedMessage: ServiceBusReceivedMessage = null;
   constructor(message: ServiceBusReceivedMessage) {
     this.#lockedMessage = message;
-    this.brokerProperties = Object.assign({}, message) as unknown as IDictionary<string>;
+    this.brokerProperties = (Object.assign(
+      {},
+      message
+    ) as unknown) as IDictionary<string>;
     if (message.enqueuedTimeUtc) {
-      this.enqueuedSecondsAgo = DateTime.fromJSDate(message.enqueuedTimeUtc).diffNow().seconds;
+      this.enqueuedSecondsAgo = DateTime.fromJSDate(
+        message.enqueuedTimeUtc
+      ).diffNow().seconds;
     }
     // let deliveryCount = message.brokerProperties[DeliveryCount] !== undefined ? message.brokerProperties[DeliveryCount] : null;
-    this.identifier = message.messageId && typeof(message.messageId) === 'string' ? message.messageId : undefined;
+    this.identifier =
+      message.messageId && typeof message.messageId === 'string'
+        ? message.messageId
+        : undefined;
     this.customProperties = message.applicationProperties as IDictionary<string>;
     this.unparsedBody = message.body;
-    this.body = typeof(message.body) === 'string' ? JSON.parse(message.body) : this.unparsedBody; // newer library parses JSON automatically
+    this.body =
+      typeof message.body === 'string'
+        ? JSON.parse(message.body)
+        : this.unparsedBody; // newer library parses JSON automatically
   }
 
   body: Json;
@@ -66,12 +81,14 @@ export default class ServiceBusQueueProcessor implements IQueueProcessor {
     }
     this.#options = options;
   }
-  
+
   async initialize(): Promise<void> {
     const options = this.#options;
     const service = new ServiceBusClient(options.connectionString);
     this.#service = service;
-    this.#receiver = service.createReceiver(options.queue, { receiveMode: 'peekLock' });
+    this.#receiver = service.createReceiver(options.queue, {
+      receiveMode: 'peekLock',
+    });
     this.#initialized = true;
   }
 
@@ -81,10 +98,13 @@ export default class ServiceBusQueueProcessor implements IQueueProcessor {
     }
 
     try {
-      const messages = await this.#receiver.receiveMessages(defaultMessagesPerRequest, {
-        maxWaitTimeInMs,
-      });
-      return messages.map(message => new ServiceBusMessage(message));
+      const messages = await this.#receiver.receiveMessages(
+        defaultMessagesPerRequest,
+        {
+          maxWaitTimeInMs,
+        }
+      );
+      return messages.map((message) => new ServiceBusMessage(message));
     } catch (error) {
       // if empty, return empty array
 
@@ -101,7 +121,7 @@ export default class ServiceBusQueueProcessor implements IQueueProcessor {
     try {
       await this.#receiver.completeMessage(lockedMessage);
     } catch (deleteError) {
-      console.warn(`Delete error: ${deleteError}`)
+      console.warn(`Delete error: ${deleteError}`);
       throw deleteError;
     }
   }

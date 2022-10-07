@@ -25,16 +25,23 @@ const showTypeLoadDebugMessages = false;
 module.exports = function (graphApi) {
   const environmentProvider = graphApi.environment;
   const fieldsFile = environmentProvider.get(approvalFieldsFileVariableName);
-  const environmentName = environmentProvider.get(painlessConfigEnvironmentVariableName) || environmentProvider.get('ENV');
+  const environmentName =
+    environmentProvider.get(painlessConfigEnvironmentVariableName) ||
+    environmentProvider.get('ENV');
   let approvalFields = undefined;
   if (fieldsFile) {
     // Environment approach 1 (legacy):
     // Look for the approval fields file and use that for the approval data
     try {
-      const filename = path.join(typescriptConfig.appDirectory, 'data', `${fieldsFile}.json`);
+      const filename = path.join(
+        typescriptConfig.appDirectory,
+        'data',
+        `${fieldsFile}.json`
+      );
       const str = fs.readFileSync(filename, 'utf8');
       approvalFields = JSON.parse(str);
-      showTypeLoadDebugMessages && debug(`repo approval types loaded from file ${filename}`);
+      showTypeLoadDebugMessages &&
+        debug(`repo approval types loaded from file ${filename}`);
     } catch (notFound) {
       /* no action required */
       console.warn(notFound);
@@ -48,18 +55,30 @@ module.exports = function (graphApi) {
       pkgName = path.join(typescriptConfig.appDirectory, pkgName);
     }
     try {
-      approvalFields = require(pkgName)(environmentName, repoApprovalsEnvironmentName);
-      showTypeLoadDebugMessages && debug(`repo approval types loaded from painlessConfigEnvPkgName/${environmentName},${repoApprovalsEnvironmentName}`);
+      approvalFields = require(pkgName)(
+        environmentName,
+        repoApprovalsEnvironmentName
+      );
+      showTypeLoadDebugMessages &&
+        debug(
+          `repo approval types loaded from painlessConfigEnvPkgName/${environmentName},${repoApprovalsEnvironmentName}`
+        );
     } catch (painlessConfigError) {
-      debug(`attempted to load repo approval types loaded from painlessConfigEnvPkgName/${environmentName},${repoApprovalsEnvironmentName}`);
+      debug(
+        `attempted to load repo approval types loaded from painlessConfigEnvPkgName/${environmentName},${repoApprovalsEnvironmentName}`
+      );
       console.warn(painlessConfigError);
       throw painlessConfigError;
     }
   }
 
   return {
-    repo: arrayFromString(environmentProvider.get('REPO_APPROVAL_TYPES') || 'github'),
-    teamJoin: arrayFromString(environmentProvider.get('TEAM_JOIN_APPROVAL_TYPES') || 'github'),
+    repo: arrayFromString(
+      environmentProvider.get('REPO_APPROVAL_TYPES') || 'github'
+    ),
+    teamJoin: arrayFromString(
+      environmentProvider.get('TEAM_JOIN_APPROVAL_TYPES') || 'github'
+    ),
     fields: approvalFields,
   };
 };

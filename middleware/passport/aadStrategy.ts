@@ -26,17 +26,32 @@ interface IAADUser {
   oauthToken?: string;
 }
 
-async function login(app, config, client: AuthorizationCode, iss, sub, profile, accessToken: string, refreshToken: string, params): Promise<IPassportUserWithAAD> {
+async function login(
+  app,
+  config,
+  client: AuthorizationCode,
+  iss,
+  sub,
+  profile,
+  accessToken: string,
+  refreshToken: string,
+  params
+): Promise<IPassportUserWithAAD> {
   const { graphProvider, insights } = app.settings.providers as IProviders;
   const oauthToken = JSON.stringify(params);
   if (config && config.impersonation && config.impersonation.corporateId) {
     // While impersonation for the site interface is possible, the graph API token,
     // rarely used in this app, will use the actual AAD access tokens still.
     const impersonationCorporateId = config.impersonation.corporateId;
-    const impersonationResult = await graphProvider.getUserById(impersonationCorporateId);
-    console.warn(`IMPERSONATION: id=${impersonationResult.id} upn=${impersonationResult.userPrincipalName} name=${impersonationResult.displayName} graphIsNotImpersonatedAs=${profile.upn}`);
+    const impersonationResult = await graphProvider.getUserById(
+      impersonationCorporateId
+    );
+    console.warn(
+      `IMPERSONATION: id=${impersonationResult.id} upn=${impersonationResult.userPrincipalName} name=${impersonationResult.displayName} graphIsNotImpersonatedAs=${profile.upn}`
+    );
     return {
-      azure: { // aadStrategyUserPropertyName
+      azure: {
+        // aadStrategyUserPropertyName
         displayName: impersonationResult.displayName,
         oid: impersonationResult.id,
         username: impersonationResult.userPrincipalName,
@@ -47,13 +62,16 @@ async function login(app, config, client: AuthorizationCode, iss, sub, profile, 
   if (config.activeDirectory.blockGuestSignIns === true) {
     const lookupResult = await graphProvider.getUserById(profile.oid);
     if (lookupResult && lookupResult.userType === GraphUserType.Guest) {
-      const err = new Error(`This application does not permit guests. You are currently signed in to Active Directory as: ${lookupResult.userPrincipalName}`);
+      const err = new Error(
+        `This application does not permit guests. You are currently signed in to Active Directory as: ${lookupResult.userPrincipalName}`
+      );
       insights?.trackException({ exception: err });
       throw err;
     }
   }
   return {
-    azure: { // aadStrategyUserPropertyName
+    azure: {
+      // aadStrategyUserPropertyName
       displayName: profile.displayName,
       oid: profile.oid,
       username: profile.upn,
@@ -62,19 +80,49 @@ async function login(app, config, client: AuthorizationCode, iss, sub, profile, 
   };
 }
 
-function activeDirectorySubset(app, config, client: AuthorizationCode, iss, sub, profile, accessToken: string, refreshToken: string, params, done) {
-  login(app, config, client, iss, sub, profile, accessToken, refreshToken, params).then(profile => {
-    return done(null, profile);
-  }).catch(error => {
-    return done(error);
-  });
+function activeDirectorySubset(
+  app,
+  config,
+  client: AuthorizationCode,
+  iss,
+  sub,
+  profile,
+  accessToken: string,
+  refreshToken: string,
+  params,
+  done
+) {
+  login(
+    app,
+    config,
+    client,
+    iss,
+    sub,
+    profile,
+    accessToken,
+    refreshToken,
+    params
+  )
+    .then((profile) => {
+      return done(null, profile);
+    })
+    .catch((error) => {
+      return done(error);
+    });
 }
 
 export default function createAADStrategy(app, config) {
-  const { redirectUrl, tenantId, clientId, clientSecret } = config.activeDirectory;
+  const {
+    redirectUrl,
+    tenantId,
+    clientId,
+    clientSecret,
+  } = config.activeDirectory;
   const codespaces = config?.github?.codespaces || {};
   if (!clientId) {
-    debug('No Azure Active Directory clientID configured, corporate authentication will be unavailable.');
+    debug(
+      'No Azure Active Directory clientID configured, corporate authentication will be unavailable.'
+    );
     return {};
   }
   const providers = app.settings.providers as IProviders;
@@ -102,26 +150,34 @@ export default function createAADStrategy(app, config) {
   }
   const port = codespacesPort || process.env.PORT || 3000; // should use config instead
   const redirectSuffix = '/auth/azure/callback';
-  const finalRedirectUrl = codespaces?.connected === true &&
+  const finalRedirectUrl =
+    codespaces?.connected === true &&
     codespaces?.authentication?.aad?.enabled === true &&
-    !codespaces?.block ? `https://${codespaces.name}-${port}.githubpreview.dev${redirectSuffix}` : redirectUrl;
+    !codespaces?.block
+      ? `https://${codespaces.name}-${port}.githubpreview.dev${redirectSuffix}`
+      : redirectUrl;
   debug(`aad auth clientId=${clientId}, redirectUrl=${finalRedirectUrl}`);
   providers.authorizationCodeClient = oauth2Client;
-  const aadStrategy = new OIDCStrategy({
-    redirectUrl: finalRedirectUrl || `${config.webServer.baseUrl}${redirectSuffix}`,
-    allowHttpForRedirectUrl: config.containers.docker || config.webServer.allowHttp,
-    // @ts-ignore
-    realm: tenantId,
-    clientID: clientId,
-    clientSecret,
-    identityMetadata: originalIdentityMetadata,
-    responseType: 'id_token code',
-    responseMode: 'form_post',
-    scope: aadScopes.split(' '),
-    // cookieSameSite: true, // ???
-    // oidcIssuer: config.activeDirectory.issuer,
-    // validateIssuer: true,
-  }, activeDirectorySubset.bind(null, app, config, oauth2Client));
+  const aadStrategy = new OIDCStrategy(
+    {
+      redirectUrl:
+        finalRedirectUrl || `${config.webServer.baseUrl}${redirectSuffix}`,
+      allowHttpForRedirectUrl:
+        config.containers.docker || config.webServer.allowHttp,
+      // @ts-ignore
+      realm: tenantId,
+      clientID: clientId,
+      clientSecret,
+      identityMetadata: originalIdentityMetadata,
+      responseType: 'id_token code',
+      responseMode: 'form_post',
+      scope: aadScopes.split(' '),
+      // cookieSameSite: true, // ???
+      // oidcIssuer: config.activeDirectory.issuer,
+      // validateIssuer: true,
+    },
+    activeDirectorySubset.bind(null, app, config, oauth2Client)
+  );
   // Patching the AAD strategy to intercept a specific state failure message and instead
   // of providing a generic failure message, redirecting (HTTP GET) to the callback page
   // where we can offer a more useful message
@@ -130,11 +186,18 @@ export default function createAADStrategy(app, config) {
   // @ts-ignore
   aadStrategy.failWithLog = function () {
     const args = Array.prototype.slice.call(arguments);
-    const messageToIntercept = 'In collectInfoFromReq: invalid state received in the request';
-    if (args.length === 1 && typeof (args[0]) === 'string') {
-      console.warn(`AAD Failure: clientId=${clientId}, tenantId=${tenantId}, message=${args[0]}`);
+    const messageToIntercept =
+      'In collectInfoFromReq: invalid state received in the request';
+    if (args.length === 1 && typeof args[0] === 'string') {
+      console.warn(
+        `AAD Failure: clientId=${clientId}, tenantId=${tenantId}, message=${args[0]}`
+      );
     }
-    if (args.length === 1 && typeof (args[0]) === 'string' && args[0] === messageToIntercept) {
+    if (
+      args.length === 1 &&
+      typeof args[0] === 'string' &&
+      args[0] === messageToIntercept
+    ) {
       return this.redirect('/auth/azure/callback?failure=invalid');
     }
     return originalFailWithLog.call(this, args);

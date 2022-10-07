@@ -5,11 +5,21 @@
 
 import { Operations } from '.';
 import { Account } from '../account';
-import { UnlinkPurpose, IUnlinkMailStatus, ICachedEmployeeInformation } from '../../interfaces';
+import {
+  UnlinkPurpose,
+  IUnlinkMailStatus,
+  ICachedEmployeeInformation,
+} from '../../interfaces';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 import { assertUnreachable } from '../../transitional';
 
-export async function sendTerminatedAccountMail(operations: Operations, account: Account, purpose: UnlinkPurpose, details: string[], errorsCount: number): Promise<IUnlinkMailStatus> {
+export async function sendTerminatedAccountMail(
+  operations: Operations,
+  account: Account,
+  purpose: UnlinkPurpose,
+  details: string[],
+  errorsCount: number
+): Promise<IUnlinkMailStatus> {
   const { config, mailProvider, insights } = operations.providers;
   if (!mailProvider || !account.link || !account.link.corporateId) {
     return null;
@@ -37,7 +47,8 @@ export async function sendTerminatedAccountMail(operations: Operations, account:
   }
 
   const operationsMail = operations.getLinksNotificationMailAddress();
-  let displayName = link.corporateDisplayName || link.corporateUsername || link.corporateId;
+  let displayName =
+    link.corporateDisplayName || link.corporateUsername || link.corporateId;
   let subjectPrefix = '';
   let subjectSuffix = '';
   let headline = `${displayName} has been unlinked from GitHub`;
@@ -69,14 +80,23 @@ export async function sendTerminatedAccountMail(operations: Operations, account:
   if (sendNoticeToLinkHolder) {
     try {
       const mail = {
-        to: link.corporateMailAddress || link.corporateUsername || operationsMail,
-        cc: (link.corporateMailAddress || link.corporateUsername) ? operationsMail : [],
-        subject: `${subjectPrefix}${link.corporateUsername || displayName} unlinked from GitHub ${subjectSuffix}`.trim(),
+        to:
+          link.corporateMailAddress || link.corporateUsername || operationsMail,
+        cc:
+          link.corporateMailAddress || link.corporateUsername
+            ? operationsMail
+            : [],
+        subject: `${subjectPrefix}${
+          link.corporateUsername || displayName
+        } unlinked from GitHub ${subjectSuffix}`.trim(),
         content: undefined,
       };
-      const viewName = companySpecific?.views?.email?.linking?.unlink || 'unlink';
+      const viewName =
+        companySpecific?.views?.email?.linking?.unlink || 'unlink';
       mail.content = await operations.emailRender(viewName, {
-        reason: (`This is a mandatory notice: your GitHub account and corporate identity have been unlinked. This mail was sent to: ${link.corporateMailAddress || link.corporateUsername}`),
+        reason: `This is a mandatory notice: your GitHub account and corporate identity have been unlinked. This mail was sent to: ${
+          link.corporateMailAddress || link.corporateUsername
+        }`,
         headline,
         notification: 'information',
         app: `${config.brand.companyName} GitHub`,
@@ -111,8 +131,13 @@ export async function sendTerminatedAccountMail(operations: Operations, account:
   let cachedEmployeeManagementInfo: ICachedEmployeeInformation = null;
   let upn = account.link.corporateUsername || account.link.corporateId;
   try {
-    cachedEmployeeManagementInfo = await operations.getCachedEmployeeManagementInformation(account.link.corporateId);
-    if (!cachedEmployeeManagementInfo || !cachedEmployeeManagementInfo.managerMail) {
+    cachedEmployeeManagementInfo = await operations.getCachedEmployeeManagementInformation(
+      account.link.corporateId
+    );
+    if (
+      !cachedEmployeeManagementInfo ||
+      !cachedEmployeeManagementInfo.managerMail
+    ) {
       cachedEmployeeManagementInfo = {
         id: account.link.corporateId,
         displayName,
@@ -121,7 +146,9 @@ export async function sendTerminatedAccountMail(operations: Operations, account:
         managerId: null,
         managerMail: null,
       };
-      throw new Error(`No manager e-mail address or information retrieved from a previous cache for corporate user ID ${account.link.corporateId}`);
+      throw new Error(
+        `No manager e-mail address or information retrieved from a previous cache for corporate user ID ${account.link.corporateId}`
+      );
     }
     if (cachedEmployeeManagementInfo.displayName) {
       displayName = cachedEmployeeManagementInfo.displayName;
@@ -140,7 +167,7 @@ export async function sendTerminatedAccountMail(operations: Operations, account:
   } else {
     to.push(cachedEmployeeManagementInfo.managerMail);
   }
-  to = to.filter(val => val);
+  to = to.filter((val) => val);
   const bcc = [];
   if (!errorMode) {
     bcc.push(...operationsArray);
@@ -149,14 +176,17 @@ export async function sendTerminatedAccountMail(operations: Operations, account:
   const mail = {
     to,
     bcc,
-    subject: `${subjectPrefix}${upn || displayName} unlinked from GitHub ${subjectSuffix}`.trim(),
+    subject: `${subjectPrefix}${
+      upn || displayName
+    } unlinked from GitHub ${subjectSuffix}`.trim(),
     category: ['link'],
     content: undefined,
   };
-  const managerViewName = companySpecific?.views?.email?.linking?.unlinkManager || 'managerunlink';
+  const managerViewName =
+    companySpecific?.views?.email?.linking?.unlinkManager || 'managerunlink';
   mail.content = await operations.emailRender(managerViewName, {
-    reason: (`As a manager you receive one-time security-related messages regarding your direct reports who have linked their GitHub account to the company.
-              This mail was sent to: ${toAsString}`),
+    reason: `As a manager you receive one-time security-related messages regarding your direct reports who have linked their GitHub account to the company.
+              This mail was sent to: ${toAsString}`,
     headline,
     notification: 'information',
     app: `${config.brand.companyName} GitHub`,
@@ -170,5 +200,5 @@ export async function sendTerminatedAccountMail(operations: Operations, account:
     to,
     bcc,
     receipt: await operations.sendMail(Object.assign(mail)),
-  }
+  };
 }

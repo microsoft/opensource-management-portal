@@ -8,7 +8,13 @@ import { IProviders } from './providers';
 
 export interface IApplicationProfile {
   applicationName: string;
-  customErrorHandlerRender?: (errorView: any, err: Error, req: any, res: any, next: any) => Promise<void>;
+  customErrorHandlerRender?: (
+    errorView: any,
+    err: Error,
+    req: any,
+    res: any,
+    next: any
+  ) => Promise<void>;
   customRoutes?: () => Promise<void>;
   logDependencies: boolean;
   serveClientAssets: boolean;
@@ -31,11 +37,20 @@ export interface IReposApplication extends Application {
 
   startServer: () => Promise<void>;
 
-  initializeApplication: (config: any, configurationError: Error) => Promise<IReposApplication>;
-  initializeJob: (config: any, configurationError: Error) => Promise<IReposApplication>;
+  initializeApplication: (
+    config: any,
+    configurationError: Error
+  ) => Promise<IReposApplication>;
+  initializeJob: (
+    config: any,
+    configurationError: Error
+  ) => Promise<IReposApplication>;
   startupApplication: () => Promise<IReposApplication>;
   startupJob: () => Promise<IReposApplication>;
-  runJob: (job: (job: IReposJob) => Promise<IReposJobResult | void>, options?: IReposJobOptions) => Promise<IReposApplication>;
+  runJob: (
+    job: (job: IReposJob) => Promise<IReposJobResult | void>,
+    options?: IReposJobOptions
+  ) => Promise<IReposApplication>;
 }
 
 export interface IReposJob {

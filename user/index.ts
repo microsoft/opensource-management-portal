@@ -12,7 +12,15 @@ const debug = require('debug')('context');
 import { addBreadcrumb } from '../utils';
 import { Operations } from '../business/operations';
 import { UserContext } from './aggregate';
-import { ReposAppRequest, IReposAppResponse, IProviders, UserAlertType, IAppSession, ICorporateLink, IDictionary } from '../interfaces';
+import {
+  ReposAppRequest,
+  IReposAppResponse,
+  IProviders,
+  UserAlertType,
+  IAppSession,
+  ICorporateLink,
+  IDictionary,
+} from '../interfaces';
 
 // - - - identity
 
@@ -66,7 +74,7 @@ interface IWebPageRenderUser {
     avatarUrl?: string;
     accessToken?: boolean;
     increasedScope?: boolean;
-  },
+  };
   azure?: {
     username: string;
     displayName?: string;
@@ -107,7 +115,9 @@ class ReposGitHubTokensSessionAdapter implements IReposGitHubTokens {
   }
 
   get gitHubWriteOrganizationToken(): string {
-    const githubModernScope = this._sessionUserProperties.getValue('github.scope');
+    const githubModernScope = this._sessionUserProperties.getValue(
+      'github.scope'
+    );
     // The newer GitHub App model supports user-to-server requests that should
     // be equivalent [once GitHub fixes some bugs]. Since GitHub App OAuth
     // does not have a scope, the user's primary token is the only thing to
@@ -115,13 +125,14 @@ class ReposGitHubTokensSessionAdapter implements IReposGitHubTokens {
     if (githubModernScope && githubModernScope === 'githubapp') {
       return this.gitHubReadToken;
     }
-    return this._sessionUserProperties.getValue('githubIncreasedScope.accessToken');
+    return this._sessionUserProperties.getValue(
+      'githubIncreasedScope.accessToken'
+    );
   }
 }
 
 export class WebApiContext {
-  constructor() {
-  }
+  constructor() {}
 }
 
 class PugPlugins {
@@ -153,7 +164,10 @@ class PugPlugins {
   }
 
   private createPlugins() {
-    if (!this._providers.corporateViews || Object.getOwnPropertyNames(this._providers.corporateViews).length === 0) {
+    if (
+      !this._providers.corporateViews ||
+      Object.getOwnPropertyNames(this._providers.corporateViews).length === 0
+    ) {
       return [];
     }
     const analyzedCorporatePaths = this._analyzedCorporatePaths;
@@ -177,14 +191,16 @@ class PugPlugins {
                 // Instead of causing an error, this returns essentially
                 // an empty file.
                 analyzedCorporatePaths.set(filename, false);
-                debug(`corporate view ${filename} is not present in the application view folders, using an empty file`);
+                debug(
+                  `corporate view ${filename} is not present in the application view folders, using an empty file`
+                );
                 return emptyFileContents;
               }
             }
           }
           return pugLoad.read(filename, loadOptions);
-        }
-      }
+        },
+      },
     ];
   }
 }
@@ -202,7 +218,9 @@ export class WebContext {
     this._response = options.response;
     this._sessionUserProperties = options.sessionUserProperties;
 
-    this._tokens = new ReposGitHubTokensSessionAdapter(this._sessionUserProperties);
+    this._tokens = new ReposGitHubTokensSessionAdapter(
+      this._sessionUserProperties
+    );
   }
 
   get baseUrl(): string {
@@ -232,10 +250,20 @@ export class WebContext {
 
   // NOTE: This function is direct from the legacy provider... it could move to
   // a dedicated alert provider or something else in the future.
-  saveUserAlert(message: string, title: string, context: UserAlertType, optionalLink?, optionalCaption?) {
-    if (typeof (message) !== 'string') {
-      console.warn('First parameter message should be a string, not an object. Was the request object passed through by accident?');
-      throw new Error('First parameter message should be a string, not an object. Was the request object passed through by accident?');
+  saveUserAlert(
+    message: string,
+    title: string,
+    context: UserAlertType,
+    optionalLink?,
+    optionalCaption?
+  ) {
+    if (typeof message !== 'string') {
+      console.warn(
+        'First parameter message should be a string, not an object. Was the request object passed through by accident?'
+      );
+      throw new Error(
+        'First parameter message should be a string, not an object. Was the request object passed through by accident?'
+      );
     }
     // ----------------------------------------------------------------------------
     // Helper function for UI: Store in the user's session an alert message or
@@ -254,9 +282,7 @@ export class WebContext {
       if (session.alerts && session.alerts.length) {
         session.alerts.push(alert);
       } else {
-        session.alerts = [
-          alert,
-        ];
+        session.alerts = [alert];
       }
     }
   }
@@ -275,7 +301,9 @@ export class WebContext {
 
     let viewState = state || optionalObject;
     if (state && optionalObject) {
-      throw new Error('Both state and optionalObject cannot be provided to a view render method');
+      throw new Error(
+        'Both state and optionalObject cannot be provided to a view render method'
+      );
     }
 
     // LEGACY: this whole section
@@ -286,7 +314,9 @@ export class WebContext {
     const authScheme = 'aad';
     const user: IWebPageRenderUser = {
       primaryAuthenticationScheme: authScheme,
-      primaryUsername: individualContext.corporateIdentity ? individualContext.corporateIdentity.username : null,
+      primaryUsername: individualContext.corporateIdentity
+        ? individualContext.corporateIdentity.username
+        : null,
       githubSignout: '/signout/github',
       azureSignout: '/signout',
     };
@@ -316,13 +346,17 @@ export class WebContext {
     if (!config) {
       throw new Error('runtimeConfig is missing');
     }
-    const simulatedLegacyLink = individualContext.link ? {
-      aadupn: user.azure ? user.azure.username : null,
-      ghu: user.github ? user.github.username : null,
-    } : null;
+    const simulatedLegacyLink = individualContext.link
+      ? {
+          aadupn: user.azure ? user.azure.username : null,
+          ghu: user.github ? user.github.username : null,
+        }
+      : null;
     let session = this._request['session'] || null;
 
-    const initialViewObject = individualContext ? individualContext.getInitialViewObject() : {};
+    const initialViewObject = individualContext
+      ? individualContext.getInitialViewObject()
+      : {};
 
     const providers = this._request.app.settings.providers as IProviders;
     const { corporateViews } = providers;
@@ -332,7 +366,9 @@ export class WebContext {
       config,
       corporateViews,
       plugins,
-      serviceBanner: config.serviceMessage ? config.serviceMessage.banner : null,
+      serviceBanner: config.serviceMessage
+        ? config.serviceMessage.banner
+        : null,
       user,
       // DESTROY: CONFIRM once 'ossline' is gone this way
       ossLink: simulatedLegacyLink,
@@ -341,7 +377,9 @@ export class WebContext {
       sudoMode: this._request['sudoMode'],
       view,
       site: 'github',
-      enableMultipleAccounts: session ? session['enableMultipleAccounts'] : false,
+      enableMultipleAccounts: session
+        ? session['enableMultipleAccounts']
+        : false,
       reposContext: undefined,
       alerts: undefined,
     });
@@ -459,7 +497,11 @@ export class IndividualContext {
     if (this._aggregations) {
       return this._aggregations;
     }
-    this._aggregations = new UserContext(this._operations, this._operations.providers.queryCache, Number(this.getGitHubIdentity().id));
+    this._aggregations = new UserContext(
+      this._operations,
+      this._operations.providers.queryCache,
+      Number(this.getGitHubIdentity().id)
+    );
     return this._aggregations;
   }
 

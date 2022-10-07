@@ -18,8 +18,11 @@ export async function ensureAllLinksInMemory(req: ReposAppRequest, res, next) {
     const links = await operations.getLinks();
     req[cachedLinksRequestKeyName] = links;
     return next();
-    } catch (linksError) {
-    linksError = wrapError(linksError, 'There was a problem retrieving the set of links');
+  } catch (linksError) {
+    linksError = wrapError(
+      linksError,
+      'There was a problem retrieving the set of links'
+    );
     return next(linksError);
   }
 }
@@ -27,7 +30,9 @@ export async function ensureAllLinksInMemory(req: ReposAppRequest, res, next) {
 export function getAllLinksFromRequest(req: ReposAppRequest) {
   const val = req[cachedLinksRequestKeyName];
   if (!val) {
-    throw new Error(`No links made available via ${cachedLinksRequestKeyName}, ensureAllLinksInMemory middleware must proceed`);
+    throw new Error(
+      `No links made available via ${cachedLinksRequestKeyName}, ensureAllLinksInMemory middleware must proceed`
+    );
   }
   return val;
 }

@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { URL }  from 'url';
+import { URL } from 'url';
 import { IGetKeyVaultSecretClient } from '../middleware/keyVault';
 
 const cachedKeys = new Map<string, string>();
@@ -13,7 +13,10 @@ const secretsPath = '/secrets/';
 
 export type IKeyVaultSecretResolver = (id: string) => Promise<string>;
 
-async function keyVaultSecretResolver(keyVaultClient: IGetKeyVaultSecretClient, id: string) {
+async function keyVaultSecretResolver(
+  keyVaultClient: IGetKeyVaultSecretClient,
+  id: string
+) {
   const cachedKey = cachedKeys.get(id);
   if (cachedKey !== undefined) {
     return cachedKey;
@@ -33,7 +36,9 @@ async function keyVaultSecretResolver(keyVaultClient: IGetKeyVaultSecretClient, 
     secretName = secretName.substr(0, versionIndex);
   }
   try {
-    const secretResponse = await secretClient.getSecret(secretName, { version });
+    const secretResponse = await secretClient.getSecret(secretName, {
+      version,
+    });
     const secretValue = secretResponse.value;
     if (cacheKeysInMemory === true) {
       cachedKeys.set(id, secretValue);
@@ -44,6 +49,11 @@ async function keyVaultSecretResolver(keyVaultClient: IGetKeyVaultSecretClient, 
   }
 }
 
-export default function createKeyVaultResolver(keyVaultClient: IGetKeyVaultSecretClient) {
-  return keyVaultSecretResolver.bind(undefined, keyVaultClient) as IKeyVaultSecretResolver;
-};
+export default function createKeyVaultResolver(
+  keyVaultClient: IGetKeyVaultSecretClient
+) {
+  return keyVaultSecretResolver.bind(
+    undefined,
+    keyVaultClient
+  ) as IKeyVaultSecretResolver;
+}

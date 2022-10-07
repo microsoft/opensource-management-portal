@@ -4,7 +4,11 @@
 //
 
 import { OrganizationMembershipState } from '.';
-import { ICacheOptions, ICacheOptionsPageLimiter, IPagedCrossOrganizationCacheOptions } from './rest';
+import {
+  ICacheOptions,
+  ICacheOptionsPageLimiter,
+  IPagedCrossOrganizationCacheOptions,
+} from './rest';
 
 export enum RequestTeamMemberAddType {
   Member = 'member',
@@ -58,7 +62,8 @@ export enum GitHubTeamRole {
   Maintainer = 'maintainer',
 }
 
-export interface ICrossOrganizationTeamMembership extends IPagedCrossOrganizationCacheOptions {
+export interface ICrossOrganizationTeamMembership
+  extends IPagedCrossOrganizationCacheOptions {
   role?: GitHubTeamRole;
 }
 

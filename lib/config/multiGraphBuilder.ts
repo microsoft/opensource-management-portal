@@ -26,7 +26,9 @@ async function composeGraphs(api: ILibraryOptions) {
   // ---------------------------------------------------------------
   let pkg = getPackage(applicationRoot);
   if (pkg && pkg.painlessConfigObjectPackages) {
-    let pco = Array.isArray(pkg.painlessConfigObjectPackages) ? pkg.painlessConfigObjectPackages : pkg.painlessConfigObjectPackages.split(',');
+    let pco = Array.isArray(pkg.painlessConfigObjectPackages)
+      ? pkg.painlessConfigObjectPackages
+      : pkg.painlessConfigObjectPackages.split(',');
     addConfigPackages(paths, applicationRoot, pco);
   }
 
@@ -34,9 +36,12 @@ async function composeGraphs(api: ILibraryOptions) {
   // ----------------------------------------
   const environment = api.environment;
   if (!environment) {
-    console.warn(`libraryOptions has no environment property, environment-based configuration packages not available`);
+    console.warn(
+      `libraryOptions has no environment property, environment-based configuration packages not available`
+    );
   }
-  const additionalPackagesKey = environment?.get('CONFIGURATION_PACKAGES_KEY') || 'CONFIGURATION_PACKAGES';
+  const additionalPackagesKey =
+    environment?.get('CONFIGURATION_PACKAGES_KEY') || 'CONFIGURATION_PACKAGES';
   let configurationPackages = environment?.get(additionalPackagesKey) as string;
   if (configurationPackages) {
     const packages = configurationPackages.split(',');
@@ -44,7 +49,9 @@ async function composeGraphs(api: ILibraryOptions) {
   }
 
   if (paths.length === 0) {
-    throw new Error('No configuration packages or directories were found to process. Consider using "options.graph" as an option to the configuration resolver if you do not need to use configuration directories. Otherwise, check that you have configured your package.json or other environment values as needed.');
+    throw new Error(
+      'No configuration packages or directories were found to process. Consider using "options.graph" as an option to the configuration resolver if you do not need to use configuration directories. Otherwise, check that you have configured your package.json or other environment values as needed.'
+    );
   }
 
   // Build the graph
@@ -52,16 +59,25 @@ async function composeGraphs(api: ILibraryOptions) {
   let graph = {};
   for (const p of paths.reverse()) {
     const result = await graphBuilder(api, p);
-    const overwriteMerge = (destinationArray: any, sourceArray: any /* , options*/) => sourceArray;
+    const overwriteMerge = (
+      destinationArray: any,
+      sourceArray: any /* , options*/
+    ) => sourceArray;
     graph = deepmerge(graph, result, { arrayMerge: overwriteMerge });
   }
   if (!graph || Object.getOwnPropertyNames(graph).length === 0) {
-    throw new Error(`Successfully processed ${paths.length} configuration graph packages or directories, yet the resulting graph object did not have properties. This is likely an error or issue that should be corrected. Or, alternatively, use options.graph as an input to the resolver.`);
+    throw new Error(
+      `Successfully processed ${paths.length} configuration graph packages or directories, yet the resulting graph object did not have properties. This is likely an error or issue that should be corrected. Or, alternatively, use options.graph as an input to the resolver.`
+    );
   }
   return graph;
 }
 
-function addConfigPackages(paths: string[], applicationRoot: string, painlessConfigObjects: string[]) {
+function addConfigPackages(
+  paths: string[],
+  applicationRoot: string,
+  painlessConfigObjects: string[]
+) {
   for (let i = 0; i < painlessConfigObjects.length; i++) {
     addConfigPackage(paths, applicationRoot, painlessConfigObjects[i]);
   }
@@ -76,7 +92,11 @@ function getPackage(applicationRoot: string) {
   }
 }
 
-function addConfigPackage(paths: string[], applicationRoot: string, npmName: string) {
+function addConfigPackage(
+  paths: string[],
+  applicationRoot: string,
+  npmName: string
+) {
   let root = null;
   let packageInstance = null;
   npmName = npmName.trim();
@@ -84,14 +104,18 @@ function addConfigPackage(paths: string[], applicationRoot: string, npmName: str
     try {
       packageInstance = require(npmName);
     } catch (cannotRequire) {
-      const error: InnerError = new Error(`While trying to identify configuration graphs, ${npmName} could not be required`);
+      const error: InnerError = new Error(
+        `While trying to identify configuration graphs, ${npmName} could not be required`
+      );
       error.innerError = cannotRequire;
       throw error;
     }
-    if (typeof(packageInstance) === 'string') {
+    if (typeof packageInstance === 'string') {
       root = packageInstance;
     } else {
-      throw new Error(`The package ${npmName} instance is not of type string. For the configuration graph system it should be a string (a path).`);
+      throw new Error(
+        `The package ${npmName} instance is not of type string. For the configuration graph system it should be a string (a path).`
+      );
     }
   } else {
     root = path.resolve(path.join(applicationRoot, npmName));
@@ -101,18 +125,29 @@ function addConfigPackage(paths: string[], applicationRoot: string, npmName: str
     paths.push(root);
   } catch (notFound) {
     if (packageInstance) {
-      throw new Error(`While instantiating "${npmName}, the returned string value was not a valid path: ${root}`);
+      throw new Error(
+        `While instantiating "${npmName}, the returned string value was not a valid path: ${root}`
+      );
     } else {
-      throw new Error(`Could not locate the local configuration directory for package "${npmName}": ${root}`);
+      throw new Error(
+        `Could not locate the local configuration directory for package "${npmName}": ${root}`
+      );
     }
   }
 }
 
-function addAppConfigDirectory(paths: string[], api: ILibraryOptions, options: IProviderOptions, applicationRoot: string) {
+function addAppConfigDirectory(
+  paths: string[],
+  api: ILibraryOptions,
+  options: IProviderOptions,
+  applicationRoot: string
+) {
   let directoryName = options.directoryName;
   let key = null;
   if (!directoryName && api.environment) {
-    key = api.environment.get('CONFIGURATION_GRAPH_DIRECTORY_KEY') || 'CONFIGURATION_GRAPH_DIRECTORY';
+    key =
+      api.environment.get('CONFIGURATION_GRAPH_DIRECTORY_KEY') ||
+      'CONFIGURATION_GRAPH_DIRECTORY';
     directoryName = api.environment.get(key);
   }
   if (!directoryName) {
@@ -123,7 +158,9 @@ function addAppConfigDirectory(paths: string[], api: ILibraryOptions, options: I
     fs.statSync(dirPath);
     paths.push(dirPath);
   } catch (notFound) {
-    const error: InnerError = new Error(`The configuration graph directory ${dirPath} was not found. ${key}`);
+    const error: InnerError = new Error(
+      `The configuration graph directory ${dirPath} was not found. ${key}`
+    );
     error.innerError = notFound;
     throw error;
   }

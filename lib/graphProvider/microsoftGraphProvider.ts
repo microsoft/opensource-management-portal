@@ -9,8 +9,19 @@ import cache from 'memory-cache';
 import axios, { AxiosError } from 'axios';
 import querystring from 'querystring';
 
-import { IGraphProvider, IGraphEntry, IGraphEntryWithManager, IGraphGroupMember, IGraphGroup, GraphUserType } from '.';
-import { ErrorHelper, CreateError, splitSemiColonCommas } from '../../transitional';
+import {
+  IGraphProvider,
+  IGraphEntry,
+  IGraphEntryWithManager,
+  IGraphGroupMember,
+  IGraphGroup,
+  GraphUserType,
+} from '.';
+import {
+  ErrorHelper,
+  CreateError,
+  splitSemiColonCommas,
+} from '../../transitional';
 import { ICacheHelper } from '../caching';
 
 export interface IMicrosoftGraphProviderOptions {
@@ -33,7 +44,7 @@ interface IGraphOptions {
   orderBy?: string;
   body?: any;
   count?: boolean;
-  consistencyLevel?: 'eventual',
+  consistencyLevel?: 'eventual';
 }
 
 export class MicrosoftGraphProvider implements IGraphProvider {
@@ -57,7 +68,9 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     this.#_tokenEndpoint = graphOptions.tokenEndpoint;
     this.#_skipManagerLookupForids = [];
     if (graphOptions.skipManagerLookupForIds) {
-      this.#_skipManagerLookupForids = splitSemiColonCommas(graphOptions.skipManagerLookupForIds);
+      this.#_skipManagerLookupForids = splitSemiColonCommas(
+        graphOptions.skipManagerLookupForIds
+      );
     }
     this.#_cache = graphOptions.cacheProvider;
     if (!this.clientId) {
@@ -68,29 +81,44 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     }
   }
 
-  async isUserInGroup(corporateId: string, securityGroupId: string): Promise<boolean> {
+  async isUserInGroup(
+    corporateId: string,
+    securityGroupId: string
+  ): Promise<boolean> {
     // TODO: refactor for efficient use of Microsoft Graph's checkMemberObjects https://docs.microsoft.com/en-us/graph/api/group-checkmemberobjects?view=graph-rest-1.0&tabs=http
     const members = await this.getGroupMembers(securityGroupId);
-    return members.filter(m => m.id === corporateId).length > 0;
+    return members.filter((m) => m.id === corporateId).length > 0;
   }
 
-  private async getTokenThenEntity(aadId: string, resource: string): Promise<unknown> {
+  private async getTokenThenEntity(
+    aadId: string,
+    resource: string
+  ): Promise<unknown> {
     const accessToken = await this.getToken();
     return await this.getUserByIdLookup(aadId, accessToken, resource);
   }
 
   async getManagerById(aadId: string) {
-    const entity = await this.getTokenThenEntity(aadId, 'manager') as IGraphEntry;
+    const entity = (await this.getTokenThenEntity(
+      aadId,
+      'manager'
+    )) as IGraphEntry;
     return entity;
   }
 
   async getUserAndManagerById(aadId: string): Promise<IGraphEntryWithManager> {
-    const entity = await this.getTokenThenEntity(aadId, null) as IGraphEntryWithManager;
+    const entity = (await this.getTokenThenEntity(
+      aadId,
+      null
+    )) as IGraphEntryWithManager;
     if (this.#_skipManagerLookupForids?.includes(aadId)) {
       return entity;
     }
     try {
-      const manager = await this.getTokenThenEntity(aadId, 'manager') as IGraphEntry;
+      const manager = (await this.getTokenThenEntity(
+        aadId,
+        'manager'
+      )) as IGraphEntry;
       if (manager) {
         entity.manager = manager;
       }
@@ -104,7 +132,9 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     return entity;
   }
 
-  async getManagementChain(corporateId: string): Promise<IGraphEntryWithManager[]> {
+  async getManagementChain(
+    corporateId: string
+  ): Promise<IGraphEntryWithManager[]> {
     let chain = [];
     try {
       let entry = await this.getCachedEntryWithManagerById(corporateId);
@@ -112,7 +142,10 @@ export class MicrosoftGraphProvider implements IGraphProvider {
         const clone = { ...entry };
         delete clone.manager;
         chain.push(clone);
-        entry = entry.manager && entry.manager.id ? await this.getCachedEntryWithManagerById(entry.manager.id) : null;
+        entry =
+          entry.manager && entry.manager.id
+            ? await this.getCachedEntryWithManagerById(entry.manager.id)
+            : null;
       }
     } catch (getError) {
       if (ErrorHelper.IsNotFound(getError)) {
@@ -125,7 +158,9 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     return chain;
   }
 
-  async getCachedEntryWithManagerById(corporateId: string): Promise<IGraphEntryWithManager> {
+  async getCachedEntryWithManagerById(
+    corporateId: string
+  ): Promise<IGraphEntryWithManager> {
     let entry = this.#_staticManagerEntryCacheById.get(corporateId);
     if (entry) {
       return entry;
@@ -148,248 +183,257 @@ export class MicrosoftGraphProvider implements IGraphProvider {
   }
 
   async getGroup(corporateGroupId: string): Promise<IGraphGroup> {
-    const response = await this.lookupInGraph([
-      'groups',
-      corporateGroupId,
-    ], {
+    const response = await this.lookupInGraph(['groups', corporateGroupId], {
       selectValues: 'description,displayName,id,mail,mailNickname',
     });
     return response;
   }
 
   async getGroupsByNickname(nickname: string): Promise<string[]> {
-    const response = await this.lookupInGraph([
-      'groups',
-    ], {
+    const response = (await this.lookupInGraph(['groups'], {
       filterValues: `mailNickname eq '${encodeURIComponent(nickname)}'`,
       selectValues: 'id',
-    }) as any[];
+    })) as any[];
     if (response?.map) {
-      return response.map(entry => entry.id);
+      return response.map((entry) => entry.id);
     }
     const values = (response as any).value as any[];
-    return values.map(entry => entry.id);
+    return values.map((entry) => entry.id);
   }
 
   async getMailAddressByUsername(corporateUsername: string): Promise<string> {
-    const response = await this.lookupInGraph([
-      'users',
-      corporateUsername,
-    ], {
+    const response = await this.lookupInGraph(['users', corporateUsername], {
       selectValues: 'mail',
     });
     return response && response.mail ? response.mail : null;
   }
 
   async getUserIdByUsername(corporateUsername: string): Promise<string> {
-    const response = await this.lookupInGraph([
-      'users',
-      corporateUsername,
-    ], {
+    const response = await this.lookupInGraph(['users', corporateUsername], {
       selectValues: 'id',
     });
     return response?.id;
   }
 
   async getUserIdByNickname(nickname: string): Promise<string> {
-    const response = await this.lookupInGraph([
-      'users',
-    ], {
+    const response = (await this.lookupInGraph(['users'], {
       filterValues: `mailNickname eq '${encodeURIComponent(nickname)}'`,
       selectValues: 'id',
-    }) as any[];
+    })) as any[];
     if (!response || response.length === 0) {
       return null;
     }
     if (Array.isArray(response)) {
-      return response.map(entry => entry.id)[0];
+      return response.map((entry) => entry.id)[0];
     }
     const subResponse = (response as any).value ? (response as any).value : [];
-    return subResponse.map(entry => entry.id)[0];
+    return subResponse.map((entry) => entry.id)[0];
   }
 
   async getUserIdByMail(mail: string): Promise<string> {
-    const response = await this.lookupInGraph([
-      'users',
-    ], {
+    const response = (await this.lookupInGraph(['users'], {
       filterValues: `mail eq '${mail}'`, // encodeURIComponent(
       selectValues: 'id',
       count: true,
       consistencyLevel: 'eventual',
-    }) as any[];
+    })) as any[];
     if (!response || response.length === 0) {
       return null;
     }
     if (Array.isArray(response)) {
-      return response.map(entry => entry.id)[0];
+      return response.map((entry) => entry.id)[0];
     }
     const subResponse = (response as any).value ? (response as any).value : [];
-    return subResponse.map(entry => entry.id)[0];
+    return subResponse.map((entry) => entry.id)[0];
   }
 
   async getUsersByIds(userIds: string[]): Promise<IGraphEntry[]> {
     if (!userIds || userIds.length === 0) {
       return [];
     }
-    let response = await this.lookupInGraph([
-      'users',
-    ], {
-      filterValues: userIds.map(id => `id eq '${id.trim()}'`).join(' or '),
-      selectValues: 'id,displayName,mailNickname,mail,userPrincipalName,userType,jobTitle',
-    }) as any[];
+    let response = (await this.lookupInGraph(['users'], {
+      filterValues: userIds.map((id) => `id eq '${id.trim()}'`).join(' or '),
+      selectValues:
+        'id,displayName,mailNickname,mail,userPrincipalName,userType,jobTitle',
+    })) as any[];
     // caching issues...
     if (!response.filter && (response as any).value?.filter) {
       response = (response as any).value;
     }
-    return response.filter(e => e.userType !== GraphUserType.Guest).map(entry => {
-      return {
-        id: entry.id,
-        mailNickname: entry.mailNickname,
-        displayName: entry.displayName,
-        mail: entry.mail,
-        givenName: entry.givenName,
-        userPrincipalName: entry.userPrincipalName,
-        jobTitle: entry.jobTitle,
-      };
-    });
+    return response
+      .filter((e) => e.userType !== GraphUserType.Guest)
+      .map((entry) => {
+        return {
+          id: entry.id,
+          mailNickname: entry.mailNickname,
+          displayName: entry.displayName,
+          mail: entry.mail,
+          givenName: entry.givenName,
+          userPrincipalName: entry.userPrincipalName,
+          jobTitle: entry.jobTitle,
+        };
+      });
   }
-
 
   async getDirectReports(corporateIdOrUpn: string): Promise<IGraphEntry[]> {
-    let response = await this.lookupInGraph([
-      'users',
-      corporateIdOrUpn,
-      'directReports',
-    ], {
-      selectValues: 'id,displayName,mailNickname,mail,userPrincipalName,userType,jobTitle',
-    }) as any[];
+    let response = (await this.lookupInGraph(
+      ['users', corporateIdOrUpn, 'directReports'],
+      {
+        selectValues:
+          'id,displayName,mailNickname,mail,userPrincipalName,userType,jobTitle',
+      }
+    )) as any[];
     if (!response.filter && (response as any).value?.filter) {
       response = (response as any).value;
     }
-    return response.filter(e => e.userType !== GraphUserType.Guest).map(entry => {
-      return {
-        id: entry.id,
-        mailNickname: entry.mailNickname,
-        displayName: entry.displayName,
-        mail: entry.mail,
-        givenName: entry.givenName,
-        userPrincipalName: entry.userPrincipalName,
-        jobTitle: entry.jobTitle,
-      };
-    });
+    return response
+      .filter((e) => e.userType !== GraphUserType.Guest)
+      .map((entry) => {
+        return {
+          id: entry.id,
+          mailNickname: entry.mailNickname,
+          displayName: entry.displayName,
+          mail: entry.mail,
+          givenName: entry.givenName,
+          userPrincipalName: entry.userPrincipalName,
+          jobTitle: entry.jobTitle,
+        };
+      });
   }
 
-  async getUsersByMailNicknames(mailNicknames: string[]): Promise<IGraphEntry[]> {
-    let response = await this.lookupInGraph([
-      'users',
-    ], {
-      filterValues: mailNicknames.map(alias => `mailNickname eq '${alias.trim()}'`).join(' or '),
-      selectValues: 'id,displayName,mailNickname,mail,userPrincipalName,userType,jobTitle',
-    }) as any[];
+  async getUsersByMailNicknames(
+    mailNicknames: string[]
+  ): Promise<IGraphEntry[]> {
+    let response = (await this.lookupInGraph(['users'], {
+      filterValues: mailNicknames
+        .map((alias) => `mailNickname eq '${alias.trim()}'`)
+        .join(' or '),
+      selectValues:
+        'id,displayName,mailNickname,mail,userPrincipalName,userType,jobTitle',
+    })) as any[];
     if (!response.filter && (response as any).value?.filter) {
       response = (response as any).value;
     }
-    return response.filter(e => e.userType !== GraphUserType.Guest).map(entry => {
-      return {
-        id: entry.id,
-        mailNickname: entry.mailNickname,
-        displayName: entry.displayName,
-        mail: entry.mail,
-        givenName: entry.givenName,
-        userPrincipalName: entry.userPrincipalName,
-        jobTitle: entry.jobTitle,
-      };
-    });
+    return response
+      .filter((e) => e.userType !== GraphUserType.Guest)
+      .map((entry) => {
+        return {
+          id: entry.id,
+          mailNickname: entry.mailNickname,
+          displayName: entry.displayName,
+          mail: entry.mail,
+          givenName: entry.givenName,
+          userPrincipalName: entry.userPrincipalName,
+          jobTitle: entry.jobTitle,
+        };
+      });
   }
 
   async getUsersBySearch(minimum3Characters: string): Promise<IGraphEntry[]> {
     if (!minimum3Characters || minimum3Characters.length < 3) {
       throw new Error(`Minimum 3 characters required: ${minimum3Characters}`);
     }
-    minimum3Characters = minimum3Characters.replace(/'/g, '\'\'');
-    let response = await this.lookupInGraph([
-      'users',
-    ], {
+    minimum3Characters = minimum3Characters.replace(/'/g, "''");
+    let response = (await this.lookupInGraph(['users'], {
       filterValues: `startswith(givenName, '${minimum3Characters}') or startswith(surname, '${minimum3Characters}') or startswith(displayName, '${minimum3Characters}') or startswith(mailNickname, '${minimum3Characters}') or startswith(mail, '${minimum3Characters}')`,
-      selectValues: 'id,displayName,mailNickname,mail,userPrincipalName,userType,jobTitle',
-    }) as any[];
+      selectValues:
+        'id,displayName,mailNickname,mail,userPrincipalName,userType,jobTitle',
+    })) as any[];
     if (!response.filter && (response as any).value?.filter) {
       response = (response as any).value;
     }
-    return response.filter(e => e.userType !== GraphUserType.Guest).map(entry => {
-      return {
-        id: entry.id,
-        mailNickname: entry.mailNickname,
-        displayName: entry.displayName,
-        mail: entry.mail,
-        givenName: entry.givenName,
-        userPrincipalName: entry.userPrincipalName,
-        jobTitle: entry.jobTitle,
-      };
+    return response
+      .filter((e) => e.userType !== GraphUserType.Guest)
+      .map((entry) => {
+        return {
+          id: entry.id,
+          mailNickname: entry.mailNickname,
+          displayName: entry.displayName,
+          mail: entry.mail,
+          givenName: entry.givenName,
+          userPrincipalName: entry.userPrincipalName,
+          jobTitle: entry.jobTitle,
+        };
+      });
+  }
+
+  async getGroupMembers(
+    corporateGroupId: string
+  ): Promise<IGraphGroupMember[]> {
+    const response = (await this.lookupInGraph(
+      [
+        'groups',
+        corporateGroupId,
+        'transitiveMembers', // transitiveMembers or members
+      ],
+      {
+        selectValues: 'id,userPrincipalName',
+      }
+    )) as any[];
+    // may be a caching bug:
+    if (Array.isArray(response)) {
+      return response.map((entry) => {
+        return { id: entry.id, userPrincipalName: entry.userPrincipalName };
+      });
+    }
+    const subResponse = (response as any).value ? (response as any).value : [];
+    return subResponse.map((entry) => {
+      return { id: entry.id, userPrincipalName: entry.userPrincipalName };
     });
   }
 
-  async getGroupMembers(corporateGroupId: string): Promise<IGraphGroupMember[]> {
-    const response = await this.lookupInGraph([
-      'groups',
-      corporateGroupId,
-      'transitiveMembers', // transitiveMembers or members
-    ], {
-      selectValues: 'id,userPrincipalName',
-    }) as any[];
-    // may be a caching bug:
-    if (Array.isArray(response)) {
-      return response.map(entry => { return { id: entry.id, userPrincipalName: entry.userPrincipalName }; });
-    }
-    const subResponse = (response as any).value ? (response as any).value : [];
-    return subResponse.map(entry => { return { id: entry.id, userPrincipalName: entry.userPrincipalName }; });
-  }
-
-  async getGroupsStartingWith(minimum3Characters: string): Promise<IGraphGroup[]> {
+  async getGroupsStartingWith(
+    minimum3Characters: string
+  ): Promise<IGraphGroup[]> {
     if (!minimum3Characters || minimum3Characters.length < 3) {
       throw new Error(`Minimum 3 characters required: ${minimum3Characters}`);
     }
     // NOTE: this is currently explicitly looking for Security Groups only
-    let response = await this.lookupInGraph([
-      'groups',
-    ], {
+    let response = (await this.lookupInGraph(['groups'], {
       filterValues: `securityEnabled eq true and (startswith(displayName, '${minimum3Characters}') or startswith(mailNickname, '${minimum3Characters}'))`,
       selectValues: 'id,displayName,mailNickname',
-    }) as any[];
+    })) as any[];
     if (!response.filter && (response as any).value?.filter) {
       response = (response as any).value;
     }
-    return response.map(entry => { return { id: entry.id, mailNickname: entry.mailNickname, displayName: entry.displayName }; });
+    return response.map((entry) => {
+      return {
+        id: entry.id,
+        mailNickname: entry.mailNickname,
+        displayName: entry.displayName,
+      };
+    });
   }
 
   async getGroupsByMail(groupMailAddress: string): Promise<string[]> {
-    let response = await this.lookupInGraph([
-      'groups',
-    ], {
+    let response = (await this.lookupInGraph(['groups'], {
       filterValues: `mail eq '${groupMailAddress}'`,
       selectValues: 'id',
-    }) as any[];
+    })) as any[];
     if (!response.filter && (response as any).value?.filter) {
       response = (response as any).value;
     }
-    return response.map(entry => entry.id);
+    return response.map((entry) => entry.id);
   }
 
   async getGroupsById(corporateId: string): Promise<string[]> {
-    const response = await this.lookupInGraph([
-      'users',
-      corporateId,
-      'getMemberGroups',
-    ], {
-      // selectValues: '',
-      body: {
-        securityEnabledOnly: true,
-      },
-    }) as string[];
+    const response = (await this.lookupInGraph(
+      ['users', corporateId, 'getMemberGroups'],
+      {
+        // selectValues: '',
+        body: {
+          securityEnabledOnly: true,
+        },
+      }
+    )) as string[];
     return response;
   }
 
-  private async getUserByIdLookup(aadId: string, token: string, subResource: string): Promise<any> {
+  private async getUserByIdLookup(
+    aadId: string,
+    token: string,
+    subResource: string
+  ): Promise<any> {
     if (!aadId) {
       throw CreateError.InvalidParameters('No user ID provided to lookup');
     }
@@ -416,33 +460,54 @@ export class MicrosoftGraphProvider implements IGraphProvider {
         },
       });
       if (!response.data) {
-        throw CreateError.NotFound(`${subResource || 'user'} not in directory for ${aadId}`);
+        throw CreateError.NotFound(
+          `${subResource || 'user'} not in directory for ${aadId}`
+        );
       }
-      if ((response.data as any).error?.message) { // axios returns unknown now
-        throw CreateError.InvalidParameters((response.data as any).error.message);
+      if ((response.data as any).error?.message) {
+        // axios returns unknown now
+        throw CreateError.InvalidParameters(
+          (response.data as any).error.message
+        );
       }
       if (this.#_cache) {
-        this.#_cache.setObjectWithExpire(url, { value: response.data }, defaultCachePeriodMinutes).then(ok => { }).catch(err => { });
+        this.#_cache
+          .setObjectWithExpire(
+            url,
+            { value: response.data },
+            defaultCachePeriodMinutes
+          )
+          .then((ok) => {})
+          .catch((err) => {});
       }
       return response.data;
     } catch (error) {
       const axiosError = error as AxiosError;
       if (axiosError?.response) {
         if (axiosError.response?.status === 404) {
-          throw CreateError.NotFound(`${subResource || 'user'} not in the directory for '${aadId}'`, axiosError);
+          throw CreateError.NotFound(
+            `${subResource || 'user'} not in the directory for '${aadId}'`,
+            axiosError
+          );
         } else if (axiosError.response?.status >= 500) {
           throw CreateError.ServerError('Graph server error', axiosError);
         } else if (axiosError.response?.status >= 400) {
-          throw CreateError.InvalidParameters('Incorrect graph parameters', axiosError);
+          throw CreateError.InvalidParameters(
+            'Incorrect graph parameters',
+            axiosError
+          );
         }
       }
       throw error;
     }
   }
 
-  private async lookupInGraph(entityPath: string[], options: IGraphOptions): Promise<any> {
+  private async lookupInGraph(
+    entityPath: string[],
+    options: IGraphOptions
+  ): Promise<any> {
     // initial hacking on top of the API
-    const subUrl = entityPath.map(item => encodeURIComponent(item)).join('/');
+    const subUrl = entityPath.map((item) => encodeURIComponent(item)).join('/');
     const queries = {};
     if (options.filterValues) {
       queries['$filter'] = options.filterValues;
@@ -487,16 +552,25 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       } else if (!body.value) {
         value = body;
       } else {
-        throw new Error(`Page ${pages} in response is not an array type but had a link: ${url}`);
+        throw new Error(
+          `Page ${pages} in response is not an array type but had a link: ${url}`
+        );
       }
       ++pages;
       url = body && body[odataNextLink] ? body[odataNextLink] : null;
     } while (url);
     if (this.#_cache) {
       try {
-        this.#_cache.setObjectWithExpire(originalUrl, { cache: value }, defaultCachePeriodMinutes).then(ok => { }).catch(err => {
-          console.warn(err);
-        });
+        this.#_cache
+          .setObjectWithExpire(
+            originalUrl,
+            { cache: value },
+            defaultCachePeriodMinutes
+          )
+          .then((ok) => {})
+          .catch((err) => {
+            console.warn(err);
+          });
       } catch (error) {
         console.warn(error);
       }
@@ -504,7 +578,11 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     return value;
   }
 
-  private async request(url: string, body?: any, eventualConsistency?: string): Promise<any> {
+  private async request(
+    url: string,
+    body?: any,
+    eventualConsistency?: string
+  ): Promise<any> {
     const token = await this.getToken();
     const method = body ? 'post' : 'get';
     if (this.#_cache && method === 'get') {
@@ -538,11 +616,21 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       if (!response.data) {
         throw CreateError.ServerError('Empty response');
       }
-      if ((response.data as any).error?.message) { // axios returns unknown now
-        throw CreateError.InvalidParameters((response.data as any).error.message); // axios returns unknown now
+      if ((response.data as any).error?.message) {
+        // axios returns unknown now
+        throw CreateError.InvalidParameters(
+          (response.data as any).error.message
+        ); // axios returns unknown now
       }
       if (this.#_cache && method === 'get') {
-        this.#_cache.setObjectWithExpire(url, { cache: response.data }, defaultCachePeriodMinutes).then(ok => { }).catch(err => { });
+        this.#_cache
+          .setObjectWithExpire(
+            url,
+            { cache: response.data },
+            defaultCachePeriodMinutes
+          )
+          .then((ok) => {})
+          .catch((err) => {});
       }
       return response.data;
     } catch (error) {
@@ -557,7 +645,10 @@ export class MicrosoftGraphProvider implements IGraphProvider {
           err['url'] = url;
           throw err;
         } else if (axiosError.response?.status >= 400) {
-          throw CreateError.InvalidParameters('Incorrect graph parameters', axiosError);
+          throw CreateError.InvalidParameters(
+            'Incorrect graph parameters',
+            axiosError
+          );
         }
       }
       error['url'] = url;
@@ -569,14 +660,18 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     const clientId = this.clientId;
     const clientSecret = this.#_clientSecret;
     if (!clientId || !clientSecret) {
-      throw new Error('The graph provider requires an AAD clientId and clientSecret.');
+      throw new Error(
+        'The graph provider requires an AAD clientId and clientSecret.'
+      );
     }
     const tokenKey = this.clientId;
     const token = cache.get(tokenKey) as string;
     if (token) {
       return token;
     }
-    const tokenEndpoint = this.#_tokenEndpoint || `https://login.microsoftonline.com/${this.#_tenantId}/oauth2/token`;
+    const tokenEndpoint =
+      this.#_tokenEndpoint ||
+      `https://login.microsoftonline.com/${this.#_tenantId}/oauth2/token`;
     // These are the parameters necessary for the OAuth 2.0 Client Credentials Grant Flow.
     // For more information, see Service to Service Calls Using Client Credentials (https://msdn.microsoft.com/library/azure/dn645543.aspx).
     try {
@@ -586,11 +681,15 @@ export class MicrosoftGraphProvider implements IGraphProvider {
         client_secret: clientSecret,
         resource: 'https://graph.microsoft.com',
       };
-      const response = await axios.post(tokenEndpoint, querystring.stringify(qs), {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      });
+      const response = await axios.post(
+        tokenEndpoint,
+        querystring.stringify(qs),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
       if (!response.data) {
         throw CreateError.ServerError('Empty response');
       }
@@ -607,17 +706,24 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     } catch (error) {
       const axiosError = error as AxiosError;
       if (axiosError?.response) {
-        console.log(`graph request error ${error.toString()} (client ${clientId})`);
+        console.log(
+          `graph request error ${error.toString()} (client ${clientId})`
+        );
         if (axiosError.response?.status === 404) {
           throw CreateError.NotFound('Not found', axiosError);
         } else if (axiosError.response?.status >= 500) {
           throw CreateError.ServerError('Graph server error', axiosError);
         } else if (axiosError.response?.status === 401) {
-          throw CreateError.NotAuthenticated('Invalid authorization to access to the graph');
+          throw CreateError.NotAuthenticated(
+            'Invalid authorization to access to the graph'
+          );
         } else if (axiosError.response?.status === 403) {
           throw CreateError.NotAuthorized('Not authorized to access the graph');
         } else if (axiosError.response?.status >= 400) {
-          throw CreateError.InvalidParameters('Incorrect graph parameters', axiosError);
+          throw CreateError.InvalidParameters(
+            'Incorrect graph parameters',
+            axiosError
+          );
         }
       }
       throw error;

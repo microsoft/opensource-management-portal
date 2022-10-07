@@ -24,16 +24,22 @@ const maxParallel = 6;
 
 const shouldUpdateCached = true;
 
-async function refreshRepositories({ providers }: IReposJob): Promise<IReposJobResult> {
+async function refreshRepositories({
+  providers,
+}: IReposJob): Promise<IReposJobResult> {
   const { operations } = providers;
   const started = new Date();
   console.log(`Starting at ${started}`);
 
   const orgs = operations.getOrganizations();
   const throttle = throat(maxParallel);
-  await Promise.allSettled(orgs.map((organization, index) => throttle(async () => {
-    return processOrganization(providers, organization, index, orgs.length);
-  })));
+  await Promise.allSettled(
+    orgs.map((organization, index) =>
+      throttle(async () => {
+        return processOrganization(providers, organization, index, orgs.length);
+      })
+    )
+  );
 
   // TODO: query all, remove any not processed [recently]
   console.log(`Finished at ${new Date()}, started at ${started}`);
@@ -41,7 +47,12 @@ async function refreshRepositories({ providers }: IReposJob): Promise<IReposJobR
   return {};
 }
 
-async function processOrganization(providers: IProviders, organization: Organization, orgIndex: number, orgsLength: number): Promise<unknown> {
+async function processOrganization(
+  providers: IProviders,
+  organization: Organization,
+  orgIndex: number,
+  orgsLength: number
+): Promise<unknown> {
   const { repositoryProvider } = providers;
   try {
     let repos = await organization.getRepositories();
@@ -50,11 +61,16 @@ async function processOrganization(providers: IProviders, organization: Organiza
       const repo = repos[i];
       const prefix = `org ${orgIndex}/${orgsLength}: repo ${i}/${repos.length}: `;
       try {
-        let repositoryEntity = await tryGetRepositoryEntity(repositoryProvider, repo.id);
+        let repositoryEntity = await tryGetRepositoryEntity(
+          repositoryProvider,
+          repo.id
+        );
         if (await repo.isDeleted()) {
           if (repositoryEntity) {
             await repositoryProvider.delete(repositoryEntity);
-            console.log(`${prefix}Deleted repository ${organization.name}/${repo.name}`);
+            console.log(
+              `${prefix}Deleted repository ${organization.name}/${repo.name}`
+            );
           }
           continue;
         }
@@ -64,7 +80,9 @@ async function processOrganization(providers: IProviders, organization: Organiza
           repositoryEntity = new RepositoryEntity();
           setFields(repositoryProvider, repositoryEntity, entity);
           await repositoryProvider.insert(repositoryEntity);
-          console.log(`${prefix}inserted ${organization.name}/${repositoryEntity.name}`);
+          console.log(
+            `${prefix}inserted ${organization.name}/${repositoryEntity.name}`
+          );
           continue;
         } else {
           setFields(repositoryProvider, repositoryEntity, entity);
@@ -77,10 +95,14 @@ async function processOrganization(providers: IProviders, organization: Organiza
         }
         if (update) {
           await repositoryProvider.replace(repositoryEntity);
-          console.log(`${prefix}Updated all fields for ${organization.name}/${repo.name}`);
+          console.log(
+            `${prefix}Updated all fields for ${organization.name}/${repo.name}`
+          );
         }
       } catch (error) {
-        console.warn(`${prefix}repo error: ${repo.name} in organization ${organization.name}`);
+        console.warn(
+          `${prefix}repo error: ${repo.name} in organization ${organization.name}`
+        );
       }
 
       await sleep(sleepBetweenReposMs);
@@ -92,7 +114,11 @@ async function processOrganization(providers: IProviders, organization: Organiza
   return {};
 }
 
-function setFields(repositoryProvider: IRepositoryProvider, repositoryEntity: RepositoryEntity, entity: any) {
+function setFields(
+  repositoryProvider: IRepositoryProvider,
+  repositoryEntity: RepositoryEntity,
+  entity: any
+) {
   repositoryEntity.repositoryId = entity.id;
   repositoryEntity.archived = entity.archived;
   repositoryEntity.cached = new Date();
@@ -138,7 +164,10 @@ function setFields(repositoryProvider: IRepositoryProvider, repositoryEntity: Re
   return repositoryEntity;
 }
 
-async function tryGetRepositoryEntity(repositoryProvider: IRepositoryProvider, repositoryId: number): Promise<RepositoryEntity> {
+async function tryGetRepositoryEntity(
+  repositoryProvider: IRepositoryProvider,
+  repositoryId: number
+): Promise<RepositoryEntity> {
   try {
     const repositoryEntity = await repositoryProvider.get(repositoryId);
     return repositoryEntity;
@@ -150,5 +179,8 @@ async function tryGetRepositoryEntity(repositoryProvider: IRepositoryProvider, r
   }
 }
 
-app.runJob(
-  refreshRepositories, { timeoutMinutes: 320, defaultDebugOutput: 'restapi', insightsPrefix: 'JobRefreshRepositories' });
+app.runJob(refreshRepositories, {
+  timeoutMinutes: 320,
+  defaultDebugOutput: 'restapi',
+  insightsPrefix: 'JobRefreshRepositories',
+});

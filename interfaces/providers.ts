@@ -8,7 +8,11 @@ import { AuthorizationCode } from 'simple-oauth2';
 import redis from 'redis';
 import { Pool as PostgresPool } from 'pg';
 
-import { IApplicationProfile, ICorporationAdministrationSection, IReposApplication } from '.';
+import {
+  IApplicationProfile,
+  ICorporationAdministrationSection,
+  IReposApplication,
+} from '.';
 import { Operations } from '../business';
 import QueryCache from '../business/queryCache';
 import { IAuditLogRecordProvider } from '../entities/auditLogRecord/auditLogRecordProvider';
@@ -34,7 +38,10 @@ import { ILinkProvider } from '../lib/linkProviders';
 import { IMailAddressProvider } from '../lib/mailAddressProvider';
 import { IMailProvider } from '../lib/mailProvider';
 import { IQueueProcessor } from '../lib/queues';
-import { ICustomizedNewRepositoryLogic, ICustomizedTeamPermissionsWebhookLogic } from '../transitional';
+import {
+  ICustomizedNewRepositoryLogic,
+  ICustomizedTeamPermissionsWebhookLogic,
+} from '../transitional';
 import { IEntityMetadataProvider } from '../lib/entityMetadataProvider';
 import { IRepositoryProvider } from '../entities/repository';
 import { IKeyVaultSecretResolver } from '../lib/keyVaultResolver';

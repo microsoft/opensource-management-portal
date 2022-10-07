@@ -16,12 +16,17 @@ import { ReposAppRequest } from '../../interfaces';
 const router: Router = Router();
 
 async function validateLinkOk(req: ReposAppRequest, res, next) {
-  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+  const activeContext = (req.individualContext ||
+    req.apiContext) as IndividualContext;
   const providers = getProviders(req);
   const insights = providers.insights;
   const config = providers.config;
   let validateAndBlockGuests = false;
-  if (config && config.activeDirectory && config.activeDirectory.blockGuestUserTypes) {
+  if (
+    config &&
+    config.activeDirectory &&
+    config.activeDirectory.blockGuestUserTypes
+  ) {
     validateAndBlockGuests = true;
   }
   // If the app has not been configured to check whether a user is a guest before linking, continue:
@@ -46,7 +51,7 @@ async function validateLinkOk(req: ReposAppRequest, res, next) {
     const userType = details.userType;
     const displayName = details.displayName;
     const userPrincipalName = details.userPrincipalName;
-    let block = userType as string === 'Guest';
+    let block = (userType as string) === 'Guest';
     let blockedRecord = block ? 'BLOCKED' : 'not blocked';
     insights.trackEvent({
       name: 'LinkValidateNotGuestGraphSuccess',
@@ -60,13 +65,21 @@ async function validateLinkOk(req: ReposAppRequest, res, next) {
     });
     if (block) {
       insights.trackMetric({ name: 'LinksBlockedForGuests', value: 1 });
-      const err = jsonError(`This system is not available to guests. You are currently signed in as ${displayName} ${userPrincipalName}. Please sign out or try a private browser window.`, 400);
+      const err = jsonError(
+        `This system is not available to guests. You are currently signed in as ${displayName} ${userPrincipalName}. Please sign out or try a private browser window.`,
+        400
+      );
       insights?.trackException({ exception: err });
       return next(err);
     }
     const manager = await providers.graphProvider.getManagerById(aadId);
     if (!manager || !manager.userPrincipalName) {
-      return next(jsonError('You do not have an active manager entry in the directory, so cannot yet use this app to link.', 400));
+      return next(
+        jsonError(
+          'You do not have an active manager entry in the directory, so cannot yet use this app to link.',
+          400
+        )
+      );
     }
     return next();
   } catch (graphError) {
@@ -77,21 +90,33 @@ async function validateLinkOk(req: ReposAppRequest, res, next) {
         name: 'LinkValidateNotGuestGraphFailure',
       },
     });
-    return next(jsonError(graphError.toString() || 'Generic lookup error', ErrorHelper.GetStatus(graphError) || 500));
+    return next(
+      jsonError(
+        graphError.toString() || 'Generic lookup error',
+        ErrorHelper.GetStatus(graphError) || 500
+      )
+    );
   }
 }
 
-router.delete('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-  return unlinkInteractive(true, activeContext, req, res, next);
-}));
+router.delete(
+  '/',
+  asyncHandler(async (req: ReposAppRequest, res, next) => {
+    const activeContext = (req.individualContext ||
+      req.apiContext) as IndividualContext;
+    return unlinkInteractive(true, activeContext, req, res, next);
+  })
+);
 
-router.post('/',
+router.post(
+  '/',
   validateLinkOk,
   asyncHandler(async (req: ReposAppRequest, res, next) => {
-    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+    const activeContext = (req.individualContext ||
+      req.apiContext) as IndividualContext;
     return interactiveLinkUser(true, activeContext, req, res, next);
-  }));
+  })
+);
 
 router.use('*', (req: ReposAppRequest, res, next) => {
   return next(jsonError('API or route not found', 404));

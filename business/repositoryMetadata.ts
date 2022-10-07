@@ -4,11 +4,16 @@
 //
 
 import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
-import { IRepositoryMetadata, IRepositoryMetadataPermissionPair } from '../interfaces';
+import {
+  IRepositoryMetadata,
+  IRepositoryMetadataPermissionPair,
+} from '../interfaces';
 
 const currentRepositoryMetadataSchema = 'rm1.0';
 
-export function ParseRepositoryMetadataSchema(fields: any): IRepositoryMetadata {
+export function ParseRepositoryMetadataSchema(
+  fields: any
+): IRepositoryMetadata {
   if (fields.schema === currentRepositoryMetadataSchema) {
     return fields as IRepositoryMetadata;
   }
@@ -19,12 +24,10 @@ export function ParseRepositoryMetadataSchema(fields: any): IRepositoryMetadata 
 class RepositoryMetadataLegacySchema implements IRepositoryMetadata {
   public readonly schema: string = undefined;
 
-  constructor(private _fields: any) {
-  }
+  constructor(private _fields: any) {}
 
   static translateToOldSchemaValues(fields: IRepositoryMetadata): any {
     // translates to the old fields
-
   }
 
   get id(): string {
@@ -81,13 +84,14 @@ class RepositoryMetadataLegacySchema implements IRepositoryMetadata {
 
   get teamPermissions(): IRepositoryMetadataPermissionPair[] {
     const data: IRepositoryMetadataPermissionPair[] = [];
-    const count = this._fields.teamsCount as number || 0;
+    const count = (this._fields.teamsCount as number) || 0;
     for (let i = 0; i < count; i++) {
       const idFieldName = `teamid${i}`;
       const permissionFieldName = `${idFieldName}p`;
       const id = this._fields[idFieldName];
       const permissionStringValue = this._fields[permissionFieldName];
-      let permission: GitHubRepositoryPermission = GitHubRepositoryPermission.Pull;
+      let permission: GitHubRepositoryPermission =
+        GitHubRepositoryPermission.Pull;
       if (permissionStringValue === 'push') {
         permission = GitHubRepositoryPermission.Push;
       } else if (permissionStringValue === 'admin') {

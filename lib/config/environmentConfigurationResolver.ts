@@ -36,8 +36,7 @@ function getUrlIfEnvironmentVariable(value: string) {
     if (u.protocol === envProtocol) {
       return u;
     }
-  }
-  catch (typeError) {
+  } catch (typeError) {
     /* ignore */
   }
   return null;
@@ -59,7 +58,10 @@ function identifyPaths(node: any, prefix?: string) {
     if (!envUrl) {
       continue;
     }
-    const originalHostname = value.substr(value.indexOf(envProtocol) + envProtocol.length + 2, envUrl.hostname.length);
+    const originalHostname = value.substr(
+      value.indexOf(envProtocol) + envProtocol.length + 2,
+      envUrl.hostname.length
+    );
     if (originalHostname.toLowerCase() === envUrl.hostname.toLowerCase()) {
       envUrl.hostname = originalHostname;
     }
@@ -84,7 +86,7 @@ function createClient(options: IEnvironmentProviderOptions) {
       let paths = null;
       try {
         paths = identifyPaths(object);
-      } catch(parseError) {
+      } catch (parseError) {
         throw parseError;
       }
       const names = Object.getOwnPropertyNames(paths);
@@ -114,7 +116,12 @@ function createClient(options: IEnvironmentProviderOptions) {
           switch (type) {
             case 'boolean':
             case 'bool': {
-              if (currentValue && currentValue !== 'false' && currentValue != '0' && currentValue !== 'False') {
+              if (
+                currentValue &&
+                currentValue !== 'false' &&
+                currentValue != '0' &&
+                currentValue !== 'False'
+              ) {
                 variableValue = true;
               } else {
                 variableValue = false;
@@ -127,7 +134,9 @@ function createClient(options: IEnvironmentProviderOptions) {
               break;
             }
             default: {
-              throw new Error(`The "type" parameter for the env:// string was set to "${type}", a type that is currently not supported.`);
+              throw new Error(
+                `The "type" parameter for the env:// string was set to "${type}", a type that is currently not supported.`
+              );
             }
           }
         }

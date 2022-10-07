@@ -9,12 +9,12 @@ import { IDictionary } from '../interfaces';
 import { jsonError } from '../middleware';
 
 type FakeSecret = {
-  id: string, // old
-  name: string,
-  value: string,
+  id: string; // old
+  name: string;
+  value: string;
   properties?: {
-    tags: IDictionary<string>,
-  },
+    tags: IDictionary<string>;
+  };
 };
 
 function validateVaultUrl(vaultUrl: string) {
@@ -41,10 +41,15 @@ export function createFakeVaults() {
             return val;
           }
           throw jsonError(`Secret ${id} not found`, 404);
-        } ,
+        },
       };
     },
-    storeSecret: (vaultUrl: string, secretName: string, secretValue: string, tags: IDictionary<string>) => {
+    storeSecret: (
+      vaultUrl: string,
+      secretName: string,
+      secretValue: string,
+      tags: IDictionary<string>
+    ) => {
       validateVaultUrl(vaultUrl);
       const version = randomUUID();
       const id = `${vaultUrl}/secrets/${secretName}/${version}`;
@@ -61,6 +66,6 @@ export function createFakeVaults() {
       const latestId = `${vaultUrl}/secrets/${secretName}/latest`;
       storedSecrets.set(latestId, secret);
       return id;
-    }
-  }
+    },
+  };
 }

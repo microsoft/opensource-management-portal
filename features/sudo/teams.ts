@@ -5,7 +5,12 @@
 
 import { OrganizationSudo } from '.';
 import { Organization } from '../../business';
-import { IProviders, ICorporateLink, GitHubTeamRole, ITeamMembershipRoleState } from '../../interfaces';
+import {
+  IProviders,
+  ICorporateLink,
+  GitHubTeamRole,
+  ITeamMembershipRoleState,
+} from '../../interfaces';
 import { ErrorHelper } from '../../transitional';
 
 export class OrganizationSudoGitHubTeams extends OrganizationSudo {
@@ -36,11 +41,15 @@ export class OrganizationSudoGitHubTeams extends OrganizationSudo {
       }
       throw getMembershipError;
     }
-    const isKnownMembership = membership === GitHubTeamRole.Member || membership === GitHubTeamRole.Maintainer;
+    const isKnownMembership =
+      membership === GitHubTeamRole.Member ||
+      membership === GitHubTeamRole.Maintainer;
     if (membership && isKnownMembership) {
       return isKnownMembership;
     } else if (membership) {
-      throw new Error(`Cannot determine sudo status for ${githubLogin}, unrecognized membership type: ${membership}`);
+      throw new Error(
+        `Cannot determine sudo status for ${githubLogin}, unrecognized membership type: ${membership}`
+      );
     } else {
       return false;
     }
