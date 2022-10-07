@@ -8,19 +8,10 @@ import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
 import { getProviders } from '../transitional';
-import {
-  RequestWithSystemwidePermissions,
-  RequestTeamMemberAddType,
-} from '../interfaces';
-import {
-  ensureAllLinksInMemory,
-  getAllLinksFromRequest,
-} from '../middleware/business/allLinks';
+import { RequestWithSystemwidePermissions, RequestTeamMemberAddType } from '../interfaces';
+import { ensureAllLinksInMemory, getAllLinksFromRequest } from '../middleware/business/allLinks';
 
-import {
-  Operations,
-  ICrossOrganizationMembersResult,
-} from '../business/operations';
+import { Operations, ICrossOrganizationMembersResult } from '../business/operations';
 import { MemberSearch } from '../business';
 import { Team } from '../business';
 import { TeamMember } from '../business';
@@ -88,12 +79,9 @@ router.get(
     const linksFromMiddleware = getAllLinksFromRequest(req);
     const { operations } = getProviders(req);
     const org = req.organization ? req.organization.name : null;
-    const orgId = req.organization
-      ? (req.organization as Organization).id
-      : null;
+    const orgId = req.organization ? (req.organization as Organization).id : null;
     const isPortalSudoer =
-      req.systemWidePermissions &&
-      req.systemWidePermissions.allowAdministration === true;
+      req.systemWidePermissions && req.systemWidePermissions.allowAdministration === true;
     let twoFactor = req.query.twoFactor;
     const team2 = req.team2 as Team;
     let options: IOptionalFilter = {};
@@ -104,9 +92,7 @@ router.get(
       ? await getPeopleForOrganization(operations, org, options, team2)
       : await getPeopleAcrossOrganizations(operations, options, team2);
     const page = req.query.page_number ? Number(req.query.page_number) : 1;
-    const pageSize = req.query.pageSize
-      ? Number(req.query.pageSize)
-      : undefined;
+    const pageSize = req.query.pageSize ? Number(req.query.pageSize) : undefined;
     let phrase = req.query.q as string;
     let type = req.query.type as string;
     const validTypes = new Set([

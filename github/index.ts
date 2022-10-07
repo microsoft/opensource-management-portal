@@ -27,9 +27,7 @@ export const AllAvailableAppPurposes = [
   AppPurpose.Onboarding,
 ];
 
-export const GitHubAppPurposesExemptFromAllRepositoriesSelection = [
-  AppPurpose.Onboarding,
-];
+export const GitHubAppPurposesExemptFromAllRepositoriesSelection = [AppPurpose.Onboarding];
 
 export const AppPurposeToConfigurationName = {
   [AppPurpose.Data]: 'data',

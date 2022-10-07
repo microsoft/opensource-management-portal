@@ -24,9 +24,7 @@ function getPackageInfo(config) {
       ? config.npm.privateFeedScope
       : 'no-configured-private-feed-scope';
   for (var dependency in thisPackage.dependencies) {
-    var componentPackage = require('../node_modules/' +
-      dependency +
-      '/package.json');
+    var componentPackage = require('../node_modules/' + dependency + '/package.json');
     if (
       componentPackage &&
       componentPackage.name &&
@@ -48,10 +46,7 @@ router.get('/', function (req: ReposAppRequest, res) {
   res.render('thanks', {
     config: config,
     components: components,
-    serviceBanner:
-      config && config.serviceMessage
-        ? config.serviceMessage.banner
-        : undefined,
+    serviceBanner: config && config.serviceMessage ? config.serviceMessage.banner : undefined,
     title: 'Open Source Components',
   });
 });

@@ -75,11 +75,7 @@ export function createMailProviderInstance(config): IMailProvider {
     mailProvider = deployment.features.mailProvider.tryCreateInstance(config);
     if (mailProvider) {
       if (mailConfig.overrideRecipient) {
-        patchOverride(
-          mailProvider,
-          mailConfig.overrideRecipient,
-          mailProvider.html
-        );
+        patchOverride(mailProvider, mailConfig.overrideRecipient, mailProvider.html);
       }
       return mailProvider;
     }
@@ -107,11 +103,7 @@ export function createMailProviderInstance(config): IMailProvider {
     }
   }
   if (mailConfig.overrideRecipient) {
-    patchOverride(
-      mailProvider,
-      mailConfig.overrideRecipient,
-      mailProvider.html
-    );
+    patchOverride(mailProvider, mailConfig.overrideRecipient, mailProvider.html);
   }
   return mailProvider;
 }

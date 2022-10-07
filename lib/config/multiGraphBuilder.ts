@@ -40,8 +40,7 @@ async function composeGraphs(api: ILibraryOptions) {
       `libraryOptions has no environment property, environment-based configuration packages not available`
     );
   }
-  const additionalPackagesKey =
-    environment?.get('CONFIGURATION_PACKAGES_KEY') || 'CONFIGURATION_PACKAGES';
+  const additionalPackagesKey = environment?.get('CONFIGURATION_PACKAGES_KEY') || 'CONFIGURATION_PACKAGES';
   let configurationPackages = environment?.get(additionalPackagesKey) as string;
   if (configurationPackages) {
     const packages = configurationPackages.split(',');
@@ -59,10 +58,7 @@ async function composeGraphs(api: ILibraryOptions) {
   let graph = {};
   for (const p of paths.reverse()) {
     const result = await graphBuilder(api, p);
-    const overwriteMerge = (
-      destinationArray: any,
-      sourceArray: any /* , options*/
-    ) => sourceArray;
+    const overwriteMerge = (destinationArray: any, sourceArray: any /* , options*/) => sourceArray;
     graph = deepmerge(graph, result, { arrayMerge: overwriteMerge });
   }
   if (!graph || Object.getOwnPropertyNames(graph).length === 0) {
@@ -73,11 +69,7 @@ async function composeGraphs(api: ILibraryOptions) {
   return graph;
 }
 
-function addConfigPackages(
-  paths: string[],
-  applicationRoot: string,
-  painlessConfigObjects: string[]
-) {
+function addConfigPackages(paths: string[], applicationRoot: string, painlessConfigObjects: string[]) {
   for (let i = 0; i < painlessConfigObjects.length; i++) {
     addConfigPackage(paths, applicationRoot, painlessConfigObjects[i]);
   }
@@ -92,11 +84,7 @@ function getPackage(applicationRoot: string) {
   }
 }
 
-function addConfigPackage(
-  paths: string[],
-  applicationRoot: string,
-  npmName: string
-) {
+function addConfigPackage(paths: string[], applicationRoot: string, npmName: string) {
   let root = null;
   let packageInstance = null;
   npmName = npmName.trim();
@@ -129,9 +117,7 @@ function addConfigPackage(
         `While instantiating "${npmName}, the returned string value was not a valid path: ${root}`
       );
     } else {
-      throw new Error(
-        `Could not locate the local configuration directory for package "${npmName}": ${root}`
-      );
+      throw new Error(`Could not locate the local configuration directory for package "${npmName}": ${root}`);
     }
   }
 }
@@ -145,9 +131,7 @@ function addAppConfigDirectory(
   let directoryName = options.directoryName;
   let key = null;
   if (!directoryName && api.environment) {
-    key =
-      api.environment.get('CONFIGURATION_GRAPH_DIRECTORY_KEY') ||
-      'CONFIGURATION_GRAPH_DIRECTORY';
+    key = api.environment.get('CONFIGURATION_GRAPH_DIRECTORY_KEY') || 'CONFIGURATION_GRAPH_DIRECTORY';
     directoryName = api.environment.get(key);
   }
   if (!directoryName) {
@@ -158,9 +142,7 @@ function addAppConfigDirectory(
     fs.statSync(dirPath);
     paths.push(dirPath);
   } catch (notFound) {
-    const error: InnerError = new Error(
-      `The configuration graph directory ${dirPath} was not found. ${key}`
-    );
+    const error: InnerError = new Error(`The configuration graph directory ${dirPath} was not found. ${key}`);
     error.innerError = notFound;
     throw error;
   }

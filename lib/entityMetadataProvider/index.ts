@@ -4,14 +4,8 @@
 //
 
 import { IEntityMetadataProvider } from './entityMetadataProvider';
-import {
-  ITableEntityMetadataProviderOptions,
-  TableEntityMetadataProvider,
-} from './table';
-import {
-  IPostgresEntityMetadataProviderOptions,
-  PostgresEntityMetadataProvider,
-} from './postgres';
+import { ITableEntityMetadataProviderOptions, TableEntityMetadataProvider } from './table';
+import { IPostgresEntityMetadataProviderOptions, PostgresEntityMetadataProvider } from './postgres';
 import { MemoryEntityMetadataProvider } from './memory';
 
 export * from './entityMetadataProvider';

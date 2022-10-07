@@ -12,10 +12,7 @@ import { CompositeIntelligentEngine } from './composite';
 import { RestCollections } from './collections';
 import { CrossOrganizationCollator } from './crossOrganization';
 import { LinkMethods } from './links';
-import {
-  IGetAuthorizationHeader,
-  IAuthorizationHeaderValue,
-} from '../../interfaces';
+import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../interfaces';
 import { ICacheHelper } from '../caching';
 
 export enum CacheMode {
@@ -24,11 +21,7 @@ export enum CacheMode {
 }
 
 export interface IGitHubPostFunction {
-  (
-    awaitToken: IGetAuthorizationHeader,
-    api: string,
-    parameters: any
-  ): Promise<any>;
+  (awaitToken: IGetAuthorizationHeader, api: string, parameters: any): Promise<any>;
 }
 
 // With the introduction of a breaking change in the underlying schema, any cache objects
@@ -61,27 +54,18 @@ export class RestLibrary {
   constructor(options: IRestLibraryOptions) {
     const cacheProvider = options.cacheProvider;
     if (!cacheProvider) {
-      throw new Error(
-        'No Redis instance provided to the GitHub library context constructor.'
-      );
+      throw new Error('No Redis instance provided to the GitHub library context constructor.');
     }
     this.cacheProvider = cacheProvider;
 
     let config = options.config;
     if (!config) {
-      throw new Error(
-        'No runtime configuration instance provided to the library context constructor'
-      );
+      throw new Error('No runtime configuration instance provided to the library context constructor');
     }
 
     const nodeGithubVersion = `${githubPackage.name}/${githubPackage.version}`;
     let userAgent = nodeGithubVersion;
-    if (
-      config &&
-      config.github &&
-      config.github.library &&
-      config.github.library.userAgent
-    ) {
+    if (config && config.github && config.github.library && config.github.library.userAgent) {
       userAgent = config.github.library.userAgent;
     }
     let github = options.github;
@@ -94,10 +78,7 @@ export class RestLibrary {
     this.github = github;
 
     (this.defaultPageSize =
-      config &&
-      config.github &&
-      config.github.api &&
-      config.github.api.defaultPageSize
+      config && config.github && config.github.api && config.github.api.defaultPageSize
         ? config.github.api.defaultPageSize
         : 100),
       (this.breakingChangeGitHubPackageVersion = breakingChangeGitHubPackageVersion);
@@ -128,10 +109,7 @@ export class RestLibrary {
 
   get crossOrganization(): CrossOrganizationCollator {
     if (!this._crossOrganization) {
-      this._crossOrganization = new CrossOrganizationCollator(
-        this,
-        this.collections
-      );
+      this._crossOrganization = new CrossOrganizationCollator(this, this.collections);
     }
     return this._crossOrganization;
   }
@@ -139,10 +117,7 @@ export class RestLibrary {
   hasNextPage?: (any) => boolean;
 
   private async resolveAuthorizationHeader(
-    authorizationHeader:
-      | IGetAuthorizationHeader
-      | IAuthorizationHeaderValue
-      | string
+    authorizationHeader: IGetAuthorizationHeader | IAuthorizationHeaderValue | string
   ): Promise<string | IAuthorizationHeaderValue> {
     let authorizationValue = null;
     try {
@@ -150,15 +125,11 @@ export class RestLibrary {
         authorizationValue = authorizationHeader as string;
       } else if (typeof authorizationHeader === 'function') {
         let asFunc = authorizationHeader as IGetAuthorizationHeader;
-        let resolved = asFunc.call(null) as Promise<
-          IAuthorizationHeaderValue | string
-        >;
+        let resolved = asFunc.call(null) as Promise<IAuthorizationHeaderValue | string>;
         authorizationValue = await resolved;
         if (typeof resolved === 'function') {
           asFunc = resolved as IGetAuthorizationHeader;
-          resolved = asFunc.call(null) as Promise<
-            IAuthorizationHeaderValue | string
-          >;
+          resolved = asFunc.call(null) as Promise<IAuthorizationHeaderValue | string>;
           authorizationValue = await resolved;
         }
       } else if (authorizationHeader && authorizationHeader['value']) {
@@ -185,12 +156,7 @@ export class RestLibrary {
       delete options.allowEmptyResponse;
       massageData = (data) => data;
     }
-    const apiContext = restApi.createFullContext(
-      api,
-      options,
-      this.github,
-      this
-    );
+    const apiContext = restApi.createFullContext(api, options, this.github, this);
     // CONSIDER: technically, callApi can wait to resolve the token by passing it into the context as-is
     apiContext.overrideToken(await this.resolveAuthorizationHeader(awaitToken));
     if (cacheOptions.maxAgeSeconds) {
@@ -222,15 +188,8 @@ export class RestLibrary {
     return this.post(token, 'graphql', parameters);
   }
 
-  async post(
-    awaitToken: IGetAuthorizationHeader | string,
-    api: string,
-    options: any
-  ): Promise<any> {
-    const method = restApi.IntelligentGitHubEngine.findLibraryMethod(
-      this.github,
-      api
-    );
+  async post(awaitToken: IGetAuthorizationHeader | string, api: string, options: any): Promise<any> {
+    const method = restApi.IntelligentGitHubEngine.findLibraryMethod(this.github, api);
     if (!options.headers) {
       options.headers = {};
     }
@@ -243,29 +202,19 @@ export class RestLibrary {
     if (!options.headers.authorization) {
       const value = await this.resolveAuthorizationHeader(awaitToken);
       options.headers.authorization =
-        typeof value === 'string'
-          ? (value as string)
-          : (value as IAuthorizationHeaderValue).value;
+        typeof value === 'string' ? (value as string) : (value as IAuthorizationHeaderValue).value;
     }
     try {
       let value = null;
       if (api === 'request' && options.octokitRequest) {
         const endpoint = options.octokitRequest;
         delete options.octokitRequest;
-        value = (await method.call(
-          this.github,
-          endpoint,
-          options
-        )) as Promise<any>;
+        value = (await method.call(this.github, endpoint, options)) as Promise<any>;
       } else if (api === 'graphql') {
         massageData = noDataMassage;
         const query = options.octokitQuery;
         delete options.octokitQuery;
-        value = (await method.call(
-          this.github,
-          query,
-          options
-        )) as Promise<any>;
+        value = (await method.call(this.github, query, options)) as Promise<any>;
       } else {
         value = (await method.call(this.github, options)) as Promise<any>;
       }
@@ -277,14 +226,10 @@ export class RestLibrary {
         console.log(`Status: ${error.status}`);
       }
       if (error?.response?.headers['x-github-request-id']) {
-        console.log(
-          `Request ID: ${error.response.headers['x-github-request-id']}`
-        );
+        console.log(`Request ID: ${error.response.headers['x-github-request-id']}`);
       }
       if (error?.response?.headers['x-ratelimit-remaining']) {
-        console.log(
-          `Rate limit remaining: ${error.response.headers['x-ratelimit-remaining']}`
-        );
+        console.log(`Rate limit remaining: ${error.response.headers['x-ratelimit-remaining']}`);
       }
       if (error.request) {
         console.dir(error.request);

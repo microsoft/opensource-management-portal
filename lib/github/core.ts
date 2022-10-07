@@ -82,9 +82,7 @@ export interface IRestResponse {
   notModified?: boolean;
 }
 
-export interface IIntelligentCacheResponseArray
-  extends Array<any>,
-    IRestResponse {}
+export interface IIntelligentCacheResponseArray extends Array<any>, IRestResponse {}
 
 export interface IShouldServeCache {
   cache?: boolean;
@@ -157,30 +155,16 @@ export abstract class IntelligentEngine {
     return aspect ? `:${aspect}` : '';
   }
 
-  public static redisKeyForApi(
-    apiPrefix: string,
-    api: string,
-    apiOptions,
-    aspect?: string
-  ) {
+  public static redisKeyForApi(apiPrefix: string, api: string, apiOptions, aspect?: string) {
     const normalizedOptions = normalizedOptionsString(apiOptions);
     const aspectSuffix = IntelligentEngine.redisKeyAspectSuffix(aspect);
     return `${apiPrefix}${api}${normalizedOptions}${aspectSuffix}`;
   }
 
   // was in api context:
-  abstract processMetadataBeforeCall(
-    apiContext: ApiContext,
-    metadata: IRestMetadata
-  ): IRestMetadata;
-  abstract callApi(
-    apiContext: ApiContext,
-    optionalMessage?: string
-  ): Promise<IRestResponse>;
-  abstract withResponseUpdateMetadata(
-    apiContext: ApiContext,
-    response: IRestResponse
-  ): IRestResponse;
+  abstract processMetadataBeforeCall(apiContext: ApiContext, metadata: IRestMetadata): IRestMetadata;
+  abstract callApi(apiContext: ApiContext, optionalMessage?: string): Promise<IRestResponse>;
+  abstract withResponseUpdateMetadata(apiContext: ApiContext, response: IRestResponse): IRestResponse;
 
   abstract withResponseShouldCacheBeServed(
     apiContext: ApiContext,
@@ -190,23 +174,11 @@ export abstract class IntelligentEngine {
     apiContext: ApiContext,
     metadata: IRestMetadata
   ): boolean | IShouldServeCache;
-  abstract reduceMetadataToCacheFromResponse(
-    apiContext: ApiContext,
-    response: IRestResponse
-  ): IRestMetadata;
-  abstract getResponseMetadata(
-    apiContext: ApiContext,
-    response: IRestResponse
-  ): IRestMetadata;
-  abstract optionalStripResponse(
-    apiContext: ApiContext,
-    response: IRestResponse
-  ): IRestResponse;
+  abstract reduceMetadataToCacheFromResponse(apiContext: ApiContext, response: IRestResponse): IRestMetadata;
+  abstract getResponseMetadata(apiContext: ApiContext, response: IRestResponse): IRestMetadata;
+  abstract optionalStripResponse(apiContext: ApiContext, response: IRestResponse): IRestResponse;
 
-  protected async cacheResponseAsync(
-    apiContext: ApiContext,
-    response: IRestResponse
-  ) {
+  protected async cacheResponseAsync(apiContext: ApiContext, response: IRestResponse) {
     const backgroundAsyncWork = async () => {
       try {
         await this.storeResult(apiContext, response);
@@ -223,10 +195,7 @@ export abstract class IntelligentEngine {
     return this.finalizeResult(apiContext, response);
   }
 
-  protected finalizeResult(
-    apiContext: ApiContext,
-    response: IRestResponse
-  ): IRestResponse {
+  protected finalizeResult(apiContext: ApiContext, response: IRestResponse): IRestResponse {
     if (!response || !response.data) {
       // This was a warning in the past, but to try and improve the underlying library, this should be an error
       if (response.headers.av) {
@@ -247,13 +216,9 @@ export abstract class IntelligentEngine {
     return response;
   }
 
-  protected async tryGetCachedResult(
-    apiContext: ApiContext
-  ): Promise<IRestResponse> {
+  protected async tryGetCachedResult(apiContext: ApiContext): Promise<IRestResponse> {
     const key = this.redisKeyBodyVersion(apiContext);
-    let response = (await apiContext.libraryContext.cacheProvider.getObjectCompressed(
-      key
-    )) as IRestResponse;
+    let response = (await apiContext.libraryContext.cacheProvider.getObjectCompressed(key)) as IRestResponse;
     this.recordRedisCost(apiContext, 'get', response);
     return response;
   }
@@ -266,11 +231,7 @@ export abstract class IntelligentEngine {
     let result = await this.tryGetCachedResult(apiContext);
     if (result && result.data) {
       // use the context metadata over any headers in the stored response, + any headers from 304
-      result.headers = Object.assign(
-        {},
-        notModifiedHeaders || {},
-        apiContext.metadata
-      );
+      result.headers = Object.assign({}, notModifiedHeaders || {}, apiContext.metadata);
       if (optionalCacheDecisions && optionalCacheDecisions.refresh === true) {
         // NOTE: this kicks off the refresh and so does not await
         debug('Starting a background refresh');
@@ -305,10 +266,7 @@ export abstract class IntelligentEngine {
     return response;
   }
 
-  protected async backgroundRefreshAsync(
-    apiContext: ApiContext,
-    currentMetadata
-  ): Promise<void> {
+  protected async backgroundRefreshAsync(apiContext: ApiContext, currentMetadata): Promise<void> {
     // Potential data loss/consistency problem: upsert/overwrite
     try {
       let refreshing = moment().utc().format();
@@ -350,10 +308,7 @@ export abstract class IntelligentEngine {
     apiContext: ApiContext,
     response: IRestResponse
   ): Promise<void> {
-    if (
-      !apiContext.etag ||
-      (apiContext.etag && apiContext.etag === response.headers.etag)
-    ) {
+    if (!apiContext.etag || (apiContext.etag && apiContext.etag === response.headers.etag)) {
       return;
     }
     debug('Expiring older cached response');
@@ -373,19 +328,12 @@ export abstract class IntelligentEngine {
     await apiContext.libraryContext.cacheProvider.delete(key);
   }
 
-  protected async slideObjectExpirationWindow(
-    apiContext: ApiContext
-  ): Promise<void> {
+  protected async slideObjectExpirationWindow(apiContext: ApiContext): Promise<void> {
     if (!apiContext.etag) {
       debug('Could not slide the window, no etag stored in the context.');
       return;
     }
-    debug(
-      `Sliding expiration window for ${this.redisKeyBodyVersion(
-        apiContext,
-        apiContext.etag
-      )}`
-    );
+    debug(`Sliding expiration window for ${this.redisKeyBodyVersion(apiContext, apiContext.etag)}`);
     const cost = await apiContext.libraryContext.cacheProvider.expire(
       this.redisKeyBodyVersion(apiContext, apiContext.etag),
       apiContext.cacheValues.longtermResponse
@@ -393,14 +341,8 @@ export abstract class IntelligentEngine {
     this.recordRedisCost(apiContext, 'expire', cost);
   }
 
-  protected async storeMetadata(
-    apiContext: ApiContext,
-    response: IRestResponse
-  ): Promise<void> {
-    const reducedMetadata = this.reduceMetadataToCacheFromResponse(
-      apiContext,
-      response
-    );
+  protected async storeMetadata(apiContext: ApiContext, response: IRestResponse): Promise<void> {
+    const reducedMetadata = this.reduceMetadataToCacheFromResponse(apiContext, response);
     const cost = await apiContext.libraryContext.cacheProvider.setObjectWithExpire(
       apiContext.redisKey.metadata,
       reducedMetadata,
@@ -409,10 +351,7 @@ export abstract class IntelligentEngine {
     this.recordRedisCost(apiContext, 'set', cost);
   }
 
-  protected async storeResult(
-    apiContext: ApiContext,
-    response: IRestResponse
-  ): Promise<void> {
+  protected async storeResult(apiContext: ApiContext, response: IRestResponse): Promise<void> {
     let key = null;
     try {
       key = this.redisKeyBodyVersion(apiContext, response.headers.etag);
@@ -430,25 +369,17 @@ export abstract class IntelligentEngine {
   protected redisKeyBodyVersion(apiContext: ApiContext, etag?: string): string {
     const tag = etag || apiContext.etag;
     if (!tag) {
-      throw new Error(
-        'A cached result cannot be retrieved without an etag value.'
-      );
+      throw new Error('A cached result cannot be retrieved without an etag value.');
     }
     const strippedTag = tag.replace(/"/g, '');
     const root = apiContext.redisKey.root;
     if (!root) {
-      throw new Error(
-        'No Redis key root provided in API context apiContext.redisKey.root'
-      );
+      throw new Error('No Redis key root provided in API context apiContext.redisKey.root');
     }
     return root + IntelligentEngine.redisKeyAspectSuffix(`body@${strippedTag}`);
   }
 
-  protected recordRedisCost(
-    apiContext: ApiContext,
-    type: string,
-    object: any
-  ): any {
+  protected recordRedisCost(apiContext: ApiContext, type: string, object: any): any {
     if (!type) {
       throw new Error('No type defined for recordRedisCost.');
     }
@@ -458,9 +389,7 @@ export abstract class IntelligentEngine {
       apiContext.cost.redis.cacheMisses += hit ? 0 : 1;
     }
     if (type !== 'get' && type !== 'set' && type !== 'expire') {
-      throw new Error(
-        `The Redis type of ${type} is not configured for storing API costs.`
-      );
+      throw new Error(`The Redis type of ${type} is not configured for storing API costs.`);
     }
     apiContext.cost.redis[`${type}Calls`] += 1;
     return object;
@@ -469,15 +398,11 @@ export abstract class IntelligentEngine {
   public async execute(apiContext: ApiContext): Promise<IRestResponse> {
     let metadata = await this.getCachedMetadata(apiContext);
     metadata = this.processMetadataBeforeCall(apiContext, metadata);
-    const shouldCacheBeServedImmediately:
-      | boolean
-      | IShouldServeCache = this.withMetadataShouldCacheBeServed(
+    const shouldCacheBeServedImmediately: boolean | IShouldServeCache = this.withMetadataShouldCacheBeServed(
       apiContext,
       metadata
     );
-    const displayKey = apiContext.redisKey
-      ? apiContext.redisKey.root + ' '
-      : '';
+    const displayKey = apiContext.redisKey ? apiContext.redisKey.root + ' ' : '';
     if (
       shouldCacheBeServedImmediately === true ||
       (shouldCacheBeServedImmediately as IShouldServeCache).cache === true
@@ -485,17 +410,13 @@ export abstract class IntelligentEngine {
       debug('Cache should be served immediately.');
       if (metadata) {
         const innerMessage =
-          shouldCacheBeServedImmediately &&
-          (shouldCacheBeServedImmediately as IShouldServeCache).remaining
+          shouldCacheBeServedImmediately && (shouldCacheBeServedImmediately as IShouldServeCache).remaining
             ? (shouldCacheBeServedImmediately as IShouldServeCache).remaining
             : '';
         debug(`Cache ${displayKey}data: ${innerMessage}`);
       }
       ++apiContext.cost.github.cacheHits;
-      const cachedResponse = await this.getCachedResult(
-        apiContext,
-        shouldCacheBeServedImmediately
-      );
+      const cachedResponse = await this.getCachedResult(apiContext, shouldCacheBeServedImmediately);
       debug('Retrieved a cached response.');
       return cachedResponse;
     }
@@ -506,10 +427,7 @@ export abstract class IntelligentEngine {
     debug('Directly calling the function or REST API');
     let response: IRestResponse = undefined;
     try {
-      response = (await this.callApi(
-        apiContext,
-        `GET:               ${displayKey}`
-      )) as IRestResponse;
+      response = (await this.callApi(apiContext, `GET:               ${displayKey}`)) as IRestResponse;
     } catch (error) {
       if (error && error.status && error.status === 304) {
         const liveHeaders = error.response?.headers || {};
@@ -520,11 +438,7 @@ export abstract class IntelligentEngine {
             headers[key] = liveHeaders[key];
           }
         }
-        const notModifiedResponse = {
-          data: undefined,
-          headers,
-          notModified: true,
-        };
+        const notModifiedResponse = { data: undefined, headers, notModified: true };
         response = notModifiedResponse;
       } else {
         throw error;
@@ -534,15 +448,9 @@ export abstract class IntelligentEngine {
     return response;
   }
 
-  private async processResponse(
-    apiContext: ApiContext,
-    response: IRestResponse
-  ): Promise<IRestResponse> {
+  private async processResponse(apiContext: ApiContext, response: IRestResponse): Promise<IRestResponse> {
     this.withResponseUpdateMetadata(apiContext, response);
-    const isCacheOk = this.withResponseShouldCacheBeServed(
-      apiContext,
-      response
-    );
+    const isCacheOk = this.withResponseShouldCacheBeServed(apiContext, response);
     if (isCacheOk === true) {
       ++apiContext.cost.github.cacheHits;
       debug('Cache is OK to retrieve and serve');
@@ -562,9 +470,7 @@ export abstract class IntelligentEngine {
     }
   }
 
-  private async getCachedMetadata(
-    apiContext: ApiContext
-  ): Promise<IRestMetadata> {
+  private async getCachedMetadata(apiContext: ApiContext): Promise<IRestMetadata> {
     if (apiContext.metadata || apiContext.etag) {
       debug('Shortcut: apiContext.metadata or apiContext.etag are set');
       return;
@@ -608,11 +514,7 @@ function normalizedOptionsString(options) {
     }
     if (typeOf === 'object') {
       value = normalizedOptionsString(value);
-    } else if (
-      typeOf !== 'string' &&
-      typeOf !== 'number' &&
-      typeOf !== 'boolean'
-    ) {
+    } else if (typeOf !== 'string' && typeOf !== 'number' && typeOf !== 'boolean') {
       throw new Error(`Normalized option ${key} is not a string`);
     }
     if (typeOf === 'boolean') {
@@ -666,9 +568,7 @@ export function createCallbackFlattenDataOptionally(callback) {
 export function createCallbackFlattenData(callback) {
   return function callbackFlatEntityFromData(error, entity) {
     if (!error && entity && !entity.data) {
-      error = new Error(
-        'No entity.data present in the result, cannot flatten the object'
-      );
+      error = new Error('No entity.data present in the result, cannot flatten the object');
     }
     if (!error) {
       try {

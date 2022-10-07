@@ -73,11 +73,7 @@ export interface IGraphProvider {
   getToken(): Promise<string>;
 }
 
-export function CreateGraphProviderInstance(
-  providers: IProviders,
-  config: any,
-  callback
-) {
+export function CreateGraphProviderInstance(providers: IProviders, config: any, callback) {
   const activeDirectoryConfig = config.activeDirectory;
   const graphConfig = Object.assign(
     {
@@ -110,9 +106,7 @@ export function CreateGraphProviderInstance(
 
   if (!providerInstance) {
     return callback(
-      new Error(
-        `The graph provider "${provider}" is not implemented or configured at this time.`
-      )
+      new Error(`The graph provider "${provider}" is not implemented or configured at this time.`)
     );
   }
 

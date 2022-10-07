@@ -25,8 +25,7 @@ router.get(
   '/',
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     const { organization } = req;
-    const activeContext = (req.individualContext ||
-      req.apiContext) as IndividualContext;
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
       return res.json(false);
     }
@@ -49,16 +48,12 @@ router.get(
   '/sudo',
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     const { organization } = req;
-    const activeContext = (req.individualContext ||
-      req.apiContext) as IndividualContext;
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
       return res.json({ isSudoer: false });
     }
     return res.json({
-      isSudoer: await organization.isSudoer(
-        activeContext.getGitHubIdentity().username,
-        activeContext.link
-      ),
+      isSudoer: await organization.isSudoer(activeContext.getGitHubIdentity().username, activeContext.link),
     });
   })
 );
@@ -67,16 +62,14 @@ router.get(
   '/isOwner',
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     const { organization } = req;
-    const activeContext = (req.individualContext ||
-      req.apiContext) as IndividualContext;
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
       return res.json({ isOrganizationOwner: false });
     }
     try {
       const username = activeContext.getGitHubIdentity().username;
       const membership = await organization.getOperationalMembership(username);
-      const isOrganizationOwner =
-        membership?.role === OrganizationMembershipRole.Admin;
+      const isOrganizationOwner = membership?.role === OrganizationMembershipRole.Admin;
       return res.json({
         isOrganizationOwner,
       });
@@ -91,8 +84,7 @@ router.delete(
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     // "Leave" / remove my context
     const { organization } = req;
-    const activeContext = (req.individualContext ||
-      req.apiContext) as IndividualContext;
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
       return next(jsonError('You are not linked', 400));
     }
@@ -115,8 +107,7 @@ router.get(
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     try {
       const organization = req.organization as Organization;
-      const activeContext = (req.individualContext ||
-        req.apiContext) as IndividualContext;
+      const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
       if (!activeContext.link) {
         return res.json({ personalizedTeams: [] });
       }
@@ -127,25 +118,17 @@ router.get(
         organization,
         await userAggregateContext.teams()
       );
-      userTeams.maintainer.map((maintainedTeam) =>
-        maintainedTeams.add(maintainedTeam.id.toString())
-      );
+      userTeams.maintainer.map((maintainedTeam) => maintainedTeams.add(maintainedTeam.id.toString()));
       const combinedTeams = new Map<string, Team>();
-      userTeams.maintainer.map((team) =>
-        combinedTeams.set(team.id.toString(), team)
-      );
-      userTeams.member.map((team) =>
-        combinedTeams.set(team.id.toString(), team)
-      );
-      const personalizedTeams = Array.from(combinedTeams.values()).map(
-        (combinedTeam) => {
-          const entry = combinedTeam.asJson(TeamJsonFormat.Augmented);
-          entry.role = maintainedTeams.has(combinedTeam.id.toString())
-            ? GitHubTeamRole.Maintainer
-            : GitHubTeamRole.Member;
-          return entry;
-        }
-      );
+      userTeams.maintainer.map((team) => combinedTeams.set(team.id.toString(), team));
+      userTeams.member.map((team) => combinedTeams.set(team.id.toString(), team));
+      const personalizedTeams = Array.from(combinedTeams.values()).map((combinedTeam) => {
+        const entry = combinedTeam.asJson(TeamJsonFormat.Augmented);
+        entry.role = maintainedTeams.has(combinedTeam.id.toString())
+          ? GitHubTeamRole.Maintainer
+          : GitHubTeamRole.Member;
+        return entry;
+      });
       return res.json({
         personalizedTeams,
       });
@@ -163,9 +146,7 @@ deployment?.routes?.api?.context?.organization?.index &&
   deployment?.routes?.api?.context?.organization?.index(router);
 
 router.use('*', (req, res, next) => {
-  return next(
-    jsonError('no API or function available: client>organization', 404)
-  );
+  return next(jsonError('no API or function available: client>organization', 404));
 });
 
 const toSanitizedUser = (user) => {

@@ -5,10 +5,7 @@
 
 import { EntityField } from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
-import {
-  IEntityMetadataFixedQuery,
-  FixedQueryType,
-} from '../../lib/entityMetadataProvider/query';
+import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
@@ -179,31 +176,19 @@ export class RepositoryMetadataEntity implements IRepositoryMetadataProperties {
   }
 }
 
-export class RepositoryMetadataFixedQueryAll
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.AllRepositoryMetadata;
+export class RepositoryMetadataFixedQueryAll implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.AllRepositoryMetadata;
 }
 
-export class RepositoryMetadataFixedQueryByRepositoryId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.RepositoryMetadataByRepositoryId;
+export class RepositoryMetadataFixedQueryByRepositoryId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryMetadataByRepositoryId;
   constructor(public repositoryId: string) {}
 }
 
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityInstantiate,
-  () => {
-    return new RepositoryMetadataEntity();
-  }
-);
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityIdColumnName,
-  repositoryId
-);
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => {
+  return new RepositoryMetadataEntity();
+});
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, repositoryId);
 EntityMetadataMappings.Register(type, TableSettings.TableNoPointQueries, true);
 EntityMetadataMappings.Register(
   type,
@@ -213,21 +198,9 @@ EntityMetadataMappings.Register(
     [azureTableRowKey, EntityField.ID], // to still point at the row
   ])
 );
-EntityMetadataMappings.Register(
-  type,
-  TableSettings.TableDefaultTableName,
-  'pending'
-);
-EntityMetadataMappings.Register(
-  type,
-  TableSettings.TableDefaultFixedPartitionKey,
-  'pk'
-);
-EntityMetadataMappings.Register(
-  type,
-  TableSettings.TableNoPointQueryAlternateIdFieldName,
-  azureTableRowKey
-);
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultTableName, 'pending');
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKey, 'pk');
+EntityMetadataMappings.Register(type, TableSettings.TableNoPointQueryAlternateIdFieldName, azureTableRowKey);
 EntityMetadataMappings.Register(
   type,
   TableSettings.TableSpecializedDeserializationHelper,
@@ -236,14 +209,10 @@ EntityMetadataMappings.Register(
     object: RepositoryMetadataEntity
   ) {
     if (!Array.isArray(object.initialTeamPermissions)) {
-      throw new Error(
-        'RepositoryMetadataEntity.initialTeamPermissions must be an initialized array'
-      );
+      throw new Error('RepositoryMetadataEntity.initialTeamPermissions must be an initialized array');
     }
     if (!Array.isArray(object.initialAdministrators)) {
-      throw new Error(
-        'RepositoryMetadataEntity.initialAdministrators must be an initialized array'
-      );
+      throw new Error('RepositoryMetadataEntity.initialAdministrators must be an initialized array');
     }
     if (entity['teamsCount'] && !isNaN(entity['teamsCount'])) {
       const teamsCount = parseInt(entity['teamsCount'], 10);
@@ -266,10 +235,7 @@ EntityMetadataMappings.Register(
 EntityMetadataMappings.Register(
   type,
   TableSettings.TableSpecializedSerializationHelper,
-  function tableRepoMetadataSpecializedSerializer(
-    entity: IEntityMetadata,
-    object: RepositoryMetadataEntity
-  ) {
+  function tableRepoMetadataSpecializedSerializer(entity: IEntityMetadata, object: RepositoryMetadataEntity) {
     entity['tickettype'] = 'repo';
     entity['teamsCount'] = object.initialTeamPermissions.length.toString();
     for (let i = 0; i < object.initialTeamPermissions.length; i++) {
@@ -320,15 +286,8 @@ EntityMetadataMappings.Register(
     [Field.transferSource, Field.transferSource.toLowerCase()],
   ])
 );
-EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [
-  Field.created,
-]);
-EntityMetadataMappings.RuntimeValidateMappings(
-  type,
-  TableSettings.TableMapping,
-  fieldNames,
-  [repositoryId]
-);
+EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [Field.created]);
+EntityMetadataMappings.RuntimeValidateMappings(type, TableSettings.TableMapping, fieldNames, [repositoryId]);
 
 EntityMetadataMappings.Register(
   type,
@@ -370,43 +329,21 @@ EntityMetadataMappings.Register(
     [Field.transferSource, Field.transferSource.toLowerCase()],
   ])
 );
-EntityMetadataMappings.RuntimeValidateMappings(
-  type,
-  MemorySettings.MemoryMapping,
-  fieldNames,
-  [repositoryId]
-);
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, [
+  repositoryId,
+]);
 
 PostgresConfiguration.SetDefaultTableName(type, 'repositorymetadata');
-EntityMetadataMappings.Register(
-  type,
-  PostgresSettings.PostgresDefaultTypeColumnName,
-  'repository'
-);
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'repository');
 PostgresConfiguration.MapFieldsToColumnNames(
   type,
   new Map<string, string>([
-    [
-      Field.createdByThirdPartyId,
-      (Field.createdByThirdPartyId as string).toLowerCase(),
-    ],
-    [
-      Field.createdByThirdPartyUsername,
-      (Field.createdByThirdPartyUsername as string).toLowerCase(),
-    ],
+    [Field.createdByThirdPartyId, (Field.createdByThirdPartyId as string).toLowerCase()],
+    [Field.createdByThirdPartyUsername, (Field.createdByThirdPartyUsername as string).toLowerCase()],
 
-    [
-      Field.createdByCorporateDisplayName,
-      (Field.createdByCorporateDisplayName as string).toLowerCase(),
-    ],
-    [
-      Field.createdByCorporateId,
-      (Field.createdByCorporateId as string).toLowerCase(),
-    ],
-    [
-      Field.createdByCorporateUsername,
-      (Field.createdByCorporateUsername as string).toLowerCase(),
-    ],
+    [Field.createdByCorporateDisplayName, (Field.createdByCorporateDisplayName as string).toLowerCase()],
+    [Field.createdByCorporateId, (Field.createdByCorporateId as string).toLowerCase()],
+    [Field.createdByCorporateUsername, (Field.createdByCorporateUsername as string).toLowerCase()],
 
     [Field.created, (Field.created as string).toLowerCase()],
 
@@ -416,48 +353,21 @@ PostgresConfiguration.MapFieldsToColumnNames(
     [Field.repositoryName, (Field.repositoryName as string).toLowerCase()],
     // [repositoryId, azureTableRepositoryIdField], // in table, RowKey is not the repo ID
 
-    [
-      Field.initialTeamPermissions,
-      (Field.initialTeamPermissions as string).toLowerCase(),
-    ], // special processing case
-    [
-      Field.initialAdministrators,
-      (Field.initialAdministrators as string).toLowerCase(),
-    ], // special processing case
+    [Field.initialTeamPermissions, (Field.initialTeamPermissions as string).toLowerCase()], // special processing case
+    [Field.initialAdministrators, (Field.initialAdministrators as string).toLowerCase()], // special processing case
 
-    [
-      Field.initialRepositoryDescription,
-      (Field.initialRepositoryDescription as string).toLowerCase(),
-    ],
-    [
-      Field.initialRepositoryVisibility,
-      (Field.initialRepositoryVisibility as string).toLowerCase(),
-    ],
-    [
-      Field.initialRepositoryHomepage,
-      (Field.initialRepositoryHomepage as string).toLowerCase(),
-    ],
+    [Field.initialRepositoryDescription, (Field.initialRepositoryDescription as string).toLowerCase()],
+    [Field.initialRepositoryVisibility, (Field.initialRepositoryVisibility as string).toLowerCase()],
+    [Field.initialRepositoryHomepage, (Field.initialRepositoryHomepage as string).toLowerCase()],
 
     [Field.initialLicense, (Field.initialLicense as string).toLowerCase()],
     [Field.initialTemplate, (Field.initialTemplate as string).toLowerCase()],
-    [
-      Field.initialGitIgnoreTemplate,
-      (Field.initialGitIgnoreTemplate as string).toLowerCase(),
-    ],
-    [
-      Field.initialCorrelationId,
-      (Field.initialCorrelationId as string).toLowerCase(),
-    ],
+    [Field.initialGitIgnoreTemplate, (Field.initialGitIgnoreTemplate as string).toLowerCase()],
+    [Field.initialCorrelationId, (Field.initialCorrelationId as string).toLowerCase()],
 
     [Field.projectType, (Field.projectType as string).toLowerCase()],
-    [
-      Field.releaseReviewJustification,
-      (Field.releaseReviewJustification as string).toLowerCase(),
-    ],
-    [
-      Field.releaseReviewType,
-      (Field.releaseReviewType as string).toLowerCase(),
-    ],
+    [Field.releaseReviewJustification, (Field.releaseReviewJustification as string).toLowerCase()],
+    [Field.releaseReviewType, (Field.releaseReviewType as string).toLowerCase()],
     [Field.releaseReviewUrl, (Field.releaseReviewUrl as string).toLowerCase()],
 
     [Field.lockdownState, Field.lockdownState.toLowerCase()],
@@ -477,9 +387,7 @@ EntityMetadataMappings.Register(
         } as TableEntityQueryOptions;
       }
       case FixedQueryType.RepositoryMetadataByRepositoryId: {
-        const {
-          repositoryId,
-        } = query as RepositoryMetadataFixedQueryByRepositoryId;
+        const { repositoryId } = query as RepositoryMetadataFixedQueryByRepositoryId;
         if (!repositoryId) {
           throw new Error('repositoryId required');
         }
@@ -514,26 +422,14 @@ EntityMetadataMappings.Register(
     const entityTypeValue = getEntityTypeColumnValue(type);
     switch (query.fixedQueryType) {
       case FixedQueryType.AllRepositoryMetadata: {
-        return PostgresGetAllEntities(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue
-        );
+        return PostgresGetAllEntities(tableName, entityTypeColumn, entityTypeValue);
       }
       case FixedQueryType.RepositoryMetadataByRepositoryId: {
-        const {
-          repositoryId,
-        } = query as RepositoryMetadataFixedQueryByRepositoryId;
+        const { repositoryId } = query as RepositoryMetadataFixedQueryByRepositoryId;
         if (!repositoryId) {
           throw new Error('repositoryId required');
         }
-        return PostgresGetByID(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue,
-          entityIDColumn,
-          repositoryId
-        );
+        return PostgresGetByID(tableName, entityTypeColumn, entityTypeValue, entityIDColumn, repositoryId);
       }
       default:
         throw new Error(
@@ -552,9 +448,7 @@ EntityMetadataMappings.Register(
         return allInTypeBin;
 
       case FixedQueryType.RepositoryMetadataByRepositoryId:
-        const {
-          repositoryId,
-        } = query as RepositoryMetadataFixedQueryByRepositoryId;
+        const { repositoryId } = query as RepositoryMetadataFixedQueryByRepositoryId;
         if (!repositoryId) {
           throw new Error('repositoryId required');
         }

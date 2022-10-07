@@ -33,13 +33,7 @@ import RouteLocals from './locals';
 import RoutePassport from './passport-routes';
 import { IProviders } from '../interfaces';
 
-export default function initMiddleware(
-  app,
-  express,
-  config,
-  dirname,
-  initializationError
-) {
+export default function initMiddleware(app, express, config, dirname, initializationError) {
   config = config || {};
   const appDirectory =
     config && config.typescript && config.typescript.appDirectory
@@ -126,10 +120,7 @@ export default function initMiddleware(
     if (!initializationError) {
       if (applicationProfile.sessions) {
         RoutePassport(app, passport, config);
-        if (
-          config.github.organizations.onboarding &&
-          config.github.organizations.onboarding.length
-        ) {
+        if (config.github.organizations.onboarding && config.github.organizations.onboarding.length) {
           debug('Onboarding helper loaded');
           Onboard(app, config);
         }

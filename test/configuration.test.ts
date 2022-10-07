@@ -23,11 +23,7 @@ async function createFakeWithKeys() {
 describe('configuration', () => {
   describe('keyVaultHelper', () => {
     it('non-URL values passthrough', async () => {
-      const {
-        keyVaultClient,
-        secretId,
-        keyVaultResolver,
-      } = await createFakeWithKeys();
+      const { keyVaultClient, secretId, keyVaultResolver } = await createFakeWithKeys();
       const config = {
         a: 'animal',
         b: 'bat',
@@ -44,15 +40,8 @@ describe('configuration', () => {
     });
 
     it('keyvault:// protocol works', async () => {
-      const {
-        keyVaultClient,
-        secretId,
-        keyVaultResolver,
-      } = await createFakeWithKeys();
-      const keyVaultSchemeSecretId = secretId.replace(
-        'https://',
-        'keyvault://'
-      );
+      const { keyVaultClient, secretId, keyVaultResolver } = await createFakeWithKeys();
+      const keyVaultSchemeSecretId = secretId.replace('https://', 'keyvault://');
       const config = {
         bigPasscode: keyVaultSchemeSecretId,
       };
@@ -61,15 +50,8 @@ describe('configuration', () => {
     });
 
     it('deeply nested KeyVault URLs work', async () => {
-      const {
-        keyVaultClient,
-        secretId,
-        keyVaultResolver,
-      } = await createFakeWithKeys();
-      const keyVaultSchemeSecretId = secretId.replace(
-        'https://',
-        'keyvault://'
-      );
+      const { keyVaultClient, secretId, keyVaultResolver } = await createFakeWithKeys();
+      const keyVaultSchemeSecretId = secretId.replace('https://', 'keyvault://');
       const config = {
         deep: {
           object: {
@@ -88,19 +70,9 @@ describe('configuration', () => {
     });
 
     it('keyvault:// tag properties work', async () => {
-      const {
-        keyVaultClient,
-        secretId,
-        keyVaultResolver,
-      } = await createFakeWithKeys();
-      const keyVaultSchemeSecretId = secretId.replace(
-        'https://',
-        'keyvault://'
-      );
-      const keyVaultSchemeSecretIdWithTag = secretId.replace(
-        'https://',
-        'keyvault://tag1@'
-      );
+      const { keyVaultClient, secretId, keyVaultResolver } = await createFakeWithKeys();
+      const keyVaultSchemeSecretId = secretId.replace('https://', 'keyvault://');
+      const keyVaultSchemeSecretIdWithTag = secretId.replace('https://', 'keyvault://tag1@');
       const config = {
         taggedProperty: keyVaultSchemeSecretIdWithTag,
         kvProperty: keyVaultSchemeSecretId,
@@ -112,15 +84,8 @@ describe('configuration', () => {
     });
 
     it('keyvault:// tag properties return undefined if missing', async () => {
-      const {
-        keyVaultClient,
-        secretId,
-        keyVaultResolver,
-      } = await createFakeWithKeys();
-      const keyVaultSchemeSecretIdWithTag = secretId.replace(
-        'https://',
-        'keyvault://undefinedtagthing@'
-      );
+      const { keyVaultClient, secretId, keyVaultResolver } = await createFakeWithKeys();
+      const keyVaultSchemeSecretIdWithTag = secretId.replace('https://', 'keyvault://undefinedtagthing@');
       const config = {
         taggedProperty: keyVaultSchemeSecretIdWithTag,
       };
@@ -129,11 +94,7 @@ describe('configuration', () => {
     });
 
     it('URL values passthrough', async () => {
-      const {
-        keyVaultClient,
-        secretId,
-        keyVaultResolver,
-      } = await createFakeWithKeys();
+      const { keyVaultClient, secretId, keyVaultResolver } = await createFakeWithKeys();
       const config = {
         a: secretId,
       };
@@ -146,9 +107,7 @@ describe('configuration', () => {
       const config = {
         a: 'keyvault://invalid/secrets/hello/1',
       };
-      await expect(
-        keyVaultResolver.getObjectSecrets(config)
-      ).rejects.toBeTruthy();
+      await expect(keyVaultResolver.getObjectSecrets(config)).rejects.toBeTruthy();
     });
   });
 });

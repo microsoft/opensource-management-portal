@@ -21,8 +21,7 @@ import {
 
 const thisProviderType = EntityImplementation.Type;
 
-export interface ITeamMemberCacheCreateOptions
-  extends IEntityMetadataBaseOptions {}
+export interface ITeamMemberCacheCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface ITeamMemberCacheProvider {
   initialize(): Promise<void>;
@@ -37,9 +36,7 @@ export interface ITeamMemberCacheProvider {
   updateTeamMemberCache(metadata: TeamMemberCacheEntity): Promise<void>;
   deleteTeamMemberCache(metadata: TeamMemberCacheEntity): Promise<void>;
   queryAllTeamMembers(): Promise<TeamMemberCacheEntity[]>;
-  queryTeamMembersByOrganizationId(
-    organizationId: string
-  ): Promise<TeamMemberCacheEntity[]>;
+  queryTeamMembersByOrganizationId(organizationId: string): Promise<TeamMemberCacheEntity[]>;
   queryTeamMembersByUserId(userId: string): Promise<TeamMemberCacheEntity[]>;
   queryTeamMembersByTeamId(teamId: string): Promise<TeamMemberCacheEntity[]>;
   queryTeamMembersByOrganizationIdAndUserId(
@@ -50,9 +47,7 @@ export interface ITeamMemberCacheProvider {
   deleteByOrganizationId(organizationId: string): Promise<void>;
 }
 
-export class TeamMemberCacheProvider
-  extends EntityMetadataBase
-  implements ITeamMemberCacheProvider {
+export class TeamMemberCacheProvider extends EntityMetadataBase implements ITeamMemberCacheProvider {
   constructor(options: ITeamMemberCacheCreateOptions) {
     super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
@@ -63,9 +58,7 @@ export class TeamMemberCacheProvider
     teamId: string,
     userId: string
   ): Promise<TeamMemberCacheEntity> {
-    return this.getTeamMemberCache(
-      TeamMemberCacheEntity.GenerateIdentifier(organizationId, teamId, userId)
-    );
+    return this.getTeamMemberCache(TeamMemberCacheEntity.GenerateIdentifier(organizationId, teamId, userId));
   }
 
   async getTeamMemberCache(uniqueId: string): Promise<TeamMemberCacheEntity> {
@@ -74,14 +67,10 @@ export class TeamMemberCacheProvider
     if (this._entities.supportsPointQueryForType(thisProviderType)) {
       metadata = await this._entities.getMetadata(thisProviderType, uniqueId);
     } else {
-      throw new Error(
-        'fixed point queries are required as currently implemented'
-      );
+      throw new Error('fixed point queries are required as currently implemented');
     }
     if (!metadata) {
-      const error = new Error(
-        `No metadata available for team member ${uniqueId}`
-      );
+      const error = new Error(`No metadata available for team member ${uniqueId}`);
       error['status'] = 404;
       throw error;
     }
@@ -90,44 +79,22 @@ export class TeamMemberCacheProvider
 
   async queryAllTeamMembers(): Promise<TeamMemberCacheEntity[]> {
     const query = new TeamMemberCacheFixedQueryAll();
-    const metadatas = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
-    const results = this.deserializeArray<TeamMemberCacheEntity>(
-      thisProviderType,
-      metadatas
-    );
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<TeamMemberCacheEntity>(thisProviderType, metadatas);
     return results;
   }
 
-  async queryTeamMembersByOrganizationId(
-    organizationId: string
-  ): Promise<TeamMemberCacheEntity[]> {
+  async queryTeamMembersByOrganizationId(organizationId: string): Promise<TeamMemberCacheEntity[]> {
     const query = new TeamMemberCacheFixedQueryByOrganizationId(organizationId);
-    const metadatas = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
-    const results = this.deserializeArray<TeamMemberCacheEntity>(
-      thisProviderType,
-      metadatas
-    );
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<TeamMemberCacheEntity>(thisProviderType, metadatas);
     return results;
   }
 
-  async queryTeamMembersByUserId(
-    userId: string
-  ): Promise<TeamMemberCacheEntity[]> {
+  async queryTeamMembersByUserId(userId: string): Promise<TeamMemberCacheEntity[]> {
     const query = new TeamMemberCacheFixedQueryByUserId(userId);
-    const metadatas = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
-    const results = this.deserializeArray<TeamMemberCacheEntity>(
-      thisProviderType,
-      metadatas
-    );
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<TeamMemberCacheEntity>(thisProviderType, metadatas);
     return results;
   }
 
@@ -135,44 +102,23 @@ export class TeamMemberCacheProvider
     organizationId: string,
     userId: string
   ): Promise<TeamMemberCacheEntity[]> {
-    const query = new TeamMemberCacheFixedQueryByOrganizationIdAndUserId(
-      organizationId,
-      userId
-    );
-    const metadatas = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
-    const results = this.deserializeArray<TeamMemberCacheEntity>(
-      thisProviderType,
-      metadatas
-    );
+    const query = new TeamMemberCacheFixedQueryByOrganizationIdAndUserId(organizationId, userId);
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<TeamMemberCacheEntity>(thisProviderType, metadatas);
     return results;
   }
 
-  async queryTeamMembersByTeamId(
-    teamId: string
-  ): Promise<TeamMemberCacheEntity[]> {
+  async queryTeamMembersByTeamId(teamId: string): Promise<TeamMemberCacheEntity[]> {
     const query = new TeamMemberCacheFixedQueryByTeamId(teamId);
-    const metadatas = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
-    const results = this.deserializeArray<TeamMemberCacheEntity>(
-      thisProviderType,
-      metadatas
-    );
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<TeamMemberCacheEntity>(thisProviderType, metadatas);
     return results;
   }
 
-  async createTeamMemberCache(
-    metadata: TeamMemberCacheEntity
-  ): Promise<string> {
+  async createTeamMemberCache(metadata: TeamMemberCacheEntity): Promise<string> {
     const entity = this.serialize(thisProviderType, metadata);
     if (!this._entities.supportsPointQueryForType(thisProviderType)) {
-      throw new Error(
-        'fixed point queries are required as currently implemented'
-      );
+      throw new Error('fixed point queries are required as currently implemented');
     }
     await this._entities.setMetadata(entity);
     return entity.entityId;
@@ -190,10 +136,7 @@ export class TeamMemberCacheProvider
 
   async queryAllOrganizationIds(): Promise<string[]> {
     const query = new TeamMemberCacheGetOrganizationIdsQuery();
-    const results = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
+    const results = await this._entities.fixedQueryMetadata(thisProviderType, query);
     return results.map((row) => row['organizationid']);
   }
 

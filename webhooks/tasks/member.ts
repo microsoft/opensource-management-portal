@@ -15,11 +15,7 @@ export default class MemberWebhookProcessor implements WebhookProcessor {
     return eventType === 'member';
   }
 
-  async run(
-    operations: Operations,
-    organization: Organization,
-    data: any
-  ): Promise<any> {
+  async run(operations: Operations, organization: Organization, data: any): Promise<any> {
     const providers = operations.providers as IProviders;
     const queryCache = providers.queryCache;
     const event = data.body;
@@ -35,12 +31,7 @@ export default class MemberWebhookProcessor implements WebhookProcessor {
     const userIdAsString = event.member.id.toString();
     const userLogin = event.member.login;
     let needToCreateOrUpdate = false;
-    if (
-      event.action &&
-      event.action === 'removed' &&
-      event.member.login &&
-      event.member.id
-    ) {
+    if (event.action && event.action === 'removed' && event.member.login && event.member.id) {
       console.log(
         `${event.organization.login} collaborator member: ${event.action} ${event.member.login} ${event.member.id} repo ${data.body.repository.id} ${data.body.repository.name}`
       );
@@ -55,23 +46,13 @@ export default class MemberWebhookProcessor implements WebhookProcessor {
       } catch (queryCacheError) {
         console.dir(queryCacheError);
       }
-    } else if (
-      event.action &&
-      event.action === 'added' &&
-      event.member.login &&
-      event.member.id
-    ) {
+    } else if (event.action && event.action === 'added' && event.member.login && event.member.id) {
       console.log(
         `${event.organization.login} collaborator member: ${event.action} ${event.member.login} ${event.member.id} repo ${data.body.repository.id} ${data.body.repository.name}`
       );
       needToCreateOrUpdate = true;
       console.log();
-    } else if (
-      event.action &&
-      event.action === 'edited' &&
-      event.member.login &&
-      event.member.id
-    ) {
+    } else if (event.action && event.action === 'edited' && event.member.login && event.member.id) {
       needToCreateOrUpdate = true;
       // TODO: then have to lookup the level of permission!
       // changes.permission.from = write'
@@ -83,17 +64,12 @@ export default class MemberWebhookProcessor implements WebhookProcessor {
       // look up new permission level
       // create or update
       const repositoryName = event.repository.name;
-      const repository = organization.repository(
-        repositoryName,
-        event.repository
-      );
+      const repository = organization.repository(repositoryName, event.repository);
       const collaborator = await repository.getCollaborator(event.member.login);
       const permission = collaborator.asGitHubRepositoryPermission();
       // TODO: may need to support the new 5 levels vs 3...
       if (permission) {
-        const isOrganizationMember = await organization.getMembership(
-          userLogin
-        );
+        const isOrganizationMember = await organization.getMembership(userLogin);
         const collaboratorType = isOrganizationMember
           ? GitHubCollaboratorType.Direct
           : GitHubCollaboratorType.Outside;

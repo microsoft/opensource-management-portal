@@ -21,35 +21,22 @@ import {
 
 const thisProviderType = EntityImplementation.Type;
 
-export interface IOrganizationMemberCacheCreateOptions
-  extends IEntityMetadataBaseOptions {}
+export interface IOrganizationMemberCacheCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface IOrganizationMemberCacheProvider {
   initialize(): Promise<void>;
 
-  getOrganizationMemberCache(
-    uniqueId: string
-  ): Promise<OrganizationMemberCacheEntity>;
+  getOrganizationMemberCache(uniqueId: string): Promise<OrganizationMemberCacheEntity>;
   getOrganizationMemberCacheByUserId(
     organizationId: string,
     userId: string
   ): Promise<OrganizationMemberCacheEntity>;
-  createOrganizationMemberCache(
-    metadata: OrganizationMemberCacheEntity
-  ): Promise<string>;
-  updateOrganizationMemberCache(
-    metadata: OrganizationMemberCacheEntity
-  ): Promise<void>;
-  deleteOrganizationMemberCache(
-    metadata: OrganizationMemberCacheEntity
-  ): Promise<void>;
+  createOrganizationMemberCache(metadata: OrganizationMemberCacheEntity): Promise<string>;
+  updateOrganizationMemberCache(metadata: OrganizationMemberCacheEntity): Promise<void>;
+  deleteOrganizationMemberCache(metadata: OrganizationMemberCacheEntity): Promise<void>;
   queryAllOrganizationMembers(): Promise<OrganizationMemberCacheEntity[]>;
-  queryOrganizationMembersByOrganizationId(
-    organizationId: string
-  ): Promise<OrganizationMemberCacheEntity[]>;
-  queryOrganizationMembersByUserId(
-    userId: string
-  ): Promise<OrganizationMemberCacheEntity[]>;
+  queryOrganizationMembersByOrganizationId(organizationId: string): Promise<OrganizationMemberCacheEntity[]>;
+  queryOrganizationMembersByUserId(userId: string): Promise<OrganizationMemberCacheEntity[]>;
   queryAllOrganizationIds(): Promise<string[]>;
   queryAllOrganizationOwners(): Promise<OrganizationMemberCacheEntity[]>;
   deleteByOrganizationId(organizationId: string): Promise<void>;
@@ -57,7 +44,8 @@ export interface IOrganizationMemberCacheProvider {
 
 export class OrganizationMemberCacheProvider
   extends EntityMetadataBase
-  implements IOrganizationMemberCacheProvider {
+  implements IOrganizationMemberCacheProvider
+{
   constructor(options: IOrganizationMemberCacheCreateOptions) {
     super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
@@ -72,130 +60,78 @@ export class OrganizationMemberCacheProvider
     );
   }
 
-  async getOrganizationMemberCache(
-    uniqueId: string
-  ): Promise<OrganizationMemberCacheEntity> {
+  async getOrganizationMemberCache(uniqueId: string): Promise<OrganizationMemberCacheEntity> {
     this.ensureHelpers(thisProviderType);
     let metadata: IEntityMetadata = null;
     if (this._entities.supportsPointQueryForType(thisProviderType)) {
       metadata = await this._entities.getMetadata(thisProviderType, uniqueId);
     } else {
-      throw new Error(
-        'fixed point queries are required as currently implemented'
-      );
+      throw new Error('fixed point queries are required as currently implemented');
     }
     if (!metadata) {
-      const error = new Error(
-        `No metadata available for collaborator with unique ID ${uniqueId}`
-      );
+      const error = new Error(`No metadata available for collaborator with unique ID ${uniqueId}`);
       error['status'] = 404;
       throw error;
     }
-    return this.deserialize<OrganizationMemberCacheEntity>(
-      thisProviderType,
-      metadata
-    );
+    return this.deserialize<OrganizationMemberCacheEntity>(thisProviderType, metadata);
   }
 
-  async queryAllOrganizationMembers(): Promise<
-    OrganizationMemberCacheEntity[]
-  > {
+  async queryAllOrganizationMembers(): Promise<OrganizationMemberCacheEntity[]> {
     const query = new OrganizationMemberCacheFixedQueryAll();
-    const metadatas = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
-    const results = this.deserializeArray<OrganizationMemberCacheEntity>(
-      thisProviderType,
-      metadatas
-    );
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<OrganizationMemberCacheEntity>(thisProviderType, metadatas);
     return results;
   }
 
   async queryAllOrganizationIds(): Promise<string[]> {
     const query = new OrganizationBasicsFixedQuery();
-    const results = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
+    const results = await this._entities.fixedQueryMetadata(thisProviderType, query);
     return results.map((row) => row['organizationid']);
   }
 
   async deleteByOrganizationId(organizationId: string): Promise<void> {
-    const query = new OrganizationMemberCacheDeleteByOrganizationId(
-      organizationId
-    );
+    const query = new OrganizationMemberCacheDeleteByOrganizationId(organizationId);
     await this._entities.fixedQueryMetadata(thisProviderType, query);
   }
 
   async queryOrganizationMembersByOrganizationId(
     organizationId: string
   ): Promise<OrganizationMemberCacheEntity[]> {
-    const query = new OrganizationMemberCacheFixedQueryByOrganizationId(
-      organizationId
-    );
-    const metadatas = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
-    const results = this.deserializeArray<OrganizationMemberCacheEntity>(
-      thisProviderType,
-      metadatas
-    );
+    const query = new OrganizationMemberCacheFixedQueryByOrganizationId(organizationId);
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<OrganizationMemberCacheEntity>(thisProviderType, metadatas);
     return results;
   }
 
-  async queryOrganizationMembersByUserId(
-    userId: string
-  ): Promise<OrganizationMemberCacheEntity[]> {
+  async queryOrganizationMembersByUserId(userId: string): Promise<OrganizationMemberCacheEntity[]> {
     const query = new OrganizationMemberCacheFixedQueryByUserId(userId);
-    const metadatas = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
-    const results = this.deserializeArray<OrganizationMemberCacheEntity>(
-      thisProviderType,
-      metadatas
-    );
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<OrganizationMemberCacheEntity>(thisProviderType, metadatas);
     return results;
   }
 
   async queryAllOrganizationOwners(): Promise<OrganizationMemberCacheEntity[]> {
     const query = new OrganizationOwnersQuery();
-    const metadatas = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
-    const results = this.deserializeArray<OrganizationMemberCacheEntity>(
-      thisProviderType,
-      metadatas
-    );
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<OrganizationMemberCacheEntity>(thisProviderType, metadatas);
     return results;
   }
 
-  async createOrganizationMemberCache(
-    metadata: OrganizationMemberCacheEntity
-  ): Promise<string> {
+  async createOrganizationMemberCache(metadata: OrganizationMemberCacheEntity): Promise<string> {
     const entity = this.serialize(thisProviderType, metadata);
     if (!this._entities.supportsPointQueryForType(thisProviderType)) {
-      throw new Error(
-        'fixed point queries are required as currently implemented'
-      );
+      throw new Error('fixed point queries are required as currently implemented');
     }
     await this._entities.setMetadata(entity);
     return entity.entityId;
   }
 
-  async updateOrganizationMemberCache(
-    metadata: OrganizationMemberCacheEntity
-  ): Promise<void> {
+  async updateOrganizationMemberCache(metadata: OrganizationMemberCacheEntity): Promise<void> {
     const entity = this.serialize(thisProviderType, metadata);
     await this._entities.updateMetadata(entity);
   }
 
-  async deleteOrganizationMemberCache(
-    metadata: OrganizationMemberCacheEntity
-  ): Promise<void> {
+  async deleteOrganizationMemberCache(metadata: OrganizationMemberCacheEntity): Promise<void> {
     const entity = this.serialize(thisProviderType, metadata);
     await this._entities.deleteMetadata(entity);
   }

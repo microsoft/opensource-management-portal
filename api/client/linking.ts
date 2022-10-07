@@ -16,17 +16,12 @@ import { ReposAppRequest } from '../../interfaces';
 const router: Router = Router();
 
 async function validateLinkOk(req: ReposAppRequest, res, next) {
-  const activeContext = (req.individualContext ||
-    req.apiContext) as IndividualContext;
+  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const providers = getProviders(req);
   const insights = providers.insights;
   const config = providers.config;
   let validateAndBlockGuests = false;
-  if (
-    config &&
-    config.activeDirectory &&
-    config.activeDirectory.blockGuestUserTypes
-  ) {
+  if (config && config.activeDirectory && config.activeDirectory.blockGuestUserTypes) {
     validateAndBlockGuests = true;
   }
   // If the app has not been configured to check whether a user is a guest before linking, continue:
@@ -91,10 +86,7 @@ async function validateLinkOk(req: ReposAppRequest, res, next) {
       },
     });
     return next(
-      jsonError(
-        graphError.toString() || 'Generic lookup error',
-        ErrorHelper.GetStatus(graphError) || 500
-      )
+      jsonError(graphError.toString() || 'Generic lookup error', ErrorHelper.GetStatus(graphError) || 500)
     );
   }
 }
@@ -102,8 +94,7 @@ async function validateLinkOk(req: ReposAppRequest, res, next) {
 router.delete(
   '/',
   asyncHandler(async (req: ReposAppRequest, res, next) => {
-    const activeContext = (req.individualContext ||
-      req.apiContext) as IndividualContext;
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     return unlinkInteractive(true, activeContext, req, res, next);
   })
 );
@@ -112,8 +103,7 @@ router.post(
   '/',
   validateLinkOk,
   asyncHandler(async (req: ReposAppRequest, res, next) => {
-    const activeContext = (req.individualContext ||
-      req.apiContext) as IndividualContext;
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     return interactiveLinkUser(true, activeContext, req, res, next);
   })
 );

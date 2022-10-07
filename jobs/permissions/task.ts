@@ -26,16 +26,10 @@ const maxParallelism = 1;
 
 const delayBetweenSeconds = 1;
 
-export default async function permissionsRun({
-  providers,
-}: IReposJob): Promise<IReposJobResult> {
+export default async function permissionsRun({ providers }: IReposJob): Promise<IReposJobResult> {
   const { operations } = providers;
-  for (const organization of shuffle(
-    Array.from(operations.organizations.values())
-  )) {
-    console.log(
-      `Reviewing permissions for all repos in ${organization.name}...`
-    );
+  for (const organization of shuffle(Array.from(operations.organizations.values()))) {
+    console.log(`Reviewing permissions for all repos in ${organization.name}...`);
     try {
       const repos = await organization.getRepositories();
       console.log(`Repos in the ${organization.name} org: ${repos.length}`);
@@ -52,10 +46,9 @@ export default async function permissionsRun({
         if (z % 250 === 1) {
           console.log('. ' + z);
         }
-        const {
-          specialTeamIds,
-          specialTeamLevels,
-        } = automaticTeams.processOrgSpecialTeams(repo.organization);
+        const { specialTeamIds, specialTeamLevels } = automaticTeams.processOrgSpecialTeams(
+          repo.organization
+        );
         let permissions: TeamPermission[] = null;
         try {
           permissions = await repo.getTeamPermissions(cacheOptions);
@@ -73,14 +66,9 @@ export default async function permissionsRun({
         let shouldSkipEnforcement = false;
         const { customizedTeamPermissionsWebhookLogic } = providers;
         if (customizedTeamPermissionsWebhookLogic) {
-          shouldSkipEnforcement = await customizedTeamPermissionsWebhookLogic.shouldSkipEnforcement(
-            repo
-          );
+          shouldSkipEnforcement = await customizedTeamPermissionsWebhookLogic.shouldSkipEnforcement(repo);
         }
-        const currentPermissions = new Map<
-          number,
-          GitHubRepositoryPermission
-        >();
+        const currentPermissions = new Map<number, GitHubRepositoryPermission>();
         permissions.forEach((entry) => {
           currentPermissions.set(Number(entry.team.id), entry.permission);
         });
@@ -109,18 +97,14 @@ export default async function permissionsRun({
           const newPermission = specialTeamLevels.get(teamId);
           if (
             shouldSkipEnforcement &&
-            (newPermission as GitHubRepositoryPermission) !==
-              GitHubRepositoryPermission.Pull
+            (newPermission as GitHubRepositoryPermission) !== GitHubRepositoryPermission.Pull
           ) {
             console.log(
               `should add ${teamId} team with permission ${newPermission} to the repo ${repo.name}, but compliance lock prevents non-read system teams`
             );
           } else {
             try {
-              await repo.setTeamPermission(
-                teamId,
-                newPermission as GitHubRepositoryPermission
-              );
+              await repo.setTeamPermission(teamId, newPermission as GitHubRepositoryPermission);
             } catch (error) {
               if (ErrorHelper.IsNotFound(error)) {
                 console.log(
@@ -138,9 +122,7 @@ export default async function permissionsRun({
       console.log(`Finished with repos in ${organization.name} organization`);
     } catch (processOrganizationError) {
       console.dir(processOrganizationError);
-      console.log(
-        `moving past ${organization.name} processing due to error...`
-      );
+      console.log(`moving past ${organization.name} processing due to error...`);
     }
   }
   return {};
@@ -148,9 +130,7 @@ export default async function permissionsRun({
 
 function isAtLeastPermissionLevel(value, expected) {
   if (value !== 'admin' && value !== 'push' && value !== 'pull') {
-    throw new Error(
-      `The permission type ${value} is not understood by isAtLeastPermissionLevel`
-    );
+    throw new Error(`The permission type ${value} is not understood by isAtLeastPermissionLevel`);
   }
   if (value === expected) {
     return true;

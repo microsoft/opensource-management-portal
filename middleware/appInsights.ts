@@ -13,10 +13,7 @@ import { IReposApplication, IProviders, ReposAppRequest } from '../interfaces';
 function ignoreKubernetesProbes(envelope /* , context */) {
   if ('RequestData' === envelope.data.baseType) {
     const data = envelope.data;
-    if (
-      data.baseData.name.startsWith &&
-      data.baseData.name.startsWith('GET /health/')
-    ) {
+    if (data.baseData.name.startsWith && data.baseData.name.startsWith('GET /health/')) {
       // Do not log any telemetry for k8s and health probes
       return false;
     }
@@ -26,11 +23,7 @@ function ignoreKubernetesProbes(envelope /* , context */) {
 
 function filterTelemetry(envelope, context): boolean {
   const { data } = envelope;
-  if (
-    data &&
-    data.baseType === 'RequestData' &&
-    data.baseData.responseCode === '401'
-  ) {
+  if (data && data.baseType === 'RequestData' && data.baseData.responseCode === '401') {
     // We believe 401 is successful, not a failure
     data.baseData.success = true;
   } else if (
@@ -56,8 +49,7 @@ export default function initializeAppInsights(app: IReposApplication, config) {
   }
   const providers = app.settings.providers as IProviders;
   let cs: string =
-    config?.telemetry?.applicationInsightsConnectionString ||
-    config?.telemetry?.applicationInsightsKey;
+    config?.telemetry?.applicationInsightsConnectionString || config?.telemetry?.applicationInsightsKey;
   // Override the key with a job-specific one if this is a job execution instead
   let jobCs: string =
     config?.telemetry?.jobsApplicationInsightsConnectionString ||
@@ -82,9 +74,7 @@ export default function initializeAppInsights(app: IReposApplication, config) {
       )}* and endpoint ${configuredEndpoint}`
     );
   } else {
-    debug(
-      'insights telemetry is not configured with a key or connection string'
-    );
+    debug('insights telemetry is not configured with a key or connection string');
   }
 
   app.use((req: ReposAppRequest, res, next) => {

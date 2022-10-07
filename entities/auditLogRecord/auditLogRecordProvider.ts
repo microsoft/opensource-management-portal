@@ -20,8 +20,7 @@ import { EntityImplementation } from './auditLogRecord';
 
 const thisProviderType = EntityImplementation.Type;
 
-export interface IAuditLogRecordProviderCreateOptions
-  extends IEntityMetadataBaseOptions {}
+export interface IAuditLogRecordProviderCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface IAuditLogRecordProvider {
   initialize(): Promise<void>;
@@ -30,18 +29,12 @@ export interface IAuditLogRecordProvider {
 
   queryAuditLogForActorThirdPartyId(id: string): Promise<AuditLogRecord[]>;
   queryAuditLogForUserThirdPartyId(id: string): Promise<AuditLogRecord[]>;
-  queryAuditLogForThirdPartyIdUndoOperations(
-    id: string
-  ): Promise<AuditLogRecord[]>;
-  queryAuditLogForRepositoryOperations(
-    repositoryId: string
-  ): Promise<AuditLogRecord[]>;
+  queryAuditLogForThirdPartyIdUndoOperations(id: string): Promise<AuditLogRecord[]>;
+  queryAuditLogForRepositoryOperations(repositoryId: string): Promise<AuditLogRecord[]>;
   queryAuditLogForTeamOperations(teamId: string): Promise<AuditLogRecord[]>;
 }
 
-export class AuditLogRecordProvider
-  extends EntityMetadataBase
-  implements IAuditLogRecordProvider {
+export class AuditLogRecordProvider extends EntityMetadataBase implements IAuditLogRecordProvider {
   constructor(options: IAuditLogRecordProviderCreateOptions) {
     super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
@@ -60,84 +53,38 @@ export class AuditLogRecordProvider
     return entity.entityId;
   }
 
-  async queryAuditLogForRepositoryOperations(
-    repositoryId: string
-  ): Promise<AuditLogRecord[]> {
+  async queryAuditLogForRepositoryOperations(repositoryId: string): Promise<AuditLogRecord[]> {
     const query = new AuditLogRecordQueryRecordsByRepositoryId(repositoryId);
-    const metadatas = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
-    const results = this.deserializeArray<AuditLogRecord>(
-      thisProviderType,
-      metadatas
-    );
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<AuditLogRecord>(thisProviderType, metadatas);
     return results;
   }
 
-  async queryAuditLogForTeamOperations(
-    teamId: string
-  ): Promise<AuditLogRecord[]> {
+  async queryAuditLogForTeamOperations(teamId: string): Promise<AuditLogRecord[]> {
     const query = new AuditLogRecordQueryRecordsByTeamId(teamId);
-    const metadatas = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
-    const results = this.deserializeArray<AuditLogRecord>(
-      thisProviderType,
-      metadatas
-    );
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<AuditLogRecord>(thisProviderType, metadatas);
     return results;
   }
 
-  async queryAuditLogForActorThirdPartyId(
-    thirdPartyId: string
-  ): Promise<AuditLogRecord[]> {
-    const query = new AuditLogRecordQueryRecordsByActorThirdPartyId(
-      thirdPartyId
-    );
-    const metadatas = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
-    const results = this.deserializeArray<AuditLogRecord>(
-      thisProviderType,
-      metadatas
-    );
+  async queryAuditLogForActorThirdPartyId(thirdPartyId: string): Promise<AuditLogRecord[]> {
+    const query = new AuditLogRecordQueryRecordsByActorThirdPartyId(thirdPartyId);
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<AuditLogRecord>(thisProviderType, metadatas);
     return results;
   }
 
-  async queryAuditLogForUserThirdPartyId(
-    thirdPartyId: string
-  ): Promise<AuditLogRecord[]> {
-    const query = new AuditLogRecordQueryRecordsByUserThirdPartyId(
-      thirdPartyId
-    );
-    const metadatas = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
-    const results = this.deserializeArray<AuditLogRecord>(
-      thisProviderType,
-      metadatas
-    );
+  async queryAuditLogForUserThirdPartyId(thirdPartyId: string): Promise<AuditLogRecord[]> {
+    const query = new AuditLogRecordQueryRecordsByUserThirdPartyId(thirdPartyId);
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<AuditLogRecord>(thisProviderType, metadatas);
     return results;
   }
 
-  async queryAuditLogForThirdPartyIdUndoOperations(
-    thirdPartyId: string
-  ): Promise<AuditLogRecord[]> {
-    const query = new AuditLogRecordQueryUndoCandidatesByThirdPartyId(
-      thirdPartyId
-    );
-    const metadatas = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
-    const results = this.deserializeArray<AuditLogRecord>(
-      thisProviderType,
-      metadatas
-    );
+  async queryAuditLogForThirdPartyIdUndoOperations(thirdPartyId: string): Promise<AuditLogRecord[]> {
+    const query = new AuditLogRecordQueryUndoCandidatesByThirdPartyId(thirdPartyId);
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<AuditLogRecord>(thisProviderType, metadatas);
     return results;
   }
 }

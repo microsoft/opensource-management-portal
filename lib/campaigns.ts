@@ -14,30 +14,13 @@ export interface ICampaignUserState {
 }
 
 export interface ICampaignHelper {
-  getState(
-    corporateId: string,
-    campaignGroupId: string,
-    campaignId?: string
-  ): Promise<ICampaignUserState>;
+  getState(corporateId: string, campaignGroupId: string, campaignId?: string): Promise<ICampaignUserState>;
   optOut(corporateId: string, campaignGroupId: string): Promise<void>;
   clearOptOut(corporateId: string, campaignGroupId: string): Promise<void>;
-  setSent(
-    corporateId: string,
-    campaignGroupId: string,
-    campaignId: string
-  ): Promise<void>;
-  setAny<T>(
-    corporateId: string,
-    campaignGroupId: string,
-    campaignId: string,
-    data: T
-  ): Promise<void>;
+  setSent(corporateId: string, campaignGroupId: string, campaignId: string): Promise<void>;
+  setAny<T>(corporateId: string, campaignGroupId: string, campaignId: string, data: T): Promise<void>;
   getAny(documentId: string, partitionKey?: string): Promise<any>;
-  clearSent(
-    corporateId: string,
-    campaignGroupId: string,
-    campaignId: string
-  ): Promise<void>;
+  clearSent(corporateId: string, campaignGroupId: string, campaignId: string): Promise<void>;
   //
   deleteOops(corporateId: string, campaignGroupId: string): Promise<void>;
 }
@@ -62,10 +45,7 @@ export class StatefulCampaignProvider implements ICampaignHelper {
     const groupKey = this.key(corporateId, campaignGroupId);
     const key = this.key(corporateId, campaignGroupId, campaignId);
     try {
-      const groupData = await this.#cosmosHelper.getObject(
-        corporateId,
-        groupKey
-      );
+      const groupData = await this.#cosmosHelper.getObject(corporateId, groupKey);
       if (groupData && groupData.optOut) {
         state.optOut = new Date(groupData.optOut);
       }
@@ -106,42 +86,24 @@ export class StatefulCampaignProvider implements ICampaignHelper {
     await this.#cosmosHelper.setObject(value);
   }
 
-  async clearOptOut(
-    corporateId: string,
-    campaignGroupId: string
-  ): Promise<void> {
+  async clearOptOut(corporateId: string, campaignGroupId: string): Promise<void> {
     const value = Object.assign(this.baseObject(corporateId, campaignGroupId), {
       optOut: false,
     });
     await this.#cosmosHelper.setObject(value);
   }
 
-  async setSent(
-    corporateId: string,
-    campaignGroupId: string,
-    campaignId: string
-  ): Promise<void> {
-    const value = Object.assign(
-      this.baseObject(corporateId, campaignGroupId, campaignId),
-      {
-        sent: new Date().toISOString(),
-      }
-    );
+  async setSent(corporateId: string, campaignGroupId: string, campaignId: string): Promise<void> {
+    const value = Object.assign(this.baseObject(corporateId, campaignGroupId, campaignId), {
+      sent: new Date().toISOString(),
+    });
     await this.#cosmosHelper.setObject(value);
   }
 
-  async setAny<T>(
-    corporateId: string,
-    campaignGroupId: string,
-    campaignId: string,
-    data: T
-  ) {
-    const value = Object.assign(
-      this.baseObject(corporateId, campaignGroupId, campaignId),
-      {
-        data,
-      }
-    );
+  async setAny<T>(corporateId: string, campaignGroupId: string, campaignId: string, data: T) {
+    const value = Object.assign(this.baseObject(corporateId, campaignGroupId, campaignId), {
+      data,
+    });
     await this.#cosmosHelper.setObject(value);
   }
 
@@ -152,16 +114,11 @@ export class StatefulCampaignProvider implements ICampaignHelper {
       return data;
     } catch (err) {
       console.error(err);
-      throw new Error(
-        'Unexpected exception in StatefulCampaignProvider.getAny'
-      );
+      throw new Error('Unexpected exception in StatefulCampaignProvider.getAny');
     }
   }
 
-  async deleteOops(
-    corporateId: string,
-    campaignGroupId: string
-  ): Promise<void> {
+  async deleteOops(corporateId: string, campaignGroupId: string): Promise<void> {
     const id = this.key(corporateId, campaignGroupId);
     try {
       await this.#cosmosHelper.delete(corporateId, id);
@@ -173,11 +130,7 @@ export class StatefulCampaignProvider implements ICampaignHelper {
     }
   }
 
-  async clearSent(
-    corporateId: string,
-    campaignGroupId: string,
-    campaignId: string
-  ): Promise<void> {
+  async clearSent(corporateId: string, campaignGroupId: string, campaignId: string): Promise<void> {
     const id = this.key(corporateId, campaignGroupId, campaignId);
     try {
       await this.#cosmosHelper.delete(corporateId, id);
@@ -189,21 +142,13 @@ export class StatefulCampaignProvider implements ICampaignHelper {
     }
   }
 
-  private key(
-    corporateId: string,
-    campaignGroupId: string,
-    campaignId?: string
-  ) {
+  private key(corporateId: string, campaignGroupId: string, campaignId?: string) {
     return campaignId
       ? `${campaignGroupId}-${campaignId}-${corporateId}`
       : `${campaignGroupId}-${corporateId}`;
   }
 
-  private baseObject(
-    corporateId: string,
-    campaignGroupId: string,
-    campaignId?: string
-  ) {
+  private baseObject(corporateId: string, campaignGroupId: string, campaignId?: string) {
     const id = this.key(corporateId, campaignGroupId, campaignId);
     return {
       id,

@@ -16,10 +16,7 @@ export function isJsonError(error: IErrorJson | string | Error) {
   return error && error['json'] === true;
 }
 
-export function jsonError(
-  error: IErrorJson | string | Error,
-  statusCode?: number
-): IErrorJson {
+export function jsonError(error: IErrorJson | string | Error, statusCode?: number): IErrorJson {
   if (error && error['json'] === true) {
     return error as IErrorJson; // already good to go
   }

@@ -82,14 +82,10 @@ router.post(
   })
 );
 
-router.use(
-  '/add',
-  MiddlewareTeamAdminRequired,
-  (req: ILocalRequest, res, next) => {
-    req.team2AddType = RequestTeamMemberAddType.Maintainer;
-    return next();
-  }
-);
+router.use('/add', MiddlewareTeamAdminRequired, (req: ILocalRequest, res, next) => {
+  req.team2AddType = RequestTeamMemberAddType.Maintainer;
+  return next();
+});
 
 router.post(
   '/add',

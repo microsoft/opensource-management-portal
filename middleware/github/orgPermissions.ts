@@ -21,11 +21,7 @@ export function GetOrganizationPermissionsFromRequest(req: ReposAppRequest) {
   return req[orgPermissionsCacheKeyName];
 }
 
-export async function AddOrganizationPermissionsToRequest(
-  req: ReposAppRequest,
-  res,
-  next
-) {
+export async function AddOrganizationPermissionsToRequest(req: ReposAppRequest, res, next) {
   // Only compute once per request
   if (req[orgPermissionsCacheKeyName]) {
     return next();
@@ -43,9 +39,7 @@ export async function AddOrganizationPermissionsToRequest(
   };
   if (id && !login) {
     return next(
-      new Error(
-        `While your technical GitHub ID ${id} is known, your GitHub username is not currently known.`
-      )
+      new Error(`While your technical GitHub ID ${id} is known, your GitHub username is not currently known.`)
     );
   }
   req[orgPermissionsCacheKeyName] = orgPermissions;
@@ -83,14 +77,9 @@ export async function AddOrganizationPermissionsToRequest(
   };
 
   try {
-    const membershipStatus = await organization.getMembership(
-      login,
-      membershipCacheOptions
-    );
+    const membershipStatus = await organization.getMembership(login, membershipCacheOptions);
     orgPermissions.membershipStatus =
-      membershipStatus && membershipStatus.state
-        ? membershipStatus.state
-        : null;
+      membershipStatus && membershipStatus.state ? membershipStatus.state : null;
     return next();
   } catch (getMembershipError) {
     // if (getMembershipError && getMembershipError.innerError && getMembershipError.innerError.status === 404) {

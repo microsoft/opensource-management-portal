@@ -20,9 +20,7 @@ export class OrganizationSudoSecurityGroup extends OrganizationSudo {
     const settings = organization.getDynamicSettings();
 
     // Security group flips on security groups
-    const val = settings.getProperty(
-      OrganizationFeatureSecurityGroupProperty
-    ) as string;
+    const val = settings.getProperty(OrganizationFeatureSecurityGroupProperty) as string;
     if (val) {
       return OrganizationSudoSecurityGroup.providerName;
     }
@@ -46,9 +44,7 @@ export class OrganizationSudoSecurityGroup extends OrganizationSudo {
     if (!settings) {
       return false;
     }
-    const securityGroupId = settings.getProperty(
-      OrganizationFeatureSecurityGroupProperty
-    ) as string;
+    const securityGroupId = settings.getProperty(OrganizationFeatureSecurityGroupProperty) as string;
     if (!securityGroupId) {
       return false;
     }

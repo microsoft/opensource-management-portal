@@ -13,17 +13,12 @@ type PrioritizedOptions = {
   shuffleRemaining?: boolean;
 };
 
-export function getPrioritizedOrganizationsList(
-  operations: Operations,
-  options?: PrioritizedOptions
-) {
+export function getPrioritizedOrganizationsList(operations: Operations, options?: PrioritizedOptions) {
   const organizations = operations.getOrganizations();
   const absoluteFirst = organizations.filter((o) =>
     o.getDynamicSettings().hasFeature('official-company-organization')
   );
-  const primary = organizations.filter(
-    (o) => o.getDynamicSettings().getProperty('priority') === 'primary'
-  );
+  const primary = organizations.filter((o) => o.getDynamicSettings().getProperty('priority') === 'primary');
   const secondary = organizations.filter(
     (o) => o.getDynamicSettings().getProperty('priority') === 'secondary'
   );

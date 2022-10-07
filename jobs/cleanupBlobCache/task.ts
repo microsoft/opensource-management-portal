@@ -26,9 +26,7 @@ Errors:          ${stats.errors.length}
             console.dir(stats.errors);
           }
         } catch (expiringDeleteError) {
-          console.log(
-            `Unhandled error while deleting expiring blobs for provider ${providerName}`
-          );
+          console.log(`Unhandled error while deleting expiring blobs for provider ${providerName}`);
           console.dir(expiringDeleteError);
         }
       }

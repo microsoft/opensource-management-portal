@@ -19,11 +19,7 @@ import {
   GitHubTeamRole,
   OrganizationMembershipRoleQuery,
 } from '../interfaces';
-import {
-  SettleToStateValue,
-  isPermissionBetterThan,
-  ErrorHelper,
-} from '../transitional';
+import { SettleToStateValue, isPermissionBetterThan, ErrorHelper } from '../transitional';
 import LinkManager from './linkManager';
 
 // PLANNING once consolidated
@@ -33,8 +29,7 @@ import LinkManager from './linkManager';
 // TODO: object should expose each aspect as promises, allowing intra-middleware smart use & reuse in a request
 // TODO: remove 'linkmanager' concept
 
-export interface IAggregateUserOrganizations
-  extends IKnownAggregateUserOrganizations {
+export interface IAggregateUserOrganizations extends IKnownAggregateUserOrganizations {
   available: Organization[];
 }
 
@@ -89,11 +84,7 @@ export class UserContext {
 
   public id: number;
 
-  constructor(
-    operations: Operations,
-    queryCache: QueryCache,
-    id: string | number
-  ) {
+  constructor(operations: Operations, queryCache: QueryCache, id: string | number) {
     this.id = typeof id === 'string' ? parseInt(id, 10) : id;
 
     this._operations = operations;
@@ -131,9 +122,7 @@ export class UserContext {
     return this._legacyRepositories;
   }
 
-  async repositoryPermissions(): Promise<
-    IPersonalizedUserAggregateRepositoryPermission[]
-  > {
+  async repositoryPermissions(): Promise<IPersonalizedUserAggregateRepositoryPermission[]> {
     if (this._repositoryPermissions) {
       return this._repositoryPermissions;
     }
@@ -160,8 +149,7 @@ export class UserContext {
   }
 
   private async aggregateTeams(): Promise<IAggregateUserTeams> {
-    const known = await (this._queryCache &&
-    this._queryCache.supportsTeamMembership
+    const known = await (this._queryCache && this._queryCache.supportsTeamMembership
       ? this.getQueryCacheTeams()
       : this.getGraphManagerTeams());
     return known;
@@ -180,9 +168,7 @@ export class UserContext {
     }
   }
 
-  private async aggregateRepositoryPermissions(): Promise<
-    IPersonalizedUserAggregateRepositoryPermission[]
-  > {
+  private async aggregateRepositoryPermissions(): Promise<IPersonalizedUserAggregateRepositoryPermission[]> {
     if (
       this._queryCache &&
       this._queryCache.supportsTeamPermissions &&
@@ -201,35 +187,24 @@ export class UserContext {
       SettleToStateValue(this.aggregateLegacyRepositories()),
     ]);
     const results: IAggregateUserSummary = {
-      organizations: organizations.value || {
-        member: [],
-        admin: [],
-        available: [],
-      },
+      organizations: organizations.value || { member: [], admin: [], available: [] },
       teams: teams.value || { maintainer: [], member: [] },
       repos: repositories.value || { byTeam: [] },
     };
     return results;
   }
 
-  async getAggregatedOrganizationOverview(
-    organization: Organization
-  ): Promise<IAggregateUserSummary> {
+  async getAggregatedOrganizationOverview(organization: Organization): Promise<IAggregateUserSummary> {
     const results = await this.getAggregatedOverview();
     results.teams = this.reduceOrganizationTeams(organization, results.teams);
     // At this time it does not simplify or reduce repo lists or the general orgs list
     return results;
   }
 
-  reduceOrganizationTeams(
-    organization: Organization,
-    teams: IAggregateUserTeams
-  ): IAggregateUserTeams {
+  reduceOrganizationTeams(organization: Organization, teams: IAggregateUserTeams): IAggregateUserTeams {
     const organizationName = organization.name.toLowerCase();
     return {
-      member: teams.member.filter(
-        (team) => team.organization.name.toLowerCase() === organizationName
-      ),
+      member: teams.member.filter((team) => team.organization.name.toLowerCase() === organizationName),
       maintainer: teams.maintainer.filter(
         (team) => team.organization.name.toLowerCase() === organizationName
       ),
@@ -239,26 +214,19 @@ export class UserContext {
   async getRepoCollaborators(): Promise<any> {
     const operations = this._operations;
     const options = {};
-    const repos = await operations.graphManager.getReposWithCollaborators(
-      options
-    );
+    const repos = await operations.graphManager.getReposWithCollaborators(options);
     return repos;
   }
 
   // newer query cache optimized methods
 
-  async getQueryCacheRepositoryPermissions(): Promise<
-    IPersonalizedUserAggregateRepositoryPermission[]
-  > {
+  async getQueryCacheRepositoryPermissions(): Promise<IPersonalizedUserAggregateRepositoryPermission[]> {
     const userIdString = this.id.toString();
     const queryCache = this._queryCache;
     const personalized: IPersonalizedUserAggregateRepositoryPermission[] = [];
     const repositories = new Map<string, IRepositoryPermissionPair>();
     // Find all the repos that the user have permission to across all configured orgs
-    function getOrCreatePair(
-      repositoryId: string,
-      repository: Repository
-    ): IRepositoryPermissionPair {
+    function getOrCreatePair(repositoryId: string, repository: Repository): IRepositoryPermissionPair {
       let pair = repositories.get(repositoryId);
       let newPair = !!pair;
       if (!pair) {
@@ -279,50 +247,32 @@ export class UserContext {
       const teamIds = theirTeams.map((team) => team.team.id.toString());
       const teamPermissions = await queryCache.teamsPermissions(teamIds);
       teamPermissions.map((tp) =>
-        getOrCreatePair(
-          tp.repository.id.toString(),
-          tp.repository
-        ).teamPermissions.push(tp)
+        getOrCreatePair(tp.repository.id.toString(), tp.repository).teamPermissions.push(tp)
       );
     }
     if (queryCache.supportsRepositoryCollaborators) {
-      const theirCollaborationRepositories = await queryCache.userCollaboratorRepositories(
-        userIdString
-      );
+      const theirCollaborationRepositories = await queryCache.userCollaboratorRepositories(userIdString);
       theirCollaborationRepositories.map(
         (tcr) =>
-          (getOrCreatePair(
-            tcr.repository.id.toString(),
-            tcr.repository
-          ).collaborationPermission = tcr.permission)
+          (getOrCreatePair(tcr.repository.id.toString(), tcr.repository).collaborationPermission =
+            tcr.permission)
       );
     }
     // project into the new view
-    for (const {
-      repository,
-      collaborationPermission,
-      teamPermissions,
-    } of repositories.values()) {
+    for (const { repository, collaborationPermission, teamPermissions } of repositories.values()) {
       let bestPermission = null;
       const perms = teamPermissions.map((tp) => {
         const team = tp.team;
         const permission = tp.permission;
         const entity = { ...team.toSimpleJsonObject() };
         entity['permission'] = permission;
-        const teamRepositoryPermission = new TeamRepositoryPermission(
-          team,
-          entity,
-          this._operations
-        );
+        const teamRepositoryPermission = new TeamRepositoryPermission(team, entity, this._operations);
         if (isPermissionBetterThan(bestPermission, permission)) {
           bestPermission = permission;
         }
         return teamRepositoryPermission;
       });
-      if (
-        collaborationPermission &&
-        isPermissionBetterThan(bestPermission, collaborationPermission)
-      ) {
+      if (collaborationPermission && isPermissionBetterThan(bestPermission, collaborationPermission)) {
         bestPermission = collaborationPermission;
       }
       personalized.push({
@@ -343,16 +293,12 @@ export class UserContext {
       member: [],
     };
     for (let { organization, role } of membership) {
-      if (
-        role !== OrganizationMembershipRole.Admin &&
-        role !== OrganizationMembershipRole.Member
-      ) {
+      if (role !== OrganizationMembershipRole.Admin && role !== OrganizationMembershipRole.Member) {
         throw new Error(
           `Unrecognized or invalid organization ${organization.name} role=${role} for user ${this.id}`
         );
       }
-      const bucket =
-        OrganizationMembershipRole.Admin === role ? state.admin : state.member;
+      const bucket = OrganizationMembershipRole.Admin === role ? state.admin : state.member;
       bucket.push(organization);
     }
     return state;
@@ -366,10 +312,7 @@ export class UserContext {
     const awaits: Promise<any>[] = [];
     for (let { role, team } of teams) {
       try {
-        if (
-          role !== GitHubTeamRole.Maintainer &&
-          role !== GitHubTeamRole.Member
-        ) {
+        if (role !== GitHubTeamRole.Maintainer && role !== GitHubTeamRole.Member) {
           throw new Error(
             `Unrecognized or invalid role ${role} for team ID ${team.id} in org ${team.organization.name}`
           );
@@ -397,9 +340,7 @@ export class UserContext {
     const teams = await this._queryCache.userTeams(userIdString);
     const teamIdsAsStrings = teams.map((t) => t.team.id.toString());
 
-    const teamPermissions = await this._queryCache.teamsPermissions(
-      teamIdsAsStrings
-    );
+    const teamPermissions = await this._queryCache.teamsPermissions(teamIdsAsStrings);
     const reposMap = new Map<number, Repository>();
     teamPermissions.map((tp) => reposMap.set(tp.repository.id, tp.repository));
     legacyResults.byTeam.push(...Array.from(reposMap.values()));
@@ -410,21 +351,13 @@ export class UserContext {
   // legacy graph manager interop methods
 
   async getGraphManagerRepos(): Promise<IAggregateLegacyUserRespositories> {
-    const repos = await this._operations.graphManager.getUserReposByTeamMemberships(
-      this.id,
-      {}
-    );
+    const repos = await this._operations.graphManager.getUserReposByTeamMemberships(this.id, {});
     return { byTeam: repos.map((personalized) => personalized.repository) };
     // return { byTeam: repos.map(repo => this._operations.getRepositoryWithOrganization(repo.name, repo.organization.login, repo )) };
   }
 
-  async getProxyRepositoryPermissions(): Promise<
-    IPersonalizedUserAggregateRepositoryPermission[]
-  > {
-    return this._operations.graphManager.getUserReposByTeamMemberships(
-      this.id,
-      {}
-    );
+  async getProxyRepositoryPermissions(): Promise<IPersonalizedUserAggregateRepositoryPermission[]> {
+    return this._operations.graphManager.getUserReposByTeamMemberships(this.id, {});
   }
 
   async getGraphManagerTeams(): Promise<IAggregateUserTeams> {
@@ -432,23 +365,13 @@ export class UserContext {
       this.id,
       GitHubTeamRole.Maintainer
     );
-    const member = await this._operations.graphManager.getTeamMemberships(
-      this.id
-    );
+    const member = await this._operations.graphManager.getTeamMemberships(this.id);
     return {
       maintainer: maintainer.map((team) =>
-        this._operations.getTeamByIdWithOrganization(
-          team.id,
-          team.organization.login,
-          team
-        )
+        this._operations.getTeamByIdWithOrganization(team.id, team.organization.login, team)
       ),
       member: member.map((team) =>
-        this._operations.getTeamByIdWithOrganization(
-          team.id,
-          team.organization.login,
-          team
-        )
+        this._operations.getTeamByIdWithOrganization(team.id, team.organization.login, team)
       ),
     };
   }
@@ -458,9 +381,7 @@ export class UserContext {
       this.id,
       OrganizationMembershipRoleQuery.Admin
     );
-    const member = await this._operations.graphManager.getOrganizationStatusesByName(
-      this.id
-    );
+    const member = await this._operations.graphManager.getOrganizationStatusesByName(this.id);
     const state: IKnownAggregateUserOrganizations = {
       admin: admin.map((name) => this._operations.getOrganization(name)),
       member: member.map((name) => this._operations.getOrganization(name)),

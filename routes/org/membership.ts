@@ -23,8 +23,7 @@ router.get(
     const onboarding = req.query.onboarding;
     const joining = req.query.joining;
     const username = req.individualContext.getGitHubIdentity().username;
-    const hasWriteToken = !!req.individualContext.webContext.tokens
-      .gitHubWriteOrganizationToken;
+    const hasWriteToken = !!req.individualContext.webContext.tokens.gitHubWriteOrganizationToken;
     let result = null;
     try {
       result = await organization.checkPublicMembership(username);
@@ -35,11 +34,7 @@ router.get(
     req.individualContext.webContext.pushBreadcrumb('Membership Visibility');
     let teamPostfix = '';
     if (onboarding || joining) {
-      teamPostfix =
-        '?' +
-        (onboarding ? 'onboarding' : 'joining') +
-        '=' +
-        (onboarding || joining);
+      teamPostfix = '?' + (onboarding ? 'onboarding' : 'joining') + '=' + (onboarding || joining);
     }
     req.individualContext.webContext.render({
       view: 'org/publicMembershipStatus',
@@ -70,8 +65,7 @@ router.post(
     }
     const onboarding = req.query.onboarding;
     const joining = req.query.joining;
-    const writeToken =
-      req.individualContext.webContext.tokens.gitHubWriteOrganizationToken;
+    const writeToken = req.individualContext.webContext.tokens.gitHubWriteOrganizationToken;
     if (!writeToken) {
       return next(
         new Error(
@@ -80,13 +74,13 @@ router.post(
       );
     }
     const message1 = req.body.conceal ? 'concealing' : 'publicizing';
-    const message2 = req.body.conceal
-      ? 'hidden'
-      : 'public, thanks for your support';
+    const message2 = req.body.conceal ? 'hidden' : 'public, thanks for your support';
     try {
-      const result = await organization[
-        req.body.conceal ? 'concealMembership' : 'publicizeMembership'
-      ].call(organization, username, writeToken);
+      const result = await organization[req.body.conceal ? 'concealMembership' : 'publicizeMembership'].call(
+        organization,
+        username,
+        writeToken
+      );
       // TODO: validate this works, since it is blindly calling now!
     } catch (error) {
       return next(
@@ -104,10 +98,7 @@ router.post(
     const url = organization.baseUrl + (onboarding || joining ? '/teams' : '');
     const extraUrl =
       onboarding || joining
-        ? '?' +
-          (onboarding ? 'onboarding' : 'joining') +
-          '=' +
-          (onboarding || joining)
+        ? '?' + (onboarding ? 'onboarding' : 'joining') + '=' + (onboarding || joining)
         : '';
     return res.redirect(url + extraUrl);
   })

@@ -25,12 +25,7 @@ router.get(
       type: (req.query.type || '') as string, // CONSIDER: TS: stronger typing
     };
     try {
-      const repos = await searchRepos(
-        providers,
-        null,
-        RepositorySearchSortOrder.Updated,
-        searchOptions
-      );
+      const repos = await searchRepos(providers, null, RepositorySearchSortOrder.Updated, searchOptions);
       const slice = pager.slice(repos);
       return pager.sendJson(
         slice.map((repo) => {
@@ -45,12 +40,7 @@ router.get(
 );
 
 router.use('*', (req, res, next) => {
-  return next(
-    jsonError(
-      'no API or function available within this cross-organization repps list',
-      404
-    )
-  );
+  return next(jsonError('no API or function available within this cross-organization repps list', 404));
 });
 
 export default router;

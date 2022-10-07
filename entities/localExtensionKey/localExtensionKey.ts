@@ -6,18 +6,12 @@
 import crypto from 'crypto';
 
 import { IObjectWithDefinedKeys } from '../../lib/entityMetadataProvider/entityMetadataProvider';
-import {
-  EntityMetadataType,
-  IEntityMetadata,
-} from '../../lib/entityMetadataProvider/entityMetadata';
+import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import {
   MetadataMappingDefinition,
   EntityMetadataMappings,
 } from '../../lib/entityMetadataProvider/declarations';
-import {
-  IEntityMetadataFixedQuery,
-  FixedQueryType,
-} from '../../lib/entityMetadataProvider/query';
+import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { TableSettings } from '../../lib/entityMetadataProvider/table';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
 import { odata, TableEntityQueryOptions } from '@azure/data-tables';
@@ -40,8 +34,7 @@ const Field: IExtensionKeyEntityProperties = {
 
 const fieldNames = Object.getOwnPropertyNames(Field);
 
-export class LocalExtensionKey
-  implements IObjectWithDefinedKeys, IExtensionKeyEntityProperties {
+export class LocalExtensionKey implements IObjectWithDefinedKeys, IExtensionKeyEntityProperties {
   corporateId: string;
   created: Date;
   localDataKey: string;
@@ -59,9 +52,7 @@ export class LocalExtensionKey
 
   isValidNow(): boolean {
     const now = new Date();
-    const expires = new Date(
-      this.created.getTime() + oldestAllowedKeyExpirationMs
-    );
+    const expires = new Date(this.created.getTime() + oldestAllowedKeyExpirationMs);
     if (expires < now || !this.localDataKey) {
       return false;
     }
@@ -73,18 +64,10 @@ export class LocalExtensionKey
   }
 }
 
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityInstantiate,
-  () => {
-    return new LocalExtensionKey();
-  }
-);
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityIdColumnName,
-  Field.corporateId
-);
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => {
+  return new LocalExtensionKey();
+});
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, Field.corporateId);
 
 EntityMetadataMappings.Register(
   type,
@@ -95,33 +78,12 @@ EntityMetadataMappings.Register(
     [Field.localDataKey, Field.localDataKey],
   ])
 );
-EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [
-  Field.created,
-]);
-EntityMetadataMappings.Register(
-  type,
-  TableSettings.TableDefaultTableName,
-  'settings'
-);
-EntityMetadataMappings.Register(
-  type,
-  TableSettings.TableDefaultFixedPartitionKey,
-  'localExtensionKey'
-);
-EntityMetadataMappings.Register(
-  type,
-  TableSettings.TableDefaultFixedPartitionKeyNoPrefix,
-  true
-);
-EntityMetadataMappings.Register(type, TableSettings.TableEncryptedColumnNames, [
-  Field.localDataKey,
-]);
-EntityMetadataMappings.RuntimeValidateMappings(
-  type,
-  TableSettings.TableMapping,
-  fieldNames,
-  []
-);
+EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [Field.created]);
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultTableName, 'settings');
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKey, 'localExtensionKey');
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKeyNoPrefix, true);
+EntityMetadataMappings.Register(type, TableSettings.TableEncryptedColumnNames, [Field.localDataKey]);
+EntityMetadataMappings.RuntimeValidateMappings(type, TableSettings.TableMapping, fieldNames, []);
 
 EntityMetadataMappings.Register(
   type,
@@ -132,12 +94,7 @@ EntityMetadataMappings.Register(
     [Field.localDataKey, Field.localDataKey],
   ])
 );
-EntityMetadataMappings.RuntimeValidateMappings(
-  type,
-  MemorySettings.MemoryMapping,
-  fieldNames,
-  []
-);
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
 
 EntityMetadataMappings.Register(
   type,

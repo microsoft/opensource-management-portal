@@ -52,10 +52,7 @@ import {
   IOperationsRepositoryMetadataProvider,
   IOperationsUrls,
 } from '../interfaces';
-import {
-  IListPullsParameters,
-  GitHubPullRequestState,
-} from '../lib/github/collections';
+import { IListPullsParameters, GitHubPullRequestState } from '../lib/github/collections';
 
 import { wrapError } from '../utils';
 import { RepositoryActions } from './repositoryActions';
@@ -353,10 +350,8 @@ export class Repository {
         CoreCapability.Urls
       ).repositoriesDeliminator;
     }
-    this._absoluteBaseUrl =
-      organization.absoluteBaseUrl + repositoriesDeliminator + this.name + '/';
-    this._baseUrl =
-      organization.baseUrl + repositoriesDeliminator + this.name + '/';
+    this._absoluteBaseUrl = organization.absoluteBaseUrl + repositoriesDeliminator + this.name + '/';
+    this._baseUrl = organization.baseUrl + repositoriesDeliminator + this.name + '/';
     this._getAuthorizationHeader = getAuthorizationHeader;
     this._getSpecificAuthorizationHeader = getSpecificAuthorizationHeader;
     this._operations = operations;
@@ -386,11 +381,7 @@ export class Repository {
     try {
       await this.getDetails(options);
     } catch (maybeDeletedError) {
-      if (
-        maybeDeletedError &&
-        maybeDeletedError.status &&
-        maybeDeletedError.status === 404
-      ) {
+      if (maybeDeletedError && maybeDeletedError.status && maybeDeletedError.status === 404) {
         return true;
       }
     }
@@ -430,11 +421,7 @@ export class Repository {
       (parameters as any).mediaType = mediaType;
     }
     const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgRepoDetailsStaleSeconds,
-        options
-      ),
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
@@ -445,11 +432,7 @@ export class Repository {
     try {
       let entity: any = undefined;
       if ((cacheOptions as any)?.noConditionalRequests === true) {
-        entity = await operations.github.post(
-          this.authorize(AppPurpose.Data),
-          'repos.get',
-          parameters
-        );
+        entity = await operations.github.post(this.authorize(AppPurpose.Data), 'repos.get', parameters);
       } else {
         entity = await operations.github.call(
           this.authorize(AppPurpose.Operations),
@@ -464,9 +447,7 @@ export class Repository {
       const notFound = error.status && error.status == /* loose */ 404;
       error = wrapError(
         error,
-        notFound
-          ? 'The repo could not be found.'
-          : 'Could not get details about the repo.',
+        notFound ? 'The repo could not be found.' : 'Could not get details about the repo.',
         notFound
       );
       if (notFound) {
@@ -483,17 +464,13 @@ export class Repository {
     );
     const repositoryMetadataProvider = operations.repositoryMetadataProvider;
     try {
-      return await repositoryMetadataProvider.getRepositoryMetadata(
-        this.id.toString()
-      );
+      return await repositoryMetadataProvider.getRepositoryMetadata(this.id.toString());
     } catch (getMetadataError) {
       return null;
     }
   }
 
-  async getBranches(
-    cacheOptions: IGetBranchesOptions
-  ): Promise<IGitHubBranch[]> {
+  async getBranches(cacheOptions: IGetBranchesOptions): Promise<IGitHubBranch[]> {
     cacheOptions = cacheOptions || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
@@ -507,19 +484,12 @@ export class Repository {
     }
     delete cacheOptions.protected;
     if (!cacheOptions.maxAgeSeconds) {
-      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(
-        operations,
-        CacheDefault.repoBranchesStaleSeconds
-      );
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.repoBranchesStaleSeconds);
     }
     if (cacheOptions.backgroundRefresh === undefined) {
       cacheOptions.backgroundRefresh = true;
     }
-    return github.collections.getRepoBranches(
-      this.authorize(AppPurpose.Data),
-      parameters,
-      cacheOptions
-    );
+    return github.collections.getRepoBranches(this.authorize(AppPurpose.Data), parameters, cacheOptions);
   }
 
   async getPulls(options?: IGetPullsOptions): Promise<any> {
@@ -542,10 +512,7 @@ export class Repository {
       delete parameters['maxAgeSeconds'];
     }
     if (cacheOptions.maxAgeSeconds === undefined) {
-      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(
-        operations,
-        CacheDefault.repoPullsStaleSeconds
-      );
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.repoPullsStaleSeconds);
     }
     if (cacheOptions.backgroundRefresh === undefined) {
       cacheOptions.backgroundRefresh = true;
@@ -578,10 +545,7 @@ export class Repository {
       delete parameters['maxAgeSeconds'];
     }
     if (cacheOptions?.maxAgeSeconds === undefined) {
-      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgRepoDetailsStaleSeconds
-      );
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds);
     }
     if (cacheOptions?.backgroundRefresh === undefined) {
       cacheOptions.backgroundRefresh = true;
@@ -610,9 +574,7 @@ export class Repository {
     return data.object.sha;
   }
 
-  async renameDefaultBranch(
-    newBranchName?: string
-  ): Promise<ITemporaryCommandOutput[]> {
+  async renameDefaultBranch(newBranchName?: string): Promise<ITemporaryCommandOutput[]> {
     newBranchName = newBranchName || 'main';
     await this.organization.requireUpdatesApp('renameDefaultBranch');
     const output: ITemporaryCommandOutput[] = [];
@@ -657,9 +619,7 @@ export class Repository {
         base: currentBranchName,
       });
       if (pulls.length === 0) {
-        output.push({
-          message: `No open pull requests targeting '${currentBranchName}' to update.`,
-        });
+        output.push({ message: `No open pull requests targeting '${currentBranchName}' to update.` });
       } else {
         output.push({
           message: `There are ${pulls.length} open pull requests targeting '${currentBranchName}' that will be updated to '${newBranchName}'.`,
@@ -697,10 +657,7 @@ export class Repository {
     return output;
   }
 
-  async patchPullRequestBranch(
-    number: string,
-    targetBranch: string
-  ): Promise<void> {
+  async patchPullRequestBranch(number: string, targetBranch: string): Promise<void> {
     await this.organization.requireUpdatesApp('patchPullRequestBranch');
     const operations = throwIfNotGitHubCapable(this._operations);
     const options = {
@@ -732,10 +689,7 @@ export class Repository {
     );
   }
 
-  async updateBranchProtectionRule(
-    id: string,
-    newPattern: string
-  ): Promise<void> {
+  async updateBranchProtectionRule(id: string, newPattern: string): Promise<void> {
     await this.organization.requireUpdatesApp('updateBranchProtectionRule');
     const operations = throwIfNotGitHubCapable(this._operations);
     const mutation = `mutation($branchProtectionRuleId:ID!,$pattern:String!) {
@@ -747,22 +701,16 @@ export class Repository {
       }
     }`;
     try {
-      await operations.github.graphql(
-        this.authorize(AppPurpose.Updates),
-        mutation,
-        {
-          branchProtectionRuleId: id,
-          pattern: newPattern,
-        }
-      );
+      await operations.github.graphql(this.authorize(AppPurpose.Updates), mutation, {
+        branchProtectionRuleId: id,
+        pattern: newPattern,
+      });
     } catch (error) {
       throw error;
     }
   }
 
-  async listBranchProtectionRules(): Promise<
-    IGitHubProtectedBranchConfiguration[]
-  > {
+  async listBranchProtectionRules(): Promise<IGitHubProtectedBranchConfiguration[]> {
     await this.organization.requireUpdatesApp('listBranchProtectionRules');
     const query = `query($owner: String!, $repo: String!) {
       repository(owner:$owner,name:$repo) {
@@ -780,14 +728,10 @@ export class Repository {
         repository: {
           branchProtectionRules: { nodes: branchProtectionRules },
         },
-      } = await operations.github.graphql(
-        this.authorize(AppPurpose.Updates),
-        query,
-        {
-          owner: this.organization.name,
-          repo: this.name,
-        }
-      );
+      } = await operations.github.graphql(this.authorize(AppPurpose.Updates), query, {
+        owner: this.organization.name,
+        repo: this.name,
+      });
       return branchProtectionRules as IGitHubProtectedBranchConfiguration[];
     } catch (error) {
       throw error;
@@ -863,11 +807,7 @@ export class Repository {
       repo: this.name,
     };
     const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgRepoDetailsStaleSeconds,
-        options
-      ),
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
@@ -877,12 +817,7 @@ export class Repository {
       // const centralOps = operationsWithCapability<IOperationsCentralOperationsToken>(operations, CoreCapability.GitHubCentralOperations);
       const tokenSource = this._getSpecificAuthorizationHeader(AppPurpose.Data); // centralOps ? centralOps.getCentralOperationsToken()(AppPurpose.Data) :
       const token = await tokenSource;
-      return await operations.github.call(
-        token,
-        'repos.getPages',
-        parameters,
-        cacheOptions
-      );
+      return await operations.github.call(token, 'repos.getPages', parameters, cacheOptions);
     } catch (error) {
       const notFound = error.status && error.status == /* loose */ 404;
       error = wrapError(
@@ -909,17 +844,10 @@ export class Repository {
       },
       update
     );
-    await operations.github.post(
-      this.authorize(AppPurpose.Operations),
-      'pulls.update',
-      parameters
-    );
+    await operations.github.post(this.authorize(AppPurpose.Operations), 'pulls.update', parameters);
   }
 
-  async checkCollaborator(
-    username: string,
-    cacheOptions?: ICacheOptions
-  ): Promise<boolean> {
+  async checkCollaborator(username: string, cacheOptions?: ICacheOptions): Promise<boolean> {
     cacheOptions = cacheOptions || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
@@ -930,10 +858,7 @@ export class Repository {
       allowEmptyResponse: true,
     };
     if (!cacheOptions.maxAgeSeconds) {
-      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgRepoTeamsStaleSeconds
-      );
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.orgRepoTeamsStaleSeconds);
     }
     if (cacheOptions.backgroundRefresh === undefined) {
       cacheOptions.backgroundRefresh = true;
@@ -973,10 +898,7 @@ export class Repository {
     return false;
   }
 
-  async getCollaborator(
-    username: string,
-    cacheOptions?: ICacheOptions
-  ): Promise<RepositoryPermission> {
+  async getCollaborator(username: string, cacheOptions?: ICacheOptions): Promise<RepositoryPermission> {
     // This call is used in customer-facing sites by permissions middleware
     cacheOptions = cacheOptions || {};
     const operations = throwIfNotGitHubCapable(this._operations);
@@ -1001,9 +923,7 @@ export class Repository {
     return new RepositoryPermission(userPermissionLevel);
   }
 
-  async listContributors(
-    cacheOptions?: IListContributorsOptions
-  ): Promise<any[]> {
+  async listContributors(cacheOptions?: IListContributorsOptions): Promise<any[]> {
     cacheOptions = cacheOptions || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
@@ -1032,9 +952,7 @@ export class Repository {
     return contributors;
   }
 
-  async getCollaborators(
-    cacheOptions?: IGetCollaboratorsOptions
-  ): Promise<Collaborator[]> {
+  async getCollaborators(cacheOptions?: IGetCollaboratorsOptions): Promise<Collaborator[]> {
     cacheOptions = cacheOptions || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
@@ -1042,8 +960,7 @@ export class Repository {
       owner: this.organization.name,
       repo: this.name,
       per_page: getPageSize(operations),
-      affiliation:
-        cacheOptions.affiliation || GitHubCollaboratorAffiliationQuery.All,
+      affiliation: cacheOptions.affiliation || GitHubCollaboratorAffiliationQuery.All,
     };
     delete cacheOptions.affiliation;
     if (!cacheOptions.maxAgeSeconds) {
@@ -1096,20 +1013,14 @@ export class Repository {
   ): Promise<any> {
     // This could go in Account _or_ here in Repository
     if (!options || !options.alternateToken) {
-      throw new Error(
-        'acceptCollaborationInvite requires options.alternateToken'
-      );
+      throw new Error('acceptCollaborationInvite requires options.alternateToken');
     }
     const alternateTokenHeader = `token ${options.alternateToken}`;
     const parameters = {
       invitation_id: invitationId,
     };
     const operations = throwIfNotGitHubCapable(this._operations);
-    return operations.github.post(
-      alternateTokenHeader,
-      'repos.acceptInvitation',
-      parameters
-    );
+    return operations.github.post(alternateTokenHeader, 'repos.acceptInvitation', parameters);
   }
 
   removeCollaborator(username: string): Promise<any> {
@@ -1132,11 +1043,7 @@ export class Repository {
       repo: this.name,
     };
     const operations = throwIfNotGitHubCapable(this._operations);
-    return operations.github.post(
-      this.authorize(AppPurpose.Operations),
-      'repos.delete',
-      parameters
-    );
+    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.delete', parameters);
   }
 
   createFile(
@@ -1166,9 +1073,7 @@ export class Repository {
     if (options?.committer) {
       parameters.committer = options.committer;
     }
-    const alternateHeader = options?.alternateToken
-      ? `token ${options.alternateToken}`
-      : null;
+    const alternateHeader = options?.alternateToken ? `token ${options.alternateToken}` : null;
     return operations.github.post(
       alternateHeader || this.authorize(AppPurpose.Operations),
       'repos.createOrUpdateFileContents',
@@ -1243,10 +1148,7 @@ export class Repository {
     }
   }
 
-  async setTeamPermission(
-    teamId: number,
-    newPermission: GitHubRepositoryPermission
-  ): Promise<any> {
+  async setTeamPermission(teamId: number, newPermission: GitHubRepositoryPermission): Promise<any> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const team = this.organization.team(teamId);
     // CONSIDER: note the performance penalty on the slug resolution; the alternate path has not been working for GitHub Apps
@@ -1291,11 +1193,7 @@ export class Repository {
       repo: this.name,
     };
     const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgRepoWebhooksStaleSeconds,
-        options
-      ),
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoWebhooksStaleSeconds, options),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
@@ -1315,11 +1213,7 @@ export class Repository {
       repo: this.name,
       id: webhookId,
     };
-    return operations.github.post(
-      this.authorize(AppPurpose.Operations),
-      'repos.deleteWebhook',
-      parameters
-    );
+    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.deleteWebhook', parameters);
   }
 
   createWebhook(options: ICreateWebhookOptions): Promise<any> {
@@ -1347,20 +1241,14 @@ export class Repository {
         content_type: 'json',
       };
     }
-    return operations.github.post(
-      this.authorize(AppPurpose.Operations),
-      'repos.createWebhook',
-      parameters
-    );
+    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.createWebhook', parameters);
   }
 
   async editPublicPrivate(options): Promise<void> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     if (options.private !== true && options.private !== false) {
-      throw new Error(
-        'editPublicPrivate.options requires private to be set to true or false'
-      );
+      throw new Error('editPublicPrivate.options requires private to be set to true or false');
     }
     const parameters = Object.assign(
       {
@@ -1374,11 +1262,7 @@ export class Repository {
     // BUG: GitHub Apps do not work with locking down no repository permissions as documented here: https://github.community/t5/GitHub-API-Development-and/GitHub-App-cannot-patch-repo-visibility-in-org-with-repo/m-p/33448#M3150
     // const token = this._operations.getCentralOperationsToken();
     // return this._operations.github.post(token, 'repos.update', parameters);
-    return operations.github.post(
-      this.authorize(AppPurpose.Operations),
-      'repos.update',
-      parameters
-    );
+    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
   }
 
   async archive(): Promise<void> {
@@ -1392,11 +1276,7 @@ export class Repository {
         archived: true,
       }
     );
-    return operations.github.post(
-      this.authorize(AppPurpose.Operations),
-      'repos.update',
-      parameters
-    );
+    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
   }
 
   async update(patch?: any): Promise<void> {
@@ -1405,16 +1285,10 @@ export class Repository {
       owner: this.organization.name,
       repo: this.name,
     });
-    return operations.github.post(
-      this.authorize(AppPurpose.Operations),
-      'repos.update',
-      parameters
-    );
+    return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
   }
 
-  async getTeamPermissions(
-    cacheOptions?: IPagedCacheOptions
-  ): Promise<TeamPermission[]> {
+  async getTeamPermissions(cacheOptions?: IPagedCacheOptions): Promise<TeamPermission[]> {
     cacheOptions = cacheOptions || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
@@ -1424,10 +1298,7 @@ export class Repository {
       per_page: getPageSize(operations),
     };
     if (!cacheOptions.maxAgeSeconds) {
-      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgRepoTeamsStaleSeconds
-      );
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.orgRepoTeamsStaleSeconds);
     }
     if (cacheOptions.backgroundRefresh === undefined) {
       cacheOptions.backgroundRefresh = true;
@@ -1445,10 +1316,7 @@ export class Repository {
     return teamPermissions;
   }
 
-  async checkTeamManages(
-    teamId: string,
-    cacheOptions?: ICacheOptions
-  ): Promise<boolean> {
+  async checkTeamManages(teamId: string, cacheOptions?: ICacheOptions): Promise<boolean> {
     cacheOptions = cacheOptions || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
@@ -1460,10 +1328,7 @@ export class Repository {
       allowEmptyResponse: true,
     };
     if (!cacheOptions.maxAgeSeconds) {
-      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgRepoTeamsStaleSeconds
-      );
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.orgRepoTeamsStaleSeconds);
     }
     if (cacheOptions.backgroundRefresh === undefined) {
       cacheOptions.backgroundRefresh = true;
@@ -1488,34 +1353,25 @@ export class Repository {
   }
 
   async enableSecretScanning(enablePushProtection?: boolean): Promise<boolean> {
-    const pushProtectionValue =
-      enablePushProtection !== undefined ? !!enablePushProtection : true;
+    const pushProtectionValue = enablePushProtection !== undefined ? !!enablePushProtection : true;
     const patch = {
       security_and_analysis: {
         secret_scanning: { status: 'enabled' },
-        secret_scanning_push_protection: {
-          status: pushProtectionValue ? 'enabled' : 'disabled',
-        },
+        secret_scanning_push_protection: { status: pushProtectionValue ? 'enabled' : 'disabled' },
       },
     };
     try {
       await this.update(patch);
       return true;
     } catch (error) {
-      if (
-        error &&
-        error.status == /* loose */ 404 &&
-        error.message === 'Secret scanning is disabled'
-      ) {
+      if (error && error.status == /* loose */ 404 && error.message === 'Secret scanning is disabled') {
         return false;
       }
       throw error;
     }
   }
 
-  async getSecretScanningAlerts(
-    cacheOptions?: ICacheOptions
-  ): Promise<IGitHubSecretScanningAlert[]> {
+  async getSecretScanningAlerts(cacheOptions?: ICacheOptions): Promise<IGitHubSecretScanningAlert[]> {
     cacheOptions = cacheOptions || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
@@ -1561,10 +1417,7 @@ export class Repository {
       repo_id: this.id.toString(),
     };
     if (!cacheOptions.maxAgeSeconds) {
-      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgRepoTeamsStaleSeconds
-      );
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.orgRepoTeamsStaleSeconds);
     }
     if (cacheOptions.backgroundRefresh === undefined) {
       cacheOptions.backgroundRefresh = true;
@@ -1577,21 +1430,14 @@ export class Repository {
       );
       return true;
     } catch (error) {
-      if (
-        error &&
-        error.status == /* loose */ 404 &&
-        error.message === 'Secret scanning is disabled'
-      ) {
+      if (error && error.status == /* loose */ 404 && error.message === 'Secret scanning is disabled') {
         return false;
       }
       throw error;
     }
   }
 
-  async getAdministrators(
-    excludeOwners = true,
-    excludeBroadAndSystemTeams = true
-  ): Promise<string[]> {
+  async getAdministrators(excludeOwners = true, excludeBroadAndSystemTeams = true): Promise<string[]> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const opsSystemAccounts = operationsWithCapability<IOperationsServiceAccounts>(
       operations,
@@ -1602,9 +1448,7 @@ export class Repository {
     const actualCollaborators = await this.getCollaborators({
       affiliation: GitHubCollaboratorAffiliationQuery.Direct,
     });
-    let collaborators = actualCollaborators.filter(
-      (c) => c.permissions?.admin === true
-    );
+    let collaborators = actualCollaborators.filter((c) => c.permissions?.admin === true);
     // No system accounts or owners
     if (opsSystemAccounts) {
       collaborators = collaborators.filter(
@@ -1612,22 +1456,13 @@ export class Repository {
       );
     }
     if (excludeOwners) {
-      collaborators = collaborators.filter(
-        (c) => false === ownersSet.has(c.login.toLowerCase())
-      );
+      collaborators = collaborators.filter((c) => false === ownersSet.has(c.login.toLowerCase()));
     }
-    const users = new Set<string>(
-      collaborators.map((c) => c.login.toLowerCase())
-    );
-    let teams = (await this.getTeamPermissions()).filter(
-      (tp) => tp.permission === 'admin'
-    );
+    const users = new Set<string>(collaborators.map((c) => c.login.toLowerCase()));
+    let teams = (await this.getTeamPermissions()).filter((tp) => tp.permission === 'admin');
     for (let i = 0; i < teams.length; i++) {
       const team = teams[i];
-      if (
-        excludeBroadAndSystemTeams &&
-        (team.team.isSystemTeam || team.team.isBroadAccessTeam)
-      ) {
+      if (excludeBroadAndSystemTeams && (team.team.isSystemTeam || team.team.isBroadAccessTeam)) {
         // Do not include broad access teams
         continue;
       }
@@ -1637,8 +1472,7 @@ export class Repository {
         const login = tm.login.toLowerCase();
         if (
           !ownersSet.has(login) &&
-          (!opsSystemAccounts ||
-            !opsSystemAccounts.isSystemAccountByUsername(login))
+          (!opsSystemAccounts || !opsSystemAccounts.isSystemAccountByUsername(login))
         ) {
           users.add(login.toLowerCase());
         }
@@ -1659,24 +1493,16 @@ export class Repository {
     const actualCollaborators = await this.getCollaborators({
       affiliation: GitHubCollaboratorAffiliationQuery.Direct,
     });
-    let collaborators = actualCollaborators.filter(
-      (c) => c.permissions?.push === true
-    );
+    let collaborators = actualCollaborators.filter((c) => c.permissions?.push === true);
     // No system accounts or owners
     if (opsSystemAccounts) {
       collaborators = collaborators.filter(
         (c) => false === opsSystemAccounts.isSystemAccountByUsername(c.login)
       );
     }
-    collaborators = collaborators.filter(
-      (c) => false === ownersSet.has(c.login.toLowerCase())
-    );
-    const users = new Set<string>(
-      collaborators.map((c) => c.login.toLowerCase())
-    );
-    let teams = (await this.getTeamPermissions()).filter(
-      (tp) => tp.permission === 'push'
-    );
+    collaborators = collaborators.filter((c) => false === ownersSet.has(c.login.toLowerCase()));
+    const users = new Set<string>(collaborators.map((c) => c.login.toLowerCase()));
+    let teams = (await this.getTeamPermissions()).filter((tp) => tp.permission === 'push');
     for (let i = 0; i < teams.length; i++) {
       const team = teams[i];
       if (team.team.isSystemTeam || team.team.isBroadAccessTeam) {
@@ -1689,8 +1515,7 @@ export class Repository {
         const login = tm.login.toLowerCase();
         if (
           !ownersSet.has(login) &&
-          (!opsSystemAccounts ||
-            !opsSystemAccounts.isSystemAccountByUsername(login))
+          (!opsSystemAccounts || !opsSystemAccounts.isSystemAccountByUsername(login))
         ) {
           users.add(login.toLowerCase());
         }
@@ -1699,9 +1524,7 @@ export class Repository {
     return Array.from(users.values());
   }
 
-  async getPullers(
-    excludeBroadTeamsAndOwners: boolean = true
-  ): Promise<string[]> {
+  async getPullers(excludeBroadTeamsAndOwners: boolean = true): Promise<string[]> {
     // duplicated code from getAdministrators
     if (!this.private) {
       return [];
@@ -1716,9 +1539,7 @@ export class Repository {
     const actualCollaborators = await this.getCollaborators({
       affiliation: GitHubCollaboratorAffiliationQuery.Direct,
     });
-    let collaborators = actualCollaborators.filter(
-      (c) => c.permissions?.pull === true
-    );
+    let collaborators = actualCollaborators.filter((c) => c.permissions?.pull === true);
     // No system accounts or owners
     if (opsSystemAccounts) {
       collaborators = collaborators.filter(
@@ -1726,22 +1547,13 @@ export class Repository {
       );
     }
     if (excludeBroadTeamsAndOwners) {
-      collaborators = collaborators.filter(
-        (c) => false === ownersSet.has(c.login.toLowerCase())
-      );
+      collaborators = collaborators.filter((c) => false === ownersSet.has(c.login.toLowerCase()));
     }
-    const users = new Set<string>(
-      collaborators.map((c) => c.login.toLowerCase())
-    );
-    let teams = (await this.getTeamPermissions()).filter(
-      (tp) => tp.permission === 'pull'
-    );
+    const users = new Set<string>(collaborators.map((c) => c.login.toLowerCase()));
+    let teams = (await this.getTeamPermissions()).filter((tp) => tp.permission === 'pull');
     for (let i = 0; i < teams.length; i++) {
       const team = teams[i];
-      if (
-        excludeBroadTeamsAndOwners &&
-        (team.team.isSystemTeam || team.team.isBroadAccessTeam)
-      ) {
+      if (excludeBroadTeamsAndOwners && (team.team.isSystemTeam || team.team.isBroadAccessTeam)) {
         // Do not include broad access teams
         continue;
       }
@@ -1751,8 +1563,7 @@ export class Repository {
         const login = tm.login.toLowerCase();
         if (
           !ownersSet.has(login) &&
-          (!opsSystemAccounts ||
-            !opsSystemAccounts.isSystemAccountByUsername(login))
+          (!opsSystemAccounts || !opsSystemAccounts.isSystemAccountByUsername(login))
         ) {
           users.add(login.toLowerCase());
         }
@@ -1769,9 +1580,7 @@ export class Repository {
     return getAuthorizationHeader;
   }
 
-  private specificAuthorization(
-    purpose: AppPurpose
-  ): IGetAuthorizationHeader | string {
+  private specificAuthorization(purpose: AppPurpose): IGetAuthorizationHeader | string {
     const getSpecificHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose
@@ -1795,17 +1604,14 @@ export class Repository {
     if (!repo.pushed_at) {
       return 0;
     }
-    const pushTicks =
-      (moment.utc().valueOf() - moment.utc(repo.pushed_at).valueOf()) * 10000;
-    const createdTicks =
-      (moment.utc().valueOf() - moment.utc(repo.created_at).valueOf()) * 10000;
+    const pushTicks = (moment.utc().valueOf() - moment.utc(repo.pushed_at).valueOf()) * 10000;
+    const createdTicks = (moment.utc().valueOf() - moment.utc(repo.created_at).valueOf()) * 10000;
     // People power, if you have a high star factor (i.e. stars per day) then you
     // are definitely awesome.
     let awesomeness = (starAwesomeness * repo.stargazers_count) / createdTicks;
     // Make it so a recent contribution pushes you up the stack, but make the effect
     // fade quickly (as determined by the halflife of a push.
-    awesomeness +=
-      pushAwesomeness * Math.pow(Math.E, -1 * pushHalfLife * pushTicks);
+    awesomeness += pushAwesomeness * Math.pow(Math.E, -1 * pushHalfLife * pushTicks);
     // Everyone who makes their code open source is a little bit awesome.
     ++awesomeness;
     if (awesomeness > maxValue) {
@@ -1815,9 +1621,7 @@ export class Repository {
     return this._awesomeness;
   }
 
-  async getIssues(
-    options?: IRepositoryGetIssuesOptions
-  ): Promise<RepositoryIssue[]> {
+  async getIssues(options?: IRepositoryGetIssuesOptions): Promise<RepositoryIssue[]> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
@@ -1836,15 +1640,8 @@ export class Repository {
       since: options.since ? options.since.toISOString() : undefined,
     };
     const cacheOptions: IPagedCacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgRepoTeamsStaleSeconds,
-        options
-      ),
-      backgroundRefresh:
-        options.backgroundRefresh !== undefined
-          ? options.backgroundRefresh
-          : true,
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoTeamsStaleSeconds, options),
+      backgroundRefresh: options.backgroundRefresh !== undefined ? options.backgroundRefresh : true,
       pageRequestDelay: options.pageRequestDelay,
     };
     let issuesAndPullRequests = await github.collections.getRepoIssues(
@@ -1853,17 +1650,11 @@ export class Repository {
       cacheOptions
     );
     let issuesOnly = issuesAndPullRequests.filter((r) => !r.pull_request);
-    const issues = common.createInstances<RepositoryIssue>(
-      this,
-      issueFromEntity,
-      issuesOnly
-    );
+    const issues = common.createInstances<RepositoryIssue>(this, issueFromEntity, issuesOnly);
     return issues;
   }
 
-  async getProjects(
-    options?: IPagedCacheOptions
-  ): Promise<RepositoryProject[]> {
+  async getProjects(options?: IPagedCacheOptions): Promise<RepositoryProject[]> {
     // NOTE: currently only available for the "Onboarding" app
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
@@ -1876,15 +1667,8 @@ export class Repository {
     };
     augmentInertiaPreview(parameters);
     const cacheOptions: IPagedCacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgRepoTeamsStaleSeconds,
-        options
-      ),
-      backgroundRefresh:
-        options.backgroundRefresh !== undefined
-          ? options.backgroundRefresh
-          : true,
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoTeamsStaleSeconds, options),
+      backgroundRefresh: options.backgroundRefresh !== undefined ? options.backgroundRefresh : true,
       pageRequestDelay: options.pageRequestDelay,
     };
     const projectsRaw = await github.collections.getRepoProjects(
@@ -1892,18 +1676,11 @@ export class Repository {
       parameters,
       cacheOptions
     );
-    const projects = common.createInstances<RepositoryProject>(
-      this,
-      projectFromEntity,
-      projectsRaw
-    );
+    const projects = common.createInstances<RepositoryProject>(this, projectFromEntity, projectsRaw);
     return projects;
   }
 
-  async createProject(
-    projectName: string,
-    options?: IGitHubNewProjectOptions
-  ): Promise<RepositoryProject> {
+  async createProject(projectName: string, options?: IGitHubNewProjectOptions): Promise<RepositoryProject> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     delete (options as any).owner;
@@ -1936,10 +1713,7 @@ export class Repository {
     return newProject;
   }
 
-  pullRequest(
-    pullRequestNumber: number,
-    optionalEntity?: any
-  ): RepositoryPullRequest {
+  pullRequest(pullRequestNumber: number, optionalEntity?: any): RepositoryPullRequest {
     const pr = new RepositoryPullRequest(
       this,
       pullRequestNumber,
@@ -1996,9 +1770,7 @@ export class Repository {
     );
     const purpose = overriddenPurpose || AppPurpose.Operations; // Operations has issue write permissions
     const details = await operations.github.post(
-      overriddenPurpose
-        ? this.specificAuthorization(purpose)
-        : this.authorize(purpose),
+      overriddenPurpose ? this.specificAuthorization(purpose) : this.authorize(purpose),
       'issues.create',
       parameters
     );

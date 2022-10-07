@@ -5,10 +5,7 @@
 
 import { EntityField } from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
-import {
-  IEntityMetadataFixedQuery,
-  FixedQueryType,
-} from '../../lib/entityMetadataProvider/query';
+import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
@@ -144,9 +141,7 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
     delete clone.description;
 
     settings.templates =
-      clone.templates && Array.isArray(clone.templates)
-        ? (clone.templates as string[])
-        : [];
+      clone.templates && Array.isArray(clone.templates) ? (clone.templates as string[]) : [];
     delete clone.templates;
 
     // Feature flags
@@ -195,8 +190,7 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
     // Properties
 
     if (clone['hookSecrets']) {
-      settings.properties['hookSecretsNotTransferred'] =
-        'hook shared secrets were not migrated';
+      settings.properties['hookSecretsNotTransferred'] = 'hook shared secrets were not migrated';
     }
     delete clone['hookSecrets'];
 
@@ -319,61 +313,35 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
   }
 }
 
-export class OrganizationSettingFixedQueryAll
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.OrganizationSettingsGetAll;
+export class OrganizationSettingFixedQueryAll implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.OrganizationSettingsGetAll;
 }
 
-export class OrganizationSettingFixedQueryMostRecentlyUpdatedActive
-  implements IEntityMetadataFixedQuery {
+export class OrganizationSettingFixedQueryMostRecentlyUpdatedActive implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType =
     FixedQueryType.OrganizationSettingsGetMostRecentlyUpdatedActive;
 }
 
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityInstantiate,
-  () => {
-    return new OrganizationSetting();
-  }
-);
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityIdColumnName,
-  organizationId
-);
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => {
+  return new OrganizationSetting();
+});
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, organizationId);
 
 EntityMetadataMappings.Register(
   type,
   MemorySettings.MemoryMapping,
   new Map<string, string>([
     // [Field.organizationId, 'organizationId'], // the ID field
-    [
-      Field.setupByCorporateDisplayName,
-      (Field.setupByCorporateDisplayName as string).toLowerCase(),
-    ],
-    [
-      Field.setupByCorporateId,
-      (Field.setupByCorporateId as string).toLowerCase(),
-    ],
-    [
-      Field.setupByCorporateUsername,
-      (Field.setupByCorporateUsername as string).toLowerCase(),
-    ],
+    [Field.setupByCorporateDisplayName, (Field.setupByCorporateDisplayName as string).toLowerCase()],
+    [Field.setupByCorporateId, (Field.setupByCorporateId as string).toLowerCase()],
+    [Field.setupByCorporateUsername, (Field.setupByCorporateUsername as string).toLowerCase()],
     [Field.setupDate, (Field.setupDate as string).toLowerCase()],
     [Field.active, (Field.active as string).toLowerCase()],
     [Field.updated, (Field.updated as string).toLowerCase()],
     [Field.organizationName, (Field.organizationName as string).toLowerCase()],
-    [
-      Field.portalDescription,
-      (Field.portalDescription as string).toLowerCase(),
-    ],
+    [Field.portalDescription, (Field.portalDescription as string).toLowerCase()],
     [Field.operationsNotes, (Field.operationsNotes as string).toLowerCase()],
-    [
-      Field.setupByCorporateDisplayName,
-      (Field.setupByCorporateDisplayName as string).toLowerCase(),
-    ],
+    [Field.setupByCorporateDisplayName, (Field.setupByCorporateDisplayName as string).toLowerCase()],
     [Field.installations, (Field.installations as string).toLowerCase()],
     [Field.features, (Field.features as string).toLowerCase()],
     [Field.properties, (Field.properties as string).toLowerCase()],
@@ -382,51 +350,26 @@ EntityMetadataMappings.Register(
     [Field.legalEntities, (Field.legalEntities as string).toLowerCase()],
   ])
 );
-EntityMetadataMappings.RuntimeValidateMappings(
-  type,
-  MemorySettings.MemoryMapping,
-  fieldNames,
-  [organizationId]
-);
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, [
+  organizationId,
+]);
 
 PostgresConfiguration.SetDefaultTableName(type, 'organizationsettings');
-EntityMetadataMappings.Register(
-  type,
-  PostgresSettings.PostgresDefaultTypeColumnName,
-  'organizationsetting'
-);
-EntityMetadataMappings.Register(type, PostgresSettings.PostgresDateColumns, [
-  'updated',
-  'setupDate',
-]);
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'organizationsetting');
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDateColumns, ['updated', 'setupDate']);
 PostgresConfiguration.MapFieldsToColumnNames(
   type,
   new Map<string, string>([
-    [
-      Field.setupByCorporateDisplayName,
-      (Field.setupByCorporateDisplayName as string).toLowerCase(),
-    ],
-    [
-      Field.setupByCorporateId,
-      (Field.setupByCorporateId as string).toLowerCase(),
-    ],
-    [
-      Field.setupByCorporateUsername,
-      (Field.setupByCorporateUsername as string).toLowerCase(),
-    ],
+    [Field.setupByCorporateDisplayName, (Field.setupByCorporateDisplayName as string).toLowerCase()],
+    [Field.setupByCorporateId, (Field.setupByCorporateId as string).toLowerCase()],
+    [Field.setupByCorporateUsername, (Field.setupByCorporateUsername as string).toLowerCase()],
     [Field.setupDate, (Field.setupDate as string).toLowerCase()],
     [Field.active, (Field.active as string).toLowerCase()],
     [Field.updated, (Field.updated as string).toLowerCase()],
     [Field.organizationName, (Field.organizationName as string).toLowerCase()],
-    [
-      Field.portalDescription,
-      (Field.portalDescription as string).toLowerCase(),
-    ],
+    [Field.portalDescription, (Field.portalDescription as string).toLowerCase()],
     [Field.operationsNotes, (Field.operationsNotes as string).toLowerCase()],
-    [
-      Field.setupByCorporateDisplayName,
-      (Field.setupByCorporateDisplayName as string).toLowerCase(),
-    ],
+    [Field.setupByCorporateDisplayName, (Field.setupByCorporateDisplayName as string).toLowerCase()],
     [Field.installations, (Field.installations as string).toLowerCase()],
     [Field.features, (Field.features as string).toLowerCase()],
     [Field.properties, (Field.properties as string).toLowerCase()],
@@ -452,11 +395,7 @@ EntityMetadataMappings.Register(
     const entityTypeValue = getEntityTypeColumnValue(type);
     switch (query.fixedQueryType) {
       case FixedQueryType.OrganizationSettingsGetAll: {
-        return PostgresGetAllEntities(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue
-        );
+        return PostgresGetAllEntities(tableName, entityTypeColumn, entityTypeValue);
       }
       //  case FixedQueryType.OrganizationSettingsGetMostRecentlyUpdatedActive: {
       default:

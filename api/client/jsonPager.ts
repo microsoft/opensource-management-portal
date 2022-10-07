@@ -32,9 +32,7 @@ export default class JsonPager<T> {
   constructor(req: Request, res: Response) {
     this.res = res;
     const { query } = req;
-    const requestedPageSize = query.pageSize
-      ? Number(query.pageSize)
-      : defaultPageSize;
+    const requestedPageSize = query.pageSize ? Number(query.pageSize) : defaultPageSize;
     const requestedPage = query.page ? Number(query.page) : 0;
     this.pageSize = Math.min(requestedPageSize, maxPageSize);
     const page = requestedPage || 0;

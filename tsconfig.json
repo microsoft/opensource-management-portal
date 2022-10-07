@@ -10,21 +10,11 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "target": "es2020",
-    "typeRoots": [
-      "./node_modules/@types",
-      "./typings"
-    ],
-    "lib": [
-      "es2020"
-    ],
-    "types": [
-      "jest"
-    ]
+    "typeRoots": ["./node_modules/@types", "./typings"],
+    "lib": ["es2020"],
+    "types": ["jest"]
   },
-  "exclude": [
-    "**/*.test.ts",
-    "**/*.spec.ts"
-  ],
+  "exclude": ["**/*.test.ts", "**/*.spec.ts"],
   "include": [
     "./*.ts",
     "./api/**/*",

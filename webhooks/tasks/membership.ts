@@ -13,11 +13,7 @@ export default class MembershipWebhookProcessor implements WebhookProcessor {
     return eventType === 'membership';
   }
 
-  async run(
-    operations: Operations,
-    organization: Organization,
-    data: any
-  ): Promise<any> {
+  async run(operations: Operations, organization: Organization, data: any): Promise<any> {
     const providers = operations.providers as IProviders;
     const queryCache = providers.queryCache;
     const event = data.body;
@@ -61,11 +57,7 @@ export default class MembershipWebhookProcessor implements WebhookProcessor {
       );
       try {
         if (queryCache && queryCache.supportsTeamMembership) {
-          await queryCache.removeTeamMember(
-            organizationIdAsString,
-            teamIdAsString,
-            userIdAsString
-          );
+          await queryCache.removeTeamMember(organizationIdAsString, teamIdAsString, userIdAsString);
         }
       } catch (queryCacheError) {
         console.dir(queryCacheError);

@@ -29,11 +29,7 @@ import { ILinkProvider } from '..';
 
 import tableEntity from '../../tableEntity';
 import { ErrorHelper } from '../../../transitional';
-import {
-  decryptEntityAsync,
-  encryptEntityAsync,
-  IEncryptionOptions,
-} from '../../encryption';
+import { decryptEntityAsync, encryptEntityAsync, IEncryptionOptions } from '../../encryption';
 import { IKeyVaultSecretResolver } from '../../keyVaultResolver';
 
 const defaultThirdPartyType = 'github';
@@ -60,6 +56,7 @@ interface IMultipleResultsError extends IReposError {
   multipleResults?: boolean;
 }
 
+// prettier-ignore
 const defaultEncryptedPropertyNames = [
   'githubToken',
   'githubTokenIncreasedScope',
@@ -109,12 +106,7 @@ interface ITableLinkProviderEncryptionOptions {
   encryptionKeyId: string;
   keyEncryptionKeyResolver: IKeyVaultSecretResolver;
   tableDehydrator: (instance: any) => any;
-  tableRehydrator: (
-    partitionKey: string,
-    rowKey: string,
-    obj?: any,
-    callback?: any
-  ) => any;
+  tableRehydrator: (partitionKey: string, rowKey: string, obj?: any, callback?: any) => any;
 }
 
 interface ITableLinkProviderOptions {
@@ -152,21 +144,15 @@ export class TableLinkProvider implements ILinkProvider {
     options = options || {};
     const thirdPartyType = options.thirdPartyType || defaultThirdPartyType;
     if (thirdPartyType !== 'github') {
-      throw new Error(
-        'At this time only "github" is a supported third-party type.'
-      );
+      throw new Error('At this time only "github" is a supported third-party type.');
     }
     const storageAccountName = options.account;
     if (!storageAccountName) {
-      throw new Error(
-        'Must provide options.account with an Azure Table storage account name'
-      );
+      throw new Error('Must provide options.account with an Azure Table storage account name');
     }
     const storageAccountKey = options.key;
     if (!storageAccountKey) {
-      throw new Error(
-        'Must provide options.key with an Azure Table storage account key'
-      );
+      throw new Error('Must provide options.key with an Azure Table storage account key');
     }
     this._options = options;
   }
@@ -174,18 +160,11 @@ export class TableLinkProvider implements ILinkProvider {
   async initialize(): Promise<ILinkProvider> {
     const options = this._options || {};
 
-    const azureTableCredential = new TablesSharedKeyCredential(
-      options.account,
-      options.key
-    );
+    const azureTableCredential = new TablesSharedKeyCredential(options.account, options.key);
     const serviceUrl = `https://${options.account}.table.core.windows.net`;
-    this._tableService = new TableServiceClient(
-      serviceUrl,
-      azureTableCredential
-    );
+    this._tableService = new TableServiceClient(serviceUrl, azureTableCredential);
     this._tableNamePrefix = options.prefix || '';
-    this._tableName =
-      options.tableName || `${this._tableNamePrefix}${defaultTableName}`;
+    this._tableName = options.tableName || `${this._tableNamePrefix}${defaultTableName}`;
     if (options.encryption) {
       const encryptionOptions = options.encryption;
       const encryptionKeyId = encryptionOptions.encryptionKeyId;
@@ -197,8 +176,7 @@ export class TableLinkProvider implements ILinkProvider {
         throw new Error('Encryption requires options.keyResolver');
       }
       const encryptedPropertyNames = new Set<string>(
-        encryptionOptions.encryptedPropertyNames ||
-          defaultEncryptedPropertyNames
+        encryptionOptions.encryptedPropertyNames || defaultEncryptedPropertyNames
       );
       this._encryptionOptions = {
         keyEncryptionKeyId: encryptionKeyId,
@@ -207,17 +185,11 @@ export class TableLinkProvider implements ILinkProvider {
         keyEncryptionKeys: undefined,
         encryptedPropertyNames,
         binaryProperties: 'buffer',
-        tableDehydrator:
-          encryptionOptions.tableDehydrator || tableEntity.reduce,
-        tableRehydrator:
-          encryptionOptions.tableRehydrator || tableEntity.create,
+        tableDehydrator: encryptionOptions.tableDehydrator || tableEntity.reduce,
+        tableRehydrator: encryptionOptions.tableRehydrator || tableEntity.create,
       };
     }
-    this._tableClient = new TableClient(
-      serviceUrl,
-      this._tableName,
-      azureTableCredential
-    );
+    this._tableClient = new TableClient(serviceUrl, this._tableName, azureTableCredential);
     if (options.throwIfTableMissing) {
       let tableExists = false;
       try {
@@ -233,7 +205,7 @@ export class TableLinkProvider implements ILinkProvider {
     } else {
       await this.tableCreateIfNotExists(this._tableName);
     }
-    return (this as any) as ILinkProvider;
+    return this as any as ILinkProvider;
   }
 
   get thirdPartyType() {
@@ -261,13 +233,11 @@ export class TableLinkProvider implements ILinkProvider {
     // SLOW query equivalent: return getUserEntityByProperty(this, 'ghid', id, callback);
     const partitionKey = this._options.partitionKey;
     if (!partitionKey) {
-      throw new Error(
-        'No table options.partitionKey provided with a fixed partition key at this time'
-      );
+      throw new Error('No table options.partitionKey provided with a fixed partition key at this time');
     }
     const fullEntity = await this.tableRetrieveEntity(partitionKey, id);
     if (fullEntity === false) {
-      return (false as any) as CorporateTableLink;
+      return false as any as CorporateTableLink;
     }
     const row = tableEntity.reduce(fullEntity);
     const link = createLinkInstanceFromAzureTableEntity(this, row);
@@ -302,7 +272,13 @@ export class TableLinkProvider implements ILinkProvider {
 
   async getAllCorporateIds(): Promise<string[]> {
     const queryOptions = {
-      columns: ['aadoid', 'PartitionKey', 'RowKey', 'Timestamp'],
+      // prettier-ignore
+      columns: [
+        'aadoid',
+        'PartitionKey',
+        'RowKey',
+        'Timestamp',
+      ],
     };
     const results = await this.queryLinksTable(queryOptions);
     return results.map((row) => String(row.aadoid)) as string[];
@@ -324,23 +300,15 @@ export class TableLinkProvider implements ILinkProvider {
         // linkInterfacePropertyMapping
         const tableColumnName = linkInterfacePropertyMapping[linkPropertyName];
         if (!tableColumnName) {
-          throw new Error(
-            `Missing mapping from property ${linkPropertyName} to equivalent table column`
-          );
+          throw new Error(`Missing mapping from property ${linkPropertyName} to equivalent table column`);
         }
         initialEntity[tableColumnName] = link[linkPropertyName];
       }
       const partitionKey = this._options.partitionKey;
       if (!partitionKey) {
-        throw new Error(
-          'No table options.partitionKey provided with a fixed partition key at this time'
-        );
+        throw new Error('No table options.partitionKey provided with a fixed partition key at this time');
       }
-      entity = tableEntity.create(
-        partitionKey,
-        link.thirdPartyId,
-        initialEntity
-      );
+      entity = tableEntity.create(partitionKey, link.thirdPartyId, initialEntity);
     } catch (processingError) {
       throw processingError;
     }
@@ -352,14 +320,9 @@ export class TableLinkProvider implements ILinkProvider {
     const tl = linkInstance as CorporateTableLink;
     const replacementEntity = tl.internal().getDirectEntity();
     if (linkInstance.thirdPartyId) {
-      return this.updateLinkByThirdPartyIdLegacy(
-        linkInstance.thirdPartyId,
-        replacementEntity
-      );
+      return this.updateLinkByThirdPartyIdLegacy(linkInstance.thirdPartyId, replacementEntity);
     }
-    throw new Error(
-      'updateLink is not yet updated for linkId without a given thirdPartyId (ghid)'
-    );
+    throw new Error('updateLink is not yet updated for linkId without a given thirdPartyId (ghid)');
   }
 
   async deleteLink(linkInstance: ICorporateLink): Promise<any> {
@@ -370,10 +333,10 @@ export class TableLinkProvider implements ILinkProvider {
     if (!linkId && linkInstance.thirdPartyId) {
       return this.deleteLinkByThirdPartyIdLegacy(linkInstance.thirdPartyId);
     }
-    const link = (this.getSingleLinkByProperty(
+    const link = this.getSingleLinkByProperty(
       this.propertyMapping.linkId,
       linkId
-    ) as any) as CorporateTableLink;
+    ) as any as CorporateTableLink;
     if (!link) {
       throw new Error(`No link found with ID ${linkId}`);
     }
@@ -383,15 +346,10 @@ export class TableLinkProvider implements ILinkProvider {
     return this.deleteLinkByThirdPartyIdLegacy(link.thirdPartyId);
   }
 
-  async updateLinkByThirdPartyIdLegacy(
-    thirdPartyId: string,
-    replaceEntity: any
-  ): Promise<void> {
+  async updateLinkByThirdPartyIdLegacy(thirdPartyId: string, replaceEntity: any): Promise<void> {
     const partitionKey = this._options.partitionKey;
     if (!partitionKey) {
-      throw new Error(
-        'No table options.partitionKey provided with a fixed partition key at this time'
-      );
+      throw new Error('No table options.partitionKey provided with a fixed partition key at this time');
     }
     if (typeof thirdPartyId !== 'string') {
       thirdPartyId = (thirdPartyId as any).toString();
@@ -401,20 +359,14 @@ export class TableLinkProvider implements ILinkProvider {
       const newLinkId = randomUUID();
       replaceEntity.linkId = newLinkId;
     }
-    const entity = tableEntity.create(
-      partitionKey,
-      thirdPartyId,
-      replaceEntity
-    );
+    const entity = tableEntity.create(partitionKey, thirdPartyId, replaceEntity);
     await this.tableReplaceEntity(entity);
   }
 
   deleteLinkByThirdPartyIdLegacy(thirdPartyId: string): Promise<void> {
     const partitionKey = this._options.partitionKey;
     if (!partitionKey) {
-      throw new Error(
-        'No table options.partitionKey provided with a fixed partition key at this time'
-      );
+      throw new Error('No table options.partitionKey provided with a fixed partition key at this time');
     }
     if (typeof thirdPartyId !== 'string') {
       thirdPartyId = (thirdPartyId as any).toString();
@@ -449,9 +401,7 @@ export class TableLinkProvider implements ILinkProvider {
           `The hydrated link was created by the same ${dehydratedTableProviderName} provider, but a different version: ${identity}`
         );
       } else {
-        throw new Error(
-          `The hydrated link is incompatible with this runtime environment: ${identity}`
-        );
+        throw new Error(`The hydrated link is incompatible with this runtime environment: ${identity}`);
       }
     }
     const clonedObject = Object.assign({}, jsonObject);
@@ -467,9 +417,7 @@ export class TableLinkProvider implements ILinkProvider {
     if (linkInstances.length > 0) {
       const first = linkInstances[0];
       if (first[linkProviderInstantiationTypeProperty] === undefined) {
-        throw new Error(
-          'linkInstances[0] does not appear to be a link instantiated by a provider'
-        );
+        throw new Error('linkInstances[0] does not appear to be a link instantiated by a provider');
       }
     }
     //
@@ -483,7 +431,7 @@ export class TableLinkProvider implements ILinkProvider {
     }
     //
     const arr = jsonArray.map(this.rehydrateLink.bind(this));
-    return (arr as any[]) as ICorporateLink[];
+    return arr as any[] as ICorporateLink[];
   }
 
   private createLinkInstanceFromHydratedEntity(jsonObject) {
@@ -491,15 +439,11 @@ export class TableLinkProvider implements ILinkProvider {
       provider: this,
     };
     const newLink = new CorporateTableLink(linkInternalOptions, jsonObject);
-    newLink[linkProviderInstantiationTypeProperty] =
-      LinkInstantiatedType.Rehydrated; // in case this helps while debugging
+    newLink[linkProviderInstantiationTypeProperty] = LinkInstantiatedType.Rehydrated; // in case this helps while debugging
     return newLink;
   }
 
-  private async getTableEntitiesByProperty(
-    propertyName: string,
-    value
-  ): Promise<any[]> {
+  private async getTableEntitiesByProperty(propertyName: string, value): Promise<any[]> {
     const queryOptions = {
       wherePropertyName: propertyName,
       whereValue: value,
@@ -507,19 +451,13 @@ export class TableLinkProvider implements ILinkProvider {
     return await this.queryLinksTable(queryOptions);
   }
 
-  private async getLinksByProperty(
-    propertyName,
-    value
-  ): Promise<CorporateTableLink[]> {
+  private async getLinksByProperty(propertyName, value): Promise<CorporateTableLink[]> {
     const rows = await this.getTableEntitiesByProperty(propertyName, value);
     const links = createLinkInstancesFromAzureTableEntityArray(this, rows);
     return links;
   }
 
-  private async getSingleLinkByProperty(
-    propertyName: string,
-    value
-  ): Promise<CorporateTableLink | boolean> {
+  private async getSingleLinkByProperty(propertyName: string, value): Promise<CorporateTableLink | boolean> {
     const rows = await this.getTableEntitiesByProperty(propertyName, value);
     if (rows.length <= 0) {
       return false;
@@ -536,10 +474,7 @@ export class TableLinkProvider implements ILinkProvider {
     return link;
   }
 
-  private async tableInsertEntity(
-    entity: any,
-    entityAlreadyExistsErrorMessage: string
-  ): Promise<any> {
+  private async tableInsertEntity(entity: any, entityAlreadyExistsErrorMessage: string): Promise<any> {
     try {
       let entityObject = entity;
       if (this._encryptionOptions) {
@@ -551,18 +486,12 @@ export class TableLinkProvider implements ILinkProvider {
           entityObject,
           this._encryptionOptions
         );
-        entityObject = this._encryptionOptions.tableRehydrator(
-          partitionKey,
-          rowKey,
-          encryptedObject
-        );
+        entityObject = this._encryptionOptions.tableRehydrator(partitionKey, rowKey, encryptedObject);
       }
       await this._tableClient.createEntity(entityObject);
     } catch (insertError) {
       if (ErrorHelper.IsConflict(insertError)) {
-        const error: IAlreadyLinkedError = new Error(
-          entityAlreadyExistsErrorMessage
-        );
+        const error: IAlreadyLinkedError = new Error(entityAlreadyExistsErrorMessage);
         error.alreadyLinked = true;
         error.innerError = insertError;
         throw error;
@@ -580,9 +509,7 @@ export class TableLinkProvider implements ILinkProvider {
       query.filter = `${options.wherePropertyName} ${whereValue}`;
     }
     const rows = [];
-    const pager = this._tableClient
-      .listEntities({ queryOptions: query })
-      .byPage();
+    const pager = this._tableClient.listEntities({ queryOptions: query }).byPage();
     for await (const page of pager) {
       for (let i = 0; i < page.length; i++) {
         let row = page[i];
@@ -596,11 +523,7 @@ export class TableLinkProvider implements ILinkProvider {
             this._encryptionOptions
           );
           // CONSIDER: the original implementation called the rehydrator here... which seems unnecessary now.
-          row = this._encryptionOptions.tableRehydrator(
-            partitionKey,
-            rowKey,
-            decryptedEntity
-          );
+          row = this._encryptionOptions.tableRehydrator(partitionKey, rowKey, decryptedEntity);
         }
         rows.push(row);
       }
@@ -646,11 +569,7 @@ export class TableLinkProvider implements ILinkProvider {
           reducedEntity,
           this._encryptionOptions
         );
-        const hydrated = this._encryptionOptions.tableRehydrator(
-          partitionKey,
-          rowKey,
-          decryptedEntity
-        );
+        const hydrated = this._encryptionOptions.tableRehydrator(partitionKey, rowKey, decryptedEntity);
         entity = hydrated;
       }
       return entity;
@@ -674,19 +593,12 @@ export class TableLinkProvider implements ILinkProvider {
         reducedEntity,
         this._encryptionOptions
       );
-      replacementObject = this._encryptionOptions.tableRehydrator(
-        partitionKey,
-        rowKey,
-        encryptedEntity
-      );
+      replacementObject = this._encryptionOptions.tableRehydrator(partitionKey, rowKey, encryptedEntity);
     }
     await this._tableClient.updateEntity(replacementObject, 'Replace');
   }
 
-  private async tableDeleteEntity(
-    partitionKey: string,
-    rowKey: string
-  ): Promise<any> {
+  private async tableDeleteEntity(partitionKey: string, rowKey: string): Promise<any> {
     await this._tableClient.deleteEntity(partitionKey, rowKey);
   }
 }
@@ -698,15 +610,11 @@ function createLinkInstancesFromAzureTableEntityArray(
   return rows.map(createLinkInstanceFromAzureTableEntity.bind(null, provider));
 }
 
-function createLinkInstanceFromAzureTableEntity(
-  provider: TableLinkProvider,
-  row: any
-): CorporateTableLink {
+function createLinkInstanceFromAzureTableEntity(provider: TableLinkProvider, row: any): CorporateTableLink {
   const linkInternalOptions = {
     provider,
   };
   const newLink = new CorporateTableLink(linkInternalOptions, row);
-  newLink[linkProviderInstantiationTypeProperty] =
-    LinkInstantiatedType.AzureTableEntity; // in case this helps while debugging
+  newLink[linkProviderInstantiationTypeProperty] = LinkInstantiatedType.AzureTableEntity; // in case this helps while debugging
   return newLink;
 }

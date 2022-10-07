@@ -12,11 +12,9 @@ import { WebhookProcessor } from '../organizationProcessor';
 import { Operations } from '../../business';
 import { Organization } from '../../business';
 import { AuditLogRecord } from '../../entities/auditLogRecord/auditLogRecord';
-import {
-  MapWebhookEventsToAuditEvents,
-  AuditLogSource,
-} from '../../entities/auditLogRecord';
+import { MapWebhookEventsToAuditEvents, AuditLogSource } from '../../entities/auditLogRecord';
 
+// prettier-ignore
 const eventTypes = new Set([
   'membership',
   'member',
@@ -25,13 +23,14 @@ const eventTypes = new Set([
   'team',
 ]);
 
-const knownEventTypesToIgnore = new Set(['fork', 'watch', 'star']);
+// prettier-ignore
+const knownEventTypesToIgnore = new Set([
+  'fork',
+  'watch',
+  'star',
+]);
 
-async function runAsync(
-  operations: Operations,
-  organization: Organization,
-  data: any
-) {
+async function runAsync(operations: Operations, organization: Organization, data: any) {
   const { auditLogRecordProvider } = operations.providers;
   if (!auditLogRecordProvider) {
     return;
@@ -61,10 +60,7 @@ async function runAsync(
   }
   if (body.scope === 'team' && body.action === 'removed' && body.member) {
     undoCandidate = true;
-  } else if (
-    body.event === 'team' &&
-    body.action === 'removed_from_repository'
-  ) {
+  } else if (body.event === 'team' && body.action === 'removed_from_repository') {
     undoCandidate = true;
   } else if (body.event === 'membership' && body.action === 'removed') {
     undoCandidate = true;
@@ -116,8 +112,7 @@ async function runAsync(
   await auditLogRecordProvider.insertRecord(record);
 }
 
-export default class AuditLogRecorderWebhookProcessor
-  implements WebhookProcessor {
+export default class AuditLogRecorderWebhookProcessor implements WebhookProcessor {
   filter(data: any) {
     let eventType = data.properties.event;
     const has = eventTypes.has(eventType);
@@ -127,11 +122,7 @@ export default class AuditLogRecorderWebhookProcessor
     return has;
   }
 
-  async run(
-    operations: Operations,
-    organization: Organization,
-    data: any
-  ): Promise<boolean> {
+  async run(operations: Operations, organization: Organization, data: any): Promise<boolean> {
     const result = await runAsync(operations, organization, data);
     return true;
   }

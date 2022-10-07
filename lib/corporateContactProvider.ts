@@ -27,15 +27,9 @@ export interface ICorporateContactInformation {
 }
 
 export interface ICorporateContactProvider {
-  lookupContacts(
-    corporateUsername: string
-  ): Promise<ICorporateContactInformation>;
-  getBulkCachedContacts(): Promise<
-    Map<string, ICorporateContactInformation | boolean>
-  >;
-  setBulkCachedContacts(
-    map: Map<string, ICorporateContactInformation | boolean>
-  ): Promise<void>;
+  lookupContacts(corporateUsername: string): Promise<ICorporateContactInformation>;
+  getBulkCachedContacts(): Promise<Map<string, ICorporateContactInformation | boolean>>;
+  setBulkCachedContacts(map: Map<string, ICorporateContactInformation | boolean>): Promise<void>;
 }
 
 export default function createCorporateContactProviderInstance(
@@ -56,8 +50,7 @@ export interface IMicrosoftIdentityServiceBasics {
   userPrincipalName?: string;
 }
 
-interface IMicrosoftIdentityServiceResponse
-  extends IMicrosoftIdentityServiceBasics {
+interface IMicrosoftIdentityServiceResponse extends IMicrosoftIdentityServiceBasics {
   attorney?: string;
   group?: string;
   highRiskBusiness?: string;
@@ -81,9 +74,7 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
     this.#cacheHelper = cacheHelper;
   }
 
-  async lookupContacts(
-    corporateUsername: string
-  ): Promise<ICorporateContactInformation> {
+  async lookupContacts(corporateUsername: string): Promise<ICorporateContactInformation> {
     let response: IMicrosoftIdentityServiceResponse;
     const cacheKey = `cc:${corporateUsername}`;
     if (this.#cacheHelper) {
@@ -97,11 +88,7 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
       response = await this.callIdentityService(corporateUsername);
       if (this.#cacheHelper && response) {
         // kicks off an async operation
-        this.#cacheHelper.setObjectWithExpire(
-          cacheKey,
-          response,
-          DefaultCacheMinutesPerContact
-        );
+        this.#cacheHelper.setObjectWithExpire(cacheKey, response, DefaultCacheMinutesPerContact);
       }
     }
     if (!response) {
@@ -109,10 +96,7 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
     }
     let managerUsername = null,
       managerDisplayName = null;
-    const manager =
-      response.structure && response.structure.length
-        ? response.structure[0]
-        : null;
+    const manager = response.structure && response.structure.length ? response.structure[0] : null;
     if (manager) {
       managerDisplayName = manager.preferredName;
       managerUsername = manager.userPrincipalName;
@@ -131,9 +115,7 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
     };
   }
 
-  async getBulkCachedContacts(): Promise<
-    Map<string, ICorporateContactInformation | boolean>
-  > {
+  async getBulkCachedContacts(): Promise<Map<string, ICorporateContactInformation | boolean>> {
     let map = new Map<string, IMicrosoftIdentityServiceResponse | boolean>();
     if (!this.#cacheHelper) {
       return map;
@@ -148,17 +130,13 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
           }
         }
       } else {
-        console.warn(
-          `Cached bulk entry ${BulkCacheKey} does not contain an array of entities`
-        );
+        console.warn(`Cached bulk entry ${BulkCacheKey} does not contain an array of entities`);
       }
     }
     return map;
   }
 
-  async setBulkCachedContacts(
-    map: Map<string, ICorporateContactInformation | boolean>
-  ): Promise<void> {
+  async setBulkCachedContacts(map: Map<string, ICorporateContactInformation | boolean>): Promise<void> {
     if (!this.#cacheHelper) {
       return;
     }
@@ -169,36 +147,24 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
       .map((e) => e[0])
       .filter((e) => e);
     const obj = { entities, empties };
-    await this.#cacheHelper.setObjectCompressedWithExpire(
-      BulkCacheKey,
-      obj,
-      BulkCacheMinutes
-    );
+    await this.#cacheHelper.setObjectCompressedWithExpire(BulkCacheKey, obj, BulkCacheMinutes);
   }
 
   private getIdentityServiceRequestOptions(endpoint: string) {
     const url = this.#identityConfig.url + endpoint;
-    const authToken =
-      'Basic ' +
-      Buffer.from(this.#identityConfig.pat + ':', 'utf8').toString('base64');
+    const authToken = 'Basic ' + Buffer.from(this.#identityConfig.pat + ':', 'utf8').toString('base64');
     const headers = {
       Authorization: authToken,
     };
     return { url, headers };
   }
 
-  async callIdentityService(
-    corporateUsername: string
-  ): Promise<IMicrosoftIdentityServiceResponse> {
+  async callIdentityService(corporateUsername: string): Promise<IMicrosoftIdentityServiceResponse> {
     try {
-      const response = await axios(
-        this.getIdentityServiceRequestOptions(`/${corporateUsername}`)
-      );
+      const response = await axios(this.getIdentityServiceRequestOptions(`/${corporateUsername}`));
       if ((response.data as any).error?.message) {
         // axios returns unknown now
-        throw CreateError.InvalidParameters(
-          (response.data as any).error.message
-        );
+        throw CreateError.InvalidParameters((response.data as any).error.message);
       }
       const entity = response.data as IMicrosoftIdentityServiceResponse;
       return entity;

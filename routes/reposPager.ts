@@ -41,17 +41,15 @@ async function getRepos(
 ): Promise<Repository[]> {
   if (organizationId) {
     if (queryCache && queryCache.supportsRepositories) {
-      return (
-        await queryCache.organizationRepositories(organizationId.toString())
-      ).map((wrapper) => wrapper.repository);
+      return (await queryCache.organizationRepositories(organizationId.toString())).map(
+        (wrapper) => wrapper.repository
+      );
     } else {
       return operations.getOrganizationById(organizationId).getRepositories();
     }
   } else {
     if (queryCache && queryCache.supportsRepositories) {
-      return (await queryCache.allRepositories()).map(
-        (wrapper) => wrapper.repository
-      );
+      return (await queryCache.allRepositories()).map((wrapper) => wrapper.repository);
     }
     return operations.getRepos();
   }
@@ -75,10 +73,7 @@ async function getReposAndOptionalTeamPermissions(
       const repoOptions = {
         type: GitHubRepositoryType.Sources,
       };
-      return {
-        reposData,
-        specificTeamRepos: await team2.getRepositories(repoOptions),
-      };
+      return { reposData, specificTeamRepos: await team2.getRepositories(repoOptions) };
     } else {
       return { reposData };
     }
@@ -87,11 +82,7 @@ async function getReposAndOptionalTeamPermissions(
   return { reposData, userRepos };
 }
 
-export default asyncHandler(async function (
-  req: IReposAppWithTeam,
-  res: Response,
-  next: NextFunction
-) {
+export default asyncHandler(async function (req: IReposAppWithTeam, res: Response, next: NextFunction) {
   const providers = getProviders(req);
   const operations = providers.operations;
   const queryCache = providers.queryCache;
@@ -104,11 +95,7 @@ export default asyncHandler(async function (
   const specificTeamPermissions = req.teamPermissions as IRequestTeamPermissions;
   const team2 = req.team2 as Team;
   let specificTeamId = team2 ? team2.id : null;
-  const {
-    reposData,
-    userRepos,
-    specificTeamRepos,
-  } = await getReposAndOptionalTeamPermissions(
+  const { reposData, userRepos, specificTeamRepos } = await getReposAndOptionalTeamPermissions(
     organizationId,
     operations,
     queryCache,
@@ -147,25 +134,15 @@ export default asyncHandler(async function (
   const createdSinceValue = req.query.cs ? Number(req.query.cs) : null;
   let createdSince = null;
   if (createdSinceValue) {
-    createdSince = new Date(
-      new Date().getTime() - daysInMilliseconds(createdSinceValue)
-    );
+    createdSince = new Date(new Date().getTime() - daysInMilliseconds(createdSinceValue));
   }
 
   let showIds = req.query.showids === '1';
 
   let teamsSubType = null;
-  if (
-    teamsType !== 'myread' &&
-    teamsType !== 'mywrite' &&
-    teamsType !== 'myadmin'
-  ) {
+  if (teamsType !== 'myread' && teamsType !== 'mywrite' && teamsType !== 'myadmin') {
     teamsType = null;
-  } else if (
-    teamsType === 'myread' ||
-    teamsType === 'mywrite' ||
-    teamsType === 'myadmin'
-  ) {
+  } else if (teamsType === 'myread' || teamsType === 'mywrite' || teamsType === 'myadmin') {
     teamsSubType = teamsType.substr(2);
     teamsType = 'my';
   }

@@ -35,9 +35,7 @@ export default async function Onboard(app, config) {
           s += team.id + ': ' + team.slug + '\n';
         }
       } catch (error) {
-        console.log(
-          `Error retrieving teams for the organization ${orgEntry.name}`
-        );
+        console.log(`Error retrieving teams for the organization ${orgEntry.name}`);
         console.dir(error);
       }
       console.log(s);

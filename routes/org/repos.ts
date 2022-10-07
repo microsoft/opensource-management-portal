@@ -18,13 +18,7 @@ import { IGraphEntry } from '../../lib/graphProvider';
 import { IMail } from '../../lib/mailProvider';
 import { IndividualContext } from '../../user';
 
-import {
-  Repository,
-  Collaborator,
-  TeamPermission,
-  Organization,
-  OrganizationMember,
-} from '../../business';
+import { Repository, Collaborator, TeamPermission, Organization, OrganizationMember } from '../../business';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
 import {
   ReposAppRequest,
@@ -57,8 +51,7 @@ interface IFindRepoCollaboratorsExcludingTeamsResult {
   outsideCollaborators: Collaborator[];
 }
 
-interface ICalculateRepoPermissionsResult
-  extends IFindRepoCollaboratorsExcludingTeamsResult {
+interface ICalculateRepoPermissionsResult extends IFindRepoCollaboratorsExcludingTeamsResult {
   permissions: TeamPermission[];
 }
 
@@ -78,11 +71,7 @@ router.use(function (req: ReposAppRequest, res, next) {
   next();
 });
 
-router.get(
-  '/',
-  lowercaser(['sort', 'language', 'type', 'tt']),
-  RouteReposPager
-);
+router.get('/', lowercaser(['sort', 'language', 'type', 'tt']), RouteReposPager);
 
 function sliceCollaboratorsForView(collaborators) {
   // Slices to the highest permission level for a collaborator
@@ -112,9 +101,7 @@ function slicePermissionsForView(permissions) {
   permissions.forEach((permission) => {
     const level = permission.permission;
     if (!level) {
-      throw new Error(
-        'Invalid operation: no permission associated with the permission entity'
-      );
+      throw new Error('Invalid operation: no permission associated with the permission entity');
     }
     if (!perms[level]) {
       perms[level] = [];
@@ -130,11 +117,8 @@ async function calculateRepoPermissions(
 ): Promise<ICalculateRepoPermissionsResult> {
   const teamPermissions = await repository.getTeamPermissions();
   const owners = await organization.getOwners();
-  const {
-    collaborators,
-    outsideCollaborators,
-    memberCollaborators,
-  } = await findRepoCollaboratorsExcludingOwners(repository, owners);
+  const { collaborators, outsideCollaborators, memberCollaborators } =
+    await findRepoCollaboratorsExcludingOwners(repository, owners);
   for (let teamPermission of teamPermissions) {
     try {
       teamPermission.resolveTeamMembers();
@@ -142,12 +126,7 @@ async function calculateRepoPermissions(
       /* ignored */
     }
   }
-  return {
-    permissions: teamPermissions,
-    collaborators,
-    outsideCollaborators,
-    memberCollaborators,
-  };
+  return { permissions: teamPermissions, collaborators, outsideCollaborators, memberCollaborators };
 }
 
 export async function findRepoCollaboratorsExcludingOwners(
@@ -169,9 +148,7 @@ export async function findRepoCollaboratorsExcludingOwners(
     return !ownersMap.has(id);
   }
   const collaboratorsWithoutOwners = _.filter(collaborators, filterOutOwners);
-  const outsideCollaboratorIds = new Set<number>(
-    outsideCollaborators.map((oc) => Number(oc.id))
-  );
+  const outsideCollaboratorIds = new Set<number>(outsideCollaborators.map((oc) => Number(oc.id)));
   return {
     collaborators: collaboratorsWithoutOwners,
     outsideCollaborators,
@@ -203,9 +180,7 @@ router.use(
     const repository = req.repository;
     const organization = req.organization;
     if (!organization.isNewRepositoryLockdownSystemEnabled) {
-      return next(
-        new Error('This endpoint is not available as configured in this app.')
-      );
+      return next(new Error('This endpoint is not available as configured in this app.'));
     }
     const daysAfterCreateToAllowSelfDelete = 21; // could be a config setting if anyone cares
     try {
@@ -248,9 +223,7 @@ router.post(
     // CONSIDER: de-duplicate
     const { operations } = getProviders(req);
     const { organization, repository } = req;
-    const repositoryMetadataProvider = getRepositoryMetadataProvider(
-      operations
-    );
+    const repositoryMetadataProvider = getRepositoryMetadataProvider(operations);
     const lockdownSystem = new NewRepositoryLockdownSystem({
       operations,
       organization,
@@ -282,8 +255,7 @@ router.post(
     try {
       const targetBranchName = req.body.targetBranchName || 'main';
       const providers = getProviders(req);
-      const activeContext = (req.individualContext ||
-        req.apiContext) as IndividualContext;
+      const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
       const repoPermissions = getContextualRepositoryPermissions(req);
       const repository = req.repository as Repository;
       const outcome = await renameRepositoryDefaultBranchEndToEnd(
@@ -327,20 +299,12 @@ export async function renameRepositoryDefaultBranchEndToEnd(
     throw CreateError.InvalidParameters('no repo permissions');
   }
   if (!repoPermissions.allowAdministration) {
-    throw CreateError.NotAuthorized(
-      'You do not have administrative permission on this repository'
-    );
+    throw CreateError.NotAuthorized('You do not have administrative permission on this repository');
   }
   await repository.getDetails();
   function finishUp(): Promise<void> {
     return new Promise((resolve) => {
-      triggerRenameNotification(
-        providers,
-        repository,
-        corporateUsername,
-        targetBranchName,
-        output
-      )
+      triggerRenameNotification(providers, repository, corporateUsername, targetBranchName, output)
         .then((ok) => {
           /* ignore */
         })
@@ -384,11 +348,7 @@ router.post(
   asyncHandler(async function (req: ILocalRequest, res, next) {
     const repoPermissions = req.repoPermissions;
     if (!repoPermissions.allowAdministration) {
-      return next(
-        new Error(
-          'You do not have administrative permission on this repository'
-        )
-      );
+      return next(new Error('You do not have administrative permission on this repository'));
     }
     // only supporting the 'take public' operation now
     const takePublic = req.body['make-repo-public'];
@@ -403,9 +363,7 @@ router.post(
       UserAlertType.Success
     );
     await repository.getDetails(NoCacheNoBackground);
-    return res.redirect(
-      `/${repository.organization.name}/repos/${repository.name}?published`
-    );
+    return res.redirect(`/${repository.organization.name}/repos/${repository.name}?published`);
   })
 );
 
@@ -416,8 +374,7 @@ router.get(
     const { linkProvider, config, graphProvider } = getProviders(req);
     const repoPermissions = req.repoPermissions;
     const referer = req.headers.referer as string;
-    const fromReposPage =
-      referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
+    const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
     const organization = req.organization;
     const repository = req.repository;
     const repositoryMetadataEntity = req.repositoryMetadata;
@@ -443,9 +400,7 @@ router.get(
         : null;
     if (createdByThirdPartyId) {
       try {
-        createdUserLink = await linkProvider.getByThirdPartyId(
-          createdByThirdPartyId
-        );
+        createdUserLink = await linkProvider.getByThirdPartyId(createdByThirdPartyId);
       } catch (linkError) {
         if (!ErrorHelper.IsNotFound(linkError)) {
           console.dir(linkError);
@@ -458,9 +413,7 @@ router.get(
         : null;
     if (!createdUserLink && createdByCorporateId) {
       try {
-        const results = await linkProvider.queryByCorporateId(
-          createdByCorporateId
-        );
+        const results = await linkProvider.queryByCorporateId(createdByCorporateId);
         if (results && results.length === 1) {
           createdUserLink = results[0];
         }
@@ -469,15 +422,12 @@ router.get(
       }
     }
     const createdByThirdPartyUsername =
-      repositoryMetadataEntity &&
-      repositoryMetadataEntity.createdByThirdPartyUsername
+      repositoryMetadataEntity && repositoryMetadataEntity.createdByThirdPartyUsername
         ? repositoryMetadataEntity.createdByThirdPartyUsername
         : null;
     if (!createdUserLink && createdByThirdPartyUsername) {
       try {
-        createdUserLink = await linkProvider.getByThirdPartyUsername(
-          createdByThirdPartyUsername
-        );
+        createdUserLink = await linkProvider.getByThirdPartyUsername(createdByThirdPartyUsername);
       } catch (linkError) {
         console.dir(linkError);
       }
@@ -526,8 +476,7 @@ router.get(
   asyncHandler(AddRepositoryPermissionsToRequest),
   asyncHandler(async function (req: ILocalRequest, res, next) {
     const referer = req.headers.referer as string;
-    const fromReposPage =
-      referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
+    const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
     const organization = req.organization;
     const repoPermissions = req.repoPermissions;
     const repository = req.repository;
@@ -556,28 +505,17 @@ router.get(
 
 export interface IRepositoryPermissionsView {}
 
-export async function calculateGroupedPermissionsViewForRepository(
-  repository: Repository
-): Promise<any> {
+export async function calculateGroupedPermissionsViewForRepository(repository: Repository): Promise<any> {
   const organization = repository.organization;
   const {
     permissions, // TeamPermission[]
     collaborators, // Collaborator[]
     outsideCollaborators, // Collaborator[]
   } = await calculateRepoPermissions(organization, repository);
-  const systemTeams = combineAllTeams(
-    organization.specialRepositoryPermissionTeams
-  ); // number[]
-  const teamBasedPermissions = consolidateTeamPermissions(
-    permissions,
-    systemTeams
-  ); // busted?
+  const systemTeams = combineAllTeams(organization.specialRepositoryPermissionTeams); // number[]
+  const teamBasedPermissions = consolidateTeamPermissions(permissions, systemTeams); // busted?
   const groupedPermissions = slicePermissionsForView(
-    filterSystemTeams(
-      teamsFilterType.systemTeamsExcluded,
-      systemTeams,
-      permissions
-    )
+    filterSystemTeams(teamsFilterType.systemTeamsExcluded, systemTeams, permissions)
   );
   /*
     admin: TeamPermission[],
@@ -594,9 +532,7 @@ export async function calculateGroupedPermissionsViewForRepository(
   readers: [],
   writers: [],
   */
-  const groupedOutsideCollaborators = sliceCollaboratorsForView(
-    outsideCollaborators
-  );
+  const groupedOutsideCollaborators = sliceCollaboratorsForView(outsideCollaborators);
   /*
   administrators: [],
   readers: [],
@@ -621,8 +557,7 @@ router.get(
   asyncHandler(AddRepositoryPermissionsToRequest),
   asyncHandler(async function (req: ILocalRequest, res, next) {
     const referer = req.headers.referer as string;
-    const fromReposPage =
-      referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
+    const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
     const organization = req.organization;
     const repoPermissions = req.repoPermissions;
     const repository = req.repository;
@@ -630,18 +565,12 @@ router.get(
     const uc = req.individualContext.aggregations;
     const aggregate = await uc.getAggregatedOverview();
     await repository.getDetails();
-    const {
-      permissions,
-      collaborators,
-      outsideCollaborators,
-    } = await calculateRepoPermissions(organization, repository);
-    const systemTeams = combineAllTeams(
-      organization.specialRepositoryPermissionTeams
+    const { permissions, collaborators, outsideCollaborators } = await calculateRepoPermissions(
+      organization,
+      repository
     );
-    const teamBasedPermissions = consolidateTeamPermissions(
-      permissions,
-      systemTeams
-    );
+    const systemTeams = combineAllTeams(organization.specialRepositoryPermissionTeams);
+    const teamBasedPermissions = consolidateTeamPermissions(permissions, systemTeams);
     const title = `${repository.name} - Repository`;
     const details = await repository.organization.getDetails();
     organization.id = details.id;
@@ -654,24 +583,14 @@ router.get(
         reposSubView: 'permissions',
         repository,
         permissions: slicePermissionsForView(
-          filterSystemTeams(
-            teamsFilterType.systemTeamsExcluded,
-            systemTeams,
-            permissions
-          )
+          filterSystemTeams(teamsFilterType.systemTeamsExcluded, systemTeams, permissions)
         ),
         systemPermissions: slicePermissionsForView(
-          filterSystemTeams(
-            teamsFilterType.systemTeamsOnly,
-            systemTeams,
-            permissions
-          )
+          filterSystemTeams(teamsFilterType.systemTeamsOnly, systemTeams, permissions)
         ),
         collaborators: sliceCollaboratorsForView(collaborators),
         collaboratorsArray: collaborators,
-        outsideCollaboratorsSlice: sliceCollaboratorsForView(
-          outsideCollaborators
-        ),
+        outsideCollaboratorsSlice: sliceCollaboratorsForView(outsideCollaborators),
         outsideCollaborators: outsideCollaborators,
         // reposDataAgeInformation: ageInformation ? ageInformation : undefined,
         fromReposPage,
@@ -689,8 +608,7 @@ router.get(
   asyncHandler(async function (req: ILocalRequest, res, next) {
     const { auditLogRecordProvider } = getProviders(req);
     const referer = req.headers.referer as string;
-    const fromReposPage =
-      referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
+    const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
     const organization = req.organization;
     const repository = req.repository;
     const repositoryMetadataEntity = req.repositoryMetadata;
@@ -774,21 +692,14 @@ function combineAllTeams(systemTeams) {
 }
 
 function filterSystemTeams(filterType, systemTeams, teams) {
-  if (
-    filterType !== teamsFilterType.systemTeamsExcluded &&
-    filterType !== teamsFilterType.systemTeamsOnly
-  ) {
-    throw new Error(
-      'Invalid, unsupported teamsFilterType value for filterType'
-    );
+  if (filterType !== teamsFilterType.systemTeamsExcluded && filterType !== teamsFilterType.systemTeamsOnly) {
+    throw new Error('Invalid, unsupported teamsFilterType value for filterType');
   }
   const systemSet = new Set(systemTeams);
   return _.filter(teams, (permission) => {
     const team = permission.team;
     const isSystem = systemSet.has(team.id);
-    return filterType === teamsFilterType.systemTeamsOnly
-      ? isSystem
-      : !isSystem;
+    return filterType === teamsFilterType.systemTeamsOnly ? isSystem : !isSystem;
   });
 }
 
@@ -867,13 +778,7 @@ async function triggerRenameNotification(
   targetBranchName: string,
   output: ITemporaryCommandOutput[]
 ): Promise<void> {
-  const {
-    config,
-    insights,
-    operations,
-    mailAddressProvider,
-    viewServices,
-  } = providers;
+  const { config, insights, operations, mailAddressProvider, viewServices } = providers;
   insights.trackMetric({ name: 'RenameDefaultBranchs', value: 1 });
   insights.trackEvent({
     name: 'RenameDefaultBranch',
@@ -883,9 +788,7 @@ async function triggerRenameNotification(
       targetBranchName,
     },
   });
-  const mailAddress = await mailAddressProvider.getAddressFromUpn(
-    corporateUsername
-  );
+  const mailAddress = await mailAddressProvider.getAddressFromUpn(corporateUsername);
   const emailTemplate = 'repoDefaultBranchRenamed';
   const mail: IMail = {
     to: [mailAddress],
@@ -897,9 +800,7 @@ async function triggerRenameNotification(
     reason: `You are receiving this e-mail as a transaction record from your action to rename the default branch of this repository you administer.`,
     headline: `${targetBranchName} branch`,
     notification: 'information',
-    app: config.brand?.companyName
-      ? `${config.brand.companyName} GitHub`
-      : 'GitHub',
+    app: config.brand?.companyName ? `${config.brand.companyName} GitHub` : 'GitHub',
     output,
     repository,
     organization: repository.organization,

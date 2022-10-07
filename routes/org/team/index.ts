@@ -23,13 +23,7 @@ import RouteLeave from './leave';
 import lowercaser from '../../../middleware/lowercaser';
 
 import RouteMaintainer from './index-maintainer';
-import {
-  Operations,
-  Organization,
-  Repository,
-  Team,
-  TeamMember,
-} from '../../../business';
+import { Operations, Organization, Repository, Team, TeamMember } from '../../../business';
 import { IndividualContext } from '../../../user';
 import {
   ReposAppRequest,
@@ -89,9 +83,10 @@ router.use(
       console.dir(problem);
     }
     if (operations.allowSelfServiceTeamMemberToMaintainerUpgrades()) {
-      req.selfServiceTeamMemberToMaintainerUpgrades = new SelfServiceTeamMemberToMaintainerUpgrades(
-        { operations, team: team2 }
-      );
+      req.selfServiceTeamMemberToMaintainerUpgrades = new SelfServiceTeamMemberToMaintainerUpgrades({
+        operations,
+        team: team2,
+      });
     }
     return next();
   })
@@ -104,9 +99,7 @@ router.use(
     if (!approvalProvider) {
       return next(new Error('No approval provider instance available'));
     }
-    const pendingApprovals = await approvalProvider.queryPendingApprovalsForTeam(
-      team2.id.toString()
-    );
+    const pendingApprovals = await approvalProvider.queryPendingApprovalsForTeam(team2.id.toString());
     const id = req.individualContext.getGitHubIdentity().id;
     req.otherApprovals = [];
     for (let i = 0; i < pendingApprovals.length; i++) {
@@ -120,48 +113,38 @@ router.use(
   })
 );
 
-router.use(
-  '/join',
-  asyncHandler(AddOrganizationPermissionsToRequest),
-  (req: ILocalRequest, res, next) => {
-    const organization = req.organization;
-    const team2 = req.team2;
-    const orgPermissions = req.orgPermissions;
+router.use('/join', asyncHandler(AddOrganizationPermissionsToRequest), (req: ILocalRequest, res, next) => {
+  const organization = req.organization;
+  const team2 = req.team2;
+  const orgPermissions = req.orgPermissions;
 
-    // Are they already a team member?
-    const currentMembershipStatus = req.membershipStatus;
-    if (currentMembershipStatus) {
-      return next(
-        wrapError(
-          null,
-          `You are already a ${currentMembershipStatus} of the ${team2.name} team`,
-          true
-        )
-      );
-    }
-
-    // Have they joined the organization yet?
-    const membershipStatus = orgPermissions.membershipStatus;
-    let error = null;
-    if (membershipStatus !== 'active') {
-      error = new Error(
-        `You are not a member of the ${organization.name} GitHub organization.`
-      );
-      error.title = 'Please join the organization before joining this team';
-      error.detailed =
-        membershipStatus === 'pending'
-          ? 'You have not accepted your membership yet, or do not have two-factor authentication enabled.'
-          : 'After you join the organization, you can join this team.';
-      error.skipOops = true;
-      error.skipLog = true;
-      error.fancyLink = {
-        link: `/${organization.name}`,
-        title: `Join the ${organization.name} organization`,
-      };
-    }
-    return next(error);
+  // Are they already a team member?
+  const currentMembershipStatus = req.membershipStatus;
+  if (currentMembershipStatus) {
+    return next(
+      wrapError(null, `You are already a ${currentMembershipStatus} of the ${team2.name} team`, true)
+    );
   }
-);
+
+  // Have they joined the organization yet?
+  const membershipStatus = orgPermissions.membershipStatus;
+  let error = null;
+  if (membershipStatus !== 'active') {
+    error = new Error(`You are not a member of the ${organization.name} GitHub organization.`);
+    error.title = 'Please join the organization before joining this team';
+    error.detailed =
+      membershipStatus === 'pending'
+        ? 'You have not accepted your membership yet, or do not have two-factor authentication enabled.'
+        : 'After you join the organization, you can join this team.';
+    error.skipOops = true;
+    error.skipLog = true;
+    error.fancyLink = {
+      link: `/${organization.name}`,
+      title: `Join the ${organization.name} organization`,
+    };
+  }
+  return next(error);
+});
 
 router.get(
   '/join',
@@ -181,11 +164,9 @@ router.get(
         },
       });
     }
-    const maintainers = (await team2.getOfficialMaintainers()).filter(
-      (maintainer) => {
-        return maintainer && maintainer.login && maintainer.link;
-      }
-    );
+    const maintainers = (await team2.getOfficialMaintainers()).filter((maintainer) => {
+      return maintainer && maintainer.login && maintainer.link;
+    });
     req.individualContext.webContext.render({
       view: 'org/team/join',
       title: `Join ${team2.name}`,
@@ -207,16 +188,12 @@ router.post(
     }
     const individualContext = req.individualContext;
     try {
-      await selfServiceTeamMemberToMaintainerUpgrades.validateUserCanSelfServicePromote(
-        individualContext
-      );
+      await selfServiceTeamMemberToMaintainerUpgrades.validateUserCanSelfServicePromote(individualContext);
     } catch (notEligible) {
       return next(notEligible);
     }
     try {
-      await selfServiceTeamMemberToMaintainerUpgrades.upgrade(
-        individualContext
-      );
+      await selfServiceTeamMemberToMaintainerUpgrades.upgrade(individualContext);
     } catch (upgradeError) {
       return next(upgradeError);
     }
@@ -239,9 +216,7 @@ router.post(
   '/join',
   asyncHandler(async (req: ILocalRequest, res, next) => {
     if (req.existingRequest) {
-      throw new Error(
-        'You have already created a team join request that is pending a decision.'
-      );
+      throw new Error('You have already created a team join request that is pending a decision.');
     }
     const activeContext = req.individualContext;
     const team2 = req.team2 as Team;
@@ -260,11 +235,7 @@ router.post(
       return next(outcome.error);
     }
     if (outcome.message) {
-      activeContext.webContext.saveUserAlert(
-        outcome.message,
-        'Team Join',
-        UserAlertType.Success
-      );
+      activeContext.webContext.saveUserAlert(outcome.message, 'Team Join', UserAlertType.Success);
     }
     return res.redirect(outcome.redirect || `${team2.baseUrl}`);
   })
@@ -278,14 +249,7 @@ export async function submitTeamJoinRequest(
   correlationId: string,
   hostname: string
 ): Promise<ITeamJoinRequestSubmitOutcome> {
-  const {
-    approvalProvider,
-    config,
-    graphProvider,
-    mailProvider,
-    insights,
-    operations,
-  } = providers;
+  const { approvalProvider, config, graphProvider, mailProvider, insights, operations } = providers;
   const organization = team.organization;
   const broadAccessTeams = new Set(organization.broadAccessTeams);
   if (!approvalProvider) {
@@ -347,22 +311,16 @@ export async function submitTeamJoinRequest(
   }
   let managementChain: IGraphEntry[] = null;
   try {
-    managementChain = await graphProvider.getManagementChain(
-      activeContext?.corporateIdentity?.id
-    );
+    managementChain = await graphProvider.getManagementChain(activeContext?.corporateIdentity?.id);
   } catch (error) {
     // this is only an optional addition to the mail
   }
   const displayHostname = hostname;
   const approvalScheme =
-    displayHostname === 'localhost' && config.webServer.allowHttp === true
-      ? 'http'
-      : 'https';
+    displayHostname === 'localhost' && config.webServer.allowHttp === true ? 'http' : 'https';
   const reposSiteBaseUrl = `${approvalScheme}://${displayHostname}/`;
   const approvalBaseUrl = `${reposSiteBaseUrl}approvals/`;
-  const personName =
-    activeContext.corporateIdentity.displayName ||
-    activeContext.corporateIdentity.username;
+  const personName = activeContext.corporateIdentity.displayName || activeContext.corporateIdentity.username;
   let personMail = null;
   let requestId = null;
   let approvalRequest = new TeamJoinApprovalEntity();
@@ -371,19 +329,11 @@ export async function submitTeamJoinRequest(
     personMail = await operations.getMailAddressFromCorporateUsername(upn);
     const isMember = await team.isMember(username);
     if (isMember === true) {
-      return {
-        error: wrapError(
-          null,
-          'You are already a member of the team ' + team.name,
-          true
-        ),
-      };
+      return { error: wrapError(null, 'You are already a member of the team ' + team.name, true) };
     }
-    const maintainers = (await team.getOfficialMaintainers()).filter(
-      (maintainer) => {
-        return maintainer && maintainer.login && maintainer.link;
-      }
-    );
+    const maintainers = (await team.getOfficialMaintainers()).filter((maintainer) => {
+      return maintainer && maintainer.login && maintainer.link;
+    });
     approvalRequest.thirdPartyUsername = activeContext.getGitHubIdentity().username;
     approvalRequest.thirdPartyId = activeContext.getGitHubIdentity().id;
     approvalRequest.justification = justification;
@@ -392,30 +342,23 @@ export async function submitTeamJoinRequest(
     approvalRequest.organizationName = team.organization.name;
     approvalRequest.teamId = String(team.id);
     approvalRequest.teamName = team.name;
-    approvalRequest.corporateUsername =
-      activeContext.corporateIdentity.username;
-    approvalRequest.corporateDisplayName =
-      activeContext.corporateIdentity.displayName;
+    approvalRequest.corporateUsername = activeContext.corporateIdentity.username;
+    approvalRequest.corporateDisplayName = activeContext.corporateIdentity.displayName;
     approvalRequest.corporateId = activeContext.corporateIdentity.id;
     const mnt = [];
     for (let i = 0; i < maintainers.length; i++) {
       const maintainer = maintainers[i];
       mnt.push('@' + maintainer.login);
       const ml = maintainer ? (maintainer.link as ICorporateLink) : null;
-      const approverUpn =
-        ml && ml.corporateUsername ? ml.corporateUsername : null;
+      const approverUpn = ml && ml.corporateUsername ? ml.corporateUsername : null;
       if (approverUpn) {
-        const mailAddress = await operations.getMailAddressFromCorporateUsername(
-          approverUpn
-        );
+        const mailAddress = await operations.getMailAddressFromCorporateUsername(approverUpn);
         if (mailAddress) {
           approverMailAddresses.push(mailAddress);
         }
       }
     }
-    const newRequestId = await approvalProvider.createTeamJoinApprovalEntity(
-      approvalRequest
-    );
+    const newRequestId = await approvalProvider.createTeamJoinApprovalEntity(approvalRequest);
     requestId = newRequestId;
     if (mailProviderInUse) {
       const approversAsString = approverMailAddresses.join(', ');
@@ -451,10 +394,7 @@ export async function submitTeamJoinRequest(
             data: JSON.stringify(contentOptions),
           },
         });
-        mail.content = await operations.emailRender(
-          'membershipApprovals/pleaseApprove',
-          contentOptions
-        );
+        mail.content = await operations.emailRender('membershipApprovals/pleaseApprove', contentOptions);
       } catch (renderError) {
         insights?.trackException({
           exception: renderError,
@@ -479,16 +419,10 @@ export async function submitTeamJoinRequest(
           receipt: mailResult,
           eventName: undefined,
         };
-        insights?.trackEvent({
-          name: 'ReposTeamRequestPleaseApproveMailSuccess',
-          properties: customData,
-        });
+        insights?.trackEvent({ name: 'ReposTeamRequestPleaseApproveMailSuccess', properties: customData });
       } catch (mailError) {
         customData.eventName = 'ReposTeamRequestPleaseApproveMailFailure';
-        insights?.trackException({
-          exception: mailError,
-          properties: customData,
-        });
+        insights?.trackException({ exception: mailError, properties: customData });
       }
       // Add to the approval to log who was sent the mail
       const approval = await approvalProvider.getApprovalEntity(requestId);
@@ -527,10 +461,7 @@ export async function submitTeamJoinRequest(
             data: JSON.stringify(contentOptions),
           },
         });
-        mail.content = await operations.emailRender(
-          'membershipApprovals/requestSubmitted',
-          contentOptions
-        );
+        mail.content = await operations.emailRender('membershipApprovals/requestSubmitted', contentOptions);
       } catch (renderError) {
         insights?.trackException({
           exception: renderError,
@@ -555,16 +486,10 @@ export async function submitTeamJoinRequest(
           receipt: mailResult,
           eventName: undefined,
         };
-        insights?.trackEvent({
-          name: 'ReposTeamRequestSubmittedMailSuccess',
-          properties: customData,
-        });
+        insights?.trackEvent({ name: 'ReposTeamRequestSubmittedMailSuccess', properties: customData });
       } catch (mailError) {
         customData.eventName = 'ReposTeamRequestSubmittedMailFailure';
-        insights?.trackException({
-          exception: mailError,
-          properties: customData,
-        });
+        insights?.trackException({ exception: mailError, properties: customData });
       }
     }
   } catch (error) {
@@ -593,8 +518,7 @@ enum BasicTeamViewPage {
 async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
   const providers = getProviders(req);
 
-  const showManagementFeatures =
-    parseInt(req.query['inline-management'] as string) == 1;
+  const showManagementFeatures = parseInt(req.query['inline-management'] as string) == 1;
 
   const idAsString = req.individualContext.getGitHubIdentity().id;
   const id = idAsString ? parseInt(idAsString, 10) : null;
@@ -642,12 +566,8 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
     let reposWithPermissions = null;
     try {
       if (display === BasicTeamViewPage.Repositories) {
-        reposWithPermissions = await team2.getRepositories(
-          onlySourceRepositories
-        );
-        repositories = reposWithPermissions.sort(
-          sortRepositoriesByNameCaseInsensitive
-        );
+        reposWithPermissions = await team2.getRepositories(onlySourceRepositories);
+        repositories = reposWithPermissions.sort(sortRepositoriesByNameCaseInsensitive);
       }
     } catch (ignoredError) {
       console.dir(ignoredError);
@@ -656,16 +576,11 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
 
   const map = new Map<number, ICorporateLink>();
   let links: ICorporateLink[] = null;
-  if (
-    Math.max(teamMaintainers.length, membersFirstPage.length) >
-    FirstPageMembersCap
-  ) {
+  if (Math.max(teamMaintainers.length, membersFirstPage.length) > FirstPageMembersCap) {
     links = await operations.getLinks();
   } else {
     const ids = Array.from(
-      new Set(
-        [...teamMaintainers, ...membersFirstPage].map((tm) => String(tm.id))
-      ).values()
+      new Set([...teamMaintainers, ...membersFirstPage].map((tm) => String(tm.id))).values()
     );
     links = await operations.getLinksFromThirdPartyIds(ids);
   }
@@ -687,14 +602,9 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
   const organizationPermissions = GetOrganizationPermissionsFromRequest(req);
 
   let history = null;
-  if (
-    display === BasicTeamViewPage.History &&
-    providers.auditLogRecordProvider
-  ) {
+  if (display === BasicTeamViewPage.History && providers.auditLogRecordProvider) {
     const { auditLogRecordProvider } = providers;
-    history = await auditLogRecordProvider.queryAuditLogForTeamOperations(
-      team2.id.toString()
-    );
+    history = await auditLogRecordProvider.queryAuditLogForTeamOperations(team2.id.toString());
   }
 
   let title = team2.name;
@@ -705,18 +615,14 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
   }
 
   const mailSubjectSuffix = `?subject=${team2.name} GitHub team`;
-  const maintainerMails = teamMaintainers
-    .map((maint) => maint.mailAddress)
-    .filter((val) => val);
+  const maintainerMails = teamMaintainers.map((maint) => maint.mailAddress).filter((val) => val);
   let mailToMaintainers = maintainerMails.length
     ? `mailto:${maintainerMails.join(';')}${mailSubjectSuffix}`
     : null;
   let mailToMaintainersCount = maintainerMails.length;
 
   // on purpose the members would only include those shown on the first page here if there are less than the cap # of members
-  const memberMails = membersFirstPage
-    .map((mem) => mem.mailAddress)
-    .filter((val) => val);
+  const memberMails = membersFirstPage.map((mem) => mem.mailAddress).filter((val) => val);
   let mailToMembers =
     memberMails.length && memberMails.length !== FirstPageMembersCap
       ? `mailto:${memberMails.join(';')}${mailSubjectSuffix}`
@@ -786,13 +692,9 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
   });
 }
 
-router.get(
-  '/',
-  asyncHandler(AddOrganizationPermissionsToRequest),
-  async (req: ILocalRequest, res, next) => {
-    await basicTeamsView(req, BasicTeamViewPage.Default);
-  }
-);
+router.get('/', asyncHandler(AddOrganizationPermissionsToRequest), async (req: ILocalRequest, res, next) => {
+  await basicTeamsView(req, BasicTeamViewPage.Default);
+});
 
 router.get(
   '/history',
@@ -810,10 +712,7 @@ router.get(
   }
 );
 
-function addLinkToList(
-  array: TeamMember[],
-  linksMap: Map<number, ICorporateLink>
-) {
+function addLinkToList(array: TeamMember[], linksMap: Map<number, ICorporateLink>) {
   for (let i = 0; i < array.length; i++) {
     const entry = array[i];
     const link = linksMap.get(entry.id);
@@ -823,10 +722,7 @@ function addLinkToList(
   }
 }
 
-async function resolveMailAddresses(
-  operations: Operations,
-  array: TeamMember[]
-): Promise<void> {
+async function resolveMailAddresses(operations: Operations, array: TeamMember[]): Promise<void> {
   const mailAddressProvider = operations.providers.mailAddressProvider;
   if (!mailAddressProvider) {
     return;
@@ -845,10 +741,7 @@ async function resolveMailAddresses(
   );
 }
 
-export function sortRepositoriesByNameCaseInsensitive(
-  a: Repository,
-  b: Repository
-) {
+export function sortRepositoriesByNameCaseInsensitive(a: Repository, b: Repository) {
   let nameA = a.name.toLowerCase();
   let nameB = b.name.toLowerCase();
   if (nameA < nameB) {
@@ -861,11 +754,7 @@ export function sortRepositoriesByNameCaseInsensitive(
 }
 
 router.use('/members', RouteMembers);
-router.get(
-  '/repos',
-  lowercaser(['sort', 'language', 'type', 'tt']),
-  RouteReposPager
-);
+router.get('/repos', lowercaser(['sort', 'language', 'type', 'tt']), RouteReposPager);
 router.use('/delete', RouteDelete);
 router.use('/properties', RouteProperties);
 router.use('/maintainers', RouteMaintainers);

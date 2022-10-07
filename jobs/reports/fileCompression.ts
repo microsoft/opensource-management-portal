@@ -7,11 +7,7 @@ import fs from 'fs';
 import zlib from 'zlib';
 import tmp from 'tmp-promise';
 
-export function deflateFile(
-  inputFilename: string,
-  outputFilename: string,
-  callback
-) {
+export function deflateFile(inputFilename: string, outputFilename: string, callback) {
   const gzip = zlib.createGzip();
   const input = fs.createReadStream(inputFilename);
   const output = fs.createWriteStream(outputFilename);

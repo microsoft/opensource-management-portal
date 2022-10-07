@@ -6,11 +6,7 @@
 import crypto from 'crypto';
 import { randomUUID } from 'crypto';
 
-import {
-  decryptEntityAsync,
-  encryptEntityAsync,
-  IEncryptionOptions,
-} from '../lib/encryption';
+import { decryptEntityAsync, encryptEntityAsync, IEncryptionOptions } from '../lib/encryption';
 
 const standardTimeout = 5000;
 
@@ -42,12 +38,7 @@ describe('encryption', () => {
           };
           let partitionKey = 'partition' + randomUUID();
           let rowKey = 'row' + randomUUID();
-          const roundtripEntity = decryptEntityAsync(
-            partitionKey,
-            rowKey,
-            entity,
-            sampleEncryptionOptions
-          )
+          const roundtripEntity = decryptEntityAsync(partitionKey, rowKey, entity, sampleEncryptionOptions)
             .then((ok) => {
               expect(entity).toEqual(roundtripEntity);
             })
@@ -80,21 +71,12 @@ describe('encryption', () => {
             };
             const partitionKey = 'partition' + randomUUID();
             const rowKey = 'row' + randomUUID();
-            encryptEntityAsync(
-              partitionKey,
-              rowKey,
-              secretEntity,
-              sampleEncryptionOptions
-            )
+            encryptEntityAsync(partitionKey, rowKey, secretEntity, sampleEncryptionOptions)
               .then((encryptedEntity) => {
                 expect(error).toBeFalsy();
                 expect(encryptedEntity).toBeDefined();
-                expect(
-                  encryptedEntity['_ClientEncryptionMetadata1']
-                ).toBeDefined();
-                expect(
-                  encryptedEntity['_ClientEncryptionMetadata2']
-                ).toBeDefined();
+                expect(encryptedEntity['_ClientEncryptionMetadata1']).toBeDefined();
+                expect(encryptedEntity['_ClientEncryptionMetadata2']).toBeDefined();
                 done();
               })
               .catch(() => {
@@ -126,21 +108,11 @@ describe('encryption', () => {
             };
             let partitionKey = 'partition' + randomUUID();
             let rowKey = 'row' + randomUUID();
-            encryptEntityAsync(
-              partitionKey,
-              rowKey,
-              secretEntity,
-              sampleEncryptionOptions
-            )
+            encryptEntityAsync(partitionKey, rowKey, secretEntity, sampleEncryptionOptions)
               .then((encryptedEntity) => {
                 expect(error).toBeFalsy();
                 expect(encryptedEntity).not.toEqual(secretEntity);
-                decryptEntityAsync(
-                  partitionKey,
-                  rowKey,
-                  encryptedEntity as any,
-                  sampleEncryptionOptions
-                )
+                decryptEntityAsync(partitionKey, rowKey, encryptedEntity as any, sampleEncryptionOptions)
                   .then((roundtripEntity) => {
                     expect(roundtripEntity).toEqual(secretEntity);
                     done();

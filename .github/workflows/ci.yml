@@ -3,30 +3,29 @@ name: Test
 on:
   push:
     branches-ignore:
-      - "dependabot/**"
+      - 'dependabot/**'
   pull_request:
 
 jobs:
   test:
-
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3.1.0
+      - name: Checkout repository
+        uses: actions/checkout@v3.1.0
 
-    - name: Setup Node
-      uses: actions/setup-node@v3.1.0
+      - name: Setup Node
+        uses: actions/setup-node@v3.1.0
 
-    - name: Install Dependencies
-      run: npm ci
+      - name: Install Dependencies
+        run: npm ci
 
-    - name: Run Linting
-      run: npm run offline-lint:js
+      - name: Run Linting
+        run: npm run offline-lint:js
 
-    - name: Run tests
-      run: npm test
+      - name: Run tests
+        run: npm test
 
-    - name: Build container
-      run: |
-        docker build .
+      - name: Build container
+        run: |
+          docker build .

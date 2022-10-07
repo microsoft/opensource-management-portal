@@ -21,24 +21,14 @@ const vstsAuth = asyncHandler(async (req: IApiRequest, res, next) => {
   }
   if (!config.authentication || !config.authentication.vsts) {
     return next(
-      new Error(
-        'No VSTS authentication configuration available, VSTS authentication is not supported'
-      )
+      new Error('No VSTS authentication configuration available, VSTS authentication is not supported')
     );
   }
   if (config.authentication.vsts.enabled !== true) {
-    return next(
-      new Error(
-        'VSTS authentication is not enabled in the current configuration'
-      )
-    );
+    return next(new Error('VSTS authentication is not enabled in the current configuration'));
   }
   if (!config.authentication.vsts.vstsCollectionUrl) {
-    return next(
-      new Error(
-        'VSTS collection URL is missing in the environment configuration'
-      )
-    );
+    return next(new Error('VSTS collection URL is missing in the environment configuration'));
   }
   const { graphProvider } = getProviders(req);
   const vstsCollectionUrl = config.authentication.vsts.vstsCollectionUrl;
@@ -62,33 +52,18 @@ const vstsAuth = asyncHandler(async (req: IApiRequest, res, next) => {
     });
     const body = response.data as any; // axios returns unknown now
     if (!body.authenticatedUser || !body.authenticatedUser.isActive) {
-      const error = jsonError(
-        'The user is no longer active or authenticated',
-        401
-      );
+      const error = jsonError('The user is no longer active or authenticated', 401);
       error['authErrorMessage'] = error.message;
       return next(error);
     }
-    const displayName =
-      body.authenticatedUser.providerDisplayName || 'Authenticated User';
-    if (
-      !body.authenticatedUser.properties ||
-      !body.authenticatedUser.properties.Account
-    ) {
-      const error = jsonError(
-        'Authenticated user information is not available from VSTS',
-        401
-      );
+    const displayName = body.authenticatedUser.providerDisplayName || 'Authenticated User';
+    if (!body.authenticatedUser.properties || !body.authenticatedUser.properties.Account) {
+      const error = jsonError('Authenticated user information is not available from VSTS', 401);
       error['authErrorMessage'] = error.message;
       return next(error);
     }
-    if (
-      body.authenticatedUser.properties.Account['$type'] !== 'System.String'
-    ) {
-      const error = jsonError(
-        'Authenticated user type from VSTS is not supported',
-        401
-      );
+    if (body.authenticatedUser.properties.Account['$type'] !== 'System.String') {
+      const error = jsonError('Authenticated user type from VSTS is not supported', 401);
       error['authErrorMessage'] = error.message;
       return next(error);
     }
@@ -107,10 +82,7 @@ const vstsAuth = asyncHandler(async (req: IApiRequest, res, next) => {
     req.apiKeyProviderName = 'vsts';
     return next();
   } catch (error) {
-    const err = jsonError(
-      `You are not authorized to access the resource via Azure DevOps`,
-      401
-    );
+    const err = jsonError(`You are not authorized to access the resource via Azure DevOps`, 401);
     err['authErrorMessage'] = error.message;
     err['skipLog'] = true;
     return next(err);

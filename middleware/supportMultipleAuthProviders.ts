@@ -22,9 +22,7 @@ export default function returnCombinedMiddleware(supportedProviders) {
   }
   let totalProviders = supportedProviders.length;
   if (totalProviders <= 0) {
-    throw new Error(
-      'supportedProviders must provide at least one provider to use for auth'
-    );
+    throw new Error('supportedProviders must provide at least one provider to use for auth');
   }
   return function middleware(req: IApiRequest, res, next) {
     const { insights } = getProviders(req);
@@ -35,12 +33,7 @@ export default function returnCombinedMiddleware(supportedProviders) {
       if (!error) {
         // No error but also now API use information
         if (!req.apiKeyToken) {
-          error = jsonError(
-            new Error(
-              'No API token was provided by the authentication provider'
-            ),
-            500
-          );
+          error = jsonError(new Error('No API token was provided by the authentication provider'), 500);
           return next(error);
         }
         // Auth succeeded
@@ -54,9 +47,7 @@ export default function returnCombinedMiddleware(supportedProviders) {
       }
       ++i;
       if (i >= totalProviders) {
-        authErrorMessages.push(
-          'Authentication failed, no providers were able to authorize you'
-        );
+        authErrorMessages.push('Authentication failed, no providers were able to authorize you');
         error = jsonError(new Error(authErrorMessages.join('. ')), 401);
         error.skipLog = true; // do not log to insights data as an exception
         insights?.trackEvent({

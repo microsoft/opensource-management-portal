@@ -7,10 +7,8 @@
 
 const arrayFromString = require('./utils/arrayFromString');
 
-const administratorsEnvironmentName =
-  'AUTHORIZED_CORPORATE_ADMINISTRATOR_USERNAMES';
-const administratorsGroupEnvironmentName =
-  'AUTHORIZED_CORPORATE_ADMINISTRATOR_SECURITY_GROUP_ID';
+const administratorsEnvironmentName = 'AUTHORIZED_CORPORATE_ADMINISTRATOR_USERNAMES';
+const administratorsGroupEnvironmentName = 'AUTHORIZED_CORPORATE_ADMINISTRATOR_SECURITY_GROUP_ID';
 
 module.exports = function (graphApi) {
   const environmentProvider = graphApi.environment;
@@ -18,9 +16,7 @@ module.exports = function (graphApi) {
 
   const values = {
     corporateUsernames: arrayFromString(value || ''),
-    corporateSecurityGroup: environmentProvider.get(
-      administratorsGroupEnvironmentName
-    ),
+    corporateSecurityGroup: environmentProvider.get(administratorsGroupEnvironmentName),
   };
   return values;
 };

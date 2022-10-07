@@ -12,11 +12,7 @@ import { Team } from '../../../../business';
 import { PermissionWorkflowEngine } from '../approvals';
 import RenderHtmlMail from '../../../../lib/emailRender';
 import { IndividualContext } from '../../../../user';
-import {
-  ReposAppRequest,
-  UserAlertType,
-  IProviders,
-} from '../../../../interfaces';
+import { ReposAppRequest, UserAlertType, IProviders } from '../../../../interfaces';
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: any;
@@ -92,11 +88,7 @@ router.post(
       message
     );
     if (outcome.message) {
-      req.individualContext.webContext.saveUserAlert(
-        outcome.message,
-        engine.typeName,
-        UserAlertType.Success
-      );
+      req.individualContext.webContext.saveUserAlert(outcome.message, engine.typeName, UserAlertType.Success);
     }
     if (outcome.error) {
       req.insights.trackException({
@@ -120,9 +112,7 @@ export interface IPostActionDecisionOutcome {
   error?: any;
 }
 
-function performApprovalWithEngine(
-  engine: PermissionWorkflowEngine
-): Promise<void> {
+function performApprovalWithEngine(engine: PermissionWorkflowEngine): Promise<void> {
   return new Promise((resolve, reject) => {
     engine.performApprovalOperation((error: Error) => {
       return error ? reject(error) : resolve();
@@ -182,8 +172,7 @@ export async function postActionDecision(
     pendingRequest.decisionThirdPartyUsername = username;
     pendingRequest.decisionThirdPartyId = individualContext.getGitHubIdentity().id;
     pendingRequest.decisionMessage = decisionMessage;
-    pendingRequest.decisionCorporateUsername =
-      individualContext.corporateIdentity.username;
+    pendingRequest.decisionCorporateUsername = individualContext.corporateIdentity.username;
     pendingRequest.decisionCorporateId = individualContext.corporateIdentity.id;
     await teamJoinApprovalProvider.updateTeamApprovalEntity(pendingRequest);
     if (decision == TeamApprovalDecision.Approve) {
@@ -194,8 +183,7 @@ export async function postActionDecision(
   }
   const message = `Thanks for your ${action.toUpperCase()} decision`;
   const approvalMail =
-    individualContext.link.corporateMailAddress ||
-    individualContext.link.corporateUsername;
+    individualContext.link.corporateMailAddress || individualContext.link.corporateUsername;
   if (mailProvider) {
     const wasApproved = decision === TeamApprovalDecision.Approve;
     const contentOptions = {
@@ -214,11 +202,7 @@ export async function postActionDecision(
       service: (config.brand?.companyName || 'Corporate') + ' GitHub',
       companyName: config.brand.companyName,
     };
-    if (
-      !userMailAddress ||
-      !engine.getDecisionEmailViewName ||
-      !engine.getDecisionEmailSubject
-    ) {
+    if (!userMailAddress || !engine.getDecisionEmailViewName || !engine.getDecisionEmailSubject) {
       return { message, redirect: teamBaseUrl };
     }
     // req.individualContext.webContext.saveUserAlert('Thanks for your ' + action.toUpperCase() + ' decision.', engine.typeName, 'success');

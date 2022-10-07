@@ -65,9 +65,7 @@ function getSigningKeys(header, callback) {
 }
 
 export function getAadApiConfiguration(config: any) {
-  const allowedTenants = Array.isArray(
-    config?.microsoft?.api?.aad?.authorizedTenants
-  )
+  const allowedTenants = Array.isArray(config?.microsoft?.api?.aad?.authorizedTenants)
     ? config.microsoft.api.aad.authorizedTenants
     : (config?.microsoft?.api?.aad?.authorizedTenants || '').split(',');
   if (!allowedTenants) {
@@ -90,83 +88,55 @@ export function getAadApiConfiguration(config: any) {
     throw jsonError('App not configured for authorizing APIs via AAD', 500);
   }
 
-  let approvedApps = config?.microsoft?.api?.aad
-    ?.approvedApps as IConfigAadApiApprovedAppsOrOids;
+  let approvedApps = config?.microsoft?.api?.aad?.approvedApps as IConfigAadApiApprovedAppsOrOids;
   if (approvedApps === undefined) {
     throw jsonError('AAD API app authentication is not configured', 500);
   }
 
-  let approvedOids = config?.microsoft?.api?.aad
-    ?.approvedOids as IConfigAadApiApprovedAppsOrOids;
+  let approvedOids = config?.microsoft?.api?.aad?.approvedOids as IConfigAadApiApprovedAppsOrOids;
   if (approvedApps === undefined) {
     throw jsonError('AAD API OID authentication is not configured', 500);
   }
 
   // Any app that has a valid scope can call the API, but may not be scoped and will error out in the API tier
-  const approvedAppsToCreateRepos = Array.isArray(
-    approvedApps?.scopes?.create?.repos
-  )
+  const approvedAppsToCreateRepos = Array.isArray(approvedApps?.scopes?.create?.repos)
     ? approvedApps?.scopes?.create?.repos
     : approvedApps?.scopes?.create?.repos?.split
     ? [...approvedApps.scopes.create.repos.split(',')]
     : [];
-  const approvedAppsToReadLinks = Array.isArray(
-    approvedApps?.scopes?.read?.links
-  )
+  const approvedAppsToReadLinks = Array.isArray(approvedApps?.scopes?.read?.links)
     ? approvedApps?.scopes?.read?.links
     : approvedApps?.scopes?.read?.links?.split
     ? [...approvedApps.scopes.read.links.split(',')]
     : [];
-  const approvedAppsToReadMaintainers = Array.isArray(
-    approvedApps?.scopes?.read?.maintainers
-  )
+  const approvedAppsToReadMaintainers = Array.isArray(approvedApps?.scopes?.read?.maintainers)
     ? approvedApps?.scopes?.read?.maintainers
     : approvedApps?.scopes?.read?.maintainers?.split
     ? [...approvedApps.scopes.read.maintainers.split(',')]
     : [];
-  const approvedAppsToReadJitConfirms = Array.isArray(
-    approvedApps?.scopes?.read?.['jit/confirm']
-  )
+  const approvedAppsToReadJitConfirms = Array.isArray(approvedApps?.scopes?.read?.['jit/confirm'])
     ? approvedApps?.scopes?.read?.['jit/confirm']
     : approvedApps?.scopes?.read?.['jit/confirm']?.split
     ? [...approvedApps.scopes.read['jit/confirm'].split(',')]
     : [];
 
-  const approvedOidsToCreateRepos = Array.isArray(
-    approvedOids?.scopes?.create?.repos
-  )
+  const approvedOidsToCreateRepos = Array.isArray(approvedOids?.scopes?.create?.repos)
     ? approvedOids?.scopes?.create?.repos
     : approvedOids?.scopes?.create?.repos?.split
-    ? [
-        ...(approvedOids?.scopes?.create?.repos
-          ? approvedOids.scopes.create.repos.split(',')
-          : []),
-      ]
+    ? [...(approvedOids?.scopes?.create?.repos ? approvedOids.scopes.create.repos.split(',') : [])]
     : [];
-  const approvedOidsToReadLinks = Array.isArray(
-    approvedOids?.scopes?.read?.links
-  )
+  const approvedOidsToReadLinks = Array.isArray(approvedOids?.scopes?.read?.links)
     ? approvedOids?.scopes?.read?.links
     : approvedOids?.scopes?.read?.links?.split
-    ? [
-        ...(approvedOids?.scopes?.read?.links
-          ? approvedOids.scopes.read.links.split(',')
-          : []),
-      ]
+    ? [...(approvedOids?.scopes?.read?.links ? approvedOids.scopes.read.links.split(',') : [])]
     : [];
-  const approvedOidsToReadJitConfirms = Array.isArray(
-    approvedOids?.scopes?.read?.['jit/confirm']
-  )
+  const approvedOidsToReadJitConfirms = Array.isArray(approvedOids?.scopes?.read?.['jit/confirm'])
     ? approvedOids?.scopes?.read?.['jit/confirm']
     : approvedOids?.scopes?.read?.['jit/confirm']?.split
     ? [...approvedOids.scopes.read['jit/confirm'].split(',')]
     : [];
 
-  const oids = [
-    ...approvedOidsToCreateRepos,
-    ...approvedOidsToReadLinks,
-    ...approvedOidsToReadJitConfirms,
-  ];
+  const oids = [...approvedOidsToCreateRepos, ...approvedOidsToReadLinks, ...approvedOidsToReadJitConfirms];
   const appIds = [
     // hacky temporary design for pulling from config
     ...approvedAppsToCreateRepos,
@@ -251,10 +221,7 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
 
     if (!isValidTenant) {
       throw wrapErrorForImmediateUserError(
-        jsonError(
-          `Issuer ${issuer} is not authorized for this API endpoint`,
-          403
-        )
+        jsonError(`Issuer ${issuer} is not authorized for this API endpoint`, 403)
       );
     }
 
@@ -267,10 +234,7 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     const notAuthorized = isAppApproved === false && isOidApproved === false;
     if (notAuthorized) {
       throw wrapErrorForImmediateUserError(
-        jsonError(
-          `App ${appid} and object ID ${oid} is not authorized for this API endpoint`,
-          403
-        )
+        jsonError(`App ${appid} and object ID ${oid} is not authorized for this API endpoint`, 403)
       );
     }
     if (isAppApproved && approvedAppsToCreateRepos.includes(appid)) {
@@ -311,8 +275,6 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     });
   } catch (error) {
     insights?.trackException({ exception: error });
-    throw wrapErrorForImmediateUserError(
-      jsonError(`AAD unauthorized: ${error.message || error}`, 403)
-    );
+    throw wrapErrorForImmediateUserError(jsonError(`AAD unauthorized: ${error.message || error}`, 403));
   }
 }

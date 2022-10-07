@@ -21,9 +21,7 @@ export function webContextMiddleware(req, res, next) {
     return next(new Error(msg));
   }
   if (req.individualContext) {
-    console.warn(
-      'DUPLICATE EFFORT: middleware has already created the individual context'
-    );
+    console.warn('DUPLICATE EFFORT: middleware has already created the individual context');
     return next();
   }
   const webContextOptions: IWebContextOptions = {

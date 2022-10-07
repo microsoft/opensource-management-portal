@@ -41,9 +41,7 @@ async function lookupCorporateId(
   }
 }
 
-export default async function cleanup({
-  providers,
-}: IReposJob): Promise<IReposJobResult> {
+export default async function cleanup({ providers }: IReposJob): Promise<IReposJobResult> {
   const insights = providers.insights;
   const graphProvider = providers.graphProvider;
   const tokenProvider = providers.tokenProvider;
@@ -68,9 +66,7 @@ export default async function cleanup({
   const secondsDelayAfterSuccess = 0.25;
 
   const now = new Date();
-  const monthAgo = new Date(
-    now.getTime() - 1000 * 60 * 60 * 24 * expiredTokenDeleteThresholdDays
-  );
+  const monthAgo = new Date(now.getTime() - 1000 * 60 * 60 * 24 * expiredTokenDeleteThresholdDays);
 
   const knownUsers = new Map<string, any>();
 
@@ -78,23 +74,16 @@ export default async function cleanup({
   await Promise.all(
     allTokens.map((pat: PersonalAccessToken) =>
       throttle(async () => {
-        const isGuidMeansADash =
-          pat.corporateId && pat.corporateId.includes('-');
+        const isGuidMeansADash = pat.corporateId && pat.corporateId.includes('-');
         let wasUser = false;
         if (isGuidMeansADash) {
           wasUser = true;
 
-          const userStatus = await lookupCorporateId(
-            graphProvider,
-            knownUsers,
-            pat.corporateId
-          );
+          const userStatus = await lookupCorporateId(graphProvider, knownUsers, pat.corporateId);
           if (!userStatus && pat.active !== false) {
             pat.active = false;
             console.log(
-              `Revoking key for ${pat.getIdentifier()} - employee ${
-                pat.corporateId
-              } could not be found`
+              `Revoking key for ${pat.getIdentifier()} - employee ${pat.corporateId} could not be found`
             );
             try {
               await tokenProvider.updateToken(pat);
@@ -112,9 +101,7 @@ export default async function cleanup({
         if (pat.isExpired()) {
           const dateExpired = pat.expires;
           if (dateExpired < monthAgo) {
-            console.log(
-              `Deleting key for ${pat.getIdentifier()} that expired ${dateExpired}`
-            );
+            console.log(`Deleting key for ${pat.getIdentifier()} that expired ${dateExpired}`);
             try {
               await tokenProvider.deleteToken(pat);
               ++deleted;

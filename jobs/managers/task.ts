@@ -8,32 +8,20 @@
 
 import throat from 'throat';
 
-import {
-  ICachedEmployeeInformation,
-  ICorporateLink,
-  IReposJob,
-  IReposJobResult,
-} from '../../interfaces';
+import { ICachedEmployeeInformation, ICorporateLink, IReposJob, IReposJobResult } from '../../interfaces';
 import { createAndInitializeLinkProviderInstance } from '../../lib/linkProviders';
 import { sleep } from '../../utils';
 import { IMicrosoftIdentityServiceBasics } from '../../lib/corporateContactProvider';
 import { RedisPrefixManagerInfoCache } from '../../business';
 
-export default async function refresh({
-  providers,
-}: IReposJob): Promise<IReposJobResult> {
+export default async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
   const graphProvider = providers.graphProvider;
   const cacheHelper = providers.cacheProvider;
   const insights = providers.insights;
   const config = providers.config;
-  const linkProvider = await createAndInitializeLinkProviderInstance(
-    providers,
-    config
-  );
+  const linkProvider = await createAndInitializeLinkProviderInstance(providers, config);
 
-  console.log(
-    'reading all links to gather manager info ahead of any terminations'
-  );
+  console.log('reading all links to gather manager info ahead of any terminations');
   const allLinks = await linkProvider.getAll();
   console.log(`READ: ${allLinks.length} links`);
   insights.trackEvent({
@@ -57,10 +45,7 @@ export default async function refresh({
 
   let processed = 0;
 
-  const bulkContacts = new Map<
-    string,
-    IMicrosoftIdentityServiceBasics | boolean
-  >();
+  const bulkContacts = new Map<string, IMicrosoftIdentityServiceBasics | boolean>();
 
   const throttle = throat(userDetailsThroatCount);
   let unknownServiceAccounts: ICorporateLink[] = [];
@@ -93,9 +78,7 @@ export default async function refresh({
             unknownServiceAccounts.push(link);
           } else {
             console.log();
-            console.log(
-              `Not present: ${link.corporateUsername}  ${retrievalError}`
-            );
+            console.log(`Not present: ${link.corporateUsername}  ${retrievalError}`);
             infoError = retrievalError;
           }
           infoError = retrievalError;
@@ -106,12 +89,8 @@ export default async function refresh({
         ) {
           try {
             const userPrincipalName =
-              info && info.userPrincipalName
-                ? info.userPrincipalName
-                : link.corporateUsername;
-            const contactsCache = await providers.corporateContactProvider.lookupContacts(
-              userPrincipalName
-            );
+              info && info.userPrincipalName ? info.userPrincipalName : link.corporateUsername;
+            const contactsCache = await providers.corporateContactProvider.lookupContacts(userPrincipalName);
             if (contactsCache || (!contactsCache && link.isServiceAccount)) {
               bulkContacts.set(userPrincipalName, contactsCache);
             }
@@ -121,9 +100,7 @@ export default async function refresh({
           }
         }
         if (link.isServiceAccount) {
-          console.log(
-            `skipping service account link ${link.corporateUsername}`
-          );
+          console.log(`skipping service account link ${link.corporateUsername}`);
           console.log();
           return;
         }
@@ -170,9 +147,7 @@ export default async function refresh({
             managerMail: info.manager.mail,
           };
           const key = `${RedisPrefixManagerInfoCache}${employeeDirectoryId}`;
-          const currentManagerIfAny = (await cacheHelper.getObjectCompressed(
-            key
-          )) as any;
+          const currentManagerIfAny = (await cacheHelper.getObjectCompressed(key)) as any;
           if (!currentManagerIfAny) {
             await cacheHelper.setObjectCompressedWithExpire(
               key,
@@ -185,9 +160,7 @@ export default async function refresh({
             );
           } else {
             let updateEntry = false;
-            if (
-              currentManagerIfAny.managerId !== reducedWithManagerInfo.managerId
-            ) {
+            if (currentManagerIfAny.managerId !== reducedWithManagerInfo.managerId) {
               updateEntry = true;
               ++managerUpdates;
               console.log(
@@ -195,20 +168,14 @@ export default async function refresh({
               );
             } else if (
               currentManagerIfAny.id !== reducedWithManagerInfo.id ||
-              currentManagerIfAny.displayName !==
-                reducedWithManagerInfo.displayName ||
-              currentManagerIfAny.userPrincipalName !==
-                reducedWithManagerInfo.userPrincipalName ||
-              currentManagerIfAny.managerDisplayName !==
-                reducedWithManagerInfo.managerDisplayName ||
-              currentManagerIfAny.managerMail !==
-                reducedWithManagerInfo.managerMail
+              currentManagerIfAny.displayName !== reducedWithManagerInfo.displayName ||
+              currentManagerIfAny.userPrincipalName !== reducedWithManagerInfo.userPrincipalName ||
+              currentManagerIfAny.managerDisplayName !== reducedWithManagerInfo.managerDisplayName ||
+              currentManagerIfAny.managerMail !== reducedWithManagerInfo.managerMail
             ) {
               updateEntry = true;
               ++managerMetadataUpdates;
-              console.log(
-                `Metadata for ${reducedWithManagerInfo.displayName} updated`
-              );
+              console.log(`Metadata for ${reducedWithManagerInfo.displayName} updated`);
             }
             if (updateEntry) {
               await cacheHelper.setObjectCompressedWithExpire(
@@ -219,11 +186,7 @@ export default async function refresh({
             }
           }
         } catch (retrievalError) {
-          if (
-            retrievalError &&
-            retrievalError.status &&
-            retrievalError.status === 404
-          ) {
+          if (retrievalError && retrievalError.status && retrievalError.status === 404) {
             ++notFoundErrors;
             formerAccounts.push(link);
             // Not deleting links so proactively: await linkProvider.deleteLink(link);
@@ -247,18 +210,11 @@ export default async function refresh({
     )
   );
 
-  console.log(
-    'All done with',
-    errors,
-    'errors. Not found errors:',
-    notFoundErrors
-  );
+  console.log('All done with', errors, 'errors. Not found errors:', notFoundErrors);
   console.dir(errorList);
   console.log();
 
-  console.log(
-    `Service Accounts not in the directory: ${unknownServiceAccounts.length}`
-  );
+  console.log(`Service Accounts not in the directory: ${unknownServiceAccounts.length}`);
   console.log(
     unknownServiceAccounts
       .map((x) => x.corporateUsername)
@@ -279,9 +235,7 @@ export default async function refresh({
   if (bulkContacts.size) {
     console.log(`Writing ${bulkContacts.size} contacts to bulk cache...`);
     try {
-      await providers.corporateContactProvider.setBulkCachedContacts(
-        bulkContacts
-      );
+      await providers.corporateContactProvider.setBulkCachedContacts(bulkContacts);
       console.log('Cached.');
     } catch (cacheError) {
       console.log('Cache problem:');

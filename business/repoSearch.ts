@@ -87,6 +87,7 @@ export class RepositorySearch {
     if (this.metadataType && this.repositoryMetadataProvider) {
       metadataCollection = await this.repositoryMetadataProvider.queryAllRepositoryMetadatas();
     }
+    // prettier-ignore
     this.filterByMetadata(metadataCollection)
       .filterByCreatedSince()
       .filterBySpecificTeam(this.specificTeamRepos)
@@ -94,8 +95,7 @@ export class RepositorySearch {
       .filterByType(this.type)
       .filterByPhrase(this.phrase)
       .filterByTeams(this.teamsType)
-      .determinePages()
-      ['sortBy' + this.sort]()
+      .determinePages()['sortBy' + this.sort]() // prettier will mangle this
       .getPage(this.page);
     await this.expandEntitiesForkForks();
     return this;
@@ -137,25 +137,15 @@ export class RepositorySearch {
         }
         case 'administrator-locked': {
           const metadata = mappedMetadata.get(id);
-          return (
-            metadata &&
-            metadata.lockdownState ===
-              RepositoryLockdownState.AdministratorLocked
-          );
+          return metadata && metadata.lockdownState === RepositoryLockdownState.AdministratorLocked;
         }
         case 'locked': {
           const metadata = mappedMetadata.get(id);
-          return (
-            metadata &&
-            metadata.lockdownState === RepositoryLockdownState.Locked
-          );
+          return metadata && metadata.lockdownState === RepositoryLockdownState.Locked;
         }
         case 'unlocked': {
           const metadata = mappedMetadata.get(id);
-          return (
-            metadata &&
-            metadata.lockdownState === RepositoryLockdownState.Unlocked
-          );
+          return metadata && metadata.lockdownState === RepositoryLockdownState.Unlocked;
         }
         default: {
           throw new Error(`Unsupported metadata type ${this.metadataType}`);
@@ -166,10 +156,7 @@ export class RepositorySearch {
   }
 
   getPage(page): RepositorySearch {
-    this.repos = this.repos.slice(
-      (page - 1) * this.pageSize,
-      (page - 1) * this.pageSize + this.pageSize
-    );
+    this.repos = this.repos.slice((page - 1) * this.pageSize, (page - 1) * this.pageSize + this.pageSize);
     this.pageFirstRepo = 1 + (page - 1) * this.pageSize;
     this.pageLastRepo = this.pageFirstRepo + this.repos.length - 1;
     return this;
@@ -227,10 +214,7 @@ export class RepositorySearch {
       // Also augment individual repos with permissions information
       const reposAndPermissions = new Map();
       specificTeamRepos.forEach((specificTeamAndPermission) => {
-        reposAndPermissions.set(
-          specificTeamAndPermission.id,
-          specificTeamAndPermission.permissions
-        );
+        reposAndPermissions.set(specificTeamAndPermission.id, specificTeamAndPermission.permissions);
       });
       this.repos = this.repos.filter((repo) => {
         const permissions = reposAndPermissions.get(repo.id);
@@ -257,15 +241,11 @@ export class RepositorySearch {
           userRepos.forEach((personalized) => {
             const myPermission = personalized.bestComputedPermission;
             let ok = false;
-            if (
-              subType === 'admin' &&
-              myPermission === GitHubRepositoryPermission.Admin
-            ) {
+            if (subType === 'admin' && myPermission === GitHubRepositoryPermission.Admin) {
               ok = true;
             } else if (
               subType === 'write' &&
-              (myPermission === 'admin' ||
-                myPermission === GitHubRepositoryPermission.Push)
+              (myPermission === 'admin' || myPermission === GitHubRepositoryPermission.Push)
             ) {
               ok = true;
             } else if (subType === 'read') {
@@ -290,14 +270,8 @@ export class RepositorySearch {
       // Fill the set with all languages before filtering
       if (r.language) {
         this.observedLanguages.add(r.language);
-        this.observedLanguagesEncoded.set(
-          r.language,
-          querystring.escape(r.language)
-        );
-        this.observedLanguagesEncoded.set(
-          r.language.toLowerCase(),
-          querystring.escape(r.language)
-        );
+        this.observedLanguagesEncoded.set(r.language, querystring.escape(r.language));
+        this.observedLanguagesEncoded.set(r.language.toLowerCase(), querystring.escape(r.language));
       }
       if (!language) {
         return true;
@@ -360,11 +334,7 @@ export class RepositorySearch {
   private repoMatchesPhrase(repo: Repository, phrase: string): boolean {
     // Poor man's search, starting with just a raw includes search
     // Assumes that phrase is already lowercase to work
-    let string = (
-      (repo.name || '') +
-      (repo.description || '') +
-      (repo.id || '')
-    ).toLowerCase();
+    let string = ((repo.name || '') + (repo.description || '') + (repo.id || '')).toLowerCase();
     return string.includes(phrase);
   }
 

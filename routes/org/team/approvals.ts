@@ -127,9 +127,7 @@ router.use(
       return next(new Error('No approval provider instance available'));
     }
     try {
-      const pendingRequest = await approvalProvider.getApprovalEntity(
-        requestid
-      );
+      const pendingRequest = await approvalProvider.getApprovalEntity(requestid);
       const requestingUserAccount = await operations.getAccountWithDetailsAndLink(
         pendingRequest.thirdPartyId
       );
@@ -143,18 +141,11 @@ router.use(
         return next(new Error('Mismatch on team'));
       }
       const engine = new PermissionWorkflowEngine(team, approvalPackage);
-      req.individualContext.webContext.pushBreadcrumb(
-        engine.typeName + ' Request'
-      );
+      req.individualContext.webContext.pushBreadcrumb(engine.typeName + ' Request');
       req.approvalEngine = engine;
       return next();
     } catch (error) {
-      return next(
-        wrapError(
-          error,
-          'The pending request you are looking for does not seem to exist.'
-        )
-      );
+      return next(wrapError(error, 'The pending request you are looking for does not seem to exist.'));
     }
   })
 );

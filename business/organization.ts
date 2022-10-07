@@ -14,17 +14,9 @@ import { wrapError } from '../utils';
 import { StripGitHubEntity } from '../lib/github/restApi';
 import { GitHubResponseType } from '../lib/github/endpointEntities';
 import { AppPurpose } from '../github';
-import {
-  OrganizationSetting,
-  SpecialTeam,
-} from '../entities/organizationSettings/organizationSetting';
+import { OrganizationSetting, SpecialTeam } from '../entities/organizationSettings/organizationSetting';
 import { createOrganizationSudoInstance, IOrganizationSudo } from '../features';
-import {
-  CacheDefault,
-  getMaxAgeSeconds,
-  getPageSize,
-  OperationsCore,
-} from './operations/core';
+import { CacheDefault, getMaxAgeSeconds, getPageSize, OperationsCore } from './operations/core';
 import {
   CoreCapability,
   GitHubAuditLogEntry,
@@ -178,10 +170,7 @@ export class Organization {
     }
     const withProviders = operations as OperationsCore;
     if (withProviders?.providers) {
-      this._organizationSudo = createOrganizationSudoInstance(
-        withProviders.providers,
-        this
-      );
+      this._organizationSudo = createOrganizationSudoInstance(withProviders.providers, this);
     }
   }
 
@@ -198,16 +187,8 @@ export class Organization {
   }
 
   get absoluteBaseUrl(): string {
-    const operations = throwIfNotCapable<IOperationsUrls>(
-      this._operations,
-      CoreCapability.Urls
-    );
-    return (
-      operations.absoluteBaseUrl +
-      operations.organizationsDeliminator +
-      this.name +
-      '/'
-    );
+    const operations = throwIfNotCapable<IOperationsUrls>(this._operations, CoreCapability.Urls);
+    return operations.absoluteBaseUrl + operations.organizationsDeliminator + this.name + '/';
   }
 
   get name(): string {
@@ -306,26 +287,17 @@ export class Organization {
     return repository;
   }
 
-  async getRepositoryById(
-    id: number,
-    options?: ICacheOptions
-  ): Promise<Repository> {
+  async getRepositoryById(id: number, options?: ICacheOptions): Promise<Repository> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     if (!id) {
-      throw new Error(
-        'Must provide a repository ID to retrieve the repository.'
-      );
+      throw new Error('Must provide a repository ID to retrieve the repository.');
     }
     const parameters = {
       id,
     };
     const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.accountDetailStaleSeconds,
-        options
-      ),
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.accountDetailStaleSeconds, options),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
@@ -349,10 +321,7 @@ export class Organization {
         error.status = 404;
         throw error;
       }
-      throw wrapError(
-        error,
-        `Could not get details about repository ID ${id}: ${error.message}`
-      );
+      throw wrapError(error, `Could not get details about repository ID ${id}: ${error.message}`);
     }
   }
 
@@ -373,11 +342,7 @@ export class Organization {
       (parameters as any).mediaType = mediaType;
     }
     const caching = {
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgReposStaleSeconds,
-        options
-      ),
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgReposStaleSeconds, options),
       backgroundRefresh: true,
       pageRequestDelay: options.pageRequestDelay || null,
     };
@@ -389,11 +354,7 @@ export class Organization {
       parameters,
       caching
     );
-    const repositories = common.createInstances<Repository>(
-      this,
-      this.repositoryFromEntity,
-      repoEntities
-    );
+    const repositories = common.createInstances<Repository>(this, this.repositoryFromEntity, repoEntities);
     return repositories;
   }
 
@@ -442,10 +403,7 @@ export class Organization {
   }
 
   get webhookSharedSecrets(): string[] {
-    const operations = throwIfNotCapable<IOperationsProviders>(
-      this._operations,
-      CoreCapability.Providers
-    );
+    const operations = throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers);
     const orgSettings = this._settings;
     // Multiple shared can be specified at the organization level to allow for rotation
     // NOTE: hook secrets are no longer moved over...
@@ -494,9 +452,7 @@ export class Organization {
 
   getDynamicSettings(): OrganizationSetting {
     if (!this.hasDynamicSettings) {
-      throw new Error(
-        'This organization is not configured for dynamic settings'
-      );
+      throw new Error('This organization is not configured for dynamic settings');
     }
     return this._settings;
   }
@@ -505,10 +461,7 @@ export class Organization {
     return {
       read: this.getSpecialTeam(SpecialTeam.SystemRead, 'read everything'),
       write: this.getSpecialTeam(SpecialTeam.SystemWrite, 'write everything'),
-      admin: this.getSpecialTeam(
-        SpecialTeam.SystemAdmin,
-        'administer everything'
-      ),
+      admin: this.getSpecialTeam(SpecialTeam.SystemAdmin, 'administer everything'),
     };
   }
 
@@ -609,17 +562,12 @@ export class Organization {
     // way of accomplishing this without exposing the token should be created.
     // The function name is specific to the intended use instead of a general-
     // purpose token name.
-    const token = await (this.authorize(
-      AppPurpose.Operations
-    ) as IGetAuthorizationHeader)();
+    const token = await (this.authorize(AppPurpose.Operations) as IGetAuthorizationHeader)();
     token.source = 'repository create token';
     return token;
   }
 
-  async createRepository(
-    repositoryName: string,
-    options
-  ): Promise<ICreateRepositoryResult> {
+  async createRepository(repositoryName: string, options): Promise<ICreateRepositoryResult> {
     // TODO: create repository options interface
     const operations = throwIfNotGitHubCapable(this._operations);
     const orgName = this.name;
@@ -641,11 +589,7 @@ export class Organization {
       const newRepository = this.repositoryFromEntity(details);
       let response = details;
       try {
-        response = StripGitHubEntity(
-          GitHubResponseType.Repository,
-          details,
-          'repos.createInOrg'
-        );
+        response = StripGitHubEntity(GitHubResponseType.Repository, details, 'repos.createInOrg');
       } catch (parseError) {}
       const result: ICreateRepositoryResult = {
         repository: newRepository,
@@ -655,9 +599,7 @@ export class Organization {
     } catch (error) {
       let contextualError = '';
       if (error.errors && Array.isArray(error.errors)) {
-        contextualError =
-          error.errors.map((errorEntry) => errorEntry.message).join(', ') +
-          '. ';
+        contextualError = error.errors.map((errorEntry) => errorEntry.message).join(', ') + '. ';
       }
       const friendlyErrorMessage = `${contextualError}Could not create the repository ${orgName}/${repositoryName}`;
       throw wrapError(error, friendlyErrorMessage);
@@ -670,42 +612,28 @@ export class Organization {
       org: this.name,
     };
     try {
-      const entity = await operations.github.call(
-        this.authorize(AppPurpose.Data),
-        'orgs.get',
-        parameters
-      );
+      const entity = await operations.github.call(this.authorize(AppPurpose.Data), 'orgs.get', parameters);
       if (entity && entity.id) {
         this.id = entity.id;
       }
       this._entity = entity;
       return entity as IGitHubOrganizationResponse;
     } catch (error) {
-      throw wrapError(
-        error,
-        `Could not get details about the ${this.name} organization: ${error.message}`
-      );
+      throw wrapError(error, `Could not get details about the ${this.name} organization: ${error.message}`);
     }
   }
 
   getRepositoryCreateMetadata(options?: any) {
-    const operations = throwIfNotCapable<IOperationsProviders>(
-      this._operations,
-      CoreCapability.Providers
-    );
+    const operations = throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers);
     const settings = this._settings;
     const config = operations.providers.config;
     const metadata = {
       approval: {
-        fields: config.github.approvalTypes
-          ? config.github.approvalTypes.fields
-          : undefined,
+        fields: config.github.approvalTypes ? config.github.approvalTypes.fields : undefined,
       },
       legalEntities: this.legalEntities,
       gitIgnore: {
-        default:
-          settings.properties['defaultGitIgnoreLanguage'] ||
-          config.github.gitignore.default,
+        default: settings.properties['defaultGitIgnoreLanguage'] || config.github.gitignore.default,
         languages: config.github.gitignore.languages,
       },
       templates: this.sanitizedRepositoryCreateTemplates(options || {}),
@@ -718,11 +646,7 @@ export class Organization {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const cacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgTeamDetailsStaleSeconds,
-        options
-      ),
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgTeamDetailsStaleSeconds, options),
       backgroundRefresh: false,
     };
     if (options.backgroundRefresh !== undefined) {
@@ -742,9 +666,7 @@ export class Organization {
       return this.teamFromEntity(entity);
     } catch (error) {
       if (error.status && error.status === 404) {
-        error = new Error(
-          `The GitHub team with the slug ${slug} could not be found`
-        );
+        error = new Error(`The GitHub team with the slug ${slug} could not be found`);
         error.status = 404;
         throw error;
       }
@@ -752,19 +674,13 @@ export class Organization {
     }
   }
 
-  async getTeamFromName(
-    nameOrSlug: string,
-    options?: ICacheOptions
-  ): Promise<Team> {
+  async getTeamFromName(nameOrSlug: string, options?: ICacheOptions): Promise<Team> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     // Slightly more aggressive attempt to look for the latest team
     // information to help prevent downtime when a new team is created
     if (!options.maxAgeSeconds) {
-      options.maxAgeSeconds = getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgTeamsSlugLookupStaleSeconds
-      );
+      options.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.orgTeamsSlugLookupStaleSeconds);
     }
     // Try a direct slug lookup first, for better performance
     try {
@@ -792,9 +708,7 @@ export class Organization {
       // a legitimate link to the team in the error;
       // TODO: hook up this new change
       if (expected === name && name !== slug) {
-        const redirectError: IRedirectError = new Error(
-          `The team is also available by slug: ${slug}.`
-        );
+        const redirectError: IRedirectError = new Error(`The team is also available by slug: ${slug}.`);
         redirectError.status = 301;
         redirectError.slug = slug;
         redirectError.team = team;
@@ -833,17 +747,10 @@ export class Organization {
       if (value?.installationId) {
         throw jsonError(`GitHub Apps are being used`, 400);
       }
-      const entity = await operations.github.post(
-        header,
-        'users.getAuthenticated',
-        {}
-      );
+      const entity = await operations.github.post(header, 'users.getAuthenticated', {});
       return entity as IAccountBasics;
     } catch (error) {
-      throw wrapError(
-        error,
-        'Could not get details about the authenticated account'
-      );
+      throw wrapError(error, 'Could not get details about the authenticated account');
     }
   }
 
@@ -852,12 +759,7 @@ export class Organization {
     if (!optionalEntity) {
       entity.id = id;
     }
-    const team = new Team(
-      this,
-      entity,
-      this._getAuthorizationHeader.bind(this),
-      this._operations
-    );
+    const team = new Team(this, entity, this._getAuthorizationHeader.bind(this), this._operations);
     return team;
   }
 
@@ -870,20 +772,13 @@ export class Organization {
     return member;
   }
 
-  getOwners(
-    options?: IPagedCacheOptions
-  ): Promise<OrganizationMember[] /* TODO: validate return type */> {
-    const memberOptions = Object.assign(
-      {},
-      options
-    ) as IGetOrganizationMembersOptions;
+  getOwners(options?: IPagedCacheOptions): Promise<OrganizationMember[] /* TODO: validate return type */> {
+    const memberOptions = Object.assign({}, options) as IGetOrganizationMembersOptions;
     memberOptions.role = OrganizationMembershipRoleQuery.Admin;
     return this.getMembers(memberOptions);
   }
 
-  async getAuditLog(
-    options?: IGetOrganizationAuditLogOptions
-  ): Promise<GitHubAuditLogEntry[]> {
+  async getAuditLog(options?: IGetOrganizationAuditLogOptions): Promise<GitHubAuditLogEntry[]> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const name = this.name;
@@ -897,11 +792,7 @@ export class Organization {
       per_page: getPageSize(operations, options),
     };
     const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.accountDetailStaleSeconds,
-        options
-      ),
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.accountDetailStaleSeconds, options),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
@@ -918,33 +809,20 @@ export class Organization {
       return entities;
     } catch (error) {
       if (error.status && error.status === 404) {
-        error = new Error(
-          `The GitHub audit log endpoint is not available for the ${this.name} organization`
-        );
+        error = new Error(`The GitHub audit log endpoint is not available for the ${this.name} organization`);
         error.status = 404;
         throw error;
       }
-      throw wrapError(
-        error,
-        `Could not get the audit log for the ${this.name} org: ${error.message}`
-      );
+      throw wrapError(error, `Could not get the audit log for the ${this.name} org: ${error.message}`);
     }
   }
 
-  async requestUrl(
-    url: string,
-    options?: ICacheOptionsWithPurpose
-  ): Promise<any> {
+  async requestUrl(url: string, options?: ICacheOptionsWithPurpose): Promise<any> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {};
     const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.accountDetailStaleSeconds,
-        options,
-        60
-      ),
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.accountDetailStaleSeconds, options, 60),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
@@ -972,9 +850,7 @@ export class Organization {
     return await this._organizationSudo.isSudoer(username, link);
   }
 
-  async acceptOrganizationInvitation(
-    userToken: string
-  ): Promise<IOrganizationMembership> {
+  async acceptOrganizationInvitation(userToken: string): Promise<IOrganizationMembership> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
       org: this.name,
@@ -992,11 +868,7 @@ export class Organization {
         error,
         `Could not accept your invitation for the ${this.name} organization on GitHub`
       );
-      if (
-        error.status === 403 &&
-        error.response?.headers &&
-        error.response.headers['x-github-sso']
-      ) {
+      if (error.status === 403 && error.response?.headers && error.response.headers['x-github-sso']) {
         const xGitHubSso = error.response.headers['x-github-sso'] as string;
         const i = xGitHubSso.indexOf('url=');
         if (i >= 0) {
@@ -1009,10 +881,7 @@ export class Organization {
     }
   }
 
-  async getMembership(
-    username: string,
-    options?: ICacheOptions
-  ): Promise<IOrganizationMembership> {
+  async getMembership(username: string, options?: ICacheOptions): Promise<IOrganizationMembership> {
     options = options || {};
     const orgName = this.name;
     const parameters = {
@@ -1046,9 +915,7 @@ export class Organization {
     }
   }
 
-  async getOperationalMembership(
-    username: string
-  ): Promise<IOrganizationMembership> {
+  async getOperationalMembership(username: string): Promise<IOrganizationMembership> {
     if (!username) {
       throw new Error('username must be provided');
     }
@@ -1079,10 +946,7 @@ export class Organization {
     return ok as IOrganizationMembership; // state: pending or acive, role: admin or member
   }
 
-  async checkPublicMembership(
-    username: string,
-    options?: ICacheOptions
-  ): Promise<boolean> {
+  async checkPublicMembership(username: string, options?: ICacheOptions): Promise<boolean> {
     // NOTE: This method is unable to be cached by the underlying
     // system since there is no etag returned for status code-only
     // results.
@@ -1175,11 +1039,7 @@ export class Organization {
       parameters.role = options.role;
     }
     const caching = {
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgMembersStaleSeconds,
-        options
-      ),
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgMembersStaleSeconds, options),
       backgroundRefresh: true,
       pageRequestDelay: options.pageRequestDelay,
     };
@@ -1191,30 +1051,18 @@ export class Organization {
       parameters,
       caching
     );
-    const members = common.createInstances<OrganizationMember>(
-      this,
-      this.memberFromEntity,
-      memberEntities
-    );
+    const members = common.createInstances<OrganizationMember>(this, this.memberFromEntity, memberEntities);
     return members;
   }
 
   getMembersWithoutTwoFactor(options?: IPagedCacheOptions): Promise<any> {
-    const clonedOptions: IGetOrganizationMembersOptions = Object.assign(
-      {},
-      options || {}
-    );
+    const clonedOptions: IGetOrganizationMembersOptions = Object.assign({}, options || {});
     clonedOptions.filter = OrganizationMembershipTwoFactorFilter.TwoFactorOff;
     return this.getMembers(clonedOptions);
   }
 
-  async isMemberSingleFactor(
-    username: string,
-    options?: IPagedCacheOptions
-  ): Promise<boolean> {
-    const membersWithoutTwoFactor = await this.getMembersWithoutTwoFactor(
-      options
-    );
+  async isMemberSingleFactor(username: string, options?: IPagedCacheOptions): Promise<boolean> {
+    const membersWithoutTwoFactor = await this.getMembersWithoutTwoFactor(options);
     const lowerCase = username.toLowerCase();
     for (let i = 0; i < membersWithoutTwoFactor.length; i++) {
       const lc = membersWithoutTwoFactor[i].login.toLowerCase();
@@ -1225,14 +1073,9 @@ export class Organization {
     return false;
   }
 
-  private async getMemberPairs(
-    options?: IGetOrganizationMembersOptions
-  ): Promise<IOrganizationMemberPair[]> {
+  private async getMemberPairs(options?: IGetOrganizationMembersOptions): Promise<IOrganizationMemberPair[]> {
     const members = await this.getMembers(options);
-    const operations = throwIfNotCapable<IOperationsLinks>(
-      this._operations,
-      CoreCapability.Links
-    );
+    const operations = throwIfNotCapable<IOperationsLinks>(this._operations, CoreCapability.Links);
     const linksArray = await operations.getLinks();
     const links = new Map<string, ICorporateLink>();
     for (const link of linksArray) {
@@ -1256,29 +1099,21 @@ export class Organization {
     );
     if (operations) {
       const pairs = await this.getMemberPairs(options);
-      let accounts = pairs.filter(
-        (pair) => pair.link && pair.link.isServiceAccount
-      );
+      let accounts = pairs.filter((pair) => pair.link && pair.link.isServiceAccount);
       if (excludeSystemAccounts) {
-        accounts = accounts.filter(
-          (pair) => !operations.isSystemAccountByUsername(pair.member.login)
-        );
+        accounts = accounts.filter((pair) => !operations.isSystemAccountByUsername(pair.member.login));
       }
       return accounts;
     }
     return [];
   }
 
-  async getLinkedMembers(
-    options?: IGetOrganizationMembersOptions
-  ): Promise<IOrganizationMemberPair[]> {
+  async getLinkedMembers(options?: IGetOrganizationMembersOptions): Promise<IOrganizationMemberPair[]> {
     const pairs = await this.getMemberPairs(options);
     return pairs.filter((pair) => pair.link);
   }
 
-  async getUnlinkedMembers(
-    options?: IGetOrganizationMembersOptions
-  ): Promise<OrganizationMember[]> {
+  async getUnlinkedMembers(options?: IGetOrganizationMembersOptions): Promise<OrganizationMember[]> {
     const pairs = await this.getMemberPairs(options);
     return pairs.filter((pair) => !pair.link).map((entry) => entry.member);
   }
@@ -1292,11 +1127,7 @@ export class Organization {
       per_page: getPageSize(operations),
     };
     const caching: IPagedCacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgTeamsStaleSeconds,
-        options
-      ),
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgTeamsStaleSeconds, options),
       backgroundRefresh: true,
       pageRequestDelay: options.pageRequestDelay || null,
     };
@@ -1305,16 +1136,8 @@ export class Organization {
       this,
       AppPurpose.Data
     ) as IGetAuthorizationHeader;
-    const teamEntities = await github.collections.getOrgTeams(
-      getAuthorizationHeader,
-      parameters,
-      caching
-    );
-    const teams = common.createInstances<Team>(
-      this,
-      this.teamFromEntity,
-      teamEntities
-    );
+    const teamEntities = await github.collections.getOrgTeams(getAuthorizationHeader, parameters, caching);
+    const teams = common.createInstances<Team>(this, this.teamFromEntity, teamEntities);
     return teams;
   }
 
@@ -1347,17 +1170,11 @@ export class Organization {
               optionalId = account.id.toString();
             }
           }
-          await queryCache.removeOrganizationMember(
-            this.id.toString(),
-            optionalId
-          );
+          await queryCache.removeOrganizationMember(this.id.toString(), optionalId);
         } catch (ignored) {}
       }
     } catch (error) {
-      throw wrapError(
-        error,
-        `Could not remove the organization member ${login}: ${error}`
-      );
+      throw wrapError(error, `Could not remove the organization member ${login}: ${error}`);
     }
   }
 
@@ -1389,9 +1206,7 @@ export class Organization {
     return getAuthorizationHeader;
   }
 
-  private authorizeSpecificPurpose(
-    purpose: AppPurpose
-  ): IGetAuthorizationHeader {
+  private authorizeSpecificPurpose(purpose: AppPurpose): IGetAuthorizationHeader {
     const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose
@@ -1412,14 +1227,8 @@ export class Organization {
   }
 
   private repositoryCreateTemplates(options) {
-    const operations = throwIfNotCapable<IOperationsProviders>(
-      this._operations,
-      CoreCapability.Providers
-    );
-    const opsTemplates = throwIfNotCapable<IOperationsTemplates>(
-      operations,
-      CoreCapability.Templates
-    );
+    const operations = throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers);
+    const opsTemplates = throwIfNotCapable<IOperationsTemplates>(operations, CoreCapability.Templates);
     options = options || {};
     const projectType = options.projectType;
     // projectType option:
@@ -1432,13 +1241,10 @@ export class Organization {
     const templates = [];
     const configuredTemplateRoot = config.github.templates || {};
     const configuredTemplateDefinitions =
-      configuredTemplateRoot && configuredTemplateRoot.definitions
-        ? configuredTemplateRoot.definitions
-        : {};
+      configuredTemplateRoot && configuredTemplateRoot.definitions ? configuredTemplateRoot.definitions : {};
     const templateDefinitions = configuredTemplateDefinitions || {};
     const allTemplateNames = Object.getOwnPropertyNames(templateDefinitions);
-    const fallbackTemplates =
-      opsTemplates.getDefaultRepositoryTemplateNames() || allTemplateNames;
+    const fallbackTemplates = opsTemplates.getDefaultRepositoryTemplateNames() || allTemplateNames;
     const ts =
       this._settings.templates && this._settings.templates.length > 0
         ? this._settings.templates
@@ -1451,10 +1257,7 @@ export class Organization {
       let template = null;
       if (candidateTemplate.legalEntity) {
         for (let i = 0; i < legalEntities.length && !template; i++) {
-          if (
-            legalEntities[i].toLowerCase() ===
-            candidateTemplate.legalEntity.toLowerCase()
-          ) {
+          if (legalEntities[i].toLowerCase() === candidateTemplate.legalEntity.toLowerCase()) {
             template = candidateTemplate;
             template.legalEntities = [template.legalEntity];
             delete template.legalEntity;
@@ -1466,11 +1269,7 @@ export class Organization {
       }
       if (template && template.name) {
         templates.push(template);
-        if (
-          projectType &&
-          template.forceForReleaseType &&
-          template.forceForReleaseType == projectType
-        ) {
+        if (projectType && template.forceForReleaseType && template.forceForReleaseType == projectType) {
           limitedTypeTemplates.push(template);
         }
       }
@@ -1503,8 +1302,7 @@ export class Organization {
       CoreCapability.LockdownFeatureFlags
     );
     return (
-      operations.allowUnauthorizedForkLockdownSystemFeature() &&
-      this._settings.hasFeature('lock-new-forks')
+      operations.allowUnauthorizedForkLockdownSystemFeature() && this._settings.hasFeature('lock-new-forks')
     );
   }
 
@@ -1514,10 +1312,7 @@ export class Organization {
       CoreCapability.LockdownFeatureFlags
     );
     if (operations) {
-      return (
-        operations.allowTransferLockdownSystemFeature() &&
-        this._settings.hasFeature('lock-transfers')
-      );
+      return operations.allowTransferLockdownSystemFeature() && this._settings.hasFeature('lock-transfers');
     }
     return false;
   }
@@ -1542,11 +1337,7 @@ export class Organization {
     return { settings, operations };
   }
 
-  private getSpecialTeam(
-    specialTeam: SpecialTeam,
-    friendlyName: string,
-    throwIfMissing?: boolean
-  ): number[] {
+  private getSpecialTeam(specialTeam: SpecialTeam, friendlyName: string, throwIfMissing?: boolean): number[] {
     let teamId: number = null;
     for (const entry of this._settings.specialTeams) {
       if (entry.specialTeam === specialTeam) {
@@ -1588,9 +1379,7 @@ export class Organization {
         types.splice(0, 0, 'private');
         break;
       default:
-        throw new Error(
-          `Unsupported configuration for repository types in the organization: ${type}`
-        );
+        throw new Error(`Unsupported configuration for repository types in the organization: ${type}`);
     }
     return types;
   }

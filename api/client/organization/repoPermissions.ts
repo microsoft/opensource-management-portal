@@ -24,11 +24,8 @@ router.get(
     try {
       const teamPermissions = await repository.getTeamPermissions();
       const owners = await organization.getOwners();
-      const {
-        collaborators,
-        outsideCollaborators,
-        memberCollaborators,
-      } = await findRepoCollaboratorsExcludingOwners(repository, owners);
+      const { collaborators, outsideCollaborators, memberCollaborators } =
+        await findRepoCollaboratorsExcludingOwners(repository, owners);
       for (let teamPermission of teamPermissions) {
         try {
           teamPermission.resolveTeamMembers();

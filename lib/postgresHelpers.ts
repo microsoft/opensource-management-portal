@@ -7,12 +7,7 @@ const debug = require('debug')('pg');
 
 import { InnerError } from '../interfaces';
 
-export function PostgresPoolQuerySingleRow(
-  pool,
-  sql: string,
-  values: any[],
-  callback
-) {
+export function PostgresPoolQuerySingleRow(pool, sql: string, values: any[], callback) {
   PostgresPoolQuery(pool, sql, values, (error, results) => {
     if (error) {
       return callback(error);
@@ -27,9 +22,7 @@ export function PostgresPoolQuerySingleRow(
       notFoundError['sqlValues'] = values;
       return callback(notFoundError);
     }
-    const tooManyRows = new Error(
-      `Only one row should be returned; ${len} rows were returned`
-    );
+    const tooManyRows = new Error(`Only one row should be returned; ${len} rows were returned`);
     tooManyRows['status'] = 412;
     tooManyRows['sqlStatement'] = sql;
     tooManyRows['sqlValues'] = values;
@@ -37,11 +30,7 @@ export function PostgresPoolQuerySingleRow(
   });
 }
 
-export function PostgresPoolQuerySingleRowAsync(
-  pool,
-  sql: string,
-  values: any[]
-): Promise<any> {
+export function PostgresPoolQuerySingleRowAsync(pool, sql: string, values: any[]): Promise<any> {
   return new Promise((resolve, reject) => {
     PostgresPoolQuerySingleRow(pool, sql, values, (error, results) => {
       return error ? reject(error) : resolve(results);
@@ -86,11 +75,7 @@ export function PostgresPoolQuery(pool, sql: string, values: any[], callback) {
   });
 }
 
-export function PostgresPoolQueryAsync(
-  pool,
-  sql: string,
-  values: any[]
-): Promise<any> {
+export function PostgresPoolQueryAsync(pool, sql: string, values: any[]): Promise<any> {
   return new Promise((resolve, reject) => {
     PostgresPoolQuery(pool, sql, values, (error, results) => {
       if (results && results['rows'] && results['rows'].length !== undefined) {

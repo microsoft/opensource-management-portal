@@ -31,9 +31,7 @@ interface IReportRenderOptions {
   viewServices: any;
 }
 
-export default async function sendReports(
-  context: IReportsContext
-): Promise<IReportsContext> {
+export default async function sendReports(context: IReportsContext): Promise<IReportsContext> {
   const mailProvider = context.operations.providers.mailProvider;
   if (!mailProvider) {
     throw new Error('No mailProvider is available to send messages');
@@ -44,9 +42,7 @@ export default async function sendReports(
   }
   const overrideSendWithPath = context.settings.fakeSend;
   if (overrideSendWithPath) {
-    console.warn(
-      `Instead of sending mail, mail will be written to ${overrideSendWithPath}`
-    );
+    console.warn(`Instead of sending mail, mail will be written to ${overrideSendWithPath}`);
     try {
       fs.mkdirSync(overrideSendWithPath);
     } catch (ignored) {
@@ -66,26 +62,16 @@ export default async function sendReports(
   return context;
 }
 
-function resolveAddress(
-  context: IReportsContext,
-  upn: string
-): Promise<string> {
+function resolveAddress(context: IReportsContext, upn: string): Promise<string> {
   const operations = context.operations;
   const providers = operations.providers;
   if (!providers.mailAddressProvider) {
-    return Promise.reject(
-      new Error(
-        'No mailAddressProvider is available in this application instance'
-      )
-    );
+    return Promise.reject(new Error('No mailAddressProvider is available in this application instance'));
   }
   return providers.mailAddressProvider.getAddressFromUpn(upn);
 }
 
-async function recipientTypeToAddress(
-  context: IReportsContext,
-  address: string
-): Promise<string> {
+async function recipientTypeToAddress(context: IReportsContext, address: string): Promise<string> {
   const i = address.indexOf(':');
   if (i < 0) {
     return Promise.reject(new Error('Invalid consolidated address format'));
@@ -97,9 +83,7 @@ async function recipientTypeToAddress(
   } else if (type === 'upn') {
     return resolveAddress(context, remainder);
   } else {
-    return Promise.reject(
-      new Error(`Unsupported consolidated address type ${type}`)
-    );
+    return Promise.reject(new Error(`Unsupported consolidated address type ${type}`));
   }
 }
 
@@ -145,9 +129,7 @@ async function sendReport(
   const overrideSendWithPath = context.settings.fakeSend;
   const fromAddress = context.settings.fromAddress;
   if (!fromAddress && !overrideSendWithPath) {
-    throw new Error(
-      'No from address is configured for reports in the github.jobs.reports.mail.from value'
-    );
+    throw new Error('No from address is configured for reports in the github.jobs.reports.mail.from value');
   }
   const address = await recipientTypeToAddress(context, recipientKey);
   const html = renderReport(context, report, address);
@@ -164,12 +146,7 @@ async function sendReport(
     notification,
   };
   const basedir = context.settings.basedir;
-  const mailContent = await emailRender(
-    basedir,
-    'report',
-    viewOptions,
-    app.config
-  );
+  const mailContent = await emailRender(basedir, 'report', viewOptions, app.config);
   // Store the e-mail instead of sending
   if (overrideSendWithPath) {
     const filename = path.join(overrideSendWithPath, `${address}.html`);

@@ -7,10 +7,7 @@ import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../../../middleware';
-import {
-  getRepositoryMetadataProvider,
-  ReposAppRequest,
-} from '../../../../interfaces';
+import { getRepositoryMetadataProvider, ReposAppRequest } from '../../../../interfaces';
 import { Organization } from '../../../../business';
 import {
   getContextualRepository,
@@ -26,15 +23,9 @@ router.use(
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     const organization = req.organization as Organization;
     if (!organization.isNewRepositoryLockdownSystemEnabled()) {
-      return next(
-        jsonError(
-          'This endpoint is not available as configured for the organization',
-          400
-        )
-      );
+      return next(jsonError('This endpoint is not available as configured for the organization', 400));
     }
-    const activeContext = (req.individualContext ||
-      req.apiContext) as IndividualContext;
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     const isOrgSudoer = await organization.isSudoer(
       activeContext.getGitHubIdentity().username,
       activeContext.link
@@ -42,12 +33,7 @@ router.use(
     if (!isOrgSudoer) {
       const isPortalSudoer = await activeContext.isPortalAdministrator();
       if (!isPortalSudoer) {
-        return next(
-          jsonError(
-            'You do not have sudo permission for this organization',
-            403
-          )
-        );
+        return next(jsonError('You do not have sudo permission for this organization', 403));
       }
     }
     return next();
@@ -59,9 +45,7 @@ router.post(
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     const { operations } = getProviders(req);
     const repository = getContextualRepository(req);
-    const repositoryMetadataProvider = getRepositoryMetadataProvider(
-      operations
-    );
+    const repositoryMetadataProvider = getRepositoryMetadataProvider(operations);
     const organization = repository.organization;
     const lockdownSystem = new NewRepositoryLockdownSystem({
       operations,
@@ -87,12 +71,7 @@ router.post(
 );
 
 router.use('*', (req, res, next) => {
-  return next(
-    jsonError(
-      `no API or ${req.method} function available for repo fork unlock`,
-      404
-    )
-  );
+  return next(jsonError(`no API or ${req.method} function available for repo fork unlock`, 404));
 });
 
 export default router;

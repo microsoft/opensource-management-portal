@@ -73,11 +73,9 @@ const defaults: ICacheDefaultTimes = {
   [CacheDefault.teamMaintainersStaleSeconds]: 60 * 2 /* 2m */,
   [CacheDefault.orgMembershipStaleSeconds]: 60 * 5 /* 5m */,
   [CacheDefault.orgMembershipDirectStaleSeconds]: 30 /* 30s */,
-  [CacheDefault.crossOrgsReposStaleSecondsPerOrg]:
-    60 * 60 * 2 /* 2 hours per org */,
+  [CacheDefault.crossOrgsReposStaleSecondsPerOrg]: 60 * 60 * 2 /* 2 hours per org */,
   [CacheDefault.crossOrgsReposParallelCalls]: 3,
-  [CacheDefault.crossOrgsMembersStaleSecondsPerOrg]:
-    60 * 60 * 2 /* 2 hours per org */,
+  [CacheDefault.crossOrgsMembersStaleSecondsPerOrg]: 60 * 60 * 2 /* 2 hours per org */,
   [CacheDefault.crossOrgsMembersParallelCalls]: 5,
   [CacheDefault.corporateLinksStaleSeconds]: 30 /* 30s (used to be 5m) */,
   [CacheDefault.repoBranchesStaleSeconds]: 60 * 5 /* 5m */,
@@ -94,10 +92,7 @@ export interface IOptionWithPageSize {
   per_page?: number;
 }
 
-export function getPageSize(
-  operations: IOperationsInstance,
-  options?: IOptionWithPageSize
-) {
+export function getPageSize(operations: IOperationsInstance, options?: IOptionWithPageSize) {
   if (options?.per_page) {
     return options.per_page;
   }
@@ -117,7 +112,7 @@ export function getMaxAgeSeconds(
     return options.maxAgeSeconds as number;
   }
   if (operations.hasCapability(CoreCapability.DefaultCacheTimes)) {
-    const ops = (operations as any) as IOperationsDefaultCacheTimes;
+    const ops = operations as any as IOperationsDefaultCacheTimes;
     if (ops.defaults && ops.defaults[cacheDefault] !== undefined) {
       return ops.defaults[cacheDefault] as number;
     }
@@ -131,7 +126,8 @@ export abstract class OperationsCore
     IOperationsUrls,
     IOperationsDefaultCacheTimes,
     IOperationsProviders,
-    IOperationsInstance {
+    IOperationsInstance
+{
   private _github: RestLibrary;
   private _defaults: ICacheDefaultTimes;
   private _applicationIds: Map<number, GitHubApplication>;
@@ -182,9 +178,7 @@ export abstract class OperationsCore
 
   throwIfNotCompatible(capability: CoreCapability) {
     if (!this.hasCapability(capability)) {
-      throw new Error(
-        `The operations implementation is not capable of supporting ${capability}`
-      );
+      throw new Error(`The operations implementation is not capable of supporting ${capability}`);
     }
   }
 
@@ -194,10 +188,7 @@ export abstract class OperationsCore
     return this._skuName;
   }
 
-  async getAccountByUsername(
-    username: string,
-    options?: ICacheOptions
-  ): Promise<Account> {
+  async getAccountByUsername(username: string, options?: ICacheOptions): Promise<Account> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this);
     const centralOperations = throwIfNotCapable<IOperationsCentralOperationsToken>(
@@ -211,11 +202,7 @@ export abstract class OperationsCore
       username: username,
     };
     const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.accountDetailStaleSeconds,
-        options
-      ),
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.accountDetailStaleSeconds, options),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
@@ -229,24 +216,15 @@ export abstract class OperationsCore
         parameters,
         cacheOptions
       );
-      const account = new Account(
-        entity,
-        this,
-        getHeaderFunction.bind(null, AppPurpose.Data)
-      );
+      const account = new Account(entity, this, getHeaderFunction.bind(null, AppPurpose.Data));
       return account;
     } catch (error) {
       if (error.status && error.status == /* loose */ 404) {
-        error = new Error(
-          `The GitHub username ${username} could not be found (or has been deleted)`
-        );
+        error = new Error(`The GitHub username ${username} could not be found (or has been deleted)`);
         error.status = 404;
         throw error;
       } else if (error) {
-        throw wrapError(
-          error,
-          `Could not get details about account ${username}: ${error.message}`
-        );
+        throw wrapError(error, `Could not get details about account ${username}: ${error.message}`);
       }
     }
   }
@@ -342,9 +320,7 @@ export abstract class OperationsCore
     tokenManager: GitHubTokenManager,
     appId: number
   ): Promise<string> {
-    const jwt = await tokenManager
-      .getAppById(appId)
-      .getAppAuthenticationToken();
+    const jwt = await tokenManager.getAppById(appId).getAppAuthenticationToken();
     const value = `bearer ${jwt}`;
     return value;
   }
@@ -357,14 +333,8 @@ export abstract class OperationsCore
     appAuthenticationType: GitHubAppAuthenticationType,
     purpose: AppPurpose
   ): Promise<IAuthorizationHeaderValue> {
-    if (
-      !this.tokenManager.organizationSupportsAnyPurpose(
-        organizationName,
-        organizationSettings
-      )
-    ) {
-      const legacyTokenValue =
-        legacyOwnerToken || centralOperationsFallbackToken;
+    if (!this.tokenManager.organizationSupportsAnyPurpose(organizationName, organizationSettings)) {
+      const legacyTokenValue = legacyOwnerToken || centralOperationsFallbackToken;
       if (!legacyTokenValue) {
         throw new Error(
           `Organization ${organizationName} is not configured with a GitHub app, Personal Access Token ownerToken configuration value, or a fallback central operations token`
@@ -373,9 +343,7 @@ export abstract class OperationsCore
       return {
         value: `token ${legacyTokenValue}`,
         purpose: null,
-        source: legacyOwnerToken
-          ? 'legacyOwnerToken'
-          : 'centralOperationsFallbackToken',
+        source: legacyOwnerToken ? 'legacyOwnerToken' : 'centralOperationsFallbackToken',
       };
     }
     if (!purpose) {

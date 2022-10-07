@@ -4,14 +4,8 @@
 //
 
 import { EntityField } from '../../lib/entityMetadataProvider/entityMetadataProvider';
-import {
-  EntityMetadataType,
-  IEntityMetadata,
-} from '../../lib/entityMetadataProvider/entityMetadata';
-import {
-  IEntityMetadataFixedQuery,
-  FixedQueryType,
-} from '../../lib/entityMetadataProvider/query';
+import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
+import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
@@ -59,8 +53,7 @@ const Field: IRepositoryTeamCacheProperties = {
 
 const fieldNames = Object.getOwnPropertyNames(Field);
 
-export class RepositoryTeamCacheEntity
-  implements IRepositoryTeamCacheProperties {
+export class RepositoryTeamCacheEntity implements IRepositoryTeamCacheProperties {
   uniqueId: string;
   cacheUpdated: Date;
 
@@ -73,11 +66,7 @@ export class RepositoryTeamCacheEntity
 
   permission: GitHubRepositoryPermission;
 
-  public static GenerateIdentifier(
-    organizationId: string,
-    repositoryId: string,
-    teamId: string
-  ) {
+  public static GenerateIdentifier(organizationId: string, repositoryId: string, teamId: string) {
     if (!organizationId) {
       throw new Error('organizationId required');
     }
@@ -95,16 +84,12 @@ export class RepositoryTeamCacheEntity
   }
 }
 
-export class RepositoryTeamCacheGetOrganizationIdsQuery
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.RepositoryTeamCacheGetOrganizationIds;
+export class RepositoryTeamCacheGetOrganizationIdsQuery implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryTeamCacheGetOrganizationIds;
 }
 
-export class RepositoryTeamCacheDeleteByOrganizationId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.RepositoryTeamCacheDeleteByOrganizationId;
+export class RepositoryTeamCacheDeleteByOrganizationId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryTeamCacheDeleteByOrganizationId;
   constructor(public organizationId: string) {
     if (typeof this.organizationId !== 'string') {
       throw new Error(`${organizationId} must be a string`);
@@ -112,10 +97,8 @@ export class RepositoryTeamCacheDeleteByOrganizationId
   }
 }
 
-export class RepositoryTeamCacheDeleteByRepositoryId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.RepositoryTeamCacheDeleteByRepositoryId;
+export class RepositoryTeamCacheDeleteByRepositoryId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryTeamCacheDeleteByRepositoryId;
   constructor(public repositoryId: string) {
     if (typeof this.repositoryId !== 'string') {
       throw new Error(`repositoryId ${repositoryId} must be a string`);
@@ -123,16 +106,12 @@ export class RepositoryTeamCacheDeleteByRepositoryId
   }
 }
 
-export class RepositoryTeamCacheFixedQueryAll
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.RepositoryTeamCacheGetAll;
+export class RepositoryTeamCacheFixedQueryAll implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryTeamCacheGetAll;
 }
 
-export class RepositoryTeamCacheFixedQueryByOrganizationId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.RepositoryTeamCacheByOrganizationId;
+export class RepositoryTeamCacheFixedQueryByOrganizationId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryTeamCacheByOrganizationId;
   constructor(public organizationId: string) {
     if (typeof this.organizationId !== 'string') {
       throw new Error(`${organizationId} must be a string`);
@@ -140,10 +119,8 @@ export class RepositoryTeamCacheFixedQueryByOrganizationId
   }
 }
 
-export class RepositoryTeamCacheFixedQueryByTeamId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.RepositoryTeamCacheByTeamId;
+export class RepositoryTeamCacheFixedQueryByTeamId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryTeamCacheByTeamId;
   constructor(public teamId: string) {
     if (typeof this.teamId !== 'string') {
       throw new Error(`${teamId} must be a string`);
@@ -151,10 +128,8 @@ export class RepositoryTeamCacheFixedQueryByTeamId
   }
 }
 
-export class RepositoryTeamCacheFixedQueryByTeamIds
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.RepositoryTeamCacheByTeamIds;
+export class RepositoryTeamCacheFixedQueryByTeamIds implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryTeamCacheByTeamIds;
   constructor(public teamIds: string[]) {
     if (!Array.isArray(this.teamIds)) {
       throw new Error(`teamIds must be an array`);
@@ -163,10 +138,8 @@ export class RepositoryTeamCacheFixedQueryByTeamIds
   }
 }
 
-export class RepositoryTeamCacheFixedQueryByRepositoryId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.RepositoryTeamCacheByRepositoryId;
+export class RepositoryTeamCacheFixedQueryByRepositoryId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.RepositoryTeamCacheByRepositoryId;
   constructor(public repositoryId: string) {
     if (typeof this.repositoryId !== 'string') {
       throw new Error(`${repositoryId} must be a string`);
@@ -174,18 +147,10 @@ export class RepositoryTeamCacheFixedQueryByRepositoryId
   }
 }
 
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityInstantiate,
-  () => {
-    return new RepositoryTeamCacheEntity();
-  }
-);
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityIdColumnName,
-  Field.uniqueId
-);
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => {
+  return new RepositoryTeamCacheEntity();
+});
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, Field.uniqueId);
 
 EntityMetadataMappings.Register(
   type,
@@ -201,19 +166,10 @@ EntityMetadataMappings.Register(
     [Field.repositoryName, 'repositoryName'],
   ])
 );
-EntityMetadataMappings.RuntimeValidateMappings(
-  type,
-  MemorySettings.MemoryMapping,
-  fieldNames,
-  []
-);
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
 
 PostgresConfiguration.SetDefaultTableName(type, 'repositoryteamcache');
-EntityMetadataMappings.Register(
-  type,
-  PostgresSettings.PostgresDefaultTypeColumnName,
-  'repositoryteamcache'
-);
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'repositoryteamcache');
 PostgresConfiguration.MapFieldsToColumnNames(
   type,
   new Map<string, string>([
@@ -224,10 +180,7 @@ PostgresConfiguration.MapFieldsToColumnNames(
     [Field.repositoryName, (Field.repositoryName as string).toLowerCase()],
     [Field.uniqueId, (Field.uniqueId as string).toLowerCase()],
     [Field.teamId, (Field.teamId as string).toLowerCase()],
-    [
-      Field.repositoryPrivate,
-      (Field.repositoryPrivate as string).toLowerCase(),
-    ],
+    [Field.repositoryPrivate, (Field.repositoryPrivate as string).toLowerCase()],
   ])
 );
 PostgresConfiguration.ValidateMappings(type, fieldNames, []);
@@ -246,64 +199,36 @@ EntityMetadataMappings.Register(
     const entityTypeValue = getEntityTypeColumnValue(type);
     switch (query.fixedQueryType) {
       case FixedQueryType.RepositoryTeamCacheGetAll:
-        return PostgresGetAllEntities(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue
-        );
+        return PostgresGetAllEntities(tableName, entityTypeColumn, entityTypeValue);
       case FixedQueryType.RepositoryTeamCacheByOrganizationId: {
-        const {
-          organizationId,
-        } = query as RepositoryTeamCacheFixedQueryByOrganizationId;
+        const { organizationId } = query as RepositoryTeamCacheFixedQueryByOrganizationId;
         if (!organizationId) {
           throw new Error('organizationId required');
         }
-        return PostgresJsonEntityQuery(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue,
-          metadataColumnName,
-          {
-            organizationid: stringOrNumberAsString(organizationId),
-          }
-        );
+        return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+          organizationid: stringOrNumberAsString(organizationId),
+        });
       }
       case FixedQueryType.RepositoryTeamCacheByRepositoryId: {
-        const {
-          repositoryId,
-        } = query as RepositoryTeamCacheFixedQueryByRepositoryId;
+        const { repositoryId } = query as RepositoryTeamCacheFixedQueryByRepositoryId;
         if (!repositoryId) {
           throw new Error('repositoryId required');
         }
-        return PostgresJsonEntityQuery(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue,
-          metadataColumnName,
-          {
-            repositoryid: stringOrNumberAsString(repositoryId),
-          }
-        );
+        return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+          repositoryid: stringOrNumberAsString(repositoryId),
+        });
       }
       case FixedQueryType.RepositoryTeamCacheByTeamId: {
         const { teamId } = query as RepositoryTeamCacheFixedQueryByTeamId;
         if (!teamId) {
           throw new Error('teamId required');
         }
-        return PostgresJsonEntityQuery(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue,
-          metadataColumnName,
-          {
-            teamid: stringOrNumberAsString(teamId),
-          }
-        );
+        return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+          teamid: stringOrNumberAsString(teamId),
+        });
       }
       case FixedQueryType.RepositoryTeamCacheDeleteByRepositoryId: {
-        const {
-          repositoryId,
-        } = query as RepositoryTeamCacheDeleteByRepositoryId;
+        const { repositoryId } = query as RepositoryTeamCacheDeleteByRepositoryId;
         return {
           sql: `DELETE FROM ${tableName} WHERE ${metadataColumnName}->>'repositoryid' = $1`,
           values: [repositoryId],
@@ -311,9 +236,7 @@ EntityMetadataMappings.Register(
         };
       }
       case FixedQueryType.RepositoryTeamCacheDeleteByOrganizationId: {
-        const {
-          organizationId,
-        } = query as RepositoryTeamCacheDeleteByOrganizationId;
+        const { organizationId } = query as RepositoryTeamCacheDeleteByOrganizationId;
         return {
           sql: `DELETE FROM ${tableName} WHERE ${metadataColumnName}->>'organizationid' = $1`,
           values: [organizationId],
@@ -366,9 +289,7 @@ EntityMetadataMappings.Register(
         return allInTypeBin;
 
       case FixedQueryType.RepositoryTeamCacheByOrganizationId:
-        const {
-          organizationId,
-        } = query as RepositoryTeamCacheFixedQueryByOrganizationId;
+        const { organizationId } = query as RepositoryTeamCacheFixedQueryByOrganizationId;
         if (!organizationId) {
           throw new Error('organizationId required');
         }

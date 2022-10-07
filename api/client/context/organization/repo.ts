@@ -34,9 +34,7 @@ deployment?.routes?.api?.context?.organization?.repo &&
   deployment?.routes?.api?.context?.organization?.repo(router);
 
 router.use('*', (req, res, next) => {
-  return next(
-    jsonError(`no API or ${req.method} function available for repo`, 404)
-  );
+  return next(jsonError(`no API or ${req.method} function available for repo`, 404));
 });
 
 export default router;

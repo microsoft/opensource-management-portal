@@ -27,9 +27,7 @@ export default class SmtpMailService implements IMailProvider {
     if (!this._config.smtpMailService) {
       throw new Error('SMTP Mail configuration not given, mail sending failed');
     }
-    const transporter = nodemailer.createTransport(
-      this._config.smtpMailService
-    );
+    const transporter = nodemailer.createTransport(this._config.smtpMailService);
     try {
       const info = await transporter.sendMail({
         to: mail.to,
@@ -40,9 +38,7 @@ export default class SmtpMailService implements IMailProvider {
         html: mail.content,
       });
       if (info.rejected.length > 0) {
-        console.warn(
-          `Following reciepient addresses were rejected by the server:\n${info.rejected}`
-        );
+        console.warn(`Following reciepient addresses were rejected by the server:\n${info.rejected}`);
       }
       return info.response ? info.response : null;
     } catch (err) {

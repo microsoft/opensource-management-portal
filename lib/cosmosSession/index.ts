@@ -49,14 +49,10 @@ export default class CosmosSessionStore extends Store {
     }
     this._client = new CosmosClient({ endpoint, key });
     this._database = (
-      await this._client.databases.createIfNotExists({
-        id: this._options.database,
-      })
+      await this._client.databases.createIfNotExists({ id: this._options.database })
     ).database;
     this._collection = (
-      await this._database.containers.createIfNotExists({
-        id: this._options.collection,
-      })
+      await this._database.containers.createIfNotExists({ id: this._options.collection })
     ).container;
     this._initialized = true;
   }
@@ -122,9 +118,7 @@ export default class CosmosSessionStore extends Store {
   set = (sid: string, session: IAppSession, callback) => {
     this.throwIfNotInitialized();
     if (sid !== session.id) {
-      throw new Error(
-        "The 'sid' parameter value must match the value of 'session.id'."
-      );
+      throw new Error("The 'sid' parameter value must match the value of 'session.id'.");
     }
     const item = Object.assign({}, session, {
       id: sid,
@@ -141,10 +135,7 @@ export default class CosmosSessionStore extends Store {
       .catch((error) => {
         console.dir(error);
         if (callback) {
-          return callback(
-            null,
-            new Error(`Error upserting data to the database: ${error}`)
-          );
+          return callback(null, new Error(`Error upserting data to the database: ${error}`));
         }
       });
   };
@@ -162,9 +153,7 @@ export default class CosmosSessionStore extends Store {
 
   private throwIfNotInitialized() {
     if (!this._initialized) {
-      throw new Error(
-        'Cosmos session provider must be initialized before it can be used'
-      );
+      throw new Error('Cosmos session provider must be initialized before it can be used');
     }
   }
 

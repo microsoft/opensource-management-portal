@@ -20,10 +20,7 @@ export default function initializeHealthCheck(app, config) {
   function checkHealth(checkType) {
     const started = app.settings.started;
     const startupSeconds = configuredHealthDelays[checkType];
-    if (
-      configuredHealthDelays[checkType] === undefined ||
-      configuredHealthDelays[checkType] === null
-    ) {
+    if (configuredHealthDelays[checkType] === undefined || configuredHealthDelays[checkType] === null) {
       throw new Error('Invalid health check type');
     }
     const now = new Date();
@@ -72,26 +69,14 @@ export default function initializeHealthCheck(app, config) {
   };
 
   if (config && config.containers && config.containers.docker) {
-    configuredHealthDelays.readiness =
-      config.containers.healthCheck.delay.readiness;
-    configuredHealthDelays.liveness =
-      config.containers.healthCheck.delay.liveness;
+    configuredHealthDelays.readiness = config.containers.healthCheck.delay.readiness;
+    configuredHealthDelays.liveness = config.containers.healthCheck.delay.liveness;
 
-    app.get(
-      '/health/readiness',
-      containerHealthCheck.bind(null, 'readiness', true)
-    );
-    app.get(
-      '/health/liveness',
-      containerHealthCheck.bind(null, 'liveness', true)
-    );
+    app.get('/health/readiness', containerHealthCheck.bind(null, 'readiness', true));
+    app.get('/health/liveness', containerHealthCheck.bind(null, 'liveness', true));
     app.get(
       '/health/external',
-      containerHealthCheck.bind(
-        null,
-        'liveness',
-        false /* do not validate a header, anyone can hit */
-      )
+      containerHealthCheck.bind(null, 'liveness', false /* do not validate a header, anyone can hit */)
     );
     debug('Health probes listening');
   } else {

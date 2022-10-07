@@ -41,9 +41,7 @@ router.use((req: IRequestHacked, res, next) => {
     config.github.links.provider.linkingOfflineMessage
   ) {
     return next(
-      new Error(
-        `Linking is temporarily offline: ${config.github.links.provider.linkingOfflineMessage}`
-      )
+      new Error(`Linking is temporarily offline: ${config.github.links.provider.linkingOfflineMessage}`)
     );
   } else {
     return next();
@@ -55,13 +53,8 @@ router.use(
   asyncHandler(async function (req: ReposAppRequest, res, next) {
     // Make sure both account types are authenticated before showing the link pg [wi 12690]
     const individualContext = req.individualContext;
-    if (
-      !individualContext.corporateIdentity ||
-      !individualContext.getGitHubIdentity()
-    ) {
-      req.insights.trackEvent({
-        name: 'PortalSessionNeedsBothGitHubAndAadUsernames',
-      });
+    if (!individualContext.corporateIdentity || !individualContext.getGitHubIdentity()) {
+      req.insights.trackEvent({ name: 'PortalSessionNeedsBothGitHubAndAadUsernames' });
       return res.redirect('/?signin');
     }
     return next();
@@ -77,11 +70,7 @@ router.use(
     const insights = providers.insights;
     const config = providers.config;
     let validateAndBlockGuests = false;
-    if (
-      config &&
-      config.activeDirectory &&
-      config.activeDirectory.blockGuestUserTypes
-    ) {
+    if (config && config.activeDirectory && config.activeDirectory.blockGuestUserTypes) {
       validateAndBlockGuests = true;
     }
     // If the app has not been configured to check whether a user is a guest before linking, continue:
@@ -119,8 +108,7 @@ router.use(
           : splitSemiColonCommas(config.activeDirectoryGuests);
         if (!authorizedGuests.includes(aadId)) {
           block = false;
-          blockedRecord =
-            'specifically authorized user ' + aadId + ' ' + userPrincipalName;
+          blockedRecord = 'specifically authorized user ' + aadId + ' ' + userPrincipalName;
           req.overrideLinkUserPrincipalName = userPrincipalName;
           return next(
             new Error(
@@ -149,9 +137,7 @@ router.use(
       }
       const manager = await providers.graphProvider.getManagerById(aadId);
       if (!manager || !manager.userPrincipalName) {
-        throw new Error(
-          `You do not have an active manager entry in the directory and so cannot yet link.`
-        );
+        throw new Error(`You do not have an active manager entry in the directory and so cannot yet link.`);
       }
       return next();
     } catch (graphError) {
@@ -172,13 +158,8 @@ router.get(
   asyncHandler(async function (req: ReposAppRequest, res, next) {
     const individualContext = req.individualContext;
     const link = individualContext.link;
-    if (
-      !individualContext.corporateIdentity &&
-      !individualContext.getGitHubIdentity()
-    ) {
-      req.insights.trackEvent({
-        name: 'PortalSessionNeedsBothGitHubAndAadUsernames',
-      });
+    if (!individualContext.corporateIdentity && !individualContext.getGitHubIdentity()) {
+      req.insights.trackEvent({ name: 'PortalSessionNeedsBothGitHubAndAadUsernames' });
       return res.redirect('/?signin');
     }
     if (!individualContext.getGitHubIdentity()) {
@@ -228,8 +209,7 @@ async function showLinkPage(req: ReposAppRequest, res) {
   const userLinkData = await operations.validateCorporateAccountCanLink(aadId);
   render({
     graphUser: userLinkData.graphEntry,
-    isServiceAccountCandidate:
-      userLinkData.type === SupportedLinkType.ServiceAccount,
+    isServiceAccountCandidate: userLinkData.type === SupportedLinkType.ServiceAccount,
   });
 }
 
@@ -272,13 +252,8 @@ export async function interactiveLinkUser(
   const serviceAccountMail = req.body.serviceAccountMail;
   const { operations } = getProviders(req);
   if (isServiceAccount && !validator.isEmail(serviceAccountMail)) {
-    const errorMessage =
-      'Please enter a valid e-mail address for the Service Account maintainer.';
-    return next(
-      isJson
-        ? jsonError(errorMessage, 400)
-        : wrapError(null, errorMessage, true)
-    );
+    const errorMessage = 'Please enter a valid e-mail address for the Service Account maintainer.';
+    return next(isJson ? jsonError(errorMessage, 400) : wrapError(null, errorMessage, true));
   }
   let newLinkObject: ICorporateLink = null;
   try {
@@ -291,9 +266,7 @@ export async function interactiveLinkUser(
     newLinkObject.serviceAccountMail = serviceAccountMail;
     const address = operations.getOperationsMailAddress();
     const errorMessage = `Service Account linking is not available. Please reach out to ${address} for more information.`;
-    return next(
-      isJson ? jsonError(errorMessage, 400) : new Error(errorMessage)
-    );
+    return next(isJson ? jsonError(errorMessage, 400) : new Error(errorMessage));
   }
   try {
     await operations.linkAccounts({
@@ -310,11 +283,7 @@ export async function interactiveLinkUser(
     }
   } catch (createError) {
     const errorMessage = `We had trouble linking your corporate and GitHub accounts: ${createError.message}`;
-    return next(
-      isJson
-        ? jsonError(errorMessage, 500)
-        : wrapError(createError, errorMessage)
-    );
+    return next(isJson ? jsonError(errorMessage, 500) : wrapError(createError, errorMessage));
   }
 }
 

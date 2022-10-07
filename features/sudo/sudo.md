@@ -1,47 +1,46 @@
-
 # organization sudo
 
-Organization-level sudo allows users that are not technically organization owners on 
-GitHub to perform administrative actions that the portal provides, such as managing repos, 
+Organization-level sudo allows users that are not technically organization owners on
+GitHub to perform administrative actions that the portal provides, such as managing repos,
 or taking action on behalf of some users.
 
-When using repository-level just-in-time (JIT), sudo also allows org sudo users to 
+When using repository-level just-in-time (JIT), sudo also allows org sudo users to
 JIT to help manage repositories.
 
 ## Feature flag: FEATURE_FLAG_ALLOW_ORG_SUDO
 
 > This feature is **ON** by default
 
-Historically, this project enabled organization sudoers by default. The configuration 
-default for the feature flag `allowOrganizationSudo` from environment `FEATURE_FLAG_ALLOW_ORG_SUDO` 
+Historically, this project enabled organization sudoers by default. The configuration
+default for the feature flag `allowOrganizationSudo` from environment `FEATURE_FLAG_ALLOW_ORG_SUDO`
 reflects this default.
 
 ## Configuration options
 
-The default provider uses GitHub Teams for authorization: a specific GitHub team ID is 
+The default provider uses GitHub Teams for authorization: a specific GitHub team ID is
 configured for an organization. Membership in that GitHub Team for the user at the time
 of the request is used to grant org-level sudo permission.
 
-For those wanting to use security groups, a security group provider available. This 
-decouples the operations from the GitHub user and instead is based off of the privileges 
+For those wanting to use security groups, a security group provider available. This
+decouples the operations from the GitHub user and instead is based off of the privileges
 of the linked user's corporate ID.
 
 An abstract base class is available but not required to conform to the interface.
 
 ## Company-specific support
 
-Overrides are available to allow the company-specific system to provide the 
-org sudo instance for an organization, if you wish to implement a different 
+Overrides are available to allow the company-specific system to provide the
+org sudo instance for an organization, if you wish to implement a different
 approach, or use a different company-internal system for these decisions.
 
 ## Debug flags
 
-There is an environmental off-switch enabled that can turn off sudo, allowing for testing 
+There is an environmental off-switch enabled that can turn off sudo, allowing for testing
 as a regular user in local environments. That env variable name is `DEBUG_GITHUB_ORG_SUDO_OFF`.
 
 # portal sudo
 
-Portal sudo applies sudo for all organizations configured within the application. 
+Portal sudo applies sudo for all organizations configured within the application.
 Used by system administrators typically.
 
 The original design was to use the sudo configuration from the first/primary GitHub org
@@ -61,7 +60,7 @@ Can be:
 - `none` or '': no portal-wide sudo
 - `securitygroup`: use a security group to determine if a linked user is a portal administrator
 
-For the security group provider, configuration should set `SUDO_PORTAL_SECURITY_GROUP_ID` to the 
+For the security group provider, configuration should set `SUDO_PORTAL_SECURITY_GROUP_ID` to the
 security group ID to use.
 
 ## Debug flags

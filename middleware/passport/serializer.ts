@@ -27,9 +27,7 @@ function createSerializer() {
     const isEncrypted = serializerKey === true;
     const key = isEncrypted ? 'encrypted' : 'plain';
     if (!serializer[key]) {
-      serializer[key] = isEncrypted
-        ? new EncryptionSerializer()
-        : new PlainSerializer();
+      serializer[key] = isEncrypted ? new EncryptionSerializer() : new PlainSerializer();
     }
     if (serializer[key] === undefined) {
       throw new Error(`Could not prepare serializer of type ${serializerKey}`);

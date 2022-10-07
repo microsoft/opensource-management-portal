@@ -139,10 +139,7 @@ export class RepositoryIssue {
     }
   }
 
-  async getDetails(
-    options?: ICacheOptions,
-    okToUseLocalEntity: boolean = true
-  ): Promise<any> {
+  async getDetails(options?: ICacheOptions, okToUseLocalEntity: boolean = true): Promise<any> {
     if (okToUseLocalEntity && this._entity) {
       return this._entity;
     }
@@ -158,11 +155,7 @@ export class RepositoryIssue {
     };
     const cacheOptions: ICacheOptions = {
       // NOTE: just reusing repo details stale time
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgRepoDetailsStaleSeconds,
-        options
-      ),
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
@@ -180,9 +173,7 @@ export class RepositoryIssue {
       const notFound = error.status && error.status == /* loose */ 404;
       error = wrapError(
         error,
-        notFound
-          ? 'The issue could not be found.'
-          : `Could not get details about the issue. ${error.status}`,
+        notFound ? 'The issue could not be found.' : `Could not get details about the issue. ${error.status}`,
         notFound
       );
       if (notFound) {
@@ -194,10 +185,7 @@ export class RepositoryIssue {
 
   async isDeleted(options?: ICacheOptions): Promise<boolean> {
     try {
-      await this.getDetails(
-        options,
-        false /* do not use local entity instance */
-      );
+      await this.getDetails(options, false /* do not use local entity instance */);
     } catch (maybeDeletedError) {
       if (ErrorHelper.IsNotFound(maybeDeletedError)) {
         return true;
@@ -214,10 +202,7 @@ export class RepositoryIssue {
     return getAuthorizationHeader;
   }
 
-  static async CreateFromContentUrl(
-    operations: IOperationsInstance,
-    url: string
-  ) {
+  static async CreateFromContentUrl(operations: IOperationsInstance, url: string) {
     const ops = operations as Operations;
     if (!ops.getRepositoryWithOrganizationFromUrl) {
       throw CreateError.ServerError(

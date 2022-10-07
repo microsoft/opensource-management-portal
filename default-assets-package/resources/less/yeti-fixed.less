@@ -2,10 +2,10 @@
 // Bootswatch
 // -----------------------------------------------------
 
-@web-font-path: "https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,700italic,400,300,700";
+@web-font-path: 'https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,700italic,400,300,700';
 
 .web-font(@path) {
-  @import (css) url("@{path}");
+  @import (css) url('@{path}');
 }
 .web-font(@web-font-path);
 
@@ -46,7 +46,6 @@
   }
 
   .dropdown {
-
     &-menu {
       border: none;
 
@@ -61,11 +60,9 @@
     &-header {
       color: rgba(255, 255, 255, 0.5);
     }
-
   }
 
   &-default {
-
     .dropdown-menu {
       background-color: @navbar-default-bg;
 
@@ -83,7 +80,6 @@
   }
 
   &-inverse {
-
     .dropdown-menu {
       background-color: @navbar-inverse-bg;
 
@@ -120,7 +116,6 @@
 }
 
 .btn-group {
-
   .btn ~ .dropdown-toggle {
     padding-left: 16px;
     padding-right: 16px;
@@ -137,7 +132,6 @@
   }
 
   .dropdown-toggle {
-
     &.btn-default ~ .dropdown-menu {
       background-color: @btn-default-bg;
       border-color: @btn-default-border;
@@ -259,8 +253,8 @@ label,
   font-weight: normal;
 }
 
-input[type="radio"],
-input[type="checkbox"] {
+input[type='radio'],
+input[type='checkbox'] {
   margin-top: 1px;
 }
 
@@ -403,7 +397,6 @@ input[type="checkbox"] {
 // Containers =================================================================
 
 .dropdown {
-
   &-menu {
     padding: 0;
     margin-top: 0;

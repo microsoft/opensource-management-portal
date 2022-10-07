@@ -16,17 +16,12 @@
 import throat from 'throat';
 import { IReposJob, ICorporateLink } from '../../interfaces';
 
-import {
-  createAndInitializeLinkProviderInstance,
-  ILinkProvider,
-} from '../../lib/linkProviders';
+import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../../lib/linkProviders';
 import { ErrorHelper } from '../../transitional';
 
 const parallelWorkLimit = 5;
 
-export default async function migration({
-  providers,
-}: IReposJob): Promise<void> {
+export default async function migration({ providers }: IReposJob): Promise<void> {
   // const sourceLinkProvider = providers.linkProvider;
   const config = providers.config;
   const sourceLinkProviderName = 'table';
@@ -62,10 +57,7 @@ export default async function migration({
   await Promise.all(
     allSourceLinks.map((sourceLink: ICorporateLink) =>
       throttle(async () => {
-        const existingLink = await getThirdPartyLink(
-          destinationLinkProvider,
-          sourceLink.thirdPartyId
-        );
+        const existingLink = await getThirdPartyLink(destinationLinkProvider, sourceLink.thirdPartyId);
         if (existingLink && overwriteDestinationLinks) {
           console.warn('Removing existing destination link...');
           await destinationLinkProvider.deleteLink(existingLink);
@@ -79,24 +71,15 @@ export default async function migration({
         try {
           if (!sourceLink.corporateId) {
             // need to use the graph!
-            const id = await getUserIdByUpn(
-              providers.graphProvider,
-              sourceLink.corporateUsername
-            );
+            const id = await getUserIdByUpn(providers.graphProvider, sourceLink.corporateUsername);
             if (id === null) {
-              throw new Error(
-                `not found user ${sourceLink.corporateUsername} in graph`
-              );
+              throw new Error(`not found user ${sourceLink.corporateUsername} in graph`);
             }
-            console.log(
-              `discovered id ${id} for upn ${sourceLink.corporateUsername}`
-            );
+            console.log(`discovered id ${id} for upn ${sourceLink.corporateUsername}`);
             sourceLink.corporateId = id;
           }
 
-          const newLinkId = await destinationLinkProvider.createLink(
-            sourceLink
-          );
+          const newLinkId = await destinationLinkProvider.createLink(sourceLink);
           console.log(`OK: new link ID in destination: ${newLinkId}`);
         } catch (linkCreateError) {
           console.log('Issue with link:');
@@ -118,10 +101,7 @@ export default async function migration({
   console.log();
 }
 
-async function getThirdPartyLink(
-  linkProvider: ILinkProvider,
-  thirdPartyId: string
-): Promise<ICorporateLink> {
+async function getThirdPartyLink(linkProvider: ILinkProvider, thirdPartyId: string): Promise<ICorporateLink> {
   try {
     return await linkProvider.getByThirdPartyId(thirdPartyId);
   } catch (error) {

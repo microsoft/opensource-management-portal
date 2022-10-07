@@ -9,8 +9,7 @@ import { ReposAppRequest } from '../../../interfaces';
 import { IndividualContext } from '../../../user';
 
 export default asyncHandler(async (req: ReposAppRequest, res) => {
-  const activeContext = (req.individualContext ||
-    req.apiContext) as IndividualContext;
+  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   if (!activeContext.link) {
     return res.json({
       member: [],

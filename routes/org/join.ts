@@ -43,21 +43,13 @@ router.use(function (req: ReposAppRequest, res, next) {
 });
 
 router.use(
-  asyncHandler(async function (
-    req: ReposAppRequest,
-    res: Response,
-    next: NextFunction
-  ) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     try {
       const providers = getProviders(req);
       const companySpecific = getCompanySpecificDeployment();
       const organization = req.organization;
-      if (
-        companySpecific?.features?.organizationJoinAcl
-          ?.tryAuthorizeOrganizationJoin
-      ) {
-        const activeContext = (req.individualContext ||
-          req.apiContext) as IndividualContext;
+      if (companySpecific?.features?.organizationJoinAcl?.tryAuthorizeOrganizationJoin) {
+        const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
         await companySpecific.features.organizationJoinAcl.tryAuthorizeOrganizationJoin(
           providers,
           organization,
@@ -86,9 +78,7 @@ function clearAuditListAndRedirect(
   const url =
     organization.baseUrl +
     'security-check' +
-    (onboarding
-      ? '?onboarding=' + onboarding
-      : '?joining=' + organization.name);
+    (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name);
   if (state === OrganizationMembershipState.Active && req) {
     req.individualContext.webContext.saveUserAlert(
       `You successfully joined the ${organization.name} organization!`,
@@ -109,11 +99,7 @@ function queryParamAsBoolean(input: string): boolean {
 
 router.get(
   '/',
-  asyncHandler(async function (
-    req: ReposAppRequest,
-    res: Response,
-    next: NextFunction
-  ) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const providers = getProviders(req);
     const { operations } = providers;
     const organization = req.organization;
@@ -122,8 +108,7 @@ router.get(
     const accountFromId = operations.getAccount(id);
     const accountDetails = await accountFromId.getDetails();
     const link = req.individualContext.link;
-    const userIncreasedScopeToken =
-      req.individualContext.webContext.tokens.gitHubWriteOrganizationToken;
+    const userIncreasedScopeToken = req.individualContext.webContext.tokens.gitHubWriteOrganizationToken;
     let onboarding = queryParamAsBoolean(req.query.onboarding as string);
     let showTwoFactorWarning = false;
     let showApplicationPermissionWarning = false;
@@ -131,40 +116,15 @@ router.get(
     const result = await organization.getOperationalMembership(username);
     let state = result && result.state ? result.state : false;
     if (state === OrganizationMembershipState.Active) {
-      await addMemberToOrganizationCache(
-        providers.queryCache,
-        organization,
-        id
-      );
-      return clearAuditListAndRedirect(
-        res,
-        organization,
-        onboarding,
-        req,
-        state
-      );
+      await addMemberToOrganizationCache(providers.queryCache, organization, id);
+      return clearAuditListAndRedirect(res, organization, onboarding, req, state);
     } else if (state === 'pending' && userIncreasedScopeToken) {
       let updatedState;
       try {
-        updatedState = await organization.acceptOrganizationInvitation(
-          userIncreasedScopeToken
-        );
-        if (
-          updatedState &&
-          updatedState.state === OrganizationMembershipState.Active
-        ) {
-          await addMemberToOrganizationCache(
-            providers.queryCache,
-            organization,
-            id
-          );
-          return clearAuditListAndRedirect(
-            res,
-            organization,
-            onboarding,
-            req,
-            state
-          );
+        updatedState = await organization.acceptOrganizationInvitation(userIncreasedScopeToken);
+        if (updatedState && updatedState.state === OrganizationMembershipState.Active) {
+          await addMemberToOrganizationCache(providers.queryCache, organization, id);
+          return clearAuditListAndRedirect(res, organization, onboarding, req, state);
         }
       } catch (error) {
         // We do not error out, they can still fall back on the
@@ -174,15 +134,8 @@ router.get(
           'The GitHub API did not allow us to join the organization for you. Follow the instructions to continue.';
         if (error.statusCode == 401) {
           // These comparisons should be == and not ===
-          return redirectToIncreaseScopeExperience(
-            req,
-            res,
-            'GitHub API status code was 401'
-          );
-        } else if (
-          error.statusCode == 403 &&
-          writeOrgFailureMessage.includes('two-factor')
-        ) {
+          return redirectToIncreaseScopeExperience(req, res, 'GitHub API status code was 401');
+        } else if (error.statusCode == 403 && writeOrgFailureMessage.includes('two-factor')) {
           showTwoFactorWarning = true;
         } else if (error.statusCode == 403) {
           showApplicationPermissionWarning = true;
@@ -193,10 +146,7 @@ router.get(
     const details = await organization.getDetails();
     const userDetails = details ? organization.memberFromEntity(details) : null;
     userDetails['entity'] /* adding to the object */ = details;
-    var title =
-      organization.name +
-      ' Organization Membership ' +
-      (state == 'pending' ? 'Pending' : 'Join');
+    var title = organization.name + ' Organization Membership ' + (state == 'pending' ? 'Pending' : 'Join');
     req.individualContext.webContext.render({
       view: 'org/pending',
       title,
@@ -219,12 +169,7 @@ router.get(
 );
 
 function redirectToIncreaseScopeExperience(req, res, optionalReason) {
-  storeOriginalUrlAsReferrer(
-    req,
-    res,
-    '/auth/github/increased-scope',
-    optionalReason
-  );
+  storeOriginalUrlAsReferrer(req, res, '/auth/github/increased-scope', optionalReason);
 }
 
 async function addMemberToOrganizationCache(
@@ -245,11 +190,7 @@ async function addMemberToOrganizationCache(
 
 router.get(
   '/express',
-  asyncHandler(async function (
-    req: ReposAppRequest,
-    res: Response,
-    next: NextFunction
-  ) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const providers = getProviders(req);
     const insights = providers.insights;
     const username = req.individualContext.getGitHubIdentity().username;
@@ -278,26 +219,15 @@ router.get(
       },
     });
     if (state === OrganizationMembershipState.Active) {
-      await addMemberToOrganizationCache(
-        providers.queryCache,
-        organization,
-        id
-      );
+      await addMemberToOrganizationCache(providers.queryCache, organization, id);
     }
-    if (
-      state === OrganizationMembershipState.Active ||
-      state === OrganizationMembershipState.Pending
-    ) {
+    if (state === OrganizationMembershipState.Active || state === OrganizationMembershipState.Pending) {
       res.redirect(
         organization.baseUrl +
           'join' +
-          (onboarding
-            ? '?onboarding=' + onboarding
-            : '?joining=' + organization.name)
+          (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name)
       );
-    } else if (
-      req.individualContext.webContext.tokens.gitHubWriteOrganizationToken
-    ) {
+    } else if (req.individualContext.webContext.tokens.gitHubWriteOrganizationToken) {
       // TODO: is this the right approach to use with asyncHandler and sub-awaits and sub-routes?
       return await joinOrg(req, res, next);
     } else {
@@ -311,11 +241,7 @@ router.get(
   })
 );
 
-async function joinOrg(
-  req: ReposAppRequest,
-  res: Response,
-  next: NextFunction
-) {
+async function joinOrg(req: ReposAppRequest, res: Response, next: NextFunction) {
   const individualContext = req.individualContext as IndividualContext;
   const { insights } = getProviders(req);
   const organization = req.organization as Organization;
@@ -324,13 +250,7 @@ async function joinOrg(
   if (!username) {
     throw new Error("A GitHub username was not found in the user's link.");
   }
-  const result = await joinOrganization(
-    req,
-    individualContext,
-    organization,
-    req.insights,
-    onboarding
-  );
+  const result = await joinOrganization(req, individualContext, organization, req.insights, onboarding);
   insights?.trackEvent({
     name: 'OrganizationJoinOrgMethod',
     properties: {
@@ -342,9 +262,7 @@ async function joinOrg(
   return res.redirect(
     organization.baseUrl +
       'join' +
-      (onboarding
-        ? '?onboarding=' + onboarding
-        : '?joining=' + organization.name)
+      (onboarding ? '?onboarding=' + onboarding : '?joining=' + organization.name)
   );
 }
 
@@ -388,10 +306,7 @@ async function joinOrganization(
   let multipleInvitationDebugMessage = null;
   try {
     if (invitationTeam) {
-      const status = await invitationTeam.getMembership(
-        username,
-        NoCacheNoBackground
-      );
+      const status = await invitationTeam.getMembership(username, NoCacheNoBackground);
       const statusAsType = status as ITeamMembershipRoleState;
       if (!status) {
         // ok state, we can join
@@ -405,8 +320,7 @@ async function joinOrganization(
       } else if (statusAsType.state === OrganizationMembershipState.Pending) {
         // definitely do not send an invite!
         okToSendInvite = false;
-        multipleInvitationDebugMessage =
-          'There is already a pending invitation that needs to be accepted.';
+        multipleInvitationDebugMessage = 'There is already a pending invitation that needs to be accepted.';
       }
     } else {
       await organization.getOperationalMembership(username);
@@ -415,8 +329,7 @@ async function joinOrganization(
       const statusAsType = status as IOrganizationMembership;
       if (!status) {
         // ok state, we can join
-        multipleInvitationDebugMessage =
-          'This is a new invitation for the user to join the organization.';
+        multipleInvitationDebugMessage = 'This is a new invitation for the user to join the organization.';
       } else if (statusAsType.state === OrganizationMembershipState.Active) {
         // do not send a new invite!
         okToSendInvite = false;
@@ -510,150 +423,129 @@ router.post('/', joinOrg);
 // /orgname/join/byClient
 router.post(
   '/byClient',
-  asyncHandler(
-    async (req: ReposAppRequest, res: Response, next: NextFunction) => {
-      const shouldAttemptAcceptingInvitations = false;
-      const { queryCache, insights } = getProviders(req);
-      const individualContext = req.individualContext as IndividualContext;
-      const organization = req.organization as Organization;
-      const username = individualContext.getGitHubIdentity().username;
-      const onboarding = queryParamAsBoolean(req.query.onboarding as string);
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+    const shouldAttemptAcceptingInvitations = false;
+    const { queryCache, insights } = getProviders(req);
+    const individualContext = req.individualContext as IndividualContext;
+    const organization = req.organization as Organization;
+    const username = individualContext.getGitHubIdentity().username;
+    const onboarding = queryParamAsBoolean(req.query.onboarding as string);
+    insights?.trackEvent({
+      name: 'JoinOrganizationByClientRequest',
+      properties: {
+        username,
+        organization: organization.name,
+        onboarding,
+      },
+    });
+    try {
+      const result = await joinOrganization(req, individualContext, organization, req.insights, onboarding);
+      if (result && result.multipleInvitationDebugMessage) {
+        res.header('x-multiple-invitation-debug-message', result.multipleInvitationDebugMessage);
+      }
       insights?.trackEvent({
-        name: 'JoinOrganizationByClientRequest',
+        name: 'JoinOrganizationByClientResponse',
         properties: {
           username,
           organization: organization.name,
           onboarding,
+          outcome: result ? JSON.stringify(result, null, 2) : 'null or empty',
         },
       });
+    } catch (error) {
+      return next(jsonError(error, 400));
+    }
+    let xGitHubSsoUrl: string = null;
+    if (shouldAttemptAcceptingInvitations) {
       try {
-        const result = await joinOrganization(
-          req,
-          individualContext,
-          organization,
-          req.insights,
-          onboarding
-        );
-        if (result && result.multipleInvitationDebugMessage) {
-          res.header(
-            'x-multiple-invitation-debug-message',
-            result.multipleInvitationDebugMessage
-          );
-        }
-        insights?.trackEvent({
-          name: 'JoinOrganizationByClientResponse',
-          properties: {
-            username,
-            organization: organization.name,
-            onboarding,
-            outcome: result ? JSON.stringify(result, null, 2) : 'null or empty',
-          },
-        });
-      } catch (error) {
-        return next(jsonError(error, 400));
-      }
-      let xGitHubSsoUrl: string = null;
-      if (shouldAttemptAcceptingInvitations) {
-        try {
-          const result = await organization.getOperationalMembership(username);
-          const state = result && result.state ? result.state : false;
-          if (
-            state === OrganizationMembershipState.Pending &&
-            individualContext.hasGitHubOrganizationWriteToken()
-          ) {
-            const userIncreasedScopeToken =
-              individualContext.webContext?.tokens
-                ?.gitHubWriteOrganizationToken;
-            const updatedState = await organization.acceptOrganizationInvitation(
-              userIncreasedScopeToken
-            );
-            if (
-              updatedState &&
-              updatedState.state === OrganizationMembershipState.Active
-            ) {
-              insights?.trackMetric({
-                name: 'ClientOrgInvitationAutomatedAccepts',
-                value: 1,
-              });
-              insights?.trackEvent({
-                name: 'ClientOrgInvitationAccepted',
-                properties: {
-                  username,
-                  hasGitHubOrganizationWriteToken: 'yes',
-                  beforeAcceptState: state,
-                  updatedState,
-                  message: 'accept method did work',
-                },
-              });
-              await addMemberToOrganizationCache(
-                queryCache,
-                organization,
-                individualContext.getGitHubIdentity().id
-              );
-            }
-          } else {
+        const result = await organization.getOperationalMembership(username);
+        const state = result && result.state ? result.state : false;
+        if (
+          state === OrganizationMembershipState.Pending &&
+          individualContext.hasGitHubOrganizationWriteToken()
+        ) {
+          const userIncreasedScopeToken = individualContext.webContext?.tokens?.gitHubWriteOrganizationToken;
+          const updatedState = await organization.acceptOrganizationInvitation(userIncreasedScopeToken);
+          if (updatedState && updatedState.state === OrganizationMembershipState.Active) {
             insights?.trackMetric({
-              name: 'ClientOrgInvitationAutomatedUnaccepts',
+              name: 'ClientOrgInvitationAutomatedAccepts',
               value: 1,
             });
             insights?.trackEvent({
-              name: 'ClientOrgInvitationAutomatedUnAccepts',
+              name: 'ClientOrgInvitationAccepted',
               properties: {
                 username,
                 hasGitHubOrganizationWriteToken: 'yes',
                 beforeAcceptState: state,
-                message: 'State did not change to Active but no Error',
+                updatedState,
+                message: 'accept method did work',
               },
             });
-          }
-        } catch (error) {
-          // NOT an error to bubble up, since they at least received an invitation.
-          console.warn(error);
-          if (error['x-github-sso-url']) {
-            xGitHubSsoUrl = error['x-github-sso-url'];
-            console.log(
-              `Needs to authorize the OAuth application for SAML use by navigating to: ${xGitHubSsoUrl}`
+            await addMemberToOrganizationCache(
+              queryCache,
+              organization,
+              individualContext.getGitHubIdentity().id
             );
           }
+        } else {
           insights?.trackMetric({
-            name: 'ClientOrgInvitationAcceptFailures',
+            name: 'ClientOrgInvitationAutomatedUnaccepts',
             value: 1,
           });
-          insights?.trackException({ exception: error });
           insights?.trackEvent({
-            name: 'ClientOrgInvitationAcceptFailure',
+            name: 'ClientOrgInvitationAutomatedUnAccepts',
             properties: {
-              message: error.toString(),
               username,
-              xGitHubSsoUrl,
+              hasGitHubOrganizationWriteToken: 'yes',
+              beforeAcceptState: state,
+              message: 'State did not change to Active but no Error',
             },
           });
         }
+      } catch (error) {
+        // NOT an error to bubble up, since they at least received an invitation.
+        console.warn(error);
+        if (error['x-github-sso-url']) {
+          xGitHubSsoUrl = error['x-github-sso-url'];
+          console.log(
+            `Needs to authorize the OAuth application for SAML use by navigating to: ${xGitHubSsoUrl}`
+          );
+        }
+        insights?.trackMetric({
+          name: 'ClientOrgInvitationAcceptFailures',
+          value: 1,
+        });
+        insights?.trackException({ exception: error });
+        insights?.trackEvent({
+          name: 'ClientOrgInvitationAcceptFailure',
+          properties: {
+            message: error.toString(),
+            username,
+            xGitHubSsoUrl,
+          },
+        });
       }
-      const qs: any = {};
-      if (onboarding) {
-        qs.onboarding = onboarding;
-      } else {
-        qs.joining = organization.name;
-      }
-      if (xGitHubSsoUrl) {
-        qs.sso = xGitHubSsoUrl;
-      }
-      const q =
-        Object.getOwnPropertyNames(qs).length > 0
-          ? `?${querystring.stringify(qs)}`
-          : '';
-      const destinationUrl = `/orgs/${organization.name}/join${q}`;
-      insights?.trackEvent({
-        name: 'ClientOrgInvitationRedirect',
-        properties: {
-          username,
-          destinationUrl,
-        },
-      });
-      return res.redirect(destinationUrl);
     }
-  )
+    const qs: any = {};
+    if (onboarding) {
+      qs.onboarding = onboarding;
+    } else {
+      qs.joining = organization.name;
+    }
+    if (xGitHubSsoUrl) {
+      qs.sso = xGitHubSsoUrl;
+    }
+    const q = Object.getOwnPropertyNames(qs).length > 0 ? `?${querystring.stringify(qs)}` : '';
+    const destinationUrl = `/orgs/${organization.name}/join${q}`;
+    insights?.trackEvent({
+      name: 'ClientOrgInvitationRedirect',
+      properties: {
+        username,
+        destinationUrl,
+      },
+    });
+    return res.redirect(destinationUrl);
+  })
 );
 
 export default router;

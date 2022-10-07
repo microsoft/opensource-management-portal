@@ -24,9 +24,7 @@ const maxParallel = 6;
 
 const shouldUpdateCached = true;
 
-async function refreshRepositories({
-  providers,
-}: IReposJob): Promise<IReposJobResult> {
+async function refreshRepositories({ providers }: IReposJob): Promise<IReposJobResult> {
   const { operations } = providers;
   const started = new Date();
   console.log(`Starting at ${started}`);
@@ -61,16 +59,11 @@ async function processOrganization(
       const repo = repos[i];
       const prefix = `org ${orgIndex}/${orgsLength}: repo ${i}/${repos.length}: `;
       try {
-        let repositoryEntity = await tryGetRepositoryEntity(
-          repositoryProvider,
-          repo.id
-        );
+        let repositoryEntity = await tryGetRepositoryEntity(repositoryProvider, repo.id);
         if (await repo.isDeleted()) {
           if (repositoryEntity) {
             await repositoryProvider.delete(repositoryEntity);
-            console.log(
-              `${prefix}Deleted repository ${organization.name}/${repo.name}`
-            );
+            console.log(`${prefix}Deleted repository ${organization.name}/${repo.name}`);
           }
           continue;
         }
@@ -80,9 +73,7 @@ async function processOrganization(
           repositoryEntity = new RepositoryEntity();
           setFields(repositoryProvider, repositoryEntity, entity);
           await repositoryProvider.insert(repositoryEntity);
-          console.log(
-            `${prefix}inserted ${organization.name}/${repositoryEntity.name}`
-          );
+          console.log(`${prefix}inserted ${organization.name}/${repositoryEntity.name}`);
           continue;
         } else {
           setFields(repositoryProvider, repositoryEntity, entity);
@@ -95,14 +86,10 @@ async function processOrganization(
         }
         if (update) {
           await repositoryProvider.replace(repositoryEntity);
-          console.log(
-            `${prefix}Updated all fields for ${organization.name}/${repo.name}`
-          );
+          console.log(`${prefix}Updated all fields for ${organization.name}/${repo.name}`);
         }
       } catch (error) {
-        console.warn(
-          `${prefix}repo error: ${repo.name} in organization ${organization.name}`
-        );
+        console.warn(`${prefix}repo error: ${repo.name} in organization ${organization.name}`);
       }
 
       await sleep(sleepBetweenReposMs);
@@ -114,11 +101,7 @@ async function processOrganization(
   return {};
 }
 
-function setFields(
-  repositoryProvider: IRepositoryProvider,
-  repositoryEntity: RepositoryEntity,
-  entity: any
-) {
+function setFields(repositoryProvider: IRepositoryProvider, repositoryEntity: RepositoryEntity, entity: any) {
   repositoryEntity.repositoryId = entity.id;
   repositoryEntity.archived = entity.archived;
   repositoryEntity.cached = new Date();

@@ -23,9 +23,7 @@ router.get('/', (req: ReposAppRequest, res, next) => {
 });
 
 router.use('*', (req, res, next) => {
-  return next(
-    jsonError('no API or function available within this banner route', 404)
-  );
+  return next(jsonError('no API or function available within this banner route', 404));
 });
 
 export default router;

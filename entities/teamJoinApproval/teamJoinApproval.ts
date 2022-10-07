@@ -6,22 +6,13 @@
 import { randomUUID } from 'crypto';
 
 import { IObjectWithDefinedKeys } from '../../lib/entityMetadataProvider/entityMetadataProvider';
-import {
-  EntityMetadataType,
-  IEntityMetadata,
-} from '../../lib/entityMetadataProvider/entityMetadata';
+import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import {
   MetadataMappingDefinition,
   EntityMetadataMappings,
 } from '../../lib/entityMetadataProvider/declarations';
-import {
-  FixedQueryType,
-  IEntityMetadataFixedQuery,
-} from '../../lib/entityMetadataProvider/query';
-import {
-  stringOrNumberAsString,
-  stringOrNumberArrayAsStringArray,
-} from '../../utils';
+import { FixedQueryType, IEntityMetadataFixedQuery } from '../../lib/entityMetadataProvider/query';
+import { stringOrNumberAsString, stringOrNumberArrayAsStringArray } from '../../utils';
 import {
   PostgresGetAllEntities,
   PostgresJsonEntityQuery,
@@ -94,8 +85,7 @@ const Field: ITeamJoinApprovalEntityProperties = {
 
 const fieldNames = Object.getOwnPropertyNames(Field);
 
-export class TeamJoinApprovalEntity
-  implements IObjectWithDefinedKeys, ITeamJoinApprovalEntityProperties {
+export class TeamJoinApprovalEntity implements IObjectWithDefinedKeys, ITeamJoinApprovalEntityProperties {
   approvalId: string;
 
   thirdPartyId?: string;
@@ -141,29 +131,13 @@ export class TeamJoinApprovalEntity
   }
 }
 
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityInstantiate,
-  () => {
-    return new TeamJoinApprovalEntity();
-  }
-);
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityIdColumnName,
-  'approvalId'
-);
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => {
+  return new TeamJoinApprovalEntity();
+});
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, 'approvalId');
 
-EntityMetadataMappings.Register(
-  type,
-  TableSettings.TableDefaultTableName,
-  'pending'
-);
-EntityMetadataMappings.Register(
-  type,
-  TableSettings.TableDefaultFixedPartitionKey,
-  'pk'
-);
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultTableName, 'pending');
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKey, 'pk');
 EntityMetadataMappings.Register(
   type,
   TableSettings.TableMapping,
@@ -202,12 +176,7 @@ EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [
   Field.created,
   Field.decisionTime,
 ]);
-EntityMetadataMappings.RuntimeValidateMappings(
-  type,
-  TableSettings.TableMapping,
-  fieldNames,
-  []
-);
+EntityMetadataMappings.RuntimeValidateMappings(type, TableSettings.TableMapping, fieldNames, []);
 
 EntityMetadataMappings.Register(
   type,
@@ -243,37 +212,19 @@ EntityMetadataMappings.Register(
     [Field.ticketType, '/type'],
   ])
 );
-EntityMetadataMappings.RuntimeValidateMappings(
-  type,
-  MemorySettings.MemoryMapping,
-  fieldNames,
-  []
-);
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
 
-EntityMetadataMappings.Register(
-  type,
-  PostgresSettings.PostgresDefaultTypeColumnName,
-  'teamjoin'
-);
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'teamjoin');
 PostgresConfiguration.SetDefaultTableName(type, 'approvals');
 PostgresConfiguration.MapFieldsToColumnNames(
   type,
   new Map<string, string>([
     [Field.thirdPartyId, (Field.thirdPartyId as string).toLowerCase()],
-    [
-      Field.thirdPartyUsername,
-      (Field.thirdPartyUsername as string).toLowerCase(),
-    ],
+    [Field.thirdPartyUsername, (Field.thirdPartyUsername as string).toLowerCase()],
 
-    [
-      Field.corporateDisplayName,
-      (Field.corporateDisplayName as string).toLowerCase(),
-    ],
+    [Field.corporateDisplayName, (Field.corporateDisplayName as string).toLowerCase()],
     [Field.corporateId, (Field.corporateId as string).toLowerCase()],
-    [
-      Field.corporateUsername,
-      (Field.corporateUsername as string).toLowerCase(),
-    ],
+    [Field.corporateUsername, (Field.corporateUsername as string).toLowerCase()],
 
     [Field.justification, (Field.justification as string).toLowerCase()],
 
@@ -285,30 +236,15 @@ PostgresConfiguration.MapFieldsToColumnNames(
     [Field.teamName, (Field.teamName as string).toLowerCase()],
 
     [Field.mailSentTo, (Field.mailSentTo as string).toLowerCase()],
-    [
-      Field.mailSentToApprovers,
-      (Field.mailSentToApprovers as string).toLowerCase(),
-    ],
+    [Field.mailSentToApprovers, (Field.mailSentToApprovers as string).toLowerCase()],
 
     [Field.decision, (Field.decision as string).toLowerCase()],
     [Field.decisionTime, (Field.decisionTime as string).toLowerCase()],
     [Field.decisionMessage, (Field.decisionMessage as string).toLowerCase()],
-    [
-      Field.decisionThirdPartyUsername,
-      (Field.decisionThirdPartyUsername as string).toLowerCase(),
-    ],
-    [
-      Field.decisionThirdPartyId,
-      (Field.decisionThirdPartyId as string).toLowerCase(),
-    ],
-    [
-      Field.decisionCorporateUsername,
-      (Field.decisionCorporateUsername as string).toLowerCase(),
-    ],
-    [
-      Field.decisionCorporateId,
-      (Field.decisionCorporateId as string).toLowerCase(),
-    ],
+    [Field.decisionThirdPartyUsername, (Field.decisionThirdPartyUsername as string).toLowerCase()],
+    [Field.decisionThirdPartyId, (Field.decisionThirdPartyId as string).toLowerCase()],
+    [Field.decisionCorporateUsername, (Field.decisionCorporateUsername as string).toLowerCase()],
+    [Field.decisionCorporateId, (Field.decisionCorporateId as string).toLowerCase()],
 
     [Field.ticketType, 'tickettype'], // TODO: remove ticket type from team join approvals
   ])
@@ -316,14 +252,11 @@ PostgresConfiguration.MapFieldsToColumnNames(
 PostgresConfiguration.ValidateMappings(type, fieldNames, []);
 
 export class TeamJoinRequestFixedQueryAll implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.AllTeamJoinApprovals;
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.AllTeamJoinApprovals;
 }
 
-export class TeamJoinRequestFixedQueryByTeams
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.ActiveTeamJoinApprovalsByTeams;
+export class TeamJoinRequestFixedQueryByTeams implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.ActiveTeamJoinApprovalsByTeams;
   public ids: string[];
   constructor(ids: string[]) {
     if (!ids || !Array.isArray(ids)) {
@@ -334,35 +267,27 @@ export class TeamJoinRequestFixedQueryByTeams
         id = (id as number).toString();
       }
       if (typeof id !== 'string') {
-        throw new Error(
-          `TeamJoinRequestFixedQueryByTeams: team ID must be a string: ${id}`
-        );
+        throw new Error(`TeamJoinRequestFixedQueryByTeams: team ID must be a string: ${id}`);
       }
       return id;
     });
   }
 }
 
-export class TeamJoinRequestFixedQueryByTeam
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.ActiveTeamJoinApprovalsByTeam;
+export class TeamJoinRequestFixedQueryByTeam implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.ActiveTeamJoinApprovalsByTeam;
   constructor(public id: string) {
     if (typeof id === 'number') {
       id = (id as number).toString();
     }
     if (typeof id !== 'string') {
-      throw new Error(
-        `TeamJoinRequestFixedQueryByTeam: team ID must be a string: ${id}`
-      );
+      throw new Error(`TeamJoinRequestFixedQueryByTeam: team ID must be a string: ${id}`);
     }
   }
 }
 
-export class TeamJoinRequestFixedQueryByThirdPartyUserId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.ActiveTeamJoinApprovalsByThirdPartyId;
+export class TeamJoinRequestFixedQueryByThirdPartyUserId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.ActiveTeamJoinApprovalsByThirdPartyId;
   constructor(public thirdPartyId: string) {
     if (typeof thirdPartyId === 'number') {
       thirdPartyId = (thirdPartyId as number).toString();
@@ -375,10 +300,8 @@ export class TeamJoinRequestFixedQueryByThirdPartyUserId
   }
 }
 
-export class TeamJoinRequestFixedQueryAllActiveRequests
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.AllActiveTeamJoinApprovals;
+export class TeamJoinRequestFixedQueryAllActiveRequests implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.AllActiveTeamJoinApprovals;
   constructor() {}
 }
 
@@ -423,9 +346,7 @@ EntityMetadataMappings.Register(
         } as TableEntityQueryOptions;
       }
       case FixedQueryType.ActiveTeamJoinApprovalsByThirdPartyId: {
-        const {
-          thirdPartyId,
-        } = query as TeamJoinRequestFixedQueryByThirdPartyUserId;
+        const { thirdPartyId } = query as TeamJoinRequestFixedQueryByThirdPartyUserId;
         if (!thirdPartyId) {
           throw new Error('thirdPartyId required');
         }
@@ -476,61 +397,33 @@ EntityMetadataMappings.Register(
           ${metadataColumnName}->>'teamid' IN ( ${groupSet} ) AND
           ${metadataColumnName} @> \$${++valueCounter}
       `;
-        values = [
-          entityTypeValue,
-          ...stringOrNumberArrayAsStringArray(ids),
-          { active: true },
-        ];
+        values = [entityTypeValue, ...stringOrNumberArrayAsStringArray(ids), { active: true }];
         return { sql, values };
       case FixedQueryType.AllTeamJoinApprovals:
-        return PostgresGetAllEntities(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue
-        );
+        return PostgresGetAllEntities(tableName, entityTypeColumn, entityTypeValue);
       case FixedQueryType.AllActiveTeamJoinApprovals:
-        return PostgresJsonEntityQuery(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue,
-          metadataColumnName,
-          {
-            active: true,
-          }
-        );
+        return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+          active: true,
+        });
       case FixedQueryType.ActiveTeamJoinApprovalsByTeam: {
         const { id } = query as TeamJoinRequestFixedQueryByTeam;
         if (!id) {
           throw new Error('id required');
         }
-        return PostgresJsonEntityQuery(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue,
-          metadataColumnName,
-          {
-            active: true,
-            teamid: stringOrNumberAsString(id),
-          }
-        );
+        return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+          active: true,
+          teamid: stringOrNumberAsString(id),
+        });
       }
       case FixedQueryType.ActiveTeamJoinApprovalsByThirdPartyId: {
-        const {
-          thirdPartyId,
-        } = query as TeamJoinRequestFixedQueryByThirdPartyUserId;
+        const { thirdPartyId } = query as TeamJoinRequestFixedQueryByThirdPartyUserId;
         if (!thirdPartyId) {
           throw new Error('thirdPartyId required');
         }
-        return PostgresJsonEntityQuery(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue,
-          metadataColumnName,
-          {
-            active: true,
-            thirdpartyid: stringOrNumberAsString(thirdPartyId),
-          }
-        );
+        return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+          active: true,
+          thirdpartyid: stringOrNumberAsString(thirdPartyId),
+        });
       }
       default:
         throw new Error(
@@ -552,9 +445,7 @@ EntityMetadataMappings.Register(
       );
       const value = mapTeamApprovalObjectToMemoryFields.get(key);
       if (!value) {
-        throw new Error(
-          `No translation exists for field ${key} in memory provider`
-        );
+        throw new Error(`No translation exists for field ${key} in memory provider`);
       }
       return value;
     }
@@ -586,9 +477,7 @@ EntityMetadataMappings.Register(
         });
 
       case FixedQueryType.ActiveTeamJoinApprovalsByThirdPartyId:
-        const {
-          thirdPartyId,
-        } = query as TeamJoinRequestFixedQueryByThirdPartyUserId;
+        const { thirdPartyId } = query as TeamJoinRequestFixedQueryByThirdPartyUserId;
         return allInTypeBin.filter((entity) => {
           return (
             entity[columnActive] &&
@@ -607,9 +496,7 @@ EntityMetadataMappings.Register(
         });
 
       default:
-        throw new Error(
-          'fixed query type not implemented in the memory provider'
-        );
+        throw new Error('fixed query type not implemented in the memory provider');
     }
   }
 );

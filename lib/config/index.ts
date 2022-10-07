@@ -60,11 +60,10 @@ export interface IProviderOptions {
 function createDefaultResolvers(libraryOptions: ILibraryOptions) {
   // The core environment resolver is used to make sure that the
   // right variables are used for KeyVault or other boostrapping
-  const environmentProvider =
-    libraryOptions.environment || painlessConfigAsCode(libraryOptions?.options);
+  const environmentProvider = libraryOptions.environment || painlessConfigAsCode(libraryOptions?.options);
 
   try {
-    environmentProvider.get((null as any) as string /* hacky */); // for init
+    environmentProvider.get(null as any as string /* hacky */); // for init
   } catch (ignoreError) {
     console.warn(ignoreError);
   }
@@ -74,44 +73,24 @@ function createDefaultResolvers(libraryOptions: ILibraryOptions) {
   const volumeResolver = volumeConfigurationResolver(environmentOptions);
   const keyVaultOptions = {
     getClientCredentials: async () => {
-      unshiftOptionalVariable(
-        keyVaultClientIdFallbacks,
-        environmentProvider,
-        'KEYVAULT_CLIENT_ID_KEY'
-      );
+      unshiftOptionalVariable(keyVaultClientIdFallbacks, environmentProvider, 'KEYVAULT_CLIENT_ID_KEY');
       unshiftOptionalVariable(
         keyVaultClientSecretFallbacks,
         environmentProvider,
         'KEYVAULT_CLIENT_SECRET_KEY'
       );
-      unshiftOptionalVariable(
-        keyVaultTenantFallbacks,
-        environmentProvider,
-        'KEYVAULT_TENANT_ID_KEY'
-      );
+      unshiftOptionalVariable(keyVaultTenantFallbacks, environmentProvider, 'KEYVAULT_TENANT_ID_KEY');
       async function getEnvironmentOrVolumeValue(fallbacks: string[]) {
-        let value = getEnvironmentValue(
-          environmentProvider,
-          fallbacks
-        ) as string;
+        let value = getEnvironmentValue(environmentProvider, fallbacks) as string;
         const asVolumeFile = volumeResolver.isVolumeFile(value);
         if (asVolumeFile) {
-          value = await volumeResolver.resolveVolumeFile(
-            environmentProvider,
-            asVolumeFile
-          );
+          value = await volumeResolver.resolveVolumeFile(environmentProvider, asVolumeFile);
         }
         return value;
       }
-      const clientId = await getEnvironmentOrVolumeValue(
-        keyVaultClientIdFallbacks
-      );
-      const clientSecret = await getEnvironmentOrVolumeValue(
-        keyVaultClientSecretFallbacks
-      );
-      const tenantId = await getEnvironmentOrVolumeValue(
-        keyVaultTenantFallbacks
-      );
+      const clientId = await getEnvironmentOrVolumeValue(keyVaultClientIdFallbacks);
+      const clientSecret = await getEnvironmentOrVolumeValue(keyVaultClientSecretFallbacks);
+      const tenantId = await getEnvironmentOrVolumeValue(keyVaultTenantFallbacks);
       if (clientId && clientSecret && tenantId) {
         return {
           clientId,
@@ -131,11 +110,7 @@ function createDefaultResolvers(libraryOptions: ILibraryOptions) {
   return resolvers;
 }
 
-function unshiftOptionalVariable(
-  arr: string[],
-  environmentProvider: IPainlessConfigGet,
-  key: string
-) {
+function unshiftOptionalVariable(arr: string[], environmentProvider: IPainlessConfigGet, key: string) {
   let value = environmentProvider.get(key);
   if (value) {
     arr.unshift(value);
@@ -143,10 +118,7 @@ function unshiftOptionalVariable(
   return arr;
 }
 
-function getEnvironmentValue(
-  environmentProvider: IPainlessConfigGet,
-  potentialNames: string[]
-) {
+function getEnvironmentValue(environmentProvider: IPainlessConfigGet, potentialNames: string[]) {
   for (let i = 0; i < potentialNames.length; i++) {
     const value = environmentProvider.get(potentialNames[i]);
     // Warning - false is a valid value
@@ -164,8 +136,7 @@ async function getConfigGraph(
   if (options.graph) {
     return options.graph;
   }
-  let graphProvider =
-    options.graphProvider || libraryOptions.graphProvider || multiGraphBuilder;
+  let graphProvider = options.graphProvider || libraryOptions.graphProvider || multiGraphBuilder;
   if (!graphProvider) {
     throw new Error(
       'No graph provider configured for this environment: no options.graphProvider or libraryOptions.graphProvider or multiGraphBuilder'
@@ -181,8 +152,7 @@ async function getConfigGraph(
 
 function initialize(libraryOptions?: ILibraryOptions) {
   libraryOptions = libraryOptions || {};
-  const resolvers: Resolvers =
-    libraryOptions.resolvers || createDefaultResolvers(libraryOptions);
+  const resolvers: Resolvers = libraryOptions.resolvers || createDefaultResolvers(libraryOptions);
   if (!resolvers) {
     throw new Error('No resolvers provided.');
   }
@@ -190,7 +160,7 @@ function initialize(libraryOptions?: ILibraryOptions) {
   return {
     resolve: async function (options: IProviderOptions) {
       if (typeof options === 'function') {
-        const deprecatedCallback = (options as any) as (err: Error) => void;
+        const deprecatedCallback = options as any as (err: Error) => void;
         return deprecatedCallback(
           new Error(
             'This library no longer supports callbacks. Please use native JavaScript promises, i.e. const config = await painlessConfigResolver.resolve();'
@@ -200,7 +170,7 @@ function initialize(libraryOptions?: ILibraryOptions) {
       options = options || {};
       // Find, build or dynamically generate the configuration graph
       const graph = await getConfigGraph(
-        (libraryOptions as any) as ILibraryOptions,
+        libraryOptions as any as ILibraryOptions,
         options,
         environmentProvider
       );
@@ -215,9 +185,7 @@ function initialize(libraryOptions?: ILibraryOptions) {
           await resolver(graph);
         }
       } catch (resolveConfigurationError) {
-        console.warn(
-          `Error while resolving the graph with a resolver: ${resolveConfigurationError}`
-        );
+        console.warn(`Error while resolving the graph with a resolver: ${resolveConfigurationError}`);
         throw resolveConfigurationError;
       }
       return graph;
@@ -225,9 +193,7 @@ function initialize(libraryOptions?: ILibraryOptions) {
   };
 }
 
-initialize.resolve = function moduleWithoutInitialization(
-  options: IProviderOptions
-) {
+initialize.resolve = function moduleWithoutInitialization(options: IProviderOptions) {
   return initialize().resolve(options);
 };
 

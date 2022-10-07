@@ -21,12 +21,7 @@ export interface IEncryptionOptions {
   binaryProperties?: 'buffer' | 'base64';
   keyEncryptionKeys?: object;
   tableDehydrator?: (instance: any) => any;
-  tableRehydrator?: (
-    partitionKey: string,
-    rowKey: string,
-    obj?: any,
-    callback?: any
-  ) => any;
+  tableRehydrator?: (partitionKey: string, rowKey: string, obj?: any, callback?: any) => any;
 }
 
 // ----------------------------------------------------------------------------
@@ -61,8 +56,7 @@ const azureStorageEncryptionAgentProtocol = '1.0';
 const azureStorageKeyWrappingAlgorithm = 'A256KW';
 const azureStorageContentEncryptionIVBytes = 16;
 const azureStorageContentEncryptionKeyBytes = 32;
-const azureStorageEncryptionAgentEncryptionAlgorithm =
-  'AES_CBC_256'; /* .NET value */
+const azureStorageEncryptionAgentEncryptionAlgorithm = 'AES_CBC_256'; /* .NET value */
 const mapDotNetFrameworkToOpenSslAlgorithm = new Map([
   [azureStorageEncryptionAgentEncryptionAlgorithm, 'aes-256-cbc'],
 ]);
@@ -86,9 +80,7 @@ function getSha256Hash(buffer) {
 
 function encryptValue(contentEncryptionKey, iv, value) {
   const cipher = crypto.createCipheriv(
-    openSslFromNetFrameworkAlgorithm(
-      azureStorageEncryptionAgentEncryptionAlgorithm
-    ),
+    openSslFromNetFrameworkAlgorithm(azureStorageEncryptionAgentEncryptionAlgorithm),
     contentEncryptionKey,
     iv
   );
@@ -111,41 +103,26 @@ type ContentEncryptionPair = {
 
 function generateContentEncryptionKey(): Promise<ContentEncryptionPair> {
   return new Promise((resolve, reject) => {
-    crypto.randomBytes(
-      azureStorageContentEncryptionIVBytes,
-      (cryptoError, contentEncryptionIV) => {
-        if (cryptoError) {
-          return reject(cryptoError);
-        }
-        generate32bitKey((createKeyError, contentEncryptionKey) => {
-          if (createKeyError) {
-            return reject(createKeyError);
-          }
-          return resolve({ contentEncryptionIV, contentEncryptionKey });
-        });
+    crypto.randomBytes(azureStorageContentEncryptionIVBytes, (cryptoError, contentEncryptionIV) => {
+      if (cryptoError) {
+        return reject(cryptoError);
       }
-    );
+      generate32bitKey((createKeyError, contentEncryptionKey) => {
+        if (createKeyError) {
+          return reject(createKeyError);
+        }
+        return resolve({ contentEncryptionIV, contentEncryptionKey });
+      });
+    });
   });
 }
 
-async function wrapContentKey(
-  keyWrappingAlgorithm,
-  keyEncryptionKey,
-  contentEncryptionKey
-) {
-  const result = await jose.JWA.encrypt(
-    keyWrappingAlgorithm,
-    keyEncryptionKey,
-    contentEncryptionKey
-  );
+async function wrapContentKey(keyWrappingAlgorithm, keyEncryptionKey, contentEncryptionKey) {
+  const result = await jose.JWA.encrypt(keyWrappingAlgorithm, keyEncryptionKey, contentEncryptionKey);
   return result.data;
 }
 
-async function unwrapContentKey(
-  keyWrappingAlgorithm,
-  keyEncryptionKey,
-  wrappedContentKeyEncryptedKey
-) {
+async function unwrapContentKey(keyWrappingAlgorithm, keyEncryptionKey, wrappedContentKeyEncryptedKey) {
   const contentEncryptionKey = await jose.JWA.decrypt(
     keyWrappingAlgorithm,
     keyEncryptionKey,
@@ -157,12 +134,7 @@ async function unwrapContentKey(
 // ----------------------------------------------------------------------------
 // Azure encryption metadata object
 // ----------------------------------------------------------------------------
-function createEncryptionData(
-  keyId,
-  wrappedContentEncryptionKey,
-  contentEncryptionIV,
-  keyWrappingAlgorithm
-) {
+function createEncryptionData(keyId, wrappedContentEncryptionKey, contentEncryptionIV, keyWrappingAlgorithm) {
   const encryptionData = {
     /* PascalCase object per the .NET library */
     WrappedContentKey: {
@@ -186,9 +158,7 @@ function validateEncryptionData(encryptionData) {
   }
   const agent = encryptionData.EncryptionAgent;
   if (!agent.Protocol) {
-    throw new Error(
-      'Encryption agent protocol version must be present in the encryption data properties.'
-    );
+    throw new Error('Encryption agent protocol version must be present in the encryption data properties.');
   }
   if (agent.Protocol !== azureStorageEncryptionAgentProtocol) {
     throw new Error(
@@ -196,9 +166,7 @@ function validateEncryptionData(encryptionData) {
     );
   }
   if (!agent.EncryptionAlgorithm) {
-    throw new Error(
-      'Encryption algorithm type must be present in the encryption data properties.'
-    );
+    throw new Error('Encryption algorithm type must be present in the encryption data properties.');
   }
   if (!mapDotNetFrameworkToOpenSslAlgorithm.get(agent.EncryptionAlgorithm)) {
     throw new Error(
@@ -207,10 +175,7 @@ function validateEncryptionData(encryptionData) {
   }
 }
 
-async function resolveKeyEncryptionKeyFromOptions(
-  encryptionOptions: IEncryptionOptions,
-  keyId: string
-) {
+async function resolveKeyEncryptionKeyFromOptions(encryptionOptions: IEncryptionOptions, keyId: string) {
   if (!encryptionOptions) {
     throw new Error('Encryption options must be specified.');
   }
@@ -218,10 +183,8 @@ async function resolveKeyEncryptionKeyFromOptions(
     throw new Error('No key encryption key ID provided.');
   }
   if (
-    (!encryptionOptions.keyEncryptionKeys ||
-      typeof encryptionOptions.keyEncryptionKeys !== 'object') &&
-    (!encryptionOptions.keyResolver ||
-      typeof encryptionOptions.keyResolver !== 'function')
+    (!encryptionOptions.keyEncryptionKeys || typeof encryptionOptions.keyEncryptionKeys !== 'object') &&
+    (!encryptionOptions.keyResolver || typeof encryptionOptions.keyResolver !== 'function')
   ) {
     throw new Error(
       'Encryption options must provide either a "keyResolver" function or "keyEncryptionKeys" object.'
@@ -235,9 +198,7 @@ async function resolveKeyEncryptionKeyFromOptions(
     };
   const key = await resolver(keyId);
   if (!key) {
-    throw new Error(
-      `We were not able to retrieve a key with identifier "${keyId}".`
-    );
+    throw new Error(`We were not able to retrieve a key with identifier "${keyId}".`);
   }
   return bufferFromBase64String(key);
 }
@@ -248,12 +209,7 @@ async function resolveKeyEncryptionKeyFromOptions(
 // and then each column is encrypted using an IV that comes from key table
 // properties, the row identity and the column name.
 // ----------------------------------------------------------------------------
-function computeTruncatedColumnHash(
-  contentEncryptionIV,
-  partitionKey,
-  rowKey,
-  columnName
-) {
+function computeTruncatedColumnHash(contentEncryptionIV, partitionKey, rowKey, columnName) {
   // IMPORTANT:
   // The .NET storage library (the reference implementation for Azure client-side
   // storage) has a likely bug in the ordering and concatenation of parameters
@@ -265,10 +221,7 @@ function computeTruncatedColumnHash(
   // case) as the separator for joining an array of values. This code uses array
   // join to identically reproduce the .NET behavior here so that the two
   // implementations remain compatible.
-  const columnIdentity = Buffer.from(
-    [rowKey, columnName].join(partitionKey),
-    'utf8'
-  );
+  const columnIdentity = Buffer.from([rowKey, columnName].join(partitionKey), 'utf8');
   const combined = Buffer.concat([contentEncryptionIV, columnIdentity]);
   const hash = getSha256Hash(combined);
   return hash.slice(0, azureStorageContentEncryptionIVBytes);
@@ -306,20 +259,8 @@ function createDefaultEncryptionResolver(propertiesToEncrypt) {
   };
 }
 
-function encryptProperty(
-  contentEncryptionKey,
-  contentEncryptionIV,
-  partitionKey,
-  rowKey,
-  property,
-  value
-) {
-  let columnIV = computeTruncatedColumnHash(
-    contentEncryptionIV,
-    partitionKey,
-    rowKey,
-    property
-  );
+function encryptProperty(contentEncryptionKey, contentEncryptionIV, partitionKey, rowKey, property, value) {
+  let columnIV = computeTruncatedColumnHash(contentEncryptionIV, partitionKey, rowKey, property);
   // Store the encrypted properties as binary values on the service instead of
   // base 64 encoded strings because strings are stored as a sequence of WCHARs
   // thereby further reducing the allowed size by half. During retrieve, it is
@@ -337,18 +278,8 @@ function decryptProperty(
   propertyName,
   encryptedValue
 ) {
-  const columnIV = computeTruncatedColumnHash(
-    contentEncryptionIV,
-    partitionKey,
-    rowKey,
-    propertyName
-  );
-  return decryptValue(
-    aesAlgorithm,
-    contentEncryptionKey,
-    columnIV,
-    bufferFromBase64String(encryptedValue)
-  );
+  const columnIV = computeTruncatedColumnHash(contentEncryptionIV, partitionKey, rowKey, propertyName);
+  return decryptValue(aesAlgorithm, contentEncryptionKey, columnIV, bufferFromBase64String(encryptedValue));
 }
 
 async function encryptProperties(
@@ -368,10 +299,7 @@ async function encryptProperties(
   try {
     for (const property of propertyNames) {
       const value = unencryptedProperties[property];
-      if (
-        property === tableEncryptionKeyDetails ||
-        property === tableEncryptionPropertyDetails
-      ) {
+      if (property === tableEncryptionKeyDetails || property === tableEncryptionPropertyDetails) {
         throw new Error(
           'A table encryption property is present in the entity properties to consider for encryption. The property must be removed.'
         );
@@ -394,9 +322,7 @@ async function encryptProperties(
       }
       let type = typeof value;
       if (type !== 'string') {
-        throw new Error(
-          `${type} properties cannot be encrypted; property in question: ${property}`
-        );
+        throw new Error(`${type} properties cannot be encrypted; property in question: ${property}`);
       }
       const encryptedValue = encryptProperty(
         contentEncryptionKey,
@@ -425,15 +351,10 @@ function decryptProperties(
   contentEncryptionIV
 ) {
   validateEncryptionData(encryptionData);
-  const aesAlgorithm = openSslFromNetFrameworkAlgorithm(
-    encryptionData.EncryptionAgent.EncryptionAlgorithm
-  );
+  const aesAlgorithm = openSslFromNetFrameworkAlgorithm(encryptionData.EncryptionAgent.EncryptionAlgorithm);
   const decryptedProperties = {};
   for (const key in allEntityProperties) {
-    if (
-      key === tableEncryptionKeyDetails ||
-      key === tableEncryptionPropertyDetails
-    ) {
+    if (key === tableEncryptionKeyDetails || key === tableEncryptionPropertyDetails) {
       continue;
     }
     if (!encryptedPropertyNames.has(key)) {
@@ -461,24 +382,14 @@ export async function encryptEntityAsync(
   encryptionOptions: IEncryptionOptions
 ) {
   if (!partitionKey || !rowKey || !properties) {
-    throw new Error(
-      'Must provide a partition key, row key and properties for the entity.'
-    );
+    throw new Error('Must provide a partition key, row key and properties for the entity.');
   }
   const returnBinaryProperties = encryptionOptions.binaryProperties || 'buffer';
-  if (
-    returnBinaryProperties !== 'base64' &&
-    returnBinaryProperties !== 'buffer'
-  ) {
-    throw new Error(
-      'The binary properties value is not valid. Please provide "buffer" or "base64".'
-    );
+  if (returnBinaryProperties !== 'base64' && returnBinaryProperties !== 'buffer') {
+    throw new Error('The binary properties value is not valid. Please provide "buffer" or "base64".');
   }
   const keyEncryptionKeyId = encryptionOptions.keyEncryptionKeyId;
-  const keyEncryptionKey = await resolveKeyEncryptionKeyFromOptions(
-    encryptionOptions,
-    keyEncryptionKeyId
-  );
+  const keyEncryptionKey = await resolveKeyEncryptionKeyFromOptions(encryptionOptions, keyEncryptionKeyId);
   let encryptionResolver = encryptionOptions.encryptionResolver;
   if (!encryptionResolver) {
     const propertiesToEncrypt = encryptionOptions.encryptedPropertyNames;
@@ -489,20 +400,14 @@ export async function encryptEntityAsync(
     }
     encryptionResolver = createDefaultEncryptionResolver(propertiesToEncrypt);
   }
-  const {
-    contentEncryptionIV,
-    contentEncryptionKey,
-  } = await generateContentEncryptionKey();
+  const { contentEncryptionIV, contentEncryptionKey } = await generateContentEncryptionKey();
   const keyWrappingAlgorithm = azureStorageKeyWrappingAlgorithm;
   const wrappedContentEncryptionKey = await wrapContentKey(
     keyWrappingAlgorithm,
     keyEncryptionKey,
     contentEncryptionKey
   );
-  const {
-    encryptedProperties,
-    encryptedPropertiesList,
-  } = await encryptProperties(
+  const { encryptedProperties, encryptedPropertiesList } = await encryptProperties(
     encryptionResolver,
     contentEncryptionKey,
     contentEncryptionIV,
@@ -536,25 +441,13 @@ export async function encryptEntityAsync(
   return encryptedProperties;
 }
 
-export async function decryptEntityAsync(
-  partitionKey,
-  rowKey,
-  properties,
-  encryptionOptions
-) {
+export async function decryptEntityAsync(partitionKey, rowKey, properties, encryptionOptions) {
   if (!partitionKey || !rowKey || !properties) {
-    throw new Error(
-      'A partition key, row key and properties must be provided.'
-    );
+    throw new Error('A partition key, row key and properties must be provided.');
   }
   const returnBinaryProperties = encryptionOptions.binaryProperties || 'buffer';
-  if (
-    returnBinaryProperties !== 'base64' &&
-    returnBinaryProperties !== 'buffer'
-  ) {
-    throw new Error(
-      'The binary properties value is not valid. Please provide "buffer" or "base64".'
-    );
+  if (returnBinaryProperties !== 'base64' && returnBinaryProperties !== 'buffer') {
+    throw new Error('The binary properties value is not valid. Please provide "buffer" or "base64".');
   }
   let detailsValue = properties[tableEncryptionKeyDetails];
   if (detailsValue === undefined) {
@@ -575,31 +468,19 @@ export async function decryptEntityAsync(
   }
   const keyWrappingAlgorithm = wrappedContentKey.Algorithm;
   const wrappedContentKeyIdentifier = wrappedContentKey.KeyId;
-  const wrappedContentKeyEncryptedKey = bufferFromBase64String(
-    wrappedContentKey.EncryptedKey
-  );
+  const wrappedContentKeyEncryptedKey = bufferFromBase64String(wrappedContentKey.EncryptedKey);
   const aesAlgorithm = openSslFromNetFrameworkAlgorithm(
     tableEncryptionKey.EncryptionAgent.EncryptionAlgorithm
   );
-  const kvk = await resolveKeyEncryptionKeyFromOptions(
-    encryptionOptions,
-    wrappedContentKeyIdentifier
-  );
+  const kvk = await resolveKeyEncryptionKeyFromOptions(encryptionOptions, wrappedContentKeyIdentifier);
   const keyEncryptionKeyValue = bufferFromBase64String(kvk);
   const contentEncryptionKey = await unwrapContentKey(
     keyWrappingAlgorithm,
     keyEncryptionKeyValue,
     wrappedContentKeyEncryptedKey
   );
-  const metadataIV = computeTruncatedColumnHash(
-    iv,
-    partitionKey,
-    rowKey,
-    tableEncryptionPropertyDetails
-  );
-  const tableEncryptionDetails = bufferFromBase64String(
-    properties[tableEncryptionPropertyDetails]
-  );
+  const metadataIV = computeTruncatedColumnHash(iv, partitionKey, rowKey, tableEncryptionPropertyDetails);
+  const tableEncryptionDetails = bufferFromBase64String(properties[tableEncryptionPropertyDetails]);
   try {
     const decryptedPropertiesSet = decryptValue(
       aesAlgorithm,
@@ -607,9 +488,7 @@ export async function decryptEntityAsync(
       metadataIV,
       tableEncryptionDetails
     );
-    const listOfEncryptedProperties = JSON.parse(
-      decryptedPropertiesSet.toString('utf8')
-    );
+    const listOfEncryptedProperties = JSON.parse(decryptedPropertiesSet.toString('utf8'));
     const decrypted = decryptProperties(
       properties,
       new Set(listOfEncryptedProperties),

@@ -40,9 +40,7 @@ async function doesRepositoryExist(
     return true;
   } catch (repositoryError) {
     if (ErrorHelper.IsNotFound(repositoryError)) {
-      console.log(
-        `${i}: repository deleted: ${knownRepositoryName} with ID ${repositoryId}`
-      );
+      console.log(`${i}: repository deleted: ${knownRepositoryName} with ID ${repositoryId}`);
       knownDeletedRepositoryIds.add(repositoryId);
       return false;
     } else {
@@ -52,9 +50,7 @@ async function doesRepositoryExist(
   }
 }
 
-async function processDeletedRepositories(
-  providers: IProviders
-): Promise<void> {
+async function processDeletedRepositories(providers: IProviders): Promise<void> {
   const queryCache = providers.queryCache;
   const repositoryTeamCacheProvider = providers.repositoryTeamCacheProvider;
   const checkingAllRepos = true;
@@ -86,15 +82,10 @@ async function processDeletedRepositories(
               `${i}: repository deleted: ${repositoryEntry.cacheEntity.repositoryName} with ID ${repositoryId}, will cleanup`
             );
             try {
-              await queryCache.removeRepository(
-                String(organizationId),
-                String(repositoryId)
-              );
+              await queryCache.removeRepository(String(organizationId), String(repositoryId));
               ++deleted;
             } catch (cleanupError) {
-              console.log(
-                `cleanupError for repository ID ${repositoryId}: ${cleanupError}`
-              );
+              console.log(`cleanupError for repository ID ${repositoryId}: ${cleanupError}`);
             }
           }
         } catch (error) {
@@ -115,10 +106,7 @@ async function processDeletedRepositories(
   if (checkingTeamPermissions) {
     const allTeamPermissions = await repositoryTeamCacheProvider.queryAllTeams();
     const discoveredRepositoryIds = new Set<number>();
-    const repoToTeamPermissions = new Map<
-      number,
-      RepositoryTeamCacheEntity[]
-    >();
+    const repoToTeamPermissions = new Map<number, RepositoryTeamCacheEntity[]>();
     allTeamPermissions.map((tp) => {
       const id = Number(tp.repositoryId);
       discoveredRepositoryIds.add(id);
@@ -143,30 +131,17 @@ async function processDeletedRepositories(
         let deleteTeamPermission = knownDeletedRepositoryIds.has(repositoryId);
         if (!deleteTeamPermission) {
           const entries = repoToTeamPermissions.get(repositoryId);
-          if (
-            !providers.operations.isOrganizationManagedById(
-              Number(entries[0].organizationId)
-            )
-          ) {
+          if (!providers.operations.isOrganizationManagedById(Number(entries[0].organizationId))) {
             console.log(`not managed here!`);
           }
-          const org = providers.operations.getOrganizationById(
-            Number(entries[0].organizationId)
-          );
-          const repoExists = await doesRepositoryExist(
-            i,
-            org,
-            repositoryId,
-            entries[0].repositoryName
-          );
+          const org = providers.operations.getOrganizationById(Number(entries[0].organizationId));
+          const repoExists = await doesRepositoryExist(i, org, repositoryId, entries[0].repositoryName);
           if (!repoExists) {
             deleteTeamPermission = true;
           }
         }
         if (deleteTeamPermission) {
-          await repositoryTeamCacheProvider.deleteByRepositoryId(
-            String(repositoryId)
-          );
+          await repositoryTeamCacheProvider.deleteByRepositoryId(String(repositoryId));
           ++removedTeamPermissionRepositories;
         }
       } catch (error) {
@@ -174,20 +149,14 @@ async function processDeletedRepositories(
         console.log(error);
       }
     }
-    console.log(
-      `removed team permission repos: ${removedTeamPermissionRepositories}`
-    );
+    console.log(`removed team permission repos: ${removedTeamPermissionRepositories}`);
   }
 
   // collaborator permissions
-  const repositoryCollaboratorCacheProvider =
-    providers.repositoryCollaboratorCacheProvider;
+  const repositoryCollaboratorCacheProvider = providers.repositoryCollaboratorCacheProvider;
   const allCollaborators = await repositoryCollaboratorCacheProvider.queryAllCollaborators();
   const collaboratorRepositoryIds = new Set<number>();
-  const collaboratorPermissionsMap = new Map<
-    number,
-    RepositoryCollaboratorCacheEntity[]
-  >();
+  const collaboratorPermissionsMap = new Map<number, RepositoryCollaboratorCacheEntity[]>();
   allCollaborators.map((rcce) => {
     const id = Number(rcce.repositoryId);
     collaboratorRepositoryIds.add(id);
@@ -199,9 +168,7 @@ async function processDeletedRepositories(
     entry.push(rcce);
   });
   let removedCollaboratorRepositories = 0;
-  const collaboratorRepoIds = Array.from(
-    collaboratorRepositoryIds.values()
-  ).sort();
+  const collaboratorRepoIds = Array.from(collaboratorRepositoryIds.values()).sort();
   console.log(
     `Repository collaborators across ${collaboratorRepoIds.length} repositories across ${allCollaborators.length} collaborator permission entries`
   );
@@ -211,35 +178,20 @@ async function processDeletedRepositories(
       if (realRepositoryIds.has(repositoryId)) {
         continue;
       }
-      let deleteCollaboratorPermission = knownDeletedRepositoryIds.has(
-        repositoryId
-      );
+      let deleteCollaboratorPermission = knownDeletedRepositoryIds.has(repositoryId);
       if (!deleteCollaboratorPermission) {
         const entries = collaboratorPermissionsMap.get(repositoryId);
-        if (
-          !providers.operations.isOrganizationManagedById(
-            Number(entries[0].organizationId)
-          )
-        ) {
+        if (!providers.operations.isOrganizationManagedById(Number(entries[0].organizationId))) {
           console.log(`not managed here!`);
         }
-        const org = providers.operations.getOrganizationById(
-          Number(entries[0].organizationId)
-        );
-        const repoExists = await doesRepositoryExist(
-          i,
-          org,
-          repositoryId,
-          entries[0].repositoryId
-        );
+        const org = providers.operations.getOrganizationById(Number(entries[0].organizationId));
+        const repoExists = await doesRepositoryExist(i, org, repositoryId, entries[0].repositoryId);
         if (!repoExists) {
           deleteCollaboratorPermission = true;
         }
       }
       if (deleteCollaboratorPermission) {
-        await repositoryCollaboratorCacheProvider.deleteByRepositoryId(
-          String(repositoryId)
-        );
+        await repositoryCollaboratorCacheProvider.deleteByRepositoryId(String(repositoryId));
         ++removedCollaboratorRepositories;
       }
     } catch (error) {
@@ -250,10 +202,7 @@ async function processDeletedRepositories(
   console.log(`removed collaborator repos: ${removedCollaboratorRepositories}`);
 }
 
-export default async function byUserJob({
-  providers,
-  args,
-}: IReposJob): Promise<IReposJobResult> {
+export default async function byUserJob({ providers, args }: IReposJob): Promise<IReposJobResult> {
   await processDeletedRepositories(providers);
 
   return {};

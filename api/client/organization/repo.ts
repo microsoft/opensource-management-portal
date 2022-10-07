@@ -19,11 +19,7 @@ import { renameRepositoryDefaultBranchEndToEnd } from '../../../routes/org/repos
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
 
 import RouteRepoPermissions from './repoPermissions';
-import {
-  ReposAppRequest,
-  LocalApiRepoAction,
-  getRepositoryMetadataProvider,
-} from '../../../interfaces';
+import { ReposAppRequest, LocalApiRepoAction, getRepositoryMetadataProvider } from '../../../interfaces';
 
 type RequestWithRepo = ReposAppRequest & {
   repository: Repository;
@@ -32,8 +28,7 @@ type RequestWithRepo = ReposAppRequest & {
 const router: Router = Router();
 
 const deployment = getCompanySpecificDeployment();
-deployment?.routes?.api?.organization?.repo &&
-  deployment?.routes?.api?.organization?.repo(router);
+deployment?.routes?.api?.organization?.repo && deployment?.routes?.api?.organization?.repo(router);
 
 router.use('/permissions', RouteRepoPermissions);
 
@@ -86,8 +81,7 @@ router.patch(
   asyncHandler(AddRepositoryPermissionsToRequest),
   asyncHandler(async function (req: RequestWithRepo, res, next) {
     const providers = getProviders(req);
-    const activeContext = (req.individualContext ||
-      req.apiContext) as IndividualContext;
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     const repoPermissions = getContextualRepositoryPermissions(req);
     const targetBranchName = req.body.default_branch;
     const { repository } = req;
@@ -111,15 +105,12 @@ router.post(
   '/archive',
   asyncHandler(AddRepositoryPermissionsToRequest),
   asyncHandler(async function (req: RequestWithRepo, res, next) {
-    const activeContext = (req.individualContext ||
-      req.apiContext) as IndividualContext;
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     const providers = getProviders(req);
     const { insights } = providers;
     const repoPermissions = getContextualRepositoryPermissions(req);
     if (!repoPermissions.allowAdministration) {
-      return next(
-        jsonError('You do not have permission to archive this repo', 403)
-      );
+      return next(jsonError('You do not have permission to archive this repo', 403));
     }
     const insightsPrefix = 'ArchiveRepo';
     const { repository } = req;
@@ -133,12 +124,8 @@ router.post(
           repoId: repository.id ? String(repository.id) : 'unknown',
         },
       });
-      const currentRepositoryState = deployment?.features?.repositoryActions
-        ?.getCurrentRepositoryState
-        ? await deployment.features.repositoryActions.getCurrentRepositoryState(
-            providers,
-            repository
-          )
+      const currentRepositoryState = deployment?.features?.repositoryActions?.getCurrentRepositoryState
+        ? await deployment.features.repositoryActions.getCurrentRepositoryState(providers, repository)
         : null;
       await repository.archive();
       if (deployment?.features?.repositoryActions?.sendActionReceipt) {
@@ -194,8 +181,7 @@ router.delete(
     const providers = getProviders(req);
     const { insights } = providers;
     const insightsPrefix = 'DeleteRepo';
-    const activeContext = (req.individualContext ||
-      req.apiContext) as IndividualContext;
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     const { organization, repository } = req;
     const repoPermissions = getContextualRepositoryPermissions(req);
     if (repoPermissions.allowAdministration) {
@@ -209,12 +195,8 @@ router.delete(
             repoId: repository.id ? String(repository.id) : 'unknown',
           },
         });
-        const currentRepositoryState = deployment?.features?.repositoryActions
-          ?.getCurrentRepositoryState
-          ? await deployment.features.repositoryActions.getCurrentRepositoryState(
-              providers,
-              repository
-            )
+        const currentRepositoryState = deployment?.features?.repositoryActions?.getCurrentRepositoryState
+          ? await deployment.features.repositoryActions.getCurrentRepositoryState(providers, repository)
           : null;
         await repository.delete();
         if (deployment?.features?.repositoryActions?.sendActionReceipt) {
@@ -260,12 +242,7 @@ router.delete(
       }
     }
     if (!organization.isNewRepositoryLockdownSystemEnabled) {
-      return next(
-        jsonError(
-          'This endpoint is not available as configured in this app.',
-          400
-        )
-      );
+      return next(jsonError('This endpoint is not available as configured in this app.', 400));
     }
     const daysAfterCreateToAllowSelfDelete = 21; // could be a config setting if anyone cares
     try {
@@ -292,9 +269,7 @@ router.delete(
       return next(jsonError(noExistingMetadata, 404));
     }
     const { operations } = getProviders(req);
-    const repositoryMetadataProvider = getRepositoryMetadataProvider(
-      operations
-    );
+    const repositoryMetadataProvider = getRepositoryMetadataProvider(operations);
     const lockdownSystem = new NewRepositoryLockdownSystem({
       operations,
       organization,
@@ -313,9 +288,7 @@ router.delete(
 
 router.use('*', (req, res, next) => {
   console.warn(req.baseUrl);
-  return next(
-    jsonError('no API or function available within this specific repo', 404)
-  );
+  return next(jsonError('no API or function available within this specific repo', 404));
 });
 
 export default router;

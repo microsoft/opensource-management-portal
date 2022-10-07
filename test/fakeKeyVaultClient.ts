@@ -44,12 +44,7 @@ export function createFakeVaults() {
         },
       };
     },
-    storeSecret: (
-      vaultUrl: string,
-      secretName: string,
-      secretValue: string,
-      tags: IDictionary<string>
-    ) => {
+    storeSecret: (vaultUrl: string, secretName: string, secretValue: string, tags: IDictionary<string>) => {
       validateVaultUrl(vaultUrl);
       const version = randomUUID();
       const id = `${vaultUrl}/secrets/${secretName}/${version}`;

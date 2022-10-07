@@ -29,8 +29,7 @@ interface ICustomDataEventName {
   eventName?: string;
 }
 
-export default class AutomaticTeamsWebhookProcessor
-  implements WebhookProcessor {
+export default class AutomaticTeamsWebhookProcessor implements WebhookProcessor {
   processOrgSpecialTeams(organization: Organization) {
     const specialTeams = organization.specialRepositoryPermissionTeams;
     let specials = [];
@@ -53,10 +52,7 @@ export default class AutomaticTeamsWebhookProcessor
     const eventType = data.properties.event;
     const eventAction = data.body.action;
     // Someone added a team to the repo
-    if (
-      eventType === 'team' &&
-      ['add_repository', 'added_to_repository'].includes(eventAction)
-    ) {
+    if (eventType === 'team' && ['add_repository', 'added_to_repository'].includes(eventAction)) {
       return true;
     }
     // Someone removed a team from the repo
@@ -74,31 +70,20 @@ export default class AutomaticTeamsWebhookProcessor
     return false;
   }
 
-  async run(
-    operations: Operations,
-    organization: Organization,
-    data: any
-  ): Promise<boolean> {
+  async run(operations: Operations, organization: Organization, data: any): Promise<boolean> {
     const eventType = data.properties.event;
     const eventAction = data.body.action;
-    const { specialTeamIds, specialTeamLevels } = this.processOrgSpecialTeams(
-      organization
-    );
-    const preventLargeTeamPermissions =
-      organization.preventLargeTeamPermissions;
+    const { specialTeamIds, specialTeamLevels } = this.processOrgSpecialTeams(organization);
+    const preventLargeTeamPermissions = organization.preventLargeTeamPermissions;
     const repositoryBody = data.body.repository;
     const newPermissions = repositoryBody ? repositoryBody.permissions : null;
-    const whoChangedIt = (data.body && data.body.sender
-      ? data.body.sender.login
-      : null) as string;
+    const whoChangedIt = (data.body && data.body.sender ? data.body.sender.login : null) as string;
     const whoChangedItId = whoChangedIt ? data.body.sender.id : null;
 
     // New repository
     if (eventType === 'repository' && eventAction === 'created') {
       for (const teamId of specialTeamIds) {
-        const necessaryPermission = specialTeamLevels.get(
-          teamId
-        ) as GitHubRepositoryPermission;
+        const necessaryPermission = specialTeamLevels.get(teamId) as GitHubRepositoryPermission;
         await setTeamPermission(
           operations,
           organization,
@@ -114,13 +99,9 @@ export default class AutomaticTeamsWebhookProcessor
       const teamName = teamBody.name;
       // Enforce required special team permissions
       if (specialTeamIds.has(teamId)) {
-        const necessaryPermission = specialTeamLevels.get(
-          teamId
-        ) as GitHubRepositoryPermission;
+        const necessaryPermission = specialTeamLevels.get(teamId) as GitHubRepositoryPermission;
         if (!necessaryPermission) {
-          throw new Error(
-            `No ideal permission level found for the team ${teamId}.`
-          );
+          throw new Error(`No ideal permission level found for the team ${teamId}.`);
         }
         if (eventAction === 'removed_from_repository') {
           // Someone removed the entire team
@@ -154,10 +135,7 @@ export default class AutomaticTeamsWebhookProcessor
         // Special thanks to the GitHub API team. The added_to_repository event did not
         // include the 'permissions' information. Fixed and deployed by GitHub on
         // 6/13/17. Thank you for helping us simplify our code!
-        if (
-          ['added_to_repository', 'edited'].includes(eventAction) &&
-          newPermissions
-        ) {
+        if (['added_to_repository', 'edited'].includes(eventAction) && newPermissions) {
           const specificReason = teamTooLargeForPurpose(
             teamId,
             newPermissions.admin,
@@ -166,10 +144,7 @@ export default class AutomaticTeamsWebhookProcessor
             teamSize,
             preventLargeTeamPermissions
           );
-          if (
-            specificReason &&
-            !operations.isSystemAccountByUsername(whoChangedIt)
-          ) {
+          if (specificReason && !operations.isSystemAccountByUsername(whoChangedIt)) {
             await revertLargePermissionChange(
               operations,
               organization,
@@ -205,10 +180,7 @@ function teamTooLargeForPurpose(
   }
   let teamSizeLimitAdmin = defaultLargeAdminTeamSize;
   let teamSizeLimitType = 'default limit';
-  if (
-    preventLargeTeamPermissions &&
-    preventLargeTeamPermissions.maximumAdministrators
-  ) {
+  if (preventLargeTeamPermissions && preventLargeTeamPermissions.maximumAdministrators) {
     teamSizeLimitAdmin = preventLargeTeamPermissions.maximumAdministrators;
     teamSizeLimitType = `administrator team limit in the ${organization.name} organization`;
   }
@@ -231,10 +203,7 @@ function translateSpecialToGitHub(ourTerm) {
   throw new Error(`Unknown team type ${ourTerm}`);
 }
 
-export async function getTeamSize(
-  organization: Organization,
-  teamId
-): Promise<number> {
+export async function getTeamSize(organization: Organization, teamId): Promise<number> {
   const team = organization.team(teamId);
   await team.getDetails();
   return team.members_count || 0;
@@ -254,10 +223,7 @@ async function revertLargePermissionChange(
   const blockReason = `the permission was upgraded by ${whoChangedIt} but a large team permission prevention feature has reverted the change${specificReason}`;
   console.log(blockReason);
   const insights = operations.insights;
-  insights.trackMetric({
-    name: 'JobAutomaticTeamsLargeTeamPermissionBlock',
-    value: 1,
-  });
+  insights.trackMetric({ name: 'JobAutomaticTeamsLargeTeamPermissionBlock', value: 1 });
   insights.trackEvent({
     name: 'JobAutomaticTeamsLargeTeamPermissionBlocked',
     properties: {
@@ -318,25 +284,16 @@ async function largeTeamPermissionPreventionWarningMail(
   const basedir = operations.config.typescript.appDirectory;
   const operationsMail = operations.getOperationsMailAddress();
   const companySpecific = getCompanySpecificDeployment();
-  const largeTeamProtectionDetailsLink =
-    companySpecific?.strings?.largeTeamProtectionDetailsLink;
+  const largeTeamProtectionDetailsLink = companySpecific?.strings?.largeTeamProtectionDetailsLink;
   const config = operations.config;
-  await sendEmail(
-    config,
-    insights,
-    basedir,
-    mailProvider,
-    mailAddress,
-    operationsMail,
-    {
-      repository: repositoryBody,
-      whoChangedIt,
-      teamName,
-      reason,
-      companyName: config.brand.companyName,
-      largeTeamProtectionDetailsLink,
-    }
-  );
+  await sendEmail(config, insights, basedir, mailProvider, mailAddress, operationsMail, {
+    repository: repositoryBody,
+    whoChangedIt,
+    teamName,
+    reason,
+    companyName: config.brand.companyName,
+    largeTeamProtectionDetailsLink,
+  });
 }
 
 async function sendEmail(
@@ -360,12 +317,7 @@ async function sendEmail(
   };
   let mailContent = null;
   try {
-    mailContent = await RenderHtmlMail(
-      basedir,
-      'largeTeamProtected',
-      body,
-      config
-    );
+    mailContent = await RenderHtmlMail(basedir, 'largeTeamProtected', body, config);
   } catch (renderError) {
     insights.trackException({
       exception: renderError,
@@ -385,8 +337,7 @@ async function sendEmail(
     const mailResult = await mailProvider.sendMail(mail);
     customData.receipt = mailResult;
   } catch (mailError) {
-    customData.eventName =
-      'JobAutomaticTeamsLargeTeamPermissionBlockMailFailure';
+    customData.eventName = 'JobAutomaticTeamsLargeTeamPermissionBlockMailFailure';
     insights.trackException({ exception: mailError, properties: customData });
     throw mailError;
   }
@@ -413,10 +364,7 @@ async function setTeamPermission(
     const shouldSkipEnforcement = await customizedTeamPermissionsWebhookLogic.shouldSkipEnforcement(
       repository
     );
-    if (
-      shouldSkipEnforcement &&
-      necessaryPermission !== GitHubRepositoryPermission.Pull
-    ) {
+    if (shouldSkipEnforcement && necessaryPermission !== GitHubRepositoryPermission.Pull) {
       console.log(
         `Customized logic for team permissions: skipping enforcement for repository ${repository.id}`
       );

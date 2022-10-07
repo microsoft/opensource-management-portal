@@ -25,14 +25,9 @@ function denyRoute(next, isApi: boolean) {
   );
 }
 
-export async function AuthorizeOnlyCorporateAdministrators(
-  req: ReposAppRequest,
-  res,
-  next
-) {
+export async function AuthorizeOnlyCorporateAdministrators(req: ReposAppRequest, res, next) {
   const { operations } = getProviders(req);
-  const activeContext = (req.individualContext ||
-    req.apiContext) as IndividualContext;
+  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const corporateId = activeContext.corporateIdentity?.id;
   const corporateUsername = activeContext.corporateIdentity?.username;
   if (await operations.isSystemAdministrator(corporateId, corporateUsername)) {

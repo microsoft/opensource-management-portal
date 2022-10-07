@@ -65,11 +65,7 @@ export class CorporateLinkPostgres implements ICorporateLink {
   }
 
   set corporateUsername(value: string) {
-    _updateColumn(
-      this,
-      this._provider.propertyMapping.corporateUsername,
-      value
-    );
+    _updateColumn(this, this._provider.propertyMapping.corporateUsername, value);
   }
 
   get corporateDisplayName() {
@@ -77,11 +73,7 @@ export class CorporateLinkPostgres implements ICorporateLink {
   }
 
   set corporateDisplayName(value: string) {
-    _updateColumn(
-      this,
-      this._provider.propertyMapping.corporateDisplayName,
-      value
-    );
+    _updateColumn(this, this._provider.propertyMapping.corporateDisplayName, value);
   }
 
   get corporateMailAddress() {
@@ -89,11 +81,7 @@ export class CorporateLinkPostgres implements ICorporateLink {
   }
 
   set corporateMailAddress(value: string) {
-    _updateColumn(
-      this,
-      this._provider.propertyMapping.corporateMailAddress,
-      value
-    );
+    _updateColumn(this, this._provider.propertyMapping.corporateMailAddress, value);
   }
 
   get corporateAlias() {
@@ -109,11 +97,7 @@ export class CorporateLinkPostgres implements ICorporateLink {
   }
 
   set thirdPartyUsername(value: string) {
-    _updateColumn(
-      this,
-      this._provider.propertyMapping.thirdPartyUsername,
-      value
-    );
+    _updateColumn(this, this._provider.propertyMapping.thirdPartyUsername, value);
   }
 
   get thirdPartyId(): string {
@@ -145,11 +129,7 @@ export class CorporateLinkPostgres implements ICorporateLink {
   }
 
   set serviceAccountMail(value: string) {
-    _updateColumn(
-      this,
-      this._provider.propertyMapping.serviceAccountMail,
-      value
-    );
+    _updateColumn(this, this._provider.propertyMapping.serviceAccountMail, value);
   }
 
   dataStore(): IPostgresLinkInstanceDataHelpers {

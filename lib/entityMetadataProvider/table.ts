@@ -47,22 +47,14 @@ import {
   IObjectWithDefinedKeys,
   EntityFieldNames,
 } from './entityMetadataProvider';
-import {
-  IEntityMetadata,
-  EntityMetadataType,
-  EntityMetadataTypes,
-} from './entityMetadata';
+import { IEntityMetadata, EntityMetadataType, EntityMetadataTypes } from './entityMetadata';
 import { IEntityMetadataFixedQuery } from './query';
 import {
   MetadataMappingDefinition,
   EntityMetadataMappings,
   MetadataMappingDefinitionBase,
 } from './declarations';
-import {
-  encryptTableEntity,
-  decryptTableEntity,
-  ITableEncryptionOperationOptions,
-} from './tableEncryption';
+import { encryptTableEntity, decryptTableEntity, ITableEncryptionOperationOptions } from './tableEncryption';
 import { CreateError, ErrorHelper } from '../../transitional';
 import { IKeyVaultSecretResolver } from '../keyVaultResolver';
 
@@ -90,36 +82,18 @@ class TableMetadataDefinition extends MetadataMappingDefinitionBase {
 
 export const TableSettings = {
   TableMapping: new TableMetadataDefinition('TableMapping'),
-  TablePossibleDateColumns: new TableMetadataDefinition(
-    'TablePossibleDateColumns'
-  ),
+  TablePossibleDateColumns: new TableMetadataDefinition('TablePossibleDateColumns'),
   TableQueries: new TableMetadataDefinition('TableQueries'),
   TableNoPointQueries: new TableMetadataDefinition('TableNoPointQueries'),
-  TableNoPointQueryMapping: new TableMetadataDefinition(
-    'TableNoPointQueryMapping'
-  ),
-  TableNoPointQueryAlternateIdFieldName: new TableMetadataDefinition(
-    'TableNoPointQueryAlternateIdFieldName'
-  ),
-  TableSpecializedDeserializationHelper: new TableMetadataDefinition(
-    'TableSpecializedDeserializationHelper'
-  ),
-  TableSpecializedSerializationHelper: new TableMetadataDefinition(
-    'TableSpecializedSerializationHelper'
-  ),
+  TableNoPointQueryMapping: new TableMetadataDefinition('TableNoPointQueryMapping'),
+  TableNoPointQueryAlternateIdFieldName: new TableMetadataDefinition('TableNoPointQueryAlternateIdFieldName'),
+  TableSpecializedDeserializationHelper: new TableMetadataDefinition('TableSpecializedDeserializationHelper'),
+  TableSpecializedSerializationHelper: new TableMetadataDefinition('TableSpecializedSerializationHelper'),
   TableDefaultTableName: new TableMetadataDefinition('TableDefaultTableName'),
-  TableDefaultFixedPartitionKey: new TableMetadataDefinition(
-    'TableDefaultFixedPartitionKey'
-  ),
-  TableDefaultFixedPartitionKeyNoPrefix: new TableMetadataDefinition(
-    'TableDefaultFixedPartitionKeyNoPrefix'
-  ),
-  TableDefaultRowKeyPrefix: new TableMetadataDefinition(
-    'TableDefaultRowKeyPrefix'
-  ),
-  TableEncryptedColumnNames: new TableMetadataDefinition(
-    'TableEncryptedColumnNames'
-  ),
+  TableDefaultFixedPartitionKey: new TableMetadataDefinition('TableDefaultFixedPartitionKey'),
+  TableDefaultFixedPartitionKeyNoPrefix: new TableMetadataDefinition('TableDefaultFixedPartitionKeyNoPrefix'),
+  TableDefaultRowKeyPrefix: new TableMetadataDefinition('TableDefaultRowKeyPrefix'),
+  TableEncryptedColumnNames: new TableMetadataDefinition('TableEncryptedColumnNames'),
 };
 
 const TableClientProperties = new Set([
@@ -150,10 +124,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
   private _fixedPartitionKeyMapping: any;
   private _rowKeyPrefixMapping: any;
   private _typeToEncryptedColumnsMapping: any;
-  private _typeToEncryptionOptions: Map<
-    EntityMetadataType,
-    ITableEncryptionOperationOptions
-  >;
+  private _typeToEncryptionOptions: Map<EntityMetadataType, ITableEncryptionOperationOptions>;
 
   private _encryptionOptions: ITableEncryptionOptions;
 
@@ -166,10 +137,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     if (!options) {
       throw new Error('ITableEntityMetadataProviderOptions required');
     }
-    this._tableNameMapping = Object.assign(
-      defaultTableNames(),
-      options.metadataTypeToTableNameMapping || {}
-    );
+    this._tableNameMapping = Object.assign(defaultTableNames(), options.metadataTypeToTableNameMapping || {});
 
     this._storageAccountName = options.account;
     if (!this._storageAccountName) {
@@ -246,10 +214,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
 
   // ---
 
-  async getMetadata(
-    type: EntityMetadataType,
-    id: string
-  ): Promise<IEntityMetadata> {
+  async getMetadata(type: EntityMetadataType, id: string): Promise<IEntityMetadata> {
     this.throwIfNotInitialized();
     const tableName = await this.initializeEntityType(type);
     const tableEntity = await this.tableRetrieveEntity(
@@ -265,22 +230,14 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     this.throwIfNotInitialized();
     const tableName = await this.initializeEntityType(metadata.entityType);
     const tableEntity = this.metadataToTableEntity(metadata);
-    const result = await this.tableInsertEntity(
-      metadata.entityType,
-      tableName,
-      tableEntity
-    );
+    const result = await this.tableInsertEntity(metadata.entityType, tableName, tableEntity);
   }
 
   async updateMetadata(metadata: IEntityMetadata): Promise<void> {
     this.throwIfNotInitialized();
     const tableName = await this.initializeEntityType(metadata.entityType);
     const tableEntity = this.metadataToTableEntity(metadata);
-    const result = await this.tableReplaceEntity(
-      metadata.entityType,
-      tableName,
-      tableEntity
-    );
+    const result = await this.tableReplaceEntity(metadata.entityType, tableName, tableEntity);
   }
 
   async deleteMetadata(metadata: IEntityMetadata): Promise<void> {
@@ -304,11 +261,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     this.throwIfNotInitialized();
     const tableName = await this.initializeEntityType(type);
     const azureTableQuery = this.createQueryFromFixedQueryEnum(type, query);
-    return await this.tableQueryToMetadataArray(
-      type,
-      tableName,
-      azureTableQuery
-    );
+    return await this.tableQueryToMetadataArray(type, tableName, azureTableQuery);
   }
 
   // ---
@@ -331,15 +284,11 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     if (!this._encryptionOptions) {
       return null;
     }
-    const set = this._typeToEncryptedColumnsMapping[
-      type.typeName
-    ] as Set<string>;
+    const set = this._typeToEncryptedColumnsMapping[type.typeName] as Set<string>;
     return set && set.size > 0 ? set : null;
   }
 
-  private getEncryptionOptionsForType(
-    type: EntityMetadataType
-  ): ITableEncryptionOperationOptions {
+  private getEncryptionOptionsForType(type: EntityMetadataType): ITableEncryptionOperationOptions {
     let options = this._typeToEncryptionOptions.get(type);
     if (options) {
       return options;
@@ -381,18 +330,14 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     );
   }
 
-  private async initializeEntityType(
-    type: EntityMetadataType
-  ): Promise<string> {
+  private async initializeEntityType(type: EntityMetadataType): Promise<string> {
     let tableName = this._initializedTables.get(type);
     if (tableName) {
       return tableName;
     }
     const tableSuffix = this._tableNameMapping[type.typeName];
     if (!tableSuffix) {
-      throw new Error(
-        `No storage table name mapping provided for value ${type}`
-      );
+      throw new Error(`No storage table name mapping provided for value ${type}`);
     }
     tableName = `${this._prefix}${tableSuffix}`;
     await this.tableCreateIfNotExists(type, tableName);
@@ -417,10 +362,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
         te[key] = value;
       }
     }
-    const entity: ITableEntity = Object.assign(
-      te,
-      this.createRowEntity(partitionKey, rowKey)
-    );
+    const entity: ITableEntity = Object.assign(te, this.createRowEntity(partitionKey, rowKey));
     return entity;
   }
 
@@ -441,18 +383,13 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
       if (!isFinite(value as any)) {
         return undefined;
       }
-      return {
-        type: 'DateTime',
-        value: (value as Date).toISOString(),
-      } as Edm<'DateTime'>;
+      return { type: 'DateTime', value: (value as Date).toISOString() } as Edm<'DateTime'>;
     } else if (typeof value === 'number') {
       // NOTE: OPINIONATED: we store all numbers are strings in Azure Table...
       const numberAsString = String(value as number);
       return { type: 'String', value: numberAsString } as Edm<'String'>;
     }
-    throw new Error(
-      `The key ${key} in the entity is of an unsupported type: ${typeof value}`
-    );
+    throw new Error(`The key ${key} in the entity is of an unsupported type: ${typeof value}`);
   }
 
   private tableEntityToMetadataObject(
@@ -500,11 +437,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     tableName: string,
     azureTableQuery: TableEntityQueryOptions
   ): Promise<IEntityMetadata[]> {
-    const tableEntities = await this.tableQueryAllEntities(
-      type,
-      tableName,
-      azureTableQuery
-    );
+    const tableEntities = await this.tableQueryAllEntities(type, tableName, azureTableQuery);
     const mapped = tableEntities.map((tableEntity) => {
       return this.tableEntityToMetadataObject(type, tableEntity);
     });
@@ -529,12 +462,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
       );
     }
     do {
-      const resultSet = await this.tableQueryEntities(
-        type,
-        tableName,
-        azureTableQuery,
-        continuationToken
-      );
+      const resultSet = await this.tableQueryEntities(type, tableName, azureTableQuery, continuationToken);
       if (resultSet.length > 0) {
         rows.push(...resultSet);
       }
@@ -553,19 +481,11 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     azureTableQuery: TableEntityQueryOptions,
     continuationToken?: IMaybeContinuationToken
   ): Promise<AzureDataTablesQueryResponse> {
-    const results = await this.tableQueryEntitiesAsync(
-      tableName,
-      azureTableQuery,
-      continuationToken
-    );
+    const results = await this.tableQueryEntitiesAsync(tableName, azureTableQuery, continuationToken);
     const encryptedColumnNames = this.isTypeEncrypted(type);
     if (encryptedColumnNames) {
       const encryptionOptions = this.getEncryptionOptionsForType(type);
-      const decryptedEntries = await this.decryptQueryResults(
-        type,
-        encryptionOptions,
-        results
-      );
+      const decryptedEntries = await this.decryptQueryResults(type, encryptionOptions, results);
       results.length = 0;
       for (let i = 0; i < decryptedEntries.length; i++) {
         results.push(decryptedEntries[i]);
@@ -666,12 +586,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     partitionKey: string,
     rowKey: string
   ): Promise<any> {
-    let tableEntity = await this.tableRetrieveEntityAsync(
-      type,
-      tableName,
-      partitionKey,
-      rowKey
-    );
+    let tableEntity = await this.tableRetrieveEntityAsync(type, tableName, partitionKey, rowKey);
     const encryptedColumnNames = this.isTypeEncrypted(type);
     if (encryptedColumnNames) {
       tableEntity = await decryptTableEntity(
@@ -692,19 +607,12 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     return tableEntity;
   }
 
-  private async tableDeleteEntity(
-    tableName: string,
-    partitionKey: string,
-    rowKey: string
-  ): Promise<any> {
+  private async tableDeleteEntity(tableName: string, partitionKey: string, rowKey: string): Promise<any> {
     const tableClient = this.getTableClient(tableName);
     return await tableClient.deleteEntity(partitionKey, rowKey);
   }
 
-  private async tableCreateIfNotExists(
-    type: EntityMetadataType,
-    tableName: string
-  ): Promise<boolean> {
+  private async tableCreateIfNotExists(type: EntityMetadataType, tableName: string): Promise<boolean> {
     try {
       await this._azureTableServiceClient.createTable(tableName);
       this._initializedTables.set(type, tableName);
@@ -714,17 +622,12 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
         // already exists
         return false;
       }
-      console.warn(
-        `tableCreateIfNotExists error: tableName=${tableName}, error=${error}`
-      );
+      console.warn(`tableCreateIfNotExists error: tableName=${tableName}, error=${error}`);
       throw error;
     }
   }
 
-  private async tableDeleteEntireTable(
-    type: EntityMetadataType,
-    tableName: string
-  ): Promise<any> {
+  private async tableDeleteEntireTable(type: EntityMetadataType, tableName: string): Promise<any> {
     // WARNING: a table can technically support multiple types of metadata.
     // This call may be more destructive than you would like as it can
     // delete other types.
@@ -732,26 +635,13 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     this._initializedTables.delete(type);
   }
 
-  private createQueryFromFixedQueryEnum(
-    type: EntityMetadataType,
-    query: IEntityMetadataFixedQuery
-  ): any {
-    let get = EntityMetadataMappings.GetDefinition(
-      type,
-      TableSettings.TableQueries,
-      true
-    );
+  private createQueryFromFixedQueryEnum(type: EntityMetadataType, query: IEntityMetadataFixedQuery): any {
+    let get = EntityMetadataMappings.GetDefinition(type, TableSettings.TableQueries, true);
     return get(query, this.getFixedPartitionKey(type));
   }
 
-  getSerializationHelper(
-    type: EntityMetadataType
-  ): IEntityMetadataSerializationHelper {
-    const tableMapping = EntityMetadataMappings.GetDefinition(
-      type,
-      TableSettings.TableMapping,
-      true
-    );
+  getSerializationHelper(type: EntityMetadataType): IEntityMetadataSerializationHelper {
+    const tableMapping = EntityMetadataMappings.GetDefinition(type, TableSettings.TableMapping, true);
     if (!tableMapping) {
       return null;
     }
@@ -762,11 +652,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     );
     const supportsPointQuery = this.supportsPointQueryForType(type);
     const idFieldName = supportsPointQuery
-      ? EntityMetadataMappings.GetDefinition(
-          type,
-          MetadataMappingDefinition.EntityIdColumnName,
-          false
-        )
+      ? EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.EntityIdColumnName, false)
       : alternateIdFieldName;
     const noPointQueryMapObjectToTableFields = EntityMetadataMappings.GetDefinition(
       type,
@@ -805,14 +691,8 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     };
   }
 
-  getDeserializationHelper(
-    type: EntityMetadataType
-  ): IEntityMetadataDeserializationHelper {
-    const tableMapping = EntityMetadataMappings.GetDefinition(
-      type,
-      TableSettings.TableMapping,
-      true
-    );
+  getDeserializationHelper(type: EntityMetadataType): IEntityMetadataDeserializationHelper {
+    const tableMapping = EntityMetadataMappings.GetDefinition(type, TableSettings.TableMapping, true);
     if (!tableMapping) {
       return null;
     }
@@ -847,25 +727,21 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
         ? mergeMaps(tableMapping, noPointQueryMapObjectToTableFields)
         : tableMapping;
     return function tableEntityToObject(entity: IEntityMetadata): any {
-      const object = EntityMetadataMappings.InstantiateObject(
-        type
-      ) as IObjectWithDefinedKeys;
+      const object = EntityMetadataMappings.InstantiateObject(type) as IObjectWithDefinedKeys;
       const toSet = DeserializeEntityMetadataToObjectSetCollection(
         entity,
         idFieldName,
         mapObjectToTableFields
       );
       const fieldSet = new Set(
-        object.getObjectFieldNames
-          ? object.getObjectFieldNames()
-          : Object.getOwnPropertyNames(toSet)
+        object.getObjectFieldNames ? object.getObjectFieldNames() : Object.getOwnPropertyNames(toSet)
       ); // IObjectWithDefinedKeys is not required
       for (const property in toSet) {
         let value = toSet[property];
         if (possibleDateColumnNames.includes(property)) {
           if (typeof value === 'string' || value! instanceof Date) {
             let date = tryGetDate(value);
-            if (date && !isFinite((date as any) as number)) {
+            if (date && !isFinite(date as any as number)) {
               date = null;
             }
             if (date) {
@@ -887,18 +763,12 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     };
   }
 
-  private async tableReplaceEntityAsync(
-    tableName: string,
-    entity: any
-  ): Promise<any> {
+  private async tableReplaceEntityAsync(tableName: string, entity: any): Promise<any> {
     const tableClient = this.getTableClient(tableName);
     await tableClient.updateEntity(entity, 'Replace');
   }
 
-  private async tableInsertEntityAsync(
-    tableName: string,
-    entity: any
-  ): Promise<any> {
+  private async tableInsertEntityAsync(tableName: string, entity: any): Promise<any> {
     const tableClient = this.getTableClient(tableName);
     return await tableClient.createEntity(entity);
   }
@@ -935,11 +805,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
   }
 }
 
-function specializedDeserialize(
-  entity: IEntityMetadata,
-  object: any,
-  specializedDeserializer
-) {
+function specializedDeserialize(entity: IEntityMetadata, object: any, specializedDeserializer) {
   try {
     specializedDeserializer(entity, object);
   } catch (deserializationError) {
@@ -952,21 +818,13 @@ function specializedDeserialize(
   }
 }
 
-function specializedSerialize(
-  entity: IEntityMetadata,
-  object: any,
-  specializedSerializer
-) {
+function specializedSerialize(entity: IEntityMetadata, object: any, specializedSerializer) {
   try {
     specializedSerializer(entity, object);
     const currentKeys = new Set(entity.entityFieldNames);
     const keys = Object.getOwnPropertyNames(entity);
     keys.forEach((key) => {
-      if (
-        !currentKeys.has(key) &&
-        !EntityFieldNames.has(key) &&
-        !key.startsWith('_') /* no private vars */
-      ) {
+      if (!currentKeys.has(key) && !EntityFieldNames.has(key) && !key.startsWith('_') /* no private vars */) {
         entity.entityFieldNames.push(key); // net new field added
       }
     });
@@ -984,14 +842,9 @@ function mergeMaps(mapA: Map<string, string>, mapB: Map<string, string>) {
   return new Map([...mapA, ...mapB]);
 }
 
-function getContinuationToken(
-  result: AzureDataTablesQueryResponse
-): IMaybeContinuationToken {
+function getContinuationToken(result: AzureDataTablesQueryResponse): IMaybeContinuationToken {
   if (result.nextPartitionKey || result.nextRowKey) {
-    return {
-      nextPartitionKey: result.nextPartitionKey,
-      nextRowKey: result.nextRowKey,
-    };
+    return { nextPartitionKey: result.nextPartitionKey, nextRowKey: result.nextRowKey };
   }
   return null;
 }
@@ -1005,7 +858,7 @@ function tryGetDate(value: any) {
   }
   try {
     const date = new Date(value);
-    if (isFinite((date as any) as number)) {
+    if (isFinite(date as any as number)) {
       return date;
     }
   } catch (dateError) {
@@ -1077,13 +930,7 @@ function displayTableRow(
 function defaultRowKeyPrefixes() {
   const defaults = {};
   EntityMetadataTypes.forEach((type) => {
-    if (
-      !EntityMetadataMappings.GetDefinition(
-        type,
-        TableSettings.TableMapping,
-        false
-      )
-    ) {
+    if (!EntityMetadataMappings.GetDefinition(type, TableSettings.TableMapping, false)) {
       return;
     }
     const rowKeyPrefix = EntityMetadataMappings.GetDefinition(
@@ -1100,13 +947,7 @@ function defaultFixedPartitionKeys(prefix: string) {
   const defaults = {};
   EntityMetadataTypes.forEach((type) => {
     try {
-      if (
-        !EntityMetadataMappings.GetDefinition(
-          type,
-          TableSettings.TableMapping,
-          false
-        )
-      ) {
+      if (!EntityMetadataMappings.GetDefinition(type, TableSettings.TableMapping, false)) {
         return;
       }
       const partitionKey = EntityMetadataMappings.GetDefinition(
@@ -1119,13 +960,9 @@ function defaultFixedPartitionKeys(prefix: string) {
         TableSettings.TableDefaultFixedPartitionKeyNoPrefix,
         false
       );
-      defaults[type.typeName] = skipPrefix
-        ? partitionKey
-        : `${prefix || ''}${partitionKey}`;
+      defaults[type.typeName] = skipPrefix ? partitionKey : `${prefix || ''}${partitionKey}`;
     } catch (error) {
-      throw new Error(
-        `No default Azure table fixed partition key defined for type ${type}`
-      );
+      throw new Error(`No default Azure table fixed partition key defined for type ${type}`);
     }
   });
   return defaults;
@@ -1135,25 +972,13 @@ function defaultTableNames() {
   const defaults = {};
   EntityMetadataTypes.forEach((type) => {
     try {
-      if (
-        !EntityMetadataMappings.GetDefinition(
-          type,
-          TableSettings.TableMapping,
-          false
-        )
-      ) {
+      if (!EntityMetadataMappings.GetDefinition(type, TableSettings.TableMapping, false)) {
         return;
       }
-      const tableName = EntityMetadataMappings.GetDefinition(
-        type,
-        TableSettings.TableDefaultTableName,
-        true
-      );
+      const tableName = EntityMetadataMappings.GetDefinition(type, TableSettings.TableDefaultTableName, true);
       defaults[type.typeName] = tableName;
     } catch (error) {
-      throw new Error(
-        `No default Azure table name defined for type ${type} (${error})`
-      );
+      throw new Error(`No default Azure table name defined for type ${type} (${error})`);
     }
   });
   return defaults;
@@ -1162,13 +987,7 @@ function defaultTableNames() {
 function defaultEncryptionColumns() {
   const defaults = {};
   EntityMetadataTypes.forEach((type) => {
-    if (
-      !EntityMetadataMappings.GetDefinition(
-        type,
-        TableSettings.TableMapping,
-        false
-      )
-    ) {
+    if (!EntityMetadataMappings.GetDefinition(type, TableSettings.TableMapping, false)) {
       return;
     }
     const encryptedColumnNames = EntityMetadataMappings.GetDefinition(

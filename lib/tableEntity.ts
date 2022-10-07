@@ -20,12 +20,7 @@ function reduceEntity(instance: any): any {
   return newObject;
 }
 
-function createEntity(
-  partitionKey: string,
-  rowKey: string,
-  obj?: any,
-  callback?
-) {
+function createEntity(partitionKey: string, rowKey: string, obj?: any, callback?) {
   if (typeof obj === 'function') {
     callback = obj;
     obj = undefined;
@@ -70,36 +65,21 @@ function mergeIntoEntity(entity: any, obj: any, callback?) {
         entity[key] = { type: 'Boolean', value } as Edm<'Boolean'>;
       } else if (Buffer.isBuffer(value)) {
         const asBuffer = value as Buffer;
-        entity[key] = {
-          type: 'Binary',
-          value: asBuffer.buffer,
-        } as Edm<'Binary'>;
+        entity[key] = { type: 'Binary', value: asBuffer.buffer } as Edm<'Binary'>;
       } else if (value instanceof Date) {
         const asDate = value as Date;
-        entity[key] = {
-          type: 'DateTime',
-          value: asDate.toISOString(),
-        } as Edm<'DateTime'>;
+        entity[key] = { type: 'DateTime', value: asDate.toISOString() } as Edm<'DateTime'>;
       } else if (typeof obj[key] === 'number') {
         // Opinionated entity processing: store all numbers as strings
         entity[key] = { type: 'String', value: String(value) } as Edm<'String'>;
       } else {
         console.warn(
-          'Consider whether a new entity merge clause is required for key ' +
-            key +
-            ' of type:' +
-            typeof value
+          'Consider whether a new entity merge clause is required for key ' + key + ' of type:' + typeof value
         );
         if (value?.toString) {
-          entity[key] = {
-            type: 'String',
-            value: value.toString(),
-          } as Edm<'String'>;
+          entity[key] = { type: 'String', value: value.toString() } as Edm<'String'>;
         } else {
-          entity[key] = {
-            type: 'String',
-            value: String(value),
-          } as Edm<'String'>;
+          entity[key] = { type: 'String', value: String(value) } as Edm<'String'>;
         }
       }
     }

@@ -18,9 +18,7 @@ import JsonPager from './jsonPager';
 
 const router: Router = Router();
 
-async function getCrossOrganizationTeams(
-  operations: Operations
-): Promise<Team[]> {
+async function getCrossOrganizationTeams(operations: Operations): Promise<Team[]> {
   const options = {
     backgroundRefresh: true,
     maxAgeSeconds: 60 * 10 /* 10 minutes */,
@@ -30,15 +28,13 @@ async function getCrossOrganizationTeams(
   list = [];
   const crossOrgTeams = await operations.getCrossOrganizationTeams(options);
   const allReducedTeams = Array.from(crossOrgTeams.values());
-  allReducedTeams.forEach(
-    (reducedTeam: ICrossOrganizationMembershipByOrganization) => {
-      const orgs = Object.getOwnPropertyNames(reducedTeam.orgs);
-      const firstOrg = orgs[0];
-      const organization = operations.getOrganization(firstOrg);
-      const entry = organization.teamFromEntity(reducedTeam.orgs[firstOrg]);
-      list.push(entry);
-    }
-  );
+  allReducedTeams.forEach((reducedTeam: ICrossOrganizationMembershipByOrganization) => {
+    const orgs = Object.getOwnPropertyNames(reducedTeam.orgs);
+    const firstOrg = orgs[0];
+    const organization = operations.getOrganization(firstOrg);
+    const entry = organization.teamFromEntity(reducedTeam.orgs[firstOrg]);
+    list.push(entry);
+  });
   return list;
 }
 
@@ -76,12 +72,7 @@ router.get(
 );
 
 router.use('*', (req, res, next) => {
-  return next(
-    jsonError(
-      'no API or function available within this cross-organization teams list',
-      404
-    )
-  );
+  return next(jsonError('no API or function available within this cross-organization teams list', 404));
 });
 
 export default router;

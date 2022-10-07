@@ -163,10 +163,7 @@ export class RepositoryPullRequest {
   //   return comment;
   // }
 
-  async getDetails(
-    options?: ICacheOptions,
-    okToUseLocalEntity: boolean = true
-  ): Promise<any> {
+  async getDetails(options?: ICacheOptions, okToUseLocalEntity: boolean = true): Promise<any> {
     if (okToUseLocalEntity && this._entity) {
       return this._entity;
     }
@@ -182,11 +179,7 @@ export class RepositoryPullRequest {
     };
     const cacheOptions: ICacheOptions = {
       // NOTE: just reusing repo details stale time
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgRepoDetailsStaleSeconds,
-        options
-      ),
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
@@ -204,9 +197,7 @@ export class RepositoryPullRequest {
       const notFound = error.status && error.status == /* loose */ 404;
       error = wrapError(
         error,
-        notFound
-          ? 'The PR could not be found.'
-          : `Could not get details about the PR. ${error.status}`,
+        notFound ? 'The PR could not be found.' : `Could not get details about the PR. ${error.status}`,
         notFound
       );
       if (notFound) {
@@ -218,10 +209,7 @@ export class RepositoryPullRequest {
 
   async isDeleted(options?: ICacheOptions): Promise<boolean> {
     try {
-      await this.getDetails(
-        options,
-        false /* do not use local entity instance */
-      );
+      await this.getDetails(options, false /* do not use local entity instance */);
     } catch (maybeDeletedError) {
       if (ErrorHelper.IsNotFound(maybeDeletedError)) {
         return true;

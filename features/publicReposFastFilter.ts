@@ -40,9 +40,7 @@ export default class PublicReposFastFilter {
     const { queryCache, cacheProvider } = this.#providers;
 
     try {
-      const socialMediaImagesValue = await cacheProvider.getCompressed(
-        RepoSocialImagesCacheKey
-      );
+      const socialMediaImagesValue = await cacheProvider.getCompressed(RepoSocialImagesCacheKey);
       if (socialMediaImagesValue) {
         const parsed = JSON.parse(socialMediaImagesValue);
         this.#socialMediaImages = new Map(parsed);
@@ -51,9 +49,7 @@ export default class PublicReposFastFilter {
       console.error(ignoreError);
     }
 
-    const repositories = (await queryCache.allRepositories()).filter(
-      (repo) => !repo.repository.private
-    );
+    const repositories = (await queryCache.allRepositories()).filter((repo) => !repo.repository.private);
     this.repositories = repositories.map((entry) => entry.repository);
 
     this.#initialized = true;

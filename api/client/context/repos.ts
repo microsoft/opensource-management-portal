@@ -11,8 +11,7 @@ import { GitHubRepositoryPermission } from '../../../entities/repositoryMetadata
 
 export default asyncHandler(async (req: ReposAppRequest, res, next) => {
   try {
-    const activeContext = (req.individualContext ||
-      req.apiContext) as IndividualContext;
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
       return res.json({
         isLinked: false,

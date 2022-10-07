@@ -35,10 +35,7 @@ interface ILocalOrgRequest extends ReposAppRequest {
 router.use(function (req: ReposAppRequest, res, next) {
   const onboarding = req.query.onboarding;
   const organization = req.organization;
-  req.individualContext.webContext.pushBreadcrumb(
-    organization.name,
-    onboarding ? false : undefined
-  );
+  req.individualContext.webContext.pushBreadcrumb(organization.name, onboarding ? false : undefined);
   req.reposContext = {
     section: 'org',
     organization: req.organization,
@@ -113,13 +110,8 @@ router.get(
       organization
     );
     // Check for pending approvals
-    const teamsMaintained = results.organizationOverview.teams
-      .maintainer as Team[];
-    if (
-      teamsMaintained &&
-      teamsMaintained.length &&
-      teamsMaintained.length > 0
-    ) {
+    const teamsMaintained = results.organizationOverview.teams.maintainer as Team[];
+    if (teamsMaintained && teamsMaintained.length && teamsMaintained.length > 0) {
       const teamsMaintainedHash = {};
       for (let i = 0; i < teamsMaintained.length; i++) {
         teamsMaintainedHash[teamsMaintained[i].id] = teamsMaintained[i];
@@ -129,8 +121,7 @@ router.get(
         teamsMaintained.map((team) => team.id.toString())
       );
     }
-    let organizationEntity =
-      results && results.orgUser ? results.orgUser.getEntity() : null;
+    let organizationEntity = results && results.orgUser ? results.orgUser.getEntity() : null;
     req.individualContext.webContext.render({
       view: 'org/index',
       title: organization.name,

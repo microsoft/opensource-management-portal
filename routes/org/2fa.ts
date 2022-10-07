@@ -19,27 +19,16 @@ router.get(
     const onboarding = req.query.onboarding;
     const joining = req.query.joining;
 
-    req.individualContext.webContext.pushBreadcrumb(
-      'Multi-factor authentication check'
-    );
+    req.individualContext.webContext.pushBreadcrumb('Multi-factor authentication check');
     const username = req.individualContext.getGitHubIdentity().username;
     try {
-      const state = await organization.isMemberSingleFactor(
-        username,
-        NoCacheNoBackground
-      );
+      const state = await organization.isMemberSingleFactor(username, NoCacheNoBackground);
       if (state === false && (req.body.validate || onboarding || joining)) {
         let url = organization.baseUrl;
         if (onboarding || joining) {
           let urlSegment =
-            '?' +
-            (onboarding ? 'onboarding' : 'joining') +
-            '=' +
-            (onboarding ? onboarding : joining);
-          url =
-            organization.baseUrl +
-            (onboarding ? 'profile-review' : 'teams') +
-            urlSegment;
+            '?' + (onboarding ? 'onboarding' : 'joining') + '=' + (onboarding ? onboarding : joining);
+          url = organization.baseUrl + (onboarding ? 'profile-review' : 'teams') + urlSegment;
         }
         return res.redirect(url);
       }

@@ -191,55 +191,45 @@ module.exports = function (grunt) {
 
   grunt.registerTask('none', function () {});
 
-  grunt.registerTask(
-    'build_less',
-    'build a regular theme from less',
-    function () {
-      var theme = 'resources/less';
-      var compress = true;
+  grunt.registerTask('build_less', 'build a regular theme from less', function () {
+    var theme = 'resources/less';
+    var compress = true;
 
-      var concatSrc;
-      var concatDest;
-      var lessDest;
-      var lessSrc;
-      var files = {};
-      var dist = {};
-      concatSrc = theme + '/_build.less';
-      concatDest = theme + '/build.less';
-      lessDest = '<%=builddir%>/bootstrap.css';
-      lessSrc = [theme + '/' + 'build.less'];
+    var concatSrc;
+    var concatDest;
+    var lessDest;
+    var lessSrc;
+    var files = {};
+    var dist = {};
+    concatSrc = theme + '/_build.less';
+    concatDest = theme + '/build.less';
+    lessDest = '<%=builddir%>/bootstrap.css';
+    lessSrc = [theme + '/' + 'build.less'];
 
-      dist = { src: concatSrc, dest: concatDest };
-      grunt.config('concat.dist', dist);
-      files = {};
-      files[lessDest] = lessSrc;
-      grunt.config('less.dist.files', files);
-      grunt.config('less.dist.options.compress', false);
+    dist = { src: concatSrc, dest: concatDest };
+    grunt.config('concat.dist', dist);
+    files = {};
+    files[lessDest] = lessSrc;
+    grunt.config('less.dist.files', files);
+    grunt.config('less.dist.options.compress', false);
 
-      grunt.task.run([
-        'concat',
-        'less:dist',
-        /*'prefix:' + lessDest,*/ 'clean:build',
-        compress
-          ? 'compress:' + lessDest + ':' + '<%=builddir%>/bootstrap.min.css'
-          : 'none',
-      ]);
-    }
-  );
+    grunt.task.run([
+      'concat',
+      'less:dist',
+      /*'prefix:' + lessDest,*/ 'clean:build',
+      compress ? 'compress:' + lessDest + ':' + '<%=builddir%>/bootstrap.min.css' : 'none',
+    ]);
+  });
 
-  grunt.registerTask(
-    'compress',
-    'compress a generic css',
-    function (fileSrc, fileDst) {
-      var files = {};
-      files[fileDst] = fileSrc;
-      grunt.log.writeln('compressing file ' + fileSrc);
+  grunt.registerTask('compress', 'compress a generic css', function (fileSrc, fileDst) {
+    var files = {};
+    files[fileDst] = fileSrc;
+    grunt.log.writeln('compressing file ' + fileSrc);
 
-      grunt.config('less.dist.files', files);
-      grunt.config('less.dist.options.compress', true);
-      grunt.task.run(['less:dist']);
-    }
-  );
+    grunt.config('less.dist.files', files);
+    grunt.config('less.dist.options.compress', true);
+    grunt.task.run(['less:dist']);
+  });
 
   grunt.registerTask('default', ['copy', 'build_less']);
 };

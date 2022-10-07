@@ -4,16 +4,11 @@
 //
 
 import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
-import {
-  IRepositoryMetadata,
-  IRepositoryMetadataPermissionPair,
-} from '../interfaces';
+import { IRepositoryMetadata, IRepositoryMetadataPermissionPair } from '../interfaces';
 
 const currentRepositoryMetadataSchema = 'rm1.0';
 
-export function ParseRepositoryMetadataSchema(
-  fields: any
-): IRepositoryMetadata {
+export function ParseRepositoryMetadataSchema(fields: any): IRepositoryMetadata {
   if (fields.schema === currentRepositoryMetadataSchema) {
     return fields as IRepositoryMetadata;
   }
@@ -90,8 +85,7 @@ class RepositoryMetadataLegacySchema implements IRepositoryMetadata {
       const permissionFieldName = `${idFieldName}p`;
       const id = this._fields[idFieldName];
       const permissionStringValue = this._fields[permissionFieldName];
-      let permission: GitHubRepositoryPermission =
-        GitHubRepositoryPermission.Pull;
+      let permission: GitHubRepositoryPermission = GitHubRepositoryPermission.Pull;
       if (permissionStringValue === 'push') {
         permission = GitHubRepositoryPermission.Push;
       } else if (permissionStringValue === 'admin') {

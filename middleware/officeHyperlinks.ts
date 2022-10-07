@@ -25,8 +25,7 @@ export default function supportOfficeHyperlinks(req, res, next) {
     userAgent &&
     userAgent.includes &&
     !isAuthenticated &&
-    (userAgent.includes(GenericOfficeUserAgent) ||
-      userAgent.includes(WordUserAgent))
+    (userAgent.includes(GenericOfficeUserAgent) || userAgent.includes(WordUserAgent))
   ) {
     insights?.trackEvent({
       name: 'InterceptOfficeHyperlinkRequest',

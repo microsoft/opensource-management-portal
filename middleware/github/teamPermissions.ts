@@ -40,11 +40,7 @@ export function getTeamMembershipFromRequest(req: ReposAppRequest) {
   return req[teamStatusCacheKeyName] as IRequestTeamMembershipStatus;
 }
 
-export async function AddTeamMembershipToRequest(
-  req: ReposAppRequest,
-  res,
-  next
-) {
+export async function AddTeamMembershipToRequest(req: ReposAppRequest, res, next) {
   if (req[teamStatusCacheKeyName]) {
     return next();
   }
@@ -52,8 +48,7 @@ export async function AddTeamMembershipToRequest(
   if (!team2) {
     return next(new Error('team2 required'));
   }
-  const activeContext = (req.individualContext ||
-    req.apiContext) as IndividualContext;
+  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   if (!activeContext.link) {
     const noLink: IRequestTeamMembershipStatus = {
       membershipStatus: null,
@@ -99,17 +94,12 @@ export function getTeamPermissionsFromRequest(req: ReposAppRequest) {
   return req[teamPermissionsCacheKeyName] as IRequestTeamPermissions;
 }
 
-export async function AddTeamPermissionsToRequest(
-  req: ReposAppRequest,
-  res,
-  next
-) {
+export async function AddTeamPermissionsToRequest(req: ReposAppRequest, res, next) {
   if (req[teamPermissionsCacheKeyName]) {
     return next();
   }
   const providers = getProviders(req);
-  const activeContext = (req.individualContext ||
-    req.apiContext) as IndividualContext;
+  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const teamPermissions: IRequestTeamPermissions = {
     isLinked: false,
     allowAdministration: false,

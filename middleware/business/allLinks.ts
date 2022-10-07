@@ -19,10 +19,7 @@ export async function ensureAllLinksInMemory(req: ReposAppRequest, res, next) {
     req[cachedLinksRequestKeyName] = links;
     return next();
   } catch (linksError) {
-    linksError = wrapError(
-      linksError,
-      'There was a problem retrieving the set of links'
-    );
+    linksError = wrapError(linksError, 'There was a problem retrieving the set of links');
     return next(linksError);
   }
 }

@@ -3,11 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import {
-  IRestResponse,
-  IIntelligentCacheResponseArray,
-  flattenData,
-} from './core';
+import { IRestResponse, IIntelligentCacheResponseArray, flattenData } from './core';
 import { CompositeApiContext } from './composite';
 import { RestLibrary } from '.';
 import { RestCollections } from './collections';
@@ -61,16 +57,8 @@ export class CrossOrganizationCollator {
     return flattenData(data);
   }
 
-  async teams(
-    orgsAndTokens: Map<string, IPurposefulGetAuthorizationHeader>,
-    options,
-    cacheOptions
-  ) {
-    const allTeams = await this.getAllTeams(
-      orgsAndTokens,
-      options,
-      cacheOptions
-    );
+  async teams(orgsAndTokens: Map<string, IPurposefulGetAuthorizationHeader>, options, cacheOptions) {
+    const allTeams = await this.getAllTeams(orgsAndTokens, options, cacheOptions);
     return flattenData(allTeams);
   }
 
@@ -106,11 +94,7 @@ export class CrossOrganizationCollator {
     options,
     cacheOptions: ICacheOptions
   ): Promise<any> {
-    const allRepos = await this.getAllRepos(
-      orgsAndTokens,
-      options,
-      cacheOptions
-    );
+    const allRepos = await this.getAllRepos(orgsAndTokens, options, cacheOptions);
     return flattenData(allRepos);
   }
 
@@ -197,9 +181,7 @@ export class CrossOrganizationCollator {
   ): Promise<any> {
     const method = this.collectionsClient[methodName];
     if (!method) {
-      throw new Error(
-        `No method called ${method} defined in the collections client.`
-      );
+      throw new Error(`No method called ${method} defined in the collections client.`);
     }
     const capturedThis = this;
     const crossOrgMethod = async function actualCrossOrgMethod(): Promise<any> {
@@ -218,8 +200,7 @@ export class CrossOrganizationCollator {
         }
         const localCacheOptions = Object.assign({}, cacheOptions);
         if (localCacheOptions.individualMaxAgeSeconds) {
-          localCacheOptions.maxAgeSeconds =
-            localCacheOptions.individualMaxAgeSeconds;
+          localCacheOptions.maxAgeSeconds = localCacheOptions.individualMaxAgeSeconds;
         }
         try {
           const orgValues = await method.call(
@@ -275,12 +256,7 @@ export class CrossOrganizationCollator {
       entities.headers = {};
       let data = null;
       try {
-        data = await outerFunction.call(
-          capturedThis,
-          orgsAndTokens,
-          {},
-          cacheOptions
-        );
+        data = await outerFunction.call(capturedThis, orgsAndTokens, {}, cacheOptions);
       } catch (outerError) {
         throw outerError;
       }
@@ -294,8 +270,7 @@ export class CrossOrganizationCollator {
       }
       const localCacheOptions = Object.assign({}, cacheOptions);
       if (localCacheOptions.individualMaxAgeSeconds) {
-        localCacheOptions.maxAgeSeconds =
-          localCacheOptions.individualMaxAgeSeconds;
+        localCacheOptions.maxAgeSeconds = localCacheOptions.individualMaxAgeSeconds;
       }
       entities.headers = {};
       const orgNames = Object.getOwnPropertyNames(entitiesByOrg.orgs);
@@ -328,13 +303,9 @@ export class CrossOrganizationCollator {
           const localOptions = Object.assign(localOptionsTarget, options);
           delete localOptions.maxAgeSeconds;
           delete localOptions.backgroundRefresh;
-          const token = orgsAndTokens.get(
-            orgName.toLowerCase()
-          ) as IPurposefulGetAuthorizationHeader;
+          const token = orgsAndTokens.get(orgName.toLowerCase()) as IPurposefulGetAuthorizationHeader;
           if (!token) {
-            throw new Error(
-              `No token available for the organization ${orgName}`
-            );
+            throw new Error(`No token available for the organization ${orgName}`);
           }
           let innerEntities = null;
           let collectionsError = null;

@@ -33,13 +33,12 @@ export default class TeamSearch {
   search(tags, page, sort): Promise<void> {
     this.page = parseInt(page);
     this.tags = tags;
-    this.sort = sort
-      ? sort.charAt(0).toUpperCase() + sort.slice(1)
-      : 'Alphabet';
+    this.sort = sort ? sort.charAt(0).toUpperCase() + sort.slice(1) : 'Alphabet';
+
+    // prettier-ignore
     return this.filterByType(this.set)
       .filterByPhrase(this.phrase)
-      .determinePages()
-      ['sortBy' + this.sort]()
+      .determinePages()['sortBy' + this.sort]() // prettier will mangle this
       .getPage(this.page);
   }
 
@@ -50,10 +49,7 @@ export default class TeamSearch {
   }
 
   getPage(page: number) {
-    this.teams = this.teams.slice(
-      (page - 1) * this.pageSize,
-      (page - 1) * this.pageSize + this.pageSize
-    );
+    this.teams = this.teams.slice((page - 1) * this.pageSize, (page - 1) * this.pageSize + this.pageSize);
     this.pageFirstTeam = 1 + (page - 1) * this.pageSize;
     this.pageLastTeam = this.pageFirstTeam + this.teams.length - 1;
     return this;

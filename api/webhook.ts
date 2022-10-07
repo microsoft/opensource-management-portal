@@ -10,10 +10,7 @@ import moment from 'moment';
 import { ReposAppRequest } from '../interfaces';
 
 import { jsonError } from '../middleware';
-import {
-  getProviders,
-  isWebhookIngestionEndpointEnabled,
-} from '../transitional';
+import { getProviders, isWebhookIngestionEndpointEnabled } from '../transitional';
 
 import OrganizationWebhookProcessor from '../webhooks/organizationProcessor';
 
@@ -36,14 +33,9 @@ router.use(
 
     const { operations } = getProviders(req);
     const body = req.body;
-    const orgName =
-      body && body.organization && body.organization.login
-        ? body.organization.login
-        : null;
+    const orgName = body && body.organization && body.organization.login ? body.organization.login : null;
     if (!orgName) {
-      return next(
-        jsonError(new Error('No organization login in the body'), 400)
-      );
+      return next(jsonError(new Error('No organization login in the body'), 400));
     }
     try {
       if (!req.organization) {
@@ -51,11 +43,7 @@ router.use(
       }
     } catch (noOrganization) {
       return next(
-        jsonError(
-          new Error(
-            'This API endpoint is not configured for the provided organization name.'
-          )
-        )
+        jsonError(new Error('This API endpoint is not configured for the provided organization name.'))
       );
     }
     const properties = {
@@ -66,12 +54,7 @@ router.use(
     };
     if (!properties.delivery || !properties.signature || !properties.event) {
       return next(
-        jsonError(
-          new Error(
-            'Missing X-GitHub-Delivery, X-GitHub-Event, and/or X-Hub-Signature'
-          ),
-          400
-        )
+        jsonError(new Error('Missing X-GitHub-Delivery, X-GitHub-Event, and/or X-Hub-Signature'), 400)
       );
     }
     const event = {

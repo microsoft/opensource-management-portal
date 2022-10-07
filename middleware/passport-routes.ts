@@ -27,28 +27,14 @@ export interface IAuthenticationHelperMethods {
     res: Response,
     next: NextFunction
   ) => void;
-  storeReferrer: (
-    req: ReposAppRequest,
-    res: any,
-    redirect: any,
-    optionalReason: any
-  ) => void;
+  storeReferrer: (req: ReposAppRequest, res: any, redirect: any, optionalReason: any) => void;
 }
 
-export interface IPrimaryAuthenticationHelperMethods
-  extends IAuthenticationHelperMethods {
-  newSessionAfterAuthentication: (
-    req: ReposAppRequest,
-    res: Response,
-    next: NextFunction
-  ) => void;
+export interface IPrimaryAuthenticationHelperMethods extends IAuthenticationHelperMethods {
+  newSessionAfterAuthentication: (req: ReposAppRequest, res: Response, next: NextFunction) => void;
 }
 
-function newSessionAfterAuthentication(
-  req: ReposAppRequest,
-  res: Response,
-  next: NextFunction
-) {
+function newSessionAfterAuthentication(req: ReposAppRequest, res: Response, next: NextFunction) {
   // Same site issues
   if (req.query && req.query.failure === 'invalid') {
     const { config } = getProviders(req);
@@ -95,24 +81,14 @@ export default function configurePassport(app, passport, config) {
   };
 
   const companySpecific = getCompanySpecificDeployment();
-  companySpecific?.passport?.attach(
-    app,
-    config,
-    passport,
-    authenticationHelperMethods
-  );
+  companySpecific?.passport?.attach(app, config, passport, authenticationHelperMethods);
 
   app.get('/signout', signoutPage);
   app.get('/signout/goodbye', signoutPage);
 
   // The /signin routes are stored inside the AAD passport routes, since the site requires AAD for primary auth today.
   attachAadPassportRoutes(app, config, passport, authenticationHelperMethods);
-  attachGitHubPassportRoutes(
-    app,
-    config,
-    passport,
-    authenticationHelperMethods
-  );
+  attachGitHubPassportRoutes(app, config, passport, authenticationHelperMethods);
 
   // helper methods follow
 
@@ -134,19 +110,13 @@ export default function configurePassport(app, passport, config) {
       );
     if (!isPrimaryAuthentication) {
       // account is a passport property that we don't expose in ReposAppRequest interface to reduce errors
-      return hoistAccountToSession(
-        req,
-        (req as any).account,
-        accountPropertyToPromoteToSession,
-        (error) => {
-          return error ? next(error) : after(req, res);
-        }
-      );
+      return hoistAccountToSession(req, (req as any).account, accountPropertyToPromoteToSession, (error) => {
+        return error ? next(error) : after(req, res);
+      });
     }
 
     if ((req.session as any).additionalAuthRedirect) {
-      const tmpAdditionalAuthRedirect = (req.session as any)
-        .additionalAuthRedirect;
+      const tmpAdditionalAuthRedirect = (req.session as any).additionalAuthRedirect;
       delete (req.session as any).additionalAuthRedirect;
       return res.redirect(tmpAdditionalAuthRedirect);
     }
@@ -215,11 +185,7 @@ export default function configurePassport(app, passport, config) {
     const serializer = req.app._sessionSerializer;
     const entity = account[property];
     if (entity === undefined) {
-      return callback(
-        new Error(
-          `No entity available with the property ${property} to be hoisted.`
-        )
-      );
+      return callback(new Error(`No entity available with the property ${property} to be hoisted.`));
     }
     if (serializer === undefined) {
       req.user[property] = entity;

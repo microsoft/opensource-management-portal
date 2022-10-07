@@ -11,11 +11,7 @@ import { getProviders } from '../transitional';
 import { wrapError } from '../utils';
 import { IndividualContext } from '../user';
 import { jsonError } from '../middleware';
-import {
-  ReposAppRequest,
-  OrganizationMembershipState,
-  UnlinkPurpose,
-} from '../interfaces';
+import { ReposAppRequest, OrganizationMembershipState, UnlinkPurpose } from '../interfaces';
 
 router.use(
   asyncHandler(async function (req: ReposAppRequest, res, next) {
@@ -33,10 +29,7 @@ router.use(
         if (result && result.state) {
           state = result.state;
         }
-        if (
-          state === OrganizationMembershipState.Active ||
-          state === OrganizationMembershipState.Pending
-        ) {
+        if (state === OrganizationMembershipState.Active || state === OrganizationMembershipState.Pending) {
           memberOfOrganizations.push(organization);
         }
       } catch (error) {
@@ -87,10 +80,7 @@ export async function unlinkInteractive(
   let history: string[] = [];
   let error = null;
   try {
-    history = await operations.terminateLinkAndMemberships(
-      id,
-      terminationOptions
-    );
+    history = await operations.terminateLinkAndMemberships(id, terminationOptions);
   } catch (exception) {
     insights?.trackException({ exception });
     error = exception;
@@ -108,9 +98,7 @@ export async function unlinkInteractive(
   if (error) {
     const errorMessage =
       'You were successfully removed from all of your organizations. However, a failure happened during a data housecleaning operation with GitHub. Double check that you are happy with your current membership status on GitHub.com before continuing.';
-    return next(
-      isJson ? jsonError(errorMessage, 400) : wrapError(error, errorMessage)
-    );
+    return next(isJson ? jsonError(errorMessage, 400) : wrapError(error, errorMessage));
   } else {
     if (isJson) {
       res.status(204);

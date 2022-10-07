@@ -44,9 +44,7 @@ router.post(
     const organizationSettingsProvider = providers.organizationSettingsProvider;
     const allOrgs = await organizationSettingsProvider.queryAllOrganizations();
     const thisOne = allOrgs.filter(
-      (org) =>
-        org.organizationName.toLowerCase() ===
-        deletesettingsorgname.toLowerCase()
+      (org) => org.organizationName.toLowerCase() === deletesettingsorgname.toLowerCase()
     );
     if (thisOne.length === 1) {
       const org = thisOne[0];
