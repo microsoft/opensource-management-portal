@@ -64,14 +64,16 @@ COPY --from=build /build/data ./data
 COPY --from=build /build/dist ./
 
 # The open source project build needs: default assets should be placed
-COPY --from=build /build/default-assets-package ../default-assets-package
+COPY --from=build --chown=oss:oss /build/default-assets-package ./default-assets-package
 
-COPY --from=build /build/config ./config
-COPY --from=build /build/views ./views
-COPY --from=build /build/package.json ./package.json
-COPY --from=build /build/jobs/reports/views ./jobs/reports/views
+COPY --from=build --chown=oss:oss /build/config ./config
+COPY --from=build --chown=oss:oss /build/views ./views
+COPY --from=build --chown=oss:oss /build/package.json ./package.json
 
-# Only if needed, copy .npmrc files into the container
+# Host the app
+USER oss
+
+# Only if needed, copy environment
 # COPY --from=build /build/.environment ./.environment
 
 ENTRYPOINT ["npm", "run-script", "start-in-container"]
