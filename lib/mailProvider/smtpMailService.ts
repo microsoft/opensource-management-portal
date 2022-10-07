@@ -13,8 +13,8 @@ export default class SmtpMailService implements IMailProvider {
   html: true;
   info: 'SMTP mail service';
 
-  constructor(config: any) {
-    this._config = config;
+  constructor(mailConfig: any) {
+    this._config = mailConfig;
   }
 
   getSentMessages() {
@@ -24,7 +24,7 @@ export default class SmtpMailService implements IMailProvider {
   async initialize() {}
 
   async sendMail(mail: IMail): Promise<any> {
-    if (!this._config.customSmtpService) {
+    if (!this._config.smtpMailService) {
       throw new Error('SMTP Mail configuration not given, mail sending failed');
     }
     const transporter = nodemailer.createTransport(this._config.smtpMailService);

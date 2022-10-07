@@ -70,7 +70,7 @@ interface IWebPageRenderUser {
   azure?: {
     username: string;
     displayName?: string;
-  }
+  };
 }
 
 export class SessionUserProperties {
@@ -365,18 +365,18 @@ export class WebContext {
     debug(`web render: view=${options.view}`);
     return this._response.render(view, obj);
     // ANCIENT: RESTORE A GOOD CALL HERE!
-  /*
-    if (reposContext && !reposContext.availableOrganizations) {
-      this.getMyOrganizations((getMyOrgsError, organizations) => {
-        if (!getMyOrgsError && organizations && Array.isArray(organizations)) {
-          reposContext.availableOrganizations = organizations;
-          res.render(view, obj);
-        }
-      });
-    } else {
-      res.render(view, obj);
-    }
-    */
+    /*
+      if (reposContext && !reposContext.availableOrganizations) {
+        this.getMyOrganizations((getMyOrgsError, organizations) => {
+          if (!getMyOrgsError && organizations && Array.isArray(organizations)) {
+            reposContext.availableOrganizations = organizations;
+            res.render(view, obj);
+          }
+        });
+      } else {
+        res.render(view, obj);
+      }
+      */
   }
 }
 
@@ -395,6 +395,7 @@ export class IndividualContext {
   private _corporateIdentity: ICorporateIdentity;
   private _sessionBasedGitHubIdentity: IGitHubIdentity;
   private _link: ICorporateLink;
+  private _additionalLinks: ICorporateLink[];
   private _webContext: WebContext;
   private _isPortalAdministrator: boolean | null;
   private _operations: Operations;
@@ -406,6 +407,7 @@ export class IndividualContext {
     this._isPortalAdministrator = null;
     this._corporateIdentity = options.corporateIdentity;
     this._link = options.link;
+    this._additionalLinks = [];
     this._webContext = options.webContext;
     this._operations = options.operations;
   }
@@ -432,11 +434,23 @@ export class IndividualContext {
     this._link = value;
   }
 
+  get hasAdditionalLinks() {
+    return this._additionalLinks.length > 0;
+  }
+
+  setAdditionalLinks(additionalLinks: ICorporateLink[]) {
+    this._additionalLinks = additionalLinks;
+  }
+
+  get additionalLinks() {
+    return [...this._additionalLinks];
+  }
+
   get webContext(): WebContext {
     return this._webContext;
   }
 
-  hasGitHubOrganizationWriteToken() : boolean {
+  hasGitHubOrganizationWriteToken(): boolean {
     const hasToken = !!this.webContext?.tokens?.gitHubWriteOrganizationToken;
     return hasToken;
   }
@@ -471,7 +485,7 @@ export class IndividualContext {
     this._sessionBasedGitHubIdentity = identity;
   }
 
-  createGitHubLinkObject() : ICorporateLink {
+  createGitHubLinkObject(): ICorporateLink {
     const corporateIdentity = this._corporateIdentity;
     if (!corporateIdentity) {
       throw new Error('Cannot create a link: no corporate identity');
@@ -482,7 +496,7 @@ export class IndividualContext {
       throw new Error('Cannot create a link: no corporate identity');
     }
 
-    const newLink : ICorporateLink = {
+    const newLink: ICorporateLink = {
       thirdPartyAvatar: gitHubIdentity.avatar,
       thirdPartyId: gitHubIdentity.id,
       thirdPartyUsername: gitHubIdentity.username,

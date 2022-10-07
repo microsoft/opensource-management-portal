@@ -20,6 +20,8 @@ const typescriptConfig = require('./typescript');
 const approvalFieldsFileVariableName = 'GITHUB_APPROVAL_FIELDS_FILE';
 const painlessConfigEnvironmentVariableName = 'CONFIGURATION_ENVIRONMENT';
 
+const showTypeLoadDebugMessages = false;
+
 module.exports = function (graphApi) {
   const environmentProvider = graphApi.environment;
   const fieldsFile = environmentProvider.get(approvalFieldsFileVariableName);
@@ -32,7 +34,7 @@ module.exports = function (graphApi) {
       const filename = path.join(typescriptConfig.appDirectory, 'data', `${fieldsFile}.json`);
       const str = fs.readFileSync(filename, 'utf8');
       approvalFields = JSON.parse(str);
-      debug(`repo approval types loaded from file ${filename}`);
+      showTypeLoadDebugMessages && debug(`repo approval types loaded from file ${filename}`);
     } catch (notFound) {
       /* no action required */
       console.warn(notFound);
@@ -41,9 +43,13 @@ module.exports = function (graphApi) {
     // Painless config environment approach 2 (newer):
     // Uses the painless config environment + separate env type to get the data
     // This is also a partial hack; if there are multiple environments, this will fail.
+    let pkgName = pkg[painlessConfigEnvPkgName];
+    if (pkgName.startsWith('./')) {
+      pkgName = path.join(typescriptConfig.appDirectory, pkgName);
+    }
     try {
-      approvalFields = require(pkg[painlessConfigEnvPkgName])(environmentName, repoApprovalsEnvironmentName);
-      debug(`repo approval types loaded from painlessConfigEnvPkgName/${environmentName},${repoApprovalsEnvironmentName}`);
+      approvalFields = require(pkgName)(environmentName, repoApprovalsEnvironmentName);
+      showTypeLoadDebugMessages && debug(`repo approval types loaded from painlessConfigEnvPkgName/${environmentName},${repoApprovalsEnvironmentName}`);
     } catch (painlessConfigError) {
       debug(`attempted to load repo approval types loaded from painlessConfigEnvPkgName/${environmentName},${repoApprovalsEnvironmentName}`);
       console.warn(painlessConfigError);

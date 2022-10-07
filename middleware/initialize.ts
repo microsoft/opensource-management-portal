@@ -267,17 +267,35 @@ function configureGitHubLibrary(cacheProvider: ICacheHelper, config): RestLibrar
 
 // Asynchronous initialization for the Express app, configuration and data stores.
 export default async function initialize(app: IReposApplication, express, rootdir: string, config: any, exception: Error): Promise<IReposApplication> {
-  if (!config) {
-    throw new Error('No configuration resolved');
+  if (exception) {
+    console.warn(`Startup exception: ${exception}`, exception?.stack);
+  }
+  if (!config || Object.getOwnPropertyNames(config).length === 0) {
+    throw new Error('Empty configuration object');
   }
   const applicationProfile = config?.web?.app && config.web.app !== 'repos' ? await alternateRoutes(config, app, config.web.app) : DefaultApplicationProfile;
   const web = !(config?.skipModules && config.skipModules.has('web'));
   if (applicationProfile.webServer && !web) {
     applicationProfile.webServer = false;
   }
-  const containerPurpose = config && config.isJobInternal ? 'Job' : (applicationProfile.webServer ? 'Web Application' : 'Application');
+  const containerPurpose = config && config.isJobInternal ? 'job' : (applicationProfile.webServer ? 'web application' : 'application');
   debug(`${containerPurpose} name: ${applicationProfile.applicationName}`);
-  debug(`Environment: ${config?.debug?.environmentName || 'Unknown'}`);
+  debug(`environment: ${config?.debug?.environmentName || 'Unknown'}`);
+
+  const codespacesConfig = config?.github?.codespaces || {};
+  if (codespacesConfig?.connected === true && codespacesConfig.block === true) {
+    throw Error(`This environment is not designed for use with GitHub Codespaces but you are currently connected to a Codespaces editor session (${process.env.CODESPACE_NAME}).`);
+  } else if (codespacesConfig.connected === true) {
+    const aadEnabled = codespacesConfig.authentication?.aad?.enabled;
+    const githubEnabled = codespacesConfig.authentication?.github?.enabled;
+    let codespacesPort = undefined;
+    if (codespacesConfig?.connected === true) {
+      codespacesPort = codespacesConfig.authentication?.port;
+    }
+    const authPort = codespacesPort || process.env.PORT || 3000;
+    debug(`codespace: ${config.github.codespaces.name}, aad=${aadEnabled}, github=${githubEnabled}, auth_port=${authPort}`);
+  }
+
   if (!exception && applicationProfile.validate) {
     try {
       await applicationProfile.validate();
@@ -325,7 +343,7 @@ export default async function initialize(app: IReposApplication, express, rootdi
   } else if (config.containers && config.containers.docker) {
     debug('Docker image: HTTP: listening, HSTS: off');
   } else if (config.webServer.allowHttp) {
-    debug('WARNING: Development mode (DEBUG_ALLOW_HTTP): HTTP: listening, HSTS: off');
+    debug('development mode: HTTP: listening, HSTS: off');
   } else {
     app.use(RouteSslify);
     app.use(RouteHsts);
@@ -458,7 +476,7 @@ export function ConnectPostgresPool(postgresConfigSection: any): Promise<Postgre
               poolQueryError.inner = err;
               return reject(poolQueryError);
             }
-            debug(`connected to Postgres (${postgresConfigSection.host} ${postgresConfigSection.database} as ${postgresConfigSection.user}) and a pool of ${postgresConfigSection.max} clients is available in providers.postgresPool`);
+            debug(`postgres (${postgresConfigSection.host} ${postgresConfigSection.database} as ${postgresConfigSection.user}), pool of ${postgresConfigSection.max}`);
             return resolve(pool);
           });
         });
@@ -534,7 +552,7 @@ async function dynamicStartup(config: any, providers: IProviders, rootdir: strin
       }
       const promise = (entrypoint as CompanyStartupEntrypoint).call(null, config, providers, rootdir) as Promise<void>;
       await promise;
-      debug(`Company-specific startup complete (${p})`);
+      debug(`company-specific startup complete (${p})`);
     } catch (dynamicLoadError) {
       throw new Error(`config.startup.path=${p} could not successfully load: ${dynamicLoadError}`);
     }

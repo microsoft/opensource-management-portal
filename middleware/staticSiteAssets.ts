@@ -25,7 +25,7 @@ const ospoAssetsPackage = false === isDefaultPath ? require(`${staticAssetsPacka
 export function StaticSiteAssets(app, express) {
   // Serve/host the static site assets from our private NPM
 
-  debug(`Hosting site assets version ${ospoAssetsPackage.version} from ${ospoAssetsDistPath} on path '/'`);
+  debug(`hosting site assets version ${ospoAssetsPackage.version} from ${ospoAssetsDistPath} on path '/'`);
   app.use(express.static(ospoAssetsDistPath));
 };
 

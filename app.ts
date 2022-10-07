@@ -19,10 +19,14 @@ require('debug')('startup')('starting...');
 app.initializeApplication = initialize.bind(undefined, app, express, __dirname);
 
 app.initializeJob = function initializeJob(config, configurationError) {
-  config.isJobInternal = true;
-  config.skipModules = new Set([
-    'web',
-  ]);
+  if (config) {
+    config.isJobInternal = true;
+    config.skipModules = new Set([
+      'web',
+    ]);
+  } else {
+    console.warn(`Configuration did not resolve successfully`, configurationError);
+  }
   return initialize(app, express, __dirname, config, configurationError);
 };
 

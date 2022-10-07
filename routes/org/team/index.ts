@@ -28,6 +28,7 @@ import { IndividualContext } from '../../../user';
 import { ReposAppRequest, GitHubTeamRole, ITeamMembershipRoleState, UserAlertType, IProviders, ICorporateLink, GitHubRepositoryType } from '../../../interfaces';
 import { AddOrganizationPermissionsToRequest, GetOrganizationPermissionsFromRequest } from '../../../middleware/github/orgPermissions';
 import { AddTeamPermissionsToRequest, IRequestTeamPermissions } from '../../../middleware/github/teamPermissions';
+import { IGraphEntry } from '../../../lib/graphProvider';
 
 const FirstPageMembersCap = 25;
 const ParallelMailAddressLookups = 4;
@@ -196,7 +197,7 @@ export async function submitTeamJoinRequest(
   correlationId: string,
   hostname: string
 ): Promise<ITeamJoinRequestSubmitOutcome> {
-  const { approvalProvider, config, mailProvider, mailAddressProvider, insights, operations } = providers;
+  const { approvalProvider, config, graphProvider, mailProvider, insights, operations } = providers;
   const organization = team.organization;
   const broadAccessTeams = new Set(organization.broadAccessTeams);
   if (!approvalProvider) {
@@ -242,6 +243,12 @@ export async function submitTeamJoinRequest(
   const approverMailAddresses = [];
   if (mailProviderInUse && !mailProvider) {
     return { error: wrapError(null, 'No mail provider is enabled, yet this application is configured to use a mail provider.') };
+  }
+  let managementChain: IGraphEntry[] = null;
+  try {
+    managementChain = await graphProvider.getManagementChain(activeContext?.corporateIdentity?.id);
+  } catch (error) {
+    // this is only an optional addition to the mail
   }
   const displayHostname = hostname;
   const approvalScheme = displayHostname === 'localhost' && config.webServer.allowHttp === true ? 'http' : 'https';
@@ -307,11 +314,12 @@ export async function submitTeamJoinRequest(
         version: config.logging.version,
         actionUrl: approvalBaseUrl + requestId,
         reposSiteUrl: reposSiteBaseUrl,
-        approvalRequest: approvalRequest,
+        approvalRequest,
         team: team.name,
         org: team.organization.name,
-        personName: personName,
-        personMail: personMail,
+        personName,
+        personMail,
+        managementChain,
       };
       try {
         insights?.trackEvent({

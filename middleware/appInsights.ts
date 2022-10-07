@@ -56,9 +56,9 @@ export default function initializeAppInsights(app: IReposApplication, config) {
     client = defaultClient;
     const configuredInstrumentationKey = client?.config?.instrumentationKey;
     const configuredEndpoint = client?.config?.endpointUrl;
-    debug(`insights telmetry will use identifier: ${configuredInstrumentationKey.substr(0,6)} and endpoint ${configuredEndpoint}`);
+    debug(`insights telemetry will use identifier: ${configuredInstrumentationKey.substr(0, 6)}* and endpoint ${configuredEndpoint}`);
   } else {
-    debug('insights telmetry is not configured with a key or connection string');
+    debug('insights telemetry is not configured with a key or connection string');
   }
 
   app.use((req: ReposAppRequest, res, next) => {

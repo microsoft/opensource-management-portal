@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { getProviders } from '../../transitional';
+import { ErrorHelper, getProviders } from '../../transitional';
 import { Repository } from '../../business/repository';
-import { IndividualContext } from '../../user';
+import { GitHubIdentitySource, IIndividualContextOptions, IndividualContext } from '../../user';
 import getCompanySpecificDeployment from '../companySpecificDeployment';
-import { ReposAppRequest, IProviders, GitHubCollaboratorPermissionLevel } from '../../interfaces';
+import { ReposAppRequest, IProviders, GitHubCollaboratorPermissionLevel, ICorporateLink } from '../../interfaces';
 
 const repoPermissionsCacheKeyName = 'repoPermissions';
 const requestScopedRepositoryKeyName = 'repository';
@@ -34,6 +34,46 @@ export function setContextualRepository(req: ReposAppRequest, repository: Reposi
 
 export function getContextualRepository(req: ReposAppRequest) {
   return req[requestScopedRepositoryKeyName] as Repository;
+}
+
+export async function getComputedRepositoryPermissionsByUsername(providers: IProviders, repository: Repository, githubLogin: string) {
+  const context = await createTemporaryContextByUsername(providers, githubLogin);
+  return await getComputedRepositoryPermissions(providers, context, repository);
+}
+
+async function createTemporaryContextByUsername(providers: IProviders, githubLogin: string) {
+  const { operations } = providers;
+  let link: ICorporateLink = null;
+  try {
+    link = await operations.getLinkByThirdPartyUsername(githubLogin);
+  } catch (error) {
+    if (!ErrorHelper.IsNotFound(error)) {
+      throw error;
+    }
+  }
+  const options: IIndividualContextOptions = {
+    corporateIdentity: link?.corporateId ? {
+      id: link.corporateId,
+      username: link.corporateUsername,
+      displayName: link.corporateDisplayName,
+    } : null,
+    link,
+    insights: null,
+    operations,
+    webApiContext: null,
+    webContext: null,
+  };
+  const individualContext = new IndividualContext(options);
+  if (!link) {
+    const accountDetails = await operations.getAccountByUsername(githubLogin);
+    individualContext.setSessionBasedGitHubIdentity({
+      id: String(accountDetails.id),
+      username: accountDetails.login,
+      avatar: accountDetails.avatar_url,
+      source: GitHubIdentitySource.Session,
+    });
+  }
+  return individualContext;
 }
 
 export async function getComputedRepositoryPermissions(providers: IProviders, activeContext: IndividualContext, repository: Repository) {

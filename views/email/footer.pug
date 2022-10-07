@@ -40,14 +40,13 @@
         tr
           td
             p.footer
-              | #{companyName} Open Source Programs Office
+              | #{companyName}
               br
-              a(href='https://aka.ms/opensource') aka.ms/opensource
+              a(href=config.urls.explore) Explore
               | &nbsp;&bull;&nbsp;
-              a(href='https://stackoverflow.microsoft.com/tags/opensource') StackOverflow@Microsoft
+              a(href=config.urls.docs) Docs
               | &nbsp;&bull;&nbsp;
-              a(href='mailto:opensource@microsoft.com') opensource@microsoft.com
+              a(href='mailto:' + config.brand.supportMail) #{config.brand.supportMail}
 
           td(width='120', valign='middle')
-            img(align='right', valign='middle', src='https://ospomail.azureedge.net/microsoft.png', width='108', height='23', alt='Microsoft')
-
+            img(align='right', valign='middle', src=config.brand.companyLogoSrc, width='108', alt=companyName)

@@ -72,6 +72,7 @@ function activeDirectorySubset(app, config, client: AuthorizationCode, iss, sub,
 
 export default function createAADStrategy(app, config) {
   const { redirectUrl, tenantId, clientId, clientSecret } = config.activeDirectory;
+  const codespaces = config?.github?.codespaces || {};
   if (!clientId) {
     debug('No Azure Active Directory clientID configured, corporate authentication will be unavailable.');
     return {};
@@ -95,10 +96,19 @@ export default function createAADStrategy(app, config) {
       authorizePath,
     },
   });
-  debug(`AAD app clientId=${clientId}, redirectUrl=${redirectUrl}`);
+  let codespacesPort = undefined;
+  if (codespaces?.connected === true) {
+    codespacesPort = codespaces.authentication?.port;
+  }
+  const port = codespacesPort || process.env.PORT || 3000; // should use config instead
+  const redirectSuffix = '/auth/azure/callback';
+  const finalRedirectUrl = codespaces?.connected === true &&
+    codespaces?.authentication?.aad?.enabled === true &&
+    !codespaces?.block ? `https://${codespaces.name}-${port}.githubpreview.dev${redirectSuffix}` : redirectUrl;
+  debug(`aad auth clientId=${clientId}, redirectUrl=${finalRedirectUrl}`);
   providers.authorizationCodeClient = oauth2Client;
   const aadStrategy = new OIDCStrategy({
-    redirectUrl: redirectUrl || `${config.webServer.baseUrl}/auth/azure/callback`,
+    redirectUrl: finalRedirectUrl || `${config.webServer.baseUrl}${redirectSuffix}`,
     allowHttpForRedirectUrl: config.containers.docker || config.webServer.allowHttp,
     // @ts-ignore
     realm: tenantId,

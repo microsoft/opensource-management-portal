@@ -27,7 +27,7 @@ interface ISafeUserView {
 
 router.get('/', (req: IRequestWithSession, res) => {
   const { config } = getProviders(req as any as ReposAppRequest);
-  const sessionPrefix = req['sessionStore'] && req['sessionStore'].prefix ? req['sessionStore'].prefix + ':' : null;
+  const sessionPrefix = req['sessionStore'] && (req['sessionStore'] as any).prefix ? (req['sessionStore'] as any).prefix + ':' : null;
   const sessionIndex = sessionPrefix ? `${sessionPrefix}${req.session.id}` : req.session.id;
   let safeUserView: ISafeUserView = {
     cookies: req.cookies,

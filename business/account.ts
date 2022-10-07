@@ -13,7 +13,7 @@ import { Organization } from './organization';
 import { AppPurpose } from '../github';
 import { ILinkProvider } from '../lib/linkProviders';
 import { CacheDefault, getMaxAgeSeconds } from '.';
-import { AccountJsonFormat, CoreCapability, ICacheOptions, ICorporateLink, IGetAuthorizationHeader, IOperationsInstance, IOperationsLinks, IOperationsProviders, IReposError, operationsWithCapability, OrganizationMembershipState, throwIfNotCapable, throwIfNotGitHubCapable } from '../interfaces';
+import { AccountJsonFormat, CoreCapability, ICacheOptions, ICorporateLink, IGetAuthorizationHeader, IGitHubAccountDetails, IOperationsInstance, IOperationsLinks, IOperationsProviders, IReposError, operationsWithCapability, OrganizationMembershipState, throwIfNotCapable, throwIfNotGitHubCapable } from '../interfaces';
 import { ErrorHelper } from '../transitional';
 
 interface IRemoveOrganizationMembershipsResult {
@@ -40,7 +40,7 @@ export class Account {
   private _created_at?: any;
   private _updated_at?: any;
 
-  private _originalEntity?: any;
+  private _originalEntity?: IGitHubAccountDetails;
 
   public asJson(format: AccountJsonFormat = AccountJsonFormat.GitHub) {
     const basic = {
@@ -56,8 +56,8 @@ export class Account {
       }
       case AccountJsonFormat.GitHubDetailedWithLink: {
         const cloneEntity = Object.assign({}, this._originalEntity || {});
-        delete cloneEntity.cost;
-        delete cloneEntity.headers;
+        delete (cloneEntity as any).cost;
+        delete (cloneEntity as any).headers;
         const link = this._link ? corporateLinkToJson(this._link) : undefined;
         return {
           account: cloneEntity,
@@ -126,7 +126,7 @@ export class Account {
     this._getAuthorizationHeader = getAuthorizationHeader;
   }
 
-  getEntity() {
+  getEntity(): IGitHubAccountDetails {
     return this._originalEntity;
   }
 
@@ -298,7 +298,7 @@ export class Account {
     return false;
   }
 
-  async getDetails(options?: ICacheOptions): Promise<any> {
+  async getDetails(options?: ICacheOptions): Promise<IGitHubAccountDetails> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const id = this._id;
@@ -315,7 +315,7 @@ export class Account {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     try {
-      const entity = await operations.github.request(this.authorize(AppPurpose.Data), 'GET /user/:id', parameters, cacheOptions);
+      const entity = await operations.github.request(this.authorize(AppPurpose.Data), 'GET /user/:id', parameters, cacheOptions) as IGitHubAccountDetails;
       common.assignKnownFieldsPrefixed(this, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
       this._originalEntity = entity;
       return entity;
@@ -425,7 +425,7 @@ export class Account {
     let error: IReposError = null;
     const operations = throwIfNotGitHubCapable(this._operations);
     const opsWithProvs = operationsWithCapability<IOperationsProviders>(operations, CoreCapability.Providers);
-    const { queryCache } = opsWithProvs?.providers;
+    const { queryCache } = opsWithProvs?.providers || {};
     if (!queryCache || !queryCache.supportsRepositoryCollaborators) {
       history.push('The account may still have Collaborator permissions to repositories');
       return { history };

@@ -10,7 +10,7 @@ import axios, { AxiosError } from 'axios';
 import querystring from 'querystring';
 
 import { IGraphProvider, IGraphEntry, IGraphEntryWithManager, IGraphGroupMember, IGraphGroup, GraphUserType } from '.';
-import { ErrorHelper, CreateError } from '../../transitional';
+import { ErrorHelper, CreateError, splitSemiColonCommas } from '../../transitional';
 import { ICacheHelper } from '../caching';
 
 export interface IMicrosoftGraphProviderOptions {
@@ -20,6 +20,7 @@ export interface IMicrosoftGraphProviderOptions {
   tokenEndpoint?: string;
   tenantId?: string;
   cacheProvider?: ICacheHelper;
+  skipManagerLookupForIds?: string;
 }
 
 const graphBaseUrl = 'https://graph.microsoft.com/v1.0/';
@@ -42,6 +43,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
   #_tenantId: string;
   #_tokenEndpoint: string;
   #_cache: ICacheHelper;
+  #_skipManagerLookupForids: string[];
 
   public clientId: string;
 
@@ -53,6 +55,10 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     this.#_clientSecret = graphOptions.clientSecret;
     this.#_tenantId = graphOptions.tenantId;
     this.#_tokenEndpoint = graphOptions.tokenEndpoint;
+    this.#_skipManagerLookupForids = [];
+    if (graphOptions.skipManagerLookupForIds) {
+      this.#_skipManagerLookupForids = splitSemiColonCommas(graphOptions.skipManagerLookupForIds);
+    }
     this.#_cache = graphOptions.cacheProvider;
     if (!this.clientId) {
       throw new Error('MicrosoftGraphProvider: clientId required');
@@ -80,6 +86,9 @@ export class MicrosoftGraphProvider implements IGraphProvider {
 
   async getUserAndManagerById(aadId: string): Promise<IGraphEntryWithManager> {
     const entity = await this.getTokenThenEntity(aadId, null) as IGraphEntryWithManager;
+    if (this.#_skipManagerLookupForids?.includes(aadId)) {
+      return entity;
+    }
     try {
       const manager = await this.getTokenThenEntity(aadId, 'manager') as IGraphEntry;
       if (manager) {
@@ -87,7 +96,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       }
     } catch (warning) {
       if (ErrorHelper.IsNotFound(warning)) {
-        console.warn(`User not found with AAD ID ${aadId}`);
+        console.warn(`Manager not found for AAD ID ${aadId}`);
       } else {
         console.warn(warning);
       }
@@ -598,6 +607,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     } catch (error) {
       const axiosError = error as AxiosError;
       if (axiosError?.response) {
+        console.log(`graph request error ${error.toString()} (client ${clientId})`);
         if (axiosError.response?.status === 404) {
           throw CreateError.NotFound('Not found', axiosError);
         } else if (axiosError.response?.status >= 500) {

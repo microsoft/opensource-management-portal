@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+// Job: System Team Permissions
+
 import { shuffle } from 'lodash';
 
 import { TeamPermission } from '../../business/teamPermission';
@@ -55,15 +57,12 @@ export default async function permissionsRun({ providers }: IReposJob): Promise<
             console.log(`There was a problem getting the permissions for the repo ${repo.name} from ${repo.organization.name}`);
             console.dir(getError);
           }
-          return;
+          continue;
         }
+        let shouldSkipEnforcement = false;
         const { customizedTeamPermissionsWebhookLogic } = providers;
         if (customizedTeamPermissionsWebhookLogic) {
-          const shouldSkipEnforcement = await customizedTeamPermissionsWebhookLogic.shouldSkipEnforcement(repo);
-          if (shouldSkipEnforcement) {
-            console.log(`Customized logic for team permissions: skipping enforcement`);
-            return;
-          }
+          shouldSkipEnforcement = await customizedTeamPermissionsWebhookLogic.shouldSkipEnforcement(repo);
         }
         const currentPermissions = new Map<number, GitHubRepositoryPermission>();
         permissions.forEach(entry => {
@@ -83,20 +82,24 @@ export default async function permissionsRun({ providers }: IReposJob): Promise<
         const setArray = Array.from(teamsToSet.values());
         for (let teamId of setArray) {
           const newPermission = specialTeamLevels.get(teamId);
-          console.log(`adding ${teamId} team with permission ${newPermission} to the repo ${repo.name}`);
-          try {
-            await repo.setTeamPermission(teamId, newPermission as GitHubRepositoryPermission);
-          } catch (error) {
-            if (ErrorHelper.IsNotFound(error)) {
-              console.log(`the team ID ${teamId} could not be found when setting to repo ${repo.name} in org ${organization.name} and should likely be removed from config...`);
-            } else {
-              console.log(`${repo.name}`);
-              console.dir(error);
-              throw error;
+          if (shouldSkipEnforcement && (newPermission as GitHubRepositoryPermission) !== GitHubRepositoryPermission.Pull) {
+            console.log(`should add ${teamId} team with permission ${newPermission} to the repo ${repo.name}, but compliance lock prevents non-read system teams`);
+          } else {
+            try {
+              await repo.setTeamPermission(teamId, newPermission as GitHubRepositoryPermission);
+            } catch (error) {
+              if (ErrorHelper.IsNotFound(error)) {
+                console.log(`the team ID ${teamId} could not be found when setting to repo ${repo.name} in org ${organization.name} and should likely be removed from config...`);
+              } else {
+                console.log(`${repo.name}`);
+                console.dir(error);
+                throw error;
+              }
             }
           }
         }
       }
+      console.log(`Finished with repos in ${organization.name} organization`);
     } catch (processOrganizationError) {
       console.dir(processOrganizationError);
       console.log(`moving past ${organization.name} processing due to error...`);

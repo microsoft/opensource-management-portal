@@ -464,7 +464,7 @@ async function sendEmail(req: IReposAppRequestWithCreateResponse, logic: ICustom
     console.warn(err);
   }
   const mail = {
-    to: [...emails, ...additionalViewProperties?.to],
+    to: [...emails, ...(additionalViewProperties?.to ? additionalViewProperties.to : [])],
     cc: additionalViewProperties?.cc,
     bcc: additionalViewProperties?.bcc,
     subject,
@@ -511,7 +511,7 @@ async function sendEmail(req: IReposAppRequestWithCreateResponse, logic: ICustom
     isNotBootstrap: true,
   });
   try {
-    mail.content = await RenderHtmlMail(config.typescript.appDirectory, emailTemplate, contentOptions);
+    mail.content = await RenderHtmlMail(config.typescript.appDirectory, emailTemplate, contentOptions, config);
   } catch (renderError) {
     req.insights.trackException({
       exception: renderError,
@@ -556,7 +556,7 @@ async function sendEmail(req: IReposAppRequestWithCreateResponse, logic: ICustom
     additionalMail.to = operationsMails;
     contentOptions.reason = `You are receiving this e-mail as the operations contact address(es) ${operationsMails.join(', ')}. A repo has been created or classified.`;
     try {
-      additionalMail.content = await RenderHtmlMail(config.typescript.appDirectory, emailTemplate, contentOptions);
+      additionalMail.content = await RenderHtmlMail(config.typescript.appDirectory, emailTemplate, contentOptions, config);
     } catch (renderError) {
       console.dir(renderError);
       return;

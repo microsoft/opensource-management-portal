@@ -83,6 +83,8 @@ export function storeReferrer(req: ReposAppRequest, res, redirect, optionalReaso
   if (session && req.headers && req.headers.referer && session.referer !== undefined && !req.headers.referer.includes('/signout') && !session.referer) {
     session.referer = req.headers.referer;
     eventDetails.referer = req.headers.referer;
+  } else {
+    eventDetails.referer = 'no referer';
   }
   if (redirect) {
     eventDetails.redirect = redirect;
@@ -126,8 +128,8 @@ export function redirectToReferrer(req, res, url, optionalReason) {
 export function storeOriginalUrlAsVariable(req, res, variable, redirect, optionalReason) {
   const eventDetails = {
     method: 'storeOriginalUrlAsVariable',
-    variable: variable,
-    redirect: redirect,
+    variable,
+    redirect,
     reason: optionalReason || 'unknown reason',
   };
   if (req.session && req.originalUrl) {
@@ -386,4 +388,8 @@ export function addArrayToSet<T>(set: Set<T>, array: T[]): Set<T> {
     set.add(entry);
   }
   return set;
+}
+
+export function isEnterpriseManagedUserLogin(login: string) {
+  return login?.includes('_');
 }
