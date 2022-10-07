@@ -37,10 +37,7 @@ interface IMemoryGetQueries {
 }
 
 export class MemoryEntityMetadataProvider implements IEntityMetadataProvider {
-  private _entitiesByType: Map<
-    EntityMetadataType,
-    Map<string, IEntityMetadata[]>
-  >;
+  private _entitiesByType: Map<EntityMetadataType, Map<string, IEntityMetadata[]>>;
   public readonly name = 'memory';
   public readonly supportsHistory: boolean = true;
 
@@ -63,10 +60,7 @@ export class MemoryEntityMetadataProvider implements IEntityMetadataProvider {
     return map;
   }
 
-  async getMetadata(
-    type: EntityMetadataType,
-    id: string
-  ): Promise<IEntityMetadata> {
+  async getMetadata(type: EntityMetadataType, id: string): Promise<IEntityMetadata> {
     const bin = this.entityBin(type).get(id);
     return bin ? bin[bin.length - 1] : null;
   }
@@ -117,9 +111,7 @@ export class MemoryEntityMetadataProvider implements IEntityMetadataProvider {
     });
   }
 
-  getSerializationHelper(
-    type: EntityMetadataType
-  ): IEntityMetadataSerializationHelper {
+  getSerializationHelper(type: EntityMetadataType): IEntityMetadataSerializationHelper {
     const mapObjectToMemoryFields = EntityMetadataMappings.GetDefinition(
       type,
       MemorySettings.MemoryMapping,
@@ -147,9 +139,7 @@ export class MemoryEntityMetadataProvider implements IEntityMetadataProvider {
     };
   }
 
-  getDeserializationHelper(
-    type: EntityMetadataType
-  ): IEntityMetadataDeserializationHelper {
+  getDeserializationHelper(type: EntityMetadataType): IEntityMetadataDeserializationHelper {
     const mapObjectToMemoryFields = EntityMetadataMappings.GetDefinition(
       type,
       MemorySettings.MemoryMapping,

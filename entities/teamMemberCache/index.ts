@@ -8,10 +8,7 @@ import {
   ITeamMemberCacheCreateOptions,
   TeamMemberCacheProvider,
 } from './teamMemberCacheProvider';
-import {
-  FixedQueryType,
-  IEntityMetadataFixedQuery,
-} from '../../lib/entityMetadataProvider/query';
+import { FixedQueryType, IEntityMetadataFixedQuery } from '../../lib/entityMetadataProvider/query';
 
 export async function CreateTeamMemberCacheProviderInstance(
   options?: ITeamMemberCacheCreateOptions
@@ -22,20 +19,15 @@ export async function CreateTeamMemberCacheProviderInstance(
 }
 
 export class TeamMemberCacheFixedQueryAll implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.TeamMemberCacheGetAll;
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamMemberCacheGetAll;
 }
 
-export class TeamMemberCacheGetOrganizationIdsQuery
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.TeamMemberCacheGetOrganizationIds;
+export class TeamMemberCacheGetOrganizationIdsQuery implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamMemberCacheGetOrganizationIds;
 }
 
-export class TeamMemberCacheDeleteByOrganizationId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.TeamMemberCacheDeleteByOrganizationId;
+export class TeamMemberCacheDeleteByOrganizationId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamMemberCacheDeleteByOrganizationId;
   constructor(public organizationId: string) {
     if (typeof this.organizationId !== 'string') {
       throw new Error(`${organizationId} must be a string`);
@@ -43,10 +35,8 @@ export class TeamMemberCacheDeleteByOrganizationId
   }
 }
 
-export class TeamMemberCacheFixedQueryByOrganizationId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.TeamMemberCacheGetByOrganizationId;
+export class TeamMemberCacheFixedQueryByOrganizationId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamMemberCacheGetByOrganizationId;
   constructor(public organizationId: string) {
     if (typeof this.organizationId !== 'string') {
       throw new Error(`${organizationId} must be a string`);
@@ -54,10 +44,8 @@ export class TeamMemberCacheFixedQueryByOrganizationId
   }
 }
 
-export class TeamMemberCacheFixedQueryByTeamId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.TeamMemberCacheGetByTeamId;
+export class TeamMemberCacheFixedQueryByTeamId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamMemberCacheGetByTeamId;
   constructor(public teamId: string) {
     if (typeof this.teamId !== 'string') {
       throw new Error(`${teamId} must be a string`);
@@ -65,10 +53,8 @@ export class TeamMemberCacheFixedQueryByTeamId
   }
 }
 
-export class TeamMemberCacheFixedQueryByUserId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.TeamMemberCacheGetByUserId;
+export class TeamMemberCacheFixedQueryByUserId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamMemberCacheGetByUserId;
   constructor(public userId: string) {
     if (typeof this.userId !== 'string') {
       throw new Error(`${userId} must be a string`);
@@ -76,10 +62,8 @@ export class TeamMemberCacheFixedQueryByUserId
   }
 }
 
-export class TeamMemberCacheFixedQueryByOrganizationIdAndUserId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.TeamMemberCacheGetByOrganizationIdAndUserId;
+export class TeamMemberCacheFixedQueryByOrganizationIdAndUserId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamMemberCacheGetByOrganizationIdAndUserId;
   constructor(public organizationId: string, public userId: string) {
     if (typeof this.userId !== 'string') {
       throw new Error(`userId ${userId} must be a string`);

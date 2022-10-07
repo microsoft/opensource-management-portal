@@ -24,18 +24,15 @@ import routeAdministration from './administration';
 const router: Router = Router();
 
 const deployment = getCompanySpecificDeployment();
-deployment?.routes?.api?.context?.index &&
-  deployment?.routes?.api?.context?.index(router);
+deployment?.routes?.api?.context?.index && deployment?.routes?.api?.context?.index(router);
 
 router.use('/approvals', routeApprovals);
 
 router.get('/', (req: ReposAppRequest, res) => {
   const { config } = getProviders(req);
   const { continuousDeployment } = config;
-  const activeContext = (req.individualContext ||
-    req.apiContext) as IndividualContext;
-  const isGitHubAuthenticated = !!activeContext.getSessionBasedGitHubIdentity()
-    ?.id;
+  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+  const isGitHubAuthenticated = !!activeContext.getSessionBasedGitHubIdentity()?.id;
   const data = {
     corporateIdentity: activeContext.corporateIdentity,
     githubIdentity: activeContext.getGitHubIdentity(),
@@ -52,12 +49,10 @@ router.get(
   '/specialized/multipleLinkGitHubIdentities',
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     const { operations } = getProviders(req);
-    const activeContext = (req.individualContext ||
-      req.apiContext) as IndividualContext;
-    const links = (activeContext?.link
-      ? [activeContext.link, ...activeContext.additionalLinks]
-      : []
-    ).map((link) => link.thirdPartyUsername);
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+    const links = (activeContext?.link ? [activeContext.link, ...activeContext.additionalLinks] : []).map(
+      (link) => link.thirdPartyUsername
+    );
     const response = {
       deletedOrChangedUsernames: [],
       logins: [],
@@ -85,8 +80,7 @@ router.get(
   '/accountDetails',
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     const { operations } = getProviders(req);
-    const activeContext = (req.individualContext ||
-      req.apiContext) as IndividualContext;
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     try {
       const gh = activeContext.getGitHubIdentity();
       if (gh?.id) {

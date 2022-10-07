@@ -116,14 +116,8 @@ export default function initializeCampaigns(app) {
         }
         data.uri = uri;
         data.path = req.path;
-        insights.trackEvent({
-          name: 'ReposCampaignGitHubRedirect',
-          properties: data,
-        });
-        insights.trackMetric({
-          name: 'ReposCampaignGitHubRedirects',
-          value: 1,
-        });
+        insights.trackEvent({ name: 'ReposCampaignGitHubRedirect', properties: data });
+        insights.trackMetric({ name: 'ReposCampaignGitHubRedirects', value: 1 });
       }
       return; // response already sent
     }

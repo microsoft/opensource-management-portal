@@ -15,9 +15,7 @@ export default function middlewareTeamAdminRequired(req, res, next) {
     return next();
   }
 
-  const err: IReposError = new Error(
-    'You do not have permission to administer this team'
-  );
+  const err: IReposError = new Error('You do not have permission to administer this team');
   err.status = 403;
   return next(err);
 }

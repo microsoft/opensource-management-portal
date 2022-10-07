@@ -21,8 +21,7 @@ interface IPersonalAccessTokenForDisplay {
   tokenEntity: PersonalAccessToken;
 }
 
-export interface IRequestForSettingsPersonalAccessTokens
-  extends ReposAppRequest {
+export interface IRequestForSettingsPersonalAccessTokens extends ReposAppRequest {
   personalAccessTokens?: IPersonalAccessTokenForDisplay[];
 }
 
@@ -87,11 +86,7 @@ function createToken(req: ReposAppRequest, res, next) {
   const insights = req.insights;
   const description = req.body.description;
   if (!description) {
-    return next(
-      new Error(
-        'A description is required to create a new Personal Access Token'
-      )
-    );
+    return next(new Error('A description is required to create a new Personal Access Token'));
   }
   const corporateId = req.individualContext.corporateIdentity.id;
   const token = PersonalAccessToken.CreateNewToken();
@@ -141,23 +136,21 @@ router.post('/extension', createToken);
 
 router.post(
   '/delete',
-  asyncHandler(
-    async (req: IRequestForSettingsPersonalAccessTokens, res, next) => {
-      const providers = getProviders(req);
-      const tokenProvider = providers.tokenProvider;
-      const revokeAll = req.body.revokeAll === '1';
-      const revokeIdentifier = req.body.revoke;
-      const personalAccessTokens = req.personalAccessTokens;
-      for (const pat of personalAccessTokens) {
-        const token = pat.tokenEntity;
-        if (revokeAll || pat.identifier === revokeIdentifier) {
-          token.active = false;
-          await tokenProvider.updateToken(token);
-        }
+  asyncHandler(async (req: IRequestForSettingsPersonalAccessTokens, res, next) => {
+    const providers = getProviders(req);
+    const tokenProvider = providers.tokenProvider;
+    const revokeAll = req.body.revokeAll === '1';
+    const revokeIdentifier = req.body.revoke;
+    const personalAccessTokens = req.personalAccessTokens;
+    for (const pat of personalAccessTokens) {
+      const token = pat.tokenEntity;
+      if (revokeAll || pat.identifier === revokeIdentifier) {
+        token.active = false;
+        await tokenProvider.updateToken(token);
       }
-      return res.redirect('/settings/security/tokens');
     }
-  )
+    return res.redirect('/settings/security/tokens');
+  })
 );
 
 export default router;

@@ -43,19 +43,12 @@ export interface IEntityMetadataProvider {
   supportsHistory: boolean;
   name: string;
 
-  fixedQueryMetadata(
-    type: EntityMetadataType,
-    query: IEntityMetadataFixedQuery
-  ): Promise<IEntityMetadata[]>;
+  fixedQueryMetadata(type: EntityMetadataType, query: IEntityMetadataFixedQuery): Promise<IEntityMetadata[]>;
 
   supportsPointQueryForType(type: EntityMetadataType): boolean;
 
-  getSerializationHelper(
-    type: EntityMetadataType
-  ): IEntityMetadataSerializationHelper;
-  getDeserializationHelper(
-    type: EntityMetadataType
-  ): IEntityMetadataDeserializationHelper;
+  getSerializationHelper(type: EntityMetadataType): IEntityMetadataSerializationHelper;
+  getDeserializationHelper(type: EntityMetadataType): IEntityMetadataDeserializationHelper;
 }
 
 export interface IObjectWithDefinedKeys {
@@ -73,9 +66,7 @@ export function SerializeObjectToEntityMetadata(
 ): IEntityMetadata {
   const id = obj[idFieldName];
   if (!id) {
-    throw new Error(
-      `No identity for entity object to serialize found in key: ${idFieldName}`
-    );
+    throw new Error(`No identity for entity object to serialize found in key: ${idFieldName}`);
   }
   const em: IEntityMetadata = {
     entityType: type,
@@ -84,9 +75,7 @@ export function SerializeObjectToEntityMetadata(
   };
   let allKeys = new Set(Array.from(Object.getOwnPropertyNames(obj)));
   allKeys.delete(idFieldName);
-  const objectKeys = obj.getObjectFieldNames
-    ? obj.getObjectFieldNames()
-    : Object.getOwnPropertyNames(obj);
+  const objectKeys = obj.getObjectFieldNames ? obj.getObjectFieldNames() : Object.getOwnPropertyNames(obj);
   const setKeys = [];
   const missingKeys = [];
   for (let i = 0; i < objectKeys.length; i++) {
@@ -129,9 +118,7 @@ export function SerializeObjectToEntityMetadata(
   }
   em.entityFieldNames.push(...setKeys);
   if (missingKeys.length && throwIfMissingTranslations) {
-    throw new Error(
-      `Missing translation entries for keys: ${missingKeys.join(', ')}`
-    );
+    throw new Error(`Missing translation entries for keys: ${missingKeys.join(', ')}`);
   }
   return em;
 }
@@ -139,10 +126,7 @@ export function SerializeObjectToEntityMetadata(
 export function DeserializeEntityMetadataToObjectSetCollection(
   entity: IEntityMetadata,
   destinationIdFieldName: string,
-  serializationTranslationMap: Map<
-    string,
-    string
-  > /*, allowOverridingIdFieldname: boolean*/
+  serializationTranslationMap: Map<string, string> /*, allowOverridingIdFieldname: boolean*/
 ): any {
   const setCollection = {};
   setCollection[destinationIdFieldName] = entity.entityId;

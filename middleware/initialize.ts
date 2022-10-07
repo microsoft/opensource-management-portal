@@ -17,10 +17,7 @@ import {
 } from '../lib/entityMetadataProvider';
 import { createAndInitializeRepositoryMetadataProviderInstance } from '../entities/repositoryMetadata';
 
-import {
-  createMailAddressProviderInstance,
-  IMailAddressProvider,
-} from '../lib/mailAddressProvider';
+import { createMailAddressProviderInstance, IMailAddressProvider } from '../lib/mailAddressProvider';
 
 import ErrorRoutes from './error-routes';
 
@@ -43,15 +40,10 @@ import RedisHelper from '../lib/caching/redis';
 import { createTokenProvider } from '../entities/token';
 import { createAndInitializeApprovalProviderInstance } from '../entities/teamJoinApproval';
 import { CreateLocalExtensionKeyProvider } from '../entities/localExtensionKey';
-import {
-  CreateGraphProviderInstance,
-  IGraphProvider,
-} from '../lib/graphProvider/';
+import { CreateGraphProviderInstance, IGraphProvider } from '../lib/graphProvider/';
 import initializeCorporateViews from './corporateViews';
 
-import keyVaultResolver, {
-  IKeyVaultSecretResolver,
-} from '../lib/keyVaultResolver';
+import keyVaultResolver, { IKeyVaultSecretResolver } from '../lib/keyVaultResolver';
 
 import { createMailProviderInstance } from '../lib/mailProvider/';
 import { RestLibrary } from '../lib/github';
@@ -82,12 +74,7 @@ import RouteSslify from './sslify';
 
 import MiddlewareIndex from '.';
 import { ICacheHelper } from '../lib/caching';
-import {
-  IApplicationProfile,
-  IProviders,
-  IReposApplication,
-  InnerError,
-} from '../interfaces';
+import { IApplicationProfile, IProviders, IReposApplication, InnerError } from '../interfaces';
 import initializeRepositoryProvider from '../entities/repository';
 
 const DefaultApplicationProfile: IApplicationProfile = {
@@ -99,24 +86,12 @@ const DefaultApplicationProfile: IApplicationProfile = {
   sessions: true,
 };
 
-type CompanyStartupEntrypoint = (
-  config: any,
-  providers: IProviders,
-  rootdir: string
-) => Promise<void>;
+type CompanyStartupEntrypoint = (config: any, providers: IProviders, rootdir: string) => Promise<void>;
 
-async function initializeAsync(
-  app: IReposApplication,
-  express,
-  rootdir: string,
-  config
-): Promise<void> {
+async function initializeAsync(app: IReposApplication, express, rootdir: string, config): Promise<void> {
   const providers = app.get('providers') as IProviders;
   providers.postgresPool = await ConnectPostgresPool(config.data.postgres);
-  providers.linkProvider = await createAndInitializeLinkProviderInstance(
-    providers,
-    config
-  );
+  providers.linkProvider = await createAndInitializeLinkProviderInstance(providers, config);
   if (config.github.cache.provider === 'cosmosdb') {
     const cosmosCache = new CosmosCache(config.github.cache.cosmosdb);
     await cosmosCache.initialize();
@@ -127,10 +102,7 @@ async function initializeAsync(
     providers.cacheProvider = blobCache;
   } else if (config.github.cache.provider === 'redis') {
     const redisClient = await connectRedis(config, config.redis, 'cache');
-    const redisHelper = new RedisHelper({
-      redisClient,
-      prefix: config.redis.prefix,
-    });
+    const redisHelper = new RedisHelper({ redisClient, prefix: config.redis.prefix });
     // providers.redisClient = redisClient;
     providers.cacheProvider = redisHelper;
   } else {
@@ -140,18 +112,13 @@ async function initializeAsync(
   providers.graphProvider = await createGraphProvider(providers, config);
   app.set('graphProvider', providers.graphProvider);
 
-  providers.mailAddressProvider = await createMailAddressProvider(
-    config,
-    providers
-  );
+  providers.mailAddressProvider = await createMailAddressProvider(config, providers);
   app.set('mailAddressProvider', providers.mailAddressProvider);
 
   const mailProvider = createMailProviderInstance(config);
   if (mailProvider) {
     const mailInitializedMessage = await mailProvider.initialize();
-    debug(
-      `mail provider type=${config.mail.provider} ${mailInitializedMessage}`
-    );
+    debug(`mail provider type=${config.mail.provider} ${mailInitializedMessage}`);
     providers.mailProvider = mailProvider;
   } else {
     debug(`mail provider *NOT* initialized, type=${config.mail.provider}`);
@@ -176,31 +143,20 @@ async function initializeAsync(
     },
   };
   let tableProviderEnabled =
-    emOptions.tableOptions &&
-    emOptions.tableOptions.account &&
-    emOptions.tableOptions.key;
-  let postgresProviderEnabled =
-    emOptions.postgresOptions && emOptions.postgresOptions.pool;
+    emOptions.tableOptions && emOptions.tableOptions.account && emOptions.tableOptions.key;
+  let postgresProviderEnabled = emOptions.postgresOptions && emOptions.postgresOptions.pool;
   const tableEntityMetadataProvider = tableProviderEnabled
-    ? await createAndInitializeEntityMetadataProviderInstance(
-        emOptions,
-        'table'
-      )
+    ? await createAndInitializeEntityMetadataProviderInstance(emOptions, 'table')
     : null;
   const pgEntityMetadataProvider = postgresProviderEnabled
-    ? await createAndInitializeEntityMetadataProviderInstance(
-        emOptions,
-        'postgres'
-      )
+    ? await createAndInitializeEntityMetadataProviderInstance(emOptions, 'postgres')
     : null;
   const memoryEntityMetadataProvider = await createAndInitializeEntityMetadataProviderInstance(
     emOptions,
     'memory'
   );
   const defaultProvider =
-    pgEntityMetadataProvider ||
-    tableEntityMetadataProvider ||
-    memoryEntityMetadataProvider;
+    pgEntityMetadataProvider || tableEntityMetadataProvider || memoryEntityMetadataProvider;
   function providerNameToInstance(value: string): IEntityMetadataProvider {
     switch (value) {
       case 'firstconfigured':
@@ -217,86 +173,44 @@ async function initializeAsync(
   }
   providers['_temp:nameToInstance'] = providerNameToInstance;
   providers.defaultEntityMetadataProvider = defaultProvider;
-  providers.approvalProvider = await createAndInitializeApprovalProviderInstance(
-    {
-      entityMetadataProvider: providerNameToInstance(
-        config.entityProviders.teamjoin
-      ),
-    }
-  );
+  providers.approvalProvider = await createAndInitializeApprovalProviderInstance({
+    entityMetadataProvider: providerNameToInstance(config.entityProviders.teamjoin),
+  });
   providers.tokenProvider = await createTokenProvider({
-    entityMetadataProvider: providerNameToInstance(
-      config.entityProviders.tokens
-    ),
+    entityMetadataProvider: providerNameToInstance(config.entityProviders.tokens),
   });
   providers.localExtensionKeyProvider = await CreateLocalExtensionKeyProvider({
-    entityMetadataProvider: providerNameToInstance(
-      config.entityProviders.localextensionkey
-    ),
+    entityMetadataProvider: providerNameToInstance(config.entityProviders.localextensionkey),
   });
-  providers.organizationMemberCacheProvider = await CreateOrganizationMemberCacheProviderInstance(
-    {
-      entityMetadataProvider: providerNameToInstance(
-        config.entityProviders.organizationmembercache
-      ),
-    }
-  );
-  providers.organizationSettingsProvider = await createAndInitializeOrganizationSettingProviderInstance(
-    {
-      entityMetadataProvider: providerNameToInstance(
-        config.entityProviders.organizationsettings
-      ),
-    }
-  );
-  providers.repositoryCacheProvider = await CreateRepositoryCacheProviderInstance(
-    {
-      entityMetadataProvider: providerNameToInstance(
-        config.entityProviders.repositorycache
-      ),
-    }
-  );
-  providers.repositoryCollaboratorCacheProvider = await CreateRepositoryCollaboratorCacheProviderInstance(
-    {
-      entityMetadataProvider: providerNameToInstance(
-        config.entityProviders.repositorycollaboratorcache
-      ),
-    }
-  );
-  providers.repositoryTeamCacheProvider = await CreateRepositoryTeamCacheProviderInstance(
-    {
-      entityMetadataProvider: providerNameToInstance(
-        config.entityProviders.repositoryteamcache
-      ),
-    }
-  );
+  providers.organizationMemberCacheProvider = await CreateOrganizationMemberCacheProviderInstance({
+    entityMetadataProvider: providerNameToInstance(config.entityProviders.organizationmembercache),
+  });
+  providers.organizationSettingsProvider = await createAndInitializeOrganizationSettingProviderInstance({
+    entityMetadataProvider: providerNameToInstance(config.entityProviders.organizationsettings),
+  });
+  providers.repositoryCacheProvider = await CreateRepositoryCacheProviderInstance({
+    entityMetadataProvider: providerNameToInstance(config.entityProviders.repositorycache),
+  });
+  providers.repositoryCollaboratorCacheProvider = await CreateRepositoryCollaboratorCacheProviderInstance({
+    entityMetadataProvider: providerNameToInstance(config.entityProviders.repositorycollaboratorcache),
+  });
+  providers.repositoryTeamCacheProvider = await CreateRepositoryTeamCacheProviderInstance({
+    entityMetadataProvider: providerNameToInstance(config.entityProviders.repositoryteamcache),
+  });
   providers.teamCacheProvider = await CreateTeamCacheProviderInstance({
-    entityMetadataProvider: providerNameToInstance(
-      config.entityProviders.teamcache
-    ),
+    entityMetadataProvider: providerNameToInstance(config.entityProviders.teamcache),
   });
-  providers.teamMemberCacheProvider = await CreateTeamMemberCacheProviderInstance(
-    {
-      entityMetadataProvider: providerNameToInstance(
-        config.entityProviders.teammembercache
-      ),
-    }
-  );
-  providers.auditLogRecordProvider = await createAndInitializeAuditLogRecordProviderInstance(
-    {
-      entityMetadataProvider: providerNameToInstance(
-        config.entityProviders.auditlogrecord
-      ),
-    }
-  );
+  providers.teamMemberCacheProvider = await CreateTeamMemberCacheProviderInstance({
+    entityMetadataProvider: providerNameToInstance(config.entityProviders.teammembercache),
+  });
+  providers.auditLogRecordProvider = await createAndInitializeAuditLogRecordProviderInstance({
+    entityMetadataProvider: providerNameToInstance(config.entityProviders.auditlogrecord),
+  });
   providers.userSettingsProvider = new UserSettingsProvider({
-    entityMetadataProvider: providerNameToInstance(
-      config.entityProviders.usersettings
-    ),
+    entityMetadataProvider: providerNameToInstance(config.entityProviders.usersettings),
   });
   providers.repositoryProvider = await initializeRepositoryProvider({
-    entityMetadataProvider: providerNameToInstance(
-      config.entityProviders.repository
-    ),
+    entityMetadataProvider: providerNameToInstance(config.entityProviders.repository),
   });
   await providers.userSettingsProvider.initialize();
   providers.queryCache = new QueryCache(providers);
@@ -308,9 +222,7 @@ async function initializeAsync(
       collection: config.campaigns.cosmosdb.collection,
     });
     await campaignCosmosStore.initialize();
-    providers.campaignStateProvider = new StatefulCampaignProvider(
-      campaignCosmosStore
-    );
+    providers.campaignStateProvider = new StatefulCampaignProvider(campaignCosmosStore);
   }
   if (config.session.provider === 'cosmosdb') {
     const cosmosStore = new CosmosSessionStore({
@@ -323,11 +235,7 @@ async function initializeAsync(
     await cosmosStore.initialize();
     providers.session = cosmosStore;
   } else if (config.session.provider === 'redis') {
-    const redisSessionClient = await connectRedis(
-      config,
-      config.session.redis,
-      'session'
-    );
+    const redisSessionClient = await connectRedis(config, config.session.redis, 'session');
     providers.sessionRedisClient = redisSessionClient;
   }
   if (config?.diagnostics?.blob?.key) {
@@ -365,18 +273,10 @@ async function initializeAsync(
   }
 
   try {
-    const repositoryMetadataProvider = await createAndInitializeRepositoryMetadataProviderInstance(
-      {
-        entityMetadataProvider: providerNameToInstance(
-          config.entityProviders.repositorymetadata
-        ),
-      }
-    );
-    const operations = new Operations({
-      providers,
-      repositoryMetadataProvider,
-      github: providers.github,
+    const repositoryMetadataProvider = await createAndInitializeRepositoryMetadataProviderInstance({
+      entityMetadataProvider: providerNameToInstance(config.entityProviders.repositorymetadata),
     });
+    const operations = new Operations({ providers, repositoryMetadataProvider, github: providers.github });
     await operations.initialize();
     app.set('operations', operations);
     providers.operations = operations;
@@ -391,10 +291,7 @@ async function initializeAsync(
   }
 }
 
-function configureGitHubLibrary(
-  cacheProvider: ICacheHelper,
-  config
-): RestLibrary {
+function configureGitHubLibrary(cacheProvider: ICacheHelper, config): RestLibrary {
   if (
     config &&
     config.github &&
@@ -435,11 +332,7 @@ export default async function initialize(
     applicationProfile.webServer = false;
   }
   const containerPurpose =
-    config && config.isJobInternal
-      ? 'job'
-      : applicationProfile.webServer
-      ? 'web application'
-      : 'application';
+    config && config.isJobInternal ? 'job' : applicationProfile.webServer ? 'web application' : 'application';
   debug(`${containerPurpose} name: ${applicationProfile.applicationName}`);
   debug(`environment: ${config?.debug?.environmentName || 'Unknown'}`);
 
@@ -578,10 +471,7 @@ export default async function initialize(
         },
       });
       try {
-        appInsightsClient.flush({
-          isAppCrashing: true,
-          callback: crash(exception),
-        });
+        appInsightsClient.flush({ isAppCrashing: true, callback: crash(exception) });
       } catch (sendError) {
         console.dir(sendError);
         crash(exception)();
@@ -594,41 +484,26 @@ export default async function initialize(
   return app;
 }
 
-function createGraphProvider(
-  providers: IProviders,
-  config: any
-): Promise<IGraphProvider> {
+function createGraphProvider(providers: IProviders, config: any): Promise<IGraphProvider> {
   return new Promise((resolve, reject) => {
     // The graph provider is optional. A graph provider can connect to a
     // corporate directory to validate or lookup employees and other
     // directory members at runtime to gather additional information.
-    CreateGraphProviderInstance(
-      providers,
-      config,
-      (providerInitError: Error, provider: IGraphProvider) => {
-        if (providerInitError) {
-          debug(
-            `No org chart graph provider configured: ${providerInitError.message}`
-          );
-          if (config.graph?.require === true) {
-            return reject(
-              new Error(
-                `Unable to initialize the graph provider: ${providerInitError.message}`
-              )
-            );
-          }
-        } else {
-          return resolve(provider);
+    CreateGraphProviderInstance(providers, config, (providerInitError: Error, provider: IGraphProvider) => {
+      if (providerInitError) {
+        debug(`No org chart graph provider configured: ${providerInitError.message}`);
+        if (config.graph?.require === true) {
+          return reject(new Error(`Unable to initialize the graph provider: ${providerInitError.message}`));
         }
-        return resolve(null);
+      } else {
+        return resolve(provider);
       }
-    );
+      return resolve(null);
+    });
   });
 }
 
-export function ConnectPostgresPool(
-  postgresConfigSection: any
-): Promise<PostgresPool> {
+export function ConnectPostgresPool(postgresConfigSection: any): Promise<PostgresPool> {
   return new Promise((resolve, reject) => {
     try {
       if (postgresConfigSection && postgresConfigSection.user) {
@@ -656,9 +531,7 @@ export function ConnectPostgresPool(
         // try connecting
         pool.connect((err, client, release) => {
           if (err) {
-            const poolError: InnerError = new Error(
-              `There was a problem connecting to the Postgres server`
-            );
+            const poolError: InnerError = new Error(`There was a problem connecting to the Postgres server`);
             poolError.inner = err;
             return reject(poolError);
           }
@@ -686,13 +559,8 @@ export function ConnectPostgresPool(
   });
 }
 
-function connectRedis(
-  config: any,
-  redisConfig: any,
-  purpose: string
-): Promise<redis.RedisClient> {
-  const nodeEnvironment =
-    config && config.node ? config.node.environment : null;
+function connectRedis(config: any, redisConfig: any, purpose: string): Promise<redis.RedisClient> {
+  const nodeEnvironment = config && config.node ? config.node.environment : null;
   let redisClient: redis.RedisClient = null;
   const redisOptions: RedisOptions = {
     detect_buffers: true,
@@ -707,23 +575,15 @@ function connectRedis(
   }
   if (!redisConfig.host && !redisConfig.tls) {
     if (nodeEnvironment === 'production') {
-      console.warn(
-        `${purpose}: Redis host or TLS host must be provided in production environments`
-      );
+      console.warn(`${purpose}: Redis host or TLS host must be provided in production environments`);
       throw new Error(`No ${purpose}.redis.host or ${purpose}.redis.tls`);
     }
     debug(`mocking Redis, in-memory provider in use`);
     redisClient = redisMock.createClient();
   } else {
-    debug(
-      `connecting to ${purpose} Redis ${redisConfig.host || redisConfig.tls}`
-    );
+    debug(`connecting to ${purpose} Redis ${redisConfig.host || redisConfig.tls}`);
     const port = redisConfig.port || (redisConfig.tls ? 6380 : 6379);
-    redisClient = redis.createClient(
-      port,
-      redisConfig.host || redisConfig.tls,
-      redisOptions
-    );
+    redisClient = redis.createClient(port, redisConfig.host || redisConfig.tls, redisOptions);
   }
   let isFirst = true;
   return new Promise((resolve, reject) => {
@@ -743,10 +603,7 @@ function connectRedis(
   });
 }
 
-async function createMailAddressProvider(
-  config: any,
-  providers: IProviders
-): Promise<IMailAddressProvider> {
+async function createMailAddressProvider(config: any, providers: IProviders): Promise<IMailAddressProvider> {
   const options = {
     config: config,
     providers: providers,
@@ -754,19 +611,12 @@ async function createMailAddressProvider(
   return createMailAddressProviderInstance(options);
 }
 
-async function dynamicStartup(
-  config: any,
-  providers: IProviders,
-  rootdir: string
-) {
+async function dynamicStartup(config: any, providers: IProviders, rootdir: string) {
   const p = config?.startup?.path;
   if (p) {
     try {
       const dynamicInclude = require(path.join(rootdir, p));
-      const entrypoint =
-        dynamicInclude && dynamicInclude.default
-          ? dynamicInclude.default
-          : dynamicInclude;
+      const entrypoint = dynamicInclude && dynamicInclude.default ? dynamicInclude.default : dynamicInclude;
       if (typeof entrypoint !== 'function') {
         throw new Error(`Entrypoint ${p} is not a function`);
       }
@@ -779,9 +629,7 @@ async function dynamicStartup(
       await promise;
       debug(`company-specific startup complete (${p})`);
     } catch (dynamicLoadError) {
-      throw new Error(
-        `config.startup.path=${p} could not successfully load: ${dynamicLoadError}`
-      );
+      throw new Error(`config.startup.path=${p} could not successfully load: ${dynamicLoadError}`);
     }
   }
 }

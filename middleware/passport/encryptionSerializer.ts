@@ -3,11 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import {
-  decryptEntityAsync,
-  encryptEntityAsync,
-  IEncryptionOptions,
-} from '../../lib/encryption';
+import { decryptEntityAsync, encryptEntityAsync, IEncryptionOptions } from '../../lib/encryption';
 import { wrapError } from '../../utils';
 import { LegacySerializer } from './serializer';
 
@@ -52,15 +48,11 @@ function serializeEntity(options, entityName, entity, callback) {
     return callback(richObjectError);
   }
   if (rowKey === undefined) {
-    return callback(
-      new Error('The unique identifier for the user entity was not available.')
-    );
+    return callback(new Error('The unique identifier for the user entity was not available.'));
   }
   const keyResolver = options.keyResolver;
   if (keyResolver === undefined) {
-    return callback(
-      new Error('A key resolver must be supplied to use encryption.')
-    );
+    return callback(new Error('A key resolver must be supplied to use encryption.'));
   }
   const encryptionOptions: IEncryptionOptions = {
     keyEncryptionKeyId: config.session.encryptionKeyId,
@@ -74,10 +66,7 @@ function serializeEntity(options, entityName, entity, callback) {
     })
     .catch((encryptError) => {
       return callback(
-        wrapError(
-          encryptError,
-          'There was a problem with the security subsystem starting your session.'
-        )
+        wrapError(encryptError, 'There was a problem with the security subsystem starting your session.')
       );
     });
 }
@@ -90,15 +79,11 @@ function deserializeEntity(options, entityName, entity, callback) {
   }
   const rowKey = entity[idPropertyName];
   if (rowKey === undefined) {
-    return callback(
-      new Error('The unique identifier for the user entity was not available.')
-    );
+    return callback(new Error('The unique identifier for the user entity was not available.'));
   }
   const keyResolver = options.keyResolver;
   if (keyResolver === undefined) {
-    return callback(
-      new Error('A key resolver must be supplied to encrypt/decrypt.')
-    );
+    return callback(new Error('A key resolver must be supplied to encrypt/decrypt.'));
   }
   const encryptionOptions: IEncryptionOptions = {
     keyResolver: keyResolver,
@@ -129,15 +114,10 @@ export default class EncryptionSerializer implements LegacySerializer {
           if (entityPresent !== undefined) {
             const entityOriginalValue = entityPresent;
             delete user[entityName];
-            return serializeEntity(
-              this.options,
-              entityName,
-              entityOriginalValue,
-              (error, value) => {
-                user[entityName] = value;
-                return error ? reject(error) : resolve(undefined);
-              }
-            );
+            return serializeEntity(this.options, entityName, entityOriginalValue, (error, value) => {
+              user[entityName] = value;
+              return error ? reject(error) : resolve(undefined);
+            });
           } else {
             return resolve(undefined);
           }
@@ -159,15 +139,10 @@ export default class EncryptionSerializer implements LegacySerializer {
         return new Promise((resolve, reject) => {
           if (userEncryptedEntities[entityName] !== undefined) {
             let entityValue = user[entityName];
-            return deserializeEntity(
-              this.options,
-              entityName,
-              entityValue,
-              (error, result) => {
-                u[entityName] = result;
-                return error ? reject(error) : resolve(undefined);
-              }
-            );
+            return deserializeEntity(this.options, entityName, entityValue, (error, result) => {
+              u[entityName] = result;
+              return error ? reject(error) : resolve(undefined);
+            });
           } else {
             return resolve(undefined);
           }

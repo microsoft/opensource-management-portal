@@ -9,10 +9,7 @@ import { Repository } from '../../../../business';
 import { jsonError } from '../../../../middleware';
 import { setContextualRepository } from '../../../../middleware/github/repoPermissions';
 
-import {
-  OrganizationMembershipState,
-  ReposAppRequest,
-} from '../../../../interfaces';
+import { OrganizationMembershipState, ReposAppRequest } from '../../../../interfaces';
 import { IndividualContext } from '../../../../user';
 import { createRepositoryFromClient } from '../../newOrgRepo';
 
@@ -22,36 +19,21 @@ const router: Router = Router();
 
 async function validateActiveMembership(req: ReposAppRequest, res, next) {
   const { organization } = req;
-  const activeContext = (req.individualContext ||
-    req.apiContext) as IndividualContext;
+  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   if (!activeContext.link) {
     return next(
-      jsonError(
-        'You must be linked and a member of the organization to create and manage repos',
-        400
-      )
+      jsonError('You must be linked and a member of the organization to create and manage repos', 400)
     );
   }
-  const membership = await organization.getOperationalMembership(
-    activeContext.getGitHubIdentity().username
-  );
+  const membership = await organization.getOperationalMembership(activeContext.getGitHubIdentity().username);
   if (!membership || membership.state !== OrganizationMembershipState.Active) {
-    return next(
-      jsonError(
-        'You must be a member of the organization to create and manage repos',
-        400
-      )
-    );
+    return next(jsonError('You must be a member of the organization to create and manage repos', 400));
   }
   req['knownRequesterMailAddress'] = activeContext.link.corporateMailAddress;
   return next();
 }
 
-router.post(
-  '/',
-  asyncHandler(validateActiveMembership),
-  asyncHandler(createRepositoryFromClient)
-);
+router.post('/', asyncHandler(validateActiveMembership), asyncHandler(createRepositoryFromClient));
 
 router.use(
   '/:repoName',

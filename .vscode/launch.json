@@ -21,16 +21,12 @@
       "request": "launch",
       "name": "Jest Tests",
       "program": "${workspaceRoot}/node_modules/jest/bin/jest.js",
-      "args": [
-        "-i"
-      ],
+      "args": ["-i"],
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
       "internalConsoleOptions": "openOnSessionStart",
       "console": "externalTerminal",
-      "outFiles": [
-        "${workspaceRoot}/dist/**/*"
-      ]
+      "outFiles": ["${workspaceRoot}/dist/**/*"]
     },
     {
       "type": "node",
@@ -202,9 +198,7 @@
       "request": "launch",
       "name": "Job: Consistency: All (6)",
       "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
-      "args": [
-        "all"
-      ],
+      "args": ["all"],
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
@@ -234,9 +228,7 @@
       "request": "launch",
       "name": "Job: Consistency: Teams (8)",
       "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
-      "args": [
-        "teams"
-      ],
+      "args": ["teams"],
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
@@ -251,9 +243,7 @@
       "request": "launch",
       "name": "Job: Consistency: Org members (9)",
       "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
-      "args": [
-        "organizations"
-      ],
+      "args": ["organizations"],
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
@@ -268,9 +258,7 @@
       "request": "launch",
       "name": "Job: Consistency: Repo collaborators (10)",
       "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
-      "args": [
-        "collaborators"
-      ],
+      "args": ["collaborators"],
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
@@ -285,9 +273,7 @@
       "request": "launch",
       "name": "Job: Consistency: Team permissions (11)",
       "program": "${workspaceRoot}/dist/jobs/refreshQueryCache/index.js",
-      "args": [
-        "permissions"
-      ],
+      "args": ["permissions"],
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
@@ -362,9 +348,7 @@
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
       "console": "integratedTerminal",
-      "args": [
-        "c:/Users/jwilcox/Downloads/export-microsoft-1572565889.csv"
-      ],
+      "args": ["c:/Users/jwilcox/Downloads/export-microsoft-1572565889.csv"],
       "cwd": "${workspaceRoot}/dist",
       "env": {
         "NODE_ENV": "development",
@@ -395,9 +379,7 @@
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,
       "console": "integratedTerminal",
-      "runtimeArgs": [
-        "--max-old-space-size=4096"
-      ],
+      "runtimeArgs": ["--max-old-space-size=4096"],
       "env": {
         "NODE_ENV": "localhost",
         "DEBUG": "redis-off,restapi-off,startup,appinsights"

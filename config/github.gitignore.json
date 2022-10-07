@@ -1,6 +1,6 @@
 {
   "default": "env://GITIGNORE_TEMPLATE_DEFAULT?default=VisualStudio",
-  "languages":[
+  "languages": [
     "Actionscript",
     "Ada",
     "Agda",

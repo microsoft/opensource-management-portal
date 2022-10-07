@@ -8,11 +8,7 @@ import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
 import { Team, TeamMember } from '../../../business';
-import {
-  ReposAppRequest,
-  RequestTeamMemberAddType,
-  UserAlertType,
-} from '../../../interfaces';
+import { ReposAppRequest, RequestTeamMemberAddType, UserAlertType } from '../../../interfaces';
 import { getProviders, validateGitHubLogin } from '../../../transitional';
 
 import RoutePeopleSearch from '../../peopleSearch';
@@ -162,9 +158,7 @@ router.post(
     for (let i = 0; i < refreshedMembers.length; i++) {
       const member = refreshedMembers[i];
       if (member.login.toLowerCase() === lc) {
-        return next(
-          new Error(`The user ${username} is already a member of the team.`)
-        );
+        return next(new Error(`The user ${username} is already a member of the team.`));
       }
     }
     await team2.addMembership(username);

@@ -17,20 +17,15 @@ export interface IMailAddressProvider {
   getAddressFromUpn(upn: string): Promise<string>;
 }
 
-export function createMailAddressProviderInstance(
-  options: any
-): IMailAddressProvider {
+export function createMailAddressProviderInstance(options: any): IMailAddressProvider {
   const config = options.config;
   const mailAddressesConfig = config.mailAddresses || {};
-  const provider =
-    mailAddressesConfig.provider || 'passthroughMailAddressProvider';
+  const provider = mailAddressesConfig.provider || 'passthroughMailAddressProvider';
   if (!provider) {
     return null;
   }
   let found = false;
-  const supportedProviders = Object.getOwnPropertyNames(
-    supportedProvidersMapping
-  );
+  const supportedProviders = Object.getOwnPropertyNames(supportedProvidersMapping);
   for (const supportedProvider of supportedProviders) {
     if (supportedProvider === provider) {
       const createFunction = supportedProvidersMapping[supportedProvider];
@@ -45,8 +40,6 @@ export function createMailAddressProviderInstance(
     }
   }
   if (found === false) {
-    throw new Error(
-      `The mail address provider "${provider}" is not implemented or configured at this time.`
-    );
+    throw new Error(`The mail address provider "${provider}" is not implemented or configured at this time.`);
   }
 }

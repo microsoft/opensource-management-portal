@@ -5,11 +5,7 @@
 
 import { ErrorHelper, getProviders } from '../../transitional';
 import { Repository } from '../../business/repository';
-import {
-  GitHubIdentitySource,
-  IIndividualContextOptions,
-  IndividualContext,
-} from '../../user';
+import { GitHubIdentitySource, IIndividualContextOptions, IndividualContext } from '../../user';
 import getCompanySpecificDeployment from '../companySpecificDeployment';
 import {
   ReposAppRequest,
@@ -37,10 +33,7 @@ export function getContextualRepositoryPermissions(req: ReposAppRequest) {
   return req[repoPermissionsCacheKeyName] as IContextualRepositoryPermissions;
 }
 
-export function setContextualRepository(
-  req: ReposAppRequest,
-  repository: Repository
-) {
+export function setContextualRepository(req: ReposAppRequest, repository: Repository) {
   req[requestScopedRepositoryKeyName] = repository;
 }
 
@@ -53,17 +46,11 @@ export async function getComputedRepositoryPermissionsByUsername(
   repository: Repository,
   githubLogin: string
 ) {
-  const context = await createTemporaryContextByUsername(
-    providers,
-    githubLogin
-  );
+  const context = await createTemporaryContextByUsername(providers, githubLogin);
   return await getComputedRepositoryPermissions(providers, context, repository);
 }
 
-async function createTemporaryContextByUsername(
-  providers: IProviders,
-  githubLogin: string
-) {
+async function createTemporaryContextByUsername(providers: IProviders, githubLogin: string) {
   const { operations } = providers;
   let link: ICorporateLink = null;
   try {
@@ -136,13 +123,9 @@ export async function getComputedRepositoryPermissions(
     if (collaborator) {
       if (collaborator.permission === GitHubCollaboratorPermissionLevel.Admin) {
         repoPermissions.admin = repoPermissions.read = repoPermissions.write = true;
-      } else if (
-        collaborator.permission === GitHubCollaboratorPermissionLevel.Write
-      ) {
+      } else if (collaborator.permission === GitHubCollaboratorPermissionLevel.Write) {
         repoPermissions.read = repoPermissions.write = true;
-      } else if (
-        collaborator.permission === GitHubCollaboratorPermissionLevel.Read
-      ) {
+      } else if (collaborator.permission === GitHubCollaboratorPermissionLevel.Read) {
         repoPermissions.read = true;
       }
     }
@@ -162,23 +145,14 @@ export async function getComputedRepositoryPermissions(
   return repoPermissions;
 }
 
-export async function AddRepositoryPermissionsToRequest(
-  req: ReposAppRequest,
-  res,
-  next
-) {
+export async function AddRepositoryPermissionsToRequest(req: ReposAppRequest, res, next) {
   if (req[repoPermissionsCacheKeyName]) {
     return next();
   }
-  const activeContext = (req.individualContext ||
-    req.apiContext) as IndividualContext;
+  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const repository = req[requestScopedRepositoryKeyName] as Repository;
   const providers = getProviders(req);
-  const permissions = await getComputedRepositoryPermissions(
-    providers,
-    activeContext,
-    repository
-  );
+  const permissions = await getComputedRepositoryPermissions(providers, activeContext, repository);
   req[repoPermissionsCacheKeyName] = permissions;
   return next();
 }

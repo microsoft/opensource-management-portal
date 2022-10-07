@@ -25,12 +25,7 @@ router.get(
 );
 
 router.use('*', (req, res, next) => {
-  return next(
-    jsonError(
-      'no API or function available in administration - organization',
-      404
-    )
-  );
+  return next(jsonError('no API or function available in administration - organization', 404));
 });
 
 export default router;

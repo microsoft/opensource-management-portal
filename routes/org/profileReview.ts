@@ -32,19 +32,13 @@ router.get(
     const userProfileWarnings: IUserProfileWarnings = {};
     if (
       !detailed.company ||
-      (detailed.company &&
-        detailed.company
-          .toLowerCase()
-          .indexOf(config.brand.companyName.toLowerCase()) < 0)
+      (detailed.company && detailed.company.toLowerCase().indexOf(config.brand.companyName.toLowerCase()) < 0)
     ) {
       userProfileWarnings.company = 'color:red';
     }
     if (
       !detailed.email ||
-      (detailed.email &&
-        detailed.email
-          .toLowerCase()
-          .indexOf(config.brand.companyName.toLowerCase()) < 0)
+      (detailed.email && detailed.email.toLowerCase().indexOf(config.brand.companyName.toLowerCase()) < 0)
     ) {
       userProfileWarnings.email = 'color:red';
     }

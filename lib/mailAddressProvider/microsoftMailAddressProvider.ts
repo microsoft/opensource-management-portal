@@ -6,9 +6,7 @@
 import { IProviders } from '../../interfaces';
 import { IMailAddressProvider } from '.';
 
-export default function createMailAddressProvider(
-  options
-): IMailAddressProvider {
+export default function createMailAddressProvider(options): IMailAddressProvider {
   const config = options.config;
   if (!config.identity || !config.identity.url || !config.identity.pat) {
     throw new Error('Not configured for the Identity service');

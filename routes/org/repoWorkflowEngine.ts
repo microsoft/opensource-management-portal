@@ -16,10 +16,7 @@ import {
   GitHubRepositoryVisibility,
 } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { Repository } from '../../business';
-import {
-  CreateRepositoryEntrypoint,
-  ICreateRepositoryApiResult,
-} from '../../api/createRepo';
+import { CreateRepositoryEntrypoint, ICreateRepositoryApiResult } from '../../api/createRepo';
 import {
   CoreCapability,
   IAlternateTokenOption,
@@ -89,11 +86,7 @@ export class RepoWorkflowEngine {
   private log: IRepositoryWorkflowOutput[] = [];
   private repository: Repository;
 
-  constructor(
-    private providers: IProviders,
-    organization: Organization,
-    approvalPackage: IApprovalPackage
-  ) {
+  constructor(private providers: IProviders, organization: Organization, approvalPackage: IApprovalPackage) {
     this.request = approvalPackage.repositoryMetadata;
     // this.user = approvalPackage.requestingUser;
     this.id = approvalPackage.id;
@@ -118,10 +111,7 @@ export class RepoWorkflowEngine {
       alternateTokenOptions: null,
       alternateToken: null,
     };
-    if (
-      config?.github?.user?.initialCommit?.username &&
-      config.github.user.initialCommit.token
-    ) {
+    if (config?.github?.user?.initialCommit?.username && config.github.user.initialCommit.token) {
       const login = config.github.user.initialCommit.username;
       const alternateToken = config.github.user.initialCommit.token;
       const alternateTokenOptions = {
@@ -137,9 +127,7 @@ export class RepoWorkflowEngine {
           });
         } catch (error) {
           this.log.push({
-            error: new Error(
-              `Error trying to authorize template committer ${login}: ${error}`
-            ),
+            error: new Error(`Error trying to authorize template committer ${login}: ${error}`),
           });
         }
       }
@@ -157,9 +145,7 @@ export class RepoWorkflowEngine {
         await this.repository.removeCollaborator(login);
         this.log.push({ message: `Temporary committer ${login} removed` });
       } catch (error) {
-        this.log.push({
-          error: new Error(`Error removing committer ${login}: ${error}`),
-        });
+        this.log.push({ error: new Error(`Error removing committer ${login}: ${error}`) });
       }
     }
     this._hasAuthorizedTemplateCommitter = false;
@@ -169,17 +155,11 @@ export class RepoWorkflowEngine {
     if (!options.login) {
       return;
     }
-    const invitation = await this.repository.addCollaborator(
-      options.login,
-      GitHubRepositoryPermission.Push
-    );
+    const invitation = await this.repository.addCollaborator(options.login, GitHubRepositoryPermission.Push);
     let hadError = false;
     if (invitation?.id) {
       try {
-        await this.repository.acceptCollaborationInvite(
-          invitation.id,
-          options.alternateTokenOptions
-        );
+        await this.repository.acceptCollaborationInvite(invitation.id, options.alternateTokenOptions);
       } catch (error) {
         hadError = true;
         this.log.push({
@@ -190,9 +170,7 @@ export class RepoWorkflowEngine {
       }
     }
     if (!hadError) {
-      this.log.push({
-        message: `Temporarily invited ${options.login} to commit to the repository`,
-      });
+      this.log.push({ message: `Temporarily invited ${options.login} to commit to the repository` });
       this._contentCommitter = options;
       this._hasAuthorizedTemplateCommitter = true;
     }
@@ -218,16 +196,8 @@ export class RepoWorkflowEngine {
     );
     const repositoryMetadataProvider = ops.repositoryMetadataProvider;
     const visibility = req.body.repoVisibility;
-    if (
-      !(
-        visibility === 'public' ||
-        visibility === 'private' ||
-        visibility === 'internal'
-      )
-    ) {
-      return next(
-        new Error('Visibility for the repo request must be provided.')
-      );
+    if (!(visibility === 'public' || visibility === 'private' || visibility === 'internal')) {
+      return next(new Error('Visibility for the repo request must be provided.'));
     }
     this.request.repositoryName = req.body.repoName;
     this.request.initialRepositoryVisibility = visibility; // visibility === 'public' ? GitHubRepositoryVisibility.Public : GitHubRepositoryVisibility.Private;
@@ -239,9 +209,7 @@ export class RepoWorkflowEngine {
         return res.redirect(req.teamUrl + 'approvals/' + this.id);
       })
       .catch((error) => {
-        return next(
-          wrapError(error, 'There was a problem updating the request.')
-        );
+        return next(wrapError(error, 'There was a problem updating the request.'));
       });
   }
 
@@ -253,9 +221,7 @@ export class RepoWorkflowEngine {
     return 'repoApprovals/decision';
   }
 
-  async executeNewRepositoryChores(): Promise<
-    IRepositoryWorkflowOutput[] /* output */
-  > {
+  async executeNewRepositoryChores(): Promise<IRepositoryWorkflowOutput[] /* output */> {
     const request = this.request;
     const repositoryName = request.repositoryName;
     this.repository = this.organization.repository(repositoryName);
@@ -278,8 +244,7 @@ export class RepoWorkflowEngine {
     }
     const patchUpdates: any = {};
     if (
-      request.initialRepositoryVisibility ===
-        GitHubRepositoryVisibility.Public &&
+      request.initialRepositoryVisibility === GitHubRepositoryVisibility.Public &&
       this.githubResponse?.github?.private === true
     ) {
       // Time to make it public again. Though this is debatable.
@@ -287,27 +252,19 @@ export class RepoWorkflowEngine {
     }
     if (
       request.initialRepositoryDescription &&
-      this.githubResponse?.github?.description !==
-        request.initialRepositoryDescription
+      this.githubResponse?.github?.description !== request.initialRepositoryDescription
     ) {
       patchUpdates.description = request.initialRepositoryDescription;
-    } else if (
-      this.githubResponse?.github?.description?.includes(
-        setupRepositorySubstring
-      )
-    ) {
+    } else if (this.githubResponse?.github?.description?.includes(setupRepositorySubstring)) {
       patchUpdates.description = '';
     }
     const setupUrlSubstring = this.organization.absoluteBaseUrl;
     if (
       request.initialRepositoryHomepage &&
-      this.githubResponse?.github?.homepage !==
-        request.initialRepositoryHomepage
+      this.githubResponse?.github?.homepage !== request.initialRepositoryHomepage
     ) {
       patchUpdates.homepage = request.initialRepositoryHomepage;
-    } else if (
-      this.githubResponse?.github?.homepage?.includes(setupUrlSubstring)
-    ) {
+    } else if (this.githubResponse?.github?.homepage?.includes(setupUrlSubstring)) {
       patchUpdates.homepage = '';
     }
     if (Object.getOwnPropertyNames(patchUpdates).length > 0) {
@@ -338,13 +295,8 @@ export class RepoWorkflowEngine {
     await this.removeOrganizationCollaboratorTask();
 
     // Add any administrator logins as invited, if present
-    if (
-      request.initialAdministrators &&
-      request.initialAdministrators.length > 0
-    ) {
-      await this.addAdministratorCollaboratorsTask(
-        request.initialAdministrators
-      );
+    if (request.initialAdministrators && request.initialAdministrators.length > 0) {
+      await this.addAdministratorCollaboratorsTask(request.initialAdministrators);
     }
 
     await this.finalizeCommitter();
@@ -357,8 +309,7 @@ export class RepoWorkflowEngine {
     permission: GitHubRepositoryPermission
   ): Promise<void> {
     let attempts = 0;
-    const calculateDelay = (retryCount: number) =>
-      500 * Math.pow(2, retryCount);
+    const calculateDelay = (retryCount: number) => 500 * Math.pow(2, retryCount);
     let error = null;
     const teamIdentity = teamName ? `${teamName} (${id})` : `with the ID ${id}`;
     while (attempts < 3) {
@@ -390,11 +341,7 @@ export class RepoWorkflowEngine {
     for (let i = 0; i < absoluteFileNames.length; i++) {
       const absoluteFileName = absoluteFileNames[i];
       const fileName = path.relative(templateRoot, absoluteFileName);
-      const fileContents = await this.readFileToBase64(
-        templatePath,
-        templateName,
-        fileName
-      );
+      const fileContents = await this.readFileToBase64(templatePath, templateName, fileName);
       contents.push(fileContents);
     }
     return contents;
@@ -414,19 +361,16 @@ export class RepoWorkflowEngine {
     fileName: string
   ): Promise<IFileContents> {
     return new Promise((resolve, reject) => {
-      fs.readFile(
-        path.join(templatePath, templateName, fileName),
-        (error, file) => {
-          if (error) {
-            return reject(error);
-          }
-          const base64content = file.toString('base64');
-          return resolve({
-            path: fileName,
-            content: base64content,
-          });
+      fs.readFile(path.join(templatePath, templateName, fileName), (error, file) => {
+        if (error) {
+          return reject(error);
         }
-      );
+        const base64content = file.toString('base64');
+        return resolve({
+          path: fileName,
+          content: base64content,
+        });
+      });
     });
   }
 
@@ -478,9 +422,7 @@ export class RepoWorkflowEngine {
       if (ErrorHelper.GetStatus(ignoredError) === 400) {
         // GitHub App in use
       } else {
-        console.warn(
-          `removeOrganizationCollaboratorTask ignored error: ${ignoredError}`
-        );
+        console.warn(`removeOrganizationCollaboratorTask ignored error: ${ignoredError}`);
       }
     }
     return result;
@@ -498,12 +440,7 @@ export class RepoWorkflowEngine {
     try {
       const templateRoot = path.join(templatePath, templateName);
       const fileNames = await this.getTemplateFilenames(templateRoot);
-      const fileContents = await this.getFileContents(
-        templateRoot,
-        templatePath,
-        templateName,
-        fileNames
-      );
+      const fileContents = await this.getFileContents(templateRoot, templatePath, templateName, fileNames);
       const uploadedFiles = [];
       if (isFork || isTransfer) {
         const subMessage = isFork ? 'is a fork' : 'was transferred';
@@ -530,43 +467,26 @@ export class RepoWorkflowEngine {
             }
           }
           // }
-          const fileOptions = sha
-            ? { ...alternateTokenOptions, sha }
-            : alternateTokenOptions;
-          const message = sha
-            ? `${item.path} updated to template`
-            : `${item.path} committed`;
-          await this.repository.createFile(
-            item.path,
-            item.content,
-            message,
-            fileOptions
-          );
+          const fileOptions = sha ? { ...alternateTokenOptions, sha } : alternateTokenOptions;
+          const message = sha ? `${item.path} updated to template` : `${item.path} committed`;
+          await this.repository.createFile(item.path, item.content, message, fileOptions);
           uploadedFiles.push(item.path);
         }
       } catch (error) {
-        const notUploaded = fileContents
-          .map((fc) => fc.path)
-          .filter((f) => !uploadedFiles.includes(f));
+        const notUploaded = fileContents.map((fc) => fc.path).filter((f) => !uploadedFiles.includes(f));
         if (uploadedFiles.length) {
           this.log.push({
             error,
-            message: `Initial commit of ${uploadedFiles.join(
-              ', '
-            )} template files to the ${
+            message: `Initial commit of ${uploadedFiles.join(', ')} template files to the ${
               this.repository.name
-            } repo partially succeeded. Not uploaded: ${notUploaded.join(
-              ', '
-            )}. Error: ${error.message}`,
+            } repo partially succeeded. Not uploaded: ${notUploaded.join(', ')}. Error: ${error.message}`,
           });
         } else {
           this.log.push({
             error,
             message: `Initial commit of template file(s) to the ${
               this.repository.name
-            } repo failed. Not uploaded: ${notUploaded.join(', ')}. Error: ${
-              error.message
-            }.`,
+            } repo failed. Not uploaded: ${notUploaded.join(', ')}. Error: ${error.message}.`,
           });
         }
       }
@@ -575,9 +495,7 @@ export class RepoWorkflowEngine {
     }
   }
 
-  async addAdministratorCollaboratorsTask(
-    administratorLogins: string[]
-  ): Promise<void> {
+  async addAdministratorCollaboratorsTask(administratorLogins: string[]): Promise<void> {
     if (!administratorLogins || !administratorLogins.length) {
       return null;
     }
@@ -585,10 +503,7 @@ export class RepoWorkflowEngine {
     const messages = [];
     for (const login of administratorLogins) {
       try {
-        await this.repository.addCollaborator(
-          login,
-          GitHubRepositoryPermission.Admin
-        );
+        await this.repository.addCollaborator(login, GitHubRepositoryPermission.Admin);
         messages.push(`Added collaborator ${login} with admin permission`);
       } catch (error) {
         errors.push(error.message);
@@ -608,9 +523,7 @@ export class RepoWorkflowEngine {
     let error: Error = null;
     let message: string = null;
     try {
-      const description =
-        'Patching original values for ' +
-        Object.getOwnPropertyNames(patch).join(', ');
+      const description = 'Patching original values for ' + Object.getOwnPropertyNames(patch).join(', ');
       await this.repository.update(patch);
       message = description;
     } catch (err) {
@@ -627,18 +540,11 @@ export class RepoWorkflowEngine {
       const sha = readmeFile.sha;
       if (readmeFile.content?.includes(setupRepositoryReadmeSubstring)) {
         message = `Updating ${readmeFile.path}`;
-        const descriptionSection = initialDescription
-          ? `\n\n${initialDescription}`
-          : '';
+        const descriptionSection = initialDescription ? `\n\n${initialDescription}` : '';
         const newReadmeFile = `# ${this.repository.name}${descriptionSection}`;
         const asBuffer = Buffer.from(newReadmeFile, 'utf-8');
         const asBase64 = asBuffer.toString('base64');
-        await this.repository.createFile(
-          readmeFile.path,
-          asBase64,
-          'Initial README',
-          { sha }
-        );
+        await this.repository.createFile(readmeFile.path, asBase64, 'Initial README', { sha });
       }
     } catch (err) {
       if (ErrorHelper.IsNotFound(err)) {
@@ -665,19 +571,11 @@ export class RepoWorkflowEngine {
       if (users && Array.isArray(users)) {
         for (const { username, acceptInvitationToken } of users) {
           try {
-            const invitation = await this.repository.addCollaborator(
-              username,
-              permission
-            );
-            messages.push(
-              `Added collaborator ${username} with ${permission} permission`
-            );
+            const invitation = await this.repository.addCollaborator(username, permission);
+            messages.push(`Added collaborator ${username} with ${permission} permission`);
             if (acceptInvitationToken) {
               const invitationId = invitation.id;
-              await this.repository.acceptCollaborationInvite(
-                invitationId,
-                acceptInvitationToken
-              );
+              await this.repository.acceptCollaborationInvite(invitationId, acceptInvitationToken);
             }
           } catch (error) {
             errors.push(error.message);

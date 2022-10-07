@@ -24,12 +24,7 @@ export function attachGitHubPassportRoutes(
   helpers: IAuthenticationHelperMethods
 ) {
   app.get('/signin/github', function (req: ReposAppRequest, res: Response) {
-    helpers.storeReferrer(
-      req,
-      res,
-      '/auth/github',
-      '/signin/github authentication page requested'
-    );
+    helpers.storeReferrer(req, res, '/auth/github', '/signin/github authentication page requested');
   });
 
   app.get('/auth/github', passport.authorize(gitHubStrategyName));
@@ -49,21 +44,15 @@ export function attachGitHubPassportRoutes(
     }
   );
 
-  app.get(
-    '/signout/github',
-    (req: ReposAppRequest, res: Response, next: NextFunction) => {
-      helpers.signout(
-        false /* not primary authentication */,
-        [
-          githubStrategyUserPropertyName,
-          githubIncreasedScopeStrategyUserPropertyName,
-        ],
-        req,
-        res,
-        next
-      );
-    }
-  );
+  app.get('/signout/github', (req: ReposAppRequest, res: Response, next: NextFunction) => {
+    helpers.signout(
+      false /* not primary authentication */,
+      [githubStrategyUserPropertyName, githubIncreasedScopeStrategyUserPropertyName],
+      req,
+      res,
+      next
+    );
+  });
 
   // ====================
   // expanded scope auth:
@@ -73,11 +62,7 @@ export function attachGitHubPassportRoutes(
   // used in the same way when using modern GitHub Apps. For the time, this code remains,
   // but most users today will not interact with these routes.
 
-  function blockIncreasedScopeForModernApps(
-    req: ReposAppRequest,
-    res: Response,
-    next: NextFunction
-  ) {
+  function blockIncreasedScopeForModernApps(req: ReposAppRequest, res: Response, next: NextFunction) {
     const { modernAppInUse } = getGithubAppConfigurationOptions(config);
     if (modernAppInUse) {
       return next(
@@ -108,16 +93,11 @@ export function attachGitHubPassportRoutes(
     passport.authorize(githubIncreasedScopeStrategyName)
   );
 
-  const githubIncreasedScopeFailureRoute = {
-    failureRedirect: '/auth/github/increased-scope',
-  };
+  const githubIncreasedScopeFailureRoute = { failureRedirect: '/auth/github/increased-scope' };
   app.get(
     '/auth/github/callback/increased-scope',
     blockIncreasedScopeForModernApps,
-    passport.authorize(
-      githubIncreasedScopeStrategyName,
-      githubIncreasedScopeFailureRoute
-    ),
+    passport.authorize(githubIncreasedScopeStrategyName, githubIncreasedScopeFailureRoute),
     (req: ReposAppRequest, res: Response, next: NextFunction) => {
       // used to be: authenticationCallback.bind(null, 'all', 'githubIncreasedScope'));
       return helpers.afterAuthentication(
@@ -146,9 +126,10 @@ export function attachGitHubPassportRoutes(
 
   app.get('/auth/github/join', (req: ReposAppRequest, res) => {
     const { config } = getProviders(req);
-    var authorizeRelativeUrl = req.app.settings[
-      'runtime/passport/github/authorizeUrl'
-    ].replace('https://github.com', '');
+    var authorizeRelativeUrl = req.app.settings['runtime/passport/github/authorizeUrl'].replace(
+      'https://github.com',
+      ''
+    );
     var joinUrl =
       'https://github.com/join?' +
       querystring.stringify({

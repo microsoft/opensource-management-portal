@@ -43,20 +43,16 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
   }
 
   maximimumAllowedMembers(): number {
-    const value = this.#operations.config.github?.teams
-      ?.maximumMembersToAllowUpgrade;
+    const value = this.#operations.config.github?.teams?.maximumMembersToAllowUpgrade;
     return value ? Number(value) : 0;
   }
 
   maximumAllowedMaintainers(): number {
-    const value = this.#operations.config.github?.teams
-      ?.maximumMaintainersToAllowUpgrade;
+    const value = this.#operations.config.github?.teams?.maximumMaintainersToAllowUpgrade;
     return value ? Number(value) : 0;
   }
 
-  async isTeamEligible(
-    cacheOk?: boolean
-  ): Promise<ISelfServiceAllowedResult | string> {
+  async isTeamEligible(cacheOk?: boolean): Promise<ISelfServiceAllowedResult | string> {
     const cacheOptions = cacheOk ? {} : NoCacheNoBackground;
     const team = this.#team;
     const maintainersCount = (await team.getMaintainers(cacheOptions)).length;
@@ -67,10 +63,7 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
     if (membersCount > this.maximimumAllowedMembers()) {
       return `There are currently ${membersCount} members of the team. Self-service upgrade is only available if there are ${this.maximimumAllowedMembers()} or fewer members.`;
     }
-    return {
-      currentMaintainerCount: maintainersCount,
-      currentMemberCount: membersCount,
-    };
+    return { currentMaintainerCount: maintainersCount, currentMemberCount: membersCount };
   }
 
   async isUserTeamMember(login: string): Promise<boolean> {
@@ -79,8 +72,7 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
       NoCacheNoBackground
     )) as ITeamMembershipRoleState;
     return (
-      membership.state === OrganizationMembershipState.Active &&
-      membership.role === GitHubTeamRole.Member
+      membership.state === OrganizationMembershipState.Active && membership.role === GitHubTeamRole.Member
     );
   }
 
@@ -98,17 +90,13 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
       throw new Error('The authenticated user is not properly linked');
     }
     const login = individualContext.getGitHubIdentity().username;
-    const teamEligiblityResult:
-      | ISelfServiceAllowedResult
-      | string = await this.isTeamEligible();
+    const teamEligiblityResult: ISelfServiceAllowedResult | string = await this.isTeamEligible();
     if (typeof teamEligiblityResult === 'string') {
       throw new Error(teamEligiblityResult as string);
     }
     const userIsTeamMember = await this.isUserTeamMember(login);
     if (!userIsTeamMember) {
-      throw new Error(
-        'The user is not a member of the team and so cannot be upgraded'
-      );
+      throw new Error('The user is not a member of the team and so cannot be upgraded');
     }
     return teamEligiblityResult as ISelfServiceAllowedResult;
   }
@@ -117,9 +105,7 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
     const team = this.#team;
     const operations = this.#operations;
     await team.getDetails();
-    const canUpgradeDetails = await this.validateUserCanSelfServicePromote(
-      individualContext
-    );
+    const canUpgradeDetails = await this.validateUserCanSelfServicePromote(individualContext);
     const login = individualContext.getGitHubIdentity().username;
     const { queryCache } = operations.providers;
     try {
@@ -157,9 +143,7 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
     // Otherwise, notify all Team Members of the upgrade.
     try {
       const maintainers = await team.getMaintainers();
-      const idsToNotify = new Set<string>(
-        maintainers.map((maintainer) => String(maintainer.id))
-      );
+      const idsToNotify = new Set<string>(maintainers.map((maintainer) => String(maintainer.id)));
       let notifyDescription = `All of the Team Maintainers for the ${team.name} team are being notified in this mail.`;
       if (canUpgradeDetails.currentMaintainerCount === 0) {
         const members = await team.getMembers();
@@ -169,9 +153,7 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
         );
         notifyDescription = `All of the Team Members and Team Maintainers for the ${team.name} team are being notified in this mail.`;
       }
-      const links = await operations.getLinksFromThirdPartyIds(
-        Array.from(idsToNotify.values())
-      );
+      const links = await operations.getLinksFromThirdPartyIds(Array.from(idsToNotify.values()));
       const thirdPartyLoginToLink = new Map();
       links.map((userLink) => {
         const login = userLink.thirdPartyUsername.toLowerCase();
@@ -183,27 +165,23 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
       const opsAddress = operations.getOperationsMailAddress();
       const companyName = operations.config.brand.companyName;
       const identifierForRequester =
-        individualContext.corporateIdentity.displayName ||
-        individualContext.corporateIdentity.username;
+        individualContext.corporateIdentity.displayName || individualContext.corporateIdentity.username;
       const mail: IMail = {
         to: mailAddresses,
         cc: opsAddress ? [opsAddress] : null,
         subject: `${team.organization.name}/${team.name}: GitHub Team Member ${identifierForRequester} upgraded themselves to Team Maintainer`,
-        content: await operations.emailRender(
-          'teamMemberSelfServiceMaintainerUpgrade',
-          {
-            reason: `This is a required operational notification: ${identifierForRequester} used a self-service permission upgrade feature. ${notifyDescription}`,
-            headline: `Team maintainer upgrade`,
-            notification: 'information',
-            app: `${companyName} GitHub`,
-            team,
-            link: individualContext.link,
-            organization: team.organization,
-            identifierForRequester,
-            maintainers,
-            thirdPartyLoginToLink,
-          }
-        ),
+        content: await operations.emailRender('teamMemberSelfServiceMaintainerUpgrade', {
+          reason: `This is a required operational notification: ${identifierForRequester} used a self-service permission upgrade feature. ${notifyDescription}`,
+          headline: `Team maintainer upgrade`,
+          notification: 'information',
+          app: `${companyName} GitHub`,
+          team,
+          link: individualContext.link,
+          organization: team.organization,
+          identifierForRequester,
+          maintainers,
+          thirdPartyLoginToLink,
+        }),
       };
       await this.#operations.sendMail(mail);
     } catch (mailError) {
@@ -212,10 +190,7 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
     }
     const insights = this.#operations.insights;
     if (insights) {
-      insights.trackMetric({
-        name: 'TeamSelfServiceMemberToMaintainerUpgrades',
-        value: 1,
-      });
+      insights.trackMetric({ name: 'TeamSelfServiceMemberToMaintainerUpgrades', value: 1 });
     }
   }
 }

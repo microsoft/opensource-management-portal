@@ -4,11 +4,7 @@
 //
 
 import { ICorporateLink, IProviders, RequestTeamMemberAddType } from '..';
-import {
-  OrganizationMember,
-  ICrossOrganizationMembersResult,
-  TeamMember,
-} from '../../business';
+import { OrganizationMember, ICrossOrganizationMembersResult, TeamMember } from '../../business';
 
 export interface IMemberSearchOptions {
   providers: IProviders;

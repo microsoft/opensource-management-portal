@@ -64,9 +64,7 @@ export class RepositoryProjectColumn {
     return this._project;
   }
 
-  async getCards(
-    options?: ICacheOptionsWithPurpose
-  ): Promise<RepositoryProjectCard[]> {
+  async getCards(options?: ICacheOptionsWithPurpose): Promise<RepositoryProjectCard[]> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = Object.assign({
@@ -75,11 +73,7 @@ export class RepositoryProjectColumn {
     augmentInertiaPreview(parameters);
     const purpose = options?.purpose || AppPurpose.Onboarding;
     const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgRepoDetailsStaleSeconds,
-        options
-      ),
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
@@ -90,11 +84,7 @@ export class RepositoryProjectColumn {
       'projects.listCards',
       parameters
     );
-    const cards = common.createInstances<RepositoryProjectCard>(
-      this,
-      projectCardFromEntity,
-      raw
-    );
+    const cards = common.createInstances<RepositoryProjectCard>(this, projectCardFromEntity, raw);
     return cards;
   }
 
@@ -123,9 +113,7 @@ export class RepositoryProjectColumn {
   async addIssue(issue: RepositoryIssue): Promise<RepositoryProjectCard> {
     const operations = throwIfNotGitHubCapable(this._operations);
     if (!issue?.id) {
-      throw CreateError.InvalidParameters(
-        'The source issue does not have an ID'
-      );
+      throw CreateError.InvalidParameters('The source issue does not have an ID');
     }
     const parameters = {
       column_id: String(this.id),
@@ -148,9 +136,7 @@ export class RepositoryProjectColumn {
     return card;
   }
 
-  private authorizeSpecificPurpose(
-    purpose: AppPurpose
-  ): IGetAuthorizationHeader | string {
+  private authorizeSpecificPurpose(purpose: AppPurpose): IGetAuthorizationHeader | string {
     const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose

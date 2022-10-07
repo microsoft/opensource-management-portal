@@ -89,16 +89,9 @@ router.put(
     dynamicSettings.features.push(flag);
     try {
       dynamicSettings.updated = new Date();
-      await organizationSettingsProvider.updateOrganizationSetting(
-        dynamicSettings
-      );
+      await organizationSettingsProvider.updateOrganizationSetting(dynamicSettings);
     } catch (error) {
-      return next(
-        jsonError(
-          `error adding flag "${flag}": ${error}`,
-          ErrorHelper.GetStatus(error) || 400
-        )
-      );
+      return next(jsonError(`error adding flag "${flag}": ${error}`, ErrorHelper.GetStatus(error) || 400));
     }
     return res.json({
       flag,
@@ -125,21 +118,12 @@ router.delete(
     if (!features.includes(flag)) {
       return next(jsonError(`flag "${flag}" is not set`, 400));
     }
-    dynamicSettings.features = dynamicSettings.features.filter(
-      (flagEntry) => flagEntry !== flag
-    );
+    dynamicSettings.features = dynamicSettings.features.filter((flagEntry) => flagEntry !== flag);
     try {
       dynamicSettings.updated = new Date();
-      await organizationSettingsProvider.updateOrganizationSetting(
-        dynamicSettings
-      );
+      await organizationSettingsProvider.updateOrganizationSetting(dynamicSettings);
     } catch (error) {
-      return next(
-        jsonError(
-          `error removing flag "${flag}": ${error}`,
-          ErrorHelper.GetStatus(error) || 400
-        )
-      );
+      return next(jsonError(`error removing flag "${flag}": ${error}`, ErrorHelper.GetStatus(error) || 400));
     }
     return res.json({
       flag,
@@ -204,9 +188,7 @@ router.put(
     dynamicSettings.properties[propertyName] = newValue;
     try {
       dynamicSettings.updated = new Date();
-      await organizationSettingsProvider.updateOrganizationSetting(
-        dynamicSettings
-      );
+      await organizationSettingsProvider.updateOrganizationSetting(dynamicSettings);
     } catch (error) {
       return next(
         jsonError(
@@ -247,15 +229,10 @@ router.delete(
     delete dynamicSettings.properties[propertyName];
     try {
       dynamicSettings.updated = new Date();
-      await organizationSettingsProvider.updateOrganizationSetting(
-        dynamicSettings
-      );
+      await organizationSettingsProvider.updateOrganizationSetting(dynamicSettings);
     } catch (error) {
       return next(
-        jsonError(
-          `error removing property "${propertyName}": ${error}`,
-          ErrorHelper.GetStatus(error) || 400
-        )
+        jsonError(`error removing property "${propertyName}": ${error}`, ErrorHelper.GetStatus(error) || 400)
       );
     }
     return res.json({
@@ -269,12 +246,7 @@ router.delete(
 //
 
 router.use('*', (req, res, next) => {
-  return next(
-    jsonError(
-      'no API or function available in administration - organization',
-      404
-    )
-  );
+  return next(jsonError('no API or function available in administration - organization', 404));
 });
 
 export default router;

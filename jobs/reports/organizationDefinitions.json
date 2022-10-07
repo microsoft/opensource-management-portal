@@ -38,7 +38,7 @@
       "groupBy": "entityName",
       "columns": {
         "login": "GitHub username",
-         "githubFullName": "GitHub name",
+        "githubFullName": "GitHub name",
         "corporateId": "Corporate identity",
         "role": "Administrative role",
         "actions": "Actions"

@@ -36,9 +36,7 @@ async function lookupCorporateId(
   }
 }
 
-export default async function cleanup({
-  providers,
-}: IReposJob): Promise<IReposJobResult> {
+export default async function cleanup({ providers }: IReposJob): Promise<IReposJobResult> {
   const graphProvider = providers.graphProvider;
   const localExtensionKeyProvider = providers.localExtensionKeyProvider;
   const insights = providers.insights;
@@ -47,10 +45,7 @@ export default async function cleanup({
   const allKeys = await localExtensionKeyProvider.getAllKeys();
   console.log(`read ${allKeys.length}`);
 
-  insights.trackEvent({
-    name: 'JobCleanupTokensKeysTokens',
-    properties: { tokens: String(allKeys.length) },
-  });
+  insights.trackEvent({ name: 'JobCleanupTokensKeysTokens', properties: { tokens: String(allKeys.length) } });
 
   let errors = 0;
 
@@ -67,17 +62,11 @@ export default async function cleanup({
     allKeys.map((key: LocalExtensionKey) =>
       throttle(async () => {
         const corporateId = key.corporateId;
-        const userStatus = await lookupCorporateId(
-          graphProvider,
-          knownUsers,
-          corporateId
-        );
+        const userStatus = await lookupCorporateId(graphProvider, knownUsers, corporateId);
         if (!userStatus) {
           try {
             ++deleted;
-            console.log(
-              `${deleted}: Deleting key for ${corporateId} that could not be found`
-            );
+            console.log(`${deleted}: Deleting key for ${corporateId} that could not be found`);
             await localExtensionKeyProvider.delete(key);
           } catch (tokenDeleteError) {
             --deleted;

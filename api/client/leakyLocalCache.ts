@@ -50,10 +50,7 @@ export default class LeakyLocalCache<K, T> {
   }
 }
 
-export const leakyLocalCacheLinks = new LeakyLocalCache<
-  boolean,
-  ICorporateLink[]
->();
+export const leakyLocalCacheLinks = new LeakyLocalCache<boolean, ICorporateLink[]>();
 
 export async function getLinksLightCache(operations: Operations) {
   const cached = leakyLocalCacheLinks.get(true);

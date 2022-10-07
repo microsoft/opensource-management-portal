@@ -52,12 +52,8 @@ router.get(
       );
     }
     const individualContext = req.individualContext;
-    const allInstalls = await githubApplication.getInstallations({
-      maxAgeSeconds: 5,
-    });
-    const { valid, invalid } = GitHubApplication.filterInstallations(
-      allInstalls
-    );
+    const allInstalls = await githubApplication.getInstallations({ maxAgeSeconds: 5 });
+    const { valid, invalid } = GitHubApplication.filterInstallations(allInstalls);
     individualContext.webContext.render({
       view: 'administration/setup/app',
       title: `Application ${githubApplication.friendlyName}`,
@@ -90,12 +86,8 @@ router.use(
     const installationIdString = req.params.installationId;
     const { config, organizationSettingsProvider } = getProviders(req);
     const installationId = Number(installationIdString);
-    const installation = await githubApplication.getInstallation(
-      installationId
-    );
-    const invalidReasons = GitHubApplication.isInvalidInstallation(
-      installation
-    );
+    const installation = await githubApplication.getInstallation(installationId);
+    const invalidReasons = GitHubApplication.isInvalidInstallation(installation);
     if (invalidReasons.length) {
       throw new Error(invalidReasons.join(', '));
     }
@@ -103,16 +95,11 @@ router.use(
     const organizationName = installation.account.login;
     let settings: OrganizationSetting = null;
     try {
-      settings = await organizationSettingsProvider.getOrganizationSetting(
-        organizationId.toString()
-      );
+      settings = await organizationSettingsProvider.getOrganizationSetting(organizationId.toString());
     } catch (notFound) {
       /* ignored */
     }
-    const staticSettings = getOrganizationConfiguration(
-      config,
-      organizationName
-    );
+    const staticSettings = getOrganizationConfiguration(config, organizationName);
 
     req['installationConfiguration'] = {
       staticSettings,
@@ -147,9 +134,7 @@ async function getDynamicSettingsFromLegacySettings(
   const settings = OrganizationSetting.CreateFromStaticSettings(staticSettings);
 
   if (installation.target_type !== 'Organization') {
-    throw new Error(
-      `Unsupported GitHub App target of ${installation.target_type}.`
-    );
+    throw new Error(`Unsupported GitHub App target of ${installation.target_type}.`);
   }
   settings.organizationName = installation.account.login;
   settings.organizationId = installation.account.id;
@@ -162,11 +147,9 @@ async function getDynamicSettingsFromLegacySettings(
 
   settings.updated = new Date();
   settings.setupDate = new Date();
-  settings.setupByCorporateDisplayName =
-    individualContext.corporateIdentity.displayName;
+  settings.setupByCorporateDisplayName = individualContext.corporateIdentity.displayName;
   settings.setupByCorporateId = individualContext.corporateIdentity.id;
-  settings.setupByCorporateUsername =
-    individualContext.corporateIdentity.username;
+  settings.setupByCorporateUsername = individualContext.corporateIdentity.username;
 
   settings.active = false;
 
@@ -183,8 +166,7 @@ async function getDynamicSettingsFromLegacySettings(
   if (organizationDetails && organizationDetails.plan) {
     settings.properties['plan'] = organizationDetails.plan.name;
     if (!settings.properties['type']) {
-      settings.properties['type'] =
-        organizationDetails.plan.name === 'free' ? 'public' : 'publicprivate'; // free SKU or not
+      settings.properties['type'] = organizationDetails.plan.name === 'free' ? 'public' : 'publicprivate'; // free SKU or not
     }
   }
 
@@ -221,14 +203,10 @@ router.post(
     const githubApplication = req['githubApplication'] as GitHubApplication;
     const individualContext = req.individualContext;
     const login = individualContext.getGitHubIdentity().username;
-    const { staticSettings, dynamicSettings, installation: install } = req[
-      'installationConfiguration'
-    ];
+    const { staticSettings, dynamicSettings, installation: install } = req['installationConfiguration'];
     const installation = install as IGitHubAppInstallation;
     if (dynamicSettings && isCreatingNew) {
-      throw new Error(
-        'Settings already exist. The organization has already been adopted.'
-      );
+      throw new Error('Settings already exist. The organization has already been adopted.');
     }
     const ds = dynamicSettings as OrganizationSetting;
     let displayDynamicSettings = dynamicSettings;
@@ -237,10 +215,7 @@ router.post(
 
     if (hasElevationButtonClicked) {
       // Only available for pre-adoption
-      const [
-        ,
-        unconfiguredOrganization,
-      ] = await getDynamicSettingsFromLegacySettings(
+      const [, unconfiguredOrganization] = await getDynamicSettingsFromLegacySettings(
         providers.operations,
         staticSettings,
         installation,
@@ -300,18 +275,14 @@ router.post(
             )
           );
         }
-        ds.installations = ds.installations.filter(
-          (install) => install.installationId !== installation.id
-        );
+        ds.installations = ds.installations.filter((install) => install.installationId !== installation.id);
         goUpdate = true;
       } else if (updateConfig) {
         const newFeatureFlag = req.body['add-feature-flag'] as string;
         const changeProperty = req.body['change-property'] as string;
         if (newFeatureFlag) {
           if (ds.features.includes(newFeatureFlag)) {
-            throw new Error(
-              `The feature flag ${newFeatureFlag} already is added to this organization`
-            );
+            throw new Error(`The feature flag ${newFeatureFlag} already is added to this organization`);
           }
           const isBang = newFeatureFlag.startsWith('!');
           if (isBang) {
@@ -328,29 +299,14 @@ router.post(
           }
           const removeTeamMoniker = '!team:';
           const addTeamMoniker = 'team:';
-          if (
-            changeProperty.startsWith(removeTeamMoniker) ||
-            changeProperty.startsWith(addTeamMoniker)
-          ) {
+          if (changeProperty.startsWith(removeTeamMoniker) || changeProperty.startsWith(addTeamMoniker)) {
             const isTeamAdd = changeProperty.startsWith(addTeamMoniker);
-            let changeTeamPropertyValue = isTeamAdd
-              ? '+' + changeProperty
-              : changeProperty;
-            changeTeamPropertyValue = changeTeamPropertyValue.substr(
-              removeTeamMoniker.length
-            );
+            let changeTeamPropertyValue = isTeamAdd ? '+' + changeProperty : changeProperty;
+            changeTeamPropertyValue = changeTeamPropertyValue.substr(removeTeamMoniker.length);
             const colonIndex = changeTeamPropertyValue.indexOf(':');
             const teamType = changeTeamPropertyValue.substr(0, colonIndex);
             const teamId = changeTeamPropertyValue.substr(colonIndex + 1);
-            if (
-              ![
-                'systemAdmin',
-                'systemWrite',
-                'systemRead',
-                'sudo',
-                'everyone',
-              ].includes(teamType)
-            ) {
+            if (!['systemAdmin', 'systemWrite', 'systemRead', 'sudo', 'everyone'].includes(teamType)) {
               // explicitly now allowing globalSudo to be set here
               throw new Error(`Unsupported team type: ${teamType}`);
             }
@@ -378,14 +334,9 @@ router.post(
               default:
                 throw new Error('Unsupported team type');
             }
-            ds.specialTeams = ds.specialTeams.filter(
-              (notThisTeam) => notThisTeam.teamId !== Number(teamId)
-            );
+            ds.specialTeams = ds.specialTeams.filter((notThisTeam) => notThisTeam.teamId !== Number(teamId));
             if (isTeamAdd) {
-              ds.specialTeams.push({
-                teamId: Number(teamId),
-                specialTeam: specialTeamType,
-              });
+              ds.specialTeams.push({ teamId: Number(teamId), specialTeam: specialTeamType });
             }
           }
           const key = changeProperty.substr(0, i).trim();
@@ -400,9 +351,7 @@ router.post(
       }
       if (goUpdate) {
         dynamicSettings.updated = new Date();
-        await organizationSettingsProvider.updateOrganizationSetting(
-          dynamicSettings
-        );
+        await organizationSettingsProvider.updateOrganizationSetting(dynamicSettings);
       } else if (forceDeleteConfig) {
         await organizationSettingsProvider.deleteOrganizationSetting(ds);
       }
@@ -417,10 +366,7 @@ router.post(
         staticSettings,
         installation,
         app: githubApplication,
-        installationConfigured: isInstallationConfigured(
-          dynamicSettings,
-          installation
-        ),
+        installationConfigured: isInstallationConfigured(dynamicSettings, installation),
       },
     });
   })
@@ -432,9 +378,7 @@ router.get(
     const githubApplication = req['githubApplication'] as GitHubApplication;
     const providers = getProviders(req);
     const individualContext = req.individualContext;
-    const { staticSettings, dynamicSettings, installation } = req[
-      'installationConfiguration'
-    ];
+    const { staticSettings, dynamicSettings, installation } = req['installationConfiguration'];
     const organizationName = installation.account.login;
     const [proposedDynamicSettings, unconfiguredOrganization] = !dynamicSettings
       ? await getDynamicSettingsFromLegacySettings(
@@ -444,19 +388,13 @@ router.get(
           individualContext
         )
       : [null, null];
-    const installationConfigured = isInstallationConfigured(
-      dynamicSettings,
-      installation
-    );
+    const installationConfigured = isInstallationConfigured(dynamicSettings, installation);
     let isUserOwner = null;
     let userCheckError = null;
     if (!installationConfigured && unconfiguredOrganization) {
       try {
         const login = individualContext.getGitHubIdentity().username;
-        const userMembership = await unconfiguredOrganization.getMembership(
-          login,
-          NoCacheNoBackground
-        );
+        const userMembership = await unconfiguredOrganization.getMembership(login, NoCacheNoBackground);
         if (userMembership?.role === OrganizationMembershipRole.Admin) {
           isUserOwner = true;
         } else if (userMembership?.role == OrganizationMembershipRole.Member) {

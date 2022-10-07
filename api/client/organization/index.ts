@@ -17,8 +17,7 @@ import getCompanySpecificDeployment from '../../../middleware/companySpecificDep
 const router: Router = Router();
 
 const deployment = getCompanySpecificDeployment();
-deployment?.routes?.api?.organization?.index &&
-  deployment?.routes?.api?.organization?.index(router);
+deployment?.routes?.api?.organization?.index && deployment?.routes?.api?.organization?.index(router);
 
 router.get(
   '/',

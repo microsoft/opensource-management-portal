@@ -7,10 +7,7 @@ import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import {
-  getRepositoryMetadataProvider,
-  ReposAppRequest,
-} from '../../interfaces';
+import { getRepositoryMetadataProvider, ReposAppRequest } from '../../interfaces';
 import { getProviders } from '../../transitional';
 import { Organization } from '../../business/organization';
 import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
@@ -22,9 +19,7 @@ router.get(
     const individualContext = req.individualContext;
     const existingRepoId = req.query.existingrepoid as string;
     const organization = req.organization as Organization;
-    const repositoryMetadataProvider = getRepositoryMetadataProvider(
-      organization.operations
-    );
+    const repositoryMetadataProvider = getRepositoryMetadataProvider(organization.operations);
     if (organization.createRepositoriesOnGitHub) {
       throw new Error(
         'This organization requires that repositories are either directly created on GitHub, or by an organization owner.'
@@ -32,13 +27,8 @@ router.get(
     }
     if (existingRepoId && organization.isNewRepositoryLockdownSystemEnabled) {
       try {
-        const metadata = await repositoryMetadataProvider.getRepositoryMetadata(
-          existingRepoId
-        );
-        await NewRepositoryLockdownSystem.ValidateUserCanConfigureRepository(
-          metadata,
-          individualContext
-        );
+        const metadata = await repositoryMetadataProvider.getRepositoryMetadata(existingRepoId);
+        await NewRepositoryLockdownSystem.ValidateUserCanConfigureRepository(metadata, individualContext);
       } catch (noExistingMetadata) {
         if (noExistingMetadata.status === 404) {
           throw new Error(

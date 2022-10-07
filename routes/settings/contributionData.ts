@@ -70,11 +70,7 @@ router.post(
       ? 'You have opted in to sharing of contribution data.'
       : 'You have opted out of sharing contribution data.';
     const title = isOptIn ? 'Opt-in saved' : 'Opt-out';
-    req.individualContext.webContext.saveUserAlert(
-      message,
-      title,
-      UserAlertType.Success
-    );
+    req.individualContext.webContext.saveUserAlert(message, title, UserAlertType.Success);
     return view(req, res);
   })
 );

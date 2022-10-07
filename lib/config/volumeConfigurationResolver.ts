@@ -24,32 +24,21 @@ function getAsVolumeFile(value: string) {
   return undefined;
 }
 
-async function resolveVolumeFile(
-  provider: IPainlessConfigGet,
-  volumeFile: string
-) {
+async function resolveVolumeFile(provider: IPainlessConfigGet, volumeFile: string) {
   const volumePath = provider.get(pcrVolumeMountVariable);
   if (!volumePath) {
-    throw new Error(
-      `Unable to resolve volume path ${volumeFile}, no defined ${pcrVolumeMountVariable}`
-    );
+    throw new Error(`Unable to resolve volume path ${volumeFile}, no defined ${pcrVolumeMountVariable}`);
   }
   const combined = path.resolve(volumePath, volumeFile);
   try {
     const contents = await fs.readFile(combined, 'utf8');
     return contents;
   } catch (error) {
-    throw new Error(
-      `Unable to resolve volume file ${volumeFile} from ${pcrVolumeMountVariable}: ${error}`
-    );
+    throw new Error(`Unable to resolve volume file ${volumeFile} from ${pcrVolumeMountVariable}: ${error}`);
   }
 }
 
-async function identifyPaths(
-  provider: IPainlessConfigGet,
-  node: any,
-  prefix?: string
-) {
+async function identifyPaths(provider: IPainlessConfigGet, node: any, prefix?: string) {
   prefix = prefix !== undefined ? prefix + '.' : '';
   const paths: any = {};
   for (const property in node) {

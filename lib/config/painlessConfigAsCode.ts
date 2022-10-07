@@ -141,22 +141,14 @@ function initialize(options?: IProviderOptions) {
 
   const nodeEnvironment = provider.get('NODE_ENV');
   let configurationEnvironmentKeyNames = (
-    provider.get('CONFIGURATION_ENVIRONMENT_KEYS') ||
-    'CONFIGURATION_ENVIRONMENT,NODE_ENV'
+    provider.get('CONFIGURATION_ENVIRONMENT_KEYS') || 'CONFIGURATION_ENVIRONMENT,NODE_ENV'
   ).split(',');
-  if (
-    !configurationEnvironmentKeyNames ||
-    configurationEnvironmentKeyNames.length === 0
-  ) {
+  if (!configurationEnvironmentKeyNames || configurationEnvironmentKeyNames.length === 0) {
     throw new Error('No configuration environment key name(s) defined');
   }
 
   let environment = null;
-  for (
-    let i = 0;
-    !environment && i < configurationEnvironmentKeyNames.length;
-    i++
-  ) {
+  for (let i = 0; !environment && i < configurationEnvironmentKeyNames.length; i++) {
     environment = provider.get(configurationEnvironmentKeyNames[i]);
   }
   if (!environment) {
@@ -179,43 +171,26 @@ function initialize(options?: IProviderOptions) {
     const pkg = tryGetPackage(appRoot);
     const appName =
       applicationName ||
-      (pkg && pkg.painlessConfigApplicationName
-        ? pkg.painlessConfigApplicationName
-        : undefined);
+      (pkg && pkg.painlessConfigApplicationName ? pkg.painlessConfigApplicationName : undefined);
 
-    const environmentDirectoryKey =
-      provider.get('ENVIRONMENT_DIRECTORY_KEY') || 'ENVIRONMENT_DIRECTORY';
-    const directoryName =
-      options.directoryName || provider.get(environmentDirectoryKey) || 'env';
-    configureLocalEnvironment(
-      providers,
-      appRoot,
-      directoryName,
-      environment,
-      appName
-    );
+    const environmentDirectoryKey = provider.get('ENVIRONMENT_DIRECTORY_KEY') || 'ENVIRONMENT_DIRECTORY';
+    const directoryName = options.directoryName || provider.get(environmentDirectoryKey) || 'env';
+    configureLocalEnvironment(providers, appRoot, directoryName, environment, appName);
 
     // const localEnvironmentModuleDirectoryKey = provider.get('ENVIRONMENT_MODULE_DIRECTORY_KEY') || 'ENVIRONMENT_MODULE_DIRECTORY';
     // const moduleDirectoryName = options.moduleDirectoryName || provider.get(localEnvironmentModuleDirectoryKey) || pkg.painlessConfigLocalEnvironmentModuleDirectory || 'env';
     // configureLocalEnvironment(providers, appRoot, directoryName, environment, appName);
 
-    const environmentModulesKey =
-      provider.get('ENVIRONMENT_MODULES_KEY') || 'ENVIRONMENT_MODULES';
-    const environmentModules = (
-      provider.get(environmentModulesKey) || ''
-    ).split(',');
-    let painlessConfigEnvironments = pkg
-      ? pkg.painlessConfigEnvironments
-      : null;
+    const environmentModulesKey = provider.get('ENVIRONMENT_MODULES_KEY') || 'ENVIRONMENT_MODULES';
+    const environmentModules = (provider.get(environmentModulesKey) || '').split(',');
+    let painlessConfigEnvironments = pkg ? pkg.painlessConfigEnvironments : null;
     if (painlessConfigEnvironments) {
       if (Array.isArray(painlessConfigEnvironments)) {
         // This is ready-to-use as-is
       } else if (painlessConfigEnvironments.split) {
         painlessConfigEnvironments = painlessConfigEnvironments.split(',');
       } else {
-        throw new Error(
-          'Unknown how to process the painlessConfigEnvironments values in package.json'
-        );
+        throw new Error('Unknown how to process the painlessConfigEnvironments values in package.json');
       }
       environmentModules.push(...painlessConfigEnvironments);
     }

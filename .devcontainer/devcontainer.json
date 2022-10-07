@@ -1,47 +1,41 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.245.2/containers/typescript-node
 {
-	"name": "Node.js & TypeScript",
-	"build": {
-		"dockerfile": "Dockerfile",
-		// Update 'VARIANT' to pick a Node version: 18, 16, 14.
-		// Append -bullseye or -buster to pin to an OS version.
-		// Use -bullseye variants on local on arm64/Apple Silicon.
-		"args": { 
-			"VARIANT": "16"
-		}
-	},
+  "name": "Node.js & TypeScript",
+  "build": {
+    "dockerfile": "Dockerfile",
+    // Update 'VARIANT' to pick a Node version: 18, 16, 14.
+    // Append -bullseye or -buster to pin to an OS version.
+    // Use -bullseye variants on local on arm64/Apple Silicon.
+    "args": {
+      "VARIANT": "16"
+    }
+  },
 
-	"customizations": {
+  "customizations": {
+    "codespaces": {
+      "repositories": {}
+    },
 
-		"codespaces": {
-			"repositories": {
-			}
-		},
-		
-		"vscode": {
-			"extensions": [
-				"dbaeumer.vscode-eslint"
-			]
-		}
-	},
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint"]
+    }
+  },
 
-		
-		
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
+  // Use 'forwardPorts' to make a list of ports inside the container available locally.
+  // "forwardPorts": [],
 
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "./.devcontainer/setup.sh",
+  // Use 'postCreateCommand' to run commands after the container is created.
+  // "postCreateCommand": "./.devcontainer/setup.sh",
 
-	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
-	"remoteUser": "node",
-	"portsAttributes": {
-		"3000": {
-			"label": "Web Portal"
-		},
-		"4000": {
-			"label": "Backend (Don't use)"
-		}
-	}
+  // Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
+  "remoteUser": "node",
+  "portsAttributes": {
+    "3000": {
+      "label": "Web Portal"
+    },
+    "4000": {
+      "label": "Backend (Don't use)"
+    }
+  }
 }

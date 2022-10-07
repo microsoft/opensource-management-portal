@@ -66,13 +66,8 @@ router.get(
   })
 );
 
-export async function getClientApiOrganizationTeamsResponse(
-  req: ReposAppRequest,
-  res,
-  next
-) {
-  const organization = (req.organization ||
-    (req as any).aeOrganization) as Organization;
+export async function getClientApiOrganizationTeamsResponse(req: ReposAppRequest, res, next) {
+  const organization = (req.organization || (req as any).aeOrganization) as Organization;
   if (!organization) {
     return next(jsonError('No available organization'), 400);
   }

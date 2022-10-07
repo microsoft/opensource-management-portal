@@ -22,9 +22,7 @@ export function stringOrNumberAsString(value: any) {
     return value;
   }
   const typeName = typeof value;
-  throw new Error(
-    `Unsupported type ${typeName} for value ${value} (stringOrNumberAsString)`
-  );
+  throw new Error(`Unsupported type ${typeName} for value ${value} (stringOrNumberAsString)`);
 }
 
 export function stringOrNumberArrayAsStringArray(values: any[]) {
@@ -44,9 +42,7 @@ export function requireJson(nameFromRoot: string): any {
     throw new Error(`Cannot find JSON file ${file} to read as a module`);
   }
   const content = fs.readFileSync(file, 'utf8');
-  console.warn(
-    `JSON as module (${file}) from project root (NOT TypeScript 'dist' folder)`
-  );
+  console.warn(`JSON as module (${file}) from project root (NOT TypeScript 'dist' folder)`);
   return JSON.parse(content);
 }
 
@@ -77,12 +73,7 @@ interface IStoreReferrerEventDetails {
   redirect?: string;
 }
 
-export function storeReferrer(
-  req: ReposAppRequest,
-  res,
-  redirect,
-  optionalReason
-) {
+export function storeReferrer(req: ReposAppRequest, res, redirect, optionalReason) {
   const { insights } = getProviders(req);
   const eventDetails: IStoreReferrerEventDetails = {
     method: 'storeReferrer',
@@ -104,10 +95,7 @@ export function storeReferrer(
   }
   if (redirect) {
     eventDetails.redirect = redirect;
-    insights?.trackEvent({
-      name: 'RedirectWithReferrer',
-      properties: eventDetails,
-    });
+    insights?.trackEvent({ name: 'RedirectWithReferrer', properties: eventDetails });
     res.redirect(redirect);
   }
 }
@@ -144,21 +132,12 @@ export function redirectToReferrer(req, res, url, optionalReason) {
     reason: optionalReason || 'unknown reason',
   };
   if (req.insights) {
-    req.insights.trackEvent({
-      name: 'RedirectToReferrer',
-      properties: eventDetails,
-    });
+    req.insights.trackEvent({ name: 'RedirectToReferrer', properties: eventDetails });
   }
   res.redirect(alternateUrl || url);
 }
 
-export function storeOriginalUrlAsVariable(
-  req,
-  res,
-  variable,
-  redirect,
-  optionalReason
-) {
+export function storeOriginalUrlAsVariable(req, res, variable, redirect, optionalReason) {
   const eventDetails = {
     method: 'storeOriginalUrlAsVariable',
     variable,
@@ -171,10 +150,7 @@ export function storeOriginalUrlAsVariable(
   }
   if (redirect) {
     if (req.insights) {
-      req.insights.trackEvent({
-        name: 'RedirectFromOriginalUrl',
-        properties: eventDetails,
-      });
+      req.insights.trackEvent({ name: 'RedirectFromOriginalUrl', properties: eventDetails });
     }
     res.redirect(redirect);
   }
@@ -194,11 +170,7 @@ export function popSessionVariable(req, res, variableName) {
 // ----------------------------------------------------------------------------
 const errorPropertiesToClone = ['stack', 'status'];
 
-export function wrapError(
-  error,
-  message,
-  userIntendedMessage?: boolean
-): IReposError {
+export function wrapError(error, message, userIntendedMessage?: boolean): IReposError {
   const err: IReposError = new Error(message);
   err.innerError = error;
   if (error) {
@@ -282,10 +254,7 @@ export function obfuscate(value, lastCharactersShowCount) {
   }
   var length = value.length;
   lastCharactersShowCount = lastCharactersShowCount || 0;
-  lastCharactersShowCount = Math.min(
-    Math.round(lastCharactersShowCount),
-    length - 1
-  );
+  lastCharactersShowCount = Math.min(Math.round(lastCharactersShowCount), length - 1);
   var obfuscated = '';
   for (var i = 0; i < length - lastCharactersShowCount; i++) {
     obfuscated += '*';
@@ -301,9 +270,7 @@ export function obfuscate(value, lastCharactersShowCount) {
 // ----------------------------------------------------------------------------
 export function addBreadcrumb(req, breadcrumbTitle, optionalBreadcrumbLink) {
   if (req === undefined || req.baseUrl === undefined) {
-    throw new Error(
-      'addBreadcrumb: did you forget to provide a request object instance?'
-    );
+    throw new Error('addBreadcrumb: did you forget to provide a request object instance?');
   }
   if (!optionalBreadcrumbLink && optionalBreadcrumbLink !== false) {
     optionalBreadcrumbLink = req.baseUrl;
@@ -368,10 +335,7 @@ export function readFileToText(filename: string): Promise<string> {
   });
 }
 
-export function writeTextToFile(
-  filename: string,
-  stringContent: string
-): Promise<void> {
+export function writeTextToFile(filename: string, stringContent: string): Promise<void> {
   return new Promise((resolve, reject) => {
     return fs.writeFile(filename, stringContent, 'utf8', (error) => {
       if (error) {

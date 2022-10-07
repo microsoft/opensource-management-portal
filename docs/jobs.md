@@ -19,4 +19,4 @@ CronJob can help.
 - `managers`: cache the last-known manager for links, to use in notifications after a departure may remove someone from the graph
 - `permissions`: updating permissions for all-write/all-read/all-admin teams when configured
 - `refreshUsernames`: keeping link data fresh with GitHub username renames, corporate username and display name updates, and removing links for deleted GitHub users who remove their accounts permanently from GitHub.com
-- `reports`: processing the building of report data about use, abandoned repos, etc. __this job is broken__
+- `reports`: processing the building of report data about use, abandoned repos, etc. **this job is broken**

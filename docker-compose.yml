@@ -5,14 +5,14 @@ services:
     image: opensource-portal
     build: .
     ports:
-      - "3000:3000"
+      - '3000:3000'
     networks:
       - portal
     env_file:
       - .secrets.env
       - .docker.env
     volumes:
-      - "${PWD}/env-orgs.json:/usr/src/env-orgs.json"
+      - '${PWD}/env-orgs.json:/usr/src/env-orgs.json'
     depends_on:
       - portal-cache
       - portal-db

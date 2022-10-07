@@ -7,11 +7,7 @@ import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../middleware';
-import {
-  ICrossOrganizationMembersResult,
-  MemberSearch,
-  Operations,
-} from '../../business';
+import { ICrossOrganizationMembersResult, MemberSearch, Operations } from '../../business';
 import { ICorporateLink } from '../../interfaces';
 import { IApiRequest } from '../../middleware/apiReposAuth';
 import postLinkApi from './link';
@@ -20,9 +16,15 @@ import { wrapError } from '../../utils';
 
 const router: Router = Router();
 
-const unsupportedApiVersions = ['2016-12-01'];
+// prettier-ignore
+const unsupportedApiVersions = [
+  '2016-12-01',
+];
 
-const extendedLinkApiVersions = ['2019-02-01'];
+// prettier-ignore
+const extendedLinkApiVersions = [
+  '2019-02-01',
+];
 
 router.use(function (req: IApiRequest, res, next) {
   const token = req.apiKeyToken;
@@ -30,9 +32,7 @@ router.use(function (req: IApiRequest, res, next) {
     return next(jsonError('The key is not authorized for specific APIs', 401));
   }
   if (!token.hasScope('links') && !token.hasScope('link')) {
-    return next(
-      jsonError('The key is not authorized to use the links API', 401)
-    );
+    return next(jsonError('The key is not authorized to use the links API', 401));
   }
   return next();
 });
@@ -43,18 +43,9 @@ router.get(
   '/',
   asyncHandler(async (req: IApiRequest, res, next) => {
     const { operations } = getProviders(req);
-    const skipOrganizations =
-      req.query.showOrganizations !== undefined &&
-      !!req.query.showOrganizations;
-    const showTimestamps =
-      req.query.showTimestamps !== undefined &&
-      req.query.showTimestamps === 'true';
-    const results = await getAllUsers(
-      req.apiVersion,
-      operations,
-      skipOrganizations,
-      showTimestamps
-    );
+    const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
+    const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
+    const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps);
     req.insights.trackMetric({ name: 'ApiRequestLinks', value: 1 });
     res.set('Content-Type', 'application/json');
     res.send(JSON.stringify(results, undefined, 2));
@@ -65,29 +56,15 @@ router.get(
   '/:linkid',
   asyncHandler(async (req: IApiRequest, res, next) => {
     if (unsupportedApiVersions.includes(req.apiVersion)) {
-      return next(
-        jsonError(
-          'This API is not supported by the API version you are using.',
-          400
-        )
-      );
+      return next(jsonError('This API is not supported by the API version you are using.', 400));
     }
     const linkid = req.params.linkid.toLowerCase();
     const { operations } = getProviders(req);
-    const skipOrganizations =
-      req.query.showOrganizations !== undefined &&
-      !!req.query.showOrganizations;
-    const showTimestamps =
-      req.query.showTimestamps !== undefined &&
-      req.query.showTimestamps === 'true';
-    if (
-      operations.providers.queryCache &&
-      operations.providers.queryCache.supportsOrganizationMembership
-    ) {
+    const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
+    const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
+    if (operations.providers.queryCache && operations.providers.queryCache.supportsOrganizationMembership) {
       // faster implementation
-      const links = (await operations.providers.linkProvider.getAll()).filter(
-        (lid) => lid['id'] === linkid
-      );
+      const links = (await operations.providers.linkProvider.getAll()).filter((lid) => lid['id'] === linkid);
       let link = links.length === 1 ? links[0] : null;
       if (!link) {
         return next(jsonError('Could not find the link', 404));
@@ -112,13 +89,7 @@ router.get(
       req.insights.trackMetric({ name: 'ApiRequestLinkByLinkId', value: 1 });
       return res.json(entry);
     }
-    const results = await getAllUsers(
-      req.apiVersion,
-      operations,
-      skipOrganizations,
-      showTimestamps,
-      true
-    );
+    const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps, true);
     for (let i = 0; i < results.length; i++) {
       const entry = results[i];
       if (entry && entry.id === linkid) {
@@ -134,25 +105,13 @@ router.get(
   '/github/:username',
   asyncHandler(async (req: IApiRequest, res, next) => {
     if (unsupportedApiVersions.includes(req.apiVersion)) {
-      return next(
-        jsonError(
-          'This API is not supported by the API version you are using.',
-          400
-        )
-      );
+      return next(jsonError('This API is not supported by the API version you are using.', 400));
     }
     const username = req.params.username.toLowerCase();
     const { operations } = getProviders(req);
-    const skipOrganizations =
-      req.query.showOrganizations !== undefined &&
-      !!req.query.showOrganizations;
-    const showTimestamps =
-      req.query.showTimestamps !== undefined &&
-      req.query.showTimestamps === 'true';
-    if (
-      operations.providers.queryCache &&
-      operations.providers.queryCache.supportsOrganizationMembership
-    ) {
+    const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
+    const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
+    if (operations.providers.queryCache && operations.providers.queryCache.supportsOrganizationMembership) {
       // faster implementation
       let account = null;
       try {
@@ -171,34 +130,17 @@ router.get(
           skipOrganizations,
           showTimestamps
         );
-        req.insights.trackMetric({
-          name: 'ApiRequestLinkByGitHubUsername',
-          value: 1,
-        });
+        req.insights.trackMetric({ name: 'ApiRequestLinkByGitHubUsername', value: 1 });
         return res.json(entry);
       } catch (entryError) {
-        return next(
-          jsonError(entryError, ErrorHelper.GetStatus(entryError) || 500)
-        );
+        return next(jsonError(entryError, ErrorHelper.GetStatus(entryError) || 500));
       }
     }
-    const results = await getAllUsers(
-      req.apiVersion,
-      operations,
-      skipOrganizations,
-      showTimestamps
-    );
+    const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps);
     for (let i = 0; i < results.length; i++) {
       const entry = results[i];
-      if (
-        entry &&
-        entry.github &&
-        entry.github.login.toLowerCase() === username
-      ) {
-        req.insights.trackMetric({
-          name: 'ApiRequestLinkByGitHubUsername',
-          value: 1,
-        });
+      if (entry && entry.github && entry.github.login.toLowerCase() === username) {
+        req.insights.trackMetric({ name: 'ApiRequestLinkByGitHubUsername', value: 1 });
         return res.json(entry);
       }
     }
@@ -211,20 +153,11 @@ router.get(
   asyncHandler(async (req: IApiRequest, res, next) => {
     const upn = req.params.upn;
     const { operations } = getProviders(req);
-    const skipOrganizations =
-      req.query.showOrganizations !== undefined &&
-      !!req.query.showOrganizations;
-    const showTimestamps =
-      req.query.showTimestamps !== undefined &&
-      req.query.showTimestamps === 'true';
-    if (
-      operations.providers.queryCache &&
-      operations.providers.queryCache.supportsOrganizationMembership
-    ) {
+    const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
+    const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
+    if (operations.providers.queryCache && operations.providers.queryCache.supportsOrganizationMembership) {
       // faster implementation
-      const links = await operations.providers.linkProvider.queryByCorporateUsername(
-        upn
-      );
+      const links = await operations.providers.linkProvider.queryByCorporateUsername(upn);
       const r = [];
       for (const link of links) {
         const thirdPartyId = link.thirdPartyId;
@@ -254,12 +187,7 @@ router.get(
       });
       return res.json(r);
     }
-    const results = await getAllUsers(
-      req.apiVersion,
-      operations,
-      skipOrganizations,
-      showTimestamps
-    );
+    const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps);
     let r = [];
     for (let i = 0; i < results.length; i++) {
       const entry = results[i];
@@ -286,29 +214,15 @@ router.get(
   '/aad/:id',
   asyncHandler(async (req: IApiRequest, res, next) => {
     if (req.apiVersion == '2016-12-01') {
-      return next(
-        jsonError(
-          'This API is not supported by the API version you are using.',
-          400
-        )
-      );
+      return next(jsonError('This API is not supported by the API version you are using.', 400));
     }
     const id = req.params.id;
-    const skipOrganizations =
-      req.query.showOrganizations !== undefined &&
-      !!req.query.showOrganizations;
-    const showTimestamps =
-      req.query.showTimestamps !== undefined &&
-      req.query.showTimestamps === 'true';
+    const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
+    const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
     const { operations } = getProviders(req);
-    if (
-      operations.providers.queryCache &&
-      operations.providers.queryCache.supportsOrganizationMembership
-    ) {
+    if (operations.providers.queryCache && operations.providers.queryCache.supportsOrganizationMembership) {
       // faster implementation
-      const links = await operations.providers.linkProvider.queryByCorporateId(
-        id
-      );
+      const links = await operations.providers.linkProvider.queryByCorporateId(id);
       const r = [];
       for (const link of links) {
         const thirdPartyId = link.thirdPartyId;
@@ -332,12 +246,7 @@ router.get(
       req.insights.trackMetric({ name: 'ApiRequestLinkByAadId', value: 1 });
       return res.json(r);
     }
-    const results = await getAllUsers(
-      req.apiVersion,
-      operations,
-      skipOrganizations,
-      showTimestamps
-    );
+    const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps);
     let r = [];
     for (let i = 0; i < results.length; i++) {
       const entry = results[i];
@@ -380,13 +289,10 @@ async function getByThirdPartyId(
   const account = operations.getAccount(thirdPartyId);
   await account.getDetails();
   let orgMembershipNames: string[] = [];
-  if (
-    providers.queryCache &&
-    operations.providers.queryCache.supportsOrganizationMembership
-  ) {
-    orgMembershipNames = (
-      await providers.queryCache.userOrganizations(thirdPartyId)
-    ).map((org) => org.organization.name);
+  if (providers.queryCache && operations.providers.queryCache.supportsOrganizationMembership) {
+    orgMembershipNames = (await providers.queryCache.userOrganizations(thirdPartyId)).map(
+      (org) => org.organization.name
+    );
   } else {
     // TODO: not implemented for performance reasons now
     throw ErrorHelper.NotImplemented();
@@ -414,12 +320,7 @@ async function getByThirdPartyId(
   if (showTimestamps && link && link['created']) {
     entry['timestamp'] = link['created'];
   }
-  if (
-    link &&
-    link.isServiceAccount === true &&
-    apiVersion !== '2016-12-01' &&
-    apiVersion !== '2017-03-08'
-  ) {
+  if (link && link.isServiceAccount === true && apiVersion !== '2016-12-01' && apiVersion !== '2017-03-08') {
     entry.isServiceAccount = true;
     if (isExpandedView && link.isServiceAccount && link.serviceAccountMail) {
       entry.serviceAccountContact = link.serviceAccountMail;
@@ -431,16 +332,14 @@ async function getByThirdPartyId(
     link?.corporateMailAddress ||
     link?.corporateUsername
   ) {
-    const corporatePropertyName =
-      apiVersion === '2016-12-01' ? 'corporate' : 'aad'; // This was renamed to be provider name-based
+    const corporatePropertyName = apiVersion === '2016-12-01' ? 'corporate' : 'aad'; // This was renamed to be provider name-based
     entry[corporatePropertyName] = {
       alias: link?.corporateAlias,
       preferredName: link?.corporateDisplayName,
       userPrincipalName: link?.corporateUsername,
       emailAddress: link?.corporateMailAddress,
     };
-    const corporateIdPropertyName =
-      apiVersion === '2016-12-01' ? 'aadId' : 'id'; // Now just 'id'
+    const corporateIdPropertyName = apiVersion === '2016-12-01' ? 'aadId' : 'id'; // Now just 'id'
     entry[corporatePropertyName][corporateIdPropertyName] = link.corporateId;
   }
   return entry;
@@ -514,28 +413,21 @@ async function getAllUsers(
         apiVersion !== '2017-03-08'
       ) {
         entry.isServiceAccount = true;
-        if (
-          isExpandedView &&
-          link.isServiceAccount &&
-          link.serviceAccountMail
-        ) {
+        if (isExpandedView && link.isServiceAccount && link.serviceAccountMail) {
           entry.serviceAccountContact = link.serviceAccountMail;
         }
       }
       const corporate = member.link;
       if (corporate) {
-        const corporatePropertyName =
-          apiVersion === '2016-12-01' ? 'corporate' : 'aad'; // This was renamed to be provider name-based
+        const corporatePropertyName = apiVersion === '2016-12-01' ? 'corporate' : 'aad'; // This was renamed to be provider name-based
         entry[corporatePropertyName] = {
           alias: corporate.corporateAlias,
           preferredName: corporate.corporateDisplayName,
           userPrincipalName: corporate.corporateUsername,
           emailAddress: corporate.corporateMailAddress,
         };
-        const corporateIdPropertyName =
-          apiVersion === '2016-12-01' ? 'aadId' : 'id'; // Now just 'id'
-        entry[corporatePropertyName][corporateIdPropertyName] =
-          corporate.corporateId;
+        const corporateIdPropertyName = apiVersion === '2016-12-01' ? 'aadId' : 'id'; // Now just 'id'
+        entry[corporatePropertyName][corporateIdPropertyName] = corporate.corporateId;
       }
       results.push(entry);
     });

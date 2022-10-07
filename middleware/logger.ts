@@ -19,8 +19,7 @@ logger.token('encryptedSession', function getUserId(req: ReposAppRequest) {
   if (req.session) {
     const sessionPassport = (req.session as any).passport;
     if (sessionPassport && sessionPassport.user) {
-      const userType =
-        config.authentication.scheme === 'aad' ? 'azure' : 'github';
+      const userType = config.authentication.scheme === 'aad' ? 'azure' : 'github';
       return sessionPassport.user[userType] &&
         sessionPassport.user[userType][encryptionMetadataKey] !== undefined
         ? 'encrypted'
@@ -32,8 +31,7 @@ logger.token('encryptedSession', function getUserId(req: ReposAppRequest) {
 logger.token('id', function getUserId(req: ReposAppRequest) {
   const config = getProviders(req).config;
   if (config) {
-    const userType =
-      config.authentication.scheme === 'aad' ? 'azure' : 'github';
+    const userType = config.authentication.scheme === 'aad' ? 'azure' : 'github';
     return req.user && req.user[userType] && req.user[userType].username
       ? req.user[userType].username
       : undefined;
@@ -49,9 +47,5 @@ logger.token('scrubbedUrl', function getScrubbedUrl(req: ReposAppRequest) {
 });
 
 export default function createLogger(config) {
-  return logger(
-    config && config.debug && config.debug.showUsers === true
-      ? piiFormat
-      : format
-  );
+  return logger(config && config.debug && config.debug.showUsers === true ? piiFormat : format);
 }

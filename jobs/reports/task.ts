@@ -51,6 +51,7 @@ const slice = undefined; // 250;
 
 const reportGeneratedFormat = 'h:mm a dddd, MMMM Do YYYY';
 
+// // prettier-ignore
 const providerNames = ['organizations', 'repositories', 'teams'];
 
 export interface IReportsContext {
@@ -149,10 +150,7 @@ async function buildReport(context): Promise<void> {
   }
 }
 
-export default async function run({
-  providers,
-  started,
-}: IReposJob): Promise<IReposJobResult> {
+export default async function run({ providers, started }: IReposJob): Promise<IReposJobResult> {
   const { mailProvider, operations, config } = providers;
   const okToContinue =
     config &&
@@ -185,10 +183,7 @@ export default async function run({
   if (!mailProvider) {
     throw new Error('No mail provider available');
   }
-  const reportConfig =
-    config && config.github && config.github.jobs
-      ? config.github.jobs.reports
-      : {};
+  const reportConfig = config && config.github && config.github.jobs ? config.github.jobs.reports : {};
   const context: IReportsContext = {
     providers,
     operations,
@@ -211,12 +206,9 @@ export default async function run({
       tooManyRepoAdministrators: 15,
       orgPercentAvailablePrivateRepos: 0.15,
       fakeSend: fakeSend ? path.join(__dirname, 'sent') : undefined,
-      storeLocalReportPath: skipStore
-        ? path.join(__dirname, 'report.json')
-        : undefined,
+      storeLocalReportPath: skipStore ? path.join(__dirname, 'report.json') : undefined,
       witnessEventKey: reportConfig.witnessEventKey,
-      witnessEventReportsTimeToLiveMinutes:
-        reportConfig.witnessEventReportsTimeToLiveMinutes,
+      witnessEventReportsTimeToLiveMinutes: reportConfig.witnessEventReportsTimeToLiveMinutes,
       consolidatedSchemaVersion: '170503',
       fromAddress: reportConfig.mail.from,
       dataLakeAccount: null,
@@ -228,14 +220,9 @@ export default async function run({
     },
     reports: {
       reportRedisClient: null, // reportRedisClient,
-      send:
-        true && (fakeSend || (reportConfig.mail && reportConfig.mail.enabled)),
+      send: true && (fakeSend || (reportConfig.mail && reportConfig.mail.enabled)),
       store: true && !skipStore,
-      dataLake:
-        true &&
-        !skipStore &&
-        reportConfig.dataLake &&
-        reportConfig.dataLake.enabled,
+      dataLake: true && !skipStore && reportConfig.dataLake && reportConfig.dataLake.enabled,
     },
     visitedDefinitions: {},
     consolidated: {},
@@ -295,9 +282,7 @@ async function processReports(context) {
   return context;
 }
 
-async function consolidateReports(
-  context: IReportsContext
-): Promise<IReportsContext> {
+async function consolidateReports(context: IReportsContext): Promise<IReportsContext> {
   try {
     await organizationsConsoldate(context);
   } catch (globalConsolidationError) {
@@ -372,8 +357,7 @@ async function dataLakeUpload(context: IReportsContext) {
                 const collection = issues[targetCollectionName];
                 for (let l = 0; l < collection.length; l++) {
                   const row = collection[l];
-                  const rowValue =
-                    typeof row === 'object' ? row : { text: row };
+                  const rowValue = typeof row === 'object' ? row : { text: row };
                   if (!row.entityName) {
                     rowValue.entityName = entity.name;
                   }
@@ -402,9 +386,7 @@ async function dataLakeUpload(context: IReportsContext) {
   }
 }
 
-async function storeReports(
-  context: IReportsContext
-): Promise<IReportsContext> {
+async function storeReports(context: IReportsContext): Promise<IReportsContext> {
   context.insights.trackEvent({ name: 'JobReportsReportStoringStarted' });
   const report = Object.assign({}, context.consolidated);
   const consolidatedSchemaVersion = context.settings.consolidatedSchemaVersion;
@@ -423,9 +405,7 @@ async function storeReports(
     context.insights.trackEvent({ name: 'JobReportsReportStoringSkipped' });
     return context;
   }
-  const stringSizeUncompressed = fileSize(
-    Buffer.byteLength(json, 'utf8')
-  ).human();
+  const stringSizeUncompressed = fileSize(Buffer.byteLength(json, 'utf8')).human();
   context.insights.trackEvent({
     name: 'JobReportsReportStoring',
     properties: {
@@ -457,9 +437,7 @@ async function storeLocalReport(
   return context;
 }
 
-async function recordMetrics(
-  context: IReportsContext
-): Promise<IReportsContext> {
+async function recordMetrics(context: IReportsContext): Promise<IReportsContext> {
   const insights = context.insights;
   const consolidated = context.consolidated;
   let overallIssues = 0;

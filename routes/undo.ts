@@ -39,11 +39,7 @@ interface IUndoEntry {
   undo?: () => Promise<IUndoOutcome>;
 }
 
-function filterToRecentEvents(
-  eventList: AuditLogRecord[],
-  now: Date,
-  validAfter: Date
-) {
+function filterToRecentEvents(eventList: AuditLogRecord[], now: Date, validAfter: Date) {
   return eventList.filter((entry) => {
     if (!entry.created) {
       return false;
@@ -113,12 +109,7 @@ function finalizeUndoEvents(
           )}, removing their ability to administer settings and configure the repo.`;
           entry.undoDescription =
             'Undo will restore the ability of the GitHub user to administer the repository.';
-          entry.undo = undoRepoCollaboratorAdminRepoPermission.bind(
-            null,
-            operations,
-            identity,
-            entry
-          );
+          entry.undo = undoRepoCollaboratorAdminRepoPermission.bind(null, operations, identity, entry);
         }
         break;
       }
@@ -135,34 +126,19 @@ function finalizeUndoEvents(
         )} while an admin, removing their ability to administer settings and configure the repo.`;
         entry.undoDescription =
           'Undo will restore the ability of the GitHub user to administer the repository.';
-        entry.undo = undoRepoCollaboratorAdminRepoPermission.bind(
-          null,
-          operations,
-          identity,
-          entry
-        );
+        entry.undo = undoRepoCollaboratorAdminRepoPermission.bind(null, operations, identity, entry);
         break;
       }
       case AuditEvents.Team.Edited: {
         entry.title = 'Team permission edited'; // They dropped admin on a repository the team supports
-        if (
-          record.additionalData?.changes?.repository?.permissions?.from
-            ?.admin === true
-        ) {
+        if (record.additionalData?.changes?.repository?.permissions?.from?.admin === true) {
           entry.title = 'Repo admin permission removed from a team';
           entry.supported = true;
-          entry.eventDescription = `${actorIdentityFromRecord(
-            record
-          )} edited the ${teamIdentityFromRecord(
+          entry.eventDescription = `${actorIdentityFromRecord(record)} edited the ${teamIdentityFromRecord(
             record
           )} permission, removing the team's ability to administer settings and configure the repo.`;
-          entry.undoDescription =
-            'Undo will restore the ability of the team to administer the repository.';
-          entry.undo = undoTeamAdminRepoPermission.bind(
-            null,
-            operations,
-            entry
-          );
+          entry.undoDescription = 'Undo will restore the ability of the team to administer the repository.';
+          entry.undo = undoTeamAdminRepoPermission.bind(null, operations, entry);
         }
         break;
       }
@@ -179,11 +155,7 @@ function undoRepoCollaboratorAdminRepoPermission(
   identity: IGitHubIdentity,
   entry: IUndoEntry
 ) {
-  return undoRepoCollaboratorAdminRepoPermissionAsync(
-    operations,
-    identity,
-    entry
-  );
+  return undoRepoCollaboratorAdminRepoPermissionAsync(operations, identity, entry);
 }
 
 async function undoRepoCollaboratorAdminRepoPermissionAsync(
@@ -213,17 +185,13 @@ async function undoRepoCollaboratorAdminRepoPermissionAsync(
   if (!operation.organizationId) {
     throw new Error('No organization ID stored in the record');
   }
-  const organization = operations.getOrganizationById(
-    Number(operation.organizationId)
-  );
+  const organization = operations.getOrganizationById(Number(operation.organizationId));
   if (!operation.repositoryId) {
     throw new Error('No repository ID');
   }
   let repository: Repository = null;
   try {
-    repository = await organization.getRepositoryById(
-      Number(operation.repositoryId)
-    );
+    repository = await organization.getRepositoryById(Number(operation.repositoryId));
   } catch (getRepositoryError) {
     if (ErrorHelper.IsNotFound(getRepositoryError)) {
       throw new Error(
@@ -247,10 +215,7 @@ async function undoRepoCollaboratorAdminRepoPermissionAsync(
   }
   // Restore the permission
   try {
-    await repository.addCollaborator(
-      identity.username,
-      GitHubRepositoryPermission.Admin
-    );
+    await repository.addCollaborator(identity.username, GitHubRepositoryPermission.Admin);
   } catch (restoreError) {
     throw restoreError;
   }
@@ -261,10 +226,7 @@ async function undoRepoCollaboratorAdminRepoPermissionAsync(
   };
 }
 
-function undoTeamAdminRepoPermission(
-  operations: Operations,
-  entry: IUndoEntry
-) {
+function undoTeamAdminRepoPermission(operations: Operations, entry: IUndoEntry) {
   return undoTeamAdminRepoPermissionAsync(operations, entry);
 }
 
@@ -279,10 +241,7 @@ async function undoTeamAdminRepoPermissionAsync(
   if (operation.action !== AuditEvents.Team.Edited) {
     throw new Error('Unsupported action');
   }
-  if (
-    operation.additionalData?.changes?.repository?.permissions?.from?.admin !==
-    true
-  ) {
+  if (operation.additionalData?.changes?.repository?.permissions?.from?.admin !== true) {
     throw new Error(
       'This action record is not of the correct format for restoring administrative permissions'
     );
@@ -290,17 +249,13 @@ async function undoTeamAdminRepoPermissionAsync(
   if (!operation.organizationId) {
     throw new Error('No organization ID stored in the record');
   }
-  const organization = operations.getOrganizationById(
-    Number(operation.organizationId)
-  );
+  const organization = operations.getOrganizationById(Number(operation.organizationId));
   if (!operation.repositoryId) {
     throw new Error('No repository ID');
   }
   let repository: Repository = null;
   try {
-    repository = await organization.getRepositoryById(
-      Number(operation.repositoryId)
-    );
+    repository = await organization.getRepositoryById(Number(operation.repositoryId));
   } catch (getRepositoryError) {
     if (ErrorHelper.IsNotFound(getRepositoryError)) {
       throw new Error(
@@ -326,10 +281,7 @@ async function undoTeamAdminRepoPermissionAsync(
   }
   // Restore the permission
   try {
-    await repository.setTeamPermission(
-      teamId,
-      GitHubRepositoryPermission.Admin
-    );
+    await repository.setTeamPermission(teamId, GitHubRepositoryPermission.Admin);
   } catch (restoreError) {
     throw restoreError;
   }
@@ -344,9 +296,7 @@ router.use(
     const { operations } = getProviders(req);
     if (!operations.allowUndoSystem) {
       res.status(404);
-      return next(
-        new Error('This feature is unavailable in this application instance')
-      );
+      return next(new Error('This feature is unavailable in this application instance'));
     }
     const auditLogRecordProvider = operations.providers.auditLogRecordProvider;
     if (!auditLogRecordProvider) {
@@ -358,22 +308,12 @@ router.use(
     }
     try {
       const now = new Date();
-      const before = new Date(
-        now.getTime() - daysInMilliseconds(validDaysBeforeNow)
-      );
+      const before = new Date(now.getTime() - daysInMilliseconds(validDaysBeforeNow));
       const undoResults = await auditLogRecordProvider.queryAuditLogForThirdPartyIdUndoOperations(
         ghi.id.toString()
       );
-      const candidateUndoOperations = filterToRecentEvents(
-        undoResults,
-        now,
-        before
-      );
-      req.undoOperations = finalizeUndoEvents(
-        operations,
-        ghi,
-        candidateUndoOperations
-      );
+      const candidateUndoOperations = filterToRecentEvents(undoResults, now, before);
+      req.undoOperations = finalizeUndoEvents(operations, ghi, candidateUndoOperations);
     } catch (error) {
       return next(error);
     }
@@ -394,9 +334,7 @@ router.post(
       res.status(400);
       return next(new Error('Missing event ID'));
     }
-    const matchingEvents = undoOperations.filter(
-      (op) => op.operation?.recordId === recordId
-    );
+    const matchingEvents = undoOperations.filter((op) => op.operation?.recordId === recordId);
     if (!matchingEvents.length) {
       res.status(400);
       return next(new Error('Not a valid candidate event'));
@@ -407,21 +345,13 @@ router.post(
     if (operation.userCorporateId) {
       if (operation.userCorporateId !== link.corporateId) {
         res.status(400);
-        return next(
-          new Error(
-            'This event cannot be undone for your account due to its linked corporate ID'
-          )
-        );
+        return next(new Error('This event cannot be undone for your account due to its linked corporate ID'));
       }
       isOK = true;
     } else if (operation.actorId) {
       if (operation.actorId !== githubId) {
         res.status(400);
-        return next(
-          new Error(
-            'This event cannot be undone for your account due to its GitHub account ID'
-          )
-        );
+        return next(new Error('This event cannot be undone for your account due to its GitHub account ID'));
       }
       isOK = true;
     }
@@ -437,9 +367,7 @@ router.post(
       );
     }
     if (!record.undo) {
-      return next(
-        new Error('This operation is not currently supported for undo')
-      );
+      return next(new Error('This operation is not currently supported for undo'));
     }
     try {
       const result = await record.undo();
@@ -548,9 +476,7 @@ async function sendUndoMailNotification(
     throw new Error('No link for the individual context, no mail can be sent');
   }
   try {
-    const mailAddress = await operations.getMailAddressFromCorporateUsername(
-      link.corporateUsername
-    );
+    const mailAddress = await operations.getMailAddressFromCorporateUsername(link.corporateUsername);
     if (mailAddress) {
       details.mailAddress = mailAddress;
       const companyName = operations.config.brand.companyName;

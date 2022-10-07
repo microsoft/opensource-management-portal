@@ -26,7 +26,6 @@ base path and also set headers.
 
 - Add a `showids=1` query string parameter to have repository IDs show up next to repository names
 
-
 ## API Versioning
 
 The following API versions are currently supported:
@@ -76,7 +75,7 @@ To improve responsiveness, this API uses cached data. If your service is using
 the data for a batch process or job, do consider keeping your own cache of the
 data instead of calling this API exhaustively while performing work.
 
-__Optional query string parameters:__
+**Optional query string parameters:**
 
 - The parameter `showOrganizations` (default implicitly to true) can be set to `false` or `0` to _not_ show users' GitHub organization memberships. This reduces the size of the link payload.
 
@@ -442,14 +441,16 @@ Bare minimum GitHub body component, with the type JSON, is the `name` field. You
 > Note: GitHub has an input field called `team_id`. This gives _read_ access to a team ID. Our API is more sophisticated and useful since it can also assign teams to the repo with various permissions. We do not recommend providing `team_id` as a result.
 
 API Version:
-  - api-version should be in the header or query string; at this time only 2016_12_01 is supported
+
+- api-version should be in the header or query string; at this time only 2016_12_01 is supported
 
 Casing:
-  - At this time, casing is important for values
+
+- At this time, casing is important for values
 
 Team permissions must be set at create time as well. The API will support up to 12 team permissions plus an everyone read team permission if wanted. This design allows for specifying teams as headers. If you are setting a header, you may set it to a JSON stringified object representing the needed value. If you are setting in the body, please just provide the rich object value. You need to provide team IDs, not team names, at this time.
 
-  - ms.teams (or ms-teams and JSON stringified object for header)
+- ms.teams (or ms-teams and JSON stringified object for header)
 
 Team permission (ms.teams) value:
 
@@ -468,16 +469,20 @@ Always try and provide a minimum number of administrator teams, same goes for wr
 Internal Microsoft-specific notes
 
 Microsoft-required fields and components:
-  - ms.license: either 'MIT' or '(MIT AND CC-BY-4.0)' are supported at this time, all others rejected
-  - ms.approval-type: as of 2016_12_01, there are 4 supported values as follows. Please select just one.
-    - ReleaseReview: the repo has been reviewed and approved for open source using the release tooling (Palamida, etc.) - the approval URL must be provided in a separate value when using this approval type
-    - SmallLibrariesToolsSamples: the repo meets the corporate standard for small libraries, tools, and samples
-    - Migrate: the repo is being migrated from an old public location such as CodePlex or SourceForge
-    - Exempt: the repo is exempt from needing an approval type. The justification will be required in a separate field.
+
+- ms.license: either 'MIT' or '(MIT AND CC-BY-4.0)' are supported at this time, all others rejected
+- ms.approval-type: as of 2016_12_01, there are 4 supported values as follows. Please select just one:
+
+  - ReleaseReview: the repo has been reviewed and approved for open source using the release tooling (Palamida, etc.) - the approval URL must be provided in a separate value when using this approval type
+  - SmallLibrariesToolsSamples: the repo meets the corporate standard for small libraries, tools, and samples
+  - Migrate: the repo is being migrated from an old public location such as CodePlex or SourceForge
+  - Exempt: the repo is exempt from needing an approval type. The justification will be required in a separate field.
+
 Other fields:
-  - ms.approval-url: If the provided `ms-approval-type` is 'ReleaseReview', this must be provided to provide the URL. This URL will be validated so it must point at a valid approval URL.
-  - ms.justification: Human-readable justification text, if the `ms-approval-type` is 'Exempt'
-  - ms.entity: 'Microsoft' or '.NET Foundation', if the CLA is to be enabled (strongly recommended)
-  - ms.notify: a comman-separated list of e-mail address to notify about the creation of the repo if successful
-  - ms.onBehalfOf: the GitHub username this operation is performed on behalf of. Providing this is a good call as it will redirect questions about the repo to the individual if needed rather than the service account.
-  - ms.project-type: product code, sample code, documentation, sdk, utility library / tool, other (new as of apiVersion=2017-07-27)
+
+- ms.approval-url: If the provided `ms-approval-type` is 'ReleaseReview', this must be provided to provide the URL. This URL will be validated so it must point at a valid approval URL.
+- ms.justification: Human-readable justification text, if the `ms-approval-type` is 'Exempt'
+- ms.entity: 'Microsoft' or '.NET Foundation', if the CLA is to be enabled (strongly recommended)
+- ms.notify: a comman-separated list of e-mail address to notify about the creation of the repo if successful
+- ms.onBehalfOf: the GitHub username this operation is performed on behalf of. Providing this is a good call as it will redirect questions about the repo to the individual if needed rather than the service account.
+- ms.project-type: product code, sample code, documentation, sdk, utility library / tool, other (new as of apiVersion=2017-07-27)

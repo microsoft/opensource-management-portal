@@ -9,8 +9,7 @@ import { ReposAppRequest, TeamJsonFormat } from '../../../interfaces';
 import { IndividualContext } from '../../../user';
 
 export default asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const activeContext = (req.individualContext ||
-    req.apiContext) as IndividualContext;
+  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   if (!activeContext.link) {
     return res.json({
       isLinked: false,
@@ -22,8 +21,6 @@ export default asyncHandler(async (req: ReposAppRequest, res, next) => {
   return res.json({
     isLinked: true,
     member: permissions.member.map((t) => t.asJson(TeamJsonFormat.Augmented)),
-    maintainer: permissions.maintainer.map((t) =>
-      t.asJson(TeamJsonFormat.Augmented)
-    ),
+    maintainer: permissions.maintainer.map((t) => t.asJson(TeamJsonFormat.Augmented)),
   });
 });

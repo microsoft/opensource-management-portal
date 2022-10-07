@@ -13,17 +13,13 @@ export default function createPostgresProvider(providers, config) {
   }
 
   if (!config.github.links.postgres) {
-    throw new Error(
-      'Missing configuration in the "config.github.links.postgres" block'
-    );
+    throw new Error('Missing configuration in the "config.github.links.postgres" block');
   }
 
   const options = config.github.links.postgres || {};
 
   if (!options.tableName) {
-    throw new Error(
-      'Missing Postgres table name for links (REPOS_POSTGRES_LINKS_TABLE_NAME)'
-    );
+    throw new Error('Missing Postgres table name for links (REPOS_POSTGRES_LINKS_TABLE_NAME)');
   }
   if (!options.githubThirdPartyName) {
     throw new Error(

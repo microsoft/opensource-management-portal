@@ -5,12 +5,7 @@
 
 import { OrganizationSudo } from '.';
 import { Organization } from '../../business';
-import {
-  IProviders,
-  ICorporateLink,
-  GitHubTeamRole,
-  ITeamMembershipRoleState,
-} from '../../interfaces';
+import { IProviders, ICorporateLink, GitHubTeamRole, ITeamMembershipRoleState } from '../../interfaces';
 import { ErrorHelper } from '../../transitional';
 
 export class OrganizationSudoGitHubTeams extends OrganizationSudo {
@@ -42,8 +37,7 @@ export class OrganizationSudoGitHubTeams extends OrganizationSudo {
       throw getMembershipError;
     }
     const isKnownMembership =
-      membership === GitHubTeamRole.Member ||
-      membership === GitHubTeamRole.Maintainer;
+      membership === GitHubTeamRole.Member || membership === GitHubTeamRole.Maintainer;
     if (membership && isKnownMembership) {
       return isKnownMembership;
     } else if (membership) {

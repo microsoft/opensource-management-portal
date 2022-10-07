@@ -23,9 +23,7 @@ router.use(function (req: ILinksApiRequestWithUnlink, res, next) {
     return next(jsonError('The key is not authorized for specific APIs', 401));
   }
   if (!token.hasScope('unlink')) {
-    return next(
-      jsonError('The key is not authorized to use the unlink API', 401)
-    );
+    return next(jsonError('The key is not authorized to use the unlink API', 401));
   }
   return next();
 });
@@ -49,9 +47,7 @@ router.use(
 );
 
 router.use('*', (req: ILinksApiRequestWithUnlink, res, next) => {
-  return next(
-    req.unlink ? undefined : jsonError('No link available for operation', 404)
-  );
+  return next(req.unlink ? undefined : jsonError('No link available for operation', 404));
 });
 
 router.delete('*', (req: ILinksApiRequestWithUnlink, res, next) => {
@@ -59,9 +55,7 @@ router.delete('*', (req: ILinksApiRequestWithUnlink, res, next) => {
   const link = req.unlink;
   let purpose: UnlinkPurpose = null;
   try {
-    purpose = apiUnlinkPurposeToEnum(
-      (req.headers['unlink-purpose'] || 'termination') as string
-    );
+    purpose = apiUnlinkPurposeToEnum((req.headers['unlink-purpose'] || 'termination') as string);
   } catch (purposeError) {
     return next(jsonError(purposeError, 400));
   }
@@ -70,9 +64,7 @@ router.delete('*', (req: ILinksApiRequestWithUnlink, res, next) => {
     .terminateLinkAndMemberships(link.thirdPartyId, options)
     .then((results) => {
       res.json({
-        messages: Array.isArray(results)
-          ? ((results as any) as string[]).reverse()
-          : results,
+        messages: Array.isArray(results) ? (results as any as string[]).reverse() : results,
       });
     })
     .catch((problem) => {
@@ -83,9 +75,7 @@ router.delete('*', (req: ILinksApiRequestWithUnlink, res, next) => {
 function apiUnlinkPurposeToEnum(purpose: string): UnlinkPurpose {
   switch (purpose) {
     case 'operations':
-      throw new Error(
-        'The unlink purpose "operations" is not supported by API'
-      );
+      throw new Error('The unlink purpose "operations" is not supported by API');
     case 'termination':
       return UnlinkPurpose.Termination;
     case 'self':

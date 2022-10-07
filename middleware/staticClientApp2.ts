@@ -29,19 +29,13 @@ export function StaticReactClientApp(app, express) {
   try {
     const clientDistPath = require(staticClientPackageName);
     if (typeof clientDistPath !== 'string') {
-      throw new Error(
-        `The return value of the package ${staticClientPackageName} must be a string/path`
-      );
+      throw new Error(`The return value of the package ${staticClientPackageName} must be a string/path`);
     }
     const clientPackage = require(`${staticClientPackageName}/package.json`);
-    debug(
-      `Hosting React client version ${clientPackage.version} from ${clientDistPath}`
-    );
+    debug(`Hosting React client version ${clientPackage.version} from ${clientDistPath}`);
     app.use('/', express.static(clientDistPath));
   } catch (hostClientError) {
-    console.error(
-      `The React client could not be loaded via package ${staticClientPackageName}`
-    );
+    console.error(`The React client could not be loaded via package ${staticClientPackageName}`);
     throw hostClientError;
   }
 }

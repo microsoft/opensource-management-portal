@@ -14,11 +14,7 @@ import { Repository } from '../../business/repository';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { Organization } from '../../business/organization';
 import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
-import {
-  getRepositoryMetadataProvider,
-  ReposAppRequest,
-  UserAlertType,
-} from '../../interfaces';
+import { getRepositoryMetadataProvider, ReposAppRequest, UserAlertType } from '../../interfaces';
 
 router.use(
   '/',
@@ -37,9 +33,7 @@ router.use(
     const individualContext = req.individualContext;
     const isPortalAdministrator = await individualContext.isPortalAdministrator();
     if (!isPortalAdministrator) {
-      return next(
-        new Error('Only a portal administrator can access this endpoint')
-      );
+      return next(new Error('Only a portal administrator can access this endpoint'));
     }
     const repository = req['repository'] as Repository;
     // const metadata = await repository.getRepositoryMetadata();
@@ -52,9 +46,7 @@ router.get(
   '/',
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     const repository = req['repository'] as Repository;
-    const repositoryMetadata = req[
-      'repositoryMetadata'
-    ] as RepositoryMetadataEntity;
+    const repositoryMetadata = req['repositoryMetadata'] as RepositoryMetadataEntity;
     return renderPage(req, repositoryMetadata, repository);
   })
 );
@@ -67,21 +59,15 @@ router.post(
     const repository = req['repository'] as Repository;
     const entity = repository.getEntity();
     if (!entity.parent) {
-      return next(
-        new Error('This repository was not forked. No actions available.')
-      );
+      return next(new Error('This repository was not forked. No actions available.'));
     }
-    const repositoryMetadata = req[
-      'repositoryMetadata'
-    ] as RepositoryMetadataEntity;
+    const repositoryMetadata = req['repositoryMetadata'] as RepositoryMetadataEntity;
     const actionDelete = req.body['delete-fork'];
     const actionUnlock = req.body['remove-administrative-lock'];
     if (!actionDelete && !actionUnlock) {
       return next(new Error('No action selected'));
     }
-    const repositoryMetadataProvider = getRepositoryMetadataProvider(
-      operations
-    );
+    const repositoryMetadataProvider = getRepositoryMetadataProvider(operations);
     const organization = repository.organization;
     const lockdownSystem = new NewRepositoryLockdownSystem({
       operations,
@@ -91,11 +77,7 @@ router.post(
     });
     if (actionUnlock) {
       await lockdownSystem.removeAdministrativeLock();
-      req.individualContext.webContext.saveUserAlert(
-        'Repo approved',
-        'Approved',
-        UserAlertType.Success
-      );
+      req.individualContext.webContext.saveUserAlert('Repo approved', 'Approved', UserAlertType.Success);
     }
     if (actionDelete) {
       await lockdownSystem.deleteLockedRepository(

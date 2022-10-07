@@ -17,11 +17,7 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
     return eventType === 'repository';
   }
 
-  async run(
-    operations: Operations,
-    organization: Organization,
-    data: any
-  ): Promise<boolean> {
+  async run(operations: Operations, organization: Organization, data: any): Promise<boolean> {
     const event = data.body;
     const queryCache = operations.providers.queryCache;
     let update = false;
@@ -47,8 +43,7 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
       update = true;
       if (action === 'transferred') {
         transferSourceLogin =
-          event?.changes?.owner?.from?.user?.login ||
-          event?.changes?.owner?.from?.organization?.login;
+          event?.changes?.owner?.from?.user?.login || event?.changes?.owner?.from?.organization?.login;
       }
     } else if (action === 'deleted') {
       console.log(
@@ -66,10 +61,7 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
           queryCache.supportsOrganizationMembership
         ) {
           // TODO: Verify what happens to forks...
-          await queryCache.removeRepository(
-            organizationIdAsString,
-            repositoryIdAsString
-          );
+          await queryCache.removeRepository(organizationIdAsString, repositoryIdAsString);
         }
       } catch (queryCacheError) {
         console.dir(queryCacheError);
@@ -132,13 +124,8 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
       organization.isNewRepositoryLockdownSystemEnabled()
     ) {
       try {
-        const repository = organization.repository(
-          event.repository.name,
-          event.repository
-        );
-        const repositoryMetadataProvider = getRepositoryMetadataProvider(
-          organization.operations
-        );
+        const repository = organization.repository(event.repository.name, event.repository);
+        const repositoryMetadataProvider = getRepositoryMetadataProvider(organization.operations);
         const lockdownSystem = new NewRepositoryLockdownSystem({
           operations,
           organization,

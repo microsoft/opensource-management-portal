@@ -88,9 +88,7 @@ function existingGitHubIdentityError(self, link, requestUser, callback) {
   return callback(anotherGitHubAccountError, self);
 }
 
-export function SettleToStateValue<T>(
-  promise: Promise<T>
-): Promise<ISettledValue<T>> {
+export function SettleToStateValue<T>(promise: Promise<T>): Promise<ISettledValue<T>> {
   return promise.then(
     (value) => {
       return { value, state: SettledState.Fulfilled };
@@ -101,9 +99,7 @@ export function SettleToStateValue<T>(
   );
 }
 
-export function permissionsObjectToValue(
-  permissions
-): GitHubRepositoryPermission {
+export function permissionsObjectToValue(permissions): GitHubRepositoryPermission {
   if (permissions.admin === true) {
     return GitHubRepositoryPermission.Admin;
   } else if (permissions.push === true) {
@@ -115,9 +111,7 @@ export function permissionsObjectToValue(
   } else if (permissions.pull === true) {
     return GitHubRepositoryPermission.Pull;
   }
-  throw new Error(
-    `Unsupported GitHubRepositoryPermission value inside permissions`
-  );
+  throw new Error(`Unsupported GitHubRepositoryPermission value inside permissions`);
 }
 
 export function isPermissionBetterThan(
@@ -127,9 +121,7 @@ export function isPermissionBetterThan(
   if (!currentBest) {
     return true;
   }
-  const comparison = MassagePermissionsToGitHubRepositoryPermission(
-    currentBest
-  );
+  const comparison = MassagePermissionsToGitHubRepositoryPermission(currentBest);
   switch (MassagePermissionsToGitHubRepositoryPermission(newConsideration)) {
     case GitHubRepositoryPermission.Admin:
       return true;
@@ -144,10 +136,7 @@ export function isPermissionBetterThan(
       }
       break;
     case GitHubRepositoryPermission.Pull:
-      if (
-        comparison === null ||
-        comparison === GitHubRepositoryPermission.None
-      ) {
+      if (comparison === null || comparison === GitHubRepositoryPermission.None) {
         return true;
       }
       break;
@@ -160,9 +149,7 @@ export function isPermissionBetterThan(
   return false;
 }
 
-export function MassagePermissionsToGitHubRepositoryPermission(
-  value: string
-): GitHubRepositoryPermission {
+export function MassagePermissionsToGitHubRepositoryPermission(value: string): GitHubRepositoryPermission {
   // collaborator level APIs return a more generic read/write value, lead to some bad caches in the past...
   // TODO: support new collaboration values as they come online for Enterprise Cloud!
   switch (value) {
@@ -193,35 +180,20 @@ export class CreateError {
   }
 
   static NotFound(message: string, innerError?: Error): Error {
-    return ErrorHelper.SetInnerError(
-      CreateError.CreateStatusCodeError(404, message),
-      innerError
-    );
+    return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(404, message), innerError);
   }
 
   static Conflict(message: string, innerError?: Error): Error {
-    return ErrorHelper.SetInnerError(
-      CreateError.CreateStatusCodeError(409, message),
-      innerError
-    );
+    return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(409, message), innerError);
   }
 
-  static ParameterRequired(
-    parameterName: string,
-    optionalDetails?: string
-  ): Error {
+  static ParameterRequired(parameterName: string, optionalDetails?: string): Error {
     const msg = `${parameterName} required`;
-    return CreateError.CreateStatusCodeError(
-      400,
-      optionalDetails ? `${msg}: ${optionalDetails}` : msg
-    );
+    return CreateError.CreateStatusCodeError(400, optionalDetails ? `${msg}: ${optionalDetails}` : msg);
   }
 
   static InvalidParameters(message: string, innerError?: Error): Error {
-    return ErrorHelper.SetInnerError(
-      CreateError.CreateStatusCodeError(400, message),
-      innerError
-    );
+    return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(400, message), innerError);
   }
 
   static NotAuthenticated(message: string): Error {
@@ -233,10 +205,7 @@ export class CreateError {
   }
 
   static ServerError(message: string, innerError?: Error): Error {
-    return ErrorHelper.SetInnerError(
-      CreateError.CreateStatusCodeError(500, message),
-      innerError
-    );
+    return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(500, message), innerError);
   }
 }
 
@@ -351,9 +320,7 @@ export function sha256(str: string) {
 
 export interface ICustomizedNewRepositoryLogic {
   createContext(req: any): INewRepositoryContext;
-  getAdditionalTelemetryProperties(
-    context: INewRepositoryContext
-  ): IDictionary<string>;
+  getAdditionalTelemetryProperties(context: INewRepositoryContext): IDictionary<string>;
   validateRequest(context: INewRepositoryContext, req: any): Promise<void>;
   stripRequestBody(context: INewRepositoryContext, body: any): void;
   afterRepositoryCreated(
@@ -362,10 +329,7 @@ export interface ICustomizedNewRepositoryLogic {
     success: ICreateRepositoryApiResult,
     organization: Organization
   ): Promise<void>;
-  shouldNotifyManager(
-    context: INewRepositoryContext,
-    corporateId: string
-  ): boolean;
+  shouldNotifyManager(context: INewRepositoryContext, corporateId: string): boolean;
   getNewMailViewProperties(
     context: INewRepositoryContext,
     repository: Repository

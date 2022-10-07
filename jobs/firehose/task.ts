@@ -8,9 +8,7 @@
 import os from 'os';
 import { DateTime } from 'luxon';
 import App from '../../app';
-import ProcessOrganizationWebhook, {
-  IGitHubWebhookProperties,
-} from '../../webhooks/organizationProcessor';
+import ProcessOrganizationWebhook, { IGitHubWebhookProperties } from '../../webhooks/organizationProcessor';
 import {
   IGitHubAppInstallation,
   IGitHubWebhookEnterprise,
@@ -26,10 +24,7 @@ const runningAsOngoingDeployment = true;
 
 const hardAbortMs = 1000 * 60 * 5; // 5 minutes
 
-export default async function firehose({
-  providers,
-  started,
-}: IReposJob): Promise<IReposJobResult> {
+export default async function firehose({ providers, started }: IReposJob): Promise<IReposJobResult> {
   let processedEventTypes = {};
   let interestingEvents = 0;
   let processedEvents = 0;
@@ -38,14 +33,11 @@ export default async function firehose({
     ? parseInt(config.github.webhooks.runtimeMinutes)
     : 5;
   let runtimeSeconds =
-    (jobMinutesFrequency - 1) * 60 +
-    30; /* 30 second flex in the last minute instead of 60s */
+    (jobMinutesFrequency - 1) * 60 + 30; /* 30 second flex in the last minute instead of 60s */
   config.github?.webhooks?.serviceBus?.queue &&
     console.log(`bus: ${config.github.webhooks.serviceBus.queue}`);
   if (runningAsOngoingDeployment) {
-    console.log(
-      'webhook processor is configured to keep running, it will not exit'
-    );
+    console.log('webhook processor is configured to keep running, it will not exit');
   } else {
     setTimeout(() => {
       const finishing = DateTime.utc().toISO();
@@ -85,9 +77,7 @@ export default async function firehose({
   // let parallelism = messagesInQueue > maxParallelism / 2 ? maxParallelism : Math.min(5, maxParallelism);
   const supportsMultipleThreads = webhookQueueProcessor.supportsMultipleThreads;
   if (!supportsMultipleThreads) {
-    console.log(
-      'The queue provider does not support multiple concurrent threads'
-    );
+    console.log('The queue provider does not support multiple concurrent threads');
   }
   let parallelism = supportsMultipleThreads ? maxParallelism : 1;
   const sliceDelayPerThread = emptyQueueDelaySeconds / parallelism;
@@ -151,10 +141,7 @@ export default async function firehose({
     }
   }
 
-  async function iterate(
-    providers: IProviders,
-    threadNumber: number
-  ): Promise<void> {
+  async function iterate(providers: IProviders, threadNumber: number): Promise<void> {
     const { webhookQueueProcessor } = providers;
     let messages: IQueueMessage[] = null;
     let intervalHandle = setTimeout(hardAbort, hardAbortMs);
@@ -191,10 +178,7 @@ export default async function firehose({
     }
   }
 
-  async function handle(
-    providers: IProviders,
-    message: IQueueMessage
-  ): Promise<void> {
+  async function handle(providers: IProviders, message: IQueueMessage): Promise<void> {
     const { operations, insights, webhookQueueProcessor } = providers;
     let totalSeconds: number = null;
     const logicAppStarted = message.customProperties.started
@@ -204,23 +188,16 @@ export default async function firehose({
       // const enqueued = lockedMessage && lockedMessage.brokerProperties ? lockedMessage.brokerProperties.EnqueuedTimeUtc : null;
       // const serviceBusDelay = moment.utc(enqueued, 'ddd, DD MMM YYYY HH:mm:ss'); // console.log('delays - bus delay: ' + serviceBusDelay.fromNow() + ', logic app to now: ' + logicAppStarted.fromNow() + ', total ms: ' + totalMs.toString());
       totalSeconds = DateTime.utc().diff(logicAppStarted, 'seconds').seconds;
-      insights.trackMetric({
-        name: 'JobFirehoseQueueDelay',
-        value: totalSeconds,
-      });
+      insights.trackMetric({ name: 'JobFirehoseQueueDelay', value: totalSeconds });
     }
     let deletedAlready = false;
     const acknowledgeEvent = function () {
       if (deletedAlready) {
-        console.warn(
-          `[message ${message.identifier} was already deleted] [start latency ${totalSeconds}s]`
-        );
+        console.warn(`[message ${message.identifier} was already deleted] [start latency ${totalSeconds}s]`);
         return;
       }
       deletedAlready = true;
-      console.log(
-        `[message ${message.identifier}] deleted [start latency ${totalSeconds}s]`
-      );
+      console.log(`[message ${message.identifier}] deleted [start latency ${totalSeconds}s]`);
       webhookQueueProcessor
         .deleteMessage(message)
         .then((ok) => {
@@ -248,17 +225,12 @@ export default async function firehose({
         )
       : false;
     if (processedElsewhere === true) {
-      console.log(
-        `[the webhook was processed by a company-specific handler: ${message.identifier}]`
-      );
+      console.log(`[the webhook was processed by a company-specific handler: ${message.identifier}]`);
       acknowledgeEvent();
       return;
     }
     if (installation) {
-      if (
-        installation.target_type &&
-        installation.target_type === 'Organization'
-      ) {
+      if (installation.target_type && installation.target_type === 'Organization') {
         const id = installation.target_id;
         try {
           const orgById = operations.getOrganizationById(id);
@@ -269,9 +241,7 @@ export default async function firehose({
           return;
         }
       } else if (installation.target_type) {
-        console.log(
-          `invalid target type ${installation.target_type} for installation id=${installation.id}`
-        );
+        console.log(`invalid target type ${installation.target_type} for installation id=${installation.id}`);
         acknowledgeEvent();
         return;
       }
@@ -317,7 +287,7 @@ export default async function firehose({
       operations,
       organization,
       event: {
-        properties: (message.customProperties as unknown) as IGitHubWebhookProperties,
+        properties: message.customProperties as unknown as IGitHubWebhookProperties,
         rawBody: message.unparsedBody,
         body: message.body,
       },
@@ -336,8 +306,6 @@ export default async function firehose({
 }
 
 function hardAbort() {
-  console.warn(
-    `Extremely long time elapsed, hard-aborting the process at ${new Date()}`
-  );
+  console.warn(`Extremely long time elapsed, hard-aborting the process at ${new Date()}`);
   process.exit(1);
 }

@@ -15,10 +15,7 @@ import {
   MetadataMappingDefinition,
   QueryBase,
 } from '../lib/entityMetadataProvider';
-import {
-  PostgresConfiguration,
-  PostgresSettings,
-} from '../lib/entityMetadataProvider/postgres';
+import { PostgresConfiguration, PostgresSettings } from '../lib/entityMetadataProvider/postgres';
 import { GitHubRepositoryVisibility } from './repositoryMetadata/repositoryMetadata';
 
 const type = new EntityMetadataType('RepositoryDetails');
@@ -27,13 +24,9 @@ const defaultTableName = 'repositories';
 const thisProviderType = type;
 type InterfaceProviderType = IRepositoryProvider;
 type ClassType = RepositoryEntity;
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityInstantiate,
-  () => {
-    return new RepositoryEntity();
-  }
-);
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => {
+  return new RepositoryEntity();
+});
 
 class ThisQueryBase extends QueryBase<ClassType> {
   constructor(public query: Query) {
@@ -133,12 +126,7 @@ const Field: IProperties = {
   parentOrganizationId: 'parentOrganizationId',
 };
 
-const dateColumns = [
-  Field.cached,
-  Field.pushedAt,
-  Field.createdAt,
-  Field.updatedAt,
-];
+const dateColumns = [Field.cached, Field.pushedAt, Field.createdAt, Field.updatedAt];
 
 enum Query {}
 
@@ -201,15 +189,9 @@ export class RepositoryEntity implements IProperties {
       fork: this.fork,
       archived: this.archived,
       disabled: this.disabled,
-      pushed_at: this.pushedAt
-        ? new Date(this.pushedAt).toISOString()
-        : undefined,
-      created_at: this.createdAt
-        ? new Date(this.createdAt).toISOString()
-        : undefined,
-      updated_at: this.updatedAt
-        ? new Date(this.updatedAt).toISOString()
-        : undefined,
+      pushed_at: this.pushedAt ? new Date(this.pushedAt).toISOString() : undefined,
+      created_at: this.createdAt ? new Date(this.createdAt).toISOString() : undefined,
+      updated_at: this.updatedAt ? new Date(this.updatedAt).toISOString() : undefined,
       description: this.description,
       homepage: this.homepage,
       language: this.language,
@@ -228,10 +210,7 @@ export class RepositoryEntity implements IProperties {
       network_count: this.networkCount,
       license: this.license ? { spdx_id: this.license } : null,
       parent:
-        this.parentId &&
-        this.parentName &&
-        this.parentOrganizationId &&
-        this.parentOrganizationName
+        this.parentId && this.parentName && this.parentOrganizationId && this.parentOrganizationName
           ? {
               id: this.parentId,
               name: this.parentName,
@@ -258,9 +237,7 @@ EntityMetadataMappings.Register(
     const base = query as ThisQueryBase;
     switch (base.query) {
       default:
-        throw new Error(
-          `The query ${base.query} is not implemented by this provider for the type ${type}`
-        );
+        throw new Error(`The query ${base.query} is not implemented by this provider for the type ${type}`);
     }
   }
 );
@@ -273,9 +250,7 @@ export interface IRepositoryProvider {
   delete(entity: ClassType): Promise<void>;
 }
 
-export class RepositoryProvider
-  extends EntityMetadataBase
-  implements IRepositoryProvider {
+export class RepositoryProvider extends EntityMetadataBase implements IRepositoryProvider {
   constructor(options: IEntityMetadataBaseOptions) {
     super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
@@ -294,10 +269,7 @@ export class RepositoryProvider
   async get(repositoryId: number): Promise<ClassType> {
     this.ensureHelpers(thisProviderType);
     let metadata: IEntityMetadata = null;
-    metadata = await this._entities.getMetadata(
-      thisProviderType,
-      String(repositoryId)
-    );
+    metadata = await this._entities.getMetadata(thisProviderType, String(repositoryId));
     return this.deserialize<ClassType>(thisProviderType, metadata);
   }
 
@@ -322,31 +294,14 @@ export default async function initializeRepositoryProvider(
 }
 
 const fieldNames = Object.getOwnPropertyNames(Field);
-const nativeFieldNames = fieldNames.filter(
-  (x) => x !== Field[keyValueMetadataField]
-);
+const nativeFieldNames = fieldNames.filter((x) => x !== Field[keyValueMetadataField]);
 
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityIdColumnName,
-  primaryFieldId
-);
-EntityMetadataMappings.Register(
-  type,
-  PostgresSettings.PostgresDefaultTypeColumnName,
-  typeColumnValue
-);
-EntityMetadataMappings.Register(
-  type,
-  PostgresSettings.PostgresDateColumns,
-  dateColumns
-);
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, primaryFieldId);
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, typeColumnValue);
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDateColumns, dateColumns);
 
 PostgresConfiguration.SetDefaultTableName(type, defaultTableName);
-PostgresConfiguration.MapFieldsToColumnNamesFromListLowercased(
-  type,
-  fieldNames
-);
+PostgresConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 PostgresConfiguration.IdentifyNativeFields(type, nativeFieldNames);
 PostgresConfiguration.ValidateMappings(type, fieldNames, [primaryFieldId]);
 

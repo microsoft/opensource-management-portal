@@ -101,11 +101,7 @@ export class RepositoryProject {
       project_id: this.id,
     };
     augmentInertiaPreview(parameters);
-    await operations.github.post(
-      this.authorizeSpecificPurpose(this._purpose),
-      'projects.delete',
-      parameters
-    );
+    await operations.github.post(this.authorizeSpecificPurpose(this._purpose), 'projects.delete', parameters);
     return true;
   }
 
@@ -131,9 +127,7 @@ export class RepositoryProject {
     return column;
   }
 
-  async getColumns(
-    options?: ICacheOptionsWithPurpose
-  ): Promise<RepositoryProjectColumn[]> {
+  async getColumns(options?: ICacheOptionsWithPurpose): Promise<RepositoryProjectColumn[]> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = Object.assign({
@@ -142,11 +136,7 @@ export class RepositoryProject {
     augmentInertiaPreview(parameters);
     const purpose = options?.purpose || this._purpose;
     const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgRepoDetailsStaleSeconds,
-        options
-      ),
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
@@ -157,21 +147,14 @@ export class RepositoryProject {
       'projects.listColumns',
       parameters
     );
-    const columns = common.createInstances<RepositoryProjectColumn>(
-      this,
-      projectColumnFromEntity,
-      raw
-    );
+    const columns = common.createInstances<RepositoryProjectColumn>(this, projectColumnFromEntity, raw);
     return columns;
   }
 
   // async getColumn(columnId: number): Promise<any> {
   // }
 
-  async getDetails(
-    options?: ICacheOptionsWithPurpose,
-    okToUseLocalEntity: boolean = true
-  ): Promise<any> {
+  async getDetails(options?: ICacheOptionsWithPurpose, okToUseLocalEntity: boolean = true): Promise<any> {
     if (okToUseLocalEntity && this._entity) {
       return this._entity;
     }
@@ -187,11 +170,7 @@ export class RepositoryProject {
     const purpose = options?.purpose || this._purpose;
     const cacheOptions: ICacheOptions = {
       // NOTE: just reusing repo details stale time
-      maxAgeSeconds: getMaxAgeSeconds(
-        operations,
-        CacheDefault.orgRepoDetailsStaleSeconds,
-        options
-      ),
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
@@ -223,10 +202,7 @@ export class RepositoryProject {
 
   async isDeleted(options?: ICacheOptions): Promise<boolean> {
     try {
-      await this.getDetails(
-        options,
-        false /* do not use local entity instance */
-      );
+      await this.getDetails(options, false /* do not use local entity instance */);
     } catch (maybeDeletedError) {
       if (ErrorHelper.IsNotFound(maybeDeletedError)) {
         return true;
@@ -236,9 +212,7 @@ export class RepositoryProject {
     return false;
   }
 
-  private authorizeSpecificPurpose(
-    purpose: AppPurpose
-  ): IGetAuthorizationHeader | string {
+  private authorizeSpecificPurpose(purpose: AppPurpose): IGetAuthorizationHeader | string {
     const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose

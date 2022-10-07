@@ -23,8 +23,7 @@ interface IRequestWithAdministration extends ReposAppRequest {
 router.use(
   asyncHandler(async (req: IRequestWithAdministration, res, next) => {
     const { operations } = getProviders(req);
-    const activeContext = (req.individualContext ||
-      req.apiContext) as IndividualContext;
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     req.isSystemAdministrator = await operations.isSystemAdministrator(
       activeContext?.corporateIdentity?.id,
       activeContext?.corporateIdentity?.username
@@ -43,9 +42,7 @@ router.get(
         isAdministrator,
       });
     }
-    const organizations = operations
-      .getOrganizations()
-      .map((org) => org.asClientJson());
+    const organizations = operations.getOrganizations().map((org) => org.asClientJson());
     return res.json({
       isAdministrator,
       organizations,
@@ -54,9 +51,7 @@ router.get(
 );
 
 router.use((req: IRequestWithAdministration, res, next) => {
-  return req.isSystemAdministrator
-    ? next()
-    : next(jsonError('Not authorized', 403));
+  return req.isSystemAdministrator ? next() : next(jsonError('Not authorized', 403));
 });
 
 router.use(
@@ -86,9 +81,7 @@ deployment?.routes?.api?.context?.administration?.index &&
   deployment?.routes?.api?.context.administration.index(router);
 
 router.use('*', (req, res, next) => {
-  return next(
-    jsonError('no API or function available: context/administration', 404)
-  );
+  return next(jsonError('no API or function available: context/administration', 404));
 });
 
 export default router;

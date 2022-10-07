@@ -27,39 +27,29 @@ export function attachAadPassportRoutes(
         return res.redirect(nextDestination);
       }
     }
-    return helpers.storeReferrer(
-      req,
-      res,
-      '/auth/azure',
-      'signin page hit, need to go authenticate'
-    );
+    return helpers.storeReferrer(req, res, '/auth/azure', 'signin page hit, need to go authenticate');
   });
 
   // SameSite cookie auth fixes, will regenerate even more sessions before proceeding to redirect to AAD...
-  app.get(
-    '/auth/azure',
-    (req: ReposAppRequest, res: Response, next: NextFunction) => {
-      const currentlyStoredSessionReferer =
-        (req as any).session?.referer || undefined;
-      const additionalAuthRedirect = (req.session as any)
-        .additionalAuthRedirect;
-      if (!req.session) {
-        return next();
-      }
-      return req.session.regenerate(function (err) {
-        if (err) {
-          return next(err);
-        }
-        if (currentlyStoredSessionReferer && req.session) {
-          (req as any).session.referer = currentlyStoredSessionReferer;
-        }
-        if (additionalAuthRedirect && req.session) {
-          (req as any).session.additionalAuthRedirect = additionalAuthRedirect;
-        }
-        return next();
-      });
+  app.get('/auth/azure', (req: ReposAppRequest, res: Response, next: NextFunction) => {
+    const currentlyStoredSessionReferer = (req as any).session?.referer || undefined;
+    const additionalAuthRedirect = (req.session as any).additionalAuthRedirect;
+    if (!req.session) {
+      return next();
     }
-  );
+    return req.session.regenerate(function (err) {
+      if (err) {
+        return next(err);
+      }
+      if (currentlyStoredSessionReferer && req.session) {
+        (req as any).session.referer = currentlyStoredSessionReferer;
+      }
+      if (additionalAuthRedirect && req.session) {
+        (req as any).session.additionalAuthRedirect = additionalAuthRedirect;
+      }
+      return next();
+    });
+  });
 
   // Actual AAD sign-in
   app.get(
@@ -128,16 +118,7 @@ export function attachAadPassportRoutes(
     );
   });
 
-  app.get(
-    '/signout/azure',
-    (req: ReposAppRequest, res: Response, next: NextFunction) => {
-      return helpers.signout(
-        true /* primary authentication */,
-        [aadStrategyUserPropertyName],
-        req,
-        res,
-        next
-      );
-    }
-  );
+  app.get('/signout/azure', (req: ReposAppRequest, res: Response, next: NextFunction) => {
+    return helpers.signout(true /* primary authentication */, [aadStrategyUserPropertyName], req, res, next);
+  });
 }

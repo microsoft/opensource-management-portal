@@ -11,10 +11,7 @@ const debug = Debug('appinsights');
 
 import type { TelemetryClient } from 'applicationinsights';
 
-function createWrappedClient(
-  propertiesToInsert: any,
-  client: TelemetryClient
-): TelemetryClient {
+function createWrappedClient(propertiesToInsert: any, client: TelemetryClient): TelemetryClient {
   let c = client;
   if (client) {
     client.commonProperties = propertiesToInsert;
@@ -48,24 +45,15 @@ const consoleHandler = (eventNameOrProperties) => {
     }
   }
   debug(
-    (typeof eventNameOrProperties === 'string'
-      ? eventNameOrProperties
-      : eventNameOrProperties.name) + props
+    (typeof eventNameOrProperties === 'string' ? eventNameOrProperties : eventNameOrProperties.name) + props
   );
 };
 const consoleMetric = (eventNameOrProperties) => {
   if (typeof eventNameOrProperties === 'string') {
-    debug(
-      `Legacy applicationinsights Metric ${eventNameOrProperties} was not recorded`
-    );
+    debug(`Legacy applicationinsights Metric ${eventNameOrProperties} was not recorded`);
   } else {
-    eventNameOrProperties = eventNameOrProperties || {
-      name: 'UnknownMetric',
-      value: 0,
-    };
-    debug(
-      `Metric(${eventNameOrProperties.name}: ${eventNameOrProperties.value}`
-    );
+    eventNameOrProperties = eventNameOrProperties || { name: 'UnknownMetric', value: 0 };
+    debug(`Metric(${eventNameOrProperties.name}: ${eventNameOrProperties.value}`);
   }
 };
 

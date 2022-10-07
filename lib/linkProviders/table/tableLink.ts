@@ -3,10 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import {
-  ICorporateLinkExtendedDirectMethods,
-  ICorporateLinkExtended,
-} from '../../../interfaces';
+import { ICorporateLinkExtendedDirectMethods, ICorporateLinkExtended } from '../../../interfaces';
 import { TableLinkProvider } from './tableLinkProvider';
 
 export interface IInternalTableLinkOptions {
@@ -19,8 +16,7 @@ export interface ITableLinkInstanceDataHelpers {
   save: () => Promise<boolean>;
 }
 
-export interface ITableLinkInstanceInternalHelpers
-  extends ICorporateLinkExtendedDirectMethods {
+export interface ITableLinkInstanceInternalHelpers extends ICorporateLinkExtendedDirectMethods {
   acknowledgeSuccessfulUpdate: () => void;
   getDirtyColumns: () => any;
   getDirectEntity: () => any;
@@ -61,11 +57,7 @@ export class CorporateTableLink implements ICorporateLinkExtended {
   }
 
   set corporateMailAddress(value: string) {
-    _updateColumn(
-      this,
-      this._provider.propertyMapping.corporateMailAddress,
-      value
-    );
+    _updateColumn(this, this._provider.propertyMapping.corporateMailAddress, value);
   }
 
   get corporateAlias() {
@@ -85,11 +77,7 @@ export class CorporateTableLink implements ICorporateLinkExtended {
   }
 
   set corporateUsername(value: string) {
-    _updateColumn(
-      this,
-      this._provider.propertyMapping.corporateUsername,
-      value
-    );
+    _updateColumn(this, this._provider.propertyMapping.corporateUsername, value);
   }
 
   get corporateDisplayName() {
@@ -97,11 +85,7 @@ export class CorporateTableLink implements ICorporateLinkExtended {
   }
 
   set corporateDisplayName(value: string) {
-    _updateColumn(
-      this,
-      this._provider.propertyMapping.corporateDisplayName,
-      value
-    );
+    _updateColumn(this, this._provider.propertyMapping.corporateDisplayName, value);
   }
 
   get thirdPartyUsername(): string {
@@ -109,11 +93,7 @@ export class CorporateTableLink implements ICorporateLinkExtended {
   }
 
   set thirdPartyUsername(value: string) {
-    _updateColumn(
-      this,
-      this._provider.propertyMapping.thirdPartyUsername,
-      value
-    );
+    _updateColumn(this, this._provider.propertyMapping.thirdPartyUsername, value);
   }
 
   get thirdPartyId(): string {
@@ -137,11 +117,7 @@ export class CorporateTableLink implements ICorporateLinkExtended {
   }
 
   set serviceAccountMail(value: string) {
-    _updateColumn(
-      this,
-      this._provider.propertyMapping.serviceAccountMail,
-      value
-    );
+    _updateColumn(this, this._provider.propertyMapping.serviceAccountMail, value);
   }
 
   get isServiceAccount() {

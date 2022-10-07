@@ -67,7 +67,7 @@ export function createPromisedInstances<T>(
 
 export function createInstances<T>(self, createMethod, entities: T[]): T[] {
   let wrap = createMethod.bind(self);
-  return (_.map(entities, wrap) as any) as T[];
+  return _.map(entities, wrap) as any as T[];
 }
 
 export function returnPromisedInstances<T>(
@@ -85,11 +85,7 @@ export function returnPromisedInstances<T>(
   return resolve(_.map(entities, wrap));
 }
 
-export function createInstancesCallback<T>(
-  self,
-  createMethod,
-  callback: ICallback<T[]>
-) {
+export function createInstancesCallback<T>(self, createMethod, callback: ICallback<T[]>) {
   return function (error, entities) {
     if (error) {
       return callback(error);

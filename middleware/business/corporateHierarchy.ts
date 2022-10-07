@@ -11,19 +11,13 @@ import { IndividualContext } from '../../user';
 
 const cachedCorporateHierarchyRequestKey = '__corporateTree';
 
-export async function getCorporateHierarchyFromRequest(
-  req: ReposAppRequest
-): Promise<IGraphEntry[]> {
+export async function getCorporateHierarchyFromRequest(req: ReposAppRequest): Promise<IGraphEntry[]> {
   if (req[cachedCorporateHierarchyRequestKey]) {
     return req[cachedCorporateHierarchyRequestKey];
   }
-  const activeContext = (req.individualContext ||
-    req.apiContext) as IndividualContext;
+  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const providers = getProviders(req);
-  const managementChain = await getCorporateHierarchyFromActiveContext(
-    providers,
-    activeContext
-  );
+  const managementChain = await getCorporateHierarchyFromActiveContext(providers, activeContext);
   req[cachedCorporateHierarchyRequestKey] = managementChain;
   return managementChain;
 }

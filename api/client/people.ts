@@ -51,7 +51,7 @@ router.get(
     const pager = new JsonPager<ICrossOrganizationSearchedMember>(req, res);
     try {
       const searcher = await equivalentLegacyPeopleSearch(req);
-      const members = (searcher.members as unknown) as ICrossOrganizationSearchedMember[];
+      const members = searcher.members as unknown as ICrossOrganizationSearchedMember[];
       const slice = pager.slice(members);
       return pager.sendJson(
         slice.map((xMember) => {
@@ -59,9 +59,7 @@ router.get(
             {
               link: xMember.link ? corporateLinkToJson(xMember.link) : null,
               id: xMember.id,
-              organizations: xMember.orgs
-                ? Object.getOwnPropertyNames(xMember.orgs)
-                : [],
+              organizations: xMember.orgs ? Object.getOwnPropertyNames(xMember.orgs) : [],
             },
             xMember.account || { id: xMember.id }
           );
@@ -76,12 +74,7 @@ router.get(
 );
 
 router.use('*', (req, res, next) => {
-  return next(
-    jsonError(
-      'no API or function available within this cross-organization people list',
-      404
-    )
-  );
+  return next(jsonError('no API or function available within this cross-organization people list', 404));
 });
 
 export default router;

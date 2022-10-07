@@ -13,8 +13,7 @@ const debug = require('debug')('startup');
 export const gitHubStrategyName = 'github';
 export const githubIncreasedScopeStrategyName = 'expanded-github-scope';
 export const githubStrategyUserPropertyName = 'github';
-export const githubIncreasedScopeStrategyUserPropertyName =
-  'githubIncreasedScope';
+export const githubIncreasedScopeStrategyUserPropertyName = 'githubIncreasedScope';
 
 interface IPassportGitHubIdentityProfile {
   _json: IGitHubAccountDetails;
@@ -62,13 +61,7 @@ function githubResponseToSubset(
   profile: IPassportGitHubIdentityProfile,
   done
 ) {
-  return githubResponseToSubsetEx(
-    app,
-    modernAppInUse,
-    accessToken,
-    refreshToken,
-    profile
-  )
+  return githubResponseToSubsetEx(app, modernAppInUse, accessToken, refreshToken, profile)
     .then((github) => {
       const subset: IdentitySubset = { github };
       return done(null, subset);
@@ -89,26 +82,18 @@ async function githubResponseToSubsetEx(
   const { config, operations } = providers;
   const codespacesConfig = config?.github?.codespaces || {};
   const impersonateOverrideEmuAccount =
-    codespacesConfig?.authentication?.github?.impersonateOverrideEmuAccount ||
-    {};
-  const {
-    useIncreasedScopeLegacyAppIfNeeded,
-  } = getGithubAppConfigurationOptions(config);
+    codespacesConfig?.authentication?.github?.impersonateOverrideEmuAccount || {};
+  const { useIncreasedScopeLegacyAppIfNeeded } = getGithubAppConfigurationOptions(config);
   // GitHub Codespaces-only override for Enterprise Managed Users
   if (!codespacesConfig?.block && impersonateOverrideEmuAccount?.enabled) {
     const { login } = impersonateOverrideEmuAccount;
     if (profile?.username && isEnterpriseManagedUserLogin(profile.username)) {
       if (!login) {
-        throw new Error(
-          'No Codespaces EMU override is enabled. Please configure the environment you need.'
-        );
+        throw new Error('No Codespaces EMU override is enabled. Please configure the environment you need.');
       }
       const account = await operations.getAccountByUsername(login);
       const details = account.getEntity();
-      return impersonatedIdentityFromDetails(
-        details,
-        'emu-override-fake-token'
-      );
+      return impersonatedIdentityFromDetails(details, 'emu-override-fake-token');
     }
   }
   // Debug impersonation
@@ -116,19 +101,14 @@ async function githubResponseToSubsetEx(
     const impersonationId = config.impersonation.githubId;
     const account = operations.getAccount(impersonationId);
     const details = await account.getDetails();
-    console.warn(
-      `GITHUB IMPERSONATION: id=${impersonationId} login=${details.login} name=${details.name}`
-    );
+    console.warn(`GITHUB IMPERSONATION: id=${impersonationId} login=${details.login} name=${details.name}`);
     return impersonatedIdentityFromDetails(details);
   }
   // Standard authentication flow
   const github: IGitHubIdentitySubset = {
     accessToken: accessToken,
     displayName: profile.displayName,
-    avatarUrl:
-      profile._json && profile._json.avatar_url
-        ? profile._json.avatar_url
-        : undefined,
+    avatarUrl: profile._json && profile._json.avatar_url ? profile._json.avatar_url : undefined,
     id: profile.id,
     username: profile.username,
     scope: undefined,
@@ -149,11 +129,7 @@ function githubResponseToIncreasedScopeSubset(
   done
 ) {
   if (modernAppInUse) {
-    return done(
-      new Error(
-        'githubResponseToIncreasedScopeSubset is not compatible with modern apps'
-      )
-    );
+    return done(new Error('githubResponseToIncreasedScopeSubset is not compatible with modern apps'));
   }
   const subset = {
     githubIncreasedScope: {
@@ -167,13 +143,9 @@ function githubResponseToIncreasedScopeSubset(
 
 export function getGithubAppConfigurationOptions(config) {
   let legacyOAuthApp =
-    config?.github?.oauth2?.clientId && config?.github?.oauth2?.clientSecret
-      ? config.github.oauth2
-      : null;
+    config?.github?.oauth2?.clientId && config?.github?.oauth2?.clientSecret ? config.github.oauth2 : null;
   const customerFacingApp =
-    config.github.app?.ui?.clientId && config.github.app.ui.clientSecret
-      ? config.github.app.ui
-      : null;
+    config.github.app?.ui?.clientId && config.github.app.ui.clientSecret ? config.github.app.ui : null;
   const useCustomerFacingGithubAppIfPresent =
     config.github.oauth2.useCustomerFacingGitHubAppIfPresent === true;
   const useIncreasedScopeLegacyAppIfNeeded =
@@ -185,9 +157,7 @@ export function getGithubAppConfigurationOptions(config) {
     legacyOAuthApp = null;
   }
   const modernAppInUse: boolean = customerFacingApp && !legacyOAuthApp;
-  const githubAppConfiguration = modernAppInUse
-    ? customerFacingApp
-    : legacyOAuthApp;
+  const githubAppConfiguration = modernAppInUse ? customerFacingApp : legacyOAuthApp;
   return {
     legacyOAuthApp,
     customerFacingApp,
@@ -200,11 +170,8 @@ export function getGithubAppConfigurationOptions(config) {
 export default function createGithubStrategy(app, config) {
   let strategies = {};
   const codespaces = config?.github?.codespaces || {};
-  const {
-    modernAppInUse,
-    githubAppConfiguration,
-    useIncreasedScopeLegacyAppIfNeeded,
-  } = getGithubAppConfigurationOptions(config);
+  const { modernAppInUse, githubAppConfiguration, useIncreasedScopeLegacyAppIfNeeded } =
+    getGithubAppConfigurationOptions(config);
   if (!githubAppConfiguration?.clientId) {
     // CONSIDER: for development, this might be fine, but it might be important
     // to be configurable whether this is a fatal startup error or a stdout warning.
@@ -226,10 +193,7 @@ export default function createGithubStrategy(app, config) {
   let clientId = githubAppConfiguration.clientId;
   let clientSecret = githubAppConfiguration.clientSecret;
   let codespacesOverrideText = '';
-  if (
-    codespaces?.authentication?.github?.enabled &&
-    codespaces.authentication.github.clientId
-  ) {
+  if (codespaces?.authentication?.github?.enabled && codespaces.authentication.github.clientId) {
     codespacesOverrideText = ' (using GitHub Codespaces secrets)';
     clientId = codespaces.authentication.github.clientId;
     clientSecret = codespaces.authentication.github.clientSecret;
@@ -240,21 +204,16 @@ export default function createGithubStrategy(app, config) {
     }
   }
   if (modernAppInUse) {
-    debug(
-      `github app for users, client=${clientId}, callback=${finalCallbackUrl}${codespacesOverrideText}`
-    );
+    debug(`github app for users, client=${clientId}, callback=${finalCallbackUrl}${codespacesOverrideText}`);
   } else {
     debug(
       `legacy github oauth app for users, client=${clientId}, callback=${finalCallbackUrl}${codespacesOverrideText}`
     );
   }
   const writeOrgScopes = ['write:org'];
-  const scope =
-    useIncreasedScopeLegacyAppIfNeeded && !modernAppInUse ? writeOrgScopes : [];
+  const scope = useIncreasedScopeLegacyAppIfNeeded && !modernAppInUse ? writeOrgScopes : [];
   if (useIncreasedScopeLegacyAppIfNeeded && !modernAppInUse) {
-    debug(
-      `Legacy GitHub OAuth app will use the expanded token with org-write scope`
-    );
+    debug(`Legacy GitHub OAuth app will use the expanded token with org-write scope`);
   }
   const githubOptions = {
     clientID: clientId,

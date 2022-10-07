@@ -4,14 +4,8 @@
 //
 
 import { EntityField } from '../../lib/entityMetadataProvider/entityMetadataProvider';
-import {
-  EntityMetadataType,
-  IEntityMetadata,
-} from '../../lib/entityMetadataProvider/entityMetadata';
-import {
-  IEntityMetadataFixedQuery,
-  FixedQueryType,
-} from '../../lib/entityMetadataProvider/query';
+import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
+import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
@@ -22,10 +16,7 @@ import {
   PostgresSettings,
   PostgresConfiguration,
 } from '../../lib/entityMetadataProvider/postgres';
-import {
-  TeamCacheFixedQueryByOrganizationId,
-  TeamCacheDeleteByOrganizationId,
-} from '.';
+import { TeamCacheFixedQueryByOrganizationId, TeamCacheDeleteByOrganizationId } from '.';
 import { stringOrNumberAsString } from '../../utils';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
 
@@ -67,18 +58,10 @@ export class TeamCacheEntity implements ITeamCacheProperties {
   }
 }
 
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityInstantiate,
-  () => {
-    return new TeamCacheEntity();
-  }
-);
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityIdColumnName,
-  teamId
-);
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => {
+  return new TeamCacheEntity();
+});
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, teamId);
 
 EntityMetadataMappings.Register(
   type,
@@ -92,19 +75,10 @@ EntityMetadataMappings.Register(
     [Field.cacheUpdated, 'cached'],
   ])
 );
-EntityMetadataMappings.RuntimeValidateMappings(
-  type,
-  MemorySettings.MemoryMapping,
-  fieldNames,
-  [teamId]
-);
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, [teamId]);
 
 PostgresConfiguration.SetDefaultTableName(type, 'teamcache');
-EntityMetadataMappings.Register(
-  type,
-  PostgresSettings.PostgresDefaultTypeColumnName,
-  'teamcache'
-);
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'teamcache');
 PostgresConfiguration.MapFieldsToColumnNames(
   type,
   new Map<string, string>([
@@ -132,11 +106,7 @@ EntityMetadataMappings.Register(
     const entityTypeValue = getEntityTypeColumnValue(type);
     switch (query.fixedQueryType) {
       case FixedQueryType.TeamCacheGetAll: {
-        return PostgresGetAllEntities(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue
-        );
+        return PostgresGetAllEntities(tableName, entityTypeColumn, entityTypeValue);
       }
       case FixedQueryType.TeamCacheDeleteByOrganizationId: {
         const { organizationId } = query as TeamCacheDeleteByOrganizationId;
@@ -160,15 +130,9 @@ EntityMetadataMappings.Register(
         if (!organizationId) {
           throw new Error('organizationId required');
         }
-        return PostgresJsonEntityQuery(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue,
-          metadataColumnName,
-          {
-            organizationid: stringOrNumberAsString(organizationId),
-          }
-        );
+        return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+          organizationid: stringOrNumberAsString(organizationId),
+        });
       }
       default:
         throw new Error(

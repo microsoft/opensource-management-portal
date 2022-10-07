@@ -115,9 +115,7 @@ class ReposGitHubTokensSessionAdapter implements IReposGitHubTokens {
   }
 
   get gitHubWriteOrganizationToken(): string {
-    const githubModernScope = this._sessionUserProperties.getValue(
-      'github.scope'
-    );
+    const githubModernScope = this._sessionUserProperties.getValue('github.scope');
     // The newer GitHub App model supports user-to-server requests that should
     // be equivalent [once GitHub fixes some bugs]. Since GitHub App OAuth
     // does not have a scope, the user's primary token is the only thing to
@@ -125,9 +123,7 @@ class ReposGitHubTokensSessionAdapter implements IReposGitHubTokens {
     if (githubModernScope && githubModernScope === 'githubapp') {
       return this.gitHubReadToken;
     }
-    return this._sessionUserProperties.getValue(
-      'githubIncreasedScope.accessToken'
-    );
+    return this._sessionUserProperties.getValue('githubIncreasedScope.accessToken');
   }
 }
 
@@ -218,9 +214,7 @@ export class WebContext {
     this._response = options.response;
     this._sessionUserProperties = options.sessionUserProperties;
 
-    this._tokens = new ReposGitHubTokensSessionAdapter(
-      this._sessionUserProperties
-    );
+    this._tokens = new ReposGitHubTokensSessionAdapter(this._sessionUserProperties);
   }
 
   get baseUrl(): string {
@@ -250,13 +244,7 @@ export class WebContext {
 
   // NOTE: This function is direct from the legacy provider... it could move to
   // a dedicated alert provider or something else in the future.
-  saveUserAlert(
-    message: string,
-    title: string,
-    context: UserAlertType,
-    optionalLink?,
-    optionalCaption?
-  ) {
+  saveUserAlert(message: string, title: string, context: UserAlertType, optionalLink?, optionalCaption?) {
     if (typeof message !== 'string') {
       console.warn(
         'First parameter message should be a string, not an object. Was the request object passed through by accident?'
@@ -301,9 +289,7 @@ export class WebContext {
 
     let viewState = state || optionalObject;
     if (state && optionalObject) {
-      throw new Error(
-        'Both state and optionalObject cannot be provided to a view render method'
-      );
+      throw new Error('Both state and optionalObject cannot be provided to a view render method');
     }
 
     // LEGACY: this whole section
@@ -354,9 +340,7 @@ export class WebContext {
       : null;
     let session = this._request['session'] || null;
 
-    const initialViewObject = individualContext
-      ? individualContext.getInitialViewObject()
-      : {};
+    const initialViewObject = individualContext ? individualContext.getInitialViewObject() : {};
 
     const providers = this._request.app.settings.providers as IProviders;
     const { corporateViews } = providers;
@@ -366,9 +350,7 @@ export class WebContext {
       config,
       corporateViews,
       plugins,
-      serviceBanner: config.serviceMessage
-        ? config.serviceMessage.banner
-        : null,
+      serviceBanner: config.serviceMessage ? config.serviceMessage.banner : null,
       user,
       // DESTROY: CONFIRM once 'ossline' is gone this way
       ossLink: simulatedLegacyLink,
@@ -377,9 +359,7 @@ export class WebContext {
       sudoMode: this._request['sudoMode'],
       view,
       site: 'github',
-      enableMultipleAccounts: session
-        ? session['enableMultipleAccounts']
-        : false,
+      enableMultipleAccounts: session ? session['enableMultipleAccounts'] : false,
       reposContext: undefined,
       alerts: undefined,
     });

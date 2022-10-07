@@ -17,13 +17,7 @@ app.runJob(refresh, {
 });
 
 async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
-  const {
-    operations,
-    insights,
-    config,
-    linkProvider,
-    graphProvider,
-  } = providers;
+  const { operations, insights, config, linkProvider, graphProvider } = providers;
 
   console.log('reading all links');
   const allLinks = shuffle(await linkProvider.getAll());
@@ -72,20 +66,14 @@ async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
             if (details.login && link.thirdPartyUsername !== details.login) {
               insights.trackEvent({
                 name: 'JobRefreshUsernamesUpdateLogin',
-                properties: {
-                  old: link.thirdPartyUsername,
-                  new: details.login,
-                },
+                properties: { old: link.thirdPartyUsername, new: details.login },
               });
               link.thirdPartyUsername = details.login;
               changed = true;
               ++updatedUsernames;
             }
 
-            if (
-              details.avatar_url &&
-              link.thirdPartyAvatar !== details.avatar_url
-            ) {
+            if (details.avatar_url && link.thirdPartyAvatar !== details.avatar_url) {
               link.thirdPartyAvatar = details.avatar_url;
               changed = true;
               ++updatedAvatars;
@@ -97,34 +85,22 @@ async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
           try {
             const graphInfo = await graphProvider.getUserById(link.corporateId);
             if (graphInfo) {
-              if (
-                graphInfo.userPrincipalName &&
-                link.corporateUsername !== graphInfo.userPrincipalName
-              ) {
+              if (graphInfo.userPrincipalName && link.corporateUsername !== graphInfo.userPrincipalName) {
                 link.corporateUsername = graphInfo.userPrincipalName;
                 changed = true;
                 ++updatedAadUpns;
               }
-              if (
-                graphInfo.displayName &&
-                link.corporateDisplayName !== graphInfo.displayName
-              ) {
+              if (graphInfo.displayName && link.corporateDisplayName !== graphInfo.displayName) {
                 link.corporateDisplayName = graphInfo.displayName;
                 changed = true;
                 ++updatedAadNames;
               }
-              if (
-                graphInfo.mail &&
-                link.corporateMailAddress !== graphInfo.mail
-              ) {
+              if (graphInfo.mail && link.corporateMailAddress !== graphInfo.mail) {
                 link.corporateMailAddress = graphInfo.mail;
                 changed = true;
                 ++updatedCorporateMails;
               }
-              if (
-                graphInfo.mailNickname &&
-                link.corporateAlias !== graphInfo.mailNickname.toLowerCase()
-              ) {
+              if (graphInfo.mailNickname && link.corporateAlias !== graphInfo.mailNickname.toLowerCase()) {
                 link.corporateAlias = graphInfo.mailNickname.toLowerCase();
                 changed = true;
               }
@@ -136,9 +112,7 @@ async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
 
           if (changed) {
             await linkProvider.updateLink(link);
-            console.log(
-              `${i}/${allLinks.length}: Updates saved for GitHub user ID ${id}`
-            );
+            console.log(`${i}/${allLinks.length}: Updates saved for GitHub user ID ${id}`);
             ++updates;
           }
         } catch (getDetailsError) {
@@ -149,9 +123,7 @@ async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
               properties: { githubid: id, error: getDetailsError.message },
             });
             try {
-              await operations.terminateLinkAndMemberships(id, {
-                purpose: UnlinkPurpose.Deleted,
-              });
+              await operations.terminateLinkAndMemberships(id, { purpose: UnlinkPurpose.Deleted });
               insights.trackEvent({
                 name: 'JobRefreshUsernamesUnlinkDelete',
                 properties: { githubid: id, error: getDetailsError.message },
@@ -160,10 +132,7 @@ async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
               console.dir(unlinkDeletedAccountError);
               insights.trackException({
                 exception: unlinkDeletedAccountError,
-                properties: {
-                  githubid: id,
-                  event: 'JobRefreshUsernamesDeleteError',
-                },
+                properties: { githubid: id, event: 'JobRefreshUsernamesDeleteError' },
               });
             }
           } else {
@@ -184,12 +153,7 @@ async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
     )
   );
 
-  console.log(
-    'All done with',
-    errors,
-    'errors. Not found errors:',
-    notFoundErrors
-  );
+  console.log('All done with', errors, 'errors. Not found errors:', notFoundErrors);
   console.dir(errorList);
   console.log();
 

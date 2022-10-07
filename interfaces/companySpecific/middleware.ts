@@ -38,10 +38,7 @@ export interface ICompanySpecificTeamPermissionsMiddlewareCalls {
 }
 
 export interface ICompanySpecificAuthenticationCalls {
-  shouldRedirectToSignIn?: (
-    providers: IProviders,
-    req: ReposAppRequest
-  ) => Promise<boolean>;
+  shouldRedirectToSignIn?: (providers: IProviders, req: ReposAppRequest) => Promise<boolean>;
 }
 
 export interface IAttachCompanySpecificMiddleware {

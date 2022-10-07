@@ -54,10 +54,7 @@ export class RepositoryActions {
     this._operations = operations;
   }
 
-  async getWorkflow(
-    workflowId: number,
-    cacheOptions?: ICacheOptions
-  ): Promise<IGitHubActionWorkflow> {
+  async getWorkflow(workflowId: number, cacheOptions?: ICacheOptions): Promise<IGitHubActionWorkflow> {
     cacheOptions = cacheOptions || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
@@ -99,9 +96,7 @@ export class RepositoryActions {
     return entity;
   }
 
-  async getWorkflows(
-    cacheOptions?: ICacheOptions
-  ): Promise<IGitHubActionWorkflowsResponse> {
+  async getWorkflows(cacheOptions?: ICacheOptions): Promise<IGitHubActionWorkflowsResponse> {
     cacheOptions = cacheOptions || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
@@ -129,10 +124,7 @@ export class RepositoryActions {
     return entity as IGitHubActionWorkflowsResponse;
   }
 
-  async getWorkflowRuns(
-    workflowId: string | number,
-    cacheOptions?: ICacheOptions
-  ): Promise<any> {
+  async getWorkflowRuns(workflowId: string | number, cacheOptions?: ICacheOptions): Promise<any> {
     cacheOptions = cacheOptions || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;
@@ -159,10 +151,7 @@ export class RepositoryActions {
     return entity;
   }
 
-  async getWorkflowUsage(
-    workflowId: string | number,
-    cacheOptions?: ICacheOptions
-  ): Promise<any> {
+  async getWorkflowUsage(workflowId: string | number, cacheOptions?: ICacheOptions): Promise<any> {
     cacheOptions = cacheOptions || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const github = operations.github;

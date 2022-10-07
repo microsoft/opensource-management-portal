@@ -57,9 +57,7 @@ async function getSecret(
     secretName = secretName.substr(0, versionIndex);
   }
   try {
-    const secretResponse = await secretClient.getSecret(secretName, {
-      version: version || undefined,
-    });
+    const secretResponse = await secretClient.getSecret(secretName, { version: version || undefined });
     secretStash.set(secretId, secretResponse);
     return secretResponse;
   } catch (keyVaultValidationError) {
@@ -85,10 +83,7 @@ function identifyKeyVaultValuePaths(node: any, prefix?: string) {
   for (const property in node) {
     const value = node[property];
     if (typeof value === 'object') {
-      Object.assign(
-        paths,
-        identifyKeyVaultValuePaths(value, prefix + property)
-      );
+      Object.assign(paths, identifyKeyVaultValuePaths(value, prefix + property));
       continue;
     }
     if (typeof value !== 'string') {
@@ -151,10 +146,7 @@ type VaultSettings = {
   uri: string;
 };
 
-async function getSecretsFromVault(
-  getSecretClient: (vault: string) => Promise<SecretClient>,
-  object: any
-) {
+async function getSecretsFromVault(getSecretClient: (vault: string) => Promise<SecretClient>, object: any) {
   let paths = null;
   try {
     paths = identifyKeyVaultValuePaths(object);
@@ -185,11 +177,7 @@ async function getSecretsFromVault(
         if (!value) {
           const vaultUrl = uniqueUriToVault.get(uniqueSecretId);
           const secretClient = await getSecretClient(vaultUrl);
-          const value = await getSecret(
-            secretClient,
-            secretStash,
-            uniqueSecretId
-          );
+          const value = await getSecret(secretClient, secretStash, uniqueSecretId);
           secretStash.set(uniqueSecretId, value);
         }
       } catch (resolveSecretError) {

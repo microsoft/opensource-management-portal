@@ -34,22 +34,14 @@ export default class OrganizationWebhookProcessor implements WebhookProcessor {
     return eventType === 'organization';
   }
 
-  async run(
-    operations: Operations,
-    organization: Organization,
-    data: any
-  ): Promise<boolean> {
+  async run(operations: Operations, organization: Organization, data: any): Promise<boolean> {
     const providers = operations.providers as IProviders;
     const queryCache = providers.queryCache;
 
     const event = data.body;
     let refresh = false;
     if (event.action === 'member_invited') {
-      if (
-        !event.invitation ||
-        !event.invitation.inviter ||
-        !event.invitation.inviter.login
-      ) {
+      if (!event.invitation || !event.invitation.inviter || !event.invitation.inviter.login) {
         // should no longer be an issue per GitHub in September 2019
       }
       console.log(
@@ -59,16 +51,10 @@ export default class OrganizationWebhookProcessor implements WebhookProcessor {
       console.log(
         `org member added; ghu ${event.membership.user.login} role ${event.membership.role} state ${event.membership.state} ghid ${event.membership.user.id} org: ${event.organization.login}`
       );
-      if (
-        event.membership.state === 'active' ||
-        event.membership.state === 'pending'
-      ) {
+      if (event.membership.state === 'active' || event.membership.state === 'pending') {
         // triple-check the state; GitHub is sending new memberships are PENDING and not ACTIVE now.
         const login = event.membership.user.login;
-        const liveMembership = await organization.getMembership(
-          login,
-          NoCacheNoBackground
-        );
+        const liveMembership = await organization.getMembership(login, NoCacheNoBackground);
         let state = null;
         if (liveMembership) {
           console.log(`live membership: state=${liveMembership.state}`);
@@ -80,11 +66,7 @@ export default class OrganizationWebhookProcessor implements WebhookProcessor {
           try {
             if (queryCache && queryCache.supportsOrganizationMembership) {
               const role = getRoleFromString(event.membership.role);
-              await queryCache.addOrUpdateOrganizationMember(
-                organizationIdAsString,
-                role,
-                userIdAsString
-              );
+              await queryCache.addOrUpdateOrganizationMember(organizationIdAsString, role, userIdAsString);
               console.log(
                 `OK: query cache added orgid=${organizationIdAsString}, userid=${userIdAsString}, role=${role}`
               );
@@ -107,13 +89,8 @@ export default class OrganizationWebhookProcessor implements WebhookProcessor {
       const organizationIdAsString = event.organization.id.toString();
       try {
         if (queryCache && queryCache.supportsOrganizationMembership) {
-          await queryCache.removeOrganizationMember(
-            organizationIdAsString,
-            userIdAsString
-          );
-          console.log(
-            `OK: query cache removed orgid=${organizationIdAsString}, userid=${userIdAsString}`
-          );
+          await queryCache.removeOrganizationMember(organizationIdAsString, userIdAsString);
+          console.log(`OK: query cache removed orgid=${organizationIdAsString}, userid=${userIdAsString}`);
         } else {
           console.warn('the organization does not use the query cache');
         }

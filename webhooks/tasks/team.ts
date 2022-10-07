@@ -24,11 +24,7 @@ export default class TeamWebhookProcessor implements WebhookProcessor {
     return eventType === 'team';
   }
 
-  async run(
-    operations: Operations,
-    organization: Organization,
-    data: any
-  ): Promise<boolean> {
+  async run(operations: Operations, organization: Organization, data: any): Promise<boolean> {
     const queryCache = operations.providers.queryCache;
     const event = data.body;
     let refresh = false;
@@ -50,15 +46,8 @@ export default class TeamWebhookProcessor implements WebhookProcessor {
       );
       refresh = true;
       try {
-        if (
-          organizationIdAsString === organization.id.toString() &&
-          queryCache &&
-          queryCache.supportsTeams
-        ) {
-          await queryCache.removeOrganizationTeam(
-            organizationIdAsString,
-            teamIdAsString
-          );
+        if (organizationIdAsString === organization.id.toString() && queryCache && queryCache.supportsTeams) {
+          await queryCache.removeOrganizationTeam(organizationIdAsString, teamIdAsString);
         }
       } catch (queryCacheError) {
         console.dir(queryCacheError);
@@ -76,9 +65,7 @@ export default class TeamWebhookProcessor implements WebhookProcessor {
         const oldRepositoryPermissionLevel = permissionsObjectToValue(
           event.changes.repository.permissions.from
         );
-        const newRepositoryPermissionLevel = permissionsObjectToValue(
-          event.repository.permissions
-        );
+        const newRepositoryPermissionLevel = permissionsObjectToValue(event.repository.permissions);
         console.log(
           `team ${event.team.name} permission level for repo ${event.repository.name} changed from ${oldRepositoryPermissionLevel} to ${newRepositoryPermissionLevel}`
         );
@@ -133,16 +120,8 @@ export default class TeamWebhookProcessor implements WebhookProcessor {
 
     if (addOrUpdate) {
       try {
-        if (
-          organizationIdAsString === organization.id.toString() &&
-          queryCache &&
-          queryCache.supportsTeams
-        ) {
-          await queryCache.addOrUpdateTeam(
-            organizationIdAsString,
-            teamIdAsString,
-            event.team
-          );
+        if (organizationIdAsString === organization.id.toString() && queryCache && queryCache.supportsTeams) {
+          await queryCache.addOrUpdateTeam(organizationIdAsString, teamIdAsString, event.team);
         }
       } catch (queryCacheError) {
         console.dir(queryCacheError);

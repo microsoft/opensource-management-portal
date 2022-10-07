@@ -10,7 +10,11 @@ import {
   ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission,
 } from '../interfaces';
 
-const repoPermissionProperties = ['permission', 'user'];
+// prettier-ignore
+const repoPermissionProperties = [
+  'permission',
+  'user',
+];
 
 export class RepositoryPermission {
   private _id: string;
@@ -20,12 +24,7 @@ export class RepositoryPermission {
 
   constructor(entity: unknown) {
     if (entity) {
-      common.assignKnownFieldsPrefixed(
-        this,
-        entity,
-        'repositoryPermission',
-        repoPermissionProperties
-      );
+      common.assignKnownFieldsPrefixed(this, entity, 'repositoryPermission', repoPermissionProperties);
       if (this._user) {
         this._id = this._user.id;
       }
@@ -43,8 +42,6 @@ export class RepositoryPermission {
   }
 
   public asGitHubRepositoryPermission(): GitHubRepositoryPermission {
-    return ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission(
-      this._permission
-    );
+    return ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission(this._permission);
   }
 }

@@ -5,12 +5,7 @@
 import path from 'path';
 import pug from 'pug';
 
-export default function RenderHtmlMail(
-  basedir: string,
-  viewName: string,
-  options,
-  config
-): Promise<string> {
+export default function RenderHtmlMail(basedir: string, viewName: string, options, config): Promise<string> {
   return new Promise((resolve, reject) => {
     return renderMailHtml(basedir, viewName, options, config, (error, html) => {
       return error ? reject(error) : resolve(html);
@@ -18,13 +13,7 @@ export default function RenderHtmlMail(
   });
 }
 
-function renderMailHtml(
-  basedir: string,
-  viewName: string,
-  options,
-  config,
-  callback
-) {
+function renderMailHtml(basedir: string, viewName: string, options, config, callback) {
   options = options || {};
   if (!viewName) {
     viewName = 'email';

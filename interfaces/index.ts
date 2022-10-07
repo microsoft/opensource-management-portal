@@ -41,11 +41,6 @@ export interface ICompanySpecificStartupProperties {
   urls?: IAttachCompanySpecificUrls;
 }
 
-export type ICompanySpecificStartupFunction = (
-  config: any,
-  p: IProviders,
-  rootdir: string
-) => Promise<void>;
+export type ICompanySpecificStartupFunction = (config: any, p: IProviders, rootdir: string) => Promise<void>;
 
-export type ICompanySpecificStartup = ICompanySpecificStartupFunction &
-  ICompanySpecificStartupProperties;
+export type ICompanySpecificStartup = ICompanySpecificStartupFunction & ICompanySpecificStartupProperties;

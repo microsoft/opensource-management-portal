@@ -11,8 +11,7 @@
 const path = require('path');
 
 const entryPoint = process.argv[1];
-const hasDist =
-  entryPoint.includes('/dist/') || entryPoint.includes('\\dist\\');
+const hasDist = entryPoint.includes('/dist/') || entryPoint.includes('\\dist\\');
 
 const aboveConfig = path.join(__dirname, '..');
 

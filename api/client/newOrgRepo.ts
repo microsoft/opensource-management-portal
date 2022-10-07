@@ -13,11 +13,7 @@ import { getProviders } from '../../transitional';
 import { jsonError } from '../../middleware/jsonError';
 import { IndividualContext } from '../../user';
 import { Organization } from '../../business/organization';
-import {
-  CreateRepository,
-  ICreateRepositoryApiResult,
-  CreateRepositoryEntrypoint,
-} from '../createRepo';
+import { CreateRepository, ICreateRepositoryApiResult, CreateRepositoryEntrypoint } from '../createRepo';
 import { Team } from '../../business/team';
 import { GitHubTeamRole, ReposAppRequest } from '../../interfaces';
 
@@ -54,29 +50,21 @@ router.get(
         organization,
         await userAggregateContext.teams()
       );
-      userTeams.maintainer.map((maintainedTeam) =>
-        maintainedTeams.add(maintainedTeam.id.toString())
-      );
+      userTeams.maintainer.map((maintainedTeam) => maintainedTeams.add(maintainedTeam.id.toString()));
       const combinedTeams = new Map<string, Team>();
-      userTeams.maintainer.map((team) =>
-        combinedTeams.set(team.id.toString(), team)
-      );
-      userTeams.member.map((team) =>
-        combinedTeams.set(team.id.toString(), team)
-      );
-      const personalizedTeams = Array.from(combinedTeams.values()).map(
-        (combinedTeam) => {
-          return {
-            broad: broadTeams.has(Number(combinedTeam.id)),
-            description: combinedTeam.description,
-            id: Number(combinedTeam.id),
-            name: combinedTeam.name,
-            role: maintainedTeams.has(combinedTeam.id.toString())
-              ? GitHubTeamRole.Maintainer
-              : GitHubTeamRole.Member,
-          };
-        }
-      );
+      userTeams.maintainer.map((team) => combinedTeams.set(team.id.toString(), team));
+      userTeams.member.map((team) => combinedTeams.set(team.id.toString(), team));
+      const personalizedTeams = Array.from(combinedTeams.values()).map((combinedTeam) => {
+        return {
+          broad: broadTeams.has(Number(combinedTeam.id)),
+          description: combinedTeam.description,
+          id: Number(combinedTeam.id),
+          name: combinedTeam.name,
+          role: maintainedTeams.has(combinedTeam.id.toString())
+            ? GitHubTeamRole.Maintainer
+            : GitHubTeamRole.Member,
+        };
+      });
       return res.json({
         personalizedTeams,
       });
@@ -93,15 +81,9 @@ router.get(
     const queryCache = providers.queryCache;
     const organization = req.organization as Organization;
     const broadTeams = new Set(organization.broadAccessTeams);
-    if (
-      req.query.refresh === undefined &&
-      queryCache &&
-      queryCache.supportsTeams
-    ) {
+    if (req.query.refresh === undefined && queryCache && queryCache.supportsTeams) {
       // Use the newer method in this case...
-      const organizationTeams = await queryCache.organizationTeams(
-        organization.id.toString()
-      );
+      const organizationTeams = await queryCache.organizationTeams(organization.id.toString());
       return res.json({
         teams: organizationTeams.map((qt) => {
           const team = qt.team;
@@ -193,37 +175,21 @@ export async function discoverUserIdentities(req: ReposAppRequest, res, next) {
   return next();
 }
 
-router.post(
-  '/repo/:repo',
-  asyncHandler(discoverUserIdentities),
-  asyncHandler(createRepositoryFromClient)
-);
+router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(createRepositoryFromClient));
 
-export async function createRepositoryFromClient(
-  req: ILocalApiRequest,
-  res,
-  next
-) {
+export async function createRepositoryFromClient(req: ILocalApiRequest, res, next) {
   const providers = getProviders(req);
-  const {
-    insights,
-    diagnosticsDrop,
-    customizedNewRepositoryLogic,
-    graphProvider,
-  } = providers;
+  const { insights, diagnosticsDrop, customizedNewRepositoryLogic, graphProvider } = providers;
   const individualContext = req.individualContext || req.apiContext;
   const config = getProviders(req).config;
-  const organization = (req.organization ||
-    (req as any).aeOrganization) as Organization;
+  const organization = (req.organization || (req as any).aeOrganization) as Organization;
   const existingRepoId = req.body.existingrepoid;
   const correlationId = req.correlationId;
   const debugValues = req.body.debugValues || {};
   const corporateId = individualContext.corporateIdentity.id;
   const customContext = customizedNewRepositoryLogic?.createContext(req);
   const additionalTelemetryProperties =
-    customizedNewRepositoryLogic?.getAdditionalTelemetryProperties(
-      customContext
-    ) || {};
+    customizedNewRepositoryLogic?.getAdditionalTelemetryProperties(customContext) || {};
   insights.trackEvent({
     name: 'CreateRepositoryFromClientStart',
     properties: Object.assign(
@@ -272,9 +238,7 @@ export async function createRepositoryFromClient(
   } catch (validationError) {
     return next(jsonError(validationError, 400));
   }
-  req.apiVersion = (req.query['api-version'] ||
-    req.headers['api-version'] ||
-    '2017-07-27') as string;
+  req.apiVersion = (req.query['api-version'] || req.headers['api-version'] || '2017-07-27') as string;
   if (req.apiContext && req.apiContext.getGitHubIdentity()) {
     body['ms.onBehalfOf'] = req.apiContext.getGitHubIdentity().username;
   }
@@ -282,8 +246,7 @@ export async function createRepositoryFromClient(
   let isApproved = customizedNewRepositoryLogic
     ? customizedNewRepositoryLogic.skipApproval(customContext, body)
     : false;
-  const approvalTypesToIds =
-    config.github.approvalTypes.fields.approvalTypesToIds;
+  const approvalTypesToIds = config.github.approvalTypes.fields.approvalTypesToIds;
   if (!isApproved) {
     if (approvalTypesToIds[body.approvalType]) {
       body.approvalType = approvalTypesToIds[body.approvalType];
@@ -295,12 +258,7 @@ export async function createRepositoryFromClient(
         }
       });
       if (!valid) {
-        return next(
-          jsonError(
-            'The approval type is not supported or approved at this time',
-            400
-          )
-        );
+        return next(jsonError('The approval type is not supported or approved at this time', 400));
       }
     }
   }
@@ -320,25 +278,17 @@ export async function createRepositoryFromClient(
   // Team permissions
   let sufficientTeamsOk = false;
   if (customizedNewRepositoryLogic?.sufficientTeamsConfigured) {
-    sufficientTeamsOk = customizedNewRepositoryLogic.sufficientTeamsConfigured(
-      customContext,
-      body
-    );
+    sufficientTeamsOk = customizedNewRepositoryLogic.sufficientTeamsConfigured(customContext, body);
   }
   if (!sufficientTeamsOk) {
     if (!body.selectedAdminTeams || !body.selectedAdminTeams.length) {
-      return next(
-        jsonError('No administration team(s) provided in the request', 400)
-      );
+      return next(jsonError('No administration team(s) provided in the request', 400));
     }
   }
   translateTeams(body);
   try {
     // Initial repo contents and license
-    const templates = _.keyBy(
-      organization.getRepositoryCreateMetadata().templates,
-      'id'
-    );
+    const templates = _.keyBy(organization.getRepositoryCreateMetadata().templates, 'id');
     const template = templates[body.template];
     // if (!template) {
     // return next(jsonError('There was a configuration problem, the template metadata was not available for this request', 400));
@@ -353,9 +303,7 @@ export async function createRepositoryFromClient(
   if (!body['ms.notify']) {
     try {
       if (graphProvider && individualContext?.corporateIdentity?.id) {
-        const info = await graphProvider.getUserById(
-          individualContext.corporateIdentity.id
-        );
+        const info = await graphProvider.getUserById(individualContext.corporateIdentity.id);
         if (info?.mail) {
           body['ms.notify'] = info.mail;
         }
@@ -384,12 +332,7 @@ export async function createRepositoryFromClient(
   let success: ICreateRepositoryApiResult = null;
   try {
     const newRepositoryParameters = customizedNewRepositoryLogic?.additionalCreateRepositoryParameters
-      ? Object.assign(
-          body,
-          customizedNewRepositoryLogic.additionalCreateRepositoryParameters(
-            customContext
-          )
-        )
+      ? Object.assign(body, customizedNewRepositoryLogic.additionalCreateRepositoryParameters(customContext))
       : body;
     success = await CreateRepository(
       req,

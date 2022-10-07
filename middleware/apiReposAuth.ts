@@ -78,14 +78,7 @@ export default function ReposApiAuthentication(req: IApiRequest, res, next) {
     if (tokenError) {
       insights?.trackMetric({ name: 'ApiInvalidKey', value: 1 });
       tokenError.skipLog = true;
-      return next(
-        jsonError(
-          tokenError.statusCode === 404
-            ? 'Key not authorized'
-            : tokenError.message,
-          401
-        )
-      );
+      return next(jsonError(tokenError.statusCode === 404 ? 'Key not authorized' : tokenError.message, 401));
     }
     if (token.isRevoked()) {
       tokenError = jsonError(warning || 'Key revoked', 403);
@@ -95,10 +88,7 @@ export default function ReposApiAuthentication(req: IApiRequest, res, next) {
       return next(tokenError);
     }
     if (token.isExpired()) {
-      tokenError = jsonError(
-        warning || 'A revoked key attempted to use an API',
-        403
-      );
+      tokenError = jsonError(warning || 'A revoked key attempted to use an API', 403);
       wrapErrorForImmediateUserError(tokenError);
       tokenError.authErrorMessage = tokenError.message;
       insights?.trackMetric({ name: 'ApiExpiredKeyAttempt', value: 1 });

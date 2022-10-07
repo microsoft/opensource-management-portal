@@ -35,8 +35,7 @@ export default async (api: ILibraryOptions, dirPath: string) => {
   const options = api.options || {};
 
   const treatErrorsAsWarnings = options.treatErrorsAsWarnings || false;
-  const requireConfigurationDirectory =
-    options.requireConfigurationDirectory || false;
+  const requireConfigurationDirectory = options.requireConfigurationDirectory || false;
 
   const config = {};
   let files: string[] = [];

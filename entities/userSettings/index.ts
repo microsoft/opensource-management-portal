@@ -9,18 +9,12 @@ import {
   EntityMetadataBase,
   IEntityMetadata,
 } from '../../lib/entityMetadataProvider/entityMetadata';
-import {
-  QueryBase,
-  IEntityMetadataFixedQuery,
-} from '../../lib/entityMetadataProvider/query';
+import { QueryBase, IEntityMetadataFixedQuery } from '../../lib/entityMetadataProvider/query';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
 } from '../../lib/entityMetadataProvider/declarations';
-import {
-  PostgresConfiguration,
-  PostgresSettings,
-} from '../../lib/entityMetadataProvider/postgres';
+import { PostgresConfiguration, PostgresSettings } from '../../lib/entityMetadataProvider/postgres';
 
 const type = new EntityMetadataType('UserSettings');
 const thisProviderType = type;
@@ -69,29 +63,14 @@ export class UserSettings implements IUserSettingsProperties {
   constructor() {}
 }
 
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityInstantiate,
-  () => {
-    return new UserSettings();
-  }
-);
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityIdColumnName,
-  corporateId
-);
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => {
+  return new UserSettings();
+});
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, corporateId);
 
 PostgresConfiguration.SetDefaultTableName(type, 'usersettings');
-EntityMetadataMappings.Register(
-  type,
-  PostgresSettings.PostgresDefaultTypeColumnName,
-  'usersettings'
-);
-PostgresConfiguration.MapFieldsToColumnNamesFromListLowercased(
-  type,
-  fieldNames
-);
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'usersettings');
+PostgresConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 PostgresConfiguration.IdentifyNativeFields(type, nativeFieldNames);
 PostgresConfiguration.ValidateMappings(type, fieldNames, [corporateId]);
 
@@ -123,9 +102,7 @@ EntityMetadataMappings.Register(
         };
       }
       default:
-        throw new Error(
-          `The query ${base.query} is not implemented by this provider for the type ${type}`
-        );
+        throw new Error(`The query ${base.query} is not implemented by this provider for the type ${type}`);
     }
   }
 );
@@ -138,8 +115,7 @@ for (let i = 0; i < fieldNames.length; i++) {
   }
 }
 
-export interface IUserSettingsProviderCreateOptions
-  extends IEntityMetadataBaseOptions {}
+export interface IUserSettingsProviderCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface IUserSettingsProvider {
   initialize(): Promise<void>;
@@ -150,9 +126,7 @@ export interface IUserSettingsProvider {
   queryContributionOptInUsers(): Promise<UserSettings[]>;
 }
 
-export class UserSettingsProvider
-  extends EntityMetadataBase
-  implements IUserSettingsProvider {
+export class UserSettingsProvider extends EntityMetadataBase implements IUserSettingsProvider {
   constructor(options: IUserSettingsProviderCreateOptions) {
     super(thisProviderType, options);
   }
@@ -178,18 +152,9 @@ export class UserSettingsProvider
   }
 
   async queryContributionOptInUsers(): Promise<UserSettings[]> {
-    const query = new UserSettingsQuery<NoParameters>(
-      Query.UsersOptedInToShareData,
-      {}
-    );
-    const metadatas = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
-    const results = this.deserializeArray<UserSettings>(
-      thisProviderType,
-      metadatas
-    );
+    const query = new UserSettingsQuery<NoParameters>(Query.UsersOptedInToShareData, {});
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<UserSettings>(thisProviderType, metadatas);
     return results;
   }
 }

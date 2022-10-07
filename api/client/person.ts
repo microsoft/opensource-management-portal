@@ -21,9 +21,7 @@ export default asyncHandler(async (req: ReposAppRequest, res, next) => {
     await account.tryGetLink();
     try {
       if (graphProvider && account.link?.corporateId) {
-        corporateEntry = await graphProvider.getUserById(
-          account.link.corporateId
-        );
+        corporateEntry = await graphProvider.getUserById(account.link.corporateId);
       }
     } catch (ignoreError) {
       //
@@ -36,9 +34,7 @@ export default asyncHandler(async (req: ReposAppRequest, res, next) => {
         try {
           await team.team.getDetails();
         } catch (ignoreSlugError) {
-          console.warn(
-            `get team slug or details error: team ID=${team.team.id} error=${ignoreSlugError}`
-          );
+          console.warn(`get team slug or details error: team ID=${team.team.id} error=${ignoreSlugError}`);
         }
       }
     }

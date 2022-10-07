@@ -29,16 +29,12 @@ export interface ITeamCacheProvider {
   updateTeamCache(metadata: TeamCacheEntity): Promise<void>;
   deleteTeamCache(metadata: TeamCacheEntity): Promise<void>;
   queryAllTeams(): Promise<TeamCacheEntity[]>;
-  queryTeamsByOrganizationId(
-    organizationId: string
-  ): Promise<TeamCacheEntity[]>;
+  queryTeamsByOrganizationId(organizationId: string): Promise<TeamCacheEntity[]>;
   queryAllOrganizationIds(): Promise<string[]>;
   deleteByOrganizationId(organizationId: string): Promise<void>;
 }
 
-export class TeamCacheProvider
-  extends EntityMetadataBase
-  implements ITeamCacheProvider {
+export class TeamCacheProvider extends EntityMetadataBase implements ITeamCacheProvider {
   constructor(options: ITeamCacheCreateOptions) {
     super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
@@ -50,9 +46,7 @@ export class TeamCacheProvider
     if (this._entities.supportsPointQueryForType(thisProviderType)) {
       metadata = await this._entities.getMetadata(thisProviderType, teamId);
     } else {
-      throw new Error(
-        'fixed point queries are required as currently implemented'
-      );
+      throw new Error('fixed point queries are required as currently implemented');
     }
     if (!metadata) {
       const error = new Error(`No metadata available for team ${teamId}`);
@@ -64,38 +58,22 @@ export class TeamCacheProvider
 
   async queryAllTeams(): Promise<TeamCacheEntity[]> {
     const query = new TeamCacheFixedQueryAll();
-    const metadatas = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
-    const results = this.deserializeArray<TeamCacheEntity>(
-      thisProviderType,
-      metadatas
-    );
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<TeamCacheEntity>(thisProviderType, metadatas);
     return results;
   }
 
-  async queryTeamsByOrganizationId(
-    organizationId: string
-  ): Promise<TeamCacheEntity[]> {
+  async queryTeamsByOrganizationId(organizationId: string): Promise<TeamCacheEntity[]> {
     const query = new TeamCacheFixedQueryByOrganizationId(organizationId);
-    const metadatas = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
-    const results = this.deserializeArray<TeamCacheEntity>(
-      thisProviderType,
-      metadatas
-    );
+    const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
+    const results = this.deserializeArray<TeamCacheEntity>(thisProviderType, metadatas);
     return results;
   }
 
   async createTeamCache(metadata: TeamCacheEntity): Promise<string> {
     const entity = this.serialize(thisProviderType, metadata);
     if (!this._entities.supportsPointQueryForType(thisProviderType)) {
-      throw new Error(
-        'fixed point queries are required as currently implemented'
-      );
+      throw new Error('fixed point queries are required as currently implemented');
     }
     await this._entities.setMetadata(entity);
     return entity.entityId;
@@ -113,10 +91,7 @@ export class TeamCacheProvider
 
   async queryAllOrganizationIds(): Promise<string[]> {
     const query = new TeamCacheGetOrganizationIdsQuery();
-    const results = await this._entities.fixedQueryMetadata(
-      thisProviderType,
-      query
-    );
+    const results = await this._entities.fixedQueryMetadata(thisProviderType, query);
     return results.map((row) => row['organizationid']);
   }
 

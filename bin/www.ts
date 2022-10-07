@@ -46,20 +46,8 @@ app.startServer = function startWebServer(): Promise<void> {
         process.env.USE_LOCAL_HTTPS === 'true'
           ? https.createServer(
               {
-                key: fs.readFileSync(
-                  path.join(
-                    __dirname,
-                    process.env.CERT_PATH_FROM_DIST_BIN,
-                    'key.pem'
-                  )
-                ),
-                cert: fs.readFileSync(
-                  path.join(
-                    __dirname,
-                    process.env.CERT_PATH_FROM_DIST_BIN,
-                    'cert.pem'
-                  )
-                ),
+                key: fs.readFileSync(path.join(__dirname, process.env.CERT_PATH_FROM_DIST_BIN, 'key.pem')),
+                cert: fs.readFileSync(path.join(__dirname, process.env.CERT_PATH_FROM_DIST_BIN, 'cert.pem')),
               },
               app
             )
@@ -88,8 +76,7 @@ app.startServer = function startWebServer(): Promise<void> {
       });
       server.on('listening', () => {
         const addr = server.address();
-        const bind =
-          typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
+        const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
         debug('listening on ' + bind);
         return resolve();
       });

@@ -109,9 +109,7 @@ router.get(
       const id = link.thirdPartyId;
       const results = {
         isLinkedUser: link && link.thirdPartyId ? link : false,
-        overview: id
-          ? await individualContext.aggregations.getAggregatedOverview()
-          : null,
+        overview: id ? await individualContext.aggregations.getAggregatedOverview() : null,
         isAdministrator: false, // legacyUserContext.isAdministrator(callback); // CONSIDER: Re-implement isAdministrator
         // TODO: bring back sudoers
         countOfOrgs: operations.organizations.size,
@@ -134,15 +132,10 @@ router.get(
           }
         }
         if (overview.organizations.available) {
-          const availableNames = overview.organizations.available.map(
-            (org: Organization) => {
-              return org.name;
-            }
-          );
-          groupedAvailableOrganizations = _.groupBy(
-            operations.getOrganizations(availableNames),
-            'priority'
-          );
+          const availableNames = overview.organizations.available.map((org: Organization) => {
+            return org.name;
+          });
+          groupedAvailableOrganizations = _.groupBy(operations.getOrganizations(availableNames), 'priority');
         }
       }
       if (results.isAdministrator && results.isAdministrator === true) {
@@ -187,10 +180,7 @@ router.get(
         optionalObject: {
           accountInfo: results,
           onboarding: onboarding,
-          onboardingPostfixUrl:
-            onboarding === true
-              ? '?onboarding=' + config.brand.companyName
-              : '',
+          onboardingPostfixUrl: onboarding === true ? '?onboarding=' + config.brand.companyName : '',
           activeOrgUrl: activeOrg ? activeOrg.baseUrl : '/?',
           getOrg: (orgName: string) => {
             return operations.getOrganization(orgName);

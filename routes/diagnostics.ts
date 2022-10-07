@@ -26,14 +26,12 @@ interface ISafeUserView {
 }
 
 router.get('/', (req: IRequestWithSession, res) => {
-  const { config } = getProviders((req as any) as ReposAppRequest);
+  const { config } = getProviders(req as any as ReposAppRequest);
   const sessionPrefix =
     req['sessionStore'] && (req['sessionStore'] as any).prefix
       ? (req['sessionStore'] as any).prefix + ':'
       : null;
-  const sessionIndex = sessionPrefix
-    ? `${sessionPrefix}${req.session.id}`
-    : req.session.id;
+  const sessionIndex = sessionPrefix ? `${sessionPrefix}${req.session.id}` : req.session.id;
   let safeUserView: ISafeUserView = {
     cookies: req.cookies,
     sessionId: req.session.id,
@@ -93,10 +91,7 @@ router.get('/', (req: IRequestWithSession, res) => {
     user: req.user,
     config: config,
     corporateLinks: config.corporate.trainingResources['public-homepage'],
-    serviceBanner:
-      config && config.serviceMessage
-        ? config.serviceMessage.banner
-        : undefined,
+    serviceBanner: config && config.serviceMessage ? config.serviceMessage.banner : undefined,
     title: 'Open Source Portal for GitHub - ' + config.brand.companyName,
   });
 });

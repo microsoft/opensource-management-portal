@@ -95,16 +95,12 @@ async function refreshOrganization(
   try {
     organizationDetails = await organization.getDetails();
   } catch (organizationError) {
-    console.log(
-      `Organization get details error: ${organizationError} for org ${organization.name}`
-    );
+    console.log(`Organization get details error: ${organizationError} for org ${organization.name}`);
     console.dir(organizationError);
     return;
   }
   const organizationId = organizationDetails.id.toString();
-  console.log(
-    `refreshing ${organization.name} (id=${organizationId}) organization...`
-  );
+  console.log(`refreshing ${organization.name} (id=${organizationId}) organization...`);
 
   if (refreshSet === 'all' || refreshSet === 'organizations') {
     try {
@@ -121,9 +117,7 @@ async function refreshOrganization(
           OrganizationMembershipRole.Admin
         )
       );
-      const memberIds = new Set<string>(
-        organizationAdmins.map((admin) => admin.id.toString())
-      );
+      const memberIds = new Set<string>(organizationAdmins.map((admin) => admin.id.toString()));
       await sleep(sleepBetweenSteps);
 
       const organizationMembers = await organization.getMembers({
@@ -146,9 +140,7 @@ async function refreshOrganization(
       await sleep(sleepBetweenSteps);
 
       // Cleanup any former members
-      const cachedMembers = await queryCache.organizationMembers(
-        organizationId
-      );
+      const cachedMembers = await queryCache.organizationMembers(organizationId);
       const potentialFormerMembers: IQueryCacheOrganizationMembership[] = [];
       cachedMembers.map((cm) => {
         if (!memberIds.has(cm.userId)) {
@@ -157,17 +149,10 @@ async function refreshOrganization(
       });
       updateConsistencyStats(
         result.consistencyStats,
-        await cleanupFormerMembers(
-          operations,
-          queryCache,
-          organization,
-          potentialFormerMembers
-        )
+        await cleanupFormerMembers(operations, queryCache, organization, potentialFormerMembers)
       );
     } catch (orgMembersError) {
-      console.log(
-        `refresh for organization ${organization.name} members was interrupted by an error`
-      );
+      console.log(`refresh for organization ${organization.name} members was interrupted by an error`);
       console.dir(orgMembersError);
     }
   }
@@ -175,9 +160,7 @@ async function refreshOrganization(
   if (refreshSet === 'all' || refreshSet === 'teams') {
     try {
       const teams = await organization.getTeams(slowRequestCacheOptions);
-      console.log(
-        `${organizationIndex}: organization ${organization.name} has ${teams.length} teams`
-      );
+      console.log(`${organizationIndex}: organization ${organization.name} has ${teams.length} teams`);
       const knownTeams = new Set(teams.map((team) => team.id.toString()));
       await sleep(sleepBetweenSteps);
 
@@ -187,19 +170,11 @@ async function refreshOrganization(
           const teamDetailsData = await team.getDetails(minuteAgoCache);
           updateConsistencyStats(
             result.consistencyStats,
-            await queryCache.addOrUpdateTeam(
-              organizationId,
-              team.id.toString(),
-              teamDetailsData
-            )
+            await queryCache.addOrUpdateTeam(organizationId, team.id.toString(), teamDetailsData)
           );
 
-          const teamMaintainers = await team.getMaintainers(
-            slowRequestCacheOptions
-          );
-          const maintainers = new Set<number>(
-            teamMaintainers.map((maintainer) => maintainer.id)
-          );
+          const teamMaintainers = await team.getMaintainers(slowRequestCacheOptions);
+          const maintainers = new Set<number>(teamMaintainers.map((maintainer) => maintainer.id));
           updateConsistencyStats(
             result.consistencyStats,
             await cacheTeamMembers(
@@ -212,12 +187,8 @@ async function refreshOrganization(
           );
 
           const teamMembers = await team.getMembers(slowRequestCacheOptions);
-          const knownTeamMembers = new Set(
-            teamMembers.map((member) => member.id.toString())
-          );
-          const nonMaintainerMembers = teamMembers.filter(
-            (member) => !maintainers.has(member.id)
-          );
+          const knownTeamMembers = new Set(teamMembers.map((member) => member.id.toString()));
+          const nonMaintainerMembers = teamMembers.filter((member) => !maintainers.has(member.id));
           updateConsistencyStats(
             result.consistencyStats,
             await cacheTeamMembers(
@@ -229,17 +200,13 @@ async function refreshOrganization(
             )
           );
           console.log(
-            `${organizationIndex}: team ${i + 1}/${teams.length}: ${
-              team.name
-            } from org ${organization.name} has ${
-              teamMaintainers.length
-            } maintainers and ${nonMaintainerMembers.length} members`
+            `${organizationIndex}: team ${i + 1}/${teams.length}: ${team.name} from org ${
+              organization.name
+            } has ${teamMaintainers.length} maintainers and ${nonMaintainerMembers.length} members`
           );
 
           // Cleanup any removed team members
-          const cachedTeamMembers = await queryCache.teamMembers(
-            team.id.toString()
-          );
+          const cachedTeamMembers = await queryCache.teamMembers(team.id.toString());
           const removedMembers: IQueryCacheTeamMembership[] = [];
           cachedTeamMembers.map((ctm) => {
             if (!knownTeamMembers.has(ctm.userId)) {
@@ -252,9 +219,7 @@ async function refreshOrganization(
           );
           await sleep(sleepBetweenSteps);
         } catch (teamError) {
-          console.log(
-            `issue processing team ${teams[i].id} in org ${organization.name}`
-          );
+          console.log(`issue processing team ${teams[i].id} in org ${organization.name}`);
           console.dir(teamError);
           await sleep(sleepBetweenSteps);
         }
@@ -278,17 +243,9 @@ async function refreshOrganization(
     }
   }
 
-  if (
-    refreshSet === 'all' ||
-    refreshSet === 'collaborators' ||
-    refreshSet === 'permissions'
-  ) {
-    const repositories = await organization.getRepositories(
-      slowRequestCacheOptions
-    );
-    console.log(
-      `${organizationIndex}: ${repositories.length} repositories in ${organization.name}`
-    );
+  if (refreshSet === 'all' || refreshSet === 'collaborators' || refreshSet === 'permissions') {
+    const repositories = await organization.getRepositories(slowRequestCacheOptions);
+    console.log(`${organizationIndex}: ${repositories.length} repositories in ${organization.name}`);
     const repoIds = new Set(repositories.map((repo) => repo.id.toString()));
 
     for (let i = 0; i < repositories.length; i++) {
@@ -297,34 +254,20 @@ async function refreshOrganization(
         const repoDetailsData = await repository.getDetails(minuteAgoCache);
         updateConsistencyStats(
           result.consistencyStats,
-          await queryCache.addOrUpdateRepository(
-            organizationId,
-            repository.id.toString(),
-            repoDetailsData
-          )
+          await queryCache.addOrUpdateRepository(organizationId, repository.id.toString(), repoDetailsData)
         );
         await sleep(sleepBetweenSteps);
 
         if (refreshSet === 'all' || refreshSet === 'permissions') {
-          const repoTeamPermissions = await repository.getTeamPermissions(
-            slowRequestCacheOptions
-          );
+          const repoTeamPermissions = await repository.getTeamPermissions(slowRequestCacheOptions);
           updateConsistencyStats(
             result.consistencyStats,
-            await cacheRepositoryTeams(
-              queryCache,
-              repository,
-              repoTeamPermissions
-            )
+            await cacheRepositoryTeams(queryCache, repository, repoTeamPermissions)
           );
-          const knownTeamPermissions = new Set(
-            repoTeamPermissions.map((rtp) => rtp.team.id.toString())
-          );
+          const knownTeamPermissions = new Set(repoTeamPermissions.map((rtp) => rtp.team.id.toString()));
           await sleep(sleepBetweenSteps);
           // Cleanup any removed team permissions
-          const cachedTeamPermissions = await queryCache.repositoryTeamPermissions(
-            repository.id.toString()
-          );
+          const cachedTeamPermissions = await queryCache.repositoryTeamPermissions(repository.id.toString());
           const removedPermissions: IQueryCacheTeamRepositoryPermission[] = [];
           cachedTeamPermissions.map((ctp) => {
             if (!knownTeamPermissions.has(ctp.team.id.toString())) {
@@ -333,11 +276,7 @@ async function refreshOrganization(
           });
           updateConsistencyStats(
             result.consistencyStats,
-            await cleanupRemovedTeamPermissions(
-              queryCache,
-              repository,
-              removedPermissions
-            )
+            await cleanupRemovedTeamPermissions(queryCache, repository, removedPermissions)
           );
         }
 
@@ -346,12 +285,8 @@ async function refreshOrganization(
             ...slowRequestCacheOptions,
             affiliation: GitHubCollaboratorAffiliationQuery.Outside,
           };
-          const outsideRepoCollaborators = await repository.getCollaborators(
-            outsideOptions
-          );
-          const collaboratorIds = new Set(
-            outsideRepoCollaborators.map((orc) => orc.id.toString())
-          );
+          const outsideRepoCollaborators = await repository.getCollaborators(outsideOptions);
+          const collaboratorIds = new Set(outsideRepoCollaborators.map((orc) => orc.id.toString()));
           updateConsistencyStats(
             result.consistencyStats,
             await cacheRepositoryCollaborators(
@@ -362,19 +297,13 @@ async function refreshOrganization(
               GitHubCollaboratorType.Outside
             )
           );
-          const outsideSet = new Set<number>(
-            outsideRepoCollaborators.map((outsider) => outsider.id)
-          );
+          const outsideSet = new Set<number>(outsideRepoCollaborators.map((outsider) => outsider.id));
           const directOptions: IGetCollaboratorsOptions = {
             ...slowRequestCacheOptions,
             affiliation: GitHubCollaboratorAffiliationQuery.Direct,
           };
-          const directRepoCollaborators = await repository.getCollaborators(
-            directOptions
-          );
-          directRepoCollaborators.map((drc) =>
-            collaboratorIds.add(drc.id.toString())
-          );
+          const directRepoCollaborators = await repository.getCollaborators(directOptions);
+          directRepoCollaborators.map((drc) => collaboratorIds.add(drc.id.toString()));
           const insideDirectCollaborators = directRepoCollaborators.filter(
             (collaborator) => !outsideSet.has(collaborator.id)
           );
@@ -400,11 +329,7 @@ async function refreshOrganization(
           });
           updateConsistencyStats(
             result.consistencyStats,
-            await cleanupFormerCollaborators(
-              queryCache,
-              repository,
-              formerCollaborators
-            )
+            await cleanupFormerCollaborators(queryCache, repository, formerCollaborators)
           );
           await sleep(sleepBetweenSteps);
         }
@@ -420,9 +345,7 @@ async function refreshOrganization(
     }
     // Cleanup any deleted repos
     try {
-      const cachedRepositories = await queryCache.organizationRepositories(
-        organizationId
-      );
+      const cachedRepositories = await queryCache.organizationRepositories(organizationId);
       const deletedRepositories: IQueryCacheRepository[] = [];
       cachedRepositories.map((r) => {
         if (!repoIds.has(r.repository.id.toString())) {
@@ -431,11 +354,7 @@ async function refreshOrganization(
       });
       updateConsistencyStats(
         result.consistencyStats,
-        await cleanupDeletedRepositories(
-          queryCache,
-          organization,
-          deletedRepositories
-        )
+        await cleanupDeletedRepositories(queryCache, organization, deletedRepositories)
       );
     } catch (cleanError) {
       console.dir(cleanError);
@@ -487,14 +406,7 @@ async function cacheTeamMembers(
     const login = member.login;
     const avatar = member.avatar_url;
     ops.push(
-      await queryCache.addOrUpdateTeamMember(
-        organizationId,
-        teamId,
-        userId,
-        typeOfRole,
-        login,
-        avatar
-      )
+      await queryCache.addOrUpdateTeamMember(organizationId, teamId, userId, typeOfRole, login, avatar)
     );
   }
   return ops.filter((exists) => exists);
@@ -509,13 +421,7 @@ async function cacheOrganizationMembers(
   const ops = [];
   for (let member of members) {
     const userId = member.id.toString();
-    ops.push(
-      await queryCache.addOrUpdateOrganizationMember(
-        organizationId,
-        memberRole,
-        userId
-      )
-    );
+    ops.push(await queryCache.addOrUpdateOrganizationMember(organizationId, memberRole, userId));
   }
   return ops.filter((exists) => exists);
 }
@@ -531,11 +437,7 @@ async function cleanupRemovedTeamMembers(
       const userInTeam = await team.getMembership(login, minuteAgoCache);
       if (!userInTeam) {
         ops.push(
-          await queryCache.removeTeamMember(
-            team.organization.id.toString(),
-            team.id.toString(),
-            userId
-          )
+          await queryCache.removeTeamMember(team.organization.id.toString(), team.id.toString(), userId)
         );
         console.log(
           `permission for user login=${login} user id=${userId} to team ${team.id} removed from query cache`
@@ -562,10 +464,7 @@ async function cleanupRemovedTeamPermissions(
       if (!repository.name) {
         await repository.getDetails(); // make sure the repo name is known
       }
-      const teamManagesRepository = await repository.checkTeamManages(
-        team.id.toString(),
-        minuteAgoCache
-      );
+      const teamManagesRepository = await repository.checkTeamManages(team.id.toString(), minuteAgoCache);
       if (!teamManagesRepository) {
         ops.push(
           await queryCache.removeRepositoryTeam(
@@ -574,9 +473,7 @@ async function cleanupRemovedTeamPermissions(
             team.id.toString()
           )
         );
-        console.log(
-          `permission for team ${team.id} removed from repository id=${repository.id} query cache`
-        );
+        console.log(`permission for team ${team.id} removed from repository id=${repository.id} query cache`);
       }
     } catch (removalError) {
       console.log(
@@ -598,21 +495,14 @@ async function cleanupDeletedRepositories(
   try {
     for (const { repository } of deletedRepositories) {
       if (await repository.isDeleted()) {
-        ops.push(
-          await queryCache.removeRepository(
-            organizationId,
-            repository.id.toString()
-          )
-        );
+        ops.push(await queryCache.removeRepository(organizationId, repository.id.toString()));
         console.log(
           `former organization=${organizationId} repository id=${repository.id} removed from query cache`
         );
       }
     }
   } catch (removingDeletedRepositoryError) {
-    console.log(
-      `error while trying to cleanup potential former repos from ${organization.name} org`
-    );
+    console.log(`error while trying to cleanup potential former repos from ${organization.name} org`);
     console.dir(removingDeletedRepositoryError);
   }
   return ops.filter((real) => real);
@@ -628,10 +518,7 @@ async function cleanupFormerCollaborators(
   for (const { userId, cacheEntity } of formerCollaborators) {
     try {
       const login = cacheEntity.login;
-      const isCollaborator = await repository.checkCollaborator(
-        login,
-        minuteAgoCache
-      );
+      const isCollaborator = await repository.checkCollaborator(login, minuteAgoCache);
       if (!isCollaborator) {
         ops.push(
           await queryCache.removeRepositoryCollaborator(
@@ -640,9 +527,7 @@ async function cleanupFormerCollaborators(
             userId
           )
         );
-        console.log(
-          `removed collaborator ${login} from repository id=${repository.id} query cache`
-        );
+        console.log(`removed collaborator ${login} from repository id=${repository.id} query cache`);
       }
     } catch (removalError) {
       console.log(
@@ -664,21 +549,12 @@ async function cleanupFormerTeams(
   try {
     for (const { team } of potentialFormerTeams) {
       if (await team.isDeleted()) {
-        ops.push(
-          await queryCache.removeOrganizationTeam(
-            organizationId,
-            team.id.toString()
-          )
-        );
-        console.log(
-          `former organization=${organizationId} team id=${team.id} removed from query cache`
-        );
+        ops.push(await queryCache.removeOrganizationTeam(organizationId, team.id.toString()));
+        console.log(`former organization=${organizationId} team id=${team.id} removed from query cache`);
       }
     }
   } catch (removingFormerTeamsError) {
-    console.log(
-      `error while trying to cleanup potential former teams from ${organization.name} org teams`
-    );
+    console.log(`error while trying to cleanup potential former teams from ${organization.name} org teams`);
     console.dir(removingFormerTeamsError);
   }
   return ops.filter((real) => real);
@@ -700,9 +576,7 @@ async function cleanupFormerMembers(
         confirmedFormer = true;
       } else {
         const login = account.login;
-        const operationalMembership = await organization.getOperationalMembership(
-          login
-        );
+        const operationalMembership = await organization.getOperationalMembership(login);
         if (!operationalMembership) {
           confirmedFormer = true;
         } else {
@@ -713,12 +587,8 @@ async function cleanupFormerMembers(
         }
       }
       if (confirmedFormer) {
-        ops.push(
-          await queryCache.removeOrganizationMember(organizationId, userId)
-        );
-        console.log(
-          `former organization=${organizationId} member id=${userId} removed from query cache`
-        );
+        ops.push(await queryCache.removeOrganizationMember(organizationId, userId));
+        console.log(`former organization=${organizationId} member id=${userId} removed from query cache`);
       }
     }
   } catch (removingFormerMembersError) {
@@ -758,18 +628,14 @@ async function cacheRepositoryCollaborators(
   return operations.filter((real) => real);
 }
 
-export default async function refresh({
-  providers,
-  args,
-}: IReposJob): Promise<IReposJobResult> {
+export default async function refresh({ providers, args }: IReposJob): Promise<IReposJobResult> {
   const operations = providers.operations as Operations;
   const insights = providers.insights;
   const repositoryCacheProvider = providers.repositoryCacheProvider;
   const queryCache = providers.queryCache;
   const teamCacheProvider = providers.teamCacheProvider;
   const teamMemberCacheProvider = providers.teamMemberCacheProvider;
-  const repositoryCollaboratorCacheProvider =
-    providers.repositoryCollaboratorCacheProvider;
+  const repositoryCollaboratorCacheProvider = providers.repositoryCollaboratorCacheProvider;
   const repositoryTeamCacheProvider = providers.repositoryTeamCacheProvider;
   if (!repositoryCacheProvider) {
     throw new Error('repositoryCacheProvider required');
@@ -810,9 +676,7 @@ export default async function refresh({
   }
   const parallelWorkCount = 1;
   const orgs = shuffle(Array.from(operations.organizations.values()));
-  const currentlyKnownOrgIds = new Set<string>(
-    orgs.map((org) => String(org.id))
-  );
+  const currentlyKnownOrgIds = new Set<string>(orgs.map((org) => String(org.id)));
   let organizationWorkerCount = 0;
   const allUpStats: IConsistencyStats = {
     delete: 0,
@@ -822,15 +686,9 @@ export default async function refresh({
   let processedOrgs = 0;
   const staticOrgs = orgs.filter((org) => org.hasDynamicSettings === false);
   const dynamicOrgs = orgs.filter((org) => org.hasDynamicSettings === true);
-  async function organizationProcessed(
-    organization: Organization
-  ): Promise<void> {
+  async function organizationProcessed(organization: Organization): Promise<void> {
     await sleep(sleepBetweenSteps);
-    console.log(
-      `organization ${++organizationWorkerCount}/${orgs.length}: refreshing ${
-        organization.name
-      }`
-    );
+    console.log(`organization ${++organizationWorkerCount}/${orgs.length}: refreshing ${organization.name}`);
     const orgResult = await refreshOrganization(
       organizationWorkerCount,
       operations,
@@ -846,7 +704,7 @@ export default async function refresh({
       allUpStats['new'] += orgResult.consistencyStats['new'];
       insights.trackEvent({
         name: 'QueryCacheOrganizationConsistencyResults',
-        properties: (resultsAsLog as any) as { [key: string]: string },
+        properties: resultsAsLog as any as { [key: string]: string },
       });
 
       console.log('--------------------------------------------------');
@@ -869,14 +727,10 @@ export default async function refresh({
     `Parallel dynamic organization count: ${parallelDynamicCount} for ${dynamicOrgs.length} configured dynamic orgs`
   );
   try {
-    console.log(
-      `processing ${dynamicOrgs.length} dynamic orgs, ${parallelDynamicCount} at a time`
-    );
+    console.log(`processing ${dynamicOrgs.length} dynamic orgs, ${parallelDynamicCount} at a time`);
     const dynamicThrottle = throat(parallelDynamicCount);
     await Promise.all(
-      dynamicOrgs.map((org: Organization) =>
-        dynamicThrottle(organizationProcessed.bind(null, org))
-      )
+      dynamicOrgs.map((org: Organization) => dynamicThrottle(organizationProcessed.bind(null, org)))
     );
     processedOrgs = 0;
     console.log(
@@ -884,9 +738,7 @@ export default async function refresh({
     );
     const staticThrottle = throat(parallelWorkCount);
     await Promise.all(
-      staticOrgs.map((org: Organization) =>
-        staticThrottle(organizationProcessed.bind(null, org))
-      )
+      staticOrgs.map((org: Organization) => staticThrottle(organizationProcessed.bind(null, org)))
     );
   } catch (dynamicError) {
     console.dir(dynamicError);
@@ -899,26 +751,12 @@ export default async function refresh({
     (refreshSet === 'all' || refreshSet === 'organizations')
   ) {
     const knownOrgIds = new Set<string>();
-    addArrayToSet(
-      knownOrgIds,
-      await queryCache.organizationMemberCacheOrganizationIds()
-    );
-    addArrayToSet(
-      knownOrgIds,
-      await queryCache.repositoryCacheOrganizationIds()
-    );
-    addArrayToSet(
-      knownOrgIds,
-      await queryCache.repositoryCollaboratorCacheOrganizationIds()
-    );
-    addArrayToSet(
-      knownOrgIds,
-      await queryCache.repositoryTeamOrganizationIds()
-    );
+    addArrayToSet(knownOrgIds, await queryCache.organizationMemberCacheOrganizationIds());
+    addArrayToSet(knownOrgIds, await queryCache.repositoryCacheOrganizationIds());
+    addArrayToSet(knownOrgIds, await queryCache.repositoryCollaboratorCacheOrganizationIds());
+    addArrayToSet(knownOrgIds, await queryCache.repositoryTeamOrganizationIds());
     addArrayToSet(knownOrgIds, await queryCache.teamOrganizationIds());
-    const unknownOrgs = Array.from(knownOrgIds.values()).filter(
-      (id) => !currentlyKnownOrgIds.has(id)
-    );
+    const unknownOrgs = Array.from(knownOrgIds.values()).filter((id) => !currentlyKnownOrgIds.has(id));
     if (unknownOrgs.length > 0) {
       for (const id of unknownOrgs) {
         try {
@@ -947,18 +785,9 @@ export default async function refresh({
       allUpUpdate: allUpStats['update'].toString(),
     },
   });
-  insights.trackMetric({
-    name: 'QueryCacheConsistencyAdds',
-    value: allUpStats['new'],
-  });
-  insights.trackMetric({
-    name: 'QueryCacheConsistencyDeletes',
-    value: allUpStats['delete'],
-  });
-  insights.trackMetric({
-    name: 'QueryCacheConsistencyUpdates',
-    value: allUpStats['update'],
-  });
+  insights.trackMetric({ name: 'QueryCacheConsistencyAdds', value: allUpStats['new'] });
+  insights.trackMetric({ name: 'QueryCacheConsistencyDeletes', value: allUpStats['delete'] });
+  insights.trackMetric({ name: 'QueryCacheConsistencyUpdates', value: allUpStats['update'] });
   return {
     successProperties: {
       adds: allUpStats['new'],
@@ -983,10 +812,7 @@ function updateConsistencyStats(
       return;
     }
     const stringKey = outcome as string;
-    if (
-      stats[stringKey] === undefined ||
-      typeof stats[stringKey] !== 'number'
-    ) {
+    if (stats[stringKey] === undefined || typeof stats[stringKey] !== 'number') {
       throw new Error(`invalid outcome ${stringKey}`);
     }
     ++stats[stringKey];

@@ -80,9 +80,7 @@ export class MemoryLinkProvider implements ILinkProvider {
 
     const thirdPartyType = options.thirdPartyType || defaultThirdPartyType;
     if (thirdPartyType !== 'github') {
-      throw new Error(
-        'At this time only "github" is a supported third-party type.'
-      );
+      throw new Error('At this time only "github" is a supported third-party type.');
     }
 
     this._options = options;
@@ -90,21 +88,16 @@ export class MemoryLinkProvider implements ILinkProvider {
 
   async initialize(): Promise<ILinkProvider> {
     this._entities = new Map();
-    return (this as any) as ILinkProvider;
+    return this as any as ILinkProvider;
   }
 
   get thirdPartyType() {
     return this._thirdPartyType;
   }
 
-  async getByThirdPartyUsername(
-    username: string
-  ): Promise<CorporateMemoryLink> {
+  async getByThirdPartyUsername(username: string): Promise<CorporateMemoryLink> {
     username = username.toLowerCase();
-    return this.getSingleLinkByProperty(
-      this.propertyMapping.thirdPartyUsername,
-      username
-    );
+    return this.getSingleLinkByProperty(this.propertyMapping.thirdPartyUsername, username);
   }
 
   async getByThirdPartyId(id: string): Promise<CorporateMemoryLink> {
@@ -135,10 +128,7 @@ export class MemoryLinkProvider implements ILinkProvider {
 
   async queryByCorporateUsername(username): Promise<CorporateMemoryLink[]> {
     username = username.toLowerCase();
-    return this.getLinksByProperty(
-      this.propertyMapping.corporateUsername,
-      username
-    );
+    return this.getLinksByProperty(this.propertyMapping.corporateUsername, username);
   }
 
   async createLink(link: ICorporateLink): Promise<string> {
@@ -148,9 +138,7 @@ export class MemoryLinkProvider implements ILinkProvider {
     for (let linkPropertyName of CorporatePropertyNames) {
       const tableColumnName = linkInterfacePropertyMapping[linkPropertyName];
       if (!tableColumnName) {
-        throw new Error(
-          `Missing mapping from property ${linkPropertyName} to equivalent key`
-        );
+        throw new Error(`Missing mapping from property ${linkPropertyName} to equivalent key`);
       }
       initialEntity[tableColumnName] = link[linkPropertyName];
     }
@@ -176,10 +164,7 @@ export class MemoryLinkProvider implements ILinkProvider {
     // This is inefficient at this time; with the newer design centering
     // around a link ID, this has to query first.
     const tl = linkInstance as CorporateMemoryLink;
-    const link = this.getSingleLinkByProperty(
-      this.propertyMapping.memoryLinkId,
-      tl.id
-    );
+    const link = this.getSingleLinkByProperty(this.propertyMapping.memoryLinkId, tl.id);
     if (!link) {
       throw new Error(`No link found with ID ${tl.id}`);
     }
@@ -213,9 +198,7 @@ export class MemoryLinkProvider implements ILinkProvider {
           `The hydrated link was created by the same ${dehydratedMemoryProviderName} provider, but a different version: ${identity}`
         );
       } else {
-        throw new Error(
-          `The hydrated link is incompatible with this runtime environment: ${identity}`
-        );
+        throw new Error(`The hydrated link is incompatible with this runtime environment: ${identity}`);
       }
     }
     const clonedObject = Object.assign({}, jsonObject);
@@ -231,9 +214,7 @@ export class MemoryLinkProvider implements ILinkProvider {
     if (linkInstances.length > 0) {
       const first = linkInstances[0];
       if (first[linkProviderInstantiationTypeProperty] === undefined) {
-        throw new Error(
-          'linkInstances[0] does not appear to be a link instantiated by a provider'
-        );
+        throw new Error('linkInstances[0] does not appear to be a link instantiated by a provider');
       }
     }
     //
@@ -247,12 +228,10 @@ export class MemoryLinkProvider implements ILinkProvider {
     }
     //
     const arr = jsonArray.map(this.rehydrateLink.bind(this));
-    return (arr as any[]) as ICorporateLink[];
+    return arr as any[] as ICorporateLink[];
   }
 
-  private createLinkInstancesFromMemoryEntityArray(
-    rows: any[]
-  ): CorporateMemoryLink[] {
+  private createLinkInstancesFromMemoryEntityArray(rows: any[]): CorporateMemoryLink[] {
     return rows.map(this.createLinkInstanceFromMemoryEntity.bind(this));
   }
 
@@ -261,8 +240,7 @@ export class MemoryLinkProvider implements ILinkProvider {
       provider: this,
     };
     const newLink = new CorporateMemoryLink(linkInternalOptions, row);
-    newLink[linkProviderInstantiationTypeProperty] =
-      LinkInstantiatedType.MemoryEntity; // in case this helps while debugging
+    newLink[linkProviderInstantiationTypeProperty] = LinkInstantiatedType.MemoryEntity; // in case this helps while debugging
     return newLink;
   }
 
@@ -271,8 +249,7 @@ export class MemoryLinkProvider implements ILinkProvider {
       provider: this,
     };
     const newLink = new CorporateMemoryLink(linkInternalOptions, jsonObject);
-    newLink[linkProviderInstantiationTypeProperty] =
-      LinkInstantiatedType.Rehydrated; // in case this helps while debugging
+    newLink[linkProviderInstantiationTypeProperty] = LinkInstantiatedType.Rehydrated; // in case this helps while debugging
     return newLink;
   }
 
@@ -290,35 +267,19 @@ export class MemoryLinkProvider implements ILinkProvider {
     return rows;
   }
 
-  private getLinksByProperty(
-    propertyName: string,
-    value
-  ): CorporateMemoryLink[] {
-    const rows = this.getUserEntitiesByProperty(
-      this._entities,
-      propertyName,
-      value
-    );
+  private getLinksByProperty(propertyName: string, value): CorporateMemoryLink[] {
+    const rows = this.getUserEntitiesByProperty(this._entities, propertyName, value);
     const links = this.createLinkInstancesFromMemoryEntityArray(rows);
     return links;
   }
 
-  private getSingleLinkByProperty(
-    propertyName: string,
-    value
-  ): CorporateMemoryLink {
-    const rows = this.getUserEntitiesByProperty(
-      this._entities,
-      propertyName,
-      value
-    );
+  private getSingleLinkByProperty(propertyName: string, value): CorporateMemoryLink {
+    const rows = this.getUserEntitiesByProperty(this._entities, propertyName, value);
     if (rows.length <= 0) {
-      return (false as any) as CorporateMemoryLink;
+      return false as any as CorporateMemoryLink;
     }
     if (rows.length > 1) {
-      const error: Error = new Error(
-        `More than a single result were returned by the query (${rows.length})`
-      );
+      const error: Error = new Error(`More than a single result were returned by the query (${rows.length})`);
       error['multipleResults'] = rows.length;
       throw error;
     }

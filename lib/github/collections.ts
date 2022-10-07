@@ -12,11 +12,7 @@ import { IRestResponse, flattenData } from './core';
 import { CompositeApiContext, CompositeIntelligentEngine } from './composite';
 import { Collaborator } from '../../business/collaborator';
 import { Team } from '../../business/team';
-import {
-  IPagedCacheOptions,
-  IGetAuthorizationHeader,
-  IDictionary,
-} from '../../interfaces';
+import { IPagedCacheOptions, IGetAuthorizationHeader, IDictionary } from '../../interfaces';
 import { RestLibrary } from '.';
 import { sleep } from '../../utils';
 import GitHubApplication from '../../business/application';
@@ -65,10 +61,7 @@ const repoDetailsToCopy = RepositoryPrimaryProperties;
 const teamDetailsToCopy = Team.PrimaryProperties;
 const memberDetailsToCopy = Collaborator.PrimaryProperties;
 const appInstallDetailsToCopy = GitHubApplication.PrimaryInstallationProperties;
-const contributorsDetailsToCopy = [
-  ...Collaborator.PrimaryProperties,
-  'contributions',
-];
+const contributorsDetailsToCopy = [...Collaborator.PrimaryProperties, 'contributions'];
 
 const teamPermissionsToCopy = [
   'id',
@@ -380,8 +373,7 @@ export class RestCollections {
     let requests = [];
     let pages = 0;
     let currentPage = 0;
-    const pageLimit =
-      options.pageLimit || cacheOptions['pageLimit'] || Number.MAX_VALUE;
+    const pageLimit = options.pageLimit || cacheOptions['pageLimit'] || Number.MAX_VALUE;
     const pageRequestDelay = cacheOptions.pageRequestDelay || null;
     while (!done) {
       const method = githubCall;
@@ -421,9 +413,7 @@ export class RestCollections {
       if (!done && !error && result.headers && result.headers['retry-after']) {
         // actual retry headers win
         const delaySeconds = result.headers['retry-after'];
-        debug(
-          `Retry-After header was present. Delaying before next page ${delaySeconds}s.`
-        );
+        debug(`Retry-After header was present. Delaying before next page ${delaySeconds}s.`);
         await sleep(delaySeconds * 1000);
       } else if (pageRequestDelay) {
         const to = typeof pageRequestDelay;
@@ -431,7 +421,7 @@ export class RestCollections {
         if (to === 'number') {
           evaluatedTime = pageRequestDelay as number;
         } else if (to === 'function') {
-          evaluatedTime = ((pageRequestDelay as unknown) as any)();
+          evaluatedTime = (pageRequestDelay as unknown as any)();
         } else {
           throw new Error(`Unsupported pageRequestDelay type: ${to}`);
         }
@@ -457,12 +447,7 @@ export class RestCollections {
     const keepAll = !propertiesToKeep;
     try {
       // IRequestWithData
-      const getCollectionResponse = await this.getGithubCollection(
-        token,
-        methodName,
-        options,
-        cacheOptions
-      );
+      const getCollectionResponse = await this.getGithubCollection(token, methodName, options, cacheOptions);
       if (!getCollectionResponse) {
         throw new Error('No response');
       }
@@ -538,9 +523,7 @@ export class RestCollections {
       }
     }
     if (dirtyModified.length > 0) {
-      debug(
-        'Last-Modified response was present. This work is not yet implemented.'
-      );
+      debug('Last-Modified response was present. This work is not yet implemented.');
       // Some types, typically direct entities, will return this value; collections do not.
       // Would want to use the Last-Modified over the refresh time, sorting to find the latest.
     }
@@ -566,8 +549,7 @@ export class RestCollections {
     if (cacheOptions.backgroundRefresh) {
       apiContext.backgroundRefresh = true;
     }
-    const compositeEngine = this.libraryContext
-      .compositeEngine as CompositeIntelligentEngine;
+    const compositeEngine = this.libraryContext.compositeEngine as CompositeIntelligentEngine;
     return compositeEngine.execute(apiContext);
   }
 
@@ -601,13 +583,7 @@ export class RestCollections {
     const rows = await this.generalizedCollectionMethod(
       token,
       name,
-      this.getCollectionAndFilter(
-        token,
-        options,
-        cacheOptions,
-        githubClientMethod,
-        propertiesToKeep
-      ),
+      this.getCollectionAndFilter(token, options, cacheOptions, githubClientMethod, propertiesToKeep),
       options,
       cacheOptions
     );

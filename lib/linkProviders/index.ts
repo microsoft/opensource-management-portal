@@ -3,11 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import {
-  ICorporateLink,
-  ICorporateLinkExtended,
-  IProviders,
-} from '../../interfaces';
+import { ICorporateLink, ICorporateLinkExtended, IProviders } from '../../interfaces';
 
 import createMemoryProvider from './memory';
 import createPostgresProvider from './postgres';
@@ -96,8 +92,6 @@ export function createLinkProviderInstance(
     }
   }
   if (found === false) {
-    throw new Error(
-      `The link provider "${provider}" is not implemented or configured at this time.`
-    );
+    throw new Error(`The link provider "${provider}" is not implemented or configured at this time.`);
   }
 }

@@ -7,10 +7,7 @@ import { randomUUID } from 'crypto';
 
 import { EntityField } from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
-import {
-  IEntityMetadataFixedQuery,
-  FixedQueryType,
-} from '../../lib/entityMetadataProvider/query';
+import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
@@ -119,53 +116,35 @@ export class AuditLogRecord implements IAuditLogRecordProperties {
   }
 }
 
-export class AuditLogRecordQueryUndoCandidatesByThirdPartyId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.AuditLogUndoCandidateRecordsByThirdPartyId;
+export class AuditLogRecordQueryUndoCandidatesByThirdPartyId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.AuditLogUndoCandidateRecordsByThirdPartyId;
   constructor(public thirdPartyId: string) {}
 }
 
-export class AuditLogRecordQueryRecordsByRepositoryId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.AuditLogRecordsByRepositoryId;
+export class AuditLogRecordQueryRecordsByRepositoryId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.AuditLogRecordsByRepositoryId;
   constructor(public repositoryId: string) {}
 }
 
-export class AuditLogRecordQueryRecordsByActorThirdPartyId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.AuditLogRecordsByActorThirdPartyId;
+export class AuditLogRecordQueryRecordsByActorThirdPartyId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.AuditLogRecordsByActorThirdPartyId;
   constructor(public thirdPartyId: string) {}
 }
 
-export class AuditLogRecordQueryRecordsByUserThirdPartyId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.AuditLogRecordsByUserThirdPartyId;
+export class AuditLogRecordQueryRecordsByUserThirdPartyId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.AuditLogRecordsByUserThirdPartyId;
   constructor(public thirdPartyId: string) {}
 }
 
-export class AuditLogRecordQueryRecordsByTeamId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.AuditLogRecordsByTeamId;
+export class AuditLogRecordQueryRecordsByTeamId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.AuditLogRecordsByTeamId;
   constructor(public teamId: string) {}
 }
 
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityInstantiate,
-  () => {
-    return new AuditLogRecord();
-  }
-);
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityIdColumnName,
-  recordId
-);
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => {
+  return new AuditLogRecord();
+});
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, recordId);
 
 EntityMetadataMappings.Register(
   type,
@@ -194,19 +173,10 @@ EntityMetadataMappings.Register(
     [Field.userCorporateUsername, Field.userCorporateUsername.toLowerCase()],
   ])
 );
-EntityMetadataMappings.RuntimeValidateMappings(
-  type,
-  MemorySettings.MemoryMapping,
-  fieldNames,
-  [recordId]
-);
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, [recordId]);
 
 PostgresConfiguration.SetDefaultTableName(type, 'auditlog');
-EntityMetadataMappings.Register(
-  type,
-  PostgresSettings.PostgresDefaultTypeColumnName,
-  'auditlogrecord'
-);
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'auditlogrecord');
 PostgresConfiguration.MapFieldsToColumnNames(
   type,
   new Map<string, string>([
@@ -249,9 +219,7 @@ EntityMetadataMappings.Register(
     const entityTypeValue = getEntityTypeColumnValue(type);
     switch (query.fixedQueryType) {
       case FixedQueryType.AuditLogRecordsByActorThirdPartyId: {
-        const {
-          thirdPartyId,
-        } = query as AuditLogRecordQueryRecordsByActorThirdPartyId;
+        const { thirdPartyId } = query as AuditLogRecordQueryRecordsByActorThirdPartyId;
         if (!thirdPartyId) {
           throw new Error('thirdPartyId required');
         }
@@ -268,9 +236,7 @@ EntityMetadataMappings.Register(
         );
       }
       case FixedQueryType.AuditLogRecordsByRepositoryId: {
-        const {
-          repositoryId,
-        } = query as AuditLogRecordQueryRecordsByRepositoryId;
+        const { repositoryId } = query as AuditLogRecordQueryRecordsByRepositoryId;
         if (!repositoryId) {
           throw new Error('repositoryId required');
         }
@@ -304,9 +270,7 @@ EntityMetadataMappings.Register(
         );
       }
       case FixedQueryType.AuditLogUndoCandidateRecordsByThirdPartyId: {
-        const {
-          thirdPartyId,
-        } = query as AuditLogRecordQueryUndoCandidatesByThirdPartyId;
+        const { thirdPartyId } = query as AuditLogRecordQueryUndoCandidatesByThirdPartyId;
         if (!thirdPartyId) {
           throw new Error('thirdPartyId required');
         }
@@ -326,9 +290,7 @@ EntityMetadataMappings.Register(
         );
       }
       case FixedQueryType.AuditLogRecordsByUserThirdPartyId: {
-        const {
-          thirdPartyId,
-        } = query as AuditLogRecordQueryRecordsByUserThirdPartyId;
+        const { thirdPartyId } = query as AuditLogRecordQueryRecordsByUserThirdPartyId;
         if (!thirdPartyId) {
           throw new Error('thirdPartyId required');
         }

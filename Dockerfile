@@ -15,33 +15,20 @@ RUN tdnf -y update && \
     tdnf clean all
 
 WORKDIR /build
-COPY package.json .
-COPY package-lock.json .
-
-# Only if needed, copy .npmrc files into the container
-# COPY Dockerfile.npmrc /build/.npmrc
-
-# If you are doing local development and OK with your private tokens in the contains (CAREFUL):
-# DO NOT RECOMMEND:
-# COPY .npmrc /build/.npmrc
-
-# RUN npm install --production --verbose && mv node_modules production_node_modules
-RUN npm install --production && mv node_modules production_node_modules
 
 COPY . .
 
-# Only if needed, copy .npmrc files into the container, again...
-# COPY Dockerfile.npmrc /build/.npmrc
+# Only if needed, copy file with NPM_TOKEN arg
+# COPY .npmrc.arg /build/.npmrc
 
-# Dev dependencies
-# RUN npm install --verbose && rm -rf .npmrc
-RUN npm install && rm -rf .npmrc
-
-# TypeScript build
+# RUN npm install --ignore-scripts --production --verbose
+RUN npm ci
 RUN npm run-script build
+RUN mv node_modules production_node_modules
+RUN rm -f .npmrc
 
 # The open source project build needs: build the site assets sub-project
-RUN cd default-assets-package && npm install && npm run build
+RUN cd default-assets-package && npm ci && npm run build
 
 FROM $IMAGE_NAME AS run
 
@@ -64,13 +51,16 @@ COPY --from=build /build/data ./data
 COPY --from=build /build/dist ./
 
 # The open source project build needs: default assets should be placed
-COPY --from=build /build/default-assets-package ./default-assets-package
+COPY --from=build /build/default-assets-package ../default-assets-package
 
 COPY --from=build /build/config ./config
 COPY --from=build /build/views ./views
 COPY --from=build /build/package.json ./package.json
 
-# Only if needed, copy environment
+# Views were deprecated years ago
+#COPY --from=build /build/jobs/reports/views ./jobs/reports/views
+
+# Only if needed, copy our environment
 # COPY --from=build /build/.environment ./.environment
 
 ENTRYPOINT ["npm", "run-script", "start-in-container"]

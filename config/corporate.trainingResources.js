@@ -21,8 +21,7 @@ const typescriptConfig = require('./typescript');
 module.exports = function (graphApi) {
   const environmentProvider = graphApi.environment;
   const environmentName =
-    environmentProvider.get(painlessConfigEnvironmentVariableName) ||
-    environmentProvider.get('ENV');
+    environmentProvider.get(painlessConfigEnvironmentVariableName) || environmentProvider.get('ENV');
 
   let resources = null;
 
@@ -36,20 +35,14 @@ module.exports = function (graphApi) {
       resources = require(pkgName)(environmentName, resourcesEnvironmentName);
       // debug(`resources and URL links loaded from ${pkgName}/${environmentName},${resourcesEnvironmentName}`);
     } catch (painlessConfigError) {
-      debug(
-        `failed attempt to load URLs from ${pkgName}/${environmentName},${resourcesEnvironmentName}`
-      );
+      debug(`failed attempt to load URLs from ${pkgName}/${environmentName},${resourcesEnvironmentName}`);
       console.warn(painlessConfigError);
       throw painlessConfigError;
     }
   } else {
     // 2: load URL/resource links data from a local JSON file
     try {
-      const filename = path.join(
-        typescriptConfig.appDirectory,
-        'data',
-        'resources.json'
-      );
+      const filename = path.join(typescriptConfig.appDirectory, 'data', 'resources.json');
       const str = fs.readFileSync(filename, 'utf8');
       resources = JSON.parse(str);
       debug(`resources and URL links loaded from file ${filename}`);

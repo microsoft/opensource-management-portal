@@ -62,11 +62,8 @@ export default class CosmosCache implements ICacheHelper {
     const value = this.safetyKey(this._keyPrefix + key);
     if (value.length > 255) {
       const hash = sha256(value);
-      debug(
-        `hash ${hash} overrides long key length=${value.length} key=${value}`
-      );
-      const newKey =
-        value.substr(0, 20) + '_longkeyhash_' + hash.replace('=', '');
+      debug(`hash ${hash} overrides long key length=${value.length} key=${value}`);
+      const newKey = value.substr(0, 20) + '_longkeyhash_' + hash.replace('=', '');
       return this.safetyKey(newKey);
     }
     return value;
@@ -91,14 +88,10 @@ export default class CosmosCache implements ICacheHelper {
     }
     this._client = new CosmosClient({ endpoint, key });
     this._database = (
-      await this._client.databases.createIfNotExists({
-        id: this._options.database,
-      })
+      await this._client.databases.createIfNotExists({ id: this._options.database })
     ).database;
     this._collection = (
-      await this._database.containers.createIfNotExists({
-        id: this._options.collection,
-      })
+      await this._database.containers.createIfNotExists({ id: this._options.collection })
     ).container;
     if (this._blobCache) {
       await this._blobCache.initialize();
@@ -144,8 +137,7 @@ export default class CosmosCache implements ICacheHelper {
       if (!this._blobCache) {
         return null; // or throw
       }
-      const compressed =
-        response.resource.compress && response.resource.compress === true;
+      const compressed = response.resource.compress && response.resource.compress === true;
       return compressed
         ? await this._blobCache.getObjectCompressed(response.resource.blobKey)
         : await this._blobCache.getObject(response.resource.blobKey);
@@ -217,17 +209,11 @@ export default class CosmosCache implements ICacheHelper {
       approxSize = bytes(asJsonText);
       if (approxSize > largess) {
         if (this._blobCache) {
-          debug(
-            `storing in blob instead... key=${originalKey}, dataSize=${approxSize}`
-          );
+          debug(`storing in blob instead... key=${originalKey}, dataSize=${approxSize}`);
           const ttlSeconds = object.ttl;
           delete object.ttl;
           (await ttlSeconds)
-            ? this._blobCache.setObjectCompressedWithExpire(
-                originalKey,
-                object,
-                ttlSeconds / 60
-              )
+            ? this._blobCache.setObjectCompressedWithExpire(originalKey, object, ttlSeconds / 60)
             : this._blobCache.setObject(originalKey, object);
           item = {
             blobKey: originalKey,
@@ -241,9 +227,7 @@ export default class CosmosCache implements ICacheHelper {
       }
       if (approxSize > cut) {
         const chunks = this.intoChunks(asJsonText, cut);
-        debug(
-          `LARGE Cosmos save, would blob be better? chunks: ${chunks.length}`
-        );
+        debug(`LARGE Cosmos save, would blob be better? chunks: ${chunks.length}`);
         for (let i = 0; i < chunks.length; i++) {
           const id = i === 0 ? key : `${key}_c${i}`;
           const chunkDoc = {
@@ -259,9 +243,7 @@ export default class CosmosCache implements ICacheHelper {
           try {
             chunkSize = bytes(JSON.stringify(chunkDoc));
             await this._collection.items.upsert(chunkDoc);
-            debug(
-              `chunk saved for key ${key}, id=${chunkDoc.id}, sizeApprox=${chunkDoc.chunk.length}`
-            );
+            debug(`chunk saved for key ${key}, id=${chunkDoc.id}, sizeApprox=${chunkDoc.chunk.length}`);
           } catch (chunkSave) {
             console.dir(chunkSave);
             debug(`may be too large at ${chunkSize}... ${chunkSave}`);
@@ -277,10 +259,7 @@ export default class CosmosCache implements ICacheHelper {
             success = true;
           } catch (cosmosError) {
             if (cosmosError && cosmosError.code && cosmosError.code === 429) {
-              const time =
-                cosmosError && cosmosError.retryAfterInMs
-                  ? cosmosError.retryAfterInMs
-                  : 500;
+              const time = cosmosError && cosmosError.retryAfterInMs ? cosmosError.retryAfterInMs : 500;
               debug(`pausing, will retry on 429 in ${time}ms`);
               await sleep(time);
             } else {
@@ -310,25 +289,15 @@ export default class CosmosCache implements ICacheHelper {
     return chunks;
   }
 
-  setObjectWithExpire(
-    key: string,
-    object: any,
-    minutesToExpire: number
-  ): Promise<void> {
+  setObjectWithExpire(key: string, object: any, minutesToExpire: number): Promise<void> {
     if (object.ttl) {
-      console.warn(
-        "Warning: the object has an existing 'ttl' property before caching."
-      );
+      console.warn("Warning: the object has an existing 'ttl' property before caching.");
     }
     object.ttl = minutesToExpire * 60;
     return this.setObject(key, object);
   }
 
-  setObjectCompressedWithExpire(
-    key: string,
-    object: any,
-    minutesToExpire: number
-  ): Promise<void> {
+  setObjectCompressedWithExpire(key: string, object: any, minutesToExpire: number): Promise<void> {
     return this.setObjectWithExpire(key, object, minutesToExpire);
   }
 
@@ -336,11 +305,7 @@ export default class CosmosCache implements ICacheHelper {
     return this.set(key, value); // NOTE: CosmosDB does not support compression
   }
 
-  setCompressedWithExpire(
-    key: string,
-    value: string,
-    minutesToExpire: number
-  ): Promise<void> {
+  setCompressedWithExpire(key: string, value: string, minutesToExpire: number): Promise<void> {
     return this.setObjectWithExpire(
       key,
       {
@@ -350,11 +315,7 @@ export default class CosmosCache implements ICacheHelper {
     );
   }
 
-  setWithExpire(
-    key: string,
-    value: string,
-    minutesToExpire: number
-  ): Promise<void> {
+  setWithExpire(key: string, value: string, minutesToExpire: number): Promise<void> {
     return this.setCompressedWithExpire(key, value, minutesToExpire); // NOTE: CosmosDB does not support compression
   }
 
@@ -383,9 +344,7 @@ export default class CosmosCache implements ICacheHelper {
 
   private throwIfNotInitialized() {
     if (!this._initialized) {
-      throw new Error(
-        'Cosmos caching provider must be initialized before it can be used'
-      );
+      throw new Error('Cosmos caching provider must be initialized before it can be used');
     }
   }
 }

@@ -23,17 +23,10 @@ import {
   IRestResponse,
   IRestMetadata,
 } from './core';
-import {
-  getEntityDefinitions,
-  GitHubResponseType,
-  ResponseBodyType,
-} from './endpointEntities';
+import { getEntityDefinitions, GitHubResponseType, ResponseBodyType } from './endpointEntities';
 
 import appPackage from '../../package.json';
-import {
-  IGetAuthorizationHeader,
-  IAuthorizationHeaderValue,
-} from '../../interfaces';
+import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../interfaces';
 
 const appVersion = appPackage.version;
 
@@ -68,9 +61,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     }
     const group = apiGroup ? instance[apiGroup] : instance;
     if (!group) {
-      throw new Error(
-        `The GitHub REST API library does not support the API group of type "${apiGroup}".`
-      );
+      throw new Error(`The GitHub REST API library does not support the API group of type "${apiGroup}".`);
     }
     const method = group[apiMethodName];
     if (!method) {
@@ -81,10 +72,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     return method;
   }
 
-  async callApi(
-    apiContext: GitHubApiContext,
-    optionalMessage?: string
-  ): Promise<IRestResponse> {
+  async callApi(apiContext: GitHubApiContext, optionalMessage?: string): Promise<IRestResponse> {
     const token = apiContext.token;
     // CONSIDER: rename apiContext.token *to* something like apiContext.authorization
     if (
@@ -98,8 +86,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
       const warning = `API context api=${apiContext.api} does not have a token that starts with 'token [REDACTED]' or 'bearer [REDACTED], investigate this breakpoint`;
       throw new Error(warning);
     }
-    let authorizationHeaderValue =
-      typeof token === 'string' ? (token as string) : null;
+    let authorizationHeaderValue = typeof token === 'string' ? (token as string) : null;
     if (!authorizationHeaderValue) {
       if (typeof token === 'function') {
         const response = await token();
@@ -121,11 +108,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
         apiContext.tokenSource && apiContext.tokenSource.purpose
           ? ' [' + apiContext.tokenSource.purpose + ']'
           : '';
-      if (
-        !apiTypeSuffix &&
-        apiContext.tokenSource &&
-        apiContext.tokenSource.source
-      ) {
+      if (!apiTypeSuffix && apiContext.tokenSource && apiContext.tokenSource.source) {
         apiTypeSuffix = ` [token source=${apiContext.tokenSource.source}]`;
       }
       debug(`${optionalMessage}${apiTypeSuffix}`);
@@ -167,10 +150,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
       metadata &&
       metadata.av &&
       apiContext.libraryContext.breakingChangeGitHubPackageVersion &&
-      !semver.gte(
-        metadata.av,
-        apiContext.libraryContext.breakingChangeGitHubPackageVersion
-      )
+      !semver.gte(metadata.av, apiContext.libraryContext.breakingChangeGitHubPackageVersion)
     ) {
       console.warn(
         `${apiContext.redisKey.metadata} was using ${metadata.av}, which is < to ${apiContext.libraryContext.breakingChangeGitHubPackageVersion}. This is a schema break, discarding cache.`
@@ -191,17 +171,10 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     return response;
   }
 
-  optionalStripResponse(
-    apiContext: ApiContext,
-    response: IRestResponse
-  ): IRestResponse {
+  optionalStripResponse(apiContext: ApiContext, response: IRestResponse): IRestResponse {
     const clonedResponse = Object.assign({}, response);
     if (response.headers) {
-      let clonedHeaders = StripGitHubEntity(
-        GitHubResponseType.Headers,
-        response.headers,
-        'response.headers'
-      );
+      let clonedHeaders = StripGitHubEntity(GitHubResponseType.Headers, response.headers, 'response.headers');
       if (clonedHeaders) {
         clonedResponse.headers = clonedHeaders;
         if (debugShowStandardBehavior) {
@@ -212,16 +185,13 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     if (response.data) {
       let apiCall = apiContext.api as string;
       if ((apiContext as GitHubApiContext).pageAwareTypeInformation) {
-        const pageAwareTypeInformation = (apiContext as GitHubApiContext)
-          .pageAwareTypeInformation;
+        const pageAwareTypeInformation = (apiContext as GitHubApiContext).pageAwareTypeInformation;
         if (pageAwareTypeInformation && pageAwareTypeInformation.methodName) {
           apiCall = pageAwareTypeInformation.methodName;
         }
       }
       const knownEntityType = entityData.apiToEntityType.get(apiCall);
-      const knownResponseBodyType = entityData.apiToEntityResponseType.get(
-        apiCall
-      );
+      const knownResponseBodyType = entityData.apiToEntityResponseType.get(apiCall);
       if (!knownEntityType) {
         if (debugOutputUnregisteredEntityApis) {
           debugCacheOptimization(apiCall);
@@ -230,10 +200,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
         debugCacheOptimization(
           `Cache Optimization WARNING: the API call ${apiCall} has no known entity response type, so data will not be optimized for caching`
         );
-      } else if (
-        Array.isArray(response.data) &&
-        knownResponseBodyType !== ResponseBodyType.Array
-      ) {
+      } else if (Array.isArray(response.data) && knownResponseBodyType !== ResponseBodyType.Array) {
         if (debugOutputUnregisteredEntityApis) {
           debugCacheOptimization(apiCall);
           debugCacheOptimization(JSON.stringify(response.data, undefined, 2));
@@ -241,22 +208,13 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
         debugCacheOptimization(
           `Cache Optimization WARNING: the API call ${apiCall} is not registered to return an array, but it did.. NO optimization being performed.`
         );
-      } else if (
-        knownResponseBodyType === ResponseBodyType.Array &&
-        Array.isArray(response.data)
-      ) {
+      } else if (knownResponseBodyType === ResponseBodyType.Array && Array.isArray(response.data)) {
         let arrayClone = [];
-        const remainingKeys = new Set(
-          Object.getOwnPropertyNames(response.data)
-        );
+        const remainingKeys = new Set(Object.getOwnPropertyNames(response.data));
         remainingKeys.delete('length');
         for (let i = 0; i < response.data.length; i++) {
           const entity = response.data[i];
-          const entityClone = StripGitHubEntity(
-            knownEntityType,
-            entity,
-            'response.data[' + i + ']'
-          );
+          const entityClone = StripGitHubEntity(knownEntityType, entity, 'response.data[' + i + ']');
           arrayClone.push(entityClone ? entityClone : entity);
           remainingKeys.delete(i.toString());
         }
@@ -269,9 +227,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
         if (arrayClone.length) {
           clonedResponse.data = arrayClone;
           if (debugShowStandardBehavior) {
-            debugCacheOptimization(
-              `using reduced response array body for ${arrayClone.length} entities`
-            );
+            debugCacheOptimization(`using reduced response array body for ${arrayClone.length} entities`);
           }
         }
       } else if (knownResponseBodyType === ResponseBodyType.Array) {
@@ -283,23 +239,15 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
           `Cache Optimization WARNING: the API call ${apiCall} is registered to return an array, but it did not.. NO optimization being performed.`
         );
       } else {
-        const strippedBody = StripGitHubEntity(
-          knownEntityType,
-          response.data,
-          'response.data'
-        );
+        const strippedBody = StripGitHubEntity(knownEntityType, response.data, 'response.data');
         if (strippedBody) {
           clonedResponse.data = strippedBody;
           if (debugShowStandardBehavior) {
-            debugCacheOptimization(
-              `reduced response body for entity ${knownEntityType} used`
-            );
+            debugCacheOptimization(`reduced response body for entity ${knownEntityType} used`);
           }
         } else {
           if (debugShowStandardBehavior) {
-            debugCacheOptimization(
-              `nothing could be reduced from the response.data for ${knownEntityType}`
-            );
+            debugCacheOptimization(`nothing could be reduced from the response.data for ${knownEntityType}`);
           }
         }
       }
@@ -307,10 +255,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     return clonedResponse;
   }
 
-  reduceMetadataToCacheFromResponse(
-    apiContext: ApiContext,
-    response: IRestResponse
-  ): any {
+  reduceMetadataToCacheFromResponse(apiContext: ApiContext, response: IRestResponse): any {
     const headers = response ? response.headers : null;
     if (headers?.etag) {
       let reduced: IReducedGitHubMetadata = {
@@ -324,9 +269,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
       const lastModifiedTime = headers?.['last-modified'];
       let updated = lastModifiedTime ? new Date(lastModifiedTime) : null;
       if (!updated) {
-        const calledTime = apiContext.calledTime
-          ? apiContext.calledTime
-          : new Date();
+        const calledTime = apiContext.calledTime ? apiContext.calledTime : new Date();
         updated = calledTime;
       }
       reduced.updated = updated.toISOString();
@@ -343,9 +286,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
       throw new Error('The response was undefined and unable to process.');
     }
     if (!response.headers) {
-      throw new Error(
-        'As of Octokit 15.8.0, responses must have headers on the response'
-      );
+      throw new Error('As of Octokit 15.8.0, responses must have headers on the response');
     }
     const headers = response.headers;
     let retryAfter = headers['retry-after'];
@@ -364,11 +305,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
         apiContext.tokenSource && apiContext.tokenSource.purpose
           ? ` [${apiContext.tokenSource.purpose}]`
           : '';
-      if (
-        apiContext.tokenSource &&
-        !apiContext.tokenSource.purpose &&
-        apiContext.tokenSource.source
-      ) {
+      if (apiContext.tokenSource && !apiContext.tokenSource.purpose && apiContext.tokenSource.source) {
         appPurposeSuffix = ` [token source=${apiContext.tokenSource.source}]`;
       }
       debug(`304:               ${displayInfo} ${appPurposeSuffix}`);
@@ -376,17 +313,12 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
       cacheOk = true;
     } else if (status !== undefined && (status < 200 || status >= 300)) {
       // The underlying library I believe actually processes these conditions as errors anyway
-      throw new Error(
-        `Response code of ${status} is not currently supported in this system.`
-      );
+      throw new Error(`Response code of ${status} is not currently supported in this system.`);
     }
     return cacheOk;
   }
 
-  getResponseMetadata(
-    apiContext: ApiContext,
-    response: IRestResponse
-  ): IRestMetadata {
+  getResponseMetadata(apiContext: ApiContext, response: IRestResponse): IRestMetadata {
     const md: IRestMetadata = {
       headers: response.headers,
       status: response.status,
@@ -406,9 +338,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     const updatedIso = metadata ? metadata.updated : null;
     const refreshingIso = metadata ? metadata.refreshing : null;
     if (metadata && !updatedIso) {
-      debug(
-        `${apiContext.redisKey.metadata} entity without updated date found`
-      );
+      debug(`${apiContext.redisKey.metadata} entity without updated date found`);
     }
     if (apiContext.generatedRefreshId) {
       debug(
@@ -422,9 +352,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
         shouldServeCache = true;
         shouldServeCache = {
           cache: true,
-          remaining:
-            'expires ' +
-            moment(updatedIso).add(maxAgeSeconds, 'seconds').fromNow(),
+          remaining: 'expires ' + moment(updatedIso).add(maxAgeSeconds, 'seconds').fromNow(),
         };
         // debug('cache OK to serve as last updated was ' + updated);
       } else if (apiContext.backgroundRefresh) {
@@ -437,16 +365,12 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
             maxAgeSeconds
         );
         if (refreshingIso) {
-          let secondsToAllowForRefresh =
-            2 + apiContext.delayBeforeRefreshMilliseconds / 1000;
+          let secondsToAllowForRefresh = 2 + apiContext.delayBeforeRefreshMilliseconds / 1000;
           if (Array.isArray(metadata.pages)) {
             secondsToAllowForRefresh += metadata.pages.length * 1.25;
           }
           secondsToAllowForRefresh = Math.round(secondsToAllowForRefresh);
-          const refreshWindow = moment(refreshingIso).add(
-            secondsToAllowForRefresh,
-            'seconds'
-          );
+          const refreshWindow = moment(refreshingIso).add(secondsToAllowForRefresh, 'seconds');
           if (moment().utc().isAfter(refreshWindow)) {
             debug(
               `Another worker\'s refresh did not complete. Refreshing in this instance. ${apiContext.redisKey.metadata}`
@@ -493,21 +417,12 @@ export class GitHubApiContext extends ApiContext {
   constructor(api: any, options: any) {
     super(api, options);
 
-    const root = IntelligentEngine.redisKeyForApi(
-      this.apiTypePrefix,
-      api,
-      options
-    );
+    const root = IntelligentEngine.redisKeyForApi(this.apiTypePrefix, api, options);
     this._redisKeys = {
       root: root,
       metadata: root
         ? root + IntelligentEngine.redisKeyAspectSuffix('headers')
-        : IntelligentEngine.redisKeyForApi(
-            this.apiTypePrefix,
-            api,
-            options,
-            'headers'
-          ),
+        : IntelligentEngine.redisKeyForApi(this.apiTypePrefix, api, options, 'headers'),
     };
 
     this._cacheValues = {
@@ -547,10 +462,7 @@ export class GitHubApiContext extends ApiContext {
       // and is probably not needed
       throw new Error('API has already been attached to');
     }
-    const method = IntelligentGitHubEngine.findLibraryMethod(
-      implementationLibrary,
-      this.api
-    );
+    const method = IntelligentGitHubEngine.findLibraryMethod(implementationLibrary, this.api);
     method['thisInstance'] = implementationLibrary; // // HACK, is there a better way?
     this._apiMethod = method;
   }
@@ -559,9 +471,7 @@ export class GitHubApiContext extends ApiContext {
     this.libraryContext = libraryContext;
   }
 
-  overrideToken(
-    token: string | IGetAuthorizationHeader | IAuthorizationHeaderValue
-  ) {
+  overrideToken(token: string | IGetAuthorizationHeader | IAuthorizationHeaderValue) {
     if (token && token['value']) {
       const asPair = token as IAuthorizationHeaderValue;
       this._token = asPair.value;
@@ -578,10 +488,7 @@ export class GitHubApiContext extends ApiContext {
   }
 }
 
-function prepareApiContextForGithub(
-  apiContext: GitHubApiContext,
-  github: any
-): GitHubApiContext {
+function prepareApiContextForGithub(apiContext: GitHubApiContext, github: any): GitHubApiContext {
   if (!apiContext.apiMethod) {
     apiContext.attachToApiImplementation(github);
   }
@@ -594,10 +501,7 @@ export function createFullContext(
   github: any,
   libraryContext: any
 ): GitHubApiContext {
-  const apiContext = prepareApiContextForGithub(
-    createApiContextForGithub(api, options),
-    github
-  );
+  const apiContext = prepareApiContextForGithub(createApiContextForGithub(api, options), github);
   apiContext.setLibraryContext(libraryContext);
   return apiContext;
 }
@@ -617,8 +521,7 @@ export function StripGitHubEntity(
     return; // no change
   }
   const keepers = entityData.entityPropertiesToKeep.get(entityType) || emptySet;
-  const droppers =
-    entityData.entityPropertiesToDrop.get(entityType) || emptySet;
+  const droppers = entityData.entityPropertiesToDrop.get(entityType) || emptySet;
   const objects = entityData.entityPropertiesSubsets.get(entityType);
   const entityKeys = Object.getOwnPropertyNames(incomingEntity);
   for (let j = 0; j < entityKeys.length; j++) {
@@ -630,25 +533,19 @@ export function StripGitHubEntity(
       if (!entityClone) {
         entityClone = Object.assign({}, incomingEntity);
         if (debugShowStandardBehavior) {
-          debugCacheOptimization(
-            `stripping from response ${keyOrName} of type ${entityType}: (clone)`
-          );
+          debugCacheOptimization(`stripping from response ${keyOrName} of type ${entityType}: (clone)`);
         }
       }
       delete entityClone[fieldName];
       if (debugShowStandardBehavior) {
-        debugCacheOptimization(
-          `field strip: ${fieldName} from ${keyOrName} entity (${entityType})`
-        );
+        debugCacheOptimization(`field strip: ${fieldName} from ${keyOrName} entity (${entityType})`);
       }
     } else if (fieldObjectType) {
       // this property itself is a sub-object that might want to get parsed
       if (!entityClone) {
         entityClone = Object.assign({}, incomingEntity);
         if (debugShowStandardBehavior) {
-          debugCacheOptimization(
-            `stripping from response ${keyOrName} of type ${entityType}: (clone)`
-          );
+          debugCacheOptimization(`stripping from response ${keyOrName} of type ${entityType}: (clone)`);
         }
       }
       const newSubObject = StripGitHubEntity(

@@ -22,8 +22,7 @@ export default async function cleanup({ providers }: IReposJob): Promise<void> {
     config.github.jobs.cleanup &&
     config.github.jobs.cleanup.maximumInvitationAgeDays
   ) {
-    maximumInvitationAgeDays =
-      config.github.jobs.cleanup.maximumInvitationAgeDays;
+    maximumInvitationAgeDays = config.github.jobs.cleanup.maximumInvitationAgeDays;
   }
   const maximumAgeMoment = moment().subtract(maximumInvitationAgeDays, 'days');
   const organizations = operations.getOrganizations();
@@ -50,18 +49,13 @@ export default async function cleanup({ providers }: IReposJob): Promise<void> {
           invitationsToRemove.push(invite.login);
         } else {
           ++emailInvitations;
-          console.warn(
-            `An e-mail based invitation to ${invite.email} cannot be automatically canceled`
-          );
+          console.warn(`An e-mail based invitation to ${invite.email} cannot be automatically canceled`);
         }
         const data = {
           createdAt: createdAt.format(),
           invitedAgo: createdAt.fromNow(),
           login: invite.login,
-          inviter:
-            invite && invite.inviter && invite.inviter.login
-              ? invite.inviter.login
-              : undefined,
+          inviter: invite && invite.inviter && invite.inviter.login ? invite.inviter.login : undefined,
           role: invite.role,
           emailInvited: invite.email,
         };
@@ -97,11 +91,6 @@ export default async function cleanup({ providers }: IReposJob): Promise<void> {
       }
     }
   }
-  console.log(
-    `Job finishing. Removed ${removedInvitations} expired invitations.`
-  );
-  insights.trackMetric({
-    name: 'JobOrganizationInvitationsExpired',
-    value: removedInvitations,
-  });
+  console.log(`Job finishing. Removed ${removedInvitations} expired invitations.`);
+  insights.trackMetric({ name: 'JobOrganizationInvitationsExpired', value: removedInvitations });
 }

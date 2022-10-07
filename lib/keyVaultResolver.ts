@@ -13,10 +13,7 @@ const secretsPath = '/secrets/';
 
 export type IKeyVaultSecretResolver = (id: string) => Promise<string>;
 
-async function keyVaultSecretResolver(
-  keyVaultClient: IGetKeyVaultSecretClient,
-  id: string
-) {
+async function keyVaultSecretResolver(keyVaultClient: IGetKeyVaultSecretClient, id: string) {
   const cachedKey = cachedKeys.get(id);
   if (cachedKey !== undefined) {
     return cachedKey;
@@ -36,9 +33,7 @@ async function keyVaultSecretResolver(
     secretName = secretName.substr(0, versionIndex);
   }
   try {
-    const secretResponse = await secretClient.getSecret(secretName, {
-      version,
-    });
+    const secretResponse = await secretClient.getSecret(secretName, { version });
     const secretValue = secretResponse.value;
     if (cacheKeysInMemory === true) {
       cachedKeys.set(id, secretValue);
@@ -49,11 +44,6 @@ async function keyVaultSecretResolver(
   }
 }
 
-export default function createKeyVaultResolver(
-  keyVaultClient: IGetKeyVaultSecretClient
-) {
-  return keyVaultSecretResolver.bind(
-    undefined,
-    keyVaultClient
-  ) as IKeyVaultSecretResolver;
+export default function createKeyVaultResolver(keyVaultClient: IGetKeyVaultSecretClient) {
+  return keyVaultSecretResolver.bind(undefined, keyVaultClient) as IKeyVaultSecretResolver;
 }

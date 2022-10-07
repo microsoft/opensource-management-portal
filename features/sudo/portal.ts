@@ -14,9 +14,7 @@ abstract class PortalSudoBase {
   protected isOff() {
     const config = this.providers.config;
     if (config?.sudo?.portal?.off) {
-      console.warn(
-        'DEBUG WARNING: Portal sudo support is turned off in the current environment'
-      );
+      console.warn('DEBUG WARNING: Portal sudo support is turned off in the current environment');
       return true;
     }
     return false;
@@ -25,18 +23,14 @@ abstract class PortalSudoBase {
   protected forceAlways() {
     const config = this.providers.config;
     if (config?.sudo?.portal?.force) {
-      console.warn(
-        'DEBUG WARNING: Portal sudo is turned on for all users in the current environment'
-      );
+      console.warn('DEBUG WARNING: Portal sudo is turned on for all users in the current environment');
       return true;
     }
     return false;
   }
 }
 
-class PortalSudoPrimaryOrganization
-  extends PortalSudoBase
-  implements IPortalSudo {
+class PortalSudoPrimaryOrganization extends PortalSudoBase implements IPortalSudo {
   private _org: Organization;
   private _providers: IProviders;
 
@@ -57,11 +51,9 @@ class PortalSudoPrimaryOrganization
       const primaryOrganizationName = operations.getPrimaryOrganizationName();
       this._org = primaryOrganizationName
         ? operations.getOrganization(primaryOrganizationName)
-        : ((false as any) as Organization);
+        : (false as any as Organization);
     }
-    return this._org
-      ? this._org.isSudoer(githubLogin, link)
-      : Promise.resolve(false);
+    return this._org ? this._org.isSudoer(githubLogin, link) : Promise.resolve(false);
   }
 }
 
@@ -94,12 +86,7 @@ class PortalSudoSecurityGroup extends PortalSudoBase implements IPortalSudo {
     }
     const insights = this._providers.insights;
     try {
-      if (
-        await this._providers.graphProvider.isUserInGroup(
-          link.corporateId,
-          this._groupId
-        )
-      ) {
+      if (await this._providers.graphProvider.isUserInGroup(link.corporateId, this._groupId)) {
         insights?.trackEvent({
           name: 'PortalSudoAuthorized',
           properties: {
@@ -143,10 +130,7 @@ export function createPortalSudoInstance(providers: IProviders): IPortalSudo {
   return instance;
 }
 
-function createProviderInstance(
-  providerName: string,
-  providers: IProviders
-): IPortalSudo {
+function createProviderInstance(providerName: string, providers: IProviders): IPortalSudo {
   switch (providerName) {
     case null:
     case '':
@@ -165,8 +149,6 @@ function createProviderInstance(
       return new PortalSudoSecurityGroup(providers);
     }
     default:
-      throw new Error(
-        `PortalSudo: unsupported or unconfigured provider name=${providerName}`
-      );
+      throw new Error(`PortalSudo: unsupported or unconfigured provider name=${providerName}`);
   }
 }

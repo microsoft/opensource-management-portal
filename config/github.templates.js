@@ -19,14 +19,11 @@ const arrayFromString = require('./utils/arrayFromString');
 
 module.exports = (graphApi) => {
   const environmentProvider = graphApi.environment;
-  const configurationEnvironmentName = environmentProvider.get(
-    'CONFIGURATION_ENVIRONMENT'
-  );
+  const configurationEnvironmentName = environmentProvider.get('CONFIGURATION_ENVIRONMENT');
   const defaultDirectory = path.join('data', 'templates');
 
   // 'npm' or 'fs'
-  let templateSourceType =
-    environmentProvider.get('GITHUB_ORGANIZATIONS_TEMPLATES_TYPE') || 'fs';
+  let templateSourceType = environmentProvider.get('GITHUB_ORGANIZATIONS_TEMPLATES_TYPE') || 'fs';
   if (templateSourceType !== 'npm' && templateSourceType !== 'fs') {
     console.warn(
       `GITHUB_ORGANIZATIONS_TEMPLATES_TYPE must be either 'fs' or 'npm', defaulting to 'fs' as '${templateSourceType} is unrecognized`
@@ -37,9 +34,7 @@ module.exports = (graphApi) => {
   let templates = {
     directory:
       templateSourceType === 'fs'
-        ? environmentProvider.get(
-            'GITHUB_ORGANIZATIONS_TEMPLATES_RELATIVE_DIRECTORY'
-          ) || defaultDirectory
+        ? environmentProvider.get('GITHUB_ORGANIZATIONS_TEMPLATES_RELATIVE_DIRECTORY') || defaultDirectory
         : null,
     definitions: null,
     defaultTemplates: arrayFromString(
@@ -48,24 +43,17 @@ module.exports = (graphApi) => {
   };
 
   if (templateSourceType === 'fs') {
-    templates.directory = path.join(
-      typescriptConfig.appDirectory,
-      templates.directory
-    );
+    templates.directory = path.join(typescriptConfig.appDirectory, templates.directory);
     try {
       const filename = path.join(templates.directory, 'definitions.json');
       const str = fs.readFileSync(filename, 'utf8');
       templates.definitions = JSON.parse(str);
     } catch (notFound) {
-      console.warn(
-        `Template definitions could not be loaded from ${filename}: ${notFound.toString()}`
-      );
+      console.warn(`Template definitions could not be loaded from ${filename}: ${notFound.toString()}`);
       throw notFound;
     }
   } else if (templateSourceType === 'npm') {
-    const npmName = environmentProvider.get(
-      'GITHUB_ORGANIZATIONS_TEMPLATES_PACKAGE_NAME'
-    );
+    const npmName = environmentProvider.get('GITHUB_ORGANIZATIONS_TEMPLATES_PACKAGE_NAME');
     if (!npmName) {
       throw new Error(
         "When GITHUB_ORGANIZATIONS_TEMPLATES_TYPE is set to 'npm', GITHUB_ORGANIZATIONS_TEMPLATES_PACKAGE_NAME must be set"
@@ -77,14 +65,10 @@ module.exports = (graphApi) => {
         throw new Error(`${npmName} did not return data or an object`);
       }
       if (!templatePackageData.directory) {
-        throw new Error(
-          `${npmName} did not return an object with a 'directory' property`
-        );
+        throw new Error(`${npmName} did not return an object with a 'directory' property`);
       }
       if (!templatePackageData.definitions) {
-        throw new Error(
-          `${npmName} did not return an object with a 'definitions' property`
-        );
+        throw new Error(`${npmName} did not return an object with a 'definitions' property`);
       }
       templates = templatePackageData;
     } catch (templatesNpmLoadError) {
@@ -101,10 +85,7 @@ module.exports = (graphApi) => {
     const names = Object.getOwnPropertyNames(clonedDefinitions);
     for (let i = 0; i < names.length; i++) {
       const definition = clonedDefinitions[names[i]];
-      if (
-        !definition.environments ||
-        definition.environments.includes(configurationEnvironmentName)
-      ) {
+      if (!definition.environments || definition.environments.includes(configurationEnvironmentName)) {
         // keep this template around
       } else {
         delete clonedDefinitions[names[i]];

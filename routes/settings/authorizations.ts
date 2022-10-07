@@ -15,11 +15,7 @@ interface IRequestWithAuthorizations extends ReposAppRequest {
   authorizations?: any;
 }
 
-function createValidator(
-  operations: Operations,
-  link: ICorporateLink,
-  token: string
-) {
+function createValidator(operations: Operations, link: ICorporateLink, token: string) {
   return async function (): Promise<any> {
     let data = null;
     let valid = true;
@@ -39,10 +35,7 @@ function createValidator(
       headers = data && data.extraFields ? data.extraFields.headers : null;
     } catch (infoError) {
       valid = false;
-      if (
-        infoError.statusCode === 401 &&
-        infoError.message === 'Bad credentials'
-      ) {
+      if (infoError.statusCode === 401 && infoError.message === 'Bad credentials') {
         message = 'GitHub token revoked or expired';
         critical = true;
       } else {
@@ -69,15 +62,10 @@ router.use((req: IRequestWithAuthorizations, res, next) => {
   const authorizations = [];
   if (req.individualContext.webContext.tokens.gitHubReadToken) {
     authorizations.push({
-      validator: createValidator(
-        operations,
-        link,
-        req.individualContext.webContext.tokens.gitHubReadToken
-      ),
+      validator: createValidator(operations, link, req.individualContext.webContext.tokens.gitHubReadToken),
       property: 'githubToken',
       title: 'GitHub Application: Public App Token',
-      text:
-        'A GitHub token, authorizing this site, is stored. This token only has rights to read your public profile and validate that you are the authorized user of the GitHub account.',
+      text: 'A GitHub token, authorizing this site, is stored. This token only has rights to read your public profile and validate that you are the authorized user of the GitHub account.',
       mitigations: [
         {
           title: 'Review your GitHub authorized applications',
@@ -96,8 +84,7 @@ router.use((req: IRequestWithAuthorizations, res, next) => {
       ),
       property: 'githubTokenIncreasedScope',
       title: 'GitHub Application: Organization Read/Write Token',
-      text:
-        'A GitHub token, authorizing this site, is stored. The token has a scope to read and write your organization membership. This token is used to automate organization invitation and joining functionality without requiring manual steps.',
+      text: 'A GitHub token, authorizing this site, is stored. The token has a scope to read and write your organization membership. This token is used to automate organization invitation and joining functionality without requiring manual steps.',
       mitigations: [],
     });
   }

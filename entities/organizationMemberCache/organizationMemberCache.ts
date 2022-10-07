@@ -4,14 +4,8 @@
 //
 
 import { EntityField } from '../../lib/entityMetadataProvider/entityMetadataProvider';
-import {
-  EntityMetadataType,
-  IEntityMetadata,
-} from '../../lib/entityMetadataProvider/entityMetadata';
-import {
-  IEntityMetadataFixedQuery,
-  FixedQueryType,
-} from '../../lib/entityMetadataProvider/query';
+import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
+import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
@@ -47,8 +41,7 @@ const Field: IOrganizationMemberCacheProperties = {
 
 const fieldNames = Object.getOwnPropertyNames(Field);
 
-export class OrganizationMemberCacheEntity
-  implements IOrganizationMemberCacheProperties {
+export class OrganizationMemberCacheEntity implements IOrganizationMemberCacheProperties {
   uniqueId: string;
   cacheUpdated: Date;
   organizationId: string;
@@ -71,12 +64,10 @@ export class OrganizationMemberCacheEntity
 }
 
 export class OrganizationBasicsFixedQuery implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.OrganizationCacheGetAllBasics;
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.OrganizationCacheGetAllBasics;
 }
 
-export class OrganizationMemberCacheDeleteByOrganizationId
-  implements IEntityMetadataFixedQuery {
+export class OrganizationMemberCacheDeleteByOrganizationId implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType =
     FixedQueryType.OrganizationMemberCacheDeleteByOrganizationId;
   constructor(public organizationId: string) {
@@ -87,20 +78,15 @@ export class OrganizationMemberCacheDeleteByOrganizationId
 }
 
 export class OrganizationOwnersQuery implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.OrganizationOwnersCache;
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.OrganizationOwnersCache;
 }
 
-export class OrganizationMemberCacheFixedQueryAll
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.OrganizationMemberCacheGetAll;
+export class OrganizationMemberCacheFixedQueryAll implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.OrganizationMemberCacheGetAll;
 }
 
-export class OrganizationMemberCacheFixedQueryByOrganizationId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.OrganizationMemberCacheByOrganizationId;
+export class OrganizationMemberCacheFixedQueryByOrganizationId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.OrganizationMemberCacheByOrganizationId;
   constructor(public organizationId: string) {
     if (typeof this.organizationId !== 'string') {
       throw new Error(`${organizationId} must be a string`);
@@ -108,10 +94,8 @@ export class OrganizationMemberCacheFixedQueryByOrganizationId
   }
 }
 
-export class OrganizationMemberCacheFixedQueryByUserId
-  implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType =
-    FixedQueryType.OrganizationMemberCacheByUserId;
+export class OrganizationMemberCacheFixedQueryByUserId implements IEntityMetadataFixedQuery {
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.OrganizationMemberCacheByUserId;
   constructor(public userId: string) {
     if (typeof this.userId !== 'string') {
       throw new Error(`${userId} must be a string`);
@@ -119,18 +103,10 @@ export class OrganizationMemberCacheFixedQueryByUserId
   }
 }
 
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityInstantiate,
-  () => {
-    return new OrganizationMemberCacheEntity();
-  }
-);
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityIdColumnName,
-  Field.uniqueId
-);
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => {
+  return new OrganizationMemberCacheEntity();
+});
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, Field.uniqueId);
 
 EntityMetadataMappings.Register(
   type,
@@ -143,12 +119,7 @@ EntityMetadataMappings.Register(
     [Field.role, 'role'],
   ])
 );
-EntityMetadataMappings.RuntimeValidateMappings(
-  type,
-  MemorySettings.MemoryMapping,
-  fieldNames,
-  []
-);
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
 
 PostgresConfiguration.SetDefaultTableName(type, 'organizationmembercache');
 EntityMetadataMappings.Register(
@@ -182,15 +153,9 @@ EntityMetadataMappings.Register(
     const entityTypeValue = getEntityTypeColumnValue(type);
     switch (query.fixedQueryType) {
       case FixedQueryType.OrganizationMemberCacheGetAll:
-        return PostgresGetAllEntities(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue
-        );
+        return PostgresGetAllEntities(tableName, entityTypeColumn, entityTypeValue);
       case FixedQueryType.OrganizationMemberCacheDeleteByOrganizationId: {
-        const {
-          organizationId,
-        } = query as OrganizationMemberCacheDeleteByOrganizationId;
+        const { organizationId } = query as OrganizationMemberCacheDeleteByOrganizationId;
         return {
           sql: `DELETE FROM ${tableName} WHERE ${metadataColumnName}->>'organizationid' = $1`,
           values: [organizationId],
@@ -207,64 +172,36 @@ EntityMetadataMappings.Register(
         };
       }
       case FixedQueryType.OrganizationOwnersCache: {
-        return PostgresJsonEntityQuery(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue,
-          metadataColumnName,
-          {
-            role: 'admin',
-          }
-        );
+        return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+          role: 'admin',
+        });
       }
       case FixedQueryType.OrganizationOwnersCache: {
-        const {
-          organizationId,
-        } = query as OrganizationMemberCacheFixedQueryByOrganizationId;
+        const { organizationId } = query as OrganizationMemberCacheFixedQueryByOrganizationId;
         if (!organizationId) {
           throw new Error('organizationId required');
         }
-        return PostgresJsonEntityQuery(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue,
-          metadataColumnName,
-          {
-            organizationid: stringOrNumberAsString(organizationId),
-          }
-        );
+        return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+          organizationid: stringOrNumberAsString(organizationId),
+        });
       }
       case FixedQueryType.OrganizationMemberCacheByOrganizationId: {
-        const {
-          organizationId,
-        } = query as OrganizationMemberCacheFixedQueryByOrganizationId;
+        const { organizationId } = query as OrganizationMemberCacheFixedQueryByOrganizationId;
         if (!organizationId) {
           throw new Error('organizationId required');
         }
-        return PostgresJsonEntityQuery(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue,
-          metadataColumnName,
-          {
-            organizationid: stringOrNumberAsString(organizationId),
-          }
-        );
+        return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+          organizationid: stringOrNumberAsString(organizationId),
+        });
       }
       case FixedQueryType.OrganizationMemberCacheByUserId: {
         const { userId } = query as OrganizationMemberCacheFixedQueryByUserId;
         if (!userId) {
           throw new Error('userId required');
         }
-        return PostgresJsonEntityQuery(
-          tableName,
-          entityTypeColumn,
-          entityTypeValue,
-          metadataColumnName,
-          {
-            userid: stringOrNumberAsString(userId),
-          }
-        );
+        return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+          userid: stringOrNumberAsString(userId),
+        });
       }
       default:
         throw new Error(
@@ -283,9 +220,7 @@ EntityMetadataMappings.Register(
         return allInTypeBin;
 
       case FixedQueryType.OrganizationMemberCacheByOrganizationId:
-        const {
-          organizationId,
-        } = query as OrganizationMemberCacheFixedQueryByOrganizationId;
+        const { organizationId } = query as OrganizationMemberCacheFixedQueryByOrganizationId;
         if (!organizationId) {
           throw new Error('organizationId required');
         }

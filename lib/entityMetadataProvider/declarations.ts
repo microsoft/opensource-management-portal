@@ -27,10 +27,7 @@ export const MetadataMappingDefinition = {
 };
 
 export class EntityMetadataMappings {
-  private static _values = new Map<
-    EntityMetadataType,
-    Map<MetadataMappingDefinitionBase, any>
-  >();
+  private static _values = new Map<EntityMetadataType, Map<MetadataMappingDefinitionBase, any>>();
 
   public static Register(
     type: EntityMetadataType,
@@ -53,9 +50,7 @@ export class EntityMetadataMappings {
     throwIfMissing: boolean
   ): any {
     if (!EntityMetadataMappings._values.has(type)) {
-      throw new Error(
-        `Type definitions not initialized or set to ${type} (${definitionType})`
-      );
+      throw new Error(`Type definitions not initialized or set to ${type} (${definitionType})`);
     }
     const typeMap = EntityMetadataMappings._values.get(type);
     const d = typeMap.get(definitionType);
@@ -87,11 +82,7 @@ export class EntityMetadataMappings {
     try {
       const mapping =
         definitionType.alternateRuntimeValidateMapping ||
-        (EntityMetadataMappings.GetDefinition(
-          type,
-          definitionType,
-          true
-        ) as Map<string, string>);
+        (EntityMetadataMappings.GetDefinition(type, definitionType, true) as Map<string, string>);
       if (!mapping || !mapping.keys) {
         throw new Error(
           `RuntimeValidateMappings: type ${type} definition ${definitionType} does not have a map`
@@ -117,10 +108,7 @@ export class EntityMetadataMappings {
           )}`
         );
       }
-      if (
-        permittedAdditionalUnvisitedMappings &&
-        permittedAdditionalUnvisitedMappings.length
-      ) {
+      if (permittedAdditionalUnvisitedMappings && permittedAdditionalUnvisitedMappings.length) {
         permittedAdditionalUnvisitedMappings.map((each) => {
           unvisitedMappings.delete(each);
         });

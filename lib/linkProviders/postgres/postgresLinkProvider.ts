@@ -29,10 +29,7 @@ import {
 } from '../../../interfaces';
 
 import { CorporateLinkPostgres } from './postgresLink';
-import {
-  PostgresPoolQueryAsync,
-  PostgresPoolQuerySingleRowAsync,
-} from '../../postgresHelpers';
+import { PostgresPoolQueryAsync, PostgresPoolQuerySingleRowAsync } from '../../postgresHelpers';
 import { ILinkProvider } from '..';
 
 const linkProviderInstantiationTypeProperty = '_i';
@@ -108,18 +105,13 @@ export class PostgresLinkProvider implements ILinkProvider {
     options = options || {};
 
     if (!options.tableName) {
-      throw new Error(
-        'Missing the name of the table for links for the Postgres link provider'
-      );
+      throw new Error('Missing the name of the table for links for the Postgres link provider');
     }
 
-    const thirdPartyType =
-      options.thirdPartyType || onlySupportedThirdPartyType;
+    const thirdPartyType = options.thirdPartyType || onlySupportedThirdPartyType;
     const internalThirdPartyTypeValue =
       options.thirdPartyTypeValue ||
-      (thirdPartyType === 'github'
-        ? options.githubThirdPartyName
-        : thirdPartyType);
+      (thirdPartyType === 'github' ? options.githubThirdPartyName : thirdPartyType);
 
     this._thirdPartyType = thirdPartyType;
     this._internalThirdPartyTypeValue = internalThirdPartyTypeValue;
@@ -164,9 +156,7 @@ export class PostgresLinkProvider implements ILinkProvider {
     });
   }
 
-  async getByThirdPartyUsername(
-    username: string
-  ): Promise<CorporateLinkPostgres> {
+  async getByThirdPartyUsername(username: string): Promise<CorporateLinkPostgres> {
     return this._getSingleRow({
       columnName: 'thirdpartyusername',
       columnValue: username,
@@ -246,12 +236,7 @@ export class PostgresLinkProvider implements ILinkProvider {
   async createLink(link: ICorporateLink): Promise<string> {
     const self = this;
     const linkId = randomUUID(); // primary key protected
-    if (
-      !link.thirdPartyId ||
-      !link.thirdPartyUsername ||
-      !link.corporateId ||
-      !link.corporateUsername
-    ) {
+    if (!link.thirdPartyId || !link.thirdPartyUsername || !link.corporateId || !link.corporateUsername) {
       throw new Error('Missing a required value');
     }
     const created = new Date();
@@ -287,9 +272,7 @@ export class PostgresLinkProvider implements ILinkProvider {
       return linkId;
     } catch (error) {
       if (error.message && error.message.includes('duplicate key value')) {
-        const ie: InnerError = new Error(
-          'A link already exists for the identity'
-        );
+        const ie: InnerError = new Error('A link already exists for the identity');
         ie.inner = error;
         error = ie;
       }
@@ -305,9 +288,7 @@ export class PostgresLinkProvider implements ILinkProvider {
     const updates = internal.getDirtyColumns();
     const columns = Object.getOwnPropertyNames(updates);
     if (columns.length === 0) {
-      const noUpdatesRequired = new Error(
-        'No updates were required for the link'
-      );
+      const noUpdatesRequired = new Error('No updates were required for the link');
       noUpdatesRequired['noUpdatesRequired'] = true;
       throw noUpdatesRequired;
     }
@@ -343,9 +324,7 @@ export class PostgresLinkProvider implements ILinkProvider {
     if (linkInstances.length > 0) {
       const first = linkInstances[0];
       if (first[linkProviderInstantiationTypeProperty] === undefined) {
-        throw new Error(
-          'linkInstances[0] does not appear to be a link instantiated by a provider'
-        );
+        throw new Error('linkInstances[0] does not appear to be a link instantiated by a provider');
       }
     }
     //
@@ -359,7 +338,7 @@ export class PostgresLinkProvider implements ILinkProvider {
     }
     //
     const arr = jsonArray.map(this.rehydrateLink.bind(this));
-    return (arr as any[]) as ICorporateLink[];
+    return arr as any[] as ICorporateLink[];
   }
 
   dehydrateLink(linkInstance: ICorporateLinkExtended): any {
@@ -389,9 +368,7 @@ export class PostgresLinkProvider implements ILinkProvider {
           `The hydrated link was created by the same ${dehydratedPostgresProviderName} provider, but a different version: ${identity}`
         );
       } else {
-        throw new Error(
-          `The hydrated link is incompatible with this runtime environment: ${identity}`
-        );
+        throw new Error(`The hydrated link is incompatible with this runtime environment: ${identity}`);
       }
     }
     const clonedObject = Object.assign({}, jsonObject);
@@ -405,11 +382,7 @@ export class PostgresLinkProvider implements ILinkProvider {
     return list;
   }
 
-  private async _getRows({
-    columnName,
-    columnValue,
-    columnIsLowercase,
-  }): Promise<CorporateLinkPostgres[]> {
+  private async _getRows({ columnName, columnValue, columnIsLowercase }): Promise<CorporateLinkPostgres[]> {
     let columnWrapperStart = columnIsLowercase ? 'lower(' : '';
     let columnWrapperFinish = columnIsLowercase ? ')' : '';
     const results = await PostgresPoolQueryAsync(
@@ -422,10 +395,7 @@ export class PostgresLinkProvider implements ILinkProvider {
         thirdpartytype = $1 AND
         ${columnWrapperStart}${columnName}${columnWrapperFinish} = $2
     `,
-      [
-        this._internalThirdPartyTypeValue,
-        columnIsLowercase ? columnValue.toLowerCase() : columnValue,
-      ]
+      [this._internalThirdPartyTypeValue, columnIsLowercase ? columnValue.toLowerCase() : columnValue]
     );
     let r = [];
     for (let i = 0; i < results.rows.length; i++) {
@@ -460,10 +430,7 @@ export class PostgresLinkProvider implements ILinkProvider {
     return this.createLinkInstanceFromRow(row);
   }
 
-  private async _deleteSingleRow({
-    columnName,
-    columnValue,
-  }): Promise<boolean> {
+  private async _deleteSingleRow({ columnName, columnValue }): Promise<boolean> {
     const deleteResult = await PostgresPoolQueryAsync(
       this._pool,
       `
@@ -486,15 +453,12 @@ export class PostgresLinkProvider implements ILinkProvider {
     return newLink;
   }
 
-  private createLinkInstanceFromHydratedEntity(
-    jsonObject
-  ): CorporateLinkPostgres {
+  private createLinkInstanceFromHydratedEntity(jsonObject): CorporateLinkPostgres {
     const linkInternalOptions = {
       provider: this,
     };
     const newLink = new CorporateLinkPostgres(linkInternalOptions, jsonObject);
-    newLink[linkProviderInstantiationTypeProperty] =
-      LinkInstantiatedType.Rehydrated; // in case this helps while debugging
+    newLink[linkProviderInstantiationTypeProperty] = LinkInstantiatedType.Rehydrated; // in case this helps while debugging
     return newLink;
   }
 }

@@ -6,18 +6,13 @@
 import express from 'express';
 import { hostname } from 'os';
 
-import {
-  IReposApplication,
-  IReposJob,
-  IReposJobOptions,
-  IReposJobResult,
-} from './interfaces';
+import { IReposApplication, IReposJob, IReposJobOptions, IReposJobResult } from './interfaces';
 
 import configResolver from './lib/config';
 import initialize from './middleware/initialize';
 import { quitInTenSeconds } from './utils';
 
-const app = (express() as any) as IReposApplication;
+const app = express() as any as IReposApplication;
 
 require('debug')('startup')('starting...');
 
@@ -28,10 +23,7 @@ app.initializeJob = function initializeJob(config, configurationError) {
     config.isJobInternal = true;
     config.skipModules = new Set(['web']);
   } else {
-    console.warn(
-      `Configuration did not resolve successfully`,
-      configurationError
-    );
+    console.warn(`Configuration did not resolve successfully`, configurationError);
   }
   return initialize(app, express, __dirname, config, configurationError);
 };
@@ -118,12 +110,7 @@ app.runJob = async function (
   };
   try {
     const result = await job.call(null, jobObject);
-    if (
-      result &&
-      result.successProperties &&
-      app.providers.insights &&
-      options.insightsPrefix
-    ) {
+    if (result && result.successProperties && app.providers.insights && options.insightsPrefix) {
       try {
         app.providers.insights.trackEvent({
           name: `${options.insightsPrefix}Success`,

@@ -10,11 +10,7 @@ const router: Router = Router();
 import { getProviders } from '../../transitional';
 import { wrapError } from '../../utils';
 import { Organization } from '../../business';
-import {
-  OrganizationMembershipState,
-  ReposAppRequest,
-  UserAlertType,
-} from '../../interfaces';
+import { OrganizationMembershipState, ReposAppRequest, UserAlertType } from '../../interfaces';
 
 interface IOrganizationMembershipState {
   state: OrganizationMembershipState;

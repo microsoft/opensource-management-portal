@@ -20,11 +20,7 @@ function denyRoute(next) {
   );
 }
 
-export function requirePortalAdministrationPermission(
-  req: ReposAppRequest,
-  res,
-  next
-) {
+export function requirePortalAdministrationPermission(req: ReposAppRequest, res, next) {
   req.individualContext
     .isPortalAdministrator()
     .then((isAdmin) => {

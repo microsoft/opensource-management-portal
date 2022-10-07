@@ -32,8 +32,7 @@ router.get(
   '/',
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     const { approvalProvider, operations } = getProviders(req);
-    const activeContext = (req.individualContext ||
-      req.apiContext) as IndividualContext;
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
       return res.json({
         teamResponsibilities: [],
@@ -50,11 +49,7 @@ router.get(
         aggregateTeams,
         approvalProvider
       );
-      const usersRequests = await Approvals_getUserRequests(
-        operations,
-        id.toString(),
-        approvalProvider
-      );
+      const usersRequests = await Approvals_getUserRequests(operations, id.toString(), approvalProvider);
       const state = {
         teamResponsibilities: teamResponsibilities.map(approvalPairToJson),
         usersRequests: usersRequests.map(approvalPairToJson),
@@ -72,8 +67,7 @@ router.get(
   '/:approvalId',
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     const approvalId = req.params.approvalId;
-    const activeContext = (req.individualContext ||
-      req.apiContext) as IndividualContext;
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
       return res.json({});
     }
@@ -93,10 +87,7 @@ router.get(
       if (corporateId === request.corporateId) {
         return res.json(approvalPairToJson({ request, team }));
       }
-      const isOrgSudoer = await organization.isSudoer(
-        username,
-        activeContext.link
-      );
+      const isOrgSudoer = await organization.isSudoer(username, activeContext.link);
       isMaintainer = isOrgSudoer;
       const maintainers = await team.getOfficialMaintainers();
       if (!isMaintainer) {
@@ -109,17 +100,10 @@ router.get(
       if (isMaintainer) {
         return res.json(approvalPairToJson({ request, team }));
       }
-      throw jsonError(
-        'This request does not exist or was created by another user',
-        400
-      );
+      throw jsonError('This request does not exist or was created by another user', 400);
     } catch (error) {
       // Edge case: the team no longer exists.
-      if (
-        error.innerError &&
-        error.innerError.innerError &&
-        error.innerError.innerError.statusCode == 404
-      ) {
+      if (error.innerError && error.innerError.innerError && error.innerError.innerError.statusCode == 404) {
         return closeOldRequest(true, request, req, res, next);
       }
       return next(jsonError(error));
@@ -128,9 +112,7 @@ router.get(
 );
 
 router.use('*', (req: ReposAppRequest, res, next) => {
-  return next(
-    jsonError('Contextual API or route not found within approvals', 404)
-  );
+  return next(jsonError('Contextual API or route not found within approvals', 404));
 });
 
 export default router;

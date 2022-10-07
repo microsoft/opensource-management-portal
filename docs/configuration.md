@@ -63,6 +63,7 @@ The opensource-portal only shows GitHub-organizations which are configured in a 
 ```
 
 Here is a short overview about the meanings of the different parameters:
+
 - name (mandatory): GitHub organization name
 - id (mandatory ([soon](https://github.com/microsoft/opensource-portal/issues/92))): organization id
 - ownerToken (mandatory): personal access token of an organization owner
@@ -128,7 +129,7 @@ without a Redis Cache behind the scenes is going to have 100% cache misses for
 GitHub metadata. Consider configuring a development or local Redis server to
 keep cached data around.
 
-For authentication, the opensource-portal uses Azure Active Directory (AD) for corporate authentication 
+For authentication, the opensource-portal uses Azure Active Directory (AD) for corporate authentication
 and GitHub OAuth2 for the GitHub authentication.
 
 ### Azure Active Directory Configuration

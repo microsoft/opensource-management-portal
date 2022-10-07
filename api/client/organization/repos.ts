@@ -195,11 +195,7 @@ function getSorter(search: RepositorySearchSortOrder): RepoSortFunction {
 
 function repoMatchesPhrase(phrase: string, repo: Repository) {
   // assumes string is already lowercase
-  const string = (
-    (repo.name || '') +
-    (repo.description || '') +
-    (repo.id || '')
-  ).toLowerCase();
+  const string = ((repo.name || '') + (repo.description || '') + (repo.id || '')).toLowerCase();
   return string.includes(phrase);
 }
 
@@ -220,9 +216,10 @@ export async function searchRepos(
   const { q, type } = options;
 
   // TODO: aggressive in-memory caching for each org
-  let repositories = (organizationId
-    ? await queryCache.organizationRepositories(organizationId.toString())
-    : await queryCache.allRepositories()
+  let repositories = (
+    organizationId
+      ? await queryCache.organizationRepositories(organizationId.toString())
+      : await queryCache.allRepositories()
   ).map((wrapper) => wrapper.repository);
 
   // Filters
@@ -262,9 +259,7 @@ router.use(
 router.use('/:repoName', RouteRepo);
 
 router.use('*', (req, res, next) => {
-  return next(
-    jsonError('no API or function available within this repos endpoint', 404)
-  );
+  return next(jsonError('no API or function available within this repos endpoint', 404));
 });
 
 export default router;

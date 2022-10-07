@@ -22,9 +22,7 @@ export default async function initializeAlternateApps(
     if (typeof setupApp !== 'function' && setupApp.default) {
       setupApp = setupApp.default;
     } else if (typeof setupApp !== 'function') {
-      throw new Error(
-        `Could not prepare default import for alternate app name=${appName}, path=${appPath}`
-      );
+      throw new Error(`Could not prepare default import for alternate app name=${appName}, path=${appPath}`);
     }
     return await setupApp(config, app);
   } catch (loadAlternateAppError) {

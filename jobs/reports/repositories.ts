@@ -12,18 +12,8 @@ import querystring from 'querystring';
 import AutomaticTeamsWebhookProcessor from '../../webhooks/tasks/automaticTeams';
 import { requireJson, sleep } from '../../utils';
 import { IReportsContext } from './task';
-import {
-  Collaborator,
-  Operations,
-  Organization,
-  Repository,
-  Team,
-  TeamPermission,
-} from '../../business';
-import {
-  ICorporateLink,
-  GitHubCollaboratorAffiliationQuery,
-} from '../../interfaces';
+import { Collaborator, Operations, Organization, Repository, Team, TeamPermission } from '../../business';
+import { ICorporateLink, GitHubCollaboratorAffiliationQuery } from '../../interfaces';
 
 const projectPlaceholder = '[project]\\';
 
@@ -150,14 +140,9 @@ async function getRepositoryAdministrators(
   const adminTeams = teams.filter((team) => team.permission === 'admin');
   repositoryContext.countOfAdministratorTeams = adminTeams.length;
   await teamMembers(cacheOptions, administrators, adminTeams);
-  const directCollaborators = await getRepositoryDirectCollaborators(
-    repository
-  );
-  const directAdminCollaborators = await justAdminCollaborators(
-    directCollaborators
-  );
-  repositoryContext.countOfAdministratorCollaborators =
-    directAdminCollaborators.length;
+  const directCollaborators = await getRepositoryDirectCollaborators(repository);
+  const directAdminCollaborators = await justAdminCollaborators(directCollaborators);
+  repositoryContext.countOfAdministratorCollaborators = directAdminCollaborators.length;
   await storeCollaborators(administrators, directAdminCollaborators);
   return administrators;
 }
@@ -189,9 +174,7 @@ function identifyActionableAdmins(
   administrators
 ) {
   const automaticTeams = new AutomaticTeamsWebhookProcessor();
-  const { specialTeamIds } = automaticTeams.processOrgSpecialTeams(
-    repository.organization
-  );
+  const { specialTeamIds } = automaticTeams.processOrgSpecialTeams(repository.organization);
   const actionableAdministrators = [];
   const adminIds = Array.from(administrators.keys());
   for (let i = 0; i < adminIds.length; i++) {
@@ -222,9 +205,7 @@ function identifyActionableAdmins(
   return administrators;
 }
 
-async function iterateRepos(
-  context: IReportsContext
-): Promise<IReportsContext> {
+async function iterateRepos(context: IReportsContext): Promise<IReportsContext> {
   let repos = context.entities.repos;
   if (context.settings.slice) {
     let offset = 3000;
@@ -277,16 +258,8 @@ async function gatherLinkData(
   return administrators;
 }
 
-async function processRepository(
-  context: IReportsContext,
-  repository: Repository
-) {
-  console.log(
-    'repository: ' +
-      context.processing.repos.remaining-- +
-      ': ' +
-      repository.full_name
-  );
+async function processRepository(context: IReportsContext, repository: Repository) {
+  console.log('repository: ' + context.processing.repos.remaining-- + ': ' + repository.full_name);
   const organization = repository.organization;
   // repo context
   const repositoryContext: IReportsRepositoryContext = {
@@ -300,23 +273,14 @@ async function processRepository(
     countOfAdministratorTeams: 0,
   };
   const campaignSettings = context.settings.campaign;
-  function reposDirectLink(
-    content,
-    suffix?,
-    alternateForRepoFullPath?
-  ): string {
+  function reposDirectLink(content, suffix?, alternateForRepoFullPath?): string {
     const reposUrl = context.config.urls.repos;
     const q = getCampaignData(content);
     let fullPath = `${organization.name}/repos/${repository.name}`;
     if (suffix) {
       fullPath + '/' + suffix;
     }
-    return (
-      reposUrl +
-      (alternateForRepoFullPath || fullPath) +
-      '?' +
-      querystring.stringify(q as any)
-    );
+    return reposUrl + (alternateForRepoFullPath || fullPath) + '?' + querystring.stringify(q as any);
   }
   function getCampaignData(content): ICampaignData {
     return {
@@ -326,13 +290,7 @@ async function processRepository(
       utm_content: content,
     };
   }
-  function githubDirectLink(
-    content,
-    prefix?,
-    suffix?,
-    query?,
-    alternateForRepoFullName?
-  ) {
+  function githubDirectLink(content, prefix?, suffix?, query?, alternateForRepoFullName?) {
     const reposUrl = context.config.urls.repos;
     const repoFullName = repositoryContext.name; // full_name
     const q = getCampaignData(content);
@@ -346,12 +304,7 @@ async function processRepository(
     if (query) {
       q.go_github_query = query;
     }
-    return (
-      reposUrl +
-      (alternateForRepoFullName || repoFullName) +
-      '?' +
-      querystring.stringify(q as any)
-    );
+    return reposUrl + (alternateForRepoFullName || repoFullName) + '?' + querystring.stringify(q as any);
   }
   if (!context.repositoryData) {
     context.repositoryData = [];
@@ -373,16 +326,10 @@ async function processRepository(
       color: 'gray',
       text: 'Created on GitHub or unknown',
     },
-    countOfAdministratorCollaborators:
-      repositoryContext.countOfAdministratorCollaborators || '-',
-    countOfAdministratorTeams:
-      repositoryContext.countOfAdministratorTeams || '-',
+    countOfAdministratorCollaborators: repositoryContext.countOfAdministratorCollaborators || '-',
+    countOfAdministratorTeams: repositoryContext.countOfAdministratorTeams || '-',
   };
-  await getNewRepoCreationInformation(
-    context,
-    repositoryContext,
-    basicRepository
-  );
+  await getNewRepoCreationInformation(context, repositoryContext, basicRepository);
   const publicPrivateStatus = {
     text: repository.private ? 'Private' : 'Public',
     color: repository.private ? 'red' : 'green',
@@ -392,11 +339,7 @@ async function processRepository(
   repositoryContext.recipients = [];
   const corporateAdministrators = [];
   if (repositoryContext.actionableAdministrators) {
-    for (
-      let y = 0;
-      y < repositoryContext.actionableAdministrators.length;
-      y++
-    ) {
+    for (let y = 0; y < repositoryContext.actionableAdministrators.length; y++) {
       const admin = repositoryContext.actionableAdministrators[y];
       if (admin && admin.link && admin.link.aadupn) {
         corporateAdministrators.push(admin.link.aadupn);
@@ -423,31 +366,20 @@ async function processRepository(
     i < orgData.organizationContext.recipients.length;
     i++
   ) {
-    repositoryContext.recipients.push(
-      orgData.organizationContext.recipients[i]
-    );
+    repositoryContext.recipients.push(orgData.organizationContext.recipients[i]);
   }
   // Basic administrators info
   basicRepository.administrators = 'None';
   if (corporateAdministrators.length > 0) {
-    let caLink =
-      'mailto:' +
-      corporateAdministrators.join(';') +
-      '?subject=' +
-      repository.full_name;
-    const peoplePlurality =
-      corporateAdministrators.length > 1 ? 'people' : 'person';
+    let caLink = 'mailto:' + corporateAdministrators.join(';') + '?subject=' + repository.full_name;
+    const peoplePlurality = corporateAdministrators.length > 1 ? 'people' : 'person';
     basicRepository.administrators = {
       link: caLink,
       text: `${corporateAdministrators.length} ${peoplePlurality}`,
     };
   }
   const actionEditCollaborators = {
-    link: githubDirectLink(
-      'editRepoPermissions',
-      null,
-      'settings/collaboration'
-    ),
+    link: githubDirectLink('editRepoPermissions', null, 'settings/collaboration'),
     text: 'Permissions',
   };
   const actionDelete = {
@@ -511,16 +443,12 @@ async function processRepository(
   const today = moment().subtract(1, 'days');
   const ageInMonths = today.diff(createdAt, 'months');
   if (ageInMonths > 0) {
-    basicRepository.ageInMonths =
-      ageInMonths === 1 ? '1 month' : ageInMonths + ' months';
+    basicRepository.ageInMonths = ageInMonths === 1 ? '1 month' : ageInMonths + ' months';
   }
   const monthsSinceUpdates = today.diff(mostRecentActivityMoment, 'months');
-  const timeAsString =
-    monthsSinceUpdates + ' month' + (monthsSinceUpdates === 1 ? '' : 's');
+  const timeAsString = monthsSinceUpdates + ' month' + (monthsSinceUpdates === 1 ? '' : 's');
   basicRepository.recentActivity =
-    monthsSinceUpdates < 1
-      ? 'Active'
-      : `${timeAsString} (${mostRecentActivity})`;
+    monthsSinceUpdates < 1 ? 'Active' : `${timeAsString} (${mostRecentActivity})`;
   if (mostRecentActivityMoment.isBefore(nineMonthsAgo)) {
     basicRepository.abandoned = {
       text: `${monthsSinceUpdates} months`,
@@ -533,15 +461,11 @@ async function processRepository(
     exemptRepositories[repository.id].approved &&
     exemptRepositories[repository.id].days
   ) {
-    const exemptionExpiresAt = moment(
-      exemptRepositories[repository.id].approved
-    )
+    const exemptionExpiresAt = moment(exemptRepositories[repository.id].approved)
       .add(exemptRepositories[repository.id].days, 'days')
       .subtract(2, 'weeks');
     if (moment().isAfter(exemptionExpiresAt)) {
-      basicRepository.exemptionExpiresAt = exemptionExpiresAt.format(
-        simpleDateFormat
-      );
+      basicRepository.exemptionExpiresAt = exemptionExpiresAt.format(simpleDateFormat);
       addEntityToIssueType(
         context,
         repositoryContext,
@@ -551,10 +475,7 @@ async function processRepository(
         actionDelete
       );
     }
-  } else if (
-    !repository.private &&
-    mostRecentActivityMoment.isBefore(twoYearsAgo)
-  ) {
+  } else if (!repository.private && mostRecentActivityMoment.isBefore(twoYearsAgo)) {
     addEntityToIssueType(
       context,
       repositoryContext,
@@ -563,10 +484,7 @@ async function processRepository(
       actionView,
       actionDelete
     );
-  } else if (
-    repository.private &&
-    mostRecentActivityMoment.isBefore(twoYearsAgo)
-  ) {
+  } else if (repository.private && mostRecentActivityMoment.isBefore(twoYearsAgo)) {
     addEntityToIssueType(
       context,
       repositoryContext,
@@ -575,11 +493,7 @@ async function processRepository(
       actionView,
       actionDelete
     );
-  } else if (
-    repository.private &&
-    createdAt.isBefore(oneYearAgo) &&
-    !privateEngineering
-  ) {
+  } else if (repository.private && createdAt.isBefore(oneYearAgo) && !privateEngineering) {
     addEntityToIssueType(
       context,
       repositoryContext,
@@ -588,11 +502,7 @@ async function processRepository(
       actionView,
       actionDelete
     );
-  } else if (
-    repository.private &&
-    createdAt.isBefore(thirtyDaysAgo) &&
-    !privateEngineering
-  ) {
+  } else if (repository.private && createdAt.isBefore(thirtyDaysAgo) && !privateEngineering) {
     addEntityToIssueType(
       context,
       repositoryContext,
@@ -637,10 +547,7 @@ async function processRepository(
   }
 }
 
-function shallowCloneWithAdditionalRecipients(
-  basicRepository: IBasicRepository,
-  additionalRecipients
-) {
+function shallowCloneWithAdditionalRecipients(basicRepository: IBasicRepository, additionalRecipients) {
   const clone = Object.assign({}, basicRepository);
   if (additionalRecipients && additionalRecipients.length) {
     clone.additionalRecipients = additionalRecipients;
@@ -657,8 +564,7 @@ async function getNewRepoCreationInformation(
   const thisWeek = moment().subtract(7, 'days');
   let createdAt = repository.created_at ? moment(repository.created_at) : null;
   let isBrandNew = createdAt.isAfter(thisWeek);
-  const repositoryMetadataProvider =
-    context.providers.repositoryMetadataProvider;
+  const repositoryMetadataProvider = context.providers.repositoryMetadataProvider;
   if (!isBrandNew || !repositoryMetadataProvider) {
     return;
   }
@@ -671,9 +577,7 @@ async function getNewRepoCreationInformation(
       : null;
   let approval = null;
   try {
-    approval = await repositoryMetadataProvider.getRepositoryMetadata(
-      repository.id
-    );
+    approval = await repositoryMetadataProvider.getRepositoryMetadata(repository.id);
   } catch (approvalGetError) {
     return;
   }
@@ -698,10 +602,7 @@ async function getNewRepoCreationInformation(
         if (approval.projectType === id) {
           basicRepository.approvalTypeId = approval.projectType; // ?
           // Hard-coded specific to show justification text or approval links
-          if (
-            (id === 'NewReleaseReview' || id === 'ExistingReleaseReview') &&
-            approval.releaseReviewUrl
-          ) {
+          if ((id === 'NewReleaseReview' || id === 'ExistingReleaseReview') && approval.releaseReviewUrl) {
             basicRepository.approvalType = {
               text: title,
               link: approval.releaseReviewUrl,
@@ -722,14 +623,9 @@ async function getNewRepoCreationInformation(
       return;
     } else {
       basicRepository.createdBy = createdBy;
-      const id = await getIdFromUsername(
-        context,
-        repositoryContext.repository.organization,
-        createdBy
-      );
+      const id = await getIdFromUsername(context, repositoryContext.repository.organization, createdBy);
       const link = await getIndividualUserLink(context, id);
-      basicRepository.createdBy =
-        link.corporateDisplayName || basicRepository.createdBy;
+      basicRepository.createdBy = link.corporateDisplayName || basicRepository.createdBy;
       basicRepository.createdByUpn = link.corporateUsername;
       basicRepository.createdByLink = basicRepository.createdByUpn
         ? {
@@ -759,10 +655,7 @@ async function augmentWithAdditionalRecipients(
   const upn = createdByLink.corporateUsername;
   const createdByName = createdByLink.corporateDisplayName || upn;
   const operations = context.operations;
-  const {
-    corporateContactProvider,
-    mailAddressProvider,
-  } = operations.providers;
+  const { corporateContactProvider, mailAddressProvider } = operations.providers;
   // Only if the provider supports both advanced Microsoft-specific functions for now
   if (!corporateContactProvider) {
     return context;
@@ -772,8 +665,7 @@ async function augmentWithAdditionalRecipients(
   try {
     const contacts = await corporateContactProvider.lookupContacts(upn);
     if (contacts && contacts.managerUsername) {
-      const managerName =
-        contacts.managerDisplayName || contacts.managerUsername;
+      const managerName = contacts.managerDisplayName || contacts.managerUsername;
       additional.push({
         type: 'upn',
         value: contacts.managerUsername,
@@ -806,25 +698,14 @@ async function augmentWithAdditionalRecipients(
   return context;
 }
 
-async function getIdFromUsername(
-  context,
-  organization: Organization,
-  username: string
-): Promise<number> {
+async function getIdFromUsername(context, organization: Organization, username: string): Promise<number> {
   // Depends on this being a current member of an org
   const operations = context.operations as Operations;
   const account = await operations.getAccountByUsername(username);
   return account.id;
 }
 
-function addEntityToIssueType(
-  context,
-  repositoryContext,
-  type,
-  entity,
-  optionalAction1,
-  optionalAction2
-) {
+function addEntityToIssueType(context, repositoryContext, type, entity, optionalAction1, optionalAction2) {
   const definition = definitionsByName[type];
   if (!definition) {
     throw new Error(`No defined issue type ${type}`);
@@ -855,9 +736,7 @@ function addEntityToIssueType(
     const entry: IReportEntry = {};
     placeholder[type] = entry;
     if (definition.hasTable && definition.hasList) {
-      throw new Error(
-        'Definitions cannot have both tables and lists at this time'
-      );
+      throw new Error('Definitions cannot have both tables and lists at this time');
     }
     if (definition.hasTable) {
       entry.rows = [];
@@ -867,9 +746,7 @@ function addEntityToIssueType(
     }
   }
   if (definition.hasTable && definition.hasList) {
-    throw new Error(
-      'Definitions cannot have both tables and lists at this time'
-    );
+    throw new Error('Definitions cannot have both tables and lists at this time');
   }
   let listPropertiesName = null;
   if (definition.hasTable) {
@@ -899,9 +776,7 @@ function addEntityToIssueType(
   }
 }
 
-async function identityAdministratorsWithoutLinks(
-  repositoryContext: IReportsRepositoryContext
-) {
+async function identityAdministratorsWithoutLinks(repositoryContext: IReportsRepositoryContext) {
   const actionableAdministrators = repositoryContext.actionableAdministrators;
   const administratorsByType = {
     linked: actionableAdministrators.filter((admin) => {
@@ -932,9 +807,7 @@ async function getRepos(context): Promise<any> {
   const operations = context.operations as Operations;
   const repos = await operations.getRepos();
   context.entities.repos = repos.sort((a, b) => {
-    return a.full_name.localeCompare(b.full_name, 'en', {
-      sensitivity: 'base',
-    });
+    return a.full_name.localeCompare(b.full_name, 'en', { sensitivity: 'base' });
   });
   return context;
 }
@@ -970,10 +843,7 @@ function transformReasonsToArray(userEntry, repositoryName) {
   return reasons;
 }
 
-async function storeCollaborators(
-  administrators: Map<number, IUserEntry>,
-  collaborators: Collaborator[]
-) {
+async function storeCollaborators(administrators: Map<number, IUserEntry>, collaborators: Collaborator[]) {
   for (const collaborator of collaborators) {
     const id = collaborator.id;
     let entry = administrators.get(id);
@@ -997,10 +867,7 @@ export async function consolidate(context: IReportsContext) {
   };
   for (let i = 0; i < definitions.length; i++) {
     const definition = definitions[i];
-    if (
-      !context.visitedDefinitions ||
-      !context.visitedDefinitions[providerName]
-    ) {
+    if (!context.visitedDefinitions || !context.visitedDefinitions[providerName]) {
       return context;
     }
     if (context.visitedDefinitions[providerName].has(definition.name)) {
@@ -1027,9 +894,7 @@ export async function consolidate(context: IReportsContext) {
     ) {
       consolidated.entities.push(reducedEntity);
     } else if (issueCounter && issueCounter.length) {
-      console.warn(
-        `There are no recipients to receive ${reducedEntity.name} reports with active issues`
-      );
+      console.warn(`There are no recipients to receive ${reducedEntity.name} reports with active issues`);
     }
   }
   context.consolidated[providerName] = consolidated;

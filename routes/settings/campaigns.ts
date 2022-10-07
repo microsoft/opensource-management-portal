@@ -12,16 +12,12 @@ import { CreateError, getProviders } from '../../transitional';
 
 router.use('/:campaignGroupId', (req: ReposAppRequest, res: any, next) => {
   const { config } = getProviders(req);
-  const knownCampaignGroups = (config?.campaigns?.groups || '')
-    .toLowerCase()
-    .split(',');
+  const knownCampaignGroups = (config?.campaigns?.groups || '').toLowerCase().split(',');
   req.params.campaignGroupId = req.params.campaignGroupId.toLowerCase();
   const { campaignGroupId } = req.params;
   if (!knownCampaignGroups.includes(campaignGroupId)) {
     return next(
-      CreateError.NotFound(
-        `The campaign ${campaignGroupId} is not registered in this environment.`
-      )
+      CreateError.NotFound(`The campaign ${campaignGroupId} is not registered in this environment.`)
     );
   }
   return next();
@@ -46,9 +42,7 @@ router.get(
   asyncHandler(async (req: ReposAppRequest, res: any, next) => {
     const { campaignStateProvider } = getProviders(req);
     if (!campaignStateProvider) {
-      return next(
-        new Error('This app is not configured for campaign management')
-      );
+      return next(new Error('This app is not configured for campaign management'));
     }
     const { campaignGroupId } = req.params;
     if (!campaignGroupId) {
@@ -58,25 +52,15 @@ router.get(
     if (!corporateId) {
       return next(new Error('Corporate authentcation and identity required'));
     }
-    const currentState = await campaignStateProvider.getState(
-      corporateId,
-      campaignGroupId
-    );
+    const currentState = await campaignStateProvider.getState(corporateId, campaignGroupId);
     return res.json(currentState);
   })
 );
 
-async function modifySubscription(
-  isUnsubscribing: boolean,
-  req: ReposAppRequest,
-  res: any,
-  next: any
-) {
+async function modifySubscription(isUnsubscribing: boolean, req: ReposAppRequest, res: any, next: any) {
   const { campaignStateProvider } = getProviders(req);
   if (!campaignStateProvider) {
-    return next(
-      new Error('This app is not configured for campaign management')
-    );
+    return next(new Error('This app is not configured for campaign management'));
   }
   const actionName = isUnsubscribing ? 'unsubscribe' : 'subscribe';
   const { campaignGroupId } = req.params;
@@ -87,10 +71,7 @@ async function modifySubscription(
   if (!corporateId) {
     return next(new Error('Corporate authentcation and identity required'));
   }
-  const currentState = await campaignStateProvider.getState(
-    corporateId,
-    campaignGroupId
-  );
+  const currentState = await campaignStateProvider.getState(corporateId, campaignGroupId);
   if (currentState && currentState.optOut && isUnsubscribing) {
     req.individualContext.webContext.saveUserAlert(
       `You've already opted out of the ${campaignGroupId} campaign.`,

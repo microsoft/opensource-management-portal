@@ -14,17 +14,8 @@ import { getProviders } from '../../../transitional';
 import JsonPager from '../jsonPager';
 import { getLinksLightCache } from '../leakyLocalCache';
 import { equivalentLegacyPeopleSearch } from './people';
-import {
-  TeamRepositoryPermission,
-  OrganizationMember,
-  corporateLinkToJson,
-} from '../../../business';
-import {
-  ReposAppRequest,
-  TeamJsonFormat,
-  NoCacheNoBackground,
-  ICorporateLink,
-} from '../../../interfaces';
+import { TeamRepositoryPermission, OrganizationMember, corporateLinkToJson } from '../../../business';
+import { ReposAppRequest, TeamJsonFormat, NoCacheNoBackground, ICorporateLink } from '../../../interfaces';
 
 const router: Router = Router();
 
@@ -32,9 +23,7 @@ router.get(
   '/',
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     const team = getContextualTeam(req);
-    return res.json(
-      team.asJson(TeamJsonFormat.Augmented /* includes corporateMetadata */)
-    );
+    return res.json(team.asJson(TeamJsonFormat.Augmented /* includes corporateMetadata */));
   })
 );
 
@@ -51,9 +40,7 @@ router.get(
       let reposWithPermissions = null;
       const cacheOptions = forceRefresh ? NoCacheNoBackground : undefined;
       reposWithPermissions = await team.getRepositories(cacheOptions);
-      const repositories = reposWithPermissions.sort(
-        sortRepositoriesByNameCaseInsensitive
-      );
+      const repositories = reposWithPermissions.sort(sortRepositoriesByNameCaseInsensitive);
       const slice = pager.slice(repositories);
       return pager.sendJson(
         slice.map((rp) => {
@@ -74,19 +61,14 @@ router.get(
       const forceRefresh = !!req.query.refresh;
       const team = getContextualTeam(req);
       const pager = new JsonPager<OrganizationMember>(req, res); // or Org Member?
-      const searcher = await equivalentLegacyPeopleSearch(req, {
-        team,
-        forceRefresh,
-      });
+      const searcher = await equivalentLegacyPeopleSearch(req, { team, forceRefresh });
       const members = searcher.members;
       const slice = pager.slice(members);
       return pager.sendJson(
         slice.map((organizationMember) => {
           const obj = Object.assign(
             {
-              link: organizationMember.link
-                ? corporateLinkToJson(organizationMember.link)
-                : null,
+              link: organizationMember.link ? corporateLinkToJson(organizationMember.link) : null,
             },
             organizationMember.getEntity()
           );
@@ -122,9 +104,7 @@ router.get(
         maintainers.map((maintainer) => {
           return {
             member: maintainer.asJson(),
-            isSystemAccount: operations.isSystemAccountByUsername(
-              maintainer.login
-            ),
+            isSystemAccount: operations.isSystemAccountByUsername(maintainer.login),
             link: corporateLinkToJson(ls.get(Number(maintainer.id))),
           };
         })
@@ -136,9 +116,7 @@ router.get(
 );
 
 router.use('*', (req, res, next) => {
-  return next(
-    jsonError('no API or function available for this specific team', 404)
-  );
+  return next(jsonError('no API or function available for this specific team', 404));
 });
 
 export default router;

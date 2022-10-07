@@ -5,22 +5,13 @@
 
 import crypto from 'crypto';
 
-import {
-  EntityField,
-  IObjectWithDefinedKeys,
-} from '../../lib/entityMetadataProvider/entityMetadataProvider';
-import {
-  EntityMetadataType,
-  IEntityMetadata,
-} from '../../lib/entityMetadataProvider/entityMetadata';
+import { EntityField, IObjectWithDefinedKeys } from '../../lib/entityMetadataProvider/entityMetadataProvider';
+import { EntityMetadataType, IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import {
   MetadataMappingDefinition,
   EntityMetadataMappings,
 } from '../../lib/entityMetadataProvider/declarations';
-import {
-  IEntityMetadataFixedQuery,
-  FixedQueryType,
-} from '../../lib/entityMetadataProvider/query';
+import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import { TokenGenerator } from './tokenGenerator';
 import { QueryTokensByCorporateID } from './tokenProvider';
 import { Type } from './type';
@@ -63,8 +54,7 @@ const Field: ITokenEntityProperties = {
 
 const fieldNames = Object.getOwnPropertyNames(Field);
 
-export class PersonalAccessToken
-  implements IObjectWithDefinedKeys, ITokenEntityProperties {
+export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntityProperties {
   private _key: string;
 
   token: string;
@@ -85,12 +75,7 @@ export class PersonalAccessToken
     this.created = new Date();
   }
 
-  static CreateFromAadAuthorization({
-    appId,
-    oid,
-    scopes,
-    organizationScopes,
-  }): PersonalAccessToken {
+  static CreateFromAadAuthorization({ appId, oid, scopes, organizationScopes }): PersonalAccessToken {
     const pat = new PersonalAccessToken();
     pat.corporateId = null;
     pat.description = `AAD oid ${oid} app ${appId} with scopes ${scopes}`;
@@ -139,11 +124,7 @@ export class PersonalAccessToken
 
   getIdentifier() {
     const concat = this.created + this.token;
-    return crypto
-      .createHash('sha1')
-      .update(concat)
-      .digest('hex')
-      .substring(0, 10);
+    return crypto.createHash('sha1').update(concat).digest('hex').substring(0, 10);
   }
 
   isExpired(): boolean {
@@ -176,18 +157,10 @@ export class PersonalAccessToken
   }
 }
 
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityInstantiate,
-  () => {
-    return new PersonalAccessToken();
-  }
-);
-EntityMetadataMappings.Register(
-  type,
-  MetadataMappingDefinition.EntityIdColumnName,
-  Field.token
-);
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => {
+  return new PersonalAccessToken();
+});
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, Field.token);
 
 EntityMetadataMappings.Register(
   type,
@@ -205,17 +178,10 @@ EntityMetadataMappings.Register(
     [Field.scopes, 'apis'],
   ])
 );
-EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [
-  Field.created,
-  Field.expires,
-]);
+EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [Field.created, Field.expires]);
 
 PostgresConfiguration.SetDefaultTableName(type, 'usersettings');
-EntityMetadataMappings.Register(
-  type,
-  PostgresSettings.PostgresDefaultTypeColumnName,
-  'apiKey'
-);
+EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'apiKey');
 PostgresConfiguration.MapFieldsToColumnNames(
   type,
   new Map<string, string>([
@@ -279,32 +245,11 @@ EntityMetadataMappings.Register(
   }
 );
 
-EntityMetadataMappings.Register(
-  type,
-  TableSettings.TableDefaultTableName,
-  'settings'
-);
-EntityMetadataMappings.Register(
-  type,
-  TableSettings.TableDefaultFixedPartitionKey,
-  'apiKey'
-);
-EntityMetadataMappings.Register(
-  type,
-  TableSettings.TableDefaultRowKeyPrefix,
-  'apiKey'
-);
-EntityMetadataMappings.Register(
-  type,
-  TableSettings.TableDefaultFixedPartitionKeyNoPrefix,
-  true
-);
-EntityMetadataMappings.RuntimeValidateMappings(
-  type,
-  TableSettings.TableMapping,
-  fieldNames,
-  []
-);
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultTableName, 'settings');
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKey, 'apiKey');
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultRowKeyPrefix, 'apiKey');
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKeyNoPrefix, true);
+EntityMetadataMappings.RuntimeValidateMappings(type, TableSettings.TableMapping, fieldNames, []);
 
 EntityMetadataMappings.Register(
   type,
@@ -323,12 +268,7 @@ EntityMetadataMappings.Register(
     [Field.scopes, Field.scopes],
   ])
 );
-EntityMetadataMappings.RuntimeValidateMappings(
-  type,
-  MemorySettings.MemoryMapping,
-  fieldNames,
-  []
-);
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
 
 EntityMetadataMappings.Register(
   type,
@@ -370,9 +310,7 @@ EntityMetadataMappings.Register(
       );
       const value = mapTeamApprovalObjectToMemoryFields.get(key);
       if (!value) {
-        throw new Error(
-          `No translation exists for field ${key} in memory provider`
-        );
+        throw new Error(`No translation exists for field ${key} in memory provider`);
       }
       return value;
     }
@@ -381,17 +319,12 @@ EntityMetadataMappings.Register(
       case FixedQueryType.TokensByCorporateId:
         const { corporateId } = query as QueryTokensByCorporateID;
         return allInTypeBin.filter((entity) => {
-          return (
-            entity[columnCorporateId] &&
-            entity[columnCorporateId] === corporateId
-          );
+          return entity[columnCorporateId] && entity[columnCorporateId] === corporateId;
         });
       case FixedQueryType.TokensGetAll:
         return allInTypeBin;
       default:
-        throw new Error(
-          'fixed query type not implemented in the memory provider'
-        );
+        throw new Error('fixed query type not implemented in the memory provider');
     }
   }
 );

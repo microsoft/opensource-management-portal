@@ -14,15 +14,8 @@ import {
   SerializeObjectToEntityMetadata,
   DeserializeEntityMetadataToObjectSetCollection,
 } from './entityMetadataProvider';
-import {
-  IEntityMetadata,
-  EntityMetadataType,
-  EntityMetadataTypes,
-} from './entityMetadata';
-import {
-  PostgresPoolQuerySingleRowAsync,
-  PostgresPoolQueryAsync,
-} from '../postgresHelpers';
+import { IEntityMetadata, EntityMetadataType, EntityMetadataTypes } from './entityMetadata';
+import { PostgresPoolQuerySingleRowAsync, PostgresPoolQueryAsync } from '../postgresHelpers';
 import { IEntityMetadataFixedQuery } from './query';
 import {
   EntityMetadataMappings,
@@ -49,9 +42,7 @@ class PostgresMetadataDefinition extends MetadataMappingDefinitionBase {
 
 export const PostgresSettings = {
   PostgresQueries: new PostgresMetadataDefinition('PostgresQueries'),
-  PostgresDefaultTypeColumnName: new PostgresMetadataDefinition(
-    'PostgresDefaultTypeColumnName'
-  ),
+  PostgresDefaultTypeColumnName: new PostgresMetadataDefinition('PostgresDefaultTypeColumnName'),
   PostgresDateColumns: new PostgresMetadataDefinition('PostgresDateColumns'),
 };
 
@@ -64,10 +55,7 @@ interface IExtractedFieldObjects {
 interface IExtractedRowObjects extends IExtractedFieldObjects {}
 
 class PostgresInternals {
-  private static _byType: Map<
-    EntityMetadataType,
-    PostgresInternals
-  > = new Map();
+  private static _byType: Map<EntityMetadataType, PostgresInternals> = new Map();
 
   static instance(type: EntityMetadataType) {
     let instance = PostgresInternals._byType.get(type);
@@ -108,9 +96,7 @@ class PostgresInternals {
   getNativeColumnsAsSet() {
     if (!this.#nativeColumnsSet) {
       const mapping = this.mapFieldsToColumnNames;
-      this.#nativeColumnsSet = new Set(
-        this.nativeFieldNames.map((fieldName) => mapping.get(fieldName))
-      );
+      this.#nativeColumnsSet = new Set(this.nativeFieldNames.map((fieldName) => mapping.get(fieldName)));
     }
     return this.#nativeColumnsSet;
   }
@@ -118,9 +104,9 @@ class PostgresInternals {
   getMetadataColumnsAsSet() {
     if (!this.#metadataToFieldNamesSet) {
       const nativeColumns = this.getNativeColumnsAsSet();
-      const metadataColumns = Array.from(
-        this.mapFieldsToColumnNames.values()
-      ).filter((column) => !nativeColumns.has(column));
+      const metadataColumns = Array.from(this.mapFieldsToColumnNames.values()).filter(
+        (column) => !nativeColumns.has(column)
+      );
       this.#metadataToFieldNamesSet = new Set(metadataColumns);
     }
     return this.#metadataToFieldNamesSet;
@@ -169,19 +155,12 @@ class PostgresInternals {
     const metadata = {};
     const native = this.slicePropertiesBySet(obj, metadata, natives, new Set());
     const leftovers = {};
-    this.slicePropertiesBySet(
-      metadata,
-      leftovers,
-      internals.getMetadataColumnsAsSet(),
-      new Set()
-    );
+    this.slicePropertiesBySet(metadata, leftovers, internals.getMetadataColumnsAsSet(), new Set());
     if (throwIfLeftovers) {
       const names = Object.getOwnPropertyNames(leftovers);
       if (names.length) {
         throw new Error(
-          `Entity to Postgres native column extraction identified left-over fields: ${names.join(
-            ', '
-          )}`
+          `Entity to Postgres native column extraction identified left-over fields: ${names.join(', ')}`
         );
       }
     }
@@ -203,26 +182,12 @@ class PostgresInternals {
     let metadata = { ...obj[metadataColumnName] };
     const nativeClone = { ...obj };
     delete nativeClone[metadataColumnName];
-    metadata = this.slicePropertiesBySet(
-      metadata,
-      leftovers,
-      metadataSet,
-      nativeSet
-    );
-    const native = this.slicePropertiesBySet(
-      nativeClone,
-      leftovers,
-      nativeSet,
-      metadataSet
-    );
+    metadata = this.slicePropertiesBySet(metadata, leftovers, metadataSet, nativeSet);
+    const native = this.slicePropertiesBySet(nativeClone, leftovers, nativeSet, metadataSet);
     if (throwIfLeftovers) {
       const names = Object.getOwnPropertyNames(leftovers);
       if (names.length) {
-        throw new Error(
-          `Postgres field extraction identified left-over fields: ${names.join(
-            ', '
-          )}`
-        );
+        throw new Error(`Postgres field extraction identified left-over fields: ${names.join(', ')}`);
       }
     }
     return { native, metadata, leftovers };
@@ -245,17 +210,11 @@ export class PostgresConfiguration {
   ) {
     const dest = PostgresInternals.instance(type).mapFieldsToColumnNames;
     for (const [key, value] of map.entries()) {
-      dest.set(
-        key,
-        lowercaseColumnNamesAutomatically ? value.toLowerCase() : value
-      );
+      dest.set(key, lowercaseColumnNamesAutomatically ? value.toLowerCase() : value);
     }
   }
 
-  static StripRowInternals(
-    type: EntityMetadataType,
-    rowWithEntityValues: unknown
-  ) {
+  static StripRowInternals(type: EntityMetadataType, rowWithEntityValues: unknown) {
     return stripEntityIdentities(type, rowWithEntityValues);
   }
 
@@ -263,10 +222,7 @@ export class PostgresConfiguration {
     return rowToMetadataObject(type, row);
   }
 
-  static MapFieldsToColumnNamesFromListLowercased(
-    type: EntityMetadataType,
-    fieldNames: string[]
-  ) {
+  static MapFieldsToColumnNamesFromListLowercased(type: EntityMetadataType, fieldNames: string[]) {
     PostgresConfiguration.MapFieldsToColumnNames(
       type,
       new Map(
@@ -334,36 +290,18 @@ function stripEntityIdentities(type: EntityMetadataType, entity: any) {
   );
   const combined = { ...metadata, ...native };
   const entityFieldNames = Object.getOwnPropertyNames(combined);
-  return {
-    entity: combined,
-    entityTypeString,
-    entityId,
-    entityCreated,
-    entityFieldNames,
-    leftovers,
-  };
+  return { entity: combined, entityTypeString, entityId, entityCreated, entityFieldNames, leftovers };
 }
 
-function rowToMetadataObject(
-  type: EntityMetadataType,
-  row: any
-): IEntityMetadata {
-  const {
-    entity,
-    entityId,
-    entityCreated,
-    entityFieldNames,
-  } = stripEntityIdentities(type, row);
+function rowToMetadataObject(type: EntityMetadataType, row: any): IEntityMetadata {
+  const { entity, entityId, entityCreated, entityFieldNames } = stripEntityIdentities(type, row);
   const entityIdentity: IEntityMetadata = {
     entityType: type,
     entityId,
     entityFieldNames,
     entityCreated,
   };
-  const newMetadataObject: IEntityMetadata = Object.assign(
-    entity,
-    entityIdentity
-  );
+  const newMetadataObject: IEntityMetadata = Object.assign(entity, entityIdentity);
   return newMetadataObject;
 }
 
@@ -403,12 +341,7 @@ export function PostgresJsonEntityQuery(
   optionalOrderFieldName?: string,
   isDescending?: boolean
 ): IPostgresQuery {
-  const orderBy = optionalOrderBy(
-    metadataColumnName,
-    optionalOrderFieldName,
-    3,
-    isDescending
-  );
+  const orderBy = optionalOrderBy(metadataColumnName, optionalOrderFieldName, 3, isDescending);
   const sql = `SELECT * FROM ${tableName} WHERE ${entityTypeColumn} = $1 AND
       ${metadataColumnName} @> $2 ${orderBy.sql}`;
   const values = [entityTypeValue, jsonQueryObject, ...orderBy.values];
@@ -441,9 +374,7 @@ export function PostgresJsonEntityQueryMultiple(
   jsonQueryObjects: any[]
 ): IPostgresQuery {
   if (jsonQueryObjects.length <= 0) {
-    throw new Error(
-      'Multi-entity value queries in Postgres require at least 1 query object'
-    );
+    throw new Error('Multi-entity value queries in Postgres require at least 1 query object');
   }
   const values = [entityTypeValue];
   const sqlSet = [];
@@ -479,9 +410,7 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
     this.#_options = options;
     this._pool = options.pool;
     if (!this._pool) {
-      throw new Error(
-        'PostgresEntityMetadataProvider requires a Postgres pool'
-      );
+      throw new Error('PostgresEntityMetadataProvider requires a Postgres pool');
     }
     this._entityTypeToTableNamesMapping = Object.assign(
       defaultTableNames(),
@@ -504,10 +433,7 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
     return true;
   }
 
-  async getMetadata(
-    type: EntityMetadataType,
-    id: string
-  ): Promise<IEntityMetadata> {
+  async getMetadata(type: EntityMetadataType, id: string): Promise<IEntityMetadata> {
     const tableName = this.getTableName(type);
     const row = await PostgresPoolQuerySingleRowAsync(
       this._pool,
@@ -528,10 +454,7 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
     const tableName = this.getTableName(entityType);
     const internals = PostgresInternals.instance(entityType);
     const hasNatives = internals.hasNativeProperties();
-    const { native, metadata } = internals.extractEntityToRowObjects(
-      serializedEntity,
-      true
-    );
+    const { native, metadata } = internals.extractEntityToRowObjects(serializedEntity, true);
     const jsonValue = metadata; // formerly: this.metadataToRowMetadata(metadata);
     let nativeSqlInsert = '',
       nativeSqlNumbers = '',
@@ -540,12 +463,8 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
     if (hasNatives) {
       const nativeProperties = Object.getOwnPropertyNames(native);
       if (nativeProperties.length > 0) {
-        nativeSqlValues = nativeProperties.map(
-          (columnName) => native[columnName]
-        );
-        nativeSqlInsert = nativeProperties
-          .map((columnName) => `\n        ${columnName}`)
-          .join(',');
+        nativeSqlValues = nativeProperties.map((columnName) => native[columnName]);
+        nativeSqlInsert = nativeProperties.map((columnName) => `\n        ${columnName}`).join(',');
         nativeSqlNumbers = nativeProperties
           .map((columnName, index) => '$' + String(index + existingValues + 1))
           .join(', ');
@@ -556,9 +475,7 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
       INSERT INTO ${tableName}(
         ${MapMetadataPropertiesToFields['entityType']},
         ${MapMetadataPropertiesToFields['entityId']},
-        ${MetadataColumnName}${
-        nativeSqlValues.length ? ',' : ''
-      }${nativeSqlInsert}
+        ${MetadataColumnName}${nativeSqlValues.length ? ',' : ''}${nativeSqlInsert}
       )
       VALUES (
         $1, $2, $3${nativeSqlValues.length ? ', ' : ''}${nativeSqlNumbers}
@@ -584,10 +501,7 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
     const internals = PostgresInternals.instance(entityType);
     const hasNatives = internals.hasNativeProperties();
     const { nativeFieldNames, mapFieldsToColumnNames } = internals;
-    const { native, metadata } = internals.extractEntityToRowObjects(
-      serializedEntity,
-      true
-    );
+    const { native, metadata } = internals.extractEntityToRowObjects(serializedEntity, true);
     const jsonValue = metadata; // formerly: this.metadataToRowMetadata(metadata);
     let nativeSqlUpdates = '',
       nativeSqlValues = [];
@@ -607,23 +521,12 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
     try {
       const sql = `
         UPDATE ${tableName}
-        SET ${MetadataColumnName} = $1${
-        nativeSqlValues.length ? ',' : ''
-      }${nativeSqlUpdates}
+        SET ${MetadataColumnName} = $1${nativeSqlValues.length ? ',' : ''}${nativeSqlUpdates}
         WHERE
-          ${
-            MapMetadataPropertiesToFields['entityType']
-          } = $${++updatedValuesCount} AND
-          ${
-            MapMetadataPropertiesToFields['entityId']
-          } = $${++updatedValuesCount}
+          ${MapMetadataPropertiesToFields['entityType']} = $${++updatedValuesCount} AND
+          ${MapMetadataPropertiesToFields['entityId']} = $${++updatedValuesCount}
       `;
-      const values = [
-        jsonValue,
-        ...nativeSqlValues,
-        this.getEntityTypeColumnValue(entityType),
-        entityId,
-      ];
+      const values = [jsonValue, ...nativeSqlValues, this.getEntityTypeColumnValue(entityType), entityId];
       await PostgresPoolQueryAsync(this._pool, sql, values);
     } catch (updateError) {
       throw updateError;
@@ -662,25 +565,12 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
     query: IEntityMetadataFixedQuery
   ): Promise<IEntityMetadata[]> {
     const tableName = this.getTableName(type);
-    const {
-      sql,
-      values,
-      skipEntityMapping,
-    } = this.createQueryFromFixedQueryEnum(tableName, type, query);
-    return await this.sqlQueryToMetadataArray(
-      type,
-      sql,
-      values,
-      skipEntityMapping
-    );
+    const { sql, values, skipEntityMapping } = this.createQueryFromFixedQueryEnum(tableName, type, query);
+    return await this.sqlQueryToMetadataArray(type, sql, values, skipEntityMapping);
   }
 
-  getSerializationHelper(
-    type: EntityMetadataType
-  ): IEntityMetadataSerializationHelper {
-    const {
-      mapFieldsToColumnNames: mapObjectToPostgresFields,
-    } = PostgresInternals.instance(type);
+  getSerializationHelper(type: EntityMetadataType): IEntityMetadataSerializationHelper {
+    const { mapFieldsToColumnNames: mapObjectToPostgresFields } = PostgresInternals.instance(type);
     if (!mapObjectToPostgresFields) {
       return null;
     }
@@ -699,12 +589,8 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
     };
   }
 
-  getDeserializationHelper(
-    type: EntityMetadataType
-  ): IEntityMetadataDeserializationHelper {
-    const {
-      mapFieldsToColumnNames: mapObjectToPostgresFields,
-    } = PostgresInternals.instance(type);
+  getDeserializationHelper(type: EntityMetadataType): IEntityMetadataDeserializationHelper {
+    const { mapFieldsToColumnNames: mapObjectToPostgresFields } = PostgresInternals.instance(type);
     if (!mapObjectToPostgresFields || mapObjectToPostgresFields.size === 0) {
       throw CreateError.ParameterRequired('mapFieldsToColumnNames');
     }
@@ -727,11 +613,7 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
       );
       for (const property in toSet) {
         approval[property] = toSet[property];
-        if (
-          dateColumns.has(property) &&
-          approval[property] &&
-          typeof approval[property] === 'string'
-        ) {
+        if (dateColumns.has(property) && approval[property] && typeof approval[property] === 'string') {
           try {
             const dateParsed = new Date(approval[property]);
             approval[property] = dateParsed;
@@ -755,9 +637,7 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
   private getEntityTypeColumnValue(type: EntityMetadataType): string {
     const value = this._entityTypeToColumnValuesMapping[type.typeName];
     if (!value) {
-      throw new Error(
-        `No Postgres column value mapping provider for EntityMetadataType value ${type}`
-      );
+      throw new Error(`No Postgres column value mapping provider for EntityMetadataType value ${type}`);
     }
     return value;
   }
@@ -768,9 +648,7 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
       return tableName;
     }
     if (!tableName) {
-      throw new Error(
-        `No Postgres table name mapping provided for EntityMetadataType value ${type}`
-      );
+      throw new Error(`No Postgres table name mapping provided for EntityMetadataType value ${type}`);
     }
   }
 
@@ -787,28 +665,18 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
     return stripEntityIdentities(type, entity);
   }
 
-  private rowToMetadataObject(
-    type: EntityMetadataType,
-    row: any
-  ): IEntityMetadata {
+  private rowToMetadataObject(type: EntityMetadataType, row: any): IEntityMetadata {
     return rowToMetadataObject(type, row);
   }
 
-  private async sqlQueryToMetadataArray(
-    type,
-    sql,
-    values,
-    skipEntityMapping
-  ): Promise<IEntityMetadata[]> {
+  private async sqlQueryToMetadataArray(type, sql, values, skipEntityMapping): Promise<IEntityMetadata[]> {
     try {
       const result = await PostgresPoolQueryAsync(this._pool, sql, values);
       const rows = result['rows'];
       if (!rows) {
         throw new Error('No rows or empty rows returned');
       }
-      return skipEntityMapping
-        ? rows
-        : rows.map((row) => this.rowToMetadataObject(type, row));
+      return skipEntityMapping ? rows : rows.map((row) => this.rowToMetadataObject(type, row));
     } catch (errorish) {
       console.dir(errorish);
       throw errorish;
@@ -829,13 +697,7 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
     const getEntityTypeColumnValue = function (t) {
       return self.getEntityTypeColumnValue(t);
     };
-    return get(
-      query,
-      MapMetadataPropertiesToFields,
-      MetadataColumnName,
-      tableName,
-      getEntityTypeColumnValue
-    );
+    return get(query, MapMetadataPropertiesToFields, MetadataColumnName, tableName, getEntityTypeColumnValue);
   }
 }
 
@@ -855,9 +717,7 @@ function defaultTableNames() {
       }
       defaults[type.typeName] = tableName;
     } catch (noDefaultTableNameError) {
-      throw new Error(
-        `No default Postgres table name is defined for the type ${type}`
-      );
+      throw new Error(`No default Postgres table name is defined for the type ${type}`);
     }
   });
   return defaults;
@@ -878,9 +738,7 @@ function defaultTypeColumnNames() {
       );
       defaults[type.typeName] = column;
     } catch (noDefaultTableNameError) {
-      throw new Error(
-        `No default Postgres type column name is defined for the type ${type}`
-      );
+      throw new Error(`No default Postgres type column name is defined for the type ${type}`);
     }
   });
   return defaults;

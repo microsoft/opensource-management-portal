@@ -7,19 +7,10 @@
 
 import { ReposAppRequest } from '../../interfaces';
 
-export function AuthorizeOnlyFullTimeEmployeesAndInterns(
-  req: ReposAppRequest,
-  res,
-  next
-) {
+export function AuthorizeOnlyFullTimeEmployeesAndInterns(req: ReposAppRequest, res, next) {
   const individualContext = req.individualContext;
-  if (
-    !individualContext.corporateIdentity ||
-    !individualContext.corporateIdentity.username
-  ) {
-    return next(
-      new Error('This resource is only available to authenticated users.')
-    );
+  if (!individualContext.corporateIdentity || !individualContext.corporateIdentity.username) {
+    return next(new Error('This resource is only available to authenticated users.'));
   }
   if (isEmployeeOrIntern(individualContext.corporateIdentity.username)) {
     return next();

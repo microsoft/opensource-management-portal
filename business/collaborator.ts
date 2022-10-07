@@ -7,7 +7,13 @@ import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repos
 import { IGitHubCollaboratorPermissions } from '../interfaces';
 import * as common from './common';
 
-const memberPrimaryProperties = ['id', 'login', 'permissions', 'avatar_url'];
+// prettier-ignore
+const memberPrimaryProperties = [
+  'id',
+  'login',
+  'permissions',
+  'avatar_url',
+];
 
 export class Collaborator {
   public static PrimaryProperties = memberPrimaryProperties;
@@ -19,12 +25,7 @@ export class Collaborator {
 
   constructor(entity: unknown) {
     if (entity) {
-      common.assignKnownFieldsPrefixed(
-        this,
-        entity,
-        'member',
-        memberPrimaryProperties
-      );
+      common.assignKnownFieldsPrefixed(this, entity, 'member', memberPrimaryProperties);
     }
   }
 

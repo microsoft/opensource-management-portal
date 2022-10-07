@@ -7,12 +7,7 @@
 
 import querystring from 'querystring';
 
-import {
-  Operations,
-  Organization,
-  IAdministratorBasics,
-  IGitHubOrganizationResponse,
-} from '../../business';
+import { Operations, Organization, IAdministratorBasics, IGitHubOrganizationResponse } from '../../business';
 import { requireJson } from '../../utils';
 import { OrganizationMember } from '../../business/organizationMember';
 import { IReportsContext } from './task';
@@ -69,8 +64,7 @@ async function filterOrganizationAdministrators(
   }
   for (const admin of administrators) {
     const link = await getIndividualUserLink(context, admin.id);
-    const spot =
-      organizationContext.administratorsByType[link ? 'linked' : 'unlinked'];
+    const spot = organizationContext.administratorsByType[link ? 'linked' : 'unlinked'];
     admin.link = link;
     spot.push(admin);
     if (link && link.isServiceAccount) {
@@ -82,20 +76,14 @@ async function filterOrganizationAdministrators(
   return administrators;
 }
 
-function getIndividualUserLink(
-  context: IReportsContext,
-  id: number
-): Promise<ICorporateLink> {
+function getIndividualUserLink(context: IReportsContext, id: number): Promise<ICorporateLink> {
   if (!context.linkData) {
     return Promise.reject(new Error('No link information has been loaded'));
   }
   return Promise.resolve(context.linkData.get(id));
 }
 
-async function ensureAllUserLinks(
-  context: IReportsContext,
-  operations: Operations
-) {
+async function ensureAllUserLinks(context: IReportsContext, operations: Operations) {
   const latestDataOptions = Object.assign(
     {
       includeNames: true,
@@ -116,9 +104,7 @@ async function ensureAllUserLinks(
   return context;
 }
 
-export async function process(
-  context: IReportsContext
-): Promise<IReportsContext> {
+export async function process(context: IReportsContext): Promise<IReportsContext> {
   const operations = context.operations;
   try {
     await ensureAllUserLinks(context, operations);
@@ -147,9 +133,7 @@ async function getOrganizationData(context: IReportsContext) {
     return a.localeCompare(b, 'en', { sensitivity: 'base' });
   });
   for (const orgName of names) {
-    const organization = operations.organizations.get(
-      orgName.toLowerCase()
-    ) as Organization;
+    const organization = operations.organizations.get(orgName.toLowerCase()) as Organization;
     if (!organization) {
       console.warn(`Cannot locate ${orgName} at runtime`);
       continue;
@@ -167,13 +151,7 @@ async function getOrganizationData(context: IReportsContext) {
       };
       const data = context.organizationData[orgName];
       data.organizationContext = organizationContext;
-      function githubDirectLink(
-        content,
-        prefix?,
-        suffix?,
-        query?,
-        alternateForOrgName?
-      ) {
+      function githubDirectLink(content, prefix?, suffix?, query?, alternateForOrgName?) {
         const reposUrl = context.config.urls.repos;
         const campaignSettings = context.settings.campaign;
         const q = {
@@ -194,16 +172,9 @@ async function getOrganizationData(context: IReportsContext) {
         if (query) {
           q.go_github_query = query;
         }
-        return (
-          reposUrl +
-          (alternateForOrgName || orgName) +
-          '?' +
-          querystring.stringify(q)
-        );
+        return reposUrl + (alternateForOrgName || orgName) + '?' + querystring.stringify(q);
       }
-      const organizationAdministrators = await getOrganizationAdministrators(
-        organization
-      );
+      const organizationAdministrators = await getOrganizationAdministrators(organization);
       const admins = await filterOrganizationAdministrators(
         context,
         organizationContext,
@@ -211,15 +182,9 @@ async function getOrganizationData(context: IReportsContext) {
       );
       data.administrators = admins;
       await ensureGitHubFullNames(context, admins);
-      const unlinkedMembers = await getUnlinkedOrganizationMembers(
-        context,
-        organization
-      );
+      const unlinkedMembers = await getUnlinkedOrganizationMembers(context, organization);
       data.unlinkedMembers = unlinkedMembers;
-      await ensureGitHubFullNames(
-        context,
-        (unlinkedMembers as unknown) as IAdministratorBasics[]
-      );
+      await ensureGitHubFullNames(context, unlinkedMembers as unknown as IAdministratorBasics[]);
       // Configured private engineering org message
       if (organization.privateEngineering) {
         addOrganizationWarning(
@@ -280,9 +245,7 @@ async function getOrganizationData(context: IReportsContext) {
       data.owners = owners;
       // Review owners
       const systemAccountOwnerUsernames = new Set(
-        context.config &&
-        context.config.github &&
-        context.config.github.systemAccounts
+        context.config && context.config.github && context.config.github.systemAccounts
           ? context.config.github.systemAccounts.logins
           : []
       );
@@ -304,11 +267,7 @@ async function getOrganizationData(context: IReportsContext) {
       }
       // Review sudoers
       const sudoers = data.administrators.filter((member) => {
-        return (
-          member.sudo &&
-          !member.owner &&
-          !systemAccountOwnerUsernames.has(member.login)
-        );
+        return member.sudo && !member.owner && !systemAccountOwnerUsernames.has(member.login);
       });
       data.sudoers = sudoers;
       ownerBucket('reviewSudoers', sudoers);
@@ -317,11 +276,7 @@ async function getOrganizationData(context: IReportsContext) {
         if (!list || !list.length) {
           return;
         }
-        const bucket = getOrganizationIssuesType(
-          context,
-          organizationContext,
-          definitionName
-        );
+        const bucket = getOrganizationIssuesType(context, organizationContext, definitionName);
         for (let x = 0; x < list.length; x++) {
           const ownerEntry = Object.assign(
             {
@@ -350,12 +305,7 @@ async function getOrganizationData(context: IReportsContext) {
             actions: [
               {
                 text: 'Change role',
-                link: githubDirectLink(
-                  'ownerChangeRole',
-                  'orgs',
-                  'people',
-                  'query=' + ownerEntry.login
-                ),
+                link: githubDirectLink('ownerChangeRole', 'orgs', 'people', 'query=' + ownerEntry.login),
               },
             ],
           };
@@ -365,10 +315,7 @@ async function getOrganizationData(context: IReportsContext) {
           if (ownerEntry.link) {
             fullName = ownerEntry.link.aadname || ownerEntry.link.aadupn;
             corporateId = ownerEntry.link.aadupn;
-            if (
-              ownerEntry.link.serviceAccount &&
-              ownerEntry.link.serviceAccountMail
-            ) {
+            if (ownerEntry.link.serviceAccount && ownerEntry.link.serviceAccountMail) {
               fullName = {
                 link: 'mailto:' + ownerEntry.link.serviceAccountMail,
                 text: fullName,
@@ -381,23 +328,12 @@ async function getOrganizationData(context: IReportsContext) {
             };
             corporateId = fullName;
             ownerEntry.actions.actions.push({
-              link: githubDirectLink(
-                'ownerProfile',
-                null,
-                null,
-                null,
-                ownerEntry.login
-              ),
+              link: githubDirectLink('ownerProfile', null, null, null, ownerEntry.login),
               text: 'View profile',
             });
             ownerEntry.actions.actions.push({
               text: 'Remove',
-              link: githubDirectLink(
-                'ownerRemove',
-                'orgs',
-                'people',
-                `query=${ownerEntry.login}`
-              ),
+              link: githubDirectLink('ownerRemove', 'orgs', 'people', `query=${ownerEntry.login}`),
             });
             ownerEntry.actions.actions.push(createAskToLinkAction(ownerEntry));
           }
@@ -413,33 +349,18 @@ async function getOrganizationData(context: IReportsContext) {
           organizationContext,
           `This organization has ${data.unlinkedMembers.length} unlinked members`
         );
-        const bucket = getOrganizationIssuesType(
-          context,
-          organizationContext,
-          'unlinkedMembers'
-        );
+        const bucket = getOrganizationIssuesType(context, organizationContext, 'unlinkedMembers');
         for (let x = 0; x < data.unlinkedMembers.length; x++) {
           const unlinked = Object.assign({}, data.unlinkedMembers[x]);
           unlinked.actions = {
             actions: [
               {
-                link: githubDirectLink(
-                  'unlinkedProfile',
-                  null,
-                  null,
-                  null,
-                  unlinked.login
-                ),
+                link: githubDirectLink('unlinkedProfile', null, null, null, unlinked.login),
                 text: 'Review profile',
               },
               {
                 text: 'Remove',
-                link: githubDirectLink(
-                  'unlinkedRemove',
-                  'orgs',
-                  'people',
-                  `query=${unlinked.login}`
-                ),
+                link: githubDirectLink('unlinkedRemove', 'orgs', 'people', `query=${unlinked.login}`),
               },
               createAskToLinkAction(unlinked),
             ],
@@ -451,21 +372,13 @@ async function getOrganizationData(context: IReportsContext) {
       data.info = info;
       const fixMemberPrivilegesActions = [
         {
-          link: githubDirectLink(
-            'reduceMemberPrivileges',
-            'organizations',
-            'settings/member_privileges'
-          ),
+          link: githubDirectLink('reduceMemberPrivileges', 'organizations', 'settings/member_privileges'),
           text: 'Reduce member privileges',
         },
       ];
       const fixOrganizationProfileActions = [
         {
-          link: githubDirectLink(
-            'editOrganizationProfile',
-            'organizations',
-            'settings/profile'
-          ),
+          link: githubDirectLink('editOrganizationProfile', 'organizations', 'settings/profile'),
           text: 'Edit organization profile',
         },
       ];
@@ -478,16 +391,14 @@ async function getOrganizationData(context: IReportsContext) {
       // Org issue: members can create repositories
       if (info.members_can_create_repositories) {
         addOrganizationWarning(context, organizationContext, {
-          text:
-            'This organization allows members to directly create repositories on GitHub.com',
+          text: 'This organization allows members to directly create repositories on GitHub.com',
           actions: fixMemberPrivilegesActions,
         });
       }
       // Org issue: no org e-mail
       if (!info.email) {
         addOrganizationWarning(context, organizationContext, {
-          text:
-            'No e-mail address has been provided for any public questions about your organization',
+          text: 'No e-mail address has been provided for any public questions about your organization',
           actions: fixOrganizationProfileActions,
         });
       }
@@ -501,25 +412,21 @@ async function getOrganizationData(context: IReportsContext) {
       // Org issue: members all get admin or write access
       if (info.default_repository_permission === 'write') {
         addOrganizationWarning(context, organizationContext, {
-          text:
-            'All organization members receive permission to directly commit to all repos as well as accept pull requests.',
+          text: 'All organization members receive permission to directly commit to all repos as well as accept pull requests.',
           actions: fixMemberPrivilegesActions,
         });
       } else if (info.default_repository_permission === 'admin') {
         addOrganizationWarning(context, organizationContext, {
-          text:
-            'All organization members receive administrative access to all repos. This practice is strongly discouraged.',
+          text: 'All organization members receive administrative access to all repos. This practice is strongly discouraged.',
           actions: fixMemberPrivilegesActions,
         });
       }
       // Org issue: private repo utilization rate
-      const tooFewPrivateRepos =
-        context.settings.orgPercentAvailablePrivateRepos || 0.25;
+      const tooFewPrivateRepos = context.settings.orgPercentAvailablePrivateRepos || 0.25;
       if (info.plan && info.plan.private_repos) {
         const privateCap = info.plan.private_repos * (1 - tooFewPrivateRepos);
         if (info.owned_private_repos > privateCap) {
-          const availablePrivateRepos =
-            info.plan.private_repos - info.owned_private_repos;
+          const availablePrivateRepos = info.plan.private_repos - info.owned_private_repos;
           addOrganizationWarning(context, organizationContext, {
             text: `Private repos are running out: ${availablePrivateRepos} available out of plan limit of ${info.plan.private_repos}.`,
             color: 'red',
@@ -535,9 +442,7 @@ async function getOrganizationData(context: IReportsContext) {
   return context;
 }
 
-function getOrganizationDetails(
-  organization: Organization
-): Promise<IGitHubOrganizationResponse> {
+function getOrganizationDetails(organization: Organization): Promise<IGitHubOrganizationResponse> {
   return organization.getDetails();
 }
 
@@ -549,8 +454,7 @@ function createAskToLinkAction(entry) {
     };
   } else {
     return {
-      link:
-        'mailto:?subject=Please%20link&body=You%20will%20need%20to%20find%20an%20e-mail%20address%20to%20this%20person.%20Tell%20them:%20Link%20your%20account%20at%20https://opensource.microsoft.com/link',
+      link: 'mailto:?subject=Please%20link&body=You%20will%20need%20to%20find%20an%20e-mail%20address%20to%20this%20person.%20Tell%20them:%20Link%20your%20account%20at%20https://opensource.microsoft.com/link',
       text: 'Ask to link',
     };
   }
@@ -571,9 +475,7 @@ async function getUnlinkedOrganizationMembers(
   return unlinked;
 }
 
-async function getOrganizationAdministrators(
-  organization: Organization
-): Promise<IAdministratorBasics[]> {
+async function getOrganizationAdministrators(organization: Organization): Promise<IAdministratorBasics[]> {
   try {
     return await organization.getOrganizationAdministrators();
   } catch (error) {
@@ -582,16 +484,8 @@ async function getOrganizationAdministrators(
   }
 }
 
-function addOrganizationWarning(
-  context: IReportsContext,
-  organizationContext,
-  warning
-) {
-  const holder = getOrganizationIssuesType(
-    context,
-    organizationContext,
-    'warnings'
-  ).listItems;
+function addOrganizationWarning(context: IReportsContext, organizationContext, warning) {
+  const holder = getOrganizationIssuesType(context, organizationContext, 'warnings').listItems;
   const type = typeof warning;
   for (let i = 0; i < holder.length; i++) {
     const current = holder[i];
@@ -612,11 +506,7 @@ interface IIssueEntry {
   listItems?: any[];
 }
 
-function getOrganizationIssuesType(
-  context: IReportsContext,
-  organizationContext,
-  type
-) {
+function getOrganizationIssuesType(context: IReportsContext, organizationContext, type) {
   const definition = definitionsByName[type];
   if (!definition) {
     throw new Error(`No defined issue type ${type}`);
@@ -644,15 +534,11 @@ function getOrganizationIssuesType(
   return placeholder[type];
 }
 
-export async function build(
-  context: IReportsContext
-): Promise<IReportsContext> {
+export async function build(context: IReportsContext): Promise<IReportsContext> {
   return context;
 }
 
-export async function consolidate(
-  context: IReportsContext
-): Promise<IReportsContext> {
+export async function consolidate(context: IReportsContext): Promise<IReportsContext> {
   // For any used definitions of a provider entity instance, add it to the generic report
   const consolidated = {
     definitions: [],
@@ -661,10 +547,7 @@ export async function consolidate(
 
   for (let i = 0; i < definitions.length; i++) {
     const definition = definitions[i];
-    if (
-      !context.visitedDefinitions ||
-      !context.visitedDefinitions[providerName]
-    ) {
+    if (!context.visitedDefinitions || !context.visitedDefinitions[providerName]) {
       return context;
     }
     if (context.visitedDefinitions[providerName].has(definition.name)) {
@@ -682,18 +565,11 @@ export async function consolidate(
     };
 
     const contextDirectProperties = ['issues', 'recipients'];
-    cloneProperties(
-      fullEntity.organizationContext,
-      contextDirectProperties,
-      reducedEntity
-    );
+    cloneProperties(fullEntity.organizationContext, contextDirectProperties, reducedEntity);
 
     // Only store in the consolidated report if there are recipients for the entity
     let issueCount = 0;
-    let recipientCount =
-      reducedEntity && reducedEntity.recipients
-        ? reducedEntity.recipients.length
-        : 0;
+    let recipientCount = reducedEntity && reducedEntity.recipients ? reducedEntity.recipients.length : 0;
     if (reducedEntity && reducedEntity.issues) {
       issueCount = Object.getOwnPropertyNames(reducedEntity.issues).length;
     }
@@ -725,9 +601,7 @@ async function getGitHubAccount(
     backgroundRefresh: true,
     maxAgeSeconds: 60 * 60 * 24 /* 1 day */,
   };
-  const details = await operations
-    .getAccount(entity.id.toString())
-    .getDetails(cachingOptions);
+  const details = await operations.getAccount(entity.id.toString()).getDetails(cachingOptions);
   if (details) {
     entity['githubFullName'] = details.name;
     entity['githubMail'] = details.email;

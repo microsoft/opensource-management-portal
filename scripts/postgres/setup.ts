@@ -37,9 +37,7 @@ async function setup() {
   const newPassword = await prompt.password('new password: ');
 
   try {
-    await client.query(
-      escape(`create user ${newUsername} with password %L`, newPassword)
-    );
+    await client.query(escape(`create user ${newUsername} with password %L`, newPassword));
   } catch (createUserError) {
     console.log(createUserError.message);
   }

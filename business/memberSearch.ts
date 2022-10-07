@@ -40,22 +40,16 @@ export class MemberSearch {
 
   constructor(options: IMemberSearchOptions) {
     if (!options.crossOrganizationMembers && !options.organizationMembers) {
-      throw new Error(
-        'Options must include either crossOrganizationMembers or organizationMembers'
-      );
+      throw new Error('Options must include either crossOrganizationMembers or organizationMembers');
     }
     if (options.crossOrganizationMembers && options.organizationMembers) {
-      throw new Error(
-        'Options cannot include both crossOrganizationMembers or organizationMembers'
-      );
+      throw new Error('Options cannot include both crossOrganizationMembers or organizationMembers');
     }
     if (options.organizationMembers) {
       this.members = options.organizationMembers;
     } else if (options.crossOrganizationMembers) {
       // must be a Map from ID to object with { orgs, memberships, account }
-      this.members = (Array.from(
-        options.crossOrganizationMembers.values()
-      ) as any) as OrganizationMember[];
+      this.members = Array.from(options.crossOrganizationMembers.values()) as any as OrganizationMember[];
     }
     translateMembers(this.members, options.isOrganizationScoped, options.links);
     this.links = options.links;
@@ -74,18 +68,20 @@ export class MemberSearch {
 
   async search(page, sort?: string): Promise<void> {
     this.page = parseInt(page);
-    this.sort = sort
-      ? sort.charAt(0).toUpperCase() + sort.slice(1)
-      : 'Alphabet';
+    this.sort = sort ? sort.charAt(0).toUpperCase() + sort.slice(1) : 'Alphabet';
 
     await this.filterOrganizationOwners();
-    await this.filterByTeamMembers()
-      .associateLinks()
-      .getCorporateProfilesEarly(this.type);
+
+    // prettier-ignore
+    await this.
+      filterByTeamMembers().
+      associateLinks().
+      getCorporateProfilesEarly(this.type);
+
+    // prettier-ignore
     return this.filterByType(this.type)
       .filterByPhrase(this.phrase)
-      .determinePages()
-      ['sortBy' + this.sort]()
+      .determinePages()['sortBy' + this.sort]() // prettier will mangle this into a newline
       .getPage(this.page)
       .sortOrganizations()
       .getCorporateProfiles();
@@ -99,9 +95,7 @@ export class MemberSearch {
       organizationMemberCacheProvider
     ) {
       if (!this.orgId) {
-        throw new Error(
-          'org owners view not available at the top root level currently'
-        );
+        throw new Error('org owners view not available at the top root level currently');
       }
       const allOwners = await organizationMemberCacheProvider.queryAllOrganizationOwners();
       const owners = new Set<string>();
@@ -110,9 +104,7 @@ export class MemberSearch {
           owners.add(owner.userId);
         }
       }
-      this.members = this.members.filter((member) =>
-        owners.has(String(member.id))
-      );
+      this.members = this.members.filter((member) => owners.has(String(member.id)));
     }
     return this;
   }
@@ -146,10 +138,7 @@ export class MemberSearch {
     // This will make a Redis call for every single member, if not cached,
     // so the early mode is only used in a specific type of view this early.
     // The default just resolves for a single page of people.
-    if (
-      this.pageSize > earlyFetchPageBreak ||
-      earlyProfileFetchTypes.has(type)
-    ) {
+    if (this.pageSize > earlyFetchPageBreak || earlyProfileFetchTypes.has(type)) {
       return await this.getCorporateProfiles();
     }
     return this;
@@ -172,7 +161,7 @@ export class MemberSearch {
 
   sortOrganizations() {
     this.members.forEach((m) => {
-      const member = (m as any) as ICrossOrganizationMembershipByOrganization;
+      const member = m as any as ICrossOrganizationMembershipByOrganization;
       if (member.orgs && member.orgs.length > 0) {
         member.orgs = _.sortBy(member.orgs, ['name']);
       }
@@ -194,10 +183,7 @@ export class MemberSearch {
   }
 
   getPage(page) {
-    this.members = this.members.slice(
-      (page - 1) * this.pageSize,
-      (page - 1) * this.pageSize + this.pageSize
-    );
+    this.members = this.members.slice((page - 1) * this.pageSize, (page - 1) * this.pageSize + this.pageSize);
     this.pageFirstItem = 1 + (page - 1) * this.pageSize;
     this.pageLastItem = this.pageFirstItem + this.members.length - 1;
     return this;
@@ -228,11 +214,7 @@ export class MemberSearch {
         break;
       case 'unknownAccount':
         filter = (r: OrganizationMember) => {
-          return (
-            r.link &&
-            r.link.thirdPartyId &&
-            (!r.link || !r.link.corporateUsername)
-          );
+          return r.link && r.link.thirdPartyId && (!r.link || !r.link.corporateUsername);
         };
         break;
       case 'former':
@@ -271,12 +253,8 @@ export class MemberSearch {
 
   sortByAlphabet() {
     this.members.sort((a, b) => {
-      const aAccountIdentity = a.login
-        ? a.login.toLowerCase()
-        : a['account'].login.toLowerCase();
-      const bAccountIdentity = b.login
-        ? b.login.toLowerCase()
-        : b['account'].login.toLowerCase();
+      const aAccountIdentity = a.login ? a.login.toLowerCase() : a['account'].login.toLowerCase();
+      const bAccountIdentity = b.login ? b.login.toLowerCase() : b['account'].login.toLowerCase();
       if (aAccountIdentity > bAccountIdentity) return 1;
       if (aAccountIdentity < bAccountIdentity) return -1;
       return 0;
@@ -311,14 +289,8 @@ function translateMembers(members, isOrganizationScoped, optionalLinks) {
     const noOrgs = Array.from(linkedNoOrg.values());
     for (let i = 0; i < noOrgs.length; i++) {
       const n = noOrgs[i];
-      const thirdPartyId =
-        n.thirdPartyId /* new link objects */ ||
-        n.ghid; /* old implementation */
-      const thirdPartyUsername = (
-        n.thirdPartyUsername ||
-        n.ghu ||
-        ''
-      ).toLowerCase();
+      const thirdPartyId = n.thirdPartyId /* new link objects */ || n.ghid; /* old implementation */
+      const thirdPartyUsername = (n.thirdPartyUsername || n.ghu || '').toLowerCase();
       const thirdPartyAvatar = n.thirdPartyAvatar || n.ghavatar;
       const id = parseInt(thirdPartyId, 10);
       const newMember = {
@@ -341,9 +313,7 @@ function memberMatchesPhrase(member, phrase) {
   let linkIdentity = link
     ? `${link.corporateUsername} ${link.corporateDisplayName} ${link.corporateId} ${link.thirdPartyUsername} ${link.thirdPartyId} ${link.corporateMailAddress} ${link.corporateAlias}`
     : '';
-  let accountIdentity = member.login
-    ? member.login.toLowerCase()
-    : member.account.login.toLowerCase();
+  let accountIdentity = member.login ? member.login.toLowerCase() : member.account.login.toLowerCase();
   let combined = (linkIdentity + ' ' + accountIdentity).toLowerCase();
   return combined.includes(phrase);
 }

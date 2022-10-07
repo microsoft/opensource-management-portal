@@ -13,10 +13,7 @@ import { Team } from '../business';
 import { UserContext } from '../user/aggregate';
 
 import TeamSearch from '../business/teamSearch';
-import {
-  ICrossOrganizationMembershipByOrganization,
-  ReposAppRequest,
-} from '../interfaces';
+import { ICrossOrganizationMembershipByOrganization, ReposAppRequest } from '../interfaces';
 
 function sortOrgs(orgs) {
   return _.sortBy(orgs, ['name']);
@@ -47,15 +44,13 @@ async function getTeamsData(
     list = [];
     const crossOrgTeams = await operations.getCrossOrganizationTeams(options);
     const allReducedTeams = Array.from(crossOrgTeams.values());
-    allReducedTeams.forEach(
-      (reducedTeam: ICrossOrganizationMembershipByOrganization) => {
-        const orgs = Object.getOwnPropertyNames(reducedTeam.orgs);
-        const firstOrg = orgs[0];
-        const organization = operations.getOrganization(firstOrg);
-        const entry = organization.teamFromEntity(reducedTeam.orgs[firstOrg]);
-        list.push(entry);
-      }
-    );
+    allReducedTeams.forEach((reducedTeam: ICrossOrganizationMembershipByOrganization) => {
+      const orgs = Object.getOwnPropertyNames(reducedTeam.orgs);
+      const firstOrg = orgs[0];
+      const organization = operations.getOrganization(firstOrg);
+      const entry = organization.teamFromEntity(reducedTeam.orgs[firstOrg]);
+      list.push(entry);
+    });
   }
 
   const yourTeamsMap = new Map();
@@ -67,14 +62,8 @@ async function getTeamsData(
   return {
     teams: list,
     yourTeamsMap,
-    totalMemberships:
-      overview.teams && overview.teams.member
-        ? overview.teams.member.length
-        : 0,
-    totalMaintainerships:
-      overview.teams && overview.teams.maintainer
-        ? overview.teams.maintainer.length
-        : 0,
+    totalMemberships: overview.teams && overview.teams.member ? overview.teams.member.length : 0,
+    totalMaintainerships: overview.teams && overview.teams.maintainer ? overview.teams.maintainer.length : 0,
   };
 }
 
@@ -88,21 +77,12 @@ function reduceTeams(collections, property, map) {
   });
 }
 
-export default asyncHandler(async function (
-  req: ReposAppRequest,
-  res: Response,
-  next: NextFunction
-) {
+export default asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const { operations } = getProviders(req);
   const isCrossOrg = req.teamsPagerMode === 'orgs';
   const aggregations = req.individualContext.aggregations;
   const orgName = isCrossOrg ? null : req.organization.name.toLowerCase();
-  const {
-    teams,
-    yourTeamsMap,
-    totalMemberships,
-    totalMaintainerships,
-  } = await getTeamsData(
+  const { teams, yourTeamsMap, totalMemberships, totalMaintainerships } = await getTeamsData(
     isCrossOrg ? null : orgName.toLowerCase(),
     operations,
     aggregations

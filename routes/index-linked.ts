@@ -7,11 +7,7 @@ import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import {
-  CreateError,
-  hasStaticReactClientApp,
-  getProviders,
-} from '../transitional';
+import { CreateError, hasStaticReactClientApp, getProviders } from '../transitional';
 import { IndividualContext } from '../user';
 import { storeOriginalUrlAsVariable } from '../utils';
 import { AuthorizeOnlyCorporateAdministrators } from '../middleware/business/corporateAdministrators';
@@ -48,13 +44,7 @@ if (!hasReactApp) {
     if (link && link.thirdPartyId) {
       return next();
     }
-    storeOriginalUrlAsVariable(
-      req,
-      res,
-      'beforeLinkReferrer',
-      '/',
-      'no linked github username'
-    );
+    storeOriginalUrlAsVariable(req, res, 'beforeLinkReferrer', '/', 'no linked github username');
   });
 }
 // end security route
@@ -71,11 +61,7 @@ router.use('/repos', reactRoute || RouteRepos);
 
 // Routes not yet available in the client
 router.use('/undo', RouteUndo);
-router.use(
-  '/administration',
-  asyncHandler(AuthorizeOnlyCorporateAdministrators),
-  RouteAdministration
-);
+router.use('/administration', asyncHandler(AuthorizeOnlyCorporateAdministrators), RouteAdministration);
 
 router.use(
   '/https?*github.com/:org/:repo',
@@ -88,27 +74,17 @@ router.use(
       try {
         organization = operations.getOrganization(org);
       } catch (error) {
-        return next(
-          CreateError.InvalidParameters(
-            `Organization ${org} not managed by this system`
-          )
-        );
+        return next(CreateError.InvalidParameters(`Organization ${org} not managed by this system`));
       }
       let repository: Repository = null;
       try {
         repository = organization.repository(repo);
         await repository.getDetails();
       } catch (error) {
-        return next(
-          CreateError.NotFound(
-            `The repository ${org}/${repo} no longer exists.`
-          )
-        );
+        return next(CreateError.NotFound(`The repository ${org}/${repo} no longer exists.`));
       }
       if (hasReactApp) {
-        return res.redirect(
-          `/orgs/${repository.organization.name}/repos/${repository.name}`
-        );
+        return res.redirect(`/orgs/${repository.organization.name}/repos/${repository.name}`);
       }
       return res.redirect(repository.baseUrl);
     }

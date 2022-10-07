@@ -4,14 +4,8 @@
 //
 
 import { request } from '@octokit/request';
-import {
-  createAppAuth,
-  InstallationAccessTokenAuthentication,
-} from '@octokit/auth-app';
-import {
-  AppAuthentication,
-  AuthInterface,
-} from '@octokit/auth-app/dist-types/types';
+import { createAppAuth, InstallationAccessTokenAuthentication } from '@octokit/auth-app';
+import { AppAuthentication, AuthInterface } from '@octokit/auth-app/dist-types/types';
 
 import { AppPurpose } from '.';
 import { IAuthorizationHeaderValue } from '../interfaces';
@@ -46,16 +40,8 @@ export class GitHubAppTokens {
     fileContents: string,
     baseUrl?: string
   ): GitHubAppTokens {
-    let keyContents = Buffer.from(fileContents, 'base64')
-      .toString('utf8')
-      .replace(/\r\n/g, '\n');
-    return new GitHubAppTokens(
-      purpose,
-      friendlyName,
-      applicationId,
-      keyContents,
-      baseUrl
-    );
+    let keyContents = Buffer.from(fileContents, 'base64').toString('utf8').replace(/\r\n/g, '\n');
+    return new GitHubAppTokens(purpose, friendlyName, applicationId, keyContents, baseUrl);
   }
 
   static CreateFromString(
@@ -65,13 +51,7 @@ export class GitHubAppTokens {
     value: string,
     baseUrl?: string
   ): GitHubAppTokens {
-    return new GitHubAppTokens(
-      purpose,
-      friendlyName,
-      applicationId,
-      value,
-      baseUrl
-    );
+    return new GitHubAppTokens(purpose, friendlyName, applicationId, value, baseUrl);
   }
 
   get appId() {
@@ -129,13 +109,8 @@ export class GitHubAppTokens {
     organizationName: string
   ): Promise<IAuthorizationHeaderValue> {
     const now = new Date();
-    const requiredValidityPeriod = new Date(
-      now.getTime() + ValidityOffsetAfterNowMilliseconds
-    );
-    const latestToken = this.getLatestValidToken(
-      installationId,
-      requiredValidityPeriod
-    );
+    const requiredValidityPeriod = new Date(now.getTime() + ValidityOffsetAfterNowMilliseconds);
+    const latestToken = this.getLatestValidToken(installationId, requiredValidityPeriod);
     if (latestToken) {
       return {
         value: latestToken.headerValue,
@@ -146,10 +121,7 @@ export class GitHubAppTokens {
       };
     }
     try {
-      const requestedToken = await this.requestInstallationToken(
-        installationId,
-        organizationName
-      );
+      const requestedToken = await this.requestInstallationToken(installationId, organizationName);
       this.getInstallationTokens(installationId).push(requestedToken);
       return {
         value: requestedToken.headerValue,
@@ -172,14 +144,9 @@ export class GitHubAppTokens {
   ): Promise<IInstallationToken> {
     try {
       const requested = new Date();
-      const installationAppAuth = this.getOrCreateInstallationAuthFunction(
-        installationId
-      );
-      const installationTokenDetails = await installationAppAuth({
-        type: 'installation',
-      });
-      const installationToken = (installationTokenDetails as InstallationAccessTokenAuthentication)
-        .token;
+      const installationAppAuth = this.getOrCreateInstallationAuthFunction(installationId);
+      const installationTokenDetails = await installationAppAuth({ type: 'installation' });
+      const installationToken = (installationTokenDetails as InstallationAccessTokenAuthentication).token;
       const headerValue = `token ${installationToken}`;
       const expiresFromDetails = (installationTokenDetails as any).expiresAt;
       const expires = expiresFromDetails
@@ -199,15 +166,10 @@ export class GitHubAppTokens {
     }
   }
 
-  private getLatestValidToken(
-    installationId: number,
-    timeTokenMustBeValid: Date
-  ): IInstallationToken {
+  private getLatestValidToken(installationId: number, timeTokenMustBeValid: Date): IInstallationToken {
     let tokens = this.getInstallationTokens(installationId);
     const count = tokens.length;
-    tokens = tokens
-      .filter(tokenValidFilter.bind(null, timeTokenMustBeValid))
-      .sort(sortByLatestToken);
+    tokens = tokens.filter(tokenValidFilter.bind(null, timeTokenMustBeValid)).sort(sortByLatestToken);
     if (tokens.length !== count) {
       this.replaceInstallationTokens(installationId, tokens);
     }
@@ -223,10 +185,7 @@ export class GitHubAppTokens {
     return bin;
   }
 
-  private replaceInstallationTokens(
-    installationId: number,
-    arr: IInstallationToken[]
-  ) {
+  private replaceInstallationTokens(installationId: number, arr: IInstallationToken[]) {
     this._tokensByInstallation.set(installationId, arr);
   }
 }
@@ -240,10 +199,7 @@ function sortByLatestToken(a: IInstallationToken, b: IInstallationToken) {
   return 0;
 }
 
-function tokenValidFilter(
-  timeTokenMustBeValid: Date,
-  token: IInstallationToken
-) {
+function tokenValidFilter(timeTokenMustBeValid: Date, token: IInstallationToken) {
   const isValid = token.expires > timeTokenMustBeValid;
   if (!isValid) {
     console.log(
