@@ -30,7 +30,8 @@
     "prepare": "husky install"
   },
   "lint-staged": {
-    "**/*": "prettier --write --ignore-unknown"
+    "*": "prettier --write --ignore-unknown",
+    "*.{js,ts}": "eslint --fix"
   },
   "jest-junit": {
     "suiteNameTemplate": "{filepath}",
