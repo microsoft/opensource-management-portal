@@ -7,20 +7,30 @@ import { Router } from 'express';
 
 import { jsonError } from '../../middleware/jsonError';
 import { IAppSession, ReposAppRequest } from '../../interfaces';
+import { getProviders } from '../../transitional';
 
 const router: Router = Router();
 
 // This route is /api/client/signout*
 
 router.post('/', (req: ReposAppRequest, res) => {
-  req.logout();
-  const session = req.session as IAppSession;
-  if (session) {
-    delete session.enableMultipleAccounts;
-    delete session.selectedGithubId;
-  }
-  res.status(204);
-  res.end();
+  const { insights } = getProviders(req);
+  // For client apps, we keep the session active to allow
+  // for a few feature flags to be present.
+  req.logout({ keepSessionInfo: true }, (err) => {
+    const session = req.session as IAppSession;
+    if (session) {
+      delete session.enableMultipleAccounts;
+      delete session.selectedGithubId;
+    }
+    if (err) {
+      insights?.trackException({ exception: err });
+      res.status(500);
+    } else {
+      res.status(204);
+    }
+    res.end();
+  });
 });
 
 router.post('/github', (req: ReposAppRequest, res) => {

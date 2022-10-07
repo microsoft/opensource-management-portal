@@ -27,15 +27,19 @@ module.exports = function (graphApi) {
   // 1: load URL/resource links from a parallel painless config environment
   if (pkg && pkg[painlessConfigEnvPkgName] && environmentName) {
     try {
-      resources = require(pkg[painlessConfigEnvPkgName])(environmentName, resourcesEnvironmentName);
-      debug(`resources and URL links loaded from ${painlessConfigEnvPkgName}/${environmentName},${resourcesEnvironmentName}`);
+      let pkgName = pkg[painlessConfigEnvPkgName];
+      if (pkgName.startsWith('./')) {
+        pkgName = path.join(typescriptConfig.appDirectory, pkgName);
+      }
+      resources = require(pkgName)(environmentName, resourcesEnvironmentName);
+      // debug(`resources and URL links loaded from ${pkgName}/${environmentName},${resourcesEnvironmentName}`);
     } catch (painlessConfigError) {
-      debug(`attempted to load resources and URL links loaded from ${painlessConfigEnvPkgName}/${environmentName},${resourcesEnvironmentName}`);
+      debug(`failed attempt to load URLs from ${pkgName}/${environmentName},${resourcesEnvironmentName}`);
       console.warn(painlessConfigError);
       throw painlessConfigError;
     }
   } else {
-    // 2: load UJRL/resource links data from a local JSON file
+    // 2: load URL/resource links data from a local JSON file
     try {
       const filename = path.join(typescriptConfig.appDirectory, 'data', 'resources.json');
       const str = fs.readFileSync(filename, 'utf8');
@@ -46,6 +50,5 @@ module.exports = function (graphApi) {
       throw notFound;
     }
   }
-
   return resources;
 }

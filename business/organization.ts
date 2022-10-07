@@ -168,7 +168,7 @@ export class Organization {
 
   asClientJson() {
     // TEMP: TEMP: TEMP: not long-term as currently designed
-    return {
+    const values = {
       active: this.active,
       createRepositoriesOnGitHub: this.createRepositoriesOnGitHub,
       description: this.description,
@@ -182,6 +182,14 @@ export class Organization {
       privateEngineering: this.privateEngineering,
       management: this.getManagementApproach(),
     };
+
+    const companySpecificDeployment = getCompanySpecificDeployment();
+    if (companySpecificDeployment?.features?.augmentApiMetadata) {
+      const providers = throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers).providers;
+      return companySpecificDeployment.features.augmentApiMetadata.augmentOrganizationClientJson(providers, this, values);
+    }
+
+    return values;
   }
 
   getManagementApproach() {
@@ -531,8 +539,6 @@ export class Organization {
       throw wrapError(error, `Could not get details about the ${this.name} organization: ${error.message}`);
     }
   }
-
-
 
   getRepositoryCreateMetadata(options?: any) {
     const operations = throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers);
@@ -1000,7 +1006,7 @@ export class Organization {
         } catch (ignored) { }
       }
     } catch (error) {
-      throw wrapError(error, `Could not remove the organization member ${login}`);
+      throw wrapError(error, `Could not remove the organization member ${login}: ${error}`);
     }
   }
 

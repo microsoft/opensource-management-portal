@@ -204,6 +204,7 @@ export abstract class OperationsCore
   get providers(): IProviders {
     return this._providers;
   }
+
   get config(): any {
     return this.providers.config;
   }
@@ -243,7 +244,6 @@ export abstract class OperationsCore
     }
     return '/';
   }
-
 
   get initialized(): Date {
     return this._initialized;

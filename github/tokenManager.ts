@@ -5,9 +5,11 @@
 
 import { AppPurpose, IGitHubAppConfiguration, IGitHubAppsOptions, GitHubAppAuthenticationType, AllAvailableAppPurposes, AppPurposeToConfigurationName } from '.';
 import { GitHubAppTokens } from './appTokens';
-import { IAuthorizationHeaderValue } from '../interfaces';
+import { IAuthorizationHeaderValue, NoCacheNoBackground } from '../interfaces';
 import { OrganizationSetting } from '../entities/organizationSettings/organizationSetting';
 import { readFileToText } from '../utils';
+import { Operations, OperationsCore, Organization } from '../business';
+import { CreateError } from '../transitional';
 
 const fallbackPurposePriorities = [
   AppPurpose.Data,
@@ -23,6 +25,13 @@ const fallbackBackgroundJobPriorities = [
   AppPurpose.Operations,
 ];
 
+export interface IGitHubRateLimit {
+  limit: number;
+  remaining: number;
+  reset: number;
+  used: number;
+}
+
 // Installation redirect format:
 // /setup/app/41051?installation_id=1914154&setup_action=install
 
@@ -37,6 +46,7 @@ interface InstallationIdPurposePair {
 
 export class GitHubTokenManager {
   #options: IGitHubAppsOptions;
+  private static _managersForOperations: Map<OperationsCore, GitHubTokenManager> = new Map();
   private static _forceBackgroundTokens: boolean;
   // private _appConfiguration = new Map<AppPurpose, IGitHubAppConfiguration>();
   private _apps = new Map<AppPurpose, GitHubAppTokens>();
@@ -44,6 +54,15 @@ export class GitHubTokenManager {
   private _appIdToPurpose = new Map<number, AppPurpose>();
   private _appSlugs = new Map<number, string>();
   private _forceInstanceTokensToPurpose: AppPurpose;
+  private _allowReadOnlyFallbackToOtherInstallations: boolean;
+
+  static RegisterManagerForOperations(operations: OperationsCore, manager: GitHubTokenManager) {
+    GitHubTokenManager._managersForOperations.set(operations, manager);
+  }
+
+  static TryGetTokenManagerForOperations(operations: OperationsCore) {
+    return GitHubTokenManager._managersForOperations.get(operations);
+  }
 
   constructor(options: IGitHubAppsOptions) {
     if (!options) {
@@ -55,6 +74,10 @@ export class GitHubTokenManager {
 
   forceInstanceTokensToPurpose(purpose: AppPurpose) {
     this._forceInstanceTokensToPurpose = purpose;
+  }
+
+  allowReadOnlyFallbackForUninstalledOrganizations() {
+    this._allowReadOnlyFallbackToOtherInstallations = true;
   }
 
   async initialize() {
@@ -106,6 +129,50 @@ export class GitHubTokenManager {
     return app.getInstallationToken(installationId, organizationName);
   }
 
+  getAppForPurpose(purpose: AppPurpose) {
+    return this._apps.get(purpose);
+  }
+
+  getInstallationIdForOrganization(purpose: AppPurpose, organization: Organization) {
+    if (!organization.hasDynamicSettings) {
+      throw CreateError.InvalidParameters(`Organization ${organization.name} does not have dynamic settings, which is currently required for this capability`);
+    }
+    const settings = organization.getDynamicSettings();
+    if (settings?.installations) {
+      for (const { appId, installationId } of settings.installations) {
+        const purposeForApp = this._appIdToPurpose.get(appId);
+        if (this._appsById.has(appId) && purposeForApp && purposeForApp === purpose) {
+          return installationId;
+        }
+      }
+    }
+  }
+
+  async getRateLimitInformation(purpose: AppPurpose, organization: Organization) {
+    if (!organization.hasDynamicSettings) {
+      throw CreateError.InvalidParameters(`Organization ${organization.name} does not have dynamic settings, which is currently required for this capability`);
+    }
+    const settings = organization.getDynamicSettings();
+    if (settings?.installations) {
+      for (const { appId, installationId } of settings.installations) {
+        const purposeForApp = this._appIdToPurpose.get(appId);
+        if (this._appsById.has(appId) && purposeForApp && purposeForApp === purpose) {
+          try {
+            const header = await this.getInstallationAuthorizationHeader(appId, installationId, organization.name);
+            const value = await (organization.operations as Operations).github.post(header.value, 'rateLimit.get', NoCacheNoBackground);
+            if (value?.rate) {
+              return value.rate as IGitHubRateLimit;
+            }
+            console.warn(value);
+            throw CreateError.InvalidParameters('No rate limit information returned');
+          } catch (error) {
+            throw error;
+          }
+        }
+      }
+    }
+  }
+
   private getPrioritizedOrganizationInstallationId(preferredPurpose: AppPurpose, organizationName: string, organizationSettings: OrganizationSetting, appAuthenticationType: GitHubAppAuthenticationType): InstallationIdPurposePair {
     if (this._forceInstanceTokensToPurpose) {
       if (this._forceInstanceTokensToPurpose !== preferredPurpose) {
@@ -121,7 +188,7 @@ export class GitHubTokenManager {
       order = [preferredPurpose];
     }
     for (const purpose of order) {
-      if (organizationSettings && organizationSettings.installations) {
+      if (organizationSettings?.installations) {
         for (const { appId, installationId } of organizationSettings.installations) {
           const purposeForApp = this._appIdToPurpose.get(appId);
           if (this._appsById.has(appId) && purposeForApp && purposeForApp === purpose) {
@@ -129,6 +196,9 @@ export class GitHubTokenManager {
           }
         }
       }
+    }
+    if (this._allowReadOnlyFallbackToOtherInstallations && organizationSettings?.installations?.length > 0) {
+      return { installationId: organizationSettings.installations[0].installationId, purpose: preferredPurpose };
     }
     return null;
   }

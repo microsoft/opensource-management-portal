@@ -8,6 +8,7 @@ import asyncHandler from 'express-async-handler';
 
 import { TeamJoinApprovalEntity } from '../../../../entities/teamJoinApproval/teamJoinApproval';
 import { ReposAppRequest, OrganizationMembershipState, ITeamMembershipRoleState } from '../../../../interfaces';
+import { IGraphEntry } from '../../../../lib/graphProvider';
 import { jsonError } from '../../../../middleware';
 import { AddTeamMembershipToRequest, AddTeamPermissionsToRequest, getContextualTeam, getTeamMembershipFromRequest, getTeamPermissionsFromRequest } from '../../../../middleware/github/teamPermissions';
 import { submitTeamJoinRequest } from '../../../../routes/org/team';
@@ -147,13 +148,21 @@ router.get('/join/approvals/:approvalId',
       return next(jsonError('you do not have permission to administer this team', 401));
     }
     const providers = getProviders(req);
-    const { approvalProvider, operations } = providers;
+    const { approvalProvider, graphProvider } = providers;
     const team = getContextualTeam(req);
     const request = await approvalProvider.getApprovalEntity(id);
     if (String(request.teamId) !== String(team.id)) {
       return next(jsonError('mismatch on team', 400));
     }
-    return res.json({ approval: request });
+    let management: IGraphEntry[] = null;
+    if (request?.corporateId) {
+      try {
+        management = await graphProvider.getManagementChain(request.corporateId);
+      } catch (error) {
+        // we ignore any failure here, this is an optional value-add for now
+      }
+    }
+    return res.json({ approval: request, management });
   }));
 
 router.get('/join/approvals',

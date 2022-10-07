@@ -4,6 +4,7 @@
 //
 
 import { NextFunction, Response } from 'express';
+import { PassportStatic } from 'passport';
 import { IReposError, ReposAppRequest } from '../../interfaces';
 import { getProviders } from '../../transitional';
 import { IPrimaryAuthenticationHelperMethods } from '../passport-routes';
@@ -11,8 +12,8 @@ import { aadStrategyUserPropertyName } from './aadStrategy';
 
 const aadPassportStrategyName = 'azure-active-directory';
 
-export function attachAadPassportRoutes(app, config: any, passport, helpers: IPrimaryAuthenticationHelperMethods) {
-  app.get('/signin', function (req, res, next) {
+export function attachAadPassportRoutes(app, config: any, passport: PassportStatic, helpers: IPrimaryAuthenticationHelperMethods) {
+  app.get('/signin', function (req: ReposAppRequest, res, next) {
     if (req.isAuthenticated()) {
       const username = req.user?.azure?.username;
       if (username) {
@@ -46,10 +47,10 @@ export function attachAadPassportRoutes(app, config: any, passport, helpers: IPr
   });
 
   // Actual AAD sign-in
-  app.get('/auth/azure', passport.authenticate(aadPassportStrategyName));
+  app.get('/auth/azure', passport.authenticate(aadPassportStrategyName, { keepSessionInfo: true /* we manually regenerate for XSS */ }));
 
   app.post('/auth/azure/callback',
-    passport.authenticate(aadPassportStrategyName),
+    passport.authenticate(aadPassportStrategyName, { keepSessionInfo: true /* we manually regenerate for XSS */ }),
     helpers.newSessionAfterAuthentication,
     (req: ReposAppRequest, res: Response, next: NextFunction) => {
       helpers.afterAuthentication(true /* primary app authentication */, aadStrategyUserPropertyName, req, res, next);

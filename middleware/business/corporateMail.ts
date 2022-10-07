@@ -8,32 +8,32 @@ import { IProviders, ReposAppRequest } from '../../interfaces';
 import { getProviders } from '../../transitional';
 import { IndividualContext } from '../../user';
 
-const cachedCorporateAliasRequestKey = '__corporateAlias';
+const cachedCorporateMailRequestKey = '__corporateMail';
 
-export async function getCorporateAliasFromRequest(req: ReposAppRequest): Promise<string> {
-  if (req[cachedCorporateAliasRequestKey]) {
-    return req[cachedCorporateAliasRequestKey];
+export async function getCorporateMailFromRequest(req: ReposAppRequest): Promise<string> {
+  if (req[cachedCorporateMailRequestKey]) {
+    return req[cachedCorporateMailRequestKey];
   }
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const providers = getProviders(req);
-  const corporateAlias = await getCorporateAliasFromActiveContext(providers, activeContext);
-  req[cachedCorporateAliasRequestKey] = corporateAlias;
+  const corporateAlias = await getCorporateMailFromActiveContext(providers, activeContext);
+  req[cachedCorporateMailRequestKey] = corporateAlias;
   return corporateAlias;
 }
 
-export async function getCorporateAliasFromActiveContext(providers: IProviders, activeContext: IndividualContext): Promise<string> {
+export async function getCorporateMailFromActiveContext(providers: IProviders, activeContext: IndividualContext): Promise<string> {
   const { graphProvider } = providers;
   if (!activeContext.corporateIdentity || !activeContext.corporateIdentity.id) {
     throw jsonError('No corporate identity', 401);
   }
-  let corporateAlias = activeContext?.link?.corporateAlias;
-  if (!corporateAlias) {
+  let corporateMail = activeContext?.link?.corporateMailAddress;
+  if (!corporateMail) {
     const id = activeContext.corporateIdentity.id;
     const entry = await graphProvider.getUserById(id);
     if (!entry || !entry.mailNickname) {
       throw jsonError('Invalid corporate identity', 401);
     }
-    corporateAlias = entry.mailNickname;
+    corporateMail = entry.mail;
   }
-  return corporateAlias;
+  return corporateMail;
 }

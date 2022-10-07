@@ -8,6 +8,7 @@ import asyncHandler from 'express-async-handler';
 import { Organization } from '../../../../business/organization';
 import { ReposAppRequest } from '../../../../interfaces';
 import { jsonError } from '../../../../middleware';
+import getCompanySpecificDeployment from '../../../../middleware/companySpecificDeployment';
 import { ErrorHelper, getProviders } from '../../../../transitional';
 import { IndividualContext } from '../../../../user';
 
@@ -63,6 +64,9 @@ router.use('/organization/:orgName', asyncHandler(async (req: ReposAppRequest, r
 }));
 
 router.use('/organization/:orgName', routeIndividualOrganization);
+
+const deployment = getCompanySpecificDeployment();
+deployment?.routes?.api?.context?.administration?.index && deployment?.routes?.api?.context.administration.index(router);
 
 router.use('*', (req, res, next) => {
   return next(jsonError('no API or function available: context/administration', 404));

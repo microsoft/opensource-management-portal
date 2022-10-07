@@ -17,6 +17,7 @@ export interface IMail {
   category?: string[];
   correlationId?: string;
   senderProfile?: string;
+  replyTo?: string;
 }
 
 export interface IMailProvider {
@@ -73,7 +74,7 @@ export function createMailProviderInstance(config): IMailProvider {
     if (mailProvider) {
       if (mailConfig.overrideRecipient) {
         patchOverride(mailProvider, mailConfig.overrideRecipient, mailProvider.html);
-      }    
+      }
       return mailProvider;
     }
   }

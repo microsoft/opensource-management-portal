@@ -328,7 +328,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Job: Permissions",
+      "name": "Job: System Team Permissions",
       "program": "${workspaceRoot}/dist/jobs/permissions/index.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",

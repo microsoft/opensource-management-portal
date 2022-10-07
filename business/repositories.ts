@@ -11,7 +11,7 @@ export function sortByRepositoryDate(a: Repository, b: Repository): number { // 
   return aa == bb ? 0 : (aa < bb) ? 1 : -1;
 }
 
-function getRecentDate(repo: Repository) {
+export function getRecentDate(repo: Repository) {
   const dates: Date[] = [
     getAsDate(repo, 'created_at'),
     getAsDate(repo, 'pushed_at'),
@@ -23,7 +23,7 @@ function getRecentDate(repo: Repository) {
 function getAsDate(repo: Repository, fieldName: string) {
   if (repo[fieldName]) {
     const val = repo[fieldName];
-    if (typeof(val) === 'string') {
+    if (typeof (val) === 'string') {
       return new Date(val);
     }
     return val;
