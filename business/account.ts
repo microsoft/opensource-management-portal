@@ -425,7 +425,7 @@ export class Account {
     let error: IReposError = null;
     const operations = throwIfNotGitHubCapable(this._operations);
     const opsWithProvs = operationsWithCapability<IOperationsProviders>(operations, CoreCapability.Providers);
-    const { queryCache } = opsWithProvs?.providers;
+    const { queryCache } = opsWithProvs?.providers || {};
     if (!queryCache || !queryCache.supportsRepositoryCollaborators) {
       history.push('The account may still have Collaborator permissions to repositories');
       return { history };

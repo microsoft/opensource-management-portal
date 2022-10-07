@@ -464,7 +464,7 @@ async function sendEmail(req: IReposAppRequestWithCreateResponse, logic: ICustom
     console.warn(err);
   }
   const mail = {
-    to: [...emails, ...additionalViewProperties?.to],
+    to: [...emails, ...(additionalViewProperties?.to ? additionalViewProperties.to : [])],
     cc: additionalViewProperties?.cc,
     bcc: additionalViewProperties?.bcc,
     subject,

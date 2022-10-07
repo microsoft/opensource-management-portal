@@ -93,8 +93,8 @@ export function getAadApiConfiguration(config: any) {
   const approvedAppsToReadMaintainers = Array.isArray(approvedApps?.scopes?.read?.maintainers) ? approvedApps?.scopes?.read?.maintainers : (approvedApps?.scopes?.read?.maintainers?.split ? [...approvedApps.scopes.read.maintainers.split(',')] : []);
   const approvedAppsToReadJitConfirms = Array.isArray(approvedApps?.scopes?.read?.['jit/confirm']) ? approvedApps?.scopes?.read?.['jit/confirm'] : (approvedApps?.scopes?.read?.['jit/confirm']?.split ? [...approvedApps.scopes.read['jit/confirm'].split(',')] : []);
 
-  const approvedOidsToCreateRepos = Array.isArray(approvedOids?.scopes?.create?.repos) ? approvedOids?.scopes?.create?.repos : (approvedOids?.scopes?.create?.repos?.split ? [...approvedOids?.scopes?.create?.repos?.split(',')] : []);
-  const approvedOidsToReadLinks = Array.isArray(approvedOids?.scopes?.read?.links) ? approvedOids?.scopes?.read?.links : (approvedOids?.scopes?.read?.links?.split ? [...approvedOids?.scopes?.read?.links.split(',')] : []);
+  const approvedOidsToCreateRepos = Array.isArray(approvedOids?.scopes?.create?.repos) ? approvedOids?.scopes?.create?.repos : (approvedOids?.scopes?.create?.repos?.split ? [...(approvedOids?.scopes?.create?.repos ? approvedOids.scopes.create.repos.split(',') : [])] : []);
+  const approvedOidsToReadLinks = Array.isArray(approvedOids?.scopes?.read?.links) ? approvedOids?.scopes?.read?.links : (approvedOids?.scopes?.read?.links?.split ? [...(approvedOids?.scopes?.read?.links ? approvedOids.scopes.read.links.split(',') : [])] : []);
   const approvedOidsToReadJitConfirms = Array.isArray(approvedOids?.scopes?.read?.['jit/confirm']) ? approvedOids?.scopes?.read?.['jit/confirm'] : (approvedOids?.scopes?.read?.['jit/confirm']?.split ? [...approvedOids.scopes.read['jit/confirm'].split(',')] : []);
 
   const oids = [
