@@ -146,7 +146,7 @@ router.get(
     const details = await organization.getDetails();
     const userDetails = details ? organization.memberFromEntity(details) : null;
     userDetails['entity'] /* adding to the object */ = details;
-    var title = organization.name + ' Organization Membership ' + (state == 'pending' ? 'Pending' : 'Join');
+    let title = organization.name + ' Organization Membership ' + (state == 'pending' ? 'Pending' : 'Join');
     req.individualContext.webContext.render({
       view: 'org/pending',
       title,

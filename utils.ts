@@ -196,7 +196,7 @@ export function wrapError(error, message, userIntendedMessage?: boolean): IRepos
 // ----------------------------------------------------------------------------
 export function stealValue(obj, key) {
   if (obj[key] !== undefined) {
-    var val = obj[key];
+    let val = obj[key];
     delete obj[key];
     return val;
   }
@@ -208,7 +208,7 @@ export function stealValue(obj, key) {
 // ----------------------------------------------------------------------------
 export function inListInsensitive(list, value) {
   value = value.toLowerCase();
-  for (var i = 0; i < list.length; i++) {
+  for (let i = 0; i < list.length; i++) {
     if (list[i].toLowerCase() === value) {
       return true;
     }
@@ -221,7 +221,7 @@ export function inListInsensitive(list, value) {
 // ----------------------------------------------------------------------------
 export function isInListAnycaseInLowercaseList(list, value) {
   value = value.toLowerCase();
-  for (var i = 0; i < list.length; i++) {
+  for (let i = 0; i < list.length; i++) {
     if (list[i] === value) {
       return true;
     }
@@ -234,9 +234,9 @@ export function isInListAnycaseInLowercaseList(list, value) {
 // by that ID.
 // ----------------------------------------------------------------------------
 export function arrayToHashById(inputArray) {
-  var hash = {};
+  let hash = {};
   if (inputArray && inputArray.length) {
-    for (var i = 0; i < inputArray.length; i++) {
+    for (let i = 0; i < inputArray.length; i++) {
       if (inputArray[i] && inputArray[i].id) {
         hash[inputArray[i].id] = inputArray[i];
       }
@@ -252,14 +252,14 @@ export function obfuscate(value, lastCharactersShowCount) {
   if (value === undefined || value === null || value.length === undefined) {
     return value;
   }
-  var length = value.length;
+  let length = value.length;
   lastCharactersShowCount = lastCharactersShowCount || 0;
   lastCharactersShowCount = Math.min(Math.round(lastCharactersShowCount), length - 1);
-  var obfuscated = '';
-  for (var i = 0; i < length - lastCharactersShowCount; i++) {
+  let obfuscated = '';
+  for (let i = 0; i < length - lastCharactersShowCount; i++) {
     obfuscated += '*';
   }
-  for (var j = length - lastCharactersShowCount; j < length; j++) {
+  for (let j = length - lastCharactersShowCount; j < length; j++) {
     obfuscated += value[j];
   }
   return obfuscated;
@@ -278,7 +278,7 @@ export function addBreadcrumb(req, breadcrumbTitle, optionalBreadcrumbLink) {
   if (!optionalBreadcrumbLink && optionalBreadcrumbLink !== false) {
     optionalBreadcrumbLink = '/';
   }
-  var breadcrumbs = req.breadcrumbs;
+  let breadcrumbs = req.breadcrumbs;
   if (breadcrumbs === undefined) {
     breadcrumbs = [];
   }

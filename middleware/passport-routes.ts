@@ -135,7 +135,7 @@ export default function configurePassport(app, passport, config) {
       return res.redirect('/signout');
     }
     const after = (req, res) => {
-      var url = req.headers.referer || '/';
+      let url = req.headers.referer || '/';
       if (req.query.redirect === 'github') {
         url = 'https://github.com/logout';
       }

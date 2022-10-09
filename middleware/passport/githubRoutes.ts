@@ -126,11 +126,11 @@ export function attachGitHubPassportRoutes(
 
   app.get('/auth/github/join', (req: ReposAppRequest, res) => {
     const { config } = getProviders(req);
-    var authorizeRelativeUrl = req.app.settings['runtime/passport/github/authorizeUrl'].replace(
+    let authorizeRelativeUrl = req.app.settings['runtime/passport/github/authorizeUrl'].replace(
       'https://github.com',
       ''
     );
-    var joinUrl =
+    let joinUrl =
       'https://github.com/join?' +
       querystring.stringify({
         return_to:

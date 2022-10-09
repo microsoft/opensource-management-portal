@@ -17,7 +17,7 @@ import fs from 'fs';
 import path from 'path';
 
 function normalizePort(val) {
-  var port = parseInt(val, 10);
+  let port = parseInt(val, 10);
 
   if (isNaN(port)) {
     // named pipe

@@ -175,8 +175,8 @@ export class Account {
   corporateAlias() {
     // NOTE: this is a hack
     if (this.contactEmail()) {
-      var email = this.contactEmail();
-      var i = email.indexOf('@');
+      let email = this.contactEmail();
+      let i = email.indexOf('@');
       if (i >= 0) {
         return email.substring(0, i);
       }

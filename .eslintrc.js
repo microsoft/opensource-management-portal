@@ -38,7 +38,6 @@ module.exports = {
         'no-prototype-builtins': 'off',
         'no-useless-catch': 'off',
         'no-useless-escape': 'off',
-        'no-var': 'off',
         'prefer-const': 'off',
         'prefer-rest-params': 'off',
         'prefer-spread': 'off',

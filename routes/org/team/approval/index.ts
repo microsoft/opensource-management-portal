@@ -41,8 +41,8 @@ router.get('/', function (req: ILocalRequest, res) {
 });
 
 router.get('/setNote/:action', function (req: ILocalRequest, res) {
-  var engine = req.approvalEngine;
-  var action = req.params.action;
+  let engine = req.approvalEngine;
+  let action = req.params.action;
   if (action == 'approveWithComment') {
     action = 'approve';
   }
