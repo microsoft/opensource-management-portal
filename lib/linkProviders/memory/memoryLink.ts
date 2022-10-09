@@ -56,6 +56,10 @@ export class CorporateMemoryLink implements ICorporateLinkExtended {
     _updateColumn(this, this._provider.propertyMapping.corporateMailAddress, value);
   }
 
+  get corporateMailAddress() {
+    return this._entity[this._provider.propertyMapping.corporateMailAddress];
+  }
+
   get corporateAlias() {
     return this._entity[this._provider.propertyMapping.corporateAlias];
   }
@@ -78,10 +82,6 @@ export class CorporateMemoryLink implements ICorporateLinkExtended {
 
   set corporateDisplayName(value: string) {
     _updateColumn(this, this._provider.propertyMapping.corporateDisplayName, value);
-  }
-
-  get corporateMailAddress() {
-    return this._entity[this._provider.propertyMapping.corporateMailAddress];
   }
 
   get thirdPartyUsername(): string {
