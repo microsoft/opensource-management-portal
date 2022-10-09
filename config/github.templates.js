@@ -44,8 +44,8 @@ module.exports = (graphApi) => {
 
   if (templateSourceType === 'fs') {
     templates.directory = path.join(typescriptConfig.appDirectory, templates.directory);
+    const filename = path.join(templates.directory, 'definitions.json');
     try {
-      const filename = path.join(templates.directory, 'definitions.json');
       const str = fs.readFileSync(filename, 'utf8');
       templates.definitions = JSON.parse(str);
     } catch (notFound) {

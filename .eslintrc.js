@@ -4,11 +4,9 @@ module.exports = {
   overrides: [
     {
       files: ['**/*.js'],
-      rules: {
-        'no-undef': 'off',
-      },
       env: {
         es6: true,
+        node: true,
       },
     },
     {
