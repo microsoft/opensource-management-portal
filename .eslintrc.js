@@ -31,7 +31,6 @@ module.exports = {
         'no-empty': 'off',
         'no-ex-assign': 'off',
         'no-inner-declarations': 'off',
-        'no-prototype-builtins': 'off',
         'no-useless-catch': 'off',
         'no-useless-escape': 'off',
         'prefer-const': 'off',

@@ -21,7 +21,7 @@ function redactRootPaths(view) {
   const path = process.cwd();
   if (typeof view === 'object') {
     for (let property in view) {
-      if (view.hasOwnProperty(property)) {
+      if (Object.prototype.hasOwnProperty.call(view, property)) {
         let value = view[property];
         if (typeof value === 'string') {
           view[property] = redactRootPathsFromString(value, path);
