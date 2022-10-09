@@ -107,7 +107,7 @@ export class StatefulCampaignProvider implements ICampaignHelper {
     await this.#cosmosHelper.setObject(value);
   }
 
-  async getAny(documentId: string, partitionKey: string = '') {
+  async getAny(documentId: string, partitionKey = '') {
     try {
       const data = await this.#cosmosHelper.getObject(partitionKey, documentId);
 

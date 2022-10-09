@@ -197,7 +197,7 @@ export default class CosmosCache implements ICacheHelper {
     const originalKey = this._keyPrefix + key;
     key = this.key(key);
     debug(`COSMOS SET OBJECT: ${key}`);
-    let approxSize: number = 0;
+    let approxSize = 0;
     try {
       if (object.id && object.id !== key) {
         // SAVE ORIGINAL ID PROPERTY
