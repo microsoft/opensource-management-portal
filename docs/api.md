@@ -1,5 +1,3 @@
-[Docs index](index.md)
-
 # API
 
 There is an initial API implementation available to help partner teams
@@ -65,7 +63,7 @@ You can technically provide the token for the username and/or password.
 An API key may be authorized for a specific API endpoint or scope. Please verify when you
 are granted API access that you have access to the endpoint that you intend to.
 
-# User link management
+## User link management
 
 Information about the list of linked users who have a corporate relationship with other accounts is available.
 
@@ -79,22 +77,22 @@ data instead of calling this API exhaustively while performing work.
 
 - The parameter `showOrganizations` (default implicitly to true) can be set to `false` or `0` to _not_ show users' GitHub organization memberships. This reduces the size of the link payload.
 
-## Get all linked users
+### Get all linked users
 
 > GET /api/people/links
 
-### Response
+#### Response
 
 HTTP
 
-```
+```http
 Status: 200 OK
 Content-Type: application/json; charset=utf-8
 ```
 
 Body
 
-```
+```json
 [
   {
     "github": {
@@ -102,7 +100,7 @@ Body
       "login": "username",
       "organizations": [
         "OrganizationName1",
-        "OrganizationName2
+        "OrganizationName2"
       ],
       "avatar": "url"
     },
@@ -123,7 +121,7 @@ Body
       ],
       "avatar": "url"
     },
-    "isServiceAccount" true,
+    "isServiceAccount": true,
     "serviceAccountContact": "contact@domain.com",
     "aad": {
       "preferredName": "serviceaccount2@domain.com",
@@ -135,44 +133,42 @@ Body
 ]
 ```
 
-## Get a specific linked user
+### Get a specific linked user
 
 This API will retrieve information about a specific user. The first API version to support this was `2017-03-08`.
 
-### by Link ID
+#### by Link ID
 
 > GET /api/people/links:linkid
 
-### by GitHub username
+#### by GitHub username
 
 > GET /api/people/links/github/:login
 
 Where `login` is a GitHub username, case insensitive.
 
-#### Response
+##### Response
 
 If a link is not found for the GitHub user
 
-```
+```http
 Status: 404 Not Found
 ```
 
 If a link is found
 
-```
+```http
 Status: 200 OK
 ```
 
 Response body:
 
-```
+```json
 {
   "github": {
     "id": 2,
     "login": "username2",
-    "organizations": [
-      "OrganizationName2"
-    ]
+    "organizations": ["OrganizationName2"]
   },
   "aad": {
     "alias": "alias2",
@@ -184,39 +180,37 @@ Response body:
 }
 ```
 
-### by Azure Active Directory ID
+#### by Azure Active Directory ID
 
-> This API returns an array if there is at least one matching account or accounts. To support scenarios with other account types or even multiple accounts such as service accounts, it is up to your application to determine how to handle more than one account. Order is not guaranteed.
+This API returns an array if there is at least one matching account or accounts. To support scenarios with other account types or even multiple accounts such as service accounts, it is up to your application to determine how to handle more than one account. Order is not guaranteed.
 
 > GET /api/people/links/aad/:id
 
 Where `id` is an AAD ID.
 
-#### Response
+##### Response
 
 If a link is not registered for this user
 
-```
+```http
 Status: 404 Not Found
 ```
 
 If a link is found
 
-```
+```http
 Status: 200 OK
 ```
 
 Response body:
 
-```
+```json
 [
   {
     "github": {
       "id": 2,
       "login": "username2",
-      "organizations": [
-        "OrganizationName2"
-      ]
+      "organizations": ["OrganizationName2"]
     },
     "aad": {
       "alias": "alias2",
@@ -233,15 +227,15 @@ It is most common that the array will be of length === 1.
 
 If there are no results, instead of an HTTP 200, you will receive 404 (no empty array).
 
-## Create a link
+### Create a link
 
 Required API scope: `link`
 
 > POST /api/people/links
 
-### Request
+#### Request
 
-```
+```text
 BODY
 {
   "corporate": {
@@ -255,23 +249,23 @@ BODY
 
 > If the account is a Service Account, the `corporate` object should also include a field called `serviceAccountMail` that points to a contact for the service account.
 
-### Response
+#### Response
 
-```
+```http
 Status: 201 OK
 ```
 
 'Location' header includes a pointer to the resource by link ID.
 
-# Repository management
+## Repository management
 
-## Create a repo
+### Create a repo
 
 > This API requires that your API key be authorized for the `createRepo` scope
 
 This example uses a pure POST request plus headers for authorization:
 
-```
+```text
 POST https://endpoint/api/orgName/repos?api-version=2016-12-01
 
 HEADERS
@@ -410,7 +404,7 @@ OUTPUT BODY
 
 This example uses headers on top of a standard GitHub client:
 
-```
+```text
 POST https://endpoint/api/Microsoft/repos
 
 HEADERS
@@ -433,7 +427,7 @@ BODY
 
 ```
 
-Bare minimum GitHub body component, with the type JSON, is the `name` field. You can see the GitHub API documentation here: https://developer.github.com/v3/repos/#create
+Bare minimum GitHub body component, with the type JSON, is the `name` field. You can see the GitHub API documentation here: <https://developer.github.com/v3/repos/#create>
 
 - name (name of the repo)
 - private (true/false)
@@ -454,7 +448,7 @@ Team permissions must be set at create time as well. The API will support up to 
 
 Team permission (ms.teams) value:
 
-```
+```json
 {
   "pull": [1],
   "push": [],
@@ -464,9 +458,7 @@ Team permission (ms.teams) value:
 
 Always try and provide a minimum number of administrator teams, same goes for write teams (push), and encourage the standard Git workflow.
 
-# API
-
-Internal Microsoft-specific notes
+## Internal Microsoft-specific notes
 
 Microsoft-required fields and components:
 

@@ -1,5 +1,3 @@
-[Docs index](index.md)
-
 # Static Site Assets
 
 To simplify the app build process, and also make it easier for us to open

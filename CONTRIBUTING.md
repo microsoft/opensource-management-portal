@@ -1,3 +1,5 @@
+# Contributing to this project
+
 <!-- This file is currently generic with the exception of mentioning how
      to report security-related bugs to Microsoft. -->
 
@@ -7,8 +9,6 @@ For more information see the [Code of Conduct
 FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com)
 with any additional questions or comments.
-
-# Contributing to this project
 
 As an open source project contributions are more than welcome and are
 essential to keeping the project interesting and useful. Everyone is
@@ -52,10 +52,10 @@ collaboration.
 1. Fork the repo on GitHub, cloning on your machine
 2. Create a branch with your changes.
 
-- Please keep the branch specific to your contribution
-- Please use logical commits with helpful, concise commit messages
-- Follow the coding style of the project
-- Run follow any build or test scripts. Contribute new tests.
+   - Please keep the branch specific to your contribution
+   - Please use logical commits with helpful, concise commit messages
+   - Follow the coding style of the project
+   - Run follow any build or test scripts. Contribute new tests.
 
 3. Create a [Pull Request](https://help.github.com/articles/using-pull-requests/) with your contribution.
 

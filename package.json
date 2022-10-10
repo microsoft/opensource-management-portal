@@ -19,19 +19,24 @@
     "organization"
   ],
   "scripts": {
-    "offline-lint:js": "eslint .",
-    "fix": "eslint --fix .",
-    "start": "node ./dist/bin/www",
-    "start-in-container": "node ./bin/www",
+    "build": "tsc",
+    "fix:js": "eslint --fix .",
+    "fix:md": "markdownlint-cli2-fix \"**/*.md\"",
+    "fix": "npm run fix:js && npm run fix:md",
+    "lint:js": "eslint .",
+    "lint:md": "markdownlint-cli2 \"**/*.md\"",
+    "lint": "npm run lint:js && npm run lint:md",
+    "prepare": "husky install",
     "start-4000": "PORT=4000 DEBUG=startup node ./dist/bin/www",
-    "test": "jest",
+    "start-in-container": "node ./bin/www",
+    "start": "node ./dist/bin/www",
     "test:ci": "jest --watchAll=false --reporters=default --reporters=jest-junit",
-    "build": "./node_modules/typescript/bin/tsc",
-    "prepare": "husky install"
+    "test": "jest"
   },
   "lint-staged": {
     "*": "prettier --write --ignore-unknown",
-    "*.{js,ts}": "eslint --fix"
+    "*.{js,ts}": "eslint --fix",
+    "*.md": "markdownlint-cli2-fix"
   },
   "jest-junit": {
     "suiteNameTemplate": "{filepath}",
@@ -165,6 +170,7 @@
     "jest": "29.1.2",
     "jest-junit": "14.0.1",
     "lint-staged": "^13.0.3",
+    "markdownlint-cli2": "^0.5.1",
     "prettier": "2.7.1",
     "ts-jest": "29.0.3",
     "ts-node": "10.9.1",
