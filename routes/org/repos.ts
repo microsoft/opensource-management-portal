@@ -779,7 +779,7 @@ async function triggerRenameNotification(
   output: ITemporaryCommandOutput[]
 ): Promise<void> {
   const { config, insights, operations, mailAddressProvider, viewServices } = providers;
-  insights.trackMetric({ name: 'RenameDefaultBranchs', value: 1 });
+  insights.trackMetric({ name: 'RenameDefaultBranches', value: 1 });
   insights.trackEvent({
     name: 'RenameDefaultBranch',
     properties: {

@@ -40,8 +40,8 @@ const linkProviderInstantiationTypeProperty = '_i';
 const dehydratedIdentityKey = '_lpi';
 const dehydratedTableProviderName = 'xtable';
 const dehydratedTableProviderVersion = '0';
-const dehydratedTableProviderIdentitySeperator = '_';
-const dehydratedTableProviderIdentity = `${dehydratedTableProviderName}${dehydratedTableProviderIdentitySeperator}${dehydratedTableProviderVersion}`;
+const dehydratedTableProviderIdentitySeparator = '_';
+const dehydratedTableProviderIdentity = `${dehydratedTableProviderName}${dehydratedTableProviderIdentitySeparator}${dehydratedTableProviderVersion}`;
 
 enum LinkInstantiatedType {
   AzureTableEntity,
@@ -393,7 +393,7 @@ export class TableLinkProvider implements ILinkProvider {
     }
     if (identity !== dehydratedTableProviderIdentity) {
       const sameProviderType = identity.startsWith(
-        `${dehydratedTableProviderName}${dehydratedTableProviderIdentitySeperator}`
+        `${dehydratedTableProviderName}${dehydratedTableProviderIdentitySeparator}`
       );
       if (sameProviderType) {
         // Cross-version rehydration not supported

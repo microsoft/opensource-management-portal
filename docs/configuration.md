@@ -79,7 +79,7 @@ Here is a short overview about the meanings of the different parameters:
 ### PostgreSQL Configuration
 
 To run the opensource-portal with a postgres database, you need to [setup postgres](https://www.postgresql.org/docs/11/runtime.html) and initialize the database by running the `pg.sql`-file in the psql-terminal.
-It's recommended to [run postgres in a docker container](https://hub.docker.com/_/postgres), there is also an offical docker image called `postgres` for building.
+It's recommended to [run postgres in a docker container](https://hub.docker.com/_/postgres), there is also an official docker image called `postgres` for building.
 
 Once the setup is done, set the `host`, `database`, `user`, `password`, `ssl` (as boolean) and `port` of the postgres in the `config/data.postgres.json`-file.
 Additionally set the name of the linking-table (`tableName` parameter), if the tables were created with the `pg.sql`-file, the name for this table is `links`.

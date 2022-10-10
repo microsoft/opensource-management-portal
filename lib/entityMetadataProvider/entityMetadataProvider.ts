@@ -126,7 +126,7 @@ export function SerializeObjectToEntityMetadata(
 export function DeserializeEntityMetadataToObjectSetCollection(
   entity: IEntityMetadata,
   destinationIdFieldName: string,
-  serializationTranslationMap: Map<string, string> /*, allowOverridingIdFieldname: boolean*/
+  serializationTranslationMap: Map<string, string> /*, allowOverridingIdFieldName: boolean*/
 ): any {
   const setCollection = {};
   setCollection[destinationIdFieldName] = entity.entityId;

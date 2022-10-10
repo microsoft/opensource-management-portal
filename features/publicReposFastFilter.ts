@@ -6,7 +6,7 @@
 import { IProviders } from '../interfaces';
 import { Repository } from '../business';
 
-// TODO: refresh occassionally.
+// TODO: refresh occasionally.
 
 const RepoSocialImagesCacheKey = 'repos:socialmediaimages';
 

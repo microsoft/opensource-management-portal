@@ -54,7 +54,7 @@ export interface IAggregateUserRepositories {
   // TODO: the newer types, also...
 }
 
-export interface IAggregateLegacyUserRespositories {
+export interface IAggregateLegacyUserRepositories {
   byTeam: Repository[];
   // byCollaboration: was originally designed but was too slow to work
 }
@@ -63,7 +63,7 @@ export interface IAggregateUserSummary {
   organizations: IAggregateUserOrganizations;
   teams: IAggregateUserTeams;
   // TODO: rename repos to repositories
-  repos: IAggregateLegacyUserRespositories;
+  repos: IAggregateLegacyUserRepositories;
 }
 
 interface IRepositoryPermissionPair {
@@ -78,7 +78,7 @@ export class UserContext {
   private _queryCache: QueryCache;
   private _linkManager: any;
   private _organizations: IAggregateUserOrganizations;
-  private _legacyRepositories: IAggregateLegacyUserRespositories;
+  private _legacyRepositories: IAggregateLegacyUserRepositories;
   private _teams: IAggregateUserTeams;
   private _repositoryPermissions: IPersonalizedUserAggregateRepositoryPermission[];
 
@@ -114,7 +114,7 @@ export class UserContext {
     return this._teams;
   }
 
-  async repositories(): Promise<IAggregateLegacyUserRespositories> {
+  async repositories(): Promise<IAggregateLegacyUserRepositories> {
     if (this._legacyRepositories) {
       return this._legacyRepositories;
     }
@@ -155,7 +155,7 @@ export class UserContext {
     return known;
   }
 
-  private async aggregateLegacyRepositories(): Promise<IAggregateLegacyUserRespositories> {
+  private async aggregateLegacyRepositories(): Promise<IAggregateLegacyUserRepositories> {
     if (
       this._queryCache &&
       this._queryCache.supportsRepositoryCollaborators &&
@@ -330,9 +330,9 @@ export class UserContext {
     return { maintainer, member };
   }
 
-  async getQueryCacheRepositories(): Promise<IAggregateLegacyUserRespositories> {
+  async getQueryCacheRepositories(): Promise<IAggregateLegacyUserRepositories> {
     // Still only returning the legacy version, however...
-    const legacyResults: IAggregateLegacyUserRespositories = {
+    const legacyResults: IAggregateLegacyUserRepositories = {
       byTeam: [],
     };
 
@@ -350,7 +350,7 @@ export class UserContext {
 
   // legacy graph manager interop methods
 
-  async getGraphManagerRepos(): Promise<IAggregateLegacyUserRespositories> {
+  async getGraphManagerRepos(): Promise<IAggregateLegacyUserRepositories> {
     const repos = await this._operations.graphManager.getUserReposByTeamMemberships(this.id, {});
     return { byTeam: repos.map((personalized) => personalized.repository) };
     // return { byTeam: repos.map(repo => this._operations.getRepositoryWithOrganization(repo.name, repo.organization.login, repo )) };

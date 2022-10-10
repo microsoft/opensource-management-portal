@@ -50,7 +50,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
   #_tenantId: string;
   #_tokenEndpoint: string;
   #_cache: ICacheHelper;
-  #_skipManagerLookupForids: string[];
+  #_skipManagerLookupForIds: string[];
 
   public clientId: string;
 
@@ -62,9 +62,9 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     this.#_clientSecret = graphOptions.clientSecret;
     this.#_tenantId = graphOptions.tenantId;
     this.#_tokenEndpoint = graphOptions.tokenEndpoint;
-    this.#_skipManagerLookupForids = [];
+    this.#_skipManagerLookupForIds = [];
     if (graphOptions.skipManagerLookupForIds) {
-      this.#_skipManagerLookupForids = splitSemiColonCommas(graphOptions.skipManagerLookupForIds);
+      this.#_skipManagerLookupForIds = splitSemiColonCommas(graphOptions.skipManagerLookupForIds);
     }
     this.#_cache = graphOptions.cacheProvider;
     if (!this.clientId) {
@@ -93,7 +93,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
 
   async getUserAndManagerById(aadId: string): Promise<IGraphEntryWithManager> {
     const entity = (await this.getTokenThenEntity(aadId, null)) as IGraphEntryWithManager;
-    if (this.#_skipManagerLookupForids?.includes(aadId)) {
+    if (this.#_skipManagerLookupForIds?.includes(aadId)) {
       return entity;
     }
     try {

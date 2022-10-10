@@ -37,8 +37,8 @@ const linkProviderInstantiationTypeProperty = '_i';
 const dehydratedIdentityKey = '_lpi';
 const dehydratedPostgresProviderName = 'pg';
 const dehydratedPostgresProviderVersion = '0';
-const dehydratedPostgresProviderIdentitySeperator = '_';
-const dehydratedPostgresProviderIdentity = `${dehydratedPostgresProviderName}${dehydratedPostgresProviderIdentitySeperator}${dehydratedPostgresProviderVersion}`;
+const dehydratedPostgresProviderIdentitySeparator = '_';
+const dehydratedPostgresProviderIdentity = `${dehydratedPostgresProviderName}${dehydratedPostgresProviderIdentitySeparator}${dehydratedPostgresProviderVersion}`;
 
 enum LinkInstantiatedType {
   Row,
@@ -360,7 +360,7 @@ export class PostgresLinkProvider implements ILinkProvider {
     }
     if (identity !== dehydratedPostgresProviderIdentity) {
       const sameProviderType = identity.startsWith(
-        `${dehydratedPostgresProviderName}${dehydratedPostgresProviderIdentitySeperator}`
+        `${dehydratedPostgresProviderName}${dehydratedPostgresProviderIdentitySeparator}`
       );
       if (sameProviderType) {
         // Cross-version rehydration not supported

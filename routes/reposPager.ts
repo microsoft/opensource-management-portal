@@ -64,7 +64,7 @@ async function getReposAndOptionalTeamPermissions(
   specificTeamRepos,
   userContext: UserContext
 ): Promise<IGetReposAndOptionalTeamPermissionsResponse> {
-  // REMOVED: previously age information was avialable via getRepos(orgName, operations, (error, reposData, ageInformation). Was it really useful?
+  // REMOVED: previously age information was available via getRepos(orgName, operations, (error, reposData, ageInformation). Was it really useful?
   const reposData = await getRepos(organizationId, operations, queryCache);
   if (!teamsType || teamsType === 'all') {
     // Retrieve the repositories for this specific repo, along with permissions information

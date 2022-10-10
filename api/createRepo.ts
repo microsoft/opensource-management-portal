@@ -517,11 +517,11 @@ async function sendEmail(
     targetType = 'Transfer';
   }
   let managerInfo: ICachedEmployeeInformation = null;
-  if (operations.hasCapability(CoreCapability.Hiearchy) && approvalRequest.createdByCorporateId) {
+  if (operations.hasCapability(CoreCapability.Hierarchy) && approvalRequest.createdByCorporateId) {
     try {
       const opsHierarchy = operationsWithCapability<IOperationsHierarchy>(
         operations,
-        CoreCapability.Hiearchy
+        CoreCapability.Hierarchy
       );
       managerInfo = await opsHierarchy.getCachedEmployeeManagementInformation(
         approvalRequest.createdByCorporateId

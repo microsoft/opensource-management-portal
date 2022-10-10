@@ -67,17 +67,17 @@ async function processDeletedRepositories(providers: IProviders): Promise<void> 
         const organizationId = organization.id;
         const repositoryId = Number(repositoryEntry.repository.id);
         try {
-          const existance = await doesRepositoryExist(
+          const existence = await doesRepositoryExist(
             i,
             organization,
             repositoryId,
             repositoryEntry.cacheEntity.repositoryName
           );
-          if (existance === true) {
+          if (existence === true) {
             console.log(
               `${i}: \t\t\trepository ${repositoryEntry.cacheEntity.repositoryName} with ID ${repositoryId} in org ${organization.name} exists`
             );
-          } else if (existance === false) {
+          } else if (existence === false) {
             console.log(
               `${i}: repository deleted: ${repositoryEntry.cacheEntity.repositoryName} with ID ${repositoryId}, will cleanup`
             );

@@ -677,9 +677,9 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
         throw new Error('No rows or empty rows returned');
       }
       return skipEntityMapping ? rows : rows.map((row) => this.rowToMetadataObject(type, row));
-    } catch (errorish) {
-      console.dir(errorish);
-      throw errorish;
+    } catch (error) {
+      console.dir(error);
+      throw error;
     }
   }
 

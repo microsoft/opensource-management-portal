@@ -483,6 +483,6 @@ Other fields:
 - ms.approval-url: If the provided `ms-approval-type` is 'ReleaseReview', this must be provided to provide the URL. This URL will be validated so it must point at a valid approval URL.
 - ms.justification: Human-readable justification text, if the `ms-approval-type` is 'Exempt'
 - ms.entity: 'Microsoft' or '.NET Foundation', if the CLA is to be enabled (strongly recommended)
-- ms.notify: a comman-separated list of e-mail address to notify about the creation of the repo if successful
+- ms.notify: a comma-separated list of e-mail address to notify about the creation of the repo if successful
 - ms.onBehalfOf: the GitHub username this operation is performed on behalf of. Providing this is a good call as it will redirect questions about the repo to the individual if needed rather than the service account.
 - ms.project-type: product code, sample code, documentation, sdk, utility library / tool, other (new as of apiVersion=2017-07-27)
