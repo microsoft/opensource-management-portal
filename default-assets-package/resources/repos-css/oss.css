@@ -16,7 +16,7 @@
   padding-inline-end: 20px;
 }
 
-/*----------------------------------------------------*/
+/* ---------------------------------------------------- */
 
 body {
   position: relative;
@@ -50,16 +50,20 @@ div.flex-center {
 .a-unstyled {
   color: #333;
 }
+
 .a-unstyled:link {
   color: #333;
 }
+
 .a-unstyled:visited {
   color: #333;
 }
+
 .a-unstyled:hover {
   color: #000;
   text-decoration: none;
 }
+
 .a-unstyled:active {
   color: #333;
 }
@@ -108,7 +112,7 @@ textarea#editor-body {
   margin-bottom: 24px;
   width: 100%;
   min-height: 480px;
-  font-family: Consolas, Courier, 'Courier New';
+  font-family: Consolas, 'Courier New', Courier, monospace;
 }
 
 footer {
@@ -171,18 +175,16 @@ code {
   color: lightgray;
 }
 
-.invisible {
-  visibility: hidden;
-}
-
 .alert-gray {
   background-color: #eee;
   border-color: #ddd;
   color: #777;
 }
+
 .alert-gray hr {
   border-top-color: #999;
 }
+
 .alert-gray .alert-link {
   color: #999;
 }
@@ -198,21 +200,27 @@ input#search-box {
 .sevenpercent {
   width: 7%;
 }
+
 .fivepercent {
   width: 5%;
 }
+
 .tenpercent {
   width: 10%;
 }
+
 .fifteenpercent {
   width: 15%;
 }
+
 .twentypercent {
   width: 20%;
 }
+
 .twentyfivepercent {
   width: 25%;
 }
+
 .thirtypercent {
   width: 30%;
 }
@@ -234,9 +242,10 @@ div.alerts {
 /* theme colors and components */
 div.metro-box {
   position: relative;
-  margin: 0px;
+  margin: 0;
   width: 100%;
 }
+
 .metro-box a {
   padding: 1.4em 25px;
   display: inline-block;
@@ -245,41 +254,50 @@ div.metro-box {
   position: relative;
   width: 100%;
 }
+
 .metro-box a h3 {
   color: #fff;
 }
+
 .metro-box a p {
   color: #fff;
 }
+
 .metro-box a:hover {
   text-decoration: none;
 }
 
 div.link-box {
   position: relative;
-  margin: 0px;
+  margin: 0;
   width: 100%;
 }
+
 .link-box a {
   padding: 0.4em 5px;
   display: inline-block;
   position: relative;
   width: 100%;
 }
+
 .right .link-box a {
   padding-left: 0;
   padding-right: 0;
 }
+
 .link-box a:hover {
   text-decoration: none;
   background-color: #efefef;
 }
+
 .link-box p.lead {
   color: #444;
 }
+
 .text-mute {
   color: #777;
 }
+
 .label-muted {
   background-color: #777;
 }
@@ -288,12 +306,15 @@ div.link-box {
 .metro-blue {
   background: #0072c6;
 }
+
 .metro-purple {
   background: #68217a;
 }
+
 .metro-gray {
   background: #666;
 }
+
 .metro-orange {
   background: #fa6800;
 }
@@ -302,100 +323,129 @@ div.link-box {
 .ms-red-border-top {
   border-style: solid;
   border-top-color: #e81123;
-  border-width: 4px 0 0 0;
+  border-width: 4px 0 0;
 }
+
 .ms-blue-border-top {
   border-style: solid;
   border-top-color: #0078d7;
-  border-width: 4px 0 0 0;
+  border-width: 4px 0 0;
 }
+
 .transparent-border {
-  border: 0px solid transparent;
+  border: 0 solid transparent;
 }
 
 /* Core brand-related colors */
 .ms-yellow {
   background: #ffb900;
 }
+
 .ms-orange {
   background: #d83b01;
 }
+
 .ms-red {
   background: #e81123;
 }
+
 .ms-magenta {
   background: #b4009e;
 }
+
 .ms-purple {
   background: #5c2d91;
 }
+
 .ms-blue {
   background: #0078d7;
 }
+
 .ms-teal {
   background: #008272;
 }
+
 .ms-green {
   background: #107c10;
 }
+
 /* Additional brand colors */
 .ms-light-orange {
   background: #ff8c00;
 }
+
 .ms-light-magenta {
   background: #e3008c;
 }
+
 .ms-light-purple {
   background: #b4a0ff;
 }
+
 .ms-light-blue {
   background: #00bcf2;
 }
+
 .ms-light-teal {
   background: #00b294;
 }
+
 .ms-light-green {
   background: #bad80a;
 }
+
 .ms-light-yellow {
   background: #fff100;
 }
+
 .ms-dark-red {
   background: #a80000;
 }
+
 .ms-dark-magenta {
   background: #5c005c;
 }
+
 .ms-dark-purple {
   background: #32145a;
 }
+
 .ms-mid-blue {
   background: #002050;
 }
+
 .ms-dark-blue {
   background: #002050;
 }
+
 .ms-dark-teal {
   background: #004b50;
 }
+
 .ms-dark-green {
   background: #004b1c;
 }
+
 .ms-white {
   background: #fff;
 }
+
 .ms-light-gray {
   background: #d2d2d2;
 }
+
 .ms-mid-gray {
   background: #737373;
 }
+
 .ms-dark-gray {
   background: #505050;
 }
+
 .ms-rich-black {
   background: #000;
 }
+
 /* lighter boxes need dark foreground colors */
 .ms-yellow a,
 .ms-light-orange a,
@@ -409,6 +459,7 @@ div.link-box {
 .ms-light-gray a {
   color: #000;
 }
+
 .ms-yellow a h3,
 .ms-light-orange a h3,
 .ms-light-magenta a h3,
@@ -421,6 +472,7 @@ div.link-box {
 .ms-light-gray a h3 {
   color: #000;
 }
+
 .ms-yellow a p,
 .ms-light-orange a p,
 .ms-light-magenta a p,
@@ -439,14 +491,17 @@ th.w-25,
 td.w-25 {
   width: 30%;
 }
+
 th.w-20,
 td.w-20 {
   width: 20%;
 }
+
 td.w-15,
 th.w-15 {
   width: 15%;
 }
+
 td.w-10,
 th.w-10 {
   width: 10%;
@@ -456,6 +511,7 @@ th.w-10 {
 .wiki-sidebar.affix {
   position: static;
 }
+
 @media (min-width: 768px) {
   .wiki-sidebar {
     padding-left: 20px;
@@ -476,6 +532,7 @@ th.w-10 {
   font-weight: 500;
   color: #999;
 }
+
 .wiki-sidebar .nav > li > a:hover,
 .wiki-sidebar .nav > li > a:focus {
   padding-left: 19px;
@@ -484,6 +541,7 @@ th.w-10 {
   background-color: transparent;
   border-left: 1px solid #0072c6;
 }
+
 .wiki-sidebar .nav > .active > a,
 .wiki-sidebar .nav > .active:hover > a,
 .wiki-sidebar .nav > .active:focus > a {
@@ -499,6 +557,7 @@ th.w-10 {
   display: none; /* Hide by default, but at >768px, show it */
   padding-bottom: 10px;
 }
+
 .wiki-sidebar .nav .nav > li > a {
   padding-top: 1px;
   padding-bottom: 1px;
@@ -506,10 +565,12 @@ th.w-10 {
   font-size: 12px;
   font-weight: normal;
 }
+
 .wiki-sidebar .nav .nav > li > a:hover,
 .wiki-sidebar .nav .nav > li > a:focus {
   padding-left: 29px;
 }
+
 .wiki-sidebar .nav .nav > .active > a,
 .wiki-sidebar .nav .nav > .active:hover > a,
 .wiki-sidebar .nav .nav > .active:focus > a {
@@ -527,6 +588,7 @@ th.w-10 {
   font-weight: 500;
   color: #999;
 }
+
 .back-to-top:hover {
   color: #0072c6;
   text-decoration: none;
@@ -543,24 +605,29 @@ th.w-10 {
   .wiki-sidebar .nav > .active > ul {
     display: block;
   }
+
   /* Widen the fixed sidebar */
   .wiki-sidebar.affix,
   .wiki-sidebar.affix-bottom {
     width: 213px;
   }
+
   .wiki-sidebar.affix {
     position: fixed; /* Undo the static from mobile first approach */
     top: 20px;
   }
+
   .wiki-sidebar.affix-bottom {
     position: absolute; /* Undo the static from mobile first approach */
   }
+
   .wiki-sidebar.affix-bottom .wiki-sidenav,
   .wiki-sidebar.affix .wiki-sidenav {
     margin-top: 0;
     margin-bottom: 0;
   }
 }
+
 @media (min-width: 1200px) {
   /* Widen the fixed sidebar again */
   .wiki-sidebar.affix-bottom,
@@ -569,19 +636,6 @@ th.w-10 {
   }
 }
 
-/* IE10 bugs */
-@-webkit-viewport {
-  width: device-width;
-}
-@-moz-viewport {
-  width: device-width;
-}
-@-ms-viewport {
-  width: device-width;
-}
-@-o-viewport {
-  width: device-width;
-}
 @viewport {
   width: device-width;
 }
