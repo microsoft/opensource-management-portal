@@ -371,7 +371,7 @@ async function setTeamPermission(
       return false;
     } else {
       console.log(
-        `The read sytem team is still applied even with the compliance lock for repository ${repository.id}`
+        `The read system team is still applied even with the compliance lock for repository ${repository.id}`
       );
     }
   }

@@ -140,7 +140,7 @@ export class GraphManager {
           const userTeamPermissions: TeamRepositoryPermission[] = [];
           let bestPermission = null;
           for (let j = 0; j < repo.teams.length; j++) {
-            const t = repo.teams[j]; // technicall a GET /repos/:owner/:repo/teams team permission response
+            const t = repo.teams[j]; // technically a GET /repos/:owner/:repo/teams team permission response
             if (userTeams.has(t.id)) {
               if (repo.private === false && t.permission === 'pull') {
                 // Public repos, ignore teams with pull access

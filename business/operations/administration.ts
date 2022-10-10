@@ -38,7 +38,7 @@ export async function isAuthorizedSystemAdministrator(
           properties: {
             eventName: `${insightsPrefix}SecurityGroupError`,
             className: 'OperationsAdministration',
-            callName: 'isAuthorizedSytemAdministrator',
+            callName: 'isAuthorizedSystemAdministrator',
             corporateId: corporateId,
             securityGroupId: groupId,
           },

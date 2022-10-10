@@ -72,7 +72,7 @@ export enum CoreCapability {
   Links = 'Links', // IOperationsLinks
   Templates = 'Templates', // IOperationsTemplates
   RepositoryMetadataProvider = 'RepositoryMetadataProvider', // IOperationsRepositoryMetadataProvider
-  Hiearchy = 'Hierarchy', // IOperationsHierarchy
+  Hierarchy = 'Hierarchy', // IOperationsHierarchy
   Notifications = 'Notifications', // IOperationsNotifications
 }
 

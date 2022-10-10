@@ -106,7 +106,7 @@ router.get(
 
     // If the user forces a true refresh, force a true walk of all the teams
     // from GitHub. This will be slow the larger the org. Allow a short cache
-    // window for the casewhere a  webhook processes the change quickly.
+    // window for the case where a  webhook processes the change quickly.
     if (req.query.refresh) {
       caching.backgroundRefresh = false;
       caching.maxAgeSeconds = 10;

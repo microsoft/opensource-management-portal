@@ -50,7 +50,7 @@ router.get(
     }
     const corporateId = req.individualContext.corporateIdentity.id;
     if (!corporateId) {
-      return next(new Error('Corporate authentcation and identity required'));
+      return next(new Error('Corporate authentication and identity required'));
     }
     const currentState = await campaignStateProvider.getState(corporateId, campaignGroupId);
     return res.json(currentState);
@@ -69,7 +69,7 @@ async function modifySubscription(isUnsubscribing: boolean, req: ReposAppRequest
   }
   const corporateId = req.individualContext.corporateIdentity.id;
   if (!corporateId) {
-    return next(new Error('Corporate authentcation and identity required'));
+    return next(new Error('Corporate authentication and identity required'));
   }
   const currentState = await campaignStateProvider.getState(corporateId, campaignGroupId);
   if (currentState && currentState.optOut && isUnsubscribing) {

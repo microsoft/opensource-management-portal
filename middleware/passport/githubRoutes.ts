@@ -114,7 +114,7 @@ export function attachGitHubPassportRoutes(
   // legacy join:
   // ============
   // GitHub once supported users creating a brand new account during an initial auth
-  // request. I believe that this no longer works, since perhaps 2018; howevever, this
+  // request. I believe that this no longer works, since perhaps 2018; however, this
   // used to work, and will not negatively impact the app at this time. Should revisit. -jw 2021
   app.get('/signin/github/join', (req, res) => {
     res.render('creategithubaccount', {

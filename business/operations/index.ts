@@ -138,7 +138,7 @@ export class Operations
     this.addCapability(CoreCapability.LockdownFeatureFlags);
     this.addCapability(CoreCapability.GitHubCentralOperations);
     this.addCapability(CoreCapability.RepositoryMetadataProvider);
-    this.addCapability(CoreCapability.Hiearchy);
+    this.addCapability(CoreCapability.Hierarchy);
     this.addCapability(CoreCapability.Notifications);
 
     const providers = options.providers;

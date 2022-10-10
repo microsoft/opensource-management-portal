@@ -24,8 +24,8 @@ const linkProviderInstantiationTypeProperty = '_i';
 const dehydratedIdentityKey = '_lpi';
 const dehydratedMemoryProviderName = 'mem';
 const dehydratedMemoryProviderVersion = '0';
-const dehydratedMemoryProviderIdentitySeperator = '_';
-const dehydratedMemoryProviderIdentity = `${dehydratedMemoryProviderName}${dehydratedMemoryProviderIdentitySeperator}${dehydratedMemoryProviderVersion}`;
+const dehydratedMemoryProviderIdentitySeparator = '_';
+const dehydratedMemoryProviderIdentity = `${dehydratedMemoryProviderName}${dehydratedMemoryProviderIdentitySeparator}${dehydratedMemoryProviderVersion}`;
 
 enum LinkInstantiatedType {
   MemoryEntity,
@@ -50,7 +50,7 @@ const linkInterfacePropertyMapping: IMemoryLinkProperties = {
   corporateId: 'aadoid',
   corporateUsername: 'aadupn',
   corporateDisplayName: 'aadname',
-  corporateMailAddress: 'corporateMailAddres',
+  corporateMailAddress: 'corporateMailAddress',
   corporateAlias: 'corporateAlias',
 
   thirdPartyId: 'ghid',
@@ -190,7 +190,7 @@ export class MemoryLinkProvider implements ILinkProvider {
     }
     if (identity !== dehydratedMemoryProviderIdentity) {
       const sameProviderType = identity.startsWith(
-        `${dehydratedMemoryProviderName}${dehydratedMemoryProviderIdentitySeperator}`
+        `${dehydratedMemoryProviderName}${dehydratedMemoryProviderIdentitySeparator}`
       );
       if (sameProviderType) {
         // Cross-version rehydration not supported

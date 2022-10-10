@@ -19,7 +19,7 @@ import { ReposAppRequest, UserAlertType } from '../interfaces';
 
 const validDaysBeforeNow = 21;
 
-interface IHaveUndoCandiates extends ReposAppRequest {
+interface IHaveUndoCandidates extends ReposAppRequest {
   undoOperations: IUndoEntry[];
 }
 
@@ -292,7 +292,7 @@ async function undoTeamAdminRepoPermissionAsync(
 }
 
 router.use(
-  asyncHandler(async function (req: IHaveUndoCandiates, res, next) {
+  asyncHandler(async function (req: IHaveUndoCandidates, res, next) {
     const { operations } = getProviders(req);
     if (!operations.allowUndoSystem) {
       res.status(404);
@@ -323,7 +323,7 @@ router.use(
 
 router.post(
   '/',
-  asyncHandler(async (req: IHaveUndoCandiates, res, next) => {
+  asyncHandler(async (req: IHaveUndoCandidates, res, next) => {
     const { operations } = getProviders(req);
     const insights = operations.insights;
     const link = req.individualContext.link;
@@ -395,7 +395,7 @@ router.post(
 
 router.get(
   '/',
-  asyncHandler(async (req: IHaveUndoCandiates, res, next) => {
+  asyncHandler(async (req: IHaveUndoCandidates, res, next) => {
     const { operations } = getProviders(req);
     const insights = operations.insights;
     insights?.trackMetric({ name: 'UndoPageViews', value: 1 });

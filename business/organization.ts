@@ -258,7 +258,7 @@ export class Organization {
     try {
       await this._getSpecificAuthorizationHeader(AppPurpose.Updates);
       return true;
-    } catch (errror) {
+    } catch (error) {
       return false;
     }
   }
@@ -943,7 +943,7 @@ export class Organization {
       'orgs.setMembershipForUser',
       parameters
     );
-    return ok as IOrganizationMembership; // state: pending or acive, role: admin or member
+    return ok as IOrganizationMembership; // state: pending or active, role: admin or member
   }
 
   async checkPublicMembership(username: string, options?: ICacheOptions): Promise<boolean> {

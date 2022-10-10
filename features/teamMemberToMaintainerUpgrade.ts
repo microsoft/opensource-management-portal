@@ -42,7 +42,7 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
     return this.#operations.allowSelfServiceTeamMemberToMaintainerUpgrades();
   }
 
-  maximimumAllowedMembers(): number {
+  maximumAllowedMembers(): number {
     const value = this.#operations.config.github?.teams?.maximumMembersToAllowUpgrade;
     return value ? Number(value) : 0;
   }
@@ -60,8 +60,8 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
       return `There are currently ${maintainersCount} maintainers of the team. Self-service upgrade is only available if there are ${this.maximumAllowedMaintainers()} or fewer maintainers.`;
     }
     const membersCount = (await team.getMembers(cacheOptions)).length;
-    if (membersCount > this.maximimumAllowedMembers()) {
-      return `There are currently ${membersCount} members of the team. Self-service upgrade is only available if there are ${this.maximimumAllowedMembers()} or fewer members.`;
+    if (membersCount > this.maximumAllowedMembers()) {
+      return `There are currently ${membersCount} members of the team. Self-service upgrade is only available if there are ${this.maximumAllowedMembers()} or fewer members.`;
     }
     return { currentMaintainerCount: maintainersCount, currentMemberCount: membersCount };
   }
@@ -90,15 +90,15 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
       throw new Error('The authenticated user is not properly linked');
     }
     const login = individualContext.getGitHubIdentity().username;
-    const teamEligiblityResult: ISelfServiceAllowedResult | string = await this.isTeamEligible();
-    if (typeof teamEligiblityResult === 'string') {
-      throw new Error(teamEligiblityResult as string);
+    const teamEligibilityResult: ISelfServiceAllowedResult | string = await this.isTeamEligible();
+    if (typeof teamEligibilityResult === 'string') {
+      throw new Error(teamEligibilityResult as string);
     }
     const userIsTeamMember = await this.isUserTeamMember(login);
     if (!userIsTeamMember) {
       throw new Error('The user is not a member of the team and so cannot be upgraded');
     }
-    return teamEligiblityResult as ISelfServiceAllowedResult;
+    return teamEligibilityResult as ISelfServiceAllowedResult;
   }
 
   async upgrade(individualContext: IndividualContext): Promise<void> {

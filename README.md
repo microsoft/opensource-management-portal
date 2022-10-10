@@ -27,7 +27,7 @@ Core capabilities and features of this application:
 - **People inventory 👨‍🦳🧑‍🚀🧒🏽** to help people connect GitHub public logins with corporate identities
 - **Intercepting forks and new repositories 🔐** to inject compliance and approval processes
 - **Disable and enable 🔑** experiences for GitHub repositories
-- **Just-in-time (JIT) access 🚪** for open source repositories, teams, and organizations, aligning with the principle of least privilege acccess
+- **Just-in-time (JIT) access 🚪** for open source repositories, teams, and organizations, aligning with the principle of least privilege access
 - **Sudo ⚡️** capabilities for repos, teams, organizations to remove persistent broad ownership and admin permissions
 - **Hosting APIs 🍽️** to create repos, large-scale orgs to access link data, and reports
 - **Background jobs 👷‍♂️** to maintain eventual consistency, run tasks, gather metrics, and prepare OKRs
@@ -373,7 +373,7 @@ keep cached data around.
 ## Collaboration
 
 This project began as a hackathon... so still has growing pains years later.
-Since this is technicall a _backend web application_ and includes some
+Since this is technically a _backend web application_ and includes some
 server-generated user interface, the project was not originally designed
 to be shared as something that runs out-of-the-box, but... it is possible.
 

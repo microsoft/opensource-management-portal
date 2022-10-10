@@ -6,7 +6,7 @@
   "organizationsettings": "env://ENTITY_PROVIDER_ORGANIZATION_SETTINGS?default=firstconfigured",
   "organizationmembercache": "env://ENTITY_PROVIDER_ORGANIZATION_MEMBER_CACHE?default=firstconfigured",
   "repository": "env://ENTITY_PROVIDER_REPOSITORY?default=firstconfigured",
-  "repositorycache": "env://ENTITY_PROVIDER_REPOSITORY_CACE?default=firstconfigured",
+  "repositorycache": "env://ENTITY_PROVIDER_REPOSITORY_CACHE?default=firstconfigured",
   "repositorycollaboratorcache": "env://ENTITY_PROVIDER_REPOSITORY_COLLABORATOR_CACHE?default=firstconfigured",
   "repositoryteamcache": "env://ENTITY_PROVIDER_REPOSITORY_TEAM_CACHE?default=firstconfigured",
   "teamcache": "env://ENTITY_PROVIDER_TEAM_CACHE?default=firstconfigured",

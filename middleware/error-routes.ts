@@ -10,7 +10,7 @@ export default async function configureErrorRoutes(app: IReposApplication, initi
   if (initializationError) {
     console.warn('Initialization Error Present: All app requests will fail!');
 
-    // For convienience, failed initialization should appear
+    // For convenience, failed initialization should appear
     // for any request. Should evaluate whether to hide for
     // production scenarios or if there is a risk of the
     // error message leaking sensitive data.

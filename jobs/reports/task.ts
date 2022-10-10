@@ -21,7 +21,7 @@ import app from '../../app';
 
 import {
   build as organizationsBuild,
-  consolidate as organizationsConsoldate,
+  consolidate as organizationsConsolidate,
   process as organizationsProcess,
 } from './organizations';
 import {
@@ -44,7 +44,7 @@ import { ICorporateLink, IReposJob, IReposJobResult } from '../../interfaces';
 import { writeTextToFile } from '../../utils';
 import { writeDeflatedTextFile } from './fileCompression';
 
-// Debug-related values for convienience
+// Debug-related values for convenience
 const fakeSend = false;
 const skipStore = false;
 const slice = undefined; // 250;
@@ -284,7 +284,7 @@ async function processReports(context) {
 
 async function consolidateReports(context: IReportsContext): Promise<IReportsContext> {
   try {
-    await organizationsConsoldate(context);
+    await organizationsConsolidate(context);
   } catch (globalConsolidationError) {
     console.dir(globalConsolidationError);
   }

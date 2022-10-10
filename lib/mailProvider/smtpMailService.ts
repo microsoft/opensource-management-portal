@@ -38,7 +38,7 @@ export default class SmtpMailService implements IMailProvider {
         html: mail.content,
       });
       if (info.rejected.length > 0) {
-        console.warn(`Following reciepient addresses were rejected by the server:\n${info.rejected}`);
+        console.warn(`Following recipient addresses were rejected by the server:\n${info.rejected}`);
       }
       return info.response ? info.response : null;
     } catch (err) {
