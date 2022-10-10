@@ -27,8 +27,8 @@ module.exports = function (graphApi) {
 
   // 1: load URL/resource links from a parallel painless config environment
   if (pkg && pkg[painlessConfigEnvPkgName] && environmentName) {
+    let pkgName = pkg[painlessConfigEnvPkgName];
     try {
-      let pkgName = pkg[painlessConfigEnvPkgName];
       if (pkgName.startsWith('./')) {
         pkgName = path.join(typescriptConfig.appDirectory, pkgName);
       }

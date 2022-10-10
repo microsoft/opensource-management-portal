@@ -1,3 +1,4 @@
+/* eslint-env browser,jquery */
 var timer;
 var inputQuery = $('#inputQuery');
 inputQuery.on('keyup input', function () {
