@@ -592,7 +592,7 @@ export class Team {
     const customTypeFilteringParameter = options.type;
     if (customTypeFilteringParameter && customTypeFilteringParameter !== GitHubRepositoryType.Sources) {
       throw new Error(
-        `Custom \'type\' parameter is specified, but at this time only \'sources\' is a valid enum value. Value: ${customTypeFilteringParameter}`
+        `Custom 'type' parameter is specified, but at this time only 'sources' is a valid enum value. Value: ${customTypeFilteringParameter}`
       );
     }
     if (!this.slug) {
