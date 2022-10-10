@@ -172,16 +172,12 @@ EntityMetadataMappings.Register(
         };
       }
       case FixedQueryType.OrganizationOwnersCache: {
-        return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
-          role: 'admin',
-        });
-      }
-      case FixedQueryType.OrganizationOwnersCache: {
         const { organizationId } = query as OrganizationMemberCacheFixedQueryByOrganizationId;
         if (!organizationId) {
           throw new Error('organizationId required');
         }
         return PostgresJsonEntityQuery(tableName, entityTypeColumn, entityTypeValue, metadataColumnName, {
+          role: 'admin',
           organizationid: stringOrNumberAsString(organizationId),
         });
       }
