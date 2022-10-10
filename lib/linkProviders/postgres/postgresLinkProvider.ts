@@ -296,7 +296,7 @@ export class PostgresLinkProvider implements ILinkProvider {
       .map((columnName) => {
         values.push(updates[columnName]);
         const index = values.length;
-        return `\n        ${columnName} = \$${index}`;
+        return `\n        ${columnName} = $${index}`;
       })
       .join();
     let sql = `

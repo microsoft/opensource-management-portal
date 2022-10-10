@@ -62,7 +62,7 @@ export default class BlobCache implements ICacheHelper {
 
   private getBlobName(key: string, extension: string) {
     key = key.replace(/W\//g, ''); // stript the W/ from e-tags
-    key = key.replace(/[@,\(\)\\\?#:=]/g, '/');
+    key = key.replace(/[@,()\\?#:=]/g, '/');
     key = key.replace(/\/\//g, '/');
     return `${key}${extension}`;
   }

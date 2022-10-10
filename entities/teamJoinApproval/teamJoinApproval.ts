@@ -395,7 +395,7 @@ EntityMetadataMappings.Register(
         WHERE
           ${entityTypeColumn} = $1 AND
           ${metadataColumnName}->>'teamid' IN ( ${groupSet} ) AND
-          ${metadataColumnName} @> \$${++valueCounter}
+          ${metadataColumnName} @> $${++valueCounter}
       `;
         values = [entityTypeValue, ...stringOrNumberArrayAsStringArray(ids), { active: true }];
         return { sql, values };

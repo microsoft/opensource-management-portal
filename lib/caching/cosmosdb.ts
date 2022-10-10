@@ -54,7 +54,7 @@ export default class CosmosCache implements ICacheHelper {
   }
 
   private safetyKey(str: string) {
-    return str.replace(/[%:\\\/\?#]/g, '');
+    return str.replace(/[%:\\/?#]/g, '');
   }
 
   private key(key: string) {

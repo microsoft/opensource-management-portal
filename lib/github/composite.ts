@@ -142,7 +142,7 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
           const refreshWindow = moment(refreshingIso).add(secondsToAllowForRefresh, 'seconds');
           if (moment().utc().isAfter(refreshWindow)) {
             debug(
-              `Another worker\'s refresh did not complete. Refreshing in this instance. ${apiContext.redisKey.metadata}`
+              `Another worker's refresh did not complete. Refreshing in this instance. ${apiContext.redisKey.metadata}`
             );
           } else {
             shouldRefresh = false;
