@@ -364,11 +364,7 @@ export async function CreateRepository(
     throw err;
   }
   if (existingRepoId) {
-    try {
-      await repositoryMetadataProvider.updateRepositoryMetadata(metadata);
-    } catch (updateError) {
-      throw updateError;
-    }
+    await repositoryMetadataProvider.updateRepositoryMetadata(metadata);
   }
   const approvalPackage: IApprovalPackage = {
     id: entityId,

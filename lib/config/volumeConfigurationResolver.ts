@@ -75,12 +75,7 @@ function createClient(options?: IProviderOptions) {
     resolveVolumeFile,
     isVolumeFile: getAsVolumeFile,
     resolveVolumeFiles: async (object: any) => {
-      let paths = null;
-      try {
-        paths = await identifyPaths(provider, object);
-      } catch (parseError) {
-        throw parseError;
-      }
+      const paths = await identifyPaths(provider, object);
       const names = Object.getOwnPropertyNames(paths);
       for (let i = 0; i < names.length; i++) {
         const p = names[i];

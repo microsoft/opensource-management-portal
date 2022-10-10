@@ -296,47 +296,41 @@ async function encryptProperties(
     throw new Error('The entity properties are not set.');
   }
   const propertyNames = Object.getOwnPropertyNames(unencryptedProperties);
-  try {
-    for (const property of propertyNames) {
-      const value = unencryptedProperties[property];
-      if (property === tableEncryptionKeyDetails || property === tableEncryptionPropertyDetails) {
-        throw new Error(
-          'A table encryption property is present in the entity properties to consider for encryption. The property must be removed.'
-        );
-      }
-      if (property === 'PartitionKey' || property === 'RowKey') {
-        encryptedProperties[property] = value;
-        continue;
-      }
-      if (property === 'Timestamp') {
-        continue;
-      }
-      if (encryptionResolver(partitionKey, rowKey, property) !== true) {
-        encryptedProperties[property] = value;
-        continue;
-      }
-      if (value === undefined || value === null) {
-        throw new Error(
-          `Null or undefined properties cannot be encrypted. Property in question: ${property}`
-        );
-      }
-      const type = typeof value;
-      if (type !== 'string') {
-        throw new Error(`${type} properties cannot be encrypted; property in question: ${property}`);
-      }
-      const encryptedValue = encryptProperty(
-        contentEncryptionKey,
-        contentEncryptionIV,
-        partitionKey,
-        rowKey,
-        property,
-        value
+  for (const property of propertyNames) {
+    const value = unencryptedProperties[property];
+    if (property === tableEncryptionKeyDetails || property === tableEncryptionPropertyDetails) {
+      throw new Error(
+        'A table encryption property is present in the entity properties to consider for encryption. The property must be removed.'
       );
-      encryptedPropertiesList.push(property);
-      encryptedProperties[property] = encryptedValue;
     }
-  } catch (asyncError) {
-    throw asyncError;
+    if (property === 'PartitionKey' || property === 'RowKey') {
+      encryptedProperties[property] = value;
+      continue;
+    }
+    if (property === 'Timestamp') {
+      continue;
+    }
+    if (encryptionResolver(partitionKey, rowKey, property) !== true) {
+      encryptedProperties[property] = value;
+      continue;
+    }
+    if (value === undefined || value === null) {
+      throw new Error(`Null or undefined properties cannot be encrypted. Property in question: ${property}`);
+    }
+    const type = typeof value;
+    if (type !== 'string') {
+      throw new Error(`${type} properties cannot be encrypted; property in question: ${property}`);
+    }
+    const encryptedValue = encryptProperty(
+      contentEncryptionKey,
+      contentEncryptionIV,
+      partitionKey,
+      rowKey,
+      property,
+      value
+    );
+    encryptedPropertiesList.push(property);
+    encryptedProperties[property] = encryptedValue;
   }
   return { encryptedProperties, encryptedPropertiesList };
 }
@@ -453,12 +447,7 @@ export async function decryptEntityAsync(partitionKey, rowKey, properties, encry
   if (detailsValue === undefined) {
     return properties;
   }
-  let tableEncryptionKey = null;
-  try {
-    tableEncryptionKey = JSON.parse(detailsValue);
-  } catch (parseError) {
-    throw parseError;
-  }
+  const tableEncryptionKey = JSON.parse(detailsValue);
   const iv = bufferFromBase64String(tableEncryptionKey.ContentEncryptionIV);
   const wrappedContentKey = tableEncryptionKey.WrappedContentKey;
   if (wrappedContentKey.Algorithm !== azureStorageKeyWrappingAlgorithm) {
@@ -481,28 +470,24 @@ export async function decryptEntityAsync(partitionKey, rowKey, properties, encry
   );
   const metadataIV = computeTruncatedColumnHash(iv, partitionKey, rowKey, tableEncryptionPropertyDetails);
   const tableEncryptionDetails = bufferFromBase64String(properties[tableEncryptionPropertyDetails]);
-  try {
-    const decryptedPropertiesSet = decryptValue(
-      aesAlgorithm,
-      contentEncryptionKey,
-      metadataIV,
-      tableEncryptionDetails
-    );
-    const listOfEncryptedProperties = JSON.parse(decryptedPropertiesSet.toString('utf8'));
-    const decrypted = decryptProperties(
-      properties,
-      new Set(listOfEncryptedProperties),
-      partitionKey,
-      rowKey,
-      contentEncryptionKey,
-      tableEncryptionKey,
-      iv
-    );
-    if (returnBinaryProperties === 'base64') {
-      translateBuffersToBase64(decrypted);
-    }
-    return decrypted;
-  } catch (error) {
-    throw error;
+  const decryptedPropertiesSet = decryptValue(
+    aesAlgorithm,
+    contentEncryptionKey,
+    metadataIV,
+    tableEncryptionDetails
+  );
+  const listOfEncryptedProperties = JSON.parse(decryptedPropertiesSet.toString('utf8'));
+  const decrypted = decryptProperties(
+    properties,
+    new Set(listOfEncryptedProperties),
+    partitionKey,
+    rowKey,
+    contentEncryptionKey,
+    tableEncryptionKey,
+    iv
+  );
+  if (returnBinaryProperties === 'base64') {
+    translateBuffersToBase64(decrypted);
   }
+  return decrypted;
 }

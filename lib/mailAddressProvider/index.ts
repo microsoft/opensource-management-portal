@@ -30,12 +30,7 @@ export function createMailAddressProviderInstance(options: any): IMailAddressPro
     if (supportedProvider === provider) {
       const createFunction = supportedProvidersMapping[supportedProvider];
       found = true;
-      let providerInstance: IMailAddressProvider = null;
-      try {
-        providerInstance = createFunction.call(null, options);
-      } catch (createError) {
-        throw createError;
-      }
+      const providerInstance: IMailAddressProvider = createFunction.call(null, options);
       return providerInstance as IMailAddressProvider;
     }
   }

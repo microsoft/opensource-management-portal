@@ -53,14 +53,10 @@ export class RepositoryCacheEntity implements IRepositoryCacheProperties {
   }
 
   hydrateToInstance(operations: Operations) {
-    try {
-      const organization = operations.getOrganizationById(Number(this.organizationId));
-      const clone = { ...this.repositoryDetails };
-      clone.id = Number(this.repositoryId); // GitHub entities are numbers
-      return organization.repository(this.repositoryName, clone);
-    } catch (noConfiguredOrganization) {
-      throw noConfiguredOrganization;
-    }
+    const organization = operations.getOrganizationById(Number(this.organizationId));
+    const clone = { ...this.repositoryDetails };
+    clone.id = Number(this.repositoryId); // GitHub entities are numbers
+    return organization.repository(this.repositoryName, clone);
   }
 }
 

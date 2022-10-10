@@ -470,28 +470,22 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
           .join(', ');
       }
     }
-    try {
-      const sql = `
-      INSERT INTO ${tableName}(
-        ${MapMetadataPropertiesToFields['entityType']},
-        ${MapMetadataPropertiesToFields['entityId']},
-        ${MetadataColumnName}${nativeSqlValues.length ? ',' : ''}${nativeSqlInsert}
-      )
-      VALUES (
-        $1, $2, $3${nativeSqlValues.length ? ', ' : ''}${nativeSqlNumbers}
-      )
-    `;
-      const values = [
-        this.getEntityTypeColumnValue(entityType),
-        serializedEntity.entityId,
-        jsonValue,
-        ...nativeSqlValues,
-      ];
-      const result = await PostgresPoolQueryAsync(this._pool, sql, values);
-    } catch (insertError) {
-      // insertError: message includes "duplicate key value violates"
-      throw insertError;
-    }
+    const sql = `
+    INSERT INTO ${tableName}(
+      ${MapMetadataPropertiesToFields['entityType']},
+      ${MapMetadataPropertiesToFields['entityId']},
+      ${MetadataColumnName}${nativeSqlValues.length ? ',' : ''}${nativeSqlInsert}
+    )
+    VALUES (
+      $1, $2, $3${nativeSqlValues.length ? ', ' : ''}${nativeSqlNumbers}
+    )`;
+    const values = [
+      this.getEntityTypeColumnValue(entityType),
+      serializedEntity.entityId,
+      jsonValue,
+      ...nativeSqlValues,
+    ];
+    const result = await PostgresPoolQueryAsync(this._pool, sql, values);
   }
 
   async updateMetadata(serializedEntity: IEntityMetadata): Promise<void> {
@@ -518,19 +512,14 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
         return native[columnName] === undefined ? null : native[columnName];
       });
     }
-    try {
-      const sql = `
-        UPDATE ${tableName}
-        SET ${MetadataColumnName} = $1${nativeSqlValues.length ? ',' : ''}${nativeSqlUpdates}
-        WHERE
-          ${MapMetadataPropertiesToFields['entityType']} = $${++updatedValuesCount} AND
-          ${MapMetadataPropertiesToFields['entityId']} = $${++updatedValuesCount}
-      `;
-      const values = [jsonValue, ...nativeSqlValues, this.getEntityTypeColumnValue(entityType), entityId];
-      await PostgresPoolQueryAsync(this._pool, sql, values);
-    } catch (updateError) {
-      throw updateError;
-    }
+    const sql = `
+      UPDATE ${tableName}
+      SET ${MetadataColumnName} = $1${nativeSqlValues.length ? ',' : ''}${nativeSqlUpdates}
+      WHERE
+        ${MapMetadataPropertiesToFields['entityType']} = $${++updatedValuesCount} AND
+        ${MapMetadataPropertiesToFields['entityId']} = $${++updatedValuesCount}`;
+    const values = [jsonValue, ...nativeSqlValues, this.getEntityTypeColumnValue(entityType), entityId];
+    await PostgresPoolQueryAsync(this._pool, sql, values);
   }
 
   async deleteMetadata(metadata: IEntityMetadata): Promise<void> {

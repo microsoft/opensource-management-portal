@@ -440,44 +440,41 @@ export class RestCollections {
     propertiesToKeep
   ): Promise<IRequestWithData> {
     const keepAll = !propertiesToKeep;
-    try {
-      // IRequestWithData
-      const getCollectionResponse = await this.getGithubCollection(token, methodName, options, cacheOptions);
-      if (!getCollectionResponse) {
-        throw new Error('No response');
-      }
-      const root = getCollectionResponse.data as any;
-      if (!root) {
-        throw new Error('No object, no data');
-      }
-      if (!root.data) {
-        throw new Error('The resulting object did not contain a data property');
-      }
-      const requests = getCollectionResponse.requests;
-      const results = root.data;
-      const repos = [];
-      for (let i = 0; i < results.length; i++) {
-        const doNotModify = results[i];
-        if (doNotModify) {
-          const r = {};
-          _.forOwn(doNotModify, (value, key) => {
-            if (keepAll || propertiesToKeep.indexOf(key) >= 0) {
-              r[key] = value;
-            }
-          });
-          repos.push(r);
-        }
-      }
-      const filteredData = {
-        data: repos,
-      };
-      return {
-        data: filteredData,
-        requests,
-      };
-    } catch (error) {
-      throw error;
+
+    // IRequestWithData
+    const getCollectionResponse = await this.getGithubCollection(token, methodName, options, cacheOptions);
+    if (!getCollectionResponse) {
+      throw new Error('No response');
     }
+    const root = getCollectionResponse.data as any;
+    if (!root) {
+      throw new Error('No object, no data');
+    }
+    if (!root.data) {
+      throw new Error('The resulting object did not contain a data property');
+    }
+    const requests = getCollectionResponse.requests;
+    const results = root.data;
+    const repos = [];
+    for (let i = 0; i < results.length; i++) {
+      const doNotModify = results[i];
+      if (doNotModify) {
+        const r = {};
+        _.forOwn(doNotModify, (value, key) => {
+          if (keepAll || propertiesToKeep.indexOf(key) >= 0) {
+            r[key] = value;
+          }
+        });
+        repos.push(r);
+      }
+    }
+    const filteredData = {
+      data: repos,
+    };
+    return {
+      data: filteredData,
+      requests,
+    };
   }
 
   private async getFilteredGithubCollectionWithMetadataAnalysis(

@@ -85,35 +85,27 @@ export class OrganizationProjects {
         }
       }
     `;
-    try {
-      const result = await operations.github.graphql(this.authorize(), mutation, {
-        ownerId,
-        title,
-      });
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    const result = await operations.github.graphql(this.authorize(), mutation, {
+      ownerId,
+      title,
+    });
+    return result;
   }
 
   async getAll(): Promise<any> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const pageSize = DefaultGraphqlPageSize;
-    try {
-      const result = await operations.github.graphql(
-        this.authorize(),
-        query.all(pageSize),
-        {
-          login: this._organization.name,
-        },
-        {
-          paginate: true,
-        }
-      );
-      return result?.organization?.projectsV2?.nodes;
-    } catch (error) {
-      throw error;
-    }
+    const result = await operations.github.graphql(
+      this.authorize(),
+      query.all(pageSize),
+      {
+        login: this._organization.name,
+      },
+      {
+        paginate: true,
+      }
+    );
+    return result?.organization?.projectsV2?.nodes;
   }
 
   async iterate(
@@ -121,17 +113,10 @@ export class OrganizationProjects {
   ): Promise<AsyncIterable<ProjectsListIteratorResponse> & IteratorPickerResponse<ProjectResponse>> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const pageSize = options?.pageSize || DefaultGraphqlPageSize;
-    try {
-      const result = (await operations.github.graphqlIteration(this.authorize(), query.all(pageSize), {
-        login: this._organization.name,
-      })) as AsyncIterable<ProjectsListIteratorResponse>;
-      return decorateIterable<ProjectResponse, ProjectsListIteratorResponse>(
-        result,
-        'organization.projectsV2'
-      );
-    } catch (error) {
-      throw error;
-    }
+    const result = (await operations.github.graphqlIteration(this.authorize(), query.all(pageSize), {
+      login: this._organization.name,
+    })) as AsyncIterable<ProjectsListIteratorResponse>;
+    return decorateIterable<ProjectResponse, ProjectsListIteratorResponse>(result, 'organization.projectsV2');
   }
 
   private authorize(purpose: AppPurpose = this._purpose): IGetAuthorizationHeader {

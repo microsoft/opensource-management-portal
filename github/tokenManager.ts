@@ -272,25 +272,21 @@ export class GitHubTokenManager {
       for (const { appId, installationId } of settings.installations) {
         const purposeForApp = this._appIdToPurpose.get(appId);
         if (this._appsById.has(appId) && purposeForApp && purposeForApp === purpose) {
-          try {
-            const header = await this.getInstallationAuthorizationHeader(
-              appId,
-              installationId,
-              organization.name
-            );
-            const value = await (organization.operations as Operations).github.post(
-              header.value,
-              'rateLimit.get',
-              NoCacheNoBackground
-            );
-            if (value?.rate) {
-              return value.rate as IGitHubRateLimit;
-            }
-            console.warn(value);
-            throw CreateError.InvalidParameters('No rate limit information returned');
-          } catch (error) {
-            throw error;
+          const header = await this.getInstallationAuthorizationHeader(
+            appId,
+            installationId,
+            organization.name
+          );
+          const value = await (organization.operations as Operations).github.post(
+            header.value,
+            'rateLimit.get',
+            NoCacheNoBackground
+          );
+          if (value?.rate) {
+            return value.rate as IGitHubRateLimit;
           }
+          console.warn(value);
+          throw CreateError.InvalidParameters('No rate limit information returned');
         }
       }
     }

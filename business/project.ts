@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 //
 // Copyright (c) Microsoft.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
@@ -152,14 +153,10 @@ export class OrganizationProject {
 
   async getDetails(): Promise<ProjectDetails> {
     const operations = throwIfNotGitHubCapable(this._operations);
-    try {
-      const result = await operations.github.graphql(this.authorize(), query.getProject, {
-        id: this._id,
-      });
-      return result?.node as ProjectDetails;
-    } catch (error) {
-      throw error;
-    }
+    const result = await operations.github.graphql(this.authorize(), query.getProject, {
+      id: this._id,
+    });
+    return result?.node as ProjectDetails;
   }
 
   async getFields(
@@ -167,21 +164,17 @@ export class OrganizationProject {
   ): Promise<ProjectFieldEssentials[]> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const pageSize = options?.pageSize || DefaultGraphqlPageSize;
-    try {
-      const result = await operations.github.graphql(
-        this.authorize(),
-        query.getFields(pageSize),
-        {
-          id: this._id,
-        },
-        {
-          paginate: true,
-        }
-      );
-      return result?.node?.fields?.nodes as ProjectFieldEssentials[];
-    } catch (error) {
-      throw error;
-    }
+    const result = await operations.github.graphql(
+      this.authorize(),
+      query.getFields(pageSize),
+      {
+        id: this._id,
+      },
+      {
+        paginate: true,
+      }
+    );
+    return result?.node?.fields?.nodes as ProjectFieldEssentials[];
   }
 
   async getFieldsIterator(
@@ -189,55 +182,39 @@ export class OrganizationProject {
   ): Promise<AsyncIterable<ProjectFieldsIteratorResponse> & IteratorPickerResponse<ProjectFieldEssentials>> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const pageSize = options?.pageSize || DefaultGraphqlPageSize;
-    try {
-      const result = (await operations.github.graphqlIteration(
-        this.authorize(this._purpose),
-        query.getFields(pageSize),
-        {
-          id: this._id,
-        }
-      )) as AsyncIterable<ProjectFieldsIteratorResponse>;
-      return decorateIterable<ProjectFieldEssentials, ProjectFieldsIteratorResponse>(result, 'node.fields');
-    } catch (error) {
-      throw error;
-    }
+    const result = (await operations.github.graphqlIteration(
+      this.authorize(this._purpose),
+      query.getFields(pageSize),
+      {
+        id: this._id,
+      }
+    )) as AsyncIterable<ProjectFieldsIteratorResponse>;
+    return decorateIterable<ProjectFieldEssentials, ProjectFieldsIteratorResponse>(result, 'node.fields');
   }
 
   async getViews(): Promise<ProjectViewEssentials[]> {
     const operations = throwIfNotGitHubCapable(this._operations);
-    try {
-      const response = await operations.github.graphql(
-        this.authorize(),
-        query.getViews,
-        {
-          id: this._id,
-        },
-        {
-          paginate: true,
-        }
-      );
-      return response?.node?.views?.nodes as ProjectViewEssentials[];
-    } catch (error) {
-      throw error;
-    }
+    const response = await operations.github.graphql(
+      this.authorize(),
+      query.getViews,
+      {
+        id: this._id,
+      },
+      {
+        paginate: true,
+      }
+    );
+    return response?.node?.views?.nodes as ProjectViewEssentials[];
   }
 
   async getViewsIterator(): Promise<
     AsyncIterable<ProjectViewsIteratorResponse> & IteratorPickerResponse<ProjectViewEssentials>
   > {
     const operations = throwIfNotGitHubCapable(this._operations);
-    try {
-      const result = (await operations.github.graphqlIteration(
-        this.authorize(this._purpose),
-        query.getViews,
-        {
-          id: this._id,
-        }
-      )) as AsyncIterable<ProjectFieldsIteratorResponse>;
-      return decorateIterable<ProjectViewEssentials, ProjectViewsIteratorResponse>(result, 'node.views');
-    } catch (error) {
-      throw error;
-    }
+    const result = (await operations.github.graphqlIteration(this.authorize(this._purpose), query.getViews, {
+      id: this._id,
+    })) as AsyncIterable<ProjectFieldsIteratorResponse>;
+    return decorateIterable<ProjectViewEssentials, ProjectViewsIteratorResponse>(result, 'node.views');
   }
 
   async clone(
@@ -251,23 +228,19 @@ export class OrganizationProject {
     const operations = throwIfNotGitHubCapable(this._operations);
     const projectId = this._id;
     const mutation = query.cloneProject;
-    try {
-      const result = await operations.github.graphql(this.authorize(), mutation, {
-        projectId,
-        ownerId: destinationOrganizationId,
-        title: options.title,
-        includeDraftIssues: options.includeDraftIssues || false,
-        headers: {
-          'GraphQL-Features': enableCloneProjectApi,
-        },
-      });
-      const root = result?.copyProjectV2;
-      const newProject = root?.projectV2;
-      if (newProject?.id) {
-        return destinationOrganization.projects.get(newProject.id);
-      }
-    } catch (error) {
-      throw error;
+    const result = await operations.github.graphql(this.authorize(), mutation, {
+      projectId,
+      ownerId: destinationOrganizationId,
+      title: options.title,
+      includeDraftIssues: options.includeDraftIssues || false,
+      headers: {
+        'GraphQL-Features': enableCloneProjectApi,
+      },
+    });
+    const root = result?.copyProjectV2;
+    const newProject = root?.projectV2;
+    if (newProject?.id) {
+      return destinationOrganization.projects.get(newProject.id);
     }
   }
 
@@ -275,39 +248,27 @@ export class OrganizationProject {
     options = options || {};
     const fixedFirstFieldsCount = 8;
     const operations = throwIfNotGitHubCapable(this._operations);
-    try {
-      const response = await operations.github.graphql(
-        this.authorize(),
-        options?.includeFields ? query.getItemsWithFields(fixedFirstFieldsCount) : query.getItems,
-        {
-          id: this._id,
-        },
-        {
-          paginate: true,
-        }
-      );
-      return response?.node?.items?.nodes as ProjectItemEssentials[];
-    } catch (error) {
-      throw error;
-    }
+    const response = await operations.github.graphql(
+      this.authorize(),
+      options?.includeFields ? query.getItemsWithFields(fixedFirstFieldsCount) : query.getItems,
+      {
+        id: this._id,
+      },
+      {
+        paginate: true,
+      }
+    );
+    return response?.node?.items?.nodes as ProjectItemEssentials[];
   }
 
   async getItemsIterator(): Promise<
     AsyncIterable<ProjectItemsIteratorResponse> & IteratorPickerResponse<ProjectItemEssentials>
   > {
     const operations = throwIfNotGitHubCapable(this._operations);
-    try {
-      const result = (await operations.github.graphqlIteration(
-        this.authorize(this._purpose),
-        query.getItems,
-        {
-          id: this._id,
-        }
-      )) as AsyncIterable<ProjectItemsIteratorResponse>;
-      return decorateIterable<ProjectItemEssentials, ProjectItemsIteratorResponse>(result, 'node.items');
-    } catch (error) {
-      throw error;
-    }
+    const result = (await operations.github.graphqlIteration(this.authorize(this._purpose), query.getItems, {
+      id: this._id,
+    })) as AsyncIterable<ProjectItemsIteratorResponse>;
+    return decorateIterable<ProjectItemEssentials, ProjectItemsIteratorResponse>(result, 'node.items');
   }
 
   view(viewNodeId: string, essentials?: ProjectViewEssentials) {
@@ -326,41 +287,33 @@ export class OrganizationProject {
     const operations = throwIfNotGitHubCapable(this._operations);
     const projectId = this._id;
     const mutation = query.addItem;
-    try {
-      const response = await operations.github.graphql(this.authorize(), mutation, {
-        projectId,
-        contentId: options.contentNodeId,
-      });
-      return {
-        id: response.addProjectV2ItemById.item.id,
-        fieldValues: null,
-      };
-    } catch (error) {
-      throw error;
-    }
+    const response = await operations.github.graphql(this.authorize(), mutation, {
+      projectId,
+      contentId: options.contentNodeId,
+    });
+    return {
+      id: response.addProjectV2ItemById.item.id,
+      fieldValues: null,
+    };
   }
 
   async addDraftItem(options: ProjectDraftItemOptions): Promise<ProjectItemEssentials> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const projectId = this._id;
     const mutation = query.addDraftItem;
-    try {
-      const response = await operations.github.graphql(this.authorize(), mutation, {
-        projectId,
+    const response = await operations.github.graphql(this.authorize(), mutation, {
+      projectId,
+      title: options.title,
+      body: options.body,
+    });
+    return {
+      id: response.addProjectV2DraftIssue.projectItem.id,
+      content: {
         title: options.title,
         body: options.body,
-      });
-      return {
-        id: response.addProjectV2DraftIssue.projectItem.id,
-        content: {
-          title: options.title,
-          body: options.body,
-        },
-        fieldValues: null,
-      };
-    } catch (error) {
-      throw error;
-    }
+      },
+      fieldValues: null,
+    };
   }
 
   async attachToRepository(repository: Repository): Promise<void> {
@@ -368,14 +321,10 @@ export class OrganizationProject {
     const repositoryNodeId = await repository.getGraphQlNodeId();
     const projectId = this._id;
     const mutation = query.attachToRepository;
-    try {
-      await operations.github.graphql(this.authorize(), mutation, {
-        projectId,
-        repositoryId: repositoryNodeId,
-      });
-    } catch (error) {
-      throw error;
-    }
+    await operations.github.graphql(this.authorize(), mutation, {
+      projectId,
+      repositoryId: repositoryNodeId,
+    });
   }
 
   async removeItem(itemNodeId: string): Promise<void> {
@@ -383,14 +332,10 @@ export class OrganizationProject {
     const operations = throwIfNotGitHubCapable(this._operations);
     const projectId = this._id;
     const mutation = query.removeItem;
-    try {
-      await operations.github.graphql(this.authorize(), mutation, {
-        projectId,
-        itemId: itemNodeId,
-      });
-    } catch (error) {
-      throw error;
-    }
+    await operations.github.graphql(this.authorize(), mutation, {
+      projectId,
+      itemId: itemNodeId,
+    });
   }
 
   async updateItemFieldOption(itemId: string, fieldId: string, singleSelectOptionId: string): Promise<void> {
@@ -400,17 +345,13 @@ export class OrganizationProject {
       singleSelectOptionId,
     };
     const mutation = query.updateItemFieldOption;
-    try {
-      const result = await operations.github.graphql(this.authorize(), mutation, {
-        projectId,
-        itemId,
-        fieldId,
-        value,
-      });
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    const result = await operations.github.graphql(this.authorize(), mutation, {
+      projectId,
+      itemId,
+      fieldId,
+      value,
+    });
+    return result;
   }
 
   private authorize(purpose: AppPurpose = this._purpose): IGetAuthorizationHeader {
@@ -561,7 +502,7 @@ const query = {
             nodes {
               id
               fieldValues(first: ${firstFieldsNumber}) {
-                nodes{                
+                nodes{
                   ... on ProjectV2ItemFieldTextValue {
                     text
                     field {
@@ -590,7 +531,7 @@ const query = {
                       }
                     }
                   }
-                }              
+                }
               }
               content {
                 ... on DraftIssue {
@@ -647,7 +588,7 @@ const query = {
                 name
               }
               ... on ProjectV2IterationField {
-                id  
+                id
                 name
                 configuration {
                   iterations {

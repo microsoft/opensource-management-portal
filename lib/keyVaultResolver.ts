@@ -32,16 +32,12 @@ async function keyVaultSecretResolver(keyVaultClient: IGetKeyVaultSecretClient, 
     version = secretName.substr(versionIndex + 1);
     secretName = secretName.substr(0, versionIndex);
   }
-  try {
-    const secretResponse = await secretClient.getSecret(secretName, { version });
-    const secretValue = secretResponse.value;
-    if (cacheKeysInMemory === true) {
-      cachedKeys.set(id, secretValue);
-    }
-    return secretValue;
-  } catch (error) {
-    throw error;
+  const secretResponse = await secretClient.getSecret(secretName, { version });
+  const secretValue = secretResponse.value;
+  if (cacheKeysInMemory === true) {
+    cachedKeys.set(id, secretValue);
   }
+  return secretValue;
 }
 
 export default function createKeyVaultResolver(keyVaultClient: IGetKeyVaultSecretClient) {

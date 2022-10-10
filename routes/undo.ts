@@ -213,11 +213,8 @@ async function undoRepoCollaboratorAdminRepoPermissionAsync(
     );
   }
   // Restore the permission
-  try {
-    await repository.addCollaborator(identity.username, GitHubRepositoryPermission.Admin);
-  } catch (restoreError) {
-    throw restoreError;
-  }
+  await repository.addCollaborator(identity.username, GitHubRepositoryPermission.Admin);
+
   return {
     message: `The repo ${repository.name} in the ${organization.name} GitHub org has re-authorized ${identity.username} to administer the repository.`,
     localUrl: `${repository.baseUrl}permissions`,
@@ -279,11 +276,8 @@ async function undoTeamAdminRepoPermissionAsync(
     throw getTeamError;
   }
   // Restore the permission
-  try {
-    await repository.setTeamPermission(teamId, GitHubRepositoryPermission.Admin);
-  } catch (restoreError) {
-    throw restoreError;
-  }
+  await repository.setTeamPermission(teamId, GitHubRepositoryPermission.Admin);
+
   return {
     message: `The team ${team.name} in the ${organization.name} GitHub org has been given back administrative access to the repository ${repository.full_name}.`,
     localUrl: `${repository.baseUrl}permissions`,

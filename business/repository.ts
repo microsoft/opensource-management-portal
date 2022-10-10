@@ -427,13 +427,9 @@ export class Repository {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     if (this.id && !this.name) {
-      try {
-        const lookupById = await this.organization.getRepositoryById(this.id);
-        this._entity = lookupById.getEntity();
-        this._name = this._entity.name;
-      } catch (getByIdError) {
-        throw getByIdError;
-      }
+      const lookupById = await this.organization.getRepositoryById(this.id);
+      this._entity = lookupById.getEntity();
+      this._name = this._entity.name;
     }
     const previewMediaTypes = operations['previewMediaTypes'] || {}; // TEMPORARY MEDIA TYPE HACK
     const mediaType = previewMediaTypes?.repository?.getDetails
@@ -734,14 +730,11 @@ export class Repository {
         }
       }
     }`;
-    try {
-      await operations.github.graphql(this.authorize(AppPurpose.Updates), mutation, {
-        branchProtectionRuleId: id,
-        pattern: newPattern,
-      });
-    } catch (error) {
-      throw error;
-    }
+
+    await operations.github.graphql(this.authorize(AppPurpose.Updates), mutation, {
+      branchProtectionRuleId: id,
+      pattern: newPattern,
+    });
   }
 
   async listBranchProtectionRules(): Promise<IGitHubProtectedBranchConfiguration[]> {
@@ -757,19 +750,16 @@ export class Repository {
       }
     }`;
     const operations = throwIfNotGitHubCapable(this._operations);
-    try {
-      const {
-        repository: {
-          branchProtectionRules: { nodes: branchProtectionRules },
-        },
-      } = await operations.github.graphql(this.authorize(AppPurpose.Updates), query, {
-        owner: this.organization.name,
-        repo: this.name,
-      });
-      return branchProtectionRules as IGitHubProtectedBranchConfiguration[];
-    } catch (error) {
-      throw error;
-    }
+
+    const {
+      repository: {
+        branchProtectionRules: { nodes: branchProtectionRules },
+      },
+    } = await operations.github.graphql(this.authorize(AppPurpose.Updates), query, {
+      owner: this.organization.name,
+      repo: this.name,
+    });
+    return branchProtectionRules as IGitHubProtectedBranchConfiguration[];
   }
 
   async getProtectedBranchAccessRestrictions(
@@ -1327,13 +1317,9 @@ export class Repository {
         }
       }
     `;
-    try {
-      return (await operations.github.graphql(this.authorize(AppPurpose.Operations), mutation, {
-        repositoryId: nodeId,
-      })) as IUnarchiveResponse;
-    } catch (error) {
-      throw error;
-    }
+    return (await operations.github.graphql(this.authorize(AppPurpose.Operations), mutation, {
+      repositoryId: nodeId,
+    })) as IUnarchiveResponse;
   }
 
   async update(patch?: any): Promise<void> {

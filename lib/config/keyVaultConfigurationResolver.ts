@@ -59,13 +59,9 @@ async function getSecret(
     version = secretName.substr(versionIndex + 1);
     secretName = secretName.substr(0, versionIndex);
   }
-  try {
-    const secretResponse = await secretClient.getSecret(secretName, { version: version || undefined });
-    secretStash.set(secretId, secretResponse);
-    return secretResponse;
-  } catch (keyVaultValidationError) {
-    throw keyVaultValidationError;
-  }
+  const secretResponse = await secretClient.getSecret(secretName, { version: version || undefined });
+  secretStash.set(secretId, secretResponse);
+  return secretResponse;
 }
 
 function getUrlIfVault(value) {
@@ -150,12 +146,7 @@ type VaultSettings = {
 };
 
 async function getSecretsFromVault(getSecretClient: (vault: string) => Promise<SecretClient>, object: any) {
-  let paths = null;
-  try {
-    paths = identifyKeyVaultValuePaths(object);
-  } catch (parseError) {
-    throw parseError;
-  }
+  const paths = identifyKeyVaultValuePaths(object);
   // Build a unique list of secrets, fetch them at once
   try {
     const uniqueUris = new Set<string>();
@@ -175,6 +166,7 @@ async function getSecretsFromVault(getSecretClient: (vault: string) => Promise<S
     const secretStash = new Map<string, KeyVaultSecret>();
     const uniques = Array.from(uniqueUris.values());
     for (const uniqueSecretId of uniques) {
+      // eslint-disable-next-line no-useless-catch
       try {
         const value = secretStash.get(uniqueSecretId);
         if (!value) {

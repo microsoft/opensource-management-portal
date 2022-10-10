@@ -202,26 +202,22 @@ export class CrossOrganizationCollator {
         if (localCacheOptions.individualMaxAgeSeconds) {
           localCacheOptions.maxAgeSeconds = localCacheOptions.individualMaxAgeSeconds;
         }
-        try {
-          const orgValues = await method.call(
-            capturedThis.collectionsClient,
-            token.bind(null, AppPurpose.Data),
-            localOptions,
-            localCacheOptions
+        const orgValues = await method.call(
+          capturedThis.collectionsClient,
+          token.bind(null, AppPurpose.Data),
+          localOptions,
+          localCacheOptions
+        );
+        if (!orgValues) {
+          throw new Error('No result');
+        }
+        if (orgValues && orgValues.data) {
+          console.warn(
+            `${apiName} ${methodName} result has data that is being used instead of the parent object`
           );
-          if (!orgValues) {
-            throw new Error('No result');
-          }
-          if (orgValues && orgValues.data) {
-            console.warn(
-              `${apiName} ${methodName} result has data that is being used instead of the parent object`
-            );
-            values.orgs[orgName] = orgValues.data;
-          } else {
-            values.orgs[orgName] = orgValues;
-          }
-        } catch (orgError) {
-          throw orgError;
+          values.orgs[orgName] = orgValues.data;
+        } else {
+          values.orgs[orgName] = orgValues;
         }
       }
       const dataObject = {
@@ -254,12 +250,7 @@ export class CrossOrganizationCollator {
     return async (): Promise<any> => {
       const entities = [] as IIntelligentCacheResponseArray;
       entities.headers = {};
-      let data = null;
-      try {
-        data = await outerFunction.call(capturedThis, orgsAndTokens, {}, cacheOptions);
-      } catch (outerError) {
-        throw outerError;
-      }
+      const data = await outerFunction.call(capturedThis, orgsAndTokens, {}, cacheOptions);
       let entitiesByOrg = null;
       if (data && !data.data) {
         throw new Error(

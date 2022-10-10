@@ -94,12 +94,7 @@ function createClient(options: IEnvironmentProviderOptions) {
   const provider = options.provider || processEnvironmentProvider(options);
   return {
     resolveObjectVariables: async (object: any) => {
-      let paths = null;
-      try {
-        paths = identifyPaths(object);
-      } catch (parseError) {
-        throw parseError;
-      }
+      const paths = identifyPaths(object);
       const names = Object.getOwnPropertyNames(paths);
       for (let i = 0; i < names.length; i++) {
         const path = names[i];

@@ -28,21 +28,18 @@ export default class SmtpMailService implements IMailProvider {
       throw new Error('SMTP Mail configuration not given, mail sending failed');
     }
     const transporter = nodemailer.createTransport(this._config.smtpMailService);
-    try {
-      const info = await transporter.sendMail({
-        to: mail.to,
-        cc: mail.cc,
-        bcc: mail.bcc,
-        from: mail.from || this._config.from,
-        subject: mail.subject,
-        html: mail.content,
-      });
-      if (info.rejected.length > 0) {
-        console.warn(`Following recipient addresses were rejected by the server:\n${info.rejected}`);
-      }
-      return info.response ? info.response : null;
-    } catch (err) {
-      throw err;
+
+    const info = await transporter.sendMail({
+      to: mail.to,
+      cc: mail.cc,
+      bcc: mail.bcc,
+      from: mail.from || this._config.from,
+      subject: mail.subject,
+      html: mail.content,
+    });
+    if (info.rejected.length > 0) {
+      console.warn(`Following recipient addresses were rejected by the server:\n${info.rejected}`);
     }
+    return info.response ? info.response : null;
   }
 }

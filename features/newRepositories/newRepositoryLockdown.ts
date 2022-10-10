@@ -78,14 +78,13 @@ export default class NewRepositoryLockdownSystem {
     thirdPartyId: number,
     transferSourceRepositoryLogin: string
   ): Promise<RepositoryLockdownState> {
-    let outcome: ILockdownResult = null;
-    try {
-      outcome = await this.lockdownIfNecessaryImpl(action, username, transferSourceRepositoryLogin);
-      if (!outcome) {
-        throw CreateError.ServerError('No lockdown outcome');
-      }
-    } catch (error) {
-      throw error;
+    const outcome: ILockdownResult = await this.lockdownIfNecessaryImpl(
+      action,
+      username,
+      transferSourceRepositoryLogin
+    );
+    if (!outcome) {
+      throw CreateError.ServerError('No lockdown outcome');
     }
     const lockdownState =
       outcome.lockdownState || (outcome.wasLocked ? RepositoryLockdownState.Locked : null);

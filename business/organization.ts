@@ -525,15 +525,11 @@ export class Organization {
   async getUserDetailsByLogin(login: string, purpose?: AppPurposeTypes): Promise<IGitHubAccountDetails> {
     // This is a more basic version of the user API; unlike the operations-level function,
     // this does not return a strongly typed object with integrated REST access.
-    try {
-      const response = (await this.requestUrl(`https://api.github.com/users/${login}`, {
-        purpose: purpose || AppPurpose.Operations,
-      })) as IGitHubAccountDetails;
-      if (response?.id) {
-        return response;
-      }
-    } catch (error) {
-      throw error;
+    const response = (await this.requestUrl(`https://api.github.com/users/${login}`, {
+      purpose: purpose || AppPurpose.Operations,
+    })) as IGitHubAccountDetails;
+    if (response?.id) {
+      return response;
     }
   }
 

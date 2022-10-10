@@ -191,12 +191,8 @@ export class TableLinkProvider implements ILinkProvider {
     }
     this._tableClient = new TableClient(serviceUrl, this._tableName, azureTableCredential);
     if (options.throwIfTableMissing) {
-      let tableExists = false;
-      try {
-        tableExists = await this.doesTableNameExist(this._tableName);
-      } catch (tableError) {
-        throw tableError;
-      }
+      const tableExists = await this.doesTableNameExist(this._tableName);
+
       if (!tableExists) {
         throw new Error(
           `The table named "${this._tableName}" does not exist. With options.throwIfTableMissing set, this error is thrown.`
@@ -293,25 +289,22 @@ export class TableLinkProvider implements ILinkProvider {
   async createLink(link: ICorporateLink): Promise<string> {
     const generatedLinkId = randomUUID();
     let entity = null;
-    try {
-      const initialEntity = {};
-      initialEntity[linkInterfacePropertyMapping.linkId] = generatedLinkId;
-      for (const linkPropertyName of CorporatePropertyNames) {
-        // linkInterfacePropertyMapping
-        const tableColumnName = linkInterfacePropertyMapping[linkPropertyName];
-        if (!tableColumnName) {
-          throw new Error(`Missing mapping from property ${linkPropertyName} to equivalent table column`);
-        }
-        initialEntity[tableColumnName] = link[linkPropertyName];
+    const initialEntity = {};
+    initialEntity[linkInterfacePropertyMapping.linkId] = generatedLinkId;
+    for (const linkPropertyName of CorporatePropertyNames) {
+      // linkInterfacePropertyMapping
+      const tableColumnName = linkInterfacePropertyMapping[linkPropertyName];
+      if (!tableColumnName) {
+        throw new Error(`Missing mapping from property ${linkPropertyName} to equivalent table column`);
       }
-      const partitionKey = this._options.partitionKey;
-      if (!partitionKey) {
-        throw new Error('No table options.partitionKey provided with a fixed partition key at this time');
-      }
-      entity = tableEntity.create(partitionKey, link.thirdPartyId, initialEntity);
-    } catch (processingError) {
-      throw processingError;
+      initialEntity[tableColumnName] = link[linkPropertyName];
     }
+    const partitionKey = this._options.partitionKey;
+    if (!partitionKey) {
+      throw new Error('No table options.partitionKey provided with a fixed partition key at this time');
+    }
+    entity = tableEntity.create(partitionKey, link.thirdPartyId, initialEntity);
+
     await this.tableInsertEntity(entity, 'This user is already linked');
     return generatedLinkId;
   }

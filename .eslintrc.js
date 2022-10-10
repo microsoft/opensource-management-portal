@@ -29,7 +29,6 @@ module.exports = {
         'no-empty': 'off',
         'no-ex-assign': 'off',
         'no-inner-declarations': 'off',
-        'no-useless-catch': 'off',
         'prefer-const': [
           'error',
           {

@@ -226,12 +226,7 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
     const argOptions = Object.assign({}, apiContext.options);
     args.push(argOptions);
     const thisArgument = apiMethod.thisInstance || null;
-    let unknown = undefined;
-    try {
-      unknown = await apiMethod.apply(thisArgument, args);
-    } catch (applyError) {
-      throw applyError;
-    }
+    const unknown = await apiMethod.apply(thisArgument, args);
     return unknown as IRestResponse;
   }
 

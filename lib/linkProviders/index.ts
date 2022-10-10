@@ -81,14 +81,9 @@ export function createLinkProviderInstance(
   for (const supportedProvider of providerNames) {
     if (supportedProvider === provider) {
       found = true;
-      let providerInstance = null;
-      try {
-        const createInstance = linkProviders[provider];
-        providerInstance = createInstance(providers, config);
-      } catch (createError) {
-        throw createError;
-      }
-      return providerInstance;
+
+      const createInstance = linkProviders[provider];
+      return createInstance(providers, config);
     }
   }
   if (found === false) {

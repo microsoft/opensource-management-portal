@@ -74,21 +74,17 @@ export class OrganizationDomains {
   async getAll(): Promise<any> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const pageSize = DefaultGraphqlPageSize;
-    try {
-      const result = await operations.github.graphql(
-        this.authorize(),
-        domainQueries.all(pageSize),
-        {
-          login: this._organization.name,
-        },
-        {
-          paginate: true,
-        }
-      );
-      return result?.organization?.domains?.nodes;
-    } catch (error) {
-      throw error;
-    }
+    const result = await operations.github.graphql(
+      this.authorize(),
+      domainQueries.all(pageSize),
+      {
+        login: this._organization.name,
+      },
+      {
+        paginate: true,
+      }
+    );
+    return result?.organization?.domains?.nodes;
   }
 
   async iterate(
@@ -96,18 +92,10 @@ export class OrganizationDomains {
   ): Promise<AsyncIterable<DomainsListIteratorResponse> & IteratorPickerResponse<DomainResponse>> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const pageSize = options?.pageSize || DefaultGraphqlPageSize;
-    try {
-      const result = (await operations.github.graphqlIteration(
-        this.authorize(),
-        domainQueries.all(pageSize),
-        {
-          login: this._organization.name,
-        }
-      )) as AsyncIterable<DomainsListIteratorResponse>;
-      return decorateIterable<DomainResponse, DomainsListIteratorResponse>(result, 'organization.domains');
-    } catch (error) {
-      throw error;
-    }
+    const result = (await operations.github.graphqlIteration(this.authorize(), domainQueries.all(pageSize), {
+      login: this._organization.name,
+    })) as AsyncIterable<DomainsListIteratorResponse>;
+    return decorateIterable<DomainResponse, DomainsListIteratorResponse>(result, 'organization.domains');
   }
 
   private authorize(purpose: AppPurpose = this._purpose): IGetAuthorizationHeader {

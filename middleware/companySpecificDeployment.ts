@@ -25,20 +25,17 @@ function getCompanySpecificDeployment(): ICompanySpecificStartup {
   if (instance) {
     return instance;
   }
-  try {
-    const pn = path.join(__dirname, '..', name);
-    const dynamicInclude = require(pn);
-    const entrypoint = dynamicInclude && dynamicInclude.default ? dynamicInclude.default : dynamicInclude;
-    if (!(entrypoint as ICompanySpecificStartupProperties).isCompanySpecific) {
-      throw new Error(
-        `The ${name} company-specific call did not include the 'isCompanySpecific' moniker. Check for circular dependencies: ${pn}`
-      );
-    }
-    instance = entrypoint;
-    return instance;
-  } catch (includeError) {
-    throw includeError;
+
+  const pn = path.join(__dirname, '..', name);
+  const dynamicInclude = require(pn);
+  const entrypoint = dynamicInclude && dynamicInclude.default ? dynamicInclude.default : dynamicInclude;
+  if (!(entrypoint as ICompanySpecificStartupProperties).isCompanySpecific) {
+    throw new Error(
+      `The ${name} company-specific call did not include the 'isCompanySpecific' moniker. Check for circular dependencies: ${pn}`
+    );
   }
+  instance = entrypoint;
+  return instance;
 }
 
 export default getCompanySpecificDeployment;

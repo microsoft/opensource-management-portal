@@ -157,15 +157,13 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     );
     this._typeToEncryptionOptions = new Map();
     this._encryptionOptions = options.encryption;
-    try {
-      this._azureTablesCredential = new AzureNamedKeyCredential(this._storageAccountName, storageAccountKey);
-      this._azureTableServiceClient = new TableServiceClient(
-        `https://${this._storageAccountName}.table.core.windows.net`,
-        this._azureTablesCredential
-      );
-    } catch (storageAccountError) {
-      throw storageAccountError;
-    }
+
+    this._azureTablesCredential = new AzureNamedKeyCredential(this._storageAccountName, storageAccountKey);
+    this._azureTableServiceClient = new TableServiceClient(
+      `https://${this._storageAccountName}.table.core.windows.net`,
+      this._azureTablesCredential
+    );
+
     this._initializedTables = new Map();
   }
 

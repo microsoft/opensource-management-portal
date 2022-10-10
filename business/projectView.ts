@@ -69,37 +69,33 @@ export class OrganizationProjectView {
 
   async getDetails(): Promise<ProjectViewDetails> {
     const operations = throwIfNotGitHubCapable(this._operations);
-    try {
-      const result = await operations.github.graphql(
-        this.authorize(),
-        `
-          query projectViewInformation($id: ID!) {
-            node(id: $id) {
-              ... on ProjectV2View {
-                createdAt
-                filter
-                layout
-                name
-                number
-                updatedAt
-              }
+    const result = await operations.github.graphql(
+      this.authorize(),
+      `
+        query projectViewInformation($id: ID!) {
+          node(id: $id) {
+            ... on ProjectV2View {
+              createdAt
+              filter
+              layout
+              name
+              number
+              updatedAt
             }
           }
-      `,
-        {
-          id: this._id,
         }
-      );
-      /*
-                fields: the visible fields
-                groupByFields
-                sortByFields
-                verticalGroupByFields
-      */
-      return result?.node as ProjectViewDetails;
-    } catch (error) {
-      throw error;
-    }
+    `,
+      {
+        id: this._id,
+      }
+    );
+    /*
+              fields: the visible fields
+              groupByFields
+              sortByFields
+              verticalGroupByFields
+    */
+    return result?.node as ProjectViewDetails;
   }
 
   // async getFields(
@@ -296,7 +292,7 @@ const query = {
                 name
               }
               ... on ProjectV2IterationField {
-                id  
+                id
                 name
                 configuration {
                   iterations {
