@@ -154,7 +154,7 @@ export class RepositoryProject {
   // async getColumn(columnId: number): Promise<any> {
   // }
 
-  async getDetails(options?: ICacheOptionsWithPurpose, okToUseLocalEntity: boolean = true): Promise<any> {
+  async getDetails(options?: ICacheOptionsWithPurpose, okToUseLocalEntity = true): Promise<any> {
     if (okToUseLocalEntity && this._entity) {
       return this._entity;
     }

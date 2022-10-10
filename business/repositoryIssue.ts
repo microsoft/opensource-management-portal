@@ -139,7 +139,7 @@ export class RepositoryIssue {
     }
   }
 
-  async getDetails(options?: ICacheOptions, okToUseLocalEntity: boolean = true): Promise<any> {
+  async getDetails(options?: ICacheOptions, okToUseLocalEntity = true): Promise<any> {
     if (okToUseLocalEntity && this._entity) {
       return this._entity;
     }

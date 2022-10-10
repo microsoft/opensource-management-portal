@@ -52,6 +52,10 @@ export class CorporateTableLink implements ICorporateLinkExtended {
     return this._entity[this._provider.propertyMapping.corporateId];
   }
 
+  set corporateId(value: string) {
+    _updateColumn(this, this._provider.propertyMapping.corporateId, value);
+  }
+
   get corporateMailAddress(): string {
     return this._entity[this._provider.propertyMapping.corporateMailAddress];
   }
@@ -66,10 +70,6 @@ export class CorporateTableLink implements ICorporateLinkExtended {
 
   set corporateAlias(value: string) {
     _updateColumn(this, this._provider.propertyMapping.corporateAlias, value);
-  }
-
-  set corporateId(value: string) {
-    _updateColumn(this, this._provider.propertyMapping.corporateId, value);
   }
 
   get corporateUsername(): string {

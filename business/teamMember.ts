@@ -41,6 +41,11 @@ export class TeamMember {
     return this._link;
   }
 
+  set link(value: ICorporateLink) {
+    // console.warn('TeamMember.link was set');
+    this._link = value;
+  }
+
   get id(): number {
     return this._id;
   }
@@ -55,11 +60,6 @@ export class TeamMember {
 
   get login(): string {
     return this._login;
-  }
-
-  set link(value: ICorporateLink) {
-    // console.warn('TeamMember.link was set');
-    this._link = value;
   }
 
   constructor(team: Team, entity: any, operations: IOperationsInstance) {

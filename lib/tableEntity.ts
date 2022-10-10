@@ -25,7 +25,7 @@ function createEntity(partitionKey: string, rowKey: string, obj?: any, callback?
     callback = obj;
     obj = undefined;
   }
-  var entity = {
+  let entity = {
     partitionKey,
     rowKey,
   };

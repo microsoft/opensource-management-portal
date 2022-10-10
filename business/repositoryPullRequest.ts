@@ -163,7 +163,7 @@ export class RepositoryPullRequest {
   //   return comment;
   // }
 
-  async getDetails(options?: ICacheOptions, okToUseLocalEntity: boolean = true): Promise<any> {
+  async getDetails(options?: ICacheOptions, okToUseLocalEntity = true): Promise<any> {
     if (okToUseLocalEntity && this._entity) {
       return this._entity;
     }

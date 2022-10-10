@@ -7,10 +7,10 @@ import { ReposAppRequest } from '../interfaces';
 import thisPackage from '../package.json';
 import { getProviders } from '../transitional';
 
-var express = require('express');
-var router = express.Router();
+let express = require('express');
+let router = express.Router();
 
-var cachedPackageInformation = null;
+let cachedPackageInformation = null;
 
 // Super-synchronous but rarely used page...
 function getPackageInfo(config) {
@@ -23,8 +23,8 @@ function getPackageInfo(config) {
     config && config.npm && config.npm.privateFeedScope
       ? config.npm.privateFeedScope
       : 'no-configured-private-feed-scope';
-  for (var dependency in thisPackage.dependencies) {
-    var componentPackage = require('../node_modules/' + dependency + '/package.json');
+  for (let dependency in thisPackage.dependencies) {
+    let componentPackage = require('../node_modules/' + dependency + '/package.json');
     if (
       componentPackage &&
       componentPackage.name &&

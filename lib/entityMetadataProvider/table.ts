@@ -874,7 +874,7 @@ function displayTableQuery(
   tableName: string,
   query: TableEntityQueryOptions,
   footer?: string,
-  output: boolean = true
+  output = true
 ) {
   const entity = {};
   if (query['_where'] && Array.isArray(query['_where'])) {
@@ -892,7 +892,7 @@ function displayTableRow(
   tableName: string,
   entity: any,
   footer?: string,
-  output: boolean = true
+  output = true
 ) {
   if (!output) {
     return;

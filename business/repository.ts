@@ -1524,7 +1524,7 @@ export class Repository {
     return Array.from(users.values());
   }
 
-  async getPullers(excludeBroadTeamsAndOwners: boolean = true): Promise<string[]> {
+  async getPullers(excludeBroadTeamsAndOwners = true): Promise<string[]> {
     // duplicated code from getAdministrators
     if (!this.private) {
       return [];

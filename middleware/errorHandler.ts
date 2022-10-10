@@ -20,9 +20,9 @@ function redactRootPathsFromString(string, path) {
 function redactRootPaths(view) {
   const path = process.cwd();
   if (typeof view === 'object') {
-    for (var property in view) {
-      if (view.hasOwnProperty(property)) {
-        var value = view[property];
+    for (let property in view) {
+      if (Object.prototype.hasOwnProperty.call(view, property)) {
+        let value = view[property];
         if (typeof value === 'string') {
           view[property] = redactRootPathsFromString(value, path);
         }
@@ -36,7 +36,7 @@ function redactRootPaths(view) {
 
 function containsNewlinesNotHtml(error) {
   if (error && error.message && error.message.includes && error.message.split) {
-    var newlines = error.message.split('\n');
+    let newlines = error.message.split('\n');
     return newlines.length > 3 && !error.message.includes('</');
   }
   return false;
@@ -52,8 +52,8 @@ const exceptionFieldsOfInterest = [
 export default function SiteErrorHandler(err, req, res, next) {
   // CONSIDER: Let's eventually decouple all of our error message improvements to another area to keep the error handler intact.
   const { applicationProfile, config } = getProviders(req);
-  var correlationId = req.correlationId;
-  var errorStatus = err ? err.status || err.statusCode : undefined;
+  let correlationId = req.correlationId;
+  let errorStatus = err ? err.status || err.statusCode : undefined;
   // Per GitHub: https://developer.github.com/v3/oauth/#bad-verification-code
   // When they offer a code that another GitHub auth server interprets as invalid,
   // the app should retry.
@@ -86,12 +86,12 @@ export default function SiteErrorHandler(err, req, res, next) {
     req.insights.trackEvent({ name: 'GitHubApiTimeout' });
     err = wrapError(err, 'The GitHub API is temporarily down. Please try again soon.', false);
   }
-  var primaryUserInstance = req.user ? req.user.github : null;
+  let primaryUserInstance = req.user ? req.user.github : null;
   if (config) {
     if (config.authentication.scheme !== 'github') {
       primaryUserInstance = req.user ? req.user.azure : null;
     }
-    var version = config && config.logging && config.logging.version ? config.logging.version : '?';
+    let version = config && config.logging && config.logging.version ? config.logging.version : '?';
     if (config.logging.errors && err.status !== 403 && err.skipLog !== true) {
       let appSource = 'unknown';
       if (process.argv.length > 1) {
@@ -146,7 +146,7 @@ export default function SiteErrorHandler(err, req, res, next) {
       console.error(err.stack);
     }
     if (err.innerError) {
-      var inner = err.innerError;
+      let inner = err.innerError;
       console.log('Inner: ' + inner.message);
       if (inner.stack) {
         console.log(inner.stack);
@@ -161,10 +161,10 @@ export default function SiteErrorHandler(err, req, res, next) {
     err.oauthError.statusCode &&
     err.oauthError.data
   ) {
-    var detailed = err.message;
+    let detailed = err.message;
     err = err.oauthError;
     err.status = err.statusCode;
-    var data = JSON.parse(err.data);
+    let data = JSON.parse(err.data);
     if (data && data.message) {
       err.message = err.statusCode + ': ' + data.message;
     } else {
@@ -193,7 +193,7 @@ export default function SiteErrorHandler(err, req, res, next) {
       insights?.trackException({ exception: err });
     });
   }
-  var safeMessage = redactRootPaths(err.message);
+  let safeMessage = redactRootPaths(err.message);
   const defaultErrorTitle = err && err.skipOops ? 'FYI' : 'Oops';
   const view = {
     message: safeMessage,
@@ -217,7 +217,7 @@ export default function SiteErrorHandler(err, req, res, next) {
   // Depending on the library in use, we get everything from non-numeric textual status
   // descriptions to status codes as strings and more. Set the status code found in
   // the error if we have it.
-  var errStatusAsNumber = null;
+  let errStatusAsNumber = null;
   if (err.status) {
     errStatusAsNumber = parseInt(err.status);
   }
