@@ -1,5 +1,3 @@
-[Docs index](index.md)
-
 # Jobs
 
 There are automated cronjobs available to help keep things running smoothly,

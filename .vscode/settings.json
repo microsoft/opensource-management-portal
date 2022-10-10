@@ -1,8 +1,3 @@
 {
-  "typescript.tsdk": "node_modules/typescript/lib",
-  "editor.tabSize": 2,
-  "typescript.format.semicolons": "insert",
-  "editor.formatOnSave": true,
-  "javascript.preferences.quoteStyle": "single",
-  "typescript.preferences.quoteStyle": "single"
+  "typescript.tsdk": "node_modules/typescript/lib"
 }

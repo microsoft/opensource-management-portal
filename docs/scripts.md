@@ -1,5 +1,3 @@
-[Docs index](index.md)
-
 # Scripts
 
 > this file is incomplete

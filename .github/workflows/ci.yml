@@ -22,8 +22,11 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Run Linting
-        run: npm run offline-lint:js
+      - name: Run Markdownlint
+        run: npm run lint:md
+
+      - name: Run ESLint
+        run: npm run lint:js
 
       - name: Run tests
         run: npm test

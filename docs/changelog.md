@@ -1,5 +1,3 @@
-[Docs index](index.md)
-
 # Changes
 
 ## 2021

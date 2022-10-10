@@ -1,5 +1,3 @@
-[Docs index](index.md)
-
 # Feature flags
 
 Under development, configuration values in `config/features.json` map

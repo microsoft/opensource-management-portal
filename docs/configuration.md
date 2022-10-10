@@ -1,6 +1,4 @@
-[Docs index](index.md)
-
-## Configuration
+# Configuration
 
 The configuration story for this application has been evolving over time. At this time, the
 following configuration elements are available at this time, each with a distinct purpose.
@@ -18,7 +16,7 @@ A GitHub organization(s) configuration file in JSON format is required as of ver
 With the current configuration story, a `CONFIGURATION_ENVIRONMENT` variable is required, as well
 as a secret for AAD to get KeyVault bootstrapped. That requirement will go away soon.
 
-### Configuring organizations
+## Configuring organizations
 
 When installed as a GitHub App, the installations can be added into the "dynamic settings" system where
 the org info is stored in an entity database. This allows the app and jobs to pick up the latest configuration
@@ -27,11 +25,11 @@ without needing redeployment.
 Alternatively, a static JSON file can be provided to store configuration details and other information
 about your GitHub orgs that the app will manage.
 
-#### Static orgs
+### Static orgs
 
 The opensource-portal only shows GitHub-organizations which are configured in a specific file. The path for this file is handed over with the environment-variable `GITHUB_ORGANIZATIONS_FILE`, which specifies the relative path of this file from the `data`-folder as root directory. This JSON-file has to be created, here is an example of the organizations-file:
 
-```
+```json
 [
   {
     "name": "ContosoDev",
@@ -76,7 +74,7 @@ Here is a short overview about the meanings of the different parameters:
 - templates: GitHub repository templates
 - locked: joining this organization via the opensource-portal is disabled
 
-### PostgreSQL Configuration
+## PostgreSQL Configuration
 
 To run the opensource-portal with a postgres database, you need to [setup postgres](https://www.postgresql.org/docs/11/runtime.html) and initialize the database by running the `pg.sql`-file in the psql-terminal.
 It's recommended to [run postgres in a docker container](https://hub.docker.com/_/postgres), there is also an official docker image called `postgres` for building.
@@ -87,7 +85,7 @@ Additionally set the name of the linking-table (`tableName` parameter), if the t
 There is also a script in the `scripts` folder that can blast the `pg.sql` insertions into a new database. Be
 sure to configure grants and your user accounts with the concept of least privilege required.
 
-### Cache Configuration
+## Cache Configuration
 
 For caching GitHub-requests with Redis, [setup a redis database](https://redis.io/topics/quickstart) ([running Redis in a docker container](https://hub.docker.com/_/redis/) is recommended, there is an official docker image called `redis` for building).
 
@@ -95,7 +93,7 @@ After Redis setup is complete, set your Redis configs in the `config/redis.json`
 
 Other providers available include Azure Blob (slower but cheap), Cosmos DB, and a hybrid Cosmos+Blob.
 
-### KeyVault Secret Support
+## KeyVault Secret Support
 
 Any configuration string property can be resolved to a KeyVault secret.
 
@@ -111,7 +109,7 @@ URI: a value of `keyvault://username@samplevault.vault.azure.net/secrets/secret-
 get the secret and its metadata, setting the configuration value to the `username` tag, if
 present.
 
-#### Key rotation
+### Key rotation
 
 As configuration, including secrets, is resolved at startup, any key rotation would need
 to include a restart of the app service.

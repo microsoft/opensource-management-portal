@@ -211,7 +211,7 @@ The `main` module of the defined default-assets-package should resolve to the
 path to serve content from. Since the default version uses \[ancient\] Grunt to build the
 assets, it returns the `__dirname` + `/public`, which is the output/built location for Grunt.
 
-```
+```bash
 npm install
 cd default-assets-package
 npm install
@@ -219,11 +219,11 @@ npm install
 
 ### Build
 
-```
+```bash
 npm run build
 ```
 
-You need to rebuild the default-assets-package if you change something. [see Static Site Assets](#static-site-assets)
+You need to rebuild the default-assets-package if you change something. [see Static Site Assets](docs/staticSiteAssets.md)
 
 ### Codespaces instructions
 
@@ -284,7 +284,7 @@ the open source upstream and should be excluded currently.
 
 ### Building the Docker image
 
-```
+```bash
 docker build -t opensource-management-portal .
 ```
 
@@ -346,7 +346,7 @@ you can configure the following extreme minimum working set to use the app.
 The central operations token is a personal access token that is a **org owner**
 of the GitHub org(s) being managed.
 
-```
+```env
 DEBUG_ALLOW_HTTP=1
 GITHUB_CENTRAL_OPERATIONS_TOKEN=a github token for the app
 GITHUB_ORGANIZATIONS_FILE=../../env-orgs.json

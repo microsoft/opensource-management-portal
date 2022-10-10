@@ -33,12 +33,12 @@ Overrides are available to allow the company-specific system to provide the
 org sudo instance for an organization, if you wish to implement a different
 approach, or use a different company-internal system for these decisions.
 
-## Debug flags
+### Debug flags
 
 There is an environmental off-switch enabled that can turn off sudo, allowing for testing
 as a regular user in local environments. That env variable name is `DEBUG_GITHUB_ORG_SUDO_OFF`.
 
-# portal sudo
+## portal sudo
 
 Portal sudo applies sudo for all organizations configured within the application.
 Used by system administrators typically.
@@ -46,7 +46,7 @@ Used by system administrators typically.
 The original design was to use the sudo configuration from the first/primary GitHub org
 that was configured in the environment.
 
-## Feature flag: FEATURE_FLAG_ALLOW_PORTAL_SUDO
+### Feature flag: FEATURE_FLAG_ALLOW_PORTAL_SUDO
 
 > This feature is not on by default.
 
@@ -63,7 +63,7 @@ Can be:
 For the security group provider, configuration should set `SUDO_PORTAL_SECURITY_GROUP_ID` to the
 security group ID to use.
 
-## Debug flags
+### Debug flags
 
 Two environment variables designed for development work exist:
 
