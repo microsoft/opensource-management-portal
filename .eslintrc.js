@@ -23,7 +23,6 @@ module.exports = {
         '@typescript-eslint/no-unused-vars': 'off',
         '@typescript-eslint/no-var-requires': 'off',
         'no-case-declarations': 'off',
-        'no-constant-condition': 'off',
         'no-empty': 'off',
         'no-ex-assign': 'off',
         'no-inner-declarations': 'off',

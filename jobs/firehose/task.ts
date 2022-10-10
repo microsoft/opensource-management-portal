@@ -126,6 +126,7 @@ export default async function firehose({ providers, started }: IReposJob): Promi
     }
     console.log(`[thread ${threadNumber}] started`);
     try {
+      // eslint-disable-next-line no-constant-condition
       while (true) {
         await iterate(providers, threadNumber);
       }
