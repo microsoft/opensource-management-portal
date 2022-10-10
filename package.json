@@ -83,7 +83,7 @@
     "debug": "4.3.4",
     "deepmerge": "4.2.2",
     "dotenv": "16.0.3",
-    "express": "4.18.1",
+    "express": "4.18.2",
     "express-async-handler": "1.1.4",
     "express-session": "1.17.3",
     "express-sslify": "1.2.0",
