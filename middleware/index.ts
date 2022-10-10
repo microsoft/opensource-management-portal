@@ -57,13 +57,13 @@ export default function initMiddleware(app, express, config, dirname, initializa
   //   }
   // };
 
-  // const pugRenderfile = pug.renderFile;
+  // const pugRenderFile = pug.renderFile;
   // pug.renderFile = function (renderPath, renderOptions, renderCallback) {
   //   if (!renderOptions.plugins) {
   //     renderOptions.plugins = [pugCustomLoadPlugin];
   //     console.log('--added plugins--');
   //   }
-  //   return pugRenderfile(renderPath, renderOptions, renderCallback);
+  //   return pugRenderFile(renderPath, renderOptions, renderCallback);
   // };
 
   // const pugCompileFile = pug.compileFile;

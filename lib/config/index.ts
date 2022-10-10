@@ -59,7 +59,7 @@ export interface IProviderOptions {
 
 function createDefaultResolvers(libraryOptions: ILibraryOptions) {
   // The core environment resolver is used to make sure that the
-  // right variables are used for KeyVault or other boostrapping
+  // right variables are used for KeyVault or other bootstrapping
   const environmentProvider = libraryOptions.environment || painlessConfigAsCode(libraryOptions?.options);
 
   try {

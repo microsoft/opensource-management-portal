@@ -219,7 +219,7 @@ export function inListInsensitive(list, value) {
 // ----------------------------------------------------------------------------
 // Given a list of lowercase values, check whether a value is present.
 // ----------------------------------------------------------------------------
-export function isInListAnycaseInLowercaseList(list, value) {
+export function isInListAnyCaseInLowerCaseList(list, value) {
   value = value.toLowerCase();
   for (let i = 0; i < list.length; i++) {
     if (list[i] === value) {

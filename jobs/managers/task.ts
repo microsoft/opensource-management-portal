@@ -128,7 +128,7 @@ export default async function refresh({ providers }: IReposJob): Promise<IReposJ
             console.log(
               `Update to corporate link: username changed from ${link.corporateUsername} to ${info.userPrincipalName}`
             );
-            link.corporateUsername = info.disuserPrincipalNameplayName;
+            link.corporateUsername = info.userPrincipalName;
           }
           if (linkChanges) {
             await linkProvider.updateLink(link);
