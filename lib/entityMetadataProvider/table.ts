@@ -739,7 +739,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
       for (const property in toSet) {
         let value = toSet[property];
         if (possibleDateColumnNames.includes(property)) {
-          if (typeof value === 'string' || value! instanceof Date) {
+          if (typeof value === 'string' || value instanceof Date) {
             let date = tryGetDate(value);
             if (date && !isFinite(date as any as number)) {
               date = null;
