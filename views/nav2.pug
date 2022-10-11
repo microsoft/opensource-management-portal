@@ -100,7 +100,7 @@ div.navbar.navbar-default(style=reposContext ? 'margin-bottom:0' : undefined)
         //- User Account Menu
         if user && user.azure
           li.dropdown
-            a.dropbown-toggle(href='#', data-toggle='dropdown', role='button', aria-haspopup='true', aria-expanded='false')
+            a.dropdown-toggle(href='#', data-toggle='dropdown', role='button', aria-haspopup='true', aria-expanded='false')
               if hideGitHubAccount === true
                 //- skip
                 if user.azure

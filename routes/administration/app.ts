@@ -230,7 +230,7 @@ router.post(
             `You need to accept the membership now at: https://github.com/${unconfiguredOrganization.name}`
           );
         } else {
-          return res.send('OK. Elevation should be allset.');
+          return res.send('OK. Elevation should be all set.');
         }
       } catch (error) {
         return next(error);
