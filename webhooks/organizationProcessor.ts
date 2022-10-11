@@ -3,7 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import _ from 'lodash';
 import crypto from 'crypto';
 import secureCompare from 'secure-compare';
 

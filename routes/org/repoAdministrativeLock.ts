@@ -7,8 +7,6 @@ import asyncHandler from 'express-async-handler';
 import { Router } from 'express';
 const router: Router = Router();
 
-import _ from 'lodash';
-
 import { getProviders } from '../../transitional';
 import { Repository } from '../../business/repository';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
