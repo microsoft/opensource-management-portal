@@ -18,7 +18,7 @@ export class AzureQueuesMessage implements IQueueMessage {
   constructor(message: DequeuedMessageItem) {
     this.popReceipt = message.popReceipt;
     this.identifier = message.messageId;
-    this.unparsedBody = new Buffer(message.messageText, 'base64').toString('utf8');
+    this.unparsedBody = Buffer.from(message.messageText, 'base64').toString('utf8');
     const parsed = JSON.parse(this.unparsedBody);
     if (parsed && parsed.body && typeof (parsed.body === 'string')) {
       // our own envelope format designed to work well with Azure Logic Apps
