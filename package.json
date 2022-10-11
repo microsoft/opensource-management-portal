@@ -122,7 +122,7 @@
     "pug": "3.0.2",
     "pug-load": "^3.0.0",
     "recursive-readdir": "2.2.2",
-    "redis": "3.1.2",
+    "redis": "4.3.1",
     "redis-mock": "0.56.3",
     "secure-compare": "3.0.1",
     "semver": "7.3.8",
