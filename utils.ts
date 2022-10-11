@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Response, Request, Router } from 'express';
+import { Response, Request } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
@@ -44,13 +44,6 @@ export function requireJson(nameFromRoot: string): any {
   const content = fs.readFileSync(file, 'utf8');
   console.warn(`JSON as module (${file}) from project root (NOT TypeScript 'dist' folder)`);
   return JSON.parse(content);
-}
-
-// ----------------------------------------------------------------------------
-// Returns an integer, random, between low and high (exclusive) - [low, high)
-// ----------------------------------------------------------------------------
-export function randomInteger(low: number, high: number) {
-  return Math.floor(Math.random() * (high - low) + low);
 }
 
 export function safeLocalRedirectUrl(path: string) {
@@ -192,80 +185,6 @@ export function wrapError(error, message, userIntendedMessage?: boolean): IRepos
 }
 
 // ----------------------------------------------------------------------------
-// A destructive removal function for an object. Removes a single key.
-// ----------------------------------------------------------------------------
-export function stealValue(obj, key) {
-  if (obj[key] !== undefined) {
-    const val = obj[key];
-    delete obj[key];
-    return val;
-  }
-}
-
-// ----------------------------------------------------------------------------
-// Given a list of string values, check a string, using a case-insensitive
-// comparison.
-// ----------------------------------------------------------------------------
-export function inListInsensitive(list, value) {
-  value = value.toLowerCase();
-  for (let i = 0; i < list.length; i++) {
-    if (list[i].toLowerCase() === value) {
-      return true;
-    }
-  }
-  return false;
-}
-
-// ----------------------------------------------------------------------------
-// Given a list of lowercase values, check whether a value is present.
-// ----------------------------------------------------------------------------
-export function isInListAnyCaseInLowerCaseList(list, value) {
-  value = value.toLowerCase();
-  for (let i = 0; i < list.length; i++) {
-    if (list[i] === value) {
-      return true;
-    }
-  }
-  return false;
-}
-
-// ----------------------------------------------------------------------------
-// Given an array of things that have an `id` property, return a hash indexed
-// by that ID.
-// ----------------------------------------------------------------------------
-export function arrayToHashById(inputArray) {
-  const hash = {};
-  if (inputArray && inputArray.length) {
-    for (let i = 0; i < inputArray.length; i++) {
-      if (inputArray[i] && inputArray[i].id) {
-        hash[inputArray[i].id] = inputArray[i];
-      }
-    }
-  }
-  return hash;
-}
-
-// ----------------------------------------------------------------------------
-// Obfuscate a string value, optionally leaving a few characters visible.
-// ----------------------------------------------------------------------------
-export function obfuscate(value, lastCharactersShowCount) {
-  if (value === undefined || value === null || value.length === undefined) {
-    return value;
-  }
-  const length = value.length;
-  lastCharactersShowCount = lastCharactersShowCount || 0;
-  lastCharactersShowCount = Math.min(Math.round(lastCharactersShowCount), length - 1);
-  let obfuscated = '';
-  for (let i = 0; i < length - lastCharactersShowCount; i++) {
-    obfuscated += '*';
-  }
-  for (let j = length - lastCharactersShowCount; j < length; j++) {
-    obfuscated += value[j];
-  }
-  return obfuscated;
-}
-
-// ----------------------------------------------------------------------------
 // A very basic breadcrumb stack that ties in to an Express request object.
 // ----------------------------------------------------------------------------
 export function addBreadcrumb(req, breadcrumbTitle, optionalBreadcrumbLink) {
@@ -289,42 +208,12 @@ export function addBreadcrumb(req, breadcrumbTitle, optionalBreadcrumbLink) {
   req.breadcrumbs = breadcrumbs;
 }
 
-export function stackSafeCallback(callback, err, item, extraItem) {
-  // Works around RangeError: Maximum call stack size exceeded.
-  setImmediate(() => {
-    callback(err, item, extraItem);
-  });
-}
-
-export function createSafeCallbackNoParams(cb) {
-  return () => {
-    exports.stackSafeCallback(cb);
-  };
-}
-
 export function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       process.nextTick(resolve);
     }, milliseconds);
   });
-}
-
-export function ParseReleaseReviewWorkItemId(uri: string): string {
-  const safeUrl = new URL(uri);
-  const id = safeUrl.searchParams.get('id');
-  if (id) {
-    return id;
-  }
-  const pathname = safeUrl.pathname;
-  const editIndex = pathname.indexOf('edit/');
-  if (editIndex >= 0) {
-    return pathname.substr(editIndex + 5);
-  }
-  if (safeUrl.host === 'osstool.microsoft.com') {
-    return null; // Very legacy
-  }
-  throw new Error(`Unable to parse work item information from: ${uri}`);
 }
 
 export function readFileToText(filename: string): Promise<string> {
