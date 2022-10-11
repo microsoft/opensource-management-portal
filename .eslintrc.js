@@ -13,7 +13,7 @@ module.exports = {
       files: ['**/*.ts'],
       parser: '@typescript-eslint/parser',
       plugins: ['@typescript-eslint'],
-      extends: ['plugin:@typescript-eslint/recommended'],
+      extends: ['plugin:@typescript-eslint/recommended', 'plugin:n/recommended'],
       rules: {
         '@typescript-eslint/ban-ts-comment': 'off',
         '@typescript-eslint/no-empty-function': 'off',
@@ -22,6 +22,9 @@ module.exports = {
         '@typescript-eslint/no-this-alias': 'off',
         '@typescript-eslint/no-unused-vars': 'off',
         '@typescript-eslint/no-var-requires': 'off',
+        'n/no-missing-import': 'off',
+        'n/no-process-exit': 'off',
+        'n/shebang': 'off',
         'no-case-declarations': 'off',
         'no-empty': 'off',
         'no-ex-assign': 'off',
