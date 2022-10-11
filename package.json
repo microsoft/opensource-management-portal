@@ -98,7 +98,7 @@
     "hsts": "2.2.0",
     "jsonc": "2.0.0",
     "jsonwebtoken": "8.5.1",
-    "jwks-rsa": "2.1.4",
+    "jwks-rsa": "2.1.5",
     "language-map": "1.5.0",
     "lodash": "4.17.21",
     "luxon": "3.0.4",
