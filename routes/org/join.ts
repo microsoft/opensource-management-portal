@@ -109,12 +109,12 @@ router.get(
     const accountDetails = await accountFromId.getDetails();
     const link = req.individualContext.link;
     const userIncreasedScopeToken = req.individualContext.webContext.tokens.gitHubWriteOrganizationToken;
-    let onboarding = queryParamAsBoolean(req.query.onboarding as string);
+    const onboarding = queryParamAsBoolean(req.query.onboarding as string);
     let showTwoFactorWarning = false;
     let showApplicationPermissionWarning = false;
     let writeOrgFailureMessage = null;
     const result = await organization.getOperationalMembership(username);
-    let state = result && result.state ? result.state : false;
+    const state = result && result.state ? result.state : false;
     if (state === OrganizationMembershipState.Active) {
       await addMemberToOrganizationCache(providers.queryCache, organization, id);
       return clearAuditListAndRedirect(res, organization, onboarding, req, state);
@@ -146,7 +146,7 @@ router.get(
     const details = await organization.getDetails();
     const userDetails = details ? organization.memberFromEntity(details) : null;
     userDetails['entity'] /* adding to the object */ = details;
-    let title = organization.name + ' Organization Membership ' + (state == 'pending' ? 'Pending' : 'Join');
+    const title = organization.name + ' Organization Membership ' + (state == 'pending' ? 'Pending' : 'Join');
     req.individualContext.webContext.render({
       view: 'org/pending',
       title,
@@ -301,7 +301,7 @@ async function joinOrganization(
       );
     }
   }
-  let invitationTeam = organization.invitationTeam as Team;
+  const invitationTeam = organization.invitationTeam as Team;
   let okToSendInvite = true;
   let multipleInvitationDebugMessage = null;
   try {

@@ -73,7 +73,7 @@ export function SerializeObjectToEntityMetadata(
     entityId: id,
     entityFieldNames: [],
   };
-  let allKeys = new Set(Array.from(Object.getOwnPropertyNames(obj)));
+  const allKeys = new Set(Array.from(Object.getOwnPropertyNames(obj)));
   allKeys.delete(idFieldName);
   const objectKeys = obj.getObjectFieldNames ? obj.getObjectFieldNames() : Object.getOwnPropertyNames(obj);
   const setKeys = [];

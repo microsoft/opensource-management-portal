@@ -109,7 +109,7 @@ async function identifyTeamMaintainers(teamContext: IReportsTeamContext, team: T
 }
 
 async function iterateTeams(context: IReportsContext) {
-  let teams = context.entities.teams;
+  const teams = context.entities.teams;
   context.processing.teams = {
     remaining: teams.length,
   };
@@ -241,11 +241,11 @@ async function processTeam(context: IReportsContext, team: Team) {
           text: 'Manage team',
         }
       : null;
-    let createdAt = team.created_at ? moment(team.created_at) : null;
+    const createdAt = team.created_at ? moment(team.created_at) : null;
     if (createdAt) {
       basicTeam.created = createdAt.format(simpleDateFormat);
     }
-    let updatedAt = team.updated_at ? moment(team.updated_at) : null;
+    const updatedAt = team.updated_at ? moment(team.updated_at) : null;
     if (updatedAt) {
       basicTeam.updated = updatedAt.format(simpleDateFormat);
     }
@@ -368,7 +368,7 @@ function addEntityToIssueType(context, teamContext, type, entity, optionalAction
   if (!definition) {
     throw new Error(`No defined issue type ${type}`);
   }
-  let hadActions = true && entity.actions;
+  const hadActions = true && entity.actions;
   const entityClone = Object.assign({}, entity);
   if (hadActions) {
     delete entityClone.actions;

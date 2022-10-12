@@ -414,7 +414,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
       return tableEntity;
     }
     const newObject = {};
-    for (let column in tableEntity) {
+    for (const column in tableEntity) {
       if (TableClientProperties.has(column)) {
         // Timestamp, PartitionKey, RowKey, .metadata
         continue;
@@ -636,7 +636,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
   }
 
   private createQueryFromFixedQueryEnum(type: EntityMetadataType, query: IEntityMetadataFixedQuery): any {
-    let get = EntityMetadataMappings.GetDefinition(type, TableSettings.TableQueries, true);
+    const get = EntityMetadataMappings.GetDefinition(type, TableSettings.TableQueries, true);
     return get(query, this.getFixedPartitionKey(type));
   }
 

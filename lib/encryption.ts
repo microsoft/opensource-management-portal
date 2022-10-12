@@ -260,7 +260,7 @@ function createDefaultEncryptionResolver(propertiesToEncrypt) {
 }
 
 function encryptProperty(contentEncryptionKey, contentEncryptionIV, partitionKey, rowKey, property, value) {
-  let columnIV = computeTruncatedColumnHash(contentEncryptionIV, partitionKey, rowKey, property);
+  const columnIV = computeTruncatedColumnHash(contentEncryptionIV, partitionKey, rowKey, property);
   // Store the encrypted properties as binary values on the service instead of
   // base 64 encoded strings because strings are stored as a sequence of WCHARs
   // thereby further reducing the allowed size by half. During retrieve, it is
@@ -320,7 +320,7 @@ async function encryptProperties(
           `Null or undefined properties cannot be encrypted. Property in question: ${property}`
         );
       }
-      let type = typeof value;
+      const type = typeof value;
       if (type !== 'string') {
         throw new Error(`${type} properties cannot be encrypted; property in question: ${property}`);
       }
@@ -449,7 +449,7 @@ export async function decryptEntityAsync(partitionKey, rowKey, properties, encry
   if (returnBinaryProperties !== 'base64' && returnBinaryProperties !== 'buffer') {
     throw new Error('The binary properties value is not valid. Please provide "buffer" or "base64".');
   }
-  let detailsValue = properties[tableEncryptionKeyDetails];
+  const detailsValue = properties[tableEncryptionKeyDetails];
   if (detailsValue === undefined) {
     return properties;
   }

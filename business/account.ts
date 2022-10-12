@@ -175,8 +175,8 @@ export class Account {
   corporateAlias() {
     // NOTE: this is a hack
     if (this.contactEmail()) {
-      let email = this.contactEmail();
-      let i = email.indexOf('@');
+      const email = this.contactEmail();
+      const i = email.indexOf('@');
       if (i >= 0) {
         return email.substring(0, i);
       }
@@ -283,7 +283,7 @@ export class Account {
       if (events && events.cost && events.cost.github.usedApiTokens > 0) {
         cached = false;
       }
-      let arr = [...events];
+      const arr = [...events];
       arr['cached'] = cached;
       return arr;
     } catch (error) {
@@ -312,7 +312,7 @@ export class Account {
       console.dir(getDetailsError);
     }
     try {
-      let link = await operations.getLinkByThirdPartyId(this._id.toString());
+      const link = await operations.getLinkByThirdPartyId(this._id.toString());
       if (link) {
         this._link = link;
       }
@@ -445,7 +445,7 @@ export class Account {
     if (!username) {
       throw new Error(`No GitHub username available for user ID ${this._id}`);
     }
-    let currentOrganizationMemberships: Organization[] = [];
+    const currentOrganizationMemberships: Organization[] = [];
     const checkOrganization = async (organization) => {
       try {
         const result = await organization.getOperationalMembership(username);
@@ -472,7 +472,7 @@ export class Account {
     const staticOrganizations = allOrganizations.filter((org) => org.hasDynamicSettings === false);
     const dynamicOrganizations = allOrganizations.filter((org) => org.hasDynamicSettings);
     await Promise.all(dynamicOrganizations.map(checkOrganization));
-    for (let organization of staticOrganizations) {
+    for (const organization of staticOrganizations) {
       await checkOrganization(organization);
     }
     return currentOrganizationMemberships;
@@ -480,7 +480,7 @@ export class Account {
 
   async removeCollaboratorPermissions(): Promise<IRemoveOrganizationMembershipsResult> {
     const history = [];
-    let error: IReposError = null;
+    const error: IReposError = null;
     const operations = throwIfNotGitHubCapable(this._operations);
     const opsWithProvs = operationsWithCapability<IOperationsProviders>(operations, CoreCapability.Providers);
     const { queryCache } = opsWithProvs?.providers || {};

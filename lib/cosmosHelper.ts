@@ -72,7 +72,7 @@ export default class CosmosHelper {
   async setObject(object: any): Promise<void> {
     this.throwIfNotInitialized();
     debug(`COSMOS SET OBJECT: ${object.id}`);
-    let approxSize = 0;
+    const approxSize = 0;
     try {
       const item = Object.assign({}, object);
       await this._collection.items.upsert(item);

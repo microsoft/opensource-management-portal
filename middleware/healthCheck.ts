@@ -7,13 +7,13 @@ import debug = require('debug');
 
 const dbg = debug('health');
 
-let mapTypeToValue = {
+const mapTypeToValue = {
   readiness: 'ready',
   liveness: 'healthy',
 };
 
 export default function initializeHealthCheck(app, config) {
-  let configuredHealthDelays = {
+  const configuredHealthDelays = {
     readiness: 0,
     liveness: 0,
   };

@@ -41,7 +41,7 @@ export default class GitHubApplication {
   }
 
   static isInvalidInstallation(installation: IGitHubAppInstallation): string[] /* invalid reasons*/ {
-    let invalid: string[] = [];
+    const invalid: string[] = [];
     if (installation.target_type !== 'Organization') {
       invalid.push(`Installation has an unsupported target type of ${installation.target_type}.`);
     }

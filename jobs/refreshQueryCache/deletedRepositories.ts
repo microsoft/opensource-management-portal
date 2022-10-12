@@ -58,7 +58,7 @@ async function processDeletedRepositories(providers: IProviders): Promise<void> 
     let deleted = 0;
     let reposCount = 0;
     try {
-      let allRepositories = await queryCache.allRepositories();
+      const allRepositories = await queryCache.allRepositories();
       reposCount = allRepositories.length;
       console.log(`Incoming # of repositories cached: ${reposCount}`);
       for (let i = 0; i < allRepositories.length; i++) {

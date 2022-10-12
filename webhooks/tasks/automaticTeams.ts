@@ -32,9 +32,9 @@ interface ICustomDataEventName {
 export default class AutomaticTeamsWebhookProcessor implements WebhookProcessor {
   processOrgSpecialTeams(organization: Organization) {
     const specialTeams = organization.specialRepositoryPermissionTeams;
-    let specials = [];
-    let specialTeamIds = new Set<number>();
-    let specialTeamLevels = new Map<number, string>();
+    const specials = [];
+    const specialTeamIds = new Set<number>();
+    const specialTeamLevels = new Map<number, string>();
     teamTypes.forEach((specialTeam) => {
       if (specialTeams[specialTeam] && specialTeams[specialTeam].length) {
         specials.push(specialTeam);
@@ -174,7 +174,7 @@ function teamTooLargeForPurpose(
   preventLargeTeamPermissions
 ) {
   const broadAccessTeams = organization.broadAccessTeams;
-  let isBroadAccessTeam = broadAccessTeams && broadAccessTeams.includes(teamId);
+  const isBroadAccessTeam = broadAccessTeams && broadAccessTeams.includes(teamId);
   if (isBroadAccessTeam && (isAdmin || isPush)) {
     return 'The team is a very broad access team and does not allow push (write) or admin access to prevent widespread escalation of privileges and spamming thousands of people';
   }
@@ -329,7 +329,7 @@ async function sendEmail(
     throw renderError;
   }
   mail.content = mailContent;
-  let customData: ICustomDataEventName = {
+  const customData: ICustomDataEventName = {
     content: body,
     receipt: '',
   };

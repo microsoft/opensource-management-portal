@@ -30,7 +30,12 @@ module.exports = {
         'no-ex-assign': 'off',
         'no-inner-declarations': 'off',
         'no-useless-catch': 'off',
-        'prefer-const': 'off',
+        'prefer-const': [
+          'error',
+          {
+            destructuring: 'all',
+          },
+        ],
         'prefer-rest-params': 'off',
         'prefer-spread': 'off',
       },

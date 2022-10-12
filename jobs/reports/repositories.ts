@@ -208,8 +208,8 @@ function identifyActionableAdmins(
 async function iterateRepos(context: IReportsContext): Promise<IReportsContext> {
   let repos = context.entities.repos;
   if (context.settings.slice) {
-    let offset = 3000;
-    let initial = repos.length > offset ? offset - context.settings.slice : 0;
+    const offset = 3000;
+    const initial = repos.length > offset ? offset - context.settings.slice : 0;
     repos = repos.slice(initial, initial + context.settings.slice);
   }
   context.processing.repos = {
@@ -276,7 +276,7 @@ async function processRepository(context: IReportsContext, repository: Repositor
   function reposDirectLink(content, suffix?, alternateForRepoFullPath?): string {
     const reposUrl = context.config.urls.repos;
     const q = getCampaignData(content);
-    let fullPath = `${organization.name}/repos/${repository.name}`;
+    const fullPath = `${organization.name}/repos/${repository.name}`;
     if (suffix) {
       fullPath + '/' + suffix;
     }
@@ -371,7 +371,7 @@ async function processRepository(context: IReportsContext, repository: Repositor
   // Basic administrators info
   basicRepository.administrators = 'None';
   if (corporateAdministrators.length > 0) {
-    let caLink = 'mailto:' + corporateAdministrators.join(';') + '?subject=' + repository.full_name;
+    const caLink = 'mailto:' + corporateAdministrators.join(';') + '?subject=' + repository.full_name;
     const peoplePlurality = corporateAdministrators.length > 1 ? 'people' : 'person';
     basicRepository.administrators = {
       link: caLink,
@@ -413,15 +413,15 @@ async function processRepository(context: IReportsContext, repository: Repositor
       actionViewInPortal
     );
   }
-  let createdAt = repository.created_at ? moment(repository.created_at) : null;
+  const createdAt = repository.created_at ? moment(repository.created_at) : null;
   if (createdAt) {
     basicRepository.created = createdAt.format(simpleDateFormat);
   }
-  let updatedAt = repository.updated_at ? moment(repository.updated_at) : null;
+  const updatedAt = repository.updated_at ? moment(repository.updated_at) : null;
   if (updatedAt) {
     basicRepository.updated = updatedAt.format(simpleDateFormat);
   }
-  let pushedAt = repository.pushed_at ? moment(repository.pushed_at) : null;
+  const pushedAt = repository.pushed_at ? moment(repository.pushed_at) : null;
   if (pushedAt) {
     basicRepository.pushed = pushedAt.format(simpleDateFormat);
   }
@@ -562,8 +562,8 @@ async function getNewRepoCreationInformation(
 ): Promise<void> {
   const repository = repositoryContext.repository;
   const thisWeek = moment().subtract(7, 'days');
-  let createdAt = repository.created_at ? moment(repository.created_at) : null;
-  let isBrandNew = createdAt.isAfter(thisWeek);
+  const createdAt = repository.created_at ? moment(repository.created_at) : null;
+  const isBrandNew = createdAt.isAfter(thisWeek);
   const repositoryMetadataProvider = context.providers.repositoryMetadataProvider;
   if (!isBrandNew || !repositoryMetadataProvider) {
     return;
@@ -661,7 +661,7 @@ async function augmentWithAdditionalRecipients(
     return context;
   }
   const fullRepoName = repositoryContext.repository.full_name;
-  let additional = [];
+  const additional = [];
   try {
     const contacts = await corporateContactProvider.lookupContacts(upn);
     if (contacts && contacts.managerUsername) {
@@ -682,7 +682,7 @@ async function augmentWithAdditionalRecipients(
         isVstsTeam = true;
         lc = lc.replace(projectPlaceholder, '[Reviews]\\');
       }
-      let legalReason = `${lc} is the legal contact assigned to ${createdByName} who created a new repository ${fullRepoName}`;
+      const legalReason = `${lc} is the legal contact assigned to ${createdByName} who created a new repository ${fullRepoName}`;
       additional.push({
         type: isVstsTeam ? 'vststeam' : 'upn',
         value: lc,
@@ -710,7 +710,7 @@ function addEntityToIssueType(context, repositoryContext, type, entity, optional
   if (!definition) {
     throw new Error(`No defined issue type ${type}`);
   }
-  let hadActions = true && entity.actions;
+  const hadActions = true && entity.actions;
   const entityClone = Object.assign({}, entity);
   if (hadActions) {
     delete entityClone.actions;

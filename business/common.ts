@@ -22,7 +22,7 @@ export function assignKnownFieldsPrefixed(
   _.keys(directSet).forEach((key) => {
     delete copy[key];
   });
-  for (let [key, value] of Object.entries(directSet)) {
+  for (const [key, value] of Object.entries(directSet)) {
     self[`${prefix}${key}`] = value;
   }
 
@@ -38,7 +38,7 @@ export function assignKnownFieldsPrefixed(
     Object.assign(self[otherFieldsKeyName], otherSet);
   }
 
-  let remainingKeys = _.keys(copy);
+  const remainingKeys = _.keys(copy);
   if (remainingKeys.length > 0) {
     const extraFieldsKeyName = 'extraFields';
     if (!self[extraFieldsKeyName]) {
@@ -60,13 +60,13 @@ export function createPromisedInstances<T>(
     if (error) {
       return reject(error);
     }
-    let wrap = createMethod.bind(self);
+    const wrap = createMethod.bind(self);
     return resolve(_.map(entities, wrap));
   };
 }
 
 export function createInstances<T>(self, createMethod, entities: T[]): T[] {
-  let wrap = createMethod.bind(self);
+  const wrap = createMethod.bind(self);
   return _.map(entities, wrap) as any as T[];
 }
 
@@ -81,7 +81,7 @@ export function returnPromisedInstances<T>(
   if (error) {
     return reject(error);
   }
-  let wrap = createMethod.bind(self);
+  const wrap = createMethod.bind(self);
   return resolve(_.map(entities, wrap));
 }
 
@@ -90,7 +90,7 @@ export function createInstancesCallback<T>(self, createMethod, callback: ICallba
     if (error) {
       return callback(error);
     }
-    let wrap = createMethod.bind(self);
+    const wrap = createMethod.bind(self);
     callback(null, _.map(entities, wrap));
   };
 }

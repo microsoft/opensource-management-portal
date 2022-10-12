@@ -41,7 +41,7 @@ function configurePackageEnvironments(
   environment: string,
   appName: string
 ) {
-  let environmentInstances = [];
+  const environmentInstances = [];
   for (let i = 0; i < environmentModules.length; i++) {
     // CONSIDER: Should the name strip any @ after the first slash, in case it is a version-appended version?
     let npmName = environmentModules[i].trim();
@@ -140,7 +140,7 @@ function initialize(options?: IProviderOptions) {
     provider.get(ApplicationNameEnvironmentVariableKey)) as string;
 
   const nodeEnvironment = provider.get('NODE_ENV');
-  let configurationEnvironmentKeyNames = (
+  const configurationEnvironmentKeyNames = (
     provider.get('CONFIGURATION_ENVIRONMENT_KEYS') || 'CONFIGURATION_ENVIRONMENT,NODE_ENV'
   ).split(',');
   if (!configurationEnvironmentKeyNames || configurationEnvironmentKeyNames.length === 0) {

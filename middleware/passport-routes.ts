@@ -159,7 +159,7 @@ export default function configurePassport(app, passport, config) {
 
   // User-beware, I should not be writing my own truncating shallow object copy code
   function shallowTruncatingCopy(obj) {
-    let o = {};
+    const o = {};
     for (const entity in obj) {
       const value = obj[entity];
       if (typeof value === 'object') {

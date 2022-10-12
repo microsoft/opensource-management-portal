@@ -321,7 +321,7 @@ async function dataLakeUpload(context: IReportsContext) {
   // issueTimestamp: started
   // issueTypeName: typeName
 
-  let dataLakeOutput = [];
+  const dataLakeOutput = [];
 
   const started = context.started;
   const consolidated = context.consolidated;

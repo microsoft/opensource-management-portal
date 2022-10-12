@@ -142,9 +142,9 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
       pool: providers.postgresPool,
     },
   };
-  let tableProviderEnabled =
+  const tableProviderEnabled =
     emOptions.tableOptions && emOptions.tableOptions.account && emOptions.tableOptions.key;
-  let postgresProviderEnabled = emOptions.postgresOptions && emOptions.postgresOptions.pool;
+  const postgresProviderEnabled = emOptions.postgresOptions && emOptions.postgresOptions.pool;
   const tableEntityMetadataProvider = tableProviderEnabled
     ? await createAndInitializeEntityMetadataProviderInstance(emOptions, 'table')
     : null;

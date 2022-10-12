@@ -1459,7 +1459,7 @@ export class Repository {
       collaborators = collaborators.filter((c) => false === ownersSet.has(c.login.toLowerCase()));
     }
     const users = new Set<string>(collaborators.map((c) => c.login.toLowerCase()));
-    let teams = (await this.getTeamPermissions()).filter((tp) => tp.permission === 'admin');
+    const teams = (await this.getTeamPermissions()).filter((tp) => tp.permission === 'admin');
     for (let i = 0; i < teams.length; i++) {
       const team = teams[i];
       if (excludeBroadAndSystemTeams && (team.team.isSystemTeam || team.team.isBroadAccessTeam)) {
@@ -1502,7 +1502,7 @@ export class Repository {
     }
     collaborators = collaborators.filter((c) => false === ownersSet.has(c.login.toLowerCase()));
     const users = new Set<string>(collaborators.map((c) => c.login.toLowerCase()));
-    let teams = (await this.getTeamPermissions()).filter((tp) => tp.permission === 'push');
+    const teams = (await this.getTeamPermissions()).filter((tp) => tp.permission === 'push');
     for (let i = 0; i < teams.length; i++) {
       const team = teams[i];
       if (team.team.isSystemTeam || team.team.isBroadAccessTeam) {
@@ -1550,7 +1550,7 @@ export class Repository {
       collaborators = collaborators.filter((c) => false === ownersSet.has(c.login.toLowerCase()));
     }
     const users = new Set<string>(collaborators.map((c) => c.login.toLowerCase()));
-    let teams = (await this.getTeamPermissions()).filter((tp) => tp.permission === 'pull');
+    const teams = (await this.getTeamPermissions()).filter((tp) => tp.permission === 'pull');
     for (let i = 0; i < teams.length; i++) {
       const team = teams[i];
       if (excludeBroadTeamsAndOwners && (team.team.isSystemTeam || team.team.isBroadAccessTeam)) {
@@ -1644,12 +1644,12 @@ export class Repository {
       backgroundRefresh: options.backgroundRefresh !== undefined ? options.backgroundRefresh : true,
       pageRequestDelay: options.pageRequestDelay,
     };
-    let issuesAndPullRequests = await github.collections.getRepoIssues(
+    const issuesAndPullRequests = await github.collections.getRepoIssues(
       this.authorize(AppPurpose.Data),
       parameters,
       cacheOptions
     );
-    let issuesOnly = issuesAndPullRequests.filter((r) => !r.pull_request);
+    const issuesOnly = issuesAndPullRequests.filter((r) => !r.pull_request);
     const issues = common.createInstances<RepositoryIssue>(this, issueFromEntity, issuesOnly);
     return issues;
   }

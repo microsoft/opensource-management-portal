@@ -26,8 +26,8 @@ export default async function cleanup({ providers }: IReposJob): Promise<void> {
   }
   const maximumAgeMoment = moment().subtract(maximumInvitationAgeDays, 'days');
   const organizations = operations.getOrganizations();
-  let removedInvitations = 0;
-  for (let organization of organizations) {
+  const removedInvitations = 0;
+  for (const organization of organizations) {
     let invitations: any[];
     try {
       invitations = await organization.getMembershipInvitations();
@@ -76,7 +76,7 @@ export default async function cleanup({ providers }: IReposJob): Promise<void> {
         `Organization ${organization.name} has ${emailInvitations} e-mail based invitations that cannot be canceled through this job`
       );
     }
-    for (let login of invitationsToRemove) {
+    for (const login of invitationsToRemove) {
       try {
         await organization.removeMember(login);
       } catch (removeError) {

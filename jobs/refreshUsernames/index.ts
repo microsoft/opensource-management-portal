@@ -29,7 +29,7 @@ async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
 
   let errors = 0;
   let notFoundErrors = 0;
-  let errorList = [];
+  const errorList = [];
 
   let updates = 0;
   let updatedUsernames = 0;
@@ -52,7 +52,7 @@ async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
         ++i;
 
         // Refresh GitHub username for the ID
-        let id = link.thirdPartyId;
+        const id = link.thirdPartyId;
         const account = operations.getAccount(id);
         let changed = false;
         try {

@@ -46,8 +46,8 @@ async function validateLinkOk(req: ReposAppRequest, res, next) {
     const userType = details.userType;
     const displayName = details.displayName;
     const userPrincipalName = details.userPrincipalName;
-    let block = (userType as string) === 'Guest';
-    let blockedRecord = block ? 'BLOCKED' : 'not blocked';
+    const block = (userType as string) === 'Guest';
+    const blockedRecord = block ? 'BLOCKED' : 'not blocked';
     insights.trackEvent({
       name: 'LinkValidateNotGuestGraphSuccess',
       properties: {

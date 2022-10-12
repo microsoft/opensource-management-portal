@@ -25,7 +25,7 @@ interface IRequestWithDigestReports extends RequestWithSystemwidePermissions {
 router.use((req: IRequestWithDigestReports, res, next) => {
   const context = req.individualContext as IndividualContext;
 
-  let upn = context && context.corporateIdentity ? context.corporateIdentity.username : null;
+  const upn = context && context.corporateIdentity ? context.corporateIdentity.username : null;
   if (!upn) {
     return next(new Error('Must have an active corporate link'));
   }

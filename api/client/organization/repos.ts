@@ -224,7 +224,7 @@ export async function searchRepos(
 
   // Filters
   if (q) {
-    let phrase = q.toLowerCase();
+    const phrase = q.toLowerCase();
     repositories = repositories.filter(repoMatchesPhrase.bind(null, phrase));
   }
 

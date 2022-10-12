@@ -13,7 +13,7 @@ import { getRepositoryMetadataProvider } from '../../interfaces';
 
 export default class RepositoryWebhookProcessor implements WebhookProcessor {
   filter(data: any) {
-    let eventType = data.properties.event;
+    const eventType = data.properties.event;
     return eventType === 'repository';
   }
 

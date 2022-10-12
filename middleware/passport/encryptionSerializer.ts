@@ -138,7 +138,7 @@ export default class EncryptionSerializer implements LegacySerializer {
       Object.getOwnPropertyNames(user).map((entityName) => {
         return new Promise((resolve, reject) => {
           if (userEncryptedEntities[entityName] !== undefined) {
-            let entityValue = user[entityName];
+            const entityValue = user[entityName];
             return deserializeEntity(this.options, entityName, entityValue, (error, result) => {
               u[entityName] = result;
               return error ? reject(error) : resolve(undefined);

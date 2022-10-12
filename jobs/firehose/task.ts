@@ -25,14 +25,14 @@ const runningAsOngoingDeployment = true;
 const hardAbortMs = 1000 * 60 * 5; // 5 minutes
 
 export default async function firehose({ providers, started }: IReposJob): Promise<IReposJobResult> {
-  let processedEventTypes = {};
-  let interestingEvents = 0;
+  const processedEventTypes = {};
+  const interestingEvents = 0;
   let processedEvents = 0;
   const config = providers.config;
   const jobMinutesFrequency = config.github.webhooks.runtimeMinutes
     ? parseInt(config.github.webhooks.runtimeMinutes)
     : 5;
-  let runtimeSeconds =
+  const runtimeSeconds =
     (jobMinutesFrequency - 1) * 60 + 30; /* 30 second flex in the last minute instead of 60s */
   config.github?.webhooks?.serviceBus?.queue &&
     console.log(`bus: ${config.github.webhooks.serviceBus.queue}`);
@@ -79,7 +79,7 @@ export default async function firehose({ providers, started }: IReposJob): Promi
   if (!supportsMultipleThreads) {
     console.log('The queue provider does not support multiple concurrent threads');
   }
-  let parallelism = supportsMultipleThreads ? maxParallelism : 1;
+  const parallelism = supportsMultipleThreads ? maxParallelism : 1;
   const sliceDelayPerThread = emptyQueueDelaySeconds / parallelism;
   console.log(
     `Parallelism for this run will be ${parallelism} logical threads, offset by ${sliceDelayPerThread}s`
@@ -105,7 +105,7 @@ export default async function firehose({ providers, started }: IReposJob): Promi
     threads.push(createThread(App, providers, i, delay));
     delay += sliceDelayPerThread;
   }
-  let ok = true;
+  const ok = true;
   await Promise.all(threads);
 
   console.warn('Forever execution thread has completed.');
@@ -215,7 +215,7 @@ export default async function firehose({ providers, started }: IReposJob): Promi
     const enterprise = webhook.enterprise as IGitHubWebhookEnterprise;
     let orgName = null;
     const deployment = getCompanySpecificDeployment();
-    let processedElsewhere = deployment?.features?.firehose?.processWebhook
+    const processedElsewhere = deployment?.features?.firehose?.processWebhook
       ? await deployment.features.firehose.processWebhook(
           providers,
           webhook,

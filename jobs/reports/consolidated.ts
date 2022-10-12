@@ -69,7 +69,7 @@ function addEntityToRecipientMap(map, providerName, recipient, entity, definitio
       }
       recipientView[issueName] = entry;
     }
-    let entry = recipientView[issueName];
+    const entry = recipientView[issueName];
     const entityIssue = entity.issues[issueName];
     const specificItems = entity.specific && entity.specific.issueItems ? entity.specific.issueItems : null;
     if (definition.hasTable) {
@@ -90,7 +90,7 @@ function fillFrom(object, property, target, entity, specificItems) {
       if (specificItems && !specificItems.has(sourceItem)) {
         continue;
       }
-      let lineItem = typeof source[i] === 'object' ? Object.assign({}, sourceItem) : { text: sourceItem };
+      const lineItem = typeof source[i] === 'object' ? Object.assign({}, sourceItem) : { text: sourceItem };
       if (!lineItem.entityName && entity.name) {
         lineItem.entityName = entity.name;
       }
@@ -220,7 +220,7 @@ export function buildConsolidatedMap(consolidated, options?) {
         }
       }
     }
-    for (let recipient of providerByName.keys()) {
+    for (const recipient of providerByName.keys()) {
       const values = providerByName.get(recipient);
       if (!byRecipient.has(recipient)) {
         const recipientEntries = [];
@@ -229,7 +229,7 @@ export function buildConsolidatedMap(consolidated, options?) {
       }
       const entry = byRecipient.get(recipient);
       if (values.reasons && entry.reasons) {
-        for (let reason of values.reasons) {
+        for (const reason of values.reasons) {
           entry.reasons.add(reason);
         }
       }

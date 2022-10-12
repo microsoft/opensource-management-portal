@@ -51,7 +51,7 @@ export default function initializeAppInsights(app: IReposApplication, config) {
   let cs: string =
     config?.telemetry?.applicationInsightsConnectionString || config?.telemetry?.applicationInsightsKey;
   // Override the key with a job-specific one if this is a job execution instead
-  let jobCs: string =
+  const jobCs: string =
     config?.telemetry?.jobsApplicationInsightsConnectionString ||
     config?.telemetry?.jobsApplicationInsightsKey;
   if (jobCs && config.isJobInternal === true) {

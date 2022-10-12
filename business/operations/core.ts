@@ -269,7 +269,7 @@ export abstract class OperationsCore
     if (baseUrlRoot && baseUrlRoot.endsWith('/')) {
       baseUrlRoot = baseUrlRoot.substr(0, baseUrlRoot.length - 1);
     }
-    let baseUrl = baseUrlRoot + this.baseUrl;
+    const baseUrl = baseUrlRoot + this.baseUrl;
     if (baseUrl) {
       return baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
     }

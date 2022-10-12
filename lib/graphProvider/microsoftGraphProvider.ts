@@ -112,7 +112,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
   }
 
   async getManagementChain(corporateId: string): Promise<IGraphEntryWithManager[]> {
-    let chain = [];
+    const chain = [];
     try {
       let entry = await this.getCachedEntryWithManagerById(corporateId);
       while (entry) {
@@ -496,7 +496,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     let hasArray = false;
     let value = null;
     let url = `${graphBaseUrl}${subUrl}?${querystring.stringify(queries)}`;
-    let originalUrl = url;
+    const originalUrl = url;
     try {
       if (this.#_cache) {
         value = await this.#_cache.getObject(url);

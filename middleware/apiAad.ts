@@ -88,12 +88,12 @@ export function getAadApiConfiguration(config: any) {
     throw jsonError('App not configured for authorizing APIs via AAD', 500);
   }
 
-  let approvedApps = config?.microsoft?.api?.aad?.approvedApps as IConfigAadApiApprovedAppsOrOids;
+  const approvedApps = config?.microsoft?.api?.aad?.approvedApps as IConfigAadApiApprovedAppsOrOids;
   if (approvedApps === undefined) {
     throw jsonError('AAD API app authentication is not configured', 500);
   }
 
-  let approvedOids = config?.microsoft?.api?.aad?.approvedOids as IConfigAadApiApprovedAppsOrOids;
+  const approvedOids = config?.microsoft?.api?.aad?.approvedOids as IConfigAadApiApprovedAppsOrOids;
   if (approvedApps === undefined) {
     throw jsonError('AAD API OID authentication is not configured', 500);
   }

@@ -65,7 +65,7 @@ router.get(
     if (operations.providers.queryCache && operations.providers.queryCache.supportsOrganizationMembership) {
       // faster implementation
       const links = (await operations.providers.linkProvider.getAll()).filter((lid) => lid['id'] === linkid);
-      let link = links.length === 1 ? links[0] : null;
+      const link = links.length === 1 ? links[0] : null;
       if (!link) {
         return next(jsonError('Could not find the link', 404));
       }
@@ -188,7 +188,7 @@ router.get(
       return res.json(r);
     }
     const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps);
-    let r = [];
+    const r = [];
     for (let i = 0; i < results.length; i++) {
       const entry = results[i];
       if (entry && entry.aad && entry.aad.userPrincipalName === upn) {
@@ -247,7 +247,7 @@ router.get(
       return res.json(r);
     }
     const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps);
-    let r = [];
+    const r = [];
     for (let i = 0; i < results.length; i++) {
       const entry = results[i];
       if (entry && entry.aad && entry.aad.id === id) {

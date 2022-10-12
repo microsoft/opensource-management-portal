@@ -168,7 +168,7 @@ export function getGithubAppConfigurationOptions(config) {
 }
 
 export default function createGithubStrategy(app, config) {
-  let strategies = {};
+  const strategies = {};
   const codespaces = config?.github?.codespaces || {};
   const { modernAppInUse, githubAppConfiguration, useIncreasedScopeLegacyAppIfNeeded } =
     getGithubAppConfigurationOptions(config);

@@ -41,7 +41,7 @@ router.get('/', function (req: ILocalRequest, res) {
 });
 
 router.get('/setNote/:action', function (req: ILocalRequest, res) {
-  let engine = req.approvalEngine;
+  const engine = req.approvalEngine;
   let action = req.params.action;
   if (action == 'approveWithComment') {
     action = 'approve';
@@ -66,7 +66,7 @@ router.post(
     const providers = getProviders(req);
     const { individualContext } = req;
     const engine = req.approvalEngine as PermissionWorkflowEngine;
-    let message = req.body.text as string;
+    const message = req.body.text as string;
     const teamBaseUrl = req.teamUrl as string;
     let decision: TeamApprovalDecision = null;
     if (req.body.reopen) {

@@ -569,7 +569,7 @@ export async function consolidate(context: IReportsContext): Promise<IReportsCon
 
     // Only store in the consolidated report if there are recipients for the entity
     let issueCount = 0;
-    let recipientCount = reducedEntity && reducedEntity.recipients ? reducedEntity.recipients.length : 0;
+    const recipientCount = reducedEntity && reducedEntity.recipients ? reducedEntity.recipients.length : 0;
     if (reducedEntity && reducedEntity.issues) {
       issueCount = Object.getOwnPropertyNames(reducedEntity.issues).length;
     }
