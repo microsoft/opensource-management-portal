@@ -67,7 +67,7 @@
     "@azure/storage-blob": "12.11.0",
     "@azure/storage-file-share": "12.11.0",
     "@azure/storage-queue": "12.10.0",
-    "@octokit/auth-app": "4.0.6",
+    "@octokit/auth-app": "4.0.7",
     "@octokit/request": "^6.2.1",
     "@octokit/rest": "19.0.5",
     "adal-node": "0.2.3",
