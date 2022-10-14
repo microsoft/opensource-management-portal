@@ -1,11 +1,11 @@
 {
-  "companyName": "env://COMPANY_NAME?default=your enterprise",
-  "companyLink": "env://COMPANY_LINK?default=about:blank",
-  "companyPortalName": "env://COMPANY_PORTAL_NAME?default=GitHub Management Portal",
-  "appName": "env://APP_NAME?default=Self-service GitHub Management",
-  "supportMail": "env://PORTAL_ADMIN_EMAIL",
-  "operationsMail": "env://GITHUB_OPERATIONS_EMAIL",
-  "forkApprovalMail": "env://GITHUB_FORK_APPROVAL_EMAIL",
-  "electionMail": "env://FOSSFUND_ELECTION_MAIL",
-  "infrastructureNotificationsMail": "env://GITHUB_INFRASTRUCTURE_NOTIFICATIONS_MAIL"
+  "companyName": "env://COMPANY_NAME?default=National Institutes of Health",
+  "companyLink": "env://COMPANY_LINK?default=https://github.nih.gov",
+  "companyPortalName": "env://COMPANY_PORTAL_NAME?default=NIH GitHub Management Portal",
+  "appName": "env://APP_NAME?default=Self-service GitHub management",
+  "supportMail": "env://PORTAL_ADMIN_EMAIL?default=GitHub@nih.gov",
+  "operationsMail": "env://GITHUB_OPERATIONS_EMAIL?default=GitHub@nih.gov",
+  "forkApprovalMail": "env://GITHUB_FORK_APPROVAL_EMAIL?default=GitHub@nih.gov",
+  "electionMail": "env://FOSSFUND_ELECTION_MAIL?default=GitHub@nih.gov",
+  "infrastructureNotificationsMail": "env://GITHUB_INFRASTRUCTURE_NOTIFICATIONS_MAIL?default=GitHub@nih.gov"
 }
