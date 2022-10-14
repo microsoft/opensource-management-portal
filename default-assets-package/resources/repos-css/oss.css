@@ -206,7 +206,7 @@ div.alerts {
 
 /* 1px solid border in primary */
 .border-1px-primary {
-  border:1px solid #0072C6 !important;
+  border:1px solid #20558a !important;
 }
 
 /* theme colors and components */
@@ -264,27 +264,27 @@ div.link-box {
 
 /* Brand box coloring v1 */
 .metro-blue {
-  background:#0072C6;
+  background:#20558a;
 }
 .metro-purple {
-  background:#68217A;
+  background:#6c3a77;
 }
 .metro-gray {
-  background:#666;
+  background:#616265;
 }
 .metro-orange {
-  background:#fa6800;
+  background:#e57200;
 }
 
 /* Top Line Borders */
 .ms-red-border-top {
   border-style: solid;
-  border-top-color:#e81123;
+  border-top-color:#c0143c;
   border-width:4px 0 0 0;
 }
 .ms-blue-border-top {
   border-style: solid;
-  border-top-color:#0078d7;
+  border-top-color:#20558a;
   border-width:4px 0 0 0;
 }
 .transparent-border {
@@ -296,25 +296,25 @@ div.link-box {
   background:#ffb900;
 }
 .ms-orange {
-  background:#d83b01;
+  background:#e57200;
 }
 .ms-red {
-  background:#e81123;
+  background:#c0143c;
 }
 .ms-magenta {
   background:#b4009e;
 }
 .ms-purple {
-  background:#5c2d91;
+  background:#6c3a77;
 }
 .ms-blue {
-  background:#0078d7;
+  background:#20558a;
 }
 .ms-teal {
   background:#008272;
 }
 .ms-green {
-  background:#107c10;
+  background:#719500;
 }
 /* Additional brand colors */
 .ms-light-orange {
@@ -429,19 +429,19 @@ td.w-10, th.w-10 {
 .wiki-sidebar .nav > li > a:hover,
 .wiki-sidebar .nav > li > a:focus {
   padding-left: 19px;
-  color: #0072C6;
+  color: #20558a;
   text-decoration: none;
   background-color: transparent;
-  border-left: 1px solid #0072C6;
+  border-left: 1px solid #20558a;
 }
 .wiki-sidebar .nav > .active > a,
 .wiki-sidebar .nav > .active:hover > a,
 .wiki-sidebar .nav > .active:focus > a {
   padding-left: 18px;
   font-weight: bold;
-  color: #0072C6;
+  color: #20558a;
   background-color: transparent;
-  border-left: 2px solid #0072C6;
+  border-left: 2px solid #20558a;
 }
 
 /* Nav: second level (shown on .active) */
@@ -478,7 +478,7 @@ td.w-10, th.w-10 {
   color: #999;
 }
 .back-to-top:hover {
-  color: #0072C6;
+  color: #20558a;
   text-decoration: none;
 }
 
