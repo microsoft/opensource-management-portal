@@ -33,7 +33,7 @@ jobs:
 
       - name: get orgs from graphql
         run: |
-          gh api graphql -f ent=NIHGOV -f query='query($ent: String!) {
+          gh api graphql -f ent=nih -f query='query($ent: String!) {
            enterprise(slug: $ent) {
              organizations(first: 100) {
                nodes {
