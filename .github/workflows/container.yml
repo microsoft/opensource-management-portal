@@ -16,6 +16,13 @@ jobs:
       - name: Checkout 🛒
         uses: actions/checkout@v3
 
+      - name: Packages 📦
+        run: |
+          # Prepare our .npmrc
+          sed -i "s/\\\${NPM_TOKEN}/${{ secrets.OSPO_ADO_ARTIFACTS_PRIVATE_FEED_TOKEN }}/" .npmrc.arg
+          mv .npmrc.arg .npmrc
+          npm ci
+
       - name: Lint 👔
         run: |
           npm run lint
