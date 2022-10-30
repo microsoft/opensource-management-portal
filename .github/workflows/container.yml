@@ -1,16 +1,99 @@
-name: Build
+name: Ship it 🐿️
+permissions:
+  id-token: write
+  contents: read
 
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 jobs:
-  # Build a Docker container to validate the build
-  containerize:
+
+  lint-and-test:
+    name: "Lint 'n test 🧺"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 🛒
+        uses: actions/checkout@v3
+
+      - name: Lint 👔
+        run: |
+          npm run lint
+
+      - name: Test 🏃‍♂️
+        run: |
+          npm run test
+          # npm run-script build
+          # npm run-script test:ci
+
+  build:
     runs-on: ubuntu-latest
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+
       - uses: actions/checkout@v3
+      
       - uses: docker/build-push-action@v3
+
+      - name: Azure OpenID Connect ✨
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.CLIENT_ID }}
+          tenant-id: ${{ secrets.TENANT_ID }}
+          subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
+
+      - name: Validate login
+      - name: Validate login 🥶
+        run: |
+          az account show
+
+      - name: Connect to Azure Container Registry 🔖
+        run: |
+          az acr login -n opensource
+
+      - name: Stamp build information 💌
+        run: |
+          sed -i "s/__Build_BuildNumber__/${{ github.run_number }}/" package.json
+          sed -i "s/__Build_SourceVersion__/${{ github.sha }}/" package.json
+          echo package.json-stamped version:
+          cat package.json
+  
+      - name: Container build ⛴️
+        run: |
+          docker build \
+            -t ${{ github.event.repository.name }}:${{ github.run_number }} \
+            -t opensource.azurecr.io/${{ github.event.repository.name }}:${{ github.run_number }} \
+            -t opensource.azurecr.io/${{ github.event.repository.name }}:latest \
+            .
+
+      - name: Push to ACR 📌
+        run: |
+          docker image push opensource.azurecr.io/${{ github.event.repository.name }}:${{ github.run_number }}
+          docker image push opensource.azurecr.io/${{ github.event.repository.name }}:latest
+
+
+  development:
+    name: Deploy to development 🏗️
+    runs-on: ubuntu-latest
+    needs: [build, lint-and-test]
+    environment:
+      name: development
+
+    steps:
+      - name: Azure OpenID Connect ✨
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.CLIENT_ID }}
+          tenant-id: ${{ secrets.TENANT_ID }}
+          subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
+
+      - name: Prepare staging slots 🎰
+        run: |
+          echo TODO: create web deployments
+
+
+
+
+
+
+
