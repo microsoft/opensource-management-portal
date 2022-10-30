@@ -1,14 +1,4 @@
 {
   "docker": "env://IS_DOCKER?trueIf=1",
-  "deployment": "env://IS_CONTAINER_DEPLOYMENT?trueIf=1",
-  "healthCheck": {
-    "expectedHeader": {
-      "name": "env://KUBERNETES_HEALTH_CHECK_KEY?default=x-health-check",
-      "value": "env://KUBERNETES_HEALTH_CHECK_VALUE?default=check"
-    },
-    "delay": {
-      "liveness": "env://KUBERNETES_LIVENESS_DELAY?type=integer&default=5",
-      "readiness": "env://KUBERNETES_READINESS_DELAY?type=integer&default=10"
-    }
-  }
+  "deployment": "env://IS_CONTAINER_DEPLOYMENT?trueIf=1"
 }

@@ -1,4 +1,10 @@
 {
+  "port": "env://PORT",
   "allowHttp": "env://DEBUG_ALLOW_HTTP?type=boolean&default=1&trueIf=1",
+  "appService": {
+    "slot": "env://WEBSITE_SLOT_NAME",
+    "name": "env://WEBSITE_SITE_NAME",
+    "region": "env://REGION_NAME"
+  },
   "baseUrl": "env://SITE_BASE_URL"
 }

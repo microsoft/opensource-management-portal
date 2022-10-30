@@ -1,0 +1,25 @@
+{
+  "enabled": "env://ENABLE_WEB_HEALTH_PROBES?trueIf=1&default=1",
+  "delay": {
+    "liveness": "env://WEB_HEALTH_LIVENESS_DELAY?type=integer&default=5",
+    "readiness": "env://WEB_HEALTH_READINESS_DELAY?type=integer&default=10"
+  },
+  "external": {
+    "allowed": "env://EXTERNAL_HEALTH_PROBES?trueIf=1&default=1",
+    "endpointSuffix": "env://EXTERNAL_HEALTH_PROBE_ENDPOINT_SUFFIX?default=external"
+  },
+  "kubernetes": {
+    "allowed": "env://KUBERNETES_HEALTH_PROBES?trueIf=1",
+    "expectedHeader": {
+      "name": "env://KUBERNETES_HEALTH_CHECK_KEY?default=x-health-check",
+      "value": "env://KUBERNETES_HEALTH_CHECK_VALUE?default=check"
+    }
+  },
+  "azurefrontdoor": {
+    "allowed": "env://AZURE_FRONTDOOR_HEALTH_PROBES?trueIf=1",
+    "expectedHeader": {
+      "name": "env://AZURE_FRONTDOOR_HEALTH_CHECK_KEY?default=user-agent",
+      "value": "env://AZURE_FRONTDOOR_HEALTH_CHECK_VALUE?default=Edge Health Probe"
+    }
+  }
+}
