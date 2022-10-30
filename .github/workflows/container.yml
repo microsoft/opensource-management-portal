@@ -39,7 +39,6 @@ jobs:
           tenant-id: ${{ secrets.TENANT_ID }}
           subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
 
-      - name: Validate login
       - name: Validate login 🥶
         run: |
           az account show
