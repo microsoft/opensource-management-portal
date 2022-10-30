@@ -11,6 +11,7 @@ import _ from 'lodash';
 
 import { jsonError } from '../middleware';
 import {
+  CreateError,
   getProviders,
   ICustomizedNewRepoProperties,
   ICustomizedNewRepositoryLogic,
@@ -99,7 +100,10 @@ export async function CreateRepository(
     throw jsonError(new Error('No organization available in the route.'), 400);
   }
   const providers = getProviders(req);
-  const { operations, mailProvider, insights } = providers;
+  const { config, operations, mailProvider, insights } = providers;
+  if (config?.github?.repos?.newRepositoriesOffline) {
+    throw CreateError.NotAuthorized(config.github.repos.newRepositoriesOffline);
+  }
   const repositoryMetadataProvider = getRepositoryMetadataProvider(organization.operations);
   const ourFields = [
     'ms.onBehalfOf',

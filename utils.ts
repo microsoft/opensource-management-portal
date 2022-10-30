@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
 import zlib from 'zlib';
-import { ReposAppRequest, IAppSession, IReposError } from './interfaces';
+import { ReposAppRequest, IAppSession, IReposError, SiteConfiguration } from './interfaces';
 import { getProviders } from './transitional';
 
 export function daysInMilliseconds(days: number): number {
@@ -401,4 +401,27 @@ export function addArrayToSet<T>(set: Set<T>, array: T[]): Set<T> {
 
 export function isEnterpriseManagedUserLogin(login: string) {
   return login?.includes('_');
+}
+
+export function isCodespacesAuthenticating(config: SiteConfiguration, authType: 'aad' | 'github') {
+  const { codespaces } = config?.github || {};
+  return (
+    codespaces?.connected === true &&
+    codespaces?.authentication &&
+    codespaces.authentication[authType] &&
+    codespaces.authentication[authType].enabled
+  );
+}
+
+export function getCodespacesHostname(config: SiteConfiguration) {
+  const { github, webServer } = config;
+  const { codespaces } = github;
+  const { connected, desktop } = codespaces;
+  let codespacesPort = undefined;
+  if (connected === true) {
+    codespacesPort = codespaces.authentication?.port;
+  }
+  const port = codespacesPort || webServer.port || 3000;
+  const forwardingDomain = codespaces?.forwardingDomain || 'preview.app.github.dev';
+  return desktop ? `http://localhost:${port}` : `https://${codespaces.name}-${port}.${forwardingDomain}`;
 }

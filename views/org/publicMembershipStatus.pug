@@ -39,7 +39,7 @@ block content
         <a href="https://developer.github.com/v3/oauth/#scopes" target="_new"><code>write:org</code></a>
         permissions and immediately publish your organization membership.
       p
-        a.btn.btn-primary.btn-lg(href='/signin/github/increased-scope') Publish Membership
+        a.btn.btn-primary.btn-lg(href='/' + (signinPathSegment || 'signin') + '/github/increased-scope') Publish Membership
         if (!(onboarding || joining))
           | &nbsp; &nbsp;
           a.btn.btn-lg.btn-default(href=organization.baseUrl) Cancel

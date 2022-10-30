@@ -3,10 +3,5 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import Job from './task';
-import app from '../../app';
-
-app.runJob(Job, {
-  timeoutMinutes: 90,
-  insightsPrefix: 'JobReports',
-});
+import type { SiteConfiguration } from '../config/index.types';
+export type { SiteConfiguration };

@@ -7,6 +7,7 @@ import { NextFunction, Response } from 'express';
 import { PassportStatic } from 'passport';
 import { IReposError, ReposAppRequest } from '../../interfaces';
 import { getProviders } from '../../transitional';
+import { isCodespacesAuthenticating } from '../../utils';
 import { IPrimaryAuthenticationHelperMethods } from '../passport-routes';
 import { aadStrategyUserPropertyName } from './aadStrategy';
 
@@ -18,7 +19,8 @@ export function attachAadPassportRoutes(
   passport: PassportStatic,
   helpers: IPrimaryAuthenticationHelperMethods
 ) {
-  app.get('/signin', function (req: ReposAppRequest, res, next) {
+  const signinPath = isCodespacesAuthenticating(config, 'aad') ? 'sign-in' : 'signin';
+  app.get(`/${signinPath}`, function (req: ReposAppRequest, res, next) {
     if (req.isAuthenticated()) {
       const username = req.user?.azure?.username;
       if (username) {
@@ -51,7 +53,6 @@ export function attachAadPassportRoutes(
     });
   });
 
-  // Actual AAD sign-in
   app.get(
     '/auth/azure',
     passport.authenticate(aadPassportStrategyName, {
@@ -109,12 +110,12 @@ export function attachAadPassportRoutes(
     return next(messageError);
   });
 
-  app.get('/signin/azure', function (req: ReposAppRequest, res: Response) {
+  app.get(`/${signinPath}/azure`, function (req: ReposAppRequest, res: Response) {
     helpers.storeReferrer(
       req,
       res,
       '/auth/azure',
-      'request for the /signin/azure page, need to authenticate'
+      `request for the /${signinPath}/azure page, need to authenticate`
     );
   });
 

@@ -6,11 +6,11 @@
 import { Strategy as GithubStrategy } from 'passport-github';
 
 import { IGitHubAccountDetails, IProviders } from '../../interfaces';
-import { isEnterpriseManagedUserLogin } from '../../utils';
+import { getCodespacesHostname, isCodespacesAuthenticating, isEnterpriseManagedUserLogin } from '../../utils';
 
 const debug = require('debug')('startup');
 
-export const gitHubStrategyName = 'github';
+export const githubStrategyName = 'github';
 export const githubIncreasedScopeStrategyName = 'expanded-github-scope';
 export const githubStrategyUserPropertyName = 'github';
 export const githubIncreasedScopeStrategyUserPropertyName = 'githubIncreasedScope';
@@ -80,9 +80,9 @@ async function githubResponseToSubsetEx(
 ): Promise<IGitHubIdentitySubset> {
   const providers = app.settings.providers as IProviders;
   const { config, operations } = providers;
-  const codespacesConfig = config?.github?.codespaces || {};
+  const codespacesConfig = config?.github?.codespaces;
   const impersonateOverrideEmuAccount =
-    codespacesConfig?.authentication?.github?.impersonateOverrideEmuAccount || {};
+    codespacesConfig?.authentication?.github?.impersonateOverrideEmuAccount;
   const { useIncreasedScopeLegacyAppIfNeeded } = getGithubAppConfigurationOptions(config);
   // GitHub Codespaces-only override for Enterprise Managed Users
   if (!codespacesConfig?.block && impersonateOverrideEmuAccount?.enabled) {
@@ -178,17 +178,10 @@ export default function createGithubStrategy(app, config) {
     debug('No GitHub App configured, linking will not be available.');
     return strategies;
   }
-  let codespacesPort = undefined;
-  if (codespaces?.connected === true) {
-    codespacesPort = codespaces.authentication?.port;
-  }
-  const port = codespacesPort || process.env.PORT || 3000; // should use config instead
   const redirectSuffix = '/auth/github/callback';
   const finalCallbackUrl =
-    codespaces?.connected === true &&
-    codespaces?.authentication?.github?.enabled === true &&
-    !codespaces?.block
-      ? `https://${codespaces.name}-${port}.githubpreview.dev${redirectSuffix}`
+    isCodespacesAuthenticating(config, 'github') && !codespaces?.block
+      ? getCodespacesHostname(config) + redirectSuffix
       : githubAppConfiguration.callbackUrl;
   let clientId = githubAppConfiguration.clientId;
   let clientSecret = githubAppConfiguration.clientSecret;
@@ -230,7 +223,7 @@ export default function createGithubStrategy(app, config) {
     githubResponseToSubset.bind(null, app, modernAppInUse)
   );
   // Validate the borrow some parameters from the GitHub passport library
-  strategies[gitHubStrategyName] = githubPassportStrategy;
+  strategies[githubStrategyName] = githubPassportStrategy;
   // Expanded OAuth-scope GitHub access for org membership writes.
   if (!modernAppInUse) {
     // new GitHub Apps no longer have a separate scope concept
