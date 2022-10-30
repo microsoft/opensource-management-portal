@@ -21,13 +21,10 @@ const typescriptConfig = require('./typescript');
 module.exports = function (graphApi) {
   const environmentProvider = graphApi.environment;
   const environmentName =
-    environmentProvider.get(painlessConfigEnvironmentVariableName) || environmentProvider.get('ENV');
-
+    environmentProvider.get(painlessConfigEnvironmentVariableName) || environmentProvider.get('NODE_ENV');
   const homepageCount = 10;
-
   let articles = [];
   let resources = null;
-
   // 1: load news
   let pkgName = null;
   if (pkg && pkg[painlessConfigEnvPkgName] && environmentName) {
