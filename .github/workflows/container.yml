@@ -18,9 +18,6 @@ jobs:
 
       - name: Packages 📦
         run: |
-          # Prepare our .npmrc
-          sed -i "s/\\\${NPM_TOKEN}/${{ secrets.OSPO_ADO_ARTIFACTS_PRIVATE_FEED_TOKEN }}/" .npmrc.arg
-          mv .npmrc.arg .npmrc
           npm ci
 
       - name: Lint 👔
@@ -45,10 +42,6 @@ jobs:
           client-id: ${{ secrets.CLIENT_ID }}
           tenant-id: ${{ secrets.TENANT_ID }}
           subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
-
-      - name: Validate login 🥶
-        run: |
-          az account show
 
       - name: Connect to Azure Container Registry 🔖
         run: |
