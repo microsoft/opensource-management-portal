@@ -16,6 +16,10 @@ jobs:
       - name: Checkout 🛒
         uses: actions/checkout@v3
 
+      - name: Packages 📦
+        run: |
+          npm ci
+
       - name: Lint 👔
         run: |
           npm run lint
@@ -27,6 +31,7 @@ jobs:
           # npm run-script test:ci
 
   build:
+    name: "Container delivery 🚛"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -38,11 +43,6 @@ jobs:
           client-id: ${{ secrets.CLIENT_ID }}
           tenant-id: ${{ secrets.TENANT_ID }}
           subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
-
-      - name: Validate login
-      - name: Validate login 🥶
-        run: |
-          az account show
 
       - name: Connect to Azure Container Registry 🔖
         run: |
@@ -86,5 +86,16 @@ jobs:
 
       - name: Prepare staging slots 🎰
         run: |
-          echo TODO create web deployments
+          az webapp config container set \
+            --docker-custom-image-name opensource.azurecr.io/${{ github.event.repository.name }}:${{ github.run_number }} \
+            --docker-registry-server-url https://opensource.azurecr.io \
+            --name portalwestus3 \
+            --resource-group portal \
+            #--slot devstaging
 
+      - name: Swap staging to live 💃
+        run: |
+          echo TODO az webapp deployment slot swap \
+            --name portalwestus3 \
+            --resource-group portal \
+            --slot devstaging
