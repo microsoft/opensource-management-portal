@@ -150,7 +150,7 @@ router.get(
     let isMaintainer = false;
     let pendingRequest: TeamJoinApprovalEntity = null;
     let team2: Team = null;
-    let maintainers = null;
+    const maintainers = null;
     const username = req.individualContext.getGitHubIdentity().username;
     const id = req.individualContext.getGitHubIdentity().id;
     let organization: Organization = null;
@@ -170,13 +170,13 @@ router.get(
         }
       }
       if (isMaintainer) {
-        let err: IReposError = new Error('Redirecting to the admin experience to approve');
-        let slugPreferred = team2.slug || team2.name;
+        const err: IReposError = new Error('Redirecting to the admin experience to approve');
+        const slugPreferred = team2.slug || team2.name;
         err.redirect = '/' + organization.name + '/teams/' + slugPreferred + '/approvals/' + requestid;
         throw err;
       }
       if (pendingRequest.thirdPartyId != /* loose */ id) {
-        let msg: IReposError = new Error('This request does not exist or was created by another user.');
+        const msg: IReposError = new Error('This request does not exist or was created by another user.');
         msg.skipLog = true;
         throw msg;
       }

@@ -40,7 +40,7 @@ export class GitHubAppTokens {
     fileContents: string,
     baseUrl?: string
   ): GitHubAppTokens {
-    let keyContents = Buffer.from(fileContents, 'base64').toString('utf8').replace(/\r\n/g, '\n');
+    const keyContents = Buffer.from(fileContents, 'base64').toString('utf8').replace(/\r\n/g, '\n');
     return new GitHubAppTokens(purpose, friendlyName, applicationId, keyContents, baseUrl);
   }
 

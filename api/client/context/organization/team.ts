@@ -199,7 +199,7 @@ router.get(
     const { approvalProvider } = getProviders(req);
     const team = getContextualTeam(req);
     const permissions = getTeamPermissionsFromRequest(req);
-    let response: ITeamApprovalsJsonResponse = {
+    const response: ITeamApprovalsJsonResponse = {
       allowAdministration: false,
     };
     if (permissions.allowAdministration) {

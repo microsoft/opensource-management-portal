@@ -304,8 +304,8 @@ export class RepositorySearch {
 
   sortByAlphabet(): RepositorySearch {
     this.repos.sort((a, b) => {
-      let nameA = a.name.toLowerCase();
-      let nameB = b.name.toLowerCase();
+      const nameA = a.name.toLowerCase();
+      const nameB = b.name.toLowerCase();
       if (nameA < nameB) {
         return -1;
       }
@@ -334,7 +334,7 @@ export class RepositorySearch {
   private repoMatchesPhrase(repo: Repository, phrase: string): boolean {
     // Poor man's search, starting with just a raw includes search
     // Assumes that phrase is already lowercase to work
-    let string = ((repo.name || '') + (repo.description || '') + (repo.id || '')).toLowerCase();
+    const string = ((repo.name || '') + (repo.description || '') + (repo.id || '')).toLowerCase();
     return string.includes(phrase);
   }
 

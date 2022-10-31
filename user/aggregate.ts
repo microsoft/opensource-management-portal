@@ -181,7 +181,7 @@ export class UserContext {
   }
 
   async getAggregatedOverview(): Promise<IAggregateUserSummary> {
-    let [organizations, teams, repositories] = await Promise.all([
+    const [organizations, teams, repositories] = await Promise.all([
       SettleToStateValue(this.aggregateOrganizations()),
       SettleToStateValue(this.aggregateTeams()),
       SettleToStateValue(this.aggregateLegacyRepositories()),
@@ -228,7 +228,7 @@ export class UserContext {
     // Find all the repos that the user have permission to across all configured orgs
     function getOrCreatePair(repositoryId: string, repository: Repository): IRepositoryPermissionPair {
       let pair = repositories.get(repositoryId);
-      let newPair = !!pair;
+      const newPair = !!pair;
       if (!pair) {
         pair = {
           repository: repository,
@@ -292,7 +292,7 @@ export class UserContext {
       admin: [],
       member: [],
     };
-    for (let { organization, role } of membership) {
+    for (const { organization, role } of membership) {
       if (role !== OrganizationMembershipRole.Admin && role !== OrganizationMembershipRole.Member) {
         throw new Error(
           `Unrecognized or invalid organization ${organization.name} role=${role} for user ${this.id}`
@@ -310,7 +310,7 @@ export class UserContext {
     const userIdString = this.id.toString();
     const teams = await this._queryCache.userTeams(userIdString);
     const awaits: Promise<any>[] = [];
-    for (let { role, team } of teams) {
+    for (const { role, team } of teams) {
       try {
         if (role !== GitHubTeamRole.Maintainer && role !== GitHubTeamRole.Member) {
           throw new Error(

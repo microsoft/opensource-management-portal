@@ -118,7 +118,7 @@ export default async function ProcessOrganizationWebhook(
     console.log(`[uninteresting event: ${event.properties.event}]`);
   }
 
-  for (let processor of work) {
+  for (const processor of work) {
     try {
       await processor.run(operations, organization, event);
     } catch (processInitializationError) {

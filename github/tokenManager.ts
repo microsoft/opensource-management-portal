@@ -89,7 +89,7 @@ export class GitHubTokenManager {
   }
 
   async initialize() {
-    for (let appPurpose of AllAvailableAppPurposes) {
+    for (const appPurpose of AllAvailableAppPurposes) {
       const configurationValue = this.#options.configurations.get(appPurpose);
       if (configurationValue) {
         await this.initializeApp(appPurpose, configurationValue);

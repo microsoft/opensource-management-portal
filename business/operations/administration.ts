@@ -49,7 +49,7 @@ export async function isAuthorizedSystemAdministrator(
   if (corporateUsername) {
     const administratorUsernames: string[] = config?.administrators?.corporateUsernames || [];
     const username = corporateUsername.toLowerCase();
-    for (let admin of administratorUsernames) {
+    for (const admin of administratorUsernames) {
       if (username === admin.toLowerCase()) {
         insights?.trackEvent({
           name: `${insightsPrefix}AuthorizedUsername`,

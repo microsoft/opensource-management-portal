@@ -383,7 +383,7 @@ export function PostgresJsonEntityQueryMultiple(
     values.push(jsonQueryObjects[i]);
   }
   const sqlGroup = sqlSet.join(' OR ');
-  let sql = `SELECT * FROM ${tableName} WHERE ${entityTypeColumn} = $1 AND ( ${sqlGroup} )`;
+  const sql = `SELECT * FROM ${tableName} WHERE ${entityTypeColumn} = $1 AND ( ${sqlGroup} )`;
   return { sql, values };
 }
 
@@ -688,7 +688,7 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
     type: EntityMetadataType,
     query: IEntityMetadataFixedQuery
   ): any {
-    let get = EntityMetadataMappings.GetDefinition(
+    const get = EntityMetadataMappings.GetDefinition(
       type,
       PostgresSettings.PostgresQueries,
       true

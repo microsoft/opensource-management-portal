@@ -548,13 +548,13 @@ async function destructiveLogic(
 ): Promise<any> {
   const { operations } = providers;
   let usernameInfo = null;
-  let state = {
+  const state = {
     results: null,
     entity: null,
     messages: [],
     independentView: false,
   };
-  let thirdPartyUsername = identifier.type === IDValueType.Username ? identifier.value : null;
+  const thirdPartyUsername = identifier.type === IDValueType.Username ? identifier.value : null;
   let thirdPartyId = identifier.type === IDValueType.ID ? identifier.value : null;
   const dataAsTerminated = req.body.dataTerminated === 'yes';
   try {
@@ -686,16 +686,16 @@ router.post(
       if (!repositoryName.length) {
         continue;
       }
-      let githubcom = 'github.com';
-      let ghi = repositoryName.indexOf(githubcom);
+      const githubcom = 'github.com';
+      const ghi = repositoryName.indexOf(githubcom);
       if (ghi >= 0) {
-        let name = repositoryName.substr(ghi + githubcom.length + 1);
-        let divider = name.indexOf('/');
+        const name = repositoryName.substr(ghi + githubcom.length + 1);
+        const divider = name.indexOf('/');
         if (divider <= 0) {
           continue;
         }
-        let orgName = name.substr(0, divider);
-        let repoName = name.substr(divider + 1);
+        const orgName = name.substr(0, divider);
+        const repoName = name.substr(divider + 1);
         const repository = operations.getOrganization(orgName).repository(repoName);
         try {
           await repository.delete();

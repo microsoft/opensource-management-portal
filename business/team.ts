@@ -643,7 +643,7 @@ export class Team {
   }
 
   member(id, optionalEntity?) {
-    let entity = optionalEntity || {};
+    const entity = optionalEntity || {};
     if (!optionalEntity) {
       entity.id = id;
     }

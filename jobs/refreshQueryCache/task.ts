@@ -373,7 +373,7 @@ async function cacheRepositoryTeams(
   const ops = [];
   const organizationId = repository.organization.id.toString();
   const repositoryId = repository.id.toString();
-  for (let teamPermission of repoTeamPermissions) {
+  for (const teamPermission of repoTeamPermissions) {
     const teamId = teamPermission.team.id.toString();
     const permission = teamPermission.permission;
     const isPrivate = repository.private as boolean;
@@ -401,7 +401,7 @@ async function cacheTeamMembers(
 ): Promise<QueryCacheOperation[]> {
   const ops = [];
   const teamId = team.id.toString();
-  for (let member of members) {
+  for (const member of members) {
     const userId = member.id.toString();
     const login = member.login;
     const avatar = member.avatar_url;
@@ -419,7 +419,7 @@ async function cacheOrganizationMembers(
   memberRole: OrganizationMembershipRole
 ): Promise<QueryCacheOperation[]> {
   const ops = [];
-  for (let member of members) {
+  for (const member of members) {
     const userId = member.id.toString();
     ops.push(await queryCache.addOrUpdateOrganizationMember(organizationId, memberRole, userId));
   }
@@ -609,7 +609,7 @@ async function cacheRepositoryCollaborators(
 ): Promise<QueryCacheOperation[]> {
   const operations = [];
   const repositoryId = repository.id.toString();
-  for (let collaborator of repoCollaborators) {
+  for (const collaborator of repoCollaborators) {
     const permission = permissionsObjectToValue(collaborator.permissions);
     operations.push(
       await queryCache.addOrUpdateCollaborator(

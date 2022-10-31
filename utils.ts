@@ -101,8 +101,8 @@ export function storeReferrer(req: ReposAppRequest, res, redirect, optionalReaso
 }
 
 export function sortByCaseInsensitive(a: string, b: string) {
-  let nameA = a.toLowerCase();
-  let nameB = b.toLowerCase();
+  const nameA = a.toLowerCase();
+  const nameB = b.toLowerCase();
   if (nameA < nameB) {
     return -1;
   }
@@ -196,7 +196,7 @@ export function wrapError(error, message, userIntendedMessage?: boolean): IRepos
 // ----------------------------------------------------------------------------
 export function stealValue(obj, key) {
   if (obj[key] !== undefined) {
-    let val = obj[key];
+    const val = obj[key];
     delete obj[key];
     return val;
   }
@@ -234,7 +234,7 @@ export function isInListAnyCaseInLowerCaseList(list, value) {
 // by that ID.
 // ----------------------------------------------------------------------------
 export function arrayToHashById(inputArray) {
-  let hash = {};
+  const hash = {};
   if (inputArray && inputArray.length) {
     for (let i = 0; i < inputArray.length; i++) {
       if (inputArray[i] && inputArray[i].id) {
@@ -252,7 +252,7 @@ export function obfuscate(value, lastCharactersShowCount) {
   if (value === undefined || value === null || value.length === undefined) {
     return value;
   }
-  let length = value.length;
+  const length = value.length;
   lastCharactersShowCount = lastCharactersShowCount || 0;
   lastCharactersShowCount = Math.min(Math.round(lastCharactersShowCount), length - 1);
   let obfuscated = '';

@@ -40,7 +40,7 @@ export default async function permissionsRun({ providers }: IReposJob): Promise<
       console.log(`Repos in the ${organization.name} org: ${repos.length}`);
       let z = 0;
       const automaticTeams = new AutomaticTeamsWebhookProcessor();
-      for (let repo of repos) {
+      for (const repo of repos) {
         console.log(`${repo.organization.name}/${repo.name}`);
         sleep(1000 * delayBetweenSeconds);
         const cacheOptions = {
@@ -98,7 +98,7 @@ export default async function permissionsRun({ providers }: IReposJob): Promise<
           }
         });
         const setArray = Array.from(teamsToSet.values());
-        for (let teamId of setArray) {
+        for (const teamId of setArray) {
           const newPermission = specialTeamLevels.get(teamId);
           if (
             shouldSkipEnforcement &&

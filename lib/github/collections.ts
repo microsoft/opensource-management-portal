@@ -370,7 +370,7 @@ export class RestCollections {
     let done = false;
     let results = [];
     let recentResult = null;
-    let requests = [];
+    const requests = [];
     let pages = 0;
     let currentPage = 0;
     const pageLimit = options.pageLimit || cacheOptions['pageLimit'] || Number.MAX_VALUE;
@@ -503,8 +503,8 @@ export class RestCollections {
     const requests = collectionResults.requests;
     const pages = [];
     let dirty = false;
-    let dirtyModified = [];
-    let compositeCost = cost.create();
+    const dirtyModified = [];
+    const compositeCost = cost.create();
     for (let i = 0; i < requests.length; i++) {
       if (requests[i] && requests[i].headers && requests[i].headers.etag) {
         pages.push(requests[i].headers.etag);
@@ -513,7 +513,7 @@ export class RestCollections {
       }
       if (requests[i] && requests[i].status && requests[i].status !== 304) {
         dirty = true;
-        let lastModified = requests[i].headers['last-modified'];
+        const lastModified = requests[i].headers['last-modified'];
         if (lastModified) {
           dirtyModified.push(lastModified);
         }

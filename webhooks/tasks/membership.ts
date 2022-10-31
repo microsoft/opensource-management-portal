@@ -9,7 +9,7 @@ import { IProviders, GitHubTeamRole } from '../../interfaces';
 
 export default class MembershipWebhookProcessor implements WebhookProcessor {
   filter(data: any) {
-    let eventType = data.properties.event;
+    const eventType = data.properties.event;
     return eventType === 'membership';
   }
 

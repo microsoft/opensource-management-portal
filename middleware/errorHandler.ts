@@ -20,9 +20,9 @@ function redactRootPathsFromString(string, path) {
 function redactRootPaths(view) {
   const path = process.cwd();
   if (typeof view === 'object') {
-    for (let property in view) {
+    for (const property in view) {
       if (Object.prototype.hasOwnProperty.call(view, property)) {
-        let value = view[property];
+        const value = view[property];
         if (typeof value === 'string') {
           view[property] = redactRootPathsFromString(value, path);
         }
@@ -36,7 +36,7 @@ function redactRootPaths(view) {
 
 function containsNewlinesNotHtml(error) {
   if (error && error.message && error.message.includes && error.message.split) {
-    let newlines = error.message.split('\n');
+    const newlines = error.message.split('\n');
     return newlines.length > 3 && !error.message.includes('</');
   }
   return false;
@@ -52,8 +52,8 @@ const exceptionFieldsOfInterest = [
 export default function SiteErrorHandler(err, req, res, next) {
   // CONSIDER: Let's eventually decouple all of our error message improvements to another area to keep the error handler intact.
   const { applicationProfile, config } = getProviders(req);
-  let correlationId = req.correlationId;
-  let errorStatus = err ? err.status || err.statusCode : undefined;
+  const correlationId = req.correlationId;
+  const errorStatus = err ? err.status || err.statusCode : undefined;
   // Per GitHub: https://developer.github.com/v3/oauth/#bad-verification-code
   // When they offer a code that another GitHub auth server interprets as invalid,
   // the app should retry.
@@ -91,7 +91,7 @@ export default function SiteErrorHandler(err, req, res, next) {
     if (config.authentication.scheme !== 'github') {
       primaryUserInstance = req.user ? req.user.azure : null;
     }
-    let version = config && config.logging && config.logging.version ? config.logging.version : '?';
+    const version = config && config.logging && config.logging.version ? config.logging.version : '?';
     if (config.logging.errors && err.status !== 403 && err.skipLog !== true) {
       let appSource = 'unknown';
       if (process.argv.length > 1) {
@@ -146,7 +146,7 @@ export default function SiteErrorHandler(err, req, res, next) {
       console.error(err.stack);
     }
     if (err.innerError) {
-      let inner = err.innerError;
+      const inner = err.innerError;
       console.log('Inner: ' + inner.message);
       if (inner.stack) {
         console.log(inner.stack);
@@ -161,10 +161,10 @@ export default function SiteErrorHandler(err, req, res, next) {
     err.oauthError.statusCode &&
     err.oauthError.data
   ) {
-    let detailed = err.message;
+    const detailed = err.message;
     err = err.oauthError;
     err.status = err.statusCode;
-    let data = JSON.parse(err.data);
+    const data = JSON.parse(err.data);
     if (data && data.message) {
       err.message = err.statusCode + ': ' + data.message;
     } else {
@@ -193,7 +193,7 @@ export default function SiteErrorHandler(err, req, res, next) {
       insights?.trackException({ exception: err });
     });
   }
-  let safeMessage = redactRootPaths(err.message);
+  const safeMessage = redactRootPaths(err.message);
   const defaultErrorTitle = err && err.skipOops ? 'FYI' : 'Oops';
   const view = {
     message: safeMessage,

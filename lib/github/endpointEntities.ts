@@ -47,8 +47,7 @@ function RegisterEntity(entityType: GitHubResponseType, properties: any[]) {
   }
   // debugCacheOptimization(`Registering subset entity ${entityType}`);
   for (let i = 0; i < properties.length; i++) {
-    let pair: [string, FieldType, GitHubResponseType?];
-    pair = properties[i];
+    const pair: [string, FieldType, GitHubResponseType?] = properties[i];
     const fieldName = pair[0];
     if (pair[1] === FieldType.Drop || pair[1] === FieldType.Keep) {
       const targetMap = pair[1] === FieldType.Drop ? entityPropertiesToDrop : entityPropertiesToKeep;

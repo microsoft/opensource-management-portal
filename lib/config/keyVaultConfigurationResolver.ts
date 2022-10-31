@@ -173,7 +173,7 @@ async function getSecretsFromVault(getSecretClient: (vault: string) => Promise<S
     const uniques = Array.from(uniqueUris.values());
     for (const uniqueSecretId of uniques) {
       try {
-        let value = secretStash.get(uniqueSecretId);
+        const value = secretStash.get(uniqueSecretId);
         if (!value) {
           const vaultUrl = uniqueUriToVault.get(uniqueSecretId);
           const secretClient = await getSecretClient(vaultUrl);

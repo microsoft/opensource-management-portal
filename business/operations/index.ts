@@ -157,7 +157,7 @@ export class Operations
     const hasModernGitHubApps = config.github?.app;
     const purposesToConfigurations = new Map<AppPurpose, IGitHubAppConfiguration>();
     if (hasModernGitHubApps) {
-      for (let purpose of AllAvailableAppPurposes) {
+      for (const purpose of AllAvailableAppPurposes) {
         const configKey = AppPurposeToConfigurationName[purpose];
         const configValue = config.github.app[configKey];
         if (configValue) {
@@ -617,7 +617,7 @@ export class Operations
     const insights = this.insights;
 
     options = options || {};
-    let history: string[] = [];
+    const history: string[] = [];
     const continueOnError = options.continueOnError || false;
     let errors = 0;
 
@@ -837,7 +837,7 @@ export class Operations
     };
     // CONSIDER: Cross-org functionality might be best in the GitHub library itself
     const orgs = this.organizations.values();
-    for (let organization of orgs) {
+    for (const organization of orgs) {
       try {
         const organizationRepos = await organization.getRepositories(cacheOptions);
         repos.push(...organizationRepos);
@@ -913,7 +913,7 @@ export class Operations
       return map;
     }
     const group = await this.getLinksFromThirdPartyIds(thirdPartyIds);
-    for (let link of group) {
+    for (const link of group) {
       if (link && link.thirdPartyId) {
         map.set(Number(link.thirdPartyId), link);
       }
@@ -1314,8 +1314,8 @@ async function fireEvent(config, configurationName, value): Promise<IFireEventRe
     return;
   }
   const urlOrUrls = httpUrls[configurationName];
-  let urls = Array.isArray(urlOrUrls) ? urlOrUrls : [urlOrUrls];
-  let results: IFireEventResult[] = [];
+  const urls = Array.isArray(urlOrUrls) ? urlOrUrls : [urlOrUrls];
+  const results: IFireEventResult[] = [];
   for (const httpUrl of urls) {
     try {
       const response = await axios({

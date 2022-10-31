@@ -30,7 +30,7 @@ function getRoleFromString(role: string): OrganizationMembershipRole {
 
 export default class OrganizationWebhookProcessor implements WebhookProcessor {
   filter(data: any) {
-    let eventType = data.properties.event;
+    const eventType = data.properties.event;
     return eventType === 'organization';
   }
 

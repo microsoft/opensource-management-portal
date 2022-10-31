@@ -111,7 +111,7 @@ function createDefaultResolvers(libraryOptions: ILibraryOptions) {
 }
 
 function unshiftOptionalVariable(arr: string[], environmentProvider: IPainlessConfigGet, key: string) {
-  let value = environmentProvider.get(key);
+  const value = environmentProvider.get(key);
   if (value) {
     arr.unshift(value);
   }
@@ -136,7 +136,7 @@ async function getConfigGraph(
   if (options.graph) {
     return options.graph;
   }
-  let graphProvider = options.graphProvider || libraryOptions.graphProvider || multiGraphBuilder;
+  const graphProvider = options.graphProvider || libraryOptions.graphProvider || multiGraphBuilder;
   if (!graphProvider) {
     throw new Error(
       'No graph provider configured for this environment: no options.graphProvider or libraryOptions.graphProvider or multiGraphBuilder'

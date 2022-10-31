@@ -29,7 +29,7 @@ export default asyncHandler(async (req: ReposAppRequest, res, next) => {
     const json = account.asJson(AccountJsonFormat.GitHubDetailedWithLink);
     const orgs = await queryCache.userOrganizations(idAsString);
     const teams = await queryCache.userTeams(idAsString);
-    for (let team of teams) {
+    for (const team of teams) {
       if (!team.team.slug) {
         try {
           await team.team.getDetails();

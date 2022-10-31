@@ -534,7 +534,7 @@ async function sendEmail(
       console.dir(ignoreError);
     }
   }
-  let headline = `${targetType} ready`;
+  const headline = `${targetType} ready`;
   const serviceShortName = apiKeyRow && apiKeyRow.service ? apiKeyRow.service : undefined;
   let subject = serviceShortName
     ? `${approvalRequest.repositoryName} ${targetType.toLowerCase()} created by ${serviceShortName}`
