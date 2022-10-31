@@ -12,3 +12,5 @@ env-orgs.json
 feedscan
 feedscan*
 ..prettierignore.swp
+scripts/localCodespaces.ts
+
