@@ -9,3 +9,4 @@ env.json
 env-orgs.json
 .secrets.env
 .gdn
+scripts/localCodespace.ts
