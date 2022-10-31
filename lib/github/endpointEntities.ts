@@ -69,7 +69,11 @@ function RegisterEntity(entityType: GitHubResponseType, properties: any[]) {
   }
 }
 
-function RegisterEndpoint(endpoint: string, entityType: GitHubResponseType, responseType: ResponseBodyType = ResponseBodyType.Entity) {
+function RegisterEndpoint(
+  endpoint: string,
+  entityType: GitHubResponseType,
+  responseType: ResponseBodyType = ResponseBodyType.Entity
+) {
   if (apiToEntityType.has(endpoint)) {
     throw new Error(`Endpoint ${endpoint} has already registered a GitHub entity type. No duplicates.`);
   }
@@ -400,7 +404,7 @@ export interface IGitHubEntityDefinitions {
   apiToEntityResponseType: Map<string, ResponseBodyType>;
 }
 
-export function getEntityDefinitions() : IGitHubEntityDefinitions {
+export function getEntityDefinitions(): IGitHubEntityDefinitions {
   return {
     entityPropertiesToKeep,
     entityPropertiesToDrop,

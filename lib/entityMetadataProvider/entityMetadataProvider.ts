@@ -21,11 +21,13 @@ export const EntityFieldNames = new Set<string>([
   EntityField.Created as string,
 ]);
 
-export interface IEntityMetadataSerializationHelper { // serialize an object to defined metadata
+export interface IEntityMetadataSerializationHelper {
+  // serialize an object to defined metadata
   (obj: any): IEntityMetadata;
 }
 
-export interface IEntityMetadataDeserializationHelper { // deserialize defined metadata to an object
+export interface IEntityMetadataDeserializationHelper {
+  // deserialize defined metadata to an object
   (entity: IEntityMetadata): any;
 }
 
@@ -43,7 +45,7 @@ export interface IEntityMetadataProvider {
 
   fixedQueryMetadata(type: EntityMetadataType, query: IEntityMetadataFixedQuery): Promise<IEntityMetadata[]>;
 
-  supportsPointQueryForType(type: EntityMetadataType) : boolean;
+  supportsPointQueryForType(type: EntityMetadataType): boolean;
 
   getSerializationHelper(type: EntityMetadataType): IEntityMetadataSerializationHelper;
   getDeserializationHelper(type: EntityMetadataType): IEntityMetadataDeserializationHelper;
@@ -60,7 +62,8 @@ export function SerializeObjectToEntityMetadata(
   translationMap: Map<string, string>,
   castNumbersToStrings: boolean,
   throwIfMissingTranslations: boolean,
-  ignorePrivateMembers: boolean): IEntityMetadata {
+  ignorePrivateMembers: boolean
+): IEntityMetadata {
   const id = obj[idFieldName];
   if (!id) {
     throw new Error(`No identity for entity object to serialize found in key: ${idFieldName}`);
@@ -78,7 +81,7 @@ export function SerializeObjectToEntityMetadata(
   for (let i = 0; i < objectKeys.length; i++) {
     const key = objectKeys[i];
     let value = obj[key];
-    if (castNumbersToStrings && typeof(value) === 'number') {
+    if (castNumbersToStrings && typeof value === 'number') {
       value = value.toString();
     }
     allKeys.delete(key);
@@ -90,7 +93,8 @@ export function SerializeObjectToEntityMetadata(
     } else {
       if (value !== undefined && value !== null) {
         em[translatesTo] = value;
-        if (!EntityFieldNames.has(translatesTo)) { // do not map internal properties
+        if (!EntityFieldNames.has(translatesTo)) {
+          // do not map internal properties
           setKeys.push(translatesTo);
         }
       }
@@ -119,7 +123,11 @@ export function SerializeObjectToEntityMetadata(
   return em;
 }
 
-export function DeserializeEntityMetadataToObjectSetCollection(entity: IEntityMetadata, destinationIdFieldName: string, serializationTranslationMap: Map<string, string>/*, allowOverridingIdFieldname: boolean*/): any {
+export function DeserializeEntityMetadataToObjectSetCollection(
+  entity: IEntityMetadata,
+  destinationIdFieldName: string,
+  serializationTranslationMap: Map<string, string> /*, allowOverridingIdFieldName: boolean*/
+): any {
   const setCollection = {};
   setCollection[destinationIdFieldName] = entity.entityId;
   const reverseMap = swapMap(serializationTranslationMap);
@@ -130,7 +138,9 @@ export function DeserializeEntityMetadataToObjectSetCollection(entity: IEntityMe
     }
   }
   if (!setCollection[destinationIdFieldName]) {
-    throw new Error(`The destination field ${destinationIdFieldName} was overwritten deserializing the metadata for ${entity.entityType}`);
+    throw new Error(
+      `The destination field ${destinationIdFieldName} was overwritten deserializing the metadata for ${entity.entityType}`
+    );
   }
   return setCollection;
 }

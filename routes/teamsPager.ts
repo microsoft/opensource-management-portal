@@ -26,7 +26,11 @@ interface IGetTeamsDataResults {
   totalMaintainerships: number;
 }
 
-async function getTeamsData(singleOrganizationName: string | null, operations: Operations, userContext: UserContext): Promise<IGetTeamsDataResults> {
+async function getTeamsData(
+  singleOrganizationName: string | null,
+  operations: Operations,
+  userContext: UserContext
+): Promise<IGetTeamsDataResults> {
   const options = {
     backgroundRefresh: true,
     maxAgeSeconds: 60 * 10 /* 10 minutes */,
@@ -68,7 +72,7 @@ function reduceTeams(collections, property, map) {
     return;
   }
   const values = collections[property];
-  values.forEach(team => {
+  values.forEach((team) => {
     map.set(team.id, property);
   });
 }
@@ -78,7 +82,11 @@ export default asyncHandler(async function (req: ReposAppRequest, res: Response,
   const isCrossOrg = req.teamsPagerMode === 'orgs';
   const aggregations = req.individualContext.aggregations;
   const orgName = isCrossOrg ? null : req.organization.name.toLowerCase();
-  const { teams, yourTeamsMap, totalMemberships, totalMaintainerships } = await getTeamsData(isCrossOrg ? null : orgName.toLowerCase(), operations, aggregations);
+  const { teams, yourTeamsMap, totalMemberships, totalMaintainerships } = await getTeamsData(
+    isCrossOrg ? null : orgName.toLowerCase(),
+    operations,
+    aggregations
+  );
   const page = req.query.page_number ? Number(req.query.page_number) : 1;
   let phrase = req.query.q;
 
@@ -108,7 +116,9 @@ export default asyncHandler(async function (req: ReposAppRequest, res: Response,
     view: 'teams/',
     title: 'Teams',
     state: {
-      organizations: isCrossOrg ? sortOrgs(operations.getOrganizations(operations.organizationNames)) : undefined,
+      organizations: isCrossOrg
+        ? sortOrgs(operations.getOrganizations(operations.organizationNames))
+        : undefined,
       organization: isCrossOrg ? undefined : req.organization,
       search,
       filters,

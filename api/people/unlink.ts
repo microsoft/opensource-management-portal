@@ -28,20 +28,23 @@ router.use(function (req: ILinksApiRequestWithUnlink, res, next) {
   return next();
 });
 
-router.use('/github/id/:id', asyncHandler(async (req: ILinksApiRequestWithUnlink, res, next) => {
-  const { linkProvider } = getProviders(req);
-  const id = req.params.id;
-  try {
-    const link = await linkProvider.getByThirdPartyId(id);
-    if (!link) {
-      throw new Error(`Could not locate a link for GitHub user ID ${id}`);
+router.use(
+  '/github/id/:id',
+  asyncHandler(async (req: ILinksApiRequestWithUnlink, res, next) => {
+    const { linkProvider } = getProviders(req);
+    const id = req.params.id;
+    try {
+      const link = await linkProvider.getByThirdPartyId(id);
+      if (!link) {
+        throw new Error(`Could not locate a link for GitHub user ID ${id}`);
+      }
+      req.unlink = link;
+      return next();
+    } catch (error) {
+      return next(jsonError(error));
     }
-    req.unlink = link;
-    return next();
-  } catch (error) {
-    return next(jsonError(error));
-  }
-}));
+  })
+);
 
 router.use('*', (req: ILinksApiRequestWithUnlink, res, next) => {
   return next(req.unlink ? undefined : jsonError('No link available for operation', 404));
@@ -57,13 +60,16 @@ router.delete('*', (req: ILinksApiRequestWithUnlink, res, next) => {
     return next(jsonError(purposeError, 400));
   }
   const options = { purpose };
-  return operations.terminateLinkAndMemberships(link.thirdPartyId, options).then(results => {
-    res.json({
-      messages: Array.isArray(results) ? (results as any as string[]).reverse() : results,
+  return operations
+    .terminateLinkAndMemberships(link.thirdPartyId, options)
+    .then((results) => {
+      res.json({
+        messages: Array.isArray(results) ? (results as any as string[]).reverse() : results,
+      });
+    })
+    .catch((problem) => {
+      return next(jsonError(problem, 500));
     });
-  }).catch(problem => {
-    return next(jsonError(problem, 500));
-  });
 });
 
 function apiUnlinkPurposeToEnum(purpose: string): UnlinkPurpose {

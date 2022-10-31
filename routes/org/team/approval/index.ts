@@ -41,8 +41,8 @@ router.get('/', function (req: ILocalRequest, res) {
 });
 
 router.get('/setNote/:action', function (req: ILocalRequest, res) {
-  var engine = req.approvalEngine;
-  var action = req.params.action;
+  let engine = req.approvalEngine;
+  let action = req.params.action;
   if (action == 'approveWithComment') {
     action = 'approve';
   }
@@ -60,35 +60,45 @@ router.get('/setNote/:action', function (req: ILocalRequest, res) {
   });
 });
 
-router.post('/', asyncHandler(async (req: ILocalRequest, res, next) => {
-  const providers = getProviders(req);
-  const { individualContext } = req;
-  const engine = req.approvalEngine as PermissionWorkflowEngine;
-  let message = req.body.text as string;
-  const teamBaseUrl = req.teamUrl as string;
-  let decision: TeamApprovalDecision = null;
-  if (req.body.reopen) {
-    decision = TeamApprovalDecision.Reopen;
-  } else if (req.body.approve || req.body.approveWithComment) {
-    decision = TeamApprovalDecision.Approve;
-  } else if (req.body.deny) {
-    decision = TeamApprovalDecision.Deny;
-  }
-  if (!decision) {
-    throw new Error('No valid decision');
-  }
-  const outcome = await postActionDecision(providers, individualContext, engine, teamBaseUrl, decision, message);
-  if (outcome.message) {
-    req.individualContext.webContext.saveUserAlert(outcome.message, engine.typeName, UserAlertType.Success);
-  }
-  if (outcome.error) {
-    req.insights.trackException({
-      exception: outcome.error,
-    });
-    return next(outcome.error);
-  }
-  return res.redirect(outcome.redirect || teamBaseUrl);
-}));
+router.post(
+  '/',
+  asyncHandler(async (req: ILocalRequest, res, next) => {
+    const providers = getProviders(req);
+    const { individualContext } = req;
+    const engine = req.approvalEngine as PermissionWorkflowEngine;
+    let message = req.body.text as string;
+    const teamBaseUrl = req.teamUrl as string;
+    let decision: TeamApprovalDecision = null;
+    if (req.body.reopen) {
+      decision = TeamApprovalDecision.Reopen;
+    } else if (req.body.approve || req.body.approveWithComment) {
+      decision = TeamApprovalDecision.Approve;
+    } else if (req.body.deny) {
+      decision = TeamApprovalDecision.Deny;
+    }
+    if (!decision) {
+      throw new Error('No valid decision');
+    }
+    const outcome = await postActionDecision(
+      providers,
+      individualContext,
+      engine,
+      teamBaseUrl,
+      decision,
+      message
+    );
+    if (outcome.message) {
+      req.individualContext.webContext.saveUserAlert(outcome.message, engine.typeName, UserAlertType.Success);
+    }
+    if (outcome.error) {
+      req.insights.trackException({
+        exception: outcome.error,
+      });
+      return next(outcome.error);
+    }
+    return res.redirect(outcome.redirect || teamBaseUrl);
+  })
+);
 
 export enum TeamApprovalDecision {
   Approve = 'Approved',
@@ -110,13 +120,26 @@ function performApprovalWithEngine(engine: PermissionWorkflowEngine): Promise<vo
   });
 }
 
-export async function postActionDecision(providers: IProviders, individualContext: IndividualContext, engine: PermissionWorkflowEngine, teamBaseUrl: string, decision: TeamApprovalDecision, messageToRequestor: string): Promise<IPostActionDecisionOutcome> {
+export async function postActionDecision(
+  providers: IProviders,
+  individualContext: IndividualContext,
+  engine: PermissionWorkflowEngine,
+  teamBaseUrl: string,
+  decision: TeamApprovalDecision,
+  messageToRequestor: string
+): Promise<IPostActionDecisionOutcome> {
   if (!individualContext || !individualContext.getGitHubIdentity().username) {
     return { error: new Error('No individual context') };
   }
   const approvalRequest = engine.request;
   const requestid = engine.id;
-  const { approvalProvider: teamJoinApprovalProvider, config, mailAddressProvider, mailProvider, insights } = providers;
+  const {
+    approvalProvider: teamJoinApprovalProvider,
+    config,
+    mailAddressProvider,
+    mailProvider,
+    insights,
+  } = providers;
   if (decision === TeamApprovalDecision.Reopen) {
     approvalRequest.active = true;
     try {
@@ -159,7 +182,8 @@ export async function postActionDecision(providers: IProviders, individualContex
     return { error };
   }
   const message = `Thanks for your ${action.toUpperCase()} decision`;
-  const approvalMail = individualContext.link.corporateMailAddress || individualContext.link.corporateUsername;
+  const approvalMail =
+    individualContext.link.corporateMailAddress || individualContext.link.corporateUsername;
   if (mailProvider) {
     const wasApproved = decision === TeamApprovalDecision.Approve;
     const contentOptions = {
@@ -171,8 +195,8 @@ export async function postActionDecision(providers: IProviders, individualContex
       decisionBy: username,
       decisionNote: decisionMessage,
       decisionEmail: approvalMail,
-      reason: (`You are receiving this e-mail because of a request that you created, and a decision has been made.
-                This mail was sent to: ${userMailAddress}`),
+      reason: `You are receiving this e-mail because of a request that you created, and a decision has been made.
+                This mail was sent to: ${userMailAddress}`,
       headline: engine.getDecisionEmailHeadline(wasApproved),
       notification: wasApproved ? 'information' : 'warning',
       service: (config.brand?.companyName || 'Corporate') + ' GitHub',
@@ -185,9 +209,13 @@ export async function postActionDecision(providers: IProviders, individualContex
     const getDecisionEmailViewName = engine.getDecisionEmailViewName();
     let content = null;
     try {
-      content = await RenderHtmlMail(config.typescript.appDirectory, getDecisionEmailViewName, contentOptions);
-    } catch (renderError) {
-    }
+      content = await RenderHtmlMail(
+        config.typescript.appDirectory,
+        getDecisionEmailViewName,
+        contentOptions,
+        config
+      );
+    } catch (renderError) {}
     if (content) {
       const mail = {
         to: [userMailAddress],
@@ -198,15 +226,23 @@ export async function postActionDecision(providers: IProviders, individualContex
       try {
         const mailResult = await mailProvider.sendMail(mail);
         insights?.trackEvent({
-          name: 'ReposRequestDecisionMailSuccess', properties: Object.assign({
-            receipt: mailResult,
-          }, contentOptions)
+          name: 'ReposRequestDecisionMailSuccess',
+          properties: Object.assign(
+            {
+              receipt: mailResult,
+            },
+            contentOptions
+          ),
         });
       } catch (mailError) {
         insights?.trackException({
-          exception: mailError, properties: Object.assign({
-            eventName: 'ReposRequestDecisionMailFailure',
-          }, contentOptions)
+          exception: mailError,
+          properties: Object.assign(
+            {
+              eventName: 'ReposRequestDecisionMailFailure',
+            },
+            contentOptions
+          ),
         });
       }
     }

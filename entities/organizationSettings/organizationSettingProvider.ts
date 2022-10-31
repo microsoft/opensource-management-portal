@@ -3,14 +3,17 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
+import {
+  IEntityMetadata,
+  EntityMetadataBase,
+  IEntityMetadataBaseOptions,
+} from '../../lib/entityMetadataProvider/entityMetadata';
 import { OrganizationSetting, OrganizationSettingFixedQueryAll } from './organizationSetting';
 import { EntityImplementation } from './organizationSetting';
 
 const thisProviderType = EntityImplementation.Type;
 
-export interface IOrganizationSettingCreateOptions extends IEntityMetadataBaseOptions {
-}
+export interface IOrganizationSettingCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface IOrganizationSettingProvider {
   initialize(): Promise<void>;
@@ -32,7 +35,7 @@ export class OrganizationSettingProvider extends EntityMetadataBase implements I
     const entity = this.serialize(thisProviderType, metadata);
     await this._entities.deleteMetadata(entity);
   }
-  
+
   async getOrganizationSetting(organizationId: string): Promise<OrganizationSetting> {
     this.ensureHelpers(thisProviderType);
     let metadata: IEntityMetadata = null;

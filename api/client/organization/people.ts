@@ -10,7 +10,15 @@ import { jsonError } from '../../../middleware';
 import { getProviders } from '../../../transitional';
 import LeakyLocalCache, { getLinksLightCache } from '../leakyLocalCache';
 import JsonPager from '../jsonPager';
-import { OrganizationMember, TeamMember, Operations, Team, Organization, MemberSearch, corporateLinkToJson } from '../../../business';
+import {
+  OrganizationMember,
+  TeamMember,
+  Operations,
+  Team,
+  Organization,
+  MemberSearch,
+  corporateLinkToJson,
+} from '../../../business';
 import { NoCacheNoBackground, ReposAppRequest } from '../../../interfaces';
 
 const router: Router = Router();
@@ -108,24 +116,31 @@ export async function equivalentLegacyPeopleSearch(req: ReposAppRequest, options
   return search;
 }
 
-router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const pager = new JsonPager<OrganizationMember>(req, res);
-  try {
-    const searcher = await equivalentLegacyPeopleSearch(req);
-    const members = searcher.members;
-    const slice = pager.slice(members);
-    return pager.sendJson(slice.map(organizationMember => {
-      const obj = Object.assign({
-        link: organizationMember.link ? corporateLinkToJson(organizationMember.link) : null,
-      }, organizationMember.getEntity());
-      return obj;
-    }),
-    );
-  } catch (repoError) {
-    console.dir(repoError);
-    return next(jsonError(repoError));
-  }
-}));
+router.get(
+  '/',
+  asyncHandler(async (req: ReposAppRequest, res, next) => {
+    const pager = new JsonPager<OrganizationMember>(req, res);
+    try {
+      const searcher = await equivalentLegacyPeopleSearch(req);
+      const members = searcher.members;
+      const slice = pager.slice(members);
+      return pager.sendJson(
+        slice.map((organizationMember) => {
+          const obj = Object.assign(
+            {
+              link: organizationMember.link ? corporateLinkToJson(organizationMember.link) : null,
+            },
+            organizationMember.getEntity()
+          );
+          return obj;
+        })
+      );
+    } catch (repoError) {
+      console.dir(repoError);
+      return next(jsonError(repoError));
+    }
+  })
+);
 
 router.use('*', (req, res, next) => {
   return next(jsonError('no API or function available within this people list', 404));

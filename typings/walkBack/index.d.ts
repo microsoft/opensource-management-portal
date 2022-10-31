@@ -4,5 +4,5 @@
 //
 
 declare module 'walk-back' {
-  export default function walkBack (startAt: string, lookingFor: string): string;
+  export default function walkBack(startAt: string, lookingFor: string): string;
 }

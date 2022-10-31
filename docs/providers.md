@@ -1,7 +1,7 @@
 # Providers
 
 This project has evolved over several years, and during a major refactoring
-to begin using ECMAScript properly, + `await`, `async`, and TypeScript, it 
+to begin using ECMAScript properly, + `await`, `async`, and TypeScript, it
 has grown.
 
 The `providers` was started during the "transition" to more modern practices by
@@ -44,9 +44,9 @@ Hosting, cache and database environment providers:
 - `healthCheck`: Kubernetes health check signals
 - `postgresPool`: provides access to a Postgres pool (this probably should not be so central and accessible to avoid coupling)
 - `sessionRedisClient`: Redis client for use in sessions, if using Redis for session state
-- `cacheProvider`: an abstracted cacher - can use Redis or Cosmos DB and/or Azure storage
+- `cacheProvider`: an abstracted cache - can use Redis or Cosmos DB and/or Azure storage
 - `redis`: **deprecated** a Redis helper connected to the main Redis instance
-- `redisClient`: **deprecated**  a primary Redis client instance
+- `redisClient`: **deprecated** a primary Redis client instance
 - `session`: access to session store
 
 Fast indexes of key entities and memberships on GitHub:

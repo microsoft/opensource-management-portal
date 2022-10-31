@@ -6,7 +6,12 @@
 import _ from 'lodash';
 import { randomUUID } from 'crypto';
 
-import { ICorporateLink, ICorporateLinkExtended, ICorporateLinkProperties, IReposError } from '../../../interfaces';
+import {
+  ICorporateLink,
+  ICorporateLinkExtended,
+  ICorporateLinkProperties,
+  IReposError,
+} from '../../../interfaces';
 
 import { CorporateMemoryLink } from './memoryLink';
 import { ILinkProvider } from '..';
@@ -19,8 +24,8 @@ const linkProviderInstantiationTypeProperty = '_i';
 const dehydratedIdentityKey = '_lpi';
 const dehydratedMemoryProviderName = 'mem';
 const dehydratedMemoryProviderVersion = '0';
-const dehydratedMemoryProviderIdentitySeperator = '_';
-const dehydratedMemoryProviderIdentity = `${dehydratedMemoryProviderName}${dehydratedMemoryProviderIdentitySeperator}${dehydratedMemoryProviderVersion}`;
+const dehydratedMemoryProviderIdentitySeparator = '_';
+const dehydratedMemoryProviderIdentity = `${dehydratedMemoryProviderName}${dehydratedMemoryProviderIdentitySeparator}${dehydratedMemoryProviderVersion}`;
 
 enum LinkInstantiatedType {
   MemoryEntity,
@@ -36,7 +41,7 @@ export interface IMemoryLinkProperties extends ICorporateLinkProperties {
   memoryLinkId: string;
 }
 
-const linkInterfacePropertyMapping : IMemoryLinkProperties = {
+const linkInterfacePropertyMapping: IMemoryLinkProperties = {
   memoryLinkId: 'memoryLinkId',
 
   isServiceAccount: 'serviceAccount',
@@ -45,7 +50,7 @@ const linkInterfacePropertyMapping : IMemoryLinkProperties = {
   corporateId: 'aadoid',
   corporateUsername: 'aadupn',
   corporateDisplayName: 'aadname',
-  corporateMailAddress: 'corporateMailAddres',
+  corporateMailAddress: 'corporateMailAddress',
   corporateAlias: 'corporateAlias',
 
   thirdPartyId: 'ghid',
@@ -66,7 +71,9 @@ export class MemoryLinkProvider implements ILinkProvider {
 
   constructor(providers, options) {
     if (!providers) {
-      throw new Error('The MemoryLinkProvider requires that available providers are passed into the constructor');
+      throw new Error(
+        'The MemoryLinkProvider requires that available providers are passed into the constructor'
+      );
     }
 
     options = options || {};
@@ -94,7 +101,7 @@ export class MemoryLinkProvider implements ILinkProvider {
   }
 
   async getByThirdPartyId(id: string): Promise<CorporateMemoryLink> {
-    if (typeof(id) !== 'string') {
+    if (typeof id !== 'string') {
       id = (id as any).toString();
     }
     return this.getSingleLinkByProperty(this.propertyMapping.thirdPartyId, id);
@@ -106,14 +113,17 @@ export class MemoryLinkProvider implements ILinkProvider {
 
   async getAll(): Promise<CorporateMemoryLink[]> {
     const all = Array.from(this._entities.values());
-    const sorted = _.sortBy(all, [this.propertyMapping.corporateUsername, this.propertyMapping.thirdPartyUsername]);
+    const sorted = _.sortBy(all, [
+      this.propertyMapping.corporateUsername,
+      this.propertyMapping.thirdPartyUsername,
+    ]);
     const links = this.createLinkInstancesFromMemoryEntityArray(sorted);
     return links;
   }
 
   async getAllCorporateIds(): Promise<string[]> {
     const all = await this.getAll();
-    return all.map(link => link.corporateId);
+    return all.map((link) => link.corporateId);
   }
 
   async queryByCorporateUsername(username): Promise<CorporateMemoryLink[]> {
@@ -179,10 +189,14 @@ export class MemoryLinkProvider implements ILinkProvider {
       throw new Error('No stored link provider identity to validate');
     }
     if (identity !== dehydratedMemoryProviderIdentity) {
-      const sameProviderType = identity.startsWith(`${dehydratedMemoryProviderName}${dehydratedMemoryProviderIdentitySeperator}`);
+      const sameProviderType = identity.startsWith(
+        `${dehydratedMemoryProviderName}${dehydratedMemoryProviderIdentitySeparator}`
+      );
       if (sameProviderType) {
         // Cross-version rehydration not supported
-        throw new Error(`The hydrated link was created by the same ${dehydratedMemoryProviderName} provider, but a different version: ${identity}`);
+        throw new Error(
+          `The hydrated link was created by the same ${dehydratedMemoryProviderName} provider, but a different version: ${identity}`
+        );
       } else {
         throw new Error(`The hydrated link is incompatible with this runtime environment: ${identity}`);
       }
@@ -239,7 +253,11 @@ export class MemoryLinkProvider implements ILinkProvider {
     return newLink;
   }
 
-  private getUserEntitiesByProperty(entities: Map<string, CorporateMemoryLink>, propertyName: string, value: string): CorporateMemoryLink[] {
+  private getUserEntitiesByProperty(
+    entities: Map<string, CorporateMemoryLink>,
+    propertyName: string,
+    value: string
+  ): CorporateMemoryLink[] {
     const rows: CorporateMemoryLink[] = [];
     for (const entry of entities.values()) {
       if (entry && entry[propertyName] === value) {

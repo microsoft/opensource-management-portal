@@ -15,7 +15,15 @@ export * from './queryCache';
 export * from './providers';
 export * from './web';
 
-import { IAttachCompanySpecificRoutes, IAttachCompanySpecificMiddleware, ICorporationAdministrationSection, IAttachCompanySpecificStrings, ICompanySpecificFeatures, IAttachCompanySpecificViews, IAttachCompanySpecificUrls } from './companySpecific';
+import {
+  IAttachCompanySpecificRoutes,
+  IAttachCompanySpecificMiddleware,
+  ICorporationAdministrationSection,
+  IAttachCompanySpecificStrings,
+  ICompanySpecificFeatures,
+  IAttachCompanySpecificViews,
+  IAttachCompanySpecificUrls,
+} from './companySpecific';
 import { ICompanySpecificPassportMiddleware } from './companySpecific/passport';
 import { IProviders } from './providers';
 

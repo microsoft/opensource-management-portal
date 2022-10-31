@@ -17,16 +17,19 @@ export default function addSystemWidePermissionsToRequest(req: ReposAppRequest, 
     sudo: false,
   };
   req[requestCachedKeyName] = systemWidePermissions;
-  req.individualContext.isPortalAdministrator().then(isPortalSudoer => {
-    if (isPortalSudoer) {
-      systemWidePermissions.sudo = true;
-      systemWidePermissions.allowAdministration = true;
-    }
-    return next();
-  }).catch(portalSudoErrorIgnored => {
-    console.warn('Ignored portalSudoErrorIgnored error');
-    console.warn(portalSudoErrorIgnored);
+  req.individualContext
+    .isPortalAdministrator()
+    .then((isPortalSudoer) => {
+      if (isPortalSudoer) {
+        systemWidePermissions.sudo = true;
+        systemWidePermissions.allowAdministration = true;
+      }
+      return next();
+    })
+    .catch((portalSudoErrorIgnored) => {
+      console.warn('Ignored portalSudoErrorIgnored error');
+      console.warn(portalSudoErrorIgnored);
 
-    return next();
-  });
-};
+      return next();
+    });
+}

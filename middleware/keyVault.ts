@@ -24,7 +24,9 @@ export default function createClient(kvConfig: IKeyVaultConfigurationOptions) {
     throw new Error('KeyVault client ID required at this time for the middleware to initialize.');
   }
   if (!kvConfig.clientSecret) {
-    throw new Error('KeyVault client credential/secret required at this time for the middleware to initialize.');
+    throw new Error(
+      'KeyVault client credential/secret required at this time for the middleware to initialize.'
+    );
   }
   const credentials = new ClientSecretCredential(kvConfig.tenantId, kvConfig.clientId, kvConfig.clientSecret);
   const vaultToInstance = new Map<string, SecretClient>();
@@ -37,4 +39,4 @@ export default function createClient(kvConfig: IKeyVaultConfigurationOptions) {
     return client;
   };
   return { getSecretClientForVault };
-};
+}

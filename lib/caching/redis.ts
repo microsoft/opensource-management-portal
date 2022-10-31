@@ -109,9 +109,19 @@ export default class RedisHelper implements ICacheHelper {
           return error ? reject(error) : resolve(ok);
         };
         if (minutesToExpire) {
-          this._redis.set(bufferKey as any as string /* Buffer key type to make TypeScript happy */, compressed as any, 'EX', minutesToExpire * 60, finalize);
+          this._redis.set(
+            bufferKey as any as string /* Buffer key type to make TypeScript happy */,
+            compressed as any,
+            'EX',
+            minutesToExpire * 60,
+            finalize
+          );
         } else {
-          this._redis.set(bufferKey as any as string /* Buffer key type to make TypeScript happy */, compressed as any, finalize);
+          this._redis.set(
+            bufferKey as any as string /* Buffer key type to make TypeScript happy */,
+            compressed as any,
+            finalize
+          );
         }
       });
     });

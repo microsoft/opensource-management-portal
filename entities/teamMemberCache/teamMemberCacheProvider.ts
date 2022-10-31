@@ -3,28 +3,46 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
+import {
+  IEntityMetadata,
+  EntityMetadataBase,
+  IEntityMetadataBaseOptions,
+} from '../../lib/entityMetadataProvider/entityMetadata';
 import { TeamMemberCacheEntity, EntityImplementation } from './teamMemberCache';
-import { TeamMemberCacheFixedQueryAll, TeamMemberCacheFixedQueryByOrganizationId, TeamMemberCacheFixedQueryByUserId, TeamMemberCacheFixedQueryByTeamId, TeamMemberCacheFixedQueryByOrganizationIdAndUserId, TeamMemberCacheGetOrganizationIdsQuery, TeamMemberCacheDeleteByOrganizationId } from '.';
+import {
+  TeamMemberCacheFixedQueryAll,
+  TeamMemberCacheFixedQueryByOrganizationId,
+  TeamMemberCacheFixedQueryByUserId,
+  TeamMemberCacheFixedQueryByTeamId,
+  TeamMemberCacheFixedQueryByOrganizationIdAndUserId,
+  TeamMemberCacheGetOrganizationIdsQuery,
+  TeamMemberCacheDeleteByOrganizationId,
+} from '.';
 
 const thisProviderType = EntityImplementation.Type;
 
-export interface ITeamMemberCacheCreateOptions extends IEntityMetadataBaseOptions {
-}
+export interface ITeamMemberCacheCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface ITeamMemberCacheProvider {
   initialize(): Promise<void>;
 
   getTeamMemberCache(uniqueId: string): Promise<TeamMemberCacheEntity>;
-  getTeamMemberCacheByUserId(organizationId: string, teamId: string, userId: string): Promise<TeamMemberCacheEntity>;
+  getTeamMemberCacheByUserId(
+    organizationId: string,
+    teamId: string,
+    userId: string
+  ): Promise<TeamMemberCacheEntity>;
   createTeamMemberCache(metadata: TeamMemberCacheEntity): Promise<string>;
   updateTeamMemberCache(metadata: TeamMemberCacheEntity): Promise<void>;
   deleteTeamMemberCache(metadata: TeamMemberCacheEntity): Promise<void>;
   queryAllTeamMembers(): Promise<TeamMemberCacheEntity[]>;
   queryTeamMembersByOrganizationId(organizationId: string): Promise<TeamMemberCacheEntity[]>;
-  queryTeamMembersByUserId(userId:string): Promise<TeamMemberCacheEntity[]>;
-  queryTeamMembersByTeamId(teamId:string): Promise<TeamMemberCacheEntity[]>;
-  queryTeamMembersByOrganizationIdAndUserId(organizationId: string, userId: string): Promise<TeamMemberCacheEntity[]>;
+  queryTeamMembersByUserId(userId: string): Promise<TeamMemberCacheEntity[]>;
+  queryTeamMembersByTeamId(teamId: string): Promise<TeamMemberCacheEntity[]>;
+  queryTeamMembersByOrganizationIdAndUserId(
+    organizationId: string,
+    userId: string
+  ): Promise<TeamMemberCacheEntity[]>;
   queryAllOrganizationIds(): Promise<string[]>;
   deleteByOrganizationId(organizationId: string): Promise<void>;
 }
@@ -35,7 +53,11 @@ export class TeamMemberCacheProvider extends EntityMetadataBase implements ITeam
     EntityImplementation.EnsureDefinitions();
   }
 
-  async getTeamMemberCacheByUserId(organizationId: string, teamId: string, userId: string): Promise<TeamMemberCacheEntity> {
+  async getTeamMemberCacheByUserId(
+    organizationId: string,
+    teamId: string,
+    userId: string
+  ): Promise<TeamMemberCacheEntity> {
     return this.getTeamMemberCache(TeamMemberCacheEntity.GenerateIdentifier(organizationId, teamId, userId));
   }
 
@@ -76,7 +98,10 @@ export class TeamMemberCacheProvider extends EntityMetadataBase implements ITeam
     return results;
   }
 
-  async queryTeamMembersByOrganizationIdAndUserId(organizationId: string, userId: string): Promise<TeamMemberCacheEntity[]> {
+  async queryTeamMembersByOrganizationIdAndUserId(
+    organizationId: string,
+    userId: string
+  ): Promise<TeamMemberCacheEntity[]> {
     const query = new TeamMemberCacheFixedQueryByOrganizationIdAndUserId(organizationId, userId);
     const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
     const results = this.deserializeArray<TeamMemberCacheEntity>(thisProviderType, metadatas);
@@ -112,7 +137,7 @@ export class TeamMemberCacheProvider extends EntityMetadataBase implements ITeam
   async queryAllOrganizationIds(): Promise<string[]> {
     const query = new TeamMemberCacheGetOrganizationIdsQuery();
     const results = await this._entities.fixedQueryMetadata(thisProviderType, query);
-    return results.map(row => row['organizationid']);
+    return results.map((row) => row['organizationid']);
   }
 
   async deleteByOrganizationId(organizationId: string): Promise<void> {

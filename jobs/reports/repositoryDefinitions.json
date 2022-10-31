@@ -178,7 +178,7 @@
       }
     }
   },
- {
+  {
     "name": "abandonedPublicRepositories",
     "title": "Abandoned public repositories",
     "ignoredDescription": "These are very old public repositories. Whether the repos still serve a public purpose should be considered. An archive organization transfer may be appropriate.",

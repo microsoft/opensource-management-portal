@@ -9,12 +9,27 @@ import recursiveReadDirectory from 'recursive-readdir';
 
 import { wrapError, sleep } from '../../utils';
 import { Organization } from '../../business';
-import { RepositoryMetadataEntity, GitHubRepositoryPermission, GitHubRepositoryPermissions, GitHubRepositoryVisibility } from '../../entities/repositoryMetadata/repositoryMetadata';
+import {
+  RepositoryMetadataEntity,
+  GitHubRepositoryPermission,
+  GitHubRepositoryPermissions,
+  GitHubRepositoryVisibility,
+} from '../../entities/repositoryMetadata/repositoryMetadata';
 import { Repository } from '../../business';
 import { CreateRepositoryEntrypoint, ICreateRepositoryApiResult } from '../../api/createRepo';
-import { CoreCapability, IAlternateTokenOption, IOperationsProviders, IOperationsRepositoryMetadataProvider, IProviders, throwIfNotCapable } from '../../interfaces';
+import {
+  CoreCapability,
+  IAlternateTokenOption,
+  IOperationsProviders,
+  IOperationsRepositoryMetadataProvider,
+  IProviders,
+  throwIfNotCapable,
+} from '../../interfaces';
 import { ErrorHelper } from '../../transitional';
-import { setupRepositoryReadmeSubstring, setupRepositorySubstring } from '../../features/newRepositoryLockdown';
+import {
+  setupRepositoryReadmeSubstring,
+  setupRepositorySubstring,
+} from '../../features/newRepositoryLockdown';
 
 export interface IApprovalPackage {
   id: string;
@@ -24,8 +39,8 @@ export interface IApprovalPackage {
   isUnlockingExistingRepository: number | string | boolean | null | undefined;
   isFork: boolean;
   isTransfer: boolean;
-  createEntrypoint: CreateRepositoryEntrypoint,
-  repoCreateResponse: ICreateRepositoryApiResult,
+  createEntrypoint: CreateRepositoryEntrypoint;
+  repoCreateResponse: ICreateRepositoryApiResult;
 }
 
 interface IFileContents {
@@ -104,9 +119,16 @@ export class RepoWorkflowEngine {
       };
       if (!this._hasAuthorizedTemplateCommitter) {
         try {
-          await this.authorizeTemplateCommitter({ login, alternateToken, alternateTokenOptions, isUsingApp: false });
+          await this.authorizeTemplateCommitter({
+            login,
+            alternateToken,
+            alternateTokenOptions,
+            isUsingApp: false,
+          });
         } catch (error) {
-          this.log.push({ error: new Error(`Error trying to authorize template committer ${login}: ${error}`) });
+          this.log.push({
+            error: new Error(`Error trying to authorize template committer ${login}: ${error}`),
+          });
         }
       }
     }
@@ -140,7 +162,11 @@ export class RepoWorkflowEngine {
         await this.repository.acceptCollaborationInvite(invitation.id, options.alternateTokenOptions);
       } catch (error) {
         hadError = true;
-        this.log.push({ error: new Error(`The collaboration invitation could not be accepted for ${options.login}: ${error}`) });
+        this.log.push({
+          error: new Error(
+            `The collaboration invitation could not be accepted for ${options.login}: ${error}`
+          ),
+        });
       }
     }
     if (!hadError) {
@@ -164,7 +190,10 @@ export class RepoWorkflowEngine {
 
   editPost(req, res, next) {
     const { operations } = this.providers;
-    const ops = throwIfNotCapable<IOperationsRepositoryMetadataProvider>(operations, CoreCapability.RepositoryMetadataProvider);
+    const ops = throwIfNotCapable<IOperationsRepositoryMetadataProvider>(
+      operations,
+      CoreCapability.RepositoryMetadataProvider
+    );
     const repositoryMetadataProvider = ops.repositoryMetadataProvider;
     const visibility = req.body.repoVisibility;
     if (!(visibility === 'public' || visibility === 'private' || visibility === 'internal')) {
@@ -174,11 +203,14 @@ export class RepoWorkflowEngine {
     this.request.initialRepositoryVisibility = visibility; // visibility === 'public' ? GitHubRepositoryVisibility.Public : GitHubRepositoryVisibility.Private;
     this.request.initialRepositoryDescription = req.body.repoDescription;
     // this ... repoUrl = req.body.repoUrl
-    repositoryMetadataProvider.updateRepositoryMetadata(this.request).then(ok => {
-      return res.redirect(req.teamUrl + 'approvals/' + this.id);
-    }).catch(error => {
-      return next(wrapError(error, 'There was a problem updating the request.'));
-    });
+    repositoryMetadataProvider
+      .updateRepositoryMetadata(this.request)
+      .then((ok) => {
+        return res.redirect(req.teamUrl + 'approvals/' + this.id);
+      })
+      .catch((error) => {
+        return next(wrapError(error, 'There was a problem updating the request.'));
+      });
   }
 
   getApprovedViewName() {
@@ -202,24 +234,35 @@ export class RepoWorkflowEngine {
           if (team.name) {
             teamName = team.name;
           }
-        } catch (noFail) { /* ignore */ }
+        } catch (noFail) {
+          /* ignore */
+        }
       }
       if (teamId && permission) {
         await this.addTeamPermission(Number(teamId), teamName, permission);
       }
     }
     const patchUpdates: any = {};
-    if (request.initialRepositoryVisibility === GitHubRepositoryVisibility.Public && this.githubResponse?.github?.private === true) {
+    if (
+      request.initialRepositoryVisibility === GitHubRepositoryVisibility.Public &&
+      this.githubResponse?.github?.private === true
+    ) {
       // Time to make it public again. Though this is debatable.
       patchUpdates.private = false;
     }
-    if (request.initialRepositoryDescription && this.githubResponse?.github?.description !== request.initialRepositoryDescription) {
+    if (
+      request.initialRepositoryDescription &&
+      this.githubResponse?.github?.description !== request.initialRepositoryDescription
+    ) {
       patchUpdates.description = request.initialRepositoryDescription;
     } else if (this.githubResponse?.github?.description?.includes(setupRepositorySubstring)) {
       patchUpdates.description = '';
     }
     const setupUrlSubstring = this.organization.absoluteBaseUrl;
-    if (request.initialRepositoryHomepage && this.githubResponse?.github?.homepage !== request.initialRepositoryHomepage) {
+    if (
+      request.initialRepositoryHomepage &&
+      this.githubResponse?.github?.homepage !== request.initialRepositoryHomepage
+    ) {
       patchUpdates.homepage = request.initialRepositoryHomepage;
     } else if (this.githubResponse?.github?.homepage?.includes(setupUrlSubstring)) {
       patchUpdates.homepage = '';
@@ -230,7 +273,12 @@ export class RepoWorkflowEngine {
     if (request.initialTemplate) {
       try {
         await this.addTemplateCollaborators(request.initialTemplate);
-        await this.createAddTemplateFilesTask(request.initialTemplate, this.isUnlockingExistingRepository, this.isFork, this.isTransfer);
+        await this.createAddTemplateFilesTask(
+          request.initialTemplate,
+          this.isUnlockingExistingRepository,
+          this.isFork,
+          this.isTransfer
+        );
         await this.addTemplateWebHook(request.initialTemplate);
       } catch (outerError) {
         // ignored
@@ -252,10 +300,14 @@ export class RepoWorkflowEngine {
     }
 
     await this.finalizeCommitter();
-    return this.log.filter(real => real);
+    return this.log.filter((real) => real);
   }
 
-  async addTeamPermission(id: number, teamName: string, permission: GitHubRepositoryPermission): Promise<void> {
+  async addTeamPermission(
+    id: number,
+    teamName: string,
+    permission: GitHubRepositoryPermission
+  ): Promise<void> {
     let attempts = 0;
     const calculateDelay = (retryCount: number) => 500 * Math.pow(2, retryCount);
     let error = null;
@@ -263,19 +315,28 @@ export class RepoWorkflowEngine {
     while (attempts < 3) {
       try {
         await this.repository.setTeamPermission(id, permission);
-        this.log.push({ message: `Successfully added the ${this.repository.name} repo to GitHub team ${teamIdentity} with ${permission.toUpperCase()} permissions.` });
+        this.log.push({
+          message: `Successfully added the ${
+            this.repository.name
+          } repo to GitHub team ${teamIdentity} with ${permission.toUpperCase()} permissions.`,
+        });
         return;
       } catch (iterationError) {
         error = iterationError;
       }
       const nextInterval = calculateDelay(attempts++);
       await sleep(nextInterval);
-    };
+    }
     const message = `The addition of the repo ${this.repository.name} to GitHub team ${teamIdentity} failed. GitHub returned an error: ${error.message}.`;
     this.log.push({ error, message });
   }
 
-  async getFileContents(templateRoot: string, templatePath: string, templateName: string, absoluteFileNames: string[]): Promise<IFileContents[]> {
+  async getFileContents(
+    templateRoot: string,
+    templatePath: string,
+    templateName: string,
+    absoluteFileNames: string[]
+  ): Promise<IFileContents[]> {
     const contents = [];
     for (let i = 0; i < absoluteFileNames.length; i++) {
       const absoluteFileName = absoluteFileNames[i];
@@ -294,7 +355,11 @@ export class RepoWorkflowEngine {
     });
   }
 
-  async readFileToBase64(templatePath: string, templateName: string, fileName: string): Promise<IFileContents> {
+  async readFileToBase64(
+    templatePath: string,
+    templateName: string,
+    fileName: string
+  ): Promise<IFileContents> {
     return new Promise((resolve, reject) => {
       fs.readFile(path.join(templatePath, templateName, fileName), (error, file) => {
         if (error) {
@@ -336,7 +401,9 @@ export class RepoWorkflowEngine {
       });
       message = `${friendlyName} webhook added to the repository.`;
     } catch (webhookCreateError) {
-      error = new Error(`The template ${templateName} defines a webhook ${friendlyName}. Adding the webhook failed. ${webhookCreateError.message()}`);
+      error = new Error(
+        `The template ${templateName} defines a webhook ${friendlyName}. Adding the webhook failed. ${webhookCreateError.message()}`
+      );
       error.inner = webhookCreateError;
     }
     this.log.push({ error, message });
@@ -361,7 +428,12 @@ export class RepoWorkflowEngine {
     return result;
   }
 
-  async createAddTemplateFilesTask(templateName: string, isUnlockingExistingRepository: boolean, isFork: boolean, isTransfer: boolean): Promise<void> {
+  async createAddTemplateFilesTask(
+    templateName: string,
+    isUnlockingExistingRepository: boolean,
+    isFork: boolean,
+    isTransfer: boolean
+  ): Promise<void> {
     const { config } = this.providers;
     const templatePath = config.github.templates.directory;
     const { alternateTokenOptions } = await this.getTemplateCommitter();
@@ -372,7 +444,9 @@ export class RepoWorkflowEngine {
       const uploadedFiles = [];
       if (isFork || isTransfer) {
         const subMessage = isFork ? 'is a fork' : 'was transferred';
-        this.log.push({ message: `Repository ${subMessage}, template files will not be committed. Please check the LICENSE and other files to understand existing obligations.` });
+        this.log.push({
+          message: `Repository ${subMessage}, template files will not be committed. Please check the LICENSE and other files to understand existing obligations.`,
+        });
         return;
       }
       try {
@@ -399,11 +473,21 @@ export class RepoWorkflowEngine {
           uploadedFiles.push(item.path);
         }
       } catch (error) {
-        const notUploaded = fileContents.map(fc => fc.path).filter(f => !uploadedFiles.includes(f));
+        const notUploaded = fileContents.map((fc) => fc.path).filter((f) => !uploadedFiles.includes(f));
         if (uploadedFiles.length) {
-          this.log.push({ error, message: `Initial commit of ${uploadedFiles.join(', ')} template files to the ${this.repository.name} repo partially succeeded. Not uploaded: ${notUploaded.join(', ')}. Error: ${error.message}` });
+          this.log.push({
+            error,
+            message: `Initial commit of ${uploadedFiles.join(', ')} template files to the ${
+              this.repository.name
+            } repo partially succeeded. Not uploaded: ${notUploaded.join(', ')}. Error: ${error.message}`,
+          });
         } else {
-          this.log.push({ error, message: `Initial commit of template file(s) to the ${this.repository.name} repo failed. Not uploaded: ${notUploaded.join(', ')}. Error: ${error.message}.` });
+          this.log.push({
+            error,
+            message: `Initial commit of template file(s) to the ${
+              this.repository.name
+            } repo failed. Not uploaded: ${notUploaded.join(', ')}. Error: ${error.message}.`,
+          });
         }
       }
     } catch (error) {

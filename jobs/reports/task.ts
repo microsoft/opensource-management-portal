@@ -19,9 +19,22 @@ import app from '../../app';
 
 // import { buildConsolidatedMap as buildRecipientMap } from './consolidated';
 
-import { build as organizationsBuild, consolidate as organizationsConsoldate, process as organizationsProcess } from './organizations';
-import { build as repositoriesBuild, consolidate as repositoriesConsolidate, process as repositoriesProcess } from './repositories';
-import { build as teamsBuild, consolidate as teamsConsolidate, process as teamsProcess, IReportsTeamContext } from './teams';
+import {
+  build as organizationsBuild,
+  consolidate as organizationsConsolidate,
+  process as organizationsProcess,
+} from './organizations';
+import {
+  build as repositoriesBuild,
+  consolidate as repositoriesConsolidate,
+  process as repositoriesProcess,
+} from './repositories';
+import {
+  build as teamsBuild,
+  consolidate as teamsConsolidate,
+  process as teamsProcess,
+  IReportsTeamContext,
+} from './teams';
 
 import mailer from './mailer';
 
@@ -31,18 +44,15 @@ import { ICorporateLink, IReposJob, IReposJobResult } from '../../interfaces';
 import { writeTextToFile } from '../../utils';
 import { writeDeflatedTextFile } from './fileCompression';
 
-// Debug-related values for convienience
+// Debug-related values for convenience
 const fakeSend = false;
 const skipStore = false;
 const slice = undefined; // 250;
 
 const reportGeneratedFormat = 'h:mm a dddd, MMMM Do YYYY';
 
-const providerNames = [
-  'organizations',
-  'repositories',
-  'teams',
-];
+// // prettier-ignore
+const providerNames = ['organizations', 'repositories', 'teams'];
 
 export interface IReportsContext {
   operations: Operations;
@@ -142,7 +152,12 @@ async function buildReport(context): Promise<void> {
 
 export default async function run({ providers, started }: IReposJob): Promise<IReposJobResult> {
   const { mailProvider, operations, config } = providers;
-  const okToContinue = (config && config.github && config.github.jobs && config.github.jobs.reports && config.github.jobs.reports.enabled === true);
+  const okToContinue =
+    config &&
+    config.github &&
+    config.github.jobs &&
+    config.github.jobs.reports &&
+    config.github.jobs.reports.enabled === true;
   if (!okToContinue) {
     console.log('config.github.jobs.reports.enabled is not set');
     return {};
@@ -205,7 +220,7 @@ export default async function run({ providers, started }: IReposJob): Promise<IR
     },
     reports: {
       reportRedisClient: null, // reportRedisClient,
-      send: true && (fakeSend || reportConfig.mail && reportConfig.mail.enabled),
+      send: true && (fakeSend || (reportConfig.mail && reportConfig.mail.enabled)),
       store: true && !skipStore,
       dataLake: true && !skipStore && reportConfig.dataLake && reportConfig.dataLake.enabled,
     },
@@ -214,7 +229,12 @@ export default async function run({ providers, started }: IReposJob): Promise<IR
     config,
     app,
   };
-  if (context.reports.dataLake === true && reportConfig.dataLake && reportConfig.dataLake.azureStorage && reportConfig.dataLake.azureStorage.key) {
+  if (
+    context.reports.dataLake === true &&
+    reportConfig.dataLake &&
+    reportConfig.dataLake.azureStorage &&
+    reportConfig.dataLake.azureStorage.key
+  ) {
     context.settings.dataLakeAccount = reportConfig.dataLake.azureStorage;
   }
   await buildReport(context);
@@ -264,7 +284,7 @@ async function processReports(context) {
 
 async function consolidateReports(context: IReportsContext): Promise<IReportsContext> {
   try {
-    await organizationsConsoldate(context);
+    await organizationsConsolidate(context);
   } catch (globalConsolidationError) {
     console.dir(globalConsolidationError);
   }
@@ -329,11 +349,15 @@ async function dataLakeUpload(context: IReportsContext) {
               } else if (definition && definition.hasList) {
                 targetCollectionName = 'listItems';
               }
-              if (targetCollectionName && issues[targetCollectionName] && Array.isArray(issues[targetCollectionName])) {
+              if (
+                targetCollectionName &&
+                issues[targetCollectionName] &&
+                Array.isArray(issues[targetCollectionName])
+              ) {
                 const collection = issues[targetCollectionName];
                 for (let l = 0; l < collection.length; l++) {
                   const row = collection[l];
-                  const rowValue = typeof (row) === 'object' ? row : { text: row };
+                  const rowValue = typeof row === 'object' ? row : { text: row };
                   if (!row.entityName) {
                     rowValue.entityName = entity.name;
                   }
@@ -343,11 +367,14 @@ async function dataLakeUpload(context: IReportsContext) {
                     delete entityClone.issues;
                     rowValue.entity = entityClone;
                   }
-                  const dataLakeRow = Object.assign({
-                    issueProviderName: providerName,
-                    issueTimestamp: started,
-                    issueTypeName: issueTypeName,
-                  }, rowValue);
+                  const dataLakeRow = Object.assign(
+                    {
+                      issueProviderName: providerName,
+                      issueTimestamp: started,
+                      issueTypeName: issueTypeName,
+                    },
+                    rowValue
+                  );
                   dataLakeOutput.push(JSON.stringify(dataLakeRow));
                 }
               }
@@ -388,17 +415,23 @@ async function storeReports(context: IReportsContext): Promise<IReportsContext> 
   });
   const ttl = context.settings.witnessEventReportsTimeToLiveMinutes;
   if (!ttl) {
-    throw new Error('No witnessEventReportsTimeToLiveMinutes configuration value defined for the report TTL. To make efficient use of Redis memory, a TTL must be provided.');
+    throw new Error(
+      'No witnessEventReportsTimeToLiveMinutes configuration value defined for the report TTL. To make efficient use of Redis memory, a TTL must be provided.'
+    );
   }
   const reportingRedis = context.reports.reportRedisClient;
   const reportingKey = context.settings.witnessEventKey;
   if (reportingRedis && reportingKey) {
-    reportingRedis.setCompressedWithExpire(reportingKey, json, ttl)
+    reportingRedis.setCompressedWithExpire(reportingKey, json, ttl);
   }
   return context;
 }
 
-async function storeLocalReport(report, storeLocalReportPath, context: IReportsContext): Promise<IReportsContext> {
+async function storeLocalReport(
+  report,
+  storeLocalReportPath,
+  context: IReportsContext
+): Promise<IReportsContext> {
   const prettyFile = JSON.stringify(report, undefined, 2);
   writeTextToFile(storeLocalReportPath, prettyFile);
   return context;
@@ -433,7 +466,11 @@ async function recordMetrics(context: IReportsContext): Promise<IReportsContext>
               } else if (definition && definition.hasList) {
                 targetCollectionName = 'listItems';
               }
-              if (targetCollectionName && issues[targetCollectionName] && Array.isArray(issues[targetCollectionName])) {
+              if (
+                targetCollectionName &&
+                issues[targetCollectionName] &&
+                Array.isArray(issues[targetCollectionName])
+              ) {
                 const count = issues[targetCollectionName].length;
                 let currentValue = countByIssue.get(issueList[k]);
                 if (!currentValue) {

@@ -6,7 +6,11 @@
 import { IProviders } from '../../interfaces';
 import { ErrorHelper } from '../../transitional';
 
-export async function isAuthorizedSystemAdministrator(providers: IProviders, corporateId: string, corporateUsername: string): Promise<boolean> {
+export async function isAuthorizedSystemAdministrator(
+  providers: IProviders,
+  corporateId: string,
+  corporateUsername: string
+): Promise<boolean> {
   const { insights, config } = providers;
   const insightsPrefix = 'SystemAdministrator';
   if (!corporateId && !corporateUsername) {
@@ -26,14 +30,15 @@ export async function isAuthorizedSystemAdministrator(providers: IProviders, cor
         return true;
       }
     } catch (error) {
-      if (!ErrorHelper.IsNotFound(error)) { // security groups do get deleted and should not bring down any system in that case
+      if (!ErrorHelper.IsNotFound(error)) {
+        // security groups do get deleted and should not bring down any system in that case
         console.warn(error);
         insights?.trackException({
           exception: error,
           properties: {
             eventName: `${insightsPrefix}SecurityGroupError`,
             className: 'OperationsAdministration',
-            callName: 'isAuthorizedSytemAdministrator',
+            callName: 'isAuthorizedSystemAdministrator',
             corporateId: corporateId,
             securityGroupId: groupId,
           },

@@ -15,12 +15,14 @@ import { getProviders } from '../transitional';
 const localMemoryCacheVstsToAadId = new Map();
 
 const vstsAuth = asyncHandler(async (req: IApiRequest, res, next) => {
-  const config = getProviders(req).config;;
+  const config = getProviders(req).config;
   if (!config) {
     return next(new Error('Missing configuration for the application'));
   }
   if (!config.authentication || !config.authentication.vsts) {
-    return next(new Error('No VSTS authentication configuration available, VSTS authentication is not supported'));
+    return next(
+      new Error('No VSTS authentication configuration available, VSTS authentication is not supported')
+    );
   }
   if (config.authentication.vsts.enabled !== true) {
     return next(new Error('VSTS authentication is not enabled in the current configuration'));
@@ -44,7 +46,7 @@ const vstsAuth = asyncHandler(async (req: IApiRequest, res, next) => {
     const response = await axios({
       url: connectionDataApi,
       headers: {
-        'Authorization': authorizationHeader,
+        Authorization: authorizationHeader,
         'X-TFS-FedAuthRedirect': 'Suppress',
       },
     });

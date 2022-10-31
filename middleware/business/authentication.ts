@@ -12,7 +12,12 @@ import { ICorporateIdentity, IGitHubIdentity, IndividualContext, GitHubIdentityS
 import { storeOriginalUrlAsReferrer } from '../../utils';
 import getCompanySpecificDeployment from '../companySpecificDeployment';
 
-export async function requireAuthenticatedUserOrSignInExcluding(exclusionPaths: string[], req: ReposAppRequest, res, next) {
+export async function requireAuthenticatedUserOrSignInExcluding(
+  exclusionPaths: string[],
+  req: ReposAppRequest,
+  res,
+  next
+) {
   const baseUrl = req.baseUrl;
   for (let i = 0; i < exclusionPaths.length; i++) {
     if (baseUrl.startsWith(exclusionPaths[i])) {
@@ -52,14 +57,24 @@ export async function requireAccessTokenClient(req: ReposAppRequest, res, next) 
   return next();
 }
 
-function signoutThenSignIn(req, res) {
-  req.logout();
-  return redirectToSignIn(req, res);
+function signoutThenSignIn(req: ReposAppRequest, res) {
+  const { insights } = getProviders(req);
+  req.logout({ keepSessionInfo: false }, (err) => {
+    if (err) {
+      insights?.trackException({ exception: err });
+    }
+    return redirectToSignIn(req, res);
+  });
 }
 
 function redirectToSignIn(req, res) {
-  const config = getProviders(req).config;;
-  storeOriginalUrlAsReferrer(req, res, config.authentication.scheme === 'github' ? '/auth/github' : '/auth/azure', 'user is not authenticated and needs to authenticate');
+  const config = getProviders(req).config;
+  storeOriginalUrlAsReferrer(
+    req,
+    res,
+    config.authentication.scheme === 'github' ? '/auth/github' : '/auth/azure',
+    'user is not authenticated and needs to authenticate'
+  );
 }
 
 export async function requireAuthenticatedUserOrSignIn(req: ReposAppRequest, res, next) {
@@ -69,7 +84,9 @@ export async function requireAuthenticatedUserOrSignIn(req: ReposAppRequest, res
   if (req.isAuthenticated()) {
     const expectedAuthenticationProperty = config.authentication.scheme === 'github' ? 'github' : 'azure';
     if (req.user && !req.user[expectedAuthenticationProperty]) {
-      console.warn(`A user session was authenticated but did not have present the property "${expectedAuthenticationProperty}" expected for this type of authentication. Signing them out.`);
+      console.warn(
+        `A user session was authenticated but did not have present the property "${expectedAuthenticationProperty}" expected for this type of authentication. Signing them out.`
+      );
       return res.redirect('/signout');
     }
     const expectedAuthenticationKey = config.authentication.scheme === 'github' ? 'id' : 'oid';
@@ -80,7 +97,10 @@ export async function requireAuthenticatedUserOrSignIn(req: ReposAppRequest, res
   }
   let shouldRedirectToSignIn = true;
   if (companySpecific?.middleware?.authentication?.shouldRedirectToSignIn) {
-    shouldRedirectToSignIn = await companySpecific.middleware.authentication.shouldRedirectToSignIn(providers, req);
+    shouldRedirectToSignIn = await companySpecific.middleware.authentication.shouldRedirectToSignIn(
+      providers,
+      req
+    );
   }
   return shouldRedirectToSignIn ? redirectToSignIn(req, res) : next();
 }

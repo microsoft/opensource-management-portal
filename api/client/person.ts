@@ -39,33 +39,37 @@ export default asyncHandler(async (req: ReposAppRequest, res, next) => {
       }
     }
     const collabs = await queryCache.userCollaboratorRepositories(idAsString);
-    const combined = Object.assign({
-      orgs: orgs.map(o => {
-        return {
-          organization: o.organization.name,
-          role: o.role,
-          organizationId: o.organization.id,
-        };
-      }),
-      teams: teams.map(t => {
-        return {
-          role: t.role,
-          slug: t.team.slug,
-          organization: t.team.organization.name,
-          teamId: t.team.id,
-        };
-      }),
-      collaborator: collabs.map(c => {
-        return {
-          affiliation: c.affiliation,
-          permission: c.permission,
-          organization: c.repository.organization.name,
-          repository: c.repository.name,
-          repositoryId: c.repository.id,
-          private: c.repository.private,
-        };
-      }),
-    }, json, { corporateEntry });
+    const combined = Object.assign(
+      {
+        orgs: orgs.map((o) => {
+          return {
+            organization: o.organization.name,
+            role: o.role,
+            organizationId: o.organization.id,
+          };
+        }),
+        teams: teams.map((t) => {
+          return {
+            role: t.role,
+            slug: t.team.slug,
+            organization: t.team.organization.name,
+            teamId: t.team.id,
+          };
+        }),
+        collaborator: collabs.map((c) => {
+          return {
+            affiliation: c.affiliation,
+            permission: c.permission,
+            organization: c.repository.organization.name,
+            repository: c.repository.name,
+            repositoryId: c.repository.id,
+            private: c.repository.private,
+          };
+        }),
+      },
+      json,
+      { corporateEntry }
+    );
     return res.json(combined);
   } catch (error) {
     return next(jsonError(`login ${login} error: ${error}`, 500));

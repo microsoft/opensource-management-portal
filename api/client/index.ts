@@ -6,22 +6,29 @@
 import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { apiContextMiddleware, AddLinkToRequest, requireAccessTokenClient, setIdentity, jsonError } from '../../middleware';
+import {
+  apiContextMiddleware,
+  AddLinkToRequest,
+  requireAccessTokenClient,
+  setIdentity,
+  jsonError,
+} from '../../middleware';
 import { getProviders } from '../../transitional';
 
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 
-import RouteClientNewRepo from './newRepo';
-
-import RouteContext from './context';
-import RouteOrganizations from './organizations';
-import RouteLinking from './linking';
-import RouteSession from './session';
-import RouteBanner from './banner';
-import RouteCrossOrganizationPeople from './people';
-import RouteCrossOrganizationRepos from './repos';
-import RouteCrossOrganizationTeams from './teams';
 import { ReposAppRequest } from '../../interfaces';
+
+import routeClientNewRepo from './newRepo';
+import routeContext from './context';
+import routeOrganizations from './organizations';
+import routeLinking from './linking';
+import routeSession from './session';
+import routeBanner from './banner';
+import routeNews from './news';
+import routeCrossOrganizationPeople from './people';
+import routeCrossOrganizationRepos from './repos';
+import routeCrossOrganizationTeams from './teams';
 
 const router: Router = Router();
 
@@ -38,17 +45,18 @@ router.use(apiContextMiddleware);
 router.use(setIdentity);
 router.use(asyncHandler(AddLinkToRequest));
 
-router.use('/newRepo', RouteClientNewRepo);
+router.use('/newRepo', routeClientNewRepo);
 
-router.use('/context', RouteContext);
+router.use('/context', routeContext);
 
-router.use('/banner', RouteBanner);
-router.use('/orgs', RouteOrganizations);
-router.use('/link', RouteLinking);
-router.use('/signout', RouteSession);
-router.use('/people', RouteCrossOrganizationPeople);
-router.use('/repos', RouteCrossOrganizationRepos);
-router.use('/teams', RouteCrossOrganizationTeams);
+router.use('/banner', routeBanner);
+router.use('/orgs', routeOrganizations);
+router.use('/link', routeLinking);
+router.use('/signout', routeSession);
+router.use('/people', routeCrossOrganizationPeople);
+router.use('/repos', routeCrossOrganizationRepos);
+router.use('/teams', routeCrossOrganizationTeams);
+router.use('/news', routeNews);
 
 const dynamicStartupInstance = getCompanySpecificDeployment();
 dynamicStartupInstance?.routes?.api?.index && dynamicStartupInstance?.routes?.api?.index(router);

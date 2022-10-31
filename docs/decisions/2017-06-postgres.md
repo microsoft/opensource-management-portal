@@ -1,3 +1,5 @@
+# Decision: Postgres
+
 A decision was made in June 2017 to move away from the data stores used
 by the Azure open source portal and to evolve to something more appropriate
 for the scale and size of the app.

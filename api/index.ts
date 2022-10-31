@@ -29,13 +29,7 @@ import JsonErrorHandler from './jsonErrorHandler';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 import { ReposAppRequest } from '../interfaces';
 
-const hardcodedApiVersions = [
-  '2019-10-01',
-  '2019-02-01',
-  '2017-09-01',
-  '2017-03-08',
-  '2016-12-01',
-];
+const hardcodedApiVersions = ['2019-10-01', '2019-02-01', '2017-09-01', '2017-03-08', '2016-12-01'];
 
 router.use('/client', apiClient);
 router.use('/webhook', apiWebhook);
@@ -46,7 +40,13 @@ router.use((req: IApiRequest, res, next) => {
     return next(jsonError('This endpoint requires that an API Version be provided.', 422));
   }
   if (apiVersion.toLowerCase() === '2016-09-22_Preview'.toLowerCase()) {
-    return next(jsonError('This endpoint no longer supports the original preview version. Please update your client to use a newer version such as ' + hardcodedApiVersions[0], 422));
+    return next(
+      jsonError(
+        'This endpoint no longer supports the original preview version. Please update your client to use a newer version such as ' +
+          hardcodedApiVersions[0],
+        422
+      )
+    );
   }
   if (hardcodedApiVersions.indexOf(apiVersion.toLowerCase()) < 0) {
     return next(jsonError('This endpoint does not support the API version you provided at this time.', 422));
@@ -64,10 +64,7 @@ const multipleProviders = supportMultipleAuthProviders([
   AzureDevOpsAuthenticationMiddleware,
 ]);
 
-const aadAndCustomProviders = supportMultipleAuthProviders([
-  AadApiAuthentication,
-  ReposApiAuthentication,
-]);
+const aadAndCustomProviders = supportMultipleAuthProviders([AadApiAuthentication, ReposApiAuthentication]);
 
 router.use('/people', cors(), multipleProviders, apiPeople);
 router.use('/extension', cors(), multipleProviders, apiExtension);
@@ -108,17 +105,19 @@ router.use('/:org', function (req: IApiRequest, res, next) {
   return next();
 });
 
-router.post('/:org/repos', asyncHandler(async function (req: ReposAppRequest, res, next) {
-  const providers = getProviders(req);
-  const organization = req.organization;
-  const convergedObject = Object.assign({}, req.headers);
-  req.insights.trackEvent({ name: 'ApiRepoCreateRequest', properties: convergedObject });
-  Object.assign(convergedObject, req.body);
-  delete convergedObject.access_token;
-  delete convergedObject.authorization;
-  const logic = providers.customizedNewRepositoryLogic;
-  const customContext = logic?.createContext(req);
-  /*
+router.post(
+  '/:org/repos',
+  asyncHandler(async function (req: ReposAppRequest, res, next) {
+    const providers = getProviders(req);
+    const organization = req.organization;
+    const convergedObject = Object.assign({}, req.headers);
+    req.insights.trackEvent({ name: 'ApiRepoCreateRequest', properties: convergedObject });
+    Object.assign(convergedObject, req.body);
+    delete convergedObject.access_token;
+    delete convergedObject.authorization;
+    const logic = providers.customizedNewRepositoryLogic;
+    const customContext = logic?.createContext(req);
+    /*
   removed approvals from primary method:
 
   // Validate approval types
@@ -149,24 +148,33 @@ router.post('/:org/repos', asyncHandler(async function (req: ReposAppRequest, re
   }
 
   */
-  try {
-    const repoCreateResponse = await CreateRepository(req, organization, logic, customContext, convergedObject, CreateRepositoryEntrypoint.Api);
-    res.status(201);
-    req.insights.trackEvent({
-      name: 'ApiRepoCreateRequestSuccess', properties: {
-        request: JSON.stringify(convergedObject),
-        response: JSON.stringify(repoCreateResponse),
-      }
-    });
-    return res.json(repoCreateResponse);
-  } catch (error) {
-    const data = { ...convergedObject };
-    data.error = error.message;
-    data.encodedError = JSON.stringify(error);
-    req.insights.trackEvent({ name: 'ApiRepoCreateFailed', properties: data });
-    return next(error);
-  }
-}));
+    try {
+      const repoCreateResponse = await CreateRepository(
+        req,
+        organization,
+        logic,
+        customContext,
+        convergedObject,
+        CreateRepositoryEntrypoint.Api
+      );
+      res.status(201);
+      req.insights.trackEvent({
+        name: 'ApiRepoCreateRequestSuccess',
+        properties: {
+          request: JSON.stringify(convergedObject),
+          response: JSON.stringify(repoCreateResponse),
+        },
+      });
+      return res.json(repoCreateResponse);
+    } catch (error) {
+      const data = { ...convergedObject };
+      data.error = error.message;
+      data.encodedError = JSON.stringify(error);
+      req.insights.trackEvent({ name: 'ApiRepoCreateFailed', properties: data });
+      return next(error);
+    }
+  })
+);
 
 router.use(JsonErrorHandler);
 

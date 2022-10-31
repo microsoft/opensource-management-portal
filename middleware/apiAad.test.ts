@@ -67,5 +67,4 @@ describe('AAD API Configuration', () => {
   test('OID and app ID arrays work', () => {
     getAadApiConfiguration(standardConfig);
   });
-
 });

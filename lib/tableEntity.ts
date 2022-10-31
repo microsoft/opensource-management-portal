@@ -21,11 +21,11 @@ function reduceEntity(instance: any): any {
 }
 
 function createEntity(partitionKey: string, rowKey: string, obj?: any, callback?) {
-  if (typeof (obj) === 'function') {
+  if (typeof obj === 'function') {
     callback = obj;
     obj = undefined;
   }
-  var entity = {
+  let entity = {
     partitionKey,
     rowKey,
   };
@@ -44,7 +44,14 @@ function mergeIntoEntity(entity: any, obj: any, callback?) {
   if (obj) {
     for (let key in obj) {
       // Currently stripping metadata
-      if (key === '.metadata' || key === 'timestamp' || key === 'etag' || key === 'odata.metadata' || key === 'partitionKey' || key === 'rowKey') {
+      if (
+        key === '.metadata' ||
+        key === 'timestamp' ||
+        key === 'etag' ||
+        key === 'odata.metadata' ||
+        key === 'partitionKey' ||
+        key === 'rowKey'
+      ) {
         continue;
       }
       if (obj[key] === undefined || obj[key] === null) {
@@ -66,7 +73,9 @@ function mergeIntoEntity(entity: any, obj: any, callback?) {
         // Opinionated entity processing: store all numbers as strings
         entity[key] = { type: 'String', value: String(value) } as Edm<'String'>;
       } else {
-        console.warn('Consider whether a new entity merge clause is required for key ' + key + ' of type:' + typeof value);
+        console.warn(
+          'Consider whether a new entity merge clause is required for key ' + key + ' of type:' + typeof value
+        );
         if (value?.toString) {
           entity[key] = { type: 'String', value: value.toString() } as Edm<'String'>;
         } else {

@@ -3,7 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IOperationsGitHubRestLibrary, IOperationsDefaultCacheTimes, IGetAuthorizationHeader, IGitHubAppInstallation, ICacheOptions } from '../interfaces';
+import {
+  IOperationsGitHubRestLibrary,
+  IOperationsDefaultCacheTimes,
+  IGetAuthorizationHeader,
+  IGitHubAppInstallation,
+  ICacheOptions,
+} from '../interfaces';
 import { wrapError } from '../utils';
 
 const primaryInstallationProperties = [
@@ -17,15 +23,20 @@ const primaryInstallationProperties = [
 ];
 
 export default class GitHubApplication {
-  constructor(private operations: IOperationsGitHubRestLibrary & IOperationsDefaultCacheTimes, public id: number, public slug: string, public friendlyName: string, private getAuthorizationHeader: IGetAuthorizationHeader) {
-  }
+  constructor(
+    private operations: IOperationsGitHubRestLibrary & IOperationsDefaultCacheTimes,
+    public id: number,
+    public slug: string,
+    public friendlyName: string,
+    private getAuthorizationHeader: IGetAuthorizationHeader
+  ) {}
 
   static PrimaryInstallationProperties = primaryInstallationProperties;
 
   static filterInstallations(installations: IGitHubAppInstallation[]) {
     return {
-      valid: installations.filter(install => GitHubApplication.isInvalidInstallation(install).length === 0),
-      invalid: installations.filter(install => GitHubApplication.isInvalidInstallation(install).length > 0),
+      valid: installations.filter((install) => GitHubApplication.isInvalidInstallation(install).length === 0),
+      invalid: installations.filter((install) => GitHubApplication.isInvalidInstallation(install).length > 0),
     };
   }
 
@@ -46,13 +57,21 @@ export default class GitHubApplication {
     const parameters = {
       installation_id: installationId.toString(),
     };
-    const cacheOptions = {...options};
+    const cacheOptions = { ...options };
     try {
-      const entity = await operations.github.call(this.authorize(), 'apps.getInstallation', parameters, cacheOptions);
+      const entity = await operations.github.call(
+        this.authorize(),
+        'apps.getInstallation',
+        parameters,
+        cacheOptions
+      );
       return entity as IGitHubAppInstallation;
     } catch (error) {
       // TODO: 404 vs error
-      throw wrapError(error, `Could not get details about the ${this.id} app installation ID ${installationId}: ${error.message}`);
+      throw wrapError(
+        error,
+        `Could not get details about the ${this.id} app installation ID ${installationId}: ${error.message}`
+      );
     }
   }
 
@@ -73,9 +92,13 @@ export default class GitHubApplication {
       backgroundRefresh: false,
       // pageRequestDelay: options.pageRequestDelay,
     };
-    const installations = await github.collections.getAppInstallations(getAuthorizationHeader, {
-      app_id: this.id.toString(),
-    }, caching);
+    const installations = await github.collections.getAppInstallations(
+      getAuthorizationHeader,
+      {
+        app_id: this.id.toString(),
+      },
+      caching
+    );
     return installations;
   }
 

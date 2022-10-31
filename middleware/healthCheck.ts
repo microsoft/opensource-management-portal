@@ -31,7 +31,7 @@ export default function initializeHealthCheck(app, config) {
       return true;
     }
     const healthIndicatorKey = mapTypeToValue[checkType];
-    const isHealthy = !! provider[healthIndicatorKey];
+    const isHealthy = !!provider[healthIndicatorKey];
     const asString = isHealthy ? 'OK' : 'FALSE';
     dbg(`Returning ${checkType} ${asString}`);
     return isHealthy;
@@ -40,11 +40,15 @@ export default function initializeHealthCheck(app, config) {
   function containerHealthCheck(checkType, validateHeader, req, res, next) {
     const header = config.containers.healthCheck.expectedHeader;
     if (validateHeader && !req.headers[header.name]) {
-      dbg(`Container ${checkType} health check requested but the ${header.name} header was not present in the HTTP request`);
+      dbg(
+        `Container ${checkType} health check requested but the ${header.name} header was not present in the HTTP request`
+      );
       return next();
     }
     if (validateHeader && !req.headers[header.name] === header.value) {
-      dbg(`Container ${checkType} health check requested but the ${header.name} header present in the HTTP request did not match the expected, configured value`);
+      dbg(
+        `Container ${checkType} health check requested but the ${header.name} header present in the HTTP request did not match the expected, configured value`
+      );
       return next();
     }
     let result = null;
@@ -70,11 +74,14 @@ export default function initializeHealthCheck(app, config) {
 
     app.get('/health/readiness', containerHealthCheck.bind(null, 'readiness', true));
     app.get('/health/liveness', containerHealthCheck.bind(null, 'liveness', true));
-    app.get('/health/external', containerHealthCheck.bind(null, 'liveness', false /* do not validate a header, anyone can hit */));
+    app.get(
+      '/health/external',
+      containerHealthCheck.bind(null, 'liveness', false /* do not validate a header, anyone can hit */)
+    );
     debug('Health probes listening');
   } else {
     debug('No health probes listening');
   }
 
   return provider;
-};
+}

@@ -17,11 +17,13 @@ async function go(providers: IProviders): Promise<void> {
 // -----------------------------------------------------------------------------
 import app from '../app';
 import { IProviders, IReposJob } from '../interfaces';
-console.log('Initializing the local environment...');
 
-app.runJob(async function ({ providers }: IReposJob) {
-  await go(providers);
-  return {};
-}, {
-  enableAllGitHubApps: true,
-});
+app.runJob(
+  async function ({ providers }: IReposJob) {
+    await go(providers);
+    return {};
+  },
+  {
+    enableAllGitHubApps: true,
+  }
+);

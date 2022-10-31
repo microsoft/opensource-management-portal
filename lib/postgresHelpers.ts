@@ -42,7 +42,7 @@ export function PostgresPoolQuery(pool, sql: string, values: any[], callback) {
   if (!pool) {
     throw new Error('No Postgres pool provided');
   }
-  if (!callback && typeof(values) === 'function') {
+  if (!callback && typeof values === 'function') {
     callback = values;
     values = [];
   }
@@ -55,7 +55,10 @@ export function PostgresPoolQuery(pool, sql: string, values: any[], callback) {
     client.query(sql, values, function (queryError, results) {
       release();
       if (queryError) {
-        const err: InnerError = new Error(queryError.message /* Postgres provider never leaks SQL statements thankfully */ || 'There was an error querying a database');
+        const err: InnerError = new Error(
+          queryError.message /* Postgres provider never leaks SQL statements thankfully */ ||
+            'There was an error querying a database'
+        );
         err.inner = queryError;
         if (queryError.position) {
           err['position'] = queryError.position;

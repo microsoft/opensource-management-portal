@@ -28,7 +28,9 @@ export default class WcagColorHelper {
   }
 
   pickBestForegroundAsHex(defaultForegroundHexColor?: string) {
-    let foreground = defaultForegroundHexColor ? new WcagColorHelper(defaultForegroundHexColor) : WcagColorHelper.Dark;
+    let foreground = defaultForegroundHexColor
+      ? new WcagColorHelper(defaultForegroundHexColor)
+      : WcagColorHelper.Dark;
     if (this.passes(foreground)) {
       return foreground.asHex();
     }

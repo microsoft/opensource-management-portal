@@ -31,9 +31,13 @@ async function refreshRepositories({ providers }: IReposJob): Promise<IReposJobR
 
   const orgs = operations.getOrganizations();
   const throttle = throat(maxParallel);
-  await Promise.allSettled(orgs.map((organization, index) => throttle(async () => {
-    return processOrganization(providers, organization, index, orgs.length);
-  })));
+  await Promise.allSettled(
+    orgs.map((organization, index) =>
+      throttle(async () => {
+        return processOrganization(providers, organization, index, orgs.length);
+      })
+    )
+  );
 
   // TODO: query all, remove any not processed [recently]
   console.log(`Finished at ${new Date()}, started at ${started}`);
@@ -41,7 +45,12 @@ async function refreshRepositories({ providers }: IReposJob): Promise<IReposJobR
   return {};
 }
 
-async function processOrganization(providers: IProviders, organization: Organization, orgIndex: number, orgsLength: number): Promise<unknown> {
+async function processOrganization(
+  providers: IProviders,
+  organization: Organization,
+  orgIndex: number,
+  orgsLength: number
+): Promise<unknown> {
   const { repositoryProvider } = providers;
   try {
     let repos = await organization.getRepositories();
@@ -138,7 +147,10 @@ function setFields(repositoryProvider: IRepositoryProvider, repositoryEntity: Re
   return repositoryEntity;
 }
 
-async function tryGetRepositoryEntity(repositoryProvider: IRepositoryProvider, repositoryId: number): Promise<RepositoryEntity> {
+async function tryGetRepositoryEntity(
+  repositoryProvider: IRepositoryProvider,
+  repositoryId: number
+): Promise<RepositoryEntity> {
   try {
     const repositoryEntity = await repositoryProvider.get(repositoryId);
     return repositoryEntity;
@@ -150,5 +162,8 @@ async function tryGetRepositoryEntity(repositoryProvider: IRepositoryProvider, r
   }
 }
 
-app.runJob(
-  refreshRepositories, { timeoutMinutes: 320, defaultDebugOutput: 'restapi', insightsPrefix: 'JobRefreshRepositories' });
+app.runJob(refreshRepositories, {
+  timeoutMinutes: 320,
+  defaultDebugOutput: 'restapi',
+  insightsPrefix: 'JobRefreshRepositories',
+});

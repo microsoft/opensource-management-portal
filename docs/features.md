@@ -1,5 +1,3 @@
-[Docs index](index.md)
-
 # Feature flags
 
 Under development, configuration values in `config/features.json` map
@@ -16,7 +14,7 @@ variable value to `1`.
 
   - Variable: `FEATURE_FLAG_ALLOW_UNAUTHORIZED_NEW_REPOSITORY_LOCKDOWN_SYSTEM`
   - Purpose: Allows the "unauthorized new repository lockdown system" to be _available_ as an organization feature flag. It does not turn this system on by default in any case.
-  - Requirements: the event firehose must be used (there is no equivalent job, to make sure to not accidentially destroy permissions across existing repos)
+  - Requirements: the event firehose must be used (there is no equivalent job, to make sure to not accidentally destroy permissions across existing repos)
 
 - allowUnauthorizedForkLockdownSystem
 

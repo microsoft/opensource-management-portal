@@ -38,7 +38,10 @@ import { OrganizationSudoNoop } from './noop';
 import { OrganizationSudoSecurityGroup } from './securityGroup';
 import { OrganizationSudoGitHubTeams } from './teams';
 
-export function createOrganizationSudoInstance(providers: IProviders, organization: Organization): IOrganizationSudo {
+export function createOrganizationSudoInstance(
+  providers: IProviders,
+  organization: Organization
+): IOrganizationSudo {
   const override = getCompanySpecificDeployment();
   let instance = override?.features?.organizationSudo?.tryCreateInstance(providers, organization);
   if (instance) {
@@ -47,7 +50,7 @@ export function createOrganizationSudoInstance(providers: IProviders, organizati
 
   const config = providers.config;
   const defaultProviderName = config?.sudo?.organization?.defaultProviderName;
-  
+
   let providerName = defaultProviderName;
 
   const allowUniqueProvidersByOrganization = config?.sudo?.organization?.allowUniqueProvidersByOrganization;

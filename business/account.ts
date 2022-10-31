@@ -13,7 +13,22 @@ import { Organization } from './organization';
 import { AppPurpose } from '../github';
 import { ILinkProvider } from '../lib/linkProviders';
 import { CacheDefault, getMaxAgeSeconds } from '.';
-import { AccountJsonFormat, CoreCapability, ICacheOptions, ICorporateLink, IGetAuthorizationHeader, IOperationsInstance, IOperationsLinks, IOperationsProviders, IReposError, operationsWithCapability, OrganizationMembershipState, throwIfNotCapable, throwIfNotGitHubCapable } from '../interfaces';
+import {
+  AccountJsonFormat,
+  CoreCapability,
+  ICacheOptions,
+  ICorporateLink,
+  IGetAuthorizationHeader,
+  IGitHubAccountDetails,
+  IOperationsInstance,
+  IOperationsLinks,
+  IOperationsProviders,
+  IReposError,
+  operationsWithCapability,
+  OrganizationMembershipState,
+  throwIfNotCapable,
+  throwIfNotGitHubCapable,
+} from '../interfaces';
 import { ErrorHelper } from '../transitional';
 
 interface IRemoveOrganizationMembershipsResult {
@@ -21,6 +36,7 @@ interface IRemoveOrganizationMembershipsResult {
   history: string[];
 }
 
+// prettier-ignore
 const primaryAccountProperties = [
   'id',
   'login',
@@ -40,7 +56,7 @@ export class Account {
   private _created_at?: any;
   private _updated_at?: any;
 
-  private _originalEntity?: any;
+  private _originalEntity?: IGitHubAccountDetails;
 
   public asJson(format: AccountJsonFormat = AccountJsonFormat.GitHub) {
     const basic = {
@@ -56,8 +72,8 @@ export class Account {
       }
       case AccountJsonFormat.GitHubDetailedWithLink: {
         const cloneEntity = Object.assign({}, this._originalEntity || {});
-        delete cloneEntity.cost;
-        delete cloneEntity.headers;
+        delete (cloneEntity as any).cost;
+        delete (cloneEntity as any).headers;
         const link = this._link ? corporateLinkToJson(this._link) : undefined;
         return {
           account: cloneEntity,
@@ -116,7 +132,13 @@ export class Account {
   }
 
   constructor(entity, operations: IOperationsInstance, getAuthorizationHeader: IGetAuthorizationHeader) {
-    common.assignKnownFieldsPrefixed(this, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
+    common.assignKnownFieldsPrefixed(
+      this,
+      entity,
+      'account',
+      primaryAccountProperties,
+      secondaryAccountProperties
+    );
     this._originalEntity = entity;
     this._operations = operations;
     this._getAuthorizationHeader = getAuthorizationHeader;
@@ -126,7 +148,7 @@ export class Account {
     this._getAuthorizationHeader = getAuthorizationHeader;
   }
 
-  getEntity() {
+  getEntity(): IGitHubAccountDetails {
     return this._originalEntity;
   }
 
@@ -153,8 +175,8 @@ export class Account {
   corporateAlias() {
     // NOTE: this is a hack
     if (this.contactEmail()) {
-      var email = this.contactEmail();
-      var i = email.indexOf('@');
+      let email = this.contactEmail();
+      let i = email.indexOf('@');
       if (i >= 0) {
         return email.substring(0, i);
       }
@@ -162,7 +184,10 @@ export class Account {
   }
 
   corporateProfileUrl() {
-    const operations = operationsWithCapability<IOperationsProviders>(this._operations, CoreCapability.Providers);
+    const operations = operationsWithCapability<IOperationsProviders>(
+      this._operations,
+      CoreCapability.Providers
+    );
     if (operations) {
       const config = operations.providers.config;
       const alias = this.corporateAlias();
@@ -219,7 +244,12 @@ export class Account {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     try {
-      const entity = await operations.github.call(this.authorize(AppPurpose.Data), 'activity.listEventsForAuthenticatedUser', parameters, cacheOptions);
+      const entity = await operations.github.call(
+        this.authorize(AppPurpose.Data),
+        'activity.listEventsForAuthenticatedUser',
+        parameters,
+        cacheOptions
+      );
       return entity;
     } catch (error) {
       console.dir(error);
@@ -244,7 +274,11 @@ export class Account {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     try {
-      const events = await operations.github.collections.getUserActivity(this.authorize(AppPurpose.Data), parameters, cacheOptions);
+      const events = await operations.github.collections.getUserActivity(
+        this.authorize(AppPurpose.Data),
+        parameters,
+        cacheOptions
+      );
       let cached = true;
       if (events && events.cost && events.cost.github.usedApiTokens > 0) {
         cached = false;
@@ -263,7 +297,10 @@ export class Account {
   }
 
   async getDetailsAndDirectLink(): Promise<Account> {
-    if (!throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers).providers.linkProvider) {
+    if (
+      !throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers).providers
+        .linkProvider
+    ) {
       throw new Error('getDetailsAndDirectLink: this method can only be called when a linkProvider is used');
     }
     const operations = throwIfNotCapable<IOperationsLinks>(this._operations, CoreCapability.Links);
@@ -298,7 +335,7 @@ export class Account {
     return false;
   }
 
-  async getDetails(options?: ICacheOptions): Promise<any> {
+  async getDetails(options?: ICacheOptions): Promise<IGitHubAccountDetails> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const id = this._id;
@@ -315,8 +352,19 @@ export class Account {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     try {
-      const entity = await operations.github.request(this.authorize(AppPurpose.Data), 'GET /user/:id', parameters, cacheOptions);
-      common.assignKnownFieldsPrefixed(this, entity, 'account', primaryAccountProperties, secondaryAccountProperties);
+      const entity = (await operations.github.request(
+        this.authorize(AppPurpose.Data),
+        'GET /user/:id',
+        parameters,
+        cacheOptions
+      )) as IGitHubAccountDetails;
+      common.assignKnownFieldsPrefixed(
+        this,
+        entity,
+        'account',
+        primaryAccountProperties,
+        secondaryAccountProperties
+      );
       this._originalEntity = entity;
       return entity;
     } catch (error) {
@@ -374,7 +422,10 @@ export class Account {
     try {
       await deleteLink(linkProvider, link);
     } catch (linkDeleteError) {
-      const message = linkDeleteError.statusCode === 404 ? `The link for ID ${id} no longer exists: ${linkDeleteError}` : `The link for ID ${id} could not be removed: ${linkDeleteError}`;
+      const message =
+        linkDeleteError.statusCode === 404
+          ? `The link for ID ${id} no longer exists: ${linkDeleteError}`
+          : `The link for ID ${id} could not be removed: ${linkDeleteError}`;
       history.push(message);
       finalError = linkDeleteError;
     }
@@ -395,15 +446,22 @@ export class Account {
       throw new Error(`No GitHub username available for user ID ${this._id}`);
     }
     let currentOrganizationMemberships: Organization[] = [];
-    const checkOrganization = async organization => {
+    const checkOrganization = async (organization) => {
       try {
         const result = await organization.getOperationalMembership(username);
-        if (result && result.state && (result.state === OrganizationMembershipState.Active || result.state === OrganizationMembershipState.Pending)) {
+        if (
+          result &&
+          result.state &&
+          (result.state === OrganizationMembershipState.Active ||
+            result.state === OrganizationMembershipState.Pending)
+        ) {
           currentOrganizationMemberships.push(organization);
         }
       } catch (ignoreErrors) {
         // getMembershipError ignored: if there is no membership that's fine
-        console.log(`error from individual check of organization ${organization.name} membership for username ${username}: ${ignoreErrors}`);
+        console.log(
+          `error from individual check of organization ${organization.name} membership for username ${username}: ${ignoreErrors}`
+        );
       }
     };
     const opsAs = operations as any;
@@ -411,8 +469,8 @@ export class Account {
       throw new Error('Operations does not expose an organizations Map getter');
     }
     const allOrganizations = Array.from(opsAs.organizations.values() as Organization[]);
-    const staticOrganizations = allOrganizations.filter(org => org.hasDynamicSettings === false);
-    const dynamicOrganizations = allOrganizations.filter(org => org.hasDynamicSettings);
+    const staticOrganizations = allOrganizations.filter((org) => org.hasDynamicSettings === false);
+    const dynamicOrganizations = allOrganizations.filter((org) => org.hasDynamicSettings);
     await Promise.all(dynamicOrganizations.map(checkOrganization));
     for (let organization of staticOrganizations) {
       await checkOrganization(organization);
@@ -425,7 +483,7 @@ export class Account {
     let error: IReposError = null;
     const operations = throwIfNotGitHubCapable(this._operations);
     const opsWithProvs = operationsWithCapability<IOperationsProviders>(operations, CoreCapability.Providers);
-    const { queryCache } = opsWithProvs?.providers;
+    const { queryCache } = opsWithProvs?.providers || {};
     if (!queryCache || !queryCache.supportsRepositoryCollaborators) {
       history.push('The account may still have Collaborator permissions to repositories');
       return { history };
@@ -448,7 +506,9 @@ export class Account {
         if (ErrorHelper.IsNotFound(removeCollaboratorError)) {
           // The repo doesn't exist any longer, this is OK.
         } else {
-          history.push(`Could not remove ${this.login} as a Collaborator from the repo: ${repository.full_name}`);
+          history.push(
+            `Could not remove ${this.login} as a Collaborator from the repo: ${repository.full_name}`
+          );
         }
       }
     }
@@ -470,7 +530,9 @@ export class Account {
     }
     const username = this._login;
     if (organizations && organizations.length > 1) {
-      const asText = _.map(organizations, org => { return org.name; }).join(', ');
+      const asText = _.map(organizations, (org) => {
+        return org.name;
+      }).join(', ');
       history.push(`${username} was a member of the following organizations: ${asText}`);
     } else if (organizations) {
       history.push(`${username} is not a member of any managed organizations`);
@@ -482,7 +544,9 @@ export class Account {
           await organization.removeMember(username);
           history.push(`Removed ${username} from the ${organization.name} organization`);
         } catch (removeError) {
-          history.push(`Error while removing ${username} from the ${organization.name} organization: ${removeError}`);
+          history.push(
+            `Error while removing ${username} from the ${organization.name} organization: ${removeError}`
+          );
           if (!error) {
             error = removeError;
           }
@@ -493,7 +557,10 @@ export class Account {
   }
 
   private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
-    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as IGetAuthorizationHeader;
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(
+      this,
+      purpose
+    ) as IGetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 }

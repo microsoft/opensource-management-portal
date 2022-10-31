@@ -59,7 +59,7 @@ interface IReportsBasicTeam {
 
   ageInMonths?: any;
   recentActivity?: any;
-};
+}
 
 interface IReportsBasicTeamsEntry {
   rows?: any[];
@@ -82,12 +82,15 @@ export async function process(context: IReportsContext): Promise<IReportsContext
   return context;
 }
 
-async function identityMaintainersWithoutLinks(teamContext: IReportsTeamContext, maintainers): Promise<IReportsTeamContext> {
+async function identityMaintainersWithoutLinks(
+  teamContext: IReportsTeamContext,
+  maintainers
+): Promise<IReportsTeamContext> {
   const maintainersByType = {
-    linked: maintainers.filter(admin => {
+    linked: maintainers.filter((admin) => {
       return admin.link;
     }),
-    unlinked: maintainers.filter(admin => {
+    unlinked: maintainers.filter((admin) => {
       return !admin.link;
     }),
   };
@@ -145,7 +148,9 @@ async function gatherLinkData(teamContext: IReportsTeamContext, maintainers: Tea
 }
 
 async function processTeam(context: IReportsContext, team: Team) {
-  console.log('team: ' + context.processing.teams.remaining-- + ': ' + team.organization.name + '/' + team.name);
+  console.log(
+    'team: ' + context.processing.teams.remaining-- + ': ' + team.organization.name + '/' + team.name
+  );
   try {
     const teamContext: IReportsTeamContext = {
       parent: context,
@@ -199,10 +204,21 @@ async function processTeam(context: IReportsContext, team: Team) {
     }
     // Send to org admins
     const orgData = context.organizationData[orgName];
-    for (let i = 0; orgData && orgData.organizationContext && orgData.organizationContext.recipients && orgData.organizationContext.recipients.length && i < orgData.organizationContext.recipients.length; i++) {
+    for (
+      let i = 0;
+      orgData &&
+      orgData.organizationContext &&
+      orgData.organizationContext.recipients &&
+      orgData.organizationContext.recipients.length &&
+      i < orgData.organizationContext.recipients.length;
+      i++
+    ) {
       teamContext.recipients.push(orgData.organizationContext.recipients[i]);
     }
-    basicTeam.maintainers = teamContext.maintainers && teamContext.maintainers.length ? teamContext.maintainers.length.toString() : 'None';
+    basicTeam.maintainers =
+      teamContext.maintainers && teamContext.maintainers.length
+        ? teamContext.maintainers.length.toString()
+        : 'None';
     const actionPromoteMembers = {
       link: `https://github.com/orgs/${orgName}/teams/${slug}/members`,
       text: 'Promote members',
@@ -219,10 +235,12 @@ async function processTeam(context: IReportsContext, team: Team) {
       link: `https://github.com/orgs/${orgName}/teams/${slug}/members`,
       text: 'Open',
     };
-    const actionViewInPortal = context.config.urls ? {
-      link: `${context.config.urls.repos}${organization.name}/teams/${slug}`,
-      text: 'Manage team',
-    } : null;
+    const actionViewInPortal = context.config.urls
+      ? {
+          link: `${context.config.urls.repos}${organization.name}/teams/${slug}`,
+          text: 'Manage team',
+        }
+      : null;
     let createdAt = team.created_at ? moment(team.created_at) : null;
     if (createdAt) {
       basicTeam.created = createdAt.format(simpleDateFormat);
@@ -245,19 +263,38 @@ async function processTeam(context: IReportsContext, team: Team) {
     } else {
       // Member or maintainer issues
       if (!isSystemTeam && team.members_count == 0) {
-        addEntityToIssueType(context, teamContext, 'noTeamMembers', basicTeam, actionDelete, actionViewInPortal);
+        addEntityToIssueType(
+          context,
+          teamContext,
+          'noTeamMembers',
+          basicTeam,
+          actionDelete,
+          actionViewInPortal
+        );
       } else if (!isSystemTeam && teamContext.teamMaintainers.length === 0) {
-        addEntityToIssueType(context, teamContext, 'noTeamMaintainers', basicTeam, actionPromoteMembers, actionViewInPortal);
+        addEntityToIssueType(
+          context,
+          teamContext,
+          'noTeamMaintainers',
+          basicTeam,
+          actionPromoteMembers,
+          actionViewInPortal
+        );
       } else if (teamContext.maintainersByType.unlinked.length > 0) {
         const logins = [];
         for (let z = 0; z < teamContext.maintainersByType.unlinked.length; z++) {
           const unlinkedEntry = teamContext.maintainersByType.unlinked[z];
           logins.push(unlinkedEntry.login);
         }
-        const specialEntity = Object.assign({
-          logins: logins.join(', '),
-        }, basicTeam);
-        const reportName = externalMembersPermitted ? 'unlinkedMaintainersWhenAllowed' : 'unlinkedMaintainers';
+        const specialEntity = Object.assign(
+          {
+            logins: logins.join(', '),
+          },
+          basicTeam
+        );
+        const reportName = externalMembersPermitted
+          ? 'unlinkedMaintainersWhenAllowed'
+          : 'unlinkedMaintainers';
         // TODO: use the operations e-mail
         addEntityToIssueType(context, teamContext, reportName, specialEntity, actionRemoveMembers, {
           link: `mailto:opensource@microsoft.com?subject=Reporting a former employee related to the ${orgName} ${team.name} team`,
@@ -280,12 +317,29 @@ async function processTeam(context: IReportsContext, team: Team) {
     basicTeam.recentActivity = monthsSinceUpdates < 1 ? 'Active' : `${timeAsString} (${mostRecentActivity})`;
     if (createdAt.isAfter(thisWeek) && !privateEngineering) {
       // New public and private repos
-      const teamForManagerAndLawyer = shallowCloneWithAdditionalRecipients(basicTeam, teamContext.additionalRecipients);
+      const teamForManagerAndLawyer = shallowCloneWithAdditionalRecipients(
+        basicTeam,
+        teamContext.additionalRecipients
+      );
       if (createdAt.isAfter(today)) {
-        addEntityToIssueType(context, teamContext, 'NewTeamsToday', teamForManagerAndLawyer, actionView, actionViewInPortal);
+        addEntityToIssueType(
+          context,
+          teamContext,
+          'NewTeamsToday',
+          teamForManagerAndLawyer,
+          actionView,
+          actionViewInPortal
+        );
       }
       // Always include in the weekly summary
-      addEntityToIssueType(context, teamContext, 'NewTeamsWeek', teamForManagerAndLawyer, actionView, actionViewInPortal);
+      addEntityToIssueType(
+        context,
+        teamContext,
+        'NewTeamsWeek',
+        teamForManagerAndLawyer,
+        actionView,
+        actionViewInPortal
+      );
     }
     if (context.settings.teamDelayAfter) {
       await sleep(context.settings.teamDelayAfter);
@@ -374,9 +428,7 @@ function addEntityToIssueType(context, teamContext, type, entity, optionalAction
   const listProperties = definition[listPropertiesName];
 
   if (listProperties && (listProperties.groupBy || listProperties.sortBy)) {
-    const sortBy = [
-      dest,
-    ];
+    const sortBy = [dest];
     if (listProperties.groupBy) {
       sortBy.push(listProperties.groupBy);
     }
@@ -395,7 +447,9 @@ function flattenTeamsMap(teamsMap, operations) {
     const byOrg = asArray[i].orgs;
     const organizationNames = Object.getOwnPropertyNames(byOrg);
     if (organizationNames.length !== 1) {
-      throw new Error('Expected just a single organization for the team while preparing the list of teams to report on');
+      throw new Error(
+        'Expected just a single organization for the team while preparing the list of teams to report on'
+      );
     }
     const orgName = organizationNames[0];
     const organization = operations.getOrganization(orgName);
@@ -413,7 +467,7 @@ async function getTeams(context: IReportsContext): Promise<IReportsContext> {
   context.entities.teams = asArray.sort((a, b) => {
     const aFullName = `${a.organization.name}/${a.name}`;
     const bFullName = `${b.organization.name}/${b.name}`;
-    return aFullName.localeCompare(bFullName, 'en', {'sensitivity': 'base'});
+    return aFullName.localeCompare(bFullName, 'en', { sensitivity: 'base' });
   });
   return context;
 }
@@ -456,20 +510,23 @@ export async function consolidate(context: IReportsContext): Promise<IReportsCon
     }
   }
   // Entities
-  const sorted = _.sortBy(context.teamData, 'nameLowercase') ; // 'entityName'); // name groups by org name AND repo name naturally
+  const sorted = _.sortBy(context.teamData, 'nameLowercase'); // 'entityName'); // name groups by org name AND repo name naturally
   for (let i = 0; i < sorted.length; i++) {
     const fullEntity = sorted[i];
     const reducedEntity: IReportsTeamsReducedEntity = {
       name: fullEntity.name,
     };
-    const contextDirectProperties = [
-      'issues',
-      'recipients',
-    ];
+    const contextDirectProperties = ['issues', 'recipients'];
     cloneProperties(fullEntity, contextDirectProperties, reducedEntity);
     // Only store in the consolidated report if there are recipients for the entity
     const issueCounter = Object.getOwnPropertyNames(reducedEntity.issues);
-    if (issueCounter && issueCounter.length && reducedEntity && reducedEntity.recipients && reducedEntity.recipients.length > 0) {
+    if (
+      issueCounter &&
+      issueCounter.length &&
+      reducedEntity &&
+      reducedEntity.recipients &&
+      reducedEntity.recipients.length > 0
+    ) {
       consolidated.entities.push(reducedEntity);
     } else if (issueCounter && issueCounter.length) {
       console.warn(`There are no recipients to receive ${reducedEntity.name} reports with active issues`);

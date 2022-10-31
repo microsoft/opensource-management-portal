@@ -8,6 +8,7 @@ import moment from 'moment';
 import octicons from 'octicons'; //const octicons = require('octicons');
 import fileSize from 'file-size';
 import languageMap from 'language-map';
+import validator from 'validator';
 
 export default {
   _,
@@ -23,7 +24,7 @@ export default {
   moment,
   octicon: function (name, optionalWidth, classes, optionalAria) {
     const icon = octicons[name];
-    if (!icon || typeof (icon.toSVG) !== 'function') {
+    if (!icon || typeof icon.toSVG !== 'function') {
       throw new Error(`Missing octicon ${name}`);
     }
     const options: {
@@ -43,6 +44,6 @@ export default {
     return icon.toSVG(options);
   },
   stripJsSingleQuote: function (value) {
-    return value.replace(/\\/g, '').replace(/\'/g, '\\\'');
+    return validator.escape(String(value));
   },
 };

@@ -78,7 +78,7 @@ function createClient(options?: IProviderOptions) {
       let paths = null;
       try {
         paths = await identifyPaths(provider, object);
-      } catch(parseError) {
+      } catch (parseError) {
         throw parseError;
       }
       const names = Object.getOwnPropertyNames(paths);

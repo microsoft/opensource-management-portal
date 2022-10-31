@@ -6,7 +6,9 @@
 import { ITeamCacheProvider, ITeamCacheCreateOptions, TeamCacheProvider } from './teamCacheProvider';
 import { FixedQueryType, IEntityMetadataFixedQuery } from '../../lib/entityMetadataProvider/query';
 
-export async function CreateTeamCacheProviderInstance(options?: ITeamCacheCreateOptions): Promise<ITeamCacheProvider> {
+export async function CreateTeamCacheProviderInstance(
+  options?: ITeamCacheCreateOptions
+): Promise<ITeamCacheProvider> {
   const provider = new TeamCacheProvider(options);
   await provider.initialize();
   return provider;
@@ -19,7 +21,7 @@ export class TeamCacheFixedQueryAll implements IEntityMetadataFixedQuery {
 export class TeamCacheFixedQueryByOrganizationId implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamCacheGetByOrganizationId;
   constructor(public organizationId: string) {
-    if (typeof(this.organizationId) !== 'string') {
+    if (typeof this.organizationId !== 'string') {
       throw new Error(`${organizationId} must be a string`);
     }
   }
@@ -32,7 +34,7 @@ export class TeamCacheGetOrganizationIdsQuery implements IEntityMetadataFixedQue
 export class TeamCacheDeleteByOrganizationId implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamCacheDeleteByOrganizationId;
   constructor(public organizationId: string) {
-    if (typeof(this.organizationId) !== 'string') {
+    if (typeof this.organizationId !== 'string') {
       throw new Error(`${organizationId} must be a string`);
     }
   }

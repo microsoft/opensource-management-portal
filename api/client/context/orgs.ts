@@ -20,17 +20,17 @@ export default asyncHandler(async (req: ReposAppRequest, res) => {
   const orgs = await activeContext.aggregations.getQueryCacheOrganizations();
   const data = {
     isLinked: true,
-    member: orgs.member.map(org => {
+    member: orgs.member.map((org) => {
       return {
         name: org.name,
         id: org.id,
       };
     }),
-    admin: orgs.admin.map(org => {
+    admin: orgs.admin.map((org) => {
       return {
         name: org.name,
         id: org.id,
-      }
+      };
     }),
   };
   return res.json(data);

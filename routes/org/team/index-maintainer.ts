@@ -20,7 +20,7 @@ router.use(function (req: ILocalRequest, res, next) {
   const teamPermissions = req.teamPermissions;
   if (!teamPermissions.allowAdministration) {
     const err = wrapError(null, 'You do not have permission to maintain this team.', true);
-    err.detailed = 'These aren\'t the droids you are looking for.';
+    err.detailed = "These aren't the droids you are looking for.";
     err.status = 403;
     err.skipLog = true;
     return next(err);

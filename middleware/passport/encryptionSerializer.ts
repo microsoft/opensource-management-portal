@@ -29,7 +29,9 @@ function validateNoRichProperties(properties) {
       continue;
     }
     if (typeof properties[key] === 'object') {
-      console.warn(`The property ${key} is an object. To help with diagnosing the underlying area with the problem, here is the current value of the object:`);
+      console.warn(
+        `The property ${key} is an object. To help with diagnosing the underlying area with the problem, here is the current value of the object:`
+      );
       console.warn(properties[key]);
       return new Error(`Session property ${key} is an object.`);
     }
@@ -58,11 +60,15 @@ function serializeEntity(options, entityName, entity, callback) {
     encryptedPropertyNames: userEncryptedEntities[entityName],
     binaryProperties: 'base64',
   };
-  return encryptEntityAsync(partitionKey, rowKey, entity, encryptionOptions).then(encryptedEntity => {
-    return callback(null, encryptedEntity);
-  }).catch(encryptError => {
-    return callback(wrapError(encryptError, 'There was a problem with the security subsystem starting your session.'));
-  });
+  return encryptEntityAsync(partitionKey, rowKey, entity, encryptionOptions)
+    .then((encryptedEntity) => {
+      return callback(null, encryptedEntity);
+    })
+    .catch((encryptError) => {
+      return callback(
+        wrapError(encryptError, 'There was a problem with the security subsystem starting your session.')
+      );
+    });
 }
 
 function deserializeEntity(options, entityName, entity, callback) {
@@ -83,64 +89,77 @@ function deserializeEntity(options, entityName, entity, callback) {
     keyResolver: keyResolver,
     binaryProperties: 'base64',
   };
-  return decryptEntityAsync(partitionKey, rowKey, entity, encryptionOptions).then(decryptedEntity => {
-    return callback(null, decryptedEntity);
-  }).catch(decryptError => {
-    const userError = wrapError(decryptError, 'There was a problem with the security subsystem retrieving your session.');
-    userError['forceSignOut'] = true;
-    return callback(userError);
-  });
+  return decryptEntityAsync(partitionKey, rowKey, entity, encryptionOptions)
+    .then((decryptedEntity) => {
+      return callback(null, decryptedEntity);
+    })
+    .catch((decryptError) => {
+      const userError = wrapError(
+        decryptError,
+        'There was a problem with the security subsystem retrieving your session.'
+      );
+      userError['forceSignOut'] = true;
+      return callback(userError);
+    });
 }
 
 export default class EncryptionSerializer implements LegacySerializer {
   private options: any;
 
   serialize(config, user, done) {
-    return Promise.all(Object.getOwnPropertyNames(userEncryptedEntities).map(entityName => {
-      return new Promise((resolve, reject) => {
-        const entityPresent = user[entityName];
-        if (entityPresent !== undefined) {
-          const entityOriginalValue = entityPresent;
-          delete user[entityName];
-          return serializeEntity(this.options, entityName, entityOriginalValue, (error, value) => {
-            user[entityName] = value;
-            return error ? reject(error) : resolve(undefined);
-          });
-        } else {
-          return resolve(undefined);
-        }
+    return Promise.all(
+      Object.getOwnPropertyNames(userEncryptedEntities).map((entityName) => {
+        return new Promise((resolve, reject) => {
+          const entityPresent = user[entityName];
+          if (entityPresent !== undefined) {
+            const entityOriginalValue = entityPresent;
+            delete user[entityName];
+            return serializeEntity(this.options, entityName, entityOriginalValue, (error, value) => {
+              user[entityName] = value;
+              return error ? reject(error) : resolve(undefined);
+            });
+          } else {
+            return resolve(undefined);
+          }
+        });
+      })
+    )
+      .then((ok) => {
+        return done(null, user);
+      })
+      .catch((error) => {
+        return done(error);
       });
-    })).then(ok => {
-      return done(null, user);
-    }).catch(error => {
-      return done(error);
-    });
   }
 
   deserialize(config, user, done) {
     const u = {};
-    return Promise.all(Object.getOwnPropertyNames(user).map(entityName => {
-      return new Promise((resolve, reject) => {
-        if (userEncryptedEntities[entityName] !== undefined) {
-          let entityValue = user[entityName];
-          return deserializeEntity(this.options, entityName, entityValue, (error, result) => {
-            u[entityName] = result;
-            return error ? reject(error) : resolve(undefined);
-          });
-        } else {
-          return resolve(undefined);
+    return Promise.all(
+      Object.getOwnPropertyNames(user).map((entityName) => {
+        return new Promise((resolve, reject) => {
+          if (userEncryptedEntities[entityName] !== undefined) {
+            let entityValue = user[entityName];
+            return deserializeEntity(this.options, entityName, entityValue, (error, result) => {
+              u[entityName] = result;
+              return error ? reject(error) : resolve(undefined);
+            });
+          } else {
+            return resolve(undefined);
+          }
+        });
+      })
+    )
+      .then((ok) => {
+        for (const unencryptedEntity in user) {
+          if (userEncryptedEntities[unencryptedEntity] === undefined) {
+            u[unencryptedEntity] = user[unencryptedEntity];
+          }
         }
+        return done(null, u);
+      })
+      .catch((error) => {
+        return done(error);
       });
-    })).then(ok => {
-      for (const unencryptedEntity in user) {
-        if (userEncryptedEntities[unencryptedEntity] === undefined) {
-          u[unencryptedEntity] = user[unencryptedEntity];
-        }
-      }
-      return done(null, u);
-    }).catch(error => {
-      return done(error);
-    });
   }
 
   initialize(options: any, app: any) {

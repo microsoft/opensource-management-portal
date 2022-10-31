@@ -20,16 +20,22 @@ export function injectReactClient() {
   let indexPageContent = '';
   try {
     if (!staticClientPackageName) {
-      throw new Error(`No property "${staticReactPackageNameKey}" in package.json to inject as a React client app`);
+      throw new Error(
+        `No property "${staticReactPackageNameKey}" in package.json to inject as a React client app`
+      );
     }
     const staticModernReactApp = require(staticClientPackageName);
     const previewClientFolder = staticModernReactApp;
-    if (typeof (previewClientFolder) !== 'string') {
-      throw new Error(`The return value of the preview package ${staticClientPackageName} must be a string/path`);
+    if (typeof previewClientFolder !== 'string') {
+      throw new Error(
+        `The return value of the preview package ${staticClientPackageName} must be a string/path`
+      );
     }
     indexPageContent = fs.readFileSync(path.join(previewClientFolder, 'client.html'), { encoding: 'utf8' });
   } catch (hostClientError) {
-    console.error(`The static client could not be loaded via package ${staticClientPackageName}. Note that index.html needs to be named client.html in build/.`);
+    console.error(
+      `The static client could not be loaded via package ${staticClientPackageName}. Note that index.html needs to be named client.html in build/.`
+    );
     throw hostClientError;
   }
   return function injectedRoute(req: ReposAppRequest, res, next) {

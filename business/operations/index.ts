@@ -14,7 +14,13 @@ import RenderHtmlMail from '../../lib/emailRender';
 import { wrapError, sortByCaseInsensitive } from '../../utils';
 import { Repository } from '../repository';
 import { RestLibrary } from '../../lib/github';
-import { AllAvailableAppPurposes, AppPurpose, AppPurposeToConfigurationName, GitHubAppAuthenticationType, IGitHubAppConfiguration } from '../../github';
+import {
+  AllAvailableAppPurposes,
+  AppPurpose,
+  AppPurposeToConfigurationName,
+  GitHubAppAuthenticationType,
+  IGitHubAppConfiguration,
+} from '../../github';
 import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
 import { OrganizationSettingProvider } from '../../entities/organizationSettings/organizationSettingProvider';
 import { IMail } from '../../lib/mailProvider';
@@ -24,7 +30,34 @@ import { createPortalSudoInstance, IPortalSudo } from '../../features';
 import { IOperationsCoreOptions, OperationsCore } from './core';
 import { linkAccounts as linkAccountsMethod } from './link';
 import { sendTerminatedAccountMail as sendTerminatedAccountMailMethod } from './unlinkMail';
-import { CoreCapability, ICachedEmployeeInformation, ICacheOptions, ICorporateLink, ICreatedLinkOutcome, ICreateLinkOptions, ICrossOrganizationMembershipByOrganization, ICrossOrganizationTeamMembership, IGetAuthorizationHeader, IMapPlusMetaCost, IOperationsCentralOperationsToken, IOperationsHierarchy, IOperationsLegalEntities, IOperationsLinks, IOperationsLockdownFeatureFlags, IOperationsNotifications, IOperationsRepositoryMetadataProvider, IOperationsServiceAccounts, IOperationsTemplates, IPagedCrossOrganizationCacheOptions, IPromisedLinks, IPurposefulGetAuthorizationHeader, ISupportedLinkTypeOutcome, IUnlinkMailStatus, SupportedLinkType, UnlinkPurpose } from '../../interfaces';
+import {
+  CoreCapability,
+  ICachedEmployeeInformation,
+  ICacheOptions,
+  ICorporateLink,
+  ICreatedLinkOutcome,
+  ICreateLinkOptions,
+  ICrossOrganizationMembershipByOrganization,
+  ICrossOrganizationTeamMembership,
+  IGetAuthorizationHeader,
+  IMapPlusMetaCost,
+  IOperationsCentralOperationsToken,
+  IOperationsHierarchy,
+  IOperationsLegalEntities,
+  IOperationsLinks,
+  IOperationsLockdownFeatureFlags,
+  IOperationsNotifications,
+  IOperationsRepositoryMetadataProvider,
+  IOperationsServiceAccounts,
+  IOperationsTemplates,
+  IPagedCrossOrganizationCacheOptions,
+  IPromisedLinks,
+  IPurposefulGetAuthorizationHeader,
+  ISupportedLinkTypeOutcome,
+  IUnlinkMailStatus,
+  SupportedLinkType,
+  UnlinkPurpose,
+} from '../../interfaces';
 import { CreateError, ErrorHelper } from '../../transitional';
 import { Team } from '../team';
 import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
@@ -43,7 +76,8 @@ export const RedisPrefixManagerInfoCache = 'employeewithmanager:';
 
 const defaultGitHubPageSize = 100;
 
-export interface ICrossOrganizationMembersResult extends Map<number, ICrossOrganizationMembershipByOrganization> { }
+export interface ICrossOrganizationMembersResult
+  extends Map<number, ICrossOrganizationMembershipByOrganization> {}
 
 export interface IOperationsOptions extends IOperationsCoreOptions {
   // cacheProvider: ICacheHelper;
@@ -57,22 +91,23 @@ export interface IOperationsOptions extends IOperationsCoreOptions {
 }
 
 export class Operations
-  extends
-  OperationsCore
+  extends OperationsCore
   implements
-  IOperationsLegalEntities,
-  IOperationsServiceAccounts,
-  IOperationsTemplates,
-  IOperationsLinks,
-  IOperationsNotifications,
-  IOperationsHierarchy,
-  IOperationsCentralOperationsToken,
-  IOperationsRepositoryMetadataProvider,
-  IOperationsLockdownFeatureFlags {
+    IOperationsLegalEntities,
+    IOperationsServiceAccounts,
+    IOperationsTemplates,
+    IOperationsLinks,
+    IOperationsNotifications,
+    IOperationsHierarchy,
+    IOperationsCentralOperationsToken,
+    IOperationsRepositoryMetadataProvider,
+    IOperationsLockdownFeatureFlags
+{
   private _cache: ICacheHelper;
   private _graphManager: GraphManager;
   private _organizationNames: string[];
   private _organizations: Map<string, Organization>;
+  private _invisibleOrganizations: Map<string, Organization>;
   private _uncontrolledOrganizations: Map<string, Organization>;
   private _organizationOriginalNames: any;
   private _organizationNamesWithAuthorizationHeaders: Map<string, IPurposefulGetAuthorizationHeader>;
@@ -103,7 +138,7 @@ export class Operations
     this.addCapability(CoreCapability.LockdownFeatureFlags);
     this.addCapability(CoreCapability.GitHubCentralOperations);
     this.addCapability(CoreCapability.RepositoryMetadataProvider);
-    this.addCapability(CoreCapability.Hiearchy);
+    this.addCapability(CoreCapability.Hierarchy);
     this.addCapability(CoreCapability.Notifications);
 
     const providers = options.providers;
@@ -115,7 +150,10 @@ export class Operations
     }
     this._repositoryMetadataProvider = options.repositoryMetadataProvider;
     this._uncontrolledOrganizations = new Map();
-    this._defaultPageSize = this.config && this.config.github && this.config.github.api && this.config.github.api.defaultPageSize ? this.config.github.api.defaultPageSize : defaultGitHubPageSize;
+    this._defaultPageSize =
+      this.config && this.config.github && this.config.github.api && this.config.github.api.defaultPageSize
+        ? this.config.github.api.defaultPageSize
+        : defaultGitHubPageSize;
     const hasModernGitHubApps = config.github?.app;
     const purposesToConfigurations = new Map<AppPurpose, IGitHubAppConfiguration>();
     if (hasModernGitHubApps) {
@@ -131,6 +169,7 @@ export class Operations
       configurations: purposesToConfigurations,
       app: this.providers.app,
     });
+    GitHubTokenManager.RegisterManagerForOperations(this, this._tokenManager);
     this._dynamicOrganizationIds = new Set();
     this._dynamicOrganizationSettings = [];
   }
@@ -149,12 +188,28 @@ export class Operations
     // const hasConfiguredOrganizations = this.config.github.organizations && this.config.github.organizations.length;
     const organizationSettingsProvider = this.providers.organizationSettingsProvider;
     if (hasModernGitHubApps && organizationSettingsProvider) {
-      const dynamicOrganizations = (await organizationSettingsProvider.queryAllOrganizations()).filter(dynamicOrg => dynamicOrg.active === true && !dynamicOrg.hasFeature('ignore'));
-      this._dynamicOrganizationSettings = dynamicOrganizations;
-      this._dynamicOrganizationIds = new Set(dynamicOrganizations.map(org => Number(org.organizationId)));
+      const dynamicOrganizations = (await organizationSettingsProvider.queryAllOrganizations()).filter(
+        (dynamicOrg) => dynamicOrg.active === true
+      );
+      const unignoredDynamicOrganizations = dynamicOrganizations.filter(
+        (d) => !d.hasFeature('ignore') || (d.hasFeature('ignore') && d.hasFeature('invisible'))
+      );
+      this._dynamicOrganizationSettings = unignoredDynamicOrganizations;
+      this._dynamicOrganizationIds = new Set(
+        unignoredDynamicOrganizations.map((org) => Number(org.organizationId))
+      );
     }
     if (this._dynamicOrganizationSettings && organizationSettingsProvider) {
-      DynamicRestartCheckHandle = setInterval(restartAfterDynamicConfigurationUpdate.bind(null, 10, 120, this.initialized, organizationSettingsProvider), 1000 * SecondsBetweenOrganizationSettingUpdatesCheck);
+      DynamicRestartCheckHandle = setInterval(
+        restartAfterDynamicConfigurationUpdate.bind(
+          null,
+          10,
+          120,
+          this.initialized,
+          organizationSettingsProvider
+        ),
+        1000 * SecondsBetweenOrganizationSettingUpdatesCheck
+      );
     }
     if (throwIfOrganizationIdsMissing) {
       this.getOrganizationIds();
@@ -178,9 +233,11 @@ export class Operations
       const names = [];
       const processed = new Set<string>();
       for (const dynamic of this._dynamicOrganizationSettings) {
-        const lowercase = dynamic.organizationName.toLowerCase();
-        processed.add(lowercase);
-        names.push(lowercase);
+        if (!dynamic.hasFeature('invisible')) {
+          const lowercase = dynamic.organizationName.toLowerCase();
+          processed.add(lowercase);
+          names.push(lowercase);
+        }
       }
       for (let i = 0; i < this.config.github.organizations.length; i++) {
         const lowercase = this.config.github.organizations[i].name.toLowerCase();
@@ -198,8 +255,8 @@ export class Operations
     if (!this._organizationIds) {
       const organizations = this.organizations;
       this._organizationIds = new Map();
-      this._dynamicOrganizationSettings.map(entry => {
-        if (entry.active) {
+      this._dynamicOrganizationSettings.map((entry) => {
+        if (entry.active && !entry.hasFeature('invisible')) {
           const org = this.getOrganization(entry.organizationName.toLowerCase());
           this._organizationIds.set(Number(entry.organizationId), org);
         }
@@ -214,9 +271,13 @@ export class Operations
         }
         if (!organizationConfiguration.id) {
           if (throwIfOrganizationIdsMissing) {
-            throw new Error(`Organization ${organization.name} is not configured with an 'id' which can lead to issues if the organization is renamed. throwIfOrganizationIdsMissing is true: id is required`);
+            throw new Error(
+              `Organization ${organization.name} is not configured with an 'id' which can lead to issues if the organization is renamed. throwIfOrganizationIdsMissing is true: id is required`
+            );
           } else {
-            console.warn(`Organization ${organization.name} is not configured with an 'id' which can lead to issues if the organization is renamed.`);
+            console.warn(
+              `Organization ${organization.name} is not configured with an 'id' which can lead to issues if the organization is renamed.`
+            );
           }
         } else if (!this._organizationIds.has(organizationConfiguration.id)) {
           this._organizationIds.set(organizationConfiguration.id, organization);
@@ -226,7 +287,12 @@ export class Operations
     return Array.from(this._organizationIds.keys());
   }
 
-  private createOrganization(name: string, settings: OrganizationSetting, centralOperationsFallbackToken: string, appAuthenticationType: GitHubAppAuthenticationType): Organization {
+  private createOrganization(
+    name: string,
+    settings: OrganizationSetting,
+    centralOperationsFallbackToken: string,
+    appAuthenticationType: GitHubAppAuthenticationType
+  ): Organization {
     name = name.toLowerCase();
     let ownerToken = null;
     if (!settings) {
@@ -246,19 +312,40 @@ export class Operations
         settings = OrganizationSetting.CreateFromStaticSettings(staticSettings);
         settings.active = true;
       } catch (translateStaticSettingsError) {
-        throw new Error(`This application is not able to translate the static configuration for the ${name} organization. Specific error: ${translateStaticSettingsError.message}`);
+        throw new Error(
+          `This application is not able to translate the static configuration for the ${name} organization. Specific error: ${translateStaticSettingsError.message}`
+        );
       }
     }
     if (!settings) {
       throw new Error(`This application is not configured for the ${name} organization`);
     }
-    const hasDynamicSettings = this._dynamicOrganizationIds && settings.organizationId && this._dynamicOrganizationIds.has(Number(settings.organizationId));
-    return new Organization(this,
+    const hasDynamicSettings =
+      this._dynamicOrganizationIds &&
+      settings.organizationId &&
+      this._dynamicOrganizationIds.has(Number(settings.organizationId));
+    return new Organization(
+      this,
       name,
       settings,
-      this.getAuthorizationHeader.bind(this, name, settings, ownerToken, centralOperationsFallbackToken, appAuthenticationType),
-      this.getAuthorizationHeader.bind(this, name, settings, ownerToken, centralOperationsFallbackToken, GitHubAppAuthenticationType.ForceSpecificInstallation),
-      hasDynamicSettings);
+      this.getAuthorizationHeader.bind(
+        this,
+        name,
+        settings,
+        ownerToken,
+        centralOperationsFallbackToken,
+        appAuthenticationType
+      ),
+      this.getAuthorizationHeader.bind(
+        this,
+        name,
+        settings,
+        ownerToken,
+        centralOperationsFallbackToken,
+        GitHubAppAuthenticationType.ForceSpecificInstallation
+      ),
+      hasDynamicSettings
+    );
   }
 
   get organizations() {
@@ -269,12 +356,21 @@ export class Operations
       for (let i = 0; i < names.length; i++) {
         const name = names[i];
         let dynamicSettings: OrganizationSetting = null;
-        this._dynamicOrganizationSettings.map(dos => {
-          if (dos.active && dos.organizationName.toLowerCase() === name.toLowerCase()) {
+        this._dynamicOrganizationSettings.map((dos) => {
+          if (
+            dos.active &&
+            dos.organizationName.toLowerCase() === name.toLowerCase() &&
+            !dos.hasFeature('invisible')
+          ) {
             dynamicSettings = dos;
           }
         });
-        const organization = this.createOrganization(name, dynamicSettings, centralOperationsToken, GitHubAppAuthenticationType.BestAvailable);
+        const organization = this.createOrganization(
+          name,
+          dynamicSettings,
+          centralOperationsToken,
+          GitHubAppAuthenticationType.BestAvailable
+        );
         organizations.set(name, organization);
       }
       this._organizations = organizations;
@@ -292,7 +388,12 @@ export class Operations
         const settings = list[i];
         if (settings && settings.name && settings.name.toLowerCase() === lowercase) {
           const centralOperationsToken = this.config.github.operations.centralOperationsToken;
-          return this.createOrganization(lowercase, settings, centralOperationsToken, GitHubAppAuthenticationType.BestAvailable);
+          return this.createOrganization(
+            lowercase,
+            settings,
+            centralOperationsToken,
+            GitHubAppAuthenticationType.BestAvailable
+          );
         }
       }
     }
@@ -308,7 +409,39 @@ export class Operations
   }
 
   getUnconfiguredOrganization(settings: OrganizationSetting): Organization {
-    return this.createOrganization(settings.organizationName.toLowerCase(), settings, null, GitHubAppAuthenticationType.BestAvailable);
+    return this.createOrganization(
+      settings.organizationName.toLowerCase(),
+      settings,
+      null,
+      GitHubAppAuthenticationType.BestAvailable
+    );
+  }
+
+  // An invisible organization does not appear in the cross-organization
+  // views or arrays provided by operations. However, they can still be
+  // retrieved directly and connected to live tokens and objects.
+  getInvisibleOrganization(name: string) {
+    if (!this._invisibleOrganizations) {
+      this._invisibleOrganizations = new Map();
+    }
+    const lowercase = name.toLowerCase();
+    if (this._invisibleOrganizations.has(lowercase)) {
+      return this._invisibleOrganizations.get(lowercase);
+    }
+    let dynamicSettings: OrganizationSetting = null;
+    this._dynamicOrganizationSettings.map((dos) => {
+      if (dos.active && dos.organizationName.toLowerCase() === lowercase && dos.hasFeature('invisible')) {
+        dynamicSettings = dos;
+      }
+    });
+    const organization = this.createOrganization(
+      name,
+      dynamicSettings,
+      null,
+      GitHubAppAuthenticationType.BestAvailable
+    );
+    this._invisibleOrganizations.set(name, organization);
+    return organization;
   }
 
   getUncontrolledOrganization(organizationName: string, organizationId?: number): Organization {
@@ -323,7 +456,12 @@ export class Operations
     const emptySettings = new OrganizationSetting();
     emptySettings.operationsNotes = `Uncontrolled Organization - ${organizationName}`;
     const centralOperationsToken = this.config.github.operations.centralOperationsToken;
-    const org = this.createOrganization(organizationName, emptySettings, centralOperationsToken, GitHubAppAuthenticationType.ForceSpecificInstallation);
+    const org = this.createOrganization(
+      organizationName,
+      emptySettings,
+      centralOperationsToken,
+      GitHubAppAuthenticationType.ForceSpecificInstallation
+    );
     this._uncontrolledOrganizations.set(organizationName, org);
     org.uncontrolled = true;
     return org;
@@ -337,14 +475,20 @@ export class Operations
     if (!publicAccessToken) {
       throw new Error('not configured for public read-only tokens');
     }
-    const org = this.createOrganization(organizationName, emptySettings, publicAccessToken, GitHubAppAuthenticationType.ForceSpecificInstallation);
+    const org = this.createOrganization(
+      organizationName,
+      emptySettings,
+      publicAccessToken,
+      GitHubAppAuthenticationType.ForceSpecificInstallation
+    );
     this._uncontrolledOrganizations.set(organizationName, org);
     org.uncontrolled = true;
     return org;
   }
 
   isIgnoredOrganization(name: string): boolean {
-    const value = this.getAlternateOrganization(name, 'onboarding') || this.getAlternateOrganization(name, 'ignore');
+    const value =
+      this.getAlternateOrganization(name, 'onboarding') || this.getAlternateOrganization(name, 'ignore');
     return !!value;
   }
 
@@ -362,7 +506,7 @@ export class Operations
       return Array.from(this.organizations.values());
     }
     const references = [];
-    organizationList.forEach(orgName => {
+    organizationList.forEach((orgName) => {
       const organization = this.getOrganization(orgName);
       references.push(organization);
     });
@@ -370,7 +514,12 @@ export class Operations
   }
 
   getPrimaryOrganizationName(): string {
-    const id = this.config.github && this.config.github.operations && this.config.github.operations.primaryOrganizationId ? this.config.github.operations.primaryOrganizationId : null;
+    const id =
+      this.config.github &&
+      this.config.github.operations &&
+      this.config.github.operations.primaryOrganizationId
+        ? this.config.github.operations.primaryOrganizationId
+        : null;
     if (id) {
       return this.getOrganizationById(Number(id)).name;
     }
@@ -382,7 +531,7 @@ export class Operations
       const names: string[] = [];
       const visited = new Set<string>();
       for (const entry of this._dynamicOrganizationSettings) {
-        if (entry.active) {
+        if (entry.active && !entry.hasFeature('invisible')) {
           names.push(entry.organizationName);
           const lowercase = entry.organizationName.toLowerCase();
           visited.add(lowercase);
@@ -403,7 +552,7 @@ export class Operations
 
   translateOrganizationNamesFromLowercase(object) {
     const orgs = this.getOrganizationOriginalNames();
-    orgs.forEach(name => {
+    orgs.forEach((name) => {
       const lc = name.toLowerCase();
       if (name !== lc && object[lc] !== undefined) {
         object[name] = object[lc];
@@ -419,7 +568,7 @@ export class Operations
       const visited = new Set<string>();
       for (const entry of this._dynamicOrganizationSettings) {
         const lowercase = entry.organizationName.toLowerCase();
-        if (entry.active && !visited.has(lowercase)) {
+        if (entry.active && !visited.has(lowercase) && !entry.hasFeature('invisible')) {
           visited.add(lowercase);
           const orgInstance = this.getOrganization(lowercase);
           const token = orgInstance.getAuthorizationHeader();
@@ -474,7 +623,7 @@ export class Operations
 
     const account: Account = this.getAccount(thirdPartyId);
     const reason = options.reason || 'Automated processPendingUnlink operation';
-    const purpose = options.purpose as UnlinkPurpose || UnlinkPurpose.Unknown;
+    const purpose = (options.purpose as UnlinkPurpose) || UnlinkPurpose.Unknown;
 
     try {
       // Uses an ID-based lookup on GitHub in case the user was renamed.
@@ -520,7 +669,7 @@ export class Operations
     // Link
     try {
       if (account.link) {
-        history.push(... await account.removeLink());
+        history.push(...(await account.removeLink()));
       }
     } catch (removeLinkError) {
       ++errors;
@@ -530,7 +679,6 @@ export class Operations
         // GitHub API for this _id_, then the user deleted their account,
         // or is using a different one now, etc., so try deleting the
         // associated link still by searching for it by _ID_.
-
         // TODO: Ported code from account.ts, remains unimp. It's OK.
       }
       if (!continueOnError) {
@@ -554,7 +702,6 @@ export class Operations
         // GitHub API for this _id_, then the user deleted their account,
         // or is using a different one now, etc., so try deleting the
         // associated link still by searching for it by _ID_.
-
         // TODO: Ported code from account.ts, remains unimp. It's OK.
       }
       if (!continueOnError) {
@@ -567,7 +714,11 @@ export class Operations
     try {
       const status = await this.sendTerminatedAccountMail(account, purpose, history, errors);
       if (status) {
-        history.push(`Unlink e-mail sent to manager: to=${status.to.join(', ')} bcc=${status.bcc.join(', ')}, receipt=${status.receipt}`);
+        history.push(
+          `Unlink e-mail sent to manager: to=${status.to.join(', ')} bcc=${status.bcc.join(', ')}, receipt=${
+            status.receipt
+          }`
+        );
       } else {
         history.push('Service not configured to notify by mail');
       }
@@ -609,19 +760,33 @@ export class Operations
     return this.config.notifications.reposMailAddress || this.getOperationsMailAddress();
   }
 
-  private sendTerminatedAccountMail(account: Account, purpose: UnlinkPurpose, details: string[], errorsCount: number): Promise<IUnlinkMailStatus> {
+  private sendTerminatedAccountMail(
+    account: Account,
+    purpose: UnlinkPurpose,
+    details: string[],
+    errorsCount: number
+  ): Promise<IUnlinkMailStatus> {
     return sendTerminatedAccountMailMethod(this, account, purpose, details, errorsCount);
   }
 
   getDefaultRepositoryTemplateNames(): string[] {
-    if (this.config.github && this.config.github.templates && this.config.github.templates.defaultTemplates && this.config.github.templates.defaultTemplates.length > 0) {
+    if (
+      this.config.github &&
+      this.config.github.templates &&
+      this.config.github.templates.defaultTemplates &&
+      this.config.github.templates.defaultTemplates.length > 0
+    ) {
       return this.config.github.templates.defaultTemplates as string[];
     }
     return null;
   }
 
   getDefaultLegalEntities(): string[] {
-    if (this.config.legalEntities && this.config.legalEntities.defaultOrganizationEntities && this.config.legalEntities.defaultOrganizationEntities.length > 0) {
+    if (
+      this.config.legalEntities &&
+      this.config.legalEntities.defaultOrganizationEntities &&
+      this.config.legalEntities.defaultOrganizationEntities.length > 0
+    ) {
       return this.config.legalEntities.defaultOrganizationEntities as string[];
     }
     return null;
@@ -649,7 +814,7 @@ export class Operations
   }
 
   getOrganizationById(organizationId: number): Organization {
-    if (typeof (organizationId) === 'string') {
+    if (typeof organizationId === 'string') {
       organizationId = parseInt(organizationId, 10);
       console.warn(`getOrganizationById: organizationId must be a number`);
     }
@@ -658,7 +823,9 @@ export class Operations
     }
     const org = this._organizationIds.get(organizationId);
     if (!org) {
-      throw CreateError.NotFound(`getOrganizationById: no configured ID for an organization with ID ${organizationId}`);
+      throw CreateError.NotFound(
+        `getOrganizationById: no configured ID for an organization with ID ${organizationId}`
+      );
     }
     return org;
   }
@@ -679,6 +846,26 @@ export class Operations
       }
     }
     return repos;
+  }
+
+  async getRepoById(repoId: number, options?: ICacheOptions): Promise<Repository> {
+    const cacheOptions = options || {
+      maxAgeSeconds: this.defaults.crossOrgsReposStaleSecondsPerOrg,
+    };
+    const orgs = this.organizations.values();
+    let repository: Repository;
+
+    for (const organization of orgs) {
+      try {
+        repository = await organization.getRepositoryById(repoId, cacheOptions);
+
+        if (repository) {
+          return repository;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
   }
 
   getLinks(options?: any): Promise<ICorporateLink[]> {
@@ -715,7 +902,8 @@ export class Operations
             return reject(ee);
           }
           return resolve(rehydratedLinks);
-        });
+        }
+      );
     });
   }
 
@@ -736,36 +924,44 @@ export class Operations
   async getLinksFromThirdPartyIds(thirdPartyIds: string[]): Promise<ICorporateLink[]> {
     const corporateLinks: ICorporateLink[] = [];
     const throttle = throat(ParallelLinkLookup);
-    await Promise.all(thirdPartyIds.map(thirdPartyId => throttle(async () => {
-      try {
-        const link = await this.getLinkByThirdPartyId(thirdPartyId);
-        if (link) {
-          corporateLinks.push(link);
-        }
-      } catch (noLinkError) {
-        if (!ErrorHelper.IsNotFound(noLinkError)) {
-          console.dir(noLinkError);
-        }
-      }
-    })));
+    await Promise.all(
+      thirdPartyIds.map((thirdPartyId) =>
+        throttle(async () => {
+          try {
+            const link = await this.getLinkByThirdPartyId(thirdPartyId);
+            if (link) {
+              corporateLinks.push(link);
+            }
+          } catch (noLinkError) {
+            if (!ErrorHelper.IsNotFound(noLinkError)) {
+              console.dir(noLinkError);
+            }
+          }
+        })
+      )
+    );
     return corporateLinks;
   }
 
   async getLinksFromCorporateIds(corporateIds: string[]): Promise<ICorporateLink[]> {
     const corporateLinks: ICorporateLink[] = [];
     const throttle = throat(ParallelLinkLookup);
-    await Promise.all(corporateIds.map(corporateId => throttle(async () => {
-      try {
-        const links = await this.providers.linkProvider.queryByCorporateId(corporateId);
-        if (links && links.length === 1) {
-          corporateLinks.push(links[0]);
-        } else if (links.length > 1) {
-          throw new Error('Multiple links not supported');
-        }
-      } catch (noLinkError) {
-        console.dir(noLinkError);
-      }
-    })));
+    await Promise.all(
+      corporateIds.map((corporateId) =>
+        throttle(async () => {
+          try {
+            const links = await this.providers.linkProvider.queryByCorporateId(corporateId);
+            if (links && links.length === 1) {
+              corporateLinks.push(links[0]);
+            } else if (links.length > 1) {
+              throw new Error('Multiple links not supported');
+            }
+          } catch (noLinkError) {
+            console.dir(noLinkError);
+          }
+        })
+      )
+    );
     return corporateLinks;
   }
 
@@ -790,17 +986,21 @@ export class Operations
     // This is a best-faith effort but will not fail if some are not returned.
     const throttle = throat(2);
     const addresses: string[] = [];
-    await Promise.all(corporateUsernames.map(username => throttle(async () => {
-      try {
-        const address = await this.getMailAddressFromCorporateUsername(username);
-        if (address) {
-          addresses.push(address);
-        }
-      } catch (ignoreError) {
-        console.log('getMailAddressesFromCorporateUsernames error:');
-        console.warn(ignoreError);
-      }
-    })));
+    await Promise.all(
+      corporateUsernames.map((username) =>
+        throttle(async () => {
+          try {
+            const address = await this.getMailAddressFromCorporateUsername(username);
+            if (address) {
+              addresses.push(address);
+            }
+          } catch (ignoreError) {
+            console.log('getMailAddressesFromCorporateUsernames error:');
+            console.warn(ignoreError);
+          }
+        })
+      )
+    );
     return addresses;
   }
 
@@ -819,7 +1019,7 @@ export class Operations
     }
     // This literally retrieves the cache of all links, built from a time before link provider.
     const links = await this.getLinks(options);
-    const reduced = links.filter(link => {
+    const reduced = links.filter((link) => {
       // was 'ghid' in the prior implementation before link interfaces
       return link && link.thirdPartyId == id /* allow string comparisons */;
     });
@@ -832,37 +1032,52 @@ export class Operations
   getTeamsWithMembers(options?: ICrossOrganizationTeamMembership): Promise<any> {
     const cacheOptions: IPagedCrossOrganizationCacheOptions = {};
     options = options || {};
-    cacheOptions.backgroundRefresh = options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
+    cacheOptions.backgroundRefresh =
+      options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
     cacheOptions.maxAgeSeconds = options.maxAgeSeconds || 60 * 10;
     cacheOptions.individualMaxAgeSeconds = options.individualMaxAgeSeconds;
     delete options.backgroundRefresh;
     delete options.maxAgeSeconds;
     delete options.individualMaxAgeSeconds;
-    return this.github.crossOrganization.teamMembers(this._organizationNamesWithAuthorizationHeaders, options, cacheOptions);
+    return this.github.crossOrganization.teamMembers(
+      this._organizationNamesWithAuthorizationHeaders,
+      options,
+      cacheOptions
+    );
   }
 
   getRepoCollaborators(options: IPagedCrossOrganizationCacheOptions): Promise<any> {
     const cacheOptions: IPagedCrossOrganizationCacheOptions = {};
     options = options || {};
-    cacheOptions.backgroundRefresh = options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
+    cacheOptions.backgroundRefresh =
+      options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
     cacheOptions.maxAgeSeconds = options.maxAgeSeconds || 60 * 10;
     cacheOptions.individualMaxAgeSeconds = options.individualMaxAgeSeconds;
     delete options.backgroundRefresh;
     delete options.maxAgeSeconds;
     delete options.individualMaxAgeSeconds;
-    return this.github.crossOrganization.repoCollaborators(this.organizationNamesWithAuthorizationHeaders, options, cacheOptions);
+    return this.github.crossOrganization.repoCollaborators(
+      this.organizationNamesWithAuthorizationHeaders,
+      options,
+      cacheOptions
+    );
   }
 
   getRepoTeams(options: IPagedCrossOrganizationCacheOptions): Promise<any> {
     const cacheOptions: IPagedCrossOrganizationCacheOptions = {};
     options = options || {};
-    cacheOptions.backgroundRefresh = options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
+    cacheOptions.backgroundRefresh =
+      options.backgroundRefresh !== undefined ? options.backgroundRefresh : true;
     cacheOptions.maxAgeSeconds = options.maxAgeSeconds || 60 * 10;
     cacheOptions.individualMaxAgeSeconds = options.individualMaxAgeSeconds;
     delete options.backgroundRefresh;
     delete options.maxAgeSeconds;
     delete options.individualMaxAgeSeconds;
-    return this.github.crossOrganization.repoTeams(this.organizationNamesWithAuthorizationHeaders, options, cacheOptions);
+    return this.github.crossOrganization.repoTeams(
+      this.organizationNamesWithAuthorizationHeaders,
+      options,
+      cacheOptions
+    );
   }
 
   async getCrossOrganizationTeams(options?: any): Promise<ICrossOrganizationMembersResult> {
@@ -878,7 +1093,11 @@ export class Operations
     };
     delete options.maxAgeSeconds;
     delete options.backgroundRefresh;
-    const values = await this.github.crossOrganization.teams(this.organizationNamesWithAuthorizationHeaders, options, cacheOptions);
+    const values = await this.github.crossOrganization.teams(
+      this.organizationNamesWithAuthorizationHeaders,
+      options,
+      cacheOptions
+    );
     const results = crossOrganizationResults(this, values, 'id');
     return results;
   }
@@ -897,8 +1116,16 @@ export class Operations
     };
     delete options.maxAgeSeconds;
     delete options.backgroundRefresh;
-    const values = await this.github.crossOrganization.orgMembers(this.organizationNamesWithAuthorizationHeaders, options, cacheOptions);
-    const crossOrgReturn = crossOrganizationResults(this, values, 'id') as any as ICrossOrganizationMembersResult;
+    const values = await this.github.crossOrganization.orgMembers(
+      this.organizationNamesWithAuthorizationHeaders,
+      options,
+      cacheOptions
+    );
+    const crossOrgReturn = crossOrganizationResults(
+      this,
+      values,
+      'id'
+    ) as any as ICrossOrganizationMembersResult;
     return crossOrgReturn;
   }
 
@@ -914,12 +1141,22 @@ export class Operations
 
   allowUnauthorizedForkLockdownSystemFeature() {
     // This feature has a hard dependency on the new repo lockdown system itself
-    return this.allowUnauthorizedNewRepositoryLockdownSystemFeature() && this.config && this.config.features && this.config.features.allowUnauthorizedForkLockdownSystem === true;
+    return (
+      this.allowUnauthorizedNewRepositoryLockdownSystemFeature() &&
+      this.config &&
+      this.config.features &&
+      this.config.features.allowUnauthorizedForkLockdownSystem === true
+    );
   }
 
   allowTransferLockdownSystemFeature() {
     // This feature has a hard dependency on the new repo lockdown system itself
-    return this.allowUnauthorizedNewRepositoryLockdownSystemFeature() && this.config && this.config.features && this.config.features.allowUnauthorizedTransferLockdownSystem === true;
+    return (
+      this.allowUnauthorizedNewRepositoryLockdownSystemFeature() &&
+      this.config &&
+      this.config.features &&
+      this.config.features.allowUnauthorizedTransferLockdownSystem === true
+    );
   }
 
   allowUndoSystem() {
@@ -1004,7 +1241,7 @@ export class Operations
 
   getOrganizationFromUrl(url: string): Organization {
     const asUrl = new URL(url);
-    const paths = asUrl.pathname.split('/').filter(real => real);
+    const paths = asUrl.pathname.split('/').filter((real) => real);
     if (paths[0] !== 'repos') {
       throw CreateError.InvalidParameters(`At this time, the first path segment must be "repos": ${url}`);
     }
@@ -1014,7 +1251,7 @@ export class Operations
 
   getRepositoryWithOrganizationFromUrl(url: string): Repository {
     const asUrl = new URL(url);
-    const paths = asUrl.pathname.split('/').filter(real => real);
+    const paths = asUrl.pathname.split('/').filter((real) => real);
     if (paths[0] !== 'repos') {
       throw CreateError.InvalidParameters(`At this time, the first path segment must be "repos": ${url}`);
     }
@@ -1049,7 +1286,7 @@ export class Operations
 
   async emailRender(emailViewName: string, contentOptions: any): Promise<string> {
     const appDirectory = this.config.typescript.appDirectory;
-    return await RenderHtmlMail(appDirectory, emailViewName, contentOptions);
+    return await RenderHtmlMail(appDirectory, emailViewName, contentOptions, this.config);
   }
 }
 
@@ -1062,7 +1299,13 @@ interface IFireEventResult {
 }
 
 async function fireEvent(config, configurationName, value): Promise<IFireEventResult[]> {
-  if (!config || !config.github || !config.github.links || !config.github.links.events || !config.github.links.events) {
+  if (
+    !config ||
+    !config.github ||
+    !config.github.links ||
+    !config.github.links.events ||
+    !config.github.links.events
+  ) {
     return;
   }
   const userAgent = config.userAgent || 'Unknown user agent';
@@ -1172,38 +1415,56 @@ async function getPromisedLinks(linkProvider: ILinkProvider): Promise<IPromisedL
   const jsonLinks = linkProvider.dehydrateLinks(links);
   const dataObject: IPromisedLinks = {
     headers: {
-      'type': 'links',
+      type: 'links',
     },
     data: jsonLinks,
   };
   return dataObject;
 }
 
-function restartAfterDynamicConfigurationUpdate(minimumSeconds: number, maximumSeconds: number, appInitialized: Date, organizationSettingsProvider: OrganizationSettingProvider) {
-  didDynamicConfigurationUpdate(appInitialized, organizationSettingsProvider).then(changed => {
-    if (changed) {
-      const randomSeconds = Math.floor(Math.random() * (maximumSeconds - minimumSeconds + 1) + minimumSeconds);
-      console.log(`changes to dynamic configuration detected since ${appInitialized}, restarting in ${randomSeconds}s`);
-      setInterval(() => {
-        console.log(`shutting down process due to dynamic configuration changes being detected at least ${randomSeconds} seconds ago...`);
-        return process.exit(0);
-      }, randomSeconds * 1000);
-      if (DynamicRestartCheckHandle) {
-        clearInterval(DynamicRestartCheckHandle);
+function restartAfterDynamicConfigurationUpdate(
+  minimumSeconds: number,
+  maximumSeconds: number,
+  appInitialized: Date,
+  organizationSettingsProvider: OrganizationSettingProvider
+) {
+  didDynamicConfigurationUpdate(appInitialized, organizationSettingsProvider)
+    .then((changed) => {
+      if (changed) {
+        const randomSeconds = Math.floor(
+          Math.random() * (maximumSeconds - minimumSeconds + 1) + minimumSeconds
+        );
+        console.log(
+          `changes to dynamic configuration detected since ${appInitialized}, restarting in ${randomSeconds}s`
+        );
+        setInterval(() => {
+          console.log(
+            `shutting down process due to dynamic configuration changes being detected at least ${randomSeconds} seconds ago...`
+          );
+          return process.exit(0);
+        }, randomSeconds * 1000);
+        if (DynamicRestartCheckHandle) {
+          clearInterval(DynamicRestartCheckHandle);
+        }
       }
-    }
-  }).catch(error => {
-    console.dir(error);
-  });
+    })
+    .catch((error) => {
+      console.dir(error);
+    });
 }
 
-async function didDynamicConfigurationUpdate(appInitialized: Date, organizationSettingsProvider: OrganizationSettingProvider): Promise<boolean> {
+async function didDynamicConfigurationUpdate(
+  appInitialized: Date,
+  organizationSettingsProvider: OrganizationSettingProvider
+): Promise<boolean> {
   try {
     const allOrganizations = await organizationSettingsProvider.queryAllOrganizations();
-    const activeOrganizations = allOrganizations.filter(org => org.active);
+    const activeOrganizations = allOrganizations.filter((org) => org.active);
     for (const organization of activeOrganizations) {
       if (organization.updated > appInitialized) {
-        console.log(`organization ${organization.organizationName} was updated ${organization.updated} vs app started time of ${appInitialized}`);
+        console.log(
+          `organization ${organization.organizationName} was updated ${organization.updated} vs app started time of ${appInitialized}`
+        );
         return true;
       }
     }

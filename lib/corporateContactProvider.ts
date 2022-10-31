@@ -32,7 +32,10 @@ export interface ICorporateContactProvider {
   setBulkCachedContacts(map: Map<string, ICorporateContactInformation | boolean>): Promise<void>;
 }
 
-export default function createCorporateContactProviderInstance(config, cacheHelper: ICacheHelper): ICorporateContactProvider {
+export default function createCorporateContactProviderInstance(
+  config,
+  cacheHelper: ICacheHelper
+): ICorporateContactProvider {
   return new MicrosoftIdentityService(config, cacheHelper);
 }
 
@@ -48,11 +51,11 @@ export interface IMicrosoftIdentityServiceBasics {
 }
 
 interface IMicrosoftIdentityServiceResponse extends IMicrosoftIdentityServiceBasics {
-  attorney?: string,
+  attorney?: string;
   group?: string;
-  highRiskBusiness?: string,
+  highRiskBusiness?: string;
   immediate?: boolean;
-  legal?: string,
+  legal?: string;
   legalOssContact?: string;
   legalPrimaryContact?: string;
   legalSecondaryContact?: string;
@@ -77,7 +80,9 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
     if (this.#cacheHelper) {
       try {
         response = await this.#cacheHelper.getObject(cacheKey);
-      } catch (ignoreError) { /* ignored */ }
+      } catch (ignoreError) {
+        /* ignored */
+      }
     }
     if (!response || !Object.keys(response).length) {
       response = await this.callIdentityService(corporateUsername);
@@ -89,7 +94,8 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
     if (!response) {
       return null;
     }
-    let managerUsername = null, managerDisplayName = null;
+    let managerUsername = null,
+      managerDisplayName = null;
     const manager = response.structure && response.structure.length ? response.structure[0] : null;
     if (manager) {
       managerDisplayName = manager.preferredName;
@@ -105,7 +111,7 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
       emailAddress: response.emailAddress,
       managerUsername,
       managerDisplayName,
-      legal: response.legal
+      legal: response.legal,
     };
   }
 
@@ -135,8 +141,11 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
       return;
     }
     const all = Array.from(map.entries());
-    const entities = all.filter(e => typeof (e[1]) !== 'boolean');
-    const empties = all.filter(e => typeof (e[1]) === 'boolean').map(e => e[0]).filter(e => e);
+    const entities = all.filter((e) => typeof e[1] !== 'boolean');
+    const empties = all
+      .filter((e) => typeof e[1] === 'boolean')
+      .map((e) => e[0])
+      .filter((e) => e);
     const obj = { entities, empties };
     await this.#cacheHelper.setObjectCompressedWithExpire(BulkCacheKey, obj, BulkCacheMinutes);
   }
@@ -145,7 +154,7 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
     const url = this.#identityConfig.url + endpoint;
     const authToken = 'Basic ' + Buffer.from(this.#identityConfig.pat + ':', 'utf8').toString('base64');
     const headers = {
-      Authorization: authToken
+      Authorization: authToken,
     };
     return { url, headers };
   }
@@ -153,7 +162,8 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
   async callIdentityService(corporateUsername: string): Promise<IMicrosoftIdentityServiceResponse> {
     try {
       const response = await axios(this.getIdentityServiceRequestOptions(`/${corporateUsername}`));
-      if ((response.data as any).error?.message) {  // axios returns unknown now
+      if ((response.data as any).error?.message) {
+        // axios returns unknown now
         throw CreateError.InvalidParameters((response.data as any).error.message);
       }
       const entity = response.data as IMicrosoftIdentityServiceResponse;
@@ -163,7 +173,10 @@ class MicrosoftIdentityService implements ICorporateContactProvider {
       if (axiosError?.response?.status === 404) {
         return null;
       } else if (axiosError?.response?.status >= 300) {
-        throw CreateError.CreateStatusCodeError(axiosError.response.status, `Response code: ${axiosError.response.status}`);
+        throw CreateError.CreateStatusCodeError(
+          axiosError.response.status,
+          `Response code: ${axiosError.response.status}`
+        );
       }
       throw error;
     }

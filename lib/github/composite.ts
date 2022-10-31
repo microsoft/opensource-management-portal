@@ -11,7 +11,16 @@ import semver from 'semver';
 
 const debug = require('debug')('restapi');
 
-import { IShouldServeCache, ApiContext, IntelligentEngine, IApiContextRedisKeys, IApiContextCacheValues, ApiContextType, IRestMetadata, IRestResponse } from './core';
+import {
+  IShouldServeCache,
+  ApiContext,
+  IntelligentEngine,
+  IApiContextRedisKeys,
+  IApiContextCacheValues,
+  ApiContextType,
+  IRestMetadata,
+  IRestResponse,
+} from './core';
 import { IGetAuthorizationHeader } from '../../interfaces';
 
 import appPackage from '../../package.json';
@@ -44,7 +53,9 @@ export class CompositeApiContext extends ApiContext {
     const root = IntelligentEngine.redisKeyForApi(this.apiTypePrefix, api, options);
     this._redisKeys = {
       root: root,
-      metadata: root ? root + IntelligentEngine.redisKeyAspectSuffix('headers') : IntelligentEngine.redisKeyForApi(this.apiTypePrefix, api, options, 'headers'),
+      metadata: root
+        ? root + IntelligentEngine.redisKeyAspectSuffix('headers')
+        : IntelligentEngine.redisKeyForApi(this.apiTypePrefix, api, options, 'headers'),
     };
 
     this._cacheValues = {
@@ -84,8 +95,10 @@ export class CompositeApiContext extends ApiContext {
 }
 
 export class CompositeIntelligentEngine extends IntelligentEngine {
-
-  withMetadataShouldCacheBeServed(apiContext: ApiContext, metadata: IRestMetadata): boolean | IShouldServeCache {
+  withMetadataShouldCacheBeServed(
+    apiContext: ApiContext,
+    metadata: IRestMetadata
+  ): boolean | IShouldServeCache {
     // result can be falsy OR an object; { cache: true, refresh: true }
     // cache: whether to use the cache, if available
     // refresh: whether to refresh in the background for a newer value
@@ -97,7 +110,9 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
       debug(`${apiContext.redisKey.metadata} entity without updated date found`);
     }
     if (apiContext.generatedRefreshId) {
-      debug(`${apiContext.redisKey.metadata} this is technically a refresh operation right now behind the scenes`);
+      debug(
+        `${apiContext.redisKey.metadata} this is technically a refresh operation right now behind the scenes`
+      );
     }
     if (maxAgeSeconds && updatedIso) {
       const updated = moment(updatedIso);
@@ -111,19 +126,29 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
         // debug('cache OK to serve as last updated was ' + updated);
       } else if (apiContext.backgroundRefresh) {
         let shouldRefresh = true;
-        debug(apiContext.redisKey.metadata + ' need to go live as last updated ' + updated.format() + ' and our max seconds value is ' + maxAgeSeconds);
+        debug(
+          apiContext.redisKey.metadata +
+            ' need to go live as last updated ' +
+            updated.format() +
+            ' and our max seconds value is ' +
+            maxAgeSeconds
+        );
         if (refreshingIso) {
-          let secondsToAllowForRefresh = 2 + (apiContext.delayBeforeRefreshMilliseconds / 1000);
+          let secondsToAllowForRefresh = 2 + apiContext.delayBeforeRefreshMilliseconds / 1000;
           if (Array.isArray(metadata.pages)) {
-            secondsToAllowForRefresh += (metadata.pages.length * 1.25);
+            secondsToAllowForRefresh += metadata.pages.length * 1.25;
           }
           secondsToAllowForRefresh = Math.round(secondsToAllowForRefresh);
           const refreshWindow = moment(refreshingIso).add(secondsToAllowForRefresh, 'seconds');
           if (moment().utc().isAfter(refreshWindow)) {
-            debug(`Another worker\'s refresh did not complete. Refreshing in this instance. ${apiContext.redisKey.metadata}`);
+            debug(
+              `Another worker's refresh did not complete. Refreshing in this instance. ${apiContext.redisKey.metadata}`
+            );
           } else {
             shouldRefresh = false;
-            debug(`A refresh is already being processed by another worker. Allowing a window of ${secondsToAllowForRefresh}s before retry. ${apiContext.redisKey.metadata}`);
+            debug(
+              `A refresh is already being processed by another worker. Allowing a window of ${secondsToAllowForRefresh}s before retry. ${apiContext.redisKey.metadata}`
+            );
           }
         }
         shouldServeCache = {
@@ -148,7 +173,7 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
   }
 
   withResponseShouldCacheBeServed(apiContext: ApiContext, response: IRestResponse) {
-    if (typeof (response) === 'function') {
+    if (typeof response === 'function') {
       throw new Error('The response must not be a function');
     }
     if (response === undefined) {
@@ -162,7 +187,9 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
 
     // Probably should check; if original data has not changed at all, then return true.
     // XXX: cannot find updated ever being set to false but...?
-    debug('composite.withResponseShouldCacheBeServed: not checking for updated = false so never serving cache');
+    debug(
+      'composite.withResponseShouldCacheBeServed: not checking for updated = false so never serving cache'
+    );
     // if (response && response.headers && response.headers.updated === false) {
     //   shouldUseCache = true;
     // }
@@ -209,7 +236,7 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
 
   getResponseMetadata(apiContext: CompositeApiContext, response: IRestResponse): IRestMetadata {
     const headers = response.headers || {};
-    let calledTime = apiContext.calledTime ? apiContext.calledTime.toISOString() : (new Date()).toISOString();
+    let calledTime = apiContext.calledTime ? apiContext.calledTime.toISOString() : new Date().toISOString();
     headers.updated = calledTime;
     let changed = calledTime;
     if (headers.dirty === true) {
@@ -227,8 +254,15 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
     if (metadata && !metadata.av) {
       // Old version of metadata, no package version, which is required for all composite metadata now
       metadata = undefined;
-    } else if (metadata && metadata.av && apiContext.libraryContext.breakingChangeGitHubPackageVersion && !semver.gte(metadata.av, apiContext.libraryContext.breakingChangeGitHubPackageVersion)) {
-      console.log(`${apiContext.redisKey.metadata} was using ${metadata.av}, which is < to ${apiContext.libraryContext.breakingChangeGitHubPackageVersion}. This is a schema break, discarding cache.`);
+    } else if (
+      metadata &&
+      metadata.av &&
+      apiContext.libraryContext.breakingChangeGitHubPackageVersion &&
+      !semver.gte(metadata.av, apiContext.libraryContext.breakingChangeGitHubPackageVersion)
+    ) {
+      console.log(
+        `${apiContext.redisKey.metadata} was using ${metadata.av}, which is < to ${apiContext.libraryContext.breakingChangeGitHubPackageVersion}. This is a schema break, discarding cache.`
+      );
       metadata = undefined;
     }
     if (metadata && metadata.etag) {

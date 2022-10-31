@@ -25,7 +25,7 @@ interface IReportRenderOptions {
   to: string;
   github: {
     consolidated: any;
-  }
+  };
   pretty?: boolean;
   basedir?: string;
   viewServices: any;
@@ -46,7 +46,9 @@ export default async function sendReports(context: IReportsContext): Promise<IRe
     try {
       fs.mkdirSync(overrideSendWithPath);
     } catch (ignored) {
-      console.log(`While creating directory to store e-mails instead of sending, received: ${ignored.message}`);
+      console.log(
+        `While creating directory to store e-mails instead of sending, received: ${ignored.message}`
+      );
     }
   }
   const recipients = Array.from(reportsByRecipient.keys());
@@ -117,7 +119,12 @@ function renderReport(context, report, address) {
   return html;
 }
 
-async function sendReport(context: IReportsContext, mailProvider: IMailProvider, reportsByRecipient, recipientKey: string): Promise<IReportsContext> {
+async function sendReport(
+  context: IReportsContext,
+  mailProvider: IMailProvider,
+  reportsByRecipient,
+  recipientKey: string
+): Promise<IReportsContext> {
   const report = reportsByRecipient.get(recipientKey);
   const overrideSendWithPath = context.settings.fakeSend;
   const fromAddress = context.settings.fromAddress;
@@ -133,11 +140,13 @@ async function sendReport(context: IReportsContext, mailProvider: IMailProvider,
     headline: isActionRequired ? 'Your GitHub updates' : 'GitHub updates',
     app: `${app.config.brand.companyName} GitHub`, // may break
     companyName: app.config.brand.companyName,
-    reason: 'This digest report is provided to all managed GitHub organization owners, repository admins, and team maintainers. This report was personalized and sent directly to ' + address,
+    reason:
+      'This digest report is provided to all managed GitHub organization owners, repository admins, and team maintainers. This report was personalized and sent directly to ' +
+      address,
     notification,
   };
   const basedir = context.settings.basedir;
-  const mailContent = await emailRender(basedir, 'report', viewOptions);
+  const mailContent = await emailRender(basedir, 'report', viewOptions, app.config);
   // Store the e-mail instead of sending
   if (overrideSendWithPath) {
     const filename = path.join(overrideSendWithPath, `${address}.html`);
@@ -162,7 +171,7 @@ async function sendReport(context: IReportsContext, mailProvider: IMailProvider,
   }
   const customData = {
     receipt: mailResult,
-    eventName: mailError ? 'JobReportSendFailed' : 'JobReportSendSuccess'
+    eventName: mailError ? 'JobReportSendFailed' : 'JobReportSendSuccess',
   };
   if (mailError) {
     context.insights.trackException({

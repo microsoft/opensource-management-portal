@@ -6,8 +6,8 @@ table(style='width:100%;border:0', cellspacing=0, cellpadding=0)
   tbody
     tr
       td(width=orgIdSize, height=orgIdSize)
-        img(src=logo, width=orgIdSize, height=orgIdSize, alt='Microsoft Open Source')
+        img(src=logo, width=orgIdSize, height=orgIdSize, alt=config.brand.companyName)
       td(valign='bottom', nowrap='nowrap')
         h2(style='vertical-align:bottom')
           | &nbsp;
-          = app || 'Microsoft Open Source'
+          = app || config.brand.companyName

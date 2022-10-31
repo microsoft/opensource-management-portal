@@ -16,7 +16,13 @@ function denyRoute(next, isApi: boolean) {
   if (isApi) {
     return next(jsonError('This API is unavailable for you', 403));
   }
-  return next(wrapError(null, 'These aren\'t the droids you are looking for. You do not have permission to be here.', true));
+  return next(
+    wrapError(
+      null,
+      "These aren't the droids you are looking for. You do not have permission to be here.",
+      true
+    )
+  );
 }
 
 export async function AuthorizeOnlyCorporateAdministrators(req: ReposAppRequest, res, next) {

@@ -1,3 +1,5 @@
+# Decision: Eventual Consistency
+
 A majority of the user interface within the management portal is _eventually consistent_ and not
 necessarily an accurate real-time view.
 

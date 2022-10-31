@@ -28,7 +28,10 @@ import { stripDistFolderName } from '../transitional';
 
 export default async function initializeCorporateViews(providers: IProviders, dirname: string): Promise<any> {
   const { config } = providers.config;
-  const appDirectory = config && config.typescript && config.typescript.appDirectory ? config.typescript.appDirectory : stripDistFolderName(dirname);
+  const appDirectory =
+    config && config.typescript && config.typescript.appDirectory
+      ? config.typescript.appDirectory
+      : stripDistFolderName(dirname);
   const corporateViewsRoot = path.resolve(path.join(appDirectory, 'views', 'corporate'));
   try {
     await fs.access(corporateViewsRoot, fsConstants.R_OK);

@@ -3,11 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IEntityMetadataProvider, IEntityMetadataSerializationHelper, IEntityMetadataDeserializationHelper } from './entityMetadataProvider';
+import {
+  IEntityMetadataProvider,
+  IEntityMetadataSerializationHelper,
+  IEntityMetadataDeserializationHelper,
+} from './entityMetadataProvider';
 
 export class EntityMetadataType {
   constructor(public readonly typeName: string) {
-    EntityMetadataTypes.map(entry => {
+    EntityMetadataTypes.map((entry) => {
       if (entry.typeName === typeName) {
         throw new Error(`EntityMetadataType with name=${typeName} has already been registered`);
       }
@@ -61,7 +65,7 @@ export abstract class EntityMetadataBase {
   }
 
   protected deserializeArray<T>(type: EntityMetadataType, array: IEntityMetadata[]): T[] {
-    return array.map(metadata => this.deserialize(type, metadata));
+    return array.map((metadata) => this.deserialize(type, metadata));
   }
 
   protected ensureHelpers(type: EntityMetadataType) {
@@ -71,7 +75,9 @@ export abstract class EntityMetadataBase {
     if (!this._serialize.has(type)) {
       const helper = this._entities.getSerializationHelper(type);
       if (!helper) {
-        throw new Error(`No serialization helper available to the ${this._entities.name} entity provider for the type ${type}`);
+        throw new Error(
+          `No serialization helper available to the ${this._entities.name} entity provider for the type ${type}`
+        );
       }
       this._serialize.set(type, helper);
     }
@@ -81,7 +87,9 @@ export abstract class EntityMetadataBase {
     if (!this._deserialize.has(type)) {
       const helper = this._entities.getDeserializationHelper(type);
       if (!helper) {
-        throw new Error(`No deserialization helper available to the ${this._entities.name} entity provider for the type ${type}`);
+        throw new Error(
+          `No deserialization helper available to the ${this._entities.name} entity provider for the type ${type}`
+        );
       }
       this._deserialize.set(type, this._entities.getDeserializationHelper(type));
     }

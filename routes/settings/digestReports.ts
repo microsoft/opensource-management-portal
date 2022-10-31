@@ -40,7 +40,11 @@ router.use((req: IRequestWithDigestReports, res, next) => {
   const config = providers.config;
 
   const reportConfig = config && config.github && config.github.jobs ? config.github.jobs.reports : {};
-  return next(new Error('Digest report storage is not enabled for this environment. Reports are not available to be viewed on-demand.'));
+  return next(
+    new Error(
+      'Digest report storage is not enabled for this environment. Reports are not available to be viewed on-demand.'
+    )
+  );
 
   const availableReports = [];
 

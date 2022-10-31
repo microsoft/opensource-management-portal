@@ -17,7 +17,9 @@
 // compatibility.
 
 function addEntityToRecipientMap(map, providerName, recipient, entity, definitions, options) {
-  const filterDefinitionCategories = options.filterDefinitionCategories ? new Set(options.filterDefinitionCategories) : false;
+  const filterDefinitionCategories = options.filterDefinitionCategories
+    ? new Set(options.filterDefinitionCategories)
+    : false;
   const simplifiedRecipientName = `${recipient.type}:${recipient.value}`;
   let recipientView = map.get(simplifiedRecipientName);
   if (!recipientView) {
@@ -29,11 +31,19 @@ function addEntityToRecipientMap(map, providerName, recipient, entity, definitio
   const issueNames = Object.getOwnPropertyNames(entity.issues);
   for (let i = 0; i < issueNames.length; i++) {
     const issueName = issueNames[i];
-    if (recipient.specific && recipient.specific.issueNames && !recipient.specific.issueNames.has(issueName)) {
+    if (
+      recipient.specific &&
+      recipient.specific.issueNames &&
+      !recipient.specific.issueNames.has(issueName)
+    ) {
       continue;
     }
     const definition = definitions[issueName];
-    if (filterDefinitionCategories && definition.category && !filterDefinitionCategories.has(definition.category)) {
+    if (
+      filterDefinitionCategories &&
+      definition.category &&
+      !filterDefinitionCategories.has(definition.category)
+    ) {
       continue;
     }
     if (recipient.reasons) {
@@ -80,7 +90,7 @@ function fillFrom(object, property, target, entity, specificItems) {
       if (specificItems && !specificItems.has(sourceItem)) {
         continue;
       }
-      let lineItem = typeof(source[i]) === 'object' ? Object.assign({}, sourceItem) : { text: sourceItem };
+      let lineItem = typeof source[i] === 'object' ? Object.assign({}, sourceItem) : { text: sourceItem };
       if (!lineItem.entityName && entity.name) {
         lineItem.entityName = entity.name;
       }
@@ -130,12 +140,15 @@ function identifyAdditionalRecipients(entity, recipients) {
               const combined = `:${recipient.type}:${recipient.value}:`;
               let entry = additionalEntries.get(combined);
               if (!entry) {
-                entry = Object.assign({
-                  specific: {
-                    issueNames: new Set(),
-                    issueItems: new Set(),
+                entry = Object.assign(
+                  {
+                    specific: {
+                      issueNames: new Set(),
+                      issueItems: new Set(),
+                    },
                   },
-                }, item.additionalRecipients[k]);
+                  item.additionalRecipients[k]
+                );
                 additionalEntries.set(combined, entry);
                 additionals.push(entry);
               }
@@ -184,7 +197,7 @@ export function buildConsolidatedMap(consolidated, options?) {
   for (let i = 0; i < providerNames.length; i++) {
     const providerName = providerNames[i];
     const dataset = consolidated[providerName];
-    if (typeof (dataset) !== 'object' || providerName === 'metadata') {
+    if (typeof dataset !== 'object' || providerName === 'metadata') {
       continue;
     }
     const definitions = {};
@@ -255,5 +268,5 @@ interface IEntry {
   };
   list?: {
     listItems: any[];
-  }
+  };
 }

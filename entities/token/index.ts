@@ -19,8 +19,7 @@ export interface ITokenProvider {
   getAllTokens(): Promise<PersonalAccessToken[]>;
 }
 
-export interface ITokenProviderCreateOptions extends IEntityMetadataBaseOptions {
-}
+export interface ITokenProviderCreateOptions extends IEntityMetadataBaseOptions {}
 
 export async function createTokenProvider(options: ITokenProviderCreateOptions): Promise<ITokenProvider> {
   const provider = new TokenProvider(options);

@@ -51,7 +51,7 @@ export default function returnCombinedMiddleware(supportedProviders) {
         error = jsonError(new Error(authErrorMessages.join('. ')), 401);
         error.skipLog = true; // do not log to insights data as an exception
         insights?.trackEvent({
-          name:'MultipleAuthProvidersUnauthorized',
+          name: 'MultipleAuthProvidersUnauthorized',
           properties: {
             message: error.message,
           },

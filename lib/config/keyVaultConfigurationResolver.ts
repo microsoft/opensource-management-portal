@@ -35,7 +35,11 @@ const keyVaultProtocol = 'keyvault:';
 const httpsProtocol = 'https:';
 const secretsPath = '/secrets/';
 
-async function getSecret(secretClient: SecretClient, secretStash: Map<string, KeyVaultSecret>, secretId: string) {
+async function getSecret(
+  secretClient: SecretClient,
+  secretStash: Map<string, KeyVaultSecret>,
+  secretId: string
+) {
   const cached = secretStash.get(secretId);
   if (cached) {
     return cached;
@@ -67,8 +71,7 @@ function getUrlIfVault(value) {
     if (keyVaultUrl.protocol === keyVaultProtocol) {
       return keyVaultUrl;
     }
-  }
-  catch (typeError) {
+  } catch (typeError) {
     /* ignore */
   }
   return undefined;
@@ -113,18 +116,24 @@ function createAndWrapKeyVaultClient(options: IKeyVaultConfigurationOptions) {
   const vaultToClient = new Map<string, SecretClient>();
   let cachedOptions: AzureAuthenticationPair = null;
   let cachedCredentials = null;
-  const getSecretClient = options.getSecretClient || (async (vault: string) => {
-    if (!cachedOptions) {
-      cachedOptions = await options.getClientCredentials();
-      cachedCredentials = new ClientSecretCredential(cachedOptions.tenantId, cachedOptions.clientId, cachedOptions.clientSecret);
-    }
-    let client = vaultToClient.get(vault);
-    if (!client) {
-      client = new SecretClient(vault, cachedCredentials);
-      vaultToClient.set(vault, client);
-    }
-    return client;
-  });
+  const getSecretClient =
+    options.getSecretClient ||
+    (async (vault: string) => {
+      if (!cachedOptions) {
+        cachedOptions = await options.getClientCredentials();
+        cachedCredentials = new ClientSecretCredential(
+          cachedOptions.tenantId,
+          cachedOptions.clientId,
+          cachedOptions.clientSecret
+        );
+      }
+      let client = vaultToClient.get(vault);
+      if (!client) {
+        client = new SecretClient(vault, cachedCredentials);
+        vaultToClient.set(vault, client);
+      }
+      return client;
+    });
   return {
     getObjectSecrets: function (object: any) {
       return getSecretsFromVault(getSecretClient, object);

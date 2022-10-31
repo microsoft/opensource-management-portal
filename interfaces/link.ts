@@ -34,7 +34,7 @@ export interface ICorporateLink extends ICorporateLinkProperties {
 }
 
 export interface ICorporateLinkExtended {
-  internal: () => ICorporateLinkExtendedDirectMethods,
+  internal: () => ICorporateLinkExtendedDirectMethods;
 }
 
 export interface ICorporateLinkExtendedDirectMethods {

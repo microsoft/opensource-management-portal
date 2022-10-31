@@ -4,7 +4,12 @@
 //
 
 import { GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
-import { IOperationsInstance, IOperationsRepositoryMetadataProvider, operationsWithCapability, throwIfNotCapable } from './operations';
+import {
+  IOperationsInstance,
+  IOperationsRepositoryMetadataProvider,
+  operationsWithCapability,
+  throwIfNotCapable,
+} from './operations';
 import { CoreCapability } from './rest';
 
 export interface IRepositoryMetadataPermissionPair {
@@ -36,10 +41,12 @@ export interface IRepositoryMetadata {
   gitIgnoreTemplate: string;
 
   teamPermissions: IRepositoryMetadataPermissionPair[];
-
 }
 
 export function getRepositoryMetadataProvider(operations: IOperationsInstance) {
-  const ops = throwIfNotCapable<IOperationsRepositoryMetadataProvider>(operations, CoreCapability.RepositoryMetadataProvider);
+  const ops = throwIfNotCapable<IOperationsRepositoryMetadataProvider>(
+    operations,
+    CoreCapability.RepositoryMetadataProvider
+  );
   return ops.repositoryMetadataProvider;
 }

@@ -5,8 +5,12 @@
 
 import * as common from './common';
 import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
-import { GitHubCollaboratorPermissionLevel, ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission } from '../interfaces';
+import {
+  GitHubCollaboratorPermissionLevel,
+  ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission,
+} from '../interfaces';
 
+// prettier-ignore
 const repoPermissionProperties = [
   'permission',
   'user',
@@ -27,9 +31,15 @@ export class RepositoryPermission {
     }
   }
 
-  get id(): string { return this._id; }
-  get permission(): GitHubCollaboratorPermissionLevel { return this._permission; }
-  get user(): any { return this._user; }
+  get id(): string {
+    return this._id;
+  }
+  get permission(): GitHubCollaboratorPermissionLevel {
+    return this._permission;
+  }
+  get user(): any {
+    return this._user;
+  }
 
   public asGitHubRepositoryPermission(): GitHubRepositoryPermission {
     return ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission(this._permission);

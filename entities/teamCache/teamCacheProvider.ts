@@ -3,15 +3,23 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
+import {
+  IEntityMetadata,
+  EntityMetadataBase,
+  IEntityMetadataBaseOptions,
+} from '../../lib/entityMetadataProvider/entityMetadata';
 import { TeamCacheEntity } from './teamCache';
-import { TeamCacheFixedQueryAll, TeamCacheFixedQueryByOrganizationId, TeamCacheGetOrganizationIdsQuery, TeamCacheDeleteByOrganizationId } from '.';
+import {
+  TeamCacheFixedQueryAll,
+  TeamCacheFixedQueryByOrganizationId,
+  TeamCacheGetOrganizationIdsQuery,
+  TeamCacheDeleteByOrganizationId,
+} from '.';
 import { EntityImplementation } from './teamCache';
 
 const thisProviderType = EntityImplementation.Type;
 
-export interface ITeamCacheCreateOptions extends IEntityMetadataBaseOptions {
-}
+export interface ITeamCacheCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface ITeamCacheProvider {
   initialize(): Promise<void>;
@@ -84,7 +92,7 @@ export class TeamCacheProvider extends EntityMetadataBase implements ITeamCacheP
   async queryAllOrganizationIds(): Promise<string[]> {
     const query = new TeamCacheGetOrganizationIdsQuery();
     const results = await this._entities.fixedQueryMetadata(thisProviderType, query);
-    return results.map(row => row['organizationid']);
+    return results.map((row) => row['organizationid']);
   }
 
   async deleteByOrganizationId(organizationId: string): Promise<void> {

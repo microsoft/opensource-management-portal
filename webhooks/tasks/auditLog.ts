@@ -14,6 +14,7 @@ import { Organization } from '../../business';
 import { AuditLogRecord } from '../../entities/auditLogRecord/auditLogRecord';
 import { MapWebhookEventsToAuditEvents, AuditLogSource } from '../../entities/auditLogRecord';
 
+// prettier-ignore
 const eventTypes = new Set([
   'membership',
   'member',
@@ -22,6 +23,7 @@ const eventTypes = new Set([
   'team',
 ]);
 
+// prettier-ignore
 const knownEventTypesToIgnore = new Set([
   'fork',
   'watch',

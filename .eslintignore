@@ -1,0 +1,3 @@
+dist/
+default-assets-package/thirdparty/**/*.js
+default-assets-package/public/

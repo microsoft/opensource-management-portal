@@ -38,7 +38,7 @@
       "groupBy": "entityName",
       "columns": {
         "login": "GitHub username",
-         "githubFullName": "GitHub name",
+        "githubFullName": "GitHub name",
         "corporateId": "Corporate identity",
         "role": "Administrative role",
         "actions": "Actions"
@@ -48,7 +48,7 @@
   {
     "name": "unlinkedMembers",
     "title": "Unlinked organization members",
-    "description": "Organization members who are not linked cannot be accurately tracked. If they leave the company, they will not be automatically removed from the organization. Service accounts (GitHub machine accounts) need to also be linked so that a reponsible employee can be associated with the account.",
+    "description": "Organization members who are not linked cannot be accurately tracked. If they leave the company, they will not be automatically removed from the organization. Service accounts (GitHub machine accounts) need to also be linked so that a responsible employee can be associated with the account.",
     "actionText": "Action Required: please identify and have these members link their accounts or remove them from your GitHub organization permanently.",
     "isActionRequired": true,
     "category": "weeklySummary",

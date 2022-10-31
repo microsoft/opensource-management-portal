@@ -23,11 +23,13 @@ function getTempFilenames(count: number, callback) {
       filenames.push(result.path);
     }
   }
-  process().then(ok => {
-    return callback(null, filenames);
-  }).catch(error => {
-    return callback(error);
-  });
+  process()
+    .then((ok) => {
+      return callback(null, filenames);
+    })
+    .catch((error) => {
+      return callback(error);
+    });
 }
 
 export function writeDeflatedTextFile(text, callback) {
@@ -51,4 +53,4 @@ export function writeDeflatedTextFile(text, callback) {
       });
     });
   });
-};
+}
