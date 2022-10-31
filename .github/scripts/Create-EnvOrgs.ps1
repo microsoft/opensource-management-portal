@@ -8,7 +8,7 @@ $orgsArry = @()
 foreach ($org in $output.data.enterprise.organizations.nodes) {
   $envObj = [PSCustomObject]@{
     name        = "$($org.name)"
-    id          = "$($org.databaseId)"
+    id          = $($org.databaseId)
     type        = "public"
     description = "$($org.description)"
   }
