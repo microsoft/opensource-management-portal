@@ -17,7 +17,11 @@ app.runJob(refresh, {
 });
 
 async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
-  const { operations, insights, config, linkProvider, graphProvider } = providers;
+  const { config, operations, insights, linkProvider, graphProvider } = providers;
+  if (config?.jobs?.refreshWrites !== true) {
+    console.log('job is currently disabled to avoid metadata refesh/rewrites');
+    return;
+  }
 
   console.log('reading all links');
   const allLinks = shuffle(await linkProvider.getAll());

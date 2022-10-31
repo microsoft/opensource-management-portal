@@ -91,6 +91,12 @@ async function validateLinkOk(req: ReposAppRequest, res, next) {
   }
 }
 
+router.get('/banner', (req: ReposAppRequest, res, next) => {
+  const { config } = getProviders(req);
+  const offline = config?.github?.links?.provider?.linkingOfflineMessage;
+  return res.json({ offline });
+});
+
 router.delete(
   '/',
   asyncHandler(async (req: ReposAppRequest, res, next) => {

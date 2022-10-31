@@ -9,7 +9,7 @@ import objectPath from 'object-path';
 
 const debug = require('debug')('context');
 
-import { addBreadcrumb } from '../utils';
+import { addBreadcrumb, isCodespacesAuthenticating } from '../utils';
 import { Operations } from '../business/operations';
 import { UserContext } from './aggregate';
 import {
@@ -358,6 +358,7 @@ export class WebContext {
       breadcrumbs,
       sudoMode: this._request['sudoMode'],
       view,
+      signinPathSegment: isCodespacesAuthenticating(config, 'aad') ? 'sign-in' : 'sigin',
       site: 'github',
       enableMultipleAccounts: session ? session['enableMultipleAccounts'] : false,
       reposContext: undefined,

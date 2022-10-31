@@ -11,6 +11,7 @@ import { OIDCStrategy } from 'passport-azure-ad';
 import { IProviders } from '../../interfaces';
 
 import { GraphUserType } from '../../lib/graphProvider';
+import { getCodespacesHostname, isCodespacesAuthenticating } from '../../utils';
 
 export const aadStrategyName = 'azure-active-directory';
 export const aadStrategyUserPropertyName = 'azure';
@@ -125,15 +126,10 @@ export default function createAADStrategy(app, config) {
       authorizePath,
     },
   });
-  let codespacesPort = undefined;
-  if (codespaces?.connected === true) {
-    codespacesPort = codespaces.authentication?.port;
-  }
-  const port = codespacesPort || process.env.PORT || 3000; // should use config instead
   const redirectSuffix = '/auth/azure/callback';
   const finalRedirectUrl =
-    codespaces?.connected === true && codespaces?.authentication?.aad?.enabled === true && !codespaces?.block
-      ? `https://${codespaces.name}-${port}.githubpreview.dev${redirectSuffix}`
+    isCodespacesAuthenticating(config, 'aad') && !codespaces?.block
+      ? getCodespacesHostname(config) + redirectSuffix
       : redirectUrl;
   debug(`aad auth clientId=${clientId}, redirectUrl=${finalRedirectUrl}`);
   providers.authorizationCodeClient = oauth2Client;

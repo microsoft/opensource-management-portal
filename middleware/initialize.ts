@@ -68,13 +68,19 @@ import AzureQueuesProcessor from '../lib/queues/azurequeue';
 import { UserSettingsProvider } from '../entities/userSettings';
 import getCompanySpecificDeployment from './companySpecificDeployment';
 
-import RouteCorrelationId from './correlationId';
-import RouteHsts from './hsts';
-import RouteSslify from './sslify';
+import routeCorrelationId from './correlationId';
+import routeHsts from './hsts';
+import routeSslify from './sslify';
 
 import MiddlewareIndex from '.';
 import { ICacheHelper } from '../lib/caching';
-import { IApplicationProfile, IProviders, IReposApplication, InnerError } from '../interfaces';
+import {
+  IApplicationProfile,
+  IProviders,
+  IReposApplication,
+  InnerError,
+  SiteConfiguration,
+} from '../interfaces';
 import initializeRepositoryProvider from '../entities/repository';
 
 const DefaultApplicationProfile: IApplicationProfile = {
@@ -171,7 +177,7 @@ async function initializeAsync(app: IReposApplication, express, rootdir: string,
         return null;
     }
   }
-  providers['_temp:nameToInstance'] = providerNameToInstance;
+  providers.getEntityProviderByType = providerNameToInstance;
   providers.defaultEntityMetadataProvider = defaultProvider;
   providers.approvalProvider = await createAndInitializeApprovalProviderInstance({
     entityMetadataProvider: providerNameToInstance(config.entityProviders.teamjoin),
@@ -336,22 +342,19 @@ export default async function initialize(
   debug(`${containerPurpose} name: ${applicationProfile.applicationName}`);
   debug(`environment: ${config?.debug?.environmentName || 'Unknown'}`);
 
-  const codespacesConfig = config?.github?.codespaces || {};
+  const codespacesConfig = (config as SiteConfiguration)?.github?.codespaces;
   if (codespacesConfig?.connected === true && codespacesConfig.block === true) {
     throw Error(
       `This environment is not designed for use with GitHub Codespaces but you are currently connected to a Codespaces editor session (${process.env.CODESPACE_NAME}).`
     );
   } else if (codespacesConfig.connected === true) {
-    const aadEnabled = codespacesConfig.authentication?.aad?.enabled;
-    const githubEnabled = codespacesConfig.authentication?.github?.enabled;
     let codespacesPort = undefined;
     if (codespacesConfig?.connected === true) {
       codespacesPort = codespacesConfig.authentication?.port;
     }
+    const configuredType = codespacesConfig.desktop ? 'desktop' : 'web';
     const authPort = codespacesPort || process.env.PORT || 3000;
-    debug(
-      `codespace: ${config.github.codespaces.name}, aad=${aadEnabled}, github=${githubEnabled}, auth_port=${authPort}`
-    );
+    debug(`codespace: type=${configuredType}, name=${config.github.codespaces.name}, auth_port=${authPort}`);
   }
 
   if (!exception && applicationProfile.validate) {
@@ -383,7 +386,7 @@ export default async function initialize(
     }
     await app.startServer();
   }
-  app.use(RouteCorrelationId);
+  app.use(routeCorrelationId);
   providers.insights = appInsights(app, config);
   app.set('appInsightsClient', providers.insights);
   if (!exception && (!config || !config.activeDirectory)) {
@@ -399,14 +402,14 @@ export default async function initialize(
   });
   if (config.containers && config.containers.deployment) {
     debug('Container deployment: HTTP: listening, HSTS: on');
-    app.use(RouteHsts);
+    app.use(routeHsts);
   } else if (config.containers && config.containers.docker) {
     debug('Docker image: HTTP: listening, HSTS: off');
   } else if (config.webServer.allowHttp) {
     debug('development mode: HTTP: listening, HSTS: off');
   } else {
-    app.use(RouteSslify);
-    app.use(RouteHsts);
+    app.use(routeSslify);
+    app.use(routeHsts);
   }
   if (!exception) {
     const kvConfig = {

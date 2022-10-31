@@ -16,6 +16,7 @@ import { Organization } from '../business';
 import { Account } from '../business';
 import { ILinkProvider } from '../lib/linkProviders';
 import { ICorporateLink, ReposAppRequest, IProviders, UnlinkPurpose } from '../interfaces';
+import { isCodespacesAuthenticating } from '../utils';
 
 // - - - Middleware: require that the user isa portal administrator to continue
 router.use(requirePortalAdministrationPermission);
@@ -315,6 +316,7 @@ router.get(
 router.post(
   '/whois/link/:linkid',
   asyncHandler(async function (req: ReposAppRequest, res, next) {
+    const { config } = getProviders(req);
     const linkId = req.params.linkid;
     const isLinkDelete = req.body['delete-link'];
     req.body['isServiceAccount'] = req.body['isServiceAccount'] === 'yes';
@@ -354,6 +356,7 @@ router.post(
         state: {
           messages,
           linkId,
+          signinPathSegment: isCodespacesAuthenticating(config, 'aad') ? 'sign-in' : 'sigin',
         },
       });
     };
@@ -381,7 +384,7 @@ router.post(
 router.post(
   '/whois/link/',
   asyncHandler(async function (req: ReposAppRequest, res, next) {
-    const { operations } = getProviders(req);
+    const { config, operations } = getProviders(req);
     const allowAdministratorManualLinking = operations?.config?.features?.allowAdministratorManualLinking;
     if (!allowAdministratorManualLinking) {
       return next(new Error('The manual linking feature is not enabled'));
@@ -427,6 +430,7 @@ router.post(
       state: {
         messages,
         linkId,
+        signinPathSegment: isCodespacesAuthenticating(config, 'aad') ? 'sign-in' : 'sigin',
       },
     });
   })

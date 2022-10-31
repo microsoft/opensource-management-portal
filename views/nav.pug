@@ -32,7 +32,7 @@ mixin userGitHub
         p
           small Sign in or create your GitHub.com account to manage your #{config && config.brand.companyName || 'corporate'} open source identity
       p
-        a.btn.btn-sm.btn-primary(href='/signin/github') Sign In
+        a.btn.btn-sm.btn-primary(href='/' + (signinPathSegment || 'signin') + '/github') Sign In
 
 mixin userAzure
   - var actionLink = scheme === 'github' ? '/link/update' : azureSignoutLink
@@ -46,7 +46,7 @@ mixin userAzure
     p
       small Sign in to manage your #{config && config.brand.companyName || 'corporate'} open source identity
     p
-      a.btn.btn-sm.btn-primary(href='/signin') Sign In
+      a.btn.btn-sm.btn-primary(href='/' + (signinPathSegment || 'signin')) Sign In
 
 div.navbar.navbar-default.second-row-nav
   div.container

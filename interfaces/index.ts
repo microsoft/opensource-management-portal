@@ -14,6 +14,7 @@ export * from './github';
 export * from './queryCache';
 export * from './providers';
 export * from './web';
+export * from './config';
 
 import {
   IAttachCompanySpecificRoutes,

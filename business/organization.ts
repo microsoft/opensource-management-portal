@@ -56,6 +56,7 @@ import {
 import { CreateError, ErrorHelper } from '../transitional';
 import { jsonError } from '../middleware';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
+import { ConfigGitHubTemplates } from '../config/github.templates.types';
 
 interface IGetMembersParameters {
   org: string;
@@ -1239,7 +1240,7 @@ export class Organization {
     // standard templates.
     const config = operations.providers.config;
     const templates = [];
-    const configuredTemplateRoot = config.github.templates || {};
+    const configuredTemplateRoot = config.github.templates || ({} as ConfigGitHubTemplates);
     const configuredTemplateDefinitions =
       configuredTemplateRoot && configuredTemplateRoot.definitions ? configuredTemplateRoot.definitions : {};
     const templateDefinitions = configuredTemplateDefinitions || {};

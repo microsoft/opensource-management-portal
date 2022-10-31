@@ -109,6 +109,14 @@ function createClient(options: IEnvironmentProviderOptions) {
         if (hasQueryKey('trueIf')) {
           variableValue = getQueryKey('trueIf') == /* loose */ variableValue;
         }
+        // If a defined "ignore moniker" is present, replace it
+        // with empty (designed for Codespaces scenarios)
+        if (hasQueryKey('ignoreMoniker')) {
+          const ignoreMoniker = getQueryKey('ignoreMoniker');
+          if (ignoreMoniker) {
+            variableValue = ((variableValue as string) || '').replace(ignoreMoniker, '');
+          }
+        }
         // Cast if a type is set to 'boolean' or 'integer'
         if (hasQueryKey('type')) {
           const currentValue = variableValue;

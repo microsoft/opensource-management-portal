@@ -13,6 +13,7 @@ import RouteNewRepoMetadata from './newRepoMetadata';
 import { ReposAppRequest } from '../../../interfaces';
 import { jsonError } from '../../../middleware';
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
+import { getProviders } from '../../../transitional';
 
 const router: Router = Router();
 
@@ -44,6 +45,12 @@ router.use('/repos', RouteRepos);
 router.use('/teams', RouteTeams);
 router.use('/people', RoutePeople);
 router.use('/newRepoMetadata', RouteNewRepoMetadata);
+
+router.get('/newRepoBanner', (req: ReposAppRequest, res) => {
+  const { config } = getProviders(req);
+  const newRepositoriesOffline = config?.github?.repos?.newRepositoriesOffline;
+  return res.json({ newRepositoriesOffline });
+});
 
 router.use('*', (req, res, next) => {
   return next(jsonError('no API or function available', 404));

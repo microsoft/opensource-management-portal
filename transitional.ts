@@ -340,7 +340,7 @@ export interface ICustomizedNewRepositoryLogic {
 }
 
 export function splitSemiColonCommas(value: string) {
-  return value ? value.replace(/;/g, ',').split(',') : [];
+  return value && value.replace ? value.replace(/;/g, ',').split(',') : [];
 }
 
 export interface ICustomizedNewRepoProperties {

@@ -27,7 +27,12 @@ const maxParallelism = 1;
 const delayBetweenSeconds = 1;
 
 export default async function permissionsRun({ providers }: IReposJob): Promise<IReposJobResult> {
-  const { operations } = providers;
+  const { config, operations } = providers;
+  if (config?.jobs?.refreshWrites !== true) {
+    console.log('job is currently disabled to avoid metadata refesh/rewrites');
+    return;
+  }
+
   for (const organization of shuffle(Array.from(operations.organizations.values()))) {
     console.log(`Reviewing permissions for all repos in ${organization.name}...`);
     try {

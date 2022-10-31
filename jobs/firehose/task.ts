@@ -49,6 +49,11 @@ export default async function firehose({ providers, started }: IReposJob): Promi
     }, runtimeSeconds * 1000);
   }
 
+  while (config?.github?.webhooks?.firehoseOffline) {
+    console.warn(`FIREHOSE OFFLINE: ${config.github.webhooks.firehoseOffline}`);
+    await sleep(1000 * 60 * 5);
+  }
+
   const maxParallelism = config.github.webhooks.parallelism
     ? parseInt(config.github.webhooks.parallelism)
     : 2;

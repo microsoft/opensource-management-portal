@@ -36,4 +36,5 @@ module.exports = {
       },
     },
   ],
+  ignorePatterns: ['default-assets-package/thirdparty/**/*.js', 'dist/**/*.js'],
 };

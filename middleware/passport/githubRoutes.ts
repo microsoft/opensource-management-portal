@@ -8,10 +8,11 @@ import querystring from 'querystring';
 
 import { ReposAppRequest } from '../../interfaces';
 import { getProviders } from '../../transitional';
+import { isCodespacesAuthenticating } from '../../utils';
 import { IAuthenticationHelperMethods } from '../passport-routes';
 import {
   getGithubAppConfigurationOptions,
-  gitHubStrategyName,
+  githubStrategyName,
   githubIncreasedScopeStrategyName,
   githubStrategyUserPropertyName,
   githubIncreasedScopeStrategyUserPropertyName,
@@ -23,16 +24,17 @@ export function attachGitHubPassportRoutes(
   passport,
   helpers: IAuthenticationHelperMethods
 ) {
-  app.get('/signin/github', function (req: ReposAppRequest, res: Response) {
-    helpers.storeReferrer(req, res, '/auth/github', '/signin/github authentication page requested');
+  const signinPath = isCodespacesAuthenticating(config, 'github') ? 'sign-in' : 'signin';
+  app.get(`/${signinPath}/github`, function (req: ReposAppRequest, res: Response) {
+    helpers.storeReferrer(req, res, '/auth/github', `/${signinPath}/github authentication page requested`);
   });
 
-  app.get('/auth/github', passport.authorize(gitHubStrategyName));
+  app.get('/auth/github', passport.authorize(githubStrategyName));
 
   const githubFailureRoute = { failureRedirect: '/auth/github/' };
   app.get(
     '/auth/github/callback',
-    passport.authorize(gitHubStrategyName, githubFailureRoute),
+    passport.authorize(githubStrategyName, githubFailureRoute),
     (req: ReposAppRequest, res: Response, next: NextFunction) => {
       return helpers.afterAuthentication(
         false /* not primary auth */,
@@ -75,14 +77,14 @@ export function attachGitHubPassportRoutes(
   }
 
   app.get(
-    '/signin/github/increased-scope',
+    `/${signinPath}/github/increased-scope`,
     blockIncreasedScopeForModernApps,
     function (req: ReposAppRequest, res: Response) {
       helpers.storeReferrer(
         req,
         res,
         '/auth/github/increased-scope',
-        'request for the /signin/github/increased-scope page to go auth with more GitHub scope'
+        `request for the /${signinPath}/github/increased-scope page to go auth with more GitHub scope`
       );
     }
   );
@@ -116,7 +118,7 @@ export function attachGitHubPassportRoutes(
   // GitHub once supported users creating a brand new account during an initial auth
   // request. I believe that this no longer works, since perhaps 2018; however, this
   // used to work, and will not negatively impact the app at this time. Should revisit. -jw 2021
-  app.get('/signin/github/join', (req, res) => {
+  app.get(`/${signinPath}/github/join`, (req, res) => {
     res.render('creategithubaccount', {
       title: 'Create a GitHub account',
       user: req.user,

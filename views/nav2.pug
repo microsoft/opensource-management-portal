@@ -37,7 +37,7 @@ mixin userGitHub
         p
           small Sign in or create your GitHub.com account to manage your #{config && config.brand.companyName || 'corporate'} open source identity
       p
-        a.btn.btn-sm.btn-primary(href='/signin/github') Sign In
+        a.btn.btn-sm.btn-primary(href='/' + (signinPathSegment || 'signin') + '/github') Sign In
 
 mixin userAzure
   - var actionLink = scheme === 'github' ? '/link/update' : azureSignoutLink
@@ -51,7 +51,7 @@ mixin userAzure
     p
       small Sign in to manage your #{config && config.brand.companyName || 'corporate'} open source identity
     p
-      a.btn.btn-sm.btn-primary(href='/signin') Sign In
+      a.btn.btn-sm.btn-primary(href='/' + (signinPathSegment || 'signin')) Sign In
 
 div.navbar.navbar-default(style=reposContext ? 'margin-bottom:0' : undefined)
   div.container-fluid
@@ -135,7 +135,7 @@ div.navbar.navbar-default(style=reposContext ? 'margin-bottom:0' : undefined)
 
               else
                 li
-                  a(href='/signin/github') Sign in to GitHub
+                  a(href='/' + signinPathSegment + '/github') Sign in to GitHub
               li
                 a(href='/signout') Sign out
               if enableMultipleAccounts && enableMultipleAccounts === true
@@ -150,4 +150,4 @@ div.navbar.navbar-default(style=reposContext ? 'margin-bottom:0' : undefined)
 
         else
           li
-            a(href='/signin') Sign in
+            a(href='/' + signinPathSegment) Sign in

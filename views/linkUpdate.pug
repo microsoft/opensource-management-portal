@@ -37,6 +37,6 @@ block content
     p If you have any questions about this, please contact your team's GitHub liaison, LCA contact, or review the materials on the Open Source Hub.
 
     p
-      a.btn.btn-primary(href='/signin/azure') Sign In to #{config.brand.companyName}
+      a.btn.btn-primary(href='/' + (signinPathSegment || 'signin') + '/azure') Sign In to #{config.brand.companyName}
       | &nbsp;
       a.btn.btn-default(href='/signout') Cancel and Sign Out
