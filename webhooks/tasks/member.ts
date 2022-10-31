@@ -11,7 +11,7 @@ import { IProviders, GitHubCollaboratorType } from '../../interfaces';
 
 export default class MemberWebhookProcessor implements WebhookProcessor {
   filter(data: any) {
-    let eventType = data.properties.event;
+    const eventType = data.properties.event;
     return eventType === 'member';
   }
 

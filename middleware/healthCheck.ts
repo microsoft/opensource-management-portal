@@ -160,7 +160,7 @@ export default function initializeHealthCheck(
   }
   if (enabledGenericProbes.length > 0) {
     // General probes listen on their own type endpoint
-    for (let genericProbeConfig of enabledGenericProbes) {
+    for (const genericProbeConfig of enabledGenericProbes) {
       app.get(
         `/health/${genericProbeConfig.endpointSuffix}`,
         multipleHeaderHealthCheck.bind(null, HealthProbeType.Liveness, ProbeType.General, [

@@ -80,7 +80,7 @@ export async function getClientApiOrganizationTeamsResponse(req: ReposAppRequest
     let teams = await getTeamsForOrganization(organization, forceRefresh);
     if (q) {
       teams = teams.filter((team) => {
-        let string = (
+        const string = (
           (team.name || '') +
           (team.description || '') +
           (team.id || '') +

@@ -408,9 +408,9 @@ export class Organization {
     const orgSettings = this._settings;
     // Multiple shared can be specified at the organization level to allow for rotation
     // NOTE: hook secrets are no longer moved over...
-    let orgSpecificSecrets = orgSettings.properties['hookSecrets'] || [];
+    const orgSpecificSecrets = orgSettings.properties['hookSecrets'] || [];
     const systemwideConfig = operations.providers.config;
-    let systemwideSecrets =
+    const systemwideSecrets =
       systemwideConfig.github &&
       systemwideConfig.github.webhooks &&
       systemwideConfig.github.webhooks.sharedSecret
@@ -756,7 +756,7 @@ export class Organization {
   }
 
   team(id: number, optionalEntity?): Team {
-    let entity = optionalEntity || {};
+    const entity = optionalEntity || {};
     if (!optionalEntity) {
       entity.id = id;
     }
@@ -765,7 +765,7 @@ export class Organization {
   }
 
   member(id: number, optionalEntity?): OrganizationMember {
-    let entity = optionalEntity || {};
+    const entity = optionalEntity || {};
     if (!optionalEntity) {
       entity.id = id;
     }
@@ -1366,7 +1366,7 @@ export class Organization {
     // plan.
     const settings = this._settings;
     const type = settings.properties['type'] || 'public';
-    let types = ['public'];
+    const types = ['public'];
     switch (type) {
       case 'public':
         break;

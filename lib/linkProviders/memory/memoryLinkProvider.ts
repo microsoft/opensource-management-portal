@@ -135,7 +135,7 @@ export class MemoryLinkProvider implements ILinkProvider {
     const generatedLinkId = randomUUID();
     const initialEntity = {};
     initialEntity[linkInterfacePropertyMapping.memoryLinkId] = generatedLinkId;
-    for (let linkPropertyName of CorporatePropertyNames) {
+    for (const linkPropertyName of CorporatePropertyNames) {
       const tableColumnName = linkInterfacePropertyMapping[linkPropertyName];
       if (!tableColumnName) {
         throw new Error(`Missing mapping from property ${linkPropertyName} to equivalent key`);

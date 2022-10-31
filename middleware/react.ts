@@ -56,7 +56,7 @@ export function injectReactClient() {
     }
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     const flightAvailable = flightingOptions.enabled && flightingOptions.html;
-    let flightName = flightAvailable ? flightingOptions.flightName : null;
+    const flightName = flightAvailable ? flightingOptions.flightName : null;
     const userFlighted =
       activeContext?.corporateIdentity?.id &&
       flightingOptions.staticFlightIds?.has(activeContext.corporateIdentity.id);

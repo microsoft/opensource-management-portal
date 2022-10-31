@@ -96,7 +96,7 @@ export class MemoryEntityMetadataProvider implements IEntityMetadataProvider {
     query: IEntityMetadataFixedQuery
   ): Promise<IEntityMetadata[]> {
     const allInTypeBin = this.getAllInTypeBin(type);
-    let get = EntityMetadataMappings.GetDefinition(
+    const get = EntityMetadataMappings.GetDefinition(
       type,
       MemorySettings.MemoryQueries,
       true

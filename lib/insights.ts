@@ -40,7 +40,7 @@ const consoleHandler = (eventNameOrProperties) => {
   let props = '';
   if (eventNameOrProperties && eventNameOrProperties.properties) {
     props = ' ';
-    for (let [key, value] of Object.entries(eventNameOrProperties.properties)) {
+    for (const [key, value] of Object.entries(eventNameOrProperties.properties)) {
       props += `${key}=${value} `;
     }
   }

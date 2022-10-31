@@ -20,7 +20,7 @@ import { permissionsObjectToValue } from '../../transitional';
 
 export default class TeamWebhookProcessor implements WebhookProcessor {
   filter(data: any) {
-    let eventType = data.properties.event;
+    const eventType = data.properties.event;
     return eventType === 'team';
   }
 

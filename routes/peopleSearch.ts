@@ -84,7 +84,7 @@ router.get(
       req.systemWidePermissions && req.systemWidePermissions.allowAdministration === true;
     let twoFactor = req.query.twoFactor;
     const team2 = req.team2 as Team;
-    let options: IOptionalFilter = {};
+    const options: IOptionalFilter = {};
     if (twoFactor === 'off') {
       options.filter = '2fa_disabled';
     }
@@ -93,7 +93,7 @@ router.get(
       : await getPeopleAcrossOrganizations(operations, options, team2);
     const page = req.query.page_number ? Number(req.query.page_number) : 1;
     const pageSize = req.query.pageSize ? Number(req.query.pageSize) : undefined;
-    let phrase = req.query.q as string;
+    const phrase = req.query.q as string;
     let type = req.query.type as string;
     const validTypes = new Set([
       'linked',

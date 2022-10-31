@@ -17,7 +17,7 @@ import fs from 'fs';
 import path from 'path';
 
 function normalizePort(val) {
-  let port = parseInt(val, 10);
+  const port = parseInt(val, 10);
 
   if (isNaN(port)) {
     // named pipe
@@ -40,9 +40,7 @@ app.set('port', port);
 app.startServer = function startWebServer(): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
-      let server: https.Server | http.Server;
-
-      server =
+      const server: https.Server | http.Server =
         process.env.USE_LOCAL_HTTPS === 'true'
           ? https.createServer(
               {

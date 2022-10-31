@@ -23,7 +23,7 @@ export default async function configureErrorRoutes(app: IReposApplication, initi
   }
 
   app.use(function (req, res, next) {
-    let err: IReposError = new Error('Not Found');
+    const err: IReposError = new Error('Not Found');
     err.status = 404;
     err.skipLog = true;
     next(err);

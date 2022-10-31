@@ -88,7 +88,7 @@ export default asyncHandler(async function (req: ReposAppRequest, res: Response,
     aggregations
   );
   const page = req.query.page_number ? Number(req.query.page_number) : 1;
-  let phrase = req.query.q;
+  const phrase = req.query.q;
 
   let set = req.query.set;
   if (set !== 'all' && set !== 'available' && set !== 'your') {
