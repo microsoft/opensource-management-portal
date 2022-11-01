@@ -165,7 +165,7 @@
     "@types/unzipper": "0.10.5",
     "@types/validator": "13.7.9",
     "@typescript-eslint/eslint-plugin": "5.41.0",
-    "@typescript-eslint/parser": "5.41.0",
+    "@typescript-eslint/parser": "5.42.0",
     "eslint": "8.26.0",
     "eslint-config-prettier": "8.5.0",
     "eslint-plugin-n": "^15.3.0",
