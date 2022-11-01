@@ -16,7 +16,7 @@ export type ConfigSession = {
   encryption: boolean;
   encryptionKeyId: string;
 
-  cosmodb: {
+  cosmosdb: {
     endpoint: string;
     key: string;
     database: string;
