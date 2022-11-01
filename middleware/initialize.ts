@@ -92,9 +92,18 @@ const DefaultApplicationProfile: IApplicationProfile = {
   sessions: true,
 };
 
-type CompanyStartupEntrypoint = (config: any, providers: IProviders, rootdir: string) => Promise<void>;
+type CompanyStartupEntrypoint = (
+  config: SiteConfiguration,
+  providers: IProviders,
+  rootdir: string
+) => Promise<void>;
 
-async function initializeAsync(app: IReposApplication, express, rootdir: string, config): Promise<void> {
+async function initializeAsync(
+  app: IReposApplication,
+  express,
+  rootdir: string,
+  config: SiteConfiguration
+): Promise<void> {
   const providers = app.get('providers') as IProviders;
   providers.postgresPool = await ConnectPostgresPool(config.data.postgres);
   providers.linkProvider = await createAndInitializeLinkProviderInstance(providers, config);
