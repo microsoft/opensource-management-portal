@@ -55,7 +55,7 @@ async function getTeamsData(
 
   const yourTeamsMap = new Map();
   const overview = await userContext.getAggregatedOverview();
-  if (overview.teams && overview.teams.member.length) {
+  if (overview.teams && (overview.teams.member.length || overview.teams.maintainer.length)) {
     reduceTeams(overview.teams, 'member', yourTeamsMap);
     reduceTeams(overview.teams, 'maintainer', yourTeamsMap);
   }
