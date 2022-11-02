@@ -7,15 +7,13 @@ $orgsArry = @()
 
 foreach ($org in $output.data.enterprise.organizations.nodes) {
   $envObj = [PSCustomObject]@{
-    name        = "$($org.name)"
-    id          = "$($org.databaseId)"
-    type        = "public"
+    name        = "$($org.login)"
+    id          = $($org.databaseId)
+    type        = @("public", "private")
     description = "$($org.description)"
   }
-  Write-Output "This is the object: "
-  Write-Output $envObj
+
   $orgsArry += $envObj
-  Write-Output "This is the array inside the loop"
   Write-Output $orgsArry
 }
 
