@@ -358,7 +358,7 @@ export class WebContext {
       breadcrumbs,
       sudoMode: this._request['sudoMode'],
       view,
-      signinPathSegment: isCodespacesAuthenticating(config, 'aad') ? 'sign-in' : 'sigin',
+      signinPathSegment: isCodespacesAuthenticating(config, 'aad') ? 'sign-in' : 'signin',
       site: 'github',
       enableMultipleAccounts: session ? session['enableMultipleAccounts'] : false,
       reposContext: undefined,

@@ -205,7 +205,7 @@ async function processDeletedRepositories(providers: IProviders): Promise<void> 
 export default async function byUserJob({ providers, args }: IReposJob): Promise<IReposJobResult> {
   const { config } = providers;
   if (config?.jobs?.refreshWrites !== true) {
-    console.log('job is currently disabled to avoid metadata refesh/rewrites');
+    console.log('job is currently disabled to avoid metadata refresh/rewrites');
     return;
   }
 

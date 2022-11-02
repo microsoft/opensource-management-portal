@@ -25,7 +25,8 @@
     "fix": "npm run fix:js && npm run fix:md",
     "lint:js": "eslint .",
     "lint:md": "markdownlint-cli2 \"**/*.md\"",
-    "lint": "npm run lint:js && npm run lint:md",
+    "lint:spell": "cspell \"**\"",
+    "lint": "npm run lint:js && npm run lint:md && npm run lint:spell",
     "prepare": "husky install",
     "start-4000": "PORT=4000 DEBUG=startup node ./dist/bin/www",
     "start-in-container": "node ./bin/www",
@@ -34,7 +35,10 @@
     "test": "jest"
   },
   "lint-staged": {
-    "*": "prettier --write --ignore-unknown",
+    "*": [
+      "prettier --write --ignore-unknown",
+      "cspell"
+    ],
     "*.{js,ts}": "eslint --fix",
     "*.md": "markdownlint-cli2-fix"
   },
@@ -166,6 +170,7 @@
     "@types/validator": "13.7.10",
     "@typescript-eslint/eslint-plugin": "5.42.0",
     "@typescript-eslint/parser": "5.42.0",
+    "cspell": "6.12.0",
     "eslint": "8.26.0",
     "eslint-config-prettier": "8.5.0",
     "eslint-plugin-n": "^15.4.0",

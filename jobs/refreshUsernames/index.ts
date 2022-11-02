@@ -19,7 +19,7 @@ app.runJob(refresh, {
 async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
   const { config, operations, insights, linkProvider, graphProvider } = providers;
   if (config?.jobs?.refreshWrites !== true) {
-    console.log('job is currently disabled to avoid metadata refesh/rewrites');
+    console.log('job is currently disabled to avoid metadata refresh/rewrites');
     return;
   }
 

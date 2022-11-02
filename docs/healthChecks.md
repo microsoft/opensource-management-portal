@@ -20,7 +20,7 @@ General probe configuration:
 _Expose an endpoint to any user, no check for headers, at `/health/[endpoint suffix]`_
 
 - `EXTERNAL_HEALTH_PROBES`: '1' to enable
-- `EXTERNAL_HEALTH_PROBE_ENDPOINT_SUFFIX`: suffix added for the checkname; defaults to `external` to expose `/health/external`
+- `EXTERNAL_HEALTH_PROBE_ENDPOINT_SUFFIX`: suffix added for the check's name; defaults to `external` to expose `/health/external`
 
 Kubernetes pod health checks:
 

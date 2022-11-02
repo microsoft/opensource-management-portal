@@ -356,7 +356,7 @@ router.post(
         state: {
           messages,
           linkId,
-          signinPathSegment: isCodespacesAuthenticating(config, 'aad') ? 'sign-in' : 'sigin',
+          signinPathSegment: isCodespacesAuthenticating(config, 'aad') ? 'sign-in' : 'signin',
         },
       });
     };
@@ -430,7 +430,7 @@ router.post(
       state: {
         messages,
         linkId,
-        signinPathSegment: isCodespacesAuthenticating(config, 'aad') ? 'sign-in' : 'sigin',
+        signinPathSegment: isCodespacesAuthenticating(config, 'aad') ? 'sign-in' : 'signin',
       },
     });
   })
