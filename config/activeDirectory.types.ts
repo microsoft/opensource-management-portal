@@ -14,5 +14,5 @@ export type ConfigActiveDirectory = {
   redirectUrl: string;
   issuer: string;
   blockGuestUserTypes: boolean;
-  blockGuestSignins: boolean;
+  blockGuestSignIns: boolean;
 };
