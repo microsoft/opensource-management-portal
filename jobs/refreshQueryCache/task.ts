@@ -631,7 +631,7 @@ async function cacheRepositoryCollaborators(
 export default async function refresh({ providers, args }: IReposJob): Promise<IReposJobResult> {
   const { config } = providers;
   if (config?.jobs?.refreshWrites !== true) {
-    console.log('job is currently disabled to avoid metadata refesh/rewrites');
+    console.log('job is currently disabled to avoid metadata refresh/rewrites');
     return;
   }
 
