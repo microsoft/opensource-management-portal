@@ -6,8 +6,6 @@
 // The local environment script is designed to allow for local debugging, test and
 // development scenarios. The go method is called with resolved configuration.
 
-import _ from 'lodash';
-
 async function go(providers: IProviders): Promise<void> {
   // ---------------------------------------------------------------------------
 }
