@@ -42,21 +42,21 @@ module.exports = function (graphApi) {
       throw painlessConfigError;
     }
   } else {
-    // 2: load URL/resource links data from a local JSON file
+    // 2: try to load URL/resource links data from a local JSON file
     try {
       const filename = path.join(typescriptConfig.appDirectory, 'data', 'news.json');
       const str = fs.readFileSync(filename, 'utf8');
       resources = JSON.parse(str);
       debug(`news loaded from file ${filename}`);
     } catch (notFound) {
-      console.warn(notFound);
-      throw notFound;
+      if (notFound.code !== 'ENOENT') {
+        console.warn(notFound);
+        throw notFound;
+      }
     }
   }
 
-  if (Array.isArray(resources)) {
-    articles = resources;
-  }
+  articles = Array.isArray(resources) ? resources : [];
 
   return {
     all: articles,
