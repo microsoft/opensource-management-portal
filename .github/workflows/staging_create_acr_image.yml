@@ -16,6 +16,7 @@ jobs:
             organizations(first: 100) {
               nodes {
                 description
+                login
                 databaseId
                 id
                 name
