@@ -149,7 +149,7 @@
     "@types/jest": "29.2.1",
     "@types/js-yaml": "4.0.5",
     "@types/lodash": "4.14.187",
-    "@types/luxon": "3.0.2",
+    "@types/luxon": "3.0.3",
     "@types/memory-cache": "0.2.2",
     "@types/morgan": "1.9.3",
     "@types/multer": "^1.4.7",
