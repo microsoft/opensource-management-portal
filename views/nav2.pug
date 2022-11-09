@@ -79,7 +79,7 @@ div.navbar.navbar-default(style=reposContext ? 'margin-bottom:0' : undefined)
             li(class={ active: (reposContext && reposContext.releaseTab) || site === 'release' }): a(href=config.urls.release) Release
         li(class={ active: (reposContext && !reposContext.releaseTab) && site === 'github' })
           a(
-            style=((reposContext && !reposContext.releaseTab) && site === 'github' && ossLink && reposContext) ? 'color:#fff;background-color:#0072C6' : undefined,
+            style=((reposContext && !reposContext.releaseTab) && site === 'github' && ossLink && reposContext) ? 'color:#fff;background-color:#20558a' : undefined,
             href='/') GitHub
       ul.nav.navbar-nav.navbar-right
         if sudoMode
