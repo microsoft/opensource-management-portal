@@ -68,7 +68,7 @@ div.navbar.navbar-default(style=reposContext ? 'margin-bottom:0' : undefined)
           = config.brand && config.brand.companyPortalName ? config.brand.companyPortalName : 'GitHub Management Portal'
     // Collect the nav links, forms, and other content for toggling
     div.collapse.navbar-collapse#bs-example-navbar-collapse-1
-      ul.nav.navbar-nav
+      ul.nav.navbar-nav(style='margin-left:-15px')
         if config && config.urls
           li(class={ active: site === 'explore' }): a(href='https://github.nih.gov/') NIH GitHub
           if config.urls.docs
