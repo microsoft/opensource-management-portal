@@ -115,7 +115,6 @@ footer
         .pull-right.text-right
           a#microsoftFooterLogo(href=(config && config.brand ? config.brand.companyLink : 'about:blank'), title=(config && config.brand ? config.brand.companyName : ''))
             img(src='/img/logo.png', alt=(config && config.brand ? config.brand.companyName : ''), style='max-height:23px')
-          br
-          span &copy; #{config && config.brand.companyName ? config.brand.companyName : ''}
+          | &nbsp;
     .row
        div(style='margin-bottom: 30px')
