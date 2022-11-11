@@ -5,6 +5,34 @@
 //
 */
 
+
+/* BEGIN NIH OVERRIDE */
+.navbar-default .navbar-nav>.active>a {
+  color: #fff;
+  background-color: #20558a;
+}
+
+.navbar-inverse {
+  background-color: #20558a;
+  border-color: #333;
+}
+
+.navbar-inverse .navbar-nav>.active>a {
+  color: #fff;
+  background-color: #456483;
+}
+
+.nav-pills>li.active>a {
+  color: #fff;
+  background-color: #20558a;
+}
+
+.nav>li>a {
+  color: #20558a;
+}
+
+/* END NIH OVERRIDE */
+
 .override-white {
   color: #fff !important
 }
@@ -23,7 +51,7 @@ body {
 }
 
 div#content {
-  margin-top:24px;
+  margin-top: 24px;
 }
 
 div.flex-center {
@@ -39,19 +67,34 @@ div.flex-center {
 }
 
 .capitalize {
-  text-transform:capitalize;
+  text-transform: capitalize;
 }
 
 .breadcrumb {
-    background-color: #fff;
-    padding-left: 0;
+  background-color: #fff;
+  padding-left: 0;
 }
 
-.a-unstyled { color: #333; }
-.a-unstyled:link { color: #333; }
-.a-unstyled:visited { color: #333; }
-.a-unstyled:hover { color: #000; text-decoration: none; }
-.a-unstyled:active { color: #333; }
+.a-unstyled {
+  color: #333;
+}
+
+.a-unstyled:link {
+  color: #333;
+}
+
+.a-unstyled:visited {
+  color: #333;
+}
+
+.a-unstyled:hover {
+  color: #000;
+  text-decoration: none;
+}
+
+.a-unstyled:active {
+  color: #333;
+}
 
 /*
 .navbar.second-row-nav {
@@ -66,7 +109,7 @@ div.flex-center {
 }
 
 h1.huge {
-    font-size: 68px;
+  font-size: 68px;
 }
 
 .shrink66 {
@@ -78,8 +121,8 @@ h1.huge {
 }
 
 h2 strong {
-    font-family: "Segoe UI Semibold", Segoe, "Segoe WP", Calibri, Candara, Tahoma, Verdana, Arial, sans-serif;
-    font-weight: normal;
+  font-family: "Segoe UI Semibold", Segoe, "Segoe WP", Calibri, Candara, Tahoma, Verdana, Arial, sans-serif;
+  font-weight: normal;
 }
 
 .full-width {
@@ -87,7 +130,7 @@ h2 strong {
 }
 
 /* extra wide inline spacing */
-.list-horizontal-space > li {
+.list-horizontal-space>li {
   margin-right: 16px;
 }
 
@@ -105,27 +148,37 @@ footer {
   bottom: 0;
 }
 
-.vertical-space, .vertical-space-top {
+.vertical-space,
+.vertical-space-top {
   margin-top: 16px;
 }
 
-.vertical-space, .vertical-space-bottom {
+.vertical-space,
+.vertical-space-bottom {
   margin-bottom: 16px;
 }
 
-.pad, vertical-pad, .vertical-pad-top {
+.pad,
+vertical-pad,
+.vertical-pad-top {
   padding-top: 16px;
 }
 
-.pad, vertical-pad, .vertical-pad-bottom {
+.pad,
+vertical-pad,
+.vertical-pad-bottom {
   padding-bottom: 16px;
 }
 
-.pad, .horizontal-pad, .horizontal-pad-left {
+.pad,
+.horizontal-pad,
+.horizontal-pad-left {
   padding-left: 16px;
 }
 
-.pad, .horizontal-pad, .horizontal-pad-right {
+.pad,
+.horizontal-pad,
+.horizontal-pad-right {
   padding-right: 16px;
 }
 
@@ -137,19 +190,20 @@ footer {
   margin-bottom: 0;
 }
 
-ul.list-vspace > li, ul.list-vertical-space {
+ul.list-vspace>li,
+ul.list-vertical-space {
   padding-bottom: 8px;
 }
 
 code {
-    color: #333;
+  color: #333;
 }
 
-.button:hover{
+.button:hover {
   color: lightgray;
 }
 
-.invisible{
+.invisible {
   visibility: hidden;
 }
 
@@ -158,9 +212,11 @@ code {
   border-color: #ddd;
   color: #777;
 }
+
 .alert-gray hr {
   border-top-color: #999;
 }
+
 .alert-gray .alert-link {
   color: #999;
 }
@@ -170,242 +226,324 @@ input#search-box {
   padding-bottom: 1px;
   height: 36px;
   margin-top: 4px;
-  max-width:160px;
+  max-width: 160px;
 }
 
 .sevenpercent {
-  width:7%;
+  width: 7%;
 }
+
 .fivepercent {
-  width:5%;
+  width: 5%;
 }
+
 .tenpercent {
-  width:10%;
+  width: 10%;
 }
+
 .fifteenpercent {
-  width:15%;
+  width: 15%;
 }
+
 .twentypercent {
-  width:20%;
+  width: 20%;
 }
+
 .twentyfivepercent {
-  width:25%;
+  width: 25%;
 }
+
 .thirtypercent {
-  width:30%;
+  width: 30%;
 }
 
 div.alert {
-    margin-bottom: 0;
-    padding-bottom: 24px;
+  margin-bottom: 0;
+  padding-bottom: 24px;
 }
 
 div.alerts {
-    margin: 0;
+  margin: 0;
 }
 
 /* 1px solid border in primary */
 .border-1px-primary {
-  border:1px solid #20558a !important;
+  border: 1px solid #20558a !important;
 }
 
 /* theme colors and components */
 div.metro-box {
-  position:relative;
-  margin:0px;
-  width:100%;
+  position: relative;
+  margin: 0px;
+  width: 100%;
 }
+
 .metro-box a {
-  padding:1.4em 25px;
+  padding: 1.4em 25px;
   display: inline-block;
-  color:#fff;
+  color: #fff;
   font-size: .9em;
-  position:relative;
-  width:100%;
+  position: relative;
+  width: 100%;
 }
+
 .metro-box a h3 {
   color: #fff;
 }
+
 .metro-box a p {
   color: #fff;
 }
+
 .metro-box a:hover {
   text-decoration: none;
 }
 
 div.link-box {
-  position:relative;
-  margin:0px;
-  width:100%;
+  position: relative;
+  margin: 0px;
+  width: 100%;
 }
+
 .link-box a {
-  padding:.4em 5px;
+  padding: .4em 5px;
   display: inline-block;
-  position:relative;
-  width:100%;
+  position: relative;
+  width: 100%;
 }
+
 .right .link-box a {
-  padding-left:0;
-  padding-right:0;
+  padding-left: 0;
+  padding-right: 0;
 }
+
 .link-box a:hover {
   text-decoration: none;
   background-color: #efefef;
 }
+
 .link-box p.lead {
   color: #444;
 }
+
 .text-mute {
   color: #777;
 }
+
 .label-muted {
   background-color: #777;
 }
 
 /* Brand box coloring v1 */
 .metro-blue {
-  background:#20558a;
+  background: #20558a;
 }
+
 .metro-purple {
-  background:#6c3a77;
+  background: #6c3a77;
 }
+
 .metro-gray {
-  background:#616265;
+  background: #616265;
 }
+
 .metro-orange {
-  background:#e57200;
+  background: #e57200;
 }
 
 /* Top Line Borders */
 .ms-red-border-top {
   border-style: solid;
-  border-top-color:#c0143c;
-  border-width:4px 0 0 0;
+  border-top-color: #c0143c;
+  border-width: 4px 0 0 0;
 }
+
 .ms-blue-border-top {
   border-style: solid;
-  border-top-color:#20558a;
-  border-width:4px 0 0 0;
+  border-top-color: #20558a;
+  border-width: 4px 0 0 0;
 }
+
 .transparent-border {
-  border:0px solid transparent;
+  border: 0px solid transparent;
 }
 
 /* Core brand-related colors */
 .ms-yellow {
-  background:#ffb900;
+  background: #ffb900;
 }
+
 .ms-orange {
-  background:#e57200;
+  background: #e57200;
 }
+
 .ms-red {
-  background:#c0143c;
+  background: #c0143c;
 }
+
 .ms-magenta {
-  background:#b4009e;
+  background: #b4009e;
 }
+
 .ms-purple {
-  background:#6c3a77;
+  background: #6c3a77;
 }
+
 .ms-blue {
-  background:#20558a;
+  background: #20558a;
 }
+
 .ms-teal {
-  background:#20558a;
+  background: #20558a;
 }
+
 .ms-green {
-  background:#719500;
+  background: #719500;
 }
+
 /* Additional brand colors */
 .ms-light-orange {
-  background:#ff8c00;
+  background: #ff8c00;
 }
+
 .ms-light-magenta {
-  background:#e3008c;
+  background: #e3008c;
 }
+
 .ms-light-purple {
-  background:#b4a0ff;
+  background: #b4a0ff;
 }
+
 .ms-light-blue {
-  background:#00bcf2;
+  background: #00bcf2;
 }
+
 .ms-light-teal {
-  background:#00b294;
+  background: #00b294;
 }
+
 .ms-light-green {
-  background:#bad80a;
+  background: #bad80a;
 }
+
 .ms-light-yellow {
-  background:#fff100;
+  background: #fff100;
 }
+
 .ms-dark-red {
-  background:#a80000;
+  background: #a80000;
 }
+
 .ms-dark-magenta {
-  background:#5c005c;
+  background: #5c005c;
 }
+
 .ms-dark-purple {
-  background:#32145a;
+  background: #32145a;
 }
+
 .ms-mid-blue {
-  background:#002050;
+  background: #002050;
 }
+
 .ms-dark-blue {
-  background:#002050;
+  background: #002050;
 }
+
 .ms-dark-teal {
-  background:#004b50;
+  background: #004b50;
 }
+
 .ms-dark-green {
-  background:#004b1c;
+  background: #004b1c;
 }
+
 .ms-white {
-  background:#fff;
+  background: #fff;
 }
+
 .ms-light-gray {
-  background:#d2d2d2;
+  background: #d2d2d2;
 }
+
 .ms-mid-gray {
-  background:#737373;
+  background: #737373;
 }
+
 .ms-dark-gray {
-  background:#505050;
+  background: #505050;
 }
+
 .ms-rich-black {
-  background:#000;
+  background: #000;
 }
+
 /* lighter boxes need dark foreground colors */
-.ms-yellow a, .ms-light-orange a, .ms-light-magenta a, .ms-light-purple a, .ms-light-blue a,
-.ms-light-teal a, .ms-light-green a, .ms-light-yellow a, .ms-white a, .ms-light-gray a {
-  color:#000;
+.ms-yellow a,
+.ms-light-orange a,
+.ms-light-magenta a,
+.ms-light-purple a,
+.ms-light-blue a,
+.ms-light-teal a,
+.ms-light-green a,
+.ms-light-yellow a,
+.ms-white a,
+.ms-light-gray a {
+  color: #000;
 }
-.ms-yellow a h3, .ms-light-orange a h3, .ms-light-magenta a h3, .ms-light-purple a h3, .ms-light-blue a h3,
-.ms-light-teal a h3, .ms-light-green a h3, .ms-light-yellow a h3, .ms-white a h3, .ms-light-gray a h3 {
-  color:#000;
+
+.ms-yellow a h3,
+.ms-light-orange a h3,
+.ms-light-magenta a h3,
+.ms-light-purple a h3,
+.ms-light-blue a h3,
+.ms-light-teal a h3,
+.ms-light-green a h3,
+.ms-light-yellow a h3,
+.ms-white a h3,
+.ms-light-gray a h3 {
+  color: #000;
 }
-.ms-yellow a p, .ms-light-orange a p, .ms-light-magenta a p, .ms-light-purple a p, .ms-light-blue a p,
-.ms-light-teal a p, .ms-light-green a p, .ms-light-yellow a p, .ms-white a p, .ms-light-gray a p {
-  color:#000;
+
+.ms-yellow a p,
+.ms-light-orange a p,
+.ms-light-magenta a p,
+.ms-light-purple a p,
+.ms-light-blue a p,
+.ms-light-teal a p,
+.ms-light-green a p,
+.ms-light-yellow a p,
+.ms-white a p,
+.ms-light-gray a p {
+  color: #000;
 }
 
 /* table width modifiers */
-th.w-25, td.w-25 {
-  width:30%;
+th.w-25,
+td.w-25 {
+  width: 30%;
 }
-th.w-20, td.w-20 {
-  width:20%;
+
+th.w-20,
+td.w-20 {
+  width: 20%;
 }
-td.w-15, th.w-15 {
-  width:15%;
+
+td.w-15,
+th.w-15 {
+  width: 15%;
 }
-td.w-10, th.w-10 {
-  width:10%;
+
+td.w-10,
+th.w-10 {
+  width: 10%;
 }
 
 /* By default it's not affixed in mobile views, so undo that */
 .wiki-sidebar.affix {
   position: static;
 }
+
 @media (min-width: 768px) {
   .wiki-sidebar {
     padding-left: 20px;
@@ -419,24 +557,26 @@ td.w-10, th.w-10 {
 }
 
 /* All levels of nav */
-.wiki-sidebar .nav > li > a {
+.wiki-sidebar .nav>li>a {
   display: block;
   padding: 4px 20px;
   font-size: 13px;
   font-weight: 500;
   color: #999;
 }
-.wiki-sidebar .nav > li > a:hover,
-.wiki-sidebar .nav > li > a:focus {
+
+.wiki-sidebar .nav>li>a:hover,
+.wiki-sidebar .nav>li>a:focus {
   padding-left: 19px;
   color: #20558a;
   text-decoration: none;
   background-color: transparent;
   border-left: 1px solid #20558a;
 }
-.wiki-sidebar .nav > .active > a,
-.wiki-sidebar .nav > .active:hover > a,
-.wiki-sidebar .nav > .active:focus > a {
+
+.wiki-sidebar .nav>.active>a,
+.wiki-sidebar .nav>.active:hover>a,
+.wiki-sidebar .nav>.active:focus>a {
   padding-left: 18px;
   font-weight: bold;
   color: #20558a;
@@ -446,23 +586,27 @@ td.w-10, th.w-10 {
 
 /* Nav: second level (shown on .active) */
 .wiki-sidebar .nav .nav {
-  display: none; /* Hide by default, but at >768px, show it */
+  display: none;
+  /* Hide by default, but at >768px, show it */
   padding-bottom: 10px;
 }
-.wiki-sidebar .nav .nav > li > a {
+
+.wiki-sidebar .nav .nav>li>a {
   padding-top: 1px;
   padding-bottom: 1px;
   padding-left: 30px;
   font-size: 12px;
   font-weight: normal;
 }
-.wiki-sidebar .nav .nav > li > a:hover,
-.wiki-sidebar .nav .nav > li > a:focus {
+
+.wiki-sidebar .nav .nav>li>a:hover,
+.wiki-sidebar .nav .nav>li>a:focus {
   padding-left: 29px;
 }
-.wiki-sidebar .nav .nav > .active > a,
-.wiki-sidebar .nav .nav > .active:hover > a,
-.wiki-sidebar .nav .nav > .active:focus > a {
+
+.wiki-sidebar .nav .nav>.active>a,
+.wiki-sidebar .nav .nav>.active:hover>a,
+.wiki-sidebar .nav .nav>.active:focus>a {
   padding-left: 28px;
   font-weight: 500;
 }
@@ -477,6 +621,7 @@ td.w-10, th.w-10 {
   font-weight: 500;
   color: #999;
 }
+
 .back-to-top:hover {
   color: #20558a;
   text-decoration: none;
@@ -490,28 +635,36 @@ td.w-10, th.w-10 {
 
 /* Show and affix the side nav when space allows it */
 @media (min-width: 992px) {
-  .wiki-sidebar .nav > .active > ul {
+  .wiki-sidebar .nav>.active>ul {
     display: block;
   }
+
   /* Widen the fixed sidebar */
   .wiki-sidebar.affix,
   .wiki-sidebar.affix-bottom {
     width: 213px;
   }
+
   .wiki-sidebar.affix {
-    position: fixed; /* Undo the static from mobile first approach */
+    position: fixed;
+    /* Undo the static from mobile first approach */
     top: 20px;
   }
+
   .wiki-sidebar.affix-bottom {
-    position: absolute; /* Undo the static from mobile first approach */
+    position: absolute;
+    /* Undo the static from mobile first approach */
   }
+
   .wiki-sidebar.affix-bottom .wiki-sidenav,
   .wiki-sidebar.affix .wiki-sidenav {
     margin-top: 0;
     margin-bottom: 0;
   }
 }
+
 @media (min-width: 1200px) {
+
   /* Widen the fixed sidebar again */
   .wiki-sidebar.affix-bottom,
   .wiki-sidebar.affix {
@@ -520,8 +673,22 @@ td.w-10, th.w-10 {
 }
 
 /* IE10 bugs */
-@-webkit-viewport   { width: device-width; }
-@-moz-viewport      { width: device-width; }
-@-ms-viewport       { width: device-width; }
-@-o-viewport        { width: device-width; }
-@viewport           { width: device-width; }
+@-webkit-viewport {
+  width: device-width;
+}
+
+@-moz-viewport {
+  width: device-width;
+}
+
+@-ms-viewport {
+  width: device-width;
+}
+
+@-o-viewport {
+  width: device-width;
+}
+
+@viewport {
+  width: device-width;
+}
