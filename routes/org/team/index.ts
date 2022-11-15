@@ -230,7 +230,7 @@ export async function submitTeamJoinRequest(
     return { message: `You have joined ${team.name} broad access team successfully`, redirect: `${organization.baseUrl}teams` };
   }
   const justification = optionalJustification || 'N/A';
-  const approvalTypesValues = config.github.approvalTypes.repo;
+  const approvalTypesValues = config.github.approvalTypes.teamJoin;
   if (approvalTypesValues.length === 0) {
     return { error: new Error('No team join approval providers configured.') };
   }
