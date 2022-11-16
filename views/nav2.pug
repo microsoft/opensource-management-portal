@@ -68,9 +68,9 @@ div.navbar.navbar-default(style=reposContext ? 'margin-bottom:0' : undefined)
           = config.brand && config.brand.companyPortalName ? config.brand.companyPortalName : 'GitHub Management Portal'
     // Collect the nav links, forms, and other content for toggling
     div.collapse.navbar-collapse#bs-example-navbar-collapse-1
-      ul.nav.navbar-nav
+      ul.nav.navbar-nav(style='margin-left:-15px')
         if config && config.urls
-          li(class={ active: site === 'explore' }): a(href=config.urls.explore) Explore
+          li(class={ active: site === 'explore' }): a(href='https://github.nih.gov/') NIH GitHub
           if config.urls.docs
             li: a(href=config.urls.docs) Docs
           if config.urls.use
@@ -79,8 +79,8 @@ div.navbar.navbar-default(style=reposContext ? 'margin-bottom:0' : undefined)
             li(class={ active: (reposContext && reposContext.releaseTab) || site === 'release' }): a(href=config.urls.release) Release
         li(class={ active: (reposContext && !reposContext.releaseTab) && site === 'github' })
           a(
-            style=((reposContext && !reposContext.releaseTab) && site === 'github' && ossLink && reposContext) ? 'color:#fff;background-color:#0072C6' : undefined,
-            href='/') GitHub
+            style=((reposContext && !reposContext.releaseTab) && site === 'github' && ossLink && reposContext) ? 'color:#fff;background-color:#20558a' : undefined,
+            href='/') Enterprise
       ul.nav.navbar-nav.navbar-right
         if sudoMode
           li

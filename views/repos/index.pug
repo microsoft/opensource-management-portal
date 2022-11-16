@@ -200,7 +200,7 @@ block content
               if organization
                 p.lead This organization doesn't have any repositories that match.
               else
-                p.lead No repositories match across all Microsoft organizations.
+                p.lead No repositories match across all #{config.brand.companyName} organizations.
 
         else
           - var previous_possible = search.page > 1 //check for a previous page
