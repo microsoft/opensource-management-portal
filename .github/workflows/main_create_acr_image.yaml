@@ -1,0 +1,50 @@
+name: Linux Container Node Workflow
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: get orgs from graphql
+      run: |
+        gh api graphql -f ent=nih -f query='query($ent: String!) {
+          enterprise(slug: $ent) {
+            organizations(first: 100) {
+              nodes {
+                description
+                login
+                databaseId
+                id
+                name
+              }
+            }
+          }
+        }' >> raw.json
+        cat raw.json
+      env:
+        GITHUB_TOKEN: ${{ secrets.ENT_READ_PAT}}
+    - name: run powershell script to create env orgs json
+      run: |
+        ./.github/scripts/Create-EnvOrgs.ps1
+        cat orgs.json
+        ls
+      shell: pwsh
+    - name: check file
+      run: |
+        cat orgs.json
+        ls -lah
+        rm env-orgs.json
+        cat orgs.json >> env-orgs.json
+        cat env-orgs.json
+    - uses: azure/docker-login@v1
+      with:
+        login-server: ${{ secrets.PROD_REGISTRY_SERVER }}
+        username: ${{ secrets.PROD_REGISTRY_USER }}
+        password: ${{ secrets.PROD_REGISTRY_PASS }}
+    - run: |
+        docker build . -t ${{ secrets.PROD_REGISTRY_SERVER }}/portal
+        docker push ${{ secrets.PROD_REGISTRY_SERVER }}/portal
