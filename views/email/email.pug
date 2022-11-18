@@ -15,13 +15,13 @@
 //- The assets are stored in the storage account 'ospomail', public blob container 'opensource'
 //- An Akamai CDN is used to serve the images, https://ospomail.azureedge.net points to the container
 
-- var logoBase = 'https://ospomail.azureedge.net/';
-- var logoImage = 'opensource.png'
+- var logoBase = 'https://github.nih.gov/assets/img/logo/';
+- var logoImage = 'cover.png'
 - var orgIdSize = 42
 - var iconSize = 60
 - var logo = logoBase + logoImage
 - var useIcon = notification === 'action' || notification === 'warning' || notification === 'information'
-- var icon = useIcon ? logoBase + 'inverted-' + notification + '.png' : null
+- var icon = useIcon ? logoBase + logoImage : null
 
 doctype html
 html(lang="en")

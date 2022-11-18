@@ -12,23 +12,56 @@ export default class AzureServiceBus implements IMailProvider {
   html: true;
   info: 'Azure Service Bus';
 
-  constructor(mailConfig: any) {
-    this._config = mailConfig;
+  constructor(config: any) {
+    this._config = config;
   }
 
   getSentMessages() {
     return []; // this provider does not support mocks
   }
 
+  flatten(stringOrArray) {
+    // the logic app expects a string of emails separated by ';'
+    if (typeof stringOrArray === 'string' && stringOrArray.length) {
+      return stringOrArray;
+    }
+
+    if (Array.isArray(stringOrArray)) {
+      // replace empty arrays with undefined
+      return stringOrArray.length ? stringOrArray.join('; ') : undefined;
+    }
+
+    return undefined;
+  }
+
+  transform(mail: IMail): IMail {
+    mail.to = this.flatten(mail.to);
+    mail.cc = this.flatten(mail.cc);
+    mail.bcc = this.flatten(mail.bcc);
+
+    return mail;
+  }
+
   async initialize() { }
 
   async sendMail(mail: IMail): Promise<any> {
+    const {
+      mail: { azureServiceBus: config },
+      brand: { supportMail },
+    } = this._config;
+
     if (!this._config.azureServiceBus) {
       throw new Error('Azure Service bus configuration not provided, mail sending failed');
     }
 
+    mail = this.transform(mail);
+
     if (!mail.to) {
-      throw new Error('No email recipient provided');
+      if (supportMail) {
+        mail.to = supportMail;
+      } else {
+        throw new Error('No email recipient provided');
+      }
     }
 
     const client = new ServiceBusClient(this._config.azureServiceBus.connectionString);
