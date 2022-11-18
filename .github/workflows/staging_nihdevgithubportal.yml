@@ -14,10 +14,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set up Node.js version
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: "16.x"
 
@@ -31,41 +31,6 @@ jobs:
           cd ..
           npm run test --if-present
 
-      - name: get orgs from graphql
-        run: |
-          gh api graphql -f ent=nih -f query='query($ent: String!) {
-           enterprise(slug: $ent) {
-             organizations(first: 100) {
-               nodes {
-                 description
-                 login
-                 databaseId
-                 id
-                 name
-               }
-             }
-           }
-          }' >> raw.json
-          cat raw.json
-
-        env:
-          GITHUB_TOKEN: ${{ secrets.ENT_READ_PAT}}
-
-      - name: run powershell script to create env orgs json
-        run: |
-          ./.github/scripts/Create-EnvOrgs.ps1
-          cat orgs.json
-          ls
-        shell: pwsh
-
-      - name: check file
-        run: |
-          cat orgs.json
-          ls -lah
-          rm env-orgs.json
-          cat orgs.json >> env-orgs.json
-          cat env-orgs.json
-
       - name: zip application folders
         run: |
           echo $PWD
@@ -77,7 +42,7 @@ jobs:
           ls -lah
 
       - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: node-app
           path: /home/runner/work/github-portal/output.tar.gz
@@ -91,7 +56,7 @@ jobs:
 
     steps:
       - name: Download artifact from build job
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: node-app
 
