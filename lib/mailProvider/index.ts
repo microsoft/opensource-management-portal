@@ -87,7 +87,7 @@ export function createMailProviderInstance(config): IMailProvider {
   }
   switch (provider) {
     case 'azureServiceBus': {
-      mailProvider = new AzureServiceBus(mailConfig);
+      mailProvider = new AzureServiceBus(config);
       break;
     }
     case 'smtpMailService': {
