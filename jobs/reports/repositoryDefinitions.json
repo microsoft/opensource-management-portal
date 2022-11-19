@@ -104,7 +104,7 @@
     "name": "oneYearOldPrivateRepositories",
     "title": "Private engineering on GitHub (long-term)",
     "ignoredDescription": "These repositories remain private, were created more than a year ago, and have not shipped as public open source. These repos should be deleted, moved to a private engineering system such as VSTS, or develop a plan to move to another engineering system.",
-    "ignoredActionText": "Microsoft GitHub is only intended for work in the process of being open sourced and in the support of open source projects. Consider building a plan to resource the relocation of these repositories to an approved, compliant corporate engineering system (1ES/OneBranch/VSTS) so that the project will meet security needs such as being located within a Microsoft data center.",
+    "ignoredActionText": "NIH GitHub is only intended for work in the process of being open sourced and in the support of open source projects. Consider building a plan to resource the relocation of these repositories to an approved, compliant corporate engineering system (1ES/OneBranch/VSTS) so that the project will meet security needs such as being located within a Microsoft data center.",
     "category": "weeklySummary",
     "hasTable": true,
     "hasList": false,
