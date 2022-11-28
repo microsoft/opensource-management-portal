@@ -246,7 +246,7 @@ export async function renameRepositoryDefaultBranchEndToEnd(providers: IProvider
   };
 }
 
-// Disabling this function as it is dangerous: uses GHEC enterprise admin PAT and makes repo public outside of Org owner involvement
+// Disabling this function as it is high risk: uses GHEC enterprise admin PAT and makes repo public outside of Org owner involvement
 // router.post('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: ILocalRequest, res, next) {
 //   const repoPermissions = req.repoPermissions;
 //   if (!repoPermissions.allowAdministration) {
