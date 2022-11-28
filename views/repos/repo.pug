@@ -229,17 +229,18 @@ block content
               target='_blank'
             ) Webhooks
 
-            if repoPermissions.allowAdministration && repo.private === true
-              ul.list-unstyled.list-vspace
-                li
-                  form(method='post')
-                    input.btn.btn-sm(
-                      type='submit',
-                      name='make-repo-public'
-                      class='btn-danger',
-                      value='Make repo public',
-                      onclick='return confirm(\'Are you sure that you want to make this repo public?\');'
-                      title='Click to toggle this repo from private to public')
+          //- Disabling this function as it is high risk: uses GHEC enterprise admin PAT and makes repo public outside of Org owner involvement
+            //- if repoPermissions.allowAdministration && repo.private === true
+            //-   ul.list-unstyled.list-vspace
+            //-     li
+            //-       form(method='post')
+            //-         input.btn.btn-sm(
+            //-           type='submit',
+            //-           name='make-repo-public'
+            //-           class='btn-danger',
+            //-           value='Make repo public',
+            //-           onclick='return confirm(\'Are you sure that you want to make this repo public?\');'
+            //-           title='Click to toggle this repo from private to public')
 
     if repositoryMetadataEntity && repositoryMetadataEntity.repositoryName && repositoryMetadataEntity.organizationName
       #corporateMetadata
