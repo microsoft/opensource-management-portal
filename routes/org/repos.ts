@@ -246,22 +246,23 @@ export async function renameRepositoryDefaultBranchEndToEnd(providers: IProvider
   };
 }
 
-router.post('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: ILocalRequest, res, next) {
-  const repoPermissions = req.repoPermissions;
-  if (!repoPermissions.allowAdministration) {
-    return next(new Error('You do not have administrative permission on this repository'));
-  }
-  // only supporting the 'take public' operation now
-  const takePublic = req.body['make-repo-public'];
-  if (!takePublic) {
-    return next(new Error('Unsupported operation'));
-  }
-  const repository = req.repository as Repository;
-  await repository.editPublicPrivate({ private: false });
-  req.individualContext.webContext.saveUserAlert(`${repository.full_name} is now public.`, 'Repository publish', UserAlertType.Success);
-  await repository.getDetails(NoCacheNoBackground);
-  return res.redirect(`/${repository.organization.name}/repos/${repository.name}?published`);
-}));
+// Disabling this function as it is dangerous: uses GHEC enterprise admin PAT and makes repo public outside of Org owner involvement
+// router.post('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: ILocalRequest, res, next) {
+//   const repoPermissions = req.repoPermissions;
+//   if (!repoPermissions.allowAdministration) {
+//     return next(new Error('You do not have administrative permission on this repository'));
+//   }
+//   // only supporting the 'take public' operation now
+//   const takePublic = req.body['make-repo-public'];
+//   if (!takePublic) {
+//     return next(new Error('Unsupported operation'));
+//   }
+//   const repository = req.repository as Repository;
+//   await repository.editPublicPrivate({ private: false });
+//   req.individualContext.webContext.saveUserAlert(`${repository.full_name} is now public.`, 'Repository publish', UserAlertType.Success);
+//   await repository.getDetails(NoCacheNoBackground);
+//   return res.redirect(`/${repository.organization.name}/repos/${repository.name}?published`);
+// }));
 
 router.get('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: ILocalRequest, res, next) {
   const { linkProvider, config, graphProvider } = getProviders(req);
