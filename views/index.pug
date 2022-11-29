@@ -57,14 +57,14 @@ block content
                         h3 2-factor auth
                         p PROTECTED
 
-      if onboarding !== true && overview && overview.organizations && overview.organizations.member && overview.organizations.member.length
+      if onboarding !== true && overview && overview.organizations && (overview.organizations.in && overview.organizations.in.length)
         h1
           a.a-unstyled(name='orgs') Your #{config.brand.companyName} GitHub organization memberships
       else
         h4 You've successfully linked your #{config.brand.companyName} and GitHub accounts.
 
       - var currentPriority = ''
-      - var oom = overview && overview.organizations ? overview.organizations.member : []
+      - var oom = overview && overview.organizations ? overview.organizations.in : []
       each o in oom
           div.link-box
             a(href=o.name + onboardingPostfixUrl)
