@@ -24,7 +24,7 @@ export interface IAggregateUserOrganizations extends IKnownAggregateUserOrganiza
 export interface IKnownAggregateUserOrganizations {
   member: Organization[];
   admin: Organization[];
-  // in: TODO
+  in: Organization[];
   // pending: TODO
 }
 
@@ -127,9 +127,10 @@ export class UserContext {
     }
     known.admin = known.admin.sort(insensitiveSortOrganizations);
     known.member = known.member.sort(insensitiveSortOrganizations);
+    known.in = Array.prototype.concat(known.admin, known.member);
     // Available organizations
     const all = new Set(this._operations.organizations.values());
-    for (const o of known.member) {
+    for (const o of known.in) {
       all.delete(o);
     }
     known.available = Array.from(all).sort(insensitiveSortOrganizations);
@@ -164,7 +165,7 @@ export class UserContext {
       SettleToStateValue(this.aggregateLegacyRepositories()),
     ]);
     const results: IAggregateUserSummary = {
-      organizations: organizations.value || { member: [], admin: [], available: [] },
+      organizations: organizations.value || { member: [], admin: [], available: [], in: [] },
       teams: teams.value || { maintainer: [], member: [] },
       repos: repositories.value || { byTeam: [] },
     };
@@ -260,6 +261,7 @@ export class UserContext {
     const state: IKnownAggregateUserOrganizations = {
       admin: [],
       member: [],
+      in: [],
     };
     for (let { organization, role } of membership) {
       if (role !== OrganizationMembershipRole.Admin && role !== OrganizationMembershipRole.Member) {
@@ -340,7 +342,9 @@ export class UserContext {
     const state: IKnownAggregateUserOrganizations = {
       admin: admin.map(name => this._operations.getOrganization(name)),
       member: member.map(name => this._operations.getOrganization(name)),
+      in: []
     };
+    state.in = Array.prototype.concat(state.admin, state.member);
     return state;
   }
 }
