@@ -11,6 +11,7 @@ foreach ($org in $output.data.enterprise.organizations.nodes) {
     id          = $($org.databaseId)
     type        = @("public", "private")
     description = "$($org.description)"
+    locked      = $True
   }
 
   $orgsArry += $envObj
