@@ -148,7 +148,7 @@
     "@types/express-session": "1.17.5",
     "@types/jest": "29.2.1",
     "@types/js-yaml": "4.0.5",
-    "@types/lodash": "4.14.187",
+    "@types/lodash": "4.14.191",
     "@types/luxon": "3.0.3",
     "@types/memory-cache": "0.2.2",
     "@types/morgan": "1.9.3",
