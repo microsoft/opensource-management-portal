@@ -17,6 +17,7 @@ import {
   PostgresConfiguration,
 } from '../../lib/entityMetadataProvider/postgres';
 import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { TableSettings } from '../../lib/entityMetadataProvider/table';
 
 export interface IBasicGitHubAppInstallation {
   appId: number;
@@ -354,6 +355,36 @@ EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMappin
   organizationId,
 ]);
 
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultTableName, 'orgs');
+EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKey, 'orgs');
+EntityMetadataMappings.Register(
+  type,
+  TableSettings.TableMapping,
+  new Map<string, string>([
+    [Field.setupByCorporateDisplayName, (Field.setupByCorporateDisplayName as string).toLowerCase()],
+    [Field.setupByCorporateId, (Field.setupByCorporateId as string).toLowerCase()],
+    [Field.setupByCorporateUsername, (Field.setupByCorporateUsername as string).toLowerCase()],
+    [Field.setupDate, (Field.setupDate as string).toLowerCase()],
+    [Field.active, (Field.active as string).toLowerCase()],
+    [Field.updated, (Field.updated as string).toLowerCase()],
+    [Field.organizationName, (Field.organizationName as string).toLowerCase()],
+    [Field.portalDescription, (Field.portalDescription as string).toLowerCase()],
+    [Field.operationsNotes, (Field.operationsNotes as string).toLowerCase()],
+    [Field.setupByCorporateDisplayName, (Field.setupByCorporateDisplayName as string).toLowerCase()],
+    [Field.installations, (Field.installations as string).toLowerCase()],
+    [Field.features, (Field.features as string).toLowerCase()],
+    [Field.properties, (Field.properties as string).toLowerCase()],
+    [Field.specialTeams, (Field.specialTeams as string).toLowerCase()],
+    [Field.templates, (Field.templates as string).toLowerCase()],
+    [Field.legalEntities, (Field.legalEntities as string).toLowerCase()],
+  ])
+);
+EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [
+  Field.setupDate,
+  Field.updated,
+]);
+EntityMetadataMappings.RuntimeValidateMappings(type, TableSettings.TableMapping, fieldNames, []);
+
 PostgresConfiguration.SetDefaultTableName(type, 'organizationsettings');
 EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'organizationsetting');
 EntityMetadataMappings.Register(type, PostgresSettings.PostgresDateColumns, ['updated', 'setupDate']);
@@ -409,6 +440,21 @@ EntityMetadataMappings.Register(
 EntityMetadataMappings.Register(
   type,
   MemorySettings.MemoryQueries,
+  (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
+    switch (query.fixedQueryType) {
+      case FixedQueryType.OrganizationSettingsGetAll:
+        return allInTypeBin;
+      default:
+        throw new Error(
+          `The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}`
+        );
+    }
+  }
+);
+
+EntityMetadataMappings.Register(
+  type,
+  TableSettings.TableQueries,
   (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
     switch (query.fixedQueryType) {
       case FixedQueryType.OrganizationSettingsGetAll:

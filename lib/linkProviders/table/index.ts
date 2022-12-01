@@ -15,10 +15,12 @@ export default function createTableProvider(providers: IProviders, config) {
   const keyEncryptionKeyResolver = providers.keyEncryptionKeyResolver;
 
   const modernTableOptions = Object.assign({}, tableOptions);
-  modernTableOptions.encryption = {
-    encryptionKeyId: tableOptions.encryptionKeyId,
-    keyEncryptionKeyResolver,
-  };
+  modernTableOptions.encryption = tableOptions.encryptionKeyId
+    ? {
+        encryptionKeyId: tableOptions.encryptionKeyId,
+        keyEncryptionKeyResolver,
+      }
+    : null;
 
   const originalTablePrefix = config.github.links.table.prefix || '';
   const originalTablePartitionKey = originalTablePrefix + 'pk';
