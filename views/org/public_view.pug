@@ -1,0 +1,143 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../layout
+
+block js_doc_ready
+  | if (typeof initializeManageFilter == 'function') { initializeManageFilter(); }
+  | if (typeof initializeMembershipFilter == 'function') { initializeMembershipFilter(); }
+
+block content
+  - var fileSize = viewServices.fileSize
+  - var moment = viewServices.moment
+  - var octicon = viewServices.octicon
+
+  div.container
+  - var orgAccount = accountInfo.orgUser
+  - var orgUser = accountInfo.orgUser.organizationProfile
+  - var organizationAdmins = accountInfo.organizationAdmins
+
+    div.container
+      h1(style='margin-bottom:18px')
+        span.capitalize= organization.name + ' '
+        small Organization
+      div.row
+        div.col-md-3.col-lg-3
+          p(style='margin-bottom:18px')
+            img.img-thumbnail.img-responsive(src=orgAccount.avatar(400), alt=`${organization.name} logo`)
+          p(style='margin-top:18px')
+            a.btn.btn-sm.btn-muted(href='https://github.com/' + organization.name, target='_new')
+              | Open on GitHub
+        div.col-md-8.col-lg-8.col-md-offset-1.col-lg-offset-1
+          div.row
+            div.col-md-6.col-lg-6
+              if orgUser.company
+                h6 Company
+                p= orgUser.company
+              if orgUser.location
+                h6 Location
+                p= orgUser.location
+              if orgUser.email
+                h6 E-mail
+                p= orgUser.email
+              if orgUser.blog
+                h6 On the Web
+                p
+                  a(href=orgUser.blog, target='_new')= orgUser.blog
+              if orgAccount && orgAccount.getEntity() && orgAccount.getEntity().created_at
+                - var createdAt = new Date(orgAccount.getEntity().created_at)
+                h6 Created
+                p
+                  time(datetime=createdAt.toISOString())= createdAt.toDateString()
+              if orgAccount && orgAccount.getEntity() && orgAccount.getEntity().updated_at
+                - var updatedAt = new Date(orgAccount.getEntity().updated_at)
+                h6 Updated
+                p
+                  time(datetime=updatedAt.toISOString())= updatedAt.toDateString()
+              hr
+              if organization.configuredOrganizationRepositoryTypes
+                h6 Supported Repository Types
+                ul.list-unstyled
+                  li Public
+                  if organization.configuredOrganizationRepositoryTypes == 'publicprivate' || organization.configuredOrganizationRepositoryTypes == 'private'
+                    li Private
+              if organizationEntity
+                hr
+                if organizationEntity.disk_usage
+                  h6 STORAGE USED
+                  ul.list-unstyled: li
+                    != octicon('database', 13)
+                    = ' ' + fileSize(organizationEntity.disk_usage * 1024)
+
+                if organizationEntity.default_repository_permission
+                  h6 DEFAULT REPOSITORY PERMISSION
+                  ul.list-unstyled: li
+                    if organizationEntity.default_repository_permission == 'none'
+                      | Private repos are only visible to members with read permission
+                    else
+                      = organizationEntity.default_repository_permission
+
+                if organizationEntity.members_can_create_repositories !== undefined
+                  h6 REPOSITORY CREATE PERMISSIONS
+                  if organizationEntity.members_can_create_repositories
+                    ul.list-unstyled: li Members can create repositories directly on GitHub.com.
+                  else
+                    ul.list-unstyled: li Members cannot directly create repositories on GitHub.com.
+
+                if organizationEntity.two_factor_requirement_enabled !== undefined
+                  h6 TWO-FACTOR REQUIREMENTS
+                  if organizationEntity.two_factor_requirement_enabled
+                    ul.list-unstyled: li Two-factor authentication required
+                  else
+                    ul.list-unstyled: li.text-danger Not required
+
+            div.col-md-6.col-lg-h6
+              h6 Repositories
+              if orgUser.public_repos
+                h2
+                  = orgUser.public_repos + ' '
+                  small Public
+              if orgUser.total_private_repos
+                h4
+                  = orgUser.total_private_repos + ' '
+                  small Private
+
+              hr
+              - var isEnterpriseCloud = orgUser && orgUser.plan && orgUser.plan.name == 'enterprise'
+              if isEnterpriseCloud
+                h6 &infin; Repositories
+              else
+                h6 Remaining Repositories
+              if orgUser.plan && orgUser.plan.private_repos
+                h4.capitalize
+                  = orgUser.plan.name + ' '
+                  small Plan
+                if !isEnterpriseCloud
+                  h6
+                    = (orgUser.plan.private_repos - orgUser.total_private_repos) + ' '
+                    small Private
+              if !isEnterpriseCloud
+                h4
+                  | &infin;&nbsp;
+                  small Public
+              if organization.locked
+                hr
+                p(class='text-danger') 
+                  span(style='margin-right: 5px')
+                    != octicon('alert', 17) 
+                  = 'Invitation Required'
+                p Access to this organization requires an invitation from one of the following administrators.
+                h6 Admins
+                ul.list-unstyled
+                  - var admins = organizationAdmins
+                  - var adminCount = admins.length
+                  - for (var i = 0; i < adminCount; i++)
+                    li
+                      span(style='margin-right: 5px')
+                        != octicon('mark-github', 17)
+                      if admins[i].corporateMailAddress 
+                        a(href='mailto://' + admins[i].corporateMailAddress)= admins[i].login
+                      else
+                        a(href='https://github.com/' + admins[i].login, target='_new')= admins[i].login
