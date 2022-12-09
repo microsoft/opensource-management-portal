@@ -25,54 +25,90 @@ without needing redeployment.
 Alternatively, a static JSON file can be provided to store configuration details and other information
 about your GitHub orgs that the app will manage.
 
-### Static orgs
+> **Warning**:
+> Application behavior and configuration schemas between dynamic and static settings are not identical. The dynamic settings system is the preferred method of configuration.
 
-The opensource-portal only shows GitHub-organizations which are configured in a specific file. The path for this file is handed over with the environment-variable `GITHUB_ORGANIZATIONS_FILE`, which specifies the relative path of this file from the `data`-folder as root directory. This JSON-file has to be created, here is an example of the organizations-file:
+### Dynamic Settings
+
+The opensource-portal can be configured to read organization configurations from a database which allows the application to retrieve the latest configuration without requiring a redeployment.
+
+> **Note**:
+> The application uses the `updated` field to determine if a configuration has changed. If the `updated` field is not present, the application will assume the configuration has not changed.
+
+#### Example dynamic settings configuration
 
 ```json
-[
-  {
-    "name": "ContosoDev",
-    "id": 20195765,
-    "type": "public",
-    "ownerToken": "keyvault://portalppe.vault.azure.net/secrets/dev-github-org-contosodev-repos-token",
-    "description": "Contoso Public Development - Cloud",
-    "teamAllMembers": "2063735",
-    "teamPortalSudoers": "2063734",
-    "preventLargeTeamPermissions": true,
-    "teamAllReposRead": "2280089",
-    "teamAllReposWrite": "2148455",
-    "templates": ["mit", "microsoft.docs", "dnfmit", "dnfmit.docs", "other"]
-  },
-  {
-    "name": "contoso-d",
-    "id": 9669768,
-    "type": "public",
-    "ownerToken": "keyvault://portalppe.vault.azure.net/secrets/local-github-org-contosodev-repos-token",
-    "description": "Classic contoso-d",
-    "teamAllMembers": "1944235",
-    "preventLargeTeamPermissions": true,
-    "teamAllReposRead": "2275189",
-    "teamAllReposWrite": "2275190",
-    "teamAllReposAdmin": "2279870",
-    "templates": ["mit", "dnfmit"]
-  }
-]
+{
+  "organizationid": 20195765,
+  "organizationname": "ContosoDev",
+  "active": true,
+  "features": ["locked", "createReposDirect"],
+  "portaldescription": "This is a sample org",
+  "specialteams": [],
+  "legalentities": [],
+  "setupdate": "2019-01-01T00:00:00.000Z",
+  "setupbycorporateusername": "john.doe",
+  "setupbycorporatedisplayname": "John Doe",
+  "setupbycorporateid": "aa6d1298-1a6c-4646-a51b-2f74659f42fb",
+  "type": ["public", "private"],
+  "updated": "2019-01-01T00:00:00.000Z"
+}
 ```
+
+#### Dynamic settings schema
 
 Here is a short overview about the meanings of the different parameters:
 
-- name (mandatory): GitHub organization name
-- id (mandatory ([soon](https://github.com/microsoft/opensource-portal/issues/92))): organization id
-- ownerToken (mandatory): personal access token of an organization owner
-- type: supported repo types
-- description: description text which is shown for the organization
-- teamAllMembers: every member of this team is org-member (team-ID required)
-- teamAllReposRead: every member of this team has read access to all repos (team-ID required)
-- teamAllReposWrite: every member of this team has write access to all repos (team-ID required)
-- teamAllReposAdmin: every member of this team has admin access to all repos (team-ID required)
-- templates: GitHub repository templates
-- locked: joining this organization via the opensource-portal is disabled
+- **active** (boolean) - Used to flag inactive or unadopted organization
+- **features** (string[]) - Features enabled for the organization.
+- **legalentities** (string[]) - Legal entities associated with the organization
+- **operationsnotes** (string) - Notes about the organization for operations purposes
+- **organizationid** (integer, required) - GitHub ID of the organization
+- **organizationname** (string, required) - GitHub organization name
+- **portaldescription** (string) - User-facing description of the organization
+- **properties** (string[]) - Legal entities associated with the organization
+- **templates** (string[]) - Names of template repositories
+- **type** (string|string[]) - supported GitHub repository visibility type(s) (eg: public, private)
+- **setupbycorporateusername** (string) - Username (from the corporate identity system) of the user who set up the organization
+- **setupbycorporateid** (string) - Unique identifier (from the corporate identity system) for the user who set up the organization
+- **setupbycorporatedisplayname** (string) - Display name (from the corporate identity system) for the user who set up the organization
+- **specialteams** (object{specialTeam: string, teamId: integer}) - Special team configuration for the organization supported values for `specialTeam` types are: `everyone, sudo, globalSudo, systemWrite, systemRead, systemAdmin`. The `teamId` is the GitHub team ID for the special team.
+
+### Static settings
+
+The opensource-portal can also be configured to read organization configurations from a static file. When using this method, specify the path for the configuration file using the environment variable `GITHUB_ORGANIZATIONS_FILE`. When present, the application reads this as variable as relative path to the `data` folder in the root directory. Static settings files are expected to be in JSON format using this schema:
+
+#### Static settings schema
+
+- **name** (string, required) - GitHub organization name
+- **id** (integer, required) - GitHub ID of the organization
+- **locked** (boolean) - Disables joining this organization from the portal
+- **ownerToken** (string) - personal access token of an organization owner
+- **type** (string|string[]) - supported GitHub repository visibility type(s) (eg: public, private)
+- **description** (string) - description text which is displayed in the portal for the organization
+- **teamAllMembers** (string) - GitHub team ID of a team which includes all members of the organization
+- **teamAllReposRead** (string) - GitHub team ID in which each member receives read access to all repos
+- **teamAllReposWrite** (string) - GitHub team ID in which each member receives write access to all repos
+- **teamAllReposAdmin** (string) - GitHub team ID in which each member receives admin access to all repos
+- **templates** (string[]) - Names of template repositories
+
+#### Example static settings configuration
+
+```json
+{
+  "name": "ContosoDev",
+  "id": 20195765,
+  "type": "public",
+  "ownerToken": "PERSONAL-ACCESS-TOKEN",
+  "description": "Contoso Public Development - Cloud",
+  "teamAllMembers": "2063735",
+  "teamPortalSudoers": "2063734",
+  "preventLargeTeamPermissions": true,
+  "teamAllReposRead": "2280089",
+  "teamAllReposWrite": "2148455",
+  "templates": ["mit", "other"]
+}
+```
 
 ## PostgreSQL Configuration
 
