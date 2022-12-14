@@ -10,6 +10,7 @@ import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
 import querystring from 'querystring';
+import { IAggregateUserSummary } from '../../user/aggregate';
 
 import { getProviders } from '../../transitional';
 import { IndividualContext } from '../../user';
@@ -18,20 +19,82 @@ import RequireActiveGitHubSession from '../../middleware/github/requireActiveSes
 import { jsonError } from '../../middleware/jsonError';
 import { Organization, Team } from '../../business';
 import QueryCache from '../../business/queryCache';
-import { ReposAppRequest, OrganizationMembershipState, OrganizationMembershipRole } from '../../interfaces';
+import { ReposAppRequest, OrganizationMembershipState, OrganizationMembershipRole, OrganizationMembershipRoleQuery } from '../../interfaces';
 
 router.use(function (req: ReposAppRequest, res, next) {
-  const organization = req.organization;
+  const { organization } = req;
   let err = null;
+  
   if (organization.locked) {
+    
+    const { allowUsersToViewLockedOrgDetails } = getProviders(req).config.features;
+  
+    if (allowUsersToViewLockedOrgDetails) {
+      return showOrgJoinDetails(req)
+    }
+
+    console.error(`Default functionality does not allow users to access the join page of a locked organization.  To override this set the feature flag 'FEATURE_FLAG_ALLOW_USERS_TO_VIEW_LOCKED_ORG_DETAILS=1'`)
+
     err = new Error('This organization is locked to new members.');
     err.detailed = `At this time, the maintainers of the ${organization.name} organization have decided to not enable onboarding through this portal.`;
     err.skipLog = true;
+    next(err);
   }
-  next(err);
+
+  next();
 });
 
 router.use(RequireActiveGitHubSession);
+
+async function showOrgJoinDetails(req: ReposAppRequest) {
+  // Present user with a sanitized version of the organization detail page for users attempting to join a locked
+  // organization when the ALLOW_USERS_TO_VIEW_LOCKED_ORG_DETAILS feature flag is enabled.  Attempting to keep
+  // this implementation as close to the default org get route as possible
+  const { individualContext, organization } = req;
+
+  
+  const [ linkedOrgAdmins, unlinkedOrgAdmins, orgDetails, organizationOverview ] = await Promise.all([
+    organization.getLinkedMembers({ role: OrganizationMembershipRoleQuery.Admin }),
+    organization.getUnlinkedMembers({ role: OrganizationMembershipRoleQuery.Admin }),
+    organization.getDetails(),
+    individualContext.aggregations.getAggregatedOrganizationOverview(organization)
+  ])
+
+  // clean up admin data for the front end
+  const organizationAdmins = Array.prototype.concat(linkedOrgAdmins, unlinkedOrgAdmins).reduce((acc, admin) => {
+    const {member, link} = admin;
+    
+    // linked and unlinked admins return slightly different data structures
+    const login = member ? member.login : admin.login;
+
+    // fallback to corporateUsername if corporateMailAddress is not available
+    const corporateMailAddress = link ? link.corporateMailAddress || link.corporateUsername : undefined;
+    
+    acc.push({
+      login,
+      corporateMailAddress
+    })
+
+    return acc
+  }, []);
+
+  const results = {
+    orgUser: organization.memberFromEntity(orgDetails),
+    orgDetails, //org details from GitHub
+    organizationOverview,
+    organizationAdmins,
+  };
+
+  req.individualContext.webContext.render({
+    view: 'org/public_view',
+    title: organization.name,
+    state: {
+      accountInfo: results,
+      organization,
+      organizationEntity: organization.getEntity(),
+    },
+  });
+}
 
 function clearAuditListAndRedirect(res: Response, organization: Organization, onboarding: boolean, req: any, state: OrganizationMembershipState) {
   // Behavior change, only important to those not using GitHub's 2FA enforcement feature; no longer clearing the cache
