@@ -138,6 +138,6 @@ block content
                       span(style='margin-right: 5px')
                         != octicon('mark-github', 17)
                       if admins[i].corporateMailAddress 
-                        a(href='mailto://' + admins[i].corporateMailAddress)= admins[i].login
+                        a(href='mailto:' + admins[i].corporateMailAddress)= admins[i].login
                       else
                         a(href='https://github.com/' + admins[i].login, target='_new')= admins[i].login
