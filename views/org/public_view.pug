@@ -150,5 +150,5 @@ block content
                             if admin.primaryName != admin.login
                               li: p(style='font-size: .8em')= admin.login
                             if admin.mailAddress
-                              li: a(href='mailto:' + admin.mailAddress, title='Send corporate email to ' + admin.mailAddress)
+                              li: a(href='mailto:' + admin.mailAddress, title='Send email to ' + admin.mailAddress)
                                 != octicon('mail', 16)
