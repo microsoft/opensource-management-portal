@@ -68,11 +68,14 @@ async function showOrgJoinDetails(req: ReposAppRequest) {
     const login = member ? member.login : admin.login;
 
     // fallback to corporateUsername if corporateMailAddress is not available
-    const corporateMailAddress = link ? link.corporateMailAddress || link.corporateUsername : undefined;
+    const mailAddress = link ? link.corporateMailAddress || link.corporateUsername : undefined;
+    const primaryName = link ? link.corporateDisplayName || link.corporateUsername : member.login;
     
     acc.push({
       login,
-      corporateMailAddress
+      mailAddress,
+      avatar_url: member.avatar_url,
+      primaryName
     })
 
     return acc
