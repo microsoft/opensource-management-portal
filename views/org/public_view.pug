@@ -129,7 +129,6 @@ block content
                     != octicon('alert', 17) 
                   = 'Invitation Required'
                 p Access to this organization requires an invitation from one of the following administrators.
-                h6(style='margin-bottom:.3em') Admins
                 ul.list-unstyled
                   - var admins = organizationAdmins
                   - var adminCount = admins.length
@@ -141,7 +140,7 @@ block content
                         li(style='vertical-align:top;margin-top:12px;padding-right:3px'): img(
                           alt=admin.login,
                           src=admin.avatar_url + '&s=96',
-                          style='width:36px;height:36px;border-radius:20px')
+                          style='width:36px;height:36px;')
                       li
                         ul.list-unstyled(style='margin-right:16px')
                           li: h5(style='margin-bottom:.3em')
