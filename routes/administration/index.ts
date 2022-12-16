@@ -46,4 +46,35 @@ router.get('/', (req: ReposAppRequest, res, next) => {
   });
 });
 
+router.get('/unlinked-user-report', async (req: ReposAppRequest, res, next) => {
+  try {
+    const { operations: { organizations } } = getProviders(req);
+  
+    const checks = [];
+    
+    for (let [key, value] of organizations.entries()) {
+      checks.push(value.getUnlinkedMembers().then(unlinkedMembers => {
+        return unlinkedMembers.map(unlinkedMember => {
+          return [
+            unlinkedMember.id, unlinkedMember.login, key
+          ];
+        });
+      }));
+    };
+    
+    const results = await Promise.all(checks);
+    
+    const unlinkedMembers = results.reduce((acc, entry) => {
+      acc += `${entry.join(',')}\r\n`
+      return acc
+    },'id,login,organization\r\n');
+
+    res.header('Content-Type', 'text/csv');
+    res.attachment('unlinked-user-report.csv');
+    res.send(unlinkedMembers);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
