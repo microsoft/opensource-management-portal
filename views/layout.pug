@@ -7,6 +7,9 @@ doctype html
 html(lang="en")
   include head
   body
+    if (googleAnalyticsKey)
+      noscript.
+      iframe(src="https://www.googletagmanager.com/ns.html?id=" + googleAnalyticsKey height="0" width="0" style="display:none;visibility:hidden")
     include alerts
     - var scheme = primaryAuthenticationScheme || (config ? config.authentication.scheme : null)
     if scheme === 'aad'

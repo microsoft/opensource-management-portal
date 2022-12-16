@@ -37,6 +37,13 @@ variable value to `1`.
   - Risk/notes: when exposing this endpoint, webhook signature validation should also be performed. At this time, the webhook signature verification code is incomplete.
   - Recommendation: use a more secure route, such as the queue-based firehose processing method.
 
+- allowUsersToViewLockedOrgDetails
+
+  - Variable: `FEATURE_FLAG_ALLOW_USERS_TO_VIEW_LOCKED_ORG_DETAILS`
+  - Value: set to `1` to allow users to view sanitized detail page for locked organizations (eg information about how they can join)
+  - Default: `0`
+  - Risk/notes: Be sure the review the information included on the sanitized organization detail page before enabling.
+
 ## Temporary features
 
 An optional set of features are being developed for use in summer 2020 as part
