@@ -89,7 +89,7 @@ async function showOrgJoinDetails(req: ReposAppRequest) {
   };
 
   req.individualContext.webContext.render({
-    view: 'org/public_view',
+    view: 'org/publicView',
     title: organization.name,
     state: {
       accountInfo: results,
