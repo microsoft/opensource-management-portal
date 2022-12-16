@@ -148,7 +148,8 @@ block content
                             .label.label-info(title=organization.name + ' organization owner', style='margin-left: 5px; cursor: default') Owner
                           ul.list-inline
                             if admin.primaryName != admin.login
-                              li: p(style='font-size: .8em')= admin.login
+                              li: p(style='font-size: .8em')
+                                a(href='https://github.com/' + admin.login, target='_new', style='color: black; text-decoration:none')= admin.login
                             if admin.mailAddress
                               li: a(href='mailto:' + admin.mailAddress, title='Send email to ' + admin.mailAddress)
                                 != octicon('mail', 16)
