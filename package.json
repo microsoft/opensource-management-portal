@@ -168,7 +168,7 @@
     "@types/simple-oauth2": "4.1.1",
     "@types/unzipper": "0.10.5",
     "@types/validator": "13.7.10",
-    "@typescript-eslint/eslint-plugin": "5.42.0",
+    "@typescript-eslint/eslint-plugin": "5.47.0",
     "@typescript-eslint/parser": "5.42.0",
     "cspell": "6.14.0",
     "eslint": "8.26.0",
