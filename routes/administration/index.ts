@@ -46,32 +46,41 @@ router.get('/', (req: ReposAppRequest, res, next) => {
   });
 });
 
-router.get('/unlinked-user-report', async (req: ReposAppRequest, res, next) => {
+/* 
+Returns a CSV of every org and its members, with a column indicating whether the member is linked or not
+*/
+router.get('/users-report', async (req: ReposAppRequest, res, next) => {
   try {
     const { operations: { organizations } } = getProviders(req);
-  
+
     const checks = [];
-    
-    for (let [key, value] of organizations.entries()) {
-      checks.push(value.getUnlinkedMembers().then(unlinkedMembers => {
-        return unlinkedMembers.map(unlinkedMember => {
+
+    for (let [orgName, org] of organizations.entries()) {
+
+      checks.push(org.getUnlinkedMembers().then(unlinkedMembers => unlinkedMembers.map(unlinkedMember => ([orgName, unlinkedMember.id, unlinkedMember.login, false]))));
+
+      checks.push(org.getLinkedMembers().then(linkedMembers => {
+        return linkedMembers.map(linkedMember => {
+          const {
+            member
+          } = linkedMember;
           return [
-            unlinkedMember.id, unlinkedMember.login, key
+            orgName, member.id, member.login, true
           ];
         });
       }));
     };
-    
+
     const results = await Promise.all(checks);
-    
-    const unlinkedMembers = results.reduce((acc, entry) => {
+
+    const usersReport = results.reduce((acc, entry) => {
       acc += `${entry.join(',')}\r\n`
       return acc
-    },'id,login,organization\r\n');
+    }, 'Organization,UserId,UserLogin,IsLinked\r\n');
 
     res.header('Content-Type', 'text/csv');
-    res.attachment('unlinked-user-report.csv');
-    res.send(unlinkedMembers);
+    res.attachment('users-report.csv');
+    res.send(usersReport);
   } catch (err) {
     next(err);
   }
