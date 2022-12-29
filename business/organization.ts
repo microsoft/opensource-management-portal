@@ -957,6 +957,10 @@ export class Organization {
     return pairs.filter(pair => !pair.link).map(entry => entry.member);
   }
 
+  async getUnlinkedAndLinkedMembers(options?: IGetOrganizationMembersOptions): Promise<IOrganizationMemberPair[]> {
+    return await this.getMemberPairs(options);
+  }
+
   async getTeams(options?: IPagedCacheOptions): Promise<Team[]> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
