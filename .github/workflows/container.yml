@@ -1,4 +1,4 @@
-name: Build
+name: Unused Docker Image - Build
 
 on:
   push:

@@ -1,4 +1,4 @@
-name: Linux Container Node Workflow
+name: NIH GHMP Container (Prod) - Build & Register
 
 on:
   workflow_dispatch:
