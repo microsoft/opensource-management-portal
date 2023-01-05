@@ -1,4 +1,4 @@
-name: CodeQL Analysis
+name: GitHub CodeQL Analysis
 
 on:
   push:
