@@ -1,4 +1,4 @@
-name: Test
+name: GitHub NPM Test
 
 on:
   push:
