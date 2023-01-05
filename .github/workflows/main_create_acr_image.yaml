@@ -1,4 +1,4 @@
-name: Container Image (Prod) - Build & Register
+name: NIH GHMP Container (Prod) - Build & Register
 
 on:
   workflow_dispatch:
