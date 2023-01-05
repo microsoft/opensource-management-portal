@@ -1,4 +1,4 @@
-name: Linux Container Node Workflow
+name: Container Image (Prod) - Build & Register
 
 on:
   workflow_dispatch:
