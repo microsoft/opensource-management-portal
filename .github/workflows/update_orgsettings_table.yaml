@@ -16,10 +16,10 @@ jobs:
      - name: update ruby reqs
        run: |
         gem install jwt
-        
+     # ruby jwt script has hardcoded reference to GitHub app id - unique in each branch   
      - name: run jwt generator
        run: |
-         ruby .github/scripts/jwt.rb >> token
+         ruby .github/scripts/jwt.rb >> token 
          ls -lah       
        env:
          PEM: ${{ secrets.APP_PEM}}
@@ -32,7 +32,8 @@ jobs:
           -H "Authorization: Bearer $(cat token)" \
           -H "X-GitHub-Api-Version: 2022-11-28" \
           https://api.github.com/app/installations | jq >> app_output.json
-        
+      
+     # needs a PAT that can read org and enterprise data 
      - name: run powershell script to build sql
        run: | 
           .github/scripts/Create-PSQLUpdate.ps1
@@ -56,12 +57,12 @@ jobs:
        uses: azure/postgresql@v1
        with:
         connection-string: ${{ secrets.PSQL_CONN }}
-        server-name: nih-portaldb.postgres.database.azure.com
+        server-name: REPLACE_WITH_DATABASE_NAME
         plsql-file: ./update.sql
         
      - name: Azure CLI Action
        uses: Azure/cli@v1
        with:
-        # Specify the script here
+        # Needs the azure webapp name and resource group - unique in each branch
         inlineScript: az webapp restart --name REPLACENAME --resource-group REPLACE_RESOURCE_GROUP  
         
