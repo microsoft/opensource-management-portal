@@ -12,7 +12,7 @@ payload = {
   # JWT expiration time (10 minute maximum)
   exp: Time.now.to_i + (10 * 60),
   # GitHub App's identifier
-  iss: REPLACE_WITH_APP_ID
+  iss: ENV["APP_ID"]
 }
 
 jwt = JWT.encode(payload, private_key, "RS256")
