@@ -22,7 +22,7 @@ jobs:
          ruby .github/scripts/jwt.rb >> token 
          ls -lah       
        env:
-         PEM: ${{ secrets.DEV_APP_PEM}}
+         PEM: ${{ secrets.DEV_APP_PEM }}
          APPID: ${{ secrets.DEV_APP_ID }}
           
         
@@ -57,13 +57,13 @@ jobs:
      - name: PSQL update
        uses: azure/postgresql@v1
        with:
-        connection-string: ${{ secrets.PSQL_CONN }}
-        server-name: REPLACE_WITH_DATABASE_NAME
+        connection-string: ${{ secrets.DEV_PSQL_CONN }}
+        server-name: $${{ secrets.DEV_PSQL_SERVER }}
         plsql-file: ./update.sql
         
      - name: Azure CLI Action
        uses: Azure/cli@v1
        with:
         # Needs the azure webapp name and resource group - unique in each branch
-        inlineScript: az webapp restart --name REPLACENAME --resource-group REPLACE_RESOURCE_GROUP  
+        inlineScript: az webapp restart --name ${{ secrets.DEV_AAS }} --resource-group ${{ secrets.DEV_RG }}  
         
