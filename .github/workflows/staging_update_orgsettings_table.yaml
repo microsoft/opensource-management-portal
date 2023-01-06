@@ -52,7 +52,7 @@ jobs:
      - name: Azure Login 
        uses: Azure/login@v1.4.6
        with:
-         creds: '{"clientId":"${{ secrets.CLIENT_ID }}","clientSecret":"${{ secrets.CLIENT_SECRET }}","subscriptionId":"${{ secrets.SUBSCRIPTION_ID }}","tenantId":"${{ secrets.TENANT_ID }}"}'
+         creds: '{"clientId":"${{ secrets.AAD_CLIENT_ID }}","clientSecret":"${{ secrets.AAD_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AAD_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AAD_TENANT_ID }}"}'
          
      - name: PSQL update
        uses: azure/postgresql@v1
