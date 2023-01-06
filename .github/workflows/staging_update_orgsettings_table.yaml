@@ -22,7 +22,8 @@ jobs:
          ruby .github/scripts/jwt.rb >> token 
          ls -lah       
        env:
-         PEM: ${{ secrets.APP_PEM}}
+         PEM: ${{ secrets.DEV_APP_PEM}}
+         APPID: ${{ secrets.DEV_APP_ID }}
           
         
      - name: run gh cli to get app install info
