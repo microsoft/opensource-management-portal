@@ -1,0 +1,67 @@
+name: NIH GHMP (Dev) - Update Database Org Settings
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+     - uses: actions/checkout@v2
+     - uses: ruby/setup-ruby@v1.127.0
+       with:
+        ruby-version: '3.0' # Not needed with a .ruby-version file
+     
+     - name: update ruby reqs
+       run: |
+        gem install jwt
+        
+     - name: run jwt generator
+       run: |
+         ruby .github/scripts/jwt.rb >> token
+         ls -lah       
+       env:
+         PEM: ${{ secrets.APP_PEM}}
+          
+        
+     - name: run gh cli to get app install info
+       run: |
+          curl \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer $(cat token)" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/app/installations | jq >> app_output.json
+        
+     - name: run powershell script to build sql
+       run: | 
+          .github/scripts/Create-PSQLUpdate.ps1
+       shell: pwsh
+          
+       env:
+        PAT: ${{ secrets.ENT_READ_PAT }}
+        
+     - name: output sql
+       run: |
+        ls -lah
+        cat ./app_output.json
+        cat ./update.sql
+        
+     - name: Azure Login 
+       uses: Azure/login@v1.4.6
+       with:
+         creds: '{"clientId":"${{ secrets.CLIENT_ID }}","clientSecret":"${{ secrets.CLIENT_SECRET }}","subscriptionId":"${{ secrets.SUBSCRIPTION_ID }}","tenantId":"${{ secrets.TENANT_ID }}"}'
+         
+     - name: PSQL update
+       uses: azure/postgresql@v1
+       with:
+        connection-string: ${{ secrets.PSQL_CONN }}
+        server-name: nih-portaldb.postgres.database.azure.com
+        plsql-file: ./update.sql
+        
+     - name: Azure CLI Action
+       uses: Azure/cli@v1
+       with:
+        # Specify the script here
+        inlineScript: az webapp restart --name REPLACENAME --resource-group REPLACE_RESOURCE_GROUP  
+        
