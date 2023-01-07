@@ -51,7 +51,7 @@ COPY --from=build /build/data ./data
 COPY --from=build /build/dist ./
 
 # The open source project build needs: default assets should be placed
-COPY --from=build /build/default-assets-package ../default-assets-package
+COPY --from=build /build/default-assets-package ./default-assets-package
 
 COPY --from=build /build/config ./config
 COPY --from=build /build/views ./views
