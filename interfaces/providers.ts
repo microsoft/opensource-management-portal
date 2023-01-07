@@ -8,7 +8,12 @@ import { AuthorizationCode } from 'simple-oauth2';
 import redis from 'redis';
 import { Pool as PostgresPool } from 'pg';
 
-import { IApplicationProfile, ICorporationAdministrationSection, IReposApplication } from '.';
+import {
+  IApplicationProfile,
+  ICorporationAdministrationSection,
+  IReposApplication,
+  SiteConfiguration,
+} from '.';
 import { Operations } from '../business';
 import QueryCache from '../business/queryCache';
 import { IAuditLogRecordProvider } from '../entities/auditLogRecord/auditLogRecordProvider';
@@ -17,7 +22,6 @@ import { IOrganizationMemberCacheProvider } from '../entities/organizationMember
 import { IOrganizationSettingProvider } from '../entities/organizationSettings/organizationSettingProvider';
 import { IRepositoryCacheProvider } from '../entities/repositoryCache/repositoryCacheProvider';
 import { IRepositoryCollaboratorCacheProvider } from '../entities/repositoryCollaboratorCache/repositoryCollaboratorCacheProvider';
-import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repositoryMetadataProvider';
 import { IRepositoryTeamCacheProvider } from '../entities/repositoryTeamCache/repositoryTeamCacheProvider';
 import { ITeamCacheProvider } from '../entities/teamCache/teamCacheProvider';
 import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';
@@ -39,6 +43,8 @@ import { IEntityMetadataProvider } from '../lib/entityMetadataProvider';
 import { IRepositoryProvider } from '../entities/repository';
 import { IKeyVaultSecretResolver } from '../lib/keyVaultResolver';
 
+type ProviderGenerator = (value: string) => IEntityMetadataProvider;
+
 export interface IProviders {
   app: IReposApplication;
   applicationProfile: IApplicationProfile;
@@ -51,13 +57,14 @@ export interface IProviders {
   campaignStateProvider?: ICampaignHelper;
   campaign?: any; // campaign redirection route, poor variable name
   corporateContactProvider?: ICorporateContactProvider;
-  config?: any;
+  config?: SiteConfiguration;
   customizedNewRepositoryLogic?: ICustomizedNewRepositoryLogic;
   customizedTeamPermissionsWebhookLogic?: ICustomizedTeamPermissionsWebhookLogic;
   defaultEntityMetadataProvider?: IEntityMetadataProvider;
   diagnosticsDrop?: BlobCache;
   healthCheck?: any;
   keyEncryptionKeyResolver?: IKeyVaultSecretResolver;
+  getEntityProviderByType?: ProviderGenerator;
   github?: RestLibrary;
   graphProvider?: IGraphProvider;
   insights?: TelemetryClient;

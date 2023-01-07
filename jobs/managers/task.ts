@@ -15,10 +15,15 @@ import { IMicrosoftIdentityServiceBasics } from '../../lib/corporateContactProvi
 import { RedisPrefixManagerInfoCache } from '../../business';
 
 export default async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
+  const { config } = providers;
+  if (config?.jobs?.refreshWrites !== true) {
+    console.log('job is currently disabled to avoid metadata refresh/rewrites');
+    return;
+  }
+
   const graphProvider = providers.graphProvider;
   const cacheHelper = providers.cacheProvider;
   const insights = providers.insights;
-  const config = providers.config;
   const linkProvider = await createAndInitializeLinkProviderInstance(providers, config);
 
   console.log('reading all links to gather manager info ahead of any terminations');
@@ -31,7 +36,7 @@ export default async function refresh({ providers }: IReposJob): Promise<IReposJ
 
   let errors = 0;
   let notFoundErrors = 0;
-  let errorList = [];
+  const errorList = [];
 
   let managerUpdates = 0;
   let managerSets = 0;
@@ -48,7 +53,7 @@ export default async function refresh({ providers }: IReposJob): Promise<IReposJ
   const bulkContacts = new Map<string, IMicrosoftIdentityServiceBasics | boolean>();
 
   const throttle = throat(userDetailsThroatCount);
-  let unknownServiceAccounts: ICorporateLink[] = [];
+  const unknownServiceAccounts: ICorporateLink[] = [];
   const formerAccounts: ICorporateLink[] = [];
   await Promise.all(
     allLinks.map((link: ICorporateLink) =>

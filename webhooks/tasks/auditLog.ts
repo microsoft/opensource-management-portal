@@ -114,7 +114,7 @@ async function runAsync(operations: Operations, organization: Organization, data
 
 export default class AuditLogRecorderWebhookProcessor implements WebhookProcessor {
   filter(data: any) {
-    let eventType = data.properties.event;
+    const eventType = data.properties.event;
     const has = eventTypes.has(eventType);
     if (!has && !knownEventTypesToIgnore.has(eventType)) {
       console.log(`audit log does not support event type: ${eventType}`);

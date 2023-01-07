@@ -218,7 +218,9 @@ export abstract class IntelligentEngine {
 
   protected async tryGetCachedResult(apiContext: ApiContext): Promise<IRestResponse> {
     const key = this.redisKeyBodyVersion(apiContext);
-    let response = (await apiContext.libraryContext.cacheProvider.getObjectCompressed(key)) as IRestResponse;
+    const response = (await apiContext.libraryContext.cacheProvider.getObjectCompressed(
+      key
+    )) as IRestResponse;
     this.recordRedisCost(apiContext, 'get', response);
     return response;
   }
@@ -228,7 +230,7 @@ export abstract class IntelligentEngine {
     optionalCacheDecisions?,
     notModifiedHeaders?: IInterestingHeaders
   ): Promise<IRestResponse> {
-    let result = await this.tryGetCachedResult(apiContext);
+    const result = await this.tryGetCachedResult(apiContext);
     if (result && result.data) {
       // use the context metadata over any headers in the stored response, + any headers from 304
       result.headers = Object.assign({}, notModifiedHeaders || {}, apiContext.metadata);
@@ -269,8 +271,8 @@ export abstract class IntelligentEngine {
   protected async backgroundRefreshAsync(apiContext: ApiContext, currentMetadata): Promise<void> {
     // Potential data loss/consistency problem: upsert/overwrite
     try {
-      let refreshing = moment().utc().format();
-      let refreshId = randomUUID();
+      const refreshing = moment().utc().format();
+      const refreshId = randomUUID();
       currentMetadata.refreshing = refreshing;
       currentMetadata.refreshId = refreshId;
       apiContext.generatedRefreshId = refreshId;
@@ -383,7 +385,7 @@ export abstract class IntelligentEngine {
     if (!type) {
       throw new Error('No type defined for recordRedisCost.');
     }
-    let hit = object !== undefined;
+    const hit = object !== undefined;
     if (type === 'get') {
       apiContext.cost.redis.cacheHit += hit ? 1 : 0;
       apiContext.cost.redis.cacheMisses += hit ? 0 : 1;
@@ -500,12 +502,12 @@ function normalizedOptionsString(options) {
   if (options.additionalDifferentiationParameters) {
     additional = options.additionalDifferentiationParameters;
   }
-  let opts = { ...options, ...additional };
+  const opts = { ...options, ...additional };
   if (opts.additionalDifferentiationParameters) {
     delete opts.additionalDifferentiationParameters;
   }
   const sortedkeys = _.keys(opts).sort();
-  let normalized = [];
+  const normalized = [];
   sortedkeys.forEach((key) => {
     let value = opts[key];
     const typeOf = typeof value;

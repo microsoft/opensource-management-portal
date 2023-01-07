@@ -296,7 +296,7 @@ export class TableLinkProvider implements ILinkProvider {
     try {
       const initialEntity = {};
       initialEntity[linkInterfacePropertyMapping.linkId] = generatedLinkId;
-      for (let linkPropertyName of CorporatePropertyNames) {
+      for (const linkPropertyName of CorporatePropertyNames) {
         // linkInterfacePropertyMapping
         const tableColumnName = linkInterfacePropertyMapping[linkPropertyName];
         if (!tableColumnName) {

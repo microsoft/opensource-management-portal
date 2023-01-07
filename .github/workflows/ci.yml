@@ -28,6 +28,11 @@ jobs:
       - name: Run ESLint
         run: npm run lint:js
 
+      - name: Run cSpell
+        run: |
+          echo "::add-matcher::.github/workflows/cspell-problem-matcher.json"
+          npm run lint:spell
+
       - name: Run tests
         run: npm test
 

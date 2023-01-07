@@ -121,7 +121,7 @@ router.get(
         teamsMaintained.map((team) => team.id.toString())
       );
     }
-    let organizationEntity = results && results.orgUser ? results.orgUser.getEntity() : null;
+    const organizationEntity = results && results.orgUser ? results.orgUser.getEntity() : null;
     req.individualContext.webContext.render({
       view: 'org/index',
       title: organization.name,

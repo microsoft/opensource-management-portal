@@ -14,7 +14,7 @@ import graphBuilder from './graphBuilder';
 async function composeGraphs(api: ILibraryOptions) {
   api = api || {};
   const options = api.options || {};
-  let applicationRoot = (options.applicationRoot || appRoot).toString();
+  const applicationRoot = (options.applicationRoot || appRoot).toString();
 
   const paths: string[] = [];
 
@@ -24,9 +24,9 @@ async function composeGraphs(api: ILibraryOptions) {
 
   // Configuration packages defined explicitly in app's package.json
   // ---------------------------------------------------------------
-  let pkg = getPackage(applicationRoot);
+  const pkg = getPackage(applicationRoot);
   if (pkg && pkg.painlessConfigObjectPackages) {
-    let pco = Array.isArray(pkg.painlessConfigObjectPackages)
+    const pco = Array.isArray(pkg.painlessConfigObjectPackages)
       ? pkg.painlessConfigObjectPackages
       : pkg.painlessConfigObjectPackages.split(',');
     addConfigPackages(paths, applicationRoot, pco);
@@ -41,7 +41,7 @@ async function composeGraphs(api: ILibraryOptions) {
     );
   }
   const additionalPackagesKey = environment?.get('CONFIGURATION_PACKAGES_KEY') || 'CONFIGURATION_PACKAGES';
-  let configurationPackages = environment?.get(additionalPackagesKey) as string;
+  const configurationPackages = environment?.get(additionalPackagesKey) as string;
   if (configurationPackages) {
     const packages = configurationPackages.split(',');
     addConfigPackages(paths, applicationRoot, packages);

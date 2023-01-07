@@ -243,7 +243,7 @@ export async function createRepositoryFromClient(req: ILocalApiRequest, res, nex
     body['ms.onBehalfOf'] = req.apiContext.getGitHubIdentity().username;
   }
   // these fields do not need translation: name, description, private
-  let isApproved = customizedNewRepositoryLogic
+  const isApproved = customizedNewRepositoryLogic
     ? customizedNewRepositoryLogic.skipApproval(customContext, body)
     : false;
   const approvalTypesToIds = config.github.approvalTypes.fields.approvalTypesToIds;
@@ -385,10 +385,10 @@ export async function createRepositoryFromClient(req: ILocalApiRequest, res, nex
 }
 
 function translateTeams(body) {
-  let admin = body.selectedAdminTeams;
-  let write = body.selectedWriteTeams;
-  let read = body.selectedReadTeams;
-  let maintain = body.selectedMaintainTeams;
+  const admin = body.selectedAdminTeams;
+  const write = body.selectedWriteTeams;
+  const read = body.selectedReadTeams;
+  const maintain = body.selectedMaintainTeams;
 
   // Remove teams with higher privileges already
   _.pullAll(maintain, admin);

@@ -185,7 +185,7 @@ router.post(
     const deactivate = req.body['deactivate'];
     const removeConfiguration = req.body['remove-configuration'];
     const addConfiguration = req.body['configure'];
-    let isCreatingNew = hasImportButtonClicked || hasCreateButtonClicked;
+    const isCreatingNew = hasImportButtonClicked || hasCreateButtonClicked;
     if (
       !hasImportButtonClicked &&
       !hasElevationButtonClicked &&

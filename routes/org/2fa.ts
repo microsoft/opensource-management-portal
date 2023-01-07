@@ -26,7 +26,7 @@ router.get(
       if (state === false && (req.body.validate || onboarding || joining)) {
         let url = organization.baseUrl;
         if (onboarding || joining) {
-          let urlSegment =
+          const urlSegment =
             '?' + (onboarding ? 'onboarding' : 'joining') + '=' + (onboarding ? onboarding : joining);
           url = organization.baseUrl + (onboarding ? 'profile-review' : 'teams') + urlSegment;
         }

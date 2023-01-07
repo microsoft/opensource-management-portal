@@ -3,7 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import _ from 'lodash';
 import moment from 'moment';
 import semver from 'semver';
 
@@ -174,7 +173,11 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
   optionalStripResponse(apiContext: ApiContext, response: IRestResponse): IRestResponse {
     const clonedResponse = Object.assign({}, response);
     if (response.headers) {
-      let clonedHeaders = StripGitHubEntity(GitHubResponseType.Headers, response.headers, 'response.headers');
+      const clonedHeaders = StripGitHubEntity(
+        GitHubResponseType.Headers,
+        response.headers,
+        'response.headers'
+      );
       if (clonedHeaders) {
         clonedResponse.headers = clonedHeaders;
         if (debugShowStandardBehavior) {
@@ -209,7 +212,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
           `Cache Optimization WARNING: the API call ${apiCall} is not registered to return an array, but it did.. NO optimization being performed.`
         );
       } else if (knownResponseBodyType === ResponseBodyType.Array && Array.isArray(response.data)) {
-        let arrayClone = [];
+        const arrayClone = [];
         const remainingKeys = new Set(Object.getOwnPropertyNames(response.data));
         remainingKeys.delete('length');
         for (let i = 0; i < response.data.length; i++) {
@@ -258,7 +261,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
   reduceMetadataToCacheFromResponse(apiContext: ApiContext, response: IRestResponse): any {
     const headers = response ? response.headers : null;
     if (headers?.etag) {
-      let reduced: IReducedGitHubMetadata = {
+      const reduced: IReducedGitHubMetadata = {
         etag: headers.etag,
         av: appVersion,
       };
@@ -289,7 +292,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
       throw new Error('As of Octokit 15.8.0, responses must have headers on the response');
     }
     const headers = response.headers;
-    let retryAfter = headers['retry-after'];
+    const retryAfter = headers['retry-after'];
     if (retryAfter) {
       debug(`Retry-After header was present: ${retryAfter}`);
     }

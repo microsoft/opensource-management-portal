@@ -21,13 +21,10 @@ const typescriptConfig = require('./typescript');
 module.exports = function (graphApi) {
   const environmentProvider = graphApi.environment;
   const environmentName =
-    environmentProvider.get(painlessConfigEnvironmentVariableName) || environmentProvider.get('ENV');
-
+    environmentProvider.get(painlessConfigEnvironmentVariableName) || environmentProvider.get('NODE_ENV');
   const homepageCount = 10;
-
   let articles = [];
   let resources = null;
-
   // 1: load news
   let pkgName = null;
   if (pkg && pkg[painlessConfigEnvPkgName] && environmentName) {
@@ -45,21 +42,21 @@ module.exports = function (graphApi) {
       throw painlessConfigError;
     }
   } else {
-    // 2: load URL/resource links data from a local JSON file
+    // 2: try to load URL/resource links data from a local JSON file
     try {
       const filename = path.join(typescriptConfig.appDirectory, 'data', 'news.json');
       const str = fs.readFileSync(filename, 'utf8');
       resources = JSON.parse(str);
       debug(`news loaded from file ${filename}`);
     } catch (notFound) {
-      console.warn(notFound);
-      throw notFound;
+      if (notFound.code !== 'ENOENT') {
+        console.warn(notFound);
+        throw notFound;
+      }
     }
   }
 
-  if (Array.isArray(resources)) {
-    articles = resources;
-  }
+  articles = Array.isArray(resources) ? resources : [];
 
   return {
     all: articles,

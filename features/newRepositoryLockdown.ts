@@ -403,7 +403,7 @@ export default class NewRepositoryLockdownSystem {
       lockdownLog.push('Confirmed that the additional transfer lockdown feature is enabled for this org');
     }
     const setupUrl = `${this.organization.absoluteBaseUrl}wizard?existingreponame=${this.repository.name}&existingrepoid=${this.repository.id}`;
-    let isTransfer = action === 'transferred';
+    const isTransfer = action === 'transferred';
     if (isTransfer && !lockdownTransfers) {
       return false; // no need to do special transfer logic
     }
@@ -514,7 +514,7 @@ export default class NewRepositoryLockdownSystem {
       console.dir(metadataSystemError);
       lockdownLog.push(`While writing repository metadata an error: ${metadataSystemError.message}`);
     }
-    let patchChanges: IRepoPatch = {};
+    const patchChanges: IRepoPatch = {};
     if (!isForkAdministratorLocked && !isTransfer && !this.repository.private) {
       lockdownLog.push('Preparing to hide the public repository pending setup (V2)');
       patchChanges.private = true;

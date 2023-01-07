@@ -11,7 +11,6 @@ import { getProviders } from '../../transitional';
 
 import approvalsRoute from './approvals';
 import authorizationsRoute from './authorizations';
-import digestReportsRoute from './digestReports';
 import personalAccessTokensRoute from './personalAccessTokens';
 
 import contributionDataRoute from './contributionData';
@@ -50,7 +49,6 @@ router.get(
 router.use('/approvals', approvalsRoute);
 router.use('/authorizations', authorizationsRoute);
 router.use('/campaigns', campaignsRoute);
-router.use('/digestReports', digestReportsRoute);
 router.use('/security/tokens', personalAccessTokensRoute);
 router.use('/contributionData', contributionDataRoute);
 

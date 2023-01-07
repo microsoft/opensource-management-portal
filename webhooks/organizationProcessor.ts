@@ -3,7 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import _ from 'lodash';
 import crypto from 'crypto';
 import secureCompare from 'secure-compare';
 
@@ -118,7 +117,7 @@ export default async function ProcessOrganizationWebhook(
     console.log(`[uninteresting event: ${event.properties.event}]`);
   }
 
-  for (let processor of work) {
+  for (const processor of work) {
     try {
       await processor.run(operations, organization, event);
     } catch (processInitializationError) {

@@ -22,7 +22,7 @@ router.use(
       return next(new Error('GitHub identity required'));
     }
     const username = ghi.username;
-    for (let organization of operations.organizations.values()) {
+    for (const organization of operations.organizations.values()) {
       try {
         const result = await organization.getMembership(username);
         let state = null;
@@ -86,7 +86,7 @@ export async function unlinkInteractive(
     error = exception;
   }
   const hadErrors = error ? 'had errors' : 'no';
-  let eventData = {
+  const eventData = {
     id: id.toString(),
     hadErrors,
   };

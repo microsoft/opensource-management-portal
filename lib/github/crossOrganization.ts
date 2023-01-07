@@ -191,7 +191,7 @@ export class CrossOrganizationCollator {
         data: undefined,
       };
       const organizations = Array.from(orgsAndTokens.keys());
-      for (let orgName of organizations) {
+      for (const orgName of organizations) {
         const token = orgsAndTokens.get(orgName);
         const localOptions = Object.assign({}, options);
         localOptions.org = orgName;

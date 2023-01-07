@@ -13,7 +13,7 @@
       "env": {
         "NODE_ENV": "development",
         "DEBUG": "startup,cosmosdb,g:server,context,cache,restapi,redis-cross-org",
-        "MORE_DEBUG": "appinsights,cache,restapi,pg,querycache,user,redis-cross-org"
+        "MORE_DEBUG": "appinsights,cache,restapi,pg,querycache,user,redis-cross-org,health"
       }
     },
     {
@@ -368,21 +368,6 @@
       "env": {
         "NODE_ENV": "development,pg",
         "DEBUG": "redis,restapi,startup,appinsights"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Job: Build Repo Reports (deprecated)",
-      "program": "${workspaceRoot}/dist/jobs/reports/index.js",
-      "cwd": "${workspaceRoot}/dist",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "runtimeArgs": ["--max-old-space-size=4096"],
-      "env": {
-        "NODE_ENV": "localhost",
-        "DEBUG": "redis-off,restapi-off,startup,appinsights"
       }
     },
     {

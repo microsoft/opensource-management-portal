@@ -10,7 +10,7 @@ function reduceEntity(instance: any): any {
     return instance;
   }
   const newObject = {};
-  for (let column in instance) {
+  for (const column in instance) {
     let value = instance[column];
     if (value?.type && value?.value) {
       value = value.value;
@@ -25,7 +25,7 @@ function createEntity(partitionKey: string, rowKey: string, obj?: any, callback?
     callback = obj;
     obj = undefined;
   }
-  let entity = {
+  const entity = {
     partitionKey,
     rowKey,
   };
@@ -42,7 +42,7 @@ function createEntity(partitionKey: string, rowKey: string, obj?: any, callback?
 function mergeIntoEntity(entity: any, obj: any, callback?) {
   // Pretty legacy code...
   if (obj) {
-    for (let key in obj) {
+    for (const key in obj) {
       // Currently stripping metadata
       if (
         key === '.metadata' ||

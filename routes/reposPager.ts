@@ -94,7 +94,7 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
   // Filter by team repositories, only in sub-team views
   const specificTeamPermissions = req.teamPermissions as IRequestTeamPermissions;
   const team2 = req.team2 as Team;
-  let specificTeamId = team2 ? team2.id : null;
+  const specificTeamId = team2 ? team2.id : null;
   const { reposData, userRepos, specificTeamRepos } = await getReposAndOptionalTeamPermissions(
     organizationId,
     operations,
@@ -107,7 +107,7 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
 
   const page = req.query.page_number ? Number(req.query.page_number) : 1;
 
-  let phrase = req.query.q as string;
+  const phrase = req.query.q as string;
 
   // TODO: Validate the type
   let type = req.query.type as string;
@@ -137,7 +137,7 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
     createdSince = new Date(new Date().getTime() - daysInMilliseconds(createdSinceValue));
   }
 
-  let showIds = req.query.showids === '1';
+  const showIds = req.query.showids === '1';
 
   let teamsSubType = null;
   if (teamsType !== 'myread' && teamsType !== 'mywrite' && teamsType !== 'myadmin') {
@@ -147,7 +147,7 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
     teamsType = 'my';
   }
   // TODO: Validate the language value is in the Linguist list
-  let language = req.query.language as string;
+  const language = req.query.language as string;
 
   const filters = [];
   if (type) {
@@ -173,7 +173,7 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
     });
   }
   if (teamsType) {
-    let ttValue = teamsType === 'my' ? 'my ' + teamsSubType : teamsType;
+    const ttValue = teamsType === 'my' ? 'my ' + teamsSubType : teamsType;
     filters.push({
       type: 'tt',
       value: ttValue,

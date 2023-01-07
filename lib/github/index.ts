@@ -58,7 +58,7 @@ export class RestLibrary {
     }
     this.cacheProvider = cacheProvider;
 
-    let config = options.config;
+    const config = options.config;
     if (!config) {
       throw new Error('No runtime configuration instance provided to the library context constructor');
     }

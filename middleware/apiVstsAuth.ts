@@ -35,7 +35,7 @@ const vstsAuth = asyncHandler(async (req: IApiRequest, res, next) => {
   const connectionDataApi = `${vstsCollectionUrl}/_apis/connectiondata`;
   const authorizationHeader = req.headers.authorization;
   async function translateVstsUpnToAadId(upn: string) {
-    let cached = localMemoryCacheVstsToAadId.get(upn);
+    const cached = localMemoryCacheVstsToAadId.get(upn);
     if (cached) {
       return cached;
     }

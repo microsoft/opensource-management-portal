@@ -212,7 +212,7 @@ export class GraphManager {
     const linksCache = this._linksCache;
     const now = moment();
     const beforeNow = moment().subtract(maxAgeSecondsLocal, 'seconds');
-    let isCacheValid = linksCache.map && linksCache.updated && beforeNow.isAfter(linksCache.updated);
+    const isCacheValid = linksCache.map && linksCache.updated && beforeNow.isAfter(linksCache.updated);
     if (isCacheValid) {
       return linksCache.map;
     }

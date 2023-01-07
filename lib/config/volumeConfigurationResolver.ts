@@ -70,7 +70,7 @@ function defaultProvider() {
 
 function createClient(options?: IProviderOptions) {
   options = options || {};
-  let provider = options.provider || defaultProvider();
+  const provider = options.provider || defaultProvider();
   return {
     resolveVolumeFile,
     isVolumeFile: getAsVolumeFile,

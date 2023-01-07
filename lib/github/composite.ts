@@ -182,7 +182,7 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
     if (!response.headers) {
       throw new Error(`${apiContext.redisKey.metadata}: no metadata was provided alongside the API response`);
     }
-    let shouldUseCache = false;
+    const shouldUseCache = false;
     apiContext.etag = response.headers.etag;
 
     // Probably should check; if original data has not changed at all, then return true.
@@ -236,7 +236,7 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
 
   getResponseMetadata(apiContext: CompositeApiContext, response: IRestResponse): IRestMetadata {
     const headers = response.headers || {};
-    let calledTime = apiContext.calledTime ? apiContext.calledTime.toISOString() : new Date().toISOString();
+    const calledTime = apiContext.calledTime ? apiContext.calledTime.toISOString() : new Date().toISOString();
     headers.updated = calledTime;
     let changed = calledTime;
     if (headers.dirty === true) {

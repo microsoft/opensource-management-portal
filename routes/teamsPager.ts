@@ -55,7 +55,7 @@ async function getTeamsData(
 
   const yourTeamsMap = new Map();
   const overview = await userContext.getAggregatedOverview();
-  if (overview.teams && overview.teams.member.length) {
+  if (overview.teams && (overview.teams.member.length || overview.teams.maintainer.length)) {
     reduceTeams(overview.teams, 'member', yourTeamsMap);
     reduceTeams(overview.teams, 'maintainer', yourTeamsMap);
   }
@@ -88,7 +88,7 @@ export default asyncHandler(async function (req: ReposAppRequest, res: Response,
     aggregations
   );
   const page = req.query.page_number ? Number(req.query.page_number) : 1;
-  let phrase = req.query.q;
+  const phrase = req.query.q;
 
   let set = req.query.set;
   if (set !== 'all' && set !== 'available' && set !== 'your') {

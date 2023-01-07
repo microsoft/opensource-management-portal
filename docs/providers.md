@@ -41,7 +41,7 @@ Supporting providers:
 
 Hosting, cache and database environment providers:
 
-- `healthCheck`: Kubernetes health check signals
+- `healthCheck`: web server health probes
 - `postgresPool`: provides access to a Postgres pool (this probably should not be so central and accessible to avoid coupling)
 - `sessionRedisClient`: Redis client for use in sessions, if using Redis for session state
 - `cacheProvider`: an abstracted cache - can use Redis or Cosmos DB and/or Azure storage

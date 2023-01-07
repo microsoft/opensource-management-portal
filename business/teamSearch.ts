@@ -82,8 +82,8 @@ export default class TeamSearch {
 
   sortByAlphabet() {
     this.teams.sort((a, b) => {
-      let nameA = a.name.toLowerCase();
-      let nameB = b.name.toLowerCase();
+      const nameA = a.name.toLowerCase();
+      const nameB = b.name.toLowerCase();
       if (nameA < nameB) {
         return -1;
       }
@@ -99,7 +99,7 @@ export default class TeamSearch {
 function teamMatchesPhrase(team, phrase) {
   // Poor man's search, starting with just a raw includes search
   // Assumes that phrase is already lowercase to work
-  let string = (
+  const string = (
     (team.name || '') +
     (team.description || '') +
     (team.id || '') +

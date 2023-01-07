@@ -154,8 +154,8 @@ export default class BlobCache implements ICacheHelper {
     debug(`BLOB SET: ${blobName}`);
     const blockBlobClient = this._container.getBlockBlobClient(blobName);
     const uploadStarted = new Date();
-    let metadata = {};
-    let contentType =
+    const metadata = {};
+    const contentType =
       ext === '.json' ? 'application/json' : ext === '.txt' ? 'text/plain' : 'application/octet-stream';
     const blobHTTPHeaders = { blobContentType: contentType };
     if (options.minutesToExpire) {
@@ -270,7 +270,7 @@ export default class BlobCache implements ICacheHelper {
   }
 
   async deleteExpiredBlobs(): Promise<IExpiredBlobsStats> {
-    let iterator = this._container
+    const iterator = this._container
       .listBlobsFlat({ includeMetadata: true })
       .byPage({ maxPageSize: 100 /* 25 */ });
     let response = await iterator.next();

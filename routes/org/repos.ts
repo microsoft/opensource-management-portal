@@ -119,7 +119,7 @@ async function calculateRepoPermissions(
   const owners = await organization.getOwners();
   const { collaborators, outsideCollaborators, memberCollaborators } =
     await findRepoCollaboratorsExcludingOwners(repository, owners);
-  for (let teamPermission of teamPermissions) {
+  for (const teamPermission of teamPermissions) {
     try {
       teamPermission.resolveTeamMembers();
     } catch (ignoredError) {
@@ -735,7 +735,7 @@ function fromNow(object, property) {
   if (!object.moment) {
     object.moment = {};
   }
-  let value = object[property];
+  const value = object[property];
   if (value) {
     object.moment[property] = moment(value).fromNow();
     return object.moment[property];

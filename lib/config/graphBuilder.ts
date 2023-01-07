@@ -51,6 +51,10 @@ export default async (api: ILibraryOptions, dirPath: string) => {
     const file = path.join(dirPath, files[i]);
     const ext = path.extname(file);
     const nodeName = path.basename(file, ext);
+    // Exclude any TypeScript-related typing files (special case)
+    if (nodeName.endsWith('.types')) {
+      continue;
+    }
     const processor = supportedExtensions.get(ext);
     if (!processor) {
       continue;

@@ -25,7 +25,12 @@ const maxParallel = 6;
 const shouldUpdateCached = true;
 
 async function refreshRepositories({ providers }: IReposJob): Promise<IReposJobResult> {
-  const { operations } = providers;
+  const { config, operations } = providers;
+  if (config?.jobs?.refreshWrites !== true) {
+    console.log('job is currently disabled to avoid metadata refresh/rewrites');
+    return;
+  }
+
   const started = new Date();
   console.log(`Starting at ${started}`);
 

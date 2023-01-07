@@ -1,7 +1,7 @@
 #
 # Copyright (c) Microsoft.
 # Licensed under the MIT license. See LICENSE file in the project root for full license information.
-
+#
 
 ARG IMAGE_NAME=mcr.microsoft.com/cbl-mariner/base/nodejs:16
 
@@ -51,14 +51,11 @@ COPY --from=build /build/data ./data
 COPY --from=build /build/dist ./
 
 # The open source project build needs: default assets should be placed
-COPY --from=build /build/default-assets-package ../default-assets-package
+COPY --from=build /build/default-assets-package ./default-assets-package
 
 COPY --from=build /build/config ./config
 COPY --from=build /build/views ./views
 COPY --from=build /build/package.json ./package.json
-
-# Views were deprecated years ago
-#COPY --from=build /build/jobs/reports/views ./jobs/reports/views
 
 # Only if needed, copy our environment
 # COPY --from=build /build/.environment ./.environment

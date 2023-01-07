@@ -7,10 +7,10 @@
 // secrets.
 export default function (req, res, next) {
   let url = req.originalUrl || req.url;
-  let secretKeys = ['code', 'token'];
+  const secretKeys = ['code', 'token'];
   for (let i = 0; i < secretKeys.length; i++) {
-    let key = secretKeys[i];
-    let value = req.query[key];
+    const key = secretKeys[i];
+    const value = req.query[key];
     if (value !== undefined) {
       url = url.replace(key + '=' + value, key + '=*****');
     }

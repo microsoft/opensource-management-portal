@@ -20,7 +20,7 @@ export default async function Onboard(app, config) {
   for (const orgEntry of onboardingOrganizations) {
     if (orgEntry && orgEntry.name && orgEntry.ownerToken) {
       let s = 'Organization Onboarding Helper for "' + orgEntry.name + '":\n';
-      for (let key in orgEntry) {
+      for (const key in orgEntry) {
         s += '- ' + key + ': ';
         s += orgEntry[key] !== undefined ? 'value set' : 'undefined';
         s += '\n';

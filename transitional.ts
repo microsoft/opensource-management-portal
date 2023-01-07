@@ -7,7 +7,6 @@ import { Response } from 'express';
 import crypto from 'crypto';
 import githubUsernameRegex from 'github-username-regex';
 import { AxiosError } from 'axios';
-import { DateTime } from 'luxon';
 
 import { GitHubRepositoryPermission } from './entities/repositoryMetadata/repositoryMetadata';
 
@@ -51,41 +50,6 @@ export function getProviders(req: ReposAppRequest) {
 export function isWebhookIngestionEndpointEnabled(req: ReposAppRequest) {
   const { config } = getProviders(req);
   return config?.features?.exposeWebhookIngestionEndpoint === true;
-}
-
-export interface IResponseForSettingsPersonalAccessTokens extends Response {
-  newKey?: string;
-}
-
-interface ITooManyLinksError extends Error {
-  links?: any;
-  tooManyLinks?: boolean;
-}
-
-interface IExistingIdentityError extends Error {
-  anotherAccount?: boolean;
-  link?: any;
-  skipLog?: boolean;
-}
-
-function tooManyLinksError(self, userLinks, callback) {
-  const tooManyLinksError: ITooManyLinksError = new Error(
-    `This account has ${userLinks.length} linked GitHub accounts.`
-  );
-  tooManyLinksError.links = userLinks;
-  tooManyLinksError.tooManyLinks = true;
-  return callback(tooManyLinksError, self);
-}
-
-function existingGitHubIdentityError(self, link, requestUser, callback) {
-  const endUser = requestUser.azure.displayName || requestUser.azure.username;
-  const anotherGitHubAccountError: IExistingIdentityError = new Error(
-    `${endUser}, there is a different GitHub account linked to your corporate identity.`
-  );
-  anotherGitHubAccountError.anotherAccount = true;
-  anotherGitHubAccountError.link = link;
-  anotherGitHubAccountError.skipLog = true;
-  return callback(anotherGitHubAccountError, self);
 }
 
 export function SettleToStateValue<T>(promise: Promise<T>): Promise<ISettledValue<T>> {
@@ -340,7 +304,7 @@ export interface ICustomizedNewRepositoryLogic {
 }
 
 export function splitSemiColonCommas(value: string) {
-  return value ? value.replace(/;/g, ',').split(',') : [];
+  return value && value.replace ? value.replace(/;/g, ',').split(',') : [];
 }
 
 export interface ICustomizedNewRepoProperties {
@@ -367,17 +331,4 @@ export function validateGitHubLogin(username: string) {
     // throw new Error(`Invalid GitHub username format: ${username}`);
   }
   return username;
-}
-
-export async function streamToString(readableStream) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    readableStream.on('data', (data) => {
-      chunks.push(data.toString());
-    });
-    readableStream.on('end', () => {
-      resolve(chunks.join(''));
-    });
-    readableStream.on('error', reject);
-  });
 }

@@ -195,7 +195,7 @@ export class PostgresLinkProvider implements ILinkProvider {
     `,
       [internalThirdPartyTypeValue]
     );
-    let r = [];
+    const r = [];
     for (let i = 0; i < results.rows.length; i++) {
       const row = results.rows[i];
       const link = this.createLinkInstanceFromRow(row);
@@ -299,7 +299,7 @@ export class PostgresLinkProvider implements ILinkProvider {
         return `\n        ${columnName} = $${index}`;
       })
       .join();
-    let sql = `
+    const sql = `
       UPDATE ${this._tableName}
       SET ${sets}
       WHERE
@@ -383,8 +383,8 @@ export class PostgresLinkProvider implements ILinkProvider {
   }
 
   private async _getRows({ columnName, columnValue, columnIsLowercase }): Promise<CorporateLinkPostgres[]> {
-    let columnWrapperStart = columnIsLowercase ? 'lower(' : '';
-    let columnWrapperFinish = columnIsLowercase ? ')' : '';
+    const columnWrapperStart = columnIsLowercase ? 'lower(' : '';
+    const columnWrapperFinish = columnIsLowercase ? ')' : '';
     const results = await PostgresPoolQueryAsync(
       this._pool,
       `
@@ -397,7 +397,7 @@ export class PostgresLinkProvider implements ILinkProvider {
     `,
       [this._internalThirdPartyTypeValue, columnIsLowercase ? columnValue.toLowerCase() : columnValue]
     );
-    let r = [];
+    const r = [];
     for (let i = 0; i < results.rows.length; i++) {
       const row = results.rows[i];
       const link = this.createLinkInstanceFromRow(row);
@@ -412,8 +412,8 @@ export class PostgresLinkProvider implements ILinkProvider {
     columnValue,
     columnIsLowercase,
   }): Promise<CorporateLinkPostgres> {
-    let columnWrapperStart = columnIsLowercase ? 'lower(' : '';
-    let columnWrapperFinish = columnIsLowercase ? ')' : '';
+    const columnWrapperStart = columnIsLowercase ? 'lower(' : '';
+    const columnWrapperFinish = columnIsLowercase ? ')' : '';
     const sql = `
       SELECT
         ${coreColumnsList}

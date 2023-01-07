@@ -30,7 +30,7 @@ router.get(
     } catch (ignoredError) {
       /* ignored */
     }
-    let publicMembership = result === true;
+    const publicMembership = result === true;
     req.individualContext.webContext.pushBreadcrumb('Membership Visibility');
     let teamPostfix = '';
     if (onboarding || joining) {

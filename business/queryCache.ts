@@ -765,7 +765,7 @@ export default class QueryCache {
       throw new Error('addOrUpdateCollaborator not supported');
     }
     const repositoryCollaboratorCacheProvider = this._providers.repositoryCollaboratorCacheProvider;
-    let outcome: QueryCacheOperation = null;
+    const outcome: QueryCacheOperation = null;
     let collaboratorCache: RepositoryCollaboratorCacheEntity = null;
     try {
       collaboratorCache = await repositoryCollaboratorCacheProvider.getRepositoryCollaboratorCacheByUserId(

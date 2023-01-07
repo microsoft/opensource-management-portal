@@ -20,7 +20,7 @@ async function lookupCorporateId(
   knownUsers: Map<string, any>,
   corporateId: string
 ): Promise<any> {
-  let entry = knownUsers.get(corporateId);
+  const entry = knownUsers.get(corporateId);
   if (entry === false) {
     return false;
   } else if (entry) {

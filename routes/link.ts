@@ -16,7 +16,7 @@ import {
 } from '../interfaces';
 import { getProviders, splitSemiColonCommas } from '../transitional';
 import { IndividualContext } from '../user';
-import { storeOriginalUrlAsReferrer, wrapError } from '../utils';
+import { isCodespacesAuthenticating, storeOriginalUrlAsReferrer, wrapError } from '../utils';
 
 import validator from 'validator';
 
@@ -102,10 +102,10 @@ router.use(
       let block = (userType as string) === 'Guest';
       let blockedRecord = block ? 'BLOCKED' : 'not blocked';
       // If the app is configured to check for guests, but this is a specifically permitted guest user, continue:
-      if (config?.activeDirectoryGuests) {
+      if (block && config?.activeDirectoryGuests) {
         const authorizedGuests = Array.isArray(config.activeDirectoryGuests)
           ? (config.activeDirectoryGuests as string[])
-          : splitSemiColonCommas(config.activeDirectoryGuests);
+          : splitSemiColonCommas(config.activeDirectoryGuests?.authorizedIds);
         if (!authorizedGuests.includes(aadId)) {
           block = false;
           blockedRecord = 'specifically authorized user ' + aadId + ' ' + userPrincipalName;
@@ -156,6 +156,7 @@ router.use(
 router.get(
   '/',
   asyncHandler(async function (req: ReposAppRequest, res, next) {
+    const { config } = getProviders(req);
     const individualContext = req.individualContext;
     const link = individualContext.link;
     if (!individualContext.corporateIdentity && !individualContext.getGitHubIdentity()) {
@@ -164,7 +165,8 @@ router.get(
     }
     if (!individualContext.getGitHubIdentity()) {
       req.insights.trackEvent({ name: 'PortalSessionNeedsGitHubUsername' });
-      return res.redirect('/signin/github/');
+      const signinPath = isCodespacesAuthenticating(config, 'github') ? 'sign-in' : 'signin';
+      return res.redirect(`/${signinPath}/github/`);
     }
     if (!link) {
       return await showLinkPage(req, res);

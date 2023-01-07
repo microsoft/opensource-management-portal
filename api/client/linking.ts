@@ -46,8 +46,8 @@ async function validateLinkOk(req: ReposAppRequest, res, next) {
     const userType = details.userType;
     const displayName = details.displayName;
     const userPrincipalName = details.userPrincipalName;
-    let block = (userType as string) === 'Guest';
-    let blockedRecord = block ? 'BLOCKED' : 'not blocked';
+    const block = (userType as string) === 'Guest';
+    const blockedRecord = block ? 'BLOCKED' : 'not blocked';
     insights.trackEvent({
       name: 'LinkValidateNotGuestGraphSuccess',
       properties: {
@@ -90,6 +90,12 @@ async function validateLinkOk(req: ReposAppRequest, res, next) {
     );
   }
 }
+
+router.get('/banner', (req: ReposAppRequest, res, next) => {
+  const { config } = getProviders(req);
+  const offline = config?.github?.links?.provider?.linkingOfflineMessage;
+  return res.json({ offline });
+});
 
 router.delete(
   '/',

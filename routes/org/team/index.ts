@@ -323,7 +323,7 @@ export async function submitTeamJoinRequest(
   const personName = activeContext.corporateIdentity.displayName || activeContext.corporateIdentity.username;
   let personMail = null;
   let requestId = null;
-  let approvalRequest = new TeamJoinApprovalEntity();
+  const approvalRequest = new TeamJoinApprovalEntity();
   try {
     const upn = activeContext.corporateIdentity.username;
     personMail = await operations.getMailAddressFromCorporateUsername(upn);
@@ -543,7 +543,7 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
   const isSystemTeam = team2.isSystemTeam;
 
   const orgOwnersSet = req.orgOwnersSet;
-  let isOrgOwner = orgOwnersSet ? orgOwnersSet.has(id) : false;
+  const isOrgOwner = orgOwnersSet ? orgOwnersSet.has(id) : false;
 
   // Get the first page (by 100) of members, we only show a subset of 25
   if (display === BasicTeamViewPage.Default) {
@@ -616,18 +616,18 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
 
   const mailSubjectSuffix = `?subject=${team2.name} GitHub team`;
   const maintainerMails = teamMaintainers.map((maint) => maint.mailAddress).filter((val) => val);
-  let mailToMaintainers = maintainerMails.length
+  const mailToMaintainers = maintainerMails.length
     ? `mailto:${maintainerMails.join(';')}${mailSubjectSuffix}`
     : null;
-  let mailToMaintainersCount = maintainerMails.length;
+  const mailToMaintainersCount = maintainerMails.length;
 
   // on purpose the members would only include those shown on the first page here if there are less than the cap # of members
   const memberMails = membersFirstPage.map((mem) => mem.mailAddress).filter((val) => val);
-  let mailToMembers =
+  const mailToMembers =
     memberMails.length && memberMails.length !== FirstPageMembersCap
       ? `mailto:${memberMails.join(';')}${mailSubjectSuffix}`
       : null;
-  let mailToMembersCount = memberMails.length;
+  const mailToMembersCount = memberMails.length;
 
   const { selfServiceTeamMemberToMaintainerUpgrades } = req;
   let isSelfServiceMemberToMaintainerEligible = false;
@@ -742,8 +742,8 @@ async function resolveMailAddresses(operations: Operations, array: TeamMember[])
 }
 
 export function sortRepositoriesByNameCaseInsensitive(a: Repository, b: Repository) {
-  let nameA = a.name.toLowerCase();
-  let nameB = b.name.toLowerCase();
+  const nameA = a.name.toLowerCase();
+  const nameB = b.name.toLowerCase();
   if (nameA < nameB) {
     return -1;
   }

@@ -112,7 +112,7 @@ export class MemberSearch {
   filterByTeamMembers() {
     // If this is a sub-team view, filter by members unless the
     // special "add a member" experience is present in this route.
-    let teamSet = new Set();
+    const teamSet = new Set();
     if (this.teamMembers) {
       for (let i = 0; i < this.teamMembers.length; i++) {
         const member = this.teamMembers[i];
@@ -310,10 +310,10 @@ function translateMembers(members, isOrganizationScoped, optionalLinks) {
 
 function memberMatchesPhrase(member, phrase) {
   const link = member.link as ICorporateLink;
-  let linkIdentity = link
+  const linkIdentity = link
     ? `${link.corporateUsername} ${link.corporateDisplayName} ${link.corporateId} ${link.thirdPartyUsername} ${link.thirdPartyId} ${link.corporateMailAddress} ${link.corporateAlias}`
     : '';
-  let accountIdentity = member.login ? member.login.toLowerCase() : member.account.login.toLowerCase();
-  let combined = (linkIdentity + ' ' + accountIdentity).toLowerCase();
+  const accountIdentity = member.login ? member.login.toLowerCase() : member.account.login.toLowerCase();
+  const combined = (linkIdentity + ' ' + accountIdentity).toLowerCase();
   return combined.includes(phrase);
 }

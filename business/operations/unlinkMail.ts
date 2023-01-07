@@ -116,7 +116,7 @@ export async function sendTerminatedAccountMail(
   if (!operationsMail && errorMode) {
     return;
   }
-  let operationsArray = operationsMail.split(',');
+  const operationsArray = operationsMail.split(',');
 
   let cachedEmployeeManagementInfo: ICachedEmployeeInformation = null;
   let upn = account.link.corporateUsername || account.link.corporateId;

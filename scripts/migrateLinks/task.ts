@@ -51,7 +51,7 @@ export default async function migration({ providers }: IReposJob): Promise<void>
 
   console.log(`migrating ${allSourceLinks.length} links...`);
   let errors = 0;
-  let errorList = [];
+  const errorList = [];
 
   const throttle = throat(parallelWorkLimit);
   await Promise.all(

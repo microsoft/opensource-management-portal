@@ -7,8 +7,8 @@ import { ReposAppRequest } from '../interfaces';
 import thisPackage from '../package.json';
 import { getProviders } from '../transitional';
 
-let express = require('express');
-let router = express.Router();
+const express = require('express');
+const router = express.Router();
 
 let cachedPackageInformation = null;
 
@@ -23,8 +23,8 @@ function getPackageInfo(config) {
     config && config.npm && config.npm.privateFeedScope
       ? config.npm.privateFeedScope
       : 'no-configured-private-feed-scope';
-  for (let dependency in thisPackage.dependencies) {
-    let componentPackage = require('../node_modules/' + dependency + '/package.json');
+  for (const dependency in thisPackage.dependencies) {
+    const componentPackage = require('../node_modules/' + dependency + '/package.json');
     if (
       componentPackage &&
       componentPackage.name &&

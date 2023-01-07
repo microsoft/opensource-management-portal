@@ -9,7 +9,7 @@ import objectPath from 'object-path';
 
 const debug = require('debug')('context');
 
-import { addBreadcrumb } from '../utils';
+import { addBreadcrumb, isCodespacesAuthenticating } from '../utils';
 import { Operations } from '../business/operations';
 import { UserContext } from './aggregate';
 import {
@@ -287,7 +287,7 @@ export class WebContext {
 
     const { view, title, optionalObject, state } = options;
 
-    let viewState = state || optionalObject;
+    const viewState = state || optionalObject;
     if (state && optionalObject) {
       throw new Error('Both state and optionalObject cannot be provided to a view render method');
     }
@@ -338,7 +338,7 @@ export class WebContext {
           ghu: user.github ? user.github.username : null,
         }
       : null;
-    let session = this._request['session'] || null;
+    const session = this._request['session'] || null;
 
     const initialViewObject = individualContext ? individualContext.getInitialViewObject() : {};
 
@@ -358,6 +358,7 @@ export class WebContext {
       breadcrumbs,
       sudoMode: this._request['sudoMode'],
       view,
+      signinPathSegment: isCodespacesAuthenticating(config, 'aad') ? 'sign-in' : 'signin',
       site: 'github',
       enableMultipleAccounts: session ? session['enableMultipleAccounts'] : false,
       reposContext: undefined,

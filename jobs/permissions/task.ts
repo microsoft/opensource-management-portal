@@ -27,7 +27,12 @@ const maxParallelism = 1;
 const delayBetweenSeconds = 1;
 
 export default async function permissionsRun({ providers }: IReposJob): Promise<IReposJobResult> {
-  const { operations } = providers;
+  const { config, operations } = providers;
+  if (config?.jobs?.refreshWrites !== true) {
+    console.log('job is currently disabled to avoid metadata refresh/rewrites');
+    return;
+  }
+
   for (const organization of shuffle(Array.from(operations.organizations.values()))) {
     console.log(`Reviewing permissions for all repos in ${organization.name}...`);
     try {
@@ -35,7 +40,7 @@ export default async function permissionsRun({ providers }: IReposJob): Promise<
       console.log(`Repos in the ${organization.name} org: ${repos.length}`);
       let z = 0;
       const automaticTeams = new AutomaticTeamsWebhookProcessor();
-      for (let repo of repos) {
+      for (const repo of repos) {
         console.log(`${repo.organization.name}/${repo.name}`);
         sleep(1000 * delayBetweenSeconds);
         const cacheOptions = {
@@ -93,7 +98,7 @@ export default async function permissionsRun({ providers }: IReposJob): Promise<
           }
         });
         const setArray = Array.from(teamsToSet.values());
-        for (let teamId of setArray) {
+        for (const teamId of setArray) {
           const newPermission = specialTeamLevels.get(teamId);
           if (
             shouldSkipEnforcement &&
