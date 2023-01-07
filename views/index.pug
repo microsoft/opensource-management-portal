@@ -228,7 +228,7 @@ block content
                   - currentPriority = o.priority
                   //-if currentPriority == 'secondary'
                 //-if o.locked === true // o.membershipStateTemporary !== 'active'
-                if o.locked === true || o.hidden === true
+                if o.hidden === true
                   //- Do not show by invitation only orgs at this time
                 else
                   div.link-box
@@ -237,7 +237,11 @@ block content
                         h6.text-muted
                           strong(style='text-decoration: underline')= o.name
                           = ' '
-                          small: span.label.label-muted Join
+                          small: span.label.label-muted 
+                            if o.locked === true
+                              | By invitation only
+                            else
+                              | Join
                         if true || onboarding === true
                           p: small= o.nativeUrl
                         p.small.text-mute= o.description
