@@ -61,6 +61,7 @@ jobs:
         if: github.repository == 'microsoft/opensource-management-portal' # official repo only
         run: |
           node .ossdev/build/packageBurn.js
+          node .ossdev/build/dockerfileForEnvironment.js
 
       - name: Container build ⛴️
         run: |
