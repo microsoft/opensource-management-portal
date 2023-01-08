@@ -100,11 +100,11 @@ jobs:
             --docker-registry-server-url https://opensource.azurecr.io \
             --name portalwestus3 \
             --resource-group portal \
-            #--slot devstaging
+            --slot staging
 
       - name: Swap staging to live 💃
         run: |
-          echo TODO az webapp deployment slot swap \
+          az webapp deployment slot swap \
             --name portalwestus3 \
             --resource-group portal \
-            --slot devstaging
+            --slot staging
