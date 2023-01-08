@@ -87,8 +87,9 @@ router.get(
       if (corporateId === request.corporateId) {
         return res.json(approvalPairToJson({ request, team }));
       }
-      const isOrgSudoer = await organization.isSudoer(username, activeContext.link);
-      isMaintainer = isOrgSudoer;
+      const isPortalSudoer = await operations.isPortalSudoer(username, activeContext.link);
+      const isOrgSudoer = isPortalSudoer || (await organization.isSudoer(username, activeContext.link));
+      isMaintainer = isPortalSudoer || isOrgSudoer;
       const maintainers = await team.getOfficialMaintainers();
       if (!isMaintainer) {
         for (let i = 0; i < maintainers.length; i++) {
