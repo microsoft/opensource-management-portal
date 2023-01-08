@@ -26,7 +26,8 @@ export type ConfigWebHealthProbes = {
     readiness: number;
   };
   kubernetes: ConfiguredHeaderProbe;
-  azureappservice: ConfiguredGeneralProbe;
+  'azureappservice-linux': ConfiguredGeneralProbe;
+  'azureappservice-windows': ConfiguredGeneralProbe;
   azurefrontdoor: ConfiguredHeaderProbe;
   external: ConfiguredGeneralProbe;
 };
