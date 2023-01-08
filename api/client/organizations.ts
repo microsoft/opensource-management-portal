@@ -7,10 +7,14 @@ import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../middleware';
-import { ErrorHelper, getProviders } from '../../transitional';
+import { CreateError, ErrorHelper, getProviders } from '../../transitional';
 import { ReposAppRequest } from '../../interfaces';
 
 import RouteOrganization from './organization';
+import {
+  IReposAppRequestWithOrganizationManagementType,
+  OrganizationManagementType,
+} from '../../middleware/business/organization';
 
 const router: Router = Router();
 
@@ -49,23 +53,37 @@ router.get(
 
 router.use(
   '/:orgName',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: IReposAppRequestWithOrganizationManagementType, res, next) => {
     const { operations } = getProviders(req);
     const { orgName } = req.params;
+    req.organizationName = orgName;
     try {
       const org = operations.getOrganization(orgName);
       if (org) {
+        req.organizationManagementType = OrganizationManagementType.Managed;
         req.organization = org;
         return next();
       }
-      throw jsonError('managed organization not found', 404);
     } catch (orgNotFoundError) {
-      if (ErrorHelper.IsNotFound(orgNotFoundError)) {
-        return next(jsonError(orgNotFoundError, 404));
-      } else {
-        return next(jsonError(orgNotFoundError));
+      if (!ErrorHelper.IsNotFound(orgNotFoundError)) {
+        return next(orgNotFoundError);
       }
     }
+    try {
+      const org = operations.getUncontrolledOrganization(orgName);
+      const details = await org.getDetails();
+      details.cost && delete details.cost;
+      details.headers && delete details.headers;
+      req.organizationProfile = details;
+    } catch (orgProfileError) {
+      if (ErrorHelper.IsNotFound(orgProfileError)) {
+        return next(CreateError.NotFound(`The organization ${orgName} does not exist`));
+      } else {
+        return next(orgProfileError);
+      }
+    }
+    req.organizationManagementType = OrganizationManagementType.Unmanaged;
+    return next();
   })
 );
 

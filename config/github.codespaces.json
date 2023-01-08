@@ -7,7 +7,7 @@
   "authentication": {
     "port": "env://CODESPACES_PORT?default=3000",
     "github": {
-      "enabled": "env://CODESPACES_GITHUB_AUTHENTICATION_ENABLED",
+      "enabled": "env://CODESPACES_GITHUB_AUTHENTICATION_ENABLED?default=1",
       "clientId": "env://CODESPACES_GITHUB_CLIENT_ID",
       "clientSecret": "env://CODESPACES_GITHUB_CLIENT_SECRET",
       "impersonateOverrideEmuAccount": {
@@ -16,7 +16,7 @@
       }
     },
     "aad": {
-      "enabled": "env://CODESPACES_AAD_AUTHENTICATION_ENABLED"
+      "enabled": "env://CODESPACES_AAD_AUTHENTICATION_ENABLED?default=1"
     }
   }
 }

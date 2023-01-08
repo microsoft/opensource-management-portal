@@ -20,6 +20,8 @@ import {
 import { ErrorHelper, CreateError, splitSemiColonCommas } from '../../transitional';
 import { ICacheHelper } from '../caching';
 
+const axios12BufferDecompressionBugHeaderAddition = true;
+
 export interface IMicrosoftGraphProviderOptions {
   tokenCacheSeconds?: string | number;
   clientId: string;
@@ -33,6 +35,8 @@ export interface IMicrosoftGraphProviderOptions {
 const graphBaseUrl = 'https://graph.microsoft.com/v1.0/';
 const odataNextLink = '@odata.nextLink';
 const defaultCachePeriodMinutes = 60;
+
+const attemptCacheGet = true;
 
 interface IGraphOptions {
   selectValues?: string;
@@ -428,7 +432,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     }
     const extraPath = subResource ? `/${subResource}` : '';
     const url = `https://graph.microsoft.com/v1.0/users/${aadId}${extraPath}?$select=id,mailNickname,userType,displayName,givenName,mail,userPrincipalName,jobTitle`;
-    if (this.#_cache) {
+    if (this.#_cache && attemptCacheGet) {
       try {
         const cached = await this.#_cache.getObject(url);
         if (cached?.value) {
@@ -441,12 +445,16 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       }
     }
     try {
+      const headers = {
+        Authorization: `Bearer ${token}`,
+      };
+      if (axios12BufferDecompressionBugHeaderAddition) {
+        headers['Accept-Encoding'] = 'identity';
+      }
       const response = await axios({
         url,
         method: 'get',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       });
       if (!response.data) {
         throw CreateError.NotFound(`${subResource || 'user'} not in directory for ${aadId}`);
@@ -498,13 +506,15 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     let url = `${graphBaseUrl}${subUrl}?${querystring.stringify(queries)}`;
     const originalUrl = url;
     try {
-      if (this.#_cache) {
+      if (this.#_cache && attemptCacheGet) {
         value = await this.#_cache.getObject(url);
         if (value?.cache) {
           if (Array.isArray(value.cache) && value.cache.length === 0) {
             // live lookup still
-          } else {
+          } else if (typeof value.cache === 'object') {
             return value.cache as any;
+          } else {
+            console.log(`Potentially bad cache, skip quick return: ${value.cache}`);
           }
         }
       }
@@ -550,13 +560,13 @@ export class MicrosoftGraphProvider implements IGraphProvider {
   private async request(url: string, body?: any, eventualConsistency?: string): Promise<any> {
     const token = await this.getToken();
     const method = body ? 'post' : 'get';
-    if (this.#_cache && method === 'get') {
+    if (this.#_cache && attemptCacheGet && method === 'get') {
       try {
         const value = await this.#_cache.getObject(url);
         if (value?.cache) {
           if (Array.isArray(value.cache) && value.cache.length === 0) {
             // live lookup still
-          } else {
+          } else if (typeof value.cache === 'object') {
             return value.cache as any;
           }
         }
@@ -569,6 +579,10 @@ export class MicrosoftGraphProvider implements IGraphProvider {
         Authorization: `Bearer ${token}`,
         // ConsistencyLevel: undefined,
       };
+      if (axios12BufferDecompressionBugHeaderAddition) {
+        headers['Accept-Encoding'] = 'identity'; // gzip, deflate'
+      }
+
       if (eventualConsistency) {
         // headers.ConsistencyLevel = eventualConsistency;
       }
@@ -604,7 +618,11 @@ export class MicrosoftGraphProvider implements IGraphProvider {
           err['url'] = url;
           throw err;
         } else if (axiosError.response?.status >= 400) {
-          throw CreateError.InvalidParameters('Incorrect graph parameters', axiosError);
+          const attemptedErrorData = axiosError.response?.data as any;
+          throw CreateError.InvalidParameters(
+            attemptedErrorData.error?.message || 'Incorrect graph parameters',
+            axiosError
+          );
         }
       }
       error['url'] = url;

@@ -7,7 +7,7 @@ import { request } from '@octokit/request';
 import { createAppAuth, InstallationAccessTokenAuthentication } from '@octokit/auth-app';
 import { AppAuthentication, AuthInterface } from '@octokit/auth-app/dist-types/types';
 
-import { AppPurpose } from '.';
+import { AppPurposeTypes } from '.';
 import { IAuthorizationHeaderValue } from '../interfaces';
 
 interface IInstallationToken {
@@ -27,14 +27,14 @@ const ValidityOffsetAfterNowMilliseconds = 1000 * 120; // how long to require va
 export class GitHubAppTokens {
   #privateKey: string;
   private _appId: number;
-  public purpose: AppPurpose;
+  public purpose: AppPurposeTypes;
   private _appAuth: AuthInterface;
   private _installationAuth = new Map<number, AuthInterface>();
   private _tokensByInstallation = new Map<number, IInstallationToken[]>();
   private _baseUrl: string;
 
   static CreateFromBase64EncodedFileString(
-    purpose: AppPurpose,
+    purpose: AppPurposeTypes,
     friendlyName: string,
     applicationId: number,
     fileContents: string,
@@ -45,7 +45,7 @@ export class GitHubAppTokens {
   }
 
   static CreateFromString(
-    purpose: AppPurpose,
+    purpose: AppPurposeTypes,
     friendlyName: string,
     applicationId: number,
     value: string,
@@ -63,7 +63,7 @@ export class GitHubAppTokens {
   }
 
   constructor(
-    purpose: AppPurpose,
+    purpose: AppPurposeTypes,
     public friendlyName: string,
     appId: number,
     privateKey: string,

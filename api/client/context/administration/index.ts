@@ -7,10 +7,9 @@ import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 import { Organization } from '../../../../business/organization';
 import { ReposAppRequest } from '../../../../interfaces';
-import { jsonError } from '../../../../middleware';
+import { getIsCorporateAdministrator, jsonError } from '../../../../middleware';
 import getCompanySpecificDeployment from '../../../../middleware/companySpecificDeployment';
 import { ErrorHelper, getProviders } from '../../../../transitional';
-import { IndividualContext } from '../../../../user';
 
 import routeIndividualOrganization from './organization';
 
@@ -22,12 +21,7 @@ interface IRequestWithAdministration extends ReposAppRequest {
 
 router.use(
   asyncHandler(async (req: IRequestWithAdministration, res, next) => {
-    const { operations } = getProviders(req);
-    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-    req.isSystemAdministrator = await operations.isSystemAdministrator(
-      activeContext?.corporateIdentity?.id,
-      activeContext?.corporateIdentity?.username
-    );
+    req.isSystemAdministrator = await getIsCorporateAdministrator(req);
     return next();
   })
 );

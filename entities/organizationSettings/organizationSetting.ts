@@ -21,6 +21,7 @@ import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
 export interface IBasicGitHubAppInstallation {
   appId: number;
   installationId: number;
+  appPurposeId?: string;
 }
 
 export enum SpecialTeam {
@@ -30,6 +31,15 @@ export enum SpecialTeam {
   SystemWrite = 'systemWrite', // teamAllReposWrite
   SystemRead = 'systemRead', // teamAllReposRead
   SystemAdmin = 'systemAdmin', // teamAllReposAdmin
+}
+
+export enum OrganizationFeature {
+  Invisible = 'invisible',
+  Ignore = 'ignore',
+}
+
+export enum OrganizationProperty {
+  Priority = 'priority',
 }
 
 export interface ISpecialTeam {
@@ -103,7 +113,7 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
 
   installations: IBasicGitHubAppInstallation[];
   features: string[];
-  properties: any;
+  properties: Record<string | OrganizationProperty, string>;
 
   specialTeams: ISpecialTeam[];
   templates: string[];
@@ -118,11 +128,11 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
     this.legalEntities = [];
   }
 
-  hasFeature(feature: string): boolean {
+  hasFeature(feature: string | OrganizationFeature): boolean {
     return this.features.includes(feature);
   }
 
-  getProperty(key: string): string | boolean | number {
+  getProperty(key: string | OrganizationProperty): string | boolean | number {
     return this.properties[key];
   }
 

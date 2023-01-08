@@ -10,6 +10,8 @@ export type ConfigClientRootFlighting = {
 export type ConfigClientFlighting = {
   enabled: boolean;
 
+  divertEveryone: boolean;
+
   // RICH_TYPE_WARNING: this will break if someone tries overriding with a string/env-var
   corporateIds: string[];
 

@@ -16,7 +16,7 @@ import {
   IEntityMetadataProvidersOptions,
 } from '../lib/entityMetadataProvider';
 import { createAndInitializeRepositoryMetadataProviderInstance } from '../entities/repositoryMetadata';
-
+import createAndInitializeOrganizationAnnotationProviderInstance from '../entities/organizationAnnotation';
 import { createMailAddressProviderInstance, IMailAddressProvider } from '../lib/mailAddressProvider';
 
 import ErrorRoutes from './error-routes';
@@ -203,6 +203,11 @@ async function initializeAsync(
   providers.organizationSettingsProvider = await createAndInitializeOrganizationSettingProviderInstance({
     entityMetadataProvider: providerNameToInstance(config.entityProviders.organizationsettings),
   });
+  providers.organizationAnnotationsProvider = await createAndInitializeOrganizationAnnotationProviderInstance(
+    {
+      entityMetadataProvider: providerNameToInstance(config.entityProviders.organizationannotations),
+    }
+  );
   providers.repositoryCacheProvider = await CreateRepositoryCacheProviderInstance({
     entityMetadataProvider: providerNameToInstance(config.entityProviders.repositorycache),
   });
@@ -299,6 +304,8 @@ async function initializeAsync(
     console.dir(ignoredError2);
     throw ignoredError2;
   }
+
+  await dynamicStartup(config, providers, rootdir, 'secondary');
 
   if (providers.applicationProfile.startup) {
     debug('Application provider-specific startup...');
@@ -623,12 +630,17 @@ async function createMailAddressProvider(config: any, providers: IProviders): Pr
   return createMailAddressProviderInstance(options);
 }
 
-async function dynamicStartup(config: any, providers: IProviders, rootdir: string) {
+async function dynamicStartup(config: any, providers: IProviders, rootdir: string, stage?: string) {
   const p = config?.startup?.path;
   if (p) {
     try {
       const dynamicInclude = require(path.join(rootdir, p));
-      const entrypoint = dynamicInclude && dynamicInclude.default ? dynamicInclude.default : dynamicInclude;
+      let entrypoint = dynamicInclude && dynamicInclude.default ? dynamicInclude.default : dynamicInclude;
+      if (stage && !dynamicInclude[stage]) {
+        return;
+      } else if (stage) {
+        entrypoint = dynamicInclude[stage];
+      }
       if (typeof entrypoint !== 'function') {
         throw new Error(`Entrypoint ${p} is not a function`);
       }
@@ -639,7 +651,7 @@ async function dynamicStartup(config: any, providers: IProviders, rootdir: strin
         rootdir
       ) as Promise<void>;
       await promise;
-      debug(`company-specific startup complete (${p})`);
+      debug(`company-specific ${stage || 'startup'} complete (${p})`);
     } catch (dynamicLoadError) {
       throw new Error(`config.startup.path=${p} could not successfully load: ${dynamicLoadError}`);
     }

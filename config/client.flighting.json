@@ -1,5 +1,6 @@
 {
   "enabled": "env://REACT_CLIENT_FLIGHTING_ENABLED?trueIf=1",
+  "divertEveryone": "env://REACT_CLIENT_FLIGHTING_DIVERT_ALL?trueIf=1",
   "corporateIds": "env://REACT_CLIENT_FLIGHT_CORPORATEIDS",
   "featureFlagUsers": "env://REACT_CLIENT_FEATURE_FLAGS"
 }
