@@ -16,7 +16,7 @@ import { CreateError } from '../transitional';
 const dbg = debug('health');
 
 const supportedHeaderProbeTypes = ['kubernetes', 'azurefrontdoor'];
-const supportedGeneralProbeTypes = ['external', 'azureappservice'];
+const supportedGeneralProbeTypes = ['external', 'azureappservice-windows', 'azureappservice-linux'];
 
 enum HealthProbeType {
   Readiness = 'ready',

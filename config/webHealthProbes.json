@@ -22,8 +22,12 @@
       "value": "env://AZURE_FRONTDOOR_HEALTH_CHECK_VALUE?default=Edge Health Probe"
     }
   },
-  "azureappservice": {
+  "azureappservice-windows": {
     "allowed": "env://WEBSITE_WARMUP_PATH",
     "endpoint": "env://WEBSITE_WARMUP_PATH"
+  },
+  "azureappservice-linux": {
+    "allowed": "env://WEBSITE_SITE_NAME",
+    "endpoint": "/robots933456.txt"
   }
 }
