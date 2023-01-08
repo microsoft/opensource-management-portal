@@ -27,12 +27,10 @@ import {
   ICacheOptions,
   throwIfNotGitHubCapable,
   throwIfNotCapable,
-  IOperationsProviders,
   CoreCapability,
   IGetBranchesOptions,
   IGitHubBranch,
   IGetPullsOptions,
-  IGetContentOptions,
   ITemporaryCommandOutput,
   NoCacheNoBackground,
   IGitHubProtectedBranchConfiguration,
@@ -152,6 +150,14 @@ interface IGetBranchesParameters {
   repo: string;
   per_page: number;
   protected?: boolean;
+}
+
+interface IUnarchiveResponse {
+  unarchiveRepository: {
+    repository: {
+      isArchived: boolean;
+    };
+  };
 }
 
 const safeEntityFieldsForJsonSend = [
@@ -455,6 +461,14 @@ export class Repository {
       }
       throw error;
     }
+  }
+
+  async getGraphQlNodeId() {
+    if (!this.getEntity()?.node_id) {
+      await this.getDetails();
+    }
+    const { node_id: nodeId } = this.getEntity();
+    return nodeId;
   }
 
   async getRepositoryMetadata(): Promise<RepositoryMetadataEntity> {
@@ -1277,6 +1291,27 @@ export class Repository {
       }
     );
     return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
+  }
+
+  async unarchive(): Promise<IUnarchiveResponse> {
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const nodeId = await this.getGraphQlNodeId();
+    const mutation = `
+      mutation ($repositoryId:ID!) {
+        unarchiveRepository(input:{repositoryId:$repositoryId}) {
+          repository {
+            isArchived
+          }
+        }
+      }
+    `;
+    try {
+      return (await operations.github.graphql(this.authorize(AppPurpose.Operations), mutation, {
+        repositoryId: nodeId,
+      })) as IUnarchiveResponse;
+    } catch (error) {
+      throw error;
+    }
   }
 
   async update(patch?: any): Promise<void> {
