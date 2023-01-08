@@ -38,6 +38,7 @@ type ContentOptions = {
 
 type FlightingOptions = ContentOptions & {
   enabled: boolean;
+  divertEveryone: boolean;
   staticFlightIds?: Set<string>;
   flightName: string;
 };
@@ -58,8 +59,9 @@ export function injectReactClient() {
     const flightAvailable = flightingOptions.enabled && flightingOptions.html;
     const flightName = flightAvailable ? flightingOptions.flightName : null;
     const userFlighted =
-      activeContext?.corporateIdentity?.id &&
-      flightingOptions.staticFlightIds?.has(activeContext.corporateIdentity.id);
+      flightingOptions.divertEveryone === true ||
+      (activeContext?.corporateIdentity?.id &&
+        flightingOptions.staticFlightIds?.has(activeContext.corporateIdentity.id));
     const userFlightOverride =
       req.query.flight === '0' || req.query.flight === '1' ? req.query.flight : undefined;
     let inFlight = flightAvailable && (userFlighted || req.query.flight === '1');
@@ -147,6 +149,7 @@ function evaluateFlightConditions(req: ReposAppRequest): FlightingOptions {
     const flights = options.package.flights;
     options.flightName = (flights || {})[branchName] || 'unknown';
     options.enabled = true;
+    options.divertEveryone = config.client.flighting.divertEveryone;
     options.staticFlightIds = new Set<string>(
       Array.isArray(config.client.flighting.corporateIds)
         ? config.client.flighting.corporateIds
