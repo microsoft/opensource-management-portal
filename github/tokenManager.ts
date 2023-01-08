@@ -8,8 +8,9 @@ import {
   IGitHubAppConfiguration,
   IGitHubAppsOptions,
   GitHubAppAuthenticationType,
-  AllAvailableAppPurposes,
-  AppPurposeToConfigurationName,
+  ICustomAppPurpose,
+  GitHubAppPurposes,
+  AppPurposeTypes,
 } from '.';
 import { GitHubAppTokens } from './appTokens';
 import { IAuthorizationHeaderValue, NoCacheNoBackground } from '../interfaces';
@@ -17,20 +18,6 @@ import { OrganizationSetting } from '../entities/organizationSettings/organizati
 import { readFileToText } from '../utils';
 import { Operations, OperationsCore, Organization } from '../business';
 import { CreateError } from '../transitional';
-
-const fallbackPurposePriorities = [
-  AppPurpose.Data,
-  AppPurpose.CustomerFacing,
-  AppPurpose.Operations,
-  AppPurpose.BackgroundJobs,
-];
-
-const fallbackBackgroundJobPriorities = [
-  AppPurpose.BackgroundJobs,
-  AppPurpose.Data,
-  AppPurpose.CustomerFacing,
-  AppPurpose.Operations,
-];
 
 export interface IGitHubRateLimit {
   limit: number;
@@ -47,7 +34,7 @@ export interface IGitHubRateLimit {
 // 3: configure org setting/s, or add the org!
 
 interface InstallationIdPurposePair {
-  purpose: AppPurpose;
+  purpose: AppPurposeTypes;
   installationId: number;
 }
 
@@ -56,11 +43,11 @@ export class GitHubTokenManager {
   private static _managersForOperations: Map<OperationsCore, GitHubTokenManager> = new Map();
   private static _forceBackgroundTokens: boolean;
   // private _appConfiguration = new Map<AppPurpose, IGitHubAppConfiguration>();
-  private _apps = new Map<AppPurpose, GitHubAppTokens>();
+  private _apps = new Map<AppPurposeTypes, GitHubAppTokens>();
   private _appsById = new Map<number, GitHubAppTokens>();
-  private _appIdToPurpose = new Map<number, AppPurpose>();
+  private _appIdToPurpose = new Map<number, AppPurposeTypes>();
   private _appSlugs = new Map<number, string>();
-  private _forceInstanceTokensToPurpose: AppPurpose;
+  private _forceInstanceTokensToPurpose: AppPurposeTypes;
   private _allowReadOnlyFallbackToOtherInstallations: boolean;
 
   static RegisterManagerForOperations(operations: OperationsCore, manager: GitHubTokenManager) {
@@ -80,7 +67,18 @@ export class GitHubTokenManager {
       options.app.isBackgroundJob && !options.app.enableAllGitHubApps;
   }
 
-  forceInstanceTokensToPurpose(purpose: AppPurpose) {
+  private getFallbackList(input: AppPurposeTypes[]) {
+    const clone = this.isForcingBackgroundJobType()
+      ? [AppPurpose.BackgroundJobs, ...[...input].filter((p) => p !== AppPurpose.BackgroundJobs)]
+      : [...input];
+    return clone;
+  }
+
+  private isForcingBackgroundJobType() {
+    return GitHubTokenManager._forceBackgroundTokens === true;
+  }
+
+  forceInstanceTokensToPurpose(purpose: AppPurposeTypes) {
     this._forceInstanceTokensToPurpose = purpose;
   }
 
@@ -89,15 +87,21 @@ export class GitHubTokenManager {
   }
 
   async initialize() {
-    for (const appPurpose of AllAvailableAppPurposes) {
-      const configurationValue = this.#options.configurations.get(appPurpose);
-      if (configurationValue) {
-        await this.initializeApp(appPurpose, configurationValue);
+    for (const appPurpose of GitHubAppPurposes.AllAvailableAppPurposes) {
+      const asCustom = appPurpose as ICustomAppPurpose;
+      if (asCustom?.isCustomAppPurpose === true) {
+        // skip
+      } else {
+        const configurationValue = this.#options.configurations.get(appPurpose);
+        if (configurationValue) {
+          await this.initializeApp(appPurpose, configurationValue);
+        }
       }
     }
   }
 
   organizationSupportsAnyPurpose(organizationName: string, organizationSettings?: OrganizationSetting) {
+    const fallbackPurposePriorities = this.getFallbackList(GitHubAppPurposes.AllAvailableAppPurposes);
     return !!this.getPrioritizedOrganizationInstallationId(
       fallbackPurposePriorities[0],
       organizationName,
@@ -118,9 +122,25 @@ export class GitHubTokenManager {
     return this._appSlugs.get(id);
   }
 
+  private getPurposeDisplayId(purpose: AppPurposeTypes) {
+    const asCustom = purpose as ICustomAppPurpose;
+    if (asCustom?.isCustomAppPurpose === true) {
+      return asCustom.id;
+    }
+    return purpose;
+  }
+
+  private getCustomPurpose(purpose: AppPurposeTypes): ICustomAppPurpose {
+    const asCustom = purpose as ICustomAppPurpose;
+    if (asCustom?.isCustomAppPurpose === true) {
+      return asCustom;
+    }
+    return null;
+  }
+
   async getOrganizationAuthorizationHeader(
     organizationName: string,
-    preferredPurpose: AppPurpose,
+    preferredPurpose: AppPurposeTypes,
     organizationSettings: OrganizationSetting,
     appAuthenticationType: GitHubAppAuthenticationType
   ): Promise<IAuthorizationHeaderValue> {
@@ -132,7 +152,7 @@ export class GitHubTokenManager {
     );
     if (!installationIdPair) {
       throw new Error(
-        `GitHubTokenManager: organization ${organizationName} does not support the GitHub App model`
+        `GitHubTokenManager: organization ${organizationName} does not have a configured GitHub App installation, or, the installation information is not in this environment.`
       );
     }
     if (
@@ -141,7 +161,16 @@ export class GitHubTokenManager {
     ) {
       // console.log(`preferred GitHub App type ${preferredPurpose} not configured for organization ${organizationName}, falling back to ${installationIdPair.purpose}`);
     }
-    const app = this._apps.get(installationIdPair.purpose);
+    const asCustomPurpose = this.getCustomPurpose(installationIdPair.purpose);
+    let app = this._apps.get(installationIdPair.purpose);
+    if (!app && asCustomPurpose) {
+      app = await this.initializeApp(asCustomPurpose, asCustomPurpose.configuration);
+    }
+    if (!app) {
+      throw new Error(
+        `No GitHub App is configured for the purpose ${this.getPurposeDisplayId(installationIdPair.purpose)}`
+      );
+    }
     return app.getInstallationToken(installationIdPair.installationId, organizationName);
   }
 
@@ -178,7 +207,7 @@ export class GitHubTokenManager {
     }
   }
 
-  async getRateLimitInformation(purpose: AppPurpose, organization: Organization) {
+  async getRateLimitInformation(purpose: AppPurposeTypes, organization: Organization) {
     if (!organization.hasDynamicSettings) {
       throw CreateError.InvalidParameters(
         `Organization ${organization.name} does not have dynamic settings, which is currently required for this capability`
@@ -214,7 +243,7 @@ export class GitHubTokenManager {
   }
 
   private getPrioritizedOrganizationInstallationId(
-    preferredPurpose: AppPurpose,
+    preferredPurpose: AppPurposeTypes,
     organizationName: string,
     organizationSettings: OrganizationSetting,
     appAuthenticationType: GitHubAppAuthenticationType
@@ -228,16 +257,24 @@ export class GitHubTokenManager {
     if (!organizationSettings) {
       return null;
     }
+    const fallbackPurposePriorities = this.getFallbackList(GitHubAppPurposes.AllAvailableAppPurposes);
     let order =
-      GitHubTokenManager._forceBackgroundTokens === true
-        ? fallbackBackgroundJobPriorities
+      this.isForcingBackgroundJobType() === true
+        ? fallbackPurposePriorities
         : [preferredPurpose, ...fallbackPurposePriorities];
     if (appAuthenticationType === GitHubAppAuthenticationType.ForceSpecificInstallation) {
       order = [preferredPurpose];
     }
     for (const purpose of order) {
+      let customAppPurpose = purpose as ICustomAppPurpose;
+      if (!(customAppPurpose?.isCustomAppPurpose === true)) {
+        customAppPurpose = null;
+      }
       if (organizationSettings?.installations) {
-        for (const { appId, installationId } of organizationSettings.installations) {
+        for (const { appId, installationId, appPurposeId } of organizationSettings.installations) {
+          if (appPurposeId && customAppPurpose?.id === appPurposeId) {
+            return { installationId, purpose: customAppPurpose };
+          }
           const purposeForApp = this._appIdToPurpose.get(appId);
           if (this._appsById.has(appId) && purposeForApp && purposeForApp === purpose) {
             return { installationId, purpose };
@@ -254,7 +291,8 @@ export class GitHubTokenManager {
     return null;
   }
 
-  private async initializeApp(purpose: AppPurpose, appConfig: IGitHubAppConfiguration) {
+  private async initializeApp(purpose: AppPurposeTypes, appConfig: IGitHubAppConfiguration) {
+    const customPurpose = purpose as ICustomAppPurpose;
     if (!appConfig || !appConfig.appId) {
       return;
     }
@@ -271,7 +309,7 @@ export class GitHubTokenManager {
     if (!key) {
       throw new Error(`appKey or appKeyFile required for ${purpose} GitHub App configuration`);
     }
-    const friendlyName = appConfig.description || 'Unknown';
+    const friendlyName = customPurpose?.name || appConfig.description || 'Unknown';
     const baseUrl = appConfig.baseUrl;
     const app = fromLocalFile
       ? GitHubAppTokens.CreateFromString(purpose, friendlyName, appId, key, baseUrl)
@@ -280,5 +318,11 @@ export class GitHubTokenManager {
     this._appsById.set(appId, app);
     this._appSlugs.set(appId, appConfig.slug);
     this._appIdToPurpose.set(appId, purpose);
+    if (customPurpose?.isCustomAppPurpose === true) {
+      console.log(
+        `Custom GitHub App, ${customPurpose.name} (id=${customPurpose.id}, appId=${appId}, slug=${appConfig.slug}) initialized`
+      );
+    }
+    return app;
   }
 }

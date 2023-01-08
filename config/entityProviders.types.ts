@@ -12,6 +12,7 @@ export type ConfigEntityProviders = {
   eventrecord: string;
   teamjoin: string;
   repositorymetadata: string;
+  organizationannotations: string;
   organizationsettings: string;
   organizationmembercache: string;
   repository: string;

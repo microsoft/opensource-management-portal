@@ -5,7 +5,7 @@
 
 import { Repository } from './repository';
 import { wrapError } from '../utils';
-import { AppPurpose } from '../github';
+import { AppPurpose, AppPurposeTypes } from '../github';
 import { CacheDefault, getMaxAgeSeconds } from '.';
 import {
   IOperationsInstance,
@@ -212,7 +212,7 @@ export class RepositoryProject {
     return false;
   }
 
-  private authorizeSpecificPurpose(purpose: AppPurpose): IGetAuthorizationHeader | string {
+  private authorizeSpecificPurpose(purpose: AppPurposeTypes): IGetAuthorizationHeader | string {
     const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose

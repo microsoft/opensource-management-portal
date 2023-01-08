@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { AppPurpose } from '../../github';
+import { AppPurposeTypes } from '../../github';
 
 export interface ICacheOptions {
   backgroundRefresh?: any | null | undefined;
@@ -11,7 +11,7 @@ export interface ICacheOptions {
 }
 
 export interface ICacheOptionsWithPurpose extends ICacheOptions {
-  purpose?: AppPurpose;
+  purpose?: AppPurposeTypes;
 }
 
 export interface IPagedCacheOptions extends ICacheOptions {
@@ -19,7 +19,7 @@ export interface IPagedCacheOptions extends ICacheOptions {
 }
 
 export interface IPurposefulGetAuthorizationHeader {
-  (purpose: AppPurpose): Promise<IAuthorizationHeaderValue>;
+  (purpose: AppPurposeTypes): Promise<IAuthorizationHeaderValue>;
 }
 
 export interface IGetAuthorizationHeader {
@@ -28,7 +28,7 @@ export interface IGetAuthorizationHeader {
 
 export interface IAuthorizationHeaderValue {
   value: string;
-  purpose: AppPurpose;
+  purpose: AppPurposeTypes;
   source?: string;
   installationId?: number;
   organizationName?: string;
@@ -59,6 +59,11 @@ export interface ICacheDefaultTimes {
   orgRepoWebhooksStaleSeconds: number;
   teamRepositoryPermissionStaleSeconds: number;
 }
+
+// These "core capabilities" were created when the GitHub operations
+// classes were refactored to support both GitHub Enterprise Cloud and
+// also GitHub AE. Not all operations are supported by both environments
+// the same.
 
 export enum CoreCapability {
   GitHubRestApi = 'GitHub REST API', // IOperationsGitHubRestLibrary

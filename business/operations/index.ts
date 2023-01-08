@@ -15,13 +15,16 @@ import { wrapError, sortByCaseInsensitive } from '../../utils';
 import { Repository } from '../repository';
 import { RestLibrary } from '../../lib/github';
 import {
-  AllAvailableAppPurposes,
-  AppPurpose,
-  AppPurposeToConfigurationName,
+  AppPurposeTypes,
+  getAppPurposeId,
   GitHubAppAuthenticationType,
+  GitHubAppPurposes,
   IGitHubAppConfiguration,
 } from '../../github';
-import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
+import {
+  OrganizationFeature,
+  OrganizationSetting,
+} from '../../entities/organizationSettings/organizationSetting';
 import { OrganizationSettingProvider } from '../../entities/organizationSettings/organizationSettingProvider';
 import { IMail } from '../../lib/mailProvider';
 import { ILinkProvider } from '../../lib/linkProviders';
@@ -90,6 +93,12 @@ export interface IOperationsOptions extends IOperationsCoreOptions {
   repositoryMetadataProvider: IRepositoryMetadataProvider;
 }
 
+export type GetInvisibleOrganizationOptions = {
+  settings?: OrganizationSetting;
+  authenticationType?: GitHubAppAuthenticationType;
+  storeInstanceByName?: boolean;
+};
+
 export class Operations
   extends OperationsCore
   implements
@@ -155,10 +164,10 @@ export class Operations
         ? this.config.github.api.defaultPageSize
         : defaultGitHubPageSize;
     const hasModernGitHubApps = config.github?.app;
-    const purposesToConfigurations = new Map<AppPurpose, IGitHubAppConfiguration>();
+    const purposesToConfigurations = new Map<AppPurposeTypes, IGitHubAppConfiguration>();
     if (hasModernGitHubApps) {
-      for (const purpose of AllAvailableAppPurposes) {
-        const configKey = AppPurposeToConfigurationName[purpose];
+      for (const purpose of GitHubAppPurposes.AllAvailableAppPurposes) {
+        const configKey = getAppPurposeId(purpose);
         const configValue = config.github.app[configKey];
         if (configValue) {
           purposesToConfigurations.set(purpose, configValue);
@@ -192,7 +201,9 @@ export class Operations
         (dynamicOrg) => dynamicOrg.active === true
       );
       const unignoredDynamicOrganizations = dynamicOrganizations.filter(
-        (d) => !d.hasFeature('ignore') || (d.hasFeature('ignore') && d.hasFeature('invisible'))
+        (d) =>
+          !d.hasFeature(OrganizationFeature.Ignore) ||
+          (d.hasFeature(OrganizationFeature.Ignore) && d.hasFeature(OrganizationFeature.Invisible))
       );
       this._dynamicOrganizationSettings = unignoredDynamicOrganizations;
       this._dynamicOrganizationIds = new Set(
@@ -233,7 +244,7 @@ export class Operations
       const names = [];
       const processed = new Set<string>();
       for (const dynamic of this._dynamicOrganizationSettings) {
-        if (!dynamic.hasFeature('invisible')) {
+        if (!dynamic.hasFeature(OrganizationFeature.Invisible)) {
           const lowercase = dynamic.organizationName.toLowerCase();
           processed.add(lowercase);
           names.push(lowercase);
@@ -256,7 +267,7 @@ export class Operations
       const organizations = this.organizations;
       this._organizationIds = new Map();
       this._dynamicOrganizationSettings.map((entry) => {
-        if (entry.active && !entry.hasFeature('invisible')) {
+        if (entry.active && !entry.hasFeature(OrganizationFeature.Invisible)) {
           const org = this.getOrganization(entry.organizationName.toLowerCase());
           this._organizationIds.set(Number(entry.organizationId), org);
         }
@@ -360,7 +371,7 @@ export class Operations
           if (
             dos.active &&
             dos.organizationName.toLowerCase() === name.toLowerCase() &&
-            !dos.hasFeature('invisible')
+            !dos.hasFeature(OrganizationFeature.Invisible)
           ) {
             dynamicSettings = dos;
           }
@@ -420,27 +431,35 @@ export class Operations
   // An invisible organization does not appear in the cross-organization
   // views or arrays provided by operations. However, they can still be
   // retrieved directly and connected to live tokens and objects.
-  getInvisibleOrganization(name: string) {
+  getInvisibleOrganization(name: string, options?: GetInvisibleOrganizationOptions) {
     if (!this._invisibleOrganizations) {
       this._invisibleOrganizations = new Map();
     }
     const lowercase = name.toLowerCase();
-    if (this._invisibleOrganizations.has(lowercase)) {
+    if (this._invisibleOrganizations.has(lowercase) && options?.storeInstanceByName) {
       return this._invisibleOrganizations.get(lowercase);
     }
     let dynamicSettings: OrganizationSetting = null;
     this._dynamicOrganizationSettings.map((dos) => {
-      if (dos.active && dos.organizationName.toLowerCase() === lowercase && dos.hasFeature('invisible')) {
+      if (
+        dos.active &&
+        dos.organizationName.toLowerCase() === lowercase &&
+        dos.hasFeature(OrganizationFeature.Invisible)
+      ) {
         dynamicSettings = dos;
       }
     });
-    const organization = this.createOrganization(
-      name,
-      dynamicSettings,
-      null,
-      GitHubAppAuthenticationType.BestAvailable
-    );
-    this._invisibleOrganizations.set(name, organization);
+    if (!dynamicSettings && !options?.settings) {
+      throw new Error(`No organization settings available or configured for the ${name} organization`);
+    }
+    if (options?.settings) {
+      dynamicSettings = options.settings;
+    }
+    const authenticationType = options?.authenticationType || GitHubAppAuthenticationType.BestAvailable;
+    const organization = this.createOrganization(name, dynamicSettings, null, authenticationType);
+    if (!options || options?.storeInstanceByName) {
+      this._invisibleOrganizations.set(name, organization);
+    }
     return organization;
   }
 
@@ -531,7 +550,7 @@ export class Operations
       const names: string[] = [];
       const visited = new Set<string>();
       for (const entry of this._dynamicOrganizationSettings) {
-        if (entry.active && !entry.hasFeature('invisible')) {
+        if (entry.active && !entry.hasFeature(OrganizationFeature.Invisible)) {
           names.push(entry.organizationName);
           const lowercase = entry.organizationName.toLowerCase();
           visited.add(lowercase);
@@ -568,7 +587,7 @@ export class Operations
       const visited = new Set<string>();
       for (const entry of this._dynamicOrganizationSettings) {
         const lowercase = entry.organizationName.toLowerCase();
-        if (entry.active && !visited.has(lowercase) && !entry.hasFeature('invisible')) {
+        if (entry.active && !visited.has(lowercase) && !entry.hasFeature(OrganizationFeature.Invisible)) {
           visited.add(lowercase);
           const orgInstance = this.getOrganization(lowercase);
           const token = orgInstance.getAuthorizationHeader();

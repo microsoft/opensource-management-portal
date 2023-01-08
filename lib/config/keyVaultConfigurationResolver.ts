@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import Debug from 'debug';
 import { ClientSecretCredential } from '@azure/identity';
 import { KeyVaultSecret, SecretClient } from '@azure/keyvault-secrets';
 import objectPath from 'object-path';
@@ -30,6 +31,8 @@ import { URL } from 'url';
 // recommended or supported approach for KeyVault use in applications, and may
 // not be endorsed by the engineering team responsible for KeyVault, but for our
 // group and our Node apps, it has been very helpful.
+
+const debug = Debug('config');
 
 const keyVaultProtocol = 'keyvault:';
 const httpsProtocol = 'https:';
@@ -178,6 +181,7 @@ async function getSecretsFromVault(getSecretClient: (vault: string) => Promise<S
           const vaultUrl = uniqueUriToVault.get(uniqueSecretId);
           const secretClient = await getSecretClient(vaultUrl);
           const value = await getSecret(secretClient, secretStash, uniqueSecretId);
+          debug(`Retrieved secret ${uniqueSecretId} value`);
           secretStash.set(uniqueSecretId, value);
         }
       } catch (resolveSecretError) {

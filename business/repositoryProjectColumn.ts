@@ -4,7 +4,7 @@
 //
 
 import { CacheDefault, getMaxAgeSeconds, RepositoryIssue } from '.';
-import { AppPurpose } from '../github';
+import { AppPurpose, AppPurposeTypes } from '../github';
 import {
   IOperationsInstance,
   IPurposefulGetAuthorizationHeader,
@@ -136,7 +136,7 @@ export class RepositoryProjectColumn {
     return card;
   }
 
-  private authorizeSpecificPurpose(purpose: AppPurpose): IGetAuthorizationHeader | string {
+  private authorizeSpecificPurpose(purpose: AppPurposeTypes): IGetAuthorizationHeader | string {
     const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose

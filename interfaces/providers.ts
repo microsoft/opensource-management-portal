@@ -42,6 +42,7 @@ import { ICustomizedNewRepositoryLogic, ICustomizedTeamPermissionsWebhookLogic }
 import { IEntityMetadataProvider } from '../lib/entityMetadataProvider';
 import { IRepositoryProvider } from '../entities/repository';
 import { IKeyVaultSecretResolver } from '../lib/keyVaultResolver';
+import { IOrganizationAnnotationMetadataProvider } from '../entities/organizationAnnotation';
 
 type ProviderGenerator = (value: string) => IEntityMetadataProvider;
 
@@ -73,6 +74,7 @@ export interface IProviders {
   mailAddressProvider?: IMailAddressProvider;
   mailProvider?: IMailProvider;
   operations?: Operations;
+  organizationAnnotationsProvider?: IOrganizationAnnotationMetadataProvider;
   organizationMemberCacheProvider?: IOrganizationMemberCacheProvider;
   organizationSettingsProvider?: IOrganizationSettingProvider;
   postgresPool?: PostgresPool;

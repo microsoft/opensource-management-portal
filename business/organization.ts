@@ -13,7 +13,7 @@ import { Repository } from './repository';
 import { wrapError } from '../utils';
 import { StripGitHubEntity } from '../lib/github/restApi';
 import { GitHubResponseType } from '../lib/github/endpointEntities';
-import { AppPurpose } from '../github';
+import { AppPurpose, AppPurposeTypes } from '../github';
 import { OrganizationSetting, SpecialTeam } from '../entities/organizationSettings/organizationSetting';
 import { createOrganizationSudoInstance, IOrganizationSudo } from '../features';
 import { CacheDefault, getMaxAgeSeconds, getPageSize, OperationsCore } from './operations/core';
@@ -57,6 +57,7 @@ import { CreateError, ErrorHelper } from '../transitional';
 import { jsonError } from '../middleware';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 import { ConfigGitHubTemplates } from '../config/github.templates.types';
+import { GitHubTokenManager } from '../github/tokenManager';
 
 interface IGetMembersParameters {
   org: string;
@@ -271,6 +272,13 @@ export class Organization {
         `The ${this.name} organization is not configured to support the necessary Updates app to complete this operation: ${functionName}`
       );
     }
+  }
+
+  getRateLimitInformation(purpose: AppPurposeTypes) {
+    const tokenManager = GitHubTokenManager.TryGetTokenManagerForOperations(
+      this._operations as OperationsCore
+    );
+    return tokenManager.getRateLimitInformation(purpose, this);
   }
 
   repository(name: string, optionalEntity?) {
@@ -1207,7 +1215,7 @@ export class Organization {
     return getAuthorizationHeader;
   }
 
-  private authorizeSpecificPurpose(purpose: AppPurpose): IGetAuthorizationHeader {
+  private authorizeSpecificPurpose(purpose: AppPurposeTypes): IGetAuthorizationHeader {
     const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose
