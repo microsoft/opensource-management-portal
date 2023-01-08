@@ -5,6 +5,13 @@ following configuration elements are available at this time, each with a distinc
 
 Primary configuration is provided by `.env` files or process/container environment variables and volume files.
 
+Configuration values are retrieved in this order:
+
+- `.env` above root, _only if_ you also set `PREFER_DOTENV` to '1' in the `.env` or `process.env`
+- process environment variable
+- `.env` above root
+- environment configuration defaults, values, key vault locations, volume files
+
 A GitHub organization(s) configuration file in JSON format is required as of version 4.2.0 of the app.
 
 - Environment Variables (see `configuration.js` for details)
@@ -13,8 +20,14 @@ A GitHub organization(s) configuration file in JSON format is required as of ver
   - `config/organizations.json`: organization configuration information, an alternate and additive way to include organization config in the app at deployment time. For this method to work, make sure to set the configuration environment to use from such a file using the `CONFIGURATION_ENVIRONMENT` env variable.
 - [Azure Key Vault](https://azure.microsoft.com/en-us/services/key-vault/) secrets
 
-With the current configuration story, a `CONFIGURATION_ENVIRONMENT` variable is required, as well
-as a secret for AAD to get KeyVault bootstrapped. That requirement will go away soon.
+With the current configuration story, a `CONFIGURATION_ENVIRONMENT` variable is optional, as well
+as a secret for AAD to get KeyVault bootstrapped. The environment will default to your NODE_ENV
+if not set (i.e. `development`).
+
+The reason for `PREFER_DOTENV` is that in some cases, environments such as
+GitHub Codespaces will set the process environment for editors to all the
+secret values, which may not allow per-Codespace-instance overrides using
+`.env`, but this is a dev-time only opt-in approach.
 
 ## Configuring organizations
 
