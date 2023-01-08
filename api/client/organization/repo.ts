@@ -19,11 +19,21 @@ import { renameRepositoryDefaultBranchEndToEnd } from '../../../routes/org/repos
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
 
 import RouteRepoPermissions from './repoPermissions';
-import { ReposAppRequest, LocalApiRepoAction, getRepositoryMetadataProvider } from '../../../interfaces';
+import {
+  ReposAppRequest,
+  LocalApiRepoAction,
+  getRepositoryMetadataProvider,
+  NoCacheNoBackground,
+} from '../../../interfaces';
 
 type RequestWithRepo = ReposAppRequest & {
   repository: Repository;
 };
+
+enum ArchivalAction {
+  Archive,
+  UnArchive,
+}
 
 const router: Router = Router();
 
@@ -37,8 +47,7 @@ router.get(
   asyncHandler(async (req: RequestWithRepo, res, next) => {
     const { repository } = req;
     try {
-      await repository.getDetails();
-
+      await repository.getDetails({ backgroundRefresh: false });
       const clone = Object.assign({}, repository.getEntity());
       delete clone.temp_clone_token; // never share this back
       delete clone.cost;
@@ -104,74 +113,89 @@ router.patch(
 router.post(
   '/archive',
   asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(async function (req: RequestWithRepo, res, next) {
-    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-    const providers = getProviders(req);
-    const { insights } = providers;
-    const repoPermissions = getContextualRepositoryPermissions(req);
-    if (!repoPermissions.allowAdministration) {
-      return next(jsonError('You do not have permission to archive this repo', 403));
-    }
-    const insightsPrefix = 'ArchiveRepo';
-    const { repository } = req;
-    try {
-      insights?.trackEvent({
-        name: `${insightsPrefix}Started`,
-        properties: {
-          requestedById: activeContext.link.corporateId,
-          repoName: repository.name,
-          orgName: repository.organization.name,
-          repoId: repository.id ? String(repository.id) : 'unknown',
-        },
-      });
-      const currentRepositoryState = deployment?.features?.repositoryActions?.getCurrentRepositoryState
-        ? await deployment.features.repositoryActions.getCurrentRepositoryState(providers, repository)
-        : null;
-      await repository.archive();
-      if (deployment?.features?.repositoryActions?.sendActionReceipt) {
-        deployment.features.repositoryActions
-          .sendActionReceipt(
-            providers,
-            activeContext,
-            repository,
-            LocalApiRepoAction.Archive,
-            currentRepositoryState
-          )
-          .then((ok) => {})
-          .catch(() => {});
-      }
-      insights?.trackMetric({
-        name: `${insightsPrefix}s`,
-        value: 1,
-      });
-      insights?.trackEvent({
-        name: `${insightsPrefix}Success`,
-        properties: {
-          requestedById: activeContext.link.corporateId,
-          repoName: repository.name,
-          orgName: repository.organization.name,
-          repoId: repository.id ? String(repository.id) : 'unknown',
-        },
-      });
-      //return res.json(result);
-      return res.json({
-        message: `You archived: ${repository.full_name}`,
-      });
-    } catch (error) {
-      insights?.trackException({ exception: error });
-      insights?.trackEvent({
-        name: `${insightsPrefix}Failed`,
-        properties: {
-          requestedById: activeContext.link.corporateId,
-          repoName: repository.name,
-          orgName: repository.organization.name,
-          repoId: repository.id ? String(repository.id) : 'unknown',
-        },
-      });
-      return next(jsonError(error));
-    }
-  })
+  asyncHandler(archiveUnArchiveRepositoryHandler.bind(null, ArchivalAction.Archive))
 );
+
+router.post(
+  '/unarchive',
+  asyncHandler(AddRepositoryPermissionsToRequest),
+  asyncHandler(archiveUnArchiveRepositoryHandler.bind(null, ArchivalAction.UnArchive))
+);
+
+async function archiveUnArchiveRepositoryHandler(action: ArchivalAction, req: RequestWithRepo, res, next) {
+  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+  const providers = getProviders(req);
+  const { insights } = providers;
+  const repoPermissions = getContextualRepositoryPermissions(req);
+  const phrase = action === ArchivalAction.Archive ? 'archive' : 'unarchive';
+  const completedPhrase = `${phrase}d`;
+  if (!repoPermissions.allowAdministration) {
+    return next(jsonError(`You do not have permission to ${phrase} this repo`, 403));
+  }
+  const insightsPrefix = `${action === ArchivalAction.UnArchive ? 'Un' : ''}ArchiveRepo`;
+  const { repository } = req;
+  try {
+    insights?.trackEvent({
+      name: `${insightsPrefix}Started`,
+      properties: {
+        requestedById: activeContext.link.corporateId,
+        repoName: repository.name,
+        orgName: repository.organization.name,
+        repoId: repository.id ? String(repository.id) : 'unknown',
+      },
+    });
+    const currentRepositoryState = deployment?.features?.repositoryActions?.getCurrentRepositoryState
+      ? await deployment.features.repositoryActions.getCurrentRepositoryState(providers, repository)
+      : null;
+    await (action === ArchivalAction.Archive ? repository.archive() : repository.unarchive());
+    if (deployment?.features?.repositoryActions?.sendActionReceipt) {
+      deployment.features.repositoryActions
+        .sendActionReceipt(
+          providers,
+          activeContext,
+          repository,
+          action === ArchivalAction.Archive ? LocalApiRepoAction.Archive : LocalApiRepoAction.UnArchive,
+          currentRepositoryState
+        )
+        .then((ok) => {})
+        .catch(() => {});
+    }
+    insights?.trackMetric({
+      name: `${insightsPrefix}s`,
+      value: 1,
+    });
+    insights?.trackEvent({
+      name: `${insightsPrefix}Success`,
+      properties: {
+        requestedById: activeContext.link.corporateId,
+        repoName: repository.name,
+        orgName: repository.organization.name,
+        repoId: repository.id ? String(repository.id) : 'unknown',
+      },
+    });
+    // Update the details without background cache so the next fetch is fresh
+    try {
+      await repository.getDetails(NoCacheNoBackground);
+    } catch (ignore) {
+      insights?.trackException({ exception: ignore });
+    }
+    return res.json({
+      message: `You ${completedPhrase}: ${repository.full_name}`,
+    });
+  } catch (error) {
+    insights?.trackException({ exception: error });
+    insights?.trackEvent({
+      name: `${insightsPrefix}Failed`,
+      properties: {
+        requestedById: activeContext.link.corporateId,
+        repoName: repository.name,
+        orgName: repository.organization.name,
+        repoId: repository.id ? String(repository.id) : 'unknown',
+      },
+    });
+    return next(jsonError(error));
+  }
+}
 
 router.delete(
   '/',
