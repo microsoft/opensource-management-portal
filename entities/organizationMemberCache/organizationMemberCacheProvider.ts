@@ -38,7 +38,7 @@ export interface IOrganizationMemberCacheProvider {
   queryOrganizationMembersByOrganizationId(organizationId: string): Promise<OrganizationMemberCacheEntity[]>;
   queryOrganizationMembersByUserId(userId: string): Promise<OrganizationMemberCacheEntity[]>;
   queryAllOrganizationIds(): Promise<string[]>;
-  queryAllOrganizationOwners(): Promise<OrganizationMemberCacheEntity[]>;
+  queryOrganizationOwners(organizationId: string): Promise<OrganizationMemberCacheEntity[]>;
   deleteByOrganizationId(organizationId: string): Promise<void>;
 }
 
@@ -110,8 +110,8 @@ export class OrganizationMemberCacheProvider
     return results;
   }
 
-  async queryAllOrganizationOwners(): Promise<OrganizationMemberCacheEntity[]> {
-    const query = new OrganizationOwnersQuery();
+  async queryOrganizationOwners(organizationId: string): Promise<OrganizationMemberCacheEntity[]> {
+    const query = new OrganizationOwnersQuery(organizationId);
     const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
     const results = this.deserializeArray<OrganizationMemberCacheEntity>(thisProviderType, metadatas);
     return results;

@@ -78,7 +78,12 @@ export class OrganizationMemberCacheDeleteByOrganizationId implements IEntityMet
 }
 
 export class OrganizationOwnersQuery implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType = FixedQueryType.OrganizationOwnersCache;
+  public readonly fixedQueryType: FixedQueryType = FixedQueryType.OrganizationOwnersCacheByOrganizationId;
+  constructor(public organizationId: string) {
+    if (typeof this.organizationId !== 'string') {
+      throw new Error(`${organizationId} must be a string`);
+    }
+  }
 }
 
 export class OrganizationMemberCacheFixedQueryAll implements IEntityMetadataFixedQuery {
@@ -171,7 +176,7 @@ EntityMetadataMappings.Register(
           skipEntityMapping: true,
         };
       }
-      case FixedQueryType.OrganizationOwnersCache: {
+      case FixedQueryType.OrganizationOwnersCacheByOrganizationId: {
         const { organizationId } = query as OrganizationMemberCacheFixedQueryByOrganizationId;
         if (!organizationId) {
           throw new Error('organizationId required');

@@ -50,7 +50,8 @@ export enum FixedQueryType {
   OrganizationMemberCacheByUserId,
   OrganizationCacheGetAllBasics,
   OrganizationMemberCacheDeleteByOrganizationId,
-  OrganizationOwnersCache,
+  // OrganizationOwnersCache,
+  OrganizationOwnersCacheByOrganizationId,
 
   // Repo cache
   RepositoryCacheGetAll,
