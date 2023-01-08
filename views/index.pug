@@ -57,14 +57,14 @@ block content
                         h3 2-factor auth
                         p PROTECTED
 
-      if onboarding !== true && overview && overview.organizations && overview.organizations.member && overview.organizations.member.length
+      if onboarding !== true && overview && overview.organizations && (overview.organizations.in && overview.organizations.in.length)
         h1
           a.a-unstyled(name='orgs') Your #{config.brand.companyName} GitHub organization memberships
       else
         h4 You've successfully linked your #{config.brand.companyName} and GitHub accounts.
 
       - var currentPriority = ''
-      - var oom = overview && overview.organizations ? overview.organizations.member : []
+      - var oom = overview && overview.organizations ? overview.organizations.in : []
       each o in oom
           div.link-box
             a(href=o.name + onboardingPostfixUrl)
@@ -228,7 +228,7 @@ block content
                   - currentPriority = o.priority
                   //-if currentPriority == 'secondary'
                 //-if o.locked === true // o.membershipStateTemporary !== 'active'
-                if o.locked === true || o.hidden === true
+                if o.hidden === true
                   //- Do not show by invitation only orgs at this time
                 else
                   div.link-box
@@ -237,7 +237,11 @@ block content
                         h6.text-muted
                           strong(style='text-decoration: underline')= o.name
                           = ' '
-                          small: span.label.label-muted Join
+                          small: span.label.label-muted 
+                            if o.locked === true
+                              | By invitation only
+                            else
+                              | Join
                         if true || onboarding === true
                           p: small= o.nativeUrl
                         p.small.text-mute= o.description

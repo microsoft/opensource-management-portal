@@ -279,28 +279,33 @@ async function joinOrganization(
   }
   const { campaignStateProvider } = getProviders(req);
   const campaignGroupId = 'org-invite-block';
-  const invitationState = await campaignStateProvider.getState(
-    individualContext.corporateIdentity.id,
-    campaignGroupId,
-    organization.name
-  );
-  if (invitationState?.sent) {
-    const now = new Date();
-    const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-    if (invitationState.sent > hourAgo) {
-      insights.trackMetric({ name: 'GitHubOrgInvitationBlocks', value: 1 });
-      insights.trackEvent({
-        name: 'GitHubOrgInvitationBlock',
-        properties: {
-          organization: organization.name,
-          username,
-        },
-      });
-      throw CreateError.InvalidParameters(
-        `You have already sent an invitation to ${organization.name} in the last hour. Double-check for your invitation at https://github.com/${organization.name}.`
-      );
+
+  if (campaignStateProvider) {
+    const invitationState = await campaignStateProvider.getState(
+      individualContext.corporateIdentity.id,
+      campaignGroupId,
+      organization.name
+    );
+
+    if (invitationState?.sent) {
+      const now = new Date();
+      const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      if (invitationState.sent > hourAgo) {
+        insights.trackMetric({ name: 'GitHubOrgInvitationBlocks', value: 1 });
+        insights.trackEvent({
+          name: 'GitHubOrgInvitationBlock',
+          properties: {
+            organization: organization.name,
+            username,
+          },
+        });
+        throw CreateError.InvalidParameters(
+          `You have already sent an invitation to ${organization.name} in the last hour. Double-check for your invitation at https://github.com/${organization.name}.`
+        );
+      }
     }
   }
+
   const invitationTeam = organization.invitationTeam as Team;
   let okToSendInvite = true;
   let multipleInvitationDebugMessage = null;
@@ -387,11 +392,14 @@ async function joinOrganization(
         username,
       },
     });
-    await campaignStateProvider.setSent(
-      individualContext.corporateIdentity.id,
-      campaignGroupId,
-      organization.name
-    );
+
+    if (campaignStateProvider) {
+      await campaignStateProvider.setSent(
+        individualContext.corporateIdentity.id,
+        campaignGroupId,
+        organization.name
+      );
+    }
   } catch (error) {
     insights.trackMetric({ name: 'GitHubOrgInvitationFailures', value: 1 });
     insights.trackEvent({
