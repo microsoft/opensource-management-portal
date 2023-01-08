@@ -50,8 +50,5 @@ module.exports = function (graphApi) {
       console.warn(notFound);
     }
   }
-  if (!resources) {
-    resources = {};
-  }
-  return resources;
+  return resources || {};
 };
