@@ -75,7 +75,7 @@
     "@octokit/request": "6.2.2",
     "@octokit/rest": "19.0.5",
     "app-root-path": "3.1.0",
-    "applicationinsights": "2.3.6",
+    "applicationinsights": "2.4.0",
     "async-prompt": "1.0.1",
     "axios": "1.2.2",
     "basic-auth": "2.0.1",
