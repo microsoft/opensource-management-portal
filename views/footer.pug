@@ -103,14 +103,14 @@ footer
           if config && config.brand && config.brand.supportMail
             ul.list-inline(style='margin-bottom: 0px')
               li: a(href='mailto:' + config.brand.supportMail) Contact site administrator
-              li: a(href='https://github.com/microsoft/opensource-portal', target='_new') Contribute to this site on GitHub
+              li: a(href='https://github.com/NIHGOV/github-portal', target='_new') Contribute to this site on GitHub
         if serverName && correlationId
           | Powered by&nbsp;
-          a(href='/thanks') great open source,&nbsp;
+          a(href='https://github.nih.gov/about/credits' target="_blank") great open source,&nbsp;
           span(title=correlationId + ' ' + serverName) Microsoft Azure,&nbsp;
           | and the GitHub API
         else
-          | Powered by <a href="/thanks">great open source</a>, Microsoft Azure, and the GitHub API
+          | Powered by <a href='https://github.nih.gov/about/credits' target="_blank">great open source</a>, Microsoft Azure, and the GitHub API
       .col-sm-6.col-md-6.col-lg-6
         .pull-right.text-right
           a#microsoftFooterLogo(href=(config && config.brand ? config.brand.companyLink : 'about:blank'), title=(config && config.brand ? config.brand.companyName : ''))
