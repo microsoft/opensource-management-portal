@@ -26,7 +26,7 @@ foreach ($item in $data) {
     $insertData += [PSCustomObject]@{
         type = @("public", "private", "internal")
         active = $true
-        description = $orgData.description
+        portaldescription = $orgData.description
         updated = get-date -format yyyy-MM-ddTHH:mm:ssZ
         installations = @( 
             @{
