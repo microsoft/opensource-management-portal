@@ -21,6 +21,7 @@ $data = Get-Content /home/runner/work/github-portal/github-portal/app_output.jso
 $insertData = @()
 
 foreach ($item in $data) {
+    Write-Output "Getting data for Org: $($item.account.id)"
     $orgData = Get-OrgData -OrganizationID $item.account.id -Token $env:PAT
     $insertData += [PSCustomObject]@{
         type = @("public", "private", "internal")
