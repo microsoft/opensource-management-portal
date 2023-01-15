@@ -21,7 +21,6 @@ import type { ConfigRootEntityProviders } from './entityProviders.types';
 import type { ConfigRootFeatures } from './features.types';
 import type { ConfigRootGitHub } from './github.types';
 import type { ConfigRootGraph } from './graph.types';
-import type { ConfigRootIdentity } from './identity.types';
 import type { ConfigRootImpersonation } from './impersonation.types';
 import type { ConfigRootJit } from './jit.types';
 import type { ConfigRootJobs } from './jobs.types';
@@ -76,7 +75,6 @@ export type SiteConfiguration =
   ConfigRootFeatures &
   ConfigRootGitHub &
   ConfigRootGraph &
-  ConfigRootIdentity &
   ConfigRootImpersonation &
   ConfigRootJit &
   ConfigRootJobs &

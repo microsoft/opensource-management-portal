@@ -162,7 +162,22 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "startup,appinsights,cache"
+        "DEBUG": "startup"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Backfill aliases (3)",
+      "program": "${workspaceRoot}/dist/jobs/refreshUsernames/index.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "BACKFILL_ALIASES": "1",
+        "DEBUG": "startup"
       }
     },
     {

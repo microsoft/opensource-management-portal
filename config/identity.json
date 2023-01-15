@@ -1,4 +1,0 @@
-{
-  "url": "env://IDENTITY_SERVICE_URL",
-  "pat": "env://IDENTITY_SERVICE_PAT"
-}

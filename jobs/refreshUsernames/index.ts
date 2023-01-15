@@ -3,6 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+// Job: Backfill aliases (3)
+// Job: User attributes hygiene - alias backfills (4)
+
 import app from '../../app';
 
 import throat from 'throat';
@@ -10,6 +13,8 @@ import { shuffle } from 'lodash';
 
 import { sleep } from '../../utils';
 import { IReposJob, IReposJobResult, UnlinkPurpose } from '../../interfaces';
+
+const backfillAliasesOnly = process.env.BACKFILL_ALIASES === '1';
 
 app.runJob(refresh, {
   defaultDebugOutput: 'cache,restapi',
@@ -24,8 +29,16 @@ async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
   }
 
   console.log('reading all links');
-  const allLinks = shuffle(await linkProvider.getAll());
+  let allLinks = shuffle(await linkProvider.getAll());
   console.log(`READ: ${allLinks.length} links`);
+
+  let backfilledCount = 0;
+  if (backfillAliasesOnly) {
+    console.log(`backfilling aliases only`);
+    allLinks = allLinks.filter((link) => !link.corporateAlias);
+    console.log(`FILTERED: ${allLinks.length} links needing aliases`);
+  }
+
   insights.trackEvent({
     name: 'JobRefreshUsernamesReadLinks',
     properties: { links: String(allLinks.length) },
@@ -107,6 +120,11 @@ async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
               if (graphInfo.mailNickname && link.corporateAlias !== graphInfo.mailNickname.toLowerCase()) {
                 link.corporateAlias = graphInfo.mailNickname.toLowerCase();
                 changed = true;
+                if (backfillAliasesOnly) {
+                  ++backfilledCount;
+                }
+              } else if (!graphInfo.mailNickname && backfillAliasesOnly) {
+                console.warn(`No mailNickname for ${link.corporateId} (${link.corporateUsername})`);
               }
             }
           } catch (graphLookupError) {
@@ -156,6 +174,12 @@ async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
       })
     )
   );
+
+  if (backfillAliasesOnly) {
+    console.log();
+    console.log(`Backfilled ${backfilledCount} aliases`);
+    console.log();
+  }
 
   console.log('All done with', errors, 'errors. Not found errors:', notFoundErrors);
   console.dir(errorList);
