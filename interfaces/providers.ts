@@ -57,7 +57,6 @@ export interface IProviders {
   basedir?: string;
   campaignStateProvider?: ICampaignHelper;
   campaign?: any; // campaign redirection route, poor variable name
-  corporateContactProvider?: ICorporateContactProvider;
   config?: SiteConfiguration;
   customizedNewRepositoryLogic?: ICustomizedNewRepositoryLogic;
   customizedTeamPermissionsWebhookLogic?: ICustomizedTeamPermissionsWebhookLogic;

@@ -61,7 +61,6 @@ import CosmosCache from '../lib/caching/cosmosdb';
 import BlobCache from '../lib/caching/blob';
 import { StatefulCampaignProvider } from '../lib/campaigns';
 import CosmosHelper from '../lib/cosmosHelper';
-import createCorporateContactProviderInstance from '../lib/corporateContactProvider';
 import { IQueueProcessor } from '../lib/queues';
 import ServiceBusQueueProcessor from '../lib/queues/servicebus';
 import AzureQueuesProcessor from '../lib/queues/azurequeue';
@@ -266,11 +265,6 @@ async function initializeAsync(
     });
     await providers.diagnosticsDrop.initialize();
   }
-
-  providers.corporateContactProvider = createCorporateContactProviderInstance(
-    config,
-    providers.cacheProvider
-  );
   providers.corporateAdministrationProfile = getCompanySpecificDeployment()?.administrationSection;
   providers.corporateViews = await initializeCorporateViews(providers, rootdir);
 

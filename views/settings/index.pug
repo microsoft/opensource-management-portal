@@ -40,33 +40,3 @@ block content
 
             p
               a.btn.btn-muted.btn-sm(href='/link/remove') Remove link
-
-          h1 Business profile
-
-          if !legalContactInformation
-            p No corporate profile information is available.
-
-          if legalContactInformation && legalContactInformation.legal
-            h4 Legal contact
-            p For legal advice you will want to refer to your team's primary legal contact:
-            p: strong: a(href='mailto:' + legalContactInformation.legal)= legalContactInformation.legal
-
-            if legalContactInformation.attorney && legalContactInformation.attorney !== legalContactInformation.legal
-              h4 Attorney
-              p: strong: a(href='mailto:' + legalContactInformation.attorney)= legalContactInformation.attorney
-
-            if legalContactInformation.highRiskBusiness || legalContactInformation.lowRiskBusiness
-              h4 Open source approval business reviewers
-              p.
-                Requests to release open source or to use certain components may
-                be subject to a business review. The reviewer(s) associated with
-                your corporate identity are:
-              if legalContactInformation.group
-                h5 Group
-                p= legalContactInformation.group
-              if legalContactInformation.lowRiskBusiness
-                h5 Reviewer
-                p= legalContactInformation.lowRiskBusiness
-              if legalContactInformation.highRiskBusiness
-                h5 High-risk reviewer
-                p= legalContactInformation.highRiskBusiness
