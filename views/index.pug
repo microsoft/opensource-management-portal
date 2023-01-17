@@ -65,7 +65,7 @@ block content
 
       - var currentPriority = ''
       - var oom = overview && overview.organizations ? overview.organizations.in : []
-      each o in oom.reverse()
+      each o in oom
           div.link-box
             a(href=o.name + onboardingPostfixUrl)
               h2: strong= o.name
