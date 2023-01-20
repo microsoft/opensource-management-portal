@@ -36,6 +36,7 @@ export enum SpecialTeam {
 export enum OrganizationFeature {
   Invisible = 'invisible',
   Ignore = 'ignore',
+  CreateNativeRepositories = 'createReposDirect',
 }
 
 export enum OrganizationProperty {

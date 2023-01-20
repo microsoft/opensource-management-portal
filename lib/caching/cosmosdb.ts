@@ -9,7 +9,8 @@ import BlobCache, { IBlobCacheOptions } from './blob';
 import { sleep } from '../../utils';
 import { ErrorHelper, sha256 } from '../../transitional';
 
-const debug = require('debug')('cache');
+import Debug from 'debug';
+const debug = Debug.debug('cache');
 
 export interface ICosmosCacheOptions {
   endpoint: string;

@@ -41,7 +41,7 @@ import {
   IQueryCacheOrganizationMembership,
 } from '../interfaces';
 
-const debug = Debug('querycache');
+const debug = Debug.debug('querycache');
 
 export default class QueryCache {
   private _providers: IProviders;

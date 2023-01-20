@@ -14,7 +14,11 @@ import { wrapError } from '../utils';
 import { StripGitHubEntity } from '../lib/github/restApi';
 import { GitHubResponseType } from '../lib/github/endpointEntities';
 import { AppPurpose, AppPurposeTypes } from '../github';
-import { OrganizationSetting, SpecialTeam } from '../entities/organizationSettings/organizationSetting';
+import {
+  OrganizationFeature,
+  OrganizationSetting,
+  SpecialTeam,
+} from '../entities/organizationSettings/organizationSetting';
 import { createOrganizationSudoInstance, IOrganizationSudo } from '../features';
 import { CacheDefault, getMaxAgeSeconds, getPageSize, OperationsCore } from './operations/core';
 import {
@@ -58,6 +62,7 @@ import { jsonError } from '../middleware';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 import { ConfigGitHubTemplates } from '../config/github.templates.types';
 import { GitHubTokenManager } from '../github/tokenManager';
+import { GitHubRepositoryVisibility } from '../entities/repositoryMetadata/repositoryMetadata';
 
 interface IGetMembersParameters {
   org: string;
@@ -224,6 +229,7 @@ export class Organization {
       priority: this.priority,
       privateEngineering: this.privateEngineering,
       management: this.getManagementApproach(),
+      configuredOrganizationRepositoryTypes: this.getSupportedRepositoryTypesByPriority(),
     };
 
     const companySpecificDeployment = getCompanySpecificDeployment();
@@ -388,7 +394,7 @@ export class Organization {
   }
 
   get createRepositoriesOnGitHub(): boolean {
-    return this._settings.hasFeature('createReposDirect') || false;
+    return this._settings.hasFeature(OrganizationFeature.CreateNativeRepositories) || false;
   }
 
   get configuredOrganizationRepositoryTypes(): string {
@@ -448,7 +454,7 @@ export class Organization {
   }
 
   get privateRepositoriesSupported(): boolean {
-    return this.getSupportedRepositoryTypesByPriority().includes('private');
+    return this.getSupportedRepositoryTypesByPriority().includes(GitHubRepositoryVisibility.Private);
   }
 
   get sudoersTeam(): Team {
@@ -1373,19 +1379,19 @@ export class Organization {
     // a billing relationship, so repo create APIs would fail asking you to upgrade to a paid
     // plan.
     const settings = this._settings;
-    const type = settings.properties['type'] || 'public';
-    const types = ['public'];
+    const type = settings.properties['type'] || GitHubRepositoryVisibility.Public;
+    const types = [GitHubRepositoryVisibility.Public];
     switch (type) {
       case 'public':
         break;
       case 'publicprivate':
-        types.push('private');
+        types.push(GitHubRepositoryVisibility.Private);
         break;
       case 'private':
-        types.splice(0, 1, 'private');
+        types.splice(0, 1, GitHubRepositoryVisibility.Private);
         break;
       case 'privatepublic':
-        types.splice(0, 0, 'private');
+        types.splice(0, 0, GitHubRepositoryVisibility.Private);
         break;
       default:
         throw new Error(`Unsupported configuration for repository types in the organization: ${type}`);

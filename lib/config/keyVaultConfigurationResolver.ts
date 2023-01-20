@@ -32,7 +32,7 @@ import { URL } from 'url';
 // not be endorsed by the engineering team responsible for KeyVault, but for our
 // group and our Node apps, it has been very helpful.
 
-const debug = Debug('config');
+const debug = Debug.debug('config');
 
 const keyVaultProtocol = 'keyvault:';
 const httpsProtocol = 'https:';

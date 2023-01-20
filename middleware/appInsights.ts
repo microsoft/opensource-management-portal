@@ -5,7 +5,8 @@
 
 import wrapOrCreateInsightsConsoleClient from '../lib/insights';
 
-const debug = require('debug')('startup');
+import Debug from 'debug';
+const debug = Debug.debug('startup');
 
 import { setup as appInsightsSetup, defaultClient } from 'applicationinsights';
 import { IReposApplication, IProviders, ReposAppRequest } from '../interfaces';

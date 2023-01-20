@@ -6,8 +6,9 @@
 import redis from 'redis';
 import zlib from 'zlib';
 
-const debug = require('debug')('redis');
-const debugCrossOrganization = require('debug')('redis-cross-org');
+import Debug from 'debug';
+const debug = Debug.debug('redis');
+const debugCrossOrganization = Debug.debug('redis-cross-org');
 
 import { ICacheHelper } from '.';
 

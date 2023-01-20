@@ -20,7 +20,7 @@ import { URL } from 'url';
 
 const envProtocol = 'env:';
 
-const debug = Debug('config');
+const debug = Debug.debug('config');
 
 export interface IEnvironmentProvider {
   get: (key: string) => string | undefined;

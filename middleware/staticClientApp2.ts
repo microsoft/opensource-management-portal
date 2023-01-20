@@ -14,7 +14,8 @@ const otherPackageVariableName = 'static-client-package-name';
 const staticReactFlightingPackageNameKey = 'static-react-flight-package-name';
 const staticClientFlightingPackageName = appPackage[staticReactFlightingPackageNameKey];
 
-const debug = require('debug')('startup');
+import Debug from 'debug';
+const debug = Debug.debug('startup');
 
 export function StaticReactClientApp(app, express, config: any) {
   // Serve/host the static client app from the location reported by the private

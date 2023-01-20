@@ -5,7 +5,8 @@
 
 import { CosmosClient, Database, Container } from '@azure/cosmos';
 
-const debug = require('debug')('cosmosdb');
+import Debug from 'debug';
+const debug = Debug.debug('cosmosdb');
 
 export interface ICosmosHelperOptions {
   endpoint: string;

@@ -7,7 +7,8 @@ import bodyParser from 'body-parser';
 import compression from 'compression';
 import path from 'path';
 
-const debug = require('debug')('startup');
+import Debug from 'debug';
+const debug = Debug.debug('startup');
 
 export * from './react';
 export * from './links';

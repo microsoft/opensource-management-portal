@@ -14,7 +14,8 @@ import { quitInTenSeconds } from './utils';
 
 const app = express() as any as IReposApplication;
 
-require('debug')('startup')('starting...');
+import Debug from 'debug';
+Debug.debug('startup')('starting...');
 
 app.initializeApplication = initialize.bind(undefined, app, express, __dirname);
 

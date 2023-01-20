@@ -3,13 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import debug from 'debug';
+import Debug from 'debug';
 import session from 'express-session';
 import ConnectRedis from 'connect-redis';
 
 import { IProviders } from '../interfaces';
 
-const dbg = debug('startup');
+const dbg = Debug.debug('startup');
 
 const saltNotSet = 'session-salt-not-set-warning';
 

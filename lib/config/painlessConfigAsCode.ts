@@ -11,8 +11,7 @@ import walkBack from 'walk-back';
 import { InnerError, IPainlessConfigGet, IProviderOptions } from '.';
 import { processEnvironmentProvider } from './environmentConfigurationResolver';
 
-const debug = Debug('config');
-// const debug = (a: any) => {};
+const debug = Debug.debug('config');
 
 const ApplicationNameEnvironmentVariableKey = 'APPLICATION_NAME';
 const DotEnvOverridesProcessKey = 'PREFER_DOTENV';

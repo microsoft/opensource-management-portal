@@ -9,7 +9,8 @@ import { randomUUID } from 'crypto';
 import moment from 'moment';
 import semver from 'semver';
 
-const debug = require('debug')('restapi');
+import Debug from 'debug';
+const debug = Debug.debug('restapi');
 
 import {
   IShouldServeCache,

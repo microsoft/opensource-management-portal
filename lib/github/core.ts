@@ -5,7 +5,6 @@
 
 import _ from 'lodash';
 import { randomUUID } from 'crypto';
-const debug = require('debug')('restapi');
 import moment from 'moment';
 
 import { RestLibrary } from '.';
@@ -14,6 +13,9 @@ import { sleep } from '../../utils';
 
 import cost from './cost';
 import { ErrorHelper } from '../../transitional';
+
+import Debug from 'debug';
+const debug = Debug.debug('restapi');
 
 const delayBeforeRefreshMilliseconds = 1000;
 

@@ -6,8 +6,9 @@
 import moment from 'moment';
 import semver from 'semver';
 
-const debug = require('debug')('restapi');
-const debugCacheOptimization = require('debug')('oss-cache-optimization');
+import Debug from 'debug';
+const debug = Debug.debug('restapi');
+const debugCacheOptimization = Debug.debug('oss-cache-optimization');
 
 const debugShowStandardBehavior = false;
 const debugOutputUnregisteredEntityApis = true;

@@ -996,6 +996,8 @@ export class Repository {
       collaboratorPermissionFromEntity,
       collaboratorEntities
     );
+    collaboratorEntities?.cost && ((collaborators as any).cost = collaboratorEntities.cost);
+    collaboratorEntities?.headers && ((collaborators as any).headers = collaboratorEntities.headers);
     return collaborators;
   }
 

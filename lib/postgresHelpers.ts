@@ -3,7 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-const debug = require('debug')('pg');
+import Debug from 'debug';
+const debug = Debug.debug('pg');
 
 import { InnerError } from '../interfaces';
 

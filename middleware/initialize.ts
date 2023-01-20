@@ -25,8 +25,10 @@ import redis from 'redis';
 import { Pool as PostgresPool } from 'pg';
 
 const redisMock = require('redis-mock');
-const debug = require('debug')('startup');
-const pgDebug = require('debug')('pgpool');
+
+import Debug from 'debug';
+const debug = Debug.debug('startup');
+const pgDebug = Debug.debug('pgpool');
 
 import appInsights from './appInsights';
 import keyVault from './keyVault';

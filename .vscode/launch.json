@@ -12,7 +12,7 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "startup,cosmosdb,g:server,context,cache,restapi,redis-cross-org",
+        "DEBUG": "startup,g:server,context",
         "MORE_DEBUG": "appinsights,cache,restapi,pg,querycache,user,redis-cross-org,health"
       }
     },

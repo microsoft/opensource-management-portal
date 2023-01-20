@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import debug = require('debug');
+import Debug from 'debug';
 import { IncomingHttpHeaders } from 'http';
 import type {
   ConfiguredHeaderProbe,
@@ -13,7 +13,7 @@ import type {
 import { ReposAppRequest, SiteConfiguration } from '../interfaces';
 import { CreateError } from '../transitional';
 
-const dbg = debug('health');
+const dbg = Debug.debug('health');
 
 const supportedHeaderProbeTypes = ['kubernetes', 'azurefrontdoor'];
 const supportedGeneralProbeTypes = ['external', 'azureappservice-windows', 'azureappservice-linux'];
@@ -174,13 +174,13 @@ export default function initializeHealthCheck(
     }
   }
   if (enabledGenericProbes.length + enabledGenericProbes.length > 0) {
-    debug('Health probes listening');
+    dbg('Health probes listening');
     // 404 on anything that was not handled by any active, allowed probe listeners
     app.use('/health/*', (req, res) => {
       return res.status(404).end();
     });
   } else {
-    debug('No health probes listening');
+    dbg('No health probes listening');
   }
 
   return provider;

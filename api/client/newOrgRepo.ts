@@ -16,6 +16,7 @@ import { Organization } from '../../business/organization';
 import { CreateRepository, ICreateRepositoryApiResult, CreateRepositoryEntrypoint } from '../createRepo';
 import { Team } from '../../business/team';
 import { GitHubTeamRole, ReposAppRequest } from '../../interfaces';
+import { GitHubRepositoryVisibility } from '../../entities/repositoryMetadata/repositoryMetadata';
 
 // This file supports the client apps for creating repos.
 
@@ -263,12 +264,28 @@ export async function createRepositoryFromClient(req: ILocalApiRequest, res, nex
     }
   }
   // Property supporting private repos from the client
+  const targetType = body.visibility as GitHubRepositoryVisibility;
   if (body.visibility === 'private') {
     body.private = true;
     delete body.visibility;
   } else if (body.visibility === 'internal') {
     // visibility: internal is legitimate for GHEC or GHAE users
     body.private = true;
+  }
+  if (
+    !existingRepoId &&
+    targetType &&
+    organization.getRepositoryCreateMetadata()?.visibilities?.length >= 0
+  ) {
+    // Only if the organization types are configured in the settings should this gate the type of this
+    if (!organization.getRepositoryCreateMetadata()?.visibilities?.includes(targetType)) {
+      return next(
+        jsonError(
+          `The portal is not configured to allow the creation of ${targetType} repositories in the ${organization.name} organization`,
+          400
+        )
+      );
+    }
   }
   translateValue(body, 'approvalType', 'ms.approval');
   translateValue(body, 'approvalUrl', 'ms.approval-url');

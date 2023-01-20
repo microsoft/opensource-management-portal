@@ -5,7 +5,8 @@
 
 import _ from 'lodash';
 
-const debug = require('debug')('restapi');
+import Debug from 'debug';
+const debug = Debug.debug('restapi');
 
 import cost from './cost';
 import { IRestResponse, flattenData } from './core';
