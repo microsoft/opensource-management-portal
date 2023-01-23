@@ -73,7 +73,7 @@
     "@azure/storage-queue": "12.11.0",
     "@octokit/auth-app": "4.0.8",
     "@octokit/request": "6.2.2",
-    "@octokit/rest": "19.0.5",
+    "@octokit/rest": "19.0.7",
     "app-root-path": "3.1.0",
     "applicationinsights": "2.4.1",
     "async-prompt": "1.0.1",
