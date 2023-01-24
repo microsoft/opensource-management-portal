@@ -129,7 +129,7 @@
   "devDependencies": {
     "@types/connect-redis": "0.0.19",
     "@types/debug": "4.1.7",
-    "@types/express": "4.17.15",
+    "@types/express": "4.17.16",
     "@types/express-session": "1.17.5",
     "@types/jest": "29.2.6",
     "@types/lodash": "4.14.191",
