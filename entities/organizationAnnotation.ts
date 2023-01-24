@@ -183,8 +183,6 @@ EntityMetadataMappings.Register(
           SELECT *
           FROM
             ${tableName}
-          ORDER BY
-          signed
         `,
           values: [],
         };
