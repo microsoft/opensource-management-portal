@@ -8,7 +8,7 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "baseUrl": "./",
+    "skipLibCheck": true, // there are issues with @types/express right now
     "target": "es2022",
     "typeRoots": ["./node_modules/@types", "./typings"],
     "lib": ["es2022"],
