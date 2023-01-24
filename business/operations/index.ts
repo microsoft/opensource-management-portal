@@ -30,7 +30,7 @@ import { IMail } from '../../lib/mailProvider';
 import { ILinkProvider } from '../../lib/linkProviders';
 import { ICacheHelper } from '../../lib/caching';
 import { createPortalSudoInstance, IPortalSudo } from '../../features';
-import { IOperationsCoreOptions, OperationsCore } from './core';
+import { CacheDefault, getMaxAgeSeconds, IOperationsCoreOptions, OperationsCore } from './core';
 import { linkAccounts as linkAccountsMethod } from './link';
 import { sendTerminatedAccountMail as sendTerminatedAccountMailMethod } from './unlinkMail';
 import {
@@ -59,6 +59,7 @@ import {
   ISupportedLinkTypeOutcome,
   IUnlinkMailStatus,
   SupportedLinkType,
+  throwIfNotGitHubCapable,
   UnlinkPurpose,
 } from '../../interfaces';
 import { CreateError, ErrorHelper } from '../../transitional';
@@ -884,6 +885,38 @@ export class Operations
       } catch (err) {
         console.error(err);
       }
+    }
+  }
+
+  async getOrganizationProfileById(id: number, options?: ICacheOptions): Promise<any> {
+    options = options || {};
+    if (!id) {
+      throw new Error('Must provide a repository ID to retrieve the repository.');
+    }
+    const parameters = {
+      id,
+    };
+    const cacheOptions: ICacheOptions = {
+      maxAgeSeconds: getMaxAgeSeconds(this, CacheDefault.accountDetailStaleSeconds, options),
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    try {
+      const entity = await this.github.request(
+        this.getCentralOperationsToken(),
+        'GET /organizations/:id',
+        parameters,
+        cacheOptions
+      );
+      return entity;
+    } catch (error) {
+      if (error.status && error.status === 404) {
+        error = new Error(`The GitHub organization ID ${id} could not be found`);
+        error.status = 404;
+        throw error;
+      }
+      throw wrapError(error, `Could not get details about organization ID ${id}: ${error.message}`);
     }
   }
 
