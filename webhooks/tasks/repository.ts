@@ -6,10 +6,9 @@
 // REPOSITORY created or updated
 
 import { WebhookProcessor } from '../organizationProcessor';
-import { Operations } from '../../business';
 import { Organization } from '../../business';
 import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
-import { getRepositoryMetadataProvider } from '../../interfaces';
+import { getRepositoryMetadataProvider, type IProviders } from '../../interfaces';
 
 export default class RepositoryWebhookProcessor implements WebhookProcessor {
   filter(data: any) {
@@ -17,7 +16,8 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
     return eventType === 'repository';
   }
 
-  async run(operations: Operations, organization: Organization, data: any): Promise<boolean> {
+  async run(providers: IProviders, organization: Organization, data: any): Promise<boolean> {
+    const { immutable, operations } = providers;
     const event = data.body;
     const queryCache = operations.providers.queryCache;
     let update = false;
@@ -32,6 +32,11 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
       );
       return true;
     }
+    immutable?.saveObjectInBackground(
+      `orgs/${event?.organization?.login}/repos/${event?.repository?.name}/webhooks`,
+      action || 'unknown',
+      data
+    );
     if (action === 'created' || action === 'transferred') {
       console.log(
         `repo ${action}: ${event.repository.full_name} ${

@@ -31,7 +31,8 @@ router.use(
       );
     }
 
-    const { operations } = getProviders(req);
+    const providers = getProviders(req);
+    const { operations } = providers;
     const body = req.body;
     const orgName = body && body.organization && body.organization.login ? body.organization.login : null;
     if (!orgName) {
@@ -63,7 +64,7 @@ router.use(
       rawBody: req._raw,
     };
     const options = {
-      operations,
+      providers,
       organization: req.organization,
       event,
     };

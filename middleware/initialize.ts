@@ -83,6 +83,7 @@ import {
   SiteConfiguration,
 } from '../interfaces';
 import initializeRepositoryProvider from '../entities/repository';
+import { tryGetImmutableStorageProvider } from '../lib/immutable';
 
 const DefaultApplicationProfile: IApplicationProfile = {
   applicationName: 'GitHub Management Portal',
@@ -123,6 +124,12 @@ async function initializeAsync(
     providers.cacheProvider = redisHelper;
   } else {
     throw new Error('No cache provider available');
+  }
+
+  const immutable = tryGetImmutableStorageProvider(config);
+  if (immutable) {
+    await immutable.initialize();
+    providers.immutable = immutable;
   }
 
   providers.graphProvider = await createGraphProvider(providers, config);

@@ -5,11 +5,10 @@
 
 // ORGANIZATION membership and ownership
 
-import { Operations } from '../../business';
 import { Organization } from '../../business';
 import {
   OrganizationMembershipRole,
-  IProviders,
+  type IProviders,
   NoCacheNoBackground,
   OrganizationMembershipState,
 } from '../../interfaces';
@@ -34,8 +33,7 @@ export default class OrganizationWebhookProcessor implements WebhookProcessor {
     return eventType === 'organization';
   }
 
-  async run(operations: Operations, organization: Organization, data: any): Promise<boolean> {
-    const providers = operations.providers as IProviders;
+  async run(providers: IProviders, organization: Organization, data: any): Promise<boolean> {
     const queryCache = providers.queryCache;
 
     const event = data.body;

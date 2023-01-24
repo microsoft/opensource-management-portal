@@ -16,6 +16,8 @@ import {
   OrganizationManagementType,
 } from '../../middleware/business/organization';
 
+import memoryCache from 'memory-cache';
+
 const router: Router = Router();
 
 router.get(
@@ -28,6 +30,45 @@ router.get(
         return org.asClientJson();
       });
       return res.json(dd);
+    } catch (error) {
+      throw jsonError(error, 400);
+    }
+  })
+);
+
+router.get(
+  '/annotations',
+  asyncHandler(async (req: ReposAppRequest, res, next) => {
+    const { operations, organizationAnnotationsProvider } = getProviders(req);
+    const cacheTimeMs = 1000 * 60 * 60 * 24;
+    try {
+      const highlights = [];
+      const annotations = await organizationAnnotationsProvider.getAllAnnotations();
+      for (const annotation of annotations) {
+        try {
+          const key = `org:profile:${annotation.organizationId}`;
+          let profile = memoryCache.get(key);
+          if (!profile) {
+            const details = await operations.getOrganizationProfileById(Number(annotation.organizationId));
+            details.cost && delete details.cost;
+            details.headers && delete details.headers;
+            profile = details;
+            memoryCache.put(key, details, cacheTimeMs);
+          }
+          const scrubbedAnnotations = { ...annotation };
+          delete scrubbedAnnotations.administratorNotes;
+          delete scrubbedAnnotations.history;
+          highlights.push({
+            profile,
+            annotations: scrubbedAnnotations,
+          });
+        } catch (error) {
+          // we ignore any individual resolution error
+        }
+      }
+      return res.json({
+        highlights,
+      });
     } catch (error) {
       throw jsonError(error, 400);
     }

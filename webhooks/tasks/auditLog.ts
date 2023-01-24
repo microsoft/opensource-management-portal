@@ -9,10 +9,10 @@
 // for organizations, and also to import JSON-based audit export files.
 
 import { WebhookProcessor } from '../organizationProcessor';
-import { Operations } from '../../business';
 import { Organization } from '../../business';
 import { AuditLogRecord } from '../../entities/auditLogRecord/auditLogRecord';
 import { MapWebhookEventsToAuditEvents, AuditLogSource } from '../../entities/auditLogRecord';
+import type { IProviders } from '../../interfaces';
 
 // prettier-ignore
 const eventTypes = new Set([
@@ -30,8 +30,8 @@ const knownEventTypesToIgnore = new Set([
   'star',
 ]);
 
-async function runAsync(operations: Operations, organization: Organization, data: any) {
-  const { auditLogRecordProvider } = operations.providers;
+async function runAsync(providers: IProviders, organization: Organization, data: any) {
+  const { auditLogRecordProvider } = providers;
   if (!auditLogRecordProvider) {
     return;
   }
@@ -122,8 +122,8 @@ export default class AuditLogRecorderWebhookProcessor implements WebhookProcesso
     return has;
   }
 
-  async run(operations: Operations, organization: Organization, data: any): Promise<boolean> {
-    const result = await runAsync(operations, organization, data);
+  async run(providers: IProviders, organization: Organization, data: any): Promise<boolean> {
+    const result = await runAsync(providers, organization, data);
     return true;
   }
 }

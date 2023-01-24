@@ -46,6 +46,7 @@ import type { ConfigRootUserAgent } from './userAgent.types';
 import type { ConfigRootWebHealthProbes } from './webHealthProbes.types';
 import type { ConfigRootWeb } from './web.types';
 import type { ConfigRootWebServer } from './webServer.types';
+import { ConfigRootImmutable } from './immutable.types';
 
 type ObfuscatedConfig = any;
 
@@ -75,6 +76,7 @@ export type SiteConfiguration =
   ConfigRootFeatures &
   ConfigRootGitHub &
   ConfigRootGraph &
+  ConfigRootImmutable &
   ConfigRootImpersonation &
   ConfigRootJit &
   ConfigRootJobs &

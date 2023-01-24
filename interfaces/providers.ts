@@ -43,6 +43,7 @@ import { IEntityMetadataProvider } from '../lib/entityMetadataProvider';
 import { IRepositoryProvider } from '../entities/repository';
 import { IKeyVaultSecretResolver } from '../lib/keyVaultResolver';
 import { IOrganizationAnnotationMetadataProvider } from '../entities/organizationAnnotation';
+import type { IImmutableStorageProvider } from '../lib/immutable';
 
 type ProviderGenerator = (value: string) => IEntityMetadataProvider;
 
@@ -67,6 +68,7 @@ export interface IProviders {
   getEntityProviderByType?: ProviderGenerator;
   github?: RestLibrary;
   graphProvider?: IGraphProvider;
+  immutable?: IImmutableStorageProvider;
   insights?: TelemetryClient;
   linkProvider?: ILinkProvider;
   localExtensionKeyProvider?: ILocalExtensionKeyProvider;
