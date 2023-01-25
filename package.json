@@ -71,7 +71,7 @@
     "@azure/service-bus": "7.7.3",
     "@azure/storage-blob": "12.12.0",
     "@azure/storage-queue": "12.11.0",
-    "@octokit/auth-app": "4.0.8",
+    "@octokit/auth-app": "4.0.9",
     "@octokit/request": "6.2.3",
     "@octokit/rest": "19.0.7",
     "app-root-path": "3.1.0",
