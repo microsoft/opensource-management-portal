@@ -8,13 +8,13 @@ import {
   IEntityMetadataBaseOptions,
   EntityMetadataBase,
   IEntityMetadata,
-} from '../../lib/entityMetadataProvider/entityMetadata';
-import { QueryBase, IEntityMetadataFixedQuery } from '../../lib/entityMetadataProvider/query';
+} from '../lib/entityMetadataProvider/entityMetadata';
+import { QueryBase, IEntityMetadataFixedQuery } from '../lib/entityMetadataProvider/query';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
-} from '../../lib/entityMetadataProvider/declarations';
-import { PostgresConfiguration, PostgresSettings } from '../../lib/entityMetadataProvider/postgres';
+} from '../lib/entityMetadataProvider/declarations';
+import { PostgresConfiguration, PostgresSettings } from '../lib/entityMetadataProvider/postgres';
 
 const type = new EntityMetadataType('UserSettings');
 const thisProviderType = type;

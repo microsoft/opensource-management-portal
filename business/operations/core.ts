@@ -20,6 +20,7 @@ import {
   throwIfNotCapable,
   IOperationsCentralOperationsToken,
   IAuthorizationHeaderValue,
+  SiteConfiguration,
 } from '../../interfaces';
 import { RestLibrary } from '../../lib/github';
 import { CreateError } from '../../transitional';
@@ -233,7 +234,7 @@ export abstract class OperationsCore
     return this._providers;
   }
 
-  get config(): any {
+  get config(): SiteConfiguration {
     return this.providers.config;
   }
 

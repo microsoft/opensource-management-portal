@@ -18,7 +18,7 @@ import {
   PostgresConfiguration,
 } from '../../lib/entityMetadataProvider/postgres';
 import { TableSettings } from '../../lib/entityMetadataProvider/table';
-import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { MemoryConfiguration, MemorySettings } from '../../lib/entityMetadataProvider/memory';
 import { odata, TableEntityQueryOptions } from '@azure/data-tables';
 
 const type = Type;
@@ -289,46 +289,7 @@ EntityMetadataMappings.Register(
 EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [Field.created]);
 EntityMetadataMappings.RuntimeValidateMappings(type, TableSettings.TableMapping, fieldNames, [repositoryId]);
 
-EntityMetadataMappings.Register(
-  type,
-  MemorySettings.MemoryMapping,
-  new Map<string, string>([
-    [Field.createdByThirdPartyId, 'ghid'],
-    [Field.createdByThirdPartyUsername, 'ghu'],
-
-    [Field.createdByCorporateDisplayName, 'name'],
-    [Field.createdByCorporateId, 'aadid'],
-    [Field.createdByCorporateUsername, 'mail'],
-
-    [Field.created, 'requested'],
-
-    [Field.organizationName, 'org'],
-    [Field.organizationId, 'orgid'], // net new
-
-    [Field.repositoryName, 'repoName'],
-    // [repositoryId, azureTableRepositoryIdField], // in table, RowKey is not the repo ID
-
-    [Field.initialTeamPermissions, 'itp'], // special processing case
-    [Field.initialAdministrators, 'initialAdministrators'],
-
-    [Field.initialRepositoryDescription, 'repoDescription'],
-    [Field.initialRepositoryVisibility, 'repoVisibility'],
-    [Field.initialRepositoryHomepage, 'repoHomepage'],
-
-    [Field.initialLicense, 'license'],
-    [Field.initialTemplate, 'template'],
-    [Field.initialGitIgnoreTemplate, 'gitignore_template'],
-    [Field.initialCorrelationId, 'correlationId'],
-
-    [Field.projectType, 'projecttype'],
-    [Field.releaseReviewJustification, 'justification'],
-    [Field.releaseReviewType, 'approvalType'],
-    [Field.releaseReviewUrl, 'approvalUrl'],
-
-    [Field.lockdownState, Field.lockdownState.toLowerCase()],
-    [Field.transferSource, Field.transferSource.toLowerCase()],
-  ])
-);
+MemoryConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, [
   repositoryId,
 ]);

@@ -65,7 +65,10 @@ function mergeIntoEntity(entity: any, obj: any, callback?) {
         entity[key] = { type: 'Boolean', value } as Edm<'Boolean'>;
       } else if (Buffer.isBuffer(value)) {
         const asBuffer = value as Buffer;
-        entity[key] = { type: 'Binary', value: asBuffer.buffer } as Edm<'Binary'>;
+        entity[key] = {
+          type: 'Binary',
+          value: Buffer.from(asBuffer.buffer).toString('base64'),
+        } as Edm<'Binary'>;
       } else if (value instanceof Date) {
         const asDate = value as Date;
         entity[key] = { type: 'DateTime', value: asDate.toISOString() } as Edm<'DateTime'>;

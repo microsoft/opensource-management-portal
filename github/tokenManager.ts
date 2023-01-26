@@ -301,17 +301,21 @@ export class GitHubTokenManager {
       return;
     }
     let key = appConfig.appKey;
-    let fromLocalFile = false;
+    let skipDecodingBase64 = false;
     if (appConfig.appKeyFile) {
       key = await readFileToText(appConfig.appKeyFile);
-      fromLocalFile = true;
+      skipDecodingBase64 = true;
     }
     if (!key) {
       throw new Error(`appKey or appKeyFile required for ${purpose} GitHub App configuration`);
     }
+    if (key?.includes('-----BEGIN RSA')) {
+      // Not base64-encoded, use the CreateFromString method.
+      skipDecodingBase64 = true;
+    }
     const friendlyName = customPurpose?.name || appConfig.description || 'Unknown';
     const baseUrl = appConfig.baseUrl;
-    const app = fromLocalFile
+    const app = skipDecodingBase64
       ? GitHubAppTokens.CreateFromString(purpose, friendlyName, appId, key, baseUrl)
       : GitHubAppTokens.CreateFromBase64EncodedFileString(purpose, friendlyName, appId, key, baseUrl);
     this._apps.set(purpose, app);

@@ -13,15 +13,14 @@
 // is used for this product.
 
 import {
+  AzureNamedKeyCredential,
   Edm,
-  ListEntitiesResponse,
-  odata,
+  NamedKeyCredential,
   TableClient,
-  TableEntity,
   TableEntityQueryOptions,
   TableEntityResult,
+  TableEntityResultPage,
   TableServiceClient,
-  TablesSharedKeyCredential,
 } from '@azure/data-tables';
 
 import { randomUUID } from 'crypto';
@@ -30,13 +29,9 @@ const debugShowTableOperations = false;
 
 const emptyString = '';
 
-type AzureDataTablesQueryResponse = ListEntitiesResponse<object>; // or ? ListEntitiesResponse<TableEntityResult<object>>;
+type AzureDataTablesQueryResponse = TableEntityResultPage<Record<string, unknown>>;
 
-// haven't validated yet
-interface IMaybeContinuationToken {
-  nextPartitionKey?: string;
-  nextRowKey?: string;
-}
+//type AzureDataTablesQueryResponse = ListEntitiesResponse<object>; // or ? ListEntitiesResponse<TableEntityResult<object>>;
 
 import {
   IEntityMetadataProvider,
@@ -118,7 +113,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
 
   private _azureTableServiceClient: TableServiceClient;
   private _azureTables: Map<string, TableClient> = new Map();
-  private _azureTablesCredential: TablesSharedKeyCredential;
+  private _azureTablesCredential: NamedKeyCredential;
 
   private _tableNameMapping: any;
   private _fixedPartitionKeyMapping: any;
@@ -163,10 +158,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     this._typeToEncryptionOptions = new Map();
     this._encryptionOptions = options.encryption;
     try {
-      this._azureTablesCredential = new TablesSharedKeyCredential(
-        this._storageAccountName,
-        storageAccountKey
-      );
+      this._azureTablesCredential = new AzureNamedKeyCredential(this._storageAccountName, storageAccountKey);
       this._azureTableServiceClient = new TableServiceClient(
         `https://${this._storageAccountName}.table.core.windows.net`,
         this._azureTablesCredential
@@ -378,7 +370,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     } else if (Buffer.isBuffer(value)) {
       const asBuffer = value as Buffer;
       const binaryValue = asBuffer.buffer;
-      return { type: 'Binary', value: binaryValue } as Edm<'Binary'>;
+      return { type: 'Binary', value: Buffer.from(binaryValue).toString('base64') } as Edm<'Binary'>;
     } else if (value instanceof Date) {
       if (!isFinite(value as any)) {
         return undefined;
@@ -450,7 +442,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     azureTableQuery: TableEntityQueryOptions
   ): Promise<any[]> {
     const rows = [];
-    let continuationToken: IMaybeContinuationToken = null;
+    let continuationToken: string = null;
     if (debugShowTableOperations) {
       displayTableQuery(
         'TABLE QUERY',
@@ -479,7 +471,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     type: EntityMetadataType,
     tableName: string,
     azureTableQuery: TableEntityQueryOptions,
-    continuationToken?: IMaybeContinuationToken
+    continuationToken?: string
   ): Promise<AzureDataTablesQueryResponse> {
     const results = await this.tableQueryEntitiesAsync(tableName, azureTableQuery, continuationToken);
     const encryptedColumnNames = this.isTypeEncrypted(type);
@@ -787,15 +779,15 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
   private async tableQueryEntitiesAsync(
     tableName: string,
     azureTableQuery: TableEntityQueryOptions,
-    continuationToken?: IMaybeContinuationToken
+    continuationToken?: string
   ): Promise<AzureDataTablesQueryResponse> {
     const tableClient = this.getTableClient(tableName);
     const listResults = tableClient.listEntities({
       queryOptions: azureTableQuery,
-      nextPartitionKey: continuationToken?.nextPartitionKey,
-      nextRowKey: continuationToken?.nextRowKey,
     });
-    const iterateByPage = listResults.byPage();
+    const iterateByPage = listResults.byPage({
+      continuationToken,
+    });
     let singleResponse: AzureDataTablesQueryResponse = [];
     for await (const page of iterateByPage) {
       singleResponse = page;
@@ -842,11 +834,8 @@ function mergeMaps(mapA: Map<string, string>, mapB: Map<string, string>) {
   return new Map([...mapA, ...mapB]);
 }
 
-function getContinuationToken(result: AzureDataTablesQueryResponse): IMaybeContinuationToken {
-  if (result.nextPartitionKey || result.nextRowKey) {
-    return { nextPartitionKey: result.nextPartitionKey, nextRowKey: result.nextRowKey };
-  }
-  return null;
+function getContinuationToken(result: AzureDataTablesQueryResponse): string {
+  return result?.continuationToken || null;
 }
 
 function tryGetDate(value: any) {
@@ -1000,4 +989,46 @@ function defaultEncryptionColumns() {
     }
   });
   return defaults;
+}
+
+export class TableConfiguration {
+  static SetDefaultTableName(type: EntityMetadataType, tableName: string) {
+    EntityMetadataMappings.Register(type, TableSettings.TableDefaultTableName, tableName);
+  }
+
+  static SetNoPrefixForPartitionKey(type: EntityMetadataType) {
+    EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKeyNoPrefix, true);
+  }
+
+  static SetFixedPartitionKey(type: EntityMetadataType, partitionKey: string) {
+    EntityMetadataMappings.Register(type, TableSettings.TableDefaultFixedPartitionKey, partitionKey);
+  }
+
+  static SetDateColumns(type: EntityMetadataType, dateColumns: string[]) {
+    EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, dateColumns);
+  }
+
+  static MapFieldsToColumnNames(
+    type: EntityMetadataType,
+    map: Map<string, string>,
+    lowercaseColumnNamesAutomatically?: boolean
+  ) {
+    const dest = new Map<string, string>();
+    for (const [key, value] of map.entries()) {
+      dest.set(key, lowercaseColumnNamesAutomatically ? value.toLowerCase() : value);
+    }
+    EntityMetadataMappings.Register(type, TableSettings.TableMapping, dest);
+  }
+
+  static MapFieldsToColumnNamesFromListLowercased(type: EntityMetadataType, fieldNames: string[]) {
+    TableConfiguration.MapFieldsToColumnNames(
+      type,
+      new Map(
+        fieldNames.map((fieldName) => {
+          return [fieldName, fieldName];
+        })
+      ),
+      true
+    );
+  }
 }

@@ -68,23 +68,12 @@ router.get(
   })
 );
 
-function getOrganizationConfiguration(config: any, orgName: string) {
-  orgName = orgName.toLowerCase();
-  if (config.github && config.github.organizations) {
-    for (const entry of config.github.organizations) {
-      if (entry && entry.name && entry.name.toLowerCase() === orgName) {
-        return entry;
-      }
-    }
-  }
-}
-
 router.use(
   '/:appId/installations/:installationId',
   asyncHandler(async function (req: ReposAppRequest, res, next) {
     const githubApplication = req['githubApplication'] as GitHubApplication;
     const installationIdString = req.params.installationId;
-    const { config, organizationSettingsProvider } = getProviders(req);
+    const { operations, organizationSettingsProvider } = getProviders(req);
     const installationId = Number(installationIdString);
     const installation = await githubApplication.getInstallation(installationId);
     const invalidReasons = GitHubApplication.isInvalidInstallation(installation);
@@ -99,7 +88,7 @@ router.use(
     } catch (notFound) {
       /* ignored */
     }
-    const staticSettings = getOrganizationConfiguration(config, organizationName);
+    const staticSettings = operations.getOrganizationSettings(organizationName);
 
     req['installationConfiguration'] = {
       staticSettings,

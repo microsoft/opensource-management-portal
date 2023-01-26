@@ -18,7 +18,7 @@ import {
   PostgresSettings,
   PostgresConfiguration,
 } from '../../lib/entityMetadataProvider/postgres';
-import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { MemoryConfiguration, MemorySettings } from '../../lib/entityMetadataProvider/memory';
 
 const type = new EntityMetadataType('OrganizationMemberCache');
 
@@ -113,17 +113,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiat
 });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, Field.uniqueId);
 
-EntityMetadataMappings.Register(
-  type,
-  MemorySettings.MemoryMapping,
-  new Map<string, string>([
-    [Field.cacheUpdated, 'cached'],
-    [Field.organizationId, 'orgid'],
-    [Field.uniqueId, 'unique'],
-    [Field.userId, 'userid'],
-    [Field.role, 'role'],
-  ])
-);
+MemoryConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
 
 PostgresConfiguration.SetDefaultTableName(type, 'organizationmembercache');
@@ -132,16 +122,7 @@ EntityMetadataMappings.Register(
   PostgresSettings.PostgresDefaultTypeColumnName,
   'organizationmembercache'
 );
-PostgresConfiguration.MapFieldsToColumnNames(
-  type,
-  new Map<string, string>([
-    [Field.cacheUpdated, (Field.cacheUpdated as string).toLowerCase()],
-    [Field.organizationId, (Field.organizationId as string).toLowerCase()], // net new
-    [Field.uniqueId, (Field.uniqueId as string).toLowerCase()],
-    [Field.userId, (Field.userId as string).toLowerCase()],
-    [Field.role, (Field.role as string).toLowerCase()],
-  ])
-);
+PostgresConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 PostgresConfiguration.ValidateMappings(type, fieldNames, []);
 
 EntityMetadataMappings.Register(

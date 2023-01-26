@@ -103,7 +103,7 @@ export default function initMiddleware(
     if (!initializationError) {
       if (applicationProfile.sessions) {
         routePassport(app, passport, config);
-        if (config.github.organizations.onboarding && config.github.organizations.onboarding.length) {
+        if (config?.github?.organizations?.onboarding?.length > 0) {
           debug('Onboarding helper loaded');
           onboard(app, config);
         }

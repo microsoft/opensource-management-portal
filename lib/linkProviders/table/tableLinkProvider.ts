@@ -7,13 +7,13 @@ import _ from 'lodash';
 import { randomUUID } from 'crypto';
 
 import {
+  AzureNamedKeyCredential,
   GetTableEntityResponse,
   odata,
   TableClient,
   TableEntityQueryOptions,
   TableEntityResult,
   TableServiceClient,
-  TablesSharedKeyCredential,
 } from '@azure/data-tables';
 
 import {
@@ -160,12 +160,12 @@ export class TableLinkProvider implements ILinkProvider {
   async initialize(): Promise<ILinkProvider> {
     const options = this._options || {};
 
-    const azureTableCredential = new TablesSharedKeyCredential(options.account, options.key);
+    const azureTableCredential = new AzureNamedKeyCredential(options.account, options.key);
     const serviceUrl = `https://${options.account}.table.core.windows.net`;
     this._tableService = new TableServiceClient(serviceUrl, azureTableCredential);
     this._tableNamePrefix = options.prefix || '';
     this._tableName = options.tableName || `${this._tableNamePrefix}${defaultTableName}`;
-    if (options.encryption) {
+    if (options.encryption?.encryptionKeyId) {
       const encryptionOptions = options.encryption;
       const encryptionKeyId = encryptionOptions.encryptionKeyId;
       if (!encryptionKeyId) {
@@ -333,10 +333,10 @@ export class TableLinkProvider implements ILinkProvider {
     if (!linkId && linkInstance.thirdPartyId) {
       return this.deleteLinkByThirdPartyIdLegacy(linkInstance.thirdPartyId);
     }
-    const link = this.getSingleLinkByProperty(
+    const link = (await this.getSingleLinkByProperty(
       this.propertyMapping.linkId,
       linkId
-    ) as any as CorporateTableLink;
+    )) as any as CorporateTableLink;
     if (!link) {
       throw new Error(`No link found with ID ${linkId}`);
     }
@@ -535,7 +535,7 @@ export class TableLinkProvider implements ILinkProvider {
     // The newer table client does not seem to have a simple "exist" check today...
     const iterateByPage = this._tableService.listTables().byPage();
     for await (const page of iterateByPage) {
-      const present = page.filter((p) => p?.tableName === tableName);
+      const present = page.filter((p) => p?.name === tableName);
       if (present.length > 0) {
         return true;
       }

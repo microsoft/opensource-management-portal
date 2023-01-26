@@ -1,10 +1,12 @@
+// Table storage for entities and links
+
 // Environment mapping file. Similar to a ".env" file, this contains a standard set
 // of environment variables that are used by the environment. However, the
 // "painless config as code" system under this is able to use Azure KeyVault to
 // retrieve secrets at runtime, making dev environment bootstrapping and deployment
 // quite a bit easier.
 {
-  "ENVIRONMENT_NAME": "Local Development (OSS)",
+  "ENVIRONMENT_NAME": "Local Development with Tables (OSS)",
   //
   // Operations, support e-mail addresses. In development you may want to override these.
   "PORTAL_ADMIN_EMAIL": "keyvault://cafe.vault.azure.net/secrets/email-contact",
@@ -25,14 +27,8 @@
   // Email: you MUST override this in your .env or env vars. Avoids sending prod-style email.
   "MAIL_OVERRIDE_RECIPIENT": "developer@localhost",
   //
-  // Source of truth database
-  "REPOS_LINKS_PROVIDER_NAME": "postgres",
-  "REPOS_GITHUB_APPROVALS_PROVIDER_NAME": "postgres",
-  "REPOS_POSTGRES_DATABASE": "keyvault://database@cafe.vault.azure.net/secrets/postgres",
-  "REPOS_POSTGRES_HOST": "keyvault://hostname@cafe.vault.azure.net/secrets/postgres",
-  "REPOS_POSTGRES_USER": "keyvault://username@cafe.vault.azure.net/secrets/postgres",
-  "REPOS_POSTGRES_PASSWORD": "keyvault://cafe.vault.azure.net/secrets/postgres",
-  "REPOS_POSTGRES_LINKS_TABLE_NAME": "links",
+  "REPOS_LINKS_PROVIDER_NAME": "table",
+
   //
   // Cookies
   "SESSION_NAME": "session",

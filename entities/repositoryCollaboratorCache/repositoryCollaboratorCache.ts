@@ -19,7 +19,7 @@ import {
   PostgresConfiguration,
 } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
-import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { MemoryConfiguration, MemorySettings } from '../../lib/entityMetadataProvider/memory';
 
 const type = new EntityMetadataType('RepositoryCollaboratorCache');
 
@@ -152,24 +152,7 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiat
   return new RepositoryCollaboratorCacheEntity();
 });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, Field.uniqueId);
-
-EntityMetadataMappings.Register(
-  type,
-  MemorySettings.MemoryMapping,
-  new Map<string, string>([
-    [Field.avatar, 'avatar'],
-    [Field.cacheUpdated, 'cached'],
-    [Field.login, 'login'],
-    [Field.organizationId, 'orgid'],
-    [Field.permission, 'permission'],
-    [Field.repositoryId, 'repoid'],
-    [Field.repositoryName, 'reponame'],
-    [Field.repositoryPrivate, 'repoprivate'],
-    [Field.uniqueId, 'unique'],
-    [Field.userId, 'userid'],
-    [Field.collaboratorType, 'collaboratorType'],
-  ])
-);
+MemoryConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
 
 PostgresConfiguration.SetDefaultTableName(type, 'repositorycollaboratorcache');
@@ -178,22 +161,7 @@ EntityMetadataMappings.Register(
   PostgresSettings.PostgresDefaultTypeColumnName,
   'repositorycollaboratorcache'
 );
-PostgresConfiguration.MapFieldsToColumnNames(
-  type,
-  new Map<string, string>([
-    [Field.avatar, (Field.avatar as string).toLowerCase()],
-    [Field.cacheUpdated, (Field.cacheUpdated as string).toLowerCase()],
-    [Field.login, (Field.login as string).toLowerCase()],
-    [Field.organizationId, (Field.organizationId as string).toLowerCase()], // net new
-    [Field.repositoryName, (Field.repositoryName as string).toLowerCase()], // net new
-    [Field.repositoryPrivate, (Field.repositoryPrivate as string).toLowerCase()], // net new
-    [Field.permission, (Field.permission as string).toLowerCase()],
-    [Field.repositoryId, (Field.repositoryId as string).toLowerCase()],
-    [Field.uniqueId, (Field.uniqueId as string).toLowerCase()],
-    [Field.userId, (Field.userId as string).toLowerCase()],
-    [Field.collaboratorType, (Field.collaboratorType as string).toLowerCase()],
-  ])
-);
+PostgresConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 PostgresConfiguration.ValidateMappings(type, fieldNames, []);
 
 EntityMetadataMappings.Register(

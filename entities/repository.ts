@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+// TODO: is this ever used?
+
 import { IDictionary } from '../interfaces';
 import {
   EntityMetadataBase,
