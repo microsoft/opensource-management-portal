@@ -17,8 +17,9 @@ import {
   PostgresConfiguration,
 } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
-import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { MemoryConfiguration, MemorySettings } from '../../lib/entityMetadataProvider/memory';
 import { Operations } from '../../business/operations';
+import { TableConfiguration } from '../../lib/entityMetadataProvider';
 
 const type = new EntityMetadataType('RepositoryCache');
 
@@ -94,31 +95,20 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiat
 });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, repositoryId);
 
-EntityMetadataMappings.Register(
-  type,
-  MemorySettings.MemoryMapping,
-  new Map<string, string>([
-    [Field.organizationId, 'orgid'],
-    [Field.repositoryName, 'repoName'],
-    [Field.repositoryDetails, 'repoDetails'],
-    [Field.cacheUpdated, 'cached'],
-  ])
-);
+MemoryConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, [
   repositoryId,
 ]);
 
-PostgresConfiguration.SetDefaultTableName(type, 'repositorycache');
+const defaultTableName = 'repositorycache';
+
+TableConfiguration.SetDefaultTableName(type, defaultTableName);
+TableConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
+TableConfiguration.SetFixedPartitionKey(type, defaultTableName);
+
+PostgresConfiguration.SetDefaultTableName(type, defaultTableName);
 EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'repositorycache');
-PostgresConfiguration.MapFieldsToColumnNames(
-  type,
-  new Map<string, string>([
-    [Field.organizationId, (Field.organizationId as string).toLowerCase()], // net new
-    [Field.repositoryName, (Field.repositoryName as string).toLowerCase()],
-    [Field.repositoryDetails, (Field.repositoryDetails as string).toLowerCase()],
-    [Field.cacheUpdated, (Field.cacheUpdated as string).toLowerCase()],
-  ])
-);
+PostgresConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 PostgresConfiguration.ValidateMappings(type, fieldNames, [repositoryId]);
 
 EntityMetadataMappings.Register(

@@ -167,3 +167,29 @@ export class MemoryEntityMetadataProvider implements IEntityMetadataProvider {
     };
   }
 }
+
+export class MemoryConfiguration {
+  static MapFieldsToColumnNames(
+    type: EntityMetadataType,
+    map: Map<string, string>,
+    lowercaseColumnNamesAutomatically?: boolean
+  ) {
+    const dest = new Map<string, string>();
+    for (const [key, value] of map.entries()) {
+      dest.set(key, lowercaseColumnNamesAutomatically ? value.toLowerCase() : value);
+    }
+    EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, dest);
+  }
+
+  static MapFieldsToColumnNamesFromListLowercased(type: EntityMetadataType, fieldNames: string[]) {
+    MemoryConfiguration.MapFieldsToColumnNames(
+      type,
+      new Map(
+        fieldNames.map((fieldName) => {
+          return [fieldName, fieldName];
+        })
+      ),
+      true
+    );
+  }
+}

@@ -18,7 +18,10 @@ import {
   PostgresSettings,
   PostgresConfiguration,
 } from '../../lib/entityMetadataProvider/postgres';
-import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { MemoryConfiguration, MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { TableConfiguration, TableSettings } from '../../lib/entityMetadataProvider';
+import { odata, TableEntityQueryOptions } from '@azure/data-tables';
+import { CreateError } from '../../transitional';
 
 const type = new EntityMetadataType('OrganizationMemberCache');
 
@@ -40,6 +43,8 @@ const Field: IOrganizationMemberCacheProperties = {
 };
 
 const fieldNames = Object.getOwnPropertyNames(Field);
+
+const defaultTableName = 'organizationmembercache';
 
 export class OrganizationMemberCacheEntity implements IOrganizationMemberCacheProperties {
   uniqueId: string;
@@ -113,35 +118,20 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiat
 });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, Field.uniqueId);
 
-EntityMetadataMappings.Register(
-  type,
-  MemorySettings.MemoryMapping,
-  new Map<string, string>([
-    [Field.cacheUpdated, 'cached'],
-    [Field.organizationId, 'orgid'],
-    [Field.uniqueId, 'unique'],
-    [Field.userId, 'userid'],
-    [Field.role, 'role'],
-  ])
-);
+MemoryConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
 
-PostgresConfiguration.SetDefaultTableName(type, 'organizationmembercache');
+TableConfiguration.SetDefaultTableName(type, defaultTableName);
+TableConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
+TableConfiguration.SetFixedPartitionKey(type, defaultTableName);
+
+PostgresConfiguration.SetDefaultTableName(type, defaultTableName);
 EntityMetadataMappings.Register(
   type,
   PostgresSettings.PostgresDefaultTypeColumnName,
   'organizationmembercache'
 );
-PostgresConfiguration.MapFieldsToColumnNames(
-  type,
-  new Map<string, string>([
-    [Field.cacheUpdated, (Field.cacheUpdated as string).toLowerCase()],
-    [Field.organizationId, (Field.organizationId as string).toLowerCase()], // net new
-    [Field.uniqueId, (Field.uniqueId as string).toLowerCase()],
-    [Field.userId, (Field.userId as string).toLowerCase()],
-    [Field.role, (Field.role as string).toLowerCase()],
-  ])
-);
+PostgresConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 PostgresConfiguration.ValidateMappings(type, fieldNames, []);
 
 EntityMetadataMappings.Register(
@@ -226,6 +216,58 @@ EntityMetadataMappings.Register(
           throw new Error('organizationId required');
         }
         throw new Error('Not implemented yet');
+      default:
+        throw new Error(
+          `The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`
+        );
+    }
+  }
+);
+
+EntityMetadataMappings.Register(
+  type,
+  TableSettings.TableQueries,
+  (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
+    switch (query.fixedQueryType) {
+      case FixedQueryType.OrganizationMemberCacheGetAll: {
+        return {
+          filter: odata`PartitionKey eq ${fixedPartitionKey}`,
+        } as TableEntityQueryOptions;
+      }
+      case FixedQueryType.OrganizationMemberCacheDeleteByOrganizationId: {
+        const { organizationId } = query as OrganizationMemberCacheDeleteByOrganizationId;
+        throw CreateError.ServerError('Not implemented yet. Requires delete query hack or refactor.');
+      }
+      case FixedQueryType.OrganizationCacheGetAllBasics: {
+        throw CreateError.ServerError('Not implemented.');
+      }
+      case FixedQueryType.OrganizationOwnersCacheByOrganizationId: {
+        const { organizationId } = query as OrganizationMemberCacheFixedQueryByOrganizationId;
+        if (!organizationId) {
+          throw new Error('organizationId required');
+        }
+        return {
+          filter: odata`PartitionKey eq ${fixedPartitionKey} and role eq 'admin' and organizationid eq ${organizationId}`,
+        } as TableEntityQueryOptions;
+      }
+      case FixedQueryType.OrganizationMemberCacheByOrganizationId: {
+        const { organizationId } = query as OrganizationMemberCacheFixedQueryByOrganizationId;
+        if (!organizationId) {
+          throw new Error('organizationId required');
+        }
+        return {
+          filter: odata`PartitionKey eq ${fixedPartitionKey} and organizationid eq ${organizationId}`,
+        } as TableEntityQueryOptions;
+      }
+      case FixedQueryType.OrganizationMemberCacheByUserId: {
+        const { userId } = query as OrganizationMemberCacheFixedQueryByUserId;
+        if (!userId) {
+          throw new Error('userId required');
+        }
+        return {
+          filter: odata`PartitionKey eq ${fixedPartitionKey} and userid eq ${userId}`,
+        } as TableEntityQueryOptions;
+      }
       default:
         throw new Error(
           `The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}, or is of an unknown type`

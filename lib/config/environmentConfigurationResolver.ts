@@ -154,7 +154,9 @@ function createClient(options: IEnvironmentProviderOptions) {
             case 'integer':
             case 'int': {
               const attemptedValue = parseInt(currentValue as string, 10);
-              if (isNaN(attemptedValue)) {
+              if (currentValue === undefined) {
+                variableValue = currentValue;
+              } else if (isNaN(attemptedValue)) {
                 console.warn(
                   `The value "${currentValue}" for the env:// variable "${variableName}" is not a valid integer. Using the original value instead.`
                 );

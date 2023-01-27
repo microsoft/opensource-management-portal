@@ -14,6 +14,7 @@ const path = require('path');
 const organizationsFileVariableName = 'GITHUB_ORGANIZATIONS_FILE';
 const organizationsEnvironmentVariableName = 'GITHUB_ORGANIZATIONS_ENVIRONMENT_NAME';
 const organizationsEnvironmentTypeVariableName = 'GITHUB_ORGANIZATIONS_ENVIRONMENT_TYPE_NAME';
+const painlessConfigEnvironmentVariableName = 'CONFIGURATION_ENVIRONMENT';
 
 const defaultEnvironmentTypeName = 'github.organizations';
 
@@ -53,7 +54,9 @@ module.exports = (graphApi) => {
   );
   const defaultTemplates = arrayFromString(environmentProvider.get('GITHUB_ORGANIZATIONS_DEFAULT_TEMPLATES'));
   const organizationsFile = environmentProvider.get(organizationsFileVariableName);
-  const organizationsEnvironmentName = environmentProvider.get(organizationsEnvironmentVariableName);
+  const organizationsEnvironmentName =
+    environmentProvider.get(organizationsEnvironmentVariableName) ||
+    environmentProvider.get(painlessConfigEnvironmentVariableName);
   const organizationsEnvironmentType =
     environmentProvider.get(organizationsEnvironmentTypeVariableName) || defaultEnvironmentTypeName;
   if (organizationsFile && organizationsEnvironmentName) {

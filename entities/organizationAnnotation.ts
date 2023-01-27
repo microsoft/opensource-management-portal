@@ -31,6 +31,7 @@ import {
 import { PostgresSettings, PostgresConfiguration } from '../lib/entityMetadataProvider/postgres';
 import { IDictionary } from '../interfaces';
 import { CreateError, ErrorHelper } from '../transitional';
+import { MemoryConfiguration, TableConfiguration } from '../lib/entityMetadataProvider';
 
 const type = new EntityMetadataType('OrganizationAnnotation');
 const thisProviderType = type;
@@ -152,7 +153,13 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiat
 });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, organizationId);
 
-// NOTE: No memory mapping for this type that is only in Postgres
+const defaultTableName = defaultPostgresTableName;
+
+TableConfiguration.SetDefaultTableName(type, defaultTableName);
+TableConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
+TableConfiguration.SetFixedPartitionKey(type, defaultTableName);
+
+MemoryConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 
 EntityMetadataMappings.Register(
   type,

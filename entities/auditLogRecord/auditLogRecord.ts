@@ -21,7 +21,7 @@ import {
 import { IDictionary } from '../../interfaces';
 import { AuditLogSource } from '.';
 import { stringOrNumberAsString } from '../../utils';
-import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { MemoryConfiguration, MemorySettings } from '../../lib/entityMetadataProvider/memory';
 
 const type = Type;
 
@@ -146,63 +146,12 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiat
 });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, recordId);
 
-EntityMetadataMappings.Register(
-  type,
-  MemorySettings.MemoryMapping,
-  new Map<string, string>([
-    [Field.recordSource, Field.recordSource.toLowerCase()],
-    [Field.action, Field.action.toLowerCase()],
-    [Field.actorId, Field.actorId.toLowerCase()],
-    [Field.actorUsername, Field.actorUsername.toLowerCase()],
-    [Field.additionalData, Field.additionalData.toLowerCase()],
-    [Field.actorCorporateUsername, Field.actorCorporateUsername.toLowerCase()],
-    [Field.actorCorporateId, Field.actorCorporateId.toLowerCase()],
-    [Field.teamId, Field.teamId.toLowerCase()],
-    [Field.teamName, Field.teamName.toLowerCase()],
-    [Field.incomingId, Field.incomingId.toLowerCase()],
-    [Field.incomingUsername, Field.incomingUsername.toLowerCase()],
-    [Field.inserted, Field.inserted.toLowerCase()],
-    [Field.created, Field.created.toLowerCase()],
-    [Field.repositoryId, Field.repositoryId.toLowerCase()],
-    [Field.repositoryName, Field.repositoryName.toLowerCase()],
-    [Field.organizationId, Field.organizationId.toLowerCase()],
-    [Field.organizationName, Field.organizationName.toLowerCase()],
-    [Field.userId, Field.userId.toLowerCase()],
-    [Field.userUsername, Field.userUsername.toLowerCase()],
-    [Field.userCorporateId, Field.userCorporateId.toLowerCase()],
-    [Field.userCorporateUsername, Field.userCorporateUsername.toLowerCase()],
-  ])
-);
+MemoryConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, [recordId]);
 
 PostgresConfiguration.SetDefaultTableName(type, 'auditlog');
 EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'auditlogrecord');
-PostgresConfiguration.MapFieldsToColumnNames(
-  type,
-  new Map<string, string>([
-    [Field.recordSource, Field.recordSource.toLowerCase()],
-    [Field.action, Field.action.toLowerCase()],
-    [Field.actorId, Field.actorId.toLowerCase()],
-    [Field.actorUsername, Field.actorUsername.toLowerCase()],
-    [Field.actorCorporateUsername, Field.actorCorporateUsername.toLowerCase()],
-    [Field.actorCorporateId, Field.actorCorporateId.toLowerCase()],
-    [Field.additionalData, Field.additionalData.toLowerCase()],
-    [Field.teamId, Field.teamId.toLowerCase()],
-    [Field.teamName, Field.teamName.toLowerCase()],
-    [Field.incomingId, Field.incomingId.toLowerCase()],
-    [Field.incomingUsername, Field.incomingUsername.toLowerCase()],
-    [Field.inserted, Field.inserted.toLowerCase()],
-    [Field.created, Field.created.toLowerCase()],
-    [Field.repositoryId, Field.repositoryId.toLowerCase()],
-    [Field.repositoryName, Field.repositoryName.toLowerCase()],
-    [Field.organizationId, Field.organizationId.toLowerCase()],
-    [Field.organizationName, Field.organizationName.toLowerCase()],
-    [Field.userId, Field.userId.toLowerCase()],
-    [Field.userUsername, Field.userUsername.toLowerCase()],
-    [Field.userCorporateId, Field.userCorporateId.toLowerCase()],
-    [Field.userCorporateUsername, Field.userCorporateUsername.toLowerCase()],
-  ])
-);
+PostgresConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 PostgresConfiguration.ValidateMappings(type, fieldNames, [recordId]);
 
 EntityMetadataMappings.Register(

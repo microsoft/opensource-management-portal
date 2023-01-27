@@ -17,5 +17,5 @@ export type ConfigBrand = {
   operationsMail: string;
   forkApprovalMail: string;
   electionMail: string;
-  infrastructureNotificationMail: string;
+  infrastructureNotificationsMail: string;
 };

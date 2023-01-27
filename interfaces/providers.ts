@@ -31,7 +31,6 @@ import { IUserSettingsProvider } from '../entities/userSettings';
 import { ICacheHelper } from '../lib/caching';
 import BlobCache from '../lib/caching/blob';
 import { ICampaignHelper } from '../lib/campaigns';
-import { ICorporateContactProvider } from '../lib/corporateContactProvider';
 import { RestLibrary } from '../lib/github';
 import { IGraphProvider } from '../lib/graphProvider';
 import { ILinkProvider } from '../lib/linkProviders';

@@ -6,12 +6,16 @@
 import { IEntityMetadataProvider } from './entityMetadataProvider';
 import { ITableEntityMetadataProviderOptions, TableEntityMetadataProvider } from './table';
 import { IPostgresEntityMetadataProviderOptions, PostgresEntityMetadataProvider } from './postgres';
-import { MemoryEntityMetadataProvider } from './memory';
+import { MemoryConfiguration, MemoryEntityMetadataProvider, MemorySettings } from './memory';
 
 export * from './entityMetadataProvider';
 export * from './query';
 export * from './declarations';
 export * from './entityMetadata';
+
+export { MemoryConfiguration, MemorySettings };
+export { PostgresConfiguration, PostgresSettings } from './postgres';
+export { TableConfiguration, TableSettings } from './table';
 
 const providerTypes = ['memory', 'table', 'postgres'];
 
