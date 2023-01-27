@@ -1,0 +1,13 @@
+[
+  {
+    // A very simple org, not an enterprise cloud product.
+    "name": "OpenContoso",
+
+    // To simplify smaller installations, this indicates that at startup, all
+    // configured modern GItHub Apps should iterate through their installations
+    // to identify the installation ID and other information about this org.
+    // This will also backfill the organization ID value in the config.
+    "startupDiscover": true,
+    "active": true
+  }
+]

@@ -20,6 +20,7 @@ import {
 } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
 import { MemoryConfiguration, MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { TableConfiguration } from '../../lib/entityMetadataProvider';
 
 const type = new EntityMetadataType('RepositoryCollaboratorCache');
 
@@ -155,7 +156,13 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnNa
 MemoryConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
 
-PostgresConfiguration.SetDefaultTableName(type, 'repositorycollaboratorcache');
+const defaultTableName = 'repositorycollaboratorcache';
+
+TableConfiguration.SetDefaultTableName(type, defaultTableName);
+TableConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
+TableConfiguration.SetFixedPartitionKey(type, defaultTableName);
+
+PostgresConfiguration.SetDefaultTableName(type, defaultTableName);
 EntityMetadataMappings.Register(
   type,
   PostgresSettings.PostgresDefaultTypeColumnName,

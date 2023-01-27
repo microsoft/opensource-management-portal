@@ -20,6 +20,7 @@ import {
 } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
 import { MemoryConfiguration, MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { TableConfiguration } from '../../lib/entityMetadataProvider';
 
 const type = new EntityMetadataType('RepositoryTeamCache');
 
@@ -147,6 +148,8 @@ export class RepositoryTeamCacheFixedQueryByRepositoryId implements IEntityMetad
   }
 }
 
+const defaultTableName = 'repositoryteamcache';
+
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => {
   return new RepositoryTeamCacheEntity();
 });
@@ -155,7 +158,11 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnNa
 MemoryConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
 
-PostgresConfiguration.SetDefaultTableName(type, 'repositoryteamcache');
+TableConfiguration.SetDefaultTableName(type, defaultTableName);
+TableConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
+TableConfiguration.SetFixedPartitionKey(type, defaultTableName);
+
+PostgresConfiguration.SetDefaultTableName(type, defaultTableName);
 EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'repositoryteamcache');
 PostgresConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 PostgresConfiguration.ValidateMappings(type, fieldNames, []);

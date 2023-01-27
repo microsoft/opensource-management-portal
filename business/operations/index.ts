@@ -215,12 +215,12 @@ export class Operations
           (d.hasFeature(OrganizationFeature.Ignore) && d.hasFeature(OrganizationFeature.Invisible))
       );
       this._organizationSettings = unignoredDynamicOrganizations;
-      this._dynamicOrganizationIds = new Set(
-        unignoredDynamicOrganizations.map((org) => Number(org.organizationId))
-      );
       // Discover of installations at startup
       const toDiscover = organizationSettings.filter((os) => os.hasFeature('startupDiscover'));
       await this.startupDiscoverInstallations(toDiscover);
+      this._dynamicOrganizationIds = new Set(
+        unignoredDynamicOrganizations.map((org) => Number(org.organizationId))
+      );
     }
     if (this._organizationSettings && organizationSettingsProvider) {
       DynamicRestartCheckHandle = setInterval(
@@ -388,19 +388,19 @@ export class Operations
       const centralOperationsToken = this.config.github.operations.centralOperationsToken;
       for (let i = 0; i < names.length; i++) {
         const name = names[i];
-        let dynamicSettings: OrganizationSetting = null;
-        this._organizationSettings.map((dos) => {
+        let settings: OrganizationSetting = null;
+        for (const dos of this._organizationSettings) {
           if (
             dos.active &&
             dos.organizationName.toLowerCase() === name.toLowerCase() &&
             !dos.hasFeature(OrganizationFeature.Invisible)
           ) {
-            dynamicSettings = dos;
+            settings = dos;
           }
-        });
+        }
         const organization = this.createOrganization(
           name,
-          dynamicSettings,
+          settings,
           centralOperationsToken,
           GitHubAppAuthenticationType.BestAvailable
         );

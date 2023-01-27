@@ -17,7 +17,7 @@ import {
   PostgresSettings,
   PostgresConfiguration,
 } from '../../lib/entityMetadataProvider/postgres';
-import { TableSettings } from '../../lib/entityMetadataProvider/table';
+import { TableConfiguration, TableSettings } from '../../lib/entityMetadataProvider/table';
 import { MemoryConfiguration, MemorySettings } from '../../lib/entityMetadataProvider/memory';
 import { odata, TableEntityQueryOptions } from '@azure/data-tables';
 
@@ -294,47 +294,10 @@ EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMappin
   repositoryId,
 ]);
 
-PostgresConfiguration.SetDefaultTableName(type, 'repositorymetadata');
+const defaultTableName = 'repositorymetadata';
+PostgresConfiguration.SetDefaultTableName(type, defaultTableName);
 EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'repository');
-PostgresConfiguration.MapFieldsToColumnNames(
-  type,
-  new Map<string, string>([
-    [Field.createdByThirdPartyId, (Field.createdByThirdPartyId as string).toLowerCase()],
-    [Field.createdByThirdPartyUsername, (Field.createdByThirdPartyUsername as string).toLowerCase()],
-
-    [Field.createdByCorporateDisplayName, (Field.createdByCorporateDisplayName as string).toLowerCase()],
-    [Field.createdByCorporateId, (Field.createdByCorporateId as string).toLowerCase()],
-    [Field.createdByCorporateUsername, (Field.createdByCorporateUsername as string).toLowerCase()],
-
-    [Field.created, (Field.created as string).toLowerCase()],
-
-    [Field.organizationName, (Field.organizationName as string).toLowerCase()],
-    [Field.organizationId, (Field.organizationId as string).toLowerCase()], // net new
-
-    [Field.repositoryName, (Field.repositoryName as string).toLowerCase()],
-    // [repositoryId, azureTableRepositoryIdField], // in table, RowKey is not the repo ID
-
-    [Field.initialTeamPermissions, (Field.initialTeamPermissions as string).toLowerCase()], // special processing case
-    [Field.initialAdministrators, (Field.initialAdministrators as string).toLowerCase()], // special processing case
-
-    [Field.initialRepositoryDescription, (Field.initialRepositoryDescription as string).toLowerCase()],
-    [Field.initialRepositoryVisibility, (Field.initialRepositoryVisibility as string).toLowerCase()],
-    [Field.initialRepositoryHomepage, (Field.initialRepositoryHomepage as string).toLowerCase()],
-
-    [Field.initialLicense, (Field.initialLicense as string).toLowerCase()],
-    [Field.initialTemplate, (Field.initialTemplate as string).toLowerCase()],
-    [Field.initialGitIgnoreTemplate, (Field.initialGitIgnoreTemplate as string).toLowerCase()],
-    [Field.initialCorrelationId, (Field.initialCorrelationId as string).toLowerCase()],
-
-    [Field.projectType, (Field.projectType as string).toLowerCase()],
-    [Field.releaseReviewJustification, (Field.releaseReviewJustification as string).toLowerCase()],
-    [Field.releaseReviewType, (Field.releaseReviewType as string).toLowerCase()],
-    [Field.releaseReviewUrl, (Field.releaseReviewUrl as string).toLowerCase()],
-
-    [Field.lockdownState, Field.lockdownState.toLowerCase()],
-    [Field.transferSource, Field.transferSource.toLowerCase()],
-  ])
-);
+PostgresConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 PostgresConfiguration.ValidateMappings(type, fieldNames, [repositoryId]);
 
 EntityMetadataMappings.Register(

@@ -19,6 +19,7 @@ import {
 import { stringOrNumberAsString } from '../../utils';
 import { MemoryConfiguration, MemorySettings } from '../../lib/entityMetadataProvider/memory';
 import { Operations } from '../../business/operations';
+import { TableConfiguration } from '../../lib/entityMetadataProvider';
 
 const type = new EntityMetadataType('RepositoryCache');
 
@@ -99,7 +100,13 @@ EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMappin
   repositoryId,
 ]);
 
-PostgresConfiguration.SetDefaultTableName(type, 'repositorycache');
+const defaultTableName = 'repositorycache';
+
+TableConfiguration.SetDefaultTableName(type, defaultTableName);
+TableConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
+TableConfiguration.SetFixedPartitionKey(type, defaultTableName);
+
+PostgresConfiguration.SetDefaultTableName(type, defaultTableName);
 EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'repositorycache');
 PostgresConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 PostgresConfiguration.ValidateMappings(type, fieldNames, [repositoryId]);

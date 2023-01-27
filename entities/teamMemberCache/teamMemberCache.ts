@@ -26,6 +26,7 @@ import {
 } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
 import { MemoryConfiguration, MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { TableConfiguration } from '../../lib/entityMetadataProvider';
 
 const type = new EntityMetadataType('TeamMemberCache');
 
@@ -41,6 +42,8 @@ interface ITeamMemberCacheProperties {
 }
 
 const teamId = 'teamId';
+
+const defaultTableName = 'teammembercache';
 
 const Field: ITeamMemberCacheProperties = {
   uniqueId: 'uniqueId',
@@ -89,9 +92,15 @@ EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiat
   return new TeamMemberCacheEntity();
 });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, Field.uniqueId);
+
 MemoryConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
-PostgresConfiguration.SetDefaultTableName(type, 'teammembercache');
+
+TableConfiguration.SetDefaultTableName(type, defaultTableName);
+TableConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
+TableConfiguration.SetFixedPartitionKey(type, defaultTableName);
+
+PostgresConfiguration.SetDefaultTableName(type, defaultTableName);
 EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'teammembercache');
 PostgresConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 PostgresConfiguration.ValidateMappings(type, fieldNames, []);
