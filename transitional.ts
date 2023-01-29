@@ -35,14 +35,6 @@ export function assertUnreachable(nothing: never): never {
   throw new Error('This is never expected.');
 }
 
-export interface RedisOptions {
-  auth_pass?: string;
-  detect_buffers: boolean;
-  tls?: {
-    servername: string;
-  };
-}
-
 export function getProviders(req: ReposAppRequest) {
   return req.app.settings.providers as IProviders;
 }

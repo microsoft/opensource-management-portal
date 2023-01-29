@@ -258,7 +258,7 @@ export function gunzipBuffer(buffer: Buffer): Promise<string> {
   return new Promise((resolve, reject) => {
     zlib.gunzip(buffer, (unzipError, unzipped) => {
       // Fallback if there is a data error (i.e. it's not compressed)
-      if (unzipError && (unzipError as any)?.errno === zlib.Z_DATA_ERROR) {
+      if (unzipError && (unzipError as any)?.errno === zlib.constants.Z_DATA_ERROR) {
         const originalValue = buffer.toString();
         return resolve(originalValue);
       } else if (unzipError) {

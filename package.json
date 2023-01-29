@@ -4,7 +4,7 @@
   "contributors": [
     "Jeff Wilcox <jeff.wilcox@microsoft.com>"
   ],
-  "version": "7.1.0",
+  "version": "7.2.0",
   "license": "MIT",
   "private": true,
   "keywords": [
@@ -115,8 +115,7 @@
     "pug": "3.0.2",
     "pug-load": "^3.0.0",
     "recursive-readdir": "2.2.3",
-    "redis": "3.1.2",
-    "redis-mock": "0.56.3",
+    "redis": "4.6.2",
     "secure-compare": "3.0.1",
     "semver": "7.3.8",
     "serve-favicon": "2.5.0",
@@ -145,7 +144,6 @@
     "@types/pg": "8.6.6",
     "@types/pug": "2.0.6",
     "@types/recursive-readdir": "2.2.1",
-    "@types/redis": "4.0.11",
     "@types/semver": "7.3.13",
     "@types/simple-oauth2": "4.1.1",
     "@types/validator": "13.7.11",

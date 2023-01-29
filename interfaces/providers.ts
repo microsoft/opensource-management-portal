@@ -5,7 +5,7 @@
 
 import { TelemetryClient } from 'applicationinsights';
 import { AuthorizationCode } from 'simple-oauth2';
-import redis from 'redis';
+import redis, { RedisClientType } from 'redis';
 import { Pool as PostgresPool } from 'pg';
 
 import {
@@ -80,7 +80,7 @@ export interface IProviders {
   postgresPool?: PostgresPool;
   queryCache?: QueryCache;
   webhookQueueProcessor?: IQueueProcessor;
-  sessionRedisClient?: redis.RedisClient;
+  sessionRedisClient?: RedisClientType;
   cacheProvider?: ICacheHelper;
   repositoryProvider?: IRepositoryProvider;
   repositoryCacheProvider?: IRepositoryCacheProvider;

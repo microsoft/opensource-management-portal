@@ -36,7 +36,7 @@ import routePassport from './passport-routes';
 import { IProviders, SiteConfiguration } from '../interfaces';
 import { codespacesDevAssistant } from './codespaces';
 
-export default function initMiddleware(
+export default async function initMiddleware(
   app,
   express,
   config: SiteConfiguration,
@@ -89,7 +89,7 @@ export default function initMiddleware(
         debug('proxy: trusting reverse proxy');
       }
       if (applicationProfile.sessions) {
-        app.use(connectSession(app, config, providers));
+        app.use(await connectSession(app, config, providers));
         try {
           passport = passportConfig(app, config);
         } catch (passportError) {

@@ -7,7 +7,7 @@ import Debug from 'debug';
 import session from 'express-session';
 import ConnectRedis from 'connect-redis';
 
-import { IProviders } from '../interfaces';
+import type { IProviders, IReposApplication, SiteConfiguration } from '../interfaces';
 
 const dbg = Debug.debug('startup');
 
@@ -15,7 +15,11 @@ const saltNotSet = 'session-salt-not-set-warning';
 
 const supportedProviders = ['memory', 'redis', 'cosmosdb'];
 
-export default function ConnectSession(app, config, providers: IProviders) {
+export default async function ConnectSession(
+  app: IReposApplication,
+  config: SiteConfiguration,
+  providers: IProviders
+) {
   const sessionProvider = config.session.provider;
   if (!supportedProviders.includes(sessionProvider)) {
     throw new Error(`The configured session provider ${sessionProvider} is not supported`);
@@ -36,18 +40,25 @@ export default function ConnectSession(app, config, providers: IProviders) {
     if (!providers.sessionRedisClient) {
       throw new Error('No provided session Redis client');
     }
+    const { sessionRedisClient } = providers;
     if (!config?.session?.redis?.ttl) {
       throw new Error('config.session.redis.ttl is required');
     }
     const redisPrefix = config.session.redis.prefix ? `${config.session.redis.prefix}.session` : 'session';
+    const redisLegacy = sessionRedisClient.duplicate({ legacyMode: true });
+    redisLegacy.connect();
+    await new Promise<void>((resolve, reject) => {
+      (redisLegacy.auth as any)(config.redis.key, (authError: Error) => {
+        authError ? reject(authError) : resolve();
+      });
+    });
     const redisOptions = {
-      client: providers.sessionRedisClient,
+      client: redisLegacy,
       ttl: config.session.redis.ttl,
       prefix: redisPrefix,
     };
     const RedisStore = ConnectRedis(session);
-    // const RedisStore = require('connect-redis')(session);
-    store = new RedisStore(redisOptions);
+    store = new RedisStore(redisOptions as any);
   } else if (sessionProvider === 'cosmosdb') {
     if (!providers.session) {
       throw new Error('No provided session store');

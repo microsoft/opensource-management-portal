@@ -7,7 +7,6 @@ import path from 'path';
 
 import CosmosSessionStore from '../lib/cosmosSession';
 
-import { RedisOptions } from '../transitional';
 import { createAndInitializeLinkProviderInstance } from '../lib/linkProviders';
 
 import { Operations } from '../business';
@@ -21,10 +20,8 @@ import { createMailAddressProviderInstance, IMailAddressProvider } from '../lib/
 
 import ErrorRoutes from './error-routes';
 
-import redis from 'redis';
+import { createClient, RedisClientType } from 'redis';
 import { Pool as PostgresPool } from 'pg';
-
-const redisMock = require('redis-mock');
 
 import Debug from 'debug';
 const debug = Debug.debug('startup');
@@ -73,7 +70,7 @@ import routeCorrelationId from './correlationId';
 import routeHsts from './hsts';
 import routeSslify from './sslify';
 
-import MiddlewareIndex from '.';
+import middlewareIndex from '.';
 import { ICacheHelper } from '../lib/caching';
 import {
   IApplicationProfile,
@@ -461,7 +458,7 @@ export default async function initialize(
     }
   }
   try {
-    MiddlewareIndex(app, express, config, rootdir, exception);
+    await middlewareIndex(app, express, config, rootdir, exception);
   } catch (middlewareError) {
     exception = middlewareError;
   }
@@ -581,48 +578,25 @@ export function ConnectPostgresPool(postgresConfigSection: any): Promise<Postgre
   });
 }
 
-function connectRedis(config: any, redisConfig: any, purpose: string): Promise<redis.RedisClient> {
-  const nodeEnvironment = config && config.node ? config.node.environment : null;
-  let redisClient: redis.RedisClient = null;
-  const redisOptions: RedisOptions = {
-    detect_buffers: true,
+async function connectRedis(
+  config: SiteConfiguration,
+  redisConfig: any,
+  purpose: string
+): Promise<RedisClientType> {
+  const redisOptions = {
+    socket: {
+      host: config.redis.tls || config.redis.host,
+      port: config.redis.port ? Number(config.redis.port) : config.redis.tls ? 6380 : 6379,
+      password: config.redis.key,
+      tls: !!config.redis.tls,
+    },
+    // name
   };
-  if (config.redis.key) {
-    redisOptions.auth_pass = config.redis.key;
-  }
-  if (redisConfig.tls) {
-    redisOptions.tls = {
-      servername: redisConfig.tls,
-    };
-  }
-  if (!redisConfig.host && !redisConfig.tls) {
-    if (nodeEnvironment === 'production') {
-      console.warn(`${purpose}: Redis host or TLS host must be provided in production environments`);
-      throw new Error(`No ${purpose}.redis.host or ${purpose}.redis.tls`);
-    }
-    debug(`mocking Redis, in-memory provider in use`);
-    redisClient = redisMock.createClient();
-  } else {
-    debug(`connecting to ${purpose} Redis ${redisConfig.host || redisConfig.tls}`);
-    const port = redisConfig.port || (redisConfig.tls ? 6380 : 6379);
-    redisClient = redis.createClient(port, redisConfig.host || redisConfig.tls, redisOptions);
-  }
-  let isFirst = true;
-  return new Promise((resolve, reject) => {
-    redisClient.on('connect', function () {
-      if (isFirst) {
-        isFirst = false;
-        return resolve(redisClient);
-      }
-    });
-    // NOTE: a timeout would hang the process here
-    if (config.redis.key) {
-      redisClient.auth(config.redis.key);
-      debug(`authenticated to Redis for ${purpose}`);
-    } else {
-      debug(`connected to Redis for ${purpose} (unauthenticated)`);
-    }
-  });
+  debug(`connecting to ${purpose} Redis ${redisConfig.host || redisConfig.tls}`);
+  const redisClient: RedisClientType = createClient(redisOptions);
+  await redisClient.connect();
+  await redisClient.auth({ password: config.redis.key });
+  return redisClient;
 }
 
 async function createMailAddressProvider(config: any, providers: IProviders): Promise<IMailAddressProvider> {
