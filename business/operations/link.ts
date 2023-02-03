@@ -141,7 +141,7 @@ export async function linkAccounts(
   return { linkId: newLinkId, resourceLink: getApi };
 }
 
-async function sendLinkedAccountMail(
+export async function sendLinkedAccountMail(
   operations: Operations,
   link: ICorporateLink,
   mailAddress: string | null,
@@ -176,10 +176,12 @@ async function sendLinkedAccountMail(
   };
   const companySpecific = getCompanySpecificDeployment();
   const companySpecificStrings = companySpecific?.strings || {};
+  const viewName = companySpecific?.views?.email?.linking?.link || 'link';
   const contentOptions = {
     reason: `One-time record of your action to link your account, sent to: ${toAsString}`,
-    headline: `Welcome to GitHub, ${link.thirdPartyUsername}`,
+    headline: companySpecificStrings?.linkMailHeadline || `Welcome to GitHub, ${link.thirdPartyUsername}`,
     notification: 'information',
+    preheader: companySpecificStrings?.linkMailPreHeader,
     app: `${config.brand.companyName} GitHub`,
     correlationId,
     docs: config && config.urls ? config.urls.docs : null,
@@ -188,7 +190,7 @@ async function sendLinkedAccountMail(
     link,
   };
   try {
-    mail.content = await operations.emailRender('link', contentOptions);
+    mail.content = await operations.emailRender(viewName, contentOptions);
   } catch (renderError) {
     insights.trackException({
       exception: renderError,

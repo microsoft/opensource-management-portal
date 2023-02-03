@@ -20,6 +20,7 @@ import routeOrgs from './orgs';
 import routeRepos from './repos';
 import routeTeams from './teams';
 import routeAdministration from './administration';
+import routeSample from './sample';
 
 const router: Router = Router();
 
@@ -102,6 +103,7 @@ router.use('/administration', routeAdministration);
 router.get('/orgs', routeOrgs);
 router.get('/repos', routeRepos);
 router.get('/teams', routeTeams);
+router.use('/sample', routeSample);
 
 router.use(
   '/orgs/:orgName',
