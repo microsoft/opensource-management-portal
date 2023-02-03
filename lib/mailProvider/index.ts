@@ -6,6 +6,7 @@
 import MockMailService from './mockMailService';
 import SmtpMailService from './smtpMailService';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
+import { SiteConfiguration } from '../../interfaces';
 
 export interface IMail {
   from?: string;
@@ -28,6 +29,10 @@ export interface IMailProvider {
   initialize(): Promise<string | void>;
 }
 
+export function isOverridingRecipients(config: SiteConfiguration) {
+  return !!config.mail.overrideRecipient;
+}
+
 function patchOverride(provider, newToAddress, htmlOrNot) {
   const sendMail = provider.sendMail.bind(provider);
   provider.sendMail = (mailOptions: IMail): Promise<any> => {
@@ -38,6 +43,8 @@ function patchOverride(provider, newToAddress, htmlOrNot) {
     if (!mailOptions.content) {
       mailOptions.content = '';
     }
+    const originalSubject = mailOptions.subject;
+    mailOptions.subject = '[SAMPLE] ' + originalSubject;
     mailOptions.to = newToAddress;
     if (mailOptions.cc) {
       if (typeof mailOptions.cc === 'string') {
@@ -60,8 +67,8 @@ function patchOverride(provider, newToAddress, htmlOrNot) {
     const initialContent = mailOptions.content;
     const redirectMessage = `This mail was intended for ${originalTo} but was instead sent to ${newToAddress} per a configuration override.\n`;
     mailOptions.content = htmlOrNot
-      ? `<p><em>${redirectMessage}</em></p>\n${initialContent}`
-      : `${redirectMessage}\n${initialContent}`;
+      ? `${initialContent}\n<p><em>${redirectMessage}</em></p>`
+      : `${initialContent}\n${redirectMessage}`;
     return sendMail(mailOptions);
   };
   return provider;
