@@ -649,6 +649,7 @@ export class Operations
     const account: Account = this.getAccount(thirdPartyId);
     const reason = options.reason || 'Automated processPendingUnlink operation';
     const purpose = (options.purpose as UnlinkPurpose) || UnlinkPurpose.Unknown;
+    const unlinkWithoutDrops = options.unlinkWithoutDrops || false;
 
     try {
       // Uses an ID-based lookup on GitHub in case the user was renamed.
@@ -674,10 +675,12 @@ export class Operations
 
     // GitHub memberships
     try {
-      const removal = await account.removeManagedOrganizationMemberships();
-      history.push(...removal.history);
-      if (removal.error) {
-        throw removal.error; // unclear if this is actually ideal
+      if (!unlinkWithoutDrops) {
+        const removal = await account.removeManagedOrganizationMemberships();
+        history.push(...removal.history);
+        if (removal.error) {
+          throw removal.error; // unclear if this is actually ideal
+        }
       }
     } catch (removeOrganizationsError) {
       ++errors;
@@ -712,12 +715,20 @@ export class Operations
       history.push(`Unlink error: ${removeLinkError.toString()}`);
     }
 
+    if (unlinkWithoutDrops) {
+      history.push(
+        'Unlink operation completed without removing memberships due to a debug configuration value.'
+      );
+    }
+
     // Collaborator permissions to repositories
     try {
-      const removed = await account.removeCollaboratorPermissions();
-      history.push(...removed.history);
-      if (removed.error) {
-        throw removed.error;
+      if (!unlinkWithoutDrops) {
+        const removed = await account.removeCollaboratorPermissions();
+        history.push(...removed.history);
+        if (removed.error) {
+          throw removed.error;
+        }
       }
     } catch (removeCollaboratorsError) {
       ++errors;

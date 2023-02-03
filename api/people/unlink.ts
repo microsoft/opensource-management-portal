@@ -51,7 +51,7 @@ router.use('*', (req: ILinksApiRequestWithUnlink, res, next) => {
 });
 
 router.delete('*', (req: ILinksApiRequestWithUnlink, res, next) => {
-  const { operations } = getProviders(req);
+  const { config, operations } = getProviders(req);
   const link = req.unlink;
   let purpose: UnlinkPurpose = null;
   try {
@@ -59,7 +59,8 @@ router.delete('*', (req: ILinksApiRequestWithUnlink, res, next) => {
   } catch (purposeError) {
     return next(jsonError(purposeError, 400));
   }
-  const options = { purpose };
+  const unlinkWithoutDrops = config?.debug?.unlinkWithoutDrops;
+  const options = { purpose, unlinkWithoutDrops };
   return operations
     .terminateLinkAndMemberships(link.thirdPartyId, options)
     .then((results) => {
