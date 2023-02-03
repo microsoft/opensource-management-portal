@@ -122,7 +122,7 @@
     "simple-oauth2": "5.0.0",
     "throat": "6.0.2",
     "tmp-promise": "3.0.3",
-    "validator": "13.7.0",
+    "validator": "13.9.0",
     "walk-back": "5.1.0"
   },
   "devDependencies": {
