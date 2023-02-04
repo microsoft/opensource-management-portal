@@ -16,4 +16,9 @@ export type ConfigWebServer = {
     region: string;
   };
   baseUrl: string;
+  sslify: {
+    enabled: boolean;
+    trustProtoHeader: boolean;
+    trustAzureHeader: boolean;
+  };
 };

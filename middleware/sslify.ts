@@ -4,5 +4,14 @@
 //
 
 import sslify from 'express-sslify';
+import type { ConfigWebServer } from '../config/webServer.types';
 
-export default sslify.HTTPS({ trustAzureHeader: true });
+export default function (webServerConfig: ConfigWebServer) {
+  if (webServerConfig.sslify?.enabled) {
+    const options = {
+      trustProtoHeader: webServerConfig.sslify.trustProtoHeader,
+      trustAzureHeader: webServerConfig.sslify.trustAzureHeader,
+    };
+    return sslify.HTTPS(options);
+  }
+}

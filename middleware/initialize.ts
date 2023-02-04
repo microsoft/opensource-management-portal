@@ -416,16 +416,18 @@ export default async function initialize(
     }
     return res.send('Service not ready.');
   });
-  if (config.containers && config.containers.deployment) {
+  // See docs/configuration.md for all this
+  if (config?.containers?.deployment) {
     debug('Container deployment: HTTP: listening, HSTS: on');
     app.use(routeHsts);
-  } else if (config.containers && config.containers.docker) {
+  } else if (config?.containers?.docker) {
     debug('Docker image: HTTP: listening, HSTS: off');
   } else if (config.webServer.allowHttp) {
     debug('development mode: HTTP: listening, HSTS: off');
   } else {
-    app.use(routeSslify);
-    app.use(routeHsts);
+    debug('non-container production mode: HTTP: redirect to HTTPS, HSTS: on');
+    const sslifyRouter = routeSslify(config.webServer);
+    sslifyRouter && app.use(sslifyRouter);
   }
   if (!exception) {
     const kvConfig = {

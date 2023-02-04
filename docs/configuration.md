@@ -219,3 +219,33 @@ You can do this 3 more times to create dedicated apps for `UI`, `background jobs
 Create an GitHub OAuth2 application ([guide](https://developer.github.com/apps/building-oauth-apps/creating-an-oauth-app/)) and set the IDs and the callback-URL in the `config/github.oauth2.json` file.
 
 You need to grant the application [third party permissions](https://help.github.com/en/articles/about-oauth-app-access-restrictions). To do this, navigate to the following link `https://github.com/orgs/<org-name>/policies/applications/<application-ID>`.
+
+## Web hosting environment
+
+Explore basic web hosting values that can be configured by environment variable in the
+`config/webServer.json` file. This set of logic isn't very great right now.
+
+Environment variables of note:
+
+- `PORT`
+- `DEBUG_ALLOW_HTTP`: if terminating HTTPS upstream, or performing local development against localhost, you may want to set this to `1`
+- `SSLIFY_ENABLED`: set to 1 to enable the `express-sslify` middleware. [View express-sslify docs](https://github.com/florianheinemann/express-sslify#reverse-proxies-heroku-nodejitsu-and-others)
+  - `SSLIFY_TRUST_PROTO_HEADER`: set to 1 for reverse proxies.
+  - `SSLIFY_TRUST_AZURE_HEADER`: set to 1 for Azure deployments if looking for `x-arr-ssl`
+
+For container development and deployments:
+
+- `IS_DOCKER`: allow HTTP, HSTS off
+- `IS_CONTAINER_DEPLOYMENT`: set `secure` on cookies, hsts on, `app.enable('trust proxy');`
+
+### Which values we use for which scenarios
+
+When we deploy a container on Azure App Service on Linux, we set `IS_CONTAINER_DEPLOYMENT`.
+
+If we were deploying into a Windows App Service instance, we would set `SSLIFY_ENABLED` and `SSLIFY_TRUST_AZURE_HEADER`.
+
+For local containerized development, we set `IS_DOCKER`.
+
+When developing locally or in Codespaces, we set `DEBUG_ALLOW_HTTP`.
+
+When using Codespaces, we set `CODESPACES_DESKTOP` if we are using Visual Studio Code and not the web-hosted experience.
