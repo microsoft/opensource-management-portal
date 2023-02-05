@@ -77,14 +77,14 @@ jobs:
           docker image push opensource.azurecr.io/${{ github.event.repository.name }}:${{ github.run_number }}
           docker image push opensource.azurecr.io/${{ github.event.repository.name }}:latest
 
-  development:
-    name: Deploy to development 🏗️
+  development-stage:
+    name: Stage to development 🏗️
     if: github.repository == 'microsoft/opensource-management-portal' # official repo only
     runs-on: ubuntu-latest
     needs: [build, lint-and-test]
-    #environment:
-    #  name: development
-
+    environment:
+      name: development
+      url: https://portal-staging.ospo.dev
     steps:
       - name: Azure OpenID Connect ✨
         uses: azure/login@v1
@@ -92,7 +92,6 @@ jobs:
           client-id: ${{ secrets.CLIENT_ID }}
           tenant-id: ${{ secrets.TENANT_ID }}
           subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
-
       - name: Prepare staging slots 🎰
         run: |
           az webapp config container set \
@@ -102,6 +101,21 @@ jobs:
             --resource-group portal \
             --slot staging
 
+  development:
+    name: Swap to live 🏗️
+    if: github.repository == 'microsoft/opensource-management-portal' # official repo only
+    runs-on: ubuntu-latest
+    needs: [build, lint-and-test]
+    environment:
+      name: development
+      url: https://portal.ospo.dev
+    steps:
+      - name: Azure OpenID Connect ✨
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.CLIENT_ID }}
+          tenant-id: ${{ secrets.TENANT_ID }}
+          subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
       - name: Swap staging to live 💃
         run: |
           az webapp deployment slot swap \
