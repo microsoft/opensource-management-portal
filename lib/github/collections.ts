@@ -29,12 +29,6 @@ export enum GitHubPullRequestState {
   All = 'all',
 }
 
-export enum GitHubIssueState {
-  Open = 'open',
-  Closed = 'closed',
-  All = 'all',
-}
-
 export enum GitHubPullRequestSort {
   Created = 'created',
   Updated = 'updated',

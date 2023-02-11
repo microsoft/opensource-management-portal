@@ -4,10 +4,11 @@
 //
 
 import * as common from './common';
-import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
+
 import {
   GitHubCollaboratorPermissionLevel,
   ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission,
+  GitHubRepositoryPermission,
 } from '../interfaces';
 
 // prettier-ignore

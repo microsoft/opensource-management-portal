@@ -3,6 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import Debug from 'debug';
+const debug = Debug('github:tokens');
+
 import {
   AppPurpose,
   IGitHubAppConfiguration,
@@ -27,7 +30,7 @@ export interface IGitHubRateLimit {
 }
 
 // Installation redirect format:
-// /setup/app/41051?installation_id=1914154&setup_action=install
+// /setup/app/APP_ID?installation_id=INSTALLATION_ID&setup_action=install
 
 // 1: check if the app id is known
 // 2: request installation info as the app
@@ -42,8 +45,7 @@ export class GitHubTokenManager {
   #options: IGitHubAppsOptions;
   private static _managersForOperations: Map<OperationsCore, GitHubTokenManager> = new Map();
   private static _forceBackgroundTokens: boolean;
-  // private _appConfiguration = new Map<AppPurpose, IGitHubAppConfiguration>();
-  private _apps = new Map<AppPurposeTypes, GitHubAppTokens>();
+  private _apps = new Map<AppPurpose, GitHubAppTokens>();
   private _appsById = new Map<number, GitHubAppTokens>();
   private _appIdToPurpose = new Map<number, AppPurposeTypes>();
   private _appSlugs = new Map<number, string>();
@@ -90,11 +92,14 @@ export class GitHubTokenManager {
     for (const appPurpose of GitHubAppPurposes.AllAvailableAppPurposes) {
       const asCustom = appPurpose as ICustomAppPurpose;
       if (asCustom?.isCustomAppPurpose === true) {
-        // skip
+        debug(`Skipping initialization of custom app purpose ${asCustom.id}`);
       } else {
         const configurationValue = this.#options.configurations.get(appPurpose);
         if (configurationValue) {
+          debug(`Initializing app purpose ${appPurpose}`);
           await this.initializeApp(appPurpose, configurationValue);
+        } else {
+          debug(`No configuration found for app purpose ${appPurpose}`);
         }
       }
     }
@@ -102,23 +107,32 @@ export class GitHubTokenManager {
 
   organizationSupportsAnyPurpose(organizationName: string, organizationSettings?: OrganizationSetting) {
     const fallbackPurposePriorities = this.getFallbackList(GitHubAppPurposes.AllAvailableAppPurposes);
-    return !!this.getPrioritizedOrganizationInstallationId(
+    const value = !!this.getPrioritizedOrganizationInstallationId(
       fallbackPurposePriorities[0],
       organizationName,
       organizationSettings,
       GitHubAppAuthenticationType.BestAvailable
     );
+    debug(
+      `organizationSupportsAnyPurpose(${organizationName}${
+        organizationSettings ? ' (with settings specific)' : ''
+      }) => ${value}`
+    );
+    return value;
   }
 
   getAppById(id: number): GitHubAppTokens {
+    debug(`getAppById(${id})`);
     return this._appsById.get(id);
   }
 
   getAppIds(): number[] {
+    debug(`getAppIds()`);
     return Array.from(this._appsById.keys());
   }
 
   getSlugById(id: number): string {
+    debug(`getSlugById(${id})`);
     return this._appSlugs.get(id);
   }
 
@@ -144,6 +158,9 @@ export class GitHubTokenManager {
     organizationSettings: OrganizationSetting,
     appAuthenticationType: GitHubAppAuthenticationType
   ): Promise<IAuthorizationHeaderValue> {
+    debug(
+      `getOrganizationAuthorizationHeader(${organizationName}, ${preferredPurpose}, ${appAuthenticationType})`
+    );
     const installationIdPair = this.getPrioritizedOrganizationInstallationId(
       preferredPurpose,
       organizationName,
@@ -152,26 +169,63 @@ export class GitHubTokenManager {
     );
     if (!installationIdPair) {
       throw new Error(
-        `GitHubTokenManager: organization ${organizationName} does not have a configured GitHub App installation, or, the installation information is not in this environment.`
+        `GitHubTokenManager: organization ${organizationName} does not have a configured GitHub App installation, or, the installation information is not in this environment. The API preferred purpose was ${preferredPurpose} with the selection type ${appAuthenticationType}.`
       );
     }
     if (
       appAuthenticationType === GitHubAppAuthenticationType.BestAvailable &&
       installationIdPair.purpose !== preferredPurpose
     ) {
-      // console.log(`preferred GitHub App type ${preferredPurpose} not configured for organization ${organizationName}, falling back to ${installationIdPair.purpose}`);
+      debug(
+        `preferred GitHub App type ${preferredPurpose} not configured for organization ${organizationName}, falling back to ${installationIdPair.purpose}`
+      );
     }
     const asCustomPurpose = this.getCustomPurpose(installationIdPair.purpose);
-    let app = this._apps.get(installationIdPair.purpose);
-    if (!app && asCustomPurpose) {
-      app = await this.initializeApp(asCustomPurpose, asCustomPurpose.configuration);
+    const asStandardPurpose =
+      !asCustomPurpose?.getForOrganizationName && (installationIdPair.purpose as AppPurpose);
+    let app: GitHubAppTokens = null;
+    let customPurposeConfiguration: IGitHubAppConfiguration = null;
+    if (asCustomPurpose?.getForOrganizationName) {
+      customPurposeConfiguration = asCustomPurpose?.getForOrganizationName(organizationName);
+      if (customPurposeConfiguration?.appId) {
+        debug(
+          `purpose-specific configuration for ${organizationName} retrieved; appId=${customPurposeConfiguration.appId}`
+        );
+        const appId =
+          typeof customPurposeConfiguration.appId === 'number'
+            ? customPurposeConfiguration.appId
+            : parseInt(customPurposeConfiguration.appId, 10);
+        app = this._appsById.get(appId);
+      } else {
+        debug(`purpose-specific configuration for ${organizationName} not available}`);
+      }
+      debug(`app retrieved: ${app ? 'yes' : 'no'}`);
+    }
+    if (!app) {
+      app = this._apps.get(asStandardPurpose);
+      debug(
+        `app retrieved with standard purpose ${this.getPurposeDisplayId(asStandardPurpose)}: ${
+          app ? 'yes' : 'no'
+        }`
+      );
+    }
+    if (!app && customPurposeConfiguration) {
+      debug(`initializing app for custom purpose ${asCustomPurpose.id} with custom configuration`);
+      app = await this.initializeApp(asCustomPurpose, customPurposeConfiguration);
     }
     if (!app) {
       throw new Error(
         `No GitHub App is configured for the purpose ${this.getPurposeDisplayId(installationIdPair.purpose)}`
       );
     }
-    return app.getInstallationToken(installationIdPair.installationId, organizationName);
+    debug(
+      `getting installation token for installation ID ${installationIdPair.installationId} and organization ${organizationName}`
+    );
+    const value = await app.getInstallationToken(installationIdPair.installationId, organizationName);
+    debug(
+      `returned installation ID pair: installationId=${value?.installationId}, source=${value?.source}, purpose=${value?.purpose}`
+    );
+    return value;
   }
 
   async getInstallationAuthorizationHeader(
@@ -257,13 +311,15 @@ export class GitHubTokenManager {
     if (!organizationSettings) {
       return null;
     }
-    const fallbackPurposePriorities = this.getFallbackList(GitHubAppPurposes.AllAvailableAppPurposes);
+    const allPurposes = GitHubAppPurposes.AllAvailableAppPurposes;
+    const fallbackPurposePriorities = this.getFallbackList(allPurposes);
+    const customPurposes = allPurposes.filter((p) => (p as ICustomAppPurpose).isCustomAppPurpose === true);
     let order =
       this.isForcingBackgroundJobType() === true
         ? fallbackPurposePriorities
         : [preferredPurpose, ...fallbackPurposePriorities];
     if (appAuthenticationType === GitHubAppAuthenticationType.ForceSpecificInstallation) {
-      order = [preferredPurpose];
+      order = [preferredPurpose, ...customPurposes];
     }
     for (const purpose of order) {
       let customAppPurpose = purpose as ICustomAppPurpose;
@@ -294,12 +350,14 @@ export class GitHubTokenManager {
   private async initializeApp(purpose: AppPurposeTypes, appConfig: IGitHubAppConfiguration) {
     const customPurpose = purpose as ICustomAppPurpose;
     if (!appConfig || !appConfig.appId) {
+      debug(`No app configuration for ${purpose} GitHub App`);
       return;
     }
     const appId = typeof appConfig.appId === 'number' ? appConfig.appId : parseInt(appConfig.appId, 10);
     if (this._appsById.has(appId)) {
-      return;
+      return this._appsById.get(appId);
     }
+    debug(`Initializing ${purpose} GitHub App with ID=${appId}`);
     let key = appConfig.appKey;
     let skipDecodingBase64 = false;
     if (appConfig.appKeyFile) {
@@ -318,13 +376,19 @@ export class GitHubTokenManager {
     const app = skipDecodingBase64
       ? GitHubAppTokens.CreateFromString(purpose, friendlyName, appId, key, baseUrl)
       : GitHubAppTokens.CreateFromBase64EncodedFileString(purpose, friendlyName, appId, key, baseUrl);
-    this._apps.set(purpose, app);
+    const hasCustomConfigurationByOrganization = customPurpose?.getForOrganizationName;
+    const standardPurpose = purpose as AppPurpose;
+    if (!hasCustomConfigurationByOrganization) {
+      this._apps.set(standardPurpose, app);
+    }
     this._appsById.set(appId, app);
     this._appSlugs.set(appId, appConfig.slug);
     this._appIdToPurpose.set(appId, purpose);
     if (customPurpose?.isCustomAppPurpose === true) {
       console.log(
-        `Custom GitHub App, ${customPurpose.name} (id=${customPurpose.id}, appId=${appId}, slug=${appConfig.slug}) initialized`
+        `Custom GitHub App, ${customPurpose.name} (id=${customPurpose.id}, appId=${appId}, slug=${
+          appConfig.slug
+        }${hasCustomConfigurationByOrganization ? ', org-specific-variance' : ''}) initialized`
       );
     }
     return app;

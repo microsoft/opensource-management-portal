@@ -10,7 +10,6 @@ import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
 } from '../../lib/entityMetadataProvider/declarations';
-import { GitHubRepositoryPermission } from '../repositoryMetadata/repositoryMetadata';
 import {
   PostgresGetAllEntities,
   PostgresJsonEntityQuery,
@@ -19,6 +18,7 @@ import {
   PostgresConfiguration,
 } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
+import { GitHubRepositoryPermission } from '../../interfaces/github/repos';
 import { MemoryConfiguration, MemorySettings } from '../../lib/entityMetadataProvider/memory';
 import { TableConfiguration } from '../../lib/entityMetadataProvider';
 

@@ -7,22 +7,20 @@ import { DateTime } from 'luxon';
 
 import { Operations, Organization, Repository, Team } from '../business';
 import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repositoryMetadataProvider';
-import {
-  RepositoryMetadataEntity,
-  GitHubRepositoryVisibility,
-  RepositoryLockdownState,
-  GitHubRepositoryPermission,
-} from '../entities/repositoryMetadata/repositoryMetadata';
 import { IndividualContext } from '../user';
 import { daysInMilliseconds } from '../utils';
 import {
   ICorporateLink,
   ICachedEmployeeInformation,
   GitHubCollaboratorAffiliationQuery,
+  RepositoryLockdownState,
+  GitHubRepositoryVisibility,
+  GitHubRepositoryPermission,
 } from '../interfaces';
 import { IMail } from '../lib/mailProvider';
 import { ErrorHelper } from '../transitional';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
+import { RepositoryMetadataEntity } from '../entities/repositoryMetadata/repositoryMetadata';
 
 const botBracket = '[bot]';
 

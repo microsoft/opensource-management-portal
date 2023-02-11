@@ -15,8 +15,7 @@ import { IndividualContext } from '../../user';
 import { Organization } from '../../business/organization';
 import { CreateRepository, ICreateRepositoryApiResult, CreateRepositoryEntrypoint } from '../createRepo';
 import { Team } from '../../business/team';
-import { GitHubTeamRole, ReposAppRequest } from '../../interfaces';
-import { GitHubRepositoryVisibility } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { GitHubRepositoryVisibility, GitHubTeamRole, ReposAppRequest } from '../../interfaces';
 
 // This file supports the client apps for creating repos.
 

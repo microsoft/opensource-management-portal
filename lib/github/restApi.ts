@@ -50,24 +50,22 @@ interface IGitHubLink {
 
 export class IntelligentGitHubEngine extends IntelligentEngine {
   public static findLibraryMethod(libraryInstance, apiName) {
-    const instance = libraryInstance;
+    let instance = libraryInstance;
     const combined = apiName;
-    const i = combined.indexOf('.');
-    let apiGroup = null;
-    let apiMethodName = combined;
-    if (i >= 0) {
-      apiGroup = combined.substr(0, i);
-      apiMethodName = combined.substr(i + 1);
+    const apiSegments = combined.split('.');
+    for (let i = 0; i < apiSegments.length - 1; i++) {
+      const segmentName = apiSegments[i];
+      if (instance[segmentName]) {
+        instance = instance[segmentName];
+      } else {
+        throw new Error(
+          `The GitHub REST API library does not support the API group of type "${segmentName}" resolving "${apiName}".`
+        );
+      }
     }
-    const group = apiGroup ? instance[apiGroup] : instance;
-    if (!group) {
-      throw new Error(`The GitHub REST API library does not support the API group of type "${apiGroup}".`);
-    }
-    const method = group[apiMethodName];
+    const method = instance[apiSegments[apiSegments.length - 1]];
     if (!method) {
-      throw new Error(
-        `The GitHub REST API library does not support the API "${apiMethodName}" within the API group of type "${apiGroup}".`
-      );
+      throw new Error(`Could not find the GitHub REST API method "${apiName}" in "${combined}".`);
     }
     return method;
   }

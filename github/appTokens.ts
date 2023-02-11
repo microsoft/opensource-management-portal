@@ -7,8 +7,11 @@ import { request } from '@octokit/request';
 import { createAppAuth, InstallationAccessTokenAuthentication } from '@octokit/auth-app';
 import { AppAuthentication, AuthInterface } from '@octokit/auth-app/dist-types/types';
 
-import { AppPurposeTypes } from '.';
+import { AppPurposeTypes, ICustomAppPurpose } from '.';
 import { IAuthorizationHeaderValue } from '../interfaces';
+
+import Debug from 'debug';
+const debug = Debug('github:tokens');
 
 interface IInstallationToken {
   installationId: number;
@@ -28,6 +31,7 @@ export class GitHubAppTokens {
   #privateKey: string;
   private _appId: number;
   public purpose: AppPurposeTypes;
+  private _purposeId: string;
   private _appAuth: AuthInterface;
   private _installationAuth = new Map<number, AuthInterface>();
   private _tokensByInstallation = new Map<number, IInstallationToken[]>();
@@ -80,6 +84,9 @@ export class GitHubAppTokens {
       }),
     });
     this.purpose = purpose;
+    const asCustomPurpose = purpose as ICustomAppPurpose;
+    this._purposeId =
+      asCustomPurpose?.isCustomAppPurpose === true ? asCustomPurpose?.id : (purpose as string);
   }
 
   async getAppAuthenticationToken() {
@@ -112,27 +119,31 @@ export class GitHubAppTokens {
     const requiredValidityPeriod = new Date(now.getTime() + ValidityOffsetAfterNowMilliseconds);
     const latestToken = this.getLatestValidToken(installationId, requiredValidityPeriod);
     if (latestToken) {
+      const source = `Existing installation ID ${installationId} token for ${organizationName} app ID ${this._appId} purpose ${this._purposeId}`;
+      debug(source);
       return {
         value: latestToken.headerValue,
         purpose: this.purpose,
         installationId,
         organizationName,
-        source: `Existing installation ID ${installationId} token for ${organizationName}`,
+        source,
       };
     }
     try {
       const requestedToken = await this.requestInstallationToken(installationId, organizationName);
       this.getInstallationTokens(installationId).push(requestedToken);
+      const source = `New token for ${organizationName} organization via installation ID ${installationId} app ID ${this._appId} purpose ${this._purposeId}`;
+      debug(source);
       return {
         value: requestedToken.headerValue,
         purpose: this.purpose,
         installationId,
         organizationName,
-        source: `New token for ${organizationName} organization via installation ID ${installationId}`,
+        source,
       };
     } catch (error) {
       console.warn(
-        `Error retrieving installation token ID ${installationId} for organization ${organizationName}`
+        `Error retrieving installation token ID ${installationId} for organization ${organizationName} app ID ${this._appId} purpose ${this._purposeId}`
       );
       throw error;
     }

@@ -4,8 +4,7 @@
 //
 
 import { IReposApplication } from '../interfaces';
-
-// TODO: removing the Onboarding type (Ahoy)
+import { CreateError } from '../transitional';
 
 export enum AppPurpose {
   Data = 'Data',
@@ -15,14 +14,13 @@ export enum AppPurpose {
   Updates = 'Updates',
   Security = 'Security',
   ActionsData = 'ActionsData',
-  Onboarding = 'Onboarding',
 }
 
 export interface ICustomAppPurpose {
   isCustomAppPurpose: boolean; // basic type check
   id: string;
   name: string;
-  configuration: IGitHubAppConfiguration;
+  getForOrganizationName?(organizationName: string): IGitHubAppConfiguration;
 }
 
 export type AppPurposeTypes = AppPurpose | ICustomAppPurpose;
@@ -31,7 +29,23 @@ export class CustomAppPurpose implements ICustomAppPurpose {
   get isCustomAppPurpose() {
     return true;
   }
-  constructor(public id: string, public name: string, public configuration: IGitHubAppConfiguration) {}
+  constructor(public id: string, public name: string) {}
+}
+
+export class CustomAppPurposeOrganizationVariance extends CustomAppPurpose {
+  fallbackIfNotConfiguredOrganizationName = false;
+  constructor(public id: string, public name: string, private configurations: IGitHubAppConfiguration[]) {
+    super(id, name);
+  }
+  getForOrganizationName(organizationName: string) {
+    const configuration = this.configurations.find(
+      (c) => c.specificOrganizationName.toLowerCase() === organizationName.toLowerCase()
+    );
+    if (!configuration && this.fallbackIfNotConfiguredOrganizationName === false) {
+      throw CreateError.NotFound(`No configuration found for organization ${organizationName}`);
+    }
+    return configuration || this.configurations[0];
+  }
 }
 
 export const DefinedAppPurposes = [
@@ -42,7 +56,6 @@ export const DefinedAppPurposes = [
   AppPurpose.Updates,
   AppPurpose.Security,
   AppPurpose.ActionsData,
-  AppPurpose.Onboarding,
 ];
 
 // export const GitHubAppPurposesExemptFromAllRepositoriesSelection = [AppPurpose.Onboarding];
@@ -55,7 +68,6 @@ const appPurposeToConfigurationName = {
   [AppPurpose.Updates]: 'updates',
   [AppPurpose.Security]: 'security',
   [AppPurpose.ActionsData]: 'actions',
-  [AppPurpose.Onboarding]: 'onboarding',
 };
 
 export function getAppPurposeId(purpose: AppPurposeTypes) {
@@ -113,6 +125,8 @@ export interface IGitHubAppConfiguration {
   slug?: string;
   description?: string;
   baseUrl?: string;
+
+  specificOrganizationName?: string;
 }
 
 export interface IGitHubAppsOptions {

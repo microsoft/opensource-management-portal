@@ -20,47 +20,13 @@ import {
 import { TableConfiguration, TableSettings } from '../../lib/entityMetadataProvider/table';
 import { MemoryConfiguration, MemorySettings } from '../../lib/entityMetadataProvider/memory';
 import { odata, TableEntityQueryOptions } from '@azure/data-tables';
+import {
+  GitHubRepositoryVisibility,
+  IInitialTeamPermission,
+  RepositoryLockdownState,
+} from '../../interfaces/github/repos';
 
 const type = Type;
-
-export enum GitHubRepositoryPermission {
-  Pull = 'pull',
-  Push = 'push',
-  Admin = 'admin',
-  Triage = 'triage',
-  Maintain = 'maintain',
-
-  None = '',
-}
-
-export enum RepositoryLockdownState {
-  Locked = 'locked',
-  Unlocked = 'unlocked',
-  AdministratorLocked = 'administratorLocked',
-  Deleted = 'deleted',
-  ComplianceLocked = 'complianceLocked',
-}
-
-export const GitHubRepositoryPermissions = [
-  GitHubRepositoryPermission.Pull,
-  GitHubRepositoryPermission.Triage,
-  GitHubRepositoryPermission.Push,
-  GitHubRepositoryPermission.Maintain,
-  GitHubRepositoryPermission.Admin,
-  // NOTE: does not include 'None' which is not a real GitHub REST API value
-];
-
-export interface IInitialTeamPermission {
-  permission: GitHubRepositoryPermission;
-  teamId: string;
-  teamName?: string;
-}
-
-export enum GitHubRepositoryVisibility {
-  Public = 'public',
-  Private = 'private',
-  Internal = 'internal',
-}
 
 interface IRepositoryMetadataProperties {
   createdByThirdPartyId: any;

@@ -3,17 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Response } from 'express';
 import crypto from 'crypto';
 import githubUsernameRegex from 'github-username-regex';
 import { AxiosError } from 'axios';
 
-import { GitHubRepositoryPermission } from './entities/repositoryMetadata/repositoryMetadata';
-
 import appPackage from './package.json';
-import { ICreateRepositoryApiResult } from './api/createRepo';
+import type { ICreateRepositoryApiResult } from './api/createRepo';
 import { Repository } from './business/repository';
 import {
+  GitHubRepositoryPermission,
   IDictionary,
   IFunctionPromise,
   IProviders,
@@ -324,3 +322,5 @@ export function validateGitHubLogin(username: string) {
   }
   return username;
 }
+
+export const DefaultGraphqlPageSize = 10;

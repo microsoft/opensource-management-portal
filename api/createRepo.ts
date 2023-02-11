@@ -19,12 +19,7 @@ import {
   splitSemiColonCommas,
 } from '../transitional';
 import { Organization, Repository } from '../business';
-import {
-  RepositoryMetadataEntity,
-  GitHubRepositoryVisibility,
-  GitHubRepositoryPermission,
-  RepositoryLockdownState,
-} from '../entities/repositoryMetadata/repositoryMetadata';
+import { RepositoryMetadataEntity } from '../entities/repositoryMetadata/repositoryMetadata';
 import RenderHtmlMail from '../lib/emailRender';
 
 import {
@@ -46,6 +41,9 @@ import {
   IOperationsGitHubRestLibrary,
   IOperationsHierarchy,
   IOperationsNotifications,
+  GitHubRepositoryVisibility,
+  RepositoryLockdownState,
+  GitHubRepositoryPermission,
 } from '../interfaces';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 

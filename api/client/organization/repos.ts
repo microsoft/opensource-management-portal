@@ -13,6 +13,7 @@ import { Repository } from '../../../business';
 import RouteRepo from './repo';
 import JsonPager from '../jsonPager';
 import { ReposAppRequest, IProviders } from '../../../interfaces';
+import { sortRepositoriesByNameCaseInsensitive } from '../../../utils';
 
 const router: Router = Router();
 
@@ -159,17 +160,7 @@ function getSorter(search: RepositorySearchSortOrder): RepoSortFunction {
       };
     }
     case RepositorySearchSortOrder.Name: {
-      return (a, b) => {
-        const nameA = a.name.toLowerCase();
-        const nameB = b.name.toLowerCase();
-        if (nameA < nameB) {
-          return -1;
-        }
-        if (nameA > nameB) {
-          return 1;
-        }
-        return 0;
-      };
+      return sortRepositoriesByNameCaseInsensitive;
     }
     case RepositorySearchSortOrder.Size: {
       return (a, b) => {

@@ -48,7 +48,8 @@ export class RepositoryProject {
     if (entity) {
       this._entity = entity;
     }
-    this.overrideDefaultAppPurpose(AppPurpose.Onboarding);
+    this._purpose = AppPurpose.Operations;
+    // this.overrideDefaultAppPurpose(AppPurpose.Onboarding);
   }
 
   overrideDefaultAppPurpose(purpose: AppPurpose) {
@@ -113,7 +114,7 @@ export class RepositoryProject {
     };
     augmentInertiaPreview(parameters);
     const details = await operations.github.post(
-      this.authorizeSpecificPurpose(AppPurpose.Onboarding),
+      this.authorizeSpecificPurpose(AppPurpose.Operations),
       'projects.createColumn',
       parameters
     );

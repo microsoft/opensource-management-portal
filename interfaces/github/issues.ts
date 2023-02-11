@@ -17,11 +17,27 @@ export enum GitHubIssueState {
   Open = 'open',
 }
 
+export enum GitHubStateReason {
+  Completed = 'completed',
+  NotPlanned = 'not-planned',
+  Reopened = 'reopened',
+}
+
 export enum GitHubIssueQuery {
   Closed = 'closed',
   Open = 'open',
   All = 'all',
 }
+
+export type GitHubIssuePatchParameters = {
+  title?: string;
+  body?: string;
+  state?: GitHubIssueState;
+  state_reason?: GitHubStateReason;
+  labels?: string[];
+  milestone?: string | number;
+  assignees?: string[];
+};
 
 export interface IIssueLabel {
   id: number;

@@ -16,11 +16,8 @@ import {
   TeamPermission,
   RepositoryIssue,
 } from '.';
-import {
-  RepositoryMetadataEntity,
-  GitHubRepositoryPermission,
-} from '../entities/repositoryMetadata/repositoryMetadata';
-import { AppPurpose } from '../github';
+import { RepositoryMetadataEntity } from '../entities/repositoryMetadata/repositoryMetadata';
+import { AppPurpose, AppPurposeTypes, GitHubAppPurposes } from '../github';
 import {
   IPurposefulGetAuthorizationHeader,
   IOperationsInstance,
@@ -49,6 +46,7 @@ import {
   IRepositoryGetIssuesOptions,
   IOperationsRepositoryMetadataProvider,
   IOperationsUrls,
+  GitHubRepositoryPermission,
 } from '../interfaces';
 import { IListPullsParameters, GitHubPullRequestState } from '../lib/github/collections';
 
@@ -71,8 +69,8 @@ interface IRepositoryMomentsAgo {
 }
 
 interface INewIssueOptions {
-  // assignee?: string;
   assignees?: string[];
+  labels?: string[];
 }
 
 interface IProtectedBranchRule {
@@ -158,6 +156,28 @@ interface IUnarchiveResponse {
       isArchived: boolean;
     };
   };
+}
+
+export type GitHubPagesResponse = {
+  status: string;
+  cname: string;
+  custom_404: boolean;
+  build_type: string;
+  html_url: string;
+  source: {
+    branch: string;
+    path: string;
+  };
+  public: boolean;
+  https_certificate: unknown;
+  protected_domain_state: GitHubPagesProtectedDomainState;
+  pending_domain_unverified_at: string;
+  https_enforced: string;
+};
+
+export enum GitHubPagesProtectedDomainState {
+  Pending = 'pending',
+  Verified = 'verified',
 }
 
 const safeEntityFieldsForJsonSend = [
@@ -813,7 +833,7 @@ export class Repository {
     );
   }
 
-  async getPages(options?: ICacheOptions): Promise<any> {
+  async getPages(options?: ICacheOptions): Promise<GitHubPagesResponse> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
@@ -1609,7 +1629,7 @@ export class Repository {
     return Array.from(users.values());
   }
 
-  private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
+  private authorize(purpose: AppPurposeTypes): IGetAuthorizationHeader | string {
     const getAuthorizationHeader = this._getAuthorizationHeader.bind(
       this,
       purpose
@@ -1617,7 +1637,7 @@ export class Repository {
     return getAuthorizationHeader;
   }
 
-  private specificAuthorization(purpose: AppPurpose): IGetAuthorizationHeader | string {
+  private specificAuthorization(purpose: AppPurposeTypes): IGetAuthorizationHeader | string {
     const getSpecificHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose
@@ -1709,7 +1729,7 @@ export class Repository {
       pageRequestDelay: options.pageRequestDelay,
     };
     const projectsRaw = await github.collections.getRepoProjects(
-      this.specificAuthorization(AppPurpose.Onboarding),
+      this.specificAuthorization(AppPurpose.Data),
       parameters,
       cacheOptions
     );
@@ -1735,7 +1755,7 @@ export class Repository {
     );
     augmentInertiaPreview(parameters);
     const details = await operations.github.post(
-      this.specificAuthorization(AppPurpose.Onboarding),
+      this.specificAuthorization(AppPurpose.Operations),
       'projects.createForRepo',
       parameters
     );
@@ -1788,7 +1808,7 @@ export class Repository {
     title: string,
     body: string,
     options?: INewIssueOptions,
-    overriddenPurpose?: AppPurpose
+    overriddenPurpose?: AppPurposeTypes
   ): Promise<RepositoryIssue> {
     const operations = throwIfNotGitHubCapable(this._operations);
     options = options || {};

@@ -8,6 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
 import zlib from 'zlib';
+import { type Repository } from './business/repository';
 
 import { ReposAppRequest, IAppSession, IReposError, SiteConfiguration } from './interfaces';
 import { getProviders } from './transitional';
@@ -97,6 +98,24 @@ export function storeReferrer(req: ReposAppRequest, res, redirect, optionalReaso
 export function sortByCaseInsensitive(a: string, b: string) {
   const nameA = a.toLowerCase();
   const nameB = b.toLowerCase();
+  if (nameA < nameB) {
+    return -1;
+  }
+  if (nameA > nameB) {
+    return 1;
+  }
+  return 0;
+}
+
+export function cleanResponse<T = any>(response: T) {
+  (response as any)?.cost && delete (response as any).cost;
+  (response as any)?.headers && delete (response as any).headers;
+  return response as Omit<T, 'cost' | 'headers'>;
+}
+
+export function sortRepositoriesByNameCaseInsensitive(a: Repository, b: Repository) {
+  const nameA = a.name.toLowerCase();
+  const nameB = b.name.toLowerCase();
   if (nameA < nameB) {
     return -1;
   }

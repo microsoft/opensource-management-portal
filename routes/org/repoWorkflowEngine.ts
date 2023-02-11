@@ -9,18 +9,15 @@ import recursiveReadDirectory from 'recursive-readdir';
 
 import { wrapError, sleep } from '../../utils';
 import { Organization } from '../../business';
-import {
-  RepositoryMetadataEntity,
-  GitHubRepositoryPermission,
-  GitHubRepositoryPermissions,
-  GitHubRepositoryVisibility,
-} from '../../entities/repositoryMetadata/repositoryMetadata';
+import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { Repository } from '../../business';
 import { CreateRepositoryEntrypoint, ICreateRepositoryApiResult } from '../../api/createRepo';
 import {
   CoreCapability,
+  GitHubRepositoryPermission,
+  GitHubRepositoryPermissions,
+  GitHubRepositoryVisibility,
   IAlternateTokenOption,
-  IOperationsProviders,
   IOperationsRepositoryMetadataProvider,
   IProviders,
   throwIfNotCapable,

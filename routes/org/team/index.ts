@@ -10,7 +10,7 @@ const router: Router = Router();
 import throat from 'throat';
 
 import { getProviders } from '../../../transitional';
-import { wrapError } from '../../../utils';
+import { sortRepositoriesByNameCaseInsensitive, wrapError } from '../../../utils';
 import { TeamJoinApprovalEntity } from '../../../entities/teamJoinApproval/teamJoinApproval';
 import SelfServiceTeamMemberToMaintainerUpgrades from '../../../features/teamMemberToMaintainerUpgrade';
 import RouteMembers from './members';
@@ -739,18 +739,6 @@ async function resolveMailAddresses(operations: Operations, array: TeamMember[])
       })
     )
   );
-}
-
-export function sortRepositoriesByNameCaseInsensitive(a: Repository, b: Repository) {
-  const nameA = a.name.toLowerCase();
-  const nameB = b.name.toLowerCase();
-  if (nameA < nameB) {
-    return -1;
-  }
-  if (nameA > nameB) {
-    return 1;
-  }
-  return 0;
 }
 
 router.use('/members', RouteMembers);

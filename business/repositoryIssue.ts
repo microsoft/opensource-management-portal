@@ -15,6 +15,8 @@ import {
   throwIfNotGitHubCapable,
   ICacheOptions,
   IGetAuthorizationHeader,
+  GitHubIssuePatchParameters,
+  GitHubStateReason,
 } from '../interfaces';
 import { CreateError, ErrorHelper } from '../transitional';
 
@@ -75,7 +77,7 @@ export class RepositoryIssue {
     return this._repository;
   }
 
-  async update(patch: any): Promise<any> {
+  async update(patch: GitHubIssuePatchParameters): Promise<any> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = Object.assign(patch, {
       owner: this.repository.organization.name,
@@ -89,6 +91,13 @@ export class RepositoryIssue {
       parameters
     );
     return details;
+  }
+
+  async close(reason: GitHubStateReason = GitHubStateReason.Completed): Promise<void> {
+    await this.update({
+      state: GitHubIssueState.Closed,
+      state_reason: reason,
+    });
   }
 
   async comment(commentBody: string): Promise<any> {
@@ -181,6 +190,14 @@ export class RepositoryIssue {
       }
       throw error;
     }
+  }
+
+  async getGraphQlNodeId() {
+    if (!this.getEntity()?.node_id) {
+      await this.getDetails();
+    }
+    const { node_id: nodeId } = this.getEntity();
+    return nodeId;
   }
 
   async isDeleted(options?: ICacheOptions): Promise<boolean> {

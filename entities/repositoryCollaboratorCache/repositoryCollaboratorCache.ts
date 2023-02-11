@@ -10,8 +10,7 @@ import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
 } from '../../lib/entityMetadataProvider/declarations';
-import { GitHubRepositoryPermission } from '../repositoryMetadata/repositoryMetadata';
-import { GitHubCollaboratorType } from '../../interfaces';
+import { GitHubCollaboratorType, GitHubRepositoryPermission } from '../../interfaces';
 import {
   PostgresGetAllEntities,
   PostgresJsonEntityQuery,

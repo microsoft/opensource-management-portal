@@ -7,14 +7,11 @@ import querystring from 'querystring';
 
 import { Repository } from './repository';
 import { IPersonalizedUserAggregateRepositoryPermission } from './graphManager';
-import {
-  GitHubRepositoryPermission,
-  RepositoryMetadataEntity,
-  RepositoryLockdownState,
-} from '../entities/repositoryMetadata/repositoryMetadata';
+import { RepositoryMetadataEntity } from '../entities/repositoryMetadata/repositoryMetadata';
 import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repositoryMetadataProvider';
 import { TeamRepositoryPermission } from './teamRepositoryPermission';
-import { IRepositorySearchOptions } from '../interfaces';
+import { sortRepositoriesByNameCaseInsensitive } from '../utils';
+import { GitHubRepositoryPermission, IRepositorySearchOptions, RepositoryLockdownState } from '../interfaces';
 
 const defaultPageSize = 20; // GitHub.com seems to use a value around 33
 
@@ -303,17 +300,7 @@ export class RepositorySearch {
   }
 
   sortByAlphabet(): RepositorySearch {
-    this.repos.sort((a, b) => {
-      const nameA = a.name.toLowerCase();
-      const nameB = b.name.toLowerCase();
-      if (nameA < nameB) {
-        return -1;
-      }
-      if (nameA > nameB) {
-        return 1;
-      }
-      return 0;
-    });
+    this.repos.sort(sortRepositoriesByNameCaseInsensitive);
     return this;
   }
 

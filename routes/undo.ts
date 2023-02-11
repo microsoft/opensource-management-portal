@@ -12,10 +12,9 @@ import { ErrorHelper, getProviders } from '../transitional';
 import { AuditLogRecord } from '../entities/auditLogRecord/auditLogRecord';
 import { daysInMilliseconds } from '../utils';
 import { AuditEvents } from '../entities/auditLogRecord';
-import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 import { IGitHubIdentity, IndividualContext } from '../user';
 import { IMail } from '../lib/mailProvider';
-import { ReposAppRequest, UserAlertType } from '../interfaces';
+import { GitHubRepositoryPermission, ReposAppRequest, UserAlertType } from '../interfaces';
 
 const validDaysBeforeNow = 21;
 

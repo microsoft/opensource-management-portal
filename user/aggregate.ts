@@ -12,12 +12,12 @@ import {
   TeamRepositoryPermission,
 } from '../business';
 import QueryCache from '../business/queryCache';
-import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 import {
   IQueryCacheTeamRepositoryPermission,
   OrganizationMembershipRole,
   GitHubTeamRole,
   OrganizationMembershipRoleQuery,
+  GitHubRepositoryPermission,
 } from '../interfaces';
 import { SettleToStateValue, isPermissionBetterThan, ErrorHelper } from '../transitional';
 import LinkManager from './linkManager';

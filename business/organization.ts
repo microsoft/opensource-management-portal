@@ -24,6 +24,7 @@ import { CacheDefault, getMaxAgeSeconds, getPageSize, OperationsCore } from './o
 import {
   CoreCapability,
   GitHubAuditLogEntry,
+  GitHubRepositoryVisibility,
   IAccountBasics,
   IAddOrganizationMembershipOptions,
   IAuthorizationHeaderValue,
@@ -34,6 +35,7 @@ import {
   IGetAuthorizationHeader,
   IGetOrganizationAuditLogOptions,
   IGetOrganizationMembersOptions,
+  IGitHubAccountDetails,
   IOperationsCentralOperationsToken,
   IOperationsInstance,
   IOperationsLegalEntities,
@@ -62,7 +64,8 @@ import { jsonError } from '../middleware';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 import { ConfigGitHubTemplates } from '../config/github.templates.types';
 import { GitHubTokenManager } from '../github/tokenManager';
-import { GitHubRepositoryVisibility } from '../entities/repositoryMetadata/repositoryMetadata';
+import { OrganizationProjects } from './projects';
+import { OrganizationDomains } from './domains';
 
 interface IGetMembersParameters {
   org: string;
@@ -149,6 +152,9 @@ export class Organization {
   private _entity: IGitHubOrganizationResponse;
 
   private _organizationSudo: IOrganizationSudo;
+
+  private _projects: OrganizationProjects;
+  private _domains: OrganizationDomains;
 
   id: number;
   uncontrolled: boolean;
@@ -260,6 +266,38 @@ export class Organization {
 
   getEntity() {
     return this._entity;
+  }
+
+  async getGraphQlNodeId() {
+    if (!this.getEntity()?.node_id) {
+      await this.getDetails();
+    }
+    const { node_id: nodeId } = this.getEntity();
+    return nodeId;
+  }
+
+  get projects() {
+    if (!this._projects) {
+      this._projects = new OrganizationProjects(
+        this,
+        this._operations,
+        this._getAuthorizationHeader,
+        this._getSpecificAuthorizationHeader
+      );
+    }
+    return this._projects;
+  }
+
+  get domains() {
+    if (!this._domains) {
+      this._domains = new OrganizationDomains(
+        this,
+        this._operations,
+        this._getAuthorizationHeader,
+        this._getSpecificAuthorizationHeader
+      );
+    }
+    return this._domains;
   }
 
   async supportsUpdatesApp() {
@@ -482,6 +520,21 @@ export class Organization {
 
   getAuthorizationHeader(): IPurposefulGetAuthorizationHeader {
     return this._getAuthorizationHeader;
+  }
+
+  async getUserDetailsByLogin(login: string, purpose?: AppPurposeTypes): Promise<IGitHubAccountDetails> {
+    // This is a more basic version of the user API; unlike the operations-level function,
+    // this does not return a strongly typed object with integrated REST access.
+    try {
+      const response = (await this.requestUrl(`https://api.github.com/users/${login}`, {
+        purpose: purpose || AppPurpose.Operations,
+      })) as IGitHubAccountDetails;
+      if (response?.id) {
+        return response;
+      }
+    } catch (error) {
+      throw error;
+    }
   }
 
   async getOrganizationAdministrators(): Promise<IAdministratorBasics[]> {

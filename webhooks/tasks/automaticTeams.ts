@@ -13,8 +13,7 @@ import { Organization } from '../../business';
 import RenderHtmlMail from '../../lib/emailRender';
 import { IMailProvider } from '../../lib/mailProvider';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
-import { GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
-import type { IProviders } from '../../interfaces';
+import { GitHubRepositoryPermission, IProviders } from '../../interfaces';
 
 interface IAutomaticTeamsMail {
   to: string;
