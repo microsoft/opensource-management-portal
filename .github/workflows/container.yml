@@ -33,6 +33,8 @@ jobs:
   build:
     name: 'Container delivery 🚛'
     runs-on: ubuntu-latest
+    environment:
+      name: development
     steps:
       - uses: actions/checkout@v3
       #- uses: docker/build-push-action@v3
