@@ -94,7 +94,7 @@ block content
       li: a.btn.btn-sm.btn-muted-more(href='/administration/apps') All Apps...
 
     if organizationName
-      h1= organizationName
+      h1: a(href='https://github.com/' + organizationName, target='_new')=organizationName
 
     if !dynamicSettings && staticSettings
       h2 Adopt this organization?
@@ -102,6 +102,11 @@ block content
       form(method='post')
         input.btn.btn-primary(type='submit', name='adopt-import-settings', value='Adopt by importing static settings')
     else if !dynamicSettings && proposedDynamicSettings
+      h2 Uninstall app from this organization
+      p If this is not an official corporate use...
+      form(method='post')
+        input.btn.btn-danger(type='submit', name='burn-org-app', value='Uninstall app from this organization')
+
       h2 Adopt this organization?
       p This organization is not currently configured for this application instance. Are you sure this is your organization and you wish to add it to this instance?
       form(method='post')

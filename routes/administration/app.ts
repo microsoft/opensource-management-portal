@@ -22,6 +22,7 @@ import {
   OrganizationMembershipRole,
   OrganizationMembershipState,
   NoCacheNoBackground,
+  UserAlertType,
 } from '../../interfaces';
 
 router.use(
@@ -76,7 +77,8 @@ router.use(
     const { operations, organizationSettingsProvider } = getProviders(req);
     const installationId = Number(installationIdString);
     const installation = await githubApplication.getInstallation(installationId);
-    const invalidReasons = GitHubApplication.isInvalidInstallation(installation);
+    const isUninstallingApp = req.body['burn-org-app'] && req.method === 'POST';
+    const invalidReasons = isUninstallingApp ? [] : GitHubApplication.isInvalidInstallation(installation);
     if (invalidReasons.length) {
       throw new Error(invalidReasons.join(', '));
     }
@@ -165,6 +167,7 @@ async function getDynamicSettingsFromLegacySettings(
 router.post(
   '/:appId/installations/:installationId',
   asyncHandler(async function (req: ReposAppRequest, res, next) {
+    const hasBurnButtonClicked = req.body['burn-org-app'];
     const hasImportButtonClicked = req.body['adopt-import-settings'];
     const hasCreateButtonClicked = req.body['adopt-new-org'];
     const hasElevationButtonClicked = req.body['elevate-to-owner'];
@@ -184,6 +187,7 @@ router.post(
       !deactivate &&
       !removeConfiguration &&
       !addConfiguration &&
+      !hasBurnButtonClicked &&
       !updateConfig
     ) {
       return next(new Error('No supported POST parameters present'));
@@ -201,7 +205,15 @@ router.post(
     let displayDynamicSettings = dynamicSettings;
     const organizationName = installation.account.login;
     const organizationSettingsProvider = providers.organizationSettingsProvider;
-
+    if (hasBurnButtonClicked) {
+      await githubApplication.deleteInstallation(installation.id);
+      req.individualContext.webContext.saveUserAlert(
+        `Removed installation ${installation.id} from ${organizationName} for app ${githubApplication.id} (${githubApplication.slug})`,
+        'Uninstall GitHub App',
+        UserAlertType.Success
+      );
+      return res.redirect(`/administration/app/${githubApplication.id}`);
+    }
     if (hasElevationButtonClicked) {
       // Only available for pre-adoption
       const [, unconfiguredOrganization] = await getDynamicSettingsFromLegacySettings(

@@ -75,11 +75,11 @@ export default class GitHubApplication {
     }
   }
 
-  deleteInstallation(installationId: number): Promise<void> {
+  async deleteInstallation(installationId: number): Promise<void> {
     const parameters = {
       installation_id: installationId.toString(),
     };
-    return this.operations.github.post(this.authorize(), 'apps.deleteInstallation', parameters);
+    await this.operations.github.post(this.authorize(), 'apps.deleteInstallation', parameters);
   }
 
   async getInstallations(options?: ICacheOptions): Promise<IGitHubAppInstallation[]> {
