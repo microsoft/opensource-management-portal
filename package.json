@@ -127,7 +127,7 @@
     "walk-back": "5.1.0"
   },
   "devDependencies": {
-    "@types/connect-redis": "0.0.19",
+    "@types/connect-redis": "0.0.20",
     "@types/debug": "4.1.7",
     "@types/express": "4.17.17",
     "@types/express-session": "1.17.5",
