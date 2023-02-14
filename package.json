@@ -149,7 +149,7 @@
     "@types/simple-oauth2": "5.0.1",
     "@types/validator": "13.7.12",
     "@typescript-eslint/eslint-plugin": "5.51.0",
-    "@typescript-eslint/parser": "5.51.0",
+    "@typescript-eslint/parser": "5.52.0",
     "cspell": "6.23.1",
     "eslint": "8.34.0",
     "eslint-config-prettier": "8.6.0",
