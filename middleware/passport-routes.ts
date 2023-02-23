@@ -205,7 +205,7 @@ export default function configurePassport(app, passport, config) {
     if (clone === undefined) {
       clone = shallowTruncatingCopy(req.user);
     }
-    req.login(clone, { keepSessionInfo: true }, callback);
+    req.login(clone, callback);
   }
 
   function signoutPage(req: ReposAppRequest, res) {
