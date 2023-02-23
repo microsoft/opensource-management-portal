@@ -6,6 +6,8 @@
 import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
+import memoryCache from 'memory-cache';
+
 import { jsonError } from '../../middleware';
 import { CreateError, ErrorHelper, getProviders } from '../../transitional';
 import { ReposAppRequest } from '../../interfaces';
@@ -16,9 +18,15 @@ import {
   OrganizationManagementType,
 } from '../../middleware/business/organization';
 
-import memoryCache from 'memory-cache';
+import { IGitHubOrganizationResponse } from '../../business';
+import { OrganizationAnnotation } from '../../entities/organizationAnnotation';
 
 const router: Router = Router();
+
+type HighlightedOrganization = {
+  profile: IGitHubOrganizationResponse;
+  annotations: OrganizationAnnotation;
+};
 
 router.get(
   '/',
@@ -42,12 +50,12 @@ router.get(
     const { operations, organizationAnnotationsProvider } = getProviders(req);
     const cacheTimeMs = 1000 * 60 * 60 * 24;
     try {
-      const highlights = [];
+      const highlights: HighlightedOrganization[] = [];
       const annotations = await organizationAnnotationsProvider.getAllAnnotations();
       for (const annotation of annotations) {
         try {
           const key = `org:profile:${annotation.organizationId}`;
-          let profile = memoryCache.get(key);
+          let profile = memoryCache.get(key) as IGitHubOrganizationResponse;
           if (!profile) {
             const details = await operations.getOrganizationProfileById(Number(annotation.organizationId));
             details.cost && delete details.cost;
@@ -60,14 +68,16 @@ router.get(
           delete scrubbedAnnotations.history;
           highlights.push({
             profile,
-            annotations: scrubbedAnnotations,
+            annotations: scrubbedAnnotations as OrganizationAnnotation,
           });
         } catch (error) {
           // we ignore any individual resolution error
         }
       }
       return res.json({
-        highlights,
+        highlights: highlights.sort((a, b) => {
+          return a.profile.login.localeCompare(b.profile.login);
+        }),
       });
     } catch (error) {
       throw jsonError(error, 400);
