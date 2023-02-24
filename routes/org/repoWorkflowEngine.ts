@@ -26,7 +26,7 @@ import { ErrorHelper } from '../../transitional';
 import {
   setupRepositoryReadmeSubstring,
   setupRepositorySubstring,
-} from '../../features/newRepositoryLockdown';
+} from '../../features/newRepositories/strings';
 
 export interface IApprovalPackage {
   id: string;

@@ -10,7 +10,7 @@ import { jsonError } from '../../../middleware';
 import { ErrorHelper, getProviders } from '../../../transitional';
 import { Repository } from '../../../business';
 import { IndividualContext } from '../../../user';
-import NewRepositoryLockdownSystem from '../../../features/newRepositoryLockdown';
+import NewRepositoryLockdownSystem from '../../../features/newRepositories/newRepositoryLockdown';
 import {
   AddRepositoryPermissionsToRequest,
   getContextualRepositoryPermissions,
@@ -275,7 +275,7 @@ router.delete(
         return next(jsonError('The repository has already been deleted', 404));
       }
       const metadata = await repository.getRepositoryMetadata();
-      await NewRepositoryLockdownSystem.ValidateUserCanSelfDeleteRepository(
+      await NewRepositoryLockdownSystem.Statics.ValidateUserCanSelfDeleteRepository(
         repository,
         metadata,
         activeContext,

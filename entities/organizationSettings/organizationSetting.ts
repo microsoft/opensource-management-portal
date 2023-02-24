@@ -40,8 +40,15 @@ export enum SpecialTeam {
 
 export enum OrganizationFeature {
   Invisible = 'invisible',
+  LockedMembership = 'locked',
+  Hidden = 'hidden',
   Ignore = 'ignore',
   CreateNativeRepositories = 'createReposDirect',
+  LockTransfers = 'lock-transfers',
+  LockNewForks = 'lock-new-forks',
+  DeleteNewForks = 'delete-new-forks',
+  ApplicationHostOrganizationOnly = 'appOnly',
+  PreventLargeTeamPermissionGrants = 'preventLargeTeamPermissions',
 }
 
 export enum OrganizationProperty {

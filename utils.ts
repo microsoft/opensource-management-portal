@@ -334,3 +334,5 @@ export function getCodespacesHostname(config: SiteConfiguration) {
   const forwardingDomain = codespaces?.forwardingDomain || 'preview.app.github.dev';
   return desktop ? `http://localhost:${port}` : `https://${codespaces.name}-${port}.${forwardingDomain}`;
 }
+
+export const botBracket = '[bot]';

@@ -7,8 +7,8 @@
 
 import { WebhookProcessor } from '../organizationProcessor';
 import { Organization } from '../../business';
-import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
-import { getRepositoryMetadataProvider, type IProviders } from '../../interfaces';
+import NewRepositoryLockdownSystem from '../../features/newRepositories/newRepositoryLockdown';
+import { getRepositoryMetadataProvider, RepositoryLockdownState, type IProviders } from '../../interfaces';
 
 export default class RepositoryWebhookProcessor implements WebhookProcessor {
   filter(data: any) {
@@ -137,17 +137,32 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
           repository,
           repositoryMetadataProvider,
         });
-        const wasLockedDown = await lockdownSystem.lockdownIfNecessary(
+        const lockdownOutcome = await lockdownSystem.lockdownIfNecessary(
           action,
           event.sender.login,
           event.sender.id,
           transferSourceLogin
         );
-        console.log(
-          wasLockedDown
-            ? `${organization.name} uses the new repository lockdown system and the new ${repository.name} repository ${action} by ${event.sender.login} was locked down`
-            : `No lockdown on new repository ${repository.name}, ${action} by ${event.sender.login}, even though the organization ${organization.name} supports and has enabled the system`
-        );
+        switch (lockdownOutcome) {
+          case RepositoryLockdownState.AdministratorLocked: {
+            console.log(
+              `${organization.name} uses the new repository lockdown system and the new ${repository.name} repository ${action} by ${event.sender.login} was locked down`
+            );
+            break;
+          }
+          case RepositoryLockdownState.Deleted: {
+            console.log(
+              `${organization.name} uses the new repository lockdown system with FORK DELETES and the new ${repository.name} repository was deleted by ${event.sender.login}`
+            );
+            break;
+          }
+          default: {
+            console.log(`No specific state message for outcome ${lockdownOutcome}:`);
+            console.log(
+              `New repository ${repository.name}, ${action} by ${event.sender.login}, even though the organization ${organization.name} supports and has enabled the lockdown system`
+            );
+          }
+        }
       } catch (lockdownSystemError) {
         console.warn('lockdownSystemError:');
         console.dir(lockdownSystemError);

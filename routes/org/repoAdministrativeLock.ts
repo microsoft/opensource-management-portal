@@ -11,7 +11,7 @@ import { getProviders } from '../../transitional';
 import { Repository } from '../../business/repository';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { Organization } from '../../business/organization';
-import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
+import NewRepositoryLockdownSystem from '../../features/newRepositories/newRepositoryLockdown';
 import { getRepositoryMetadataProvider, ReposAppRequest, UserAlertType } from '../../interfaces';
 
 router.use(
