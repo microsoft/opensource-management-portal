@@ -112,7 +112,7 @@ block content
             td= lockdownMailContent.link.corporateUsername
 
     if lockdownMailContent.mailAddress
-      p
+      p.
         | Mail address of the user that created the repo:&nbsp;
         a(href='mailto:' + lockdownMailContent.mailAddress)= lockdownMailContent.mailAddress
     else
