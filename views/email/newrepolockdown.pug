@@ -92,12 +92,12 @@ block content
     else if isForkAdministratorLocked
       p A repository was forked directly into an official org. It has been locked pending your administrative decision.
     else
-      p A repository was created directly on GitHub.com. The repository has been locked down pending the user's completion of the new repository wizard.
+      p A repository was created directly on GitHub.com.
 
     if mailSentToCreator
       p A mail was sent to the person who created the repo to continue the process.
     else
-      h2: strong WARNING no mail was sent to the creator.
+      h3: strong NOTE no mail was sent to the creator.
 
     h3 Created by #{lockdownMailContent.username}
       p: a(href='https://github.com/' + lockdownMailContent.username)= 'https://github.com/' + lockdownMailContent.username
@@ -113,8 +113,8 @@ block content
 
     if lockdownMailContent.mailAddress
       p.
-        | Mail address of the user that created the repo:&nbsp;
-        a(href='mailto:' + lockdownMailContent.mailAddress)= lockdownMailContent.mailAddress
+        Mail address of the user that created the repo:&nbsp;
+        #[a(href='mailto:' + lockdownMailContent.mailAddress)= lockdownMailContent.mailAddress]
     else
       p: strong An e-mail was NOT sent. No e-mail address was available for the username.
 

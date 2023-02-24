@@ -137,10 +137,13 @@ export default class NewRepositoryLockdownSystem {
 
     const insights = this.operations.insights;
     if (insights) {
-      insights.trackMetric({ name: 'LockedRepos', value: 1 });
-      let metricName = isForkAdministratorLocked ? 'LockedForks' : 'LockedDirectRepos';
-      if (isTransfer) {
-        metricName = 'LockedTransfers';
+      let metricName = 'CreatedRepos';
+      if (isForkAdministratorLocked) {
+        metricName = 'CreatedForks';
+      } else if (isTransfer) {
+        metricName = 'CreatedTransfers';
+      } else if (lockdownState === RepositoryLockdownState.Deleted) {
+        metricName = 'DeletedForks';
       }
       insights.trackMetric({ name: metricName, value: 1 });
     }
@@ -193,7 +196,7 @@ export default class NewRepositoryLockdownSystem {
     // any repository created by a bot *is ok* and will not be locked down. If this is an issue, having an approved list of permitted bots to create repos would be one way to approach this loophole. Non-bot users cannot have brackets in their names.
     if (lowercaseUsername.includes(botBracket)) {
       lockdownLog.push(`Created by a bot or GitHub App: ${username}`);
-      return { wasLocked: false, log: lockdownLog, notifyOperations: true };
+      return { wasLocked: false, log: lockdownLog, notifyOperations: false };
     }
     lockdownLog.push(`Confirmed that the repository was not ${action} by a bot`);
     // a repository created by one of the operations accounts in the allowed list is OK and will not be locked down
@@ -217,7 +220,7 @@ export default class NewRepositoryLockdownSystem {
     ) {
       userIsOrganizationOwner = true;
     }
-    // TODO: add feature flags whether to allow org owners to fork
+    // CONSIDER: is a feature flag needed - whether to allow org owners to fork
     if (userIsOrganizationOwner && (this.lockdownForks || this.deleteForks)) {
       lockdownLog.push(
         `Allowing current organization owner ${username} of org ${this.organization.name} to create this fork`
@@ -254,7 +257,7 @@ export default class NewRepositoryLockdownSystem {
     if (isFork && this.deleteForks) {
       await immediatelyDeleteFork(lockdownLog, this.repository);
     } else {
-      await lockdownRepository(lockdownLog, systemAccounts, username);
+      await lockdownRepository(lockdownLog, this.repository, systemAccounts, username);
 
       const patchChanges: IRepoPatch = {};
       if (!isFork && !isTransfer && !this.repository.private) {

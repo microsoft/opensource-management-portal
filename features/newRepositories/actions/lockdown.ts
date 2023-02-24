@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { Repository } from '../../../business';
 import { GitHubCollaboratorAffiliationQuery } from '../../../interfaces';
 import { tryDowngradeCollaborator } from './downgradeCollaborator';
 import { tryDropCollaborator } from './dropCollaborator';
@@ -10,26 +11,28 @@ import { tryDropTeam } from './dropTeam';
 
 export async function lockdownRepository(
   log: string[],
+  repository: Repository,
   systemAccounts: Set<string>,
   creatorLogin: string
 ): Promise<void> {
+  const organization = repository.organization;
   try {
     const specialPermittedTeams = new Set([
-      ...this.organization.specialRepositoryPermissionTeams.admin,
-      ...this.organization.specialRepositoryPermissionTeams.write,
-      ...this.organization.specialRepositoryPermissionTeams.read,
+      ...organization.specialRepositoryPermissionTeams.admin,
+      ...organization.specialRepositoryPermissionTeams.write,
+      ...organization.specialRepositoryPermissionTeams.read,
     ]);
-    const teamPermissions = await this.repository.getTeamPermissions();
+    const teamPermissions = await repository.getTeamPermissions();
     for (const tp of teamPermissions) {
       if (specialPermittedTeams.has(tp.team.id)) {
         log.push(
           `Special permitted team id=${tp.team.id} name=${tp.team.name} will continue to have repository access`
         );
       } else {
-        await tryDropTeam(this.repository, tp.team, log);
+        await tryDropTeam(repository, tp.team, log);
       }
     }
-    const collaborators = await this.repository.getCollaborators({
+    const collaborators = await repository.getCollaborators({
       affiliation: GitHubCollaboratorAffiliationQuery.Direct,
     });
     for (const collaborator of collaborators) {
@@ -37,11 +40,11 @@ export async function lockdownRepository(
         log.push(`System account ${collaborator.login} will continue to have repository access`);
       } else {
         if (collaborator.login.toLowerCase() !== creatorLogin.toLowerCase()) {
-          await tryDropCollaborator(this.repository, collaborator.login, log);
+          await tryDropCollaborator(repository, collaborator.login, log);
         } else {
           // Downgrade the creator to only having READ access (V2)
           if (collaborator.permissions.admin || collaborator.permissions.push) {
-            await tryDowngradeCollaborator(this.repository, collaborator.login, log);
+            await tryDowngradeCollaborator(repository, collaborator.login, log);
           } else {
             log.push(
               `V2: Creator login ${collaborator.login} does not have administrative access (rare), not downgrading`
