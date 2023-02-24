@@ -416,15 +416,15 @@ export class Organization {
   }
 
   get isAppOnly(): boolean {
-    return this._settings.hasFeature('appOnly') || false;
+    return this._settings.hasFeature(OrganizationFeature.ApplicationHostOrganizationOnly) || false;
   }
 
   get locked(): boolean {
-    return this._settings.hasFeature('locked') || false;
+    return this._settings.hasFeature(OrganizationFeature.LockedMembership) || false;
   }
 
   get hidden(): boolean {
-    return this._settings.hasFeature('hidden') || false;
+    return this._settings.hasFeature(OrganizationFeature.Hidden) || false;
   }
 
   get pilot_program() {
@@ -448,7 +448,7 @@ export class Organization {
   }
 
   get preventLargeTeamPermissions(): boolean {
-    return this._settings.hasFeature('preventLargeTeamPermissions') || false;
+    return this._settings.hasFeature(OrganizationFeature.PreventLargeTeamPermissionGrants) || false;
   }
 
   get description(): string {
@@ -1370,7 +1370,19 @@ export class Organization {
       CoreCapability.LockdownFeatureFlags
     );
     return (
-      operations.allowUnauthorizedForkLockdownSystemFeature() && this._settings.hasFeature('lock-new-forks')
+      operations.allowUnauthorizedForkLockdownSystemFeature() &&
+      this._settings.hasFeature(OrganizationFeature.LockNewForks)
+    );
+  }
+
+  isForkDeleteSystemEnabled() {
+    const operations = operationsWithCapability<IOperationsLockdownFeatureFlags>(
+      this._operations,
+      CoreCapability.LockdownFeatureFlags
+    );
+    return (
+      operations.allowUnauthorizedForkLockdownSystemFeature() &&
+      this._settings.hasFeature(OrganizationFeature.DeleteNewForks)
     );
   }
 
@@ -1380,7 +1392,10 @@ export class Organization {
       CoreCapability.LockdownFeatureFlags
     );
     if (operations) {
-      return operations.allowTransferLockdownSystemFeature() && this._settings.hasFeature('lock-transfers');
+      return (
+        operations.allowTransferLockdownSystemFeature() &&
+        this._settings.hasFeature(OrganizationFeature.LockTransfers)
+      );
     }
     return false;
   }

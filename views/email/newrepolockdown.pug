@@ -28,6 +28,10 @@ block content
         li Whether there are plans to eventually contribute the forked changes upstream and delete this fork
         li Acknowledgement that you will help govern this fork and work with any others in this GitHub org who would also like to maintain this fork
         li Other useful information including your business goals relating to this project
+    else if isForkDeleted
+      h3 Your fork was deleted.
+      p If you need to fork this repo again, please create the fork within your individual GitHub account #[strong=username].
+      p If you believe there is a business need for an official fork, please contact #[a(href='mailto:' + forkUnlockMail)= forkUnlockMail] to discuss your use case.
     else
       p.
         Hi,#[br]
@@ -40,7 +44,7 @@ block content
       h3 Fork
       p This repository was forked. A fork into an official organization can be confusing with an active upstream open source community. Please verify that the individual creating this repo intends for their business to maintain this new forked open source community. If this is just a fork to contribute, engineers should contribute from their own individual account fork.
 
-    if !isForkAdministratorLocked
+    if !isForkAdministratorLocked && !isForkDeleted
       h3 Gain access to your new repository
       p
         a(href=lockdownMailContent.linkToClassifyRepository, target='_new', style='font-size: 36px') Finish setting up #{lockdownMailContent.repository.name}
@@ -49,7 +53,7 @@ block content
           | Direct link to complete setup:&nbsp;
           a(href=lockdownMailContent.linkToClassifyRepository, target='_new', style='font-size: 10px')= lockdownMailContent.linkToClassifyRepository
 
-    if lockdownMailContent.linkToDeleteRepository
+    if lockdownMailContent.linkToDeleteRepository && !isForkDeleted
       h3 Delete the #{targetType.toLowerCase()}
       p If you no longer need this repo, or this was an accident, click below to delete the repo. The page will ask for your confirmation first.
       p
@@ -59,12 +63,13 @@ block content
           | Link to delete:&nbsp;
           a(href=lockdownMailContent.linkToDeleteRepository, target='_new', style='font-size: 10px')= lockdownMailContent.linkToDeleteRepository
 
-    h4 Repository
-    p
-      a(href='https://github.com/' + lockdownMailContent.organization.name + '/' + lockdownMailContent.repository.name)= 'https://github.com/' + lockdownMailContent.organization.name + '/' + lockdownMailContent.repository.name
-      if lockdownMailContent.repository.private && isForkAdministratorLocked
-        br
-        | WARNING: This is a private repository and you will not be able to access it until you complete the setup process.
+    if !isForkDeleted
+      h4 Repository
+      p
+        a(href='https://github.com/' + lockdownMailContent.organization.name + '/' + lockdownMailContent.repository.name)= 'https://github.com/' + lockdownMailContent.organization.name + '/' + lockdownMailContent.repository.name
+        if lockdownMailContent.repository.private && isForkAdministratorLocked
+          br
+          | WARNING: This is a private repository and you will not be able to access it until you complete the setup process.
 
     h4 GitHub user
     if lockdownMailContent.link
@@ -77,12 +82,14 @@ block content
             td Corporate identity
             td= lockdownMailContent.link.corporateUsername
 
-    if isForkAdministratorLocked
+    if isForkAdministratorLocked &&!isForkDeleted
       h4 For operations use only
       p When ready to manage this request, please approve at: #[a(href=linkToAdministrativeUnlockRepository)= linkToAdministrativeUnlockRepository].
 
   else if isMailToOperations
-    if isForkAdministratorLocked
+    if isForkDeleted
+      p A repository was #[strong immediately deleted] after being forked directly into an official org.
+    else if isForkAdministratorLocked
       p A repository was forked directly into an official org. It has been locked pending your administrative decision.
     else
       p A repository was created directly on GitHub.com. The repository has been locked down pending the user's completion of the new repository wizard.
@@ -122,9 +129,13 @@ block content
       h3 FORK
       p This repository was forked. A fork into an official {config.brand.companyName} organization is a very big deal and can cause confusion with the upstream open source community. Please verify that the individual creating this repo intends for their business to maintain this new forked open source community. If this is just a fork to contribute, engineers should contribute from their own individual account fork.
 
-    if isForkAdministratorLocked
+    if isForkAdministratorLocked && !isForkDeleted
       h4 For operations use
       p When ready to manage this request, please use the following URL: #[a(href=lockdownMailContent.repository.absoluteBaseUrl + 'administrativeLock')= lockdownMailContent.repository.absoluteBaseUrl + 'administrativeLock'].
+
+    if isForkDeleted
+      h4 For operations use
+      p An official organization owner can still fork into the organization, or, you can use a pre-approval method to allow a specific account to fork at their leisure and go through the typical setup process.
 
     if lockdownMailContent.log
       h3 Operations log

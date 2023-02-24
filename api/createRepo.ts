@@ -29,7 +29,7 @@ import {
 } from '../routes/org/repoWorkflowEngine';
 import { IMailProvider } from '../lib/mailProvider';
 import { IndividualContext } from '../user';
-import NewRepositoryLockdownSystem from '../features/newRepositoryLockdown';
+import NewRepositoryLockdownSystem from '../features/newRepositories/newRepositoryLockdown';
 import {
   ICreateRepositoryResult,
   ICorporateLink,
@@ -287,7 +287,7 @@ export async function CreateRepository(
     if (!individualContext) {
       throw new Error('Existing repository reclassification requires an authenticated identity');
     }
-    NewRepositoryLockdownSystem.ValidateUserCanConfigureRepository(metadata, individualContext);
+    NewRepositoryLockdownSystem.Statics.ValidateUserCanConfigureRepository(metadata, individualContext);
     // CONSIDER: or a org sudo user or a portal administrator
     const repositoryByName = organization.repository(metadata.repositoryName);
     const response = await repositoryByName.getDetails();

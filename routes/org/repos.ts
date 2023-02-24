@@ -13,7 +13,7 @@ import moment from 'moment';
 import lowercaser from '../../middleware/lowercaser';
 
 import routeAdministrativeLock from './repoAdministrativeLock';
-import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
+import NewRepositoryLockdownSystem from '../../features/newRepositories/newRepositoryLockdown';
 import { IGraphEntry } from '../../lib/graphProvider';
 import { IMail } from '../../lib/mailProvider';
 import { IndividualContext } from '../../user';
@@ -185,7 +185,7 @@ router.use(
     const daysAfterCreateToAllowSelfDelete = 21; // could be a config setting if anyone cares
     try {
       const metadata = await repository.getRepositoryMetadata();
-      await NewRepositoryLockdownSystem.ValidateUserCanSelfDeleteRepository(
+      await NewRepositoryLockdownSystem.Statics.ValidateUserCanSelfDeleteRepository(
         repository,
         metadata,
         individualContext,
