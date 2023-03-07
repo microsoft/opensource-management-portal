@@ -5,7 +5,7 @@
 
 import Debug from 'debug';
 import session from 'express-session';
-import ConnectRedis from 'connect-redis';
+import connectRedis from 'connect-redis';
 
 import type { IProviders, IReposApplication, SiteConfiguration } from '../interfaces';
 
@@ -45,7 +45,7 @@ export default async function ConnectSession(
       throw new Error('config.session.redis.ttl is required');
     }
     const redisPrefix = config.session.redis.prefix ? `${config.session.redis.prefix}.session` : 'session';
-    const redisLegacy = sessionRedisClient.duplicate({ legacyMode: true });
+    const redisLegacy = sessionRedisClient.duplicate();
     redisLegacy.connect();
     await new Promise<void>((resolve, reject) => {
       (redisLegacy.auth as any)(config.redis.key, (authError: Error) => {
@@ -57,8 +57,7 @@ export default async function ConnectSession(
       ttl: config.session.redis.ttl,
       prefix: redisPrefix,
     };
-    const RedisStore = ConnectRedis(session);
-    store = new RedisStore(redisOptions as any);
+    store = new connectRedis(redisOptions);
   } else if (sessionProvider === 'cosmosdb') {
     if (!providers.session) {
       throw new Error('No provided session store');
