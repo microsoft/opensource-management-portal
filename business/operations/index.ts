@@ -899,7 +899,9 @@ export class Operations
           return repository;
         }
       } catch (err) {
-        console.error(err);
+        if (!ErrorHelper.IsNotFound(err)) {
+          console.error(err);
+        }
       }
     }
   }

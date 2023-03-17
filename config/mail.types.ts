@@ -10,7 +10,12 @@ export type ConfigRootMail = {
 export type ConfigMail = {
   provider: string;
   from: string;
-  overrideRecipient: string;
+
+  debug: {
+    overrideRecipient: string;
+    isProductionRun: boolean;
+    testTargetCorporateId: string;
+  };
 
   customService: {
     url: string;

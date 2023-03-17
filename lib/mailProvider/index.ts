@@ -30,7 +30,7 @@ export interface IMailProvider {
 }
 
 export function isOverridingRecipients(config: SiteConfiguration) {
-  return !!config.mail.overrideRecipient;
+  return !!config.mail.debug.overrideRecipient;
 }
 
 function patchOverride(provider, newToAddress, htmlOrNot) {
@@ -74,15 +74,15 @@ function patchOverride(provider, newToAddress, htmlOrNot) {
   return provider;
 }
 
-export function createMailProviderInstance(config): IMailProvider {
+export function createMailProviderInstance(config: SiteConfiguration): IMailProvider {
   const deployment = getCompanySpecificDeployment();
   let mailProvider: IMailProvider = null;
   const mailConfig = config.mail;
   if (deployment?.features?.mailProvider?.tryCreateInstance) {
     mailProvider = deployment.features.mailProvider.tryCreateInstance(config);
     if (mailProvider) {
-      if (mailConfig.overrideRecipient) {
-        patchOverride(mailProvider, mailConfig.overrideRecipient, mailProvider.html);
+      if (mailConfig.debug.overrideRecipient) {
+        patchOverride(mailProvider, mailConfig.debug.overrideRecipient, mailProvider.html);
       }
       return mailProvider;
     }
@@ -109,8 +109,8 @@ export function createMailProviderInstance(config): IMailProvider {
       );
     }
   }
-  if (mailConfig.overrideRecipient) {
-    patchOverride(mailProvider, mailConfig.overrideRecipient, mailProvider.html);
+  if (mailConfig.debug.overrideRecipient) {
+    patchOverride(mailProvider, mailConfig.debug.overrideRecipient, mailProvider.html);
   }
   return mailProvider;
 }
