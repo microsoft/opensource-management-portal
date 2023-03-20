@@ -149,7 +149,7 @@
     "@types/validator": "13.7.14",
     "@typescript-eslint/eslint-plugin": "5.55.0",
     "@typescript-eslint/parser": "5.55.0",
-    "cspell": "6.30.0",
+    "cspell": "6.30.2",
     "eslint": "8.36.0",
     "eslint-config-prettier": "8.7.0",
     "eslint-plugin-n": "15.6.1",
