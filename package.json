@@ -147,7 +147,7 @@
     "@types/semver": "7.3.13",
     "@types/simple-oauth2": "5.0.3",
     "@types/validator": "13.7.14",
-    "@typescript-eslint/eslint-plugin": "5.56.0",
+    "@typescript-eslint/eslint-plugin": "5.57.0",
     "@typescript-eslint/parser": "5.56.0",
     "cspell": "6.30.2",
     "eslint": "8.36.0",
