@@ -10,6 +10,7 @@ import {
   RequestTeamMemberAddType,
   IMemberSearchOptions,
   ICrossOrganizationMembershipByOrganization,
+  ICrossOrganizationMembershipBasics,
 } from '../interfaces';
 
 import { OrganizationMember } from './organizationMember';
@@ -163,7 +164,7 @@ export class MemberSearch {
     this.members.forEach((m) => {
       const member = m as any as ICrossOrganizationMembershipByOrganization;
       if (member.orgs && member.orgs.length > 0) {
-        member.orgs = _.sortBy(member.orgs, ['name']);
+        member.orgs = _.sortBy(member.orgs, ['name']) as ICrossOrganizationMembershipBasics[];
       }
     });
     return this;

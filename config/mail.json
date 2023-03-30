@@ -4,7 +4,7 @@
   "debug": {
     "overrideRecipient": "env://MAIL_OVERRIDE_RECIPIENT",
     "isProductionRun": "env://EMAIL_PRODUCTION_RUN?trueIf=1",
-    "testTargetCorporateId": "env://TARGET_CORPORATE_ID"
+    "testTargetCorporateIds": "env://TARGET_CORPORATE_IDS"
   },
   "customService": {
     "url": "env://MAIL_CUSTOMSERVICE_URL",

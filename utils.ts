@@ -113,9 +113,15 @@ export function cleanResponse<T = any>(response: T) {
   return response as Omit<T, 'cost' | 'headers'>;
 }
 
-export function sortRepositoriesByNameCaseInsensitive(a: Repository, b: Repository) {
-  const nameA = a.name.toLowerCase();
-  const nameB = b.name.toLowerCase();
+export function sortRepositoriesByNameCaseInsensitive(a: Repository, b: Repository, full_name = false) {
+  let nameA, nameB;
+  if (full_name) {
+    nameA = a.full_name.toLowerCase();
+    nameB = b.full_name.toLowerCase();
+  } else {
+    nameA = a.name.toLowerCase();
+    nameB = b.name.toLowerCase();
+  }
   if (nameA < nameB) {
     return -1;
   }

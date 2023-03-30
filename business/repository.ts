@@ -17,7 +17,7 @@ import {
   RepositoryIssue,
 } from '.';
 import { RepositoryMetadataEntity } from '../entities/repositoryMetadata/repositoryMetadata';
-import { AppPurpose, AppPurposeTypes, GitHubAppPurposes } from '../github';
+import { AppPurpose, AppPurposeTypes } from '../github';
 import {
   IPurposefulGetAuthorizationHeader,
   IOperationsInstance,

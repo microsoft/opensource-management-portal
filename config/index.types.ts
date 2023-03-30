@@ -18,9 +18,11 @@ import type { ConfigRootData } from './data.types';
 import type { ConfigRootDebug } from './debug.types';
 import type { ConfigRootDiagnostics } from './diagnostics.types';
 import type { ConfigRootEntityProviders } from './entityProviders.types';
+import type { ConfigRootEnvironment } from './environment.types';
 import type { ConfigRootFeatures } from './features.types';
 import type { ConfigRootGitHub } from './github.types';
 import type { ConfigRootGraph } from './graph.types';
+import type { ConfigRootImmutable } from './immutable.types';
 import type { ConfigRootImpersonation } from './impersonation.types';
 import type { ConfigRootJit } from './jit.types';
 import type { ConfigRootJobs } from './jobs.types';
@@ -41,12 +43,10 @@ import type { ConfigRootSudo } from './sudo.types';
 import type { ConfigRootTelemetry } from './telemetry.types';
 import type { ConfigRootTypeScript } from './typescript.types';
 import type { ConfigRootUrls } from './urls.types';
-
 import type { ConfigRootUserAgent } from './userAgent.types';
 import type { ConfigRootWebHealthProbes } from './webHealthProbes.types';
 import type { ConfigRootWeb } from './web.types';
 import type { ConfigRootWebServer } from './webServer.types';
-import { ConfigRootImmutable } from './immutable.types';
 
 type ObfuscatedConfig = any;
 
@@ -73,6 +73,7 @@ export type SiteConfiguration =
   ConfigRootDebug &
   ConfigRootDiagnostics &
   ConfigRootEntityProviders &
+  ConfigRootEnvironment &
   ConfigRootFeatures &
   ConfigRootGitHub &
   ConfigRootGraph &

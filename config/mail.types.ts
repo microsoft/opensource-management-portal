@@ -12,9 +12,10 @@ export type ConfigMail = {
   from: string;
 
   debug: {
+    [x: string]: any;
     overrideRecipient: string;
     isProductionRun: boolean;
-    testTargetCorporateId: string;
+    testTargetCorporateIds: string;
   };
 
   customService: {
