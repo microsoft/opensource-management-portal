@@ -6,8 +6,6 @@
 import Debug from 'debug';
 const debug = Debug.debug('pg');
 
-import { InnerError } from '../interfaces';
-
 export function PostgresPoolQuerySingleRow(pool, sql: string, values: any[], callback) {
   PostgresPoolQuery(pool, sql, values, (error, results) => {
     if (error) {
@@ -56,11 +54,11 @@ export function PostgresPoolQuery(pool, sql: string, values: any[], callback) {
     client.query(sql, values, function (queryError, results) {
       release();
       if (queryError) {
-        const err: InnerError = new Error(
+        const err = new Error(
           queryError.message /* Postgres provider never leaks SQL statements thankfully */ ||
-            'There was an error querying a database'
+            'There was an error querying a database',
+          { cause: queryError }
         );
-        err.inner = queryError;
         if (queryError.position) {
           err['position'] = queryError.position;
         }

@@ -491,9 +491,8 @@ export class TableLinkProvider implements ILinkProvider {
       await this._tableClient.createEntity(entityObject);
     } catch (insertError) {
       if (ErrorHelper.IsConflict(insertError)) {
-        const error: IAlreadyLinkedError = new Error(entityAlreadyExistsErrorMessage);
+        const error: IAlreadyLinkedError = new Error(entityAlreadyExistsErrorMessage, { cause: insertError });
         error.alreadyLinked = true;
-        error.innerError = insertError;
         throw error;
       }
       throw insertError;

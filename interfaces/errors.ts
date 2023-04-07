@@ -3,10 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-export interface InnerError extends Error {
-  inner?: Error;
-}
-
 export interface IReposError extends Error {
   skipLog?: boolean;
   status?: any; // status?: number;
@@ -24,5 +20,4 @@ export interface IReposError extends Error {
     link: string;
     title: string;
   };
-  innerError?: IReposError;
 }

@@ -104,7 +104,7 @@ router.get(
       throw jsonError('This request does not exist or was created by another user', 400);
     } catch (error) {
       // Edge case: the team no longer exists.
-      if (error.innerError && error.innerError.innerError && error.innerError.innerError.statusCode == 404) {
+      if (error?.cause?.statusCode === 404 || error?.cause?.cause?.statusCode === 404) {
         return closeOldRequest(true, request, req, res, next);
       }
       return next(jsonError(error));

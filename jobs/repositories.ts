@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-// JOB: refresh repository data
+// JOB 13: refresh repository data
 // This is very similar to the query cache, but using proper Postgres type entities, and
 // not being used by the app today.
 
@@ -13,7 +13,7 @@
 import throat from 'throat';
 
 import app from '../app';
-import { Organization, Repository, sortByRepositoryDate } from '../business';
+import { Organization, sortByRepositoryDate } from '../business';
 import { IRepositoryProvider, RepositoryEntity } from '../entities/repository';
 import { IProviders, IReposJob, IReposJobResult } from '../interfaces';
 import { ErrorHelper } from '../transitional';
@@ -127,6 +127,7 @@ function setFields(repositoryProvider: IRepositoryProvider, repositoryEntity: Re
   repositoryEntity.language = entity.language;
   repositoryEntity.license = entity.license?.spdx_id;
   repositoryEntity.fullName = entity.full_name;
+  repositoryEntity.organizationId = entity.organization?.id;
   repositoryEntity.organizationLogin = entity.organization?.login;
   repositoryEntity.name = entity.name;
   repositoryEntity.networkCount = entity.network_count;

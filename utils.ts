@@ -190,8 +190,7 @@ export function popSessionVariable(req, res, variableName) {
 const errorPropertiesToClone = ['stack', 'status'];
 
 export function wrapError(error, message, userIntendedMessage?: boolean): IReposError {
-  const err: IReposError = new Error(message);
-  err.innerError = error;
+  const err: IReposError = new Error(message, { cause: error });
   if (error) {
     for (let i = 0; i < errorPropertiesToClone.length; i++) {
       const key = errorPropertiesToClone[i];

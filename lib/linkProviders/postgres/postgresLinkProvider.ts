@@ -21,12 +21,7 @@ const onlySupportedThirdPartyType = 'github';
 
 import { randomUUID } from 'crypto';
 
-import {
-  ICorporateLink,
-  ICorporateLinkExtended,
-  ICorporateLinkProperties,
-  InnerError,
-} from '../../../interfaces';
+import { ICorporateLink, ICorporateLinkExtended, ICorporateLinkProperties } from '../../../interfaces';
 
 import { CorporateLinkPostgres } from './postgresLink';
 import { PostgresPoolQueryAsync, PostgresPoolQuerySingleRowAsync } from '../../postgresHelpers';
@@ -272,9 +267,7 @@ export class PostgresLinkProvider implements ILinkProvider {
       return linkId;
     } catch (error) {
       if (error.message && error.message.includes('duplicate key value')) {
-        const ie: InnerError = new Error('A link already exists for the identity');
-        ie.inner = error;
-        error = ie;
+        throw new Error('A link already exists for the identity', { cause: error });
       }
       throw error;
     }

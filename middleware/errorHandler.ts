@@ -145,12 +145,10 @@ export default function SiteErrorHandler(err, req, res, next) {
     if (err.stack && !isJson) {
       console.error(err.stack);
     }
-    if (err.innerError) {
-      const inner = err.innerError;
-      console.log('Inner: ' + inner.message);
-      if (inner.stack) {
-        console.log(inner.stack);
-      }
+    const cause = err.cause;
+    if (cause) {
+      console.log('Cause: ' + cause.message);
+      cause.stack && console.log(cause.stack);
     }
   }
   // Bubble OAuth errors to the forefront... this is the rate limit scenario.

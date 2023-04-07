@@ -82,7 +82,7 @@ export async function AddOrganizationPermissionsToRequest(req: ReposAppRequest, 
       membershipStatus && membershipStatus.state ? membershipStatus.state : null;
     return next();
   } catch (getMembershipError) {
-    // if (getMembershipError && getMembershipError.innerError && getMembershipError.innerError.status === 404) {
+    // if (getMembershipError && getMembershipError.cause && getMembershipError.cause.status === 404) {
     //   getMembershipError = null;
     //   membershipStatus = null;
     // }

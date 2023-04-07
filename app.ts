@@ -130,7 +130,7 @@ app.runJob = async function (
     console.error(`The job failed: ${jobError}`);
     // by default, let's not show the whole inner error
     const simpleError = { ...jobError };
-    simpleError?.innerError && delete simpleError.innerError;
+    simpleError?.cause && delete simpleError.cause;
     console.dir(simpleError);
     quitInTenSeconds(false);
     if (options.insightsPrefix && app.providers.insights) {
