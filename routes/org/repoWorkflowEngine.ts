@@ -397,11 +397,11 @@ export class RepoWorkflowEngine {
         events: webhookEvents || ['push'],
       });
       message = `${friendlyName} webhook added to the repository.`;
-    } catch (webhookCreateError) {
+    } catch (cause) {
       error = new Error(
-        `The template ${templateName} defines a webhook ${friendlyName}. Adding the webhook failed. ${webhookCreateError.message()}`
+        `The template ${templateName} defines a webhook ${friendlyName}. Adding the webhook failed. ${cause.message()}`,
+        { cause }
       );
-      error.inner = webhookCreateError;
     }
     this.log.push({ error, message });
   }

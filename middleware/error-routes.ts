@@ -15,9 +15,10 @@ export default async function configureErrorRoutes(app: IReposApplication, initi
     // production scenarios or if there is a risk of the
     // error message leaking sensitive data.
     app.use((req, res, next) => {
-      const error: IReposError = new Error('Application initialization error');
+      const error: IReposError = new Error('Application initialization error', {
+        cause: initializationError,
+      });
       error.detailed = initializationError.message || null;
-      error.innerError = initializationError;
       return next(error);
     });
   }

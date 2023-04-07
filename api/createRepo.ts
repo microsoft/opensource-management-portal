@@ -189,15 +189,15 @@ export async function CreateRepository(
           entrypoint,
         },
       });
-      if (error && error.innerError) {
-        const inner = error.innerError;
+      if (error?.cause) {
+        const cause = error.cause;
         req.insights.trackException({
-          exception: inner,
+          exception: cause,
           properties: {
             event: 'ApiRepoCreateGitHubErrorInside',
-            message: inner && inner.message ? inner.message : inner,
-            status: inner && inner.status ? inner.status : '',
-            statusCode: inner && inner.statusCode ? inner.statusCode : '',
+            message: cause?.message || cause,
+            status: cause?.status || '',
+            statusCode: cause?.statusCode || '',
           },
         });
       }

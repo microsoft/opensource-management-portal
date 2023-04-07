@@ -72,13 +72,7 @@ import routeSslify from './sslify';
 
 import middlewareIndex from '.';
 import { ICacheHelper } from '../lib/caching';
-import {
-  IApplicationProfile,
-  IProviders,
-  IReposApplication,
-  InnerError,
-  SiteConfiguration,
-} from '../interfaces';
+import { IApplicationProfile, IProviders, IReposApplication, SiteConfiguration } from '../interfaces';
 import initializeRepositoryProvider from '../entities/repository';
 import { tryGetImmutableStorageProvider } from '../lib/immutable';
 
@@ -550,19 +544,20 @@ export function ConnectPostgresPool(postgresConfigSection: any): Promise<Postgre
           );
         });
         // try connecting
-        pool.connect((err, client, release) => {
-          if (err) {
-            const poolError: InnerError = new Error(`There was a problem connecting to the Postgres server`);
-            poolError.inner = err;
+        pool.connect((cause, client, release) => {
+          if (cause) {
+            const poolError = new Error(`There was a problem connecting to the Postgres server`, {
+              cause,
+            });
             return reject(poolError);
           }
           client.query('SELECT NOW()', (err, result) => {
             release();
             if (err) {
-              const poolQueryError: InnerError = new Error(
-                'There was a problem performing a test query to the Postgres server'
+              const poolQueryError = new Error(
+                'There was a problem performing a test query to the Postgres server',
+                { cause: err }
               );
-              poolQueryError.inner = err;
               return reject(poolQueryError);
             }
             debug(

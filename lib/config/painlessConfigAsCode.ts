@@ -55,11 +55,10 @@ function configurePackageEnvironments(
     try {
       environmentPackage = require(npmName);
     } catch (packageRequireError) {
-      const packageMissing: InnerError = new Error(
-        `Unable to require the "${npmName}" environment package for the "${environment}" environment`
+      throw new Error(
+        `Unable to require the "${npmName}" environment package for the "${environment}" environment`,
+        { cause: packageRequireError }
       );
-      packageMissing.innerError = packageRequireError;
-      throw packageMissing;
     }
     if (!environmentPackage) {
       continue;
@@ -72,11 +71,10 @@ function configurePackageEnvironments(
         values = environmentPackage(environment);
       } catch (problemCalling) {
         const asText = problemCalling.toString();
-        const error: InnerError = new Error(
-          `While calling the environment package "${npmName}" for the "${environment}" environment an error was thrown: ${asText}`
+        throw new Error(
+          `While calling the environment package "${npmName}" for the "${environment}" environment an error was thrown: ${asText}`,
+          { cause: problemCalling }
         );
-        error.innerError = problemCalling;
-        throw error;
       }
     } else if (typeof environmentPackage === 'object') {
       values = environmentPackage;
