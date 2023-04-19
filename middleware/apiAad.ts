@@ -9,7 +9,7 @@ import jwksClient from 'jwks-rsa';
 import { isJsonError, jsonError } from './jsonError';
 import { IApiRequest, wrapErrorForImmediateUserError } from './apiReposAuth';
 import { PersonalAccessToken } from '../entities/token/token';
-import { getProviders } from '../transitional';
+import { CreateError, getProviders, splitSemiColonCommas } from '../transitional';
 
 // TODO: Caching of signing keys
 
@@ -18,6 +18,7 @@ interface IConfigAadApiApprovedAppsOrOids {
     read: {
       links: string[] | string;
       maintainers: string[] | string;
+      'microsoft-github-policy-service': string[] | string;
     };
     create: {
       repos: string[] | string;
@@ -119,7 +120,9 @@ export function getAadApiConfiguration(config: any) {
     : approvedApps?.scopes?.read?.['jit/confirm']?.split
     ? [...approvedApps.scopes.read['jit/confirm'].split(',')]
     : [];
-
+  const microsoftPolicyServiceApiName = 'microsoft-github-policy-service';
+  const approvedAppsToReadPolicyService = parse(approvedApps?.scopes?.read?.[microsoftPolicyServiceApiName]);
+  const approvedOidsToReadPolicyService = parse(approvedOids?.scopes?.read?.[microsoftPolicyServiceApiName]);
   const approvedOidsToCreateRepos = Array.isArray(approvedOids?.scopes?.create?.repos)
     ? approvedOids?.scopes?.create?.repos
     : approvedOids?.scopes?.create?.repos?.split
@@ -136,13 +139,19 @@ export function getAadApiConfiguration(config: any) {
     ? [...approvedOids.scopes.read['jit/confirm'].split(',')]
     : [];
 
-  const oids = [...approvedOidsToCreateRepos, ...approvedOidsToReadLinks, ...approvedOidsToReadJitConfirms];
+  const oids = [
+    ...approvedOidsToCreateRepos,
+    ...approvedOidsToReadLinks,
+    ...approvedOidsToReadJitConfirms,
+    ...approvedOidsToReadPolicyService,
+  ];
   const appIds = [
     // hacky temporary design for pulling from config
     ...approvedAppsToCreateRepos,
     ...approvedAppsToReadLinks,
     ...approvedAppsToReadMaintainers,
     ...approvedAppsToReadJitConfirms,
+    ...approvedAppsToReadPolicyService,
   ];
 
   return {
@@ -157,7 +166,22 @@ export function getAadApiConfiguration(config: any) {
     approvedOidsToReadLinks,
     approvedAppsToReadJitConfirms,
     approvedOidsToReadJitConfirms,
+    approvedAppsToReadPolicyService,
+    approvedOidsToReadPolicyService,
   };
+}
+
+function parse(val: string | string[]): string[] {
+  if (Array.isArray(val)) {
+    return val;
+  }
+  if (typeof val === 'string') {
+    return splitSemiColonCommas(val);
+  }
+  if (!val) {
+    return [];
+  }
+  throw CreateError.InvalidParameters('Invalid entries');
 }
 
 async function validateAadAuthorization(req: IApiRequest): Promise<void> {
@@ -174,6 +198,8 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     approvedOidsToReadLinks,
     approvedAppsToReadJitConfirms,
     approvedOidsToReadJitConfirms,
+    approvedAppsToReadPolicyService,
+    approvedOidsToReadPolicyService,
   } = getAadApiConfiguration(config);
 
   const authorizationHeader = req.headers.authorization;
@@ -249,6 +275,10 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     if (isAppApproved && approvedAppsToReadJitConfirms.includes(appid)) {
       scopes.push('jit/confirm');
     }
+    const policyServiceScopeName = 'microsoft-github-policy-service';
+    if (isAppApproved && approvedAppsToReadPolicyService.includes(appid)) {
+      scopes.push(policyServiceScopeName);
+    }
     if (isOidApproved && approvedOidsToCreateRepos.includes(oid)) {
       scopes.push('createRepo');
     }
@@ -257,6 +287,9 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     }
     if (isOidApproved && approvedOidsToReadJitConfirms.includes(oid)) {
       scopes.push('jit/confirm');
+    }
+    if (isOidApproved && approvedOidsToReadPolicyService.includes(appid)) {
+      scopes.push(policyServiceScopeName);
     }
 
     const apiToken = PersonalAccessToken.CreateFromAadAuthorization({
