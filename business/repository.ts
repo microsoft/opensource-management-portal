@@ -772,6 +772,27 @@ export class Repository {
     }
   }
 
+  async getArchivedAt(): Promise<Date> {
+    const query = `query($owner: String!, $repo: String!) {
+      repository(owner:$owner,name:$repo) {
+        id,
+        archivedAt
+      }
+    }`;
+    const operations = throwIfNotGitHubCapable(this._operations);
+    try {
+      const { repository } = await operations.github.graphql(this.authorize(AppPurpose.Data), query, {
+        owner: this.organization.name,
+        repo: this.name,
+      });
+      if (repository?.archivedAt) {
+        return new Date(repository.archivedAt);
+      }
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async getProtectedBranchAccessRestrictions(
     branchName: string,
     cacheOptions?: ICacheOptions
