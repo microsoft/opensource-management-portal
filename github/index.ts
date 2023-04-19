@@ -6,6 +6,9 @@
 import { IReposApplication } from '../interfaces';
 import { CreateError } from '../transitional';
 
+import Debug from 'debug';
+const debug = Debug('github:tokens');
+
 export enum AppPurpose {
   Data = 'Data',
   CustomerFacing = 'CustomerFacing',
@@ -21,11 +24,12 @@ export interface ICustomAppPurpose {
   id: string;
   name: string;
   getForOrganizationName?(organizationName: string): IGitHubAppConfiguration;
+  getApplicationConfigurationForInitialization?(): IGitHubAppConfiguration;
 }
 
 export type AppPurposeTypes = AppPurpose | ICustomAppPurpose;
 
-export class CustomAppPurpose implements ICustomAppPurpose {
+export abstract class CustomAppPurpose implements ICustomAppPurpose {
   get isCustomAppPurpose() {
     return true;
   }
@@ -45,6 +49,16 @@ export class CustomAppPurposeOrganizationVariance extends CustomAppPurpose {
       throw CreateError.NotFound(`No configuration found for organization ${organizationName}`);
     }
     return configuration || this.configurations[0];
+  }
+}
+
+export class CustomAppPurposeSingleConfiguration extends CustomAppPurpose {
+  constructor(public id: string, public name: string, private configuration: IGitHubAppConfiguration) {
+    super(id, name);
+  }
+
+  getApplicationConfigurationForInitialization() {
+    return this.configuration;
   }
 }
 
@@ -86,12 +100,14 @@ export class GitHubAppPurposes {
   private static _instance: GitHubAppPurposes = new GitHubAppPurposes();
 
   static get AllAvailableAppPurposes() {
+    debug(`Retrieving all available purposes (${this._instance._purposes.length})`);
     return this._instance._purposes;
   }
 
   static RegisterCustomPurpose(purpose: ICustomAppPurpose) {
+    debug(`Registering custom purpose ${purpose.id} (${purpose.name})`);
     if (purpose.isCustomAppPurpose !== true) {
-      throw new Error('Purpose must be has isCustomAppPurpose set to true');
+      throw new Error('Purpose must have `isCustomAppPurpose` set to true');
     }
     if (
       (this._instance._purposes as ICustomAppPurpose[])

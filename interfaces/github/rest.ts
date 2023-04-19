@@ -129,4 +129,6 @@ export const NoCacheNoBackground = { backgroundRefresh: false, maxAgeSeconds: -1
 
 export const CacheTwoHoursNoBackground = { backgroundRefresh: false, maxAgeSeconds: 60 * 60 * 2 };
 
+export const CacheSixHoursNoBackground = { backgroundRefresh: false, maxAgeSeconds: 60 * 60 * 6 };
+
 export const CacheTwoDaysNoBackground = { backgroundRefresh: false, maxAgeSeconds: 60 * 60 * 24 * 2 };

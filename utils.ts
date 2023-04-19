@@ -340,4 +340,17 @@ export function getCodespacesHostname(config: SiteConfiguration) {
   return desktop ? `http://localhost:${port}` : `https://${codespaces.name}-${port}.${forwardingDomain}`;
 }
 
+export function getDateTimeBasedBlobFolder() {
+  // Returns a UTC-named folder name like "2020/01/01/00-00-00"
+  const now = new Date();
+  const timeFilename = `${String(now.getUTCHours()).padEnd(2)}-${String(now.getUTCMinutes()).padStart(
+    2,
+    '0'
+  )}-${String(now.getUTCSeconds()).padStart(2, '0')}`;
+  const blobFilename = `${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, '0')}/${String(
+    now.getUTCDate()
+  ).padStart(2, '0')}/${timeFilename}`;
+  return blobFilename;
+}
+
 export const botBracket = '[bot]';

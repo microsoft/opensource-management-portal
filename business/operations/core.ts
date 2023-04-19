@@ -28,6 +28,9 @@ import { wrapError } from '../../utils';
 import { Account } from '../account';
 import GitHubApplication from '../application';
 
+import Debug from 'debug';
+const debugGitHubTokens = Debug('github:tokens');
+
 export interface IOperationsCoreOptions {
   github: RestLibrary;
   providers: IProviders;
@@ -291,7 +294,9 @@ export abstract class OperationsCore
 
   async initialize() {
     const tokenManager = this.tokenManager;
+    debugGitHubTokens('calling token manager initialize');
     await tokenManager.initialize();
+    debugGitHubTokens('reviewing all app IDs from token manager');
     tokenManager.getAppIds().map((appId) => {
       const { friendlyName } = tokenManager.getAppById(appId);
       const slug = tokenManager.getSlugById(appId);
