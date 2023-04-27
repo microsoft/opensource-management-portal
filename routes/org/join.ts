@@ -66,15 +66,15 @@ async function showOrgJoinDetails(req: ReposAppRequest) {
     
     // linked and unlinked admins return slightly different data structures
     const login = member ? member.login : admin.login;
-
+    const avatar_url = member ? member.avatar_url : admin.avatar_url;
     // fallback to corporateUsername if corporateMailAddress is not available
     const mailAddress = link ? link.corporateMailAddress || link.corporateUsername : undefined;
-    const primaryName = link ? link.corporateDisplayName || link.corporateUsername : member.login;
+    const primaryName = link ? link.corporateDisplayName || link.corporateUsername : login;
     
     acc.push({
       login,
       mailAddress,
-      avatar_url: member.avatar_url,
+      avatar_url,
       primaryName
     })
 
