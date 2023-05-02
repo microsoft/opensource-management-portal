@@ -44,8 +44,12 @@ export default class CosmosHelper {
       throw new Error('options.database required');
     }
     this._client = new CosmosClient({ endpoint, key });
-    this._database = (await this._client.databases.createIfNotExists({ id: this._options.database })).database;
-    this._collection = (await this._database.containers.createIfNotExists({ id: this._options.collection })).container;
+    this._database = (
+      await this._client.databases.createIfNotExists({ id: this._options.database })
+    ).database;
+    this._collection = (
+      await this._database.containers.createIfNotExists({ id: this._options.collection })
+    ).container;
     this._initialized = true;
   }
 
@@ -68,7 +72,7 @@ export default class CosmosHelper {
   async setObject(object: any): Promise<void> {
     this.throwIfNotInitialized();
     debug(`COSMOS SET OBJECT: ${object.id}`);
-    let approxSize: number = 0;
+    const approxSize = 0;
     try {
       const item = Object.assign({}, object);
       await this._collection.items.upsert(item);

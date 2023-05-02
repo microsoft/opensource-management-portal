@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { URL }  from 'url';
+import { URL } from 'url';
 import { IGetKeyVaultSecretClient } from '../middleware/keyVault';
 
 const cachedKeys = new Map<string, string>();
@@ -46,4 +46,4 @@ async function keyVaultSecretResolver(keyVaultClient: IGetKeyVaultSecretClient, 
 
 export default function createKeyVaultResolver(keyVaultClient: IGetKeyVaultSecretClient) {
   return keyVaultSecretResolver.bind(undefined, keyVaultClient) as IKeyVaultSecretResolver;
-};
+}

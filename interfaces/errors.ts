@@ -13,6 +13,7 @@ export interface IReposError extends Error {
   code?: any; // not sure this is used any longer by libraries
   originalUrl?: any;
   detailed?: any;
+  title?: string;
   redirect?: string;
   skipOops?: boolean;
   fancyLink?: {

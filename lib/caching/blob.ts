@@ -62,7 +62,7 @@ export default class BlobCache implements ICacheHelper {
 
   private getBlobName(key: string, extension: string) {
     key = key.replace(/W\//g, ''); // stript the W/ from e-tags
-    key = key.replace(/[@,\(\)\\\?#:=]/g, '/');
+    key = key.replace(/[@,()\\?#:=]/g, '/');
     key = key.replace(/\/\//g, '/');
     return `${key}${extension}`;
   }
@@ -83,13 +83,10 @@ export default class BlobCache implements ICacheHelper {
       // TODO: remove temporary message
       console.log(`using DefaultAzureCredential`);
     }
-    this._client = new BlobServiceClient(
-      `https://${account}.blob.core.windows.net`,
-      credential,
-    );
+    this._client = new BlobServiceClient(`https://${account}.blob.core.windows.net`, credential);
     try {
       this._container = this._client.getContainerClient(this._options.container);
-      if (!await this._container.exists()) {
+      if (!(await this._container.exists())) {
         await this._client.createContainer(this._options.container);
       }
     } catch (containerError) {
@@ -157,23 +154,31 @@ export default class BlobCache implements ICacheHelper {
     debug(`BLOB SET: ${blobName}`);
     const blockBlobClient = this._container.getBlockBlobClient(blobName);
     const uploadStarted = new Date();
-    let metadata = {};
-    let contentType = ext === '.json' ? 'application/json' : (ext === '.txt' ? 'text/plain' : 'application/octet-stream');
+    const metadata = {};
+    const contentType =
+      ext === '.json' ? 'application/json' : ext === '.txt' ? 'text/plain' : 'application/octet-stream';
     const blobHTTPHeaders = { blobContentType: contentType };
     if (options.minutesToExpire) {
-      const expires = new Date(uploadStarted.getTime() + (1000 * 60 * options.minutesToExpire));
+      const expires = new Date(uploadStarted.getTime() + 1000 * 60 * options.minutesToExpire);
       const iso8601 = expires.toISOString();
-      debug(`blob will expire in ${options.minutesToExpire}m; expires=${iso8601}, blob=${blobName}, key=${key}`);
+      debug(
+        `blob will expire in ${options.minutesToExpire}m; expires=${iso8601}, blob=${blobName}, key=${key}`
+      );
       metadata[ttlAttributeName] = iso8601;
     }
     let response: BlockBlobUploadResponse = null;
     if (ext.endsWith('.gz') && !options.compress) {
-      console.warn(`Warning, extension ${ext} for blobName ${blobName} appears compressed but options have not set the value to be compressed`);
+      console.warn(
+        `Warning, extension ${ext} for blobName ${blobName} appears compressed but options have not set the value to be compressed`
+      );
     }
     if (options.compress) {
       const compressed = await gzipString(value);
       metadata[compressedAttributeName] = compressedGzip;
-      response = await blockBlobClient.upload(compressed, compressed.byteLength, { blobHTTPHeaders, metadata });
+      response = await blockBlobClient.upload(compressed, compressed.byteLength, {
+        blobHTTPHeaders,
+        metadata,
+      });
     } else {
       response = await blockBlobClient.upload(value, Buffer.byteLength(value), { blobHTTPHeaders, metadata });
     }
@@ -186,7 +191,7 @@ export default class BlobCache implements ICacheHelper {
 
   setObjectWithExpire(key: string, object: any, minutesToExpire: number): Promise<void> {
     if (object.ttl) {
-      console.warn('The object should not have an existing \'ttl\' property before caching.');
+      console.warn("The object should not have an existing 'ttl' property before caching.");
     }
     const asJsonText = JSON.stringify(object);
     return this.set(key, asJsonText, { minutesToExpire, extension: '.json' });
@@ -203,10 +208,14 @@ export default class BlobCache implements ICacheHelper {
   }
 
   setCompressedWithExpire(key: string, value: string, minutesToExpire: number): Promise<void> {
-    return this.setObjectCompressedWithExpire(key, {
-      value,
-      valueOnly: true,
-    }, minutesToExpire);
+    return this.setObjectCompressedWithExpire(
+      key,
+      {
+        value,
+        valueOnly: true,
+      },
+      minutesToExpire
+    );
   }
 
   setWithExpire(key: string, value: string, minutesToExpire: number): Promise<void> {
@@ -215,6 +224,7 @@ export default class BlobCache implements ICacheHelper {
 
   async expire(key: string, minutesToExpire: number): Promise<void> {
     this.throwIfNotInitialized();
+    // prettier-ignore
     const candidateExtensions = [
       '.txt',
       '.txt.gz',
@@ -233,7 +243,7 @@ export default class BlobCache implements ICacheHelper {
       } catch (notFoundError) {
         continue;
       }
-      const expires = new Date(now.getTime() + (1000 * 60 * minutesToExpire));
+      const expires = new Date(now.getTime() + 1000 * 60 * minutesToExpire);
       const iso8601 = expires.toISOString();
       metadata[ttlAttributeName] = iso8601;
       await blobClient.setMetadata(metadata);
@@ -242,6 +252,7 @@ export default class BlobCache implements ICacheHelper {
   }
 
   async delete(key: string): Promise<void> {
+    // prettier-ignore
     const candidateExtensions = [
       '.txt',
       '.txt.gz',
@@ -254,15 +265,14 @@ export default class BlobCache implements ICacheHelper {
         const blobClient = this._container.getBlobClient(this.getBlobName(key, extension));
         await blobClient.delete();
         return;
-      } catch (ignoredError) {
-      }
+      } catch (ignoredError) {}
     }
   }
 
   async deleteExpiredBlobs(): Promise<IExpiredBlobsStats> {
-    let iterator = this._container.
-      listBlobsFlat({ includeMetadata: true }).
-      byPage({ maxPageSize: 100 /* 25 */ });
+    const iterator = this._container
+      .listBlobsFlat({ includeMetadata: true })
+      .byPage({ maxPageSize: 100 /* 25 */ });
     let response = await iterator.next();
     const stats: IExpiredBlobsStats = {
       processedBlobs: 0,

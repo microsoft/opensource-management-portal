@@ -1,5 +1,5 @@
 body {
-  font-family: "Segoe UI", "Segoe WP", Segoe, "Helvetica Neue", "Helvetica", "Arial", "sans-serif";
+  font-family: "Segoe UI", "Segoe WP", Segoe, "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-weight: normal;
   font-size: 11pt;
   line-height: 16pt;
@@ -7,7 +7,7 @@ body {
 
 h1 {
   font-size: 36pt;
-  font-family: "Segoe UI Light", "Segoe WP Light", Segoe, "Helvetica Neue", "Helvetica", "Arial", "sans-serif";
+  font-family: "Segoe UI Light", "Segoe WP Light", Segoe, "Helvetica Neue", Helvetica, Arial, sans-serif;
   color: #787878;
 }
 
@@ -17,23 +17,20 @@ h1.blue {
 
 h2 {
   font-size: 24pt;
-  font-family: "Segoe UI Light", "Segoe WP Light", Segoe, "Helvetica Neue", "Helvetica", "Arial", "sans-serif";
+  font-family: "Segoe UI Light", "Segoe WP Light", Segoe, "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-weight: normal;
   color: #787878;
 }
 
 h3 {
   font-size: 16pt;
-  font-family: "Segoe UI", "Segoe WP", Segoe, "Helvetica Neue", "Helvetica", "Arial", "sans-serif";
+  font-family: "Segoe UI", "Segoe WP", Segoe, "Helvetica Neue", Helvetica, Arial, sans-serif;
   color: #787878;
   font-weight: normal;
 }
 
 p {
-  margin-bottom: 5pt;
-  margin-left: 0;
-  margin-right: 0;
-  margin-top: 0;
+  margin: 0 0 5pt;
 }
 
 a,
@@ -50,7 +47,7 @@ pre {
 }
 
 pre.body-font {
-  font-family: "Segoe UI", "Segoe WP", Segoe, "Helvetica Neue", "Helvetica", "Arial", "sans-serif";
+  font-family: "Segoe UI", "Segoe WP", Segoe, "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-weight: normal;
 }
 
@@ -90,7 +87,6 @@ table.notification-information {
 }
 
 table.notification-warning {
-  border: 0;
   background-color: #e81123;
   color: white;
   border: 0;
@@ -100,7 +96,6 @@ table.notification-warning {
 }
 
 table.notification-success {
-  border: 0;
   background-color: #107c10;
   color: white;
   border: 0;
@@ -115,13 +110,10 @@ table.notification-success tbody tr td h1,
 table.notification-information tbody tr td h1 {
   color: white;
   font-size: 36pt;
-  padding-left: 16px;
-  margin-left: 16px;
-  padding-right: 12px;
-  padding-top: 8px;
-  margin-top: 8px;
-  padding-bottom: 8px;
   margin-bottom: 8px;
+  margin-left: 16px;
+  margin-top: 8px;
+  padding: 8px 12px 8px 16px;
 }
 
 p.footer {
@@ -148,9 +140,7 @@ th {
 }
 
 @media only screen and (min-width: 480px) {
-  table[id="container"] {
-    width: 600px;
-  }
+  table[id="container"] { width: 600px; }
 }
 
 @media only screen and (max-width: 480px) {

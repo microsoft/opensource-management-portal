@@ -11,7 +11,7 @@ import { IProviders, GitHubCollaboratorType } from '../../interfaces';
 
 export default class MemberWebhookProcessor implements WebhookProcessor {
   filter(data: any) {
-    let eventType = data.properties.event;
+    const eventType = data.properties.event;
     return eventType === 'member';
   }
 
@@ -21,7 +21,9 @@ export default class MemberWebhookProcessor implements WebhookProcessor {
     const event = data.body;
     const organizationIdAsString = event.organization.id.toString();
     if (!operations.isOrganizationManagedById(event.organization.id)) {
-      console.log(`skipping organization ID ${event.organization.id} which is not directly managed: ${event.organization.login}`);
+      console.log(
+        `skipping organization ID ${event.organization.id} which is not directly managed: ${event.organization.login}`
+      );
       return true;
     }
 
@@ -30,16 +32,24 @@ export default class MemberWebhookProcessor implements WebhookProcessor {
     const userLogin = event.member.login;
     let needToCreateOrUpdate = false;
     if (event.action && event.action === 'removed' && event.member.login && event.member.id) {
-      console.log(`${event.organization.login} collaborator member: ${event.action} ${event.member.login} ${event.member.id} repo ${data.body.repository.id} ${data.body.repository.name}`);
+      console.log(
+        `${event.organization.login} collaborator member: ${event.action} ${event.member.login} ${event.member.id} repo ${data.body.repository.id} ${data.body.repository.name}`
+      );
       try {
         if (queryCache && queryCache.supportsRepositoryCollaborators) {
-          await queryCache.removeRepositoryCollaborator(organizationIdAsString, repositoryIdAsString, userIdAsString);
+          await queryCache.removeRepositoryCollaborator(
+            organizationIdAsString,
+            repositoryIdAsString,
+            userIdAsString
+          );
         }
       } catch (queryCacheError) {
         console.dir(queryCacheError);
       }
     } else if (event.action && event.action === 'added' && event.member.login && event.member.id) {
-      console.log(`${event.organization.login} collaborator member: ${event.action} ${event.member.login} ${event.member.id} repo ${data.body.repository.id} ${data.body.repository.name}`);
+      console.log(
+        `${event.organization.login} collaborator member: ${event.action} ${event.member.login} ${event.member.id} repo ${data.body.repository.id} ${data.body.repository.name}`
+      );
       needToCreateOrUpdate = true;
       console.log();
     } else if (event.action && event.action === 'edited' && event.member.login && event.member.id) {
@@ -60,11 +70,27 @@ export default class MemberWebhookProcessor implements WebhookProcessor {
       // TODO: may need to support the new 5 levels vs 3...
       if (permission) {
         const isOrganizationMember = await organization.getMembership(userLogin);
-        const collaboratorType = isOrganizationMember ? GitHubCollaboratorType.Direct : GitHubCollaboratorType.Outside;
-        queryCache.addOrUpdateCollaborator(organizationIdAsString, repositoryIdAsString, repository, repositoryName, userIdAsString, userLogin, event.member.avatar_url, permission, collaboratorType);
-        console.log(`collaborator ${collaboratorType} ${event.member.login} for repository ${repositoryName} set to permission=${permission}`);
+        const collaboratorType = isOrganizationMember
+          ? GitHubCollaboratorType.Direct
+          : GitHubCollaboratorType.Outside;
+        queryCache.addOrUpdateCollaborator(
+          organizationIdAsString,
+          repositoryIdAsString,
+          repository,
+          repositoryName,
+          userIdAsString,
+          userLogin,
+          event.member.avatar_url,
+          permission,
+          collaboratorType
+        );
+        console.log(
+          `collaborator ${collaboratorType} ${event.member.login} for repository ${repositoryName} set to permission=${permission}`
+        );
       } else {
-        console.log(`no permission level returned for ${event.member.login} for repository ${repositoryName} which was collaborator permission ${collaborator.permission}`);
+        console.log(
+          `no permission level returned for ${event.member.login} for repository ${repositoryName} which was collaborator permission ${collaborator.permission}`
+        );
       }
     }
 

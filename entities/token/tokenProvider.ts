@@ -55,8 +55,7 @@ export class TokenProvider extends EntityMetadataBase implements ITokenProvider 
 
 export class QueryTokensByCorporateID implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.TokensByCorporateId;
-  constructor(public corporateId: string) {
-  }
+  constructor(public corporateId: string) {}
 }
 
 export class QueryTokensGetAll implements IEntityMetadataFixedQuery {

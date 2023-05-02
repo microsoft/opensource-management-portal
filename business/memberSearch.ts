@@ -4,7 +4,13 @@
 //
 
 import _ from 'lodash';
-import { IProviders, ICorporateLink, RequestTeamMemberAddType, IMemberSearchOptions, ICrossOrganizationMembershipByOrganization } from '../interfaces';
+import {
+  IProviders,
+  ICorporateLink,
+  RequestTeamMemberAddType,
+  IMemberSearchOptions,
+  ICrossOrganizationMembershipByOrganization,
+} from '../interfaces';
 
 import { OrganizationMember } from './organizationMember';
 
@@ -65,14 +71,17 @@ export class MemberSearch {
     this.sort = sort ? sort.charAt(0).toUpperCase() + sort.slice(1) : 'Alphabet';
 
     await this.filterOrganizationOwners();
-    await this
-      .filterByTeamMembers()
-      .associateLinks()
-      .getCorporateProfilesEarly(this.type);
-    return this
-      .filterByType(this.type)
+
+    // prettier-ignore
+    await this.
+      filterByTeamMembers().
+      associateLinks().
+      getCorporateProfilesEarly(this.type);
+
+    // prettier-ignore
+    return this.filterByType(this.type)
       .filterByPhrase(this.phrase)
-      .determinePages()['sortBy' + this.sort]()
+      .determinePages()['sortBy' + this.sort]() // prettier will mangle this into a newline
       .getPage(this.page)
       .sortOrganizations()
       .getCorporateProfiles();
@@ -80,7 +89,11 @@ export class MemberSearch {
 
   async filterOrganizationOwners() {
     const { queryCache, organizationMemberCacheProvider } = this.#providers;
-    if (this.type === 'owners' && queryCache.supportsOrganizationMembership && organizationMemberCacheProvider) {
+    if (
+      this.type === 'owners' &&
+      queryCache.supportsOrganizationMembership &&
+      organizationMemberCacheProvider
+    ) {
       if (!this.orgId) {
         throw new Error('org owners view not available at the top root level currently');
       }
@@ -91,7 +104,7 @@ export class MemberSearch {
           owners.add(owner.userId);
         }
       }
-      this.members = this.members.filter(member => owners.has(String(member.id)));
+      this.members = this.members.filter((member) => owners.has(String(member.id)));
     }
     return this;
   }
@@ -99,7 +112,7 @@ export class MemberSearch {
   filterByTeamMembers() {
     // If this is a sub-team view, filter by members unless the
     // special "add a member" experience is present in this route.
-    let teamSet = new Set();
+    const teamSet = new Set();
     if (this.teamMembers) {
       for (let i = 0; i < this.teamMembers.length; i++) {
         const member = this.teamMembers[i];
@@ -113,7 +126,9 @@ export class MemberSearch {
           member['isTeamMember'] = teamSet.has(member.id);
         }
       } else {
-        this.members = this.members.filter(m => { return teamSet.has(m.id); });
+        this.members = this.members.filter((m) => {
+          return teamSet.has(m.id);
+        });
       }
     }
     return this;
@@ -131,11 +146,11 @@ export class MemberSearch {
 
   associateLinks() {
     const links = new Map();
-    this.links.forEach(link => {
+    this.links.forEach((link) => {
       const id = parseInt(link.thirdPartyId, 10);
       links.set(id, link);
     });
-    this.members.forEach(member => {
+    this.members.forEach((member) => {
       const link = links.get(member.id);
       if (link) {
         member.link = link;
@@ -145,7 +160,7 @@ export class MemberSearch {
   }
 
   sortOrganizations() {
-    this.members.forEach(m => {
+    this.members.forEach((m) => {
       const member = m as any as ICrossOrganizationMembershipByOrganization;
       if (member.orgs && member.orgs.length > 0) {
         member.orgs = _.sortBy(member.orgs, ['name']);
@@ -168,8 +183,8 @@ export class MemberSearch {
   }
 
   getPage(page) {
-    this.members = this.members.slice((page - 1) * this.pageSize, ((page - 1) * this.pageSize) + this.pageSize);
-    this.pageFirstItem = 1 + ((page - 1) * this.pageSize);
+    this.members = this.members.slice((page - 1) * this.pageSize, (page - 1) * this.pageSize + this.pageSize);
+    this.pageFirstItem = 1 + (page - 1) * this.pageSize;
     this.pageLastItem = this.pageFirstItem + this.members.length - 1;
     return this;
   }
@@ -177,7 +192,9 @@ export class MemberSearch {
   filterByPhrase(phrase) {
     if (phrase) {
       phrase = phrase.toLowerCase();
-      this.members = this.members.filter(m => { return memberMatchesPhrase(m, phrase); });
+      this.members = this.members.filter((m) => {
+        return memberMatchesPhrase(m, phrase);
+      });
     }
     return this;
   }
@@ -186,22 +203,46 @@ export class MemberSearch {
     let filter = null;
     switch (type) {
       case 'linked':
-        filter = (r: OrganizationMember) => { return r.link && r.link.thirdPartyId; };
+        filter = (r: OrganizationMember) => {
+          return r.link && r.link.thirdPartyId;
+        };
         break;
       case 'unlinked':
-        filter = (r: OrganizationMember) => { return !r.link; };
+        filter = (r: OrganizationMember) => {
+          return !r.link;
+        };
         break;
       case 'unknownAccount':
-        filter = (r: OrganizationMember) => { return r.link && r.link.thirdPartyId && (!r.link || !r.link.corporateUsername); };
+        filter = (r: OrganizationMember) => {
+          return r.link && r.link.thirdPartyId && (!r.link || !r.link.corporateUsername);
+        };
         break;
       case 'former':
-        filter = (r: OrganizationMember) => { return r.link && r.link.thirdPartyId && !r.link.isServiceAccount && (!r.link || !r.link.corporateUsername); };
+        filter = (r: OrganizationMember) => {
+          return (
+            r.link &&
+            r.link.thirdPartyId &&
+            !r.link.isServiceAccount &&
+            (!r.link || !r.link.corporateUsername)
+          );
+        };
         break;
       case 'active':
-        filter = (r: OrganizationMember) => { return r.link && r.link.thirdPartyId && r.link.corporateId && !r.link.isServiceAccount && r.link && r.link.corporateUsername; };
+        filter = (r: OrganizationMember) => {
+          return (
+            r.link &&
+            r.link.thirdPartyId &&
+            r.link.corporateId &&
+            !r.link.isServiceAccount &&
+            r.link &&
+            r.link.corporateUsername
+          );
+        };
         break;
       case 'serviceAccount':
-        filter = (r: OrganizationMember) => { return r.link && r.link.isServiceAccount; };
+        filter = (r: OrganizationMember) => {
+          return r.link && r.link.isServiceAccount;
+        };
         break;
     }
     if (filter) {
@@ -235,7 +276,7 @@ function translateMembers(members, isOrganizationScoped, optionalLinks) {
     }
   }
   // A breaking change altered the projected format
-  members.forEach(member => {
+  members.forEach((member) => {
     linkedNoOrg.delete(member.id);
     if (member.orgs && !member.account) {
       const orgNames = Object.getOwnPropertyNames(member.orgs);
@@ -248,7 +289,7 @@ function translateMembers(members, isOrganizationScoped, optionalLinks) {
     const noOrgs = Array.from(linkedNoOrg.values());
     for (let i = 0; i < noOrgs.length; i++) {
       const n = noOrgs[i];
-      const thirdPartyId = n.thirdPartyId /* new link objects */ || n.ghid /* old implementation */;
+      const thirdPartyId = n.thirdPartyId /* new link objects */ || n.ghid; /* old implementation */
       const thirdPartyUsername = (n.thirdPartyUsername || n.ghu || '').toLowerCase();
       const thirdPartyAvatar = n.thirdPartyAvatar || n.ghavatar;
       const id = parseInt(thirdPartyId, 10);
@@ -269,8 +310,10 @@ function translateMembers(members, isOrganizationScoped, optionalLinks) {
 
 function memberMatchesPhrase(member, phrase) {
   const link = member.link as ICorporateLink;
-  let linkIdentity = link ? `${link.corporateUsername} ${link.corporateDisplayName} ${link.corporateId} ${link.thirdPartyUsername} ${link.thirdPartyId} ${link.corporateMailAddress} ${link.corporateAlias}` : '';
-  let accountIdentity = member.login ? member.login.toLowerCase() : member.account.login.toLowerCase();
-  let combined = (linkIdentity + ' ' + accountIdentity).toLowerCase();
+  const linkIdentity = link
+    ? `${link.corporateUsername} ${link.corporateDisplayName} ${link.corporateId} ${link.thirdPartyUsername} ${link.thirdPartyId} ${link.corporateMailAddress} ${link.corporateAlias}`
+    : '';
+  const accountIdentity = member.login ? member.login.toLowerCase() : member.account.login.toLowerCase();
+  const combined = (linkIdentity + ' ' + accountIdentity).toLowerCase();
   return combined.includes(phrase);
 }

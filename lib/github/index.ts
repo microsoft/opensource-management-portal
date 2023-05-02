@@ -58,7 +58,7 @@ export class RestLibrary {
     }
     this.cacheProvider = cacheProvider;
 
-    let config = options.config;
+    const config = options.config;
     if (!config) {
       throw new Error('No runtime configuration instance provided to the library context constructor');
     }
@@ -77,8 +77,11 @@ export class RestLibrary {
     }
     this.github = github;
 
-    this.defaultPageSize = config && config.github && config.github.api && config.github.api.defaultPageSize ? config.github.api.defaultPageSize : 100,
-      this.breakingChangeGitHubPackageVersion = breakingChangeGitHubPackageVersion;
+    (this.defaultPageSize =
+      config && config.github && config.github.api && config.github.api.defaultPageSize
+        ? config.github.api.defaultPageSize
+        : 100),
+      (this.breakingChangeGitHubPackageVersion = breakingChangeGitHubPackageVersion);
 
     this.githubEngine = new restApi.IntelligentGitHubEngine();
     this.compositeEngine = new CompositeIntelligentEngine();
@@ -113,16 +116,18 @@ export class RestLibrary {
 
   hasNextPage?: (any) => boolean;
 
-  private async resolveAuthorizationHeader(authorizationHeader: IGetAuthorizationHeader | IAuthorizationHeaderValue | string): Promise<string | IAuthorizationHeaderValue> {
+  private async resolveAuthorizationHeader(
+    authorizationHeader: IGetAuthorizationHeader | IAuthorizationHeaderValue | string
+  ): Promise<string | IAuthorizationHeaderValue> {
     let authorizationValue = null;
     try {
-      if (typeof (authorizationHeader) === 'string') {
+      if (typeof authorizationHeader === 'string') {
         authorizationValue = authorizationHeader as string;
-      } else if (typeof (authorizationHeader) === 'function') {
+      } else if (typeof authorizationHeader === 'function') {
         let asFunc = authorizationHeader as IGetAuthorizationHeader;
         let resolved = asFunc.call(null) as Promise<IAuthorizationHeaderValue | string>;
         authorizationValue = await resolved;
-        if (typeof (resolved) === 'function') {
+        if (typeof resolved === 'function') {
           asFunc = resolved as IGetAuthorizationHeader;
           resolved = asFunc.call(null) as Promise<IAuthorizationHeaderValue | string>;
           authorizationValue = await resolved;
@@ -139,7 +144,12 @@ export class RestLibrary {
     return authorizationValue;
   }
 
-  async call(awaitToken: IGetAuthorizationHeader | IAuthorizationHeaderValue | string, api: string, options, cacheOptions = null): Promise<any> {
+  async call(
+    awaitToken: IGetAuthorizationHeader | IAuthorizationHeaderValue | string,
+    api: string,
+    options,
+    cacheOptions = null
+  ): Promise<any> {
     cacheOptions = cacheOptions || {};
     let massageData = (data) => flattenData(data);
     if (options.allowEmptyResponse) {
@@ -191,21 +201,22 @@ export class RestLibrary {
     }
     if (!options.headers.authorization) {
       const value = await this.resolveAuthorizationHeader(awaitToken);
-      options.headers.authorization = typeof (value) === 'string' ? value as string : (value as IAuthorizationHeaderValue).value;
+      options.headers.authorization =
+        typeof value === 'string' ? (value as string) : (value as IAuthorizationHeaderValue).value;
     }
     try {
       let value = null;
       if (api === 'request' && options.octokitRequest) {
         const endpoint = options.octokitRequest;
         delete options.octokitRequest;
-        value = await method.call(this.github, endpoint, options) as Promise<any>;
+        value = (await method.call(this.github, endpoint, options)) as Promise<any>;
       } else if (api === 'graphql') {
         massageData = noDataMassage;
         const query = options.octokitQuery;
         delete options.octokitQuery;
-        value = await method.call(this.github, query, options) as Promise<any>;
+        value = (await method.call(this.github, query, options)) as Promise<any>;
       } else {
-        value = await method.call(this.github, options) as Promise<any>;
+        value = (await method.call(this.github, options)) as Promise<any>;
       }
       const finalized = massageData(value);
       return finalized;
@@ -236,7 +247,7 @@ function getPageLinks(link: any): any {
   // link format:
   // '<https://api.github.com/users/aseemk/followers?page=2>; rel="next", <https://api.github.com/users/aseemk/followers?page=2>; rel="last"'
   link.replace(/<([^>]*)>;\s*rel="([\w]*)"/g, (m, uri, type) => {
-    links[type] = uri
+    links[type] = uri;
   });
   return links;
 }

@@ -7,6 +7,7 @@ import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repos
 import { IGitHubCollaboratorPermissions } from '../interfaces';
 import * as common from './common';
 
+// prettier-ignore
 const memberPrimaryProperties = [
   'id',
   'login',

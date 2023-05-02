@@ -4,13 +4,18 @@
 //
 
 import appRoot from 'app-root-path';
+//import Debug from 'debug';
 import dotenv from 'dotenv';
 import path from 'path';
 import walkBack from 'walk-back';
 import { InnerError, IPainlessConfigGet, IProviderOptions } from '.';
 import { processEnvironmentProvider } from './environmentConfigurationResolver';
 
+//const debug = Debug('startup');
+
 const ApplicationNameEnvironmentVariableKey = 'APPLICATION_NAME';
+
+const debug = (a: any) => {};
 
 function objectProvider(json: any, applicationName: string) {
   const appKey = applicationName ? `app:${applicationName}` : null;
@@ -29,20 +34,31 @@ function objectProvider(json: any, applicationName: string) {
 
 let unconfigured: IPainlessConfigGet | null = null;
 
-function configurePackageEnvironments(providers: IPainlessConfigGet[], environmentModules: string[], environment: string, appName: string) {
-  let environmentInstances = [];
+function configurePackageEnvironments(
+  providers: IPainlessConfigGet[],
+  appRoot: string,
+  environmentModules: string[],
+  environment: string,
+  appName: string
+) {
+  const environmentInstances = [];
   for (let i = 0; i < environmentModules.length; i++) {
     // CONSIDER: Should the name strip any @ after the first slash, in case it is a version-appended version?
-    const npmName = environmentModules[i].trim();
+    let npmName = environmentModules[i].trim();
     if (!npmName) {
       continue;
     }
-
+    // Local directory-as-module case
+    if (npmName.startsWith('./')) {
+      npmName = path.join(appRoot, npmName);
+    }
     let environmentPackage = null;
     try {
       environmentPackage = require(npmName);
     } catch (packageRequireError) {
-      const packageMissing: InnerError = new Error(`Unable to require the "${npmName}" environment package for the "${environment}" environment`);
+      const packageMissing: InnerError = new Error(
+        `Unable to require the "${npmName}" environment package for the "${environment}" environment`
+      );
       packageMissing.innerError = packageRequireError;
       throw packageMissing;
     }
@@ -51,22 +67,26 @@ function configurePackageEnvironments(providers: IPainlessConfigGet[], environme
     }
 
     let values = null;
-    if (typeof(environmentPackage) === 'function') {
+    if (typeof environmentPackage === 'function') {
       environmentInstances.push(environmentPackage);
       try {
         values = environmentPackage(environment);
       } catch (problemCalling) {
         const asText = problemCalling.toString();
-        const error: InnerError = new Error(`While calling the environment package "${npmName}" for the "${environment}" environment an error was thrown: ${asText}`);
+        const error: InnerError = new Error(
+          `While calling the environment package "${npmName}" for the "${environment}" environment an error was thrown: ${asText}`
+        );
         error.innerError = problemCalling;
         throw error;
       }
-    } else if (typeof(environmentPackage) === 'object') {
+    } else if (typeof environmentPackage === 'object') {
       values = environmentPackage;
     }
 
     if (!values) {
-      throw new Error(`Could not determine what to do with the environment package "${npmName}" for the "${environment}" environment (no values or unexpected type)`);
+      throw new Error(
+        `Could not determine what to do with the environment package "${npmName}" for the "${environment}" environment (no values or unexpected type)`
+      );
     }
     providers.push(objectProvider(values, appName));
 
@@ -74,7 +94,13 @@ function configurePackageEnvironments(providers: IPainlessConfigGet[], environme
   }
 }
 
-function configureLocalEnvironment(providers: IPainlessConfigGet[], appRoot: string, directoryName: string, environment: string, applicationName: string) {
+function configureLocalEnvironment(
+  providers: IPainlessConfigGet[],
+  appRoot: string,
+  directoryName: string,
+  environment: string,
+  applicationName: string
+) {
   const envFile = `${environment}.json`;
   const envPath = path.join(appRoot, directoryName, envFile);
   try {
@@ -98,7 +124,7 @@ function tryGetPackage(appRoot: string) {
 function preloadDotEnv() {
   const dotenvPath = walkBack(process.cwd(), '.env');
   if (dotenvPath) {
-    dotenv.config( { path: dotenvPath });
+    dotenv.config({ path: dotenvPath });
   }
 }
 
@@ -110,9 +136,13 @@ function initialize(options?: IProviderOptions) {
   const provider = options.provider || processEnvironmentProvider();
   let environmentInstances = null;
   const applicationRoot = options.applicationRoot || appRoot;
-  const applicationName = (options.applicationName || provider.get(ApplicationNameEnvironmentVariableKey)) as string;
+  const applicationName = (options.applicationName ||
+    provider.get(ApplicationNameEnvironmentVariableKey)) as string;
 
-  let configurationEnvironmentKeyNames = (provider.get('CONFIGURATION_ENVIRONMENT_KEYS') || 'CONFIGURATION_ENVIRONMENT,NODE_ENV').split(',');
+  const nodeEnvironment = provider.get('NODE_ENV');
+  const configurationEnvironmentKeyNames = (
+    provider.get('CONFIGURATION_ENVIRONMENT_KEYS') || 'CONFIGURATION_ENVIRONMENT,NODE_ENV'
+  ).split(',');
   if (!configurationEnvironmentKeyNames || configurationEnvironmentKeyNames.length === 0) {
     throw new Error('No configuration environment key name(s) defined');
   }
@@ -125,9 +155,13 @@ function initialize(options?: IProviderOptions) {
     return provider;
   }
 
-  const providers: IPainlessConfigGet[] = [
-    provider,
-  ];
+  const matchWarning =
+    nodeEnvironment !== environment
+      ? ` [MISMATCH: NODE_ENV=${nodeEnvironment}, environment=${environment}]`
+      : '';
+  debug(`Configuration environment: ${environment}${matchWarning}`);
+
+  const providers: IPainlessConfigGet[] = [provider];
 
   if ((provider as any).testConfiguration) {
     const testJson = (provider as any).testConfiguration;
@@ -135,11 +169,17 @@ function initialize(options?: IProviderOptions) {
   } else {
     const appRoot = applicationRoot.toString();
     const pkg = tryGetPackage(appRoot);
-    const appName = applicationName || (pkg && pkg.painlessConfigApplicationName ? pkg.painlessConfigApplicationName : undefined);
+    const appName =
+      applicationName ||
+      (pkg && pkg.painlessConfigApplicationName ? pkg.painlessConfigApplicationName : undefined);
 
     const environmentDirectoryKey = provider.get('ENVIRONMENT_DIRECTORY_KEY') || 'ENVIRONMENT_DIRECTORY';
     const directoryName = options.directoryName || provider.get(environmentDirectoryKey) || 'env';
     configureLocalEnvironment(providers, appRoot, directoryName, environment, appName);
+
+    // const localEnvironmentModuleDirectoryKey = provider.get('ENVIRONMENT_MODULE_DIRECTORY_KEY') || 'ENVIRONMENT_MODULE_DIRECTORY';
+    // const moduleDirectoryName = options.moduleDirectoryName || provider.get(localEnvironmentModuleDirectoryKey) || pkg.painlessConfigLocalEnvironmentModuleDirectory || 'env';
+    // configureLocalEnvironment(providers, appRoot, directoryName, environment, appName);
 
     const environmentModulesKey = provider.get('ENVIRONMENT_MODULES_KEY') || 'ENVIRONMENT_MODULES';
     const environmentModules = (provider.get(environmentModulesKey) || '').split(',');
@@ -154,7 +194,13 @@ function initialize(options?: IProviderOptions) {
       }
       environmentModules.push(...painlessConfigEnvironments);
     }
-    environmentInstances = configurePackageEnvironments(providers, environmentModules, environment, appName);
+    environmentInstances = configurePackageEnvironments(
+      providers,
+      appRoot,
+      environmentModules,
+      environment,
+      appName
+    );
   }
 
   return {
@@ -166,7 +212,7 @@ function initialize(options?: IProviderOptions) {
           return value;
         }
       }
-    }
+    },
   };
 }
 

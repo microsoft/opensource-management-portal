@@ -35,7 +35,10 @@ export interface IReposApplication extends Application {
   initializeJob: (config: any, configurationError: Error) => Promise<IReposApplication>;
   startupApplication: () => Promise<IReposApplication>;
   startupJob: () => Promise<IReposApplication>;
-  runJob: (job: (job: IReposJob) => Promise<IReposJobResult | void>, options?: IReposJobOptions) => Promise<IReposApplication>;
+  runJob: (
+    job: (job: IReposJob) => Promise<IReposJobResult | void>,
+    options?: IReposJobOptions
+  ) => Promise<IReposApplication>;
 }
 
 export interface IReposJob {

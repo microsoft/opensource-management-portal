@@ -10,7 +10,7 @@ import getCompanySpecificDeployment from '../../middleware/companySpecificDeploy
 import { ErrorHelper } from '../../transitional';
 
 abstract class PortalSudoBase {
-  constructor(private providers: IProviders) { }
+  constructor(private providers: IProviders) {}
   protected isOff() {
     const config = this.providers.config;
     if (config?.sudo?.portal?.off) {
@@ -49,7 +49,9 @@ class PortalSudoPrimaryOrganization extends PortalSudoBase implements IPortalSud
     if (this._org === undefined) {
       const operations = this._providers.operations;
       const primaryOrganizationName = operations.getPrimaryOrganizationName();
-      this._org = primaryOrganizationName ? operations.getOrganization(primaryOrganizationName) : false as any as Organization;
+      this._org = primaryOrganizationName
+        ? operations.getOrganization(primaryOrganizationName)
+        : (false as any as Organization);
     }
     return this._org ? this._org.isSudoer(githubLogin, link) : Promise.resolve(false);
   }
@@ -95,7 +97,8 @@ class PortalSudoSecurityGroup extends PortalSudoBase implements IPortalSudo {
         return true;
       }
     } catch (error) {
-      if (ErrorHelper.IsNotFound(error)) { // security groups do get deleted and should not bring down any system in that case
+      if (ErrorHelper.IsNotFound(error)) {
+        // security groups do get deleted and should not bring down any system in that case
         return false;
       }
       console.warn(error);
@@ -133,8 +136,10 @@ function createProviderInstance(providerName: string, providers: IProviders): IP
     case '':
     case 'none': {
       return {
-        isSudoer: () => { return Promise.resolve(false); }
-      }
+        isSudoer: () => {
+          return Promise.resolve(false);
+        },
+      };
     }
     case 'primaryorg': {
       return new PortalSudoPrimaryOrganization(providers);

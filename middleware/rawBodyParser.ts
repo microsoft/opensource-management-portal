@@ -18,8 +18,8 @@ export default function rawBodyParser(req: ReposAppRequest, res, next) {
   // This raw value is only stored when webhook processing is happening,
   // when `EXPOSE_WEBHOOK_INGESTION_ENDPOINT` === `1`
   (req as any)._raw = '';
-  req.on('data', chunk => {
+  req.on('data', (chunk) => {
     (req as any)._raw += chunk;
   });
   return next();
-};
+}

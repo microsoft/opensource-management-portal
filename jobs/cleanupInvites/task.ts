@@ -16,13 +16,18 @@ export default async function cleanup({ providers }: IReposJob): Promise<void> {
   const insights = providers.insights;
   let maximumInvitationAgeDays = defaultMaximumInvitationAgeDays;
   const { config, operations } = providers;
-  if (config.github && config.github.jobs && config.github.jobs.cleanup && config.github.jobs.cleanup.maximumInvitationAgeDays) {
+  if (
+    config.github &&
+    config.github.jobs &&
+    config.github.jobs.cleanup &&
+    config.github.jobs.cleanup.maximumInvitationAgeDays
+  ) {
     maximumInvitationAgeDays = config.github.jobs.cleanup.maximumInvitationAgeDays;
   }
   const maximumAgeMoment = moment().subtract(maximumInvitationAgeDays, 'days');
   const organizations = operations.getOrganizations();
-  let removedInvitations = 0;
-  for (let organization of organizations) {
+  const removedInvitations = 0;
+  for (const organization of organizations) {
     let invitations: any[];
     try {
       invitations = await organization.getMembershipInvitations();
@@ -54,18 +59,24 @@ export default async function cleanup({ providers }: IReposJob): Promise<void> {
           role: invite.role,
           emailInvited: invite.email,
         };
-        const eventName = invite.login ? 'JobOrganizationInviteCleanupInvitationNeeded' : 'JobOrganizationInviteCleanupInvitationNotUser';
+        const eventName = invite.login
+          ? 'JobOrganizationInviteCleanupInvitationNeeded'
+          : 'JobOrganizationInviteCleanupInvitationNotUser';
         insights.trackEvent({
           name: eventName,
           properties: data,
         });
       }
     }
-    console.log(`Organization ${organization.name} has ${invitationsToRemove.length} expired invitations out of ${invitations.length} total invitations pending`);
+    console.log(
+      `Organization ${organization.name} has ${invitationsToRemove.length} expired invitations out of ${invitations.length} total invitations pending`
+    );
     if (emailInvitations) {
-      console.warn(`Organization ${organization.name} has ${emailInvitations} e-mail based invitations that cannot be canceled through this job`);
+      console.warn(
+        `Organization ${organization.name} has ${emailInvitations} e-mail based invitations that cannot be canceled through this job`
+      );
     }
-    for (let login of invitationsToRemove) {
+    for (const login of invitationsToRemove) {
       try {
         await organization.removeMember(login);
       } catch (removeError) {

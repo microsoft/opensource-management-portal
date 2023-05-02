@@ -70,7 +70,7 @@ function defaultProvider() {
 
 function createClient(options?: IProviderOptions) {
   options = options || {};
-  let provider = options.provider || defaultProvider();
+  const provider = options.provider || defaultProvider();
   return {
     resolveVolumeFile,
     isVolumeFile: getAsVolumeFile,
@@ -78,7 +78,7 @@ function createClient(options?: IProviderOptions) {
       let paths = null;
       try {
         paths = await identifyPaths(provider, object);
-      } catch(parseError) {
+      } catch (parseError) {
         throw parseError;
       }
       const names = Object.getOwnPropertyNames(paths);

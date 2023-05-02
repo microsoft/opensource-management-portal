@@ -3,10 +3,18 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IOperationsInstance, ICorporateLink, throwIfNotCapable, IOperationsProviders, CoreCapability, IOperationsLinks } from '../interfaces';
+import {
+  IOperationsInstance,
+  ICorporateLink,
+  throwIfNotCapable,
+  IOperationsProviders,
+  CoreCapability,
+  IOperationsLinks,
+} from '../interfaces';
 import * as common from './common';
 import { Team } from './team';
 
+// prettier-ignore
 const memberPrimaryProperties = [
   'id',
   'login',
@@ -33,6 +41,11 @@ export class TeamMember {
     return this._link;
   }
 
+  set link(value: ICorporateLink) {
+    // console.warn('TeamMember.link was set');
+    this._link = value;
+  }
+
   get id(): number {
     return this._id;
   }
@@ -49,15 +62,16 @@ export class TeamMember {
     return this._login;
   }
 
-  set link(value: ICorporateLink) {
-    // console.warn('TeamMember.link was set');
-    this._link = value;
-  }
-
   constructor(team: Team, entity: any, operations: IOperationsInstance) {
     this._team = team;
     if (entity) {
-      common.assignKnownFieldsPrefixed(this, entity, 'member', memberPrimaryProperties, memberSecondaryProperties);
+      common.assignKnownFieldsPrefixed(
+        this,
+        entity,
+        'member',
+        memberPrimaryProperties,
+        memberSecondaryProperties
+      );
     }
     this._operations = operations;
   }
@@ -109,7 +123,9 @@ export class TeamMember {
       throw new Error('No mailAddressProvider is available in this application instance');
     }
     // Preventing a crash when trying to send a mail to an unlinked account
-    const mailAddress = link ? await providers.mailAddressProvider.getAddressFromUpn(link.corporateUsername) : null;
+    const mailAddress = link
+      ? await providers.mailAddressProvider.getAddressFromUpn(link.corporateUsername)
+      : null;
     this._mailAddress = mailAddress;
     return mailAddress;
   }

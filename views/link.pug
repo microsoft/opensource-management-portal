@@ -90,11 +90,11 @@ block content
         if user && user.github && user.github.id
           .alert-gray.pad
             if config && config.corporate && config.corporate.trainingResources
-              - var footres = config.corporate.trainingResources.footer
-              if footres
+              - var footers = config.corporate.trainingResources.footer
+              if footers
                 // These same resources appear on every single auth page footer, too.
                 h3 Open Source Resources
-                each categoryList, category in footres
+                each categoryList, category in footers
                   h5= category
                   ul.list-unstyled
                     each item in categoryList

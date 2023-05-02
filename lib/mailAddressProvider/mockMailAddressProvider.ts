@@ -5,7 +5,7 @@
 
 import { IMailAddressProvider } from '.';
 
-export default function createMailAddressProvider() : IMailAddressProvider{
+export default function createMailAddressProvider(): IMailAddressProvider {
   const upnToEmails = new Map();
   return {
     getAddressFromUpn: async (upn: string) => {
@@ -17,6 +17,6 @@ export default function createMailAddressProvider() : IMailAddressProvider{
     // testability:
     getUpnToEmails: function () {
       return upnToEmails;
-    }
+    },
   } as unknown as IMailAddressProvider;
 }

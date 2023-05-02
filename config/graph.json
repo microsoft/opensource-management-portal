@@ -4,5 +4,6 @@
   "tokenCacheSeconds": "env://GRAPH_TOKEN_CACHE_SECONDS?type=int",
   "clientId": "env://GRAPH_AAD_CLIENT_ID",
   "clientSecret": "env://GRAPH_AAD_CLIENT_SECRET",
-  "tokenEndpoint": "env://GRAPH_AAD_OAUTH2_TOKEN_ENDPOINT_V1"
+  "tokenEndpoint": "env://GRAPH_AAD_OAUTH2_TOKEN_ENDPOINT_V1",
+  "skipManagerLookupForIds": "env://GRAPH_PROVIDER_SKIP_MANAGER_LOOKUP_IDS"
 }

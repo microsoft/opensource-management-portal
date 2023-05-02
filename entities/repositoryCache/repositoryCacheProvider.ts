@@ -3,13 +3,23 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { RepositoryCacheEntity, EntityImplementation, RepositoryCacheFixedQueryAll, RepositoryCacheFixedQueryByOrganizationId, RepositoryCacheDeleteByOrganizationId, RepositoryCacheGetOrganizationIdsQuery } from './repositoryCache';
+import {
+  IEntityMetadata,
+  EntityMetadataBase,
+  IEntityMetadataBaseOptions,
+} from '../../lib/entityMetadataProvider/entityMetadata';
+import {
+  RepositoryCacheEntity,
+  EntityImplementation,
+  RepositoryCacheFixedQueryAll,
+  RepositoryCacheFixedQueryByOrganizationId,
+  RepositoryCacheDeleteByOrganizationId,
+  RepositoryCacheGetOrganizationIdsQuery,
+} from './repositoryCache';
 
 const thisProviderType = EntityImplementation.Type;
 
-export interface IRepositoryCacheCreateOptions extends IEntityMetadataBaseOptions {
-}
+export interface IRepositoryCacheCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface IRepositoryCacheProvider {
   initialize(): Promise<void>;
@@ -82,7 +92,7 @@ export class RepositoryCacheProvider extends EntityMetadataBase implements IRepo
   async queryAllOrganizationIds(): Promise<string[]> {
     const query = new RepositoryCacheGetOrganizationIdsQuery();
     const results = await this._entities.fixedQueryMetadata(thisProviderType, query);
-    return results.map(row => row['organizationid']);
+    return results.map((row) => row['organizationid']);
   }
 
   async deleteByOrganizationId(organizationId: string): Promise<void> {

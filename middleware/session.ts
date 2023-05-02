@@ -13,11 +13,7 @@ const dbg = debug('startup');
 
 const saltNotSet = 'session-salt-not-set-warning';
 
-const supportedProviders = [
-  'memory',
-  'redis',
-  'cosmosdb',
-];
+const supportedProviders = ['memory', 'redis', 'cosmosdb'];
 
 export default function ConnectSession(app, config, providers: IProviders) {
   const sessionProvider = config.session.provider;
@@ -31,7 +27,9 @@ export default function ConnectSession(app, config, providers: IProviders) {
     throw new Error('In a production Node.js environment, a SESSION_SALT must be set');
   }
   if (isProduction && sessionProvider === 'memory') {
-    throw new Error('In a production Node.js environment, a SESSION_PROVIDER of type \'memory\' is not supported.');
+    throw new Error(
+      "In a production Node.js environment, a SESSION_PROVIDER of type 'memory' is not supported."
+    );
   }
   let store = undefined;
   if (sessionProvider === 'redis') {
@@ -67,7 +65,7 @@ export default function ConnectSession(app, config, providers: IProviders) {
       maxAge: (ttlFromStore || 86400) * 1000 /* milliseconds for maxAge, not seconds */,
       secure: undefined,
       domain: undefined,
-    }
+    },
   };
   if (config.webServer.allowHttp === false || config.containers.deployment === true) {
     settings.cookie.secure = true;
@@ -78,6 +76,10 @@ export default function ConnectSession(app, config, providers: IProviders) {
   if (store) {
     settings['store'] = store;
   }
-  dbg(`session cookie: ${settings.name} ${settings.cookie.secure ? 'SECURE ' : ''} ${settings.cookie.domain ? 'Domain: ' + settings.cookie.domain : ''} via ${sessionProvider}`);
+  dbg(
+    `session cookie: ${settings.name} ${settings.cookie.secure ? 'SECURE ' : ''} ${
+      settings.cookie.domain ? 'Domain: ' + settings.cookie.domain : ''
+    } via ${sessionProvider}`
+  );
   return session(settings);
-};
+}

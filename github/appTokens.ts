@@ -33,16 +33,42 @@ export class GitHubAppTokens {
   private _tokensByInstallation = new Map<number, IInstallationToken[]>();
   private _baseUrl: string;
 
-  static CreateFromBase64EncodedFileString(purpose: AppPurpose, friendlyName: string, applicationId: number, fileContents: string, baseUrl?: string): GitHubAppTokens {
-    let keyContents = Buffer.from(fileContents, 'base64').toString('utf8').replace(/\r\n/g, '\n');
+  static CreateFromBase64EncodedFileString(
+    purpose: AppPurpose,
+    friendlyName: string,
+    applicationId: number,
+    fileContents: string,
+    baseUrl?: string
+  ): GitHubAppTokens {
+    const keyContents = Buffer.from(fileContents, 'base64').toString('utf8').replace(/\r\n/g, '\n');
     return new GitHubAppTokens(purpose, friendlyName, applicationId, keyContents, baseUrl);
   }
 
-  static CreateFromString(purpose: AppPurpose, friendlyName: string, applicationId: number, value: string, baseUrl?: string): GitHubAppTokens {
+  static CreateFromString(
+    purpose: AppPurpose,
+    friendlyName: string,
+    applicationId: number,
+    value: string,
+    baseUrl?: string
+  ): GitHubAppTokens {
     return new GitHubAppTokens(purpose, friendlyName, applicationId, value, baseUrl);
   }
 
-  constructor(purpose: AppPurpose, public friendlyName: string, appId: number, privateKey: string, baseUrl?: string) {
+  get appId() {
+    return this._appId;
+  }
+
+  getPrivateCertificate() {
+    return this.#privateKey;
+  }
+
+  constructor(
+    purpose: AppPurpose,
+    public friendlyName: string,
+    appId: number,
+    privateKey: string,
+    baseUrl?: string
+  ) {
     this.#privateKey = privateKey;
     this._appId = appId;
     this._baseUrl = baseUrl;
@@ -57,7 +83,7 @@ export class GitHubAppTokens {
   }
 
   async getAppAuthenticationToken() {
-    const details = await this._appAuth({ type: 'app'});
+    const details = await this._appAuth({ type: 'app' });
     const token = (details as AppAuthentication).token;
     return token;
   }
@@ -78,24 +104,44 @@ export class GitHubAppTokens {
     return auth;
   }
 
-  async getInstallationToken(installationId: number, organizationName: string): Promise<IAuthorizationHeaderValue> {
+  async getInstallationToken(
+    installationId: number,
+    organizationName: string
+  ): Promise<IAuthorizationHeaderValue> {
     const now = new Date();
     const requiredValidityPeriod = new Date(now.getTime() + ValidityOffsetAfterNowMilliseconds);
     const latestToken = this.getLatestValidToken(installationId, requiredValidityPeriod);
     if (latestToken) {
-      return { value: latestToken.headerValue, purpose: this.purpose, installationId, organizationName, source: `Existing installation ID ${installationId} token for ${organizationName}` };
+      return {
+        value: latestToken.headerValue,
+        purpose: this.purpose,
+        installationId,
+        organizationName,
+        source: `Existing installation ID ${installationId} token for ${organizationName}`,
+      };
     }
     try {
       const requestedToken = await this.requestInstallationToken(installationId, organizationName);
       this.getInstallationTokens(installationId).push(requestedToken);
-      return { value: requestedToken.headerValue, purpose: this.purpose, installationId, organizationName, source: `New token for ${organizationName} organization via installation ID ${installationId}` };
+      return {
+        value: requestedToken.headerValue,
+        purpose: this.purpose,
+        installationId,
+        organizationName,
+        source: `New token for ${organizationName} organization via installation ID ${installationId}`,
+      };
     } catch (error) {
-      console.warn(`Error retrieving installation token ID ${installationId} for organization ${organizationName}`);
+      console.warn(
+        `Error retrieving installation token ID ${installationId} for organization ${organizationName}`
+      );
       throw error;
     }
   }
 
-  private async requestInstallationToken(installationId: number, organizationName: string): Promise<IInstallationToken> {
+  private async requestInstallationToken(
+    installationId: number,
+    organizationName: string
+  ): Promise<IInstallationToken> {
     try {
       const requested = new Date();
       const installationAppAuth = this.getOrCreateInstallationAuthFunction(installationId);
@@ -103,7 +149,9 @@ export class GitHubAppTokens {
       const installationToken = (installationTokenDetails as InstallationAccessTokenAuthentication).token;
       const headerValue = `token ${installationToken}`;
       const expiresFromDetails = (installationTokenDetails as any).expiresAt;
-      const expires = expiresFromDetails ? new Date(expiresFromDetails) : (new Date(requested.getTime() + InstallationTokenLifetimeMilliseconds));
+      const expires = expiresFromDetails
+        ? new Date(expiresFromDetails)
+        : new Date(requested.getTime() + InstallationTokenLifetimeMilliseconds);
       const wrapped: IInstallationToken = {
         installationId,
         organizationName,
@@ -121,9 +169,9 @@ export class GitHubAppTokens {
   private getLatestValidToken(installationId: number, timeTokenMustBeValid: Date): IInstallationToken {
     let tokens = this.getInstallationTokens(installationId);
     const count = tokens.length;
-    tokens = tokens.filter(tokenValidFilter.bind(null, timeTokenMustBeValid )).sort(sortByLatestToken);
+    tokens = tokens.filter(tokenValidFilter.bind(null, timeTokenMustBeValid)).sort(sortByLatestToken);
     if (tokens.length !== count) {
-      this.replaceInstallationTokens(installationId, tokens);  
+      this.replaceInstallationTokens(installationId, tokens);
     }
     return tokens.length > 0 ? tokens[0] : null;
   }
@@ -154,7 +202,9 @@ function sortByLatestToken(a: IInstallationToken, b: IInstallationToken) {
 function tokenValidFilter(timeTokenMustBeValid: Date, token: IInstallationToken) {
   const isValid = token.expires > timeTokenMustBeValid;
   if (!isValid) {
-    console.log(`invalid or expired token being removed: expires=${token.expires} install_id=${token.installationId} org=${token.organizationName}`);
+    console.log(
+      `invalid or expired token being removed: expires=${token.expires} install_id=${token.installationId} org=${token.organizationName}`
+    );
     return false;
   }
   return true;

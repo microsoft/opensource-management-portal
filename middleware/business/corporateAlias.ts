@@ -4,13 +4,28 @@
 //
 
 import { jsonError } from '..';
-import { ReposAppRequest } from '../../interfaces';
+import { IProviders, ReposAppRequest } from '../../interfaces';
 import { getProviders } from '../../transitional';
 import { IndividualContext } from '../../user';
 
-export default async function getCorporateAliasFromActiveContext(req: ReposAppRequest) {
+const cachedCorporateAliasRequestKey = '__corporateAlias';
+
+export async function getCorporateAliasFromRequest(req: ReposAppRequest): Promise<string> {
+  if (req[cachedCorporateAliasRequestKey]) {
+    return req[cachedCorporateAliasRequestKey];
+  }
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-  const { graphProvider } = getProviders(req);
+  const providers = getProviders(req);
+  const corporateAlias = await getCorporateAliasFromActiveContext(providers, activeContext);
+  req[cachedCorporateAliasRequestKey] = corporateAlias;
+  return corporateAlias;
+}
+
+export async function getCorporateAliasFromActiveContext(
+  providers: IProviders,
+  activeContext: IndividualContext
+): Promise<string> {
+  const { graphProvider } = providers;
   if (!activeContext.corporateIdentity || !activeContext.corporateIdentity.id) {
     throw jsonError('No corporate identity', 401);
   }

@@ -7,7 +7,15 @@ import { Repository } from './repository';
 import { wrapError } from '../utils';
 import { AppPurpose } from '../github';
 import { CacheDefault, getMaxAgeSeconds } from '.';
-import { IOperationsInstance, IPurposefulGetAuthorizationHeader, GitHubIssueState, throwIfNotGitHubCapable, ICacheOptions, IGetAuthorizationHeader, ICacheOptionsWithPurpose } from '../interfaces';
+import {
+  IOperationsInstance,
+  IPurposefulGetAuthorizationHeader,
+  GitHubIssueState,
+  throwIfNotGitHubCapable,
+  ICacheOptions,
+  IGetAuthorizationHeader,
+  ICacheOptionsWithPurpose,
+} from '../interfaces';
 import { ErrorHelper } from '../transitional';
 import { RepositoryProjectColumn } from './repositoryProjectColumn';
 import * as common from './common';
@@ -24,7 +32,14 @@ export class RepositoryProject {
 
   private _purpose: AppPurpose;
 
-  constructor(repository: Repository, projectId: number, operations: IOperationsInstance, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader, entity?: any) {
+  constructor(
+    repository: Repository,
+    projectId: number,
+    operations: IOperationsInstance,
+    getAuthorizationHeader: IPurposefulGetAuthorizationHeader,
+    getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader,
+    entity?: any
+  ) {
     this._getAuthorizationHeader = getAuthorizationHeader;
     this._getSpecificAuthorizationHeader = getSpecificAuthorizationHeader;
     this._repository = repository;
@@ -40,14 +55,28 @@ export class RepositoryProject {
     this._purpose = purpose;
   }
 
-  get id(): number { return this._entity?.id as number; }
-  get name(): string { return this._entity?.name as string; }
-  get body(): string { return this._entity?.body as string; }
-  get private(): boolean { return this._entity?.private as boolean; }
-  get state(): GitHubIssueState { return this._entity?.state as GitHubIssueState; }
-  get htmlUrl(): string { return this._entity?.html_url as string; }
+  get id(): number {
+    return this._entity?.id as number;
+  }
+  get name(): string {
+    return this._entity?.name as string;
+  }
+  get body(): string {
+    return this._entity?.body as string;
+  }
+  get private(): boolean {
+    return this._entity?.private as boolean;
+  }
+  get state(): GitHubIssueState {
+    return this._entity?.state as GitHubIssueState;
+  }
+  get htmlUrl(): string {
+    return this._entity?.html_url as string;
+  }
 
-  getEntity(): any { return this._entity; }
+  getEntity(): any {
+    return this._entity;
+  }
 
   get repository(): Repository {
     return this._repository;
@@ -58,7 +87,11 @@ export class RepositoryProject {
     const parameters = Object.assign(patch, {
       project_id: this.id,
     });
-    const details = await operations.github.post(this.authorizeSpecificPurpose(this._purpose), 'projects.update', parameters);
+    const details = await operations.github.post(
+      this.authorizeSpecificPurpose(this._purpose),
+      'projects.update',
+      parameters
+    );
     return details;
   }
 
@@ -79,8 +112,18 @@ export class RepositoryProject {
       name,
     };
     augmentInertiaPreview(parameters);
-    const details = await operations.github.post(this.authorizeSpecificPurpose(AppPurpose.Onboarding), 'projects.createColumn', parameters);
-    const column = new RepositoryProjectColumn(this, details.number, operations, this._getAuthorizationHeader, details);
+    const details = await operations.github.post(
+      this.authorizeSpecificPurpose(AppPurpose.Onboarding),
+      'projects.createColumn',
+      parameters
+    );
+    const column = new RepositoryProjectColumn(
+      this,
+      details.number,
+      operations,
+      this._getAuthorizationHeader,
+      details
+    );
     return column;
   }
 
@@ -99,7 +142,11 @@ export class RepositoryProject {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     // NOTE: this will not retrieve more than a few columns since we are not paging (by design); GH default is 30 anyway.
-    const raw = await operations.github.call(this.authorizeSpecificPurpose(purpose), 'projects.listColumns', parameters);
+    const raw = await operations.github.call(
+      this.authorizeSpecificPurpose(purpose),
+      'projects.listColumns',
+      parameters
+    );
     const columns = common.createInstances<RepositoryProjectColumn>(this, projectColumnFromEntity, raw);
     return columns;
   }
@@ -107,7 +154,7 @@ export class RepositoryProject {
   // async getColumn(columnId: number): Promise<any> {
   // }
 
-  async getDetails(options?: ICacheOptionsWithPurpose, okToUseLocalEntity: boolean = true): Promise<any> {
+  async getDetails(options?: ICacheOptionsWithPurpose, okToUseLocalEntity = true): Promise<any> {
     if (okToUseLocalEntity && this._entity) {
       return this._entity;
     }
@@ -129,12 +176,23 @@ export class RepositoryProject {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     try {
-      const entity = await operations.github.call(this.authorizeSpecificPurpose(purpose), 'projects.get', parameters, cacheOptions);
+      const entity = await operations.github.call(
+        this.authorizeSpecificPurpose(purpose),
+        'projects.get',
+        parameters,
+        cacheOptions
+      );
       this._entity = entity;
       return entity;
     } catch (error) {
       const notFound = error.status && error.status == /* loose */ 404;
-      error = wrapError(error, notFound ? 'The project could not be found.' : `Could not get details about the project. ${error.status}`, notFound);
+      error = wrapError(
+        error,
+        notFound
+          ? 'The project could not be found.'
+          : `Could not get details about the project. ${error.status}`,
+        notFound
+      );
       if (notFound) {
         error.status = 404;
       }
@@ -155,7 +213,10 @@ export class RepositoryProject {
   }
 
   private authorizeSpecificPurpose(purpose: AppPurpose): IGetAuthorizationHeader | string {
-    const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(this, purpose) as IGetAuthorizationHeader;
+    const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(
+      this,
+      purpose
+    ) as IGetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 }
@@ -163,14 +224,18 @@ export class RepositoryProject {
 function projectColumnFromEntity(entity) {
   // 'this' is bound for this function to be a private method
   const operations = this._operations;
-  const column = new RepositoryProjectColumn(this, entity.id, operations, this._getSpecificAuthorizationHeader, entity);
+  const column = new RepositoryProjectColumn(
+    this,
+    entity.id,
+    operations,
+    this._getSpecificAuthorizationHeader,
+    entity
+  );
   return column;
 }
 
 export function augmentInertiaPreview(parameters: any) {
   (parameters as any).mediaType = {
-    previews: [
-      'inertia',
-    ],
+    previews: ['inertia'],
   };
 }

@@ -3,7 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import _ from 'lodash';
 import crypto from 'crypto';
 import secureCompare from 'secure-compare';
 
@@ -43,7 +42,9 @@ export interface IProcessOrganizationWebhookOptions {
   acknowledgeValidEvent?: any;
 }
 
-export default async function ProcessOrganizationWebhook(options: IProcessOrganizationWebhookOptions): Promise<any> {
+export default async function ProcessOrganizationWebhook(
+  options: IProcessOrganizationWebhookOptions
+): Promise<any> {
   const operations = options.operations;
   if (!operations) {
     throw new Error('No operations instance provided');
@@ -108,7 +109,7 @@ export default async function ProcessOrganizationWebhook(options: IProcessOrgani
     options.acknowledgeValidEvent();
   }
   let interestingEvents = 0;
-  const work = Tasks.filter(task => task.filter(event));
+  const work = Tasks.filter((task) => task.filter(event));
   if (work.length > 0) {
     ++interestingEvents;
     console.log(`[* interesting event: ${event.properties.event} (${work.length} interested tasks)]`);
@@ -116,7 +117,7 @@ export default async function ProcessOrganizationWebhook(options: IProcessOrgani
     console.log(`[uninteresting event: ${event.properties.event}]`);
   }
 
-  for (let processor of work) {
+  for (const processor of work) {
     try {
       await processor.run(operations, organization, event);
     } catch (processInitializationError) {
@@ -136,7 +137,9 @@ export default async function ProcessOrganizationWebhook(options: IProcessOrgani
             const now = new Date();
             if (resetDate > now) {
               const difference = resetDate.getTime() - now.getTime();
-              console.log(`[rate limit sleep] This thread will sleep for the remainder of this limit, ${difference}ms, until ${resetDate}`);
+              console.log(
+                `[rate limit sleep] This thread will sleep for the remainder of this limit, ${difference}ms, until ${resetDate}`
+              );
               await sleep(difference);
               console.log('[resuming from rate limit sleep]');
             }

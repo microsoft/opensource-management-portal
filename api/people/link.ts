@@ -10,6 +10,7 @@ import { ICorporateLink, LinkOperationSource } from '../../interfaces';
 
 const linkScope = 'link';
 
+// prettier-ignore
 const supportedApiVersions = new Set([
   '2019-10-01',
 ]);
@@ -70,7 +71,6 @@ export default async function postLinkApi(req: IApiRequest, res, next) {
       res.header('location', newLinkOutcome.resourceLink);
     }
     return res.end();
-
   } catch (linkError) {
     return next(jsonError(linkError));
   }

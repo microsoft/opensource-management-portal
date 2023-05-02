@@ -21,7 +21,9 @@ async function validateActiveMembership(req: ReposAppRequest, res, next) {
   const { organization } = req;
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   if (!activeContext.link) {
-    return next(jsonError('You must be linked and a member of the organization to create and manage repos', 400));
+    return next(
+      jsonError('You must be linked and a member of the organization to create and manage repos', 400)
+    );
   }
   const membership = await organization.getOperationalMembership(activeContext.getGitHubIdentity().username);
   if (!membership || membership.state !== OrganizationMembershipState.Active) {
@@ -33,14 +35,17 @@ async function validateActiveMembership(req: ReposAppRequest, res, next) {
 
 router.post('/', asyncHandler(validateActiveMembership), asyncHandler(createRepositoryFromClient));
 
-router.use('/:repoName', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { organization } = req;
-  const { repoName } = req.params;
-  let repository: Repository = null;
-  repository = organization.repository(repoName);
-  setContextualRepository(req, repository);
-  return next();
-}));
+router.use(
+  '/:repoName',
+  asyncHandler(async (req: ReposAppRequest, res, next) => {
+    const { organization } = req;
+    const { repoName } = req.params;
+    let repository: Repository = null;
+    repository = organization.repository(repoName);
+    setContextualRepository(req, repository);
+    return next();
+  })
+);
 
 router.use('/:repoName', RouteContextualRepo);
 

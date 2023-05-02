@@ -18,6 +18,13 @@ block content
   p
     a(href=actionUrl, style='display:inline-block;background-color:#eee;font-size:18px;padding:12px') Review request
 
+  if managementChain && managementChain.length && managementChain.length > 1
+    h3 Reporting chain
+    ul
+      each manager in managementChain
+        if manager && manager.displayName && manager.mailNickname
+          li= manager.displayName + ' ' + '(' + manager.mailNickname + ')'
+
   h3 Request details
 
   table.technical(style='width:80%')

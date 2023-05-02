@@ -1,51 +1,173 @@
-# opensource-management-portal
+# Open Source Management Portal
 
-> Microsoft's Open Source Management Portal
+This application represents the home for open source engineering experiences
+at Microsoft. As a backend application it manages source of truth for many
+types of corporate open source metadata, historical intent of repos
+and projects, hosts a rich front-end, and also a set of APIs used by partner
+teams.
 
-This Node.js application is a part of the suite of services provided by
-the Open Source Programs Office at Microsoft to enable large-scale GitHub
-management and open source business review experiences.
+While we prefer native GitHub experiences, when it comes to displaying certain info
+and being more transparent about permissions and metadata, especially on
+GitHub, which has no extensible user interface, we end up using and driving
+people to this Open Source Management Portal to get the information they
+need.
 
-Key features center around opinionated takes on at-scale management, with an emphasis on _relentless automation_ and _delegation_:
+At Microsoft, 50,000 engineers are using a version of this portal as part of
+their open source engineering experience. However, Microsoft does have a set
+of "company-specific" extensions, including a separate React frontend client,
+that are not currently part of this repository. And... yup, if we were to
+start over today, we'd probably make this a Next.js-or-similar project.
 
-- __Linking__: the concept of associating a GitHub identity with an authenticated identity in another provider, for example an Azure Active Directory user
-- __Self-service GitHub organization join__: one-click GitHub organization joining for authorized users
-- __Cross-organization functionality__: consolidated + transparent views across a set of managed GitHub organizations including people, repos, teams
+Core capabilities and features of this application:
 
-> An introduction to this project is available in this 2015 post by Jeff Wilcox:   [https://jeffwilcox.blog/2015/11/azure-on-github/](https://jeffwilcox.blog/2015/11/azure-on-github/) 
+- **Linking GitHub accounts ⛓️** for enterprise use
+- **Self-service GitHub organization joining 🙋** for engineers
+- **Creating and managing GitHub open source repositories 👩‍💻**
+- **Displaying transparent information, metrics, and company-specific data** about our GitHub open source presence around permissions, access, metadata, intent, and especially cross-organization views and search indexes
+- **People inventory 👨‍🦳🧑‍🚀🧒🏽** to help people connect GitHub public logins with corporate identities
+- **Intercepting forks and new repositories 🔐** to inject compliance and approval processes
+- **Disable and enable 🔑** experiences for GitHub repositories
+- **Just-in-time (JIT) access 🚪** for open source repositories, teams, and organizations, aligning with the principle of least privilege access
+- **Sudo ⚡️** capabilities for repos, teams, organizations to remove persistent broad ownership and admin permissions
+- **Hosting APIs 🍽️** to create repos, large-scale orgs to access link data, and reports
+- **Background jobs 👷‍♂️** to maintain eventual consistency, run tasks, gather metrics, and prepare OKRs
+- **Team join requests/approvals with context 🚪** building beyond the GitHub experience
+- **Automated offboarding 🛶** when people take on new opportunities
 
-Improvements made a few years back include:
+At Microsoft, additional capabilities include:
 
-- The portal works best as a GitHub App instead of the older GitHub OAuth app model
-- The app can be installed as multiple parallel apps (user-facing, operations, background jobs, and data) to ensure that key user experiences continue to function even if a background job or other task exhausts available REST API reosurces
-- When combined with a near-realtime webhook feed, the app tracks updates for views in a database instead of through REST API caches.
+- **Pre-release business and legal approvals to release projects 🧑‍⚖️**
+- **Requesting contribution reviews ✍🏾** within policy
+- **Service Tree and Direct Owners inventory 🌳** for showing accountable ownership information for repos when available
+- **Hosting internal docs 📚** at aka.ms/opensource
+- **Hosting a subset of opensource.microsoft.com's APIs 🌍** to bring to life the Microsoft open source presence
 
-While the default application experience is a server-rendered old-school site,
-at Microsoft a modern React front-end sits on top of this backend that just serves
-REST API requests.
+The management portal is designed to be fast, efficient, and get out of the way of engineers
+to get their important work done, with an emphasis on _relentless automation_ and _delegation_.
 
-We'd love to eventually open source the React front-end; while there are some cool
-React server-side-and-frontend frameworks like Next.js, we have chosen not to take
-such a dependency. It feels overly complicated to have the React client in this
-open repository right now, and would likely be a sidecar project (separate repo)
-when we do get that ready.
+Most of the experience is eventually consistent; however, operational actions
+such as joining teams, orgs, sudo operations, etc., are fully consistent at the time
+they are requested.
 
-## Node app
+## Implementation Details and More Docs
 
-- Node.js LTS (v16+)
-- TypeScript
+Please see the `docs/` sub-folder, including [docs/index.md](docs/index.md).
 
-Native promises and await/async are being introduced into the codebase. Older callback-based
-code using libraries such as `async` or the promise library `q` have been removed.
+## API
 
-## Service Dependencies
+Please see the [docs/api.md](docs/api.md) file for information about the current API.
 
-- At least one of your own GitHub organizations
-- Bring your own cache system (built-in providers for Redis, Cosmos DB, and Azure storage)
-- Azure Active Directory, or hack your own Passport provider in (and help us extend the concept to be more generic and useful for Google auth, Okta, etc.)
-- Data storage for links, etc.: either Azure Storage _or_ Postgres
+## Application stack for learning
 
-## Firehose + query cache webhook processing
+As a TypeScript/Node.js backend application, with a React frontend, the
+management portal also serves as a learning opportunity for Microsoft's
+engineering systems teams to understand the experience that non-.NET stack
+applications may have. The 1ES+OSPO teams partner to ship the application
+based on essentially a fork of this open source repo.
+
+As of 2022, the backend site is hosted by Azure App Service with
+Linux containers, while the background cronjobs and daemons run in
+Azure Kubernetes Service (AKS) clusters. All containers are built on top
+of the CBL Mariner distro.
+
+The app started as a hackathon project in an ancient JavaScript era full
+of "callback hell", and has evolved through to third-party promise libraries
+to native ECMAScript promises and to TypeScript. So it both shows its age,
+and, is, interesting.
+
+### Web app authentication
+
+The **primary** authentication for the site is **Azure Active Directory** for
+corporate users.
+
+The **secondary** authentication is **GitHub**. This allows users not using
+GitHub to fully explore the site, link, and otherwise be productive.
+
+_In theory, open source friends, this project could be made a bit more
+extensible. In the past, we prototyped Google authentication, as an example,
+for the primary aspect. Contributions welcome!_
+
+APIs can use either JWTs or an active web app session in some cases, used
+by the React frontend.
+
+### Configuration ⛳️
+
+Many feature flags exist.
+
+Please see [docs/configuration.md](docs/configuration.md)
+
+### Jobs 💼
+
+Please see [docs/jobs.md](docs/jobs.md)
+
+## Service dependencies
+
+- GitHub organization(s)
+- Hosting environment
+- Background job environment for eventual consistency work and maintenance cronjobs
+- Daemon hosting for near-real-time process
+- Queue system
+- A cache system or multi-tiered cache implementation
+- Azure Active Directory and the Microsoft Graph
+- An email service to send mail
+- Optional insights or telemetry system
+
+### Source of truth store 🧑‍⚖️
+
+The backend maintains in a data store of your choice key metadata for
+repositories, links, and general compliance info. The backend supports
+natively Azure Storage, Azure Table, Azure CosmosDB, and Postgres.
+
+At Microsoft we currently use **Postgres** for source of truth including:
+
+- GitHub organization configuration
+- corporate GitHub repository metadata
+- corporate identity-to-GitHub login links
+- compliance metadata (enable/disabled repos)
+
+### Respecting the GitHub API
+
+To be friendly to GitHub, we strive to be very efficient and fair in
+our use of the GitHub API. We cache as much as we can, and have a
+native concept of building on top of GitHub's **Conditional Request**
+best practice for GitHub Apps: whenever possible, we send the `e-tag` for
+a request, and we will use our cache for many types of operations.
+
+For long multi-page GitHub REST API v3 responses, we will maintain a
+cache of those responses and rebuild them slowly in the background,
+as the site is eventually consistent for most views.
+
+For operational work, a real-time API call is used to continue to be
+accurate and secure when working around granting access or managing
+access to superuser features.
+
+### Cache
+
+The primary cache layer is backed by **CosmosDB** documents, in a hybrid
+approach where larger documents fallback to **Azure Storage** (blob). Redis is
+also supported for open source users of the site.
+
+### Background event processing firehose and cronjobs
+
+There are at least 2 ongoing single-instance daemonsets and many cronjobs
+that also keep the site efficient, up-to-date, and gather important info.
+
+The daemons:
+
+- **Firehouse**: webhook event processing from a queue for eventual consistency and reacting to GitHub events around compliance/audit/scale/management
+- **Just-in-time**: JIT revocations, audit log event gathering, and analysis
+
+Example cronjobs:
+
+- Make sure caches are primed occasionally
+- Remind people to setup or delete repos
+- Automatically delete repos that are not setup in a time window
+- Disabling repos out of compliance
+- Collecting data and metrics for reports and user interface experiences
+- Backing up link data
+- Prepare stats for an OKR
+
+#### About the firehose in detail
 
 While the original portal works fine for very small GitHub presences, it
 was designed around the idea that the cache would fill, while respecting the
@@ -57,7 +179,7 @@ is 100 entries, which ... is very painful if you have tens of thousands of anyth
 
 The "firehose" is designed to be run either within the app itself, or as a secondary
 app processing results. At Microsoft, we use a service bus to process webhook events
-from GitHub, since we have a robust webhook ingestion mechanism elsewhere. The 
+from GitHub, since we have a robust webhook ingestion mechanism elsewhere. The
 firehose runs as a daemon that pulls off the queue and works to keep the "query cache" primed with newer information than the REST API may have in some cases.
 
 What this improves:
@@ -72,13 +194,11 @@ The firehose and query cache are _not_ used for important or auth-style scenario
 
 We did at one point design the idea of having a `/webhook` endpoint and validating
 the webhook signatures before processing hooks for simple app hosting, but it's
-slightly broken right now.
+slightly broken right now and disabled at Microsoft.
 
 ## Dev prep, build, deploy
 
-### Prereqs
-
-#### Install Node packages
+### Install Node packages
 
 Make sure to include dev dependencies.
 
@@ -88,10 +208,10 @@ it's ... really, really, really old. Microsoft discards the default-assets-packa
 using a different set of assets, so you've been mildly warned.
 
 The `main` module of the defined default-assets-package should resolve to the
-path to serve content from. Since the default version uses Grunt to build the
+path to serve content from. Since the default version uses \[ancient\] Grunt to build the
 assets, it returns the `__dirname` + `/public`, which is the output/built location for Grunt.
 
-```
+```bash
 npm install
 cd default-assets-package
 npm install
@@ -99,19 +219,78 @@ npm install
 
 ### Build
 
-```
+```bash
 npm run build
 ```
 
-You need to rebuild the default-assets-package if you change something. [see Static Site Assets](#static-site-assets)
+You need to rebuild the default-assets-package if you change something. [see Static Site Assets](docs/staticSiteAssets.md)
+
+### Codespaces instructions
+
+You will likely want to use a defined environment to save time spinning up many variables, follow one of the below paths:
+
+- GitHub Codespaces account-level secrets for your environment variables as well
+- use a `.env` file up a folder from the cloned repository in your Codespace environment
+- configure environment variables once the devcontainer boots
+- GitHub Codespaces repo-specific secrets
+
+Whether as a secret or in the `../env` from the root, set
+
+- `CONFIGURATION_ENVIRONMENT`: `development` (or similar)
+
+Then, you'll also need to make sure authentication will work when redirecting to the running
+Codespaces environment.
+
+### GitHub authentication
+
+You'll want to bring your own GitHub App and use its client ID and client secret for
+authentication. [Configure your account-specific Codespace secrets](https://github.com/settings/codespaces).
+
+- `CODESPACES_GITHUB_AUTHENTICATION_ENABLED`: set to `1` to enable
+- `CODESPACES_GITHUB_CLIENT_ID`: the client ID
+- `CODESPACES_GITHUB_CLIENT_SECRET`: the client secret
+
+Configure the secrets for your fork and/or this repository as necessary. The redirect URL will
+be dynamically generated and included in the startup debug output. Make sure that the hostname
+is an appropriate callback URL for the GitHub app.
+
+#### Enterprise Managed Users impersonation/override
+
+Since the underlying repository and the Codespace are likely hosted in GHEC EMU,
+you will also need to use the debug-time impersonation features to override the EMU
+user information after a GitHub callback with your GitHub.com account.
+
+For ease of use, an initial impersonation override feature is available that
+only will override a GitHub EMU response:
+
+- `CODESPACES_IMPERSONATE_OVERRIDE_EMU_ENABLED`: set to `1` to allow in your environment
+- `CODESPACES_IMPERSONATE_OVERRIDE_EMU_LOGIN`: set to the login to use _only_ when an EMU user authenticates. _The primary impersonation feature will still be used after this._
+
+### AAD authentication
+
+Configure your AAD application in an appropriate tenant.
+
+- `CODESPACES_AAD_AUTHENTICATION_ENABLED`: set to `1` to enable
+- Set the other AAD variables for your environment as necessary:
+  - `AAD_CLIENT_ID`
+  - `AAD_CLIENT_SECRET`
+  - ...
+
+### Private artifacts
+
+The Microsoft-internal fork of this project uses a private Azure Artifact feed
+to bring in additional components and libraries. These are not applicable to
+the open source upstream and should be excluded currently.
 
 ### Building the Docker image
 
-```
-$ docker build .
+```bash
+docker build -t opensource-management-portal .
 ```
 
-#### Run
+#### Run (OSS instructions)
+
+> This section is from the open source community
 
 The most easy way to run is by using the docker-compose setup. This will bootup the postgres and redis components as well. The docker-compose setup depends on 2 environment files and 1 json file:
 
@@ -155,31 +334,8 @@ config                   jobs                     node_modules             trans
 
 ### Test
 
-This project basically has _very few tests_, and aspirations to start using Jest better.
-
-# Work to be done
-
-- Support more interesting cloud and data providers
-- Support other authentication technologies
-- More tests
-- Ship the front-end UI to the world as open source
-- Continuing to refactor out Microsoft-specific things when possible
-
-# Implementation Details
-
-Please see the `docs/` sub-folder, including [docs/index.md](docs/index.md).
-
-## Configuration
-
-Please see [docs/configuration.md](docs/configuration.md)
-
-## Jobs
-
-Please see [docs/jobs.md](docs/jobs.md)
-
-# API
-
-Please see the [docs/api.md](docs/api.md) file for information about the current API.
+This project basically has _very few tests_, and aspirations to start using Jest better. Oops. Bad debt as multiple hackathons combine, along with
+production dependencies on GitHub...
 
 ### Bare minimum local development environment
 
@@ -190,7 +346,7 @@ you can configure the following extreme minimum working set to use the app.
 The central operations token is a personal access token that is a **org owner**
 of the GitHub org(s) being managed.
 
-```
+```env
 DEBUG_ALLOW_HTTP=1
 GITHUB_CENTRAL_OPERATIONS_TOKEN=a github token for the app
 GITHUB_ORGANIZATIONS_FILE=../../env-orgs.json
@@ -214,15 +370,55 @@ keep cached data around.
 > The built-in Redis mock will likely be removed when we move to the next
 > major semver of the Node Redis library.
 
+## Collaboration
+
+This project began as a hackathon... so still has growing pains years later.
+Since this is technically a _backend web application_ and includes some
+server-generated user interface, the project was not originally designed
+to be shared as something that runs out-of-the-box, but... it is possible.
+
+To collaborate on extensibility and improvements, please sync in the issues
+first so we can come up with the best approach.
+
+Again, since Microsoft strips most of the `routes/` and uses a React frontend
+on this app, it's likely `routes/` and the Pug rendering is... old. Very old.
+
+Hopefully this **monolith** can at least be an interesting learning
+opportunity in crufty old ancient apps evolving on the JavaScript front!
+
+### Work to be done (OSS project)
+
+- Support more interesting cloud and data providers
+- Support other authentication technologies
+- Any tests
+- More tests
+- Ship the front-end UI to the world as open source
+- Continuing to refactor out Microsoft-specific things when possible
+
+## Project origin
+
+An introduction to this project is available in a [2015 post by JWilcox](https://jeffwilcox.blog/2015/11/azure-on-github/) and a
+[2019 follow-up post, "Scaling from 2,000 to 25,000"](https://jeffwilcox.blog/2019/06/scaling-25k/).
+
+An Open Source Hub concept was prototyped by a Microsoft subsidiary and
+the early Open Source Programs Office to make very clear the open source
+experiences, docs, and guides for Microsoft's culture change to working
+more in the open, releasing projects, and connecting everything together.
+
+At the same time, GitHub was very basic, and it was necessary to automate and
+make self-service the GitHub engineering system to work at an enterprise scale.
+When Azure became the first approved organization to use GitHub at Microsoft,
+this portal scaled access and built guardrails around the GitHub environment.
+
 ## LICENSE
 
 [MIT License](LICENSE)
 
 ## Contributing
 
-This project welcomes contributions and suggestions.  Most contributions require you to agree to a
+This project welcomes contributions and suggestions. Most contributions require you to agree to a
 Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
+the rights to use your contribution. For details, visit <https://cla.opensource.microsoft.com>.
 
 When you submit a pull request, a CLA bot will automatically determine whether you need to provide
 a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
@@ -234,8 +430,8 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 
 ## Trademarks
 
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
+This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft
+trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.

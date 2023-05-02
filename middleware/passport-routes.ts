@@ -13,8 +13,20 @@ import { attachAadPassportRoutes } from './passport/aadRoutes';
 import { attachGitHubPassportRoutes } from './passport/githubRoutes';
 
 export interface IAuthenticationHelperMethods {
-  afterAuthentication: (isPrimaryAuthentication: boolean, accountPropertyToPromoteToSession: string, req: ReposAppRequest, res: Response, next: NextFunction) => void;
-  signout: (isPrimaryAuthentication: boolean, accountProperties: string[], req: ReposAppRequest, res: Response, next: NextFunction) => void;
+  afterAuthentication: (
+    isPrimaryAuthentication: boolean,
+    accountPropertyToPromoteToSession: string,
+    req: ReposAppRequest,
+    res: Response,
+    next: NextFunction
+  ) => void;
+  signout: (
+    isPrimaryAuthentication: boolean,
+    accountProperties: string[],
+    req: ReposAppRequest,
+    res: Response,
+    next: NextFunction
+  ) => void;
   storeReferrer: (req: ReposAppRequest, res: any, redirect: any, optionalReason: any) => void;
 }
 
@@ -41,10 +53,10 @@ function newSessionAfterAuthentication(req: ReposAppRequest, res: Response, next
   }
   // Prevent session hijacking by generating a new session once authenticated.
   const preserve = Object.assign({}, req.session);
-  ['cookie', 'id', 'OIDC', 'req', 'seen'].map(key => delete preserve[key]);
+  ['cookie', 'id', 'OIDC', 'req', 'seen'].map((key) => delete preserve[key]);
   const keys = Object.getOwnPropertyNames(preserve);
   for (const key of keys) {
-    if (typeof (preserve[key]) === 'function') {
+    if (typeof preserve[key] === 'function') {
       delete preserve[key];
     }
   }
@@ -78,18 +90,24 @@ export default function configurePassport(app, passport, config) {
   attachAadPassportRoutes(app, config, passport, authenticationHelperMethods);
   attachGitHubPassportRoutes(app, config, passport, authenticationHelperMethods);
 
-
-
-
-
-
-
-
-
   // helper methods follow
 
-  function afterAuthentication(isPrimaryAuthentication: boolean, accountPropertyToPromoteToSession: string, req: ReposAppRequest, res: Response, next: NextFunction) {
-    const after = (req: ReposAppRequest, res: Response) => redirectToReferrer(req, res, '/', `${isPrimaryAuthentication ? 'primary' : 'secondary'} authentication callback with property ${accountPropertyToPromoteToSession}`);
+  function afterAuthentication(
+    isPrimaryAuthentication: boolean,
+    accountPropertyToPromoteToSession: string,
+    req: ReposAppRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    const after = (req: ReposAppRequest, res: Response) =>
+      redirectToReferrer(
+        req,
+        res,
+        '/',
+        `${
+          isPrimaryAuthentication ? 'primary' : 'secondary'
+        } authentication callback with property ${accountPropertyToPromoteToSession}`
+      );
     if (!isPrimaryAuthentication) {
       // account is a passport property that we don't expose in ReposAppRequest interface to reduce errors
       return hoistAccountToSession(req, (req as any).account, accountPropertyToPromoteToSession, (error) => {
@@ -97,7 +115,7 @@ export default function configurePassport(app, passport, config) {
       });
     }
 
-    if((req.session as any).additionalAuthRedirect) {
+    if ((req.session as any).additionalAuthRedirect) {
       const tmpAdditionalAuthRedirect = (req.session as any).additionalAuthRedirect;
       delete (req.session as any).additionalAuthRedirect;
       return res.redirect(tmpAdditionalAuthRedirect);
@@ -106,12 +124,18 @@ export default function configurePassport(app, passport, config) {
     return after(req, res);
   }
 
-  function signout(isPrimaryAuthentication: boolean, accountProperties: string[], req: ReposAppRequest, res: Response, next: NextFunction) {
+  function signout(
+    isPrimaryAuthentication: boolean,
+    accountProperties: string[],
+    req: ReposAppRequest,
+    res: Response,
+    next: NextFunction
+  ) {
     if (isPrimaryAuthentication) {
       return res.redirect('/signout');
     }
     const after = (req, res) => {
-      var url = req.headers.referer || '/';
+      let url = req.headers.referer || '/';
       if (req.query.redirect === 'github') {
         url = 'https://github.com/logout';
       }
@@ -135,7 +159,7 @@ export default function configurePassport(app, passport, config) {
 
   // User-beware, I should not be writing my own truncating shallow object copy code
   function shallowTruncatingCopy(obj) {
-    let o = {};
+    const o = {};
     for (const entity in obj) {
       const value = obj[entity];
       if (typeof value === 'object') {
@@ -173,7 +197,7 @@ export default function configurePassport(app, passport, config) {
   }
 
   // Overwrites the Passport logged in user with a fresh new complete object.
-  function resaveUser(req, clone, callback) {
+  function resaveUser(req: ReposAppRequest, clone, callback) {
     if (typeof clone === 'function') {
       callback = clone;
       clone = undefined;
@@ -181,27 +205,33 @@ export default function configurePassport(app, passport, config) {
     if (clone === undefined) {
       clone = shallowTruncatingCopy(req.user);
     }
-    req.login(clone, callback);
+    req.login(clone, { keepSessionInfo: true }, callback);
   }
 
   function signoutPage(req: ReposAppRequest, res) {
-    const { config } = getProviders(req);
-    req.logout();
-    if (req.session) {
-      const session = req.session as IAppSession;
-      delete session.enableMultipleAccounts;
-      delete session.selectedGithubId;
-    }
-    if (config.authentication.scheme === 'github') {
-      res.redirect('https://github.com/logout');
-    } else {
-      const unlinked = req.query.unlink !== undefined;
-      res.render('message', {
-        message: unlinked ? `Your ${config.brand.companyName} and GitHub accounts have been unlinked. You no longer have access to any ${config.brand.companyName} organizations, and you have been signed out of this portal.` : 'Goodbye',
-        title: 'Goodbye',
-        buttonText: unlinked ? 'Sign in to connect a new account' : 'Sign in',
-        config: config.obfuscatedConfig,
-      });
-    }
-  };
-};
+    const { config, insights } = getProviders(req);
+    req.logout({ keepSessionInfo: true }, (err) => {
+      if (err) {
+        insights?.trackException({ exception: err });
+      }
+      if (req.session) {
+        const session = req.session as IAppSession;
+        delete session.enableMultipleAccounts;
+        delete session.selectedGithubId;
+      }
+      if (config.authentication.scheme === 'github') {
+        return res.redirect('https://github.com/logout');
+      } else {
+        const unlinked = req.query.unlink !== undefined;
+        return res.render('message', {
+          message: unlinked
+            ? `Your ${config.brand.companyName} and GitHub accounts have been unlinked. You no longer have access to any ${config.brand.companyName} organizations, and you have been signed out of this portal.`
+            : 'Goodbye',
+          title: 'Goodbye',
+          buttonText: unlinked ? 'Sign in to connect a new account' : 'Sign in',
+          config: config.obfuscatedConfig,
+        });
+      }
+    });
+  }
+}

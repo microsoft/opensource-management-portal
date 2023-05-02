@@ -3,19 +3,36 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { RepositoryCollaboratorCacheEntity, EntityImplementation, RepositoryCollaboratorCacheFixedQueryAll, RepositoryCollaboratorCacheFixedQueryByOrganizationId, RepositoryCollaboratorCacheFixedQueryByUserId, RepositoryCollaboratorCacheFixedQueryByRepositoryId, RepositoryCollaboratorCacheDeleteByOrganizationId, RepositoryCollaboratorCacheGetOrganizationIdsQuery, RepositoryCollaboratorCacheDeleteByRepositoryId } from './repositoryCollaboratorCache';
+import {
+  IEntityMetadata,
+  EntityMetadataBase,
+  IEntityMetadataBaseOptions,
+} from '../../lib/entityMetadataProvider/entityMetadata';
+import {
+  RepositoryCollaboratorCacheEntity,
+  EntityImplementation,
+  RepositoryCollaboratorCacheFixedQueryAll,
+  RepositoryCollaboratorCacheFixedQueryByOrganizationId,
+  RepositoryCollaboratorCacheFixedQueryByUserId,
+  RepositoryCollaboratorCacheFixedQueryByRepositoryId,
+  RepositoryCollaboratorCacheDeleteByOrganizationId,
+  RepositoryCollaboratorCacheGetOrganizationIdsQuery,
+  RepositoryCollaboratorCacheDeleteByRepositoryId,
+} from './repositoryCollaboratorCache';
 
 const thisProviderType = EntityImplementation.Type;
 
-export interface IRepositoryCollaboratorCacheCreateOptions extends IEntityMetadataBaseOptions {
-}
+export interface IRepositoryCollaboratorCacheCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface IRepositoryCollaboratorCacheProvider {
   initialize(): Promise<void>;
 
   getRepositoryCollaboratorCache(uniqueId: string): Promise<RepositoryCollaboratorCacheEntity>;
-  getRepositoryCollaboratorCacheByUserId(organizationId: string, repositoryId: string, userId: string): Promise<RepositoryCollaboratorCacheEntity>;
+  getRepositoryCollaboratorCacheByUserId(
+    organizationId: string,
+    repositoryId: string,
+    userId: string
+  ): Promise<RepositoryCollaboratorCacheEntity>;
   createRepositoryCollaboratorCache(metadata: RepositoryCollaboratorCacheEntity): Promise<string>;
   updateRepositoryCollaboratorCache(metadata: RepositoryCollaboratorCacheEntity): Promise<void>;
   deleteRepositoryCollaboratorCache(metadata: RepositoryCollaboratorCacheEntity): Promise<void>;
@@ -28,14 +45,23 @@ export interface IRepositoryCollaboratorCacheProvider {
   deleteByRepositoryId(repositoryId: string): Promise<void>;
 }
 
-export class RepositoryCollaboratorCacheProvider extends EntityMetadataBase implements IRepositoryCollaboratorCacheProvider {
+export class RepositoryCollaboratorCacheProvider
+  extends EntityMetadataBase
+  implements IRepositoryCollaboratorCacheProvider
+{
   constructor(options: IRepositoryCollaboratorCacheCreateOptions) {
     super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }
 
-  async getRepositoryCollaboratorCacheByUserId(organizationId: string, repositoryId: string, userId: string): Promise<RepositoryCollaboratorCacheEntity> {
-    return this.getRepositoryCollaboratorCache(RepositoryCollaboratorCacheEntity.GenerateIdentifier(organizationId, repositoryId, userId));
+  async getRepositoryCollaboratorCacheByUserId(
+    organizationId: string,
+    repositoryId: string,
+    userId: string
+  ): Promise<RepositoryCollaboratorCacheEntity> {
+    return this.getRepositoryCollaboratorCache(
+      RepositoryCollaboratorCacheEntity.GenerateIdentifier(organizationId, repositoryId, userId)
+    );
   }
 
   async getRepositoryCollaboratorCache(uniqueId: string): Promise<RepositoryCollaboratorCacheEntity> {
@@ -61,7 +87,9 @@ export class RepositoryCollaboratorCacheProvider extends EntityMetadataBase impl
     return results;
   }
 
-  async queryCollaboratorsByOrganizationId(organizationId: string): Promise<RepositoryCollaboratorCacheEntity[]> {
+  async queryCollaboratorsByOrganizationId(
+    organizationId: string
+  ): Promise<RepositoryCollaboratorCacheEntity[]> {
     const query = new RepositoryCollaboratorCacheFixedQueryByOrganizationId(organizationId);
     const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
     const results = this.deserializeArray<RepositoryCollaboratorCacheEntity>(thisProviderType, metadatas);
@@ -104,7 +132,7 @@ export class RepositoryCollaboratorCacheProvider extends EntityMetadataBase impl
   async queryAllOrganizationIds(): Promise<string[]> {
     const query = new RepositoryCollaboratorCacheGetOrganizationIdsQuery();
     const results = await this._entities.fixedQueryMetadata(thisProviderType, query);
-    return results.map(row => row['organizationid']);
+    return results.map((row) => row['organizationid']);
   }
 
   async deleteByOrganizationId(organizationId: string): Promise<void> {

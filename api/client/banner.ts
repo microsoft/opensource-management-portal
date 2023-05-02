@@ -18,7 +18,7 @@ router.get('/', (req: ReposAppRequest, res, next) => {
   const text = config?.serviceMessage?.banner || null;
   const link = config.serviceMessage?.link;
   const details = config.serviceMessage?.details;
-  let banner = text ? { text, link, details } : null;
+  const banner = text ? { text, link, details } : null;
   return res.json({ banner });
 });
 

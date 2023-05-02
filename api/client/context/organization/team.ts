@@ -7,9 +7,20 @@ import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { TeamJoinApprovalEntity } from '../../../../entities/teamJoinApproval/teamJoinApproval';
-import { ReposAppRequest, OrganizationMembershipState, ITeamMembershipRoleState } from '../../../../interfaces';
+import {
+  ReposAppRequest,
+  OrganizationMembershipState,
+  ITeamMembershipRoleState,
+} from '../../../../interfaces';
+import { IGraphEntry } from '../../../../lib/graphProvider';
 import { jsonError } from '../../../../middleware';
-import { AddTeamMembershipToRequest, AddTeamPermissionsToRequest, getContextualTeam, getTeamMembershipFromRequest, getTeamPermissionsFromRequest } from '../../../../middleware/github/teamPermissions';
+import {
+  AddTeamMembershipToRequest,
+  AddTeamPermissionsToRequest,
+  getContextualTeam,
+  getTeamMembershipFromRequest,
+  getTeamPermissionsFromRequest,
+} from '../../../../middleware/github/teamPermissions';
 import { submitTeamJoinRequest } from '../../../../routes/org/team';
 import { postActionDecision, TeamApprovalDecision } from '../../../../routes/org/team/approval';
 import { PermissionWorkflowEngine } from '../../../../routes/org/team/approvals';
@@ -27,7 +38,8 @@ interface ITeamApprovalsJsonResponse {
   approvals?: TeamJoinApprovalEntity[];
 }
 
-router.get('/permissions',
+router.get(
+  '/permissions',
   asyncHandler(AddTeamPermissionsToRequest),
   asyncHandler(AddTeamMembershipToRequest),
   asyncHandler(async (req: ReposAppRequest, res, next) => {
@@ -37,22 +49,26 @@ router.get('/permissions',
   })
 );
 
-router.get('/join/request', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { approvalProvider } = getProviders(req);
-  const team = getContextualTeam(req);
-  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-  let request: TeamJoinApprovalEntity = null;
-  if (activeContext.link) {
-    // no point query currently implemented
-    let approvals = await approvalProvider.queryPendingApprovalsForTeam(String(team.id));
-    approvals = approvals.filter(approval => approval.corporateId === activeContext.corporateIdentity.id);
-    request = approvals.length > 0 ? approvals[0] : null;
-  }
-  const response: ITeamRequestJsonResponse = { request };
-  return res.json(response);
-}));
+router.get(
+  '/join/request',
+  asyncHandler(async (req: ReposAppRequest, res, next) => {
+    const { approvalProvider } = getProviders(req);
+    const team = getContextualTeam(req);
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+    let request: TeamJoinApprovalEntity = null;
+    if (activeContext.link) {
+      // no point query currently implemented
+      let approvals = await approvalProvider.queryPendingApprovalsForTeam(String(team.id));
+      approvals = approvals.filter((approval) => approval.corporateId === activeContext.corporateIdentity.id);
+      request = approvals.length > 0 ? approvals[0] : null;
+    }
+    const response: ITeamRequestJsonResponse = { request };
+    return res.json(response);
+  })
+);
 
-router.post('/join',
+router.post(
+  '/join',
   asyncHandler(AddTeamMembershipToRequest),
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     try {
@@ -69,23 +85,32 @@ router.post('/join',
       const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
       // no point query currently implemented
       let approvals = await approvalProvider.queryPendingApprovalsForTeam(String(team.id));
-      approvals = approvals.filter(approval => approval.corporateId === activeContext.corporateIdentity.id);
+      approvals = approvals.filter((approval) => approval.corporateId === activeContext.corporateIdentity.id);
       const request = approvals.length > 0 ? approvals[0] : null;
       if (request) {
         return res.json({ error: 'You already have a pending team join request' });
       }
-      // 
+      //
       const justification = (req.body.justification || '') as string;
       const hostname = req.hostname;
       const correlationId = req.correlationId;
-      const outcome = await submitTeamJoinRequest(providers, activeContext, team, justification, correlationId, hostname);
+      const outcome = await submitTeamJoinRequest(
+        providers,
+        activeContext,
+        team,
+        justification,
+        correlationId,
+        hostname
+      );
       return res.json(outcome);
     } catch (error) {
       return next(jsonError(error));
     }
-  }));
+  })
+);
 
-router.post('/join/approvals/:approvalId',
+router.post(
+  '/join/approvals/:approvalId',
   asyncHandler(AddTeamPermissionsToRequest),
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     const { approvalId: id } = req.params;
@@ -133,9 +158,11 @@ router.post('/join/approvals/:approvalId',
     } catch (outcomeError) {
       return next(jsonError(outcomeError, 500));
     }
-  }));
+  })
+);
 
-router.get('/join/approvals/:approvalId',
+router.get(
+  '/join/approvals/:approvalId',
   asyncHandler(AddTeamPermissionsToRequest),
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     const { approvalId: id } = req.params;
@@ -147,22 +174,32 @@ router.get('/join/approvals/:approvalId',
       return next(jsonError('you do not have permission to administer this team', 401));
     }
     const providers = getProviders(req);
-    const { approvalProvider, operations } = providers;
+    const { approvalProvider, graphProvider } = providers;
     const team = getContextualTeam(req);
     const request = await approvalProvider.getApprovalEntity(id);
     if (String(request.teamId) !== String(team.id)) {
       return next(jsonError('mismatch on team', 400));
     }
-    return res.json({ approval: request });
-  }));
+    let management: IGraphEntry[] = null;
+    if (request?.corporateId) {
+      try {
+        management = await graphProvider.getManagementChain(request.corporateId);
+      } catch (error) {
+        // we ignore any failure here, this is an optional value-add for now
+      }
+    }
+    return res.json({ approval: request, management });
+  })
+);
 
-router.get('/join/approvals',
+router.get(
+  '/join/approvals',
   asyncHandler(AddTeamPermissionsToRequest),
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     const { approvalProvider } = getProviders(req);
     const team = getContextualTeam(req);
     const permissions = getTeamPermissionsFromRequest(req);
-    let response: ITeamApprovalsJsonResponse = {
+    const response: ITeamApprovalsJsonResponse = {
       allowAdministration: false,
     };
     if (permissions.allowAdministration) {
@@ -170,9 +207,11 @@ router.get('/join/approvals',
       response.approvals = await approvalProvider.queryPendingApprovalsForTeam(String(team.id));
     }
     return res.json(response);
-  }));
+  })
+);
 
-router.post('/role/:login',
+router.post(
+  '/role/:login',
   asyncHandler(AddTeamPermissionsToRequest),
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     const { role } = req.body;
@@ -187,7 +226,10 @@ router.post('/role/:login',
     const team = getContextualTeam(req);
     try {
       const currentRole = await team.getMembership(login, { backgroundRefresh: false, maxAgeSeconds: -1 });
-      if (!currentRole || (currentRole as ITeamMembershipRoleState).state !== OrganizationMembershipState.Active) {
+      if (
+        !currentRole ||
+        (currentRole as ITeamMembershipRoleState).state !== OrganizationMembershipState.Active
+      ) {
         return next(jsonError(`${login} is not currently a member of the team`, 400));
       }
       const response = await team.addMembership(login, { role });
@@ -195,7 +237,8 @@ router.post('/role/:login',
     } catch (outcomeError) {
       return next(jsonError(outcomeError, 500));
     }
-  }));
+  })
+);
 
 router.use('*', (req, res, next) => {
   return next(jsonError('no API or function available for contextual team', 404));

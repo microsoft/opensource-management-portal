@@ -6,8 +6,8 @@
 import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { Organization } from '../../../business';
-import { ReposAppRequest } from '../../../interfaces';
+import { corporateLinkToJson, Organization } from '../../../business';
+import { ICorporateLink, ReposAppRequest } from '../../../interfaces';
 
 import { jsonError } from '../../../middleware';
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
@@ -40,22 +40,62 @@ router.get('/', (req: ReposAppRequest, res) => {
     isGitHubAuthenticated,
     isLinked: !!activeContext.link,
     build: continuousDeployment,
+    hasAdditionalLinks: activeContext.hasAdditionalLinks,
   };
   return res.json(data);
 });
 
-router.get('/accountDetails', asyncHandler(async (req: ReposAppRequest, res) => {
-  const { operations } = getProviders(req);
-  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-  const gh = activeContext.getGitHubIdentity();
-  if (!gh || !gh.id) {
-    res.status(400);
-    res.end();
-  }
-  const accountFromId = operations.getAccount(gh.id);
-  const accountDetails = await accountFromId.getDetails();
-  res.json(accountDetails);
-}));
+router.get(
+  '/specialized/multipleLinkGitHubIdentities',
+  asyncHandler(async (req: ReposAppRequest, res, next) => {
+    const { operations } = getProviders(req);
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+    const links = (activeContext?.link ? [activeContext.link, ...activeContext.additionalLinks] : []).map(
+      (link) => link.thirdPartyUsername
+    );
+    const response = {
+      deletedOrChangedUsernames: [],
+      logins: [],
+    };
+    for (const username of links) {
+      try {
+        const details = await operations.getAccountByUsername(username);
+        if (details) {
+          const json = details.asJson();
+          response.logins.push(json);
+        } else {
+          response.deletedOrChangedUsernames.push(username);
+        }
+      } catch (error) {
+        // we don't want to interrupt this if they deleted an account
+        console.warn(error);
+        response.deletedOrChangedUsernames.push(username);
+      }
+    }
+    return res.json(response);
+  })
+);
+
+router.get(
+  '/accountDetails',
+  asyncHandler(async (req: ReposAppRequest, res, next) => {
+    const { operations } = getProviders(req);
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+    try {
+      const gh = activeContext.getGitHubIdentity();
+      if (gh?.id) {
+        const accountFromId = operations.getAccount(gh.id);
+        const accountDetails = await accountFromId.getDetails();
+        res.json(accountDetails);
+      } else {
+        res.status(400);
+        res.end();
+      }
+    } catch (error) {
+      return next(error);
+    }
+  })
+);
 
 router.use('/administration', routeAdministration);
 
@@ -63,27 +103,30 @@ router.get('/orgs', routeOrgs);
 router.get('/repos', routeRepos);
 router.get('/teams', routeTeams);
 
-router.use('/orgs/:orgName', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { orgName } = req.params;
-  const { operations } = getProviders(req);
-  // const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-  // if (!activeContext.link) {
-  //   return next(jsonError('Account is not linked', 400));
-  // }
-  let organization: Organization = null;
-  try {
-    organization = operations.getOrganization(orgName);
-    // CONSIDER: what if they are not currently a member of the org?
-    req.organization = organization;
-    return next();
-  } catch (noOrgError) {
-    if (ErrorHelper.IsNotFound(noOrgError)) {
-      res.status(404);
-      return res.end();
+router.use(
+  '/orgs/:orgName',
+  asyncHandler(async (req: ReposAppRequest, res, next) => {
+    const { orgName } = req.params;
+    const { operations } = getProviders(req);
+    // const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+    // if (!activeContext.link) {
+    //   return next(jsonError('Account is not linked', 400));
+    // }
+    let organization: Organization = null;
+    try {
+      organization = operations.getOrganization(orgName);
+      // CONSIDER: what if they are not currently a member of the org?
+      req.organization = organization;
+      return next();
+    } catch (noOrgError) {
+      if (ErrorHelper.IsNotFound(noOrgError)) {
+        res.status(404);
+        return res.end();
+      }
+      return next(jsonError(noOrgError, 500));
     }
-    return next(jsonError(noOrgError, 500));
-  }
-}));
+  })
+);
 
 router.use('/orgs/:orgName', routeIndividualContextualOrganization);
 

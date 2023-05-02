@@ -18,7 +18,7 @@ export class OrganizationSudoSecurityGroup extends OrganizationSudo {
       return null;
     }
     const settings = organization.getDynamicSettings();
-  
+
     // Security group flips on security groups
     const val = settings.getProperty(OrganizationFeatureSecurityGroupProperty) as string;
     if (val) {
@@ -65,7 +65,8 @@ export class OrganizationSudoSecurityGroup extends OrganizationSudo {
         return true;
       }
     } catch (error) {
-      if (ErrorHelper.IsNotFound(error)) { // security groups do get deleted and should not bring down any system in that case
+      if (ErrorHelper.IsNotFound(error)) {
+        // security groups do get deleted and should not bring down any system in that case
         return false;
       }
       console.warn(error);

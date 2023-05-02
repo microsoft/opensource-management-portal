@@ -10,7 +10,7 @@ function reduceEntity(instance: any): any {
     return instance;
   }
   const newObject = {};
-  for (let column in instance) {
+  for (const column in instance) {
     let value = instance[column];
     if (value?.type && value?.value) {
       value = value.value;
@@ -21,11 +21,11 @@ function reduceEntity(instance: any): any {
 }
 
 function createEntity(partitionKey: string, rowKey: string, obj?: any, callback?) {
-  if (typeof (obj) === 'function') {
+  if (typeof obj === 'function') {
     callback = obj;
     obj = undefined;
   }
-  var entity = {
+  const entity = {
     partitionKey,
     rowKey,
   };
@@ -42,9 +42,16 @@ function createEntity(partitionKey: string, rowKey: string, obj?: any, callback?
 function mergeIntoEntity(entity: any, obj: any, callback?) {
   // Pretty legacy code...
   if (obj) {
-    for (let key in obj) {
+    for (const key in obj) {
       // Currently stripping metadata
-      if (key === '.metadata' || key === 'timestamp' || key === 'etag' || key === 'odata.metadata' || key === 'partitionKey' || key === 'rowKey') {
+      if (
+        key === '.metadata' ||
+        key === 'timestamp' ||
+        key === 'etag' ||
+        key === 'odata.metadata' ||
+        key === 'partitionKey' ||
+        key === 'rowKey'
+      ) {
         continue;
       }
       if (obj[key] === undefined || obj[key] === null) {
@@ -66,7 +73,9 @@ function mergeIntoEntity(entity: any, obj: any, callback?) {
         // Opinionated entity processing: store all numbers as strings
         entity[key] = { type: 'String', value: String(value) } as Edm<'String'>;
       } else {
-        console.warn('Consider whether a new entity merge clause is required for key ' + key + ' of type:' + typeof value);
+        console.warn(
+          'Consider whether a new entity merge clause is required for key ' + key + ' of type:' + typeof value
+        );
         if (value?.toString) {
           entity[key] = { type: 'String', value: value.toString() } as Edm<'String'>;
         } else {

@@ -15,8 +15,12 @@ import { PersonalAccessToken } from '../../entities/token/token';
 import { sleep } from '../../utils';
 import { IGraphProvider } from '../../lib/graphProvider';
 
-async function lookupCorporateId(graphProvider: IGraphProvider, knownUsers: Map<string, any>, corporateId: string): Promise<any> {
-  let entry = knownUsers.get(corporateId);
+async function lookupCorporateId(
+  graphProvider: IGraphProvider,
+  knownUsers: Map<string, any>,
+  corporateId: string
+): Promise<any> {
+  const entry = knownUsers.get(corporateId);
   if (entry === false) {
     return false;
   } else if (entry) {
@@ -46,7 +50,10 @@ export default async function cleanup({ providers }: IReposJob): Promise<IReposJ
   const allTokens = await tokenProvider.getAllTokens();
   console.log(`read ${allTokens.length}`);
 
-  insights.trackEvent({ name: 'JobCleanupTokensReadTokens', properties: { tokens: String(allTokens.length) } });
+  insights.trackEvent({
+    name: 'JobCleanupTokensReadTokens',
+    properties: { tokens: String(allTokens.length) },
+  });
 
   let errors = 0;
 
@@ -64,51 +71,58 @@ export default async function cleanup({ providers }: IReposJob): Promise<IReposJ
   const knownUsers = new Map<string, any>();
 
   const throttle = throat(parallelUsers);
-  await Promise.all(allTokens.map((pat: PersonalAccessToken) => throttle(async () => {
-    const isGuidMeansADash = pat.corporateId && pat.corporateId.includes('-');
-    let wasUser = false;
-    if (isGuidMeansADash) {
-      wasUser = true;
+  await Promise.all(
+    allTokens.map((pat: PersonalAccessToken) =>
+      throttle(async () => {
+        const isGuidMeansADash = pat.corporateId && pat.corporateId.includes('-');
+        let wasUser = false;
+        if (isGuidMeansADash) {
+          wasUser = true;
 
-      const userStatus = await lookupCorporateId(graphProvider, knownUsers, pat.corporateId);
-      if (!userStatus && pat.active !== false) {
-        pat.active = false;
-        console.log(`Revoking key for ${pat.getIdentifier()} - employee ${pat.corporateId} could not be found`);
-        try {
-          await tokenProvider.updateToken(pat);
-          ++revokedUnresolved;
-        } catch (tokenUpdateError) {
-          console.dir(tokenUpdateError);
-          ++errors;
-          insights.trackException({ exception: tokenUpdateError });
+          const userStatus = await lookupCorporateId(graphProvider, knownUsers, pat.corporateId);
+          if (!userStatus && pat.active !== false) {
+            pat.active = false;
+            console.log(
+              `Revoking key for ${pat.getIdentifier()} - employee ${pat.corporateId} could not be found`
+            );
+            try {
+              await tokenProvider.updateToken(pat);
+              ++revokedUnresolved;
+            } catch (tokenUpdateError) {
+              console.dir(tokenUpdateError);
+              ++errors;
+              insights.trackException({ exception: tokenUpdateError });
+            }
+          }
+        } else {
+          ++serviceTokens;
         }
-      }
-    } else {
-      ++serviceTokens;
-    }
 
-    if (pat.isExpired()) {
-      const dateExpired = pat.expires;
-      if (dateExpired < monthAgo) {
-        console.log(`Deleting key for ${pat.getIdentifier()} that expired ${dateExpired}`);
-        try {
-          await tokenProvider.deleteToken(pat);
-          ++deleted;
-        } catch (tokenDeleteError) {
-          console.dir(tokenDeleteError);
-          ++errors;
-          insights.trackException({ exception: tokenDeleteError });
+        if (pat.isExpired()) {
+          const dateExpired = pat.expires;
+          if (dateExpired < monthAgo) {
+            console.log(`Deleting key for ${pat.getIdentifier()} that expired ${dateExpired}`);
+            try {
+              await tokenProvider.deleteToken(pat);
+              ++deleted;
+            } catch (tokenDeleteError) {
+              console.dir(tokenDeleteError);
+              ++errors;
+              insights.trackException({ exception: tokenDeleteError });
+            }
+          } else {
+            console.log(
+              `Expired key, keeping around ${pat.getIdentifier()} that expired ${dateExpired} for user notification purposes`
+            );
+          }
+        } else if (wasUser) {
+          ++okUserTokens;
         }
-      } else {
-        console.log(`Expired key, keeping around ${pat.getIdentifier()} that expired ${dateExpired} for user notification purposes`);
-      }
-    } else if (wasUser) {
-      ++okUserTokens;
-    }
 
-    await sleep(secondsDelayAfterSuccess * 1000);
-
-  })));
+        await sleep(secondsDelayAfterSuccess * 1000);
+      })
+    )
+  );
 
   console.log(`deleted: ${deleted}`);
   console.log(`revokedUnresolved: ${revokedUnresolved}`);

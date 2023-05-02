@@ -11,10 +11,15 @@ import {
   IEntityMetadataSerializationHelper,
   IEntityMetadataDeserializationHelper,
   SerializeObjectToEntityMetadata,
-  DeserializeEntityMetadataToObjectSetCollection } from './entityMetadataProvider';
+  DeserializeEntityMetadataToObjectSetCollection,
+} from './entityMetadataProvider';
 import { IEntityMetadata, EntityMetadataType } from './entityMetadata';
 import { IEntityMetadataFixedQuery } from './query';
-import { EntityMetadataMappings, MetadataMappingDefinition, MetadataMappingDefinitionBase } from './declarations';
+import {
+  EntityMetadataMappings,
+  MetadataMappingDefinition,
+  MetadataMappingDefinitionBase,
+} from './declarations';
 
 class MemoryMetadataDefinition extends MetadataMappingDefinitionBase {
   constructor(name: string) {
@@ -25,7 +30,7 @@ class MemoryMetadataDefinition extends MetadataMappingDefinitionBase {
 export const MemorySettings = {
   MemoryMapping: new MemoryMetadataDefinition('MemoryMapping'),
   MemoryQueries: new MemoryMetadataDefinition('MemoryQueries'),
-}
+};
 
 interface IMemoryGetQueries {
   (query: IEntityMetadataFixedQuery, directMemory: IEntityMetadata[]): any;
@@ -86,40 +91,75 @@ export class MemoryEntityMetadataProvider implements IEntityMetadataProvider {
     this.entityBin(type).clear();
   }
 
-  async fixedQueryMetadata(type: EntityMetadataType, query: IEntityMetadataFixedQuery): Promise<IEntityMetadata[]> {
+  async fixedQueryMetadata(
+    type: EntityMetadataType,
+    query: IEntityMetadataFixedQuery
+  ): Promise<IEntityMetadata[]> {
     const allInTypeBin = this.getAllInTypeBin(type);
-    let get = EntityMetadataMappings.GetDefinition(type, MemorySettings.MemoryQueries, true) as IMemoryGetQueries;
+    const get = EntityMetadataMappings.GetDefinition(
+      type,
+      MemorySettings.MemoryQueries,
+      true
+    ) as IMemoryGetQueries;
     return get(query, allInTypeBin);
   }
 
   private getAllInTypeBin(type: EntityMetadataType): IEntityMetadata[] {
     const allValuesInBin = Array.from(this.entityBin(type).values());
-    return allValuesInBin.map(eachInnerBin => {
+    return allValuesInBin.map((eachInnerBin) => {
       return eachInnerBin[eachInnerBin.length - 1];
     });
   }
 
   getSerializationHelper(type: EntityMetadataType): IEntityMetadataSerializationHelper {
-    const mapObjectToMemoryFields = EntityMetadataMappings.GetDefinition(type, MemorySettings.MemoryMapping, true);
+    const mapObjectToMemoryFields = EntityMetadataMappings.GetDefinition(
+      type,
+      MemorySettings.MemoryMapping,
+      true
+    );
     if (!mapObjectToMemoryFields) {
       return null;
     }
-    const idFieldName = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.EntityIdColumnName, true);
+    const idFieldName = EntityMetadataMappings.GetDefinition(
+      type,
+      MetadataMappingDefinition.EntityIdColumnName,
+      true
+    );
     return function objectToMemoryEntity(obj: any): IEntityMetadata {
-      const metadata = SerializeObjectToEntityMetadata(type, idFieldName, obj, mapObjectToMemoryFields, true /* numbers to strings */, true /* throw if missing translations */, true);
+      const metadata = SerializeObjectToEntityMetadata(
+        type,
+        idFieldName,
+        obj,
+        mapObjectToMemoryFields,
+        true /* numbers to strings */,
+        true /* throw if missing translations */,
+        true
+      );
       return metadata;
     };
   }
 
   getDeserializationHelper(type: EntityMetadataType): IEntityMetadataDeserializationHelper {
-    const mapObjectToMemoryFields = EntityMetadataMappings.GetDefinition(type, MemorySettings.MemoryMapping, true);
+    const mapObjectToMemoryFields = EntityMetadataMappings.GetDefinition(
+      type,
+      MemorySettings.MemoryMapping,
+      true
+    );
     if (!mapObjectToMemoryFields) {
       return null;
     }
-    const idFieldName = EntityMetadataMappings.GetDefinition(type, MetadataMappingDefinition.EntityIdColumnName, true);
+    const idFieldName = EntityMetadataMappings.GetDefinition(
+      type,
+      MetadataMappingDefinition.EntityIdColumnName,
+      true
+    );
     return function memoryEntityToObject(entity: IEntityMetadata): any {
       const approval = EntityMetadataMappings.InstantiateObject(type);
-      const toSet = DeserializeEntityMetadataToObjectSetCollection(entity, idFieldName, mapObjectToMemoryFields);
+      const toSet = DeserializeEntityMetadataToObjectSetCollection(
+        entity,
+        idFieldName,
+        mapObjectToMemoryFields
+      );
       for (const property in toSet) {
         approval[property] = toSet[property];
       }

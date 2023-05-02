@@ -32,8 +32,8 @@ export class TeamPermission {
       permission: this._permission,
       privacy: this._privacy,
       team: this._team?.asJson(TeamJsonFormat.Augmented),
-      members: members ? members.map(member => member.asJson()) : undefined,
-    }
+      members: members ? members.map((member) => member.asJson()) : undefined,
+    };
   }
 
   get permission(): GitHubRepositoryPermission {

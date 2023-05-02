@@ -21,7 +21,12 @@ const onlySupportedThirdPartyType = 'github';
 
 import { randomUUID } from 'crypto';
 
-import { ICorporateLink, ICorporateLinkExtended, ICorporateLinkProperties, InnerError } from '../../../interfaces';
+import {
+  ICorporateLink,
+  ICorporateLinkExtended,
+  ICorporateLinkProperties,
+  InnerError,
+} from '../../../interfaces';
 
 import { CorporateLinkPostgres } from './postgresLink';
 import { PostgresPoolQueryAsync, PostgresPoolQuerySingleRowAsync } from '../../postgresHelpers';
@@ -32,8 +37,8 @@ const linkProviderInstantiationTypeProperty = '_i';
 const dehydratedIdentityKey = '_lpi';
 const dehydratedPostgresProviderName = 'pg';
 const dehydratedPostgresProviderVersion = '0';
-const dehydratedPostgresProviderIdentitySeperator = '_';
-const dehydratedPostgresProviderIdentity = `${dehydratedPostgresProviderName}${dehydratedPostgresProviderIdentitySeperator}${dehydratedPostgresProviderVersion}`;
+const dehydratedPostgresProviderIdentitySeparator = '_';
+const dehydratedPostgresProviderIdentity = `${dehydratedPostgresProviderName}${dehydratedPostgresProviderIdentitySeparator}${dehydratedPostgresProviderVersion}`;
 
 enum LinkInstantiatedType {
   Row,
@@ -45,7 +50,7 @@ export interface IPostgresLinkProperties extends ICorporateLinkProperties {
   created: string;
 }
 
-const linkInterfacePropertyMapping : IPostgresLinkProperties = {
+const linkInterfacePropertyMapping: IPostgresLinkProperties = {
   thirdPartyId: 'thirdpartyid',
   thirdPartyUsername: 'thirdpartyusername',
   thirdPartyAvatar: 'thirdpartyavatar',
@@ -54,7 +59,7 @@ const linkInterfacePropertyMapping : IPostgresLinkProperties = {
   corporateDisplayName: 'corporatename',
   corporateMailAddress: 'corporatemail',
   corporateAlias: 'corporatealias',
-  
+
   isServiceAccount: 'serviceaccount',
   serviceAccountMail: 'serviceaccountmail',
 
@@ -93,7 +98,9 @@ export class PostgresLinkProvider implements ILinkProvider {
 
   constructor(providers, options) {
     if (!providers) {
-      throw new Error('The PostgresLinkProvider requires that available providers are passed into the constructor');
+      throw new Error(
+        'The PostgresLinkProvider requires that available providers are passed into the constructor'
+      );
     }
     options = options || {};
 
@@ -102,7 +109,9 @@ export class PostgresLinkProvider implements ILinkProvider {
     }
 
     const thirdPartyType = options.thirdPartyType || onlySupportedThirdPartyType;
-    const internalThirdPartyTypeValue = options.thirdPartyTypeValue || (thirdPartyType === 'github' ? options.githubThirdPartyName: thirdPartyType);
+    const internalThirdPartyTypeValue =
+      options.thirdPartyTypeValue ||
+      (thirdPartyType === 'github' ? options.githubThirdPartyName : thirdPartyType);
 
     this._thirdPartyType = thirdPartyType;
     this._internalThirdPartyTypeValue = internalThirdPartyTypeValue;
@@ -114,18 +123,22 @@ export class PostgresLinkProvider implements ILinkProvider {
 
   async initialize(): Promise<ILinkProvider> {
     const self = this;
-    const rows = await PostgresPoolQueryAsync(this._pool, `
+    const rows = await PostgresPoolQueryAsync(
+      this._pool,
+      `
       SELECT
         COUNT(thirdpartyid) as thirdpartycount,
         COUNT(corporateid) as corporatecount
       FROM ${self._tableName}
       WHERE
-        thirdpartytype = $1`, [
-          self._internalThirdPartyTypeValue,
-          ]);
+        thirdpartytype = $1`,
+      [self._internalThirdPartyTypeValue]
+    );
     if (rows.length === 1) {
       const row = rows[0];
-      console.log(`FYI: Postgres: there are ${row.thirdpartycount} third-party links to ${row.corporatecount} corporate users`);
+      console.log(
+        `FYI: Postgres: there are ${row.thirdpartycount} third-party links to ${row.corporatecount} corporate users`
+      );
     }
     return this;
   }
@@ -171,16 +184,18 @@ export class PostgresLinkProvider implements ILinkProvider {
     const internalThirdPartyTypeValue = this._internalThirdPartyTypeValue;
     // CONSIDER: the table provider sorts by aadupn and then ghu!
     // TODO: is an order by of interest here?
-    const results = await PostgresPoolQueryAsync(this._pool, `
+    const results = await PostgresPoolQueryAsync(
+      this._pool,
+      `
       SELECT
         ${coreColumnsList}
       FROM ${this._tableName}
       WHERE
         thirdpartytype = $1
-    `, [
-      internalThirdPartyTypeValue,
-    ]);
-    let r = [];
+    `,
+      [internalThirdPartyTypeValue]
+    );
+    const r = [];
     for (let i = 0; i < results.rows.length; i++) {
       const row = results.rows[i];
       const link = this.createLinkInstanceFromRow(row);
@@ -192,18 +207,20 @@ export class PostgresLinkProvider implements ILinkProvider {
 
   async getAllCorporateIds(): Promise<string[]> {
     const internalThirdPartyTypeValue = this._internalThirdPartyTypeValue;
-    const results = await PostgresPoolQueryAsync(this._pool, `
+    const results = await PostgresPoolQueryAsync(
+      this._pool,
+      `
       SELECT
         corporateid
       FROM ${this._tableName}
       WHERE
         thirdpartytype = $1
-    `, [
-      internalThirdPartyTypeValue,
-    ]);
+    `,
+      [internalThirdPartyTypeValue]
+    );
     let r = [];
     if (results && results.rows) {
-      r = results.rows.map(row => String(row.corporateid));
+      r = results.rows.map((row) => String(row.corporateid));
     }
     return r;
   }
@@ -224,7 +241,9 @@ export class PostgresLinkProvider implements ILinkProvider {
     }
     const created = new Date();
     try {
-      const insertResult = await PostgresPoolQueryAsync(self._pool, `
+      const insertResult = await PostgresPoolQueryAsync(
+        self._pool,
+        `
         INSERT INTO ${this._tableName}(
           linkid,
           thirdpartytype,
@@ -235,18 +254,25 @@ export class PostgresLinkProvider implements ILinkProvider {
         VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
         )
-      `, [
-        linkId,
-        self._internalThirdPartyTypeValue,
-        link.thirdPartyId, link.thirdPartyUsername, link.thirdPartyAvatar,
-        link.corporateId, link.corporateUsername, link.corporateDisplayName,
-        link.isServiceAccount, link.serviceAccountMail,
-        created,
-      ]);
+      `,
+        [
+          linkId,
+          self._internalThirdPartyTypeValue,
+          link.thirdPartyId,
+          link.thirdPartyUsername,
+          link.thirdPartyAvatar,
+          link.corporateId,
+          link.corporateUsername,
+          link.corporateDisplayName,
+          link.isServiceAccount,
+          link.serviceAccountMail,
+          created,
+        ]
+      );
       return linkId;
     } catch (error) {
       if (error.message && error.message.includes('duplicate key value')) {
-        const ie : InnerError = new Error('A link already exists for the identity');
+        const ie: InnerError = new Error('A link already exists for the identity');
         ie.inner = error;
         error = ie;
       }
@@ -257,7 +283,7 @@ export class PostgresLinkProvider implements ILinkProvider {
   async updateLink(linkInstance: ICorporateLink): Promise<any> {
     const pgl = linkInstance as CorporateLinkPostgres;
     const id = pgl.id;
-    const values = [ id ];
+    const values = [id];
     const internal = pgl.internal();
     const updates = internal.getDirtyColumns();
     const columns = Object.getOwnPropertyNames(updates);
@@ -266,12 +292,14 @@ export class PostgresLinkProvider implements ILinkProvider {
       noUpdatesRequired['noUpdatesRequired'] = true;
       throw noUpdatesRequired;
     }
-    const sets = columns.map(columnName => {
-      values.push(updates[columnName]);
-      const index = values.length;
-      return `\n        ${columnName} = \$${index}`;
-    }).join();
-    let sql = `
+    const sets = columns
+      .map((columnName) => {
+        values.push(updates[columnName]);
+        const index = values.length;
+        return `\n        ${columnName} = $${index}`;
+      })
+      .join();
+    const sql = `
       UPDATE ${this._tableName}
       SET ${sets}
       WHERE
@@ -331,10 +359,14 @@ export class PostgresLinkProvider implements ILinkProvider {
       throw new Error('No stored link provider identity to validate');
     }
     if (identity !== dehydratedPostgresProviderIdentity) {
-      const sameProviderType = identity.startsWith(`${dehydratedPostgresProviderName}${dehydratedPostgresProviderIdentitySeperator}`);
+      const sameProviderType = identity.startsWith(
+        `${dehydratedPostgresProviderName}${dehydratedPostgresProviderIdentitySeparator}`
+      );
       if (sameProviderType) {
         // Cross-version rehydration not supported
-        throw new Error(`The hydrated link was created by the same ${dehydratedPostgresProviderName} provider, but a different version: ${identity}`);
+        throw new Error(
+          `The hydrated link was created by the same ${dehydratedPostgresProviderName} provider, but a different version: ${identity}`
+        );
       } else {
         throw new Error(`The hydrated link is incompatible with this runtime environment: ${identity}`);
       }
@@ -346,25 +378,26 @@ export class PostgresLinkProvider implements ILinkProvider {
   }
 
   public createFromRows(rows: any[]): CorporateLinkPostgres[] {
-    const list = rows.map(row => this.createLinkInstanceFromRow(row));
+    const list = rows.map((row) => this.createLinkInstanceFromRow(row));
     return list;
   }
 
-  private async _getRows({columnName, columnValue, columnIsLowercase}): Promise<CorporateLinkPostgres[]> {
-    let columnWrapperStart = columnIsLowercase ? 'lower(' : '';
-    let columnWrapperFinish = columnIsLowercase ? ')' : '';
-    const results = await PostgresPoolQueryAsync(this._pool, `
+  private async _getRows({ columnName, columnValue, columnIsLowercase }): Promise<CorporateLinkPostgres[]> {
+    const columnWrapperStart = columnIsLowercase ? 'lower(' : '';
+    const columnWrapperFinish = columnIsLowercase ? ')' : '';
+    const results = await PostgresPoolQueryAsync(
+      this._pool,
+      `
       SELECT
         ${coreColumnsList}
       FROM ${this._tableName}
       WHERE
         thirdpartytype = $1 AND
         ${columnWrapperStart}${columnName}${columnWrapperFinish} = $2
-    `, [
-      this._internalThirdPartyTypeValue,
-      columnIsLowercase ? columnValue.toLowerCase() : columnValue,
-    ]);
-    let r = [];
+    `,
+      [this._internalThirdPartyTypeValue, columnIsLowercase ? columnValue.toLowerCase() : columnValue]
+    );
+    const r = [];
     for (let i = 0; i < results.rows.length; i++) {
       const row = results.rows[i];
       const link = this.createLinkInstanceFromRow(row);
@@ -374,9 +407,13 @@ export class PostgresLinkProvider implements ILinkProvider {
     return r;
   }
 
-  private async _getSingleRow({columnName, columnValue, columnIsLowercase}): Promise<CorporateLinkPostgres> {
-    let columnWrapperStart = columnIsLowercase ? 'lower(' : '';
-    let columnWrapperFinish = columnIsLowercase ? ')' : '';
+  private async _getSingleRow({
+    columnName,
+    columnValue,
+    columnIsLowercase,
+  }): Promise<CorporateLinkPostgres> {
+    const columnWrapperStart = columnIsLowercase ? 'lower(' : '';
+    const columnWrapperFinish = columnIsLowercase ? ')' : '';
     const sql = `
       SELECT
         ${coreColumnsList}
@@ -393,15 +430,17 @@ export class PostgresLinkProvider implements ILinkProvider {
     return this.createLinkInstanceFromRow(row);
   }
 
-  private async _deleteSingleRow({columnName, columnValue}): Promise<boolean> {
-    const deleteResult = await PostgresPoolQueryAsync(this._pool, `
+  private async _deleteSingleRow({ columnName, columnValue }): Promise<boolean> {
+    const deleteResult = await PostgresPoolQueryAsync(
+      this._pool,
+      `
       DELETE
       FROM ${this._tableName}
       WHERE
         ${columnName} = $1
-    `, [
-      columnValue,
-    ]);
+    `,
+      [columnValue]
+    );
     return deleteResult && deleteResult['rowCount'] > 0;
   }
 
