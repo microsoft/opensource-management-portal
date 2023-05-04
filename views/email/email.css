@@ -12,7 +12,7 @@ h1 {
 }
 
 h1.blue {
-  color: #20558a;
+  color: #0078d7;;
 }
 
 h2 {
@@ -35,7 +35,7 @@ p {
 
 a,
 a:link {
-  color: #20558a;
+  color: #0078d7;
 }
 
 a:visited {
@@ -78,7 +78,7 @@ table.notification-action {
 }
 
 table.notification-information {
-  background-color: #20558a;
+  background-color: #0078d7;
   color: white;
   border: 0;
   min-height: 64px;
@@ -128,7 +128,7 @@ p.footer {
 
 p.footer a {
   text-decoration: none;
-  color: #20558a;
+  color: #0078d7;
 }
 
 th {
