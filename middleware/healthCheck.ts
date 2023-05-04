@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import debug = require('debug');
+import Debug from 'debug';
 import { IncomingHttpHeaders } from 'http';
 import type {
   ConfiguredHeaderProbe,
@@ -13,11 +13,10 @@ import type {
 import { ReposAppRequest, SiteConfiguration } from '../interfaces';
 import { CreateError } from '../transitional';
 
-const dbg = debug('health');
+const dbg = Debug.debug('health');
 
 const supportedHeaderProbeTypes = ['kubernetes', 'azurefrontdoor'];
-
-const supportedGeneralProbeTypes = ['external'];
+const supportedGeneralProbeTypes = ['external', 'azureappservice-windows', 'azureappservice-linux'];
 
 enum HealthProbeType {
   Readiness = 'ready',
@@ -49,7 +48,9 @@ export default function initializeHealthCheck(
       ? supportedGeneralProbeTypes
           .map((typeName) => {
             const probeConfig = healthConfig[typeName] as ConfiguredGeneralProbe;
-            return probeConfig?.allowed === true && probeConfig.endpointSuffix ? probeConfig : null;
+            return probeConfig?.allowed && (probeConfig.endpointSuffix || probeConfig.endpoint)
+              ? probeConfig
+              : null;
           })
           .filter((configured) => configured)
       : [];
@@ -149,6 +150,7 @@ export default function initializeHealthCheck(
   };
 
   if (enabledHeaderProbes.length > 0) {
+    dbg(`Configured header health probes: ${enabledHeaderProbes.length}`);
     app.get(
       '/health/readiness',
       multipleHeaderHealthCheck.bind(null, HealthProbeType.Readiness, ProbeType.Header, enabledHeaderProbes)
@@ -161,8 +163,10 @@ export default function initializeHealthCheck(
   if (enabledGenericProbes.length > 0) {
     // General probes listen on their own type endpoint
     for (const genericProbeConfig of enabledGenericProbes) {
+      const url = genericProbeConfig.endpoint || `/health/${genericProbeConfig.endpointSuffix}`;
+      dbg(`Configured general health probe: ${url}`);
       app.get(
-        `/health/${genericProbeConfig.endpointSuffix}`,
+        url,
         multipleHeaderHealthCheck.bind(null, HealthProbeType.Liveness, ProbeType.General, [
           genericProbeConfig,
         ])
@@ -170,13 +174,13 @@ export default function initializeHealthCheck(
     }
   }
   if (enabledGenericProbes.length + enabledGenericProbes.length > 0) {
-    debug('Health probes listening');
+    dbg('Health probes listening');
     // 404 on anything that was not handled by any active, allowed probe listeners
     app.use('/health/*', (req, res) => {
       return res.status(404).end();
     });
   } else {
-    debug('No health probes listening');
+    dbg('No health probes listening');
   }
 
   return provider;

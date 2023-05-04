@@ -32,6 +32,7 @@ export interface IReposAppWithTeam extends ReposAppRequest {
 export enum LocalApiRepoAction {
   Delete = 'delete',
   Archive = 'archive',
+  UnArchive = 'unarchive',
 }
 
 export interface ReposAppRequest extends Request {

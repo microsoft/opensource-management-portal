@@ -6,7 +6,8 @@
 import appPackage from '../package.json';
 import appRoot from 'app-root-path';
 
-const debug = require('debug')('startup');
+import Debug from 'debug';
+const debug = Debug.debug('startup');
 
 import favicon from 'serve-favicon';
 import path from 'path';

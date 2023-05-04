@@ -290,7 +290,7 @@ export default async function firehose({ providers, started }: IReposJob): Promi
       return;
     }
     const options = {
-      operations,
+      providers,
       organization,
       event: {
         properties: message.customProperties as unknown as IGitHubWebhookProperties,

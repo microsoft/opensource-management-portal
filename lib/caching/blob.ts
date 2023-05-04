@@ -16,7 +16,8 @@ import {
 import { ICacheHelper } from '.';
 import { gunzipBuffer, gzipString } from '../../utils';
 
-const debug = require('debug')('cache');
+import Debug from 'debug';
+const debug = Debug.debug('cache');
 
 export interface IBlobCacheOptions {
   account: string;

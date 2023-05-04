@@ -7,8 +7,6 @@ import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders } from '../../transitional';
-
 import approvalsRoute from './approvals';
 import authorizationsRoute from './authorizations';
 import personalAccessTokensRoute from './personalAccessTokens';
@@ -23,23 +21,11 @@ router.use(asyncHandler(AddLinkToRequest));
 router.get(
   '/',
   asyncHandler(async (req: ReposAppRequest, res) => {
-    const providers = getProviders(req);
     const link = req.individualContext.link;
-    let legalContactInformation = null;
-    try {
-      if (providers.corporateContactProvider) {
-        legalContactInformation = await providers.corporateContactProvider.lookupContacts(
-          link.corporateUsername
-        );
-      }
-    } catch (ignoredError) {
-      /* ignored */
-    }
     req.individualContext.webContext.render({
       view: 'settings',
       title: 'Settings',
       state: {
-        legalContactInformation,
         link,
       },
     });

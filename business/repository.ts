@@ -16,23 +16,18 @@ import {
   TeamPermission,
   RepositoryIssue,
 } from '.';
-import {
-  RepositoryMetadataEntity,
-  GitHubRepositoryPermission,
-} from '../entities/repositoryMetadata/repositoryMetadata';
-import { AppPurpose } from '../github';
+import { RepositoryMetadataEntity } from '../entities/repositoryMetadata/repositoryMetadata';
+import { AppPurpose, AppPurposeTypes } from '../github';
 import {
   IPurposefulGetAuthorizationHeader,
   IOperationsInstance,
   ICacheOptions,
   throwIfNotGitHubCapable,
   throwIfNotCapable,
-  IOperationsProviders,
   CoreCapability,
   IGetBranchesOptions,
   IGitHubBranch,
   IGetPullsOptions,
-  IGetContentOptions,
   ITemporaryCommandOutput,
   NoCacheNoBackground,
   IGitHubProtectedBranchConfiguration,
@@ -51,6 +46,7 @@ import {
   IRepositoryGetIssuesOptions,
   IOperationsRepositoryMetadataProvider,
   IOperationsUrls,
+  GitHubRepositoryPermission,
 } from '../interfaces';
 import { IListPullsParameters, GitHubPullRequestState } from '../lib/github/collections';
 
@@ -73,8 +69,8 @@ interface IRepositoryMomentsAgo {
 }
 
 interface INewIssueOptions {
-  // assignee?: string;
   assignees?: string[];
+  labels?: string[];
 }
 
 interface IProtectedBranchRule {
@@ -152,6 +148,36 @@ interface IGetBranchesParameters {
   repo: string;
   per_page: number;
   protected?: boolean;
+}
+
+interface IUnarchiveResponse {
+  unarchiveRepository: {
+    repository: {
+      isArchived: boolean;
+    };
+  };
+}
+
+export type GitHubPagesResponse = {
+  status: string;
+  cname: string;
+  custom_404: boolean;
+  build_type: string;
+  html_url: string;
+  source: {
+    branch: string;
+    path: string;
+  };
+  public: boolean;
+  https_certificate: unknown;
+  protected_domain_state: GitHubPagesProtectedDomainState;
+  pending_domain_unverified_at: string;
+  https_enforced: string;
+};
+
+export enum GitHubPagesProtectedDomainState {
+  Pending = 'pending',
+  Verified = 'verified',
 }
 
 const safeEntityFieldsForJsonSend = [
@@ -457,6 +483,14 @@ export class Repository {
     }
   }
 
+  async getGraphQlNodeId() {
+    if (!this.getEntity()?.node_id) {
+      await this.getDetails();
+    }
+    const { node_id: nodeId } = this.getEntity();
+    return nodeId;
+  }
+
   async getRepositoryMetadata(): Promise<RepositoryMetadataEntity> {
     const operations = throwIfNotCapable<IOperationsRepositoryMetadataProvider>(
       this._operations,
@@ -738,6 +772,27 @@ export class Repository {
     }
   }
 
+  async getArchivedAt(): Promise<Date> {
+    const query = `query($owner: String!, $repo: String!) {
+      repository(owner:$owner,name:$repo) {
+        id,
+        archivedAt
+      }
+    }`;
+    const operations = throwIfNotGitHubCapable(this._operations);
+    try {
+      const { repository } = await operations.github.graphql(this.authorize(AppPurpose.Data), query, {
+        owner: this.organization.name,
+        repo: this.name,
+      });
+      if (repository?.archivedAt) {
+        return new Date(repository.archivedAt);
+      }
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async getProtectedBranchAccessRestrictions(
     branchName: string,
     cacheOptions?: ICacheOptions
@@ -799,7 +854,7 @@ export class Repository {
     );
   }
 
-  async getPages(options?: ICacheOptions): Promise<any> {
+  async getPages(options?: ICacheOptions): Promise<GitHubPagesResponse> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
@@ -982,6 +1037,8 @@ export class Repository {
       collaboratorPermissionFromEntity,
       collaboratorEntities
     );
+    collaboratorEntities?.cost && ((collaborators as any).cost = collaboratorEntities.cost);
+    collaboratorEntities?.headers && ((collaborators as any).headers = collaboratorEntities.headers);
     return collaborators;
   }
 
@@ -1279,6 +1336,27 @@ export class Repository {
     return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
   }
 
+  async unarchive(): Promise<IUnarchiveResponse> {
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const nodeId = await this.getGraphQlNodeId();
+    const mutation = `
+      mutation ($repositoryId:ID!) {
+        unarchiveRepository(input:{repositoryId:$repositoryId}) {
+          repository {
+            isArchived
+          }
+        }
+      }
+    `;
+    try {
+      return (await operations.github.graphql(this.authorize(AppPurpose.Operations), mutation, {
+        repositoryId: nodeId,
+      })) as IUnarchiveResponse;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async update(patch?: any): Promise<void> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = Object.assign(patch, {
@@ -1572,7 +1650,7 @@ export class Repository {
     return Array.from(users.values());
   }
 
-  private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
+  private authorize(purpose: AppPurposeTypes): IGetAuthorizationHeader | string {
     const getAuthorizationHeader = this._getAuthorizationHeader.bind(
       this,
       purpose
@@ -1580,7 +1658,7 @@ export class Repository {
     return getAuthorizationHeader;
   }
 
-  private specificAuthorization(purpose: AppPurpose): IGetAuthorizationHeader | string {
+  private specificAuthorization(purpose: AppPurposeTypes): IGetAuthorizationHeader | string {
     const getSpecificHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose
@@ -1672,7 +1750,7 @@ export class Repository {
       pageRequestDelay: options.pageRequestDelay,
     };
     const projectsRaw = await github.collections.getRepoProjects(
-      this.specificAuthorization(AppPurpose.Onboarding),
+      this.specificAuthorization(AppPurpose.Data),
       parameters,
       cacheOptions
     );
@@ -1698,7 +1776,7 @@ export class Repository {
     );
     augmentInertiaPreview(parameters);
     const details = await operations.github.post(
-      this.specificAuthorization(AppPurpose.Onboarding),
+      this.specificAuthorization(AppPurpose.Operations),
       'projects.createForRepo',
       parameters
     );
@@ -1751,7 +1829,7 @@ export class Repository {
     title: string,
     body: string,
     options?: INewIssueOptions,
-    overriddenPurpose?: AppPurpose
+    overriddenPurpose?: AppPurposeTypes
   ): Promise<RepositoryIssue> {
     const operations = throwIfNotGitHubCapable(this._operations);
     options = options || {};

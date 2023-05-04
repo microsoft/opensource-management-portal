@@ -8,7 +8,8 @@ import appPackage from '../package.json';
 const packageVariableName = 'static-client-package-name';
 const otherPackageVariableName = 'static-react-package-name';
 
-const debug = require('debug')('startup');
+import Debug from 'debug';
+const debug = Debug.debug('startup');
 
 export function StaticClientApp(app, express) {
   // Serve/host the static client app from the location reported by the private

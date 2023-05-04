@@ -8,7 +8,8 @@ export type ConfiguredProbeBase = {
 };
 
 export type ConfiguredGeneralProbe = ConfiguredProbeBase & {
-  endpointSuffix: string;
+  endpointSuffix?: string;
+  endpoint?: string;
 };
 
 export type ConfiguredHeaderProbe = ConfiguredProbeBase & {
@@ -25,6 +26,8 @@ export type ConfigWebHealthProbes = {
     readiness: number;
   };
   kubernetes: ConfiguredHeaderProbe;
+  'azureappservice-linux': ConfiguredGeneralProbe;
+  'azureappservice-windows': ConfiguredGeneralProbe;
   azurefrontdoor: ConfiguredHeaderProbe;
   external: ConfiguredGeneralProbe;
 };

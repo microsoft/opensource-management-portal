@@ -12,7 +12,7 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "startup,cosmosdb,g:server,context,cache,restapi,redis-cross-org",
+        "DEBUG": "startup,g:server,context,github:tokens",
         "MORE_DEBUG": "appinsights,cache,restapi,pg,querycache,user,redis-cross-org,health"
       }
     },
@@ -162,7 +162,22 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "startup,appinsights,cache"
+        "DEBUG": "startup"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Backfill aliases (3)",
+      "program": "${workspaceRoot}/dist/jobs/refreshUsernames/index.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "BACKFILL_ALIASES": "1",
+        "DEBUG": "startup"
       }
     },
     {
@@ -177,20 +192,6 @@
       "env": {
         "NODE_ENV": "development",
         "DEBUG": "redis,restapi,startup,appinsights,cache"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Job: Manager hygiene (5)",
-      "program": "${workspaceRoot}/dist/jobs/managers/index.js",
-      "cwd": "${workspaceRoot}/dist",
-      "preLaunchTask": "tsbuild",
-      "sourceMaps": true,
-      "console": "integratedTerminal",
-      "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "redis,restapi,startup,appinsights"
       }
     },
     {
@@ -368,6 +369,20 @@
       "env": {
         "NODE_ENV": "development,pg",
         "DEBUG": "redis,restapi,startup,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Script: View configuration",
+      "program": "${workspaceRoot}/dist/scripts/configuration.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup"
       }
     },
     {

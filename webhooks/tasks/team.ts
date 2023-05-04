@@ -11,6 +11,7 @@ import { WebhookProcessor } from '../organizationProcessor';
 import { Operations } from '../../business';
 import { Organization } from '../../business';
 import { permissionsObjectToValue } from '../../transitional';
+import type { IProviders } from '../../interfaces';
 
 // When teams are added or removed on GitHub, refresh the organization's list of
 // teams as well as the cross-organization view of the teams.
@@ -24,8 +25,9 @@ export default class TeamWebhookProcessor implements WebhookProcessor {
     return eventType === 'team';
   }
 
-  async run(operations: Operations, organization: Organization, data: any): Promise<boolean> {
-    const queryCache = operations.providers.queryCache;
+  async run(providers: IProviders, organization: Organization, data: any): Promise<boolean> {
+    const operations = providers.operations as Operations;
+    const queryCache = providers.queryCache;
     const event = data.body;
     let refresh = false;
     let expectedAfterRefresh = false;

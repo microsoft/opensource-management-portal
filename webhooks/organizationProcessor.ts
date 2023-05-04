@@ -11,6 +11,7 @@ import { Organization } from '../business';
 
 import Tasks from './tasks';
 import { sleep } from '../utils';
+import { type IProviders } from '../interfaces';
 
 interface IValidationError extends Error {
   statusCode?: number;
@@ -19,7 +20,7 @@ interface IValidationError extends Error {
 
 export abstract class WebhookProcessor {
   abstract filter(data: any): boolean;
-  abstract run(operations: Operations, organization: Organization, data: any): Promise<boolean>;
+  abstract run(providers: IProviders, organization: Organization, data: any): Promise<boolean>;
 }
 
 export interface IOrganizationWebhookEvent {
@@ -36,7 +37,7 @@ export interface IGitHubWebhookProperties {
 }
 
 export interface IProcessOrganizationWebhookOptions {
-  operations: Operations;
+  providers: IProviders;
   organization: Organization;
   event: IOrganizationWebhookEvent;
   acknowledgeValidEvent?: any;
@@ -45,9 +46,9 @@ export interface IProcessOrganizationWebhookOptions {
 export default async function ProcessOrganizationWebhook(
   options: IProcessOrganizationWebhookOptions
 ): Promise<any> {
-  const operations = options.operations;
-  if (!operations) {
-    throw new Error('No operations instance provided');
+  const providers = options.providers;
+  if (!providers) {
+    throw new Error('No providers provided');
   }
   const organization = options.organization;
   const event = options.event;
@@ -119,7 +120,7 @@ export default async function ProcessOrganizationWebhook(
 
   for (const processor of work) {
     try {
-      await processor.run(operations, organization, event);
+      await processor.run(providers, organization, event);
     } catch (processInitializationError) {
       if (processInitializationError.status === 403) {
         console.log(`403: ${processInitializationError}`);

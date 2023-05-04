@@ -87,8 +87,9 @@ router.get(
       if (corporateId === request.corporateId) {
         return res.json(approvalPairToJson({ request, team }));
       }
-      const isOrgSudoer = await organization.isSudoer(username, activeContext.link);
-      isMaintainer = isOrgSudoer;
+      const isPortalSudoer = await operations.isPortalSudoer(username, activeContext.link);
+      const isOrgSudoer = isPortalSudoer || (await organization.isSudoer(username, activeContext.link));
+      isMaintainer = isPortalSudoer || isOrgSudoer;
       const maintainers = await team.getOfficialMaintainers();
       if (!isMaintainer) {
         for (let i = 0; i < maintainers.length; i++) {
@@ -103,7 +104,7 @@ router.get(
       throw jsonError('This request does not exist or was created by another user', 400);
     } catch (error) {
       // Edge case: the team no longer exists.
-      if (error.innerError && error.innerError.innerError && error.innerError.innerError.statusCode == 404) {
+      if (error?.cause?.statusCode === 404 || error?.cause?.cause?.statusCode === 404) {
         return closeOldRequest(true, request, req, res, next);
       }
       return next(jsonError(error));

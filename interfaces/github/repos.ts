@@ -3,20 +3,58 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ICacheOptions, IPagedCacheOptions, IAccountBasics, IGitHubTeamBasics } from '.';
+import type { ICacheOptions, IPagedCacheOptions, IAccountBasics, IGitHubTeamBasics } from '.';
 import {
   IPersonalizedUserAggregateRepositoryPermission,
   TeamRepositoryPermission,
   GraphManager,
 } from '../../business';
-import { GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
-import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
+import type { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
 import {
   GitHubPullRequestState,
   GitHubPullRequestSort,
   GitHubSortDirection,
 } from '../../lib/github/collections';
-import { IRequestTeamPermissions } from '../../middleware/github/teamPermissions';
+import type { IRequestTeamPermissions } from '../../middleware/github/teamPermissions';
+
+export enum GitHubRepositoryPermission {
+  Pull = 'pull',
+  Push = 'push',
+  Admin = 'admin',
+  Triage = 'triage',
+  Maintain = 'maintain',
+
+  None = '',
+}
+
+export enum RepositoryLockdownState {
+  Locked = 'locked',
+  Unlocked = 'unlocked',
+  AdministratorLocked = 'administratorLocked',
+  Deleted = 'deleted',
+  ComplianceLocked = 'complianceLocked',
+}
+
+export const GitHubRepositoryPermissions = [
+  GitHubRepositoryPermission.Pull,
+  GitHubRepositoryPermission.Triage,
+  GitHubRepositoryPermission.Push,
+  GitHubRepositoryPermission.Maintain,
+  GitHubRepositoryPermission.Admin,
+  // NOTE: does not include 'None' which is not a real GitHub REST API value
+];
+
+export interface IInitialTeamPermission {
+  permission: GitHubRepositoryPermission;
+  teamId: string;
+  teamName?: string;
+}
+
+export enum GitHubRepositoryVisibility {
+  Public = 'public',
+  Private = 'private',
+  Internal = 'internal',
+}
 
 export interface IGitHubCollaboratorInvitation {
   id: string;

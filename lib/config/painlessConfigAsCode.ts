@@ -4,18 +4,17 @@
 //
 
 import appRoot from 'app-root-path';
-//import Debug from 'debug';
+import Debug from 'debug';
 import dotenv from 'dotenv';
 import path from 'path';
 import walkBack from 'walk-back';
 import { InnerError, IPainlessConfigGet, IProviderOptions } from '.';
 import { processEnvironmentProvider } from './environmentConfigurationResolver';
 
-//const debug = Debug('startup');
+const debug = Debug.debug('config');
 
 const ApplicationNameEnvironmentVariableKey = 'APPLICATION_NAME';
-
-const debug = (a: any) => {};
+const DotEnvOverridesProcessKey = 'PREFER_DOTENV';
 
 function objectProvider(json: any, applicationName: string) {
   const appKey = applicationName ? `app:${applicationName}` : null;
@@ -56,11 +55,10 @@ function configurePackageEnvironments(
     try {
       environmentPackage = require(npmName);
     } catch (packageRequireError) {
-      const packageMissing: InnerError = new Error(
-        `Unable to require the "${npmName}" environment package for the "${environment}" environment`
+      throw new Error(
+        `Unable to require the "${npmName}" environment package for the "${environment}" environment`,
+        { cause: packageRequireError }
       );
-      packageMissing.innerError = packageRequireError;
-      throw packageMissing;
     }
     if (!environmentPackage) {
       continue;
@@ -73,11 +71,10 @@ function configurePackageEnvironments(
         values = environmentPackage(environment);
       } catch (problemCalling) {
         const asText = problemCalling.toString();
-        const error: InnerError = new Error(
-          `While calling the environment package "${npmName}" for the "${environment}" environment an error was thrown: ${asText}`
+        throw new Error(
+          `While calling the environment package "${npmName}" for the "${environment}" environment an error was thrown: ${asText}`,
+          { cause: problemCalling }
         );
-        error.innerError = problemCalling;
-        throw error;
       }
     } else if (typeof environmentPackage === 'object') {
       values = environmentPackage;
@@ -121,19 +118,41 @@ function tryGetPackage(appRoot: string) {
   }
 }
 
-function preloadDotEnv() {
+function preloadDotEnv(): Record<string, string> {
   const dotenvPath = walkBack(process.cwd(), '.env');
   if (dotenvPath) {
-    dotenv.config({ path: dotenvPath });
+    const outcome = dotenv.config({ path: dotenvPath });
+    if (outcome.error) {
+      throw outcome.error;
+    }
+    if (outcome.parsed) {
+      debug(`Parsed ${Object.keys(outcome.parsed).length} environment variables from ${dotenvPath}`);
+      return outcome.parsed;
+    }
   }
+  return {};
 }
 
 function initialize(options?: IProviderOptions) {
   options = options || {};
-  if (!options.skipDotEnv) {
-    preloadDotEnv();
+  // By capturing the values, we can override without relying on the default dotenv
+  // approach and better log the outcomes.
+  const dotenvValues = !options.skipDotEnv ? preloadDotEnv() : {};
+  if (options.provider) {
+    debug(`options.provider was provided: ${options.provider}. Skipping any .env values.`);
   }
-  const provider = options.provider || processEnvironmentProvider();
+
+  const envProviderOptions = { overrideValues: {} };
+  const provider = options.provider || processEnvironmentProvider(envProviderOptions);
+  const preferDotEnvChoice = provider.get(DotEnvOverridesProcessKey) === '1';
+  if (preferDotEnvChoice) {
+    // Yes, this is setting the value on the options object above and so is expecting
+    // that the provider implementation is not destructing the options.
+    envProviderOptions.overrideValues = dotenvValues;
+    debug(
+      `The ${DotEnvOverridesProcessKey} environment variable was set to 1. Preferring .env file over process.env values.`
+    );
+  }
   let environmentInstances = null;
   const applicationRoot = options.applicationRoot || appRoot;
   const applicationName = (options.applicationName ||

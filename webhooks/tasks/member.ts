@@ -8,6 +8,7 @@
 import { WebhookProcessor } from '../organizationProcessor';
 import { Operations, Organization } from '../../business';
 import { IProviders, GitHubCollaboratorType } from '../../interfaces';
+import { ErrorHelper } from '../../transitional';
 
 export default class MemberWebhookProcessor implements WebhookProcessor {
   filter(data: any) {
@@ -15,8 +16,8 @@ export default class MemberWebhookProcessor implements WebhookProcessor {
     return eventType === 'member';
   }
 
-  async run(operations: Operations, organization: Organization, data: any): Promise<any> {
-    const providers = operations.providers as IProviders;
+  async run(providers: IProviders, organization: Organization, data: any): Promise<any> {
+    const operations = providers.operations as Operations;
     const queryCache = providers.queryCache;
     const event = data.body;
     const organizationIdAsString = event.organization.id.toString();
@@ -63,34 +64,44 @@ export default class MemberWebhookProcessor implements WebhookProcessor {
     if (needToCreateOrUpdate) {
       // look up new permission level
       // create or update
-      const repositoryName = event.repository.name;
-      const repository = organization.repository(repositoryName, event.repository);
-      const collaborator = await repository.getCollaborator(event.member.login);
-      const permission = collaborator.asGitHubRepositoryPermission();
-      // TODO: may need to support the new 5 levels vs 3...
-      if (permission) {
-        const isOrganizationMember = await organization.getMembership(userLogin);
-        const collaboratorType = isOrganizationMember
-          ? GitHubCollaboratorType.Direct
-          : GitHubCollaboratorType.Outside;
-        queryCache.addOrUpdateCollaborator(
-          organizationIdAsString,
-          repositoryIdAsString,
-          repository,
-          repositoryName,
-          userIdAsString,
-          userLogin,
-          event.member.avatar_url,
-          permission,
-          collaboratorType
-        );
-        console.log(
-          `collaborator ${collaboratorType} ${event.member.login} for repository ${repositoryName} set to permission=${permission}`
-        );
-      } else {
-        console.log(
-          `no permission level returned for ${event.member.login} for repository ${repositoryName} which was collaborator permission ${collaborator.permission}`
-        );
+      try {
+        const repositoryName = event.repository.name;
+        const repository = organization.repository(repositoryName, event.repository);
+        const collaborator = await repository.getCollaborator(event.member.login);
+        const permission = collaborator.asGitHubRepositoryPermission();
+        // TODO: may need to support the new 5 levels vs 3...
+        if (permission) {
+          const isOrganizationMember = await organization.getMembership(userLogin);
+          const collaboratorType = isOrganizationMember
+            ? GitHubCollaboratorType.Direct
+            : GitHubCollaboratorType.Outside;
+          queryCache.addOrUpdateCollaborator(
+            organizationIdAsString,
+            repositoryIdAsString,
+            repository,
+            repositoryName,
+            userIdAsString,
+            userLogin,
+            event.member.avatar_url,
+            permission,
+            collaboratorType
+          );
+          console.log(
+            `collaborator ${collaboratorType} ${event.member.login} for repository ${repositoryName} set to permission=${permission}`
+          );
+        } else {
+          console.log(
+            `no permission level returned for ${event.member.login} for repository ${repositoryName} which was collaborator permission ${collaborator.permission}`
+          );
+        }
+      } catch (repositoryCollaboratorError) {
+        if (ErrorHelper.IsNotFound(repositoryCollaboratorError)) {
+          console.log(
+            `The repository ${event.repository.name} was not found, or the user has been deleted. This is OK if a new fork was deleted for example.`
+          );
+        } else {
+          throw repositoryCollaboratorError;
+        }
       }
     }
 

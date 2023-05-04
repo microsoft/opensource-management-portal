@@ -8,6 +8,8 @@ import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
 import zlib from 'zlib';
+import { type Repository } from './business/repository';
+
 import { ReposAppRequest, IAppSession, IReposError, SiteConfiguration } from './interfaces';
 import { getProviders } from './transitional';
 
@@ -105,6 +107,30 @@ export function sortByCaseInsensitive(a: string, b: string) {
   return 0;
 }
 
+export function cleanResponse<T = any>(response: T) {
+  (response as any)?.cost && delete (response as any).cost;
+  (response as any)?.headers && delete (response as any).headers;
+  return response as Omit<T, 'cost' | 'headers'>;
+}
+
+export function sortRepositoriesByNameCaseInsensitive(a: Repository, b: Repository, full_name = false) {
+  let nameA, nameB;
+  if (full_name) {
+    nameA = a.full_name.toLowerCase();
+    nameB = b.full_name.toLowerCase();
+  } else {
+    nameA = a.name.toLowerCase();
+    nameB = b.name.toLowerCase();
+  }
+  if (nameA < nameB) {
+    return -1;
+  }
+  if (nameA > nameB) {
+    return 1;
+  }
+  return 0;
+}
+
 // ----------------------------------------------------------------------------
 // Session utility: store the original URL
 // ----------------------------------------------------------------------------
@@ -164,8 +190,7 @@ export function popSessionVariable(req, res, variableName) {
 const errorPropertiesToClone = ['stack', 'status'];
 
 export function wrapError(error, message, userIntendedMessage?: boolean): IReposError {
-  const err: IReposError = new Error(message);
-  err.innerError = error;
+  const err: IReposError = new Error(message, { cause: error });
   if (error) {
     for (let i = 0; i < errorPropertiesToClone.length; i++) {
       const key = errorPropertiesToClone[i];
@@ -257,7 +282,7 @@ export function gunzipBuffer(buffer: Buffer): Promise<string> {
   return new Promise((resolve, reject) => {
     zlib.gunzip(buffer, (unzipError, unzipped) => {
       // Fallback if there is a data error (i.e. it's not compressed)
-      if (unzipError && (unzipError as any)?.errno === zlib.Z_DATA_ERROR) {
+      if (unzipError && (unzipError as any)?.errno === zlib.constants.Z_DATA_ERROR) {
         const originalValue = buffer.toString();
         return resolve(originalValue);
       } else if (unzipError) {
@@ -314,3 +339,18 @@ export function getCodespacesHostname(config: SiteConfiguration) {
   const forwardingDomain = codespaces?.forwardingDomain || 'preview.app.github.dev';
   return desktop ? `http://localhost:${port}` : `https://${codespaces.name}-${port}.${forwardingDomain}`;
 }
+
+export function getDateTimeBasedBlobFolder() {
+  // Returns a UTC-named folder name like "2020/01/01/00-00-00"
+  const now = new Date();
+  const timeFilename = `${String(now.getUTCHours()).padEnd(2)}-${String(now.getUTCMinutes()).padStart(
+    2,
+    '0'
+  )}-${String(now.getUTCSeconds()).padStart(2, '0')}`;
+  const blobFilename = `${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, '0')}/${String(
+    now.getUTCDate()
+  ).padStart(2, '0')}/${timeFilename}`;
+  return blobFilename;
+}
+
+export const botBracket = '[bot]';

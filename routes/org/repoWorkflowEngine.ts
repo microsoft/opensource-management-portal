@@ -9,18 +9,15 @@ import recursiveReadDirectory from 'recursive-readdir';
 
 import { wrapError, sleep } from '../../utils';
 import { Organization } from '../../business';
-import {
-  RepositoryMetadataEntity,
-  GitHubRepositoryPermission,
-  GitHubRepositoryPermissions,
-  GitHubRepositoryVisibility,
-} from '../../entities/repositoryMetadata/repositoryMetadata';
+import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { Repository } from '../../business';
 import { CreateRepositoryEntrypoint, ICreateRepositoryApiResult } from '../../api/createRepo';
 import {
   CoreCapability,
+  GitHubRepositoryPermission,
+  GitHubRepositoryPermissions,
+  GitHubRepositoryVisibility,
   IAlternateTokenOption,
-  IOperationsProviders,
   IOperationsRepositoryMetadataProvider,
   IProviders,
   throwIfNotCapable,
@@ -29,7 +26,7 @@ import { ErrorHelper } from '../../transitional';
 import {
   setupRepositoryReadmeSubstring,
   setupRepositorySubstring,
-} from '../../features/newRepositoryLockdown';
+} from '../../features/newRepositories/strings';
 
 export interface IApprovalPackage {
   id: string;
@@ -400,11 +397,11 @@ export class RepoWorkflowEngine {
         events: webhookEvents || ['push'],
       });
       message = `${friendlyName} webhook added to the repository.`;
-    } catch (webhookCreateError) {
+    } catch (cause) {
       error = new Error(
-        `The template ${templateName} defines a webhook ${friendlyName}. Adding the webhook failed. ${webhookCreateError.message()}`
+        `The template ${templateName} defines a webhook ${friendlyName}. Adding the webhook failed. ${cause.message()}`,
+        { cause }
       );
-      error.inner = webhookCreateError;
     }
     this.log.push({ error, message });
   }

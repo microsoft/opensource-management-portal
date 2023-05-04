@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import Debug from 'debug';
 import objectPath from 'object-path';
 import { URL } from 'url';
 
@@ -19,15 +20,18 @@ import { URL } from 'url';
 
 const envProtocol = 'env:';
 
+const debug = Debug.debug('config');
+
 export interface IEnvironmentProvider {
   get: (key: string) => string | undefined;
 }
 
 export interface IEnvironmentProviderOptions {
   provider?: IEnvironmentProvider;
+  overrideValues?: Record<string, string>;
 }
 
-type EnvironmentValueType = string | number | boolean | undefined;
+type EnvironmentValueType = string | number | boolean | Date | undefined;
 
 function getUrlIfEnvironmentVariable(value: string) {
   try {
@@ -70,17 +74,24 @@ function identifyPaths(node: any, prefix?: string) {
   return paths;
 }
 
-export function processEnvironmentProvider() {
+export function processEnvironmentProvider(options?: IEnvironmentProviderOptions) {
   return {
     get: (key: string) => {
-      return process.env[key];
+      const { overrideValues } = options || {};
+      if (overrideValues && overrideValues[key] && overrideValues[key] !== process.env[key]) {
+        const overrideOrSetDescriptor = process.env[key] === undefined ? 'Setting' : 'Overriding';
+        debug(
+          `${overrideOrSetDescriptor} environment variable ${key} to .env value "${overrideValues[key]}" instead of value "${process.env[key]}" from process.env`
+        );
+      }
+      return overrideValues && overrideValues[key] ? overrideValues[key] : process.env[key];
     },
   };
 }
 
 function createClient(options: IEnvironmentProviderOptions) {
   options = options || {};
-  const provider = options.provider || processEnvironmentProvider();
+  const provider = options.provider || processEnvironmentProvider(options);
   return {
     resolveObjectVariables: async (object: any) => {
       let paths = null;
@@ -136,9 +147,23 @@ function createClient(options: IEnvironmentProviderOptions) {
               }
               break;
             }
+            case 'date': {
+              variableValue = new Date(currentValue as string);
+              break;
+            }
             case 'integer':
             case 'int': {
-              variableValue = parseInt(currentValue as string, 10);
+              const attemptedValue = parseInt(currentValue as string, 10);
+              if (currentValue === undefined) {
+                variableValue = currentValue;
+              } else if (isNaN(attemptedValue)) {
+                console.warn(
+                  `The value "${currentValue}" for the env:// variable "${variableName}" is not a valid integer. Using the original value instead.`
+                );
+                variableValue = currentValue;
+              } else {
+                variableValue = attemptedValue;
+              }
               break;
             }
             default: {

@@ -5,7 +5,8 @@
 
 import _ from 'lodash';
 
-const debug = require('debug')('restapi');
+import Debug from 'debug';
+const debug = Debug.debug('restapi');
 
 import cost from './cost';
 import { IRestResponse, flattenData } from './core';
@@ -23,12 +24,6 @@ export interface IGetAppInstallationsParameters {
 }
 
 export enum GitHubPullRequestState {
-  Open = 'open',
-  Closed = 'closed',
-  All = 'all',
-}
-
-export enum GitHubIssueState {
   Open = 'open',
   Closed = 'closed',
   All = 'all',

@@ -3,8 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
-import { IGitHubCollaboratorPermissions } from '../interfaces';
+import { GitHubRepositoryPermission, IGitHubCollaboratorPermissions } from '../interfaces';
 import * as common from './common';
 
 // prettier-ignore

@@ -7,7 +7,6 @@ import path from 'path';
 
 import CosmosSessionStore from '../lib/cosmosSession';
 
-import { RedisOptions } from '../transitional';
 import { createAndInitializeLinkProviderInstance } from '../lib/linkProviders';
 
 import { Operations } from '../business';
@@ -16,17 +15,17 @@ import {
   IEntityMetadataProvidersOptions,
 } from '../lib/entityMetadataProvider';
 import { createAndInitializeRepositoryMetadataProviderInstance } from '../entities/repositoryMetadata';
-
+import createAndInitializeOrganizationAnnotationProviderInstance from '../entities/organizationAnnotation';
 import { createMailAddressProviderInstance, IMailAddressProvider } from '../lib/mailAddressProvider';
 
 import ErrorRoutes from './error-routes';
 
-import redis from 'redis';
+import { createClient, RedisClientType } from 'redis';
 import { Pool as PostgresPool } from 'pg';
 
-const redisMock = require('redis-mock');
-const debug = require('debug')('startup');
-const pgDebug = require('debug')('pgpool');
+import Debug from 'debug';
+const debug = Debug.debug('startup');
+const pgDebug = Debug.debug('pgpool');
 
 import appInsights from './appInsights';
 import keyVault from './keyVault';
@@ -61,7 +60,6 @@ import CosmosCache from '../lib/caching/cosmosdb';
 import BlobCache from '../lib/caching/blob';
 import { StatefulCampaignProvider } from '../lib/campaigns';
 import CosmosHelper from '../lib/cosmosHelper';
-import createCorporateContactProviderInstance from '../lib/corporateContactProvider';
 import { IQueueProcessor } from '../lib/queues';
 import ServiceBusQueueProcessor from '../lib/queues/servicebus';
 import AzureQueuesProcessor from '../lib/queues/azurequeue';
@@ -72,16 +70,11 @@ import routeCorrelationId from './correlationId';
 import routeHsts from './hsts';
 import routeSslify from './sslify';
 
-import MiddlewareIndex from '.';
+import middlewareIndex from '.';
 import { ICacheHelper } from '../lib/caching';
-import {
-  IApplicationProfile,
-  IProviders,
-  IReposApplication,
-  InnerError,
-  SiteConfiguration,
-} from '../interfaces';
+import { IApplicationProfile, IProviders, IReposApplication, SiteConfiguration } from '../interfaces';
 import initializeRepositoryProvider from '../entities/repository';
+import { tryGetImmutableStorageProvider } from '../lib/immutable';
 
 const DefaultApplicationProfile: IApplicationProfile = {
   applicationName: 'GitHub Management Portal',
@@ -122,6 +115,12 @@ async function initializeAsync(
     providers.cacheProvider = redisHelper;
   } else {
     throw new Error('No cache provider available');
+  }
+
+  const immutable = tryGetImmutableStorageProvider(config);
+  if (immutable) {
+    await immutable.initialize();
+    providers.immutable = immutable;
   }
 
   providers.graphProvider = await createGraphProvider(providers, config);
@@ -203,6 +202,11 @@ async function initializeAsync(
   providers.organizationSettingsProvider = await createAndInitializeOrganizationSettingProviderInstance({
     entityMetadataProvider: providerNameToInstance(config.entityProviders.organizationsettings),
   });
+  providers.organizationAnnotationsProvider = await createAndInitializeOrganizationAnnotationProviderInstance(
+    {
+      entityMetadataProvider: providerNameToInstance(config.entityProviders.organizationannotations),
+    }
+  );
   providers.repositoryCacheProvider = await CreateRepositoryCacheProviderInstance({
     entityMetadataProvider: providerNameToInstance(config.entityProviders.repositorycache),
   });
@@ -261,11 +265,6 @@ async function initializeAsync(
     });
     await providers.diagnosticsDrop.initialize();
   }
-
-  providers.corporateContactProvider = createCorporateContactProviderInstance(
-    config,
-    providers.cacheProvider
-  );
   providers.corporateAdministrationProfile = getCompanySpecificDeployment()?.administrationSection;
   providers.corporateViews = await initializeCorporateViews(providers, rootdir);
 
@@ -299,6 +298,8 @@ async function initializeAsync(
     console.dir(ignoredError2);
     throw ignoredError2;
   }
+
+  await dynamicStartup(config, providers, rootdir, 'secondary');
 
   if (providers.applicationProfile.startup) {
     debug('Application provider-specific startup...');
@@ -409,16 +410,18 @@ export default async function initialize(
     }
     return res.send('Service not ready.');
   });
-  if (config.containers && config.containers.deployment) {
+  // See docs/configuration.md for all this
+  if (config?.containers?.deployment) {
     debug('Container deployment: HTTP: listening, HSTS: on');
     app.use(routeHsts);
-  } else if (config.containers && config.containers.docker) {
+  } else if (config?.containers?.docker) {
     debug('Docker image: HTTP: listening, HSTS: off');
   } else if (config.webServer.allowHttp) {
     debug('development mode: HTTP: listening, HSTS: off');
   } else {
-    app.use(routeSslify);
-    app.use(routeHsts);
+    debug('non-container production mode: HTTP: redirect to HTTPS, HSTS: on');
+    const sslifyRouter = routeSslify(config.webServer);
+    sslifyRouter && app.use(sslifyRouter);
   }
   if (!exception) {
     const kvConfig = {
@@ -451,7 +454,7 @@ export default async function initialize(
     }
   }
   try {
-    MiddlewareIndex(app, express, config, rootdir, exception);
+    await middlewareIndex(app, express, config, rootdir, exception);
   } catch (middlewareError) {
     exception = middlewareError;
   }
@@ -541,19 +544,20 @@ export function ConnectPostgresPool(postgresConfigSection: any): Promise<Postgre
           );
         });
         // try connecting
-        pool.connect((err, client, release) => {
-          if (err) {
-            const poolError: InnerError = new Error(`There was a problem connecting to the Postgres server`);
-            poolError.inner = err;
+        pool.connect((cause, client, release) => {
+          if (cause) {
+            const poolError = new Error(`There was a problem connecting to the Postgres server`, {
+              cause,
+            });
             return reject(poolError);
           }
           client.query('SELECT NOW()', (err, result) => {
             release();
             if (err) {
-              const poolQueryError: InnerError = new Error(
-                'There was a problem performing a test query to the Postgres server'
+              const poolQueryError = new Error(
+                'There was a problem performing a test query to the Postgres server',
+                { cause: err }
               );
-              poolQueryError.inner = err;
               return reject(poolQueryError);
             }
             debug(
@@ -571,48 +575,25 @@ export function ConnectPostgresPool(postgresConfigSection: any): Promise<Postgre
   });
 }
 
-function connectRedis(config: any, redisConfig: any, purpose: string): Promise<redis.RedisClient> {
-  const nodeEnvironment = config && config.node ? config.node.environment : null;
-  let redisClient: redis.RedisClient = null;
-  const redisOptions: RedisOptions = {
-    detect_buffers: true,
+async function connectRedis(
+  config: SiteConfiguration,
+  redisConfig: any,
+  purpose: string
+): Promise<RedisClientType> {
+  const redisOptions = {
+    socket: {
+      host: config.redis.tls || config.redis.host,
+      port: config.redis.port ? Number(config.redis.port) : config.redis.tls ? 6380 : 6379,
+      password: config.redis.key,
+      tls: !!config.redis.tls,
+    },
+    // name
   };
-  if (config.redis.key) {
-    redisOptions.auth_pass = config.redis.key;
-  }
-  if (redisConfig.tls) {
-    redisOptions.tls = {
-      servername: redisConfig.tls,
-    };
-  }
-  if (!redisConfig.host && !redisConfig.tls) {
-    if (nodeEnvironment === 'production') {
-      console.warn(`${purpose}: Redis host or TLS host must be provided in production environments`);
-      throw new Error(`No ${purpose}.redis.host or ${purpose}.redis.tls`);
-    }
-    debug(`mocking Redis, in-memory provider in use`);
-    redisClient = redisMock.createClient();
-  } else {
-    debug(`connecting to ${purpose} Redis ${redisConfig.host || redisConfig.tls}`);
-    const port = redisConfig.port || (redisConfig.tls ? 6380 : 6379);
-    redisClient = redis.createClient(port, redisConfig.host || redisConfig.tls, redisOptions);
-  }
-  let isFirst = true;
-  return new Promise((resolve, reject) => {
-    redisClient.on('connect', function () {
-      if (isFirst) {
-        isFirst = false;
-        return resolve(redisClient);
-      }
-    });
-    // NOTE: a timeout would hang the process here
-    if (config.redis.key) {
-      redisClient.auth(config.redis.key);
-      debug(`authenticated to Redis for ${purpose}`);
-    } else {
-      debug(`connected to Redis for ${purpose} (unauthenticated)`);
-    }
-  });
+  debug(`connecting to ${purpose} Redis ${redisConfig.host || redisConfig.tls}`);
+  const redisClient: RedisClientType = createClient(redisOptions);
+  await redisClient.connect();
+  await redisClient.auth({ password: config.redis.key });
+  return redisClient;
 }
 
 async function createMailAddressProvider(config: any, providers: IProviders): Promise<IMailAddressProvider> {
@@ -623,12 +604,17 @@ async function createMailAddressProvider(config: any, providers: IProviders): Pr
   return createMailAddressProviderInstance(options);
 }
 
-async function dynamicStartup(config: any, providers: IProviders, rootdir: string) {
+async function dynamicStartup(config: any, providers: IProviders, rootdir: string, stage?: string) {
   const p = config?.startup?.path;
   if (p) {
     try {
       const dynamicInclude = require(path.join(rootdir, p));
-      const entrypoint = dynamicInclude && dynamicInclude.default ? dynamicInclude.default : dynamicInclude;
+      let entrypoint = dynamicInclude && dynamicInclude.default ? dynamicInclude.default : dynamicInclude;
+      if (stage && !dynamicInclude[stage]) {
+        return;
+      } else if (stage) {
+        entrypoint = dynamicInclude[stage];
+      }
       if (typeof entrypoint !== 'function') {
         throw new Error(`Entrypoint ${p} is not a function`);
       }
@@ -639,7 +625,7 @@ async function dynamicStartup(config: any, providers: IProviders, rootdir: strin
         rootdir
       ) as Promise<void>;
       await promise;
-      debug(`company-specific startup complete (${p})`);
+      debug(`company-specific ${stage || 'startup'} complete (${p})`);
     } catch (dynamicLoadError) {
       throw new Error(`config.startup.path=${p} could not successfully load: ${dynamicLoadError}`);
     }

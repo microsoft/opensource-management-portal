@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IDictionary } from '../interfaces';
+import { GitHubRepositoryVisibility } from '../interfaces';
 import {
   EntityMetadataBase,
   EntityMetadataMappings,
@@ -16,7 +16,6 @@ import {
   QueryBase,
 } from '../lib/entityMetadataProvider';
 import { PostgresConfiguration, PostgresSettings } from '../lib/entityMetadataProvider/postgres';
-import { GitHubRepositoryVisibility } from './repositoryMetadata/repositoryMetadata';
 
 const type = new EntityMetadataType('RepositoryDetails');
 const typeColumnValue = 'repositorydetails';
@@ -133,7 +132,7 @@ enum Query {}
 export class RepositoryEntity implements IProperties {
   repositoryId: number;
   organizationId: number;
-  [keyValueMetadataField]: IDictionary<any>;
+  [keyValueMetadataField]: Record<string, any>;
 
   name: string;
   organizationLogin: string;

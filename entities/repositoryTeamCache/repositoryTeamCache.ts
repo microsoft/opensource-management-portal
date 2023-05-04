@@ -10,7 +10,6 @@ import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
 } from '../../lib/entityMetadataProvider/declarations';
-import { GitHubRepositoryPermission } from '../repositoryMetadata/repositoryMetadata';
 import {
   PostgresGetAllEntities,
   PostgresJsonEntityQuery,
@@ -19,7 +18,9 @@ import {
   PostgresConfiguration,
 } from '../../lib/entityMetadataProvider/postgres';
 import { stringOrNumberAsString } from '../../utils';
-import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { GitHubRepositoryPermission } from '../../interfaces/github/repos';
+import { MemoryConfiguration, MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { TableConfiguration } from '../../lib/entityMetadataProvider';
 
 const type = new EntityMetadataType('RepositoryTeamCache');
 
@@ -147,42 +148,23 @@ export class RepositoryTeamCacheFixedQueryByRepositoryId implements IEntityMetad
   }
 }
 
+const defaultTableName = 'repositoryteamcache';
+
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => {
   return new RepositoryTeamCacheEntity();
 });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, Field.uniqueId);
 
-EntityMetadataMappings.Register(
-  type,
-  MemorySettings.MemoryMapping,
-  new Map<string, string>([
-    [Field.cacheUpdated, 'cached'],
-    [Field.organizationId, 'orgid'],
-    [Field.permission, 'permission'],
-    [Field.repositoryId, 'repoid'],
-    [Field.repositoryPrivate, 'repoprivate'],
-    [Field.uniqueId, 'unique'],
-    [Field.teamId, 'teamId'],
-    [Field.repositoryName, 'repositoryName'],
-  ])
-);
+MemoryConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, []);
 
-PostgresConfiguration.SetDefaultTableName(type, 'repositoryteamcache');
+TableConfiguration.SetDefaultTableName(type, defaultTableName);
+TableConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
+TableConfiguration.SetFixedPartitionKey(type, defaultTableName);
+
+PostgresConfiguration.SetDefaultTableName(type, defaultTableName);
 EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'repositoryteamcache');
-PostgresConfiguration.MapFieldsToColumnNames(
-  type,
-  new Map<string, string>([
-    [Field.cacheUpdated, (Field.cacheUpdated as string).toLowerCase()],
-    [Field.organizationId, (Field.organizationId as string).toLowerCase()], // net new
-    [Field.permission, (Field.permission as string).toLowerCase()],
-    [Field.repositoryId, (Field.repositoryId as string).toLowerCase()],
-    [Field.repositoryName, (Field.repositoryName as string).toLowerCase()],
-    [Field.uniqueId, (Field.uniqueId as string).toLowerCase()],
-    [Field.teamId, (Field.teamId as string).toLowerCase()],
-    [Field.repositoryPrivate, (Field.repositoryPrivate as string).toLowerCase()],
-  ])
-);
+PostgresConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 PostgresConfiguration.ValidateMappings(type, fieldNames, []);
 
 EntityMetadataMappings.Register(

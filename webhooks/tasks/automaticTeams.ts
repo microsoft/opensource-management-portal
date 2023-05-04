@@ -13,7 +13,7 @@ import { Organization } from '../../business';
 import RenderHtmlMail from '../../lib/emailRender';
 import { IMailProvider } from '../../lib/mailProvider';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
-import { GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { GitHubRepositoryPermission, IProviders } from '../../interfaces';
 
 interface IAutomaticTeamsMail {
   to: string;
@@ -70,7 +70,8 @@ export default class AutomaticTeamsWebhookProcessor implements WebhookProcessor 
     return false;
   }
 
-  async run(operations: Operations, organization: Organization, data: any): Promise<boolean> {
+  async run(providers: IProviders, organization: Organization, data: any): Promise<boolean> {
+    const operations = providers.operations as Operations;
     const eventType = data.properties.event;
     const eventAction = data.body.action;
     const { specialTeamIds, specialTeamLevels } = this.processOrgSpecialTeams(organization);

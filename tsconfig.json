@@ -2,19 +2,19 @@
   "compilerOptions": {
     "module": "commonjs",
     "sourceMap": true,
-    // "strict": true,
     "outDir": "./dist",
     "incremental": true,
     "allowJs": true,
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "target": "es2020",
+    "skipLibCheck": true, // there are issues with @types/express right now
+    "target": "es2022",
     "typeRoots": ["./node_modules/@types", "./typings"],
-    "lib": ["es2020"],
+    "lib": ["es2022"],
     "types": ["jest"]
   },
-  "exclude": ["**/*.test.ts", "**/*.spec.ts"],
+  "exclude": ["**/*.test.ts", "**/*.spec.ts", "./.ossdev/**/*"],
   "include": [
     "./*.ts",
     "./api/**/*",

@@ -4,13 +4,15 @@
 //
 
 export interface IAttachCompanySpecificStrings {
-  largeTeamProtectionDetailsLink: string;
-  linkWarningMessages: string[];
-  linkInformationMessage: string;
-  linkInformationUrl: string;
-  linkInformationPolicyLink: string;
-  linkInformationMail: string;
-  linkInformationHeading: string;
-  linkInformationUrlTitle: string;
-  linkInformationMailTitle: string;
+  largeTeamProtectionDetailsLink?: string;
+  linkWarningMessages?: string[];
+  linkMailHeadline?: string;
+  linkMailPreHeader?: string;
+  linkInformationMessage?: string;
+  linkInformationUrl?: string;
+  linkInformationPolicyLink?: string;
+  linkInformationMail?: string;
+  linkInformationHeading?: string;
+  linkInformationUrlTitle?: string;
+  linkInformationMailTitle?: string;
 }

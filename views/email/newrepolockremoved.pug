@@ -47,9 +47,9 @@ block content
   else if isMailToOperations
     h3 Repo approved by an administrator
     if lockdownMailContent.mailAddress
-      p
-        | Mail address of the user that created the repo:&nbsp;
-        a(href='mailto:' + lockdownMailContent.mailAddress)= lockdownMailContent.mailAddress
+      p.
+        Mail address of the user that created the repo:&nbsp;
+        #[a(href='mailto:' + lockdownMailContent.mailAddress)= lockdownMailContent.mailAddress]
     else
       p: strong An e-mail was NOT sent. No e-mail address was available for the username.
 

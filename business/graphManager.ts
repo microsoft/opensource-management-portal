@@ -7,7 +7,6 @@ import moment from 'moment';
 
 import { Operations } from './operations';
 import { Repository } from './repository';
-import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 import { TeamRepositoryPermission } from './teamRepositoryPermission';
 import {
   ICorporateLink,
@@ -17,6 +16,7 @@ import {
   ICrossOrganizationTeamMembership,
   ICacheOptions,
   IPagedCrossOrganizationCacheOptions,
+  GitHubRepositoryPermission,
 } from '../interfaces';
 import { isPermissionBetterThan } from '../transitional';
 

@@ -17,50 +17,16 @@ import {
   PostgresSettings,
   PostgresConfiguration,
 } from '../../lib/entityMetadataProvider/postgres';
-import { TableSettings } from '../../lib/entityMetadataProvider/table';
-import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { TableConfiguration, TableSettings } from '../../lib/entityMetadataProvider/table';
+import { MemoryConfiguration, MemorySettings } from '../../lib/entityMetadataProvider/memory';
 import { odata, TableEntityQueryOptions } from '@azure/data-tables';
+import {
+  GitHubRepositoryVisibility,
+  IInitialTeamPermission,
+  RepositoryLockdownState,
+} from '../../interfaces/github/repos';
 
 const type = Type;
-
-export enum GitHubRepositoryPermission {
-  Pull = 'pull',
-  Push = 'push',
-  Admin = 'admin',
-  Triage = 'triage',
-  Maintain = 'maintain',
-
-  None = '',
-}
-
-export enum RepositoryLockdownState {
-  Locked = 'locked',
-  Unlocked = 'unlocked',
-  AdministratorLocked = 'administratorLocked',
-  Deleted = 'deleted',
-  ComplianceLocked = 'complianceLocked',
-}
-
-export const GitHubRepositoryPermissions = [
-  GitHubRepositoryPermission.Pull,
-  GitHubRepositoryPermission.Triage,
-  GitHubRepositoryPermission.Push,
-  GitHubRepositoryPermission.Maintain,
-  GitHubRepositoryPermission.Admin,
-  // NOTE: does not include 'None' which is not a real GitHub REST API value
-];
-
-export interface IInitialTeamPermission {
-  permission: GitHubRepositoryPermission;
-  teamId: string;
-  teamName?: string;
-}
-
-export enum GitHubRepositoryVisibility {
-  Public = 'public',
-  Private = 'private',
-  Internal = 'internal',
-}
 
 interface IRepositoryMetadataProperties {
   createdByThirdPartyId: any;
@@ -289,91 +255,15 @@ EntityMetadataMappings.Register(
 EntityMetadataMappings.Register(type, TableSettings.TablePossibleDateColumns, [Field.created]);
 EntityMetadataMappings.RuntimeValidateMappings(type, TableSettings.TableMapping, fieldNames, [repositoryId]);
 
-EntityMetadataMappings.Register(
-  type,
-  MemorySettings.MemoryMapping,
-  new Map<string, string>([
-    [Field.createdByThirdPartyId, 'ghid'],
-    [Field.createdByThirdPartyUsername, 'ghu'],
-
-    [Field.createdByCorporateDisplayName, 'name'],
-    [Field.createdByCorporateId, 'aadid'],
-    [Field.createdByCorporateUsername, 'mail'],
-
-    [Field.created, 'requested'],
-
-    [Field.organizationName, 'org'],
-    [Field.organizationId, 'orgid'], // net new
-
-    [Field.repositoryName, 'repoName'],
-    // [repositoryId, azureTableRepositoryIdField], // in table, RowKey is not the repo ID
-
-    [Field.initialTeamPermissions, 'itp'], // special processing case
-    [Field.initialAdministrators, 'initialAdministrators'],
-
-    [Field.initialRepositoryDescription, 'repoDescription'],
-    [Field.initialRepositoryVisibility, 'repoVisibility'],
-    [Field.initialRepositoryHomepage, 'repoHomepage'],
-
-    [Field.initialLicense, 'license'],
-    [Field.initialTemplate, 'template'],
-    [Field.initialGitIgnoreTemplate, 'gitignore_template'],
-    [Field.initialCorrelationId, 'correlationId'],
-
-    [Field.projectType, 'projecttype'],
-    [Field.releaseReviewJustification, 'justification'],
-    [Field.releaseReviewType, 'approvalType'],
-    [Field.releaseReviewUrl, 'approvalUrl'],
-
-    [Field.lockdownState, Field.lockdownState.toLowerCase()],
-    [Field.transferSource, Field.transferSource.toLowerCase()],
-  ])
-);
+MemoryConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, [
   repositoryId,
 ]);
 
-PostgresConfiguration.SetDefaultTableName(type, 'repositorymetadata');
+const defaultTableName = 'repositorymetadata';
+PostgresConfiguration.SetDefaultTableName(type, defaultTableName);
 EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'repository');
-PostgresConfiguration.MapFieldsToColumnNames(
-  type,
-  new Map<string, string>([
-    [Field.createdByThirdPartyId, (Field.createdByThirdPartyId as string).toLowerCase()],
-    [Field.createdByThirdPartyUsername, (Field.createdByThirdPartyUsername as string).toLowerCase()],
-
-    [Field.createdByCorporateDisplayName, (Field.createdByCorporateDisplayName as string).toLowerCase()],
-    [Field.createdByCorporateId, (Field.createdByCorporateId as string).toLowerCase()],
-    [Field.createdByCorporateUsername, (Field.createdByCorporateUsername as string).toLowerCase()],
-
-    [Field.created, (Field.created as string).toLowerCase()],
-
-    [Field.organizationName, (Field.organizationName as string).toLowerCase()],
-    [Field.organizationId, (Field.organizationId as string).toLowerCase()], // net new
-
-    [Field.repositoryName, (Field.repositoryName as string).toLowerCase()],
-    // [repositoryId, azureTableRepositoryIdField], // in table, RowKey is not the repo ID
-
-    [Field.initialTeamPermissions, (Field.initialTeamPermissions as string).toLowerCase()], // special processing case
-    [Field.initialAdministrators, (Field.initialAdministrators as string).toLowerCase()], // special processing case
-
-    [Field.initialRepositoryDescription, (Field.initialRepositoryDescription as string).toLowerCase()],
-    [Field.initialRepositoryVisibility, (Field.initialRepositoryVisibility as string).toLowerCase()],
-    [Field.initialRepositoryHomepage, (Field.initialRepositoryHomepage as string).toLowerCase()],
-
-    [Field.initialLicense, (Field.initialLicense as string).toLowerCase()],
-    [Field.initialTemplate, (Field.initialTemplate as string).toLowerCase()],
-    [Field.initialGitIgnoreTemplate, (Field.initialGitIgnoreTemplate as string).toLowerCase()],
-    [Field.initialCorrelationId, (Field.initialCorrelationId as string).toLowerCase()],
-
-    [Field.projectType, (Field.projectType as string).toLowerCase()],
-    [Field.releaseReviewJustification, (Field.releaseReviewJustification as string).toLowerCase()],
-    [Field.releaseReviewType, (Field.releaseReviewType as string).toLowerCase()],
-    [Field.releaseReviewUrl, (Field.releaseReviewUrl as string).toLowerCase()],
-
-    [Field.lockdownState, Field.lockdownState.toLowerCase()],
-    [Field.transferSource, Field.transferSource.toLowerCase()],
-  ])
-);
+PostgresConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 PostgresConfiguration.ValidateMappings(type, fieldNames, [repositoryId]);
 
 EntityMetadataMappings.Register(

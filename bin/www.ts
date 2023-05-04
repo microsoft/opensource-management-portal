@@ -6,8 +6,8 @@
 
 import Debug from 'debug';
 
-const debug = Debug('g:server');
-const debugInitialization = Debug('startup');
+const debug = Debug.debug('g:server');
+const debugInitialization = Debug.debug('startup');
 
 import app from '../app';
 

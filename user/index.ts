@@ -7,7 +7,8 @@ import pugLoad from 'pug-load';
 import fs from 'fs';
 import objectPath from 'object-path';
 
-const debug = require('debug')('context');
+import Debug from 'debug';
+const debug = Debug.debug('context');
 
 import { addBreadcrumb, isCodespacesAuthenticating } from '../utils';
 import { Operations } from '../business/operations';

@@ -10,7 +10,7 @@ const router: Router = Router();
 import { getRepositoryMetadataProvider, ReposAppRequest } from '../../interfaces';
 import { getProviders } from '../../transitional';
 import { Organization } from '../../business/organization';
-import NewRepositoryLockdownSystem from '../../features/newRepositoryLockdown';
+import NewRepositoryLockdownSystem from '../../features/newRepositories/newRepositoryLockdown';
 
 router.get(
   '/',
@@ -28,7 +28,10 @@ router.get(
     if (existingRepoId && organization.isNewRepositoryLockdownSystemEnabled) {
       try {
         const metadata = await repositoryMetadataProvider.getRepositoryMetadata(existingRepoId);
-        await NewRepositoryLockdownSystem.ValidateUserCanConfigureRepository(metadata, individualContext);
+        await NewRepositoryLockdownSystem.Statics.ValidateUserCanConfigureRepository(
+          metadata,
+          individualContext
+        );
       } catch (noExistingMetadata) {
         if (noExistingMetadata.status === 404) {
           throw new Error(

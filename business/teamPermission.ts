@@ -7,9 +7,14 @@ import util from 'util';
 
 import { Organization } from './organization';
 import { TeamMember } from './teamMember';
-import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 import { Team } from '.';
-import { IOperationsInstance, GitHubTeamPrivacy, TeamJsonFormat, IGetMembersOptions } from '../interfaces';
+import {
+  IOperationsInstance,
+  GitHubTeamPrivacy,
+  TeamJsonFormat,
+  IGetMembersOptions,
+  GitHubRepositoryPermission,
+} from '../interfaces';
 
 export class TeamPermission {
   private _organization: Organization;

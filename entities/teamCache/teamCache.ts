@@ -18,7 +18,8 @@ import {
 } from '../../lib/entityMetadataProvider/postgres';
 import { TeamCacheFixedQueryByOrganizationId, TeamCacheDeleteByOrganizationId } from '.';
 import { stringOrNumberAsString } from '../../utils';
-import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { MemoryConfiguration, MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { TableConfiguration } from '../../lib/entityMetadataProvider';
 
 const type = new EntityMetadataType('TeamCache');
 
@@ -58,38 +59,23 @@ export class TeamCacheEntity implements ITeamCacheProperties {
   }
 }
 
+const defaultTableName = 'teamcache';
+
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => {
   return new TeamCacheEntity();
 });
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, teamId);
 
-EntityMetadataMappings.Register(
-  type,
-  MemorySettings.MemoryMapping,
-  new Map<string, string>([
-    [Field.organizationId, 'orgid'],
-    [Field.teamName, 'teamName'],
-    [Field.teamSlug, 'teamSlug'],
-    [Field.teamDescription, 'teamDescription'],
-    [Field.teamDetails, 'teamDetails'],
-    [Field.cacheUpdated, 'cached'],
-  ])
-);
+MemoryConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, [teamId]);
 
-PostgresConfiguration.SetDefaultTableName(type, 'teamcache');
+TableConfiguration.SetDefaultTableName(type, defaultTableName);
+TableConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
+TableConfiguration.SetFixedPartitionKey(type, defaultTableName);
+
+PostgresConfiguration.SetDefaultTableName(type, defaultTableName);
 EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'teamcache');
-PostgresConfiguration.MapFieldsToColumnNames(
-  type,
-  new Map<string, string>([
-    [Field.organizationId, (Field.organizationId as string).toLowerCase()], // net new
-    [Field.teamName, (Field.teamName as string).toLowerCase()],
-    [Field.teamSlug, (Field.teamSlug as string).toLowerCase()],
-    [Field.teamDescription, (Field.teamDescription as string).toLowerCase()],
-    [Field.teamDetails, (Field.teamDetails as string).toLowerCase()],
-    [Field.cacheUpdated, (Field.cacheUpdated as string).toLowerCase()],
-  ])
-);
+PostgresConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 PostgresConfiguration.ValidateMappings(type, fieldNames, [teamId]);
 
 EntityMetadataMappings.Register(

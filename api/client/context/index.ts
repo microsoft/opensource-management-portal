@@ -6,8 +6,8 @@
 import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { corporateLinkToJson, Organization } from '../../../business';
-import { ICorporateLink, ReposAppRequest } from '../../../interfaces';
+import { Organization } from '../../../business';
+import { IProviders, ReposAppRequest } from '../../../interfaces';
 
 import { jsonError } from '../../../middleware';
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
@@ -20,6 +20,7 @@ import routeOrgs from './orgs';
 import routeRepos from './repos';
 import routeTeams from './teams';
 import routeAdministration from './administration';
+import routeSample from './sample';
 
 const router: Router = Router();
 
@@ -102,12 +103,14 @@ router.use('/administration', routeAdministration);
 router.get('/orgs', routeOrgs);
 router.get('/repos', routeRepos);
 router.get('/teams', routeTeams);
+router.use('/sample', routeSample);
 
 router.use(
   '/orgs/:orgName',
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     const { orgName } = req.params;
-    const { operations } = getProviders(req);
+    const providers = getProviders(req);
+    const { operations } = providers;
     // const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     // if (!activeContext.link) {
     //   return next(jsonError('Account is not linked', 400));
@@ -120,6 +123,10 @@ router.use(
       return next();
     } catch (noOrgError) {
       if (ErrorHelper.IsNotFound(noOrgError)) {
+        if (await isUnmanagedOrganization(providers, orgName)) {
+          res.status(204);
+          return res.end();
+        }
         res.status(404);
         return res.end();
       }
@@ -127,6 +134,20 @@ router.use(
     }
   })
 );
+
+async function isUnmanagedOrganization(providers: IProviders, orgName: string): Promise<boolean> {
+  const { operations } = providers;
+  const organization = operations.getUncontrolledOrganization(orgName);
+  try {
+    const details = await organization.getDetails();
+    return !!details.id;
+  } catch (error) {
+    if (!ErrorHelper.IsNotFound(error)) {
+      throw error;
+    }
+  }
+  return false;
+}
 
 router.use('/orgs/:orgName', routeIndividualContextualOrganization);
 

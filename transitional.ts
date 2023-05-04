@@ -3,17 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Response } from 'express';
 import crypto from 'crypto';
 import githubUsernameRegex from 'github-username-regex';
 import { AxiosError } from 'axios';
 
-import { GitHubRepositoryPermission } from './entities/repositoryMetadata/repositoryMetadata';
-
 import appPackage from './package.json';
-import { ICreateRepositoryApiResult } from './api/createRepo';
+import type { ICreateRepositoryApiResult } from './api/createRepo';
 import { Repository } from './business/repository';
 import {
+  GitHubRepositoryPermission,
   IDictionary,
   IFunctionPromise,
   IProviders,
@@ -33,14 +31,6 @@ export function hasStaticReactClientApp() {
 
 export function assertUnreachable(nothing: never): never {
   throw new Error('This is never expected.');
-}
-
-export interface RedisOptions {
-  auth_pass?: string;
-  detect_buffers: boolean;
-  tls?: {
-    servername: string;
-  };
 }
 
 export function getProviders(req: ReposAppRequest) {
@@ -203,6 +193,11 @@ export class ErrorHelper {
     return statusNumber && statusNumber === 404;
   }
 
+  public static IsNotAuthorized(error: Error): boolean {
+    const statusNumber = ErrorHelper.GetStatus(error);
+    return statusNumber && statusNumber === 403;
+  }
+
   public static IsUnavailableForExternalLegalRequest(error: Error): boolean {
     const statusNumber = ErrorHelper.GetStatus(error);
     return statusNumber && statusNumber === 451; // https://developer.github.com/changes/2016-03-17-the-451-status-code-is-now-supported/
@@ -332,3 +327,5 @@ export function validateGitHubLogin(username: string) {
   }
   return username;
 }
+
+export const DefaultGraphqlPageSize = 10;

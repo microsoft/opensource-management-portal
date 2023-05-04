@@ -4,7 +4,9 @@
 //
 
 import { ReposAppRequest, IAppSession } from '../../interfaces';
-const debug = require('debug')('user');
+
+import Debug from 'debug';
+const debug = Debug.debug('user');
 
 import { getProviders } from '../../transitional';
 import { ICorporateIdentity, IGitHubIdentity, IndividualContext, GitHubIdentitySource } from '../../user';

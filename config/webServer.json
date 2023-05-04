@@ -6,5 +6,10 @@
     "name": "env://WEBSITE_SITE_NAME",
     "region": "env://REGION_NAME"
   },
-  "baseUrl": "env://SITE_BASE_URL"
+  "baseUrl": "env://SITE_BASE_URL",
+  "sslify": {
+    "enabled": "env://SSLIFY_ENABLED?trueIf=1",
+    "trustProtoHeader": "env://SSLIFY_TRUST_PROTO_HEADER?trueIf=1",
+    "trustAzureHeader": "env://SSLIFY_TRUST_AZURE_HEADER?trueIf=1"
+  }
 }

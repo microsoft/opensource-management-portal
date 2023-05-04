@@ -13,13 +13,22 @@ export interface ICampaignUserState {
   sent?: Date;
 }
 
+export type CampaignStateWithData<T> = ICampaignUserState & {
+  data: T;
+};
+
 export interface ICampaignHelper {
   getState(corporateId: string, campaignGroupId: string, campaignId?: string): Promise<ICampaignUserState>;
   optOut(corporateId: string, campaignGroupId: string): Promise<void>;
   clearOptOut(corporateId: string, campaignGroupId: string): Promise<void>;
   setSent(corporateId: string, campaignGroupId: string, campaignId: string): Promise<void>;
   setAny<T>(corporateId: string, campaignGroupId: string, campaignId: string, data: T): Promise<void>;
-  getAny(documentId: string, partitionKey?: string): Promise<any>;
+  getAny<T>(documentId: string, partitionKey?: string): Promise<CampaignStateWithData<T>>;
+  getAnyScoped<T>(
+    corporateId: string,
+    campaignGroupId: string,
+    campaignId: string
+  ): Promise<CampaignStateWithData<T>>;
   clearSent(corporateId: string, campaignGroupId: string, campaignId: string): Promise<void>;
   //
   deleteOops(corporateId: string, campaignGroupId: string): Promise<void>;
@@ -49,7 +58,7 @@ export class StatefulCampaignProvider implements ICampaignHelper {
       if (groupData && groupData.optOut) {
         state.optOut = new Date(groupData.optOut);
       }
-      // XXX TEMP
+      // XXX TEMP but hasn't been temp so ... ?
       if (groupData && groupData.sent) {
         state.sent = new Date(groupData.sent);
       }
@@ -107,15 +116,23 @@ export class StatefulCampaignProvider implements ICampaignHelper {
     await this.#cosmosHelper.setObject(value);
   }
 
-  async getAny(documentId: string, partitionKey = '') {
+  async getAny<T>(documentId: string, partitionKey = ''): Promise<CampaignStateWithData<T>> {
     try {
-      const data = await this.#cosmosHelper.getObject(partitionKey, documentId);
-
-      return data;
+      const document = await this.#cosmosHelper.getObject(partitionKey, documentId);
+      return document as CampaignStateWithData<T>;
     } catch (err) {
       console.error(err);
       throw new Error('Unexpected exception in StatefulCampaignProvider.getAny');
     }
+  }
+
+  async getAnyScoped<T>(
+    corporateId: string,
+    campaignGroupId: string,
+    campaignId: string
+  ): Promise<CampaignStateWithData<T>> {
+    const documentId = this.key(corporateId, campaignGroupId, campaignId);
+    return this.getAny<T>(documentId, corporateId);
   }
 
   async deleteOops(corporateId: string, campaignGroupId: string): Promise<void> {

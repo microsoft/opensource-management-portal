@@ -8,7 +8,8 @@ import { Strategy as GithubStrategy } from 'passport-github';
 import { IGitHubAccountDetails, IProviders } from '../../interfaces';
 import { getCodespacesHostname, isCodespacesAuthenticating, isEnterpriseManagedUserLogin } from '../../utils';
 
-const debug = require('debug')('startup');
+import Debug from 'debug';
+const debug = Debug.debug('startup');
 
 export const githubStrategyName = 'github';
 export const githubIncreasedScopeStrategyName = 'expanded-github-scope';

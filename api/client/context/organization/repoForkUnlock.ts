@@ -15,7 +15,7 @@ import {
 } from '../../../../middleware/github/repoPermissions';
 import { IndividualContext } from '../../../../user';
 import { ErrorHelper, getProviders } from '../../../../transitional';
-import NewRepositoryLockdownSystem from '../../../../features/newRepositoryLockdown';
+import NewRepositoryLockdownSystem from '../../../../features/newRepositories/newRepositoryLockdown';
 
 const router: Router = Router();
 

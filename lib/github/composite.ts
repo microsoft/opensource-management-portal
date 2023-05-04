@@ -9,7 +9,8 @@ import { randomUUID } from 'crypto';
 import moment from 'moment';
 import semver from 'semver';
 
-const debug = require('debug')('restapi');
+import Debug from 'debug';
+const debug = Debug.debug('restapi');
 
 import {
   IShouldServeCache,
@@ -159,7 +160,7 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
     } else {
       if (!metadata) {
         let reason = metadata === undefined ? 'undefined' : 'unknown';
-        if (metadata === false) {
+        if ((metadata as unknown as boolean) === false) {
           reason = 'false value';
         } else if (metadata === null) {
           reason = 'null value';

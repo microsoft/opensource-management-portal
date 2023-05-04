@@ -37,9 +37,9 @@ module.exports = function (graphApi) {
     } catch (painlessConfigError) {
       debug(`failed attempt to load URLs from ${pkgName}/${environmentName},${resourcesEnvironmentName}`);
       console.warn(painlessConfigError);
-      throw painlessConfigError;
     }
-  } else {
+  }
+  if (!resources) {
     // 2: load URL/resource links data from a local JSON file
     try {
       const filename = path.join(typescriptConfig.appDirectory, 'data', 'resources.json');
@@ -48,8 +48,7 @@ module.exports = function (graphApi) {
       debug(`resources and URL links loaded from file ${filename}`);
     } catch (notFound) {
       console.warn(notFound);
-      throw notFound;
     }
   }
-  return resources;
+  return resources || {};
 };

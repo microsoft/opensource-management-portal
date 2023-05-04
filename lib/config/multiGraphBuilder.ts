@@ -92,11 +92,9 @@ function addConfigPackage(paths: string[], applicationRoot: string, npmName: str
     try {
       packageInstance = require(npmName);
     } catch (cannotRequire) {
-      const error: InnerError = new Error(
-        `While trying to identify configuration graphs, ${npmName} could not be required`
-      );
-      error.innerError = cannotRequire;
-      throw error;
+      throw new Error(`While trying to identify configuration graphs, ${npmName} could not be required`, {
+        cause: cannotRequire,
+      });
     }
     if (typeof packageInstance === 'string') {
       root = packageInstance;
@@ -142,9 +140,9 @@ function addAppConfigDirectory(
     fs.statSync(dirPath);
     paths.push(dirPath);
   } catch (notFound) {
-    const error: InnerError = new Error(`The configuration graph directory ${dirPath} was not found. ${key}`);
-    error.innerError = notFound;
-    throw error;
+    throw new Error(`The configuration graph directory ${dirPath} was not found. ${key}`, {
+      cause: notFound,
+    });
   }
 }
 

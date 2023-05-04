@@ -1,0 +1,4 @@
+{
+  "name": "env://ENVIRONMENT_NAME",
+  "configuration": "env://CONFIGURATION_ENVIRONMENT"
+}

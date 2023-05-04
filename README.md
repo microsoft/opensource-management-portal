@@ -322,7 +322,7 @@ If the docker image doesn't start you can debug the image using an interactive s
 you to browse the folders, update the files to test things and run the portal.
 
 ```bash
-$ docker run --rm -it --env-file .secrets.env --env-file .docker.env --entrypoint /bin/sh opensource-portal
+$ docker run --rm -it --env-file .secrets.env --env-file .docker.env --entrypoint /bin/sh opensource-management-portal
 /usr/src/repos $ ls
 app.js                   data                     lib                      package.json             tsconfig.tsbuildinfo     webhooks
 app.js.map               entities                 localEnvironment.js      routes                   user

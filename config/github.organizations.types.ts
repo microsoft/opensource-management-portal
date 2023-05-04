@@ -18,9 +18,22 @@ export type ConfigGitHubOrganization = {
   preventLargeTeamPermissions: boolean;
   teamAllReposRead: string; // | number
   teamAllReposWrite: string; // | number
+  teamAllReposAdmin: string;
+  teamSudoers: string;
   templates: string[];
   onboarding: boolean;
   ignore: boolean;
+  active?: boolean;
+  hidden?: boolean;
+  locked?: boolean;
+  createReposDirect?: boolean;
+  startupDiscover?: boolean;
+  externalMembersPermitted?: boolean;
+  privateEngineering?: boolean;
+  noPrivateEngineeringNags?: boolean;
+  legalEntities?: string[];
+  __special__note__?: string;
+  __special_note___?: string;
 };
 
 export type ConfigGitHubOrganizationsSpecializedList = ConfigGitHubOrganization[] & {

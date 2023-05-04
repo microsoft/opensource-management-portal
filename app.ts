@@ -14,7 +14,8 @@ import { quitInTenSeconds } from './utils';
 
 const app = express() as any as IReposApplication;
 
-require('debug')('startup')('starting...');
+import Debug from 'debug';
+Debug.debug('startup')('starting...');
 
 app.initializeApplication = initialize.bind(undefined, app, express, __dirname);
 
@@ -127,7 +128,10 @@ app.runJob = async function (
     }
   } catch (jobError) {
     console.error(`The job failed: ${jobError}`);
-    console.dir(jobError);
+    // by default, let's not show the whole inner error
+    const simpleError = { ...jobError };
+    simpleError?.cause && delete simpleError.cause;
+    console.dir(simpleError);
     quitInTenSeconds(false);
     if (options.insightsPrefix && app.providers.insights) {
       try {
@@ -143,7 +147,7 @@ app.runJob = async function (
     }
     return app;
   }
-  // TODO: insights metric for job time
+  // CONSIDER: insights metric for job time
   console.log('The job was successful.');
   quitInTenSeconds(true);
   return app;

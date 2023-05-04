@@ -5,7 +5,7 @@
 
 import { Repository } from './repository';
 import { wrapError } from '../utils';
-import { AppPurpose } from '../github';
+import { AppPurpose, AppPurposeTypes } from '../github';
 import { CacheDefault, getMaxAgeSeconds } from '.';
 import {
   IOperationsInstance,
@@ -48,7 +48,8 @@ export class RepositoryProject {
     if (entity) {
       this._entity = entity;
     }
-    this.overrideDefaultAppPurpose(AppPurpose.Onboarding);
+    this._purpose = AppPurpose.Operations;
+    // this.overrideDefaultAppPurpose(AppPurpose.Onboarding);
   }
 
   overrideDefaultAppPurpose(purpose: AppPurpose) {
@@ -113,7 +114,7 @@ export class RepositoryProject {
     };
     augmentInertiaPreview(parameters);
     const details = await operations.github.post(
-      this.authorizeSpecificPurpose(AppPurpose.Onboarding),
+      this.authorizeSpecificPurpose(AppPurpose.Operations),
       'projects.createColumn',
       parameters
     );
@@ -212,7 +213,7 @@ export class RepositoryProject {
     return false;
   }
 
-  private authorizeSpecificPurpose(purpose: AppPurpose): IGetAuthorizationHeader | string {
+  private authorizeSpecificPurpose(purpose: AppPurposeTypes): IGetAuthorizationHeader | string {
     const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose

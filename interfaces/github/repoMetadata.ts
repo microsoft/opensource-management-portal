@@ -3,13 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
-import {
-  IOperationsInstance,
-  IOperationsRepositoryMetadataProvider,
-  operationsWithCapability,
-  throwIfNotCapable,
-} from './operations';
+import { IOperationsInstance, IOperationsRepositoryMetadataProvider, throwIfNotCapable } from './operations';
+import { GitHubRepositoryPermission } from './repos';
 import { CoreCapability } from './rest';
 
 export interface IRepositoryMetadataPermissionPair {

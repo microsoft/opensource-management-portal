@@ -4,7 +4,7 @@
 //
 
 import Debug from 'debug';
-const debug = Debug('appinsights');
+const debug = Debug.debug('insights');
 
 // This file was originally designed to wrap the pre-1.0.0 version of applicationinsights,
 // and so is less important today.

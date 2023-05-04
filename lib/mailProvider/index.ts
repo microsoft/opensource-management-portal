@@ -7,6 +7,7 @@ import MockMailService from './mockMailService';
 import SmtpMailService from './smtpMailService';
 import AzureServiceBus from './azureServiceBus';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
+import { SiteConfiguration } from '../../interfaces';
 
 export interface IMail {
   from?: string;
@@ -29,6 +30,10 @@ export interface IMailProvider {
   initialize(): Promise<string | void>;
 }
 
+export function isOverridingRecipients(config: SiteConfiguration) {
+  return !!config.mail.debug.overrideRecipient;
+}
+
 function patchOverride(provider, newToAddress, htmlOrNot) {
   const sendMail = provider.sendMail.bind(provider);
   provider.sendMail = (mailOptions: IMail): Promise<any> => {
@@ -39,6 +44,8 @@ function patchOverride(provider, newToAddress, htmlOrNot) {
     if (!mailOptions.content) {
       mailOptions.content = '';
     }
+    const originalSubject = mailOptions.subject;
+    mailOptions.subject = '[SAMPLE] ' + originalSubject;
     mailOptions.to = newToAddress;
     if (mailOptions.cc) {
       if (typeof mailOptions.cc === 'string') {
@@ -61,22 +68,22 @@ function patchOverride(provider, newToAddress, htmlOrNot) {
     const initialContent = mailOptions.content;
     const redirectMessage = `This mail was intended for ${originalTo} but was instead sent to ${newToAddress} per a configuration override.\n`;
     mailOptions.content = htmlOrNot
-      ? `<p><em>${redirectMessage}</em></p>\n${initialContent}`
-      : `${redirectMessage}\n${initialContent}`;
+      ? `${initialContent}\n<p><em>${redirectMessage}</em></p>`
+      : `${initialContent}\n${redirectMessage}`;
     return sendMail(mailOptions);
   };
   return provider;
 }
 
-export function createMailProviderInstance(config): IMailProvider {
+export function createMailProviderInstance(config: SiteConfiguration): IMailProvider {
   const deployment = getCompanySpecificDeployment();
   let mailProvider: IMailProvider = null;
   const mailConfig = config.mail;
   if (deployment?.features?.mailProvider?.tryCreateInstance) {
     mailProvider = deployment.features.mailProvider.tryCreateInstance(config);
     if (mailProvider) {
-      if (mailConfig.overrideRecipient) {
-        patchOverride(mailProvider, mailConfig.overrideRecipient, mailProvider.html);
+      if (mailConfig.debug.overrideRecipient) {
+        patchOverride(mailProvider, mailConfig.debug.overrideRecipient, mailProvider.html);
       }
       return mailProvider;
     }
@@ -107,8 +114,8 @@ export function createMailProviderInstance(config): IMailProvider {
       );
     }
   }
-  if (mailConfig.overrideRecipient) {
-    patchOverride(mailProvider, mailConfig.overrideRecipient, mailProvider.html);
+  if (mailConfig.debug.overrideRecipient) {
+    patchOverride(mailProvider, mailConfig.debug.overrideRecipient, mailProvider.html);
   }
   return mailProvider;
 }

@@ -19,12 +19,7 @@ import {
   splitSemiColonCommas,
 } from '../transitional';
 import { Organization, Repository } from '../business';
-import {
-  RepositoryMetadataEntity,
-  GitHubRepositoryVisibility,
-  GitHubRepositoryPermission,
-  RepositoryLockdownState,
-} from '../entities/repositoryMetadata/repositoryMetadata';
+import { RepositoryMetadataEntity } from '../entities/repositoryMetadata/repositoryMetadata';
 import RenderHtmlMail from '../lib/emailRender';
 
 import {
@@ -34,7 +29,7 @@ import {
 } from '../routes/org/repoWorkflowEngine';
 import { IMailProvider } from '../lib/mailProvider';
 import { IndividualContext } from '../user';
-import NewRepositoryLockdownSystem from '../features/newRepositoryLockdown';
+import NewRepositoryLockdownSystem from '../features/newRepositories/newRepositoryLockdown';
 import {
   ICreateRepositoryResult,
   ICorporateLink,
@@ -46,6 +41,9 @@ import {
   IOperationsGitHubRestLibrary,
   IOperationsHierarchy,
   IOperationsNotifications,
+  GitHubRepositoryVisibility,
+  RepositoryLockdownState,
+  GitHubRepositoryPermission,
 } from '../interfaces';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 
@@ -191,15 +189,15 @@ export async function CreateRepository(
           entrypoint,
         },
       });
-      if (error && error.innerError) {
-        const inner = error.innerError;
+      if (error?.cause) {
+        const cause = error.cause;
         req.insights.trackException({
-          exception: inner,
+          exception: cause,
           properties: {
             event: 'ApiRepoCreateGitHubErrorInside',
-            message: inner && inner.message ? inner.message : inner,
-            status: inner && inner.status ? inner.status : '',
-            statusCode: inner && inner.statusCode ? inner.statusCode : '',
+            message: cause?.message || cause,
+            status: cause?.status || '',
+            statusCode: cause?.statusCode || '',
           },
         });
       }
@@ -289,7 +287,7 @@ export async function CreateRepository(
     if (!individualContext) {
       throw new Error('Existing repository reclassification requires an authenticated identity');
     }
-    NewRepositoryLockdownSystem.ValidateUserCanConfigureRepository(metadata, individualContext);
+    NewRepositoryLockdownSystem.Statics.ValidateUserCanConfigureRepository(metadata, individualContext);
     // CONSIDER: or a org sudo user or a portal administrator
     const repositoryByName = organization.repository(metadata.repositoryName);
     const response = await repositoryByName.getDetails();

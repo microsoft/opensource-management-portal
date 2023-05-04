@@ -13,8 +13,8 @@ export default class MembershipWebhookProcessor implements WebhookProcessor {
     return eventType === 'membership';
   }
 
-  async run(operations: Operations, organization: Organization, data: any): Promise<any> {
-    const providers = operations.providers as IProviders;
+  async run(providers: IProviders, organization: Organization, data: any): Promise<any> {
+    const operations = providers.operations as Operations;
     const queryCache = providers.queryCache;
     const event = data.body;
     const organizationId = event.organization.id as number;

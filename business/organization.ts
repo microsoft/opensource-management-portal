@@ -13,13 +13,18 @@ import { Repository } from './repository';
 import { wrapError } from '../utils';
 import { StripGitHubEntity } from '../lib/github/restApi';
 import { GitHubResponseType } from '../lib/github/endpointEntities';
-import { AppPurpose } from '../github';
-import { OrganizationSetting, SpecialTeam } from '../entities/organizationSettings/organizationSetting';
+import { AppPurpose, AppPurposeTypes } from '../github';
+import {
+  OrganizationFeature,
+  OrganizationSetting,
+  SpecialTeam,
+} from '../entities/organizationSettings/organizationSetting';
 import { createOrganizationSudoInstance, IOrganizationSudo } from '../features';
 import { CacheDefault, getMaxAgeSeconds, getPageSize, OperationsCore } from './operations/core';
 import {
   CoreCapability,
   GitHubAuditLogEntry,
+  GitHubRepositoryVisibility,
   IAccountBasics,
   IAddOrganizationMembershipOptions,
   IAuthorizationHeaderValue,
@@ -30,6 +35,7 @@ import {
   IGetAuthorizationHeader,
   IGetOrganizationAuditLogOptions,
   IGetOrganizationMembersOptions,
+  IGitHubAccountDetails,
   IOperationsCentralOperationsToken,
   IOperationsInstance,
   IOperationsLegalEntities,
@@ -57,6 +63,9 @@ import { CreateError, ErrorHelper } from '../transitional';
 import { jsonError } from '../middleware';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 import { ConfigGitHubTemplates } from '../config/github.templates.types';
+import { GitHubTokenManager } from '../github/tokenManager';
+import { OrganizationProjects } from './projects';
+import { OrganizationDomains } from './domains';
 
 interface IGetMembersParameters {
   org: string;
@@ -144,6 +153,9 @@ export class Organization {
 
   private _organizationSudo: IOrganizationSudo;
 
+  private _projects: OrganizationProjects;
+  private _domains: OrganizationDomains;
+
   id: number;
   uncontrolled: boolean;
 
@@ -223,6 +235,7 @@ export class Organization {
       priority: this.priority,
       privateEngineering: this.privateEngineering,
       management: this.getManagementApproach(),
+      configuredOrganizationRepositoryTypes: this.getSupportedRepositoryTypesByPriority(),
     };
 
     const companySpecificDeployment = getCompanySpecificDeployment();
@@ -255,6 +268,38 @@ export class Organization {
     return this._entity;
   }
 
+  async getGraphQlNodeId() {
+    if (!this.getEntity()?.node_id) {
+      await this.getDetails();
+    }
+    const { node_id: nodeId } = this.getEntity();
+    return nodeId;
+  }
+
+  get projects() {
+    if (!this._projects) {
+      this._projects = new OrganizationProjects(
+        this,
+        this._operations,
+        this._getAuthorizationHeader,
+        this._getSpecificAuthorizationHeader
+      );
+    }
+    return this._projects;
+  }
+
+  get domains() {
+    if (!this._domains) {
+      this._domains = new OrganizationDomains(
+        this,
+        this._operations,
+        this._getAuthorizationHeader,
+        this._getSpecificAuthorizationHeader
+      );
+    }
+    return this._domains;
+  }
+
   async supportsUpdatesApp() {
     try {
       await this._getSpecificAuthorizationHeader(AppPurpose.Updates);
@@ -271,6 +316,13 @@ export class Organization {
         `The ${this.name} organization is not configured to support the necessary Updates app to complete this operation: ${functionName}`
       );
     }
+  }
+
+  getRateLimitInformation(purpose: AppPurposeTypes) {
+    const tokenManager = GitHubTokenManager.TryGetTokenManagerForOperations(
+      this._operations as OperationsCore
+    );
+    return tokenManager.getRateLimitInformation(purpose, this);
   }
 
   repository(name: string, optionalEntity?) {
@@ -364,15 +416,15 @@ export class Organization {
   }
 
   get isAppOnly(): boolean {
-    return this._settings.hasFeature('appOnly') || false;
+    return this._settings.hasFeature(OrganizationFeature.ApplicationHostOrganizationOnly) || false;
   }
 
   get locked(): boolean {
-    return this._settings.hasFeature('locked') || false;
+    return this._settings.hasFeature(OrganizationFeature.LockedMembership) || false;
   }
 
   get hidden(): boolean {
-    return this._settings.hasFeature('hidden') || false;
+    return this._settings.hasFeature(OrganizationFeature.Hidden) || false;
   }
 
   get pilot_program() {
@@ -380,7 +432,7 @@ export class Organization {
   }
 
   get createRepositoriesOnGitHub(): boolean {
-    return this._settings.hasFeature('createReposDirect') || false;
+    return this._settings.hasFeature(OrganizationFeature.CreateNativeRepositories) || false;
   }
 
   get configuredOrganizationRepositoryTypes(): string {
@@ -396,7 +448,7 @@ export class Organization {
   }
 
   get preventLargeTeamPermissions(): boolean {
-    return this._settings.hasFeature('preventLargeTeamPermissions') || false;
+    return this._settings.hasFeature(OrganizationFeature.PreventLargeTeamPermissionGrants) || false;
   }
 
   get description(): string {
@@ -440,7 +492,7 @@ export class Organization {
   }
 
   get privateRepositoriesSupported(): boolean {
-    return this.getSupportedRepositoryTypesByPriority().includes('private');
+    return this.getSupportedRepositoryTypesByPriority().includes(GitHubRepositoryVisibility.Private);
   }
 
   get sudoersTeam(): Team {
@@ -468,6 +520,21 @@ export class Organization {
 
   getAuthorizationHeader(): IPurposefulGetAuthorizationHeader {
     return this._getAuthorizationHeader;
+  }
+
+  async getUserDetailsByLogin(login: string, purpose?: AppPurposeTypes): Promise<IGitHubAccountDetails> {
+    // This is a more basic version of the user API; unlike the operations-level function,
+    // this does not return a strongly typed object with integrated REST access.
+    try {
+      const response = (await this.requestUrl(`https://api.github.com/users/${login}`, {
+        purpose: purpose || AppPurpose.Operations,
+      })) as IGitHubAccountDetails;
+      if (response?.id) {
+        return response;
+      }
+    } catch (error) {
+      throw error;
+    }
   }
 
   async getOrganizationAdministrators(): Promise<IAdministratorBasics[]> {
@@ -1213,7 +1280,7 @@ export class Organization {
     return getAuthorizationHeader;
   }
 
-  private authorizeSpecificPurpose(purpose: AppPurpose): IGetAuthorizationHeader {
+  private authorizeSpecificPurpose(purpose: AppPurposeTypes): IGetAuthorizationHeader {
     const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose
@@ -1309,7 +1376,19 @@ export class Organization {
       CoreCapability.LockdownFeatureFlags
     );
     return (
-      operations.allowUnauthorizedForkLockdownSystemFeature() && this._settings.hasFeature('lock-new-forks')
+      operations.allowUnauthorizedForkLockdownSystemFeature() &&
+      this._settings.hasFeature(OrganizationFeature.LockNewForks)
+    );
+  }
+
+  isForkDeleteSystemEnabled() {
+    const operations = operationsWithCapability<IOperationsLockdownFeatureFlags>(
+      this._operations,
+      CoreCapability.LockdownFeatureFlags
+    );
+    return (
+      operations.allowUnauthorizedForkLockdownSystemFeature() &&
+      this._settings.hasFeature(OrganizationFeature.DeleteNewForks)
     );
   }
 
@@ -1319,7 +1398,10 @@ export class Organization {
       CoreCapability.LockdownFeatureFlags
     );
     if (operations) {
-      return operations.allowTransferLockdownSystemFeature() && this._settings.hasFeature('lock-transfers');
+      return (
+        operations.allowTransferLockdownSystemFeature() &&
+        this._settings.hasFeature(OrganizationFeature.LockTransfers)
+      );
     }
     return false;
   }
@@ -1371,19 +1453,19 @@ export class Organization {
     // a billing relationship, so repo create APIs would fail asking you to upgrade to a paid
     // plan.
     const settings = this._settings;
-    const type = settings.properties['type'] || 'public';
-    const types = ['public'];
+    const type = settings.properties['type'] || GitHubRepositoryVisibility.Public;
+    const types = [GitHubRepositoryVisibility.Public];
     switch (type) {
       case 'public':
         break;
       case 'publicprivate':
-        types.push('private');
+        types.push(GitHubRepositoryVisibility.Private);
         break;
       case 'private':
-        types.splice(0, 1, 'private');
+        types.splice(0, 1, GitHubRepositoryVisibility.Private);
         break;
       case 'privatepublic':
-        types.splice(0, 0, 'private');
+        types.splice(0, 0, GitHubRepositoryVisibility.Private);
         break;
       default:
         throw new Error(`Unsupported configuration for repository types in the organization: ${type}`);

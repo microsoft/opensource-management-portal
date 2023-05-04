@@ -4,7 +4,7 @@
 //
 
 import { CacheDefault, getMaxAgeSeconds, RepositoryIssue } from '.';
-import { AppPurpose } from '../github';
+import { AppPurpose, AppPurposeTypes } from '../github';
 import {
   IOperationsInstance,
   IPurposefulGetAuthorizationHeader,
@@ -71,7 +71,7 @@ export class RepositoryProjectColumn {
       column_id: this._id,
     });
     augmentInertiaPreview(parameters);
-    const purpose = options?.purpose || AppPurpose.Onboarding;
+    const purpose = options?.purpose || AppPurpose.Data;
     const cacheOptions: ICacheOptions = {
       maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
     };
@@ -96,7 +96,7 @@ export class RepositoryProjectColumn {
     };
     augmentInertiaPreview(parameters);
     const details = await operations.github.post(
-      this.authorizeSpecificPurpose(AppPurpose.Onboarding),
+      this.authorizeSpecificPurpose(AppPurpose.Operations),
       'projects.createCard',
       parameters
     );
@@ -122,7 +122,7 @@ export class RepositoryProjectColumn {
     };
     augmentInertiaPreview(parameters);
     const details = await operations.github.post(
-      this.authorizeSpecificPurpose(AppPurpose.Onboarding),
+      this.authorizeSpecificPurpose(AppPurpose.Operations),
       'projects.createCard',
       parameters
     );
@@ -136,7 +136,7 @@ export class RepositoryProjectColumn {
     return card;
   }
 
-  private authorizeSpecificPurpose(purpose: AppPurpose): IGetAuthorizationHeader | string {
+  private authorizeSpecificPurpose(purpose: AppPurposeTypes): IGetAuthorizationHeader | string {
     const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose

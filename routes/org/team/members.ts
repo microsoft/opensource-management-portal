@@ -145,7 +145,7 @@ router.post(
         );
       }
     } catch (error) {
-      if (error && error.innerError && error.innerError.status === 404) {
+      if (error?.cause?.status === 404) {
         error = new Error(
           `${username} is not a member of the ${organization.name} organization and so cannot be added to the team until they have joined the org.`
         );

@@ -6,3 +6,5 @@ dist
 
 # View
 views/email/email.css
+
+.environment/copilot/

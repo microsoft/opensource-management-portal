@@ -3,8 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
-import { IRepositoryMetadata, IRepositoryMetadataPermissionPair } from '../interfaces';
+import {
+  GitHubRepositoryPermission,
+  IRepositoryMetadata,
+  IRepositoryMetadataPermissionPair,
+} from '../interfaces';
 
 const currentRepositoryMetadataSchema = 'rm1.0';
 

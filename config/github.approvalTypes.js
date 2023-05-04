@@ -37,7 +37,6 @@ module.exports = function (graphApi) {
       approvalFields = JSON.parse(str);
       showTypeLoadDebugMessages && debug(`repo approval types loaded from file ${filename}`);
     } catch (notFound) {
-      /* no action required */
       console.warn(notFound);
     }
   } else if (pkg && pkg[painlessConfigEnvPkgName] && environmentName) {
@@ -59,7 +58,6 @@ module.exports = function (graphApi) {
         `attempted to load repo approval types loaded from painlessConfigEnvPkgName/${environmentName},${repoApprovalsEnvironmentName}`
       );
       console.warn(painlessConfigError);
-      throw painlessConfigError;
     }
   }
 

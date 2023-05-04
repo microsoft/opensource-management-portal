@@ -5,9 +5,8 @@
 
 import asyncHandler from 'express-async-handler';
 
-import { ReposAppRequest } from '../../../interfaces';
+import { GitHubRepositoryPermission, ReposAppRequest } from '../../../interfaces';
 import { IndividualContext } from '../../../user';
-import { GitHubRepositoryPermission } from '../../../entities/repositoryMetadata/repositoryMetadata';
 
 export default asyncHandler(async (req: ReposAppRequest, res, next) => {
   try {

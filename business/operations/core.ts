@@ -4,7 +4,7 @@
 //
 
 import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
-import { GitHubAppAuthenticationType, AppPurpose } from '../../github';
+import { GitHubAppAuthenticationType, AppPurpose, ICustomAppPurpose, AppPurposeTypes } from '../../github';
 import { GitHubTokenManager } from '../../github/tokenManager';
 import {
   IProviders,
@@ -20,12 +20,16 @@ import {
   throwIfNotCapable,
   IOperationsCentralOperationsToken,
   IAuthorizationHeaderValue,
+  SiteConfiguration,
 } from '../../interfaces';
 import { RestLibrary } from '../../lib/github';
 import { CreateError } from '../../transitional';
 import { wrapError } from '../../utils';
 import { Account } from '../account';
 import GitHubApplication from '../application';
+
+import Debug from 'debug';
+const debugGitHubTokens = Debug('github:tokens');
 
 export interface IOperationsCoreOptions {
   github: RestLibrary;
@@ -233,7 +237,7 @@ export abstract class OperationsCore
     return this._providers;
   }
 
-  get config(): any {
+  get config(): SiteConfiguration {
     return this.providers.config;
   }
 
@@ -290,7 +294,9 @@ export abstract class OperationsCore
 
   async initialize() {
     const tokenManager = this.tokenManager;
+    debugGitHubTokens('calling token manager initialize');
     await tokenManager.initialize();
+    debugGitHubTokens('reviewing all app IDs from token manager');
     tokenManager.getAppIds().map((appId) => {
       const { friendlyName } = tokenManager.getAppById(appId);
       const slug = tokenManager.getSlugById(appId);
@@ -331,13 +337,20 @@ export abstract class OperationsCore
     legacyOwnerToken: string,
     centralOperationsFallbackToken: string,
     appAuthenticationType: GitHubAppAuthenticationType,
-    purpose: AppPurpose
+    purpose: AppPurposeTypes
   ): Promise<IAuthorizationHeaderValue> {
-    if (!this.tokenManager.organizationSupportsAnyPurpose(organizationName, organizationSettings)) {
+    const customPurpose = purpose as ICustomAppPurpose;
+    const isCustomPurpose = customPurpose?.isCustomAppPurpose === true;
+    if (
+      !isCustomPurpose &&
+      !this.tokenManager.organizationSupportsAnyPurpose(organizationName, organizationSettings)
+    ) {
       const legacyTokenValue = legacyOwnerToken || centralOperationsFallbackToken;
       if (!legacyTokenValue) {
         throw new Error(
-          `Organization ${organizationName} is not configured with a GitHub app, Personal Access Token ownerToken configuration value, or a fallback central operations token`
+          `Organization ${organizationName} is not configured with a GitHub app, Personal Access Token ownerToken configuration value, or a fallback central operations token for the ${
+            isCustomPurpose ? customPurpose.name : purpose
+          } purpose and the ${appAuthenticationType} type.`
         );
       }
       return {

@@ -20,7 +20,6 @@ import { MassagePermissionsToGitHubRepositoryPermission } from '../transitional'
 import { OrganizationMemberCacheEntity } from '../entities/organizationMemberCache/organizationMemberCache';
 import { Operations } from './operations';
 import { TeamMemberCacheEntity } from '../entities/teamMemberCache/teamMemberCache';
-import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 
 import { TeamCacheEntity } from '../entities/teamCache/teamCache';
 import { RepositoryTeamCacheEntity } from '../entities/repositoryTeamCache/repositoryTeamCache';
@@ -39,9 +38,10 @@ import {
   GitHubCollaboratorType,
   OrganizationMembershipRole,
   IQueryCacheOrganizationMembership,
+  GitHubRepositoryPermission,
 } from '../interfaces';
 
-const debug = Debug('querycache');
+const debug = Debug.debug('querycache');
 
 export default class QueryCache {
   private _providers: IProviders;

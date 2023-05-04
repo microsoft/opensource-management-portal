@@ -72,11 +72,10 @@ module.exports = (graphApi) => {
       }
       templates = templatePackageData;
     } catch (templatesNpmLoadError) {
-      const combinedError = new Error(
-        `Trouble loading npm package ${npmName} as configured in GITHUB_ORGANIZATIONS_TEMPLATES_PACKAGE_NAME: ${templatesNpmLoadError.toString()}`
+      throw new Error(
+        `Trouble loading npm package ${npmName} as configured in GITHUB_ORGANIZATIONS_TEMPLATES_PACKAGE_NAME: ${templatesNpmLoadError.toString()}`,
+        { cause: templatesNpmLoadError }
       );
-      combinedError.innerError = templatesNpmLoadError;
-      throw combinedError;
     }
   }
 

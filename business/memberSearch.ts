@@ -10,6 +10,7 @@ import {
   RequestTeamMemberAddType,
   IMemberSearchOptions,
   ICrossOrganizationMembershipByOrganization,
+  ICrossOrganizationMembershipBasics,
 } from '../interfaces';
 
 import { OrganizationMember } from './organizationMember';
@@ -97,7 +98,7 @@ export class MemberSearch {
       if (!this.orgId) {
         throw new Error('org owners view not available at the top root level currently');
       }
-      const allOwners = await organizationMemberCacheProvider.queryAllOrganizationOwners();
+      const allOwners = await organizationMemberCacheProvider.queryOrganizationOwners(this.orgId);
       const owners = new Set<string>();
       for (const owner of allOwners) {
         if (this.orgId && owner.organizationId === this.orgId) {
@@ -163,7 +164,7 @@ export class MemberSearch {
     this.members.forEach((m) => {
       const member = m as any as ICrossOrganizationMembershipByOrganization;
       if (member.orgs && member.orgs.length > 0) {
-        member.orgs = _.sortBy(member.orgs, ['name']);
+        member.orgs = _.sortBy(member.orgs, ['name']) as ICrossOrganizationMembershipBasics[];
       }
     });
     return this;

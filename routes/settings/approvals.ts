@@ -185,7 +185,7 @@ router.get(
         return res.redirect(error.redirect);
       }
       // Edge case: the team no longer exists.
-      if (error.innerError && error.innerError.innerError && error.innerError.innerError.statusCode == 404) {
+      if (error?.cause?.statusCode === 404 || error.cause?.cause?.statusCode === 404) {
         return closeOldRequest(false /* not a JSON client app */, pendingRequest, req, res, next);
       }
       return next(error);

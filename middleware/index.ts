@@ -7,7 +7,8 @@ import bodyParser from 'body-parser';
 import compression from 'compression';
 import path from 'path';
 
-const debug = require('debug')('startup');
+import Debug from 'debug';
+const debug = Debug.debug('startup');
 
 export * from './react';
 export * from './links';
@@ -35,7 +36,7 @@ import routePassport from './passport-routes';
 import { IProviders, SiteConfiguration } from '../interfaces';
 import { codespacesDevAssistant } from './codespaces';
 
-export default function initMiddleware(
+export default async function initMiddleware(
   app,
   express,
   config: SiteConfiguration,
@@ -88,7 +89,7 @@ export default function initMiddleware(
         debug('proxy: trusting reverse proxy');
       }
       if (applicationProfile.sessions) {
-        app.use(connectSession(app, config, providers));
+        app.use(await connectSession(app, config, providers));
         try {
           passport = passportConfig(app, config);
         } catch (passportError) {
@@ -102,7 +103,7 @@ export default function initMiddleware(
     if (!initializationError) {
       if (applicationProfile.sessions) {
         routePassport(app, passport, config);
-        if (config.github.organizations.onboarding && config.github.organizations.onboarding.length) {
+        if (config?.github?.organizations?.onboarding?.length > 0) {
           debug('Onboarding helper loaded');
           onboard(app, config);
         }

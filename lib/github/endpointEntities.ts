@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-// const debugCacheOptimization = require('debug')('oss-cache-optimization');
-
 export enum FieldType {
   Keep, // keep the property value, if present
   Drop, // drop it

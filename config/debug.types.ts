@@ -11,4 +11,5 @@ export type ConfigDebug = {
   environmentName: string;
   showUsers: boolean;
   showDebugFooter: boolean;
+  unlinkWithoutDrops: boolean;
 };

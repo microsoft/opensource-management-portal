@@ -8,9 +8,8 @@
 import { shuffle } from 'lodash';
 
 import { TeamPermission } from '../../business/teamPermission';
-import { IReposJob, IReposJobResult } from '../../interfaces';
+import { GitHubRepositoryPermission, IReposJob, IReposJobResult } from '../../interfaces';
 import AutomaticTeamsWebhookProcessor from '../../webhooks/tasks/automaticTeams';
-import { GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { sleep } from '../../utils';
 import { ErrorHelper } from '../../transitional';
 
