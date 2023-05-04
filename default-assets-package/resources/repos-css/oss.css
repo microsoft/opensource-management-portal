@@ -139,7 +139,7 @@ textarea#editor-body {
   margin-bottom: 24px;
   width: 100%;
   min-height: 480px;
-  font-family: Consolas, 'Courier New', Courier, monospace;
+  font-family: Consolas, Courier, 'Courier New';
 }
 
 footer {
@@ -200,6 +200,10 @@ code {
 
 .button:hover {
   color: lightgray;
+}
+
+.invisible {
+  visibility: hidden;
 }
 
 .alert-gray {
@@ -356,7 +360,7 @@ div.link-box {
 .ms-blue-border-top {
   border-style: solid;
   border-top-color: #20558a;
-  border-width: 4px 0 0 0;
+  border-width: 4px 0 0;
 }
 
 .transparent-border {
@@ -581,8 +585,7 @@ th.w-10 {
 
 /* Nav: second level (shown on .active) */
 .wiki-sidebar .nav .nav {
-  display: none;
-  /* Hide by default, but at >768px, show it */
+  display: none; /* Hide by default, but at >768px, show it */
   padding-bottom: 10px;
 }
 
@@ -641,14 +644,12 @@ th.w-10 {
   }
 
   .wiki-sidebar.affix {
-    position: fixed;
-    /* Undo the static from mobile first approach */
+    position: fixed; /* Undo the static from mobile first approach */
     top: 20px;
   }
 
   .wiki-sidebar.affix-bottom {
-    position: absolute;
-    /* Undo the static from mobile first approach */
+    position: absolute; /* Undo the static from mobile first approach */
   }
 
   .wiki-sidebar.affix-bottom .wiki-sidenav,
