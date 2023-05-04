@@ -593,7 +593,7 @@ async function connectRedis(
   const redisClient: RedisClientType = createClient(redisOptions);
   await redisClient.connect();
 
-  if (config.redis.tls) {
+  if (config.redis.key) {
     await redisClient.auth({ password: config.redis.key });
   }
 
