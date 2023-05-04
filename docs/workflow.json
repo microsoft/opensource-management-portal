@@ -1,0 +1,60 @@
+{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "actions": {
+      "Send_message": {
+        "inputs": {
+          "body": {
+            "ContentData": "@{base64(triggerBody())}",
+            "ContentType": "application/json",
+            "Properties": {
+              "delivery": "@coalesce(triggerOutputs()['headers']['X-GitHub-Delivery'])",
+              "event": "@coalesce(triggerOutputs()['headers']['X-GitHub-Event'])",
+              "signature": "@coalesce(triggerOutputs()['headers']['X-Hub-Signature'])",
+              "signature256": "@coalesce(triggerOutputs()['headers']['X-Hub-Signature-256'])",
+              "started": "@utcNow()"
+            }
+          },
+          "host": {
+            "connection": {
+              "name": "@parameters('$connections')['servicebus']['connectionId']"
+            }
+          },
+          "method": "post",
+          "path": "/@{encodeURIComponent(encodeURIComponent('events'))}/messages",
+          "queries": {
+            "systemProperties": "Run Details"
+          }
+        },
+        "runAfter": {},
+        "type": "ApiConnection"
+      }
+    },
+    "contentVersion": "1.0.0.0",
+    "outputs": {},
+    "parameters": {
+      "$connections": {
+        "defaultValue": {},
+        "type": "Object"
+      }
+    },
+    "triggers": {
+      "manual": {
+        "inputs": {},
+        "kind": "Http",
+        "type": "Request"
+      }
+    }
+  },
+  "parameters": {
+    "$connections": {
+      "value": {
+        "servicebus": {
+          "connectionId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/[RESOURCEGROUPNAME]/providers/Microsoft.Web/connections/servicebus",
+          "connectionName": "servicebus",
+          "id": "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Web/locations/eastus/managedApis/servicebus"
+        }
+      }
+    }
+  }
+}
