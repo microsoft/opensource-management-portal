@@ -1237,7 +1237,7 @@ export class Operations
   }
 
   allowUsersToViewLockedOrgDetails() {
-    return this.config?.features?.features.allowUsersToViewLockedOrgDetails === true;
+    return this.config?.features?.allowUsersToViewLockedOrgDetails === true;
   }
 
   // Eventually link/unlink should move from context into operations here to centralize more than just the events
