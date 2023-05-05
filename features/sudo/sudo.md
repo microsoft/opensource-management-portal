@@ -50,7 +50,7 @@ that was configured in the environment.
 
 > This feature is not on by default.
 
-To opt in to the feature, set the value to `1`.
+To opt into the feature, set the value to `1`.
 
 ## Configuration: providerName
 

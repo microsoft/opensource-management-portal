@@ -163,7 +163,7 @@ export default class NewRepositoryLockdownSystem {
       return { wasLocked: false, notifyOperations: false };
     }
     lockdownLog.push(
-      `Confirmed that the ${this.organization.name} organization has opted in to the new repository lockdown system`
+      `Confirmed that the ${this.organization.name} organization has opted into the new repository lockdown system`
     );
     if (this.deleteForks) {
       lockdownLog.push(
