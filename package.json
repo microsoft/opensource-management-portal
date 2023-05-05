@@ -27,7 +27,7 @@
     "lint:md": "markdownlint-cli2 \"**/*.md\"",
     "lint:spell": "cspell --no-progress \"**\"",
     "lint": "npm run lint:js && npm run lint:md && npm run lint:spell",
-    "prepare": "husky install",
+    "prepare": "npx husky install",
     "start-4000": "PORT=4000 DEBUG=startup node ./dist/bin/www",
     "start-in-container": "node ./bin/www",
     "start": "node ./dist/bin/www",
