@@ -5,7 +5,7 @@
 
 import { ErrorHelper, getProviders } from '../../transitional';
 import { Repository } from '../../business/repository';
-import { GitHubIdentitySource, IIndividualContextOptions, IndividualContext } from '../../user';
+import { GitHubIdentitySource, IIndividualContextOptions, IndividualContext } from '../../business/user';
 import getCompanySpecificDeployment from '../companySpecificDeployment';
 import {
   ReposAppRequest,

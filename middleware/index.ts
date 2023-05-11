@@ -33,15 +33,18 @@ import routeLogger from './logger';
 import routeLocals from './locals';
 import routePassport from './passport-routes';
 
-import { IProviders, SiteConfiguration } from '../interfaces';
+import routeApi from '../api';
+
+import { IProviders, IReposApplication, SiteConfiguration } from '../interfaces';
 import { codespacesDevAssistant } from './codespaces';
 
 export default async function initMiddleware(
-  app,
+  app: IReposApplication,
   express,
   config: SiteConfiguration,
-  dirname,
-  initializationError
+  dirname: string,
+  hasCustomRoutes: boolean,
+  initializationError: Error
 ) {
   config = config || ({} as SiteConfiguration);
   const appDirectory =
@@ -87,6 +90,9 @@ export default async function initMiddleware(
       if (config.containers && config.containers.deployment) {
         app.enable('trust proxy');
         debug('proxy: trusting reverse proxy');
+      }
+      if (!hasCustomRoutes) {
+        app.use('/api', routeApi);
       }
       if (applicationProfile.sessions) {
         app.use(await connectSession(app, config, providers));

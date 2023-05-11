@@ -24,7 +24,7 @@ import lowercaser from '../../../middleware/lowercaser';
 
 import RouteMaintainer from './index-maintainer';
 import { Operations, Organization, Repository, Team, TeamMember } from '../../../business';
-import { IndividualContext } from '../../../user';
+import { IndividualContext } from '../../../business/user';
 import {
   ReposAppRequest,
   GitHubTeamRole,

@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { AppPurposeTypes } from '../../github';
+import { AppPurposeTypes } from '../../business/githubApps';
 
 export interface ICacheOptions {
   backgroundRefresh?: any | null | undefined;

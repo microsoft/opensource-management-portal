@@ -21,7 +21,7 @@ import {
   OrganizationAnnotation,
 } from '../../../entities/organizationAnnotation';
 import { ErrorHelper, getProviders } from '../../../transitional';
-import { IndividualContext } from '../../../user';
+import { IndividualContext } from '../../../business/user';
 import { IProviders } from '../../../interfaces';
 
 const router: Router = Router();

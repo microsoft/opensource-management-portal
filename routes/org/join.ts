@@ -12,7 +12,7 @@ const router: Router = Router();
 import querystring from 'querystring';
 
 import { CreateError, getProviders } from '../../transitional';
-import { IndividualContext } from '../../user';
+import { IndividualContext } from '../../business/user';
 import { sleep, storeOriginalUrlAsReferrer, wrapError } from '../../utils';
 import RequireActiveGitHubSession from '../../middleware/github/requireActiveSession';
 import { jsonError } from '../../middleware/jsonError';

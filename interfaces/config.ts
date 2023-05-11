@@ -5,3 +5,6 @@
 
 import type { SiteConfiguration } from '../config/index.types';
 export type { SiteConfiguration };
+
+import type { RootRuntimeConfigurationClient } from '../middleware/staticClientApp2';
+export type RuntimeConfiguration = RootRuntimeConfigurationClient;

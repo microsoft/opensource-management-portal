@@ -10,7 +10,7 @@ import { jsonError } from '../../../../middleware';
 import { setContextualRepository } from '../../../../middleware/github/repoPermissions';
 
 import { OrganizationMembershipState, ReposAppRequest } from '../../../../interfaces';
-import { IndividualContext } from '../../../../user';
+import { IndividualContext } from '../../../../business/user';
 import { createRepositoryFromClient } from '../../newOrgRepo';
 
 import RouteContextualRepo from './repo';

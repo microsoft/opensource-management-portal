@@ -5,7 +5,7 @@
 
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { RepositoryLockdownState } from '../../interfaces';
-import { IndividualContext } from '../../user';
+import { IndividualContext } from '../../business/user';
 
 export async function validateUserCanConfigureRepository(
   metadata: RepositoryMetadataEntity,

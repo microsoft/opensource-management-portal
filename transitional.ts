@@ -133,7 +133,7 @@ export class CreateError {
     return error;
   }
 
-  static NotFound(message: string, innerError?: Error): Error {
+  static NotFound(message?: string, innerError?: Error): Error {
     return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(404, message), innerError);
   }
 

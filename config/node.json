@@ -1,4 +1,0 @@
-{
-  "environment": "env://NODE_ENV",
-  "isProduction": "env://NODE_ENV?trueIf=production"
-}

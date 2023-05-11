@@ -28,7 +28,7 @@ import {
   IApprovalPackage,
 } from '../routes/org/repoWorkflowEngine';
 import { IMailProvider } from '../lib/mailProvider';
-import { IndividualContext } from '../user';
+import { IndividualContext } from '../business/user';
 import NewRepositoryLockdownSystem from '../features/newRepositories/newRepositoryLockdown';
 import {
   ICreateRepositoryResult,

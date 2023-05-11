@@ -15,7 +15,7 @@ import {
   LinkOperationSource,
 } from '../interfaces';
 import { getProviders, splitSemiColonCommas } from '../transitional';
-import { IndividualContext } from '../user';
+import { IndividualContext } from '../business/user';
 import { isCodespacesAuthenticating, storeOriginalUrlAsReferrer, wrapError } from '../utils';
 
 import validator from 'validator';

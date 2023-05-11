@@ -15,7 +15,7 @@ import { CrossOrganizationCollator } from './crossOrganization';
 import { LinkMethods } from './links';
 import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../interfaces';
 import { ICacheHelper } from '../caching';
-import { ICustomAppPurpose } from '../../github';
+import { ICustomAppPurpose } from '../../business/githubApps';
 
 export enum CacheMode {
   ValidateCache = 'ValidateCache',

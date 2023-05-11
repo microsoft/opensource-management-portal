@@ -13,7 +13,7 @@ import {
   getContextualRepository,
   getContextualRepositoryPermissions,
 } from '../../../../middleware/github/repoPermissions';
-import { IndividualContext } from '../../../../user';
+import { IndividualContext } from '../../../../business/user';
 import { ErrorHelper, getProviders } from '../../../../transitional';
 import NewRepositoryLockdownSystem from '../../../../features/newRepositories/newRepositoryLockdown';
 

@@ -11,7 +11,9 @@ import createAADStrategy from './passport/aadStrategy';
 import createGithubStrategy from './passport/githubStrategy';
 import serializer from './passport/serializer';
 
-export default function (app, config) {
+import type { IReposApplication, ReposAppRequest, SiteConfiguration } from '../interfaces';
+
+export default function (app: IReposApplication, config: SiteConfiguration) {
   const supportedAuth = ['github', 'aad', 'oauth2'];
 
   if (!supportedAuth.includes(config.authentication.scheme)) {
@@ -49,12 +51,12 @@ export default function (app, config) {
     }
   }
 
-  if (config.authentication.scheme == 'aad') {
+  if (config.authentication.scheme === 'aad') {
     const aadStrategies = createAADStrategy(app, config);
     for (const name in aadStrategies) {
       passport.use(name, aadStrategies[name]);
     }
-  } else if (config.authentication.scheme == 'oauth2') {
+  } else if (config.authentication.scheme === 'oauth2') {
     // Set up oauth2 strategy here
     throw new Error('oauth2 is not currently implemented');
   }
@@ -71,15 +73,9 @@ export default function (app, config) {
   passport.deserializeUser(serializer.deserialize(serializerOptions));
   serializer.initialize(serializerOptions, app);
 
-  app.use((req, res, next) => {
-    if (
-      req.insights &&
-      req.insights.properties &&
-      config.authentication.scheme === 'aad' &&
-      req.user &&
-      req.user.azure
-    ) {
-      req.insights.properties.aadId = req.user.azure.oid;
+  app.use((req: ReposAppRequest, res, next) => {
+    if (req?.insights?.commonProperties && config.authentication.scheme === 'aad' && req?.user?.azure?.oid) {
+      req.insights.commonProperties.aadId = req.user.azure.oid;
     }
     next();
   });

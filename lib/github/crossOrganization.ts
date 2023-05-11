@@ -14,7 +14,7 @@ import {
   IPurposefulGetAuthorizationHeader,
   ITeamMembershipOptions,
 } from '../../interfaces';
-import { AppPurpose } from '../../github';
+import { AppPurpose } from '../../business/githubApps';
 
 interface IOrganizationsResponse extends IRestResponse {
   orgs?: any;

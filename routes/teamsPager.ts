@@ -10,7 +10,7 @@ import { NextFunction, Response } from 'express';
 import { getProviders } from '../transitional';
 import { Operations } from '../business';
 import { Team } from '../business';
-import { UserContext } from '../user/aggregate';
+import { UserContext } from '../business/user/aggregate';
 
 import TeamSearch from '../business/teamSearch';
 import { ICrossOrganizationMembershipByOrganization, ReposAppRequest } from '../interfaces';

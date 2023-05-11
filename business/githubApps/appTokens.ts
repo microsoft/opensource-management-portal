@@ -8,7 +8,7 @@ import { createAppAuth, InstallationAccessTokenAuthentication } from '@octokit/a
 import { AppAuthentication, AuthInterface } from '@octokit/auth-app/dist-types/types';
 
 import { AppPurposeTypes, ICustomAppPurpose } from '.';
-import { IAuthorizationHeaderValue } from '../interfaces';
+import { IAuthorizationHeaderValue } from '../../interfaces';
 
 import Debug from 'debug';
 const debug = Debug('github:tokens');

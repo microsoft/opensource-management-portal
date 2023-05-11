@@ -15,6 +15,7 @@ export type ConfigNewsArticleAction = {
 export type ConfigNewsArticle = {
   title: string;
   subtitle: string;
+  ignore: boolean;
   paragraphs: string[];
   actions: ConfigNewsArticleAction[];
 };

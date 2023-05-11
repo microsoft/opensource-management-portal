@@ -10,7 +10,7 @@ import {
   WebContext,
   SessionUserProperties,
   WebApiContext,
-} from '../../user';
+} from '../../business/user';
 import { getProviders } from '../../transitional';
 
 export function webContextMiddleware(req, res, next) {

@@ -5,7 +5,7 @@
 
 import { Repository } from './repository';
 import { wrapError } from '../utils';
-import { AppPurpose } from '../github';
+import { AppPurpose } from './githubApps';
 import { CacheDefault, getMaxAgeSeconds, Operations } from '.';
 import {
   IOperationsInstance,

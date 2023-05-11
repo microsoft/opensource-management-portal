@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { IndividualContext } from '../../user';
+import { IndividualContext } from '../../business/user';
 import { jsonError } from '../../middleware';
 import { ErrorHelper, getProviders } from '../../transitional';
 import { unlinkInteractive } from '../../routes/unlink';

@@ -5,7 +5,7 @@
 
 import { IProviders, LocalApiRepoAction } from '../..';
 import { Repository } from '../../../business';
-import { IndividualContext } from '../../../user';
+import { IndividualContext } from '../../../business/user';
 
 export interface ICompanySpecificRepositoryStateStatus {}
 

@@ -6,7 +6,7 @@
 import asyncHandler from 'express-async-handler';
 
 import { ReposAppRequest } from '../../../interfaces';
-import { IndividualContext } from '../../../user';
+import { IndividualContext } from '../../../business/user';
 
 export default asyncHandler(async (req: ReposAppRequest, res) => {
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;

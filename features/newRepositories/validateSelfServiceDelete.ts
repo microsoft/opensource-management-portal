@@ -8,7 +8,7 @@ import { DateTime } from 'luxon';
 import { Repository } from '../../business';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { RepositoryLockdownState } from '../../interfaces';
-import { IndividualContext } from '../../user';
+import { IndividualContext } from '../../business/user';
 import { daysInMilliseconds } from '../../utils';
 
 export async function validateUserCanSelfDeleteRepository(

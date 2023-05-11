@@ -4,7 +4,7 @@
 //
 
 import { CacheDefault, getMaxAgeSeconds, RepositoryIssue } from '.';
-import { AppPurpose, AppPurposeTypes } from '../github';
+import { AppPurpose, AppPurposeTypes } from './githubApps';
 import {
   IOperationsInstance,
   IPurposefulGetAuthorizationHeader,

@@ -6,6 +6,8 @@
 import { Application } from 'express';
 import { IProviders } from './providers';
 
+import type { RuntimeConfiguration } from './config';
+
 export interface IApplicationProfile {
   applicationName: string;
   customErrorHandlerRender?: (errorView: any, err: Error, req: any, res: any, next: any) => Promise<void>;
@@ -28,6 +30,7 @@ export interface IReposApplication extends Application {
   config: any;
   isBackgroundJob: boolean;
   enableAllGitHubApps: boolean;
+  runtimeConfiguration: RuntimeConfiguration;
 
   startServer: () => Promise<void>;
 

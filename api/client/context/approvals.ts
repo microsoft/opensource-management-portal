@@ -17,7 +17,7 @@ import {
   closeOldRequest,
 } from '../../../routes/settings/approvals';
 import { getProviders } from '../../../transitional';
-import { IndividualContext } from '../../../user';
+import { IndividualContext } from '../../../business/user';
 
 const router: Router = Router();
 

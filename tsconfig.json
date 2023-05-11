@@ -24,7 +24,6 @@
     "./data/**/*",
     "./entities/**/*",
     "./features/**/*",
-    "./github/**/*",
     "./interfaces/**/*",
     "./jobs/**/*",
     "./lib/**/*",
@@ -33,7 +32,6 @@
     "./routes/**/*",
     "./scripts/**/*",
     "./test/**/*",
-    "./user/**/*",
     "./webhooks/**/*"
   ]
 }

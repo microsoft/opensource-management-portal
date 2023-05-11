@@ -23,8 +23,14 @@ import {
   PostgresJsonEntityQuery,
   PostgresSettings,
 } from '../../lib/entityMetadataProvider/postgres';
+import type { ApiClientGroupDisplay } from '../../interfaces/api';
 
 const type = Type;
+
+export type TokenAadAppInformation = {
+  clientId: string;
+  objectId: string;
+};
 
 interface ITokenEntityProperties {
   token: any;
@@ -56,6 +62,7 @@ const fieldNames = Object.getOwnPropertyNames(Field);
 
 export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntityProperties {
   private _key: string;
+  private _aadInfo: TokenAadAppInformation;
 
   token: string;
 
@@ -75,12 +82,23 @@ export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntity
     this.created = new Date();
   }
 
-  static CreateFromAadAuthorization({ appId, oid, scopes, organizationScopes }): PersonalAccessToken {
+  static CreateFromAadAuthorization(
+    { appId, oid, scopes, organizationScopes },
+    optionalDisplayValues: ApiClientGroupDisplay
+  ): PersonalAccessToken {
     const pat = new PersonalAccessToken();
+    pat._aadInfo = {
+      clientId: appId,
+      objectId: oid,
+    };
     pat.corporateId = null;
     pat.description = `AAD oid ${oid} app ${appId} with scopes ${scopes}`;
     pat.source = `AAD oid ${oid} app ${appId}`;
-    pat.displayUsername = 'AAD Identity';
+    pat.displayUsername = optionalDisplayValues?.displayName
+      ? `${optionalDisplayValues.displayName}${
+          optionalDisplayValues.contactAddress ? ' (' + optionalDisplayValues.contactAddress + ')' : ''
+        }`
+      : 'AAD Identity';
     pat.organizationScopes = organizationScopes;
     pat.scopes = scopes;
     return pat;
@@ -108,6 +126,10 @@ export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntity
     pat.token = token;
     pat._key = key;
     return pat;
+  }
+
+  getAadInformation(): TokenAadAppInformation {
+    return this._aadInfo;
   }
 
   getObjectFieldNames(): string[] {

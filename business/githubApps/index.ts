@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IReposApplication } from '../interfaces';
-import { CreateError } from '../transitional';
+import { IReposApplication } from '../../interfaces';
+import { CreateError } from '../../transitional';
 
 import Debug from 'debug';
 const debug = Debug('github:tokens');

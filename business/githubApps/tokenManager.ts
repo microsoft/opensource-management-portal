@@ -17,11 +17,11 @@ import {
   getAppPurposeId,
 } from '.';
 import { GitHubAppTokens } from './appTokens';
-import { IAuthorizationHeaderValue, NoCacheNoBackground } from '../interfaces';
-import { OrganizationSetting } from '../entities/organizationSettings/organizationSetting';
-import { readFileToText } from '../utils';
-import { Operations, OperationsCore, Organization } from '../business';
-import { CreateError } from '../transitional';
+import { IAuthorizationHeaderValue, NoCacheNoBackground } from '../../interfaces';
+import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
+import { readFileToText } from '../../utils';
+import { Operations, OperationsCore, Organization } from '..';
+import { CreateError } from '../../transitional';
 
 export interface IGitHubRateLimit {
   limit: number;

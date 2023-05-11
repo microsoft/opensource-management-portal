@@ -5,7 +5,7 @@
 
 // Within the context, tries to resolve a link if it _can_. It does not force that a user is linked!
 
-import { IndividualContext } from '../../user';
+import { IndividualContext } from '../../business/user';
 import { getProviders } from '../../transitional';
 import { wrapError } from '../../utils';
 import { ReposAppRequest, IReposError } from '../../interfaces';

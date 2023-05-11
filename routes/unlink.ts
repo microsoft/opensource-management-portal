@@ -9,7 +9,7 @@ const router: Router = Router();
 
 import { getProviders } from '../transitional';
 import { wrapError } from '../utils';
-import { IndividualContext } from '../user';
+import { IndividualContext } from '../business/user';
 import { jsonError } from '../middleware';
 import { ReposAppRequest, OrganizationMembershipState, UnlinkPurpose } from '../interfaces';
 

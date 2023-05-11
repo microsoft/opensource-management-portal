@@ -10,7 +10,7 @@ import { sendLinkedAccountMail } from '../../../business/operations/link';
 import { ReposAppRequest } from '../../../interfaces';
 import { jsonError } from '../../../middleware';
 import { CreateError, getProviders } from '../../../transitional';
-import { IndividualContext } from '../../../user';
+import { IndividualContext } from '../../../business/user';
 
 const router: Router = Router();
 

@@ -5,7 +5,7 @@
 
 import { Repository } from './repository';
 import { getPageSize, getMaxAgeSeconds, CacheDefault } from '.';
-import { AppPurpose } from '../github';
+import { AppPurpose } from './githubApps';
 import {
   IPurposefulGetAuthorizationHeader,
   IOperationsInstance,

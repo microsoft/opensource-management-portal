@@ -9,7 +9,12 @@ import Debug from 'debug';
 const debug = Debug.debug('user');
 
 import { getProviders } from '../../transitional';
-import { ICorporateIdentity, IGitHubIdentity, IndividualContext, GitHubIdentitySource } from '../../user';
+import {
+  ICorporateIdentity,
+  IGitHubIdentity,
+  IndividualContext,
+  GitHubIdentitySource,
+} from '../../business/user';
 import { storeOriginalUrlAsReferrer } from '../../utils';
 import getCompanySpecificDeployment from '../companySpecificDeployment';
 

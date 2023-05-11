@@ -10,5 +10,5 @@ export type ConfigRootAuthentication = {
 };
 
 export type ConfigAuthentication = ConfigRootAuthenticationVsts & {
-  scheme: 'aad' | 'github';
+  scheme: 'aad' | 'github' | 'oauth2';
 };

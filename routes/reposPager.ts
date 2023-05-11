@@ -21,7 +21,7 @@ import QueryCache from '../business/queryCache';
 import { GitHubRepositoryType, IReposAppWithTeam } from '../interfaces';
 import { IRequestTeamPermissions } from '../middleware/github/teamPermissions';
 import { getProviders } from '../transitional';
-import { UserContext } from '../user/aggregate';
+import { UserContext } from '../business/user/aggregate';
 
 interface IGetReposAndOptionalTeamPermissionsResponse {
   reposData: Repository[];

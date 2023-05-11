@@ -9,5 +9,6 @@ export type ConfigRootNode = {
 
 export type ConfigNode = {
   environment: string;
+  version: string;
   isProduction: boolean;
 };

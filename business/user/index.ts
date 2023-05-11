@@ -10,8 +10,8 @@ import objectPath from 'object-path';
 import Debug from 'debug';
 const debug = Debug.debug('context');
 
-import { addBreadcrumb, isCodespacesAuthenticating } from '../utils';
-import { Operations } from '../business/operations';
+import { addBreadcrumb, isCodespacesAuthenticating } from '../../utils';
+import { Operations } from '../operations';
 import { UserContext } from './aggregate';
 import {
   ReposAppRequest,
@@ -21,7 +21,7 @@ import {
   IAppSession,
   ICorporateLink,
   IDictionary,
-} from '../interfaces';
+} from '../../interfaces';
 
 // - - - identity
 

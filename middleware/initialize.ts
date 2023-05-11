@@ -339,6 +339,9 @@ export default async function initialize(
   if (!config || Object.getOwnPropertyNames(config).length === 0) {
     throw new Error('Empty configuration object');
   }
+  if (!app.runtimeConfiguration) {
+    app.runtimeConfiguration = {};
+  }
   const applicationProfile =
     config?.web?.app && config.web.app !== 'repos'
       ? await alternateRoutes(config, app, config.web.app)
@@ -453,14 +456,15 @@ export default async function initialize(
       exception = initializeError;
     }
   }
+  const hasCustomRoutes = !!applicationProfile.customRoutes;
   try {
-    await middlewareIndex(app, express, config, rootdir, exception);
+    await middlewareIndex(app, express, config, rootdir, hasCustomRoutes, exception);
   } catch (middlewareError) {
     exception = middlewareError;
   }
   // ROUTES:
   if (!exception) {
-    if (applicationProfile.customRoutes) {
+    if (hasCustomRoutes) {
       await applicationProfile.customRoutes();
     } else {
       app.use('/', expressRoutes);
