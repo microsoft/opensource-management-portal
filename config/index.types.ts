@@ -34,6 +34,7 @@ import type { ConfigRootNews } from './news.types';
 import type { ConfigRootNode } from './node.types';
 import type { ConfigRootNotifications } from './notifications.types';
 import type { ConfigRootNpm } from './npm.types';
+import type { ConfigRootProcess } from './process.types';
 import type { ConfigRootRedis } from './redis.types';
 import type { ConfigRootReview } from './review.types';
 import type { ConfigRootServiceMessage } from './serviceMessage.types';
@@ -89,6 +90,7 @@ export type SiteConfiguration =
   ConfigRootNode &
   ConfigRootNotifications &
   ConfigRootNpm &
+  ConfigRootProcess &
   ConfigRootRedis &
   ConfigRootReview &
   ConfigRootServiceMessage &
