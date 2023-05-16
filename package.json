@@ -111,7 +111,7 @@
     "passport": "0.6.0",
     "passport-azure-ad": "4.3.5",
     "passport-github": "1.1.0",
-    "pg": "8.10.0",
+    "pg": "8.11.0",
     "pg-escape": "0.2.0",
     "pug": "3.0.2",
     "pug-load": "3.0.0",
