@@ -74,7 +74,7 @@
     "@azure/storage-queue": "12.13.0",
     "@octokit/plugin-paginate-graphql": "2.0.1",
     "@octokit/request": "6.2.4",
-    "@octokit/auth-app": "4.0.12",
+    "@octokit/auth-app": "4.0.13",
     "@octokit/rest": "19.0.8",
     "app-root-path": "3.1.0",
     "applicationinsights": "2.6.0",
