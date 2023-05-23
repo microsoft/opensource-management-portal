@@ -9,7 +9,7 @@ on:
   
 jobs:
   test:
-    runs-on: [self-hosted, 1ES.Pool=opensource-program]
+    runs-on: [self-hosted, 1ES.Pool=ost-ospo-opensource]
 
     steps:
       - name: Checkout repository
