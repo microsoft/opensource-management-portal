@@ -10,7 +10,7 @@ on:
 jobs:
   test:
     runs-on:
-      group: ost-ospo-opensource
+      group: open-source-programs-office
 
     steps:
       - name: Checkout repository
