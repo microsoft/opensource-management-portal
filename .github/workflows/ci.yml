@@ -9,7 +9,7 @@ on:
 jobs:
   test:
     runs-on:
-      group: ubuntu-runners
+      group: ost-ospo-opensource
 
     steps:
       - name: Checkout repository
