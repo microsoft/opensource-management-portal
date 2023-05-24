@@ -1,12 +1,31 @@
 version: 2
 updates:
   - package-ecosystem: npm
-    directory: '/'
+    directory: /
+    target-branch: staging
     schedule:
       interval: daily
     open-pull-requests-limit: 10
+    commit-message:
+      prefix: 'npm - back-end'
+  - package-ecosystem: npm
+    directory: /default-assets-package
+    target-branch: staging
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: 'npm - front-end'
   - package-ecosystem: github-actions
-    directory: '/'
+    target-branch: staging
+    directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    commit-message:
+      prefix: 'actions'
+  - package-ecosystem: 'docker'
+    target-branch: staging
+    directory: '/'
+    schedule:
+      interval: 'weekly'
