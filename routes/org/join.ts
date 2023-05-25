@@ -10,8 +10,6 @@ import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
 import querystring from 'querystring';
-import { IAggregateUserSummary } from '../../user/aggregate';
-
 import { CreateError, getProviders } from '../../transitional';
 import { IndividualContext } from '../../business/user';
 import { sleep, storeOriginalUrlAsReferrer, wrapError } from '../../utils';
