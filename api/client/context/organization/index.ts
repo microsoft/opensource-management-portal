@@ -14,7 +14,7 @@ import {
 } from '../../../../interfaces';
 import { jsonError } from '../../../../middleware';
 import getCompanySpecificDeployment from '../../../../middleware/companySpecificDeployment';
-import { IndividualContext } from '../../../../user';
+import { IndividualContext } from '../../../../business/user';
 
 import RouteRepos from './repos';
 import RouteTeams from './teams';

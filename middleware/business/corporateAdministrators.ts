@@ -8,7 +8,7 @@
 
 import { ReposAppRequest } from '../../interfaces';
 import { getProviders } from '../../transitional';
-import { IndividualContext } from '../../user';
+import { IndividualContext } from '../../business/user';
 import { wrapError } from '../../utils';
 import { jsonError } from '../jsonError';
 

@@ -17,7 +17,8 @@ import { getProviders } from '../../transitional';
 
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 
-import { ReposAppRequest } from '../../interfaces';
+import type { ReposAppRequest } from '../../interfaces';
+import type { IndividualContext } from '../../business/user';
 
 import routeClientNewRepo from './newRepo';
 import routeContext from './context';
@@ -60,6 +61,64 @@ router.use('/news', routeNews);
 
 const dynamicStartupInstance = getCompanySpecificDeployment();
 dynamicStartupInstance?.routes?.api?.index && dynamicStartupInstance?.routes?.api?.index(router);
+
+router.get('/', (req: ReposAppRequest, res) => {
+  const { config } = getProviders(req);
+  const runtimeConfiguration = req.app.runtimeConfiguration;
+
+  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+  const isGitHubAuthenticated = !!activeContext.getSessionBasedGitHubIdentity()?.id;
+  const data = {
+    deployment: config.continuousDeployment,
+    frontend: runtimeConfiguration?.client || {},
+    hosting: {
+      app: config?.web?.app,
+      baseUrl: config?.webServer?.baseUrl,
+      server: {
+        port: config?.webServer?.port,
+        hostname: req.hostname,
+      },
+      appService: config?.webServer?.appService?.name
+        ? {
+            name: config?.webServer?.appService?.name,
+            slot: config?.webServer?.appService?.slot,
+            region: config?.webServer?.appService?.region,
+          }
+        : undefined,
+    },
+    runtime: {
+      node: {
+        environment: config?.node?.environment,
+        version: config?.node?.version,
+      },
+    },
+    development: {
+      githubCodespacesConnected: config?.github?.codespaces?.connected === true ? true : undefined,
+      githubCodespacesName: config?.github?.codespaces?.name,
+    },
+    app: {
+      environment: config?.environment?.name,
+      appName: config?.web?.app,
+    },
+    session: {
+      corporateIdentity: activeContext.corporateIdentity,
+      githubIdentity: activeContext.getGitHubIdentity(),
+      isAuthenticated: true,
+      isGitHubAuthenticated,
+      isLinked: !!activeContext.link,
+      hasAdditionalLinks: activeContext.hasAdditionalLinks,
+      impersonation: config.impersonation?.corporateId
+        ? {
+            corporateId: config.impersonation.corporateId,
+            githubId: config.impersonation.githubId,
+          }
+        : undefined,
+    },
+  };
+
+  res.contentType('application/json');
+  return res.send(JSON.stringify(data, null, 2));
+});
 
 router.use((req, res, next) => {
   return next(jsonError('The resource or endpoint you are looking for is not there', 404));

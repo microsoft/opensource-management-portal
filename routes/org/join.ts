@@ -13,7 +13,7 @@ import querystring from 'querystring';
 import { IAggregateUserSummary } from '../../user/aggregate';
 
 import { CreateError, getProviders } from '../../transitional';
-import { IndividualContext } from '../../user';
+import { IndividualContext } from '../../business/user';
 import { sleep, storeOriginalUrlAsReferrer, wrapError } from '../../utils';
 import RequireActiveGitHubSession from '../../middleware/github/requireActiveSession';
 import { jsonError } from '../../middleware/jsonError';

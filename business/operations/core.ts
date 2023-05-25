@@ -4,8 +4,8 @@
 //
 
 import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
-import { GitHubAppAuthenticationType, AppPurpose, ICustomAppPurpose, AppPurposeTypes } from '../../github';
-import { GitHubTokenManager } from '../../github/tokenManager';
+import { GitHubAppAuthenticationType, AppPurpose, ICustomAppPurpose, AppPurposeTypes } from '../githubApps';
+import { GitHubTokenManager } from '../githubApps/tokenManager';
 import {
   IProviders,
   ICacheDefaultTimes,

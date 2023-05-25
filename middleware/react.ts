@@ -12,7 +12,7 @@ import appPackage from '../package.json';
 import { getStaticBlobCacheFallback } from '../lib/staticBlobCacheFallback';
 import { getProviders, splitSemiColonCommas } from '../transitional';
 import { ReposAppRequest } from '../interfaces';
-import { IndividualContext } from '../user';
+import { IndividualContext } from '../business/user';
 
 const staticReactPackageNameKey = 'static-react-package-name';
 const staticClientPackageName = appPackage[staticReactPackageNameKey];

@@ -11,7 +11,7 @@ import _ from 'lodash';
 
 import { getProviders } from '../../transitional';
 import { jsonError } from '../../middleware/jsonError';
-import { IndividualContext } from '../../user';
+import { IndividualContext } from '../../business/user';
 import { Organization } from '../../business/organization';
 import { CreateRepository, ICreateRepositoryApiResult, CreateRepositoryEntrypoint } from '../createRepo';
 import { Team } from '../../business/team';

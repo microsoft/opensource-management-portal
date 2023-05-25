@@ -9,7 +9,7 @@ import asyncHandler from 'express-async-handler';
 import { jsonError } from '../../../middleware';
 import { ErrorHelper, getProviders } from '../../../transitional';
 import { Repository } from '../../../business';
-import { IndividualContext } from '../../../user';
+import { IndividualContext } from '../../../business/user';
 import NewRepositoryLockdownSystem from '../../../features/newRepositories/newRepositoryLockdown';
 import {
   AddRepositoryPermissionsToRequest,

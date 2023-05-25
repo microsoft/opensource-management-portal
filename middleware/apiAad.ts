@@ -9,24 +9,22 @@ import jwksClient from 'jwks-rsa';
 import { isJsonError, jsonError } from './jsonError';
 import { IApiRequest, wrapErrorForImmediateUserError } from './apiReposAuth';
 import { PersonalAccessToken } from '../entities/token/token';
-import { CreateError, getProviders, splitSemiColonCommas } from '../transitional';
+import { CreateError, getProviders } from '../transitional';
+import getCompanySpecificDeployment from './companySpecificDeployment';
 
-// TODO: Caching of signing keys
+// CONSIDER: Caching of signing keys
 
-interface IConfigAadApiApprovedAppsOrOids {
-  scopes: {
-    read: {
-      links: string[] | string;
-      maintainers: string[] | string;
-      'microsoft-github-policy-service': string[] | string;
-    };
-    create: {
-      repos: string[] | string;
-    };
+export function requireAadApiAuthorizedScope(scope: string) {
+  return (req: IApiRequest, res, next) => {
+    const { apiKeyToken } = req;
+    if (!apiKeyToken.hasScope(scope)) {
+      return next(jsonError(`Not authorized for ${scope}`, 403));
+    }
+    return next();
   };
 }
 
-export default function AadApiMiddleware(req: IApiRequest, res, next) {
+export default function aadApiMiddleware(req: IApiRequest, res, next) {
   return validateAadAuthorization(req)
     .then((ok) => {
       return next();
@@ -65,142 +63,8 @@ function getSigningKeys(header, callback) {
     });
 }
 
-export function getAadApiConfiguration(config: any) {
-  const allowedTenants = Array.isArray(config?.microsoft?.api?.aad?.authorizedTenants)
-    ? config.microsoft.api.aad.authorizedTenants
-    : (config?.microsoft?.api?.aad?.authorizedTenants || '').split(',');
-  if (!allowedTenants) {
-    throw jsonError('App not configured for authorizing specific tenants', 500);
-  }
-
-  let reposApiAudienceIdentities = config?.microsoft?.api?.aad?.apiAppScopes
-    ? (config.microsoft.api.aad.apiAppScopes as string).split(',')
-    : null;
-  if (!reposApiAudienceIdentities) {
-    const reposApiAudienceIdentity = config?.microsoft?.api?.aad?.apiAppScope
-      ? [config.microsoft.api.aad.apiAppScope]
-      : null;
-    if (!reposApiAudienceIdentity) {
-      throw jsonError('App not configured for authorizing APIs via AAD', 500);
-    }
-    reposApiAudienceIdentities = reposApiAudienceIdentity;
-  }
-  if (!reposApiAudienceIdentities) {
-    throw jsonError('App not configured for authorizing APIs via AAD', 500);
-  }
-
-  const approvedApps = config?.microsoft?.api?.aad?.approvedApps as IConfigAadApiApprovedAppsOrOids;
-  if (approvedApps === undefined) {
-    throw jsonError('AAD API app authentication is not configured', 500);
-  }
-
-  const approvedOids = config?.microsoft?.api?.aad?.approvedOids as IConfigAadApiApprovedAppsOrOids;
-  if (approvedApps === undefined) {
-    throw jsonError('AAD API OID authentication is not configured', 500);
-  }
-
-  // Any app that has a valid scope can call the API, but may not be scoped and will error out in the API tier
-  const approvedAppsToCreateRepos = Array.isArray(approvedApps?.scopes?.create?.repos)
-    ? approvedApps?.scopes?.create?.repos
-    : approvedApps?.scopes?.create?.repos?.split
-    ? [...approvedApps.scopes.create.repos.split(',')]
-    : [];
-  const approvedAppsToReadLinks = Array.isArray(approvedApps?.scopes?.read?.links)
-    ? approvedApps?.scopes?.read?.links
-    : approvedApps?.scopes?.read?.links?.split
-    ? [...approvedApps.scopes.read.links.split(',')]
-    : [];
-  const approvedAppsToReadMaintainers = Array.isArray(approvedApps?.scopes?.read?.maintainers)
-    ? approvedApps?.scopes?.read?.maintainers
-    : approvedApps?.scopes?.read?.maintainers?.split
-    ? [...approvedApps.scopes.read.maintainers.split(',')]
-    : [];
-  const approvedAppsToReadJitConfirms = Array.isArray(approvedApps?.scopes?.read?.['jit/confirm'])
-    ? approvedApps?.scopes?.read?.['jit/confirm']
-    : approvedApps?.scopes?.read?.['jit/confirm']?.split
-    ? [...approvedApps.scopes.read['jit/confirm'].split(',')]
-    : [];
-  const microsoftPolicyServiceApiName = 'microsoft-github-policy-service';
-  const approvedAppsToReadPolicyService = parse(approvedApps?.scopes?.read?.[microsoftPolicyServiceApiName]);
-  const approvedOidsToReadPolicyService = parse(approvedOids?.scopes?.read?.[microsoftPolicyServiceApiName]);
-  const approvedOidsToCreateRepos = Array.isArray(approvedOids?.scopes?.create?.repos)
-    ? approvedOids?.scopes?.create?.repos
-    : approvedOids?.scopes?.create?.repos?.split
-    ? [...(approvedOids?.scopes?.create?.repos ? approvedOids.scopes.create.repos.split(',') : [])]
-    : [];
-  const approvedOidsToReadLinks = Array.isArray(approvedOids?.scopes?.read?.links)
-    ? approvedOids?.scopes?.read?.links
-    : approvedOids?.scopes?.read?.links?.split
-    ? [...(approvedOids?.scopes?.read?.links ? approvedOids.scopes.read.links.split(',') : [])]
-    : [];
-  const approvedOidsToReadJitConfirms = Array.isArray(approvedOids?.scopes?.read?.['jit/confirm'])
-    ? approvedOids?.scopes?.read?.['jit/confirm']
-    : approvedOids?.scopes?.read?.['jit/confirm']?.split
-    ? [...approvedOids.scopes.read['jit/confirm'].split(',')]
-    : [];
-
-  const oids = [
-    ...approvedOidsToCreateRepos,
-    ...approvedOidsToReadLinks,
-    ...approvedOidsToReadJitConfirms,
-    ...approvedOidsToReadPolicyService,
-  ];
-  const appIds = [
-    // hacky temporary design for pulling from config
-    ...approvedAppsToCreateRepos,
-    ...approvedAppsToReadLinks,
-    ...approvedAppsToReadMaintainers,
-    ...approvedAppsToReadJitConfirms,
-    ...approvedAppsToReadPolicyService,
-  ];
-
-  return {
-    allowedTenants,
-    reposApiAudienceIdentities,
-    oids,
-    appIds,
-    approvedAppsToCreateRepos,
-    approvedAppsToReadLinks,
-    approvedAppsToReadMaintainers,
-    approvedOidsToCreateRepos,
-    approvedOidsToReadLinks,
-    approvedAppsToReadJitConfirms,
-    approvedOidsToReadJitConfirms,
-    approvedAppsToReadPolicyService,
-    approvedOidsToReadPolicyService,
-  };
-}
-
-function parse(val: string | string[]): string[] {
-  if (Array.isArray(val)) {
-    return val;
-  }
-  if (typeof val === 'string') {
-    return splitSemiColonCommas(val);
-  }
-  if (!val) {
-    return [];
-  }
-  throw CreateError.InvalidParameters('Invalid entries');
-}
-
 async function validateAadAuthorization(req: IApiRequest): Promise<void> {
-  const { config, insights } = getProviders(req);
-  const {
-    allowedTenants,
-    reposApiAudienceIdentities,
-    oids,
-    appIds,
-    approvedAppsToCreateRepos,
-    approvedAppsToReadLinks,
-    approvedAppsToReadMaintainers,
-    approvedOidsToCreateRepos,
-    approvedOidsToReadLinks,
-    approvedAppsToReadJitConfirms,
-    approvedOidsToReadJitConfirms,
-    approvedAppsToReadPolicyService,
-    approvedOidsToReadPolicyService,
-  } = getAadApiConfiguration(config);
+  const { insights } = getProviders(req);
 
   const authorizationHeader = req.headers.authorization;
   if (!authorizationHeader) {
@@ -224,13 +88,19 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
       properties: decodedToken as any,
     });
 
-    const issuer = decodedToken['iss'] as string;
-    let isValidTenant = false;
-    for (let i = 0; isValidTenant === false && i < allowedTenants.length; i++) {
-      const tenant = allowedTenants[i];
-      const stsUrl = `https://sts.windows.net/${tenant}/`;
-      isValidTenant = issuer.startsWith(stsUrl); // support v1.0 or v2.0 as a result
+    const companySpecificDeployment = getCompanySpecificDeployment();
+    const aadApiValidator = companySpecificDeployment?.middleware?.authentication
+      ?.getAadApiAuthenticationValidator
+      ? companySpecificDeployment.middleware.authentication.getAadApiAuthenticationValidator(
+          getProviders(req)
+        )
+      : null;
+    if (!aadApiValidator) {
+      throw CreateError.InvalidParameters('No AAD API validator');
     }
+
+    const issuer = decodedToken['iss'] as string;
+    const isValidTenant = aadApiValidator.isAuthorizedTenant(issuer);
 
     // JWT steps:
     // [X] aud: needs to match app ID
@@ -238,12 +108,11 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     // [X] nbr, exp times (jwt verifies this)
     // [X] appid: the client app [*we check our list for this]
     const validationOptions = {
-      audience: reposApiAudienceIdentities,
+      audience: await aadApiValidator.getAudienceIdentities(),
       issuer,
     };
 
     const payload = await callJwtVerify(token, validationOptions);
-    // console.dir(payload);
 
     if (!isValidTenant) {
       throw wrapErrorForImmediateUserError(
@@ -252,52 +121,30 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     }
 
     const { appid, oid } = payload as any;
+    let approvedAppMonikerId = await aadApiValidator.getAuthorizedClientIdToken(appid);
+    if (!approvedAppMonikerId) {
+      approvedAppMonikerId = await aadApiValidator.getAuthorizedObjectIdToken(oid);
+    }
 
-    const scopes = [];
-
-    const isAppApproved = appIds.includes(appid);
-    const isOidApproved = oids.includes(oid);
-    const notAuthorized = isAppApproved === false && isOidApproved === false;
+    const notAuthorized = !approvedAppMonikerId;
     if (notAuthorized) {
       throw wrapErrorForImmediateUserError(
         jsonError(`App ${appid} and object ID ${oid} is not authorized for this API endpoint`, 403)
       );
     }
-    if (isAppApproved && approvedAppsToCreateRepos.includes(appid)) {
-      scopes.push('createRepo');
-    }
-    if (isAppApproved && approvedAppsToReadLinks.includes(appid)) {
-      scopes.push('links');
-    }
-    if (isAppApproved && approvedAppsToReadMaintainers.includes(appid)) {
-      scopes.push('maintainers');
-    }
-    if (isAppApproved && approvedAppsToReadJitConfirms.includes(appid)) {
-      scopes.push('jit/confirm');
-    }
-    const policyServiceScopeName = 'microsoft-github-policy-service';
-    if (isAppApproved && approvedAppsToReadPolicyService.includes(appid)) {
-      scopes.push(policyServiceScopeName);
-    }
-    if (isOidApproved && approvedOidsToCreateRepos.includes(oid)) {
-      scopes.push('createRepo');
-    }
-    if (isOidApproved && approvedOidsToReadLinks.includes(oid)) {
-      scopes.push('links');
-    }
-    if (isOidApproved && approvedOidsToReadJitConfirms.includes(oid)) {
-      scopes.push('jit/confirm');
-    }
-    if (isOidApproved && approvedOidsToReadPolicyService.includes(appid)) {
-      scopes.push(policyServiceScopeName);
-    }
 
-    const apiToken = PersonalAccessToken.CreateFromAadAuthorization({
-      appId: appid,
-      oid,
-      scopes: scopes.join(','),
-      organizationScopes: '*',
-    });
+    const scopes = await aadApiValidator.getScopes(approvedAppMonikerId);
+    const displayValues = await aadApiValidator.getDisplayValues(approvedAppMonikerId);
+
+    const apiToken = PersonalAccessToken.CreateFromAadAuthorization(
+      {
+        appId: appid,
+        oid,
+        scopes: scopes.join(','),
+        organizationScopes: '*',
+      },
+      displayValues
+    );
     req.apiKeyToken = apiToken;
     req.apiKeyProviderName = 'aad';
     insights?.trackEvent({

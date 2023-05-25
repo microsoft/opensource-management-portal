@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { AppPurpose, AppPurposeTypes } from '../github';
+import { AppPurpose, AppPurposeTypes } from './githubApps';
 import { Organization, Repository } from '.';
 import {
   IOperationsInstance,

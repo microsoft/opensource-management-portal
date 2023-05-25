@@ -13,7 +13,7 @@ import { Repository } from './repository';
 import { wrapError } from '../utils';
 import { StripGitHubEntity } from '../lib/github/restApi';
 import { GitHubResponseType } from '../lib/github/endpointEntities';
-import { AppPurpose, AppPurposeTypes } from '../github';
+import { AppPurpose, AppPurposeTypes } from './githubApps';
 import {
   OrganizationFeature,
   OrganizationSetting,
@@ -63,7 +63,7 @@ import { CreateError, ErrorHelper } from '../transitional';
 import { jsonError } from '../middleware';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 import { ConfigGitHubTemplates } from '../config/github.templates.types';
-import { GitHubTokenManager } from '../github/tokenManager';
+import { GitHubTokenManager } from './githubApps/tokenManager';
 import { OrganizationProjects } from './projects';
 import { OrganizationDomains } from './domains';
 

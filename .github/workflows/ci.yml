@@ -4,11 +4,12 @@ on:
   push:
     branches-ignore:
       - 'dependabot/**'
+      - trunk
   pull_request:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, 1ES.Pool=ost-ospo-opensource]
 
     steps:
       - name: Checkout repository

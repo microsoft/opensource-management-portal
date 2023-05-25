@@ -9,7 +9,7 @@ import throat from 'throat';
 import { Account } from '../account';
 import { GraphManager } from '../graphManager';
 import { IGitHubOrganizationResponse, Organization } from '../organization';
-import { GitHubTokenManager } from '../../github/tokenManager';
+import { GitHubTokenManager } from '../githubApps/tokenManager';
 import RenderHtmlMail from '../../lib/emailRender';
 import { wrapError, sortByCaseInsensitive } from '../../utils';
 import { Repository } from '../repository';
@@ -20,7 +20,7 @@ import {
   GitHubAppAuthenticationType,
   GitHubAppPurposes,
   IGitHubAppConfiguration,
-} from '../../github';
+} from '../githubApps';
 import {
   OrganizationFeature,
   OrganizationSetting,

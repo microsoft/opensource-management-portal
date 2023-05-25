@@ -8,11 +8,7 @@ const router: Router = Router();
 
 import { webContextMiddleware } from '../middleware/business/setContext';
 
-import ApiRoute from '../api';
-
-router.use('/api', ApiRoute);
-
-router.use(webContextMiddleware);
+import clientApiRoute from '../api/client';
 
 import ThanksRoute from './thanks';
 import MyInfoRoute from './diagnostics';
@@ -20,11 +16,15 @@ import ExploreRoute from './explore';
 import ApprovalsRoute from './approvals';
 import AuthenticatedRoute from './index-authenticated';
 
-router.use('/thanks', ThanksRoute);
-router.use('/myinfo', MyInfoRoute);
-
 import { hasStaticReactClientApp } from '../transitional';
 import { injectReactClient } from '../middleware';
+
+router.use('/api/client', clientApiRoute);
+
+router.use(webContextMiddleware);
+
+router.use('/thanks', ThanksRoute);
+router.use('/myinfo', MyInfoRoute);
 
 const hasReactApp = hasStaticReactClientApp();
 const reactRoute = hasReactApp ? injectReactClient() : undefined;

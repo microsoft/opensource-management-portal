@@ -10,16 +10,16 @@ import {
   Repository,
   Team,
   TeamRepositoryPermission,
-} from '../business';
-import QueryCache from '../business/queryCache';
+} from '..';
+import QueryCache from '../queryCache';
 import {
   IQueryCacheTeamRepositoryPermission,
   OrganizationMembershipRole,
   GitHubTeamRole,
   OrganizationMembershipRoleQuery,
   GitHubRepositoryPermission,
-} from '../interfaces';
-import { SettleToStateValue, isPermissionBetterThan, ErrorHelper } from '../transitional';
+} from '../../interfaces';
+import { SettleToStateValue, isPermissionBetterThan, ErrorHelper } from '../../transitional';
 import LinkManager from './linkManager';
 
 // PLANNING once consolidated

@@ -13,7 +13,7 @@ import {
   IBasicGitHubAppInstallation,
   SpecialTeam,
 } from '../../entities/organizationSettings/organizationSetting';
-import { IndividualContext } from '../../user';
+import { IndividualContext } from '../../business/user';
 import { Operations, Organization } from '../../business';
 import GitHubApplication from '../../business/application';
 import {

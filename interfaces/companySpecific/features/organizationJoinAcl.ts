@@ -5,7 +5,7 @@
 
 import { Organization } from '../../../business';
 import { IProviders } from '../../../interfaces';
-import { IndividualContext } from '../../../user';
+import { IndividualContext } from '../../../business/user';
 
 export interface ICompanySpecificFeatureOrganizationJoinAcl {
   tryAuthorizeOrganizationJoin: (

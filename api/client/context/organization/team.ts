@@ -25,7 +25,7 @@ import { submitTeamJoinRequest } from '../../../../routes/org/team';
 import { postActionDecision, TeamApprovalDecision } from '../../../../routes/org/team/approval';
 import { PermissionWorkflowEngine } from '../../../../routes/org/team/approvals';
 import { getProviders } from '../../../../transitional';
-import { IndividualContext } from '../../../../user';
+import { IndividualContext } from '../../../../business/user';
 
 const router: Router = Router();
 

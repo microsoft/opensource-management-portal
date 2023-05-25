@@ -11,7 +11,7 @@ import { ErrorHelper, getProviders } from '../../../../transitional';
 import { Team } from '../../../../business';
 import { PermissionWorkflowEngine } from '../approvals';
 import RenderHtmlMail from '../../../../lib/emailRender';
-import { IndividualContext } from '../../../../user';
+import { IndividualContext } from '../../../../business/user';
 import { ReposAppRequest, UserAlertType, IProviders } from '../../../../interfaces';
 
 interface ILocalRequest extends ReposAppRequest {

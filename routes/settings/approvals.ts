@@ -13,7 +13,7 @@ import { safeLocalRedirectUrl } from '../../utils';
 import { Operations } from '../../business';
 import { Team } from '../../business';
 import { Organization } from '../../business';
-import { IAggregateUserTeams } from '../../user/aggregate';
+import { IAggregateUserTeams } from '../../business/user/aggregate';
 import { ReposAppRequest, IReposError, UserAlertType } from '../../interfaces';
 import { getProviders } from '../../transitional';
 

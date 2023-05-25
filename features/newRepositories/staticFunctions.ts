@@ -5,7 +5,7 @@
 
 import { Repository } from '../../business';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
-import { IndividualContext } from '../../user';
+import { IndividualContext } from '../../business/user';
 import { validateUserCanSelfDeleteRepository } from './validateSelfServiceDelete';
 import { validateUserCanConfigureRepository } from './validateSelfServiceSetup';
 

@@ -13,7 +13,7 @@ import { TeamMember } from './teamMember';
 import { TeamRepositoryPermission } from './teamRepositoryPermission';
 import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';
 import { TeamJoinApprovalEntity } from '../entities/teamJoinApproval/teamJoinApproval';
-import { AppPurpose } from '../github';
+import { AppPurpose } from './githubApps';
 import { CacheDefault, getMaxAgeSeconds, getPageSize, Organization } from '.';
 import {
   IOperationsInstance,

@@ -5,7 +5,7 @@
 
 import { Team } from '../business';
 import { Operations } from '../business';
-import { IndividualContext } from '../user';
+import { IndividualContext } from '../business/user';
 import { addArrayToSet } from '../utils';
 import { IMail } from '../lib/mailProvider';
 import {

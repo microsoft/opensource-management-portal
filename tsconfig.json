@@ -8,7 +8,7 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "skipLibCheck": true, // there are issues with @types/express right now
+    "skipLibCheck": true,
     "target": "es2022",
     "typeRoots": ["./node_modules/@types", "./typings"],
     "lib": ["es2022"],
@@ -24,7 +24,6 @@
     "./data/**/*",
     "./entities/**/*",
     "./features/**/*",
-    "./github/**/*",
     "./interfaces/**/*",
     "./jobs/**/*",
     "./lib/**/*",
@@ -33,7 +32,6 @@
     "./routes/**/*",
     "./scripts/**/*",
     "./test/**/*",
-    "./user/**/*",
     "./webhooks/**/*"
   ]
 }

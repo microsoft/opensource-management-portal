@@ -10,7 +10,7 @@ import * as common from './common';
 import { wrapError } from '../utils';
 import { corporateLinkToJson } from './corporateLink';
 import { Organization } from './organization';
-import { AppPurpose } from '../github';
+import { AppPurpose } from './githubApps';
 import { ILinkProvider } from '../lib/linkProviders';
 import { CacheDefault, getMaxAgeSeconds } from '.';
 import {

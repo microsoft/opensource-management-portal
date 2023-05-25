@@ -16,7 +16,7 @@ import routeAdministrativeLock from './repoAdministrativeLock';
 import NewRepositoryLockdownSystem from '../../features/newRepositories/newRepositoryLockdown';
 import { IGraphEntry } from '../../lib/graphProvider';
 import { IMail } from '../../lib/mailProvider';
-import { IndividualContext } from '../../user';
+import { IndividualContext } from '../../business/user';
 
 import { Repository, Collaborator, TeamPermission, Organization, OrganizationMember } from '../../business';
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';

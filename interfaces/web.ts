@@ -7,8 +7,11 @@ import { Session } from 'express-session';
 import { Request, Response } from 'express';
 import { AccessToken } from 'simple-oauth2';
 
+import type { TelemetryClient } from 'applicationinsights';
+import type { IReposApplication } from './app';
+
 import { Organization, Team } from '../business';
-import { IndividualContext } from '../user';
+import { IndividualContext } from '../business/user';
 
 export enum UserAlertType {
   Success = 'success',
@@ -40,8 +43,10 @@ export interface ReposAppRequest extends Request {
   isAuthenticated(): boolean;
   user: any;
 
+  app: IReposApplication;
+
   // our extensions
-  insights?: any;
+  insights?: TelemetryClient;
   reposContext?: IReposAppContext;
   currentOrganizationMemberships?: any; // needs a redesign
   teamsPagerMode?: string;

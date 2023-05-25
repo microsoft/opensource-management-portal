@@ -6,8 +6,9 @@
 import { Repository, Team } from '../../business';
 import { IContextualRepositoryPermissions } from '../../middleware/github/repoPermissions';
 import { IProviders, ReposAppRequest } from '../../interfaces';
-import { IndividualContext } from '../../user';
+import { IndividualContext } from '../../business/user';
 import { IRequestTeamPermissions } from '../../middleware/github/teamPermissions';
+import type { ApiClientGroupDisplay } from '../api';
 
 export interface ICompanySpecificRepoPermissionsMiddlewareCalls {
   afterPermissionsInitialized?: (
@@ -39,6 +40,16 @@ export interface ICompanySpecificTeamPermissionsMiddlewareCalls {
 
 export interface ICompanySpecificAuthenticationCalls {
   shouldRedirectToSignIn?: (providers: IProviders, req: ReposAppRequest) => Promise<boolean>;
+  getAadApiAuthenticationValidator?(providers: IProviders): IAadAuthenticationValidator;
+}
+
+export interface IAadAuthenticationValidator {
+  isAuthorizedTenant(tenantId: string): Promise<boolean>;
+  getAudienceIdentities(): Promise<string[]>;
+  getAuthorizedClientIdToken(clientId: string): Promise<any>;
+  getAuthorizedObjectIdToken(objectId: string): Promise<any>;
+  getScopes(tokenRepresentation: any): Promise<string[]>;
+  getDisplayValues(tokenRepresentation: any): Promise<ApiClientGroupDisplay>;
 }
 
 export interface IAttachCompanySpecificMiddleware {
