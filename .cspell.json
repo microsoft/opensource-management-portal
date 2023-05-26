@@ -18,7 +18,8 @@
     "**/demo/user.json",
     "**/*_html.ts",
     "**/*.ignore_data.ts",
-    "package*.json"
+    "package*.json",
+    ".devcontainer/nih/**"
   ],
   "enableGlobDot": true,
   "useGitignore": true,

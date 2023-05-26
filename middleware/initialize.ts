@@ -596,10 +596,7 @@ async function connectRedis(
   debug(`connecting to ${purpose} Redis ${redisConfig.host || redisConfig.tls}`);
   const redisClient: RedisClientType = createClient(redisOptions);
   await redisClient.connect();
-
-  if (config.redis.key) {
-    await redisClient.auth({ password: config.redis.key });
-  }
+  await redisClient.auth({ password: config.redis.key });
 
   return redisClient;
 }

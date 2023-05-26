@@ -47,11 +47,10 @@ export default async function ConnectSession(
     const redisPrefix = config.session.redis.prefix ? `${config.session.redis.prefix}.session` : 'session';
     const redisLegacy = sessionRedisClient.duplicate();
     redisLegacy.connect();
-    await new Promise<void>((resolve, reject) => {
-      (redisLegacy.auth as any)(config.redis.key, (authError: Error) => {
-        authError ? reject(authError) : resolve();
-      });
-    });
+
+    // NIH - Replaced this as redis auth does not work with upstream
+    // auth logic here.
+    await redisLegacy.auth({ password: config.session.redis.key });
     const redisOptions = {
       client: redisLegacy,
       ttl: config.session.redis.ttl,
