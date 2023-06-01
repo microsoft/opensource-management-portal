@@ -167,6 +167,19 @@ export class PersonalAccessToken implements IObjectWithDefinedKeys, ITokenEntity
     return apis.includes(scope.toLowerCase());
   }
 
+  hasAnyScope(scope: string[]) {
+    if (!this.scopes) {
+      return false;
+    }
+    const apis = this.scopes.toLowerCase().split(',');
+    for (let i = 0; i < scope.length; i++) {
+      if (apis.includes(scope[i].toLowerCase())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   hasOrganizationScope(orgName: string) {
     if (!this.organizationScopes) {
       return false;

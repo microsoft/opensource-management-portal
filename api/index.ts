@@ -90,7 +90,7 @@ router.post('/:org/repos', aadAndCustomProviders);
 
 router.post(
   '/:org/repos',
-  requireAadApiAuthorizedScope('createRepo'),
+  requireAadApiAuthorizedScope(['repo/create', 'createRepo']),
   function (req: IApiRequest, res, next) {
     const orgName = req.params.org;
     if (!req.apiKeyToken.organizationScopes) {

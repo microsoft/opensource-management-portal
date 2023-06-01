@@ -137,6 +137,24 @@ export interface IGitHubOrganizationResponse {
   url: string;
 }
 
+export interface RunnerData {
+  busy: boolean;
+  id: number;
+  name: string;
+  os: string;
+  status: string;
+  labels: {
+    id: number;
+    name: string;
+    type: string;
+  };
+}
+
+export interface IGitHubOrganizationRunners {
+  total_count: number;
+  runners: RunnerData[];
+}
+
 export class Organization {
   private _name: string;
   private _baseUrl: string;
@@ -409,6 +427,29 @@ export class Organization {
     );
     const repositories = common.createInstances<Repository>(this, this.repositoryFromEntity, repoEntities);
     return repositories;
+  }
+
+  async getOrgRunners(options?: ICacheOptions): Promise<IGitHubOrganizationRunners> {
+    options = options || {};
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const github = operations.github;
+    const orgName = this.name;
+    const parameters = {
+      orgName,
+    };
+    const cacheOptions: ICacheOptions = {
+      maxAgeSeconds: 1, // getMaxAgeSeconds(operations, CacheDefault.accountDetailStaleSeconds, options),
+    };
+    const runnerData = await operations.github.request(
+      this.authorize(AppPurpose.ActionsData),
+      'GET /orgs/:orgName/actions/runners',
+      parameters,
+      cacheOptions
+    );
+    return {
+      runners: runnerData.runners,
+      total_count: runnerData.total_count,
+    };
   }
 
   get priority(): string {

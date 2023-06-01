@@ -56,9 +56,9 @@ export interface ReposAppRequest extends Request {
   correlationId?: string;
   scrubbedUrl?: string;
 
-  // FUTURE:
   apiContext: IndividualContext;
   individualContext: IndividualContext;
+  watchdogContextOverride?: IndividualContext;
   oauthAccessToken: AccessToken;
 }
 

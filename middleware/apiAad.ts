@@ -14,10 +14,11 @@ import getCompanySpecificDeployment from './companySpecificDeployment';
 
 // CONSIDER: Caching of signing keys
 
-export function requireAadApiAuthorizedScope(scope: string) {
+export function requireAadApiAuthorizedScope(scope: string | string[]) {
   return (req: IApiRequest, res, next) => {
     const { apiKeyToken } = req;
-    if (!apiKeyToken.hasScope(scope)) {
+    const scopes = typeof scope === 'string' ? [scope] : scope;
+    if (!apiKeyToken.hasAnyScope(scopes)) {
       return next(jsonError(`Not authorized for ${scope}`, 403));
     }
     return next();

@@ -24,9 +24,9 @@ export async function requireAuthenticatedUserOrSignInExcluding(
   res,
   next
 ) {
-  const baseUrl = req.baseUrl;
+  const url = req.url;
   for (let i = 0; i < exclusionPaths.length; i++) {
-    if (baseUrl.startsWith(exclusionPaths[i])) {
+    if (url.startsWith(exclusionPaths[i])) {
       console.log(`${req.method} ${req.baseUrl} excluded from auth by prefix: ${exclusionPaths[i]}`);
       return next();
     }

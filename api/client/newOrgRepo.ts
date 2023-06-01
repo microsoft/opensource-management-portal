@@ -180,7 +180,7 @@ router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(cr
 export async function createRepositoryFromClient(req: ILocalApiRequest, res, next) {
   const providers = getProviders(req);
   const { insights, diagnosticsDrop, customizedNewRepositoryLogic, graphProvider } = providers;
-  const individualContext = req.individualContext || req.apiContext;
+  const individualContext = req.watchdogContextOverride || req.individualContext || req.apiContext;
   const config = getProviders(req).config;
   const organization = (req.organization || (req as any).aeOrganization) as Organization;
   const existingRepoId = req.body.existingrepoid;
