@@ -6,8 +6,6 @@
 import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
-import memoryCache from 'memory-cache';
-
 import { jsonError } from '../../middleware';
 import { CreateError, ErrorHelper, getProviders } from '../../transitional';
 import { ReposAppRequest } from '../../interfaces';
@@ -18,13 +16,21 @@ import {
   OrganizationManagementType,
 } from '../../middleware/business/organization';
 
-import { IGitHubOrganizationResponse } from '../../business';
-import { OrganizationAnnotation } from '../../entities/organizationAnnotation';
+import type { GitHubOrganizationResponseSanitized } from '../../business';
+import {
+  OrganizationAnnotation,
+  OrganizationAnnotationProperty,
+  scrubOrganizationAnnotation,
+} from '../../entities/organizationAnnotation';
+import {
+  getOrganizationProfileViaMemoryCache,
+  setOrganizationProfileForRequest,
+} from '../../middleware/github/ensureOrganizationProfile';
 
 const router: Router = Router();
 
 type HighlightedOrganization = {
-  profile: IGitHubOrganizationResponse;
+  profile: GitHubOrganizationResponseSanitized;
   annotations: OrganizationAnnotation;
 };
 
@@ -47,32 +53,52 @@ router.get(
 router.get(
   '/annotations',
   asyncHandler(async (req: ReposAppRequest, res, next) => {
-    const { operations, organizationAnnotationsProvider } = getProviders(req);
-    const cacheTimeMs = 1000 * 60 * 60 * 24;
+    const providers = getProviders(req);
+    const { organizationAnnotationsProvider } = providers;
+    const projection = typeof req.query.projection === 'string' ? req.query.projection : undefined;
+    // governance filter: a specific value or unset cohort
+    const governance =
+      typeof req.query.governance === 'string' ? req.query.governance?.toLowerCase() : undefined;
+    const filterByGovernance = governance !== undefined;
     try {
       const highlights: HighlightedOrganization[] = [];
-      const annotations = await organizationAnnotationsProvider.getAllAnnotations();
+      let annotations = await organizationAnnotationsProvider.getAllAnnotations();
+      if (filterByGovernance) {
+        annotations = annotations.filter((annotation) => {
+          const value = annotation.getProperty(OrganizationAnnotationProperty.Governance);
+          return governance ? value === governance : !value;
+        });
+      }
       for (const annotation of annotations) {
         try {
-          const key = `org:profile:${annotation.organizationId}`;
-          let profile = memoryCache.get(key) as IGitHubOrganizationResponse;
-          if (!profile) {
-            const details = await operations.getOrganizationProfileById(Number(annotation.organizationId));
-            details.cost && delete details.cost;
-            details.headers && delete details.headers;
-            profile = details;
-            memoryCache.put(key, details, cacheTimeMs);
-          }
-          const scrubbedAnnotations = { ...annotation };
-          delete scrubbedAnnotations.administratorNotes;
-          delete scrubbedAnnotations.history;
+          const profile = await getOrganizationProfileViaMemoryCache(providers, annotation.organizationId);
           highlights.push({
             profile,
-            annotations: scrubbedAnnotations as OrganizationAnnotation,
+            annotations: scrubOrganizationAnnotation(annotation),
           });
         } catch (error) {
           // we ignore any individual resolution error
         }
+      }
+      if (projection) {
+        let projected = highlights.map((highlight) => {
+          const profile = highlight.profile;
+          const annotations = highlight.annotations;
+          if (profile[projection]) {
+            return profile[projection];
+          } else if (annotations.getProperty(projection)) {
+            return annotations.getProperty(projection);
+          } else if (annotations.hasFeature(projection)) {
+            return true;
+          }
+          return null;
+        });
+        if (projected.length >= 1 && typeof projected[0] === 'string') {
+          projected = projected.sort((a, b) => {
+            return a.localeCompare(b);
+          });
+        }
+        return res.json(projected);
       }
       return res.json({
         highlights: highlights.sort((a, b) => {
@@ -122,10 +148,9 @@ router.use(
     }
     try {
       const org = operations.getUncontrolledOrganization(orgName);
-      const details = await org.getDetails();
-      details.cost && delete details.cost;
-      details.headers && delete details.headers;
-      req.organizationProfile = details;
+      req.organizationManagementType = OrganizationManagementType.Unmanaged;
+      req.organization = org;
+      await setOrganizationProfileForRequest(req);
     } catch (orgProfileError) {
       if (ErrorHelper.IsNotFound(orgProfileError)) {
         return next(CreateError.NotFound(`The organization ${orgName} does not exist`));
@@ -133,7 +158,6 @@ router.use(
         return next(orgProfileError);
       }
     }
-    req.organizationManagementType = OrganizationManagementType.Unmanaged;
     return next();
   })
 );

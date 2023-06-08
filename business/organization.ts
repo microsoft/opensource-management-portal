@@ -101,7 +101,7 @@ export interface IGitHubOrganizationPlanResponse {
   space: number;
 }
 
-export interface IGitHubOrganizationResponse {
+export type GitHubOrganizationResponse = {
   avatar_url?: string;
   billing_email?: string;
   blog?: string;
@@ -135,6 +135,50 @@ export interface IGitHubOrganizationResponse {
   type: string;
   updated_at: string;
   url: string;
+};
+
+// the only fields we want in this type based on GitHubOrganizationResponse are avatar_url, blog, company, created_at, description, email, id, location, login, name, updated_at
+export type GitHubOrganizationResponseSanitized = Pick<
+  GitHubOrganizationResponse,
+  | 'avatar_url'
+  | 'blog'
+  | 'company'
+  | 'created_at'
+  | 'description'
+  | 'email'
+  | 'id'
+  | 'location'
+  | 'login'
+  | 'name'
+  | 'updated_at'
+>;
+
+const sanitizedFields = [
+  'avatar_url',
+  'blog',
+  'company',
+  'created_at',
+  'description',
+  'email',
+  'id',
+  'location',
+  'login',
+  'name',
+  'updated_at',
+];
+
+export function getOrganizationDetailsSanitized(
+  details: GitHubOrganizationResponse
+): GitHubOrganizationResponseSanitized {
+  if (details) {
+    const sanitized = {} as GitHubOrganizationResponseSanitized;
+    for (const field of sanitizedFields) {
+      if (details[field]) {
+        sanitized[field] = details[field];
+      }
+    }
+    return sanitized;
+  }
 }
 
 export interface RunnerData {
@@ -167,7 +211,7 @@ export class Organization {
   private _usesGitHubApp: boolean;
   private _settings: OrganizationSetting;
 
-  private _entity: IGitHubOrganizationResponse;
+  private _entity: GitHubOrganizationResponse;
 
   private _organizationSudo: IOrganizationSudo;
 
@@ -715,7 +759,7 @@ export class Organization {
     }
   }
 
-  async getDetails(): Promise<IGitHubOrganizationResponse> {
+  async getDetails(): Promise<GitHubOrganizationResponse> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
       org: this.name,
@@ -726,7 +770,7 @@ export class Organization {
         this.id = entity.id;
       }
       this._entity = entity;
-      return entity as IGitHubOrganizationResponse;
+      return entity as GitHubOrganizationResponse;
     } catch (error) {
       throw wrapError(error, `Could not get details about the ${this.name} organization: ${error.message}`);
     }

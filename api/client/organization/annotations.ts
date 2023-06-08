@@ -19,10 +19,12 @@ import {
 import {
   IOrganizationAnnotationChange,
   OrganizationAnnotation,
+  scrubOrganizationAnnotation,
 } from '../../../entities/organizationAnnotation';
 import { ErrorHelper, getProviders } from '../../../transitional';
 import { IndividualContext } from '../../../business/user';
 import { IProviders } from '../../../interfaces';
+import { ensureOrganizationProfileMiddleware } from '../../../middleware/github/ensureOrganizationProfile';
 
 const router: Router = Router();
 
@@ -57,18 +59,14 @@ router.get(
     const { annotations } = req;
     // Limited redaction
     const isSystemAdministrator = await getIsCorporateAdministrator(req);
-    if (!isSystemAdministrator && annotations.administratorNotes) {
-      annotations.administratorNotes = '*****';
-    }
-    if (!isSystemAdministrator && annotations?.history?.length > 0) {
-      delete annotations.history;
-    }
     return res.json({
       isSystemAdministrator,
-      annotations,
+      annotations: scrubOrganizationAnnotation(annotations, isSystemAdministrator),
     });
   })
 );
+
+router.use(ensureOrganizationProfileMiddleware);
 
 async function ensureAnnotations(req: IRequestWithOrganizationAnnotations, res, next) {
   if (!req.annotations) {
@@ -80,7 +78,7 @@ async function ensureAnnotations(req: IRequestWithOrganizationAnnotations, res, 
       await organizationAnnotationsProvider.insertAnnotations(annotations);
       req.annotations = annotations;
     } catch (error) {
-      return next(error);
+      return next(jsonError(error));
     }
   }
   return next();

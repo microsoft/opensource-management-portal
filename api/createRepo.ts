@@ -624,14 +624,22 @@ async function sendEmail(
     req.insights.trackException({
       exception: renderError,
       properties: {
-        content: contentOptions,
+        correlationId,
+        existingRepoId,
+        orgName: repository.organization.name,
+        repoName: repository.name,
+        results: repoCreateResults,
         eventName: 'ApiRepoCreateMailRenderFailure',
       },
     });
     throw renderError;
   }
   const customData = {
-    content: contentOptions,
+    correlationId,
+    existingRepoId,
+    orgName: repository.organization.name,
+    repoName: repository.name,
+    results: repoCreateResults,
     receipt: null,
     eventName: undefined,
   };

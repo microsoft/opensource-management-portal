@@ -41,7 +41,10 @@ const defaultPostgresTableName = 'organizationannotations';
 const organizationId = 'organizationId';
 const primaryKeyFieldName = organizationId;
 
-export enum OrganizationAnnotationProperty {}
+export enum OrganizationAnnotationProperty {
+  Governance = 'governance',
+}
+
 export enum OrganizationAnnotationFeature {}
 
 export interface IOrganizationAnnotationChange {
@@ -50,6 +53,19 @@ export interface IOrganizationAnnotationChange {
   displayName?: string;
   details?: string;
   text: string;
+}
+
+export function scrubOrganizationAnnotation(
+  annotation: OrganizationAnnotation,
+  isSystemAdministrator?: boolean
+): OrganizationAnnotation {
+  if (isSystemAdministrator === true || !annotation) {
+    return annotation;
+  }
+  const scrubbedAnnotations = { ...annotation };
+  delete scrubbedAnnotations.administratorNotes;
+  delete scrubbedAnnotations.history;
+  return scrubbedAnnotations as OrganizationAnnotation;
 }
 
 interface IOrganizationAnnotationMetadataProperties {

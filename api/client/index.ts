@@ -12,6 +12,7 @@ import {
   requireAccessTokenClient,
   setIdentity,
   jsonError,
+  requireAuthenticatedUserOrSignIn,
 } from '../../middleware';
 import { getProviders } from '../../transitional';
 
@@ -36,7 +37,12 @@ const router: Router = Router();
 router.use((req: ReposAppRequest, res, next) => {
   const { config } = getProviders(req);
   if (config?.features?.allowApiClient) {
-    return req.isAuthenticated() ? next() : next(jsonError('Session is not authenticated', 401));
+    if (req.isAuthenticated()) {
+      return next();
+    } else if (req.query.authenticate === 'session') {
+      return requireAuthenticatedUserOrSignIn(req, res, next);
+    }
+    return next(jsonError('Session is not authenticated', 401));
   }
   return next(jsonError('Client API features unavailable', 403));
 });

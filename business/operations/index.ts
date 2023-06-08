@@ -8,7 +8,7 @@ import throat from 'throat';
 
 import { Account } from '../account';
 import { GraphManager } from '../graphManager';
-import { IGitHubOrganizationResponse, Organization } from '../organization';
+import { GitHubOrganizationResponse, Organization } from '../organization';
 import { GitHubTokenManager } from '../githubApps/tokenManager';
 import RenderHtmlMail from '../../lib/emailRender';
 import { wrapError, sortByCaseInsensitive } from '../../utils';
@@ -906,10 +906,7 @@ export class Operations
     }
   }
 
-  async getOrganizationProfileById(
-    id: number,
-    options?: ICacheOptions
-  ): Promise<IGitHubOrganizationResponse> {
+  async getOrganizationProfileById(id: number, options?: ICacheOptions): Promise<GitHubOrganizationResponse> {
     options = options || {};
     if (!id) {
       throw new Error('Must provide a repository ID to retrieve the repository.');
