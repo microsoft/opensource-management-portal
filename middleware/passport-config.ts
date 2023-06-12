@@ -3,7 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { NextFunction, Response } from 'express';
 import passport from 'passport';
+
 import { IKeyVaultSecretResolver } from '../lib/keyVaultResolver';
 import getCompanySpecificDeployment from './companySpecificDeployment';
 
@@ -73,7 +75,7 @@ export default function (app: IReposApplication, config: SiteConfiguration) {
   passport.deserializeUser(serializer.deserialize(serializerOptions));
   serializer.initialize(serializerOptions, app);
 
-  app.use((req: ReposAppRequest, res, next) => {
+  app.use((req: ReposAppRequest, res: Response, next: NextFunction) => {
     if (req?.insights?.commonProperties && config.authentication.scheme === 'aad' && req?.user?.azure?.oid) {
       req.insights.commonProperties.aadId = req.user.azure.oid;
     }

@@ -9,10 +9,7 @@ import { AppPurpose } from './githubApps';
 import {
   IPurposefulGetAuthorizationHeader,
   IOperationsInstance,
-  IGetBranchesOptions,
-  IGitHubBranch,
   throwIfNotGitHubCapable,
-  IGetPullsOptions,
   ICacheOptions,
   IGetAuthorizationHeader,
 } from '../interfaces';

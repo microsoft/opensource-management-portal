@@ -6,27 +6,28 @@
 // Job: Backfill aliases (3)
 // Job: User attributes hygiene - alias backfills (4)
 
-import app from '../../app';
+import job from '../job';
 
 import throat from 'throat';
 import { shuffle } from 'lodash';
 
-import { sleep } from '../../utils';
-import { IReposJob, IReposJobResult, UnlinkPurpose } from '../../interfaces';
+import { sleep } from '../utils';
+import { IProviders, IReposJobResult, UnlinkPurpose } from '../interfaces';
+import { ErrorHelper } from '../transitional';
 
-const backfillAliasesOnly = process.env.BACKFILL_ALIASES === '1';
-
-app.runJob(refresh, {
-  defaultDebugOutput: 'cache,restapi',
+job.runBackgroundJob(refresh, {
   insightsPrefix: 'JobRefreshUsernames',
 });
 
-async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
+async function refresh(providers: IProviders): Promise<IReposJobResult> {
   const { config, operations, insights, linkProvider, graphProvider } = providers;
   if (config?.jobs?.refreshWrites !== true) {
     console.log('job is currently disabled to avoid metadata refresh/rewrites');
     return;
   }
+
+  const backfillAliasesOnly = config.process.get('BACKFILL_ALIASES') === '1';
+  const terminateLinksAndMemberships = config.process.get('REFRESH_USERNAMES_TERMINATE_ACCOUNTS') === '1';
 
   console.log('reading all links');
   let allLinks = shuffle(await linkProvider.getAll());
@@ -67,6 +68,9 @@ async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
     allLinks.map((link) =>
       throttle(async () => {
         ++i;
+        if (i % 100 === 0) {
+          console.log(`${i}/${allLinks.length}; total updates=${updates}, errors=${errors}`);
+        }
 
         // Refresh GitHub username for the ID
         const id = link.thirdPartyId;
@@ -96,7 +100,19 @@ async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
               ++updatedAvatars;
             }
           } catch (githubError) {
-            console.dir(githubError);
+            if (ErrorHelper.IsNotFound(githubError)) {
+              console.warn(
+                `Deleted GitHub account, id=${id}, username_was=${link.thirdPartyUsername}; https://api.github.com/users/${link.thirdPartyUsername}`
+              );
+              insights.trackMetric({ name: 'JobRefreshUsernamesMissingGitHubAccounts', value: 1 });
+              insights.trackEvent({
+                name: 'JobRefreshUsernamesGitHubAccountNotFound',
+                properties: { githubid: id, error: githubError.message },
+              });
+            } else {
+              console.dir(githubError);
+            }
+            throw githubError;
           }
 
           try {
@@ -129,7 +145,17 @@ async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
             }
           } catch (graphLookupError) {
             // Ignore graph lookup issues, other jobs handle terminated employees
-            console.dir(graphLookupError);
+            if (ErrorHelper.IsNotFound(graphLookupError)) {
+              console.warn(`Deleted AAD account, id=${id}, username_was=${link.corporateUsername}`);
+              insights.trackMetric({ name: 'JobRefreshUsernamesMissingCorporateAccounts', value: 1 });
+              insights.trackEvent({
+                name: 'JobRefreshUsernamesCorporateAccountNotFound',
+                properties: { githubid: id, error: graphLookupError.message },
+              });
+            } else {
+              console.dir(graphLookupError);
+            }
+            throw graphLookupError;
           }
 
           if (changed) {
@@ -138,28 +164,31 @@ async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
             ++updates;
           }
         } catch (getDetailsError) {
-          if (getDetailsError.status == /* loose compare */ '404') {
+          if (ErrorHelper.IsNotFound(getDetailsError)) {
             ++notFoundErrors;
             insights.trackEvent({
               name: 'JobRefreshUsernamesNotFound',
-              properties: { githubid: id, error: getDetailsError.message },
+              properties: { githubid: id, aadId: link.corporateId, error: getDetailsError.message },
             });
-            try {
-              await operations.terminateLinkAndMemberships(id, { purpose: UnlinkPurpose.Deleted });
-              insights.trackEvent({
-                name: 'JobRefreshUsernamesUnlinkDelete',
-                properties: { githubid: id, error: getDetailsError.message },
-              });
-            } catch (unlinkDeletedAccountError) {
-              console.dir(unlinkDeletedAccountError);
-              insights.trackException({
-                exception: unlinkDeletedAccountError,
-                properties: { githubid: id, event: 'JobRefreshUsernamesDeleteError' },
-              });
+            if (terminateLinksAndMemberships) {
+              try {
+                await operations.terminateLinkAndMemberships(id, { purpose: UnlinkPurpose.Deleted });
+                insights.trackEvent({
+                  name: 'JobRefreshUsernamesUnlinkDelete',
+                  properties: { githubid: id, error: getDetailsError.message },
+                });
+              } catch (unlinkDeletedAccountError) {
+                console.dir(unlinkDeletedAccountError);
+                insights.trackException({
+                  exception: unlinkDeletedAccountError,
+                  properties: { githubid: id, event: 'JobRefreshUsernamesDeleteError' },
+                });
+              }
             }
           } else {
             console.dir(getDetailsError);
             ++errors;
+            insights.trackMetric({ name: 'JobRefreshUsernamesErrors', value: 1 });
             insights.trackException({
               exception: getDetailsError,
               properties: { name: 'JobRefreshUsernamesError' },
@@ -188,8 +217,8 @@ async function refresh({ providers }: IReposJob): Promise<IReposJobResult> {
   console.log(`Updates: ${updates}`);
   console.log(`GitHub username changes: ${updatedUsernames}`);
   console.log(`GitHub avatar changes: ${updatedAvatars}`);
-  console.log(`AAD name changes: ${updatedAadNames}`);
-  console.log(`AAD username changes: ${updatedAadUpns}`);
+  console.log(`Corporate name changes: ${updatedAadNames}`);
+  console.log(`Corporate username changes: ${updatedAadUpns}`);
   console.log(`Updated corporate mails: ${updatedCorporateMails}`);
 
   return {

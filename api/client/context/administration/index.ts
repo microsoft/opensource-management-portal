@@ -3,8 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
+
 import { Organization } from '../../../../business/organization';
 import { ReposAppRequest } from '../../../../interfaces';
 import { getIsCorporateAdministrator, jsonError } from '../../../../middleware';
@@ -20,7 +21,7 @@ interface IRequestWithAdministration extends ReposAppRequest {
 }
 
 router.use(
-  asyncHandler(async (req: IRequestWithAdministration, res, next) => {
+  asyncHandler(async (req: IRequestWithAdministration, res: Response, next: NextFunction) => {
     req.isSystemAdministrator = await getIsCorporateAdministrator(req);
     return next();
   })
@@ -28,7 +29,7 @@ router.use(
 
 router.get(
   '/',
-  asyncHandler(async (req: IRequestWithAdministration, res, next) => {
+  asyncHandler(async (req: IRequestWithAdministration, res: Response, next: NextFunction) => {
     const { operations } = getProviders(req);
     const isAdministrator = req.isSystemAdministrator;
     if (!isAdministrator) {
@@ -44,13 +45,13 @@ router.get(
   })
 );
 
-router.use((req: IRequestWithAdministration, res, next) => {
+router.use((req: IRequestWithAdministration, res: Response, next: NextFunction) => {
   return req.isSystemAdministrator ? next() : next(jsonError('Not authorized', 403));
 });
 
 router.use(
   '/organization/:orgName',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { orgName } = req.params;
     const { operations } = getProviders(req);
     let organization: Organization = null;
@@ -74,7 +75,7 @@ const deployment = getCompanySpecificDeployment();
 deployment?.routes?.api?.context?.administration?.index &&
   deployment?.routes?.api?.context.administration.index(router);
 
-router.use('*', (req, res, next) => {
+router.use('*', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available: context/administration', 404));
 });
 

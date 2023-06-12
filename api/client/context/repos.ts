@@ -3,12 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { NextFunction, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { GitHubRepositoryPermission, ReposAppRequest } from '../../../interfaces';
 import { IndividualContext } from '../../../business/user';
 
-export default asyncHandler(async (req: ReposAppRequest, res, next) => {
+export default asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
   try {
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {

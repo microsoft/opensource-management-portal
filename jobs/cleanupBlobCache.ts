@@ -3,10 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import BlobCache from '../../lib/caching/blob';
-import { IReposJob } from '../../interfaces';
+// Job 17: Cleanup blob cache
 
-export default async function go({ providers }: IReposJob): Promise<void> {
+import BlobCache from '../lib/caching/blob';
+import job from '../job';
+import { IProviders } from '../interfaces';
+
+job.runBackgroundJob(cleanup);
+
+async function cleanup(providers: IProviders): Promise<void> {
   for (const providerName in providers) {
     const provider = providers[providerName];
     if (provider && provider['expiringBlobCache']) {

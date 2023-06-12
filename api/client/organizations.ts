@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../middleware';
@@ -36,7 +36,7 @@ type HighlightedOrganization = {
 
 router.get(
   '/',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { operations } = getProviders(req);
     try {
       const orgs = operations.getOrganizations();
@@ -52,7 +52,7 @@ router.get(
 
 router.get(
   '/annotations',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const providers = getProviders(req);
     const { organizationAnnotationsProvider } = providers;
     const projection = typeof req.query.projection === 'string' ? req.query.projection : undefined;
@@ -113,7 +113,7 @@ router.get(
 
 router.get(
   '/list.txt',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { operations } = getProviders(req);
     try {
       const orgs = operations.getOrganizations();
@@ -130,41 +130,43 @@ router.get(
 
 router.use(
   '/:orgName',
-  asyncHandler(async (req: IReposAppRequestWithOrganizationManagementType, res, next) => {
-    const { operations } = getProviders(req);
-    const { orgName } = req.params;
-    req.organizationName = orgName;
-    try {
-      const org = operations.getOrganization(orgName);
-      if (org) {
-        req.organizationManagementType = OrganizationManagementType.Managed;
+  asyncHandler(
+    async (req: IReposAppRequestWithOrganizationManagementType, res: Response, next: NextFunction) => {
+      const { operations } = getProviders(req);
+      const { orgName } = req.params;
+      req.organizationName = orgName;
+      try {
+        const org = operations.getOrganization(orgName);
+        if (org) {
+          req.organizationManagementType = OrganizationManagementType.Managed;
+          req.organization = org;
+          return next();
+        }
+      } catch (orgNotFoundError) {
+        if (!ErrorHelper.IsNotFound(orgNotFoundError)) {
+          return next(orgNotFoundError);
+        }
+      }
+      try {
+        const org = operations.getUncontrolledOrganization(orgName);
+        req.organizationManagementType = OrganizationManagementType.Unmanaged;
         req.organization = org;
-        return next();
+        await setOrganizationProfileForRequest(req);
+      } catch (orgProfileError) {
+        if (ErrorHelper.IsNotFound(orgProfileError)) {
+          return next(CreateError.NotFound(`The organization ${orgName} does not exist`));
+        } else {
+          return next(orgProfileError);
+        }
       }
-    } catch (orgNotFoundError) {
-      if (!ErrorHelper.IsNotFound(orgNotFoundError)) {
-        return next(orgNotFoundError);
-      }
+      return next();
     }
-    try {
-      const org = operations.getUncontrolledOrganization(orgName);
-      req.organizationManagementType = OrganizationManagementType.Unmanaged;
-      req.organization = org;
-      await setOrganizationProfileForRequest(req);
-    } catch (orgProfileError) {
-      if (ErrorHelper.IsNotFound(orgProfileError)) {
-        return next(CreateError.NotFound(`The organization ${orgName} does not exist`));
-      } else {
-        return next(orgProfileError);
-      }
-    }
-    return next();
-  })
+  )
 );
 
 router.use('/:orgName', RouteOrganization);
 
-router.use('*', (req: ReposAppRequest, res, next) => {
+router.use('*', (req: ReposAppRequest, res: Response, next: NextFunction) => {
   return next(jsonError('orgs API not found', 404));
 });
 

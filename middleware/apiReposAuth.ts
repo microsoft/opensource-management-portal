@@ -11,6 +11,7 @@
 
 import basicAuth from 'basic-auth';
 import crypto from 'crypto';
+import { NextFunction, Response } from 'express';
 
 import { jsonError } from './jsonError';
 import { getProviders } from '../transitional';
@@ -30,7 +31,7 @@ export interface IApiRequest extends ReposAppRequest {
   userContextOverwriteRequest?: any; // refactor?
 }
 
-export default function ReposApiAuthentication(req: IApiRequest, res, next) {
+export default function ReposApiAuthentication(req: IApiRequest, res: Response, next: NextFunction) {
   const user = basicAuth(req);
   const key = user ? user.pass || user.name : null;
   if (!key) {

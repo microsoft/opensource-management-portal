@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { TeamJoinApprovalEntity } from '../../../../entities/teamJoinApproval/teamJoinApproval';
@@ -42,7 +42,7 @@ router.get(
   '/permissions',
   asyncHandler(AddTeamPermissionsToRequest),
   asyncHandler(AddTeamMembershipToRequest),
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const membership = getTeamMembershipFromRequest(req);
     const permissions = getTeamPermissionsFromRequest(req);
     return res.json({ permissions, membership });
@@ -51,7 +51,7 @@ router.get(
 
 router.get(
   '/join/request',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { approvalProvider } = getProviders(req);
     const team = getContextualTeam(req);
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
@@ -70,7 +70,7 @@ router.get(
 router.post(
   '/join',
   asyncHandler(AddTeamMembershipToRequest),
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     try {
       const providers = getProviders(req);
       const { approvalProvider } = providers;
@@ -112,7 +112,7 @@ router.post(
 router.post(
   '/join/approvals/:approvalId',
   asyncHandler(AddTeamPermissionsToRequest),
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { approvalId: id } = req.params;
     if (!id) {
       return next(jsonError('invalid approval', 400));
@@ -164,7 +164,7 @@ router.post(
 router.get(
   '/join/approvals/:approvalId',
   asyncHandler(AddTeamPermissionsToRequest),
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { approvalId: id } = req.params;
     if (!id) {
       return next(jsonError('invalid approval', 400));
@@ -195,7 +195,7 @@ router.get(
 router.get(
   '/join/approvals',
   asyncHandler(AddTeamPermissionsToRequest),
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { approvalProvider } = getProviders(req);
     const team = getContextualTeam(req);
     const permissions = getTeamPermissionsFromRequest(req);
@@ -213,7 +213,7 @@ router.get(
 router.post(
   '/role/:login',
   asyncHandler(AddTeamPermissionsToRequest),
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { role } = req.body;
     const { login } = req.params;
     if (!login) {
@@ -240,7 +240,7 @@ router.post(
   })
 );
 
-router.use('*', (req, res, next) => {
+router.use('*', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available for contextual team', 404));
 });
 

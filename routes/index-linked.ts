@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
@@ -38,7 +38,7 @@ const reactRoute = hasReactApp ? injectReactClient() : undefined;
 // * only for the traditional app. The React app does not require a link to browse orgs.
 //-----------------------------------------------------------------------------
 if (!hasReactApp) {
-  router.use(function (req: ReposAppRequest, res, next) {
+  router.use(function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const individualContext = req.individualContext as IndividualContext;
     const link = individualContext.link;
     if (link && link.thirdPartyId) {
@@ -65,7 +65,7 @@ router.use('/administration', asyncHandler(AuthorizeOnlyCorporateAdministrators)
 
 router.use(
   '/https?*github.com/:org/:repo',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     // Helper method to allow pasting a GitHub URL into the app to go to a repo
     const { org, repo } = req.params;
     const { operations } = getProviders(req);

@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { NextFunction, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import recursiveReadDirectory from 'recursive-readdir';
@@ -20,6 +21,7 @@ import {
   IAlternateTokenOption,
   IOperationsRepositoryMetadataProvider,
   IProviders,
+  IReposAppWithTeam,
   throwIfNotCapable,
 } from '../../interfaces';
 import { ErrorHelper } from '../../transitional';
@@ -185,7 +187,7 @@ export class RepoWorkflowEngine {
     });
   }
 
-  editPost(req, res, next) {
+  editPost(req: IReposAppWithTeam, res: Response, next: NextFunction) {
     const { operations } = this.providers;
     const ops = throwIfNotCapable<IOperationsRepositoryMetadataProvider>(
       operations,

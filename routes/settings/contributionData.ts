@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
@@ -15,7 +15,7 @@ export interface IRequestWithUserSettings extends ReposAppRequest {
   userSettings?: UserSettings;
 }
 
-async function getSettings(req: IRequestWithUserSettings, res, next) {
+async function getSettings(req: IRequestWithUserSettings, res: Response, next: NextFunction) {
   const corporateId = req.individualContext.corporateIdentity.id;
   const { userSettingsProvider } = getProviders(req);
   if (!req.userSettings) {
@@ -56,7 +56,7 @@ router.get('/', view);
 
 router.post(
   '/',
-  asyncHandler(async function (req: IRequestWithUserSettings, res, next) {
+  asyncHandler(async function (req: IRequestWithUserSettings, res: Response, next: NextFunction) {
     const isOptIn = !!(req.body.optIn === '1');
     const currentSetting = req.userSettings.contributionShareOptIn;
     req.userSettings.contributionShareOptIn = isOptIn;

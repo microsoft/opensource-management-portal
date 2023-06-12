@@ -24,6 +24,7 @@ import { CacheDefault, getMaxAgeSeconds, getPageSize, OperationsCore } from './o
 import {
   CoreCapability,
   GitHubAuditLogEntry,
+  GitHubOrganizationInvite,
   GitHubRepositoryVisibility,
   IAccountBasics,
   IAddOrganizationMembershipOptions,
@@ -510,10 +511,6 @@ export class Organization {
 
   get hidden(): boolean {
     return this._settings.hasFeature(OrganizationFeature.Hidden) || false;
-  }
-
-  get pilot_program() {
-    return this._settings.properties['1es'];
   }
 
   get createRepositoriesOnGitHub(): boolean {
@@ -1331,7 +1328,7 @@ export class Organization {
     }
   }
 
-  async getMembershipInvitations(): Promise<any> {
+  async getMembershipInvitations(): Promise<GitHubOrganizationInvite[]> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
       org: this.name,
@@ -1342,7 +1339,7 @@ export class Organization {
         'orgs.listPendingInvitations',
         parameters
       );
-      return invitations;
+      return invitations as GitHubOrganizationInvite[];
     } catch (error) {
       if (error.status == /* loose */ 404) {
         return null;

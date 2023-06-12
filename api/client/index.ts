@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import {
@@ -34,7 +34,7 @@ import routeCrossOrganizationTeams from './teams';
 
 const router: Router = Router();
 
-router.use((req: ReposAppRequest, res, next) => {
+router.use((req: ReposAppRequest, res: Response, next: NextFunction) => {
   const { config } = getProviders(req);
   if (config?.features?.allowApiClient) {
     if (req.isAuthenticated()) {
@@ -126,7 +126,7 @@ router.get('/', (req: ReposAppRequest, res) => {
   return res.send(JSON.stringify(data, null, 2));
 });
 
-router.use((req, res, next) => {
+router.use((req, res: Response, next: NextFunction) => {
   return next(jsonError('The resource or endpoint you are looking for is not there', 404));
 });
 

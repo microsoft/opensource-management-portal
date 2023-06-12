@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../../middleware';
@@ -44,7 +44,7 @@ router.use('/permissions', RouteRepoPermissions);
 
 router.get(
   '/',
-  asyncHandler(async (req: RequestWithRepo, res, next) => {
+  asyncHandler(async (req: RequestWithRepo, res: Response, next: NextFunction) => {
     const { repository } = req;
     try {
       await repository.getDetails({ backgroundRefresh: false });
@@ -64,7 +64,7 @@ router.get(
 
 router.get(
   '/exists',
-  asyncHandler(async (req: RequestWithRepo, res, next) => {
+  asyncHandler(async (req: RequestWithRepo, res: Response, next: NextFunction) => {
     let exists = false;
     let name: string = undefined;
     const { repository } = req;
@@ -88,7 +88,7 @@ router.get(
 router.patch(
   '/renameDefaultBranch',
   asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(async function (req: RequestWithRepo, res, next) {
+  asyncHandler(async function (req: RequestWithRepo, res: Response, next: NextFunction) {
     const providers = getProviders(req);
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     const repoPermissions = getContextualRepositoryPermissions(req);
@@ -122,7 +122,12 @@ router.post(
   asyncHandler(archiveUnArchiveRepositoryHandler.bind(null, ArchivalAction.UnArchive))
 );
 
-async function archiveUnArchiveRepositoryHandler(action: ArchivalAction, req: RequestWithRepo, res, next) {
+async function archiveUnArchiveRepositoryHandler(
+  action: ArchivalAction,
+  req: RequestWithRepo,
+  res: Response,
+  next: NextFunction
+) {
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const providers = getProviders(req);
   const { insights } = providers;
@@ -200,7 +205,7 @@ async function archiveUnArchiveRepositoryHandler(action: ArchivalAction, req: Re
 router.delete(
   '/',
   asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(async function (req: RequestWithRepo, res, next) {
+  asyncHandler(async function (req: RequestWithRepo, res: Response, next: NextFunction) {
     // NOTE: duplicated code from /routes/org/repos.ts
     const providers = getProviders(req);
     const { insights } = providers;
@@ -310,7 +315,7 @@ router.delete(
   })
 );
 
-router.use('*', (req, res, next) => {
+router.use('*', (req, res: Response, next: NextFunction) => {
   console.warn(req.baseUrl);
   return next(jsonError('no API or function available within this specific repo', 404));
 });

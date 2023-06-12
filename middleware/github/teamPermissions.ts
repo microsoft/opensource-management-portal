@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { NextFunction, Response } from 'express';
+
 import { Team } from '../../business';
 import {
   GitHubTeamRole,
@@ -40,7 +42,7 @@ export function getTeamMembershipFromRequest(req: ReposAppRequest) {
   return req[teamStatusCacheKeyName] as IRequestTeamMembershipStatus;
 }
 
-export async function AddTeamMembershipToRequest(req: ReposAppRequest, res, next) {
+export async function AddTeamMembershipToRequest(req: ReposAppRequest, res: Response, next: NextFunction) {
   if (req[teamStatusCacheKeyName]) {
     return next();
   }
@@ -94,7 +96,7 @@ export function getTeamPermissionsFromRequest(req: ReposAppRequest) {
   return req[teamPermissionsCacheKeyName] as IRequestTeamPermissions;
 }
 
-export async function AddTeamPermissionsToRequest(req: ReposAppRequest, res, next) {
+export async function AddTeamPermissionsToRequest(req: ReposAppRequest, res: Response, next: NextFunction) {
   if (req[teamPermissionsCacheKeyName]) {
     return next();
   }

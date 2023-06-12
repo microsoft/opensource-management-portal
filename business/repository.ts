@@ -47,6 +47,7 @@ import {
   IOperationsRepositoryMetadataProvider,
   IOperationsUrls,
   GitHubRepositoryPermission,
+  GitHubRepositoryVisibility,
 } from '../interfaces';
 import { IListPullsParameters, GitHubPullRequestState } from '../lib/github/collections';
 
@@ -256,6 +257,9 @@ export class Repository {
   get private(): boolean {
     return this._entity ? this._entity.private : false;
   }
+  get visibility(): GitHubRepositoryVisibility {
+    return this._entity ? this._entity.visibility : null;
+  }
   get html_url(): string {
     return this._entity ? this._entity.html_url : null;
   }
@@ -401,6 +405,17 @@ export class Repository {
       created: moments.created ? moments.created.fromNow() : undefined,
       pushed: moments.pushed ? moments.pushed.fromNow() : undefined,
     };
+  }
+
+  async getId(options?: ICacheOptions): Promise<number> {
+    // Repositories by name may not actually have the ID; this ensures it's available
+    // and a number. Similar to previously checking "isDeleted" or "getDetails" first.
+    if (!this.id) {
+      await this.getDetails(options);
+    }
+    if (this.id) {
+      return typeof this.id === 'number' ? this.id : parseInt(this.id, 10);
+    }
   }
 
   async isDeleted(options?: ICacheOptions): Promise<boolean> {

@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
@@ -36,7 +36,7 @@ function isClientRoute(req: ReposAppRequest) {
 
 router.use('/webhook', apiWebhook);
 
-router.use((req: IApiRequest, res, next) => {
+router.use((req: IApiRequest, res: Response, next: NextFunction) => {
   if (isClientRoute(req)) {
     // The frontend client routes are hooked into Express after
     // the session middleware. The client route does not require
@@ -91,7 +91,7 @@ router.post('/:org/repos', aadAndCustomProviders);
 router.post(
   '/:org/repos',
   requireAadApiAuthorizedScope(['repo/create', 'createRepo']),
-  function (req: IApiRequest, res, next) {
+  function (req: IApiRequest, res: Response, next: NextFunction) {
     const orgName = req.params.org;
     if (!req.apiKeyToken.organizationScopes) {
       return next(jsonError('There is a problem with the key configuration (no organization scopes)', 412));
@@ -116,7 +116,7 @@ router.post(
 
 router.post(
   '/:org/repos',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const providers = getProviders(req);
     const organization = req.organization;
     const convergedObject = Object.assign({}, req.headers);
@@ -185,7 +185,7 @@ router.post(
   })
 );
 
-router.use((req: IApiRequest, res, next) => {
+router.use((req: IApiRequest, res: Response, next: NextFunction) => {
   if (isClientRoute(req)) {
     // The frontend client routes are hooked into Express after
     // the session middleware. The client route does not require

@@ -9,6 +9,8 @@ import { AxiosError } from 'axios';
 import { wrapError } from '../utils';
 import { getProviders } from '../transitional';
 import { isJsonError } from '.';
+import { NextFunction, Response } from 'express';
+import { ReposAppRequest } from '../interfaces';
 
 function redactRootPathsFromString(string, path) {
   if (typeof string === 'string' && string.includes && string.split) {
@@ -49,7 +51,13 @@ const exceptionFieldsOfInterest = [
   'innerMessage',
 ];
 
-export default function SiteErrorHandler(err, req, res, next) {
+export default function SiteErrorHandler(
+  error: unknown,
+  req: ReposAppRequest,
+  res: Response,
+  next: NextFunction
+) {
+  let err = error as any;
   // CONSIDER: Let's eventually decouple all of our error message improvements to another area to keep the error handler intact.
   const { applicationProfile, config } = getProviders(req);
   const correlationId = req.correlationId;

@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IReposApplication } from '../../interfaces';
+import { ExecutionEnvironment } from '../../interfaces';
 import { CreateError } from '../../transitional';
 
 import Debug from 'debug';
@@ -146,6 +146,7 @@ export interface IGitHubAppConfiguration {
 }
 
 export interface IGitHubAppsOptions {
-  app: IReposApplication;
+  // app: IReposApplication;
   configurations: Map<AppPurposeTypes, IGitHubAppConfiguration>;
+  executionEnvironment: ExecutionEnvironment;
 }

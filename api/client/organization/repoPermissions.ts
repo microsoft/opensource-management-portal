@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../../middleware/jsonError';
@@ -19,7 +19,7 @@ const router: Router = Router();
 
 router.get(
   '/',
-  asyncHandler(async (req: RequestWithRepo, res, next) => {
+  asyncHandler(async (req: RequestWithRepo, res: Response, next: NextFunction) => {
     const { repository, organization } = req;
     try {
       const teamPermissions = await repository.getTeamPermissions();

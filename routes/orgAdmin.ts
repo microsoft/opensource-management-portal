@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
@@ -264,7 +264,7 @@ async function getGitHubAccountInformationById(operations: Operations, id: strin
   return account;
 }
 
-router.get('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {
+router.get('/whois/id/:githubid', function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const thirdPartyId = req.params.githubid;
   const providers = getProviders(req);
   queryByGitHubId(providers, thirdPartyId)
@@ -296,7 +296,7 @@ interface IIDValue {
 
 router.get(
   '/whois/link/:linkid',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const linkId = req.params.linkid;
     const { linkProvider: lp } = getProviders(req);
     const linkProvider = lp as PostgresLinkProvider;
@@ -315,7 +315,7 @@ router.get(
 
 router.post(
   '/whois/link/:linkid',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const { config } = getProviders(req);
     const linkId = req.params.linkid;
     const isLinkDelete = req.body['delete-link'];
@@ -383,7 +383,7 @@ router.post(
 
 router.post(
   '/whois/link/',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const { config, operations } = getProviders(req);
     const allowAdministratorManualLinking = operations?.config?.features?.allowAdministratorManualLinking;
     if (!allowAdministratorManualLinking) {
@@ -436,7 +436,7 @@ router.post(
   })
 );
 
-router.post('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {
+router.post('/whois/id/:githubid', function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const thirdPartyId = req.params.githubid;
   const markAsServiceAccount = req.body['mark-as-service-account'];
   const unmarkServiceAccount = req.body['unmark-service-account'];
@@ -467,7 +467,7 @@ router.post('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {
     });
 });
 
-router.get('/whois/aad/:upn', function (req: ReposAppRequest, res, next) {
+router.get('/whois/aad/:upn', function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const upn = req.params.upn;
   const providers = getProviders(req);
   queryByCorporateUsername(providers, upn)
@@ -488,7 +488,7 @@ router.get('/whois/aad/:upn', function (req: ReposAppRequest, res, next) {
     .catch(next);
 });
 
-router.get('/whois/github/:username', function (req: ReposAppRequest, res, next) {
+router.get('/whois/github/:username', function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const login = req.params.username;
   const providers = getProviders(req);
   queryByGitHubLogin(providers, login)
@@ -507,7 +507,7 @@ router.get('/whois/github/:username', function (req: ReposAppRequest, res, next)
     .catch(next);
 });
 
-router.post('/whois/github/:username', function (req: ReposAppRequest, res, next) {
+router.post('/whois/github/:username', function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const username = req.params.username;
   const markAsServiceAccount = req.body['mark-as-service-account'];
   const unmarkServiceAccount = req.body['unmark-service-account'];
@@ -672,7 +672,7 @@ router.get('/bulkRepoDelete', (req: ReposAppRequest, res) => {
 
 router.post(
   '/bulkRepoDelete',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { operations } = getProviders(req);
     let repositories = req.body.repositories;
     // TODO: FEATURE FLAG: add a feature flag whether this API is available.

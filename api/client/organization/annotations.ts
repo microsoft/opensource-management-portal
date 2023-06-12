@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../../middleware/jsonError';
@@ -35,7 +35,7 @@ type IRequestWithOrganizationAnnotations = IReposAppRequestWithOrganizationManag
 router.use(
   '/',
   checkIsCorporateAdministrator,
-  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res, next) => {
+  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
     const { organizationAnnotationsProvider } = getProviders(req);
     const { organization, organizationManagementType, organizationProfile } = req;
     const organizationId =
@@ -55,7 +55,7 @@ router.use(
 
 router.get(
   '/',
-  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res, next) => {
+  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
     const { annotations } = req;
     // Limited redaction
     const isSystemAdministrator = await getIsCorporateAdministrator(req);
@@ -68,7 +68,11 @@ router.get(
 
 router.use(ensureOrganizationProfileMiddleware);
 
-async function ensureAnnotations(req: IRequestWithOrganizationAnnotations, res, next) {
+async function ensureAnnotations(
+  req: IRequestWithOrganizationAnnotations,
+  res: Response,
+  next: NextFunction
+) {
   if (!req.annotations) {
     const { organizationAnnotationsProvider } = getProviders(req);
     try {
@@ -89,7 +93,7 @@ router.put('*', AuthorizeOnlyCorporateAdministrators, ensureAnnotations);
 
 router.put(
   '/',
-  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res, next) => {
+  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
     // No-op mostly, since ensureAnnotations precedes
     return res.json({
       annotations: req.annotations,
@@ -125,7 +129,7 @@ function addChangeNote(
 
 router.put(
   '/property/:propertyName',
-  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res, next) => {
+  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
     const { annotations } = req;
     const providers = getProviders(req);
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
@@ -152,7 +156,7 @@ router.put(
 
 router.delete(
   '/property/:propertyName',
-  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res, next) => {
+  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
     const { annotations } = req;
     const providers = getProviders(req);
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
@@ -183,7 +187,7 @@ router.delete(
 
 router.put(
   '/feature/:flag',
-  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res, next) => {
+  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
     const { annotations } = req;
     const providers = getProviders(req);
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
@@ -211,7 +215,7 @@ router.put(
 
 router.delete(
   '/feature/:flag',
-  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res, next) => {
+  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
     const { annotations } = req;
     const providers = getProviders(req);
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
@@ -241,7 +245,7 @@ router.delete(
 
 router.patch(
   '/',
-  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res, next) => {
+  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
     const { annotations } = req;
     const providers = getProviders(req);
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
@@ -288,7 +292,7 @@ async function applyPatch(
 // features, properties
 // flag
 
-router.use('*', (req, res, next) => {
+router.use('*', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available within the organization annotations route', 404));
 });
 

@@ -5,7 +5,7 @@
 
 import _ from 'lodash';
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
@@ -69,7 +69,7 @@ dynamicStartupInstance?.routes?.connectAuthenticatedRoutes &&
 
 router.use('/settings', SettingsRoute);
 
-router.get('/news', (req: ReposAppRequest, res, next) => {
+router.get('/news', (req: ReposAppRequest, res: Response, next: NextFunction) => {
   const config = getProviders(req).config;
   if (config && config.news && config.news.all && config.news.all.length) {
     return req.individualContext.webContext.render({
@@ -88,7 +88,7 @@ router.use(RequireLinkMatchesGitHubSessionExceptPrefixedRoute('/unlink'));
 router.get(
   '/',
   reactRoute ||
-    asyncHandler(async function (req: ReposAppRequest, res, next) {
+    asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
       const onboarding = req.query.onboarding !== undefined;
       const individualContext = req.individualContext;
       const link = individualContext.link;

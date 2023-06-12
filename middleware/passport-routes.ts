@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Response, NextFunction } from 'express';
+import type { Response, NextFunction } from 'express';
 
 import { redirectToReferrer, storeReferrer } from '../utils';
 import { getProviders } from '../transitional';
-import { ReposAppRequest, IAppSession } from '../interfaces';
+import type { ReposAppRequest, IAppSession } from '../interfaces';
 import getCompanySpecificDeployment from './companySpecificDeployment';
 import { attachAadPassportRoutes } from './passport/aadRoutes';
 import { attachGitHubPassportRoutes } from './passport/githubRoutes';

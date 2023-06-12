@@ -9,16 +9,22 @@ import { IndividualContext } from '../../business/user';
 import { getProviders } from '../../transitional';
 import { wrapError } from '../../utils';
 import { ReposAppRequest, IReposError } from '../../interfaces';
+import { NextFunction, Response } from 'express';
 
 export function RequireLinkMatchesGitHubSessionExceptPrefixedRoute(prefix: string) {
   return requireLinkMatchesGitHubSession.bind(null, prefix);
 }
 
-export function RequireLinkMatchesGitHubSession(req: ReposAppRequest, res, next) {
+export function RequireLinkMatchesGitHubSession(req: ReposAppRequest, res: Response, next: NextFunction) {
   return requireLinkMatchesGitHubSession(null, req, res, next);
 }
 
-function requireLinkMatchesGitHubSession(allowedPrefix: string, req: ReposAppRequest, res, next) {
+function requireLinkMatchesGitHubSession(
+  allowedPrefix: string,
+  req: ReposAppRequest,
+  res: Response,
+  next: NextFunction
+) {
   // trying to be equivalent to legacy code in ./usernameConsistency (lightweight)
   const context = req.individualContext;
   if (!context) {
@@ -67,7 +73,7 @@ function requireLinkMatchesGitHubSession(allowedPrefix: string, req: ReposAppReq
   return next(securityError);
 }
 
-export async function AddLinkToRequest(req, res, next) {
+export async function AddLinkToRequest(req, res: Response, next: NextFunction) {
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const contextName = req.individualContext ? 'Individual User Context' : 'API Context';
   if (!activeContext) {

@@ -5,6 +5,7 @@
 
 import asyncHandler from 'express-async-handler';
 import memoryCache from 'memory-cache';
+import { NextFunction, Response } from 'express';
 
 import type { IReposAppRequestWithOrganizationManagementType } from '../business/organization';
 import { CreateError, getProviders } from '../../transitional';
@@ -44,7 +45,11 @@ export async function getOrganizationProfileViaMemoryCache(providers: IProviders
   return profile;
 }
 
-async function ensureOrganizationProfile(req: IReposAppRequestWithOrganizationManagementType, res, next) {
+async function ensureOrganizationProfile(
+  req: IReposAppRequestWithOrganizationManagementType,
+  res: Response,
+  next: NextFunction
+) {
   await setOrganizationProfileForRequest(req);
   return next();
 }

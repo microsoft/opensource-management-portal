@@ -3,48 +3,50 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import moment from 'moment';
-
-import { IReposJob } from '../../interfaces';
+// Job 16: cleanup invites
 
 // Organization invitations cleanup: remove any invitations that are older than a
 // set period of time from the organization.
 
+import { GitHubOrganizationInvite, IProviders } from '../interfaces';
+import job from '../job';
+import { daysInMilliseconds } from '../utils';
+
 const defaultMaximumInvitationAgeDays = 4;
 
-export default async function cleanup({ providers }: IReposJob): Promise<void> {
+job.runBackgroundJob(cleanup, {
+  timeoutMinutes: 90,
+  insightsPrefix: 'JobOrganizationInvitationsCleanup',
+});
+
+async function cleanup(providers: IProviders) {
   const insights = providers.insights;
   let maximumInvitationAgeDays = defaultMaximumInvitationAgeDays;
   const { config, operations } = providers;
-  if (
-    config.github &&
-    config.github.jobs &&
-    config.github.jobs.cleanup &&
-    config.github.jobs.cleanup.maximumInvitationAgeDays
-  ) {
+  if (config?.github?.jobs?.cleanup?.maximumInvitationAgeDays) {
     maximumInvitationAgeDays = config.github.jobs.cleanup.maximumInvitationAgeDays;
   }
-  const maximumAgeMoment = moment().subtract(maximumInvitationAgeDays, 'days');
+  const maximumAgeDate = new Date(new Date().getTime() - daysInMilliseconds(maximumInvitationAgeDays));
   const organizations = operations.getOrganizations();
   const removedInvitations = 0;
   for (const organization of organizations) {
-    let invitations: any[];
+    let invitations: GitHubOrganizationInvite[];
     try {
       invitations = await organization.getMembershipInvitations();
     } catch (getInvitationsError) {
-      insights.trackException({ exception: getInvitationsError });
+      insights?.trackException({ exception: getInvitationsError });
       console.dir(getInvitationsError);
       continue;
     }
     if (!invitations || invitations.length === 0) {
       continue;
     }
-    const invitationsToRemove = [];
+    const invitationsToRemove: string[] = [];
     let emailInvitations = 0;
     for (let i = 0; i < invitations.length; i++) {
       const invite = invitations[i];
-      const createdAt = moment(invite.created_at);
-      if (createdAt.isBefore(maximumAgeMoment)) {
+      const createdAt = new Date(invite.created_at);
+      if (createdAt < maximumAgeDate) {
         if (invite.login) {
           invitationsToRemove.push(invite.login);
         } else {
@@ -52,8 +54,7 @@ export default async function cleanup({ providers }: IReposJob): Promise<void> {
           console.warn(`An e-mail based invitation to ${invite.email} cannot be automatically canceled`);
         }
         const data = {
-          createdAt: createdAt.format(),
-          invitedAgo: createdAt.fromNow(),
+          createdAt: createdAt.toISOString(),
           login: invite.login,
           inviter: invite && invite.inviter && invite.inviter.login ? invite.inviter.login : undefined,
           role: invite.role,
@@ -62,7 +63,7 @@ export default async function cleanup({ providers }: IReposJob): Promise<void> {
         const eventName = invite.login
           ? 'JobOrganizationInviteCleanupInvitationNeeded'
           : 'JobOrganizationInviteCleanupInvitationNotUser';
-        insights.trackEvent({
+        insights?.trackEvent({
           name: eventName,
           properties: data,
         });
@@ -80,8 +81,8 @@ export default async function cleanup({ providers }: IReposJob): Promise<void> {
       try {
         await organization.removeMember(login);
       } catch (removeError) {
-        insights.trackException({ exception: removeError });
-        insights.trackEvent({
+        insights?.trackException({ exception: removeError });
+        insights?.trackEvent({
           name: 'JobOrganizationInvitationsCleanupInvitationFailed',
           properties: {
             login: login,
@@ -92,5 +93,5 @@ export default async function cleanup({ providers }: IReposJob): Promise<void> {
     }
   }
   console.log(`Job finishing. Removed ${removedInvitations} expired invitations.`);
-  insights.trackMetric({ name: 'JobOrganizationInvitationsExpired', value: removedInvitations });
+  insights?.trackMetric({ name: 'JobOrganizationInvitationsExpired', value: removedInvitations });
 }

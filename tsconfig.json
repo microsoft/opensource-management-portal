@@ -5,6 +5,7 @@
     "outDir": "./dist",
     "incremental": true,
     "allowJs": true,
+    "declaration": true,
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "esModuleInterop": true,

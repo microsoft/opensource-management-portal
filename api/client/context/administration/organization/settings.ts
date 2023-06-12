@@ -3,8 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
+
 import { OrganizationSetting } from '../../../../../entities/organizationSettings/organizationSetting';
 import { ReposAppRequest } from '../../../../../interfaces';
 import { jsonError } from '../../../../../middleware';
@@ -17,7 +18,7 @@ interface IOrganizationSettings extends ReposAppRequest {
 }
 
 router.use(
-  asyncHandler(async (req: IOrganizationSettings, res, next) => {
+  asyncHandler(async (req: IOrganizationSettings, res: Response, next: NextFunction) => {
     const { organization } = req;
     const { organizationSettingsProvider } = getProviders(req);
     try {
@@ -34,7 +35,7 @@ router.use(
 
 router.get(
   '/',
-  asyncHandler(async (req: IOrganizationSettings, res, next) => {
+  asyncHandler(async (req: IOrganizationSettings, res: Response, next: NextFunction) => {
     const { dynamicSettings } = req;
     return res.json({
       dynamicSettings,
@@ -46,7 +47,7 @@ router.get(
 
 router.get(
   '/features',
-  asyncHandler(async (req: IOrganizationSettings, res, next) => {
+  asyncHandler(async (req: IOrganizationSettings, res: Response, next: NextFunction) => {
     const { dynamicSettings, organization } = req;
     const { features } = dynamicSettings;
     return res.json({
@@ -58,7 +59,7 @@ router.get(
 
 router.get(
   '/feature/:flag',
-  asyncHandler(async (req: IOrganizationSettings, res, next) => {
+  asyncHandler(async (req: IOrganizationSettings, res: Response, next: NextFunction) => {
     const { dynamicSettings, organization } = req;
     const flag = req.params.flag as string;
     return res.json({
@@ -71,7 +72,7 @@ router.get(
 
 router.put(
   '/feature/:flag',
-  asyncHandler(async (req: IOrganizationSettings, res, next) => {
+  asyncHandler(async (req: IOrganizationSettings, res: Response, next: NextFunction) => {
     const { dynamicSettings, organization } = req;
     const { insights, organizationSettingsProvider } = getProviders(req);
     const { features } = dynamicSettings;
@@ -103,7 +104,7 @@ router.put(
 
 router.delete(
   '/feature/:flag',
-  asyncHandler(async (req: IOrganizationSettings, res, next) => {
+  asyncHandler(async (req: IOrganizationSettings, res: Response, next: NextFunction) => {
     const { organization, dynamicSettings } = req;
     const { organizationSettingsProvider, insights } = getProviders(req);
     const { features } = dynamicSettings;
@@ -137,7 +138,7 @@ router.delete(
 
 router.get(
   '/properties',
-  asyncHandler(async (req: IOrganizationSettings, res, next) => {
+  asyncHandler(async (req: IOrganizationSettings, res: Response, next: NextFunction) => {
     const { dynamicSettings, organization } = req;
     const { properties } = dynamicSettings;
     return res.json({
@@ -149,7 +150,7 @@ router.get(
 
 router.get(
   '/property/:flag',
-  asyncHandler(async (req: IOrganizationSettings, res, next) => {
+  asyncHandler(async (req: IOrganizationSettings, res: Response, next: NextFunction) => {
     const { dynamicSettings, organization } = req;
     const propertyName = req.params.propertyName as string;
     const { properties } = dynamicSettings;
@@ -163,7 +164,7 @@ router.get(
 
 router.put(
   '/property/:propertyName',
-  asyncHandler(async (req: IOrganizationSettings, res, next) => {
+  asyncHandler(async (req: IOrganizationSettings, res: Response, next: NextFunction) => {
     const { organization, dynamicSettings } = req;
     const { insights, organizationSettingsProvider } = getProviders(req);
     const { properties } = dynamicSettings;
@@ -209,7 +210,7 @@ router.put(
 
 router.delete(
   '/property/:propertyName',
-  asyncHandler(async (req: IOrganizationSettings, res, next) => {
+  asyncHandler(async (req: IOrganizationSettings, res: Response, next: NextFunction) => {
     const { organization, dynamicSettings } = req;
     const { organizationSettingsProvider, insights } = getProviders(req);
     const { properties } = dynamicSettings;
@@ -245,7 +246,7 @@ router.delete(
 
 //
 
-router.use('*', (req, res, next) => {
+router.use('*', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available in administration - organization', 404));
 });
 

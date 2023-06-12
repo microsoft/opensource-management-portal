@@ -21,6 +21,7 @@ import {
   IOperationsCentralOperationsToken,
   IAuthorizationHeaderValue,
   SiteConfiguration,
+  ExecutionEnvironment,
 } from '../../interfaces';
 import { RestLibrary } from '../../lib/github';
 import { CreateError } from '../../transitional';
@@ -35,6 +36,7 @@ export interface IOperationsCoreOptions {
   github: RestLibrary;
   providers: IProviders;
   baseUrl?: string;
+  executionEnvironment: ExecutionEnvironment;
 }
 
 export enum CacheDefault {

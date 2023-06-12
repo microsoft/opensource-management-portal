@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { NextFunction, Response } from 'express';
+
 import { ErrorHelper, getProviders } from '../../transitional';
 import { Repository } from '../../business/repository';
 import { GitHubIdentitySource, IIndividualContextOptions, IndividualContext } from '../../business/user';
@@ -145,7 +147,11 @@ export async function getComputedRepositoryPermissions(
   return repoPermissions;
 }
 
-export async function AddRepositoryPermissionsToRequest(req: ReposAppRequest, res, next) {
+export async function AddRepositoryPermissionsToRequest(
+  req: ReposAppRequest,
+  res: Response,
+  next: NextFunction
+) {
   if (req[repoPermissionsCacheKeyName]) {
     return next();
   }

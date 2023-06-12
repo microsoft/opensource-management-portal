@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
@@ -27,7 +27,7 @@ import {
 
 router.use(
   '/:appId',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const providers = getProviders(req);
     const appId = Number(req.params.appId);
     const app = providers.operations.getApplicationById(appId);
@@ -43,7 +43,7 @@ router.use(
 
 router.get(
   '/:appId',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const githubApplication = req['githubApplication'] as GitHubApplication;
     const installationIdString = req.query.installation_id;
     const setupAction = req.query.setup_action;
@@ -71,7 +71,7 @@ router.get(
 
 router.use(
   '/:appId/installations/:installationId',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const githubApplication = req['githubApplication'] as GitHubApplication;
     const installationIdString = req.params.installationId;
     const { operations, organizationSettingsProvider } = getProviders(req);
@@ -166,7 +166,7 @@ async function getDynamicSettingsFromLegacySettings(
 
 router.post(
   '/:appId/installations/:installationId',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const hasBurnButtonClicked = req.body['burn-org-app'];
     const hasImportButtonClicked = req.body['adopt-import-settings'];
     const hasCreateButtonClicked = req.body['adopt-new-org'];
@@ -375,7 +375,7 @@ router.post(
 
 router.get(
   '/:appId/installations/:installationId',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const githubApplication = req['githubApplication'] as GitHubApplication;
     const providers = getProviders(req);
     const individualContext = req.individualContext;

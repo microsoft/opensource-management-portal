@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { ReposAppRequest } from '../../../interfaces';
@@ -63,19 +63,21 @@ asClientJson() {
 */
 router.get(
   '/',
-  asyncHandler(async (req: IReposAppRequestWithOrganizationManagementType, res, next) => {
-    const { organization, organizationProfile, organizationManagementType } = req;
-    if (organizationManagementType === OrganizationManagementType.Unmanaged) {
+  asyncHandler(
+    async (req: IReposAppRequestWithOrganizationManagementType, res: Response, next: NextFunction) => {
+      const { organization, organizationProfile, organizationManagementType } = req;
+      if (organizationManagementType === OrganizationManagementType.Unmanaged) {
+        return res.json({
+          managementType: req.organizationManagementType,
+          id: organizationProfile.id,
+        });
+      }
       return res.json({
         managementType: req.organizationManagementType,
-        id: organizationProfile.id,
+        ...organization.asClientJson(),
       });
     }
-    return res.json({
-      managementType: req.organizationManagementType,
-      ...organization.asClientJson(),
-    });
-  })
+  )
 );
 
 router.use('/annotations', routeAnnotations);
@@ -93,7 +95,7 @@ router.get('/newRepoBanner', (req: ReposAppRequest, res) => {
   return res.json({ newRepositoriesOffline });
 });
 
-router.use('*', (req, res, next) => {
+router.use('*', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available', 404));
 });
 

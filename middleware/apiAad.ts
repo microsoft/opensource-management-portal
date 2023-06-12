@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { NextFunction, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
 
@@ -15,7 +16,7 @@ import getCompanySpecificDeployment from './companySpecificDeployment';
 // CONSIDER: Caching of signing keys
 
 export function requireAadApiAuthorizedScope(scope: string | string[]) {
-  return (req: IApiRequest, res, next) => {
+  return (req: IApiRequest, res: Response, next: NextFunction) => {
     const { apiKeyToken } = req;
     const scopes = typeof scope === 'string' ? [scope] : scope;
     if (!apiKeyToken.hasAnyScope(scopes)) {
@@ -25,7 +26,7 @@ export function requireAadApiAuthorizedScope(scope: string | string[]) {
   };
 }
 
-export default function aadApiMiddleware(req: IApiRequest, res, next) {
+export default function aadApiMiddleware(req: IApiRequest, res: Response, next: NextFunction) {
   return validateAadAuthorization(req)
     .then((ok) => {
       return next();
@@ -34,7 +35,7 @@ export default function aadApiMiddleware(req: IApiRequest, res, next) {
       if ((err as any).immediate === true) {
         console.warn(`AAD API authorization failed: ${err}`);
       }
-      return isJsonError(err) ? next(err) : jsonError(err, 500);
+      return isJsonError(err) ? next(err) : (jsonError(err, 500) as unknown);
     });
 }
 

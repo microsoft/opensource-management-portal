@@ -20,7 +20,7 @@ export function attachAadPassportRoutes(
   helpers: IPrimaryAuthenticationHelperMethods
 ) {
   const signinPath = isCodespacesAuthenticating(config, 'aad') ? 'sign-in' : 'signin';
-  app.get(`/${signinPath}`, function (req: ReposAppRequest, res, next) {
+  app.get(`/${signinPath}`, function (req: ReposAppRequest, res: Response, next: NextFunction) {
     if (req.isAuthenticated()) {
       const username = req.user?.azure?.username;
       if (username) {
@@ -81,7 +81,7 @@ export function attachAadPassportRoutes(
   // links from apps that temporarily prevent sessions. Technically this seems to
   // impact Windows users who use Word to open links to the site. Collecting
   // telemetry for now.
-  app.get('/auth/azure/callback', (req: ReposAppRequest, res, next) => {
+  app.get('/auth/azure/callback', (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { insights } = getProviders(req);
     const isAuthenticated = req.isAuthenticated();
     insights?.trackEvent({

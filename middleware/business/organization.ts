@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { NextFunction, Response } from 'express';
 import { ReposAppRequest } from '../../interfaces/web';
 import { jsonError } from '../jsonError';
 
@@ -21,7 +22,11 @@ export function getOrganizationManagementType(req: IReposAppRequestWithOrganizat
   return req.organizationManagementType;
 }
 
-export function blockIfUnmanagedOrganization(req: IReposAppRequestWithOrganizationManagementType, res, next) {
+export function blockIfUnmanagedOrganization(
+  req: IReposAppRequestWithOrganizationManagementType,
+  res: Response,
+  next: NextFunction
+) {
   const managementType = getOrganizationManagementType(req);
   switch (managementType) {
     case OrganizationManagementType.Unmanaged:

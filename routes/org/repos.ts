@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
@@ -60,7 +60,7 @@ const teamsFilterType = {
   systemTeamsOnly: 'systemTeamsOnly',
 };
 
-router.use(function (req: ReposAppRequest, res, next) {
+router.use(function (req: ReposAppRequest, res: Response, next: NextFunction) {
   req.individualContext.webContext.pushBreadcrumb('Repositories');
   req.reposContext = {
     section: 'repos',
@@ -160,7 +160,7 @@ export async function findRepoCollaboratorsExcludingOwners(
 
 router.use(
   '/:repoName',
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const repoName = req.params.repoName;
     const organization = req.organization;
     const repository = organization.repository(repoName);
@@ -175,7 +175,7 @@ router.use('/:repoName/administrativeLock', routeAdministrativeLock);
 
 router.use(
   '/:repoName/delete',
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const individualContext = req.individualContext;
     const repository = req.repository;
     const organization = req.organization;
@@ -205,7 +205,7 @@ router.use(
 
 router.get(
   '/:repoName/delete',
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     return req.individualContext.webContext.render({
       title: 'Delete the repo you created',
       view: 'repos/delete',
@@ -218,7 +218,7 @@ router.get(
 
 router.post(
   '/:repoName/delete',
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     // NOTE: this code is also duplicated for now in the client/internal/* folder
     // CONSIDER: de-duplicate
     const { operations } = getProviders(req);
@@ -251,7 +251,7 @@ export interface IRenameOutput {
 router.post(
   '/:repoName/defaultBranch',
   asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     try {
       const targetBranchName = req.body.targetBranchName || 'main';
       const providers = getProviders(req);
@@ -345,7 +345,7 @@ export async function renameRepositoryDefaultBranchEndToEnd(
 router.post(
   '/:repoName',
   asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const repoPermissions = req.repoPermissions;
     if (!repoPermissions.allowAdministration) {
       return next(new Error('You do not have administrative permission on this repository'));
@@ -370,7 +370,7 @@ router.post(
 router.get(
   '/:repoName',
   asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const { linkProvider, config, graphProvider } = getProviders(req);
     const repoPermissions = req.repoPermissions;
     const referer = req.headers.referer as string;
@@ -474,7 +474,7 @@ router.get(
 router.get(
   '/:repoName/defaultBranch',
   asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const referer = req.headers.referer as string;
     const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
     const organization = req.organization;
@@ -555,7 +555,7 @@ export async function calculateGroupedPermissionsViewForRepository(repository: R
 router.get(
   '/:repoName/permissions',
   asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const referer = req.headers.referer as string;
     const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
     const organization = req.organization;
@@ -605,7 +605,7 @@ router.get(
 
 router.get(
   '/:repoName/history',
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const { auditLogRecordProvider } = getProviders(req);
     const referer = req.headers.referer as string;
     const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
@@ -760,7 +760,7 @@ function teamsToSet(teams) {
   return set;
 }
 
-// function requireAdministration(req, res, next) {
+// function requireAdministration(req, res: Response, next: NextFunction) {
 //   const repoPermissions = req.repoPermissions;
 //   if (!repoPermissions) {
 //     return next(new Error('Not configured for repo permissions'));

@@ -7,24 +7,29 @@
 
 import os from 'os';
 import { DateTime } from 'luxon';
-import App from '../../app';
-import ProcessOrganizationWebhook, { IGitHubWebhookProperties } from '../../webhooks/organizationProcessor';
+
+import ProcessOrganizationWebhook, { IGitHubWebhookProperties } from '../webhooks/organizationProcessor';
 import {
   IGitHubAppInstallation,
   IGitHubWebhookEnterprise,
   IProviders,
   IReposJob,
   IReposJobResult,
-} from '../../interfaces';
-import { sleep } from '../../utils';
-import { IQueueMessage } from '../../lib/queues';
-import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
+} from '../interfaces';
+import { sleep } from '../utils';
+import { IQueueMessage } from '../lib/queues';
+import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
+import job from '../job';
 
 const runningAsOngoingDeployment = true;
 
 const hardAbortMs = 1000 * 60 * 5; // 5 minutes
 
-export default async function firehose({ providers, started }: IReposJob): Promise<IReposJobResult> {
+job.run(firehose, {
+  insightsPrefix: 'JobFirehose',
+});
+
+async function firehose(providers: IProviders, { started }: IReposJob): Promise<IReposJobResult> {
   const processedEventTypes = {};
   const interestingEvents = 0;
   let processedEvents = 0;
@@ -89,28 +94,24 @@ export default async function firehose({ providers, started }: IReposJob): Promi
   console.log(
     `Parallelism for this run will be ${parallelism} logical threads, offset by ${sliceDelayPerThread}s`
   );
-  // const insights = app.settings.appInsightsClient;
-  if (insights) {
-    insights.trackEvent({
-      name: 'JobFirehoseStarted',
-      properties: {
-        hostname: os.hostname(),
-        // queue: serviceBusConfig.queue,
-        // subscription: serviceBusConfig.subscriptionName,
-        // messagesInQueue: messagesInQueue.toString(),
-        // deadLetters: deadLetters.toString(),
-      },
-    });
-    // insights.trackMetric({ name: 'FirehoseMessagesInQueue', value: messagesInQueue });
-    // insights.trackMetric({ name: 'FirehoseDeadLetters', value: deadLetters });
-  }
+  insights?.trackEvent({
+    name: 'JobFirehoseStarted',
+    properties: {
+      hostname: os.hostname(),
+      // queue: serviceBusConfig.queue,
+      // subscription: serviceBusConfig.subscriptionName,
+      // messagesInQueue: messagesInQueue.toString(),
+      // deadLetters: deadLetters.toString(),
+    },
+  });
+  // insights.trackMetric({ name: 'FirehoseMessagesInQueue', value: messagesInQueue });
+  // insights.trackMetric({ name: 'FirehoseDeadLetters', value: deadLetters });
   const threads: Promise<void>[] = [];
   let delay = 0;
   for (let i = 0; i < parallelism; i++) {
-    threads.push(createThread(App, providers, i, delay));
+    threads.push(createThread(providers, i, delay));
     delay += sliceDelayPerThread;
   }
-  const ok = true;
   await Promise.all(threads);
 
   console.warn('Forever execution thread has completed.');
@@ -119,7 +120,6 @@ export default async function firehose({ providers, started }: IReposJob): Promi
   // -- end of job startup --
 
   async function createThread(
-    app,
     providers: IProviders,
     threadNumber: number,
     startupDelay: number
@@ -136,7 +136,7 @@ export default async function firehose({ providers, started }: IReposJob): Promi
         await iterate(providers, threadNumber);
       }
     } catch (error) {
-      const insights = app.settings.appInsightsClient;
+      const insights = providers.insights;
       insights.trackException({ exception: error });
       insights.trackEvent({
         name: 'JobFirehoseFatalError',

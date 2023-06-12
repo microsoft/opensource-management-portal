@@ -14,14 +14,17 @@
 // LINK_MIGRATION_OVERWRITE  values : 'overwrite', 'skip'
 
 import throat from 'throat';
-import { IReposJob, ICorporateLink } from '../../interfaces';
 
-import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../../lib/linkProviders';
-import { ErrorHelper } from '../../transitional';
+import job from '../job';
+import { ICorporateLink, IProviders } from '../interfaces';
+import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../lib/linkProviders';
+import { ErrorHelper } from '../transitional';
 
 const parallelWorkLimit = 5;
 
-export default async function migration({ providers }: IReposJob): Promise<void> {
+job.run(migration);
+
+async function migration(providers: IProviders): Promise<void> {
   // const sourceLinkProvider = providers.linkProvider;
   const config = providers.config;
   const sourceLinkProviderName = 'table';

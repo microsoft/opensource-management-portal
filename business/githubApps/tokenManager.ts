@@ -65,9 +65,10 @@ export class GitHubTokenManager {
     if (!options) {
       throw new Error('options required');
     }
+    const executionEnvironment = options.executionEnvironment;
     this.#options = options;
     GitHubTokenManager._forceBackgroundTokens =
-      options.app.isBackgroundJob && !options.app.enableAllGitHubApps;
+      executionEnvironment.isJob && !executionEnvironment.enableAllGitHubApps;
   }
 
   private getFallbackList(input: AppPurposeTypes[]) {

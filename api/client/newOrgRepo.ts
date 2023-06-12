@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
@@ -25,7 +25,7 @@ interface ILocalApiRequest extends ReposAppRequest {
   knownRequesterMailAddress?: string;
 }
 
-router.get('/metadata', (req: ILocalApiRequest, res, next) => {
+router.get('/metadata', (req: ILocalApiRequest, res: Response, next: NextFunction) => {
   try {
     const options = {
       projectType: req.query.projectType,
@@ -40,7 +40,7 @@ router.get('/metadata', (req: ILocalApiRequest, res, next) => {
 
 router.get(
   '/personalizedTeams',
-  asyncHandler(async (req: ILocalApiRequest, res, next) => {
+  asyncHandler(async (req: ILocalApiRequest, res: Response, next: NextFunction) => {
     try {
       const organization = req.organization as Organization;
       const userAggregateContext = req.apiContext.aggregations;
@@ -76,7 +76,7 @@ router.get(
 
 router.get(
   '/teams',
-  asyncHandler(async (req: ILocalApiRequest, res, next) => {
+  asyncHandler(async (req: ILocalApiRequest, res: Response, next: NextFunction) => {
     const providers = getProviders(req);
     const queryCache = providers.queryCache;
     const organization = req.organization as Organization;
@@ -154,7 +154,7 @@ router.get(
   })
 );
 
-export async function discoverUserIdentities(req: ReposAppRequest, res, next) {
+export async function discoverUserIdentities(req: ReposAppRequest, res: Response, next: NextFunction) {
   const apiContext = req.apiContext as IndividualContext;
   const providers = getProviders(req);
   const mailAddressProvider = providers.mailAddressProvider;
@@ -177,7 +177,7 @@ export async function discoverUserIdentities(req: ReposAppRequest, res, next) {
 
 router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(createRepositoryFromClient));
 
-export async function createRepositoryFromClient(req: ILocalApiRequest, res, next) {
+export async function createRepositoryFromClient(req: ILocalApiRequest, res: Response, next: NextFunction) {
   const providers = getProviders(req);
   const { insights, diagnosticsDrop, customizedNewRepositoryLogic, graphProvider } = providers;
   const individualContext = req.watchdogContextOverride || req.individualContext || req.apiContext;

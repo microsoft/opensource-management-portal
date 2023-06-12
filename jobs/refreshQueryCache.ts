@@ -6,7 +6,17 @@
 import throat from 'throat';
 import { shuffle } from 'lodash';
 
-import { permissionsObjectToValue } from '../../transitional';
+const killBitHours = 48;
+
+import job from '../job';
+
+job.runBackgroundJob(refreshQueryCache, {
+  defaultDebugOutput: 'querycache',
+  timeoutMinutes: 60 * killBitHours,
+  insightsPrefix: 'JobRefreshQueryCache',
+});
+
+import { permissionsObjectToValue } from '../transitional';
 import {
   Collaborator,
   Operations,
@@ -16,9 +26,9 @@ import {
   Team,
   TeamMember,
   TeamPermission,
-} from '../../business';
-import { sleep, addArrayToSet } from '../../utils';
-import QueryCache from '../../business/queryCache';
+} from '../business';
+import { sleep, addArrayToSet } from '../utils';
+import QueryCache from '../business/queryCache';
 import {
   IPagedCacheOptions,
   ICacheOptions,
@@ -37,7 +47,8 @@ import {
   QueryCacheOperation,
   IReposJob,
   IReposJobResult,
-} from '../../interfaces';
+  IProviders,
+} from '../interfaces';
 
 interface IConsistencyStats {
   new: number;
@@ -628,7 +639,7 @@ async function cacheRepositoryCollaborators(
   return operations.filter((real) => real);
 }
 
-export default async function refresh({ providers, args }: IReposJob): Promise<IReposJobResult> {
+async function refreshQueryCache(providers: IProviders, { args }: IReposJob): Promise<IReposJobResult> {
   const { config } = providers;
   if (config?.jobs?.refreshWrites !== true) {
     console.log('job is currently disabled to avoid metadata refresh/rewrites');

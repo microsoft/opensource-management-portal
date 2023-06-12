@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { getContextualTeam } from '../../../middleware/github/teamPermissions';
@@ -21,7 +21,7 @@ const router: Router = Router();
 
 router.get(
   '/',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const team = getContextualTeam(req);
     return res.json(team.asJson(TeamJsonFormat.Augmented /* includes corporateMetadata */));
   })
@@ -29,7 +29,7 @@ router.get(
 
 router.get(
   '/repos',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     try {
       const forceRefresh = !!req.query.refresh;
       const pager = new JsonPager<TeamRepositoryPermission>(req, res);
@@ -56,7 +56,7 @@ router.get(
 
 router.get(
   '/members',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     try {
       const forceRefresh = !!req.query.refresh;
       const team = getContextualTeam(req);
@@ -84,7 +84,7 @@ router.get(
 
 router.get(
   '/maintainers',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { operations } = getProviders(req);
     try {
       const forceRefresh = !!req.query.refresh;
@@ -115,7 +115,7 @@ router.get(
   })
 );
 
-router.use('*', (req, res, next) => {
+router.use('*', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available for this specific team', 404));
 });
 

@@ -3,8 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
+
 import { Organization, Team } from '../../../../business';
 import {
   ReposAppRequest,
@@ -23,7 +24,7 @@ const router: Router = Router();
 
 router.get(
   '/',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { organization } = req;
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
@@ -46,7 +47,7 @@ router.get(
 
 router.get(
   '/sudo',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { organization } = req;
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
@@ -60,7 +61,7 @@ router.get(
 
 router.get(
   '/isOwner',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { organization } = req;
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
@@ -81,7 +82,7 @@ router.get(
 
 router.delete(
   '/',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     // "Leave" / remove my context
     const { organization } = req;
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
@@ -104,7 +105,7 @@ router.delete(
 
 router.get(
   '/personalizedTeams',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     try {
       const organization = req.organization as Organization;
       const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
@@ -145,7 +146,7 @@ const deployment = getCompanySpecificDeployment();
 deployment?.routes?.api?.context?.organization?.index &&
   deployment?.routes?.api?.context?.organization?.index(router);
 
-router.use('*', (req, res, next) => {
+router.use('*', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available: client>organization', 404));
 });
 

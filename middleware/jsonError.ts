@@ -3,12 +3,16 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { NextFunction, Response } from 'express';
+
+import { ReposAppRequest } from '../interfaces';
+
 interface IErrorJson extends Error {
   json?: boolean;
   statusCode?: string | number;
 }
 
-export function json404(req, res, next) {
+export function json404(req: ReposAppRequest, res: Response, next: NextFunction) {
   return next(jsonError('Endpoint not found', 404));
 }
 

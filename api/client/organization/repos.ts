@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../../middleware';
@@ -19,7 +19,7 @@ const router: Router = Router();
 
 router.get(
   '/',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { organization } = req;
     const providers = getProviders(req);
     const pager = new JsonPager<Repository>(req, res);
@@ -238,7 +238,7 @@ export async function searchRepos(
 
 router.use(
   '/:repoName',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { organization } = req;
     const { repoName } = req.params;
     // does not confirm the name
@@ -249,7 +249,7 @@ router.use(
 
 router.use('/:repoName', RouteRepo);
 
-router.use('*', (req, res, next) => {
+router.use('*', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available within this repos endpoint', 404));
 });
 

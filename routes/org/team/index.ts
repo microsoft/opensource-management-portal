@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
@@ -65,7 +65,7 @@ interface ILocalRequest extends ReposAppRequest {
 }
 
 router.use(
-  asyncHandler(async (req: ILocalRequest, res, next) => {
+  asyncHandler(async (req: ILocalRequest, res: Response, next: NextFunction) => {
     const { operations } = getProviders(req);
     const login = req.individualContext.getGitHubIdentity().username;
     const team2 = req.team2 as Team;
@@ -93,7 +93,7 @@ router.use(
 );
 
 router.use(
-  asyncHandler(async (req: ILocalRequest, res, next) => {
+  asyncHandler(async (req: ILocalRequest, res: Response, next: NextFunction) => {
     const { approvalProvider } = getProviders(req);
     const team2 = req.team2 as Team;
     if (!approvalProvider) {
@@ -113,42 +113,46 @@ router.use(
   })
 );
 
-router.use('/join', asyncHandler(AddOrganizationPermissionsToRequest), (req: ILocalRequest, res, next) => {
-  const organization = req.organization;
-  const team2 = req.team2;
-  const orgPermissions = req.orgPermissions;
+router.use(
+  '/join',
+  asyncHandler(AddOrganizationPermissionsToRequest),
+  (req: ILocalRequest, res: Response, next: NextFunction) => {
+    const organization = req.organization;
+    const team2 = req.team2;
+    const orgPermissions = req.orgPermissions;
 
-  // Are they already a team member?
-  const currentMembershipStatus = req.membershipStatus;
-  if (currentMembershipStatus) {
-    return next(
-      wrapError(null, `You are already a ${currentMembershipStatus} of the ${team2.name} team`, true)
-    );
-  }
+    // Are they already a team member?
+    const currentMembershipStatus = req.membershipStatus;
+    if (currentMembershipStatus) {
+      return next(
+        wrapError(null, `You are already a ${currentMembershipStatus} of the ${team2.name} team`, true)
+      );
+    }
 
-  // Have they joined the organization yet?
-  const membershipStatus = orgPermissions.membershipStatus;
-  let error = null;
-  if (membershipStatus !== 'active') {
-    error = new Error(`You are not a member of the ${organization.name} GitHub organization.`);
-    error.title = 'Please join the organization before joining this team';
-    error.detailed =
-      membershipStatus === 'pending'
-        ? 'You have not accepted your membership yet, or do not have two-factor authentication enabled.'
-        : 'After you join the organization, you can join this team.';
-    error.skipOops = true;
-    error.skipLog = true;
-    error.fancyLink = {
-      link: `/${organization.name}`,
-      title: `Join the ${organization.name} organization`,
-    };
+    // Have they joined the organization yet?
+    const membershipStatus = orgPermissions.membershipStatus;
+    let error = null;
+    if (membershipStatus !== 'active') {
+      error = new Error(`You are not a member of the ${organization.name} GitHub organization.`);
+      error.title = 'Please join the organization before joining this team';
+      error.detailed =
+        membershipStatus === 'pending'
+          ? 'You have not accepted your membership yet, or do not have two-factor authentication enabled.'
+          : 'After you join the organization, you can join this team.';
+      error.skipOops = true;
+      error.skipLog = true;
+      error.fancyLink = {
+        link: `/${organization.name}`,
+        title: `Join the ${organization.name} organization`,
+      };
+    }
+    return next(error);
   }
-  return next(error);
-});
+);
 
 router.get(
   '/join',
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const team2 = req.team2 as Team;
     const organization = req.organization as Organization;
     // The broad access "all members" team is always open for automatic joining without
@@ -181,7 +185,7 @@ router.get(
 
 router.post(
   '/selfServiceMaintainerUpgrade',
-  asyncHandler(async (req: ILocalRequest, res, next) => {
+  asyncHandler(async (req: ILocalRequest, res: Response, next: NextFunction) => {
     const { selfServiceTeamMemberToMaintainerUpgrades } = req;
     if (!selfServiceTeamMemberToMaintainerUpgrades) {
       throw new Error('System not available');
@@ -214,7 +218,7 @@ export interface ITeamJoinRequestSubmitOutcome {
 
 router.post(
   '/join',
-  asyncHandler(async (req: ILocalRequest, res, next) => {
+  asyncHandler(async (req: ILocalRequest, res: Response, next: NextFunction) => {
     if (req.existingRequest) {
       throw new Error('You have already created a team join request that is pending a decision.');
     }
@@ -502,7 +506,7 @@ export async function submitTeamJoinRequest(
 router.use(asyncHandler(AddTeamPermissionsToRequest));
 
 // The view uses this information today to show the sudo banner
-router.use((req: ILocalRequest, res, next) => {
+router.use((req: ILocalRequest, res: Response, next: NextFunction) => {
   if (req.teamPermissions.sudo === true) {
     req.sudoMode = true;
   }
@@ -692,14 +696,18 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
   });
 }
 
-router.get('/', asyncHandler(AddOrganizationPermissionsToRequest), async (req: ILocalRequest, res, next) => {
-  await basicTeamsView(req, BasicTeamViewPage.Default);
-});
+router.get(
+  '/',
+  asyncHandler(AddOrganizationPermissionsToRequest),
+  async (req: ILocalRequest, res: Response, next: NextFunction) => {
+    await basicTeamsView(req, BasicTeamViewPage.Default);
+  }
+);
 
 router.get(
   '/history',
   asyncHandler(AddOrganizationPermissionsToRequest),
-  async (req: ILocalRequest, res, next) => {
+  async (req: ILocalRequest, res: Response, next: NextFunction) => {
     await basicTeamsView(req, BasicTeamViewPage.History);
   }
 );
@@ -707,7 +715,7 @@ router.get(
 router.get(
   '/repositories',
   asyncHandler(AddOrganizationPermissionsToRequest),
-  async (req: ILocalRequest, res, next) => {
+  async (req: ILocalRequest, res: Response, next: NextFunction) => {
     await basicTeamsView(req, BasicTeamViewPage.Repositories);
   }
 );

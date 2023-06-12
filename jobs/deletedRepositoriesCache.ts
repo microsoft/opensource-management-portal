@@ -1,14 +1,21 @@
-import app from '../../app';
-import { Organization } from '../../business/organization';
-import { RepositoryCollaboratorCacheEntity } from '../../entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
-import { RepositoryTeamCacheEntity } from '../../entities/repositoryTeamCache/repositoryTeamCache';
-import { IProviders, IReposJob, IReposJobResult } from '../../interfaces';
-import { ErrorHelper } from '../../transitional';
-import { sleep } from '../../utils';
+//
+// Copyright (c) Microsoft.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//
+
+// Job: Consistency: Deleted repos (7)
+
+import job from '../job';
+import { Organization } from '../business/organization';
+import { RepositoryCollaboratorCacheEntity } from '../entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
+import { RepositoryTeamCacheEntity } from '../entities/repositoryTeamCache/repositoryTeamCache';
+import { IProviders, IReposJobResult } from '../interfaces';
+import { ErrorHelper } from '../transitional';
+import { sleep } from '../utils';
 
 const killBitHours = 8;
 
-app.runJob(byUserJob, {
+job.runBackgroundJob(byUserJob, {
   defaultDebugOutput: 'qcuser',
   timeoutMinutes: 60 * killBitHours,
   insightsPrefix: 'JobRefreshUserQC',
@@ -202,7 +209,7 @@ async function processDeletedRepositories(providers: IProviders): Promise<void> 
   console.log(`removed collaborator repos: ${removedCollaboratorRepositories}`);
 }
 
-export default async function byUserJob({ providers, args }: IReposJob): Promise<IReposJobResult> {
+async function byUserJob(providers: IProviders): Promise<IReposJobResult> {
   const { config } = providers;
   if (config?.jobs?.refreshWrites !== true) {
     console.log('job is currently disabled to avoid metadata refresh/rewrites');

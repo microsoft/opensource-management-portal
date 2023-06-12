@@ -12,6 +12,8 @@
     "management",
     "organization"
   ],
+  "_ignore_main": "dist/index.js",
+  "_ignore_types": "dist/index.d.ts",
   "tags": [
     "github",
     "node",
@@ -21,6 +23,7 @@
   "scripts": {
     "build": "tsc",
     "find-deadcode": "ts-prune",
+    "find-circular-dependencies": "npx madge --circular --extensions ts .",
     "fix:js": "eslint --fix .",
     "fix:md": "markdownlint-cli2-fix \"**/*.md\"",
     "fix": "npm run fix:js && npm run fix:md",
@@ -29,7 +32,7 @@
     "lint:md": "markdownlint-cli2 \"**/*.md\"",
     "lint:spell": "cspell --no-progress \"**\"",
     "lint": "npm run lint:json && npm run lint:js && npm run lint:md && npm run lint:spell",
-    "prepare": "husky install",
+    "prepare": "husky install || echo No Husky.",
     "start-4000": "PORT=4000 DEBUG=startup node ./dist/bin/www",
     "start-in-container": "node ./bin/www",
     "start": "node ./dist/bin/www",

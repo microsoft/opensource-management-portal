@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { Organization } from '../../../business/organization';
@@ -24,7 +24,7 @@ const leakyLocalCache = new LeakyLocalCache<number, Team[]>();
 
 router.use(
   '/:teamSlug',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { organization } = req;
     const { teamSlug } = req.params;
     let team: Team = null;
@@ -61,15 +61,19 @@ async function getTeamsForOrganization(
 
 router.get(
   '/',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     return await getClientApiOrganizationTeamsResponse(req, res, next);
   })
 );
 
-export async function getClientApiOrganizationTeamsResponse(req: ReposAppRequest, res, next) {
+export async function getClientApiOrganizationTeamsResponse(
+  req: ReposAppRequest,
+  res: Response,
+  next: NextFunction
+) {
   const organization = (req.organization || (req as any).aeOrganization) as Organization;
   if (!organization) {
-    return next(jsonError('No available organization'), 400);
+    return next(jsonError('No available organization', 400));
   }
   const pager = new JsonPager<Team>(req, res);
   const q: string = (req.query.q ? (req.query.q as string) : null) || '';
@@ -101,7 +105,7 @@ export async function getClientApiOrganizationTeamsResponse(req: ReposAppRequest
   }
 }
 
-router.use('*', (req, res, next) => {
+router.use('*', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available within this team', 404));
 });
 

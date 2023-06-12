@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Response } from 'express';
+import { NextFunction, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 
@@ -46,7 +46,7 @@ type FlightingOptions = ContentOptions & {
 export function injectReactClient() {
   const standardContent = getReactScriptsIndex(staticClientPackageName);
   let flightingOptions: FlightingOptions = null;
-  return function injectedRoute(req: ReposAppRequest, res, next) {
+  return function injectedRoute(req: ReposAppRequest, res: Response, next: NextFunction) {
     const { config } = getProviders(req);
     // special passthrough
     if (req.path.includes('/byClient')) {

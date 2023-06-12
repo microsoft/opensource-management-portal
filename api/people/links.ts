@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../middleware';
@@ -26,7 +26,7 @@ const extendedLinkApiVersions = [
   '2019-02-01',
 ];
 
-router.use(function (req: IApiRequest, res, next) {
+router.use(function (req: IApiRequest, res: Response, next: NextFunction) {
   const token = req.apiKeyToken;
   if (!token.scopes) {
     return next(jsonError('The key is not authorized for specific APIs', 401));
@@ -41,7 +41,7 @@ router.post('/', asyncHandler(postLinkApi));
 
 router.get(
   '/',
-  asyncHandler(async (req: IApiRequest, res, next) => {
+  asyncHandler(async (req: IApiRequest, res: Response, next: NextFunction) => {
     const { operations } = getProviders(req);
     const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
     const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
@@ -54,7 +54,7 @@ router.get(
 
 router.get(
   '/:linkid',
-  asyncHandler(async (req: IApiRequest, res, next) => {
+  asyncHandler(async (req: IApiRequest, res: Response, next: NextFunction) => {
     if (unsupportedApiVersions.includes(req.apiVersion)) {
       return next(jsonError('This API is not supported by the API version you are using.', 400));
     }
@@ -103,7 +103,7 @@ router.get(
 
 router.get(
   '/github/:username',
-  asyncHandler(async (req: IApiRequest, res, next) => {
+  asyncHandler(async (req: IApiRequest, res: Response, next: NextFunction) => {
     if (unsupportedApiVersions.includes(req.apiVersion)) {
       return next(jsonError('This API is not supported by the API version you are using.', 400));
     }
@@ -150,7 +150,7 @@ router.get(
 
 router.get(
   '/aad/userPrincipalName/:upn',
-  asyncHandler(async (req: IApiRequest, res, next) => {
+  asyncHandler(async (req: IApiRequest, res: Response, next: NextFunction) => {
     const upn = req.params.upn;
     const { operations } = getProviders(req);
     const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
@@ -212,7 +212,7 @@ router.get(
 
 router.get(
   '/aad/:id',
-  asyncHandler(async (req: IApiRequest, res, next) => {
+  asyncHandler(async (req: IApiRequest, res: Response, next: NextFunction) => {
     if (req.apiVersion == '2016-12-01') {
       return next(jsonError('This API is not supported by the API version you are using.', 400));
     }

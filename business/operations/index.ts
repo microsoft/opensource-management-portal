@@ -86,13 +86,7 @@ export interface ICrossOrganizationMembersResult
   extends Map<number, ICrossOrganizationMembershipByOrganization> {}
 
 export interface IOperationsOptions extends IOperationsCoreOptions {
-  // cacheProvider: ICacheHelper;
-  // config: any;
   github: RestLibrary;
-  // insights: TelemetryClient;
-  // linkProvider: ILinkProvider;
-  // mailAddressProvider: IMailAddressProvider;
-  // mailProvider: IMailProvider;
   repositoryMetadataProvider: IRepositoryMetadataProvider;
 }
 
@@ -179,7 +173,7 @@ export class Operations
     }
     this._tokenManager = new GitHubTokenManager({
       configurations: purposesToConfigurations,
-      app: this.providers.app,
+      executionEnvironment: options.executionEnvironment,
     });
     GitHubTokenManager.RegisterManagerForOperations(this, this._tokenManager);
     this._dynamicOrganizationIds = new Set();
