@@ -16,12 +16,12 @@ export default asyncHandler(async (req: ReposAppRequest, res: Response, next: Ne
       isLinked: false,
       member: [],
       maintainer: [],
-    });
+    }) as unknown as void;
   }
   const permissions = await activeContext.aggregations.getQueryCacheTeams();
   return res.json({
     isLinked: true,
     member: permissions.member.map((t) => t.asJson(TeamJsonFormat.Augmented)),
     maintainer: permissions.maintainer.map((t) => t.asJson(TeamJsonFormat.Augmented)),
-  });
+  }) as unknown as void;
 });

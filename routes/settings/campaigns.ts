@@ -53,7 +53,7 @@ router.get(
       return next(new Error('Corporate authentication and identity required'));
     }
     const currentState = await campaignStateProvider.getState(corporateId, campaignGroupId);
-    return res.json(currentState);
+    return res.json(currentState) as unknown as void;
   })
 );
 

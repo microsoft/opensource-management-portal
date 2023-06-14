@@ -32,14 +32,14 @@ router.get(
   asyncHandler(async (req: IReposAppRequestWithOrganizationManagementType, res) => {
     const { organization, organizationProfile, organizationManagementType } = req;
     if (organizationManagementType === OrganizationManagementType.Unmanaged) {
-      return res.json(organizationProfile);
+      return res.json(organizationProfile) as unknown as void;
     }
     const entity = organization.getEntity();
     if (entity) {
-      return res.json(entity);
+      return res.json(entity) as unknown as void;
     }
     const details = await organization.getDetails();
-    return res.json(details);
+    return res.json(details) as unknown as void;
   })
 );
 
@@ -70,12 +70,12 @@ router.get(
         return res.json({
           managementType: req.organizationManagementType,
           id: organizationProfile.id,
-        });
+        }) as unknown as void;
       }
       return res.json({
         managementType: req.organizationManagementType,
         ...organization.asClientJson(),
-      });
+      }) as unknown as void;
     }
   )
 );

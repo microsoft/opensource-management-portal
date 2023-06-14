@@ -708,7 +708,7 @@ router.post(
         log.push(`Skipping, does not appear to be a GitHub repo URL: ${repositoryName}`);
       }
     }
-    return res.json(log);
+    return res.json(log) as unknown as void;
   })
 );
 

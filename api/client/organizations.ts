@@ -43,7 +43,7 @@ router.get(
       const dd = orgs.map((org) => {
         return org.asClientJson();
       });
-      return res.json(dd);
+      return res.json(dd) as unknown as void;
     } catch (error) {
       throw jsonError(error, 400);
     }
@@ -98,13 +98,13 @@ router.get(
             return a.localeCompare(b);
           });
         }
-        return res.json(projected);
+        return res.json(projected) as unknown as void;
       }
       return res.json({
         highlights: highlights.sort((a, b) => {
           return a.profile.login.localeCompare(b.profile.login);
         }),
-      });
+      }) as unknown as void;
     } catch (error) {
       throw jsonError(error, 400);
     }

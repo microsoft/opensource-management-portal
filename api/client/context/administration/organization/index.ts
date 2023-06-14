@@ -21,7 +21,7 @@ router.get(
     const { organization } = req;
     return res.json({
       organization: organization.asClientJson(),
-    });
+    }) as unknown as void;
   })
 );
 

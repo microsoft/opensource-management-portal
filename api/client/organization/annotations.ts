@@ -21,7 +21,7 @@ import {
   OrganizationAnnotation,
   scrubOrganizationAnnotation,
 } from '../../../entities/organizationAnnotation';
-import { ErrorHelper, getProviders } from '../../../transitional';
+import { CreateError, ErrorHelper, getProviders } from '../../../transitional';
 import { IndividualContext } from '../../../business/user';
 import { IProviders } from '../../../interfaces';
 import { ensureOrganizationProfileMiddleware } from '../../../middleware/github/ensureOrganizationProfile';
@@ -62,7 +62,7 @@ router.get(
     return res.json({
       isSystemAdministrator,
       annotations: scrubOrganizationAnnotation(annotations, isSystemAdministrator),
-    });
+    }) as unknown as void;
   })
 );
 
@@ -97,7 +97,7 @@ router.put(
     // No-op mostly, since ensureAnnotations precedes
     return res.json({
       annotations: req.annotations,
-    });
+    }) as unknown as void;
   })
 );
 
@@ -136,10 +136,10 @@ router.put(
     const changes: IOrganizationAnnotationChange[] = [];
     const newValue = req.body.value as string;
     if (!newValue) {
-      return next(jsonError('body.value required', 400));
+      return next(CreateError.InvalidParameters('body.value required'));
     }
     if (typeof newValue !== 'string') {
-      return next(jsonError('body.value must be a string value', 400));
+      return next(CreateError.InvalidParameters('body.value must be a string value'));
     }
     const propertyName = req.params.propertyName as string;
     const currentPropertyValue = annotations.properties[propertyName] || null;
@@ -150,7 +150,7 @@ router.put(
     return res.json({
       annotations,
       updated,
-    });
+    }) as unknown as void;
   })
 );
 
@@ -164,7 +164,7 @@ router.delete(
     const propertyName = req.params.propertyName as string;
     const currentPropertyValue = annotations.properties[propertyName] || null;
     if (annotations.properties[propertyName] === undefined) {
-      return next(jsonError(`property ${propertyName} is not set`, 400));
+      return next(CreateError.InvalidParameters(`property ${propertyName} is not set`));
     }
     delete annotations.properties[propertyName];
     addChangeNote(
@@ -179,7 +179,7 @@ router.delete(
     return res.json({
       annotations,
       updated,
-    });
+    }) as unknown as void;
   })
 );
 
@@ -194,7 +194,7 @@ router.put(
     const changes: IOrganizationAnnotationChange[] = [];
     const flag = req.params.flag as string;
     if (annotations.features.includes(flag)) {
-      return next(jsonError(`The feature flag ${flag} is already present`, 400));
+      return next(CreateError.InvalidParameters(`The feature flag ${flag} is already present`));
     }
     annotations.features.push(flag);
     addChangeNote(
@@ -209,7 +209,7 @@ router.put(
     return res.json({
       annotations,
       updated,
-    });
+    }) as unknown as void;
   })
 );
 
@@ -222,7 +222,7 @@ router.delete(
     const changes: IOrganizationAnnotationChange[] = [];
     const flag = req.params.flag as string;
     if (!annotations.features.includes(flag)) {
-      return next(jsonError(`The feature flag ${flag} is not set`, 400));
+      return next(CreateError.InvalidParameters(`The feature flag ${flag} is not set`));
     }
     annotations.features = annotations.features.filter((f) => f !== flag);
     addChangeNote(
@@ -237,7 +237,7 @@ router.delete(
     return res.json({
       annotations,
       updated,
-    });
+    }) as unknown as void;
   })
 );
 
@@ -269,7 +269,7 @@ router.patch(
     return res.json({
       annotations,
       updated,
-    });
+    }) as unknown as void;
   })
 );
 

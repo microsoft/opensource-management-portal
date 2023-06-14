@@ -52,7 +52,7 @@ router.get(
       delete clone.temp_clone_token; // never share this back
       delete clone.cost;
 
-      return res.json(repository.getEntity());
+      return res.json(repository.getEntity()) as unknown as void;
     } catch (repoError) {
       if (ErrorHelper.IsNotFound(repoError)) {
         // // Attempt fallback by ID (?)
@@ -81,7 +81,7 @@ router.get(
         }
       }
     } catch (repoError) {}
-    return res.json({ exists, name });
+    return res.json({ exists, name }) as unknown as void;
   })
 );
 
@@ -103,7 +103,7 @@ router.patch(
         targetBranchName,
         true /* wait for refresh before sending response */
       );
-      return res.json(result);
+      return res.json(result) as unknown as void;
     } catch (error) {
       return next(jsonError(error));
     }
@@ -255,7 +255,7 @@ router.delete(
         });
         return res.json({
           message: `You deleted: ${repository.full_name}`,
-        });
+        }) as unknown as void;
       } catch (error) {
         insights?.trackException({ exception: error });
         insights?.trackEvent({
@@ -311,7 +311,7 @@ router.delete(
     );
     return res.json({
       message: `You deleted your repo, ${repository.full_name}.`,
-    });
+    }) as unknown as void;
   })
 );
 

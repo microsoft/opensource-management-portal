@@ -29,6 +29,7 @@ export function createExpressApplication(): IReposApplication {
     undefined,
     app.initializeApplication,
     false /* not a job */,
+    true /* enable all apps */,
     app
   );
 
@@ -46,10 +47,15 @@ function initializeApp(
   return initialize(executionEnvironment, app, express, dirname, config, configurationError);
 }
 
-export async function commonStartup(call: InitializeCall, isJob: boolean, app?: IReposApplication) {
+export async function commonStartup(
+  call: InitializeCall,
+  isJob: boolean,
+  enableAllGitHubApps: boolean,
+  app?: IReposApplication
+) {
   const executionEnvironment: ExecutionEnvironment = {
     isJob,
-    enableAllGitHubApps: undefined,
+    enableAllGitHubApps,
     //
     expressApplication: app,
     //

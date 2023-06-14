@@ -16,7 +16,7 @@ router.get(
   '/',
   asyncHandler(async (req: ReposAppRequest, res) => {
     const { config } = getProviders(req);
-    return res.json({ articles: config?.news?.all || [] });
+    return res.json({ articles: config?.news?.all || [] }) as unknown as void;
   })
 );
 

@@ -72,7 +72,7 @@ export default asyncHandler(async (req: ReposAppRequest, res: Response, next: Ne
       json,
       { corporateEntry }
     );
-    return res.json(combined);
+    return res.json(combined) as unknown as void;
   } catch (error) {
     return next(jsonError(`login ${login} error: ${error}`, 500));
   }

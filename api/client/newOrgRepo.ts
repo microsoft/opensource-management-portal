@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import _ from 'lodash';
+
 import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
-
-import _ from 'lodash';
 
 import { getProviders } from '../../transitional';
 import { jsonError } from '../../middleware/jsonError';
@@ -15,7 +15,12 @@ import { IndividualContext } from '../../business/user';
 import { Organization } from '../../business/organization';
 import { CreateRepository, ICreateRepositoryApiResult, CreateRepositoryEntrypoint } from '../createRepo';
 import { Team } from '../../business/team';
-import { GitHubRepositoryVisibility, GitHubTeamRole, ReposAppRequest } from '../../interfaces';
+import {
+  GitHubRepositoryVisibility,
+  GitHubTeamRole,
+  ReposAppRequest,
+  VoidedExpressRoute,
+} from '../../interfaces';
 
 // This file supports the client apps for creating repos.
 
@@ -67,7 +72,7 @@ router.get(
       });
       return res.json({
         personalizedTeams,
-      });
+      }) as unknown as void;
     } catch (error) {
       return next(jsonError(error, 400));
     }
@@ -93,7 +98,7 @@ router.get(
           }
           return t;
         }),
-      });
+      }) as unknown as void;
     }
 
     // By default, allow a 30-second old list of teams. If the cached
@@ -175,7 +180,11 @@ export async function discoverUserIdentities(req: ReposAppRequest, res: Response
   return next();
 }
 
-router.post('/repo/:repo', asyncHandler(discoverUserIdentities), asyncHandler(createRepositoryFromClient));
+router.post(
+  '/repo/:repo',
+  asyncHandler(discoverUserIdentities),
+  asyncHandler(createRepositoryFromClient as VoidedExpressRoute)
+);
 
 export async function createRepositoryFromClient(req: ILocalApiRequest, res: Response, next: NextFunction) {
   const providers = getProviders(req);

@@ -15,7 +15,7 @@ export default asyncHandler(async (req: ReposAppRequest, res) => {
       member: [],
       admin: [],
       isLinked: false,
-    });
+    }) as unknown as void;
   }
   const orgs = await activeContext.aggregations.getQueryCacheOrganizations();
   const data = {
@@ -33,5 +33,5 @@ export default asyncHandler(async (req: ReposAppRequest, res) => {
       };
     }),
   };
-  return res.json(data);
+  return res.json(data) as unknown as void;
 });

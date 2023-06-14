@@ -16,7 +16,7 @@ export default asyncHandler(async (req: ReposAppRequest, res: Response, next: Ne
       return res.json({
         isLinked: false,
         repositories: [],
-      });
+      }) as unknown as void;
     }
     let permissions = await activeContext.aggregations.getQueryCacheRepositoryPermissions();
     permissions = permissions.filter((perm) => {
@@ -48,7 +48,7 @@ export default asyncHandler(async (req: ReposAppRequest, res: Response, next: Ne
           // TODO: would be nice for team permission for repos to also store the team slug in the query cache!
         };
       }),
-    });
+    }) as unknown as void;
   } catch (error) {
     return next(error);
   }

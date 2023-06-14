@@ -9,10 +9,7 @@ import asyncHandler from 'express-async-handler';
 import { jsonError } from '../../../../middleware';
 import { getRepositoryMetadataProvider, ReposAppRequest } from '../../../../interfaces';
 import { Organization } from '../../../../business';
-import {
-  getContextualRepository,
-  getContextualRepositoryPermissions,
-} from '../../../../middleware/github/repoPermissions';
+import { getContextualRepository } from '../../../../middleware/github/repoPermissions';
 import { IndividualContext } from '../../../../business/user';
 import { ErrorHelper, getProviders } from '../../../../transitional';
 import NewRepositoryLockdownSystem from '../../../../features/newRepositories/newRepositoryLockdown';
@@ -58,7 +55,7 @@ router.post(
       return res.json({
         message: `Unlocked the ${repository.name} repo in the ${organization.name} org`,
         unlocked: true,
-      });
+      }) as unknown as void;
     } catch (error) {
       return next(
         jsonError(

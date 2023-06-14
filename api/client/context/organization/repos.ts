@@ -10,11 +10,11 @@ import { Repository } from '../../../../business';
 import { jsonError } from '../../../../middleware';
 import { setContextualRepository } from '../../../../middleware/github/repoPermissions';
 
-import { OrganizationMembershipState, ReposAppRequest } from '../../../../interfaces';
+import { OrganizationMembershipState, ReposAppRequest, VoidedExpressRoute } from '../../../../interfaces';
 import { IndividualContext } from '../../../../business/user';
 import { createRepositoryFromClient } from '../../newOrgRepo';
 
-import RouteContextualRepo from './repo';
+import routeContextualRepo from './repo';
 
 const router: Router = Router();
 
@@ -34,7 +34,11 @@ async function validateActiveMembership(req: ReposAppRequest, res: Response, nex
   return next();
 }
 
-router.post('/', asyncHandler(validateActiveMembership), asyncHandler(createRepositoryFromClient));
+router.post(
+  '/',
+  asyncHandler(validateActiveMembership),
+  asyncHandler(createRepositoryFromClient as VoidedExpressRoute)
+);
 
 router.use(
   '/:repoName',
@@ -48,7 +52,7 @@ router.use(
   })
 );
 
-router.use('/:repoName', RouteContextualRepo);
+router.use('/:repoName', routeContextualRepo);
 
 router.use('*', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available for repos', 404));

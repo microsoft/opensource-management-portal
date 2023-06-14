@@ -39,7 +39,7 @@ router.get(
     const { dynamicSettings } = req;
     return res.json({
       dynamicSettings,
-    });
+    }) as unknown as void;
   })
 );
 
@@ -53,7 +53,7 @@ router.get(
     return res.json({
       features,
       organizationName: organization.name,
-    });
+    }) as unknown as void;
   })
 );
 
@@ -66,7 +66,7 @@ router.get(
       flag,
       value: dynamicSettings.features.includes(flag) ? flag : null,
       organizationName: organization.name,
-    });
+    }) as unknown as void;
   })
 );
 
@@ -98,7 +98,7 @@ router.put(
       flag,
       value: dynamicSettings.features.includes(flag) ? flag : null,
       organizationName: organization.name,
-    });
+    }) as unknown as void;
   })
 );
 
@@ -130,7 +130,7 @@ router.delete(
       flag,
       value: dynamicSettings.features.includes(flag) ? flag : null,
       organizationName: organization.name,
-    });
+    }) as unknown as void;
   })
 );
 
@@ -144,7 +144,7 @@ router.get(
     return res.json({
       properties,
       organizationName: organization.name,
-    });
+    }) as unknown as void;
   })
 );
 
@@ -158,7 +158,7 @@ router.get(
       property: propertyName,
       value: properties[propertyName] || null,
       organizationName: organization.name,
-    });
+    }) as unknown as void;
   })
 );
 
@@ -204,7 +204,7 @@ router.put(
       organizationName: organization.name,
       dynamicSettings,
       updateDescription,
-    });
+    }) as unknown as void;
   })
 );
 
@@ -240,7 +240,7 @@ router.delete(
       property: propertyName,
       value: properties[propertyName] || null,
       organizationName: organization.name,
-    });
+    }) as unknown as void;
   })
 );
 

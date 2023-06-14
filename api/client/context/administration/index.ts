@@ -29,19 +29,19 @@ router.use(
 
 router.get(
   '/',
-  asyncHandler(async (req: IRequestWithAdministration, res: Response, next: NextFunction) => {
+  asyncHandler(async (req: IRequestWithAdministration, res: Response) => {
     const { operations } = getProviders(req);
     const isAdministrator = req.isSystemAdministrator;
     if (!isAdministrator) {
       return res.json({
         isAdministrator,
-      });
+      }) as unknown as void;
     }
     const organizations = operations.getOrganizations().map((org) => org.asClientJson());
     return res.json({
       isAdministrator,
       organizations,
-    });
+    }) as unknown as void;
   })
 );
 
@@ -62,7 +62,8 @@ router.use(
     } catch (noOrgError) {
       if (ErrorHelper.IsNotFound(noOrgError)) {
         res.status(404);
-        return res.end();
+        res.end();
+        return;
       }
       return next(jsonError(noOrgError, 500));
     }

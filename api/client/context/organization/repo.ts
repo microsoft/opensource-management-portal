@@ -23,7 +23,7 @@ router.get(
   AddRepositoryPermissionsToRequest,
   asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const permissions = getContextualRepositoryPermissions(req);
-    return res.json(permissions);
+    return res.json(permissions) as unknown as void;
   })
 );
 

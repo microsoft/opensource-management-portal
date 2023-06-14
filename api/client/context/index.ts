@@ -73,7 +73,7 @@ router.get(
         response.deletedOrChangedUsernames.push(username);
       }
     }
-    return res.json(response);
+    return res.json(response) as unknown as void;
   })
 );
 
@@ -125,10 +125,12 @@ router.use(
       if (ErrorHelper.IsNotFound(noOrgError)) {
         if (await isUnmanagedOrganization(providers, orgName)) {
           res.status(204);
-          return res.end();
+          res.end();
+          return;
         }
         res.status(404);
-        return res.end();
+        res.end();
+        return;
       }
       return next(jsonError(noOrgError, 500));
     }

@@ -39,7 +39,7 @@ router.get(
     } catch (error) {
       return next(error);
     }
-    return res.json({ templateName });
+    return res.json({ templateName }) as unknown as void;
   })
 );
 

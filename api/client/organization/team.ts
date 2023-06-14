@@ -23,7 +23,9 @@ router.get(
   '/',
   asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const team = getContextualTeam(req);
-    return res.json(team.asJson(TeamJsonFormat.Augmented /* includes corporateMetadata */));
+    return res.json(
+      team.asJson(TeamJsonFormat.Augmented /* includes corporateMetadata */)
+    ) as unknown as void;
   })
 );
 
@@ -108,7 +110,7 @@ router.get(
             link: corporateLinkToJson(ls.get(Number(maintainer.id))),
           };
         })
-      );
+      ) as unknown as void;
     } catch (error) {
       return next(error);
     }

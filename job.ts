@@ -40,7 +40,12 @@ export async function runJob(
 
   let executionEnvironment: ExecutionEnvironment = null;
   try {
-    executionEnvironment = await commonStartup(initializeJob, true /* job */, null /* app */);
+    executionEnvironment = await commonStartup(
+      initializeJob,
+      true /* job */,
+      options.enableAllGitHubApps,
+      null /* app */
+    );
   } catch (startupError) {
     console.error(`Job startup error before runJob: ${startupError}`);
     quitInTenSeconds(false);

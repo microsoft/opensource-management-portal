@@ -229,9 +229,9 @@ router.post(
         if (result?.state === OrganizationMembershipState.Pending) {
           return res.send(
             `You need to accept the membership now at: https://github.com/${unconfiguredOrganization.name}`
-          );
+          ) as unknown as void;
         } else {
-          return res.send('OK. Elevation should be all set.');
+          return res.send('OK. Elevation should be all set.') as unknown as void;
         }
       } catch (error) {
         return next(error);

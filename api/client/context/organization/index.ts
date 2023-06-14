@@ -17,8 +17,9 @@ import { jsonError } from '../../../../middleware';
 import getCompanySpecificDeployment from '../../../../middleware/companySpecificDeployment';
 import { IndividualContext } from '../../../../business/user';
 
-import RouteRepos from './repos';
-import RouteTeams from './teams';
+import routeRepos from './repos';
+import routeTeams from './teams';
+import { CreateError } from '../../../../transitional';
 
 const router: Router = Router();
 
@@ -28,20 +29,20 @@ router.get(
     const { organization } = req;
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
-      return res.json(false);
+      return res.json(false) as unknown as void;
     }
     const membership = await organization.getOperationalMembership(
       activeContext.getGitHubIdentity().username
     );
     if (!membership) {
-      return res.json(false);
+      return res.json(false) as unknown as void;
     }
     return res.json({
       user: toSanitizedUser(membership.user),
       organization: toSanitizedOrg(membership.organization),
       role: membership.role,
       state: membership.state,
-    });
+    }) as unknown as void;
   })
 );
 
@@ -51,11 +52,11 @@ router.get(
     const { organization } = req;
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
-      return res.json({ isSudoer: false });
+      return res.json({ isSudoer: false }) as unknown as void;
     }
     return res.json({
       isSudoer: await organization.isSudoer(activeContext.getGitHubIdentity().username, activeContext.link),
-    });
+    }) as unknown as void;
   })
 );
 
@@ -65,7 +66,7 @@ router.get(
     const { organization } = req;
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
-      return res.json({ isOrganizationOwner: false });
+      return res.json({ isOrganizationOwner: false }) as unknown as void;
     }
     try {
       const username = activeContext.getGitHubIdentity().username;
@@ -73,9 +74,9 @@ router.get(
       const isOrganizationOwner = membership?.role === OrganizationMembershipRole.Admin;
       return res.json({
         isOrganizationOwner,
-      });
+      }) as unknown as void;
     } catch (error) {
-      return jsonError(error, 400);
+      return next(CreateError.InvalidParameters(error));
     }
   })
 );
@@ -87,7 +88,7 @@ router.delete(
     const { organization } = req;
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
-      return next(jsonError('You are not linked', 400));
+      return next(CreateError.InvalidParameters('You are not linked'));
     }
     const login = activeContext.getGitHubIdentity().username;
     const id = activeContext.getGitHubIdentity().id;
@@ -95,10 +96,10 @@ router.delete(
       await organization.removeMember(login, id);
       return res.json({
         message: `Your ${login} account has been removed from ${organization.name}.`,
-      });
+      }) as unknown as void;
     } catch (error) {
       console.warn(error);
-      return next(jsonError(error, 400));
+      return next(CreateError.InvalidParameters(error));
     }
   })
 );
@@ -110,7 +111,7 @@ router.get(
       const organization = req.organization as Organization;
       const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
       if (!activeContext.link) {
-        return res.json({ personalizedTeams: [] });
+        return res.json({ personalizedTeams: [] }) as unknown as void;
       }
       const userAggregateContext = activeContext.aggregations;
       const maintainedTeams = new Set<string>();
@@ -132,21 +133,21 @@ router.get(
       });
       return res.json({
         personalizedTeams,
-      });
+      }) as unknown as void;
     } catch (error) {
-      return next(jsonError(error, 400));
+      return next(CreateError.InvalidParameters(error));
     }
   })
 );
 
-router.use('/repos', RouteRepos);
-router.use('/teams', RouteTeams);
+router.use('/repos', routeRepos);
+router.use('/teams', routeTeams);
 
 const deployment = getCompanySpecificDeployment();
 deployment?.routes?.api?.context?.organization?.index &&
   deployment?.routes?.api?.context?.organization?.index(router);
 
-router.use('*', (req, res: Response, next: NextFunction) => {
+router.use('*', (req: ReposAppRequest, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available: client>organization', 404));
 });
 
@@ -160,6 +161,7 @@ const toSanitizedUser = (user) => {
     avatar_url: user.avatar_url,
   };
 };
+
 const toSanitizedOrg = (org) => {
   if (!org || !org.login) {
     return undefined;

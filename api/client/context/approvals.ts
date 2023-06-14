@@ -38,7 +38,7 @@ router.get(
         teamResponsibilities: [],
         usersRequests: [],
         isLinked: false,
-      });
+      }) as unknown as void;
     }
     try {
       // const username = activeContext.getGitHubIdentity().username;
@@ -54,7 +54,7 @@ router.get(
         teamResponsibilities: teamResponsibilities.map(approvalPairToJson),
         usersRequests: usersRequests.map(approvalPairToJson),
       };
-      return res.json(state);
+      return res.json(state) as unknown as void;
     } catch (error) {
       return next(jsonError(error));
     }

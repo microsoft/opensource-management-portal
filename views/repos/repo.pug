@@ -13,27 +13,6 @@ mixin simplePersonView(account)
   div(style='display:block;vertical-align:middle')
     h4
       a(href='/people?q=' + account.login)= shorthandName
-    //-ul.list-inline
-      if shorthandName && shorthandName !== account.login
-        li
-          span(title=account.login + ' is the GitHub username for ' + shorthandName)= account.login
-      if corporateIdentity
-        if link && !corporate
-          li.text-warning!= octicon('link', 16)
-          li
-            span(title=link.aadoid)= link.aadupn
-        else
-          li!= octicon('link', 16)
-          li
-            span(title=corporateIdentity + ' is the corporate identity for ' + shorthandName)= corporateIdentity
-        //- just corporate e-mails here, not user emails
-        if email
-          li
-            a(href='mailto:' + email, title='Send corporate email to ' + email)
-              != octicon('mail', 16)
-      if serviceAccount
-        li!= octicon('hubot', 16)
-        li Service account
 
 mixin teamsList(teams, hideJoinOption)
   if teams && teams.length > 0

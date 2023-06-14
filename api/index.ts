@@ -174,7 +174,7 @@ router.post(
           response: JSON.stringify(repoCreateResponse),
         },
       });
-      return res.json(repoCreateResponse);
+      return res.json(repoCreateResponse) as unknown as void;
     } catch (error) {
       const data = { ...convergedObject };
       data.error = error.message;

@@ -38,7 +38,7 @@ router.get(
         collaborators: collaborators.map((c) => c.asJson()),
         outsideCollaborators: outsideCollaborators.map((oc) => oc.asJson()),
         memberCollaborators: memberCollaborators.map((oc) => oc.asJson()),
-      });
+      }) as unknown as void;
     } catch (error) {
       return next(jsonError(error));
     }

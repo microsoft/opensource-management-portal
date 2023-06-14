@@ -4,7 +4,7 @@
 //
 
 import { Session } from 'express-session';
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { AccessToken } from 'simple-oauth2';
 
 import type { TelemetryClient } from 'applicationinsights';
@@ -37,6 +37,9 @@ export enum LocalApiRepoAction {
   Archive = 'archive',
   UnArchive = 'unarchive',
 }
+
+export type VoidedExpressRoute = (req: ReposAppRequest, res: Response, next: NextFunction) => Promise<void>;
+// req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>, number>, next: NextFunction) => void | Promise<...>
 
 export interface ReposAppRequest extends Request {
   // passport
