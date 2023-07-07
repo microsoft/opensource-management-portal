@@ -1,4 +1,4 @@
-name: 'Code scanning - action'
+name: GitHub CodeQL Analysis
 
 on:
   push:
