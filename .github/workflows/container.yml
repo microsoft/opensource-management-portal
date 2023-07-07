@@ -1,4 +1,4 @@
-name: Ship it 🐿️
+name: Unused Docker Image - Build
 
 on:
   push:
