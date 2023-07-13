@@ -79,7 +79,7 @@
     "@octokit/plugin-paginate-graphql": "3.0.0",
     "@octokit/request": "7.0.1",
     "@octokit/auth-app": "5.0.6",
-    "@octokit/rest": "19.0.13",
+    "@octokit/rest": "20.0.1",
     "@primer/octicons": "19.4.0",
     "app-root-path": "3.1.0",
     "applicationinsights": "2.7.0",
