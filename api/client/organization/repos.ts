@@ -7,13 +7,15 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../../middleware';
-import { getProviders } from '../../../transitional';
+import { CreateError, getProviders } from '../../../transitional';
 import { Repository } from '../../../business';
 
-import RouteRepo from './repo';
 import JsonPager from '../jsonPager';
 import { ReposAppRequest, IProviders } from '../../../interfaces';
 import { sortRepositoriesByNameCaseInsensitive } from '../../../utils';
+import { apiMiddlewareRepositoriesToRepository } from '../../../middleware/business/repository';
+
+import routeRepo from './repo';
 
 const router: Router = Router();
 
@@ -236,21 +238,10 @@ export async function searchRepos(
 
 // --- End of search reimplementation ---
 
-router.use(
-  '/:repoName',
-  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
-    const { organization } = req;
-    const { repoName } = req.params;
-    // does not confirm the name
-    (req as any).repository = organization.repository(repoName);
-    return next();
-  })
-);
-
-router.use('/:repoName', RouteRepo);
+router.use('/:repoName', asyncHandler(apiMiddlewareRepositoriesToRepository), routeRepo);
 
 router.use('*', (req, res: Response, next: NextFunction) => {
-  return next(jsonError('no API or function available within this repos endpoint', 404));
+  return next(CreateError.NotFound('no API or function available within org/repos endpoint'));
 });
 
 export default router;

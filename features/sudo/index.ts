@@ -16,7 +16,10 @@ export interface IPortalSudo {
 }
 
 export abstract class OrganizationSudo implements IOrganizationSudo {
-  constructor(protected providers: IProviders, protected organization: Organization) {}
+  constructor(
+    protected providers: IProviders,
+    protected organization: Organization
+  ) {}
   abstract isSudoer(githubLogin: string, link?: ICorporateLink): Promise<boolean>;
 
   protected isSudoEnvironmentOff() {

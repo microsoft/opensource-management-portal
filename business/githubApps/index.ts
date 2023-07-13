@@ -33,12 +33,19 @@ export abstract class CustomAppPurpose implements ICustomAppPurpose {
   get isCustomAppPurpose() {
     return true;
   }
-  constructor(public id: string, public name: string) {}
+  constructor(
+    public id: string,
+    public name: string
+  ) {}
 }
 
 export class CustomAppPurposeOrganizationVariance extends CustomAppPurpose {
   fallbackIfNotConfiguredOrganizationName = false;
-  constructor(public id: string, public name: string, private configurations: IGitHubAppConfiguration[]) {
+  constructor(
+    public id: string,
+    public name: string,
+    private configurations: IGitHubAppConfiguration[]
+  ) {
     super(id, name);
   }
   getForOrganizationName(organizationName: string) {
@@ -53,7 +60,11 @@ export class CustomAppPurposeOrganizationVariance extends CustomAppPurpose {
 }
 
 export class CustomAppPurposeSingleConfiguration extends CustomAppPurpose {
-  constructor(public id: string, public name: string, private configuration: IGitHubAppConfiguration) {
+  constructor(
+    public id: string,
+    public name: string,
+    private configuration: IGitHubAppConfiguration
+  ) {
     super(id, name);
   }
 

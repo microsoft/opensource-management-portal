@@ -18,7 +18,7 @@ import throat from 'throat';
 import job from '../job';
 import { ICorporateLink, IProviders } from '../interfaces';
 import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../lib/linkProviders';
-import { ErrorHelper } from '../transitional';
+import { ErrorHelper, getThirdPartyLinkById } from '../transitional';
 
 const parallelWorkLimit = 5;
 
@@ -60,7 +60,7 @@ async function migration(providers: IProviders): Promise<void> {
   await Promise.all(
     allSourceLinks.map((sourceLink: ICorporateLink) =>
       throttle(async () => {
-        const existingLink = await getThirdPartyLink(destinationLinkProvider, sourceLink.thirdPartyId);
+        const existingLink = await getThirdPartyLinkById(destinationLinkProvider, sourceLink.thirdPartyId);
         if (existingLink && overwriteDestinationLinks) {
           console.warn('Removing existing destination link...');
           await destinationLinkProvider.deleteLink(existingLink);
@@ -102,17 +102,6 @@ async function migration(providers: IProviders): Promise<void> {
   console.log('All done with ' + errors + ' errors');
   console.dir(errorList);
   console.log();
-}
-
-async function getThirdPartyLink(linkProvider: ILinkProvider, thirdPartyId: string): Promise<ICorporateLink> {
-  try {
-    return await linkProvider.getByThirdPartyId(thirdPartyId);
-  } catch (error) {
-    if (ErrorHelper.IsNotFound(error)) {
-      return null;
-    }
-    throw error;
-  }
 }
 
 async function getUserIdByUpn(graphProvider, upn: string): Promise<string> {

@@ -16,7 +16,7 @@
 
 import Debug from 'debug';
 
-import { MassagePermissionsToGitHubRepositoryPermission } from '../transitional';
+import { projectCollaboratorPermissionToGitHubRepositoryPermission } from '../transitional';
 import { OrganizationMemberCacheEntity } from '../entities/organizationMemberCache/organizationMemberCache';
 import { Operations } from './operations';
 import { TeamMemberCacheEntity } from '../entities/teamMemberCache/teamMemberCache';
@@ -904,7 +904,7 @@ export default class QueryCache {
       affiliation: cacheEntity.collaboratorType,
       cacheEntity,
       userId: cacheEntity.userId,
-      permission: MassagePermissionsToGitHubRepositoryPermission(cacheEntity.permission),
+      permission: projectCollaboratorPermissionToGitHubRepositoryPermission(cacheEntity.permission),
     };
   }
 

@@ -5,7 +5,7 @@
 
 import { NextFunction, Response } from 'express';
 import { PassportStatic } from 'passport';
-import { IReposError, ReposAppRequest } from '../../interfaces';
+import { type IReposApplication, type IReposError, ReposAppRequest } from '../../interfaces';
 import { getProviders } from '../../transitional';
 import { isCodespacesAuthenticating } from '../../utils';
 import { IPrimaryAuthenticationHelperMethods } from '../passport-routes';
@@ -14,7 +14,7 @@ import { aadStrategyUserPropertyName } from './aadStrategy';
 const aadPassportStrategyName = 'azure-active-directory';
 
 export function attachAadPassportRoutes(
-  app,
+  app: IReposApplication,
   config: any,
   passport: PassportStatic,
   helpers: IPrimaryAuthenticationHelperMethods

@@ -33,7 +33,10 @@ class UserSettingsQueryBase extends QueryBase<UserSettings> {
 }
 
 class UserSettingsQuery<T> extends UserSettingsQueryBase {
-  constructor(query: Query, public parameters: T) {
+  constructor(
+    query: Query,
+    public parameters: T
+  ) {
     super(query);
     if (!this.parameters) {
       this.parameters = {} as T;

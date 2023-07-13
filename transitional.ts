@@ -12,14 +12,17 @@ import type { ICreateRepositoryApiResult } from './api/createRepo';
 import { Repository } from './business/repository';
 import {
   GitHubRepositoryPermission,
-  IDictionary,
-  IFunctionPromise,
-  IProviders,
-  ISettledValue,
-  ReposAppRequest,
+  type ICorporateLink,
+  type IDictionary,
+  type IFunctionPromise,
+  type IGitHubCollaboratorPermissions,
+  type IProviders,
+  type ISettledValue,
+  type ReposAppRequest,
   SettledState,
 } from './interfaces';
 import { Organization } from './business';
+import { ILinkProvider } from './lib/linkProviders';
 const packageVariableName = 'static-react-package-name';
 
 export function hasStaticReactClientApp() {
@@ -53,7 +56,9 @@ export function SettleToStateValue<T>(promise: Promise<T>): Promise<ISettledValu
   );
 }
 
-export function permissionsObjectToValue(permissions): GitHubRepositoryPermission {
+export function projectCollaboratorPermissionsObjectToGitHubRepositoryPermission(
+  permissions: IGitHubCollaboratorPermissions
+): GitHubRepositoryPermission {
   if (permissions.admin === true) {
     return GitHubRepositoryPermission.Admin;
   } else if (permissions.push === true) {
@@ -75,8 +80,8 @@ export function isPermissionBetterThan(
   if (!currentBest) {
     return true;
   }
-  const comparison = MassagePermissionsToGitHubRepositoryPermission(currentBest);
-  switch (MassagePermissionsToGitHubRepositoryPermission(newConsideration)) {
+  const comparison = projectCollaboratorPermissionToGitHubRepositoryPermission(currentBest);
+  switch (projectCollaboratorPermissionToGitHubRepositoryPermission(newConsideration)) {
     case GitHubRepositoryPermission.Admin:
       return true;
     case GitHubRepositoryPermission.Maintain:
@@ -103,7 +108,9 @@ export function isPermissionBetterThan(
   return false;
 }
 
-export function MassagePermissionsToGitHubRepositoryPermission(value: string): GitHubRepositoryPermission {
+export function projectCollaboratorPermissionToGitHubRepositoryPermission(
+  value: string
+): GitHubRepositoryPermission {
   // collaborator level APIs return a more generic read/write value, lead to some bad caches in the past...
   // TODO: support new collaboration values as they come online for Enterprise Cloud!
   switch (value) {
@@ -120,8 +127,8 @@ export function MassagePermissionsToGitHubRepositoryPermission(value: string): G
     case 'read':
       return GitHubRepositoryPermission.Pull;
     default:
-      throw new Error(
-        `Invalid ${value} GitHub repository permission [massagePermissionsToGitHubRepositoryPermission]`
+      throw CreateError.InvalidParameters(
+        `Invalid ${value} GitHub repository permission [projectCollaboratorPermissionsToGitHubRepositoryPermission]`
       );
   }
 }
@@ -152,6 +159,10 @@ export class CreateError {
 
   static NotAuthenticated(message: string): Error {
     return CreateError.CreateStatusCodeError(401, message);
+  }
+
+  static NotImplemented(message?: string): Error {
+    return CreateError.CreateStatusCodeError(500, message || 'This scenario is not yet implemented');
   }
 
   static NotAuthorized(message: string): Error {
@@ -275,6 +286,20 @@ export function stripDistFolderName(dirname: string) {
 export function sha256(str: string) {
   const hash = crypto.createHash('sha256').update(str).digest('base64');
   return hash;
+}
+
+export async function getThirdPartyLinkById(
+  linkProvider: ILinkProvider,
+  thirdPartyId: string | number
+): Promise<ICorporateLink> {
+  try {
+    return await linkProvider.getByThirdPartyId(String(thirdPartyId));
+  } catch (error) {
+    if (ErrorHelper.IsNotFound(error)) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export interface ICustomizedNewRepositoryLogic {

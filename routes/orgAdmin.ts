@@ -25,9 +25,10 @@ router.use(requirePortalAdministrationPermission);
 // These functions are not pretty.
 
 enum OperationsAction {
-  DestroyLink,
-  MarkAsServiceAccount,
-  UnmarkServiceAccount,
+  DestroyLink = 'Destroy link',
+  MarkAsServiceAccount = 'Mark as service account',
+  UnmarkServiceAccount = 'Unmark service account',
+  DestroyCollaboratorGrants = 'Destroy collaborator grants',
 }
 
 enum UserQueryByType {
@@ -440,9 +441,12 @@ router.post('/whois/id/:githubid', function (req: ReposAppRequest, res: Response
   const thirdPartyId = req.params.githubid;
   const markAsServiceAccount = req.body['mark-as-service-account'];
   const unmarkServiceAccount = req.body['unmark-service-account'];
+  const removeCollaboration = req.body['remove-collaboration'];
   const providers = getProviders(req);
   let action = OperationsAction.DestroyLink;
-  if (markAsServiceAccount) {
+  if (removeCollaboration) {
+    action = OperationsAction.DestroyCollaboratorGrants;
+  } else if (markAsServiceAccount) {
     action = OperationsAction.MarkAsServiceAccount;
   } else if (unmarkServiceAccount) {
     action = OperationsAction.UnmarkServiceAccount;
@@ -458,7 +462,7 @@ router.post('/whois/id/:githubid', function (req: ReposAppRequest, res: Response
       }
       req.individualContext.webContext.render({
         view: 'organization/whois/drop',
-        title: `Dropped link by ID ${thirdPartyId}`,
+        title: `${action} link by ID ${thirdPartyId}`,
         state,
       });
     })
@@ -511,9 +515,12 @@ router.post('/whois/github/:username', function (req: ReposAppRequest, res: Resp
   const username = req.params.username;
   const markAsServiceAccount = req.body['mark-as-service-account'];
   const unmarkServiceAccount = req.body['unmark-service-account'];
+  const removeCollaboration = req.body['remove-collaboration'];
   const providers = getProviders(req);
   let action = OperationsAction.DestroyLink;
-  if (markAsServiceAccount) {
+  if (removeCollaboration) {
+    action = OperationsAction.DestroyCollaboratorGrants;
+  } else if (markAsServiceAccount) {
     action = OperationsAction.MarkAsServiceAccount;
   } else if (unmarkServiceAccount) {
     action = OperationsAction.UnmarkServiceAccount;
@@ -628,6 +635,13 @@ async function destructiveLogic(
       res,
       next
     );
+  }
+
+  if (action === OperationsAction.DestroyCollaboratorGrants) {
+    const account: Account = operations.getAccount(thirdPartyId);
+    const res = await account.removeCollaboratorPermissions();
+    state.messages = res.history;
+    return state;
   }
 
   // Account termination

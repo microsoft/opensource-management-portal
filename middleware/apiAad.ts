@@ -35,7 +35,7 @@ export default function aadApiMiddleware(req: IApiRequest, res: Response, next: 
       if ((err as any).immediate === true) {
         console.warn(`AAD API authorization failed: ${err}`);
       }
-      return isJsonError(err) ? next(err) : (jsonError(err, 500) as unknown);
+      return isJsonError(err, req.url) ? next(err) : (jsonError(err, 500) as unknown);
     });
 }
 

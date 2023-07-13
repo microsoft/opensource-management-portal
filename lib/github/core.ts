@@ -122,7 +122,10 @@ export abstract class ApiContext {
     return this._cost;
   }
 
-  constructor(public api: any, public options: any) {
+  constructor(
+    public api: any,
+    public options: any
+  ) {
     this._log = [];
     if (!this._calledTime) {
       this._calledTime = new Date();

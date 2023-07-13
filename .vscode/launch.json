@@ -47,8 +47,8 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development",
-        "DEBUG": "startup,g:server,context,github:tokens",
-        "MORE_DEBUG": "appinsights,cache,restapi,pg,querycache,user,redis-cross-org,health"
+        "DEBUG": "startup,g:server,context",
+        "MORE_DEBUG": "appinsights,cache,restapi,pg,querycache,user,redis-cross-org,health,github:tokens"
       }
     },
     {

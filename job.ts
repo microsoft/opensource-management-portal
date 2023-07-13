@@ -28,11 +28,14 @@ export async function runJob(
   // TODO: automatically track elapsed job time
   const started = new Date();
   if (options.timeoutMinutes) {
-    setTimeout(() => {
-      // TODO: insights metric and event, if a prefix exists
-      console.log(`Kill bit at ${options.timeoutMinutes}m`);
-      process.exit(1);
-    }, 1000 * 60 * options.timeoutMinutes);
+    setTimeout(
+      () => {
+        // TODO: insights metric and event, if a prefix exists
+        console.log(`Kill bit at ${options.timeoutMinutes}m`);
+        process.exit(1);
+      },
+      1000 * 60 * options.timeoutMinutes
+    );
   }
   if (options.defaultDebugOutput && !process.env.DEBUG) {
     process.env.DEBUG = options.defaultDebugOutput;
@@ -144,17 +147,23 @@ const job = {
     script: (providers: IProviders, jobParameters?: IReposJob) => Promise<IReposJobResult | void>,
     options?: IReposJobOptions
   ) => {
-    return runJob(async function (jobParameters: IReposJob) {
-      return (await script(jobParameters.providers, jobParameters)) || {};
-    }, Object.assign({ enableAllGitHubApps: false }, options || {}));
+    return runJob(
+      async function (jobParameters: IReposJob) {
+        return (await script(jobParameters.providers, jobParameters)) || {};
+      },
+      Object.assign({ enableAllGitHubApps: false }, options || {})
+    );
   },
   run: async (
     script: (providers: IProviders, jobParameters?: IReposJob) => Promise<IReposJobResult | void>,
     options?: IReposJobOptions
   ) => {
-    return runJob(async function (jobParameters: IReposJob) {
-      return (await script(jobParameters.providers, jobParameters)) || {};
-    }, Object.assign({ enableAllGitHubApps: true }, options || {}));
+    return runJob(
+      async function (jobParameters: IReposJob) {
+        return (await script(jobParameters.providers, jobParameters)) || {};
+      },
+      Object.assign({ enableAllGitHubApps: true }, options || {})
+    );
   },
 };
 

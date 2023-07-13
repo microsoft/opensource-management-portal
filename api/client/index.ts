@@ -87,7 +87,7 @@ router.get('/', (req: ReposAppRequest, res) => {
       appService: config?.webServer?.appService?.name
         ? {
             name: config?.webServer?.appService?.name,
-            slot: config?.webServer?.appService?.slot,
+            slot: config?.webServer?.appService?.advanced?.slotType || config?.webServer?.appService?.slot,
             region: config?.webServer?.appService?.region,
           }
         : undefined,

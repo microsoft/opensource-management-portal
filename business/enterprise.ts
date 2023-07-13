@@ -22,7 +22,11 @@ export type EnterpriseSamlExternalIdentityNode = {
 };
 
 export default class GitHubEnterprise {
-  constructor(private providers: IProviders, public slug: string, private administrativeToken: string) {}
+  constructor(
+    private providers: IProviders,
+    public slug: string,
+    private administrativeToken: string
+  ) {}
 
   async getGitHubLoginForUserPrincipalName(userPrincipalName: string): Promise<string> {
     const node = await this.getSamlNodeFromUserPrincipalName(userPrincipalName);

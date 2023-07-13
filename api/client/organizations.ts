@@ -7,25 +7,18 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../middleware';
-import { CreateError, ErrorHelper, getProviders } from '../../transitional';
+import { CreateError, getProviders } from '../../transitional';
 import { ReposAppRequest } from '../../interfaces';
 
 import RouteOrganization from './organization';
-import {
-  IReposAppRequestWithOrganizationManagementType,
-  OrganizationManagementType,
-} from '../../middleware/business/organization';
-
+import { apiMiddlewareOrganizationsToOrganization } from '../../middleware/business/organization';
 import type { GitHubOrganizationResponseSanitized } from '../../business';
 import {
   OrganizationAnnotation,
   OrganizationAnnotationProperty,
   scrubOrganizationAnnotation,
 } from '../../entities/organizationAnnotation';
-import {
-  getOrganizationProfileViaMemoryCache,
-  setOrganizationProfileForRequest,
-} from '../../middleware/github/ensureOrganizationProfile';
+import { getOrganizationProfileViaMemoryCache } from '../../middleware/github/ensureOrganizationProfile';
 
 const router: Router = Router();
 
@@ -128,46 +121,10 @@ router.get(
   })
 );
 
-router.use(
-  '/:orgName',
-  asyncHandler(
-    async (req: IReposAppRequestWithOrganizationManagementType, res: Response, next: NextFunction) => {
-      const { operations } = getProviders(req);
-      const { orgName } = req.params;
-      req.organizationName = orgName;
-      try {
-        const org = operations.getOrganization(orgName);
-        if (org) {
-          req.organizationManagementType = OrganizationManagementType.Managed;
-          req.organization = org;
-          return next();
-        }
-      } catch (orgNotFoundError) {
-        if (!ErrorHelper.IsNotFound(orgNotFoundError)) {
-          return next(orgNotFoundError);
-        }
-      }
-      try {
-        const org = operations.getUncontrolledOrganization(orgName);
-        req.organizationManagementType = OrganizationManagementType.Unmanaged;
-        req.organization = org;
-        await setOrganizationProfileForRequest(req);
-      } catch (orgProfileError) {
-        if (ErrorHelper.IsNotFound(orgProfileError)) {
-          return next(CreateError.NotFound(`The organization ${orgName} does not exist`));
-        } else {
-          return next(orgProfileError);
-        }
-      }
-      return next();
-    }
-  )
-);
-
-router.use('/:orgName', RouteOrganization);
+router.use('/:orgName', asyncHandler(apiMiddlewareOrganizationsToOrganization), RouteOrganization);
 
 router.use('*', (req: ReposAppRequest, res: Response, next: NextFunction) => {
-  return next(jsonError('orgs API not found', 404));
+  return next(CreateError.NotFound('orgs API not found'));
 });
 
 export default router;

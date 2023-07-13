@@ -9,7 +9,7 @@ const debug = Debug.debug('startup');
 import { AuthorizationCode } from 'simple-oauth2';
 import { OIDCStrategy } from 'passport-azure-ad';
 
-import { IProviders } from '../../interfaces';
+import type { IProviders, IReposApplication, SiteConfiguration } from '../../interfaces';
 
 import { GraphUserType } from '../../lib/graphProvider';
 import { getCodespacesHostname, isCodespacesAuthenticating } from '../../utils';
@@ -101,9 +101,9 @@ function activeDirectorySubset(
     });
 }
 
-export default function createAADStrategy(app, config) {
+export default function createAADStrategy(app: IReposApplication, config: SiteConfiguration) {
   const { redirectUrl, tenantId, clientId, clientSecret } = config.activeDirectory;
-  const codespaces = config?.github?.codespaces || {};
+  const codespaces = config?.github?.codespaces;
   if (!clientId) {
     debug('No Azure Active Directory clientID configured, corporate authentication will be unavailable.');
     return {};

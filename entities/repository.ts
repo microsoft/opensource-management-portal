@@ -35,7 +35,10 @@ class ThisQueryBase extends QueryBase<ClassType> {
 }
 
 class ThisQuery<T> extends ThisQueryBase {
-  constructor(query: Query, public parameters: T) {
+  constructor(
+    query: Query,
+    public parameters: T
+  ) {
     super(query);
     if (!this.parameters) {
       this.parameters = {} as T;

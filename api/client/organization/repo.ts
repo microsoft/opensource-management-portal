@@ -8,7 +8,6 @@ import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../../middleware';
 import { ErrorHelper, getProviders } from '../../../transitional';
-import { Repository } from '../../../business';
 import { IndividualContext } from '../../../business/user';
 import NewRepositoryLockdownSystem from '../../../features/newRepositories/newRepositoryLockdown';
 import {
@@ -19,16 +18,8 @@ import { renameRepositoryDefaultBranchEndToEnd } from '../../../routes/org/repos
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
 
 import RouteRepoPermissions from './repoPermissions';
-import {
-  ReposAppRequest,
-  LocalApiRepoAction,
-  getRepositoryMetadataProvider,
-  NoCacheNoBackground,
-} from '../../../interfaces';
-
-type RequestWithRepo = ReposAppRequest & {
-  repository: Repository;
-};
+import { LocalApiRepoAction, getRepositoryMetadataProvider, NoCacheNoBackground } from '../../../interfaces';
+import { RequestWithRepo } from '../../../middleware/business/repository';
 
 enum ArchivalAction {
   Archive,

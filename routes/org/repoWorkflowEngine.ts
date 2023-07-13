@@ -85,7 +85,11 @@ export class RepoWorkflowEngine {
   private log: IRepositoryWorkflowOutput[] = [];
   private repository: Repository;
 
-  constructor(private providers: IProviders, organization: Organization, approvalPackage: IApprovalPackage) {
+  constructor(
+    private providers: IProviders,
+    organization: Organization,
+    approvalPackage: IApprovalPackage
+  ) {
     this.request = approvalPackage.repositoryMetadata;
     // this.user = approvalPackage.requestingUser;
     this.id = approvalPackage.id;

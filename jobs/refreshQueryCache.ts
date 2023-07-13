@@ -16,7 +16,7 @@ job.runBackgroundJob(refreshQueryCache, {
   insightsPrefix: 'JobRefreshQueryCache',
 });
 
-import { permissionsObjectToValue } from '../transitional';
+import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../transitional';
 import {
   Collaborator,
   Operations,
@@ -621,7 +621,9 @@ async function cacheRepositoryCollaborators(
   const operations = [];
   const repositoryId = repository.id.toString();
   for (const collaborator of repoCollaborators) {
-    const permission = permissionsObjectToValue(collaborator.permissions);
+    const permission = projectCollaboratorPermissionsObjectToGitHubRepositoryPermission(
+      collaborator.permissions
+    );
     operations.push(
       await queryCache.addOrUpdateCollaborator(
         organizationId,

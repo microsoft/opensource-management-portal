@@ -4,7 +4,18 @@
   "appService": {
     "slot": "env://WEBSITE_SLOT_NAME",
     "name": "env://WEBSITE_SITE_NAME",
-    "region": "env://REGION_NAME"
+    "region": "env://REGION_NAME",
+    "advanced": {
+      "resourceGroup": "env://WEBSITE_RESOURCE_GROUP",
+      "warmup": "env://WEBSITE_WARMUP_PATH",
+      "swapWarmup": "env://WEBSITE_SWAP_WARMUP_PING_PATH",
+      "containerName": "env://WEBSITES_WEB_CONTAINER_NAME",
+      "instanceId": "env://WEBSITE_INSTANCE_ID",
+      "sku": "env://WEBSITE_SKU",
+      "hostname": "env://WEBSITE_HOSTNAME",
+      "alwaysOn": "env://WEBSITE_SCM_ALWAYS_ON_ENABLED",
+      "slotType": "env://SITE_SLOT_TYPE"
+    }
   },
   "baseUrl": "env://SITE_BASE_URL",
   "sslify": {
