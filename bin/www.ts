@@ -6,8 +6,8 @@
 
 import Debug from 'debug';
 
-const debug = Debug('g:server');
-const debugInitialization = Debug('startup');
+const debug = Debug.debug('g:server');
+const debugInitialization = Debug.debug('startup');
 
 import app from '../app';
 
@@ -17,7 +17,7 @@ import fs from 'fs';
 import path from 'path';
 
 function normalizePort(val) {
-  var port = parseInt(val, 10);
+  const port = parseInt(val, 10);
 
   if (isNaN(port)) {
     // named pipe
@@ -35,19 +35,23 @@ function normalizePort(val) {
 const port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
 
-debugInitialization('initializing app & configuration');
+// debugInitialization('initializing app & configuration');
 
 app.startServer = function startWebServer(): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
-      let server: https.Server | http.Server;
+      const server: https.Server | http.Server =
+        process.env.USE_LOCAL_HTTPS === 'true'
+          ? https.createServer(
+              {
+                key: fs.readFileSync(path.join(__dirname, process.env.CERT_PATH_FROM_DIST_BIN, 'key.pem')),
+                cert: fs.readFileSync(path.join(__dirname, process.env.CERT_PATH_FROM_DIST_BIN, 'cert.pem')),
+              },
+              app
+            )
+          : http.createServer(app);
 
-      server = process.env.USE_LOCAL_HTTPS === 'true' ? https.createServer({
-        key: fs.readFileSync(path.join(__dirname, process.env.CERT_PATH_FROM_DIST_BIN, 'key.pem')),
-        cert: fs.readFileSync(path.join(__dirname, process.env.CERT_PATH_FROM_DIST_BIN, 'cert.pem')) 
-      }, app) : http.createServer(app);
-
-      server.on('error', error => {
+      server.on('error', (error) => {
         console.error(`http.server.error: ${error}`);
         if (error['syscall'] !== 'listen') {
           return reject(error);
@@ -71,7 +75,7 @@ app.startServer = function startWebServer(): Promise<void> {
       server.on('listening', () => {
         const addr = server.address();
         const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
-        debug('Listening on ' + bind);
+        debug('listening on ' + bind);
         return resolve();
       });
       server.listen(port);
@@ -82,5 +86,5 @@ app.startServer = function startWebServer(): Promise<void> {
 };
 
 app.startupApplication().then(async function ready() {
-  debugInitialization('Web app is up.');
+  debugInitialization('web app is up.');
 });

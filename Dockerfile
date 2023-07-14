@@ -64,17 +64,9 @@ COPY --from=build --chown=oss:oss /build/default-assets-package ./default-assets
 COPY --from=build --chown=oss:oss /build/config ./config
 COPY --from=build --chown=oss:oss /build/views ./views
 COPY --from=build --chown=oss:oss /build/package.json ./package.json
-COPY --from=build --chown=oss:oss /build/jobs/reports/views ./jobs/reports/views
 
 #Do stuff for GitHub Environment Orgs
 COPY --from=build --chown=oss:oss /build/env-orgs.json ./env-orgs.json
-
-# Reports are not actively working in the project, but keeping these files ready
-COPY --from=build --chown=oss:oss /build/jobs/reports/exemptRepositories.json \
-    /build/jobs/reports/organizationDefinitions.json \
-    /build/jobs/reports/repositoryDefinitions.json \
-    /build/jobs/reports/teamDefinitions.json \
-    ./jobs/reports/
 
 # Host the app
 USER oss

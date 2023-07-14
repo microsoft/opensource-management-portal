@@ -46,7 +46,10 @@ function createValidator(operations: Operations, link: ICorporateLink, token: st
       valid,
       message,
       critical,
-      rateLimitRemaining: headers && headers['x-ratelimit-remaining'] ? headers['x-ratelimit-remaining'] + ' remaining API tokens' : undefined,
+      rateLimitRemaining:
+        headers && headers['x-ratelimit-remaining']
+          ? headers['x-ratelimit-remaining'] + ' remaining API tokens'
+          : undefined,
     };
   };
 }
@@ -69,17 +72,20 @@ router.use((req: IRequestWithAuthorizations, res, next) => {
           url: 'https://github.com/settings/applications',
           mitigation: 'Review your authorized GitHub applications',
         },
-      ]
+      ],
     });
   }
   if (req.individualContext.webContext.tokens.gitHubWriteOrganizationToken) {
     authorizations.push({
-      validator: createValidator(operations, link, req.individualContext.webContext.tokens.gitHubWriteOrganizationToken),
+      validator: createValidator(
+        operations,
+        link,
+        req.individualContext.webContext.tokens.gitHubWriteOrganizationToken
+      ),
       property: 'githubTokenIncreasedScope',
       title: 'GitHub Application: Organization Read/Write Token',
       text: 'A GitHub token, authorizing this site, is stored. The token has a scope to read and write your organization membership. This token is used to automate organization invitation and joining functionality without requiring manual steps.',
-      mitigations: [
-      ]
+      mitigations: [],
     });
   }
   req.authorizations = authorizations;
@@ -105,23 +111,26 @@ router.get('/', (req: IRequestWithAuthorizations, res) => {
   });
 });
 
-router.get('/validate', asyncHandler(async (req: IRequestWithAuthorizations, res, next) => {
-  const authorizations = req.authorizations;
-  for (const authorization of authorizations) {
-    const validator = authorization.validator;
-    const validationResult = await validator();
-    authorization.valid = validationResult;
-    if (validationResult.critical === true) {
-      // TODO: Actually delete this token/authorization
+router.get(
+  '/validate',
+  asyncHandler(async (req: IRequestWithAuthorizations, res, next) => {
+    const authorizations = req.authorizations;
+    for (const authorization of authorizations) {
+      const validator = authorization.validator;
+      const validationResult = await validator();
+      authorization.valid = validationResult;
+      if (validationResult.critical === true) {
+        // TODO: Actually delete this token/authorization
+      }
     }
-  }
-  req.individualContext.webContext.render({
-    view: 'settings/authorizations',
-    title: 'Account authorizations',
-    state: {
-      authorizations: authorizations,
-    },
-  });
-}));
+    req.individualContext.webContext.render({
+      view: 'settings/authorizations',
+      title: 'Account authorizations',
+      state: {
+        authorizations: authorizations,
+      },
+    });
+  })
+);
 
 export default router;

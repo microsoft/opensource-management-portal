@@ -3,17 +3,30 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { EntityField} from '../../lib/entityMetadataProvider/entityMetadataProvider';
+import { EntityField } from '../../lib/entityMetadataProvider/entityMetadataProvider';
 import { IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
 import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
-import { EntityMetadataMappings, MetadataMappingDefinition } from '../../lib/entityMetadataProvider/declarations';
+import {
+  EntityMetadataMappings,
+  MetadataMappingDefinition,
+} from '../../lib/entityMetadataProvider/declarations';
 import { Type } from './type';
-import { PostgresGetAllEntities, PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
-import { MemorySettings } from '../../lib/entityMetadataProvider/memory';
+import { PostgresGetAllEntities } from '../../lib/entityMetadataProvider/postgres';
+import {
+  MemoryConfiguration,
+  MemorySettings,
+  PostgresSettings,
+  PostgresConfiguration,
+  TableConfiguration,
+  TableSettings,
+} from '../../lib/entityMetadataProvider';
+import { ConfigGitHubOrganization } from '../../config/github.organizations.types';
+import { odata, TableEntityQueryOptions } from '@azure/data-tables';
 
 export interface IBasicGitHubAppInstallation {
   appId: number;
   installationId: number;
+  appPurposeId?: string;
 }
 
 export enum SpecialTeam {
@@ -25,12 +38,31 @@ export enum SpecialTeam {
   SystemAdmin = 'systemAdmin', // teamAllReposAdmin
 }
 
+export enum OrganizationFeature {
+  Invisible = 'invisible',
+  LockedMembership = 'locked',
+  Hidden = 'hidden',
+  Ignore = 'ignore',
+  CreateNativeRepositories = 'createReposDirect',
+  LockTransfers = 'lock-transfers',
+  LockNewForks = 'lock-new-forks',
+  DeleteNewForks = 'delete-new-forks',
+  ApplicationHostOrganizationOnly = 'appOnly',
+  PreventLargeTeamPermissionGrants = 'preventLargeTeamPermissions',
+}
+
+export enum OrganizationProperty {
+  Priority = 'priority',
+}
+
 export interface ISpecialTeam {
   specialTeam: SpecialTeam;
   teamId: number;
 }
 
 const type = Type;
+
+const tableName = 'organizationsettings';
 
 interface IOrganizationSettingProperties {
   // THIS IS THE PRIMARY ID: organizationId: any;
@@ -56,6 +88,7 @@ interface IOrganizationSettingProperties {
 }
 
 const organizationId = 'organizationId';
+const primaryKeyFieldName = organizationId;
 
 const Field: IOrganizationSettingProperties = {
   // organizationId: 'organizationId',
@@ -74,11 +107,13 @@ const Field: IOrganizationSettingProperties = {
   specialTeams: 'specialTeams',
   templates: 'templates',
   legalEntities: 'legalEntities',
-}
+};
 
 const fieldNames = Object.getOwnPropertyNames(Field);
 
 export class OrganizationSetting implements IOrganizationSettingProperties {
+  #ownerToken: string;
+
   organizationId: number;
   organizationName: string;
 
@@ -96,7 +131,7 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
 
   installations: IBasicGitHubAppInstallation[];
   features: string[];
-  properties: any;
+  properties: Record<string | OrganizationProperty, string>;
 
   specialTeams: ISpecialTeam[];
   templates: string[];
@@ -111,19 +146,25 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
     this.legalEntities = [];
   }
 
-  hasFeature(feature: string): boolean {
+  hasFeature(feature: string | OrganizationFeature): boolean {
     return this.features.includes(feature);
   }
 
-  getProperty(key: string): string | boolean | number {
+  getProperty(key: string | OrganizationProperty): string | boolean | number {
     return this.properties[key];
   }
 
-  static CreateFromStaticSettings(staticSettings: any): OrganizationSetting {
-    const clone = {...staticSettings};
-    delete clone.ownerToken;
+  getOwnerToken() {
+    return this.#ownerToken;
+  }
 
+  static CreateFromStaticSettings(staticSettings: ConfigGitHubOrganization): OrganizationSetting {
+    const clone = { ...staticSettings };
     const settings = new OrganizationSetting();
+    if (clone.ownerToken) {
+      settings.#ownerToken = clone.ownerToken;
+      delete clone.ownerToken;
+    }
 
     settings.organizationId = clone.id;
     settings.organizationName = clone.name;
@@ -133,10 +174,20 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
     settings.portalDescription = clone.description || '';
     delete clone.description;
 
-    settings.templates = clone.templates && Array.isArray(clone.templates) ? clone.templates as string[] : [];
+    settings.templates =
+      clone.templates && Array.isArray(clone.templates) ? (clone.templates as string[]) : [];
     delete clone.templates;
 
     // Feature flags
+    if (clone.active !== undefined) {
+      settings.active = clone.active;
+    }
+    delete clone.active;
+
+    if (clone.startupDiscover) {
+      settings.features.push('startupDiscover');
+    }
+    delete clone.startupDiscover;
 
     if (clone.preventLargeTeamPermissions === true) {
       settings.features.push('preventLargeTeamPermissions');
@@ -204,67 +255,79 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
     // Special teams
 
     if (clone.teamAllMembers) {
-      const arr = Array.isArray(clone.teamAllMembers) ? clone.teamAllMembers as any[] : [clone.teamAllMembers as any];
+      const arr = Array.isArray(clone.teamAllMembers)
+        ? (clone.teamAllMembers as any[])
+        : [clone.teamAllMembers as any];
       for (const value of arr) {
         settings.specialTeams.push({
           specialTeam: SpecialTeam.Everyone,
           teamId: Number(value),
-        });  
+        });
       }
     }
     delete clone.teamAllMembers;
 
     if (clone.teamAllReposRead) {
-      const arr = Array.isArray(clone.teamAllReposRead) ? clone.teamAllReposRead as any[] : [clone.teamAllReposRead as any];
+      const arr = Array.isArray(clone.teamAllReposRead)
+        ? (clone.teamAllReposRead as any[])
+        : [clone.teamAllReposRead as any];
       for (const value of arr) {
         settings.specialTeams.push({
           specialTeam: SpecialTeam.SystemRead,
           teamId: Number(value),
-        });  
+        });
       }
     }
     delete clone.teamAllReposRead;
 
     if (clone.teamAllReposWrite) {
-      const arr = Array.isArray(clone.teamAllReposWrite) ? clone.teamAllReposWrite as any[] : [clone.teamAllReposWrite as any];
+      const arr = Array.isArray(clone.teamAllReposWrite)
+        ? (clone.teamAllReposWrite as any[])
+        : [clone.teamAllReposWrite as any];
       for (const value of arr) {
         settings.specialTeams.push({
           specialTeam: SpecialTeam.SystemWrite,
           teamId: Number(value),
-        });  
+        });
       }
     }
     delete clone.teamAllReposWrite;
 
     if (clone.teamAllReposAdmin) {
-      const arr = Array.isArray(clone.teamAllReposAdmin) ? clone.teamAllReposAdmin as any[] : [clone.teamAllReposAdmin as any];
+      const arr = Array.isArray(clone.teamAllReposAdmin)
+        ? (clone.teamAllReposAdmin as any[])
+        : [clone.teamAllReposAdmin as any];
       for (const value of arr) {
         settings.specialTeams.push({
           specialTeam: SpecialTeam.SystemAdmin,
           teamId: Number(value),
-        });  
+        });
       }
     }
     delete clone.teamAllReposAdmin;
 
     if (clone.teamSudoers) {
-      const arr = Array.isArray(clone.teamSudoers) ? clone.teamSudoers as any[] : [clone.teamSudoers as any];
+      const arr = Array.isArray(clone.teamSudoers)
+        ? (clone.teamSudoers as any[])
+        : [clone.teamSudoers as any];
       for (const value of arr) {
         settings.specialTeams.push({
           specialTeam: SpecialTeam.Sudo,
           teamId: Number(value),
-        });  
+        });
       }
     }
     delete clone.teamSudoers;
 
     if (clone.teamPortalSudoers) {
-      const arr = Array.isArray(clone.teamPortalSudoers) ? clone.teamPortalSudoers as any[] : [clone.teamPortalSudoers as any];
+      const arr = Array.isArray(clone.teamPortalSudoers)
+        ? (clone.teamPortalSudoers as any[])
+        : [clone.teamPortalSudoers as any];
       for (const value of arr) {
         settings.specialTeams.push({
           specialTeam: SpecialTeam.GlobalSudo,
           teamId: Number(value),
-        });  
+        });
       }
     }
     delete clone.teamPortalSudoers;
@@ -284,7 +347,9 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
 
     const remainingKeys = Object.getOwnPropertyNames(clone);
     if (remainingKeys.length) {
-      const message = `There are static keys which are not recognized by the settings migration system. Please have the system updated before trying to adopt or import this organization. Keys remaining from the static configuration: ${remainingKeys.join(', ')}`;
+      const message = `There are static keys which are not recognized by the settings migration system. Please have the system updated before trying to adopt or import this organization. Keys remaining from the static configuration: ${remainingKeys.join(
+        ', '
+      )}`;
       throw new Error(message);
     }
     return settings;
@@ -296,78 +361,94 @@ export class OrganizationSettingFixedQueryAll implements IEntityMetadataFixedQue
 }
 
 export class OrganizationSettingFixedQueryMostRecentlyUpdatedActive implements IEntityMetadataFixedQuery {
-  public readonly fixedQueryType: FixedQueryType = FixedQueryType.OrganizationSettingsGetMostRecentlyUpdatedActive;
+  public readonly fixedQueryType: FixedQueryType =
+    FixedQueryType.OrganizationSettingsGetMostRecentlyUpdatedActive;
 }
 
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => { return new OrganizationSetting(); });
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => {
+  return new OrganizationSetting();
+});
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, organizationId);
 
-EntityMetadataMappings.Register(type, MemorySettings.MemoryMapping, new Map<string, string>([
-  // [Field.organizationId, 'organizationId'], // the ID field
-  [Field.setupByCorporateDisplayName, (Field.setupByCorporateDisplayName as string).toLowerCase()],
-  [Field.setupByCorporateId, (Field.setupByCorporateId as string).toLowerCase()],
-  [Field.setupByCorporateUsername, (Field.setupByCorporateUsername as string).toLowerCase()],
-  [Field.setupDate, (Field.setupDate as string).toLowerCase()],
-  [Field.active, (Field.active as string).toLowerCase()],
-  [Field.updated, (Field.updated as string).toLowerCase()],
-  [Field.organizationName, (Field.organizationName as string).toLowerCase()],
-  [Field.portalDescription, (Field.portalDescription as string).toLowerCase()],
-  [Field.operationsNotes, (Field.operationsNotes as string).toLowerCase()],
-  [Field.setupByCorporateDisplayName, (Field.setupByCorporateDisplayName as string).toLowerCase()],
-  [Field.installations, (Field.installations as string).toLowerCase()],
-  [Field.features, (Field.features as string).toLowerCase()],
-  [Field.properties, (Field.properties as string).toLowerCase()],
-  [Field.specialTeams, (Field.specialTeams as string).toLowerCase()],
-  [Field.templates, (Field.templates as string).toLowerCase()],
-  [Field.legalEntities, (Field.legalEntities as string).toLowerCase()],
-]));
-EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, [organizationId]);
+MemoryConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
+EntityMetadataMappings.RuntimeValidateMappings(type, MemorySettings.MemoryMapping, fieldNames, [
+  organizationId,
+]);
 
-PostgresConfiguration.SetDefaultTableName(type, 'organizationsettings');
+PostgresConfiguration.SetDefaultTableName(type, tableName);
 EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, 'organizationsetting');
 EntityMetadataMappings.Register(type, PostgresSettings.PostgresDateColumns, ['updated', 'setupDate']);
-PostgresConfiguration.MapFieldsToColumnNames(type, new Map<string, string>([
-  [Field.setupByCorporateDisplayName, (Field.setupByCorporateDisplayName as string).toLowerCase()],
-  [Field.setupByCorporateId, (Field.setupByCorporateId as string).toLowerCase()],
-  [Field.setupByCorporateUsername, (Field.setupByCorporateUsername as string).toLowerCase()],
-  [Field.setupDate, (Field.setupDate as string).toLowerCase()],
-  [Field.active, (Field.active as string).toLowerCase()],
-  [Field.updated, (Field.updated as string).toLowerCase()],
-  [Field.organizationName, (Field.organizationName as string).toLowerCase()],
-  [Field.portalDescription, (Field.portalDescription as string).toLowerCase()],
-  [Field.operationsNotes, (Field.operationsNotes as string).toLowerCase()],
-  [Field.setupByCorporateDisplayName, (Field.setupByCorporateDisplayName as string).toLowerCase()],
-  [Field.installations, (Field.installations as string).toLowerCase()],
-  [Field.features, (Field.features as string).toLowerCase()],
-  [Field.properties, (Field.properties as string).toLowerCase()],
-  [Field.specialTeams, (Field.specialTeams as string).toLowerCase()],
-  [Field.templates, (Field.templates as string).toLowerCase()],
-  [Field.legalEntities, (Field.legalEntities as string).toLowerCase()],
-]));
+PostgresConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
 PostgresConfiguration.ValidateMappings(type, fieldNames, [organizationId]);
 
-EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
-  const entityTypeColumn = mapMetadataPropertiesToFields[EntityField.Type];
-  // const entityIDColumn = mapMetadataPropertiesToFields[EntityField.ID];
-  const entityTypeValue = getEntityTypeColumnValue(type);
-  switch (query.fixedQueryType) {
-    case FixedQueryType.OrganizationSettingsGetAll: {
-      return PostgresGetAllEntities(tableName, entityTypeColumn, entityTypeValue);
+EntityMetadataMappings.Register(
+  type,
+  PostgresSettings.PostgresQueries,
+  (
+    query: IEntityMetadataFixedQuery,
+    mapMetadataPropertiesToFields: string[],
+    metadataColumnName: string,
+    tableName: string,
+    getEntityTypeColumnValue
+  ) => {
+    const entityTypeColumn = mapMetadataPropertiesToFields[EntityField.Type];
+    // const entityIDColumn = mapMetadataPropertiesToFields[EntityField.ID];
+    const entityTypeValue = getEntityTypeColumnValue(type);
+    switch (query.fixedQueryType) {
+      case FixedQueryType.OrganizationSettingsGetAll: {
+        return PostgresGetAllEntities(tableName, entityTypeColumn, entityTypeValue);
+      }
+      //  case FixedQueryType.OrganizationSettingsGetMostRecentlyUpdatedActive: {
+      default:
+        throw new Error(
+          `The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}`
+        );
     }
-//  case FixedQueryType.OrganizationSettingsGetMostRecentlyUpdatedActive: {
-    default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}`);
   }
-});
+);
 
-EntityMetadataMappings.Register(type, MemorySettings.MemoryQueries, (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
-  switch (query.fixedQueryType) {
-    case FixedQueryType.OrganizationSettingsGetAll:
-      return allInTypeBin;
-    default:
-      throw new Error(`The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}`);
+EntityMetadataMappings.Register(
+  type,
+  MemorySettings.MemoryQueries,
+  (query: IEntityMetadataFixedQuery, allInTypeBin: IEntityMetadata[]) => {
+    switch (query.fixedQueryType) {
+      case FixedQueryType.OrganizationSettingsGetAll:
+        return allInTypeBin;
+      default:
+        throw new Error(
+          `The fixed query type "${query.fixedQueryType}" is not implemented by this provider for the type ${type}`
+        );
+    }
   }
-});
+);
+
+TableConfiguration.SetDefaultTableName(type, tableName);
+TableConfiguration.SetDateColumns(type, [Field.updated]);
+TableConfiguration.MapFieldsToColumnNamesFromListLowercased(type, fieldNames);
+TableConfiguration.SetNoPrefixForPartitionKey(type);
+TableConfiguration.SetFixedPartitionKey(type, tableName);
+EntityMetadataMappings.RuntimeValidateMappings(type, TableSettings.TableMapping, fieldNames, [
+  primaryKeyFieldName,
+]);
+
+EntityMetadataMappings.Register(
+  type,
+  TableSettings.TableQueries,
+  (query: IEntityMetadataFixedQuery, fixedPartitionKey: string) => {
+    switch (query.fixedQueryType) {
+      case FixedQueryType.OrganizationSettingsGetAll: {
+        return {
+          filter: odata`PartitionKey eq ${fixedPartitionKey}`,
+        } as TableEntityQueryOptions;
+      }
+      default: {
+        throw new Error(
+          `The fixed query type ${query.fixedQueryType} is not supported currently by this ${type} provider`
+        );
+      }
+    }
+  }
+);
 
 // Runtime validation of FieldNames
 for (let i = 0; i < fieldNames.length; i++) {

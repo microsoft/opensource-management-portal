@@ -3,19 +3,36 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { RepositoryTeamCacheEntity, EntityImplementation, RepositoryTeamCacheFixedQueryAll, RepositoryTeamCacheFixedQueryByTeamId, RepositoryTeamCacheFixedQueryByRepositoryId, RepositoryTeamCacheFixedQueryByTeamIds, RepositoryTeamCacheDeleteByOrganizationId, RepositoryTeamCacheGetOrganizationIdsQuery, RepositoryTeamCacheDeleteByRepositoryId } from './repositoryTeamCache';
+import {
+  IEntityMetadata,
+  EntityMetadataBase,
+  IEntityMetadataBaseOptions,
+} from '../../lib/entityMetadataProvider/entityMetadata';
+import {
+  RepositoryTeamCacheEntity,
+  EntityImplementation,
+  RepositoryTeamCacheFixedQueryAll,
+  RepositoryTeamCacheFixedQueryByTeamId,
+  RepositoryTeamCacheFixedQueryByRepositoryId,
+  RepositoryTeamCacheFixedQueryByTeamIds,
+  RepositoryTeamCacheDeleteByOrganizationId,
+  RepositoryTeamCacheGetOrganizationIdsQuery,
+  RepositoryTeamCacheDeleteByRepositoryId,
+} from './repositoryTeamCache';
 
 const thisProviderType = EntityImplementation.Type;
 
-export interface IRepositoryTeamCacheCreateOptions extends IEntityMetadataBaseOptions {
-}
+export interface IRepositoryTeamCacheCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface IRepositoryTeamCacheProvider {
   initialize(): Promise<void>;
 
   getRepositoryTeamCache(uniqueId: string): Promise<RepositoryTeamCacheEntity>;
-  getRepositoryTeamCacheByTeamId(organizationId: string, repositoryId: string, teamId: string): Promise<RepositoryTeamCacheEntity>;
+  getRepositoryTeamCacheByTeamId(
+    organizationId: string,
+    repositoryId: string,
+    teamId: string
+  ): Promise<RepositoryTeamCacheEntity>;
   createRepositoryTeamCache(metadata: RepositoryTeamCacheEntity): Promise<string>;
   updateRepositoryTeamCache(metadata: RepositoryTeamCacheEntity): Promise<void>;
   deleteRepositoryTeamCache(metadata: RepositoryTeamCacheEntity): Promise<void>;
@@ -34,8 +51,14 @@ export class RepositoryTeamCacheProvider extends EntityMetadataBase implements I
     EntityImplementation.EnsureDefinitions();
   }
 
-  async getRepositoryTeamCacheByTeamId(organizationId: string, repositoryId: string, teamId: string): Promise<RepositoryTeamCacheEntity> {
-    return this.getRepositoryTeamCache(RepositoryTeamCacheEntity.GenerateIdentifier(organizationId, repositoryId, teamId));
+  async getRepositoryTeamCacheByTeamId(
+    organizationId: string,
+    repositoryId: string,
+    teamId: string
+  ): Promise<RepositoryTeamCacheEntity> {
+    return this.getRepositoryTeamCache(
+      RepositoryTeamCacheEntity.GenerateIdentifier(organizationId, repositoryId, teamId)
+    );
   }
 
   async getRepositoryTeamCache(uniqueId: string): Promise<RepositoryTeamCacheEntity> {
@@ -104,7 +127,7 @@ export class RepositoryTeamCacheProvider extends EntityMetadataBase implements I
   async queryAllOrganizationIds(): Promise<string[]> {
     const query = new RepositoryTeamCacheGetOrganizationIdsQuery();
     const results = await this._entities.fixedQueryMetadata(thisProviderType, query);
-    return results.map(row => row['organizationid']);
+    return results.map((row) => row['organizationid']);
   }
 
   async deleteByOrganizationId(organizationId: string): Promise<void> {

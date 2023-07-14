@@ -1,8 +1,6 @@
-[Docs index](index.md)
-
 # How the app authenticates with GitHub
 
-**Modern GitHub App is strongly recommended**
+**Modern GitHub App is strongly recommended!**
 
 The service as a monolith is able to partition keys and authentication for
 GitHub resources at the organization level.

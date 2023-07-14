@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import Debug from 'debug';
 import objectPath from 'object-path';
 import { URL } from 'url';
 
@@ -19,15 +20,18 @@ import { URL } from 'url';
 
 const envProtocol = 'env:';
 
+const debug = Debug.debug('config');
+
 export interface IEnvironmentProvider {
   get: (key: string) => string | undefined;
 }
 
 export interface IEnvironmentProviderOptions {
   provider?: IEnvironmentProvider;
+  overrideValues?: Record<string, string>;
 }
 
-type EnvironmentValueType = string | number | boolean | undefined;
+type EnvironmentValueType = string | number | boolean | Date | undefined;
 
 function getUrlIfEnvironmentVariable(value: string) {
   try {
@@ -36,8 +40,7 @@ function getUrlIfEnvironmentVariable(value: string) {
     if (u.protocol === envProtocol) {
       return u;
     }
-  }
-  catch (typeError) {
+  } catch (typeError) {
     /* ignore */
   }
   return null;
@@ -59,7 +62,10 @@ function identifyPaths(node: any, prefix?: string) {
     if (!envUrl) {
       continue;
     }
-    const originalHostname = value.substr(value.indexOf(envProtocol) + envProtocol.length + 2, envUrl.hostname.length);
+    const originalHostname = value.substr(
+      value.indexOf(envProtocol) + envProtocol.length + 2,
+      envUrl.hostname.length
+    );
     if (originalHostname.toLowerCase() === envUrl.hostname.toLowerCase()) {
       envUrl.hostname = originalHostname;
     }
@@ -68,23 +74,30 @@ function identifyPaths(node: any, prefix?: string) {
   return paths;
 }
 
-export function processEnvironmentProvider() {
+export function processEnvironmentProvider(options?: IEnvironmentProviderOptions) {
   return {
     get: (key: string) => {
-      return process.env[key];
+      const { overrideValues } = options || {};
+      if (overrideValues && overrideValues[key] && overrideValues[key] !== process.env[key]) {
+        const overrideOrSetDescriptor = process.env[key] === undefined ? 'Setting' : 'Overriding';
+        debug(
+          `${overrideOrSetDescriptor} environment variable ${key} to .env value "${overrideValues[key]}" instead of value "${process.env[key]}" from process.env`
+        );
+      }
+      return overrideValues && overrideValues[key] ? overrideValues[key] : process.env[key];
     },
   };
 }
 
 function createClient(options: IEnvironmentProviderOptions) {
   options = options || {};
-  const provider = options.provider || processEnvironmentProvider();
+  const provider = options.provider || processEnvironmentProvider(options);
   return {
     resolveObjectVariables: async (object: any) => {
       let paths = null;
       try {
         paths = identifyPaths(object);
-      } catch(parseError) {
+      } catch (parseError) {
         throw parseError;
       }
       const names = Object.getOwnPropertyNames(paths);
@@ -107,6 +120,14 @@ function createClient(options: IEnvironmentProviderOptions) {
         if (hasQueryKey('trueIf')) {
           variableValue = getQueryKey('trueIf') == /* loose */ variableValue;
         }
+        // If a defined "ignore moniker" is present, replace it
+        // with empty (designed for Codespaces scenarios)
+        if (hasQueryKey('ignoreMoniker')) {
+          const ignoreMoniker = getQueryKey('ignoreMoniker');
+          if (ignoreMoniker) {
+            variableValue = ((variableValue as string) || '').replace(ignoreMoniker, '');
+          }
+        }
         // Cast if a type is set to 'boolean' or 'integer'
         if (hasQueryKey('type')) {
           const currentValue = variableValue;
@@ -114,20 +135,41 @@ function createClient(options: IEnvironmentProviderOptions) {
           switch (type) {
             case 'boolean':
             case 'bool': {
-              if (currentValue && currentValue !== 'false' && currentValue != '0' && currentValue !== 'False') {
+              if (
+                currentValue &&
+                currentValue !== 'false' &&
+                currentValue != '0' &&
+                currentValue !== 'False'
+              ) {
                 variableValue = true;
               } else {
                 variableValue = false;
               }
               break;
             }
+            case 'date': {
+              variableValue = new Date(currentValue as string);
+              break;
+            }
             case 'integer':
             case 'int': {
-              variableValue = parseInt(currentValue as string, 10);
+              const attemptedValue = parseInt(currentValue as string, 10);
+              if (currentValue === undefined) {
+                variableValue = currentValue;
+              } else if (isNaN(attemptedValue)) {
+                console.warn(
+                  `The value "${currentValue}" for the env:// variable "${variableName}" is not a valid integer. Using the original value instead.`
+                );
+                variableValue = currentValue;
+              } else {
+                variableValue = attemptedValue;
+              }
               break;
             }
             default: {
-              throw new Error(`The "type" parameter for the env:// string was set to "${type}", a type that is currently not supported.`);
+              throw new Error(
+                `The "type" parameter for the env:// string was set to "${type}", a type that is currently not supported.`
+              );
             }
           }
         }

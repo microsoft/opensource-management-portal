@@ -3,7 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IOperationsInstance, ICorporateLink, throwIfNotCapable, IOperationsLinks, CoreCapability, IOperationsProviders } from '../interfaces';
+import {
+  IOperationsInstance,
+  ICorporateLink,
+  throwIfNotCapable,
+  IOperationsLinks,
+  CoreCapability,
+  IOperationsProviders,
+} from '../interfaces';
 import { Organization } from './organization';
 
 export class OrganizationMember {
@@ -77,7 +84,9 @@ export class OrganizationMember {
       throw new Error(`Organization member ID ${this.id} is not linked.`);
     }
     if (!link.corporateUsername) {
-      throw new Error(`Organization member ID ${this.id} is linked to corporate ID ${link.corporateId} but does not have a corporate username.`);
+      throw new Error(
+        `Organization member ID ${this.id} is linked to corporate ID ${link.corporateId} but does not have a corporate username.`
+      );
     }
     const providers = opsProvs.providers;
     if (!providers.mailAddressProvider) {

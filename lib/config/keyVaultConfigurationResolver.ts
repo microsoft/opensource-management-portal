@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import Debug from 'debug';
 import { ClientSecretCredential } from '@azure/identity';
 import { KeyVaultSecret, SecretClient } from '@azure/keyvault-secrets';
 import objectPath from 'object-path';
@@ -31,11 +32,17 @@ import { URL } from 'url';
 // not be endorsed by the engineering team responsible for KeyVault, but for our
 // group and our Node apps, it has been very helpful.
 
+const debug = Debug.debug('config');
+
 const keyVaultProtocol = 'keyvault:';
 const httpsProtocol = 'https:';
 const secretsPath = '/secrets/';
 
-async function getSecret(secretClient: SecretClient, secretStash: Map<string, KeyVaultSecret>, secretId: string) {
+async function getSecret(
+  secretClient: SecretClient,
+  secretStash: Map<string, KeyVaultSecret>,
+  secretId: string
+) {
   const cached = secretStash.get(secretId);
   if (cached) {
     return cached;
@@ -67,8 +74,7 @@ function getUrlIfVault(value) {
     if (keyVaultUrl.protocol === keyVaultProtocol) {
       return keyVaultUrl;
     }
-  }
-  catch (typeError) {
+  } catch (typeError) {
     /* ignore */
   }
   return undefined;
@@ -113,18 +119,24 @@ function createAndWrapKeyVaultClient(options: IKeyVaultConfigurationOptions) {
   const vaultToClient = new Map<string, SecretClient>();
   let cachedOptions: AzureAuthenticationPair = null;
   let cachedCredentials = null;
-  const getSecretClient = options.getSecretClient || (async (vault: string) => {
-    if (!cachedOptions) {
-      cachedOptions = await options.getClientCredentials();
-      cachedCredentials = new ClientSecretCredential(cachedOptions.tenantId, cachedOptions.clientId, cachedOptions.clientSecret);
-    }
-    let client = vaultToClient.get(vault);
-    if (!client) {
-      client = new SecretClient(vault, cachedCredentials);
-      vaultToClient.set(vault, client);
-    }
-    return client;
-  });
+  const getSecretClient =
+    options.getSecretClient ||
+    (async (vault: string) => {
+      if (!cachedOptions) {
+        cachedOptions = await options.getClientCredentials();
+        cachedCredentials = new ClientSecretCredential(
+          cachedOptions.tenantId,
+          cachedOptions.clientId,
+          cachedOptions.clientSecret
+        );
+      }
+      let client = vaultToClient.get(vault);
+      if (!client) {
+        client = new SecretClient(vault, cachedCredentials);
+        vaultToClient.set(vault, client);
+      }
+      return client;
+    });
   return {
     getObjectSecrets: function (object: any) {
       return getSecretsFromVault(getSecretClient, object);
@@ -164,11 +176,12 @@ async function getSecretsFromVault(getSecretClient: (vault: string) => Promise<S
     const uniques = Array.from(uniqueUris.values());
     for (const uniqueSecretId of uniques) {
       try {
-        let value = secretStash.get(uniqueSecretId);
+        const value = secretStash.get(uniqueSecretId);
         if (!value) {
           const vaultUrl = uniqueUriToVault.get(uniqueSecretId);
           const secretClient = await getSecretClient(vaultUrl);
           const value = await getSecret(secretClient, secretStash, uniqueSecretId);
+          debug(`Retrieved secret ${uniqueSecretId} value`);
           secretStash.set(uniqueSecretId, value);
         }
       } catch (resolveSecretError) {

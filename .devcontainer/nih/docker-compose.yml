@@ -1,0 +1,23 @@
+version: '3.9'
+services:
+  web:
+    build: .
+    volumes:
+      - ../..:/workspace:cached
+    command: sleep infinity
+    network_mode: service:db
+  redis:
+    image: 'redis:alpine'
+    command: redis-server --requirepass redispw
+  db:
+    image: 'postgres:alpine'
+    restart: unless-stopped
+    volumes:
+      - ../../pg.sql:/docker-entrypoint-initdb.d/pg.sql
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+volumes:
+  postgres-data:

@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { IndividualContext } from '../../user';
+import { IndividualContext } from '../../business/user';
 import { jsonError } from '../../middleware';
 import { ErrorHelper, getProviders } from '../../transitional';
 import { unlinkInteractive } from '../../routes/unlink';
@@ -46,8 +46,8 @@ async function validateLinkOk(req: ReposAppRequest, res, next) {
     const userType = details.userType;
     const displayName = details.displayName;
     const userPrincipalName = details.userPrincipalName;
-    let block = userType as string === 'Guest';
-    let blockedRecord = block ? 'BLOCKED' : 'not blocked';
+    const block = (userType as string) === 'Guest';
+    const blockedRecord = block ? 'BLOCKED' : 'not blocked';
     insights.trackEvent({
       name: 'LinkValidateNotGuestGraphSuccess',
       properties: {
@@ -60,13 +60,21 @@ async function validateLinkOk(req: ReposAppRequest, res, next) {
     });
     if (block) {
       insights.trackMetric({ name: 'LinksBlockedForGuests', value: 1 });
-      const err = jsonError(`This system is not available to guests. You are currently signed in as ${displayName} ${userPrincipalName}. Please sign out or try a private browser window.`, 400);
+      const err = jsonError(
+        `This system is not available to guests. You are currently signed in as ${displayName} ${userPrincipalName}. Please sign out or try a private browser window.`,
+        400
+      );
       insights?.trackException({ exception: err });
       return next(err);
     }
     const manager = await providers.graphProvider.getManagerById(aadId);
     if (!manager || !manager.userPrincipalName) {
-      return next(jsonError('You do not have an active manager entry in the directory, so cannot yet use this app to link.', 400));
+      return next(
+        jsonError(
+          'You do not have an active manager entry in the directory, so cannot yet use this app to link.',
+          400
+        )
+      );
     }
     return next();
   } catch (graphError) {
@@ -77,21 +85,34 @@ async function validateLinkOk(req: ReposAppRequest, res, next) {
         name: 'LinkValidateNotGuestGraphFailure',
       },
     });
-    return next(jsonError(graphError.toString() || 'Generic lookup error', ErrorHelper.GetStatus(graphError) || 500));
+    return next(
+      jsonError(graphError.toString() || 'Generic lookup error', ErrorHelper.GetStatus(graphError) || 500)
+    );
   }
 }
 
-router.delete('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-  return unlinkInteractive(true, activeContext, req, res, next);
-}));
+router.get('/banner', (req: ReposAppRequest, res, next) => {
+  const { config } = getProviders(req);
+  const offline = config?.github?.links?.provider?.linkingOfflineMessage;
+  return res.json({ offline });
+});
 
-router.post('/',
+router.delete(
+  '/',
+  asyncHandler(async (req: ReposAppRequest, res, next) => {
+    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+    return unlinkInteractive(true, activeContext, req, res, next);
+  })
+);
+
+router.post(
+  '/',
   validateLinkOk,
   asyncHandler(async (req: ReposAppRequest, res, next) => {
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     return interactiveLinkUser(true, activeContext, req, res, next);
-  }));
+  })
+);
 
 router.use('*', (req: ReposAppRequest, res, next) => {
   return next(jsonError('API or route not found', 404));

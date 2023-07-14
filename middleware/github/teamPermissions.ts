@@ -4,9 +4,14 @@
 //
 
 import { Team } from '../../business';
-import { GitHubTeamRole, ITeamMembershipRoleState, OrganizationMembershipState, ReposAppRequest } from '../../interfaces';
+import {
+  GitHubTeamRole,
+  ITeamMembershipRoleState,
+  OrganizationMembershipState,
+  ReposAppRequest,
+} from '../../interfaces';
 import { getProviders } from '../../transitional';
-import { IndividualContext } from '../../user';
+import { IndividualContext } from '../../business/user';
 import getCompanySpecificDeployment from '../companySpecificDeployment';
 
 // --- team2 context
@@ -49,17 +54,23 @@ export async function AddTeamMembershipToRequest(req: ReposAppRequest, res, next
       membershipStatus: null,
       membershipState: null,
       isLinked: false,
-    }
+    };
     req[teamStatusCacheKeyName] = noLink;
   } else {
     const login = activeContext.getGitHubIdentity().username;
     try {
       const statusResult = await team2.getMembershipEfficiently(login);
       const value: IRequestTeamMembershipStatus = {
-        membershipStatus: statusResult && (statusResult as ITeamMembershipRoleState).role ? (statusResult as ITeamMembershipRoleState).role : null,
-        membershipState: statusResult && (statusResult as ITeamMembershipRoleState).state ? (statusResult as ITeamMembershipRoleState).state : null,
+        membershipStatus:
+          statusResult && (statusResult as ITeamMembershipRoleState).role
+            ? (statusResult as ITeamMembershipRoleState).role
+            : null,
+        membershipState:
+          statusResult && (statusResult as ITeamMembershipRoleState).state
+            ? (statusResult as ITeamMembershipRoleState).state
+            : null,
         isLinked: true,
-      }
+      };
       req[teamStatusCacheKeyName] = value;
     } catch (problem) {
       console.dir(problem);
@@ -96,7 +107,12 @@ export async function AddTeamPermissionsToRequest(req: ReposAppRequest, res, nex
     sudo: false,
   };
   const companySpecific = getCompanySpecificDeployment();
-  companySpecific?.middleware?.teamPermissions?.afterPermissionsInitialized && companySpecific.middleware.teamPermissions.afterPermissionsInitialized(providers, teamPermissions, activeContext);
+  companySpecific?.middleware?.teamPermissions?.afterPermissionsInitialized &&
+    companySpecific.middleware.teamPermissions.afterPermissionsInitialized(
+      providers,
+      teamPermissions,
+      activeContext
+    );
   req[teamPermissionsCacheKeyName] = teamPermissions;
   if (activeContext.link) {
     teamPermissions.isLinked = true;
@@ -130,11 +146,17 @@ export async function AddTeamPermissionsToRequest(req: ReposAppRequest, res, nex
       }
     }
   }
-  
+
   // Make a permission decision
   if (teamPermissions.maintainer || teamPermissions.sudo) {
     teamPermissions.allowAdministration = true;
   }
-  companySpecific?.middleware?.teamPermissions?.afterPermissionsComputed && await companySpecific.middleware.teamPermissions.afterPermissionsComputed(providers, teamPermissions, activeContext, team2);
+  companySpecific?.middleware?.teamPermissions?.afterPermissionsComputed &&
+    (await companySpecific.middleware.teamPermissions.afterPermissionsComputed(
+      providers,
+      teamPermissions,
+      activeContext,
+      team2
+    ));
   return next();
-};
+}

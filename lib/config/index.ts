@@ -33,9 +33,9 @@ export interface IPainlessConfigGet {
 
 type Resolver = (object: any) => Promise<void>;
 
-type Resolvers = Resolver[] & { environment?: IPainlessConfigGet; };
+type Resolvers = Resolver[] & { environment?: IPainlessConfigGet };
 
-export type InnerError = Error & { innerError?: Error; };
+export type InnerError = Error & { innerError?: Error };
 
 export interface ILibraryOptions {
   options?: IProviderOptions;
@@ -50,6 +50,7 @@ export interface IProviderOptions {
   applicationRoot?: string;
   skipDotEnv?: boolean;
   directoryName?: string;
+  moduleDirectoryName?: string;
   treatErrorsAsWarnings?: boolean;
   requireConfigurationDirectory?: boolean;
   graph?: any;
@@ -58,7 +59,7 @@ export interface IProviderOptions {
 
 function createDefaultResolvers(libraryOptions: ILibraryOptions) {
   // The core environment resolver is used to make sure that the
-  // right variables are used for KeyVault or other boostrapping
+  // right variables are used for KeyVault or other bootstrapping
   const environmentProvider = libraryOptions.environment || painlessConfigAsCode(libraryOptions?.options);
 
   try {
@@ -73,7 +74,11 @@ function createDefaultResolvers(libraryOptions: ILibraryOptions) {
   const keyVaultOptions = {
     getClientCredentials: async () => {
       unshiftOptionalVariable(keyVaultClientIdFallbacks, environmentProvider, 'KEYVAULT_CLIENT_ID_KEY');
-      unshiftOptionalVariable(keyVaultClientSecretFallbacks, environmentProvider, 'KEYVAULT_CLIENT_SECRET_KEY');
+      unshiftOptionalVariable(
+        keyVaultClientSecretFallbacks,
+        environmentProvider,
+        'KEYVAULT_CLIENT_SECRET_KEY'
+      );
       unshiftOptionalVariable(keyVaultTenantFallbacks, environmentProvider, 'KEYVAULT_TENANT_ID_KEY');
       async function getEnvironmentOrVolumeValue(fallbacks: string[]) {
         let value = getEnvironmentValue(environmentProvider, fallbacks) as string;
@@ -106,7 +111,7 @@ function createDefaultResolvers(libraryOptions: ILibraryOptions) {
 }
 
 function unshiftOptionalVariable(arr: string[], environmentProvider: IPainlessConfigGet, key: string) {
-  let value = environmentProvider.get(key);
+  const value = environmentProvider.get(key);
   if (value) {
     arr.unshift(value);
   }
@@ -123,13 +128,19 @@ function getEnvironmentValue(environmentProvider: IPainlessConfigGet, potentialN
   }
 }
 
-async function getConfigGraph(libraryOptions: ILibraryOptions, options: IProviderOptions, environmentProvider: IPainlessConfigGet) {
+async function getConfigGraph(
+  libraryOptions: ILibraryOptions,
+  options: IProviderOptions,
+  environmentProvider: IPainlessConfigGet
+) {
   if (options.graph) {
     return options.graph;
   }
-  let graphProvider = options.graphProvider || libraryOptions.graphProvider || multiGraphBuilder;
+  const graphProvider = options.graphProvider || libraryOptions.graphProvider || multiGraphBuilder;
   if (!graphProvider) {
-    throw new Error('No graph provider configured for this environment: no options.graphProvider or libraryOptions.graphProvider or multiGraphBuilder');
+    throw new Error(
+      'No graph provider configured for this environment: no options.graphProvider or libraryOptions.graphProvider or multiGraphBuilder'
+    );
   }
   const graphLibraryApi: ILibraryOptions = {
     options,
@@ -148,15 +159,25 @@ function initialize(libraryOptions?: ILibraryOptions) {
   const environmentProvider = resolvers.environment as IPainlessConfigGet;
   return {
     resolve: async function (options: IProviderOptions) {
-      if (typeof (options) === 'function') {
+      if (typeof options === 'function') {
         const deprecatedCallback = options as any as (err: Error) => void;
-        return deprecatedCallback(new Error('This library no longer supports callbacks. Please use native JavaScript promises, i.e. const config = await painlessConfigResolver.resolve();'));
+        return deprecatedCallback(
+          new Error(
+            'This library no longer supports callbacks. Please use native JavaScript promises, i.e. const config = await painlessConfigResolver.resolve();'
+          )
+        );
       }
       options = options || {};
       // Find, build or dynamically generate the configuration graph
-      const graph = await getConfigGraph(libraryOptions as any as ILibraryOptions, options, environmentProvider);
+      const graph = await getConfigGraph(
+        libraryOptions as any as ILibraryOptions,
+        options,
+        environmentProvider
+      );
       if (!graph) {
-        throw new Error('No configuration "graph" provided as an option to this library. Unless using a configuration graph provider, the graph option must be included.');
+        throw new Error(
+          'No configuration "graph" provided as an option to this library. Unless using a configuration graph provider, the graph option must be included.'
+        );
       }
       try {
         // Synchronously, in order, resolve the graph

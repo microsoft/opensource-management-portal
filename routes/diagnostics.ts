@@ -27,17 +27,20 @@ interface ISafeUserView {
 
 router.get('/', (req: IRequestWithSession, res) => {
   const { config } = getProviders(req as any as ReposAppRequest);
-  const sessionPrefix = req['sessionStore'] && req['sessionStore'].prefix ? req['sessionStore'].prefix + ':' : null;
+  const sessionPrefix =
+    req['sessionStore'] && (req['sessionStore'] as any).prefix
+      ? (req['sessionStore'] as any).prefix + ':'
+      : null;
   const sessionIndex = sessionPrefix ? `${sessionPrefix}${req.session.id}` : req.session.id;
-  let safeUserView: ISafeUserView = {
+  const safeUserView: ISafeUserView = {
     cookies: req.cookies,
     sessionId: req.session.id,
     sessionIndex,
     user: {},
   };
   if (req.user && req.user.github) {
-    let github = {};
-    for (let key in req.user.github) {
+    const github = {};
+    for (const key in req.user.github) {
       let val = req.user.github[key];
       if (key === 'accessToken') {
         val = redacted;
@@ -46,10 +49,16 @@ router.get('/', (req: IRequestWithSession, res) => {
     }
     safeUserView.user.github = github;
   }
-  if ((req.user && req.user.githubIncreasedScope) || (req.user && req.user.github && req.user.github['scope'] === 'githubapp')) {
-    let githubIncreasedScope = {};
-    const source = req.user.github && req.user.github['scope'] === 'githubapp' ? req.user.github : req.user.githubIncreasedScope;
-    for (let key in source) {
+  if (
+    (req.user && req.user.githubIncreasedScope) ||
+    (req.user && req.user.github && req.user.github['scope'] === 'githubapp')
+  ) {
+    const githubIncreasedScope = {};
+    const source =
+      req.user.github && req.user.github['scope'] === 'githubapp'
+        ? req.user.github
+        : req.user.githubIncreasedScope;
+    for (const key in source) {
       let val = source[key];
       if (key === 'accessToken') {
         val = redacted;
@@ -59,8 +68,8 @@ router.get('/', (req: IRequestWithSession, res) => {
     safeUserView.user.githubIncreasedScope = githubIncreasedScope;
   }
   if (req.user && req.user.azure) {
-    let azure = {};
-    for (let key in req.user.azure) {
+    const azure = {};
+    for (const key in req.user.azure) {
       let val = req.user.azure[key];
       if (key === 'accessToken' || key === 'oauthToken') {
         val = redacted;
@@ -69,7 +78,7 @@ router.get('/', (req: IRequestWithSession, res) => {
     }
     safeUserView.user.azure = azure;
   }
-  for (let key in req.session) {
+  for (const key in req.session) {
     if (typeof req.session[key] !== 'object') {
       safeUserView[key] = req.session[key];
     }
@@ -83,7 +92,7 @@ router.get('/', (req: IRequestWithSession, res) => {
     config: config,
     corporateLinks: config.corporate.trainingResources['public-homepage'],
     serviceBanner: config && config.serviceMessage ? config.serviceMessage.banner : undefined,
-    title: 'Open Source Portal for GitHub - ' + config.brand.companyName
+    title: 'Open Source Portal for GitHub - ' + config.brand.companyName,
   });
 });
 

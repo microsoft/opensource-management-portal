@@ -18,13 +18,16 @@ import RouteApps from './apps';
 import { json2csvAsync } from 'json-2-csv';
 import _ from 'lodash';
 
-router.use('*', asyncHandler(async function (req: ReposAppRequest, res, next) {
-  const { corporateAdministrationProfile } = getProviders(req);
-  if (corporateAdministrationProfile && corporateAdministrationProfile.urls) {
-    req.individualContext.setInitialViewProperty('_corpAdminUrls', corporateAdministrationProfile.urls);
-  }
-  return next();
-}));
+router.use(
+  '*',
+  asyncHandler(async function (req: ReposAppRequest, res, next) {
+    const { corporateAdministrationProfile } = getProviders(req);
+    if (corporateAdministrationProfile && corporateAdministrationProfile.urls) {
+      req.individualContext.setInitialViewProperty('_corpAdminUrls', corporateAdministrationProfile.urls);
+    }
+    return next();
+  })
+);
 
 try {
   const dynamicStartupInstance = getCompanySpecificDeployment();
@@ -97,10 +100,19 @@ router.get('/users-report', async (req: ReposAppRequest, res, next) => {
                 corporateMailAddress: CorporateMailAddress,
                 corporateUsername: CorporateUsername,
                 corporateAlias: CorporateAlias,
-                corporateDisplayName: CorporateDisplayName
+                corporateDisplayName: CorporateDisplayName,
               } = memberLink;
 
-              userObj = { ...userObj, ...{ CorporateId, CorporateUsername, CorporateAlias, CorporateDisplayName, CorporateMailAddress } }
+              userObj = {
+                ...userObj,
+                ...{
+                  CorporateId,
+                  CorporateUsername,
+                  CorporateAlias,
+                  CorporateDisplayName,
+                  CorporateMailAddress,
+                },
+              };
             }
 
             users[UserLogin] = users[UserLogin] || userObj;
@@ -110,9 +122,9 @@ router.get('/users-report', async (req: ReposAppRequest, res, next) => {
               users[UserLogin].OwnedOrganizations.push(orgName);
             }
           });
-      }));
-
-    };
+        })
+      );
+    }
     // Wait for all of the promises in the checks array to be resolved
     await Promise.all(checks);
     // Define the header row for the CSV

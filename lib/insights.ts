@@ -4,7 +4,7 @@
 //
 
 import Debug from 'debug';
-const debug = Debug('appinsights');
+const debug = Debug.debug('insights');
 
 // This file was originally designed to wrap the pre-1.0.0 version of applicationinsights,
 // and so is less important today.
@@ -34,18 +34,22 @@ function createWrappedClient(propertiesToInsert: any, client: TelemetryClient): 
 }
 
 const consoleHandler = (eventNameOrProperties) => {
-  eventNameOrProperties = eventNameOrProperties || { name: 'Unknown event, may be from pre-v1.0.0 applicationinsights' };
+  eventNameOrProperties = eventNameOrProperties || {
+    name: 'Unknown event, may be from pre-v1.0.0 applicationinsights',
+  };
   let props = '';
   if (eventNameOrProperties && eventNameOrProperties.properties) {
     props = ' ';
-    for (let [key, value] of Object.entries(eventNameOrProperties.properties)) {
+    for (const [key, value] of Object.entries(eventNameOrProperties.properties)) {
       props += `${key}=${value} `;
     }
   }
-  debug((typeof(eventNameOrProperties) === 'string' ? eventNameOrProperties : eventNameOrProperties.name) + props);
+  debug(
+    (typeof eventNameOrProperties === 'string' ? eventNameOrProperties : eventNameOrProperties.name) + props
+  );
 };
 const consoleMetric = (eventNameOrProperties) => {
-  if (typeof(eventNameOrProperties) === 'string') {
+  if (typeof eventNameOrProperties === 'string') {
     debug(`Legacy applicationinsights Metric ${eventNameOrProperties} was not recorded`);
   } else {
     eventNameOrProperties = eventNameOrProperties || { name: 'UnknownMetric', value: 0 };

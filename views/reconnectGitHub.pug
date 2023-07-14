@@ -16,6 +16,6 @@ block content
     p.lead This application needs to connect to your GitHub account to continue.
     .vertical-space
       p
-        a.btn.btn-lg.btn-primary(href='/signin/github') Authenticate with GitHub
+        a.btn.btn-lg.btn-primary(href='/' + (signinPathSegment || 'signin') + '/github') Authenticate with GitHub
         | &nbsp; &nbsp; &nbsp;
         a.btn.btn-lg.btn-default(href='/signout') Sign out

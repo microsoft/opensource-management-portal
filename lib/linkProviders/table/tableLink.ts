@@ -11,9 +11,9 @@ export interface IInternalTableLinkOptions {
 }
 
 export interface ITableLinkInstanceDataHelpers {
-  delete: () => Promise<boolean>,
-  update: () => Promise<boolean>,
-  save: () => Promise<boolean>,
+  delete: () => Promise<boolean>;
+  update: () => Promise<boolean>;
+  save: () => Promise<boolean>;
 }
 
 export interface ITableLinkInstanceInternalHelpers extends ICorporateLinkExtendedDirectMethods {
@@ -52,6 +52,10 @@ export class CorporateTableLink implements ICorporateLinkExtended {
     return this._entity[this._provider.propertyMapping.corporateId];
   }
 
+  set corporateId(value: string) {
+    _updateColumn(this, this._provider.propertyMapping.corporateId, value);
+  }
+
   get corporateMailAddress(): string {
     return this._entity[this._provider.propertyMapping.corporateMailAddress];
   }
@@ -66,10 +70,6 @@ export class CorporateTableLink implements ICorporateLinkExtended {
 
   set corporateAlias(value: string) {
     _updateColumn(this, this._provider.propertyMapping.corporateAlias, value);
-  }
-
-  set corporateId(value: string) {
-    _updateColumn(this, this._provider.propertyMapping.corporateId, value);
   }
 
   get corporateUsername(): string {
@@ -152,7 +152,9 @@ function _updateColumn(self, columnName, newValue): void {
     if (self._entity[columnName] !== self._originalEntity[columnName]) {
       self._entity[columnName] = self._originalEntity[columnName];
       delete self._columnUpdates[columnName];
-      console.log(`${columnName} toggled back to original value for ${self._id} to: ${self._entity[columnName]}`);
+      console.log(
+        `${columnName} toggled back to original value for ${self._id} to: ${self._entity[columnName]}`
+      );
     }
   }
 }
@@ -181,13 +183,16 @@ function getDirtyColumns(self) {
   return self._columnUpdates;
 }
 
-function createDataHelpers(link: CorporateTableLink, provider: TableLinkProvider): ITableLinkInstanceDataHelpers {
+function createDataHelpers(
+  link: CorporateTableLink,
+  provider: TableLinkProvider
+): ITableLinkInstanceDataHelpers {
   return {
-    update: async () : Promise<boolean> => {
+    update: async (): Promise<boolean> => {
       return provider.updateLink(link);
     },
 
-    save: async () : Promise<boolean> => {
+    save: async (): Promise<boolean> => {
       try {
         return provider.updateLink(link);
       } catch (error) {
@@ -202,7 +207,7 @@ function createDataHelpers(link: CorporateTableLink, provider: TableLinkProvider
       }
     },
 
-    delete: async () : Promise<boolean> => {
+    delete: async (): Promise<boolean> => {
       return provider.deleteLink(link);
     },
   };

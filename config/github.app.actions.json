@@ -1,8 +1,8 @@
 {
-    "appId": "env://GITHUB_APP_ACTIONS_APP_ID",
-    "appKey": "env://GITHUB_APP_ACTIONS_KEY",
-    "appKeyFile": "env://GITHUB_APP_ACTIONS_KEY_FILE",
-    "webhookSecret": "",
-    "slug": "env://GITHUB_APP_ACTIONS_SLUG",
-    "description": "Optional GitHub Actions Data"
-  }
+  "appId": "env://GITHUB_APP_ACTIONS_APP_ID",
+  "appKey": "env://GITHUB_APP_ACTIONS_KEY",
+  "appKeyFile": "env://GITHUB_APP_ACTIONS_KEY_FILE",
+  "webhookSecret": "",
+  "slug": "env://GITHUB_APP_ACTIONS_SLUG",
+  "description": "Optional GitHub Actions Data"
+}

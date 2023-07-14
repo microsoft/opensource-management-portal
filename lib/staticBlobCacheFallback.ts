@@ -4,15 +4,12 @@
 //
 
 import { DefaultAzureCredential } from '@azure/identity';
-import {
-  BlobServiceClient,
-  StorageSharedKeyCredential,
-  ContainerClient,
-} from '@azure/storage-blob';
+import { BlobServiceClient, StorageSharedKeyCredential, ContainerClient } from '@azure/storage-blob';
 
 import { IProviders } from '../interfaces';
 
-const debug = require('debug')('cache');
+import Debug from 'debug';
+const debug = Debug.debug('cache');
 
 export interface IBlobCacheOptions {
   account: string;
@@ -59,13 +56,10 @@ export default class StaticBlobCacheFallback {
       console.log('Temporary note: using DefaultAzureCredential without a key');
     }
     const credential = key ? new StorageSharedKeyCredential(account, key) : new DefaultAzureCredential();
-    this._client = new BlobServiceClient(
-      `https://${account}.blob.core.windows.net`,
-      credential,
-    );
+    this._client = new BlobServiceClient(`https://${account}.blob.core.windows.net`, credential);
     try {
       this._container = this._client.getContainerClient(this._options.container);
-      if (!await this._container.exists()) {
+      if (!(await this._container.exists())) {
         await this._client.createContainer(this._options.container);
       }
     } catch (containerError) {

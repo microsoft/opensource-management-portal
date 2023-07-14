@@ -4,13 +4,22 @@
 //
 
 import { IApprovalProvider } from './approvalProvider';
-import { IEntityMetadataBaseOptions, EntityMetadataBase } from '../../lib/entityMetadataProvider/entityMetadata';
-import { TeamJoinApprovalEntity, TeamJoinRequestFixedQueryByTeam, TeamJoinRequestFixedQueryByTeams, TeamJoinRequestFixedQueryByThirdPartyUserId, TeamJoinRequestFixedQueryAll, EntityImplementation } from './teamJoinApproval';
+import {
+  IEntityMetadataBaseOptions,
+  EntityMetadataBase,
+} from '../../lib/entityMetadataProvider/entityMetadata';
+import {
+  TeamJoinApprovalEntity,
+  TeamJoinRequestFixedQueryByTeam,
+  TeamJoinRequestFixedQueryByTeams,
+  TeamJoinRequestFixedQueryByThirdPartyUserId,
+  TeamJoinRequestFixedQueryAll,
+  EntityImplementation,
+} from './teamJoinApproval';
 
 const thisProviderType = EntityImplementation.Type;
 
-export interface ITeamJoinApprovalProviderOptions extends IEntityMetadataBaseOptions {
-}
+export interface ITeamJoinApprovalProviderOptions extends IEntityMetadataBaseOptions {}
 
 export class TeamJoinApprovalProvider extends EntityMetadataBase implements IApprovalProvider {
   constructor(options: ITeamJoinApprovalProviderOptions) {

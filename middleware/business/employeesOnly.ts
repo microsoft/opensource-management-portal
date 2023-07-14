@@ -15,7 +15,11 @@ export function AuthorizeOnlyFullTimeEmployeesAndInterns(req: ReposAppRequest, r
   if (isEmployeeOrIntern(individualContext.corporateIdentity.username)) {
     return next();
   }
-  return next(new Error(`This resource is only available to full-time employees and interns at this time. Username: ${individualContext.corporateIdentity.username}`));
+  return next(
+    new Error(
+      `This resource is only available to full-time employees and interns at this time. Username: ${individualContext.corporateIdentity.username}`
+    )
+  );
 }
 
 export function isEmployeeOrIntern(upn: string): boolean {

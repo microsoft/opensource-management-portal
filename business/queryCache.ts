@@ -20,16 +20,28 @@ import { MassagePermissionsToGitHubRepositoryPermission } from '../transitional'
 import { OrganizationMemberCacheEntity } from '../entities/organizationMemberCache/organizationMemberCache';
 import { Operations } from './operations';
 import { TeamMemberCacheEntity } from '../entities/teamMemberCache/teamMemberCache';
-import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 
 import { TeamCacheEntity } from '../entities/teamCache/teamCache';
 import { RepositoryTeamCacheEntity } from '../entities/repositoryTeamCache/repositoryTeamCache';
 import { RepositoryCacheEntity } from '../entities/repositoryCache/repositoryCache';
 import { RepositoryCollaboratorCacheEntity } from '../entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
 import { Repository } from '.';
-import { IProviders, IQueryCacheTeamMembership, QueryCacheOperation, GitHubTeamRole, IQueryCacheRepository, IQueryCacheTeam, IQueryCacheTeamRepositoryPermission, IQueryCacheRepositoryCollaborator, GitHubCollaboratorType, OrganizationMembershipRole, IQueryCacheOrganizationMembership } from '../interfaces';
+import {
+  IProviders,
+  IQueryCacheTeamMembership,
+  QueryCacheOperation,
+  GitHubTeamRole,
+  IQueryCacheRepository,
+  IQueryCacheTeam,
+  IQueryCacheTeamRepositoryPermission,
+  IQueryCacheRepositoryCollaborator,
+  GitHubCollaboratorType,
+  OrganizationMembershipRole,
+  IQueryCacheOrganizationMembership,
+  GitHubRepositoryPermission,
+} from '../interfaces';
 
-const debug = Debug('querycache');
+const debug = Debug.debug('querycache');
 
 export default class QueryCache {
   private _providers: IProviders;
@@ -81,7 +93,7 @@ export default class QueryCache {
     }
     const teamMemberCacheProvider = this._providers.teamMemberCacheProvider;
     const rawEntities = await teamMemberCacheProvider.queryTeamMembersByUserId(githubId);
-    return rawEntities.map(cacheEntity => this.hydrateTeamMember(cacheEntity)).filter(real => real);
+    return rawEntities.map((cacheEntity) => this.hydrateTeamMember(cacheEntity)).filter((real) => real);
   }
 
   async teamMembers(teamId: string): Promise<IQueryCacheTeamMembership[]> {
@@ -90,7 +102,7 @@ export default class QueryCache {
     }
     const teamMemberCacheProvider = this._providers.teamMemberCacheProvider;
     const rawEntities = await teamMemberCacheProvider.queryTeamMembersByTeamId(teamId);
-    return rawEntities.map(cacheEntity => this.hydrateTeamMember(cacheEntity)).filter(real => real);
+    return rawEntities.map((cacheEntity) => this.hydrateTeamMember(cacheEntity)).filter((real) => real);
   }
 
   private hydrateTeamMember(entity: TeamMemberCacheEntity): IQueryCacheTeamMembership {
@@ -103,21 +115,29 @@ export default class QueryCache {
         role: entity.teamRole,
         userId: entity.userId,
         login: entity.login,
-      }
+      };
     } catch (noConfiguredOrganization) {
       console.dir(noConfiguredOrganization);
       return;
     }
   }
 
-  async removeOrganizationTeamMembershipsForUser(organizationId: string, userId: string): Promise<QueryCacheOperation[]> {
+  async removeOrganizationTeamMembershipsForUser(
+    organizationId: string,
+    userId: string
+  ): Promise<QueryCacheOperation[]> {
     if (!this.supportsTeamMembership) {
       throw new Error('removeOrganizationTeamMembershipsForUser not supported');
     }
     const operations = [];
     const teamMemberCacheProvider = this._providers.teamMemberCacheProvider;
-    const existingEntries = await teamMemberCacheProvider.queryTeamMembersByOrganizationIdAndUserId(organizationId, userId);
-    debug(`removeOrganizationTeamMembershipsForUser: ${existingEntries.length} team memberships to remove in the organization id=${organizationId} and user id=${userId}`);
+    const existingEntries = await teamMemberCacheProvider.queryTeamMembersByOrganizationIdAndUserId(
+      organizationId,
+      userId
+    );
+    debug(
+      `removeOrganizationTeamMembershipsForUser: ${existingEntries.length} team memberships to remove in the organization id=${organizationId} and user id=${userId}`
+    );
     for (const existing of existingEntries) {
       try {
         debug(`Removing team membership for organization id=${organizationId} user id=${userId}`);
@@ -128,7 +148,11 @@ export default class QueryCache {
     return operations;
   }
 
-  async removeTeamMember(organizationId: string, teamId: string, userId: string): Promise<QueryCacheOperation> {
+  async removeTeamMember(
+    organizationId: string,
+    teamId: string,
+    userId: string
+  ): Promise<QueryCacheOperation> {
     if (!this.supportsTeamMembership) {
       throw new Error('removeTeamMember not supported');
     }
@@ -144,23 +168,32 @@ export default class QueryCache {
     let outcome: QueryCacheOperation = null;
     if (cache) {
       await teamMemberCacheProvider.deleteTeamMemberCache(cache);
-      debug(`Removed team member user id=${userId} from team id=${teamId} in organization id=${organizationId}`);
+      debug(
+        `Removed team member user id=${userId} from team id=${teamId} in organization id=${organizationId}`
+      );
       outcome = QueryCacheOperation.Delete;
     }
     return outcome;
   }
 
-  async removeOrganizationTeamMembershipsForTeam(organizationId: string, teamId: string): Promise<QueryCacheOperation[]> {
+  async removeOrganizationTeamMembershipsForTeam(
+    organizationId: string,
+    teamId: string
+  ): Promise<QueryCacheOperation[]> {
     if (!this.supportsTeamMembership) {
       throw new Error('removeOrganizationTeamMembershipsForTeam not supported');
     }
     const operations = [];
     const teamMemberCacheProvider = this._providers.teamMemberCacheProvider;
     const existingEntries = await teamMemberCacheProvider.queryTeamMembersByTeamId(teamId);
-    debug(`removeOrganizationTeamMembershipsForTeam: ${existingEntries.length} team memberships to remove in the organization id=${organizationId} and team id=${teamId}`);
+    debug(
+      `removeOrganizationTeamMembershipsForTeam: ${existingEntries.length} team memberships to remove in the organization id=${organizationId} and team id=${teamId}`
+    );
     for (const existing of existingEntries) {
       try {
-        debug(`Removing team membership for organization id=${organizationId} team id=${teamId} user id=${existing.userId}`);
+        debug(
+          `Removing team membership for organization id=${organizationId} team id=${teamId} user id=${existing.userId}`
+        );
         await teamMemberCacheProvider.deleteTeamMemberCache(existing);
         operations.push(QueryCacheOperation.Delete);
       } catch (ignored) {}
@@ -168,7 +201,14 @@ export default class QueryCache {
     return operations;
   }
 
-  async addOrUpdateTeamMember(organizationId: string, teamId: string, userId: string, role: GitHubTeamRole, login: string, avatar: string): Promise<QueryCacheOperation> {
+  async addOrUpdateTeamMember(
+    organizationId: string,
+    teamId: string,
+    userId: string,
+    role: GitHubTeamRole,
+    login: string,
+    avatar: string
+  ): Promise<QueryCacheOperation> {
     if (!this.supportsTeamMembership) {
       throw new Error('addOrUpdateTeamMember not supported');
     }
@@ -183,7 +223,8 @@ export default class QueryCache {
       }
     }
     if (memberCache) {
-      const update = memberCache.teamRole !== role || memberCache.avatar !== avatar || memberCache.login !== login;
+      const update =
+        memberCache.teamRole !== role || memberCache.avatar !== avatar || memberCache.login !== login;
       if (update) {
         memberCache.cacheUpdated = new Date();
         memberCache.teamRole = role;
@@ -223,7 +264,11 @@ export default class QueryCache {
     return this._providers.repositoryCacheProvider.queryAllOrganizationIds();
   }
 
-  async addOrUpdateRepository(organizationId: string, repositoryId: string, repositoryDetails: any): Promise<QueryCacheOperation> {
+  async addOrUpdateRepository(
+    organizationId: string,
+    repositoryId: string,
+    repositoryDetails: any
+  ): Promise<QueryCacheOperation> {
     if (!this.supportsRepositories) {
       throw new Error('addOrUpdateRepository not supported');
     }
@@ -253,7 +298,7 @@ export default class QueryCache {
     let outcome: QueryCacheOperation = null;
     const repositoryCacheProvider = this._providers.repositoryCacheProvider;
     const clonedDetails = {};
-    repositoryFieldsToCache.forEach(key => clonedDetails[key] = repositoryDetails[key]);
+    repositoryFieldsToCache.forEach((key) => (clonedDetails[key] = repositoryDetails[key]));
 
     let repositoryCache: RepositoryCacheEntity = null;
     try {
@@ -264,11 +309,11 @@ export default class QueryCache {
       }
     }
     if (repositoryCache) {
-      const update = (
+      const update =
         !repositoryCache.organizationId ||
         !repositoryCache.repositoryDetails ||
         !repositoryCache.repositoryDetails.updated_at ||
-        repositoryCache.repositoryDetails.updated_at !== repositoryDetails.updated_at);
+        repositoryCache.repositoryDetails.updated_at !== repositoryDetails.updated_at;
       if (update) {
         repositoryCache.cacheUpdated = new Date();
         repositoryCache.organizationId = organizationId;
@@ -295,7 +340,7 @@ export default class QueryCache {
     }
     const repositoryCacheProvider = this._providers.repositoryCacheProvider;
     const entities = await repositoryCacheProvider.queryRepositoriesByOrganizationId(organizationId);
-    return entities.map(cacheEntity => this.hydrateRepository(cacheEntity)).filter(exists => exists);
+    return entities.map((cacheEntity) => this.hydrateRepository(cacheEntity)).filter((exists) => exists);
   }
 
   async allRepositories(): Promise<IQueryCacheRepository[]> {
@@ -304,7 +349,7 @@ export default class QueryCache {
     }
     const repositoryCacheProvider = this._providers.repositoryCacheProvider;
     const entities = await repositoryCacheProvider.queryAllRepositories();
-    return entities.map(cacheEntity => this.hydrateRepository(cacheEntity)).filter(exists => exists);
+    return entities.map((cacheEntity) => this.hydrateRepository(cacheEntity)).filter((exists) => exists);
   }
 
   private hydrateRepository(cacheEntity: RepositoryCacheEntity): IQueryCacheRepository {
@@ -364,13 +409,13 @@ export default class QueryCache {
     }
     const teamCacheProvider = this._providers.teamCacheProvider;
     const entities = await teamCacheProvider.queryTeamsByOrganizationId(organizationId);
-    return entities.map(cacheEntity => this.hydrateTeam(cacheEntity)).filter(exists => exists);
+    return entities.map((cacheEntity) => this.hydrateTeam(cacheEntity)).filter((exists) => exists);
   }
 
   private hydrateTeam(entity: TeamCacheEntity): IQueryCacheTeam {
     try {
       const organization = this.operations.getOrganizationById(Number(entity.organizationId));
-      const entityBasics = {...entity.teamDetails};
+      const entityBasics = { ...entity.teamDetails };
       entityBasics.id = Number(entity.teamId);
       entityBasics.slug = entity.teamSlug;
       entityBasics.name = entity.teamName;
@@ -386,7 +431,11 @@ export default class QueryCache {
     }
   }
 
-  async addOrUpdateTeam(organizationId: string, teamId: string, teamDetails: any): Promise<QueryCacheOperation> {
+  async addOrUpdateTeam(
+    organizationId: string,
+    teamId: string,
+    teamDetails: any
+  ): Promise<QueryCacheOperation> {
     if (!this.supportsTeams) {
       throw new Error('addTeam not supported');
     }
@@ -409,7 +458,7 @@ export default class QueryCache {
       }
     }
     if (teamCache) {
-      const update = (
+      const update =
         teamCache.teamName !== teamDetails.name ||
         teamCache.teamSlug !== teamDetails.slug ||
         teamCache.teamDescription !== teamDetails.description ||
@@ -417,8 +466,7 @@ export default class QueryCache {
         teamCache.teamDetails.privacy !== teamDetails.privacy ||
         teamCache.teamDetails.created_at !== teamDetails.created_at ||
         teamCache.teamDetails.repos_count !== teamDetails.repos_count ||
-        teamCache.teamDetails.members_count !== teamDetails.members_count
-        );
+        teamCache.teamDetails.members_count !== teamDetails.members_count;
       if (update) {
         teamCache.cacheUpdated = new Date();
         teamCache.teamName = teamDetails.name;
@@ -487,7 +535,14 @@ export default class QueryCache {
     return this._providers.teamCacheProvider.queryAllOrganizationIds();
   }
 
-  async addOrUpdateTeamsPermission(organizationId: string, repositoryId: string, repositoryPrivate: boolean, repositoryName: string, teamId: string, permission: GitHubRepositoryPermission): Promise<QueryCacheOperation> {
+  async addOrUpdateTeamsPermission(
+    organizationId: string,
+    repositoryId: string,
+    repositoryPrivate: boolean,
+    repositoryName: string,
+    teamId: string,
+    permission: GitHubRepositoryPermission
+  ): Promise<QueryCacheOperation> {
     if (!this.supportsTeamPermissions) {
       throw new Error('addOrUpdateTeamsPermission not supported');
     }
@@ -495,7 +550,11 @@ export default class QueryCache {
     const repositoryTeamCacheProvider = this._providers.repositoryTeamCacheProvider;
     let cache: RepositoryTeamCacheEntity = null;
     try {
-      cache = await repositoryTeamCacheProvider.getRepositoryTeamCacheByTeamId(organizationId, repositoryId, teamId);
+      cache = await repositoryTeamCacheProvider.getRepositoryTeamCacheByTeamId(
+        organizationId,
+        repositoryId,
+        teamId
+      );
     } catch (error) {
       if (!error.status || error.status !== 404) {
         throw error;
@@ -540,17 +599,27 @@ export default class QueryCache {
     }
     const repositoryTeamCacheProvider = this._providers.repositoryTeamCacheProvider;
     const rawEntities = await repositoryTeamCacheProvider.queryByTeamIds(teamIds);
-    return rawEntities.map(cacheEntity => this.hydrateTeamPermission(cacheEntity)).filter(exists => exists);
+    return rawEntities
+      .map((cacheEntity) => this.hydrateTeamPermission(cacheEntity))
+      .filter((exists) => exists);
   }
 
-  async removeRepositoryTeam(organizationId: string, repositoryId: string, teamId: string): Promise<QueryCacheOperation> {
+  async removeRepositoryTeam(
+    organizationId: string,
+    repositoryId: string,
+    teamId: string
+  ): Promise<QueryCacheOperation> {
     if (!this.supportsTeamPermissions) {
       throw new Error('removeRepositoryTeam not supported');
     }
     const repositoryTeamCacheProvider = this._providers.repositoryTeamCacheProvider;
     let cache: RepositoryTeamCacheEntity = null;
     try {
-      cache = await repositoryTeamCacheProvider.getRepositoryTeamCacheByTeamId(organizationId, repositoryId, teamId);
+      cache = await repositoryTeamCacheProvider.getRepositoryTeamCacheByTeamId(
+        organizationId,
+        repositoryId,
+        teamId
+      );
     } catch (error) {
       if (!error.status || error.status !== 404) {
         throw error;
@@ -578,7 +647,9 @@ export default class QueryCache {
     }
     const repositoryTeamCacheProvider = this._providers.repositoryTeamCacheProvider;
     const rawEntities = await repositoryTeamCacheProvider.queryByRepositoryId(repositoryId);
-    return rawEntities.map(cacheEntity => this.hydrateTeamPermission(cacheEntity)).filter(exists => exists);
+    return rawEntities
+      .map((cacheEntity) => this.hydrateTeamPermission(cacheEntity))
+      .filter((exists) => exists);
   }
 
   async allRepositoryTeamPermissions(): Promise<IQueryCacheTeamRepositoryPermission[]> {
@@ -587,7 +658,7 @@ export default class QueryCache {
     }
     const repositoryTeamCacheProvider = this._providers.repositoryTeamCacheProvider;
     const entities = await repositoryTeamCacheProvider.queryAllTeams();
-    return entities.map(cacheEntity => this.hydrateTeamPermission(cacheEntity)).filter(exists => exists);
+    return entities.map((cacheEntity) => this.hydrateTeamPermission(cacheEntity)).filter((exists) => exists);
   }
 
   private hydrateTeamPermission(cacheEntity: RepositoryTeamCacheEntity): IQueryCacheTeamRepositoryPermission {
@@ -611,17 +682,24 @@ export default class QueryCache {
     }
   }
 
-  async removeAllRepositoryPermissionsForTeam(organizationId: string, teamId: string): Promise<QueryCacheOperation[]> {
+  async removeAllRepositoryPermissionsForTeam(
+    organizationId: string,
+    teamId: string
+  ): Promise<QueryCacheOperation[]> {
     if (!this.supportsTeamPermissions) {
       throw new Error('removeRepositoryPermissionsForTeam not supported');
     }
     const operations = [];
     const repositoryTeamCacheProvider = this._providers.repositoryTeamCacheProvider;
     const existingEntries = await repositoryTeamCacheProvider.queryByTeamId(teamId);
-    debug(`removeRepositoryPermissionsForTeam: ${existingEntries.length} repository permissions to remove in the organization id=${organizationId} for team id=${teamId}`);
+    debug(
+      `removeRepositoryPermissionsForTeam: ${existingEntries.length} repository permissions to remove in the organization id=${organizationId} for team id=${teamId}`
+    );
     for (const existing of existingEntries) {
       try {
-        debug(`Removing repository=${existing.repositoryName} permissions for organization id=${organizationId} team id=${teamId}`);
+        debug(
+          `Removing repository=${existing.repositoryName} permissions for organization id=${organizationId} team id=${teamId}`
+        );
         await repositoryTeamCacheProvider.deleteRepositoryTeamCache(existing);
         operations.push(QueryCacheOperation.Delete);
       } catch (ignored) {}
@@ -629,17 +707,24 @@ export default class QueryCache {
     return operations;
   }
 
-  async removeAllTeamPermissionsForRepository(organizationId: string, repositoryId: string): Promise<QueryCacheOperation[]> {
+  async removeAllTeamPermissionsForRepository(
+    organizationId: string,
+    repositoryId: string
+  ): Promise<QueryCacheOperation[]> {
     if (!this.supportsTeamPermissions) {
       throw new Error('removeRepositoryPermissionsForRepository not supported');
     }
     const operations = [];
     const repositoryTeamCacheProvider = this._providers.repositoryTeamCacheProvider;
     const existingEntries = await repositoryTeamCacheProvider.queryByRepositoryId(repositoryId);
-    debug(`removeRepositoryPermissionsForRepository: ${existingEntries.length} repository permissions to remove in the organization id=${organizationId} for repository id=${repositoryId}`);
+    debug(
+      `removeRepositoryPermissionsForRepository: ${existingEntries.length} repository permissions to remove in the organization id=${organizationId} for repository id=${repositoryId}`
+    );
     for (const existing of existingEntries) {
       try {
-        debug(`Removing team permissions for organization id=${organizationId} repository id=${repositoryId}`);
+        debug(
+          `Removing team permissions for organization id=${organizationId} repository id=${repositoryId}`
+        );
         await repositoryTeamCacheProvider.deleteRepositoryTeamCache(existing);
         operations.push(QueryCacheOperation.Delete);
       } catch (ignored) {}
@@ -660,30 +745,47 @@ export default class QueryCache {
     }
     const repositoryCollaboratorCacheProvider = this._providers.repositoryCollaboratorCacheProvider;
     const entities = await repositoryCollaboratorCacheProvider.queryAllCollaborators();
-    return entities.map(cacheEntity => this.hydrateRepositoryCollaborator(cacheEntity)).filter(real => real);
+    return entities
+      .map((cacheEntity) => this.hydrateRepositoryCollaborator(cacheEntity))
+      .filter((real) => real);
   }
 
-  async addOrUpdateCollaborator(organizationId: string, repositoryId: string, repository: Repository, repositoryName: string, userId: string, userLogin: string, userAvatar: string, permission: GitHubRepositoryPermission, collaboratorType: GitHubCollaboratorType): Promise<QueryCacheOperation> {
+  async addOrUpdateCollaborator(
+    organizationId: string,
+    repositoryId: string,
+    repository: Repository,
+    repositoryName: string,
+    userId: string,
+    userLogin: string,
+    userAvatar: string,
+    permission: GitHubRepositoryPermission,
+    collaboratorType: GitHubCollaboratorType
+  ): Promise<QueryCacheOperation> {
     if (!this.supportsRepositoryCollaborators) {
       throw new Error('addOrUpdateCollaborator not supported');
     }
     const repositoryCollaboratorCacheProvider = this._providers.repositoryCollaboratorCacheProvider;
-    let outcome: QueryCacheOperation = null;
+    const outcome: QueryCacheOperation = null;
     let collaboratorCache: RepositoryCollaboratorCacheEntity = null;
     try {
-      collaboratorCache = await repositoryCollaboratorCacheProvider.getRepositoryCollaboratorCacheByUserId(organizationId, repositoryId, userId);
+      collaboratorCache = await repositoryCollaboratorCacheProvider.getRepositoryCollaboratorCacheByUserId(
+        organizationId,
+        repositoryId,
+        userId
+      );
     } catch (error) {
       if (!error.status || error.status !== 404) {
         throw error;
       }
     }
     if (collaboratorCache) {
-      const update = collaboratorCache.avatar !== userAvatar ||
-      collaboratorCache.collaboratorType !== collaboratorType ||
-      collaboratorCache.login !== userLogin ||
-      collaboratorCache.repositoryPrivate !== repository.private ||
-      collaboratorCache.repositoryName !== repositoryName ||
-      collaboratorCache.permission !== permission;
+      const update =
+        collaboratorCache.avatar !== userAvatar ||
+        collaboratorCache.collaboratorType !== collaboratorType ||
+        collaboratorCache.login !== userLogin ||
+        collaboratorCache.repositoryPrivate !== repository.private ||
+        collaboratorCache.repositoryName !== repositoryName ||
+        collaboratorCache.permission !== permission;
       if (update) {
         collaboratorCache.cacheUpdated = new Date();
         collaboratorCache.avatar = userAvatar;
@@ -700,7 +802,11 @@ export default class QueryCache {
       collaboratorCache.repositoryId = repositoryId;
       collaboratorCache.organizationId = organizationId;
       collaboratorCache.userId = userId;
-      collaboratorCache.uniqueId = RepositoryCollaboratorCacheEntity.GenerateIdentifier(organizationId, repositoryId, userId);
+      collaboratorCache.uniqueId = RepositoryCollaboratorCacheEntity.GenerateIdentifier(
+        organizationId,
+        repositoryId,
+        userId
+      );
       collaboratorCache.repositoryName = repositoryName;
       collaboratorCache.repositoryPrivate = repository.private ? true : false;
       collaboratorCache.avatar = userAvatar;
@@ -719,7 +825,9 @@ export default class QueryCache {
     }
     const repositoryCollaboratorCacheProvider = this._providers.repositoryCollaboratorCacheProvider;
     const rawEntities = await repositoryCollaboratorCacheProvider.queryCollaboratorsByUserId(githubId);
-    return rawEntities.map(cacheEntity => this.hydrateRepositoryCollaborator(cacheEntity)).filter(real => real);
+    return rawEntities
+      .map((cacheEntity) => this.hydrateRepositoryCollaborator(cacheEntity))
+      .filter((real) => real);
   }
 
   async repositoryCollaborators(repositoryId: string): Promise<IQueryCacheRepositoryCollaborator[]> {
@@ -727,8 +835,12 @@ export default class QueryCache {
       this.throwMethodNotSupported('repositoryCollaborators', 'repositoryCollaboratorCacheProvider');
     }
     const repositoryCollaboratorCacheProvider = this._providers.repositoryCollaboratorCacheProvider;
-    const rawEntities = await repositoryCollaboratorCacheProvider.queryCollaboratorsByRepositoryId(repositoryId);
-    return rawEntities.map(cacheEntity => this.hydrateRepositoryCollaborator(cacheEntity)).filter(real => real);
+    const rawEntities = await repositoryCollaboratorCacheProvider.queryCollaboratorsByRepositoryId(
+      repositoryId
+    );
+    return rawEntities
+      .map((cacheEntity) => this.hydrateRepositoryCollaborator(cacheEntity))
+      .filter((real) => real);
   }
 
   repositoryCollaboratorCacheOrganizationIds(): Promise<string[]> {
@@ -744,18 +856,26 @@ export default class QueryCache {
     }
     const operations = [];
     const repositoryCollaboratorCacheProvider = this._providers.repositoryCollaboratorCacheProvider;
-    await repositoryCollaboratorCacheProvider.deleteByRepositoryId(repositoryId)
+    await repositoryCollaboratorCacheProvider.deleteByRepositoryId(repositoryId);
     return operations;
   }
 
-  async removeRepositoryCollaborator(organizationId: string, repositoryId: string, userId: string): Promise<QueryCacheOperation> {
+  async removeRepositoryCollaborator(
+    organizationId: string,
+    repositoryId: string,
+    userId: string
+  ): Promise<QueryCacheOperation> {
     if (!this.supportsRepositoryCollaborators) {
       throw new Error('removeRepositoryCollaborator not supported');
     }
     const repositoryCollaboratorCacheProvider = this._providers.repositoryCollaboratorCacheProvider;
     let cache: RepositoryCollaboratorCacheEntity = null;
     try {
-      cache = await repositoryCollaboratorCacheProvider.getRepositoryCollaboratorCacheByUserId(organizationId, repositoryId, userId);
+      cache = await repositoryCollaboratorCacheProvider.getRepositoryCollaboratorCacheByUserId(
+        organizationId,
+        repositoryId,
+        userId
+      );
     } catch (error) {
       if (!error.status || error.status !== 404) {
         throw error;
@@ -770,7 +890,9 @@ export default class QueryCache {
     return outcome;
   }
 
-  private hydrateRepositoryCollaborator(cacheEntity: RepositoryCollaboratorCacheEntity): IQueryCacheRepositoryCollaborator {
+  private hydrateRepositoryCollaborator(
+    cacheEntity: RepositoryCollaboratorCacheEntity
+  ): IQueryCacheRepositoryCollaborator {
     const organization = this.operations.getOrganizationById(Number(cacheEntity.organizationId));
     const iid = cacheEntity.repositoryId;
     const repository = organization.repository(cacheEntity.repositoryName, {
@@ -788,7 +910,11 @@ export default class QueryCache {
 
   // -- Organization membership
 
-  async addOrUpdateOrganizationMember(organizationId: string, role: OrganizationMembershipRole, userId: string): Promise<QueryCacheOperation> {
+  async addOrUpdateOrganizationMember(
+    organizationId: string,
+    role: OrganizationMembershipRole,
+    userId: string
+  ): Promise<QueryCacheOperation> {
     if (!this.supportsOrganizationMembership) {
       throw new Error('addOrganizationMember not supported');
     }
@@ -796,7 +922,10 @@ export default class QueryCache {
     const organizationMemberCacheProvider = this._providers.organizationMemberCacheProvider;
     let cache: OrganizationMemberCacheEntity = null;
     try {
-      cache = await organizationMemberCacheProvider.getOrganizationMemberCacheByUserId(organizationId, userId);
+      cache = await organizationMemberCacheProvider.getOrganizationMemberCacheByUserId(
+        organizationId,
+        userId
+      );
     } catch (error) {
       if (!error.status || error.status !== 404) {
         throw error;
@@ -831,7 +960,10 @@ export default class QueryCache {
     const organizationMemberCacheProvider = this._providers.organizationMemberCacheProvider;
     let cache: OrganizationMemberCacheEntity = null;
     try {
-      cache = await organizationMemberCacheProvider.getOrganizationMemberCacheByUserId(organizationId, userId);
+      cache = await organizationMemberCacheProvider.getOrganizationMemberCacheByUserId(
+        organizationId,
+        userId
+      );
     } catch (error) {
       if (!error.status || error.status !== 404) {
         throw error;
@@ -861,28 +993,37 @@ export default class QueryCache {
       this.throwMethodNotSupported('organizationMembers', 'organizationMemberCacheProvider');
     }
     const organizationMemberCacheProvider = this._providers.organizationMemberCacheProvider;
-    const rawEntities = await organizationMemberCacheProvider.queryOrganizationMembersByOrganizationId(organizationId);
+    const rawEntities = await organizationMemberCacheProvider.queryOrganizationMembersByOrganizationId(
+      organizationId
+    );
     return this.hydrateOrganizationMembers(rawEntities);
   }
 
-  private hydrateOrganizationMembers(rawEntities: OrganizationMemberCacheEntity[]): IQueryCacheOrganizationMembership[] {
-    return rawEntities.map(cacheEntity => {
-      try {
-        return {
-          organization: this.operations.getOrganizationById(Number(cacheEntity.organizationId)),
-          role: cacheEntity.role,
-          cacheEntity,
-          userId: cacheEntity.userId,
+  private hydrateOrganizationMembers(
+    rawEntities: OrganizationMemberCacheEntity[]
+  ): IQueryCacheOrganizationMembership[] {
+    return rawEntities
+      .map((cacheEntity) => {
+        try {
+          return {
+            organization: this.operations.getOrganizationById(Number(cacheEntity.organizationId)),
+            role: cacheEntity.role,
+            cacheEntity,
+            userId: cacheEntity.userId,
+          };
+        } catch (noConfiguredOrganization) {
+          return;
         }
-      } catch (noConfiguredOrganization) {
-      return;
-      }
-    }).filter(exists => exists);
+      })
+      .filter((exists) => exists);
   }
 
   organizationMemberCacheOrganizationIds(): Promise<string[]> {
     if (!this.supportsOrganizationMembership) {
-      this.throwMethodNotSupported('organizationMemberCacheOrganizationIds', 'organizationMemberCacheProvider');
+      this.throwMethodNotSupported(
+        'organizationMemberCacheOrganizationIds',
+        'organizationMemberCacheProvider'
+      );
     }
     return this._providers.organizationMemberCacheProvider.queryAllOrganizationIds();
   }

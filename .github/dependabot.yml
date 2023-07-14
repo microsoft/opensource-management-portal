@@ -7,7 +7,7 @@ updates:
       interval: daily
     open-pull-requests-limit: 10
     commit-message:
-      prefix: "npm:back-end"
+      prefix: 'npm - back-end'
   - package-ecosystem: npm
     directory: /default-assets-package
     target-branch: staging
@@ -15,11 +15,17 @@ updates:
       interval: daily
     open-pull-requests-limit: 10
     commit-message:
-      prefix: "npm:front-end"
+      prefix: 'npm - front-end'
   - package-ecosystem: github-actions
+    target-branch: staging
     directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
     commit-message:
-      prefix: "actions"
+      prefix: 'actions'
+  - package-ecosystem: 'docker'
+    target-branch: staging
+    directory: '/'
+    schedule:
+      interval: 'weekly'

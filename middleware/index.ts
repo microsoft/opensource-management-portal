@@ -7,7 +7,8 @@ import bodyParser from 'body-parser';
 import compression from 'compression';
 import path from 'path';
 
-const debug = require('debug')('startup');
+import Debug from 'debug';
+const debug = Debug.debug('startup');
 
 export * from './react';
 export * from './links';
@@ -18,24 +19,38 @@ import { hasStaticReactClientApp, stripDistFolderName } from '../transitional';
 import { StaticClientApp } from './staticClientApp';
 import { StaticReactClientApp } from './staticClientApp2';
 import { StaticSiteFavIcon, StaticSiteAssets } from './staticSiteAssets';
-import ConnectSession from './session';
+import connectSession from './session';
 import passportConfig from './passport-config';
-import Onboard from './onboarding';
+import onboard from './onboarding';
 import viewServices from '../lib/pugViewServices';
 
 import campaign from './campaign';
 import officeHyperlinks from './officeHyperlinks';
 import rawBodyParser from './rawBodyParser';
 
-import RouteScrubbedUrl from './scrubbedUrl';
-import RouteLogger from './logger';
-import RouteLocals from './locals';
-import RoutePassport from './passport-routes';
-import { IProviders } from '../interfaces';
+import routeScrubbedUrl from './scrubbedUrl';
+import routeLogger from './logger';
+import routeLocals from './locals';
+import routePassport from './passport-routes';
 
-export default function initMiddleware(app, express, config, dirname, initializationError) {
-  config = config || {};
-  const appDirectory = config && config.typescript && config.typescript.appDirectory ? config.typescript.appDirectory : stripDistFolderName(dirname);
+import routeApi from '../api';
+
+import { IProviders, IReposApplication, SiteConfiguration } from '../interfaces';
+import { codespacesDevAssistant } from './codespaces';
+
+export default async function initMiddleware(
+  app: IReposApplication,
+  express,
+  config: SiteConfiguration,
+  dirname: string,
+  hasCustomRoutes: boolean,
+  initializationError: Error
+) {
+  config = config || ({} as SiteConfiguration);
+  const appDirectory =
+    config && config.typescript && config.typescript.appDirectory
+      ? config.typescript.appDirectory
+      : stripDistFolderName(dirname);
   const providers = app.get('providers') as IProviders;
   const applicationProfile = providers.applicationProfile;
   if (initializationError) {
@@ -45,36 +60,7 @@ export default function initMiddleware(app, express, config, dirname, initializa
   app.set('views', path.join(appDirectory, 'views'));
   app.set('view engine', 'pug');
 
-  // const pugCustomLoadPlugin = {
-  //   XXresolve(filename, source, loadOptions) {
-  //     console.log();
-  //   },
-  //   read(filename, loadOptions) {
-  //     console.log();
-  //   }
-  // };
-
-  // const pugRenderfile = pug.renderFile;
-  // pug.renderFile = function (renderPath, renderOptions, renderCallback) {
-  //   if (!renderOptions.plugins) {
-  //     renderOptions.plugins = [pugCustomLoadPlugin];
-  //     console.log('--added plugins--');
-  //   }
-  //   return pugRenderfile(renderPath, renderOptions, renderCallback);
-  // };
-
-  // const pugCompileFile = pug.compileFile;
-  // pug.compileFile = function (renderPath, renderOptions) {
-  //   try {
-  //     return pugCompileFile(renderPath, renderOptions);
-  //   } catch (noFileError) {
-  //     console.log();
-  //     throw noFileError;
-  //   }
-  // };
-
-  //app.engine('pug', pug.__express);
-  app.set('view cache', process.env.NODE_ENV !== 'development'); // CONSIDER: pull from config instead
+  app.set('view cache', config.node.isProduction);
   app.disable('x-powered-by');
 
   app.set('viewServices', viewServices);
@@ -86,11 +72,14 @@ export default function initMiddleware(app, express, config, dirname, initializa
     app.use(bodyParser.json());
     app.use(bodyParser.urlencoded({ extended: false }));
     app.use(compression());
+    if (!config.node.isProduction && config.github.codespaces.connected) {
+      app.use(codespacesDevAssistant);
+    }
     if (applicationProfile.serveStaticAssets) {
       StaticSiteAssets(app, express);
     }
     if (hasStaticReactClientApp()) {
-      StaticReactClientApp(app, express);
+      StaticReactClientApp(app, express, config);
     }
     if (applicationProfile.serveClientAssets) {
       StaticClientApp(app, express);
@@ -102,8 +91,11 @@ export default function initMiddleware(app, express, config, dirname, initializa
         app.enable('trust proxy');
         debug('proxy: trusting reverse proxy');
       }
+      if (!hasCustomRoutes) {
+        app.use('/api', routeApi);
+      }
       if (applicationProfile.sessions) {
-        app.use(ConnectSession(app, config, providers));
+        app.use(await connectSession(app, config, providers));
         try {
           passport = passportConfig(app, config);
         } catch (passportError) {
@@ -111,15 +103,15 @@ export default function initMiddleware(app, express, config, dirname, initializa
         }
       }
     }
-    app.use(RouteScrubbedUrl);
-    app.use(RouteLogger(config));
-    app.use(RouteLocals);
+    app.use(routeScrubbedUrl);
+    app.use(routeLogger(config));
+    app.use(routeLocals);
     if (!initializationError) {
       if (applicationProfile.sessions) {
-        RoutePassport(app, passport, config);
-        if (config.github.organizations.onboarding && config.github.organizations.onboarding.length) {
+        routePassport(app, passport, config);
+        if (config?.github?.organizations?.onboarding?.length > 0) {
           debug('Onboarding helper loaded');
-          Onboard(app, config);
+          onboard(app, config);
         }
       }
       app.use(officeHyperlinks);
@@ -129,6 +121,7 @@ export default function initMiddleware(app, express, config, dirname, initializa
     providers.healthCheck.healthy = false;
     throw initializationError;
   } else {
-    providers.healthCheck.ready = true; // Ready to accept traffic
+    // Ready to accept traffic
+    providers.healthCheck.ready = true;
   }
-};
+}

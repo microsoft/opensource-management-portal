@@ -13,8 +13,8 @@ export abstract class LegacySerializer {
 }
 
 interface ISerializerInstances {
-  encrypted: LegacySerializer,
-  plain: LegacySerializer,
+  encrypted: LegacySerializer;
+  plain: LegacySerializer;
 }
 
 function createSerializer() {

@@ -5,9 +5,8 @@
 //
 */
 
-
 /* BEGIN NIH OVERRIDE */
-.navbar-default .navbar-nav>.active>a {
+.navbar-default .navbar-nav > .active > a {
   color: #fff;
   background-color: #20558a;
 }
@@ -17,34 +16,34 @@
   border-color: #333;
 }
 
-.navbar-inverse .navbar-nav>.active>a {
+.navbar-inverse .navbar-nav > .active > a {
   color: #fff;
   background-color: #456483;
 }
 
-.nav-pills>li.active>a {
+.nav-pills > li.active > a {
   color: #fff;
   background-color: #20558a;
 }
 
-.nav>li>a {
+.nav > li > a {
   color: #20558a;
 }
 
 /* END NIH OVERRIDE */
 
 .override-white {
-  color: #fff !important
+  color: #fff !important;
 }
 
 /* Set color for user dropdown */
 .list-unstyled-dropdown-first {
   color: #fff;
   padding-inline-start: 20px;
-  padding-inline-end: 20px
+  padding-inline-end: 20px;
 }
 
-/*----------------------------------------------------*/
+/* ---------------------------------------------------- */
 
 body {
   position: relative;
@@ -121,7 +120,7 @@ h1.huge {
 }
 
 h2 strong {
-  font-family: "Segoe UI Semibold", Segoe, "Segoe WP", Calibri, Candara, Tahoma, Verdana, Arial, sans-serif;
+  font-family: 'Segoe UI Semibold', Segoe, 'Segoe WP', Calibri, Candara, Tahoma, Verdana, Arial, sans-serif;
   font-weight: normal;
 }
 
@@ -130,7 +129,7 @@ h2 strong {
 }
 
 /* extra wide inline spacing */
-.list-horizontal-space>li {
+.list-horizontal-space > li {
   margin-right: 16px;
 }
 
@@ -140,7 +139,7 @@ textarea#editor-body {
   margin-bottom: 24px;
   width: 100%;
   min-height: 480px;
-  font-family: Consolas, Courier, "Courier New";
+  font-family: Consolas, Courier, 'Courier New';
 }
 
 footer {
@@ -190,7 +189,7 @@ vertical-pad,
   margin-bottom: 0;
 }
 
-ul.list-vspace>li,
+ul.list-vspace > li,
 ul.list-vertical-space {
   padding-bottom: 8px;
 }
@@ -274,7 +273,7 @@ div.alerts {
 /* theme colors and components */
 div.metro-box {
   position: relative;
-  margin: 0px;
+  margin: 0;
   width: 100%;
 }
 
@@ -282,7 +281,7 @@ div.metro-box {
   padding: 1.4em 25px;
   display: inline-block;
   color: #fff;
-  font-size: .9em;
+  font-size: 0.9em;
   position: relative;
   width: 100%;
 }
@@ -301,12 +300,12 @@ div.metro-box {
 
 div.link-box {
   position: relative;
-  margin: 0px;
+  margin: 0;
   width: 100%;
 }
 
 .link-box a {
-  padding: .4em 5px;
+  padding: 0.4em 5px;
   display: inline-block;
   position: relative;
   width: 100%;
@@ -361,7 +360,7 @@ div.link-box {
 .ms-blue-border-top {
   border-style: solid;
   border-top-color: #20558a;
-  border-width: 4px 0 0 0;
+  border-width: 4px 0 0;
 }
 
 .transparent-border {
@@ -557,7 +556,7 @@ th.w-10 {
 }
 
 /* All levels of nav */
-.wiki-sidebar .nav>li>a {
+.wiki-sidebar .nav > li > a {
   display: block;
   padding: 4px 20px;
   font-size: 13px;
@@ -565,8 +564,8 @@ th.w-10 {
   color: #999;
 }
 
-.wiki-sidebar .nav>li>a:hover,
-.wiki-sidebar .nav>li>a:focus {
+.wiki-sidebar .nav > li > a:hover,
+.wiki-sidebar .nav > li > a:focus {
   padding-left: 19px;
   color: #20558a;
   text-decoration: none;
@@ -574,9 +573,9 @@ th.w-10 {
   border-left: 1px solid #20558a;
 }
 
-.wiki-sidebar .nav>.active>a,
-.wiki-sidebar .nav>.active:hover>a,
-.wiki-sidebar .nav>.active:focus>a {
+.wiki-sidebar .nav > .active > a,
+.wiki-sidebar .nav > .active:hover > a,
+.wiki-sidebar .nav > .active:focus > a {
   padding-left: 18px;
   font-weight: bold;
   color: #20558a;
@@ -586,12 +585,11 @@ th.w-10 {
 
 /* Nav: second level (shown on .active) */
 .wiki-sidebar .nav .nav {
-  display: none;
-  /* Hide by default, but at >768px, show it */
+  display: none; /* Hide by default, but at >768px, show it */
   padding-bottom: 10px;
 }
 
-.wiki-sidebar .nav .nav>li>a {
+.wiki-sidebar .nav .nav > li > a {
   padding-top: 1px;
   padding-bottom: 1px;
   padding-left: 30px;
@@ -599,14 +597,14 @@ th.w-10 {
   font-weight: normal;
 }
 
-.wiki-sidebar .nav .nav>li>a:hover,
-.wiki-sidebar .nav .nav>li>a:focus {
+.wiki-sidebar .nav .nav > li > a:hover,
+.wiki-sidebar .nav .nav > li > a:focus {
   padding-left: 29px;
 }
 
-.wiki-sidebar .nav .nav>.active>a,
-.wiki-sidebar .nav .nav>.active:hover>a,
-.wiki-sidebar .nav .nav>.active:focus>a {
+.wiki-sidebar .nav .nav > .active > a,
+.wiki-sidebar .nav .nav > .active:hover > a,
+.wiki-sidebar .nav .nav > .active:focus > a {
   padding-left: 28px;
   font-weight: 500;
 }
@@ -635,7 +633,7 @@ th.w-10 {
 
 /* Show and affix the side nav when space allows it */
 @media (min-width: 992px) {
-  .wiki-sidebar .nav>.active>ul {
+  .wiki-sidebar .nav > .active > ul {
     display: block;
   }
 
@@ -646,14 +644,12 @@ th.w-10 {
   }
 
   .wiki-sidebar.affix {
-    position: fixed;
-    /* Undo the static from mobile first approach */
+    position: fixed; /* Undo the static from mobile first approach */
     top: 20px;
   }
 
   .wiki-sidebar.affix-bottom {
-    position: absolute;
-    /* Undo the static from mobile first approach */
+    position: absolute; /* Undo the static from mobile first approach */
   }
 
   .wiki-sidebar.affix-bottom .wiki-sidenav,
@@ -664,7 +660,6 @@ th.w-10 {
 }
 
 @media (min-width: 1200px) {
-
   /* Widen the fixed sidebar again */
   .wiki-sidebar.affix-bottom,
   .wiki-sidebar.affix {

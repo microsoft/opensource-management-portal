@@ -3,11 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { GitHubTeamRole, OrganizationMembershipRole, GitHubCollaboratorType } from '.';
+import {
+  GitHubTeamRole,
+  OrganizationMembershipRole,
+  GitHubCollaboratorType,
+  GitHubRepositoryPermission,
+} from '.';
 import { Team, Repository, Organization } from '../business';
 import { RepositoryCacheEntity } from '../entities/repositoryCache/repositoryCache';
 import { RepositoryCollaboratorCacheEntity } from '../entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
-import { GitHubRepositoryPermission } from '../entities/repositoryMetadata/repositoryMetadata';
 import { RepositoryTeamCacheEntity } from '../entities/repositoryTeamCache/repositoryTeamCache';
 import { TeamCacheEntity } from '../entities/teamCache/teamCache';
 import { TeamMemberCacheEntity } from '../entities/teamMemberCache/teamMemberCache';

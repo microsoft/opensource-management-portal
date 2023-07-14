@@ -1,10 +1,11 @@
+/* eslint-env browser,jquery */
 var timer;
 var inputQuery = $('#inputQuery');
 inputQuery.on('keyup input', function () {
   timer && clearTimeout(timer);
   timer = setTimeout(updatePage, 5000);
 });
-$('#entitySearch').submit(function(event) {
+$('#entitySearch').submit(function (event) {
   updatePage();
   event.preventDefault();
 });

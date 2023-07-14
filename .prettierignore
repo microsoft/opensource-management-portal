@@ -1,0 +1,10 @@
+# Ignore artifacts
+dist
+
+# Ignore upstream files
+.github/dotcom-workflows/
+
+# View
+views/email/email.css
+
+.environment/copilot/

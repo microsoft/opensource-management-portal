@@ -9,4 +9,4 @@ import { randomUUID } from 'crypto';
 export default function (req, res, next) {
   req.correlationId = randomUUID();
   return next();
-};
+}

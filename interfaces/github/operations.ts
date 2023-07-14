@@ -83,11 +83,17 @@ export interface IOperationsCentralOperationsToken {
   getAccountByUsername(username: string, options?: ICacheOptions): Promise<Account>;
 }
 
-export function operationsIsCapable<T>(operations: IOperationsInstance, capability: CoreCapability): operations is IOperationsInstance & T {
+export function operationsIsCapable<T>(
+  operations: IOperationsInstance,
+  capability: CoreCapability
+): operations is IOperationsInstance & T {
   return operations.hasCapability(capability);
 }
 
-export function operationsWithCapability<T>(operations: IOperationsInstance, capability: CoreCapability): T & IOperationsInstance {
+export function operationsWithCapability<T>(
+  operations: IOperationsInstance,
+  capability: CoreCapability
+): T & IOperationsInstance {
   if (operationsIsCapable<T>(operations, capability)) {
     return operations as T & IOperationsInstance;
   }
@@ -100,5 +106,8 @@ export function throwIfNotCapable<T>(operations: IOperationsInstance, capability
 }
 
 export function throwIfNotGitHubCapable(operations: IOperationsInstance) {
-  return throwIfNotCapable<IOperationsGitHubRestLibrary & IOperationsInstance>(operations, CoreCapability.GitHubRestApi);
+  return throwIfNotCapable<IOperationsGitHubRestLibrary & IOperationsInstance>(
+    operations,
+    CoreCapability.GitHubRestApi
+  );
 }

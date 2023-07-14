@@ -29,7 +29,7 @@ export async function equivalentLegacyPeopleSearch(req: ReposAppRequest) {
   const orgId = req.organization ? (req.organization as Organization).id : null;
   const { crossOrganizationMembers } = await getPeopleAcrossOrganizations(operations);
   const page = req.query.page_number ? Number(req.query.page_number) : 1;
-  let phrase = req.query.q as string;
+  const phrase = req.query.q as string;
   let type = req.query.type as string;
   const validTypes = new Set([
     'linked',

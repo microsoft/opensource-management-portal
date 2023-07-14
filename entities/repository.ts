@@ -3,10 +3,19 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IDictionary } from '../interfaces';
-import { EntityMetadataBase, EntityMetadataMappings, EntityMetadataType, IEntityMetadata, IEntityMetadataBaseOptions, IEntityMetadataFixedQuery, keyValueMetadataField, MetadataMappingDefinition, QueryBase } from '../lib/entityMetadataProvider';
+import { GitHubRepositoryVisibility } from '../interfaces';
+import {
+  EntityMetadataBase,
+  EntityMetadataMappings,
+  EntityMetadataType,
+  IEntityMetadata,
+  IEntityMetadataBaseOptions,
+  IEntityMetadataFixedQuery,
+  keyValueMetadataField,
+  MetadataMappingDefinition,
+  QueryBase,
+} from '../lib/entityMetadataProvider';
 import { PostgresConfiguration, PostgresSettings } from '../lib/entityMetadataProvider/postgres';
-import { GitHubRepositoryVisibility } from './repositoryMetadata/repositoryMetadata';
 
 const type = new EntityMetadataType('RepositoryDetails');
 const typeColumnValue = 'repositorydetails';
@@ -14,7 +23,9 @@ const defaultTableName = 'repositories';
 const thisProviderType = type;
 type InterfaceProviderType = IRepositoryProvider;
 type ClassType = RepositoryEntity;
-EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => { return new RepositoryEntity(); });
+EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityInstantiate, () => {
+  return new RepositoryEntity();
+});
 
 class ThisQueryBase extends QueryBase<ClassType> {
   constructor(public query: Query) {
@@ -32,7 +43,7 @@ class ThisQuery<T> extends ThisQueryBase {
 }
 
 const repositoryId = 'repositoryId';
-const primaryFieldId = repositoryId; 
+const primaryFieldId = repositoryId;
 
 interface IProperties {
   repositoryId: any;
@@ -112,22 +123,16 @@ const Field: IProperties = {
   parentName: 'parentName',
   parentOrganizationName: 'parentOrganizationName',
   parentOrganizationId: 'parentOrganizationId',
-}
+};
 
-const dateColumns = [
-  Field.cached,
-  Field.pushedAt,
-  Field.createdAt,
-  Field.updatedAt,
-];
+const dateColumns = [Field.cached, Field.pushedAt, Field.createdAt, Field.updatedAt];
 
-enum Query {
-}
+enum Query {}
 
 export class RepositoryEntity implements IProperties {
   repositoryId: number;
   organizationId: number;
-  [keyValueMetadataField]: IDictionary<any>;
+  [keyValueMetadataField]: Record<string, any>;
 
   name: string;
   organizationLogin: string;
@@ -170,19 +175,22 @@ export class RepositoryEntity implements IProperties {
     return {
       id: this.repositoryId,
       name: this.name,
-      organization: this.organizationLogin && this.organizationId ? {
-        id: this.organizationId,
-        login: this.organizationLogin,
-      } : null,
+      organization:
+        this.organizationLogin && this.organizationId
+          ? {
+              id: this.organizationId,
+              login: this.organizationLogin,
+            }
+          : null,
       full_name: this.fullName || `${this.organizationLogin}/${this.name}`,
       private: this.private,
       visibility: this.visibility,
       fork: this.fork,
       archived: this.archived,
       disabled: this.disabled,
-      pushed_at: this.pushedAt ? (new Date(this.pushedAt)).toISOString() : undefined,
-      created_at: this.createdAt ? (new Date(this.createdAt)).toISOString() : undefined,
-      updated_at: this.updatedAt ? (new Date(this.updatedAt)).toISOString() : undefined,
+      pushed_at: this.pushedAt ? new Date(this.pushedAt).toISOString() : undefined,
+      created_at: this.createdAt ? new Date(this.createdAt).toISOString() : undefined,
+      updated_at: this.updatedAt ? new Date(this.updatedAt).toISOString() : undefined,
       description: this.description,
       homepage: this.homepage,
       language: this.language,
@@ -200,25 +208,38 @@ export class RepositoryEntity implements IProperties {
       subscribers_count: this.subscribersCount,
       network_count: this.networkCount,
       license: this.license ? { spdx_id: this.license } : null,
-      parent: this.parentId && this.parentName && this.parentOrganizationId && this.parentOrganizationName ? {
-        id: this.parentId,
-        name: this.parentName,
-        organization: {
-          id: this.parentOrganizationId,
-          login: this.parentOrganizationName,
-        },
-      } : null,
+      parent:
+        this.parentId && this.parentName && this.parentOrganizationId && this.parentOrganizationName
+          ? {
+              id: this.parentId,
+              name: this.parentName,
+              organization: {
+                id: this.parentOrganizationId,
+                login: this.parentOrganizationName,
+              },
+            }
+          : null,
     };
   }
 }
 
-EntityMetadataMappings.Register(type, PostgresSettings.PostgresQueries, (query: IEntityMetadataFixedQuery, mapMetadataPropertiesToFields: string[], metadataColumnName: string, tableName: string, getEntityTypeColumnValue) => {
-  const base = query as ThisQueryBase;
-  switch (base.query) {
-    default:
-      throw new Error(`The query ${base.query} is not implemented by this provider for the type ${type}`);
+EntityMetadataMappings.Register(
+  type,
+  PostgresSettings.PostgresQueries,
+  (
+    query: IEntityMetadataFixedQuery,
+    mapMetadataPropertiesToFields: string[],
+    metadataColumnName: string,
+    tableName: string,
+    getEntityTypeColumnValue
+  ) => {
+    const base = query as ThisQueryBase;
+    switch (base.query) {
+      default:
+        throw new Error(`The query ${base.query} is not implemented by this provider for the type ${type}`);
+    }
   }
-});
+);
 
 export interface IRepositoryProvider {
   initialize(): Promise<void>;
@@ -263,14 +284,16 @@ export class RepositoryProvider extends EntityMetadataBase implements IRepositor
   }
 }
 
-export default async function initializeRepositoryProvider(options?: IEntityMetadataBaseOptions): Promise<InterfaceProviderType> {
+export default async function initializeRepositoryProvider(
+  options?: IEntityMetadataBaseOptions
+): Promise<InterfaceProviderType> {
   const provider = new RepositoryProvider(options);
   await provider.initialize();
   return provider;
 }
 
 const fieldNames = Object.getOwnPropertyNames(Field);
-const nativeFieldNames = fieldNames.filter(x => x !== Field[keyValueMetadataField]);
+const nativeFieldNames = fieldNames.filter((x) => x !== Field[keyValueMetadataField]);
 
 EntityMetadataMappings.Register(type, MetadataMappingDefinition.EntityIdColumnName, primaryFieldId);
 EntityMetadataMappings.Register(type, PostgresSettings.PostgresDefaultTypeColumnName, typeColumnValue);

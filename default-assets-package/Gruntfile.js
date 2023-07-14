@@ -13,34 +13,36 @@ module.exports = function (grunt) {
     buildrootdir: 'public/',
     NOexec: {
       patch_yeti_theme: {
-        command: 'patch node_modules/bootswatch/yeti/bootswatch.less -i yeti-bootswatch.patch -o node_modules/bootswatch/yeti/bootswatch.less'
-      }
+        command:
+          'patch node_modules/bootswatch/yeti/bootswatch.less -i yeti-bootswatch.patch -o node_modules/bootswatch/yeti/bootswatch.less',
+      },
     },
-    banner: '/*!\n' +
-    ' * <%= pkg.name %> v<%= pkg.version %>\n' +
-    ' * Homepage: <%= pkg.homepage %>\n' +
-    ' * Copyright 2012-<%= grunt.template.today("yyyy") %> <%= pkg.author %>\n' +
-    ' * Licensed under <%= pkg.license %>\n' +
-    ' * Based on Bootstrap\n' +
-    '*/\n',
+    banner:
+      '/*!\n' +
+      ' * <%= pkg.name %> v<%= pkg.version %>\n' +
+      ' * Homepage: <%= pkg.homepage %>\n' +
+      ' * Copyright 2012-<%= grunt.template.today("yyyy") %> <%= pkg.author %>\n' +
+      ' * Licensed under <%= pkg.license %>\n' +
+      ' * Based on Bootstrap\n' +
+      '*/\n',
     less: {
       dist: {
         options: {
           compress: false,
-          strictMath: true
+          strictMath: true,
         },
-        files: {}
-      }
+        files: {},
+      },
     },
     concat: {
       options: {
         banner: '<%= banner %>',
-        stripBanners: false
+        stripBanners: false,
       },
       dist: {
         src: [],
-        dest: ''
-      }
+        dest: '',
+      },
     },
     copy: {
       bootstrap: {
@@ -51,7 +53,7 @@ module.exports = function (grunt) {
             cwd: 'node_modules/bootstrap/dist/',
             dest: '<%= buildrootdir %>',
           },
-        ]
+        ],
       },
       fontAwesome: {
         files: [
@@ -66,8 +68,8 @@ module.exports = function (grunt) {
             src: '**',
             cwd: 'node_modules/components-font-awesome/css/',
             dest: '<%= buildrootdir %>/css',
-          }
-        ]
+          },
+        ],
       },
       jqueryBlockUI: {
         files: [
@@ -77,7 +79,7 @@ module.exports = function (grunt) {
             cwd: 'node_modules/blockui/',
             dest: '<%= buildscriptdir %>',
           },
-        ]
+        ],
       },
       octicons: {
         files: [
@@ -87,7 +89,7 @@ module.exports = function (grunt) {
             cwd: 'node_modules/octicons/build/',
             dest: '<%= builddir %>',
           },
-        ]
+        ],
       },
       jquery: {
         files: [
@@ -97,7 +99,7 @@ module.exports = function (grunt) {
             cwd: 'node_modules/jquery/dist/',
             dest: '<%= buildscriptdir %>',
           },
-        ]
+        ],
       },
       resources: {
         files: [
@@ -107,7 +109,7 @@ module.exports = function (grunt) {
             cwd: 'resources/',
             dest: '<%= buildrootdir %>',
           },
-        ]
+        ],
       },
       typeaheadjs: {
         files: [
@@ -117,7 +119,7 @@ module.exports = function (grunt) {
             cwd: 'node_modules/typeahead.js/dist/',
             dest: '<%= buildscriptdir %>',
           },
-        ]
+        ],
       },
       // TODO:
       // The latest version on bower is not compatible with typeahead ^0.2.3. I copied typeahead.less on master branch directly to resources/less/
@@ -141,7 +143,7 @@ module.exports = function (grunt) {
             cwd: 'node_modules/timeago/',
             dest: '<%= buildscriptdir %>',
           },
-        ]
+        ],
       },
       uitablefilter: {
         files: [
@@ -151,7 +153,7 @@ module.exports = function (grunt) {
             cwd: 'thirdparty/uitable/',
             dest: '<%= buildscriptdir %>',
           },
-        ]
+        ],
       },
       d3: {
         files: [
@@ -161,7 +163,7 @@ module.exports = function (grunt) {
             cwd: 'node_modules/d3/',
             dest: '<%= buildscriptdir %>',
           },
-        ]
+        ],
       },
       c3: {
         files: [
@@ -177,19 +179,19 @@ module.exports = function (grunt) {
             cwd: 'node_modules/c3/',
             dest: '<%= buildscriptdir %>',
           },
-        ]
+        ],
       },
     },
     clean: {
       build: {
-        src: ['*/build.scss', '*/build.less']
-      }
+        src: ['*/build.scss', '*/build.less'],
+      },
     },
   });
 
-  grunt.registerTask('none', function () { });
+  grunt.registerTask('none', function () {});
 
-  grunt.registerTask('build_less', 'build a regular theme from less', function() {
+  grunt.registerTask('build_less', 'build a regular theme from less', function () {
     var theme = 'resources/less';
     var compress = true;
 
@@ -202,20 +204,24 @@ module.exports = function (grunt) {
     concatSrc = theme + '/_build.less';
     concatDest = theme + '/build.less';
     lessDest = '<%=builddir%>/bootstrap.css';
-    lessSrc = [ theme + '/' + 'build.less' ];
+    lessSrc = [theme + '/' + 'build.less'];
 
-    dist = {src: concatSrc, dest: concatDest};
+    dist = { src: concatSrc, dest: concatDest };
     grunt.config('concat.dist', dist);
     files = {};
     files[lessDest] = lessSrc;
     grunt.config('less.dist.files', files);
     grunt.config('less.dist.options.compress', false);
 
-    grunt.task.run(['concat', 'less:dist', /*'prefix:' + lessDest,*/ 'clean:build',
-      compress ? 'compress:'+lessDest+':'+'<%=builddir%>/bootstrap.min.css':'none']);
+    grunt.task.run([
+      'concat',
+      'less:dist',
+      /*'prefix:' + lessDest,*/ 'clean:build',
+      compress ? 'compress:' + lessDest + ':' + '<%=builddir%>/bootstrap.min.css' : 'none',
+    ]);
   });
 
-  grunt.registerTask('compress', 'compress a generic css', function(fileSrc, fileDst) {
+  grunt.registerTask('compress', 'compress a generic css', function (fileSrc, fileDst) {
     var files = {};
     files[fileDst] = fileSrc;
     grunt.log.writeln('compressing file ' + fileSrc);
@@ -225,8 +231,5 @@ module.exports = function (grunt) {
     grunt.task.run(['less:dist']);
   });
 
-  grunt.registerTask('default', [
-    'copy',
-    'build_less',
-  ]);
+  grunt.registerTask('default', ['copy', 'build_less']);
 };

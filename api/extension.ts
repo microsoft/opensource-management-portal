@@ -118,46 +118,50 @@ router.get('/', (req: IApiRequest, res) => {
   return res.json(connectionInformation);
 });
 
-router.get('/metadata', asyncHandler(getLocalEncryptionKeyMiddleware), (req: IApiRequest, res: IExtensionResponse) => {
-  const apiContext = req.apiContext;
+router.get(
+  '/metadata',
+  asyncHandler(getLocalEncryptionKeyMiddleware),
+  (req: IApiRequest, res: IExtensionResponse) => {
+    const apiContext = req.apiContext;
 
-  const localKey = res.localKey;
-  const { operations } = getProviders(req);
-  const ghi = apiContext.getGitHubIdentity();
-  const id = ghi ? ghi.id : null;
-  const login = ghi ? ghi.username : null;
-  const link = apiContext.link;
-  const orgData = getSanitizedOrganizations(operations);
-  const config = operations.config;
+    const localKey = res.localKey;
+    const { operations } = getProviders(req);
+    const ghi = apiContext.getGitHubIdentity();
+    const id = ghi ? ghi.id : null;
+    const login = ghi ? ghi.username : null;
+    const link = apiContext.link;
+    const orgData = getSanitizedOrganizations(operations);
+    const config = operations.config;
 
-  const metadata = {
-    extension: {
-      localEncryptionKey: localKey,
-    },
-    operations: config.brand,
-    serviceMessage: config.serviceMessage,
-    reference: config.corporate.trainingResources ? config.corporate.trainingResources.footer : {},
-    organizations: orgData,
-    site: config.urls,
-    link: undefined,
-  };
-
-  if (link) {
-    metadata.link = {
-      github: {
-        id,
-        login,
+    const metadata = {
+      extension: {
+        localEncryptionKey: localKey,
       },
-      corporate: {
-        preferredName: link.corporateDisplayName,
-        userPrincipalName: link.corporateUsername,
-        id: link.corporateId,
-      },
+      operations: config.brand,
+      serviceMessage: config.serviceMessage,
+      reference: config.corporate.trainingResources ? config.corporate.trainingResources.footer : {},
+      organizations: orgData,
+      site: config.urls,
+      link: undefined,
     };
-  }
 
-  res.json(metadata);
-});
+    if (link) {
+      metadata.link = {
+        github: {
+          id,
+          login,
+        },
+        corporate: {
+          preferredName: link.corporateDisplayName,
+          userPrincipalName: link.corporateUsername,
+          id: link.corporateId,
+        },
+      };
+    }
+
+    res.json(metadata);
+  }
+);
 
 function getSanitizedOrganizations(operations) {
   const value = {
@@ -199,7 +203,10 @@ async function getLocalEncryptionKeyMiddleware(req: IApiRequest, res, next): Pro
   return next();
 }
 
-async function getLocalEncryptionKey(localExtensionKeyProvider: ILocalExtensionKeyProvider, corporateId: string): Promise<string> {
+async function getLocalEncryptionKey(
+  localExtensionKeyProvider: ILocalExtensionKeyProvider,
+  corporateId: string
+): Promise<string> {
   try {
     const localEncryptionKey = await localExtensionKeyProvider.getForCorporateId(corporateId);
     if (localEncryptionKey.isValidNow()) {
@@ -215,7 +222,11 @@ async function getLocalEncryptionKey(localExtensionKeyProvider: ILocalExtensionK
   return null;
 }
 
-async function createLocalEncryptionKey(insights, localExtensionKeyProvider: ILocalExtensionKeyProvider, corporateId: string): Promise<string> {
+async function createLocalEncryptionKey(
+  insights,
+  localExtensionKeyProvider: ILocalExtensionKeyProvider,
+  corporateId: string
+): Promise<string> {
   const localEncryptionKey = LocalExtensionKey.CreateNewLocalExtensionKey(corporateId);
   await localExtensionKeyProvider.createNewForCorporateId(localEncryptionKey);
   insights.trackEvent({ name: 'ExtensionNewLocalKeyGenerated' });
@@ -223,7 +234,11 @@ async function createLocalEncryptionKey(insights, localExtensionKeyProvider: ILo
   return localEncryptionKey.localDataKey;
 }
 
-async function getOrCreateLocalEncryptionKey(insights, localExtensionKeyProvider: ILocalExtensionKeyProvider, apiKeyToken: PersonalAccessToken): Promise<string> {
+async function getOrCreateLocalEncryptionKey(
+  insights,
+  localExtensionKeyProvider: ILocalExtensionKeyProvider,
+  apiKeyToken: PersonalAccessToken
+): Promise<string> {
   const corporateId = apiKeyToken.corporateId; // apiKeyRow.RowKey || apiKeyRow.owner;
   if (!corporateId) {
     throw new Error('Owner identity required');

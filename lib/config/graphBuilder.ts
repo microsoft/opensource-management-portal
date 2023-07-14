@@ -17,7 +17,7 @@ const supportedExtensions = new Map([
 
 async function scriptProcessor(api: ILibraryOptions, config: any, p: string) {
   const script = require(p);
-  return typeof (script) === 'function' ? script(api, config) : script;
+  return typeof script === 'function' ? script(api, config) : script;
 }
 
 async function jsonProcessor(api: ILibraryOptions, config: any, p: string) {
@@ -51,13 +51,17 @@ export default async (api: ILibraryOptions, dirPath: string) => {
     const file = path.join(dirPath, files[i]);
     const ext = path.extname(file);
     const nodeName = path.basename(file, ext);
+    // Exclude any TypeScript-related typing files (special case)
+    if (nodeName.endsWith('.types')) {
+      continue;
+    }
     const processor = supportedExtensions.get(ext);
     if (!processor) {
       continue;
     }
     try {
       const value = await processor(api, config, file);
-      if (value && typeof (value) === 'string' && value === dirPath) {
+      if (value && typeof value === 'string' && value === dirPath) {
         // Skip the index.js for local hybrid package scenarios
       } else if (value !== undefined) {
         objectPath.set(config, nodeName, value);

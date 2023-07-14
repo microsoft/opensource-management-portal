@@ -18,6 +18,5 @@
   .list-group
     a.list-group-item(href='/settings/approvals', class={active: view === 'settings/approvals'}) Active requests
     a.list-group-item(href='/settings/security/tokens', class={active: view === 'settings/personalAccessTokens'}) Personal access tokens
-    a.list-group-item(href='/settings/digestReports', class={active: view === 'settings/digestReports'}) Administrator reports
     if view === 'settings/extension'
       a.list-group-item(href='/settings/security/tokens/extension', class={active: view === 'settings/extension'}) Install browser extension

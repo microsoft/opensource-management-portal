@@ -3,18 +3,22 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Response } from 'express';
 import crypto from 'crypto';
 import githubUsernameRegex from 'github-username-regex';
 import { AxiosError } from 'axios';
-import { DateTime } from 'luxon';
-
-import { GitHubRepositoryPermission } from './entities/repositoryMetadata/repositoryMetadata';
 
 import appPackage from './package.json';
-import { ICreateRepositoryApiResult } from './api/createRepo';
+import type { ICreateRepositoryApiResult } from './api/createRepo';
 import { Repository } from './business/repository';
-import { IDictionary, IFunctionPromise, IProviders, ISettledValue, ReposAppRequest, SettledState } from './interfaces';
+import {
+  GitHubRepositoryPermission,
+  IDictionary,
+  IFunctionPromise,
+  IProviders,
+  ISettledValue,
+  ReposAppRequest,
+  SettledState,
+} from './interfaces';
 import { Organization } from './business';
 const packageVariableName = 'static-react-package-name';
 
@@ -29,14 +33,6 @@ export function assertUnreachable(nothing: never): never {
   throw new Error('This is never expected.');
 }
 
-export interface RedisOptions {
-  auth_pass?: string;
-  detect_buffers: boolean;
-  tls?: {
-    servername: string;
-  };
-}
-
 export function getProviders(req: ReposAppRequest) {
   return req.app.settings.providers as IProviders;
 }
@@ -46,43 +42,15 @@ export function isWebhookIngestionEndpointEnabled(req: ReposAppRequest) {
   return config?.features?.exposeWebhookIngestionEndpoint === true;
 }
 
-export interface IResponseForSettingsPersonalAccessTokens extends Response {
-  newKey?: string;
-}
-
-interface ITooManyLinksError extends Error {
-  links?: any;
-  tooManyLinks?: boolean;
-}
-
-interface IExistingIdentityError extends Error {
-  anotherAccount?: boolean;
-  link?: any;
-  skipLog?: boolean;
-}
-
-function tooManyLinksError(self, userLinks, callback) {
-  const tooManyLinksError: ITooManyLinksError = new Error(`This account has ${userLinks.length} linked GitHub accounts.`);
-  tooManyLinksError.links = userLinks;
-  tooManyLinksError.tooManyLinks = true;
-  return callback(tooManyLinksError, self);
-}
-
-function existingGitHubIdentityError(self, link, requestUser, callback) {
-  const endUser = requestUser.azure.displayName || requestUser.azure.username;
-  const anotherGitHubAccountError: IExistingIdentityError = new Error(`${endUser}, there is a different GitHub account linked to your corporate identity.`);
-  anotherGitHubAccountError.anotherAccount = true;
-  anotherGitHubAccountError.link = link;
-  anotherGitHubAccountError.skipLog = true;
-  return callback(anotherGitHubAccountError, self);
-}
-
 export function SettleToStateValue<T>(promise: Promise<T>): Promise<ISettledValue<T>> {
-  return promise.then(value => {
-    return { value, state: SettledState.Fulfilled };
-  }, reason => {
-    return { reason, state: SettledState.Rejected };
-  });
+  return promise.then(
+    (value) => {
+      return { value, state: SettledState.Fulfilled };
+    },
+    (reason) => {
+      return { reason, state: SettledState.Rejected };
+    }
+  );
 }
 
 export function permissionsObjectToValue(permissions): GitHubRepositoryPermission {
@@ -100,22 +68,29 @@ export function permissionsObjectToValue(permissions): GitHubRepositoryPermissio
   throw new Error(`Unsupported GitHubRepositoryPermission value inside permissions`);
 }
 
-export function isPermissionBetterThan(currentBest: GitHubRepositoryPermission, newConsideration: GitHubRepositoryPermission) {
-  switch (newConsideration) {
+export function isPermissionBetterThan(
+  currentBest: GitHubRepositoryPermission,
+  newConsideration: GitHubRepositoryPermission
+) {
+  if (!currentBest) {
+    return true;
+  }
+  const comparison = MassagePermissionsToGitHubRepositoryPermission(currentBest);
+  switch (MassagePermissionsToGitHubRepositoryPermission(newConsideration)) {
     case GitHubRepositoryPermission.Admin:
       return true;
     case GitHubRepositoryPermission.Maintain:
-      if (currentBest !== GitHubRepositoryPermission.Admin) {
+      if (comparison !== GitHubRepositoryPermission.Admin) {
         return true;
       }
       break;
     case GitHubRepositoryPermission.Push:
-      if (currentBest !== GitHubRepositoryPermission.Admin) {
+      if (comparison !== GitHubRepositoryPermission.Admin) {
         return true;
       }
       break;
     case GitHubRepositoryPermission.Pull:
-      if (currentBest === null || currentBest === GitHubRepositoryPermission.None) {
+      if (comparison === null || comparison === GitHubRepositoryPermission.None) {
         return true;
       }
       break;
@@ -145,7 +120,9 @@ export function MassagePermissionsToGitHubRepositoryPermission(value: string): G
     case 'read':
       return GitHubRepositoryPermission.Pull;
     default:
-      throw new Error(`Invalid ${value} GitHub repository permission [massagePermissionsToGitHubRepositoryPermission]`);
+      throw new Error(
+        `Invalid ${value} GitHub repository permission [massagePermissionsToGitHubRepositoryPermission]`
+      );
   }
 }
 
@@ -156,7 +133,7 @@ export class CreateError {
     return error;
   }
 
-  static NotFound(message: string, innerError?: Error): Error {
+  static NotFound(message?: string, innerError?: Error): Error {
     return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(404, message), innerError);
   }
 
@@ -213,12 +190,17 @@ export class ErrorHelper {
 
   public static IsNotFound(error: Error): boolean {
     const statusNumber = ErrorHelper.GetStatus(error);
-    return (statusNumber && statusNumber === 404);
+    return statusNumber && statusNumber === 404;
+  }
+
+  public static IsNotAuthorized(error: Error): boolean {
+    const statusNumber = ErrorHelper.GetStatus(error);
+    return statusNumber && statusNumber === 403;
   }
 
   public static IsUnavailableForExternalLegalRequest(error: Error): boolean {
     const statusNumber = ErrorHelper.GetStatus(error);
-    return (statusNumber && statusNumber === 451); // https://developer.github.com/changes/2016-03-17-the-451-status-code-is-now-supported/
+    return statusNumber && statusNumber === 451; // https://developer.github.com/changes/2016-03-17-the-451-status-code-is-now-supported/
   }
 
   public static IsConflict(error: Error): boolean {
@@ -245,15 +227,15 @@ export class ErrorHelper {
         return axiosError.response.status;
       }
     }
-    if (asAny?.statusCode && typeof (asAny.statusCode) === 'number') {
+    if (asAny?.statusCode && typeof asAny.statusCode === 'number') {
       return asAny.statusCode as number;
     }
-    if (asAny?.code && typeof (asAny.code) === 'number') {
+    if (asAny?.code && typeof asAny.code === 'number') {
       return asAny.code as number;
     }
     if (asAny?.status) {
       const status = asAny.status;
-      const type = typeof (status);
+      const type = typeof status;
       if (type === 'number') {
         return status;
       } else if (type === 'string') {
@@ -270,7 +252,7 @@ export class ErrorHelper {
 export function setImmediateAsync(f: IFunctionPromise<void>): void {
   const safeCall = () => {
     try {
-      f().catch(error => {
+      f().catch((error) => {
         console.warn(`setImmediateAsync caught error: ${error}`);
       });
     } catch (ignoredFailure) {
@@ -300,16 +282,24 @@ export interface ICustomizedNewRepositoryLogic {
   getAdditionalTelemetryProperties(context: INewRepositoryContext): IDictionary<string>;
   validateRequest(context: INewRepositoryContext, req: any): Promise<void>;
   stripRequestBody(context: INewRepositoryContext, body: any): void;
-  afterRepositoryCreated(context: INewRepositoryContext, corporateId: string, success: ICreateRepositoryApiResult, organization: Organization): Promise<void>;
+  afterRepositoryCreated(
+    context: INewRepositoryContext,
+    corporateId: string,
+    success: ICreateRepositoryApiResult,
+    organization: Organization
+  ): Promise<void>;
   shouldNotifyManager(context: INewRepositoryContext, corporateId: string): boolean;
-  getNewMailViewProperties(context: INewRepositoryContext, repository: Repository): Promise<ICustomizedNewRepoProperties>;
+  getNewMailViewProperties(
+    context: INewRepositoryContext,
+    repository: Repository
+  ): Promise<ICustomizedNewRepoProperties>;
   sufficientTeamsConfigured(context: INewRepositoryContext, body: any): boolean;
   skipApproval(context: INewRepositoryContext, body: any): boolean;
   additionalCreateRepositoryParameters(context: INewRepositoryContext): any;
 }
 
 export function splitSemiColonCommas(value: string) {
-  return value ? value.replace(/;/g, ',').split(',') : [];
+  return value && value.replace ? value.replace(/;/g, ',').split(',') : [];
 }
 
 export interface ICustomizedNewRepoProperties {
@@ -338,15 +328,4 @@ export function validateGitHubLogin(username: string) {
   return username;
 }
 
-export async function streamToString(readableStream) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    readableStream.on('data', (data) => {
-      chunks.push(data.toString());
-    });
-    readableStream.on('end', () => {
-      resolve(chunks.join(''));
-    });
-    readableStream.on('error', reject);
-  });
-}
+export const DefaultGraphqlPageSize = 10;

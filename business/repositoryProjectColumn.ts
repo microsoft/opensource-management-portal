@@ -4,8 +4,15 @@
 //
 
 import { CacheDefault, getMaxAgeSeconds, RepositoryIssue } from '.';
-import { AppPurpose } from '../github';
-import { IOperationsInstance, IPurposefulGetAuthorizationHeader, IGetAuthorizationHeader, ICacheOptionsWithPurpose, throwIfNotGitHubCapable, ICacheOptions } from '../interfaces';
+import { AppPurpose, AppPurposeTypes } from './githubApps';
+import {
+  IOperationsInstance,
+  IPurposefulGetAuthorizationHeader,
+  IGetAuthorizationHeader,
+  ICacheOptionsWithPurpose,
+  throwIfNotGitHubCapable,
+  ICacheOptions,
+} from '../interfaces';
 import { augmentInertiaPreview, RepositoryProject } from './repositoryProject';
 import { RepositoryProjectCard } from './repositoryProjectCard';
 import * as common from './common';
@@ -20,7 +27,13 @@ export class RepositoryProjectColumn {
 
   private _entity: any;
 
-  constructor(project: RepositoryProject, columnId: number, operations: IOperationsInstance, getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader, entity?: any) {
+  constructor(
+    project: RepositoryProject,
+    columnId: number,
+    operations: IOperationsInstance,
+    getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader,
+    entity?: any
+  ) {
     this._getSpecificAuthorizationHeader = getSpecificAuthorizationHeader;
     this._project = project;
     this._id = columnId;
@@ -30,12 +43,22 @@ export class RepositoryProjectColumn {
     }
   }
 
-  get id(): number { return this._entity?.id as number; }
-  get name(): string { return this._entity?.name as string; }
-  get created_at(): Date { return this._entity?.created_at ? new Date(this._entity.created_at) : null; }
-  get updated_at(): Date { return this._entity?.created_at ? new Date(this._entity.updated_at) : null; }
+  get id(): number {
+    return this._entity?.id as number;
+  }
+  get name(): string {
+    return this._entity?.name as string;
+  }
+  get created_at(): Date {
+    return this._entity?.created_at ? new Date(this._entity.created_at) : null;
+  }
+  get updated_at(): Date {
+    return this._entity?.created_at ? new Date(this._entity.updated_at) : null;
+  }
 
-  getEntity(): any { return this._entity; }
+  getEntity(): any {
+    return this._entity;
+  }
 
   get project(): RepositoryProject {
     return this._project;
@@ -48,7 +71,7 @@ export class RepositoryProjectColumn {
       column_id: this._id,
     });
     augmentInertiaPreview(parameters);
-    const purpose = options?.purpose || AppPurpose.Onboarding;
+    const purpose = options?.purpose || AppPurpose.Data;
     const cacheOptions: ICacheOptions = {
       maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
     };
@@ -56,7 +79,11 @@ export class RepositoryProjectColumn {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     // NOTE: this will not retrieve more than a few cards since we are not paging (by design); GH default is 30 anyway.
-    const raw = await operations.github.call(this.authorizeSpecificPurpose(purpose), 'projects.listCards', parameters);
+    const raw = await operations.github.call(
+      this.authorizeSpecificPurpose(purpose),
+      'projects.listCards',
+      parameters
+    );
     const cards = common.createInstances<RepositoryProjectCard>(this, projectCardFromEntity, raw);
     return cards;
   }
@@ -68,8 +95,18 @@ export class RepositoryProjectColumn {
       note,
     };
     augmentInertiaPreview(parameters);
-    const details = await operations.github.post(this.authorizeSpecificPurpose(AppPurpose.Onboarding), 'projects.createCard', parameters);
-    const card = new RepositoryProjectCard(this, details.number, operations, this._getSpecificAuthorizationHeader, details);
+    const details = await operations.github.post(
+      this.authorizeSpecificPurpose(AppPurpose.Operations),
+      'projects.createCard',
+      parameters
+    );
+    const card = new RepositoryProjectCard(
+      this,
+      details.number,
+      operations,
+      this._getSpecificAuthorizationHeader,
+      details
+    );
     return card;
   }
 
@@ -84,13 +121,26 @@ export class RepositoryProjectColumn {
       content_id: issue.id,
     };
     augmentInertiaPreview(parameters);
-    const details = await operations.github.post(this.authorizeSpecificPurpose(AppPurpose.Onboarding), 'projects.createCard', parameters);
-    const card = new RepositoryProjectCard(this, details.number, operations, this._getSpecificAuthorizationHeader, details);
+    const details = await operations.github.post(
+      this.authorizeSpecificPurpose(AppPurpose.Operations),
+      'projects.createCard',
+      parameters
+    );
+    const card = new RepositoryProjectCard(
+      this,
+      details.number,
+      operations,
+      this._getSpecificAuthorizationHeader,
+      details
+    );
     return card;
   }
 
-  private authorizeSpecificPurpose(purpose: AppPurpose): IGetAuthorizationHeader | string {
-    const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(this, purpose) as IGetAuthorizationHeader;
+  private authorizeSpecificPurpose(purpose: AppPurposeTypes): IGetAuthorizationHeader | string {
+    const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(
+      this,
+      purpose
+    ) as IGetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 }
@@ -98,6 +148,12 @@ export class RepositoryProjectColumn {
 function projectCardFromEntity(entity) {
   // 'this' is bound for this function to be a private method
   const operations = this._operations;
-  const column = new RepositoryProjectCard(this, entity.number, operations, this._getSpecificAuthorizationHeader, entity);
+  const column = new RepositoryProjectCard(
+    this,
+    entity.number,
+    operations,
+    this._getSpecificAuthorizationHeader,
+    entity
+  );
   return column;
 }

@@ -5,10 +5,15 @@
 
 import { TelemetryClient } from 'applicationinsights';
 import { AuthorizationCode } from 'simple-oauth2';
-import redis from 'redis';
+import redis, { RedisClientType } from 'redis';
 import { Pool as PostgresPool } from 'pg';
 
-import { IApplicationProfile, ICorporationAdministrationSection, IReposApplication } from '.';
+import {
+  IApplicationProfile,
+  ICorporationAdministrationSection,
+  IReposApplication,
+  SiteConfiguration,
+} from '.';
 import { Operations } from '../business';
 import QueryCache from '../business/queryCache';
 import { IAuditLogRecordProvider } from '../entities/auditLogRecord/auditLogRecordProvider';
@@ -17,7 +22,6 @@ import { IOrganizationMemberCacheProvider } from '../entities/organizationMember
 import { IOrganizationSettingProvider } from '../entities/organizationSettings/organizationSettingProvider';
 import { IRepositoryCacheProvider } from '../entities/repositoryCache/repositoryCacheProvider';
 import { IRepositoryCollaboratorCacheProvider } from '../entities/repositoryCollaboratorCache/repositoryCollaboratorCacheProvider';
-import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repositoryMetadataProvider';
 import { IRepositoryTeamCacheProvider } from '../entities/repositoryTeamCache/repositoryTeamCacheProvider';
 import { ITeamCacheProvider } from '../entities/teamCache/teamCacheProvider';
 import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';
@@ -27,7 +31,6 @@ import { IUserSettingsProvider } from '../entities/userSettings';
 import { ICacheHelper } from '../lib/caching';
 import BlobCache from '../lib/caching/blob';
 import { ICampaignHelper } from '../lib/campaigns';
-import { ICorporateContactProvider } from '../lib/corporateContactProvider';
 import { RestLibrary } from '../lib/github';
 import { IGraphProvider } from '../lib/graphProvider';
 import { ILinkProvider } from '../lib/linkProviders';
@@ -38,6 +41,10 @@ import { ICustomizedNewRepositoryLogic, ICustomizedTeamPermissionsWebhookLogic }
 import { IEntityMetadataProvider } from '../lib/entityMetadataProvider';
 import { IRepositoryProvider } from '../entities/repository';
 import { IKeyVaultSecretResolver } from '../lib/keyVaultResolver';
+import { IOrganizationAnnotationMetadataProvider } from '../entities/organizationAnnotation';
+import type { IImmutableStorageProvider } from '../lib/immutable';
+
+type ProviderGenerator = (value: string) => IEntityMetadataProvider;
 
 export interface IProviders {
   app: IReposApplication;
@@ -50,28 +57,30 @@ export interface IProviders {
   basedir?: string;
   campaignStateProvider?: ICampaignHelper;
   campaign?: any; // campaign redirection route, poor variable name
-  corporateContactProvider?: ICorporateContactProvider;
-  config?: any;
+  config?: SiteConfiguration;
   customizedNewRepositoryLogic?: ICustomizedNewRepositoryLogic;
   customizedTeamPermissionsWebhookLogic?: ICustomizedTeamPermissionsWebhookLogic;
   defaultEntityMetadataProvider?: IEntityMetadataProvider;
   diagnosticsDrop?: BlobCache;
   healthCheck?: any;
   keyEncryptionKeyResolver?: IKeyVaultSecretResolver;
+  getEntityProviderByType?: ProviderGenerator;
   github?: RestLibrary;
   graphProvider?: IGraphProvider;
+  immutable?: IImmutableStorageProvider;
   insights?: TelemetryClient;
   linkProvider?: ILinkProvider;
   localExtensionKeyProvider?: ILocalExtensionKeyProvider;
   mailAddressProvider?: IMailAddressProvider;
   mailProvider?: IMailProvider;
   operations?: Operations;
+  organizationAnnotationsProvider?: IOrganizationAnnotationMetadataProvider;
   organizationMemberCacheProvider?: IOrganizationMemberCacheProvider;
   organizationSettingsProvider?: IOrganizationSettingProvider;
   postgresPool?: PostgresPool;
   queryCache?: QueryCache;
   webhookQueueProcessor?: IQueueProcessor;
-  sessionRedisClient?: redis.RedisClient;
+  sessionRedisClient?: RedisClientType;
   cacheProvider?: ICacheHelper;
   repositoryProvider?: IRepositoryProvider;
   repositoryCacheProvider?: IRepositoryCacheProvider;

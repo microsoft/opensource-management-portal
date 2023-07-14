@@ -18,9 +18,9 @@ export class AzureQueuesMessage implements IQueueMessage {
   constructor(message: DequeuedMessageItem) {
     this.popReceipt = message.popReceipt;
     this.identifier = message.messageId;
-    this.unparsedBody = (new Buffer(message.messageText, 'base64')).toString('utf8');
+    this.unparsedBody = Buffer.from(message.messageText, 'base64').toString('utf8');
     const parsed = JSON.parse(this.unparsedBody);
-    if (parsed && parsed.body && typeof(parsed.body === 'string')) {
+    if (parsed && parsed.body && typeof (parsed.body === 'string')) {
       // our own envelope format designed to work well with Azure Logic Apps
       this.unparsedBody = parsed.body;
       delete parsed.body;
@@ -61,7 +61,7 @@ export default class AzureQueuesProcessor implements IQueueProcessor {
     }
     this.#options = options;
   }
-  
+
   async initialize(): Promise<void> {
     const { account, sas, queue } = this.#options;
     const client = new QueueServiceClient(`https://${account}.queue.core.windows.net${sas}`);
@@ -73,7 +73,7 @@ export default class AzureQueuesProcessor implements IQueueProcessor {
     this.requireInitialized();
     const response = await this.#queueClient.receiveMessages();
     if (response.receivedMessageItems.length > 0) {
-      return response.receivedMessageItems.map(message => new AzureQueuesMessage(message));
+      return response.receivedMessageItems.map((message) => new AzureQueuesMessage(message));
     }
     return [];
   }
@@ -86,7 +86,7 @@ export default class AzureQueuesProcessor implements IQueueProcessor {
     }
     const deleteMessageResponse = await this.#queueClient.deleteMessage(
       assumedType.identifier,
-      assumedType.popReceipt,
+      assumedType.popReceipt
     );
     // console.log(deleteMessageResponse);
   }

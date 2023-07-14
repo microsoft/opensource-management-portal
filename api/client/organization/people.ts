@@ -10,7 +10,15 @@ import { jsonError } from '../../../middleware';
 import { getProviders } from '../../../transitional';
 import LeakyLocalCache, { getLinksLightCache } from '../leakyLocalCache';
 import JsonPager from '../jsonPager';
-import { OrganizationMember, TeamMember, Operations, Team, Organization, MemberSearch, corporateLinkToJson } from '../../../business';
+import {
+  OrganizationMember,
+  TeamMember,
+  Operations,
+  Team,
+  Organization,
+  MemberSearch,
+  corporateLinkToJson,
+} from '../../../business';
 import { NoCacheNoBackground, ReposAppRequest } from '../../../interfaces';
 
 const router: Router = Router();
@@ -60,7 +68,7 @@ export async function equivalentLegacyPeopleSearch(req: ReposAppRequest, options
   const orgId = req.organization ? (req.organization as Organization).id : null;
   const { organizationMembers, teamMembers } = await getPeopleForOrganization(operations, org, options);
   const page = req.query.page_number ? Number(req.query.page_number) : 1;
-  let phrase = req.query.q as string;
+  const phrase = req.query.q as string;
   let type = req.query.type as string;
   const validTypes = new Set([
     'linked',
@@ -108,24 +116,31 @@ export async function equivalentLegacyPeopleSearch(req: ReposAppRequest, options
   return search;
 }
 
-router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const pager = new JsonPager<OrganizationMember>(req, res);
-  try {
-    const searcher = await equivalentLegacyPeopleSearch(req);
-    const members = searcher.members;
-    const slice = pager.slice(members);
-    return pager.sendJson(slice.map(organizationMember => {
-      const obj = Object.assign({
-        link: organizationMember.link ? corporateLinkToJson(organizationMember.link) : null,
-      }, organizationMember.getEntity());
-      return obj;
-    }),
-    );
-  } catch (repoError) {
-    console.dir(repoError);
-    return next(jsonError(repoError));
-  }
-}));
+router.get(
+  '/',
+  asyncHandler(async (req: ReposAppRequest, res, next) => {
+    const pager = new JsonPager<OrganizationMember>(req, res);
+    try {
+      const searcher = await equivalentLegacyPeopleSearch(req);
+      const members = searcher.members;
+      const slice = pager.slice(members);
+      return pager.sendJson(
+        slice.map((organizationMember) => {
+          const obj = Object.assign(
+            {
+              link: organizationMember.link ? corporateLinkToJson(organizationMember.link) : null,
+            },
+            organizationMember.getEntity()
+          );
+          return obj;
+        })
+      );
+    } catch (repoError) {
+      console.dir(repoError);
+      return next(jsonError(repoError));
+    }
+  })
+);
 
 router.use('*', (req, res, next) => {
   return next(jsonError('no API or function available within this people list', 404));

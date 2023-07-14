@@ -13,28 +13,39 @@ import { Repository } from '../../../business';
 import RouteRepo from './repo';
 import JsonPager from '../jsonPager';
 import { ReposAppRequest, IProviders } from '../../../interfaces';
+import { sortRepositoriesByNameCaseInsensitive } from '../../../utils';
 
 const router: Router = Router();
 
-router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { organization } = req;
-  const providers = getProviders(req);
-  const pager = new JsonPager<Repository>(req, res);
-  const searchOptions = {
-    q: (req.query.q || '') as string,
-    type: (req.query.type || '') as string, // CONSIDER: TS: stronger typing
-  };
-  try {
-    const repos = await searchRepos(providers, String(organization.id), RepositorySearchSortOrder.Updated, searchOptions);
-    const slice = pager.slice(repos);
-    return pager.sendJson(slice.map(repo => {
-      return repo.asJson();
-    }));
-  } catch (repoError) {
-    console.dir(repoError);
-    return next(jsonError(repoError));
-  }
-}));
+router.get(
+  '/',
+  asyncHandler(async (req: ReposAppRequest, res, next) => {
+    const { organization } = req;
+    const providers = getProviders(req);
+    const pager = new JsonPager<Repository>(req, res);
+    const searchOptions = {
+      q: (req.query.q || '') as string,
+      type: (req.query.type || '') as string, // CONSIDER: TS: stronger typing
+    };
+    try {
+      const repos = await searchRepos(
+        providers,
+        String(organization.id),
+        RepositorySearchSortOrder.Updated,
+        searchOptions
+      );
+      const slice = pager.slice(repos);
+      return pager.sendJson(
+        slice.map((repo) => {
+          return repo.asJson();
+        })
+      );
+    } catch (repoError) {
+      console.dir(repoError);
+      return next(jsonError(repoError));
+    }
+  })
+);
 
 // --- Search reimplementation ---
 
@@ -92,25 +103,44 @@ type RepoFilterFunction = (a: Repository) => boolean;
 function getFilter(type: RepoListSearchType): RepoFilterFunction {
   switch (type) {
     case RepoListSearchType.Forks:
-      return repo => { return repo.fork; };
+      return (repo) => {
+        return repo.fork;
+      };
     case RepoListSearchType.Sources:
-      return repo => { return !repo.fork; }; // ? is this what 'Sources' means on GitHub?
+      return (repo) => {
+        return !repo.fork;
+      }; // ? is this what 'Sources' means on GitHub?
     case RepoListSearchType.Public:
-      return repo => { return !repo.private; };
+      return (repo) => {
+        return !repo.private;
+      };
     case RepoListSearchType.Private:
-      return repo => { return repo.private; };
+      return (repo) => {
+        return repo.private;
+      };
     case RepoListSearchType.All:
     default:
-      return repo => { return true; };
+      return (repo) => {
+        return true;
+      };
   }
 }
 
 type RepoSortFunction = (a: Repository, b: Repository) => number;
 
-function sortDates(fieldName: string, a: Repository, b: Repository): number { // Inverted sort (newest first)
-  const aa = a[fieldName] ? (typeof (a[fieldName]) === 'string' ? new Date(a[fieldName]) : a[fieldName]) : new Date(0);
-  const bb = b[fieldName] ? (typeof (b[fieldName]) === 'string' ? new Date(b[fieldName]) : b[fieldName]) : new Date(0);
-  return aa == bb ? 0 : (aa < bb) ? 1 : -1;
+function sortDates(fieldName: string, a: Repository, b: Repository): number {
+  // Inverted sort (newest first)
+  const aa = a[fieldName]
+    ? typeof a[fieldName] === 'string'
+      ? new Date(a[fieldName])
+      : a[fieldName]
+    : new Date(0);
+  const bb = b[fieldName]
+    ? typeof b[fieldName] === 'string'
+      ? new Date(b[fieldName])
+      : b[fieldName]
+    : new Date(0);
+  return aa == bb ? 0 : aa < bb ? 1 : -1;
 }
 
 function getSorter(search: RepositorySearchSortOrder): RepoSortFunction {
@@ -125,20 +155,12 @@ function getSorter(search: RepositorySearchSortOrder): RepoSortFunction {
       return sortDates.bind(null, 'updated_at');
     }
     case RepositorySearchSortOrder.Forks: {
-      return (a, b) => { return b.forks_count - a.forks_count; };
+      return (a, b) => {
+        return b.forks_count - a.forks_count;
+      };
     }
     case RepositorySearchSortOrder.Name: {
-      return (a, b) => {
-        const nameA = a.name.toLowerCase();
-        const nameB = b.name.toLowerCase();
-        if (nameA < nameB) {
-          return -1;
-        }
-        if (nameA > nameB) {
-          return 1;
-        }
-        return 0;
-      };
+      return sortRepositoriesByNameCaseInsensitive;
     }
     case RepositorySearchSortOrder.Size: {
       return (a, b) => {
@@ -174,19 +196,26 @@ interface ISearchReposOptions {
   language?: string;
 }
 
-export async function searchRepos(providers: IProviders, organizationId: string, sort: RepositorySearchSortOrder, options: ISearchReposOptions) {
+export async function searchRepos(
+  providers: IProviders,
+  organizationId: string,
+  sort: RepositorySearchSortOrder,
+  options: ISearchReposOptions
+) {
   const { queryCache } = providers;
 
   const { q, type } = options;
 
   // TODO: aggressive in-memory caching for each org
   let repositories = (
-    organizationId ? (await queryCache.organizationRepositories(organizationId.toString())) : (await queryCache.allRepositories())
-  ).map(wrapper => wrapper.repository);
+    organizationId
+      ? await queryCache.organizationRepositories(organizationId.toString())
+      : await queryCache.allRepositories()
+  ).map((wrapper) => wrapper.repository);
 
   // Filters
   if (q) {
-    let phrase = q.toLowerCase();
+    const phrase = q.toLowerCase();
     repositories = repositories.filter(repoMatchesPhrase.bind(null, phrase));
   }
 
@@ -207,13 +236,16 @@ export async function searchRepos(providers: IProviders, organizationId: string,
 
 // --- End of search reimplementation ---
 
-router.use('/:repoName', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { organization } = req;
-  const { repoName } = req.params;
-  // does not confirm the name
-  (req as any).repository = organization.repository(repoName);
-  return next();
-}));
+router.use(
+  '/:repoName',
+  asyncHandler(async (req: ReposAppRequest, res, next) => {
+    const { organization } = req;
+    const { repoName } = req.params;
+    // does not confirm the name
+    (req as any).repository = organization.repository(repoName);
+    return next();
+  })
+);
 
 router.use('/:repoName', RouteRepo);
 

@@ -4,15 +4,23 @@
 //
 
 import { NextFunction, Response } from 'express';
+import { PassportStatic } from 'passport';
 import { IReposError, ReposAppRequest } from '../../interfaces';
 import { getProviders } from '../../transitional';
+import { isCodespacesAuthenticating } from '../../utils';
 import { IPrimaryAuthenticationHelperMethods } from '../passport-routes';
 import { aadStrategyUserPropertyName } from './aadStrategy';
 
 const aadPassportStrategyName = 'azure-active-directory';
 
-export function attachAadPassportRoutes(app, config: any, passport, helpers: IPrimaryAuthenticationHelperMethods) {
-  app.get('/signin', function (req, res, next) {
+export function attachAadPassportRoutes(
+  app,
+  config: any,
+  passport: PassportStatic,
+  helpers: IPrimaryAuthenticationHelperMethods
+) {
+  const signinPath = isCodespacesAuthenticating(config, 'aad') ? 'sign-in' : 'signin';
+  app.get(`/${signinPath}`, function (req: ReposAppRequest, res, next) {
     if (req.isAuthenticated()) {
       const username = req.user?.azure?.username;
       if (username) {
@@ -45,15 +53,29 @@ export function attachAadPassportRoutes(app, config: any, passport, helpers: IPr
     });
   });
 
-  // Actual AAD sign-in
-  app.get('/auth/azure', passport.authenticate(aadPassportStrategyName));
+  app.get(
+    '/auth/azure',
+    passport.authenticate(aadPassportStrategyName, {
+      keepSessionInfo: true /* we manually regenerate for XSS */,
+    })
+  );
 
-  app.post('/auth/azure/callback',
-    passport.authenticate(aadPassportStrategyName),
+  app.post(
+    '/auth/azure/callback',
+    passport.authenticate(aadPassportStrategyName, {
+      keepSessionInfo: true /* we manually regenerate for XSS */,
+    }),
     helpers.newSessionAfterAuthentication,
     (req: ReposAppRequest, res: Response, next: NextFunction) => {
-      helpers.afterAuthentication(true /* primary app authentication */, aadStrategyUserPropertyName, req, res, next);
-    });
+      helpers.afterAuthentication(
+        true /* primary app authentication */,
+        aadStrategyUserPropertyName,
+        req,
+        res,
+        next
+      );
+    }
+  );
 
   // HTTP GET at the callback URL is used for a warning for certain users who launch
   // links from apps that temporarily prevent sessions. Technically this seems to
@@ -71,7 +93,10 @@ export function attachAadPassportRoutes(app, config: any, passport, helpers: IPr
       },
     });
     const messageError: IReposError = new Error(
-      isAuthenticated ? 'Authentication initially failed, but you are good to go now.' : 'Authentication failed, possibly due to SameSite cookie issues with newer browsers.');
+      isAuthenticated
+        ? 'Authentication initially failed, but you are good to go now.'
+        : 'Authentication failed, possibly due to SameSite cookie issues with newer browsers.'
+    );
     messageError.skipLog = true;
     messageError.status = 400;
     if (isAuthenticated) {
@@ -85,8 +110,13 @@ export function attachAadPassportRoutes(app, config: any, passport, helpers: IPr
     return next(messageError);
   });
 
-  app.get('/signin/azure', function (req: ReposAppRequest, res: Response) {
-    helpers.storeReferrer(req, res, '/auth/azure', 'request for the /signin/azure page, need to authenticate');
+  app.get(`/${signinPath}/azure`, function (req: ReposAppRequest, res: Response) {
+    helpers.storeReferrer(
+      req,
+      res,
+      '/auth/azure',
+      `request for the /${signinPath}/azure page, need to authenticate`
+    );
   });
 
   app.get('/signout/azure', (req: ReposAppRequest, res: Response, next: NextFunction) => {

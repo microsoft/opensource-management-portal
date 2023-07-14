@@ -7,7 +7,7 @@ import { IProviders } from '../../../interfaces';
 import { TableLinkProvider } from './tableLinkProvider';
 
 export default function createTableProvider(providers: IProviders, config) {
-  let tableOptions = config && config.github && config.github.links ? config.github.links.table : null;
+  const tableOptions = config && config.github && config.github.links ? config.github.links.table : null;
   if (!tableOptions) {
     throw new Error('TableLinkProvider requires config.github.links.table');
   }

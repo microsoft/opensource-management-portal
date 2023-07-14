@@ -14,15 +14,18 @@ import { quitInTenSeconds } from './utils';
 
 const app = express() as any as IReposApplication;
 
-require('debug')('startup')('starting...');
+import Debug from 'debug';
+Debug.debug('startup')('starting...');
 
 app.initializeApplication = initialize.bind(undefined, app, express, __dirname);
 
 app.initializeJob = function initializeJob(config, configurationError) {
-  config.isJobInternal = true;
-  config.skipModules = new Set([
-    'web',
-  ]);
+  if (config) {
+    config.isJobInternal = true;
+    config.skipModules = new Set(['web']);
+  } else {
+    console.warn(`Configuration did not resolve successfully`, configurationError);
+  }
   return initialize(app, express, __dirname, config, configurationError);
 };
 
@@ -59,7 +62,10 @@ async function startup(startupApplication: boolean) {
 
 app.startupApplication = startup.bind(null, true);
 app.startupJob = startup.bind(null, false);
-app.runJob = async function (job: (job: IReposJob) => Promise<IReposJobResult | void>, options?: IReposJobOptions): Promise<IReposApplication> {
+app.runJob = async function (
+  job: (job: IReposJob) => Promise<IReposJobResult | void>,
+  options?: IReposJobOptions
+): Promise<IReposApplication> {
   options = options || {};
   // TODO: automatically track elapsed job time
   const started = new Date();
@@ -90,7 +96,7 @@ app.runJob = async function (job: (job: IReposJob) => Promise<IReposJobResult | 
         name: `${options.insightsPrefix}Started`,
         properties: {
           hostname: hostname(),
-        }
+        },
       });
     } catch (ignoreInsightsError) {
       console.error(`insights error: ${ignoreInsightsError}`);
@@ -109,9 +115,12 @@ app.runJob = async function (job: (job: IReposJob) => Promise<IReposJobResult | 
       try {
         app.providers.insights.trackEvent({
           name: `${options.insightsPrefix}Success`,
-          properties: Object.assign({
-            hostname: hostname(),
-          }, result.successProperties),
+          properties: Object.assign(
+            {
+              hostname: hostname(),
+            },
+            result.successProperties
+          ),
         });
       } catch (ignoreInsightsError) {
         console.error(`insights error: ${ignoreInsightsError}`);
@@ -119,7 +128,10 @@ app.runJob = async function (job: (job: IReposJob) => Promise<IReposJobResult | 
     }
   } catch (jobError) {
     console.error(`The job failed: ${jobError}`);
-    console.dir(jobError);
+    // by default, let's not show the whole inner error
+    const simpleError = { ...jobError };
+    simpleError?.cause && delete simpleError.cause;
+    console.dir(simpleError);
     quitInTenSeconds(false);
     if (options.insightsPrefix && app.providers.insights) {
       try {
@@ -127,7 +139,7 @@ app.runJob = async function (job: (job: IReposJob) => Promise<IReposJobResult | 
           exception: jobError,
           properties: {
             name: `${options.insightsPrefix}Failure`,
-          }
+          },
         });
       } catch (ignoreInsightsError) {
         console.error(`insights error: ${ignoreInsightsError}`);
@@ -135,7 +147,7 @@ app.runJob = async function (job: (job: IReposJob) => Promise<IReposJobResult | 
     }
     return app;
   }
-  // TODO: insights metric for job time
+  // CONSIDER: insights metric for job time
   console.log('The job was successful.');
   quitInTenSeconds(true);
   return app;

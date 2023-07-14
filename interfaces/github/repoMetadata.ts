@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { GitHubRepositoryPermission } from '../../entities/repositoryMetadata/repositoryMetadata';
-import { IOperationsInstance, IOperationsRepositoryMetadataProvider, operationsWithCapability, throwIfNotCapable } from './operations';
+import { IOperationsInstance, IOperationsRepositoryMetadataProvider, throwIfNotCapable } from './operations';
+import { GitHubRepositoryPermission } from './repos';
 import { CoreCapability } from './rest';
 
 export interface IRepositoryMetadataPermissionPair {
@@ -36,10 +36,12 @@ export interface IRepositoryMetadata {
   gitIgnoreTemplate: string;
 
   teamPermissions: IRepositoryMetadataPermissionPair[];
-
 }
 
 export function getRepositoryMetadataProvider(operations: IOperationsInstance) {
-  const ops = throwIfNotCapable<IOperationsRepositoryMetadataProvider>(operations, CoreCapability.RepositoryMetadataProvider);
+  const ops = throwIfNotCapable<IOperationsRepositoryMetadataProvider>(
+    operations,
+    CoreCapability.RepositoryMetadataProvider
+  );
   return ops.repositoryMetadataProvider;
 }
