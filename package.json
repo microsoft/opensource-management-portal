@@ -76,7 +76,7 @@
     "@azure/service-bus": "7.9.0",
     "@azure/storage-blob": "12.14.0",
     "@azure/storage-queue": "12.13.0",
-    "@octokit/plugin-paginate-graphql": "3.0.0",
+    "@octokit/plugin-paginate-graphql": "4.0.0",
     "@octokit/request": "7.0.1",
     "@octokit/auth-app": "5.0.6",
     "@octokit/rest": "19.0.13",
