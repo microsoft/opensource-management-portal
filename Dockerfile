@@ -65,9 +65,6 @@ COPY --from=build --chown=oss:oss /build/config ./config
 COPY --from=build --chown=oss:oss /build/views ./views
 COPY --from=build --chown=oss:oss /build/package.json ./package.json
 
-#Do stuff for GitHub Environment Orgs
-COPY --from=build --chown=oss:oss /build/env-orgs.json ./env-orgs.json
-
 # Host the app
 USER oss
 ENTRYPOINT ["npm", "run-script", "start-in-container"]
