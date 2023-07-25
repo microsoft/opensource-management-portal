@@ -1,16 +1,36 @@
+function Get-InstallationToken {
+    param (
+        [Int32]
+        # The app install ID for the org, used to generate the installation token
+        $InstallationID,
+        # Github token
+        [String]
+        $JWT
+    )
+    # Get an installation token for the org
+    $headers = @{
+        "Accept" = "application/vnd.github.v3+json"
+        "Authorization" = "Bearer $JWT"
+    }
+
+    $response = Invoke-RestMethod -Uri "https://api.github.com/app/installations/$InstallationID/access_tokens" -Method Post -Headers $headers
+    return $response.token
+}
+
+
 function Get-OrgData {
     param (
         # Org id to get data for
         [Int32]
         $OrganizationID,
-        # Github token
+        # Github app token
         [String]
-        $Token
+        $InstallationToken
     )
     # Get data from the REST api
     $headers = @{
         "Accept" = "application/vnd.github.v3+json"
-        "Authorization" = "Bearer $token"
+        "Authorization" = "Bearer $InstallationToken"
     }
     $orgData = Invoke-RestMethod -Uri "https://api.github.com/orgs/$OrganizationID" -Method Get -Headers $headers
     return $orgData
@@ -22,7 +42,8 @@ $insertData = @()
 
 foreach ($item in $data) {
     Write-Output "Getting data for Org: $($item.account.id)"
-    $orgData = Get-OrgData -OrganizationID $item.account.id -Token $env:PAT
+    $org_installation_token = Get-InstallationToken -InstallationID $item.id -JWT (Get-Content token)
+    $orgData = Get-OrgData -OrganizationID $item.account.id -InstallationToken $org_installation_token
     $insertData += [PSCustomObject]@{
         type = @("public", "private", "internal")
         active = $true
