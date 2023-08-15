@@ -65,6 +65,8 @@ export type ExecutionEnvironment = {
   providers: IProviders;
   skipModules: Set<string>;
 
+  entrypointName: string;
+
   started: Date;
 };
 
@@ -88,4 +90,5 @@ export interface IReposJobOptions {
   insightsPrefix?: string;
   parameters?: any;
   enableAllGitHubApps?: boolean;
+  name?: string;
 }

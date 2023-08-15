@@ -10,7 +10,7 @@ import { URL } from 'url';
 import zlib from 'zlib';
 import { type Repository } from './business/repository';
 
-import { ReposAppRequest, IAppSession, IReposError, SiteConfiguration } from './interfaces';
+import type { ReposAppRequest, IAppSession, IReposError, SiteConfiguration } from './interfaces';
 import { getProviders } from './transitional';
 
 export function daysInMilliseconds(days: number): number {
@@ -262,7 +262,12 @@ export function writeTextToFile(filename: string, stringContent: string): Promis
   });
 }
 
-export function quitInTenSeconds(successful: boolean) {
+export function quitInTenSeconds(successful: boolean, config?: SiteConfiguration) {
+  // To allow telemetry to flush, we'll wait typically
+  if (config?.debug?.exitImmediately || process.env.EXIT_IMMEDIATELY === '1') {
+    console.log(`EXIT_IMMEDIATELY set, exiting... exit code=${successful ? 0 : 1}`);
+    return process.exit(successful ? 0 : 1);
+  }
   console.log(`Quitting process in 10s... exit code=${successful ? 0 : 1}`);
   return setTimeout(() => {
     process.exit(successful ? 0 : 1);

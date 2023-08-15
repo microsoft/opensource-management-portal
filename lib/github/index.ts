@@ -283,8 +283,11 @@ export class RestLibrary {
       return finalized;
     } catch (error) {
       console.log(`API ${api} POST error: ${error.message}`);
-      if (error?.message?.includes('Resource not accessible by integration')) {
-        console.error('Options:');
+      if (
+        error?.message?.includes('Resource not accessible by integration') ||
+        error?.message?.includes('Not Found')
+      ) {
+        console.error('\tOptions:');
         {
           const options =
             Object.getOwnPropertyNames(diagnostic.options).length > 0 ? diagnostic.options : null;
@@ -297,17 +300,17 @@ export class RestLibrary {
               if (key === 'headers') {
                 const headers = value as Record<string, string>;
                 const headersKeys = Object.getOwnPropertyNames(headers);
-                console.log('Headers:');
+                console.log('\t\tHeaders:');
                 for (let j = 0; j < headersKeys.length; j++) {
                   const headerKey = headersKeys[j];
                   const headerValue =
                     headerKey.toLocaleLowerCase() === 'authorization'
                       ? headers[headerKey].substring(0, 13) + '***'
                       : headers[headerKey];
-                  console.log(`  - ${headerKey}: ${headerValue}`);
+                  console.log(`\t\t  - ${headerKey}: ${headerValue}`);
                 }
               } else {
-                console.log(`Option: ${key}: ${value}`);
+                console.log(`\t\tOption: ${key}: ${value}`);
               }
             }
           }
@@ -316,38 +319,39 @@ export class RestLibrary {
             for (let i = 0; i < remainingKeys.length; i++) {
               const key = remainingKeys[i];
               const value = diagnostic[key];
-              console.log(`${key}: ${value}`);
+              console.log(`\t\t${key}: ${value}`);
             }
           }
         }
         if (diagnosticHeaderInformation) {
-          console.error('Authorization selection information:');
+          console.error('\tAuthorization selection information:');
           const { installationId, organizationName, purpose, source } = diagnosticHeaderInformation;
-          organizationName && console.error(`Header resolved for organization: ${organizationName}`);
+          organizationName && console.error(`\t\tHeader resolved for organization: ${organizationName}`);
           const customPurpose = purpose as ICustomAppPurpose;
           purpose &&
             customPurpose?.isCustomAppPurpose === true &&
-            console.error(`Custom purpose: ${customPurpose.id}`);
-          purpose && !customPurpose?.isCustomAppPurpose && console.error(`Purpose: ${purpose}`);
-          installationId && console.error(`Installation ID: ${installationId}`);
-          source && console.error(`Source: ${source}`);
+            console.error(`\t\tCustom purpose: ${customPurpose.id}`);
+          purpose && !customPurpose?.isCustomAppPurpose && console.error(`\t\tPurpose: ${purpose}`);
+          installationId && console.error(`\t\tInstallation ID: ${installationId}`);
+          source && console.error(`\t\tSource: ${source}`);
         }
       }
       if (error.status) {
-        console.log(`Status: ${error.status}`);
+        console.log(`\tStatus: ${error.status}`);
       }
       if (error?.response?.headers && error?.response?.headers['x-github-request-id']) {
-        console.log(`Request ID: ${error.response.headers['x-github-request-id']}`);
+        console.log(`\tRequest ID: ${error.response.headers['x-github-request-id']}`);
       }
       if (error?.response?.headers && error?.response?.headers['x-ratelimit-remaining']) {
-        console.log(`Rate limit remaining: ${error.response.headers['x-ratelimit-remaining']}`);
+        console.log(`\tRate limit remaining: ${error.response.headers['x-ratelimit-remaining']}`);
       }
       if (error?.response?.headers && error?.response?.headers['x-ratelimit-used']) {
-        console.log(`Rate limit used: ${error.response.headers['x-ratelimit-used']}`);
+        console.log(`\tRate limit used: ${error.response.headers['x-ratelimit-used']}`);
       }
       if (shouldErrorShowRequest && error?.request) {
         console.dir(error.request);
       }
+      console.log();
       throw error;
     }
   }

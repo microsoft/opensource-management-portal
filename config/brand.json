@@ -7,6 +7,5 @@
   "supportMail": "env://PORTAL_ADMIN_EMAIL",
   "operationsMail": "env://GITHUB_OPERATIONS_EMAIL",
   "forkApprovalMail": "env://GITHUB_FORK_APPROVAL_EMAIL",
-  "electionMail": "env://FOSSFUND_ELECTION_MAIL",
-  "infrastructureNotificationsMail": "env://GITHUB_INFRASTRUCTURE_NOTIFICATIONS_MAIL"
+  "electionMail": "env://FOSSFUND_ELECTION_MAIL"
 }

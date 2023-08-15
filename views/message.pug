@@ -6,6 +6,9 @@
 extends layout
 
 block content
+  if clearLocalStorage
+    script.
+      localStorage.clear();
   div.container#top(style='margin-top:60px')
   div.container#content
     div.row

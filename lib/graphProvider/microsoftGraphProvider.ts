@@ -34,7 +34,7 @@ export interface IMicrosoftGraphProviderOptions {
 
 const graphBaseUrl = 'https://graph.microsoft.com/v1.0/';
 const odataNextLink = '@odata.nextLink';
-const defaultCachePeriodMinutes = 60;
+const defaultCachePeriodMinutes = 60 * 36; // 36 hours
 
 const attemptCacheGet = true;
 

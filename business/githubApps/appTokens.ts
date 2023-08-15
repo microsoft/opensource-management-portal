@@ -213,8 +213,10 @@ function sortByLatestToken(a: IInstallationToken, b: IInstallationToken) {
 function tokenValidFilter(timeTokenMustBeValid: Date, token: IInstallationToken) {
   const isValid = token.expires > timeTokenMustBeValid;
   if (!isValid) {
+    const header = token.headerValue.substr(6);
+    const subset = (header.length > 12 ? header.substr(0, 8) : '') + '*'.repeat(4);
     console.log(
-      `invalid or expired token being removed: expires=${token.expires} install_id=${token.installationId} org=${token.organizationName}`
+      `token expired: redacted=${subset}, expires=${token.expires}, install_id=${token.installationId}, org=${token.organizationName}`
     );
     return false;
   }

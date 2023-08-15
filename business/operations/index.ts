@@ -778,10 +778,6 @@ export class Operations
     return this.config.brand.operationsMail;
   }
 
-  getInfrastructureNotificationsMail(): string {
-    return this.config.brand.infrastructureNotificationsMail || this.getOperationsMailAddress();
-  }
-
   getLinksNotificationMailAddress(): string {
     return this.config.notifications.linksMailAddress || this.getOperationsMailAddress();
   }

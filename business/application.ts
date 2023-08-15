@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { OrganizationSetting } from '../entities/organizationSettings/organizationSetting';
 import {
   IOperationsGitHubRestLibrary,
   IOperationsDefaultCacheTimes,
@@ -21,6 +22,27 @@ const primaryInstallationProperties = [
   'permissions',
   'events',
 ];
+
+export type GitHubAppDefinition = {
+  id: number;
+  slug: string;
+  friendlyName: string;
+};
+
+export function isInstallationConfigured(
+  settings: OrganizationSetting,
+  installation: IGitHubAppInstallation
+): boolean {
+  if (!settings || !settings.installations) {
+    return false;
+  }
+  for (const install of settings.installations) {
+    if (install.installationId === installation.id) {
+      return true;
+    }
+  }
+  return false;
+}
 
 export default class GitHubApplication {
   constructor(
@@ -50,6 +72,14 @@ export default class GitHubApplication {
     //   invalid.push(`This app can only be installed at the organization scope (all repos), please update the settings for the installation.`);
     // }
     return invalid;
+  }
+
+  asClientJson(): GitHubAppDefinition {
+    return {
+      id: this.id,
+      slug: this.slug,
+      friendlyName: this.friendlyName,
+    };
   }
 
   async getInstallation(installationId: number, options?: ICacheOptions): Promise<IGitHubAppInstallation> {

@@ -27,14 +27,15 @@ import linkRoute from './link';
 import linkedUserRoute from './index-linked';
 import linkCleanupRoute from './link-cleanup';
 
-import SettingsRoute from './settings';
+import routeSettings from './settings';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 
 const hasReactApp = hasStaticReactClientApp();
 const reactRoute = hasReactApp ? injectReactClient() : undefined;
 
-import RoutePlaceholders from './placeholders';
-import RouteReleasesSpa from './releasesSpa';
+import routePlaceholders from './placeholders';
+import routeReleasesSpa from './releasesSpa';
+
 import { ReposAppRequest, UserAlertType } from '../interfaces';
 
 // - - - Middleware: require that they have a passport - - -
@@ -48,10 +49,10 @@ router.use(asyncHandler(AddLinkToRequest));
 
 router.use(asyncHandler(blockEnterpriseManagedUsersAuthentication));
 
-router.use('/placeholder', RoutePlaceholders);
+router.use('/placeholder', routePlaceholders);
 router.use('/link/cleanup', reactRoute || linkCleanupRoute);
 router.use('/link', reactRoute || linkRoute);
-router.use('/releases', reactRoute || RouteReleasesSpa);
+router.use('/releases', reactRoute || routeReleasesSpa);
 
 if (reactRoute) {
   // client-only routes
@@ -67,7 +68,7 @@ const dynamicStartupInstance = getCompanySpecificDeployment();
 dynamicStartupInstance?.routes?.connectAuthenticatedRoutes &&
   dynamicStartupInstance.routes.connectAuthenticatedRoutes(router, reactRoute);
 
-router.use('/settings', SettingsRoute);
+router.use('/settings', reactRoute || routeSettings);
 
 router.get('/news', (req: ReposAppRequest, res: Response, next: NextFunction) => {
   const config = getProviders(req).config;

@@ -14,7 +14,6 @@ import {
   AddRepositoryPermissionsToRequest,
   getContextualRepositoryPermissions,
 } from '../../../middleware/github/repoPermissions';
-import { renameRepositoryDefaultBranchEndToEnd } from '../../../routes/org/repos';
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
 
 import RouteRepoPermissions from './repoPermissions';
@@ -76,27 +75,24 @@ router.get(
   })
 );
 
-router.patch(
-  '/renameDefaultBranch',
-  asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(async function (req: RequestWithRepo, res: Response, next: NextFunction) {
-    const providers = getProviders(req);
-    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-    const repoPermissions = getContextualRepositoryPermissions(req);
-    const targetBranchName = req.body.default_branch;
+router.get(
+  '/archived',
+  asyncHandler(async (req: RequestWithRepo, res: Response, next: NextFunction) => {
     const { repository } = req;
     try {
-      const result = await renameRepositoryDefaultBranchEndToEnd(
-        providers,
-        activeContext,
-        repoPermissions,
-        repository,
-        targetBranchName,
-        true /* wait for refresh before sending response */
-      );
-      return res.json(result) as unknown as void;
+      await repository.getDetails();
+      const data = {
+        archivedAt: null,
+      };
+      if (repository?.archived) {
+        const archivedAt = await repository.getArchivedAt();
+        if (archivedAt) {
+          data.archivedAt = archivedAt.toISOString();
+        }
+      }
+      return res.json(data) as unknown as void;
     } catch (error) {
-      return next(jsonError(error));
+      return next(error);
     }
   })
 );

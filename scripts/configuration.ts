@@ -5,11 +5,14 @@
 
 import job from '../job';
 
-job.run(async (providers) => {
-  const { config } = providers;
-  for (const key of Object.getOwnPropertyNames(config)) {
-    console.log(`${key}\n`);
-    console.dir(config[key]);
-    console.log();
-  }
-});
+job.run(
+  async (providers) => {
+    const { config } = providers;
+    for (const key of Object.getOwnPropertyNames(config)) {
+      console.log(`${key}\n`);
+      console.dir(config[key]);
+      console.log();
+    }
+  },
+  { name: 'Script: View configuration' }
+);

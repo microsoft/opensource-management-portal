@@ -29,6 +29,7 @@ enum OperationsAction {
   MarkAsServiceAccount = 'Mark as service account',
   UnmarkServiceAccount = 'Unmark service account',
   DestroyCollaboratorGrants = 'Destroy collaborator grants',
+  Destroy100 = 'Destroy 100',
 }
 
 enum UserQueryByType {
@@ -208,10 +209,13 @@ async function loadInformation(
       if (queryCache && queryCache.supportsRepositoryCollaborators) {
         const result = await queryCache.userCollaboratorRepositories(thirdPartyId);
         const collaboratorRepositories = [];
+        const hasMany = result.length > 100;
         for (const { repository } of result) {
           try {
-            await repository.getDetails();
-            collaboratorRepositories.push(repository.full_name);
+            if (!hasMany) {
+              await repository.getDetails();
+            }
+            collaboratorRepositories.push(repository.organization.name + '/' + repository.name);
           } catch (ignoreError) {
             console.dir(ignoreError);
           }
@@ -441,11 +445,12 @@ router.post('/whois/id/:githubid', function (req: ReposAppRequest, res: Response
   const thirdPartyId = req.params.githubid;
   const markAsServiceAccount = req.body['mark-as-service-account'];
   const unmarkServiceAccount = req.body['unmark-service-account'];
-  const removeCollaboration = req.body['remove-collaboration'];
+  const removeCollaboration = req.body['remove-collaboration'] || req.body['remove-collaboration-100'];
+  const remove100 = req.body['remove-collaboration-100'];
   const providers = getProviders(req);
   let action = OperationsAction.DestroyLink;
   if (removeCollaboration) {
-    action = OperationsAction.DestroyCollaboratorGrants;
+    action = remove100 ? OperationsAction.Destroy100 : OperationsAction.DestroyCollaboratorGrants;
   } else if (markAsServiceAccount) {
     action = OperationsAction.MarkAsServiceAccount;
   } else if (unmarkServiceAccount) {
@@ -515,11 +520,12 @@ router.post('/whois/github/:username', function (req: ReposAppRequest, res: Resp
   const username = req.params.username;
   const markAsServiceAccount = req.body['mark-as-service-account'];
   const unmarkServiceAccount = req.body['unmark-service-account'];
-  const removeCollaboration = req.body['remove-collaboration'];
+  const removeCollaboration = req.body['remove-collaboration'] || req.body['remove-collaboration-100'];
+  const remove100 = req.body['remove-collaboration-100'];
   const providers = getProviders(req);
   let action = OperationsAction.DestroyLink;
   if (removeCollaboration) {
-    action = OperationsAction.DestroyCollaboratorGrants;
+    action = remove100 ? OperationsAction.Destroy100 : OperationsAction.DestroyCollaboratorGrants;
   } else if (markAsServiceAccount) {
     action = OperationsAction.MarkAsServiceAccount;
   } else if (unmarkServiceAccount) {
@@ -637,9 +643,9 @@ async function destructiveLogic(
     );
   }
 
-  if (action === OperationsAction.DestroyCollaboratorGrants) {
+  if (action === OperationsAction.DestroyCollaboratorGrants || action === OperationsAction.Destroy100) {
     const account: Account = operations.getAccount(thirdPartyId);
-    const res = await account.removeCollaboratorPermissions();
+    const res = await account.removeCollaboratorPermissions(action === OperationsAction.Destroy100);
     state.messages = res.history;
     return state;
   }

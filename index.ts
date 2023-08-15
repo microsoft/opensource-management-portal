@@ -11,9 +11,11 @@ import configResolver from './lib/config';
 import initialize from './middleware/initialize';
 
 // Library framework
+
 export * from './interfaces';
 
 // Application framework
+
 type InitializeCall = (
   executionEnvironment: ExecutionEnvironment,
   config: SiteConfiguration,
@@ -51,11 +53,13 @@ export async function commonStartup(
   call: InitializeCall,
   isJob: boolean,
   enableAllGitHubApps: boolean,
-  app?: IReposApplication
+  app?: IReposApplication,
+  entrypointName?: string
 ) {
   const executionEnvironment: ExecutionEnvironment = {
     isJob,
     enableAllGitHubApps,
+    entrypointName,
     //
     expressApplication: app,
     //

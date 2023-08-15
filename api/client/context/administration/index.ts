@@ -13,6 +13,7 @@ import getCompanySpecificDeployment from '../../../../middleware/companySpecific
 import { ErrorHelper, getProviders } from '../../../../transitional';
 
 import routeIndividualOrganization from './organization';
+import routeApps from './apps';
 
 const router: Router = Router();
 
@@ -48,6 +49,8 @@ router.get(
 router.use((req: IRequestWithAdministration, res: Response, next: NextFunction) => {
   return req.isSystemAdministrator ? next() : next(jsonError('Not authorized', 403));
 });
+
+router.use('/apps', routeApps);
 
 router.use(
   '/organization/:orgName',

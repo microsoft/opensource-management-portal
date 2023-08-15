@@ -15,7 +15,7 @@ import {
 } from '../../entities/organizationSettings/organizationSetting';
 import { IndividualContext } from '../../business/user';
 import { Operations, Organization } from '../../business';
-import GitHubApplication from '../../business/application';
+import GitHubApplication, { isInstallationConfigured } from '../../business/application';
 import {
   ReposAppRequest,
   IGitHubAppInstallation,
@@ -100,21 +100,6 @@ router.use(
     return next();
   })
 );
-
-function isInstallationConfigured(
-  settings: OrganizationSetting,
-  installation: IGitHubAppInstallation
-): boolean {
-  if (!settings || !settings.installations) {
-    return false;
-  }
-  for (const install of settings.installations) {
-    if (install.installationId === installation.id) {
-      return true;
-    }
-  }
-  return false;
-}
 
 async function getDynamicSettingsFromLegacySettings(
   operations: Operations,

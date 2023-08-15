@@ -258,7 +258,6 @@ async function refreshOrganization(
     const repositories = await organization.getRepositories(slowRequestCacheOptions);
     console.log(`${organizationIndex}: ${repositories.length} repositories in ${organization.name}`);
     const repoIds = new Set(repositories.map((repo) => repo.id.toString()));
-
     for (let i = 0; i < repositories.length; i++) {
       try {
         const repository = repositories[i];

@@ -228,6 +228,7 @@ export default function configurePassport(app, passport, config) {
             ? `Your ${config.brand.companyName} and GitHub accounts have been unlinked. You no longer have access to any ${config.brand.companyName} organizations, and you have been signed out of this portal.`
             : 'Goodbye',
           title: 'Goodbye',
+          clearLocalStorage: true,
           buttonText: unlinked ? 'Sign in to connect a new account' : 'Sign in',
           config: config.obfuscatedConfig,
         });

@@ -31,20 +31,25 @@ type PackageJsonSubset = {
   flights?: Record<string, string>;
 };
 
+type BasicFlightingOptions = {
+  enabled: boolean;
+};
+
 type ContentOptions = {
   html: string;
   package: PackageJsonSubset;
 };
 
-type FlightingOptions = ContentOptions & {
-  enabled: boolean;
-  divertEveryone: boolean;
-  staticFlightIds?: Set<string>;
-  flightName: string;
-};
+type FlightingOptions = BasicFlightingOptions &
+  ContentOptions & {
+    divertEveryone?: boolean;
+    staticFlightIds?: Set<string>;
+    flightName?: string;
+  };
 
 export function injectReactClient() {
   const standardContent = getReactScriptsIndex(staticClientPackageName);
+  let flightingBasics: BasicFlightingOptions = null;
   let flightingOptions: FlightingOptions = null;
   return function injectedRoute(req: ReposAppRequest, res: Response, next: NextFunction) {
     const { config } = getProviders(req);
@@ -53,15 +58,17 @@ export function injectReactClient() {
       return next();
     }
     if (!flightingOptions) {
-      flightingOptions = evaluateFlightConditions(req);
+      flightingBasics = evaluateFlightConditions(req);
+      flightingOptions = flightingBasics as FlightingOptions;
     }
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-    const flightAvailable = flightingOptions.enabled && flightingOptions.html;
-    const flightName = flightAvailable ? flightingOptions.flightName : null;
+    const flightEnabled = flightingBasics?.enabled === true;
+    const flightAvailable = flightEnabled && flightingOptions?.html;
+    const flightName = flightingOptions?.flightName;
     const userFlighted =
-      flightingOptions.divertEveryone === true ||
+      flightingOptions?.divertEveryone === true ||
       (activeContext?.corporateIdentity?.id &&
-        flightingOptions.staticFlightIds?.has(activeContext.corporateIdentity.id));
+        flightingOptions?.staticFlightIds?.has(activeContext.corporateIdentity.id));
     const userFlightOverride =
       req.query.flight === '0' || req.query.flight === '1' ? req.query.flight : undefined;
     let inFlight = flightAvailable && (userFlighted || req.query.flight === '1');
@@ -141,7 +148,7 @@ export function injectReactClient() {
   };
 }
 
-function evaluateFlightConditions(req: ReposAppRequest): FlightingOptions {
+function evaluateFlightConditions(req: ReposAppRequest): FlightingOptions | BasicFlightingOptions {
   const { config } = getProviders(req);
   if (config?.client?.flighting?.enabled === true && staticClientFlightingPackageName) {
     const options = getReactScriptsIndex(staticClientFlightingPackageName) as FlightingOptions;
@@ -157,6 +164,9 @@ function evaluateFlightConditions(req: ReposAppRequest): FlightingOptions {
     );
     return options;
   }
+  return {
+    enabled: false,
+  };
 }
 
 function getUserClientFeatureFlags(config: any, corporateId: string) {

@@ -47,7 +47,8 @@ export async function runJob(
       initializeJob,
       true /* job */,
       options.enableAllGitHubApps,
-      null /* app */
+      null /* app */,
+      options.name
     );
   } catch (startupError) {
     console.error(`Job startup error before runJob: ${startupError}`);
@@ -102,7 +103,8 @@ export async function runJob(
     const simpleError = { ...jobError };
     simpleError?.cause && delete simpleError.cause;
     console.dir(simpleError);
-    quitInTenSeconds(false);
+    const config = providers?.config;
+    quitInTenSeconds(false, config);
     if (options.insightsPrefix) {
       try {
         providers?.insights?.trackException({
@@ -115,13 +117,23 @@ export async function runJob(
         console.error(`insights error: ${ignoreInsightsError}`);
       }
     }
+    trySilentInsightsFlush(providers);
     return result;
   }
   // CONSIDER: insights metric for job time
+  trySilentInsightsFlush(providers);
   console.log();
   console.log('The job was successful.');
   quitInTenSeconds(true);
   return result;
+}
+
+function trySilentInsightsFlush(providers: IProviders) {
+  try {
+    providers?.insights?.flush();
+  } catch (ignored) {
+    console.warn(ignored);
+  }
 }
 
 function initializeJob(

@@ -9,37 +9,11 @@ const router: Router = Router();
 
 import { ErrorHelper, getProviders } from '../../transitional';
 import { UserSettings } from '../../entities/userSettings';
-import { ReposAppRequest, UserAlertType } from '../../interfaces';
+import { UserAlertType } from '../../interfaces';
+import type { ReposAppRequestWithUserSettings } from '../../interfaces/middleware';
+import { getUserSettings } from '../../middleware/business/userSettings';
 
-export interface IRequestWithUserSettings extends ReposAppRequest {
-  userSettings?: UserSettings;
-}
-
-async function getSettings(req: IRequestWithUserSettings, res: Response, next: NextFunction) {
-  const corporateId = req.individualContext.corporateIdentity.id;
-  const { userSettingsProvider } = getProviders(req);
-  if (!req.userSettings) {
-    let settings: UserSettings = null;
-    try {
-      settings = await userSettingsProvider.getUserSettings(corporateId);
-    } catch (notFoundError) {
-      if (ErrorHelper.IsNotFound(notFoundError)) {
-        // ignore
-      } else {
-        throw notFoundError;
-      }
-    }
-    if (!settings) {
-      settings = new UserSettings();
-      settings.corporateId = corporateId;
-      await userSettingsProvider.insertUserSettings(settings);
-    }
-    req.userSettings = settings;
-  }
-  return next();
-}
-
-function view(req: IRequestWithUserSettings, res) {
+function view(req: ReposAppRequestWithUserSettings, res) {
   const userSettings = req.userSettings;
   req.individualContext.webContext.render({
     view: 'settings/contributionData',
@@ -50,13 +24,13 @@ function view(req: IRequestWithUserSettings, res) {
   });
 }
 
-router.use(asyncHandler(getSettings));
+router.use(asyncHandler(getUserSettings));
 
 router.get('/', view);
 
 router.post(
   '/',
-  asyncHandler(async function (req: IRequestWithUserSettings, res: Response, next: NextFunction) {
+  asyncHandler(async function (req: ReposAppRequestWithUserSettings, res: Response, next: NextFunction) {
     const isOptIn = !!(req.body.optIn === '1');
     const currentSetting = req.userSettings.contributionShareOptIn;
     req.userSettings.contributionShareOptIn = isOptIn;

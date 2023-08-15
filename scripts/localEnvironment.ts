@@ -5,8 +5,11 @@
 
 import job from '../job';
 
-// The local environment script allows for local inner-loop development.
+// This script allows for quick inner-loop development.
 
-job.run(async (providers) => {
-  //
-});
+job.run(
+  async (providers) => {
+    //
+  },
+  { name: 'Local Environment' }
+);

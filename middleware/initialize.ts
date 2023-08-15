@@ -84,7 +84,7 @@ import initializeRepositoryProvider from '../entities/repository';
 import { tryGetImmutableStorageProvider } from '../lib/immutable';
 
 const DefaultApplicationProfile: IApplicationProfile = {
-  applicationName: 'GitHub Management Portal',
+  applicationName: 'Open Source Management Portal',
   serveStaticAssets: true,
   serveClientAssets: true,
   logDependencies: true,
@@ -364,7 +364,10 @@ export default async function initialize(
     : applicationProfile.webServer
     ? 'web application'
     : 'application';
-  debug(`${containerPurpose} name: ${applicationProfile.applicationName}`);
+  if (executionEnvironment.entrypointName) {
+    debug(`${containerPurpose} name: ${executionEnvironment.entrypointName}`);
+  }
+  debug(`${containerPurpose} profile: ${applicationProfile.applicationName}`);
   debug(`environment: ${config?.debug?.environmentName || 'Unknown'}`);
 
   const codespacesConfig = (config as SiteConfiguration)?.github?.codespaces;

@@ -6,6 +6,5 @@
 .row: .col-md-12(style='margin-bottom: 32px; margin-top: 16px')
   ul.nav.nav-tabs
     li(role='presentation', class={active: !reposSubView || reposSubView === 'default'}): a(href=repository.baseUrl) Overview
-    li(role='presentation', class={active: reposSubView === 'defaultBranch'}): a(href=repository.baseUrl + 'defaultBranch/') Default Branch Name
     li(role='presentation', class={active: reposSubView === 'permissions'}): a(href=repository.baseUrl + 'permissions/') Permissions
     li(role='presentation', class={active: reposSubView === 'history'}): a(href=repository.baseUrl + 'history/') History

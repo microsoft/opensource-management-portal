@@ -17,12 +17,12 @@ import throat from 'throat';
 
 import job from '../job';
 import { ICorporateLink, IProviders } from '../interfaces';
-import { createAndInitializeLinkProviderInstance, ILinkProvider } from '../lib/linkProviders';
-import { ErrorHelper, getThirdPartyLinkById } from '../transitional';
+import { createAndInitializeLinkProviderInstance } from '../lib/linkProviders';
+import { getThirdPartyLinkById } from '../transitional';
 
 const parallelWorkLimit = 5;
 
-job.run(migration);
+job.run(migration, { name: 'Link migration' });
 
 async function migration(providers: IProviders): Promise<void> {
   // const sourceLinkProvider = providers.linkProvider;

@@ -37,7 +37,6 @@ export interface IOperationsLinks {
 
 export interface IOperationsNotifications {
   getOperationsMailAddress(): string;
-  getInfrastructureNotificationsMail(): string;
   getLinksNotificationMailAddress(): string;
   getRepositoriesNotificationMailAddress(): string;
 }

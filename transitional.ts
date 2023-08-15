@@ -73,6 +73,19 @@ export function projectCollaboratorPermissionsObjectToGitHubRepositoryPermission
   throw new Error(`Unsupported GitHubRepositoryPermission value inside permissions`);
 }
 
+export async function streamToBuffer(readableStream: NodeJS.ReadableStream): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    readableStream.on('data', (data: Buffer | string) => {
+      chunks.push(data instanceof Buffer ? data : Buffer.from(data));
+    });
+    readableStream.on('end', () => {
+      resolve(Buffer.concat(chunks));
+    });
+    readableStream.on('error', reject);
+  });
+}
+
 export function isPermissionBetterThan(
   currentBest: GitHubRepositoryPermission,
   newConsideration: GitHubRepositoryPermission

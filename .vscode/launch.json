@@ -134,7 +134,8 @@
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "localhost",
-        "DEBUG": "startup"
+        "DEBUG": "startup",
+        "EXIT_IMMEDIATELY": "1"
       }
     },
     {

@@ -21,6 +21,7 @@ import routeRepos from './repos';
 import routeTeams from './teams';
 import routeAdministration from './administration';
 import routeSample from './sample';
+import routeSettings from './settings';
 
 const router: Router = Router();
 
@@ -104,6 +105,7 @@ router.get('/orgs', routeOrgs);
 router.get('/repos', routeRepos);
 router.get('/teams', routeTeams);
 router.use('/sample', routeSample);
+router.use('/settings', routeSettings);
 
 router.use(
   '/orgs/:orgName',

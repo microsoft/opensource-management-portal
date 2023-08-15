@@ -478,7 +478,11 @@ export class Account {
     return currentOrganizationMemberships;
   }
 
-  async removeCollaboratorPermissions(): Promise<IRemoveOrganizationMembershipsResult> {
+  async removeCollaboratorPermissions(
+    onlyOneHundred?: boolean
+  ): Promise<IRemoveOrganizationMembershipsResult> {
+    // NOTE: this at least temporarily adds the ability to punt 100
+    // but not all grants; probably should use options eventually vs bool param.
     const history = [];
     const error: IReposError = null;
     const operations = throwIfNotGitHubCapable(this._operations);
@@ -492,13 +496,18 @@ export class Account {
       await this.getDetails();
     }
     const collaborativeRepos = await queryCache.userCollaboratorRepositories(this.id.toString());
+    let i = 0;
     for (const entry of collaborativeRepos) {
+      if (onlyOneHundred && i >= 100) {
+        break;
+      }
       const { repository } = entry;
       try {
         await repository.getDetails();
         if (repository.archived) {
-          history.push(`FYI: previous access to an archived repository ${repository.full_name}`);
+          history.push(`FYI: cannot alter prior grant to archived repository ${repository.full_name}`);
         } else {
+          ++i;
           await repository.removeCollaborator(this.login);
           history.push(`Removed ${this.login} as a Collaborator from the repository ${repository.full_name}`);
         }

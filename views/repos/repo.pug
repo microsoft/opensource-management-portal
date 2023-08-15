@@ -164,9 +164,6 @@ block content
                 | Default branch
                 br
                 strong= repo.default_branch
-                if repo.default_branch === 'master' && admin
-                  span &nbsp;
-                  a.btn.btn-sm.btn-muted(href=repository.baseUrl + 'defaultBranch') Rename...
 
         if organizationSupportsUpdatesApp && repo.default_branch !== 'main' && admin
           .alert.alert-gray

@@ -5,59 +5,26 @@
 
 import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
-const router: Router = Router();
 
-import { getProviders } from '../../transitional';
-import { sortByCaseInsensitive } from '../../utils';
-import GitHubApplication from '../../business/application';
-import { ReposAppRequest, UserAlertType } from '../../interfaces';
+import { ReposAppRequest } from '../../../../interfaces';
+import { CreateError, getProviders } from '../../../../transitional';
+
+import routeIndividualApp from './app';
+import GitHubApplication from '../../../../business/application';
+import { sortByCaseInsensitive } from '../../../../utils';
 import {
+  ApiRequestWithGitHubApplication,
   ManagedOrganizationAppConfigurationsByOrgView,
   ManagedOrganizationStatus,
-} from '../../api/client/context/administration/types';
+} from './types';
 
-router.post(
-  '/',
-  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
-    const providers = getProviders(req);
-    const { deletesettingsorgname } = req.body;
-    if (!deletesettingsorgname) {
-      return next(new Error('Not able to complete this operation'));
-    }
-    const organizationSettingsProvider = providers.organizationSettingsProvider;
-    const allOrgs = await organizationSettingsProvider.queryAllOrganizations();
-    const thisOne = allOrgs.filter(
-      (org) => org.organizationName.toLowerCase() === deletesettingsorgname.toLowerCase()
-    );
-    if (thisOne.length === 1) {
-      const org = thisOne[0];
-      await organizationSettingsProvider.deleteOrganizationSetting(org);
-      req.individualContext.webContext.saveUserAlert(
-        'Removed the org.',
-        org.organizationName,
-        UserAlertType.Danger
-      );
-      res.redirect('/administration/apps');
-      // after the redirect, delete any caching for the org...
-      if (providers.queryCache) {
-        const { queryCache } = providers;
-        queryCache.removeOrganizationById(String(org.organizationId));
-      }
-      return;
-    } else {
-      return next(new Error('Org not found with settings'));
-    }
-  })
-);
+const router: Router = Router();
 
 router.get(
   '/',
-  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
-    const providers = getProviders(req);
-    const operations = providers.operations;
-    const apps = providers.operations.getApplications();
-    const individualContext = req.individualContext;
-    const organizationSettingsProvider = providers.organizationSettingsProvider;
+  asyncHandler(async (req: ReposAppRequest, res: Response) => {
+    const { operations, organizationSettingsProvider } = getProviders(req);
+    const apps = operations.getApplications();
     const byOrg = new Map<string, ManagedOrganizationAppConfigurationsByOrgView>();
     function getOrg(name: string) {
       let o = byOrg.get(name);
@@ -112,18 +79,50 @@ router.get(
       const anOrg = getOrg(organization.name.toLowerCase());
       anOrg.id = organization.id;
     }
-    const orgs = byOrg;
     const orgNames = Array.from(byOrg.keys()).sort(sortByCaseInsensitive);
-    individualContext.webContext.render({
-      view: 'administration/setup/apps',
-      title: `GitHub Applications`,
-      state: {
-        apps,
-        orgNames,
-        orgs,
-      },
-    });
+    return res.json({
+      apps: apps.map((app) => app.asClientJson()),
+      orgNames,
+      orgs: Array.from(byOrg.values()).map((data) => {
+        return {
+          name: data.organizationName,
+          status: data.status,
+          id: data.id,
+          configuredInstallations: data.configuredInstallations,
+          hasDynamicSettings: !!data.dynamicSettings,
+          appInstallations: Array.from(data.appInstallations.keys())
+            .filter((a) => a)
+            .map((appIdKey) => {
+              const install = data.appInstallations.get(appIdKey);
+              return {
+                installationId: install?.installationId,
+                appId: install?.app?.id,
+              };
+            }),
+        };
+      }),
+    }) as unknown as void;
   })
 );
+
+router.use(
+  '/:appId',
+  asyncHandler(async function (req: ApiRequestWithGitHubApplication, res: Response, next: NextFunction) {
+    const { operations } = getProviders(req);
+    const appId = Number(req.params.appId);
+    const app = operations.getApplicationById(appId);
+    if (app) {
+      req.gitHubApplication = app;
+      return next();
+    }
+    return next(CreateError.NotFound('no app available with that ID'));
+  })
+);
+
+router.use('/:appId', routeIndividualApp);
+
+router.use('*', (req, res: Response, next: NextFunction) => {
+  return next(CreateError.NotFound('no API or function available: context/administration/apps'));
+});
 
 export default router;
