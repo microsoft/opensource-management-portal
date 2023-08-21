@@ -80,7 +80,7 @@
     "@octokit/request": "8.1.1",
     "@octokit/auth-app": "6.0.0",
     "@octokit/rest": "20.0.1",
-    "@primer/octicons": "19.5.0",
+    "@primer/octicons": "19.6.0",
     "app-root-path": "3.1.0",
     "applicationinsights": "2.7.1",
     "async-prompt": "1.0.1",
