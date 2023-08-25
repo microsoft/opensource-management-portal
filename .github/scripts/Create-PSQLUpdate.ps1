@@ -44,10 +44,17 @@ foreach ($item in $data) {
     Write-Output "Getting data for Org: $($item.account.id)"
     $org_installation_token = Get-InstallationToken -InstallationID $item.id -JWT (Get-Content token)
     $orgData = Get-OrgData -OrganizationID $item.account.id -InstallationToken $org_installation_token
+    if ($orgData.description -ne $null) {
+        $processed_description = $orgData.description.Replace("'", "''")
+    }
+    else {
+        $processed_description = $orgData.description
+    }
+
     $insertData += [PSCustomObject]@{
         type = @("public", "private", "internal")
         active = $true
-        portaldescription = $orgData.description
+        portaldescription = $processed_description
         updated = get-date -format yyyy-MM-ddTHH:mm:ssZ
         installations = @( 
             @{
