@@ -362,9 +362,8 @@ async function setTeamPermission(
   const orgName = organization.name;
   const repository = organization.repository(repoName, { id: repoId });
   if (customizedTeamPermissionsWebhookLogic) {
-    const shouldSkipEnforcement = await customizedTeamPermissionsWebhookLogic.shouldSkipEnforcement(
-      repository
-    );
+    const shouldSkipEnforcement =
+      await customizedTeamPermissionsWebhookLogic.shouldSkipEnforcement(repository);
     if (shouldSkipEnforcement && necessaryPermission !== GitHubRepositoryPermission.Pull) {
       console.log(
         `Customized logic for team permissions: skipping enforcement for repository ${repository.id}`

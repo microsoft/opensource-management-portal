@@ -835,9 +835,8 @@ export default class QueryCache {
       this.throwMethodNotSupported('repositoryCollaborators', 'repositoryCollaboratorCacheProvider');
     }
     const repositoryCollaboratorCacheProvider = this._providers.repositoryCollaboratorCacheProvider;
-    const rawEntities = await repositoryCollaboratorCacheProvider.queryCollaboratorsByRepositoryId(
-      repositoryId
-    );
+    const rawEntities =
+      await repositoryCollaboratorCacheProvider.queryCollaboratorsByRepositoryId(repositoryId);
     return rawEntities
       .map((cacheEntity) => this.hydrateRepositoryCollaborator(cacheEntity))
       .filter((real) => real);
@@ -993,9 +992,8 @@ export default class QueryCache {
       this.throwMethodNotSupported('organizationMembers', 'organizationMemberCacheProvider');
     }
     const organizationMemberCacheProvider = this._providers.organizationMemberCacheProvider;
-    const rawEntities = await organizationMemberCacheProvider.queryOrganizationMembersByOrganizationId(
-      organizationId
-    );
+    const rawEntities =
+      await organizationMemberCacheProvider.queryOrganizationMembersByOrganizationId(organizationId);
     return this.hydrateOrganizationMembers(rawEntities);
   }
 

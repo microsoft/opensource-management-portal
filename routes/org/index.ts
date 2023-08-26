@@ -106,9 +106,8 @@ router.get(
       teamsMaintainedHash: null,
       pendingApprovals: null as TeamJoinApprovalEntity[],
     };
-    results.organizationOverview = await individualContext.aggregations.getAggregatedOrganizationOverview(
-      organization
-    );
+    results.organizationOverview =
+      await individualContext.aggregations.getAggregatedOrganizationOverview(organization);
     // Check for pending approvals
     const teamsMaintained = results.organizationOverview.teams.maintainer as Team[];
     if (teamsMaintained && teamsMaintained.length && teamsMaintained.length > 0) {
