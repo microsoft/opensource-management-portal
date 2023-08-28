@@ -106,7 +106,7 @@
     "jwks-rsa": "3.0.1",
     "language-map": "1.5.0",
     "lodash": "4.17.21",
-    "luxon": "3.4.1",
+    "luxon": "3.4.2",
     "memory-cache": "0.2.0",
     "moment": "2.29.4",
     "morgan": "1.10.0",
