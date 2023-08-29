@@ -15,6 +15,8 @@ import {
   Collaborator,
   TeamPermission,
   RepositoryIssue,
+  TeamMember,
+  OrganizationMember,
 } from '.';
 import { RepositoryMetadataEntity } from '../entities/repositoryMetadata/repositoryMetadata';
 import { AppPurpose, AppPurposeTypes } from './githubApps';
@@ -202,6 +204,18 @@ const safeEntityFieldsForJsonSend = [
   'open_issues_count',
   'id',
 ];
+
+const sortByLogin = (list) => {
+  return list.sort(function (a, b) {
+    if (a.login < b.login) {
+      return -1;
+    }
+    if (a.login > b.login) {
+      return 1;
+    }
+    return 0;
+  });
+};
 
 export class Repository {
   private _entity: any;
@@ -1515,7 +1529,7 @@ export class Repository {
     }
   }
 
-  async getAdministrators(excludeOwners = true, excludeBroadAndSystemTeams = true): Promise<string[]> {
+  async getAdministrators(excludeOwners = true, excludeBroadAndSystemTeams = true): Promise<any> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const opsSystemAccounts = operationsWithCapability<IOperationsServiceAccounts>(
       operations,
@@ -1557,6 +1571,76 @@ export class Repository {
       }
     }
     return Array.from(users.values());
+  }
+
+  async getAdmins(excludeOwners = true, excludeBroadAndSystemTeams = true): Promise<any> {
+    /**
+     * Returns repository administrators and organization owners that are not repository collaborators.
+     *
+     * @remarks
+     * NIH Specific: Used in logic that renders repository administrators cards on the Repo detail page.
+     *
+     * @param repository - The GitHub Repository
+     * @param excludeOwners - Exclude organization owners from the list of administrators
+     * @param excludeBroadAndSystemTeams - Exclude broad access and system teams from the list of administrators
+     * @returns An object of AdminUserCollections.
+     *
+     * @beta
+     */
+
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const opsSystemAccounts = operationsWithCapability<IOperationsServiceAccounts>(
+      operations,
+      CoreCapability.ServiceAccounts
+    );
+    const owners = await this._organization.getOwners();
+    const ownersSet = new Set<string>(owners.map((o) => o.login.toLowerCase()));
+    const actualCollaborators = await this.getCollaborators({
+      affiliation: GitHubCollaboratorAffiliationQuery.Direct,
+    });
+
+    let collaborators: (TeamMember | Collaborator | OrganizationMember)[] = actualCollaborators.filter(
+      (c) => c.permissions?.admin === true
+    );
+
+    // No system accounts or owners
+    if (opsSystemAccounts) {
+      collaborators = collaborators.filter(
+        (c) => false === opsSystemAccounts.isSystemAccountByUsername(c.login)
+      );
+    }
+
+    if (excludeOwners) {
+      collaborators = collaborators.filter((c) => false === ownersSet.has(c.login.toLowerCase()));
+    }
+
+    const teams = (await this.getTeamPermissions()).filter((tp) => tp.permission === 'admin');
+
+    for (let i = 0; i < teams.length; i++) {
+      const team = teams[i];
+      if (excludeBroadAndSystemTeams && (team.team.isSystemTeam || team.team.isBroadAccessTeam)) {
+        // Do not include broad access teams
+        continue;
+      }
+      const members = await team.team.getMembers();
+      for (let j = 0; j < members.length; j++) {
+        const tm = members[j];
+        const login = tm.login.toLowerCase();
+        if (!opsSystemAccounts || !opsSystemAccounts.isSystemAccountByUsername(login)) {
+          collaborators.push(tm);
+        }
+      }
+    }
+
+    const collaboratorsSet = collaborators.map((c) => c.login.toLowerCase());
+    const orgOwnersButNotCollaborators = excludeOwners
+      ? []
+      : owners.filter((c) => false === collaboratorsSet.includes(c.login.toLowerCase()));
+
+    collaborators.forEach((n) => (n['adminType'] = 'Admin'));
+    orgOwnersButNotCollaborators.forEach((n) => (n['adminType'] = 'Org Admin'));
+
+    return sortByLogin(collaborators).concat(sortByLogin(orgOwnersButNotCollaborators));
   }
 
   async getPushers(): Promise<string[]> {
