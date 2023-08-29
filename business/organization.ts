@@ -846,6 +846,38 @@ export class Organization {
     return this.getMembers(memberOptions);
   }
 
+  async getOwnersCardData() {
+    const [linkedOrgAdmins, unlinkedOrgAdmins] = await Promise.all([
+      this.getLinkedMembers({ role: OrganizationMembershipRoleQuery.Admin }),
+      this.getUnlinkedMembers({ role: OrganizationMembershipRoleQuery.Admin }),
+    ]);
+
+    // clean up admin data for the front end
+    const organizationAdmins = Array.prototype
+      .concat(linkedOrgAdmins, unlinkedOrgAdmins)
+      .reduce((acc, admin) => {
+        const { member, link } = admin;
+
+        // linked and unlinked admins return slightly different data structures
+        const login = member ? member.login : admin.login;
+        const avatar_url = member ? member.avatar_url : admin.avatar_url;
+        // fallback to corporateUsername if corporateMailAddress is not available
+        const mailAddress = link ? link.corporateMailAddress || link.corporateUsername : undefined;
+        const primaryName = link ? link.corporateDisplayName || link.corporateUsername : login;
+
+        acc.push({
+          login,
+          mailAddress,
+          avatar_url,
+          primaryName,
+        });
+
+        return acc;
+      }, []);
+
+    return organizationAdmins;
+  }
+
   async getAuditLog(options?: IGetOrganizationAuditLogOptions): Promise<GitHubAuditLogEntry[]> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
