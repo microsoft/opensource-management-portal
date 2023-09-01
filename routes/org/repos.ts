@@ -448,7 +448,7 @@ router.get(
         currentManagementChain,
         repo,
         repository,
-        repoAdmins: await repository.getAdmins(),
+        repoAdmins: await repository.getAdmins(false, false),
         // permissions: slicePermissionsForView(filterSystemTeams(teamsFilterType.systemTeamsExcluded, systemTeams, permissions)),
         // systemPermissions: slicePermissionsForView(filterSystemTeams(teamsFilterType.systemTeamsOnly, systemTeams, permissions)),
         // collaborators: sliceCollaboratorsForView(collaborators),
