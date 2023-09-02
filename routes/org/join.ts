@@ -86,35 +86,11 @@ async function showOrgJoinDetails(req: ReposAppRequest) {
   // this implementation as close to the default org get route as possible
   const { individualContext, organization } = req;
 
-  const [linkedOrgAdmins, unlinkedOrgAdmins, orgDetails, organizationOverview] = await Promise.all([
-    organization.getLinkedMembers({ role: OrganizationMembershipRoleQuery.Admin }),
-    organization.getUnlinkedMembers({ role: OrganizationMembershipRoleQuery.Admin }),
+  const [orgDetails, organizationOverview, organizationAdmins] = await Promise.all([
     organization.getDetails(),
     individualContext.aggregations.getAggregatedOrganizationOverview(organization),
+    organization.getOwnersCardData(),
   ]);
-
-  // clean up admin data for the front end
-  const organizationAdmins = Array.prototype
-    .concat(linkedOrgAdmins, unlinkedOrgAdmins)
-    .reduce((acc, admin) => {
-      const { member, link } = admin;
-
-      // linked and unlinked admins return slightly different data structures
-      const login = member ? member.login : admin.login;
-      const avatar_url = member ? member.avatar_url : admin.avatar_url;
-      // fallback to corporateUsername if corporateMailAddress is not available
-      const mailAddress = link ? link.corporateMailAddress || link.corporateUsername : undefined;
-      const primaryName = link ? link.corporateDisplayName || link.corporateUsername : login;
-
-      acc.push({
-        login,
-        mailAddress,
-        avatar_url,
-        primaryName,
-      });
-
-      return acc;
-    }, []);
 
   const results = {
     orgUser: organization.memberFromEntity(orgDetails),
