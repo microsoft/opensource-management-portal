@@ -75,7 +75,7 @@
     "@azure/keyvault-secrets": "4.7.0",
     "@azure/service-bus": "7.9.0",
     "@azure/storage-blob": "12.15.0",
-    "@azure/storage-queue": "12.14.0",
+    "@azure/storage-queue": "12.15.0",
     "@octokit/plugin-paginate-graphql": "4.0.0",
     "@octokit/request": "8.1.1",
     "@octokit/auth-app": "6.0.0",
