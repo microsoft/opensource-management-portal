@@ -155,7 +155,7 @@
     "@typescript-eslint/eslint-plugin": "6.4.1",
     "@typescript-eslint/parser": "6.4.1",
     "cspell": "7.0.1",
-    "eslint": "8.47.0",
+    "eslint": "8.50.0",
     "eslint-config-prettier": "9.0.0",
     "eslint-plugin-n": "16.0.2",
     "eslint-plugin-prettier": "5.0.0",
