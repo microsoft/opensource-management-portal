@@ -140,7 +140,7 @@
     "@types/luxon": "3.3.1",
     "@types/memory-cache": "0.2.3",
     "@types/morgan": "1.9.5",
-    "@types/node": "20.5.6",
+    "@types/node": "20.7.1",
     "@types/node-jose": "1.1.10",
     "@types/object-path": "0.11.1",
     "@types/passport": "1.0.12",
