@@ -296,6 +296,10 @@ export function stripDistFolderName(dirname: string) {
   return dirname;
 }
 
+export function getSafeCosmosResourceKey(key: string) {
+  return key.replace(/[%:\\/?#]/g, '');
+}
+
 export function sha256(str: string) {
   const hash = crypto.createHash('sha256').update(str).digest('base64');
   return hash;
