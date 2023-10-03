@@ -12,8 +12,6 @@
     "management",
     "organization"
   ],
-  "_ignore_main": "dist/index.js",
-  "_ignore_types": "dist/index.d.ts",
   "tags": [
     "github",
     "node",
