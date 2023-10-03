@@ -1,3 +1,13 @@
+# Create containers and deploy to a test environment
+# ---
+# Note that this workflow uses OpenID Connect for secretless deployment to Azure.
+#
+# Variables that are not secrets and can be configured as Actions variables _or_ secrets:
+# - AAD tenant ID, subscription ID, client ID for OpenID Connect
+# - Azure Container Registry name and username
+# - App Service endpoints, app names, and slot names
+# - Test environment URLs
+
 name: Ship it 🐿️
 
 on:
