@@ -875,6 +875,22 @@ export class Operations
   }
 
   async getRepoById(repoId: number, options?: ICacheOptions): Promise<Repository> {
+    const { repositoryCacheProvider } = this.providers;
+    if (repositoryCacheProvider) {
+      try {
+        const cachedRepository = await repositoryCacheProvider.getRepository(String(repoId));
+        if (cachedRepository?.organizationId) {
+          const organization = this.getOrganizationById(Number(cachedRepository.organizationId));
+          return organization.repository(cachedRepository.repositoryName);
+        }
+      } catch (error) {
+        if (ErrorHelper.IsNotFound(error)) {
+          console.log(`Repository ${repoId} not found in the cache: ${error}`);
+        } else {
+          console.log(`Repository ${repoId} error retrieving from cache: ${error}`);
+        }
+      }
+    }
     const cacheOptions = options || {
       maxAgeSeconds: this.defaults.crossOrgsReposStaleSecondsPerOrg,
     };
