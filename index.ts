@@ -10,11 +10,7 @@ import type { ExecutionEnvironment, IReposApplication, SiteConfiguration } from 
 import configResolver from './lib/config';
 import initialize from './middleware/initialize';
 
-// Library framework
-
 export * from './interfaces';
-
-// Application framework
 
 type InitializeCall = (
   executionEnvironment: ExecutionEnvironment,
