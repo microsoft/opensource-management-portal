@@ -17,8 +17,9 @@ import { IApiRequest } from '../middleware/apiReposAuth';
 import apiExtension from './extension';
 import apiWebhook from './webhook';
 import apiPeople from './people';
+import apiNews from './client/news';
 
-import AadApiAuthentication, { requireAadApiAuthorizedScope } from '../middleware/apiAad';
+import aadApiAuthentication, { requireAadApiAuthorizedScope } from '../middleware/apiAad';
 import AzureDevOpsAuthenticationMiddleware from '../middleware/apiVstsAuth';
 import ReposApiAuthentication from '../middleware/apiReposAuth';
 import { CreateRepository, CreateRepositoryEntrypoint } from './createRepo';
@@ -67,15 +68,16 @@ router.use((req: IApiRequest, res: Response, next: NextFunction) => {
 // AUTHENTICATION: VSTS or repos
 //-----------------------------------------------------------------------------
 const multipleProviders = supportMultipleAuthProviders([
-  AadApiAuthentication,
+  aadApiAuthentication,
   ReposApiAuthentication,
   AzureDevOpsAuthenticationMiddleware,
 ]);
 
-const aadAndCustomProviders = supportMultipleAuthProviders([AadApiAuthentication, ReposApiAuthentication]);
+const aadAndCustomProviders = supportMultipleAuthProviders([aadApiAuthentication, ReposApiAuthentication]);
 
 router.use('/people', cors(), multipleProviders, apiPeople);
 router.use('/extension', cors(), multipleProviders, apiExtension);
+router.use('/news', cors(), aadApiAuthentication, requireAadApiAuthorizedScope('news'), apiNews);
 
 //-----------------------------------------------------------------------------
 // AUTHENTICATION: AAD or repos (specific to this app)

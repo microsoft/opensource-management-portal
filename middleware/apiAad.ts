@@ -123,20 +123,37 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     }
 
     const { appid, oid } = payload as any;
-    let approvedAppMonikerId = await aadApiValidator.getAuthorizedClientIdToken(appid);
-    if (!approvedAppMonikerId) {
-      approvedAppMonikerId = await aadApiValidator.getAuthorizedObjectIdToken(oid);
+    const monikerSources = [];
+    const approvedAppMonikerClientId = await aadApiValidator.getAuthorizedClientIdToken(appid);
+    if (approvedAppMonikerClientId) {
+      monikerSources.push('client');
+    }
+    const approvedAppMonikerObjectId = await aadApiValidator.getAuthorizedObjectIdToken(oid);
+    if (approvedAppMonikerObjectId) {
+      monikerSources.push('object');
     }
 
-    const notAuthorized = !approvedAppMonikerId;
+    const notAuthorized = !approvedAppMonikerClientId && !approvedAppMonikerObjectId;
     if (notAuthorized) {
       throw wrapErrorForImmediateUserError(
         jsonError(`App ${appid} and object ID ${oid} is not authorized for this API endpoint`, 403)
       );
     }
 
-    const scopes = await aadApiValidator.getScopes(approvedAppMonikerId);
-    const displayValues = await aadApiValidator.getDisplayValues(approvedAppMonikerId);
+    const scopesSet = new Set<string>();
+    if (approvedAppMonikerClientId) {
+      const clientIdScopes = await aadApiValidator.getScopes(approvedAppMonikerClientId);
+      clientIdScopes.forEach((s) => scopesSet.add(s));
+    }
+    if (approvedAppMonikerObjectId) {
+      const objectIdScopes = await aadApiValidator.getScopes(approvedAppMonikerObjectId);
+      objectIdScopes.forEach((s) => scopesSet.add(s));
+    }
+    const scopes = Array.from(scopesSet);
+
+    const displayValues = await aadApiValidator.getDisplayValues(
+      approvedAppMonikerClientId || approvedAppMonikerObjectId
+    );
 
     const apiToken = PersonalAccessToken.CreateFromAadAuthorization(
       {
@@ -153,6 +170,7 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
       name: 'ApiAadAppAuthorized',
       properties: Object.assign({}, decodedToken as any, {
         authorizedScopes: scopes.join(','),
+        monikerSources: monikerSources.join(','),
       }),
     });
   } catch (error) {

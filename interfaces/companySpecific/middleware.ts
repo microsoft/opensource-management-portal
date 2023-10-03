@@ -46,8 +46,8 @@ export interface ICompanySpecificAuthenticationCalls {
 export interface IAadAuthenticationValidator {
   isAuthorizedTenant(tenantId: string): Promise<boolean>;
   getAudienceIdentities(): Promise<string[]>;
-  getAuthorizedClientIdToken(clientId: string): Promise<any>;
-  getAuthorizedObjectIdToken(objectId: string): Promise<any>;
+  getAuthorizedClientIdToken(clientId: string): Promise<unknown>;
+  getAuthorizedObjectIdToken(objectId: string): Promise<unknown>;
   getScopes(tokenRepresentation: any): Promise<string[]>;
   getDisplayValues(tokenRepresentation: any): Promise<ApiClientGroupDisplay>;
 }
