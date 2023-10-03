@@ -377,38 +377,6 @@ router.get(
   })
 );
 
-router.get(
-  '/:repoName/defaultBranch',
-  asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
-    const referer = req.headers.referer as string;
-    const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
-    const organization = req.organization;
-    const repoPermissions = req.repoPermissions;
-    const repository = req.repository;
-    const repositoryMetadataEntity = req.repositoryMetadata;
-    await repository.getDetails();
-    const title = `${repository.name} - Default Branch Name`;
-    const details = await repository.organization.getDetails();
-    const organizationSupportsUpdatesApp = await organization.supportsUpdatesApp();
-    organization.id = details.id;
-    req.individualContext.webContext.render({
-      view: 'repos/defaultBranch',
-      title,
-      state: {
-        organization,
-        organizationSupportsUpdatesApp,
-        repo: decorateRepoForView(repository),
-        reposSubView: 'defaultBranch',
-        repository,
-        fromReposPage,
-        repoPermissions,
-        repositoryMetadataEntity,
-      },
-    });
-  })
-);
-
 export interface IRepositoryPermissionsView {}
 
 export async function calculateGroupedPermissionsViewForRepository(repository: Repository): Promise<any> {
