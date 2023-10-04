@@ -17,6 +17,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "dev:local": "DEBUG=startup EXIT_IMMEDIATELY=1 node ./dist/scripts/localEnvironment.js",
     "find-deadcode": "ts-prune",
     "find-circular-dependencies": "npx madge --circular --extensions ts .",
     "fix:js": "eslint --fix .",
