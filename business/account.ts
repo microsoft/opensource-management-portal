@@ -70,6 +70,12 @@ export class Account {
       case AccountJsonFormat.GitHub: {
         return basic;
       }
+      case AccountJsonFormat.GitHubExtended: {
+        const cloneEntity = Object.assign({}, this._originalEntity || {});
+        delete (cloneEntity as any).cost;
+        delete (cloneEntity as any).headers;
+        return cloneEntity;
+      }
       case AccountJsonFormat.GitHubDetailedWithLink: {
         const cloneEntity = Object.assign({}, this._originalEntity || {});
         delete (cloneEntity as any).cost;

@@ -56,6 +56,7 @@ import { RepositoryActions } from './repositoryActions';
 import { RepositoryPullRequest } from './repositoryPullRequest';
 import { ErrorHelper } from '../transitional';
 import { augmentInertiaPreview, RepositoryProject } from './repositoryProject';
+import { RepositoryInvitation } from './repositoryInvitation';
 
 interface IRepositoryMoments {
   created?: moment.Moment;
@@ -1057,6 +1058,39 @@ export class Repository {
     return collaborators;
   }
 
+  async listCollaboratorInvitations(cacheOptions?: IPagedCacheOptions): Promise<RepositoryInvitation[]> {
+    cacheOptions = cacheOptions || {};
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const github = operations.github;
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      per_page: getPageSize(operations),
+    };
+    if (!cacheOptions.maxAgeSeconds) {
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(
+        operations,
+        CacheDefault.orgRepoCollaboratorsStaleSeconds
+      );
+    }
+    if (cacheOptions.backgroundRefresh === undefined) {
+      cacheOptions.backgroundRefresh = true;
+    }
+    const invitationEntities = await github.collections.getRepoInvitations(
+      this.authorize(AppPurpose.Data),
+      parameters,
+      cacheOptions
+    );
+    const invitations = common.createInstances<RepositoryInvitation>(
+      this,
+      invitationFromEntity,
+      invitationEntities
+    );
+    invitationEntities?.cost && ((invitations as any).cost = invitationEntities.cost);
+    invitationEntities?.headers && ((invitations as any).headers = invitationEntities.headers);
+    return invitations;
+  }
+
   async addCollaborator(
     username: string,
     permission: GitHubRepositoryPermission
@@ -1944,4 +1978,10 @@ function collaboratorPermissionFromEntity(entity) {
   // 'this' is bound for this function to be a private method
   const permission = new Collaborator(entity);
   return permission;
+}
+
+function invitationFromEntity(entity) {
+  // 'this' is bound for this function to be a private method
+  const invitation = new RepositoryInvitation(this, entity);
+  return invitation;
 }

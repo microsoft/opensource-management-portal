@@ -13,11 +13,17 @@ import { IRestResponse, flattenData } from './core';
 import { CompositeApiContext, CompositeIntelligentEngine } from './composite';
 import { Collaborator } from '../../business/collaborator';
 import { Team } from '../../business/team';
-import { IPagedCacheOptions, IGetAuthorizationHeader, IDictionary } from '../../interfaces';
+import {
+  IPagedCacheOptions,
+  IGetAuthorizationHeader,
+  IDictionary,
+  GitHubRepositoryPermission,
+} from '../../interfaces';
 import { RestLibrary } from '.';
 import { sleep } from '../../utils';
 import GitHubApplication from '../../business/application';
 import { RepositoryPrimaryProperties } from '../../business/primaryProperties';
+import { RepositoryInvitation } from '../../business/repositoryInvitation';
 
 export interface IGetAppInstallationsParameters {
   app_id: string;
@@ -57,6 +63,7 @@ const teamDetailsToCopy = Team.PrimaryProperties;
 const memberDetailsToCopy = Collaborator.PrimaryProperties;
 const appInstallDetailsToCopy = GitHubApplication.PrimaryInstallationProperties;
 const contributorsDetailsToCopy = [...Collaborator.PrimaryProperties, 'contributions'];
+const repoInviteDetailsToCopy = RepositoryInvitation.PrimaryProperties;
 
 const teamPermissionsToCopy = [
   'id',
@@ -288,6 +295,21 @@ export class RestCollections {
       'repoCollaborators',
       'repos.listCollaborators',
       memberDetailsToCopy,
+      token,
+      options,
+      cacheOptions
+    );
+  }
+
+  getRepoInvitations(
+    token: string | IGetAuthorizationHeader,
+    options,
+    cacheOptions: IPagedCacheOptions
+  ): Promise<any> {
+    return this.generalizedCollectionWithFilter(
+      'repoInvitations',
+      'repos.listInvitations',
+      repoInviteDetailsToCopy,
       token,
       options,
       cacheOptions

@@ -12,7 +12,7 @@ import { IGraphEntry } from '../../lib/graphProvider';
 import { jsonError } from '../../middleware';
 import { getProviders } from '../../transitional';
 
-export default asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+const getPerson = asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
   const providers = getProviders(req);
   const { operations, queryCache, graphProvider } = providers;
   const login = req.params.login as string;
@@ -77,3 +77,5 @@ export default asyncHandler(async (req: ReposAppRequest, res: Response, next: Ne
     return next(jsonError(`login ${login} error: ${error}`, 500));
   }
 });
+
+export { getPerson };

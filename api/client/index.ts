@@ -31,6 +31,7 @@ import routeNews from './news';
 import routeCrossOrganizationPeople from './people';
 import routeCrossOrganizationRepos from './repos';
 import routeCrossOrganizationTeams from './teams';
+import routeUsers from './users';
 
 const router: Router = Router();
 
@@ -63,6 +64,7 @@ router.use('/signout', routeSession);
 router.use('/people', routeCrossOrganizationPeople);
 router.use('/repos', routeCrossOrganizationRepos);
 router.use('/teams', routeCrossOrganizationTeams);
+router.use('/users', routeUsers);
 router.use('/news', routeNews);
 
 const dynamicStartupInstance = getCompanySpecificDeployment();

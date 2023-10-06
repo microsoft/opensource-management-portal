@@ -12,7 +12,7 @@ import { type GitHubSimpleAccount, type ICorporateLink, ReposAppRequest } from '
 import JsonPager from './jsonPager';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 
-import RouteGetPerson from './person';
+import { getPerson as routeGetPerson } from './person';
 import { equivalentLegacyPeopleSearch } from './peopleSearch';
 
 const router: Router = Router();
@@ -37,7 +37,7 @@ interface IOrganizationMembershipAccount {
   [id: string]: GitHubSimpleAccount;
 }
 
-router.get('/:login', RouteGetPerson);
+router.get('/:login', routeGetPerson);
 
 router.get(
   '/',

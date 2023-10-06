@@ -17,6 +17,10 @@ export function daysInMilliseconds(days: number): number {
   return 1000 * 60 * 60 * 24 * days;
 }
 
+export function dateToDateString(date: Date) {
+  return date.toISOString().substr(0, 10);
+}
+
 export function stringOrNumberAsString(value: any) {
   if (typeof value === 'number') {
     return (value as number).toString();
