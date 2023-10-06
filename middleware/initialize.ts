@@ -27,6 +27,7 @@ import { Pool as PostgresPool } from 'pg';
 import Debug from 'debug';
 const debug = Debug.debug('startup');
 const pgDebug = Debug.debug('pgpool');
+const nowDebug = Debug.debug('now');
 
 import appInsights from './appInsights';
 import keyVault from './keyVault';
@@ -531,6 +532,20 @@ export default async function initialize(
     }
   }
   await ErrorRoutes(app, exception);
+  if (config?.debug?.breakConsoleEveryMinute === true) {
+    const isNowDebugging = Debug.enabled('now');
+    const everyMinute = () => {
+      const display = new Date().toISOString().substring(0, 19).replace('T', ' ');
+      if (isNowDebugging) {
+        nowDebug(display);
+      } else {
+        console.log();
+        console.log(display);
+      }
+    };
+    everyMinute();
+    setInterval(everyMinute, 60000);
+  }
   return executionEnvironment;
 }
 
