@@ -20,6 +20,7 @@
     "**/*_html.ts",
     "**/*.ignore_data.ts",
     "package*.json",
+    "**/assets/*.xlsx",
     "**/known.csv"
   ],
   "enableGlobDot": true,
@@ -259,6 +260,7 @@
     "eventid",
     "eventrecord",
     "eventtype",
+    "exceljs",
     "existingrepoid",
     "existingreponame",
     "fakeaccesstoken",
