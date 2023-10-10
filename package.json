@@ -143,7 +143,7 @@
     "@types/passport": "1.0.13",
     "@types/passport-azure-ad": "4.3.2",
     "@types/passport-github": "1.1.10",
-    "@types/pg": "8.10.3",
+    "@types/pg": "8.10.4",
     "@types/pug": "2.0.7",
     "@types/recursive-readdir": "2.2.2",
     "@types/semver": "7.5.3",
