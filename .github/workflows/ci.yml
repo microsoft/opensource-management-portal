@@ -9,7 +9,8 @@ on:
 
 jobs:
   test:
-    runs-on: [self-hosted, 1ES.Pool=ost-ospo-opensource]
+    runs-on: ubuntu-latest
+    # runs-on: [self-hosted, 1ES.Pool=ost-ospo-opensource]
 
     steps:
       - name: Checkout repository
