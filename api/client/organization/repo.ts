@@ -7,7 +7,7 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../../middleware';
-import { ErrorHelper, getProviders } from '../../../transitional';
+import { CreateError, ErrorHelper, getProviders } from '../../../transitional';
 import { IndividualContext } from '../../../business/user';
 import NewRepositoryLockdownSystem from '../../../features/newRepositories/newRepositoryLockdown';
 import {
@@ -17,12 +17,18 @@ import {
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
 
 import RouteRepoPermissions from './repoPermissions';
-import { LocalApiRepoAction, getRepositoryMetadataProvider, NoCacheNoBackground } from '../../../interfaces';
+import {
+  LocalApiRepoAction,
+  getRepositoryMetadataProvider,
+  NoCacheNoBackground,
+  GitHubRepositoryVisibility,
+} from '../../../interfaces';
 import { RequestWithRepo } from '../../../middleware/business/repository';
 
-enum ArchivalAction {
+enum RepositoryChangeAction {
   Archive,
   UnArchive,
+  Privatize,
 }
 
 const router: Router = Router();
@@ -96,21 +102,26 @@ router.get(
     }
   })
 );
+router.post(
+  '/privatize',
+  asyncHandler(AddRepositoryPermissionsToRequest),
+  asyncHandler(RepositoryStateChangeHandler.bind(null, RepositoryChangeAction.Privatize))
+);
 
 router.post(
   '/archive',
   asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(archiveUnArchiveRepositoryHandler.bind(null, ArchivalAction.Archive))
+  asyncHandler(RepositoryStateChangeHandler.bind(null, RepositoryChangeAction.Archive))
 );
 
 router.post(
   '/unarchive',
   asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(archiveUnArchiveRepositoryHandler.bind(null, ArchivalAction.UnArchive))
+  asyncHandler(RepositoryStateChangeHandler.bind(null, RepositoryChangeAction.UnArchive))
 );
 
-async function archiveUnArchiveRepositoryHandler(
-  action: ArchivalAction,
+async function RepositoryStateChangeHandler(
+  action: RepositoryChangeAction,
   req: RequestWithRepo,
   res: Response,
   next: NextFunction
@@ -119,12 +130,32 @@ async function archiveUnArchiveRepositoryHandler(
   const providers = getProviders(req);
   const { insights } = providers;
   const repoPermissions = getContextualRepositoryPermissions(req);
-  const phrase = action === ArchivalAction.Archive ? 'archive' : 'unarchive';
+  let phrase: string = null;
+  let insightsPrefix: string = null;
+  let localAction: LocalApiRepoAction = null;
+  switch (action) {
+    case RepositoryChangeAction.Archive:
+      phrase = 'archive';
+      insightsPrefix = 'ArchiveRepo';
+      localAction = LocalApiRepoAction.Archive;
+      break;
+    case RepositoryChangeAction.UnArchive:
+      phrase = 'unarchive';
+      insightsPrefix = 'UnArchiveRepo';
+      localAction = LocalApiRepoAction.UnArchive;
+      break;
+    case RepositoryChangeAction.Privatize:
+      phrase = 'privatize';
+      insightsPrefix = 'PrivatizeRepo';
+      localAction = LocalApiRepoAction.Privatize;
+      break;
+    default:
+      return next(jsonError('Invalid action', 400));
+  }
   const completedPhrase = `${phrase}d`;
   if (!repoPermissions.allowAdministration) {
     return next(jsonError(`You do not have permission to ${phrase} this repo`, 403));
   }
-  const insightsPrefix = `${action === ArchivalAction.UnArchive ? 'Un' : ''}ArchiveRepo`;
   const { repository } = req;
   try {
     insights?.trackEvent({
@@ -139,16 +170,28 @@ async function archiveUnArchiveRepositoryHandler(
     const currentRepositoryState = deployment?.features?.repositoryActions?.getCurrentRepositoryState
       ? await deployment.features.repositoryActions.getCurrentRepositoryState(providers, repository)
       : null;
-    await (action === ArchivalAction.Archive ? repository.archive() : repository.unarchive());
+    switch (action) {
+      case RepositoryChangeAction.Archive: {
+        await repository.archive();
+        break;
+      }
+      case RepositoryChangeAction.UnArchive: {
+        await repository.unarchive();
+        break;
+      }
+      case RepositoryChangeAction.Privatize: {
+        await repository.update({
+          visibility: GitHubRepositoryVisibility.Private,
+        });
+        break;
+      }
+      default: {
+        return next(CreateError.InvalidParameters('Invalid action'));
+      }
+    }
     if (deployment?.features?.repositoryActions?.sendActionReceipt) {
       deployment.features.repositoryActions
-        .sendActionReceipt(
-          providers,
-          activeContext,
-          repository,
-          action === ArchivalAction.Archive ? LocalApiRepoAction.Archive : LocalApiRepoAction.UnArchive,
-          currentRepositoryState
-        )
+        .sendActionReceipt(providers, activeContext, repository, localAction, currentRepositoryState)
         .then((ok) => {})
         .catch(() => {});
     }

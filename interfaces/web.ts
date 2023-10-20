@@ -36,6 +36,7 @@ export enum LocalApiRepoAction {
   Delete = 'delete',
   Archive = 'archive',
   UnArchive = 'unarchive',
+  Privatize = 'privatize',
 }
 
 export type VoidedExpressRoute = (req: ReposAppRequest, res: Response, next: NextFunction) => Promise<void>;
