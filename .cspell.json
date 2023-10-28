@@ -14,7 +14,6 @@
     "default-assets-package/resources/repos-css/oss.css",
     "**/commonKnownExternalCollaborators.json",
     "jobs/reports/exemptRepositories.json",
-    "**/hotfixRepos.json",
     "**/demo/team.json",
     "**/demo/user.json",
     "**/*_html.ts",
