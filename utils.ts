@@ -8,8 +8,8 @@ import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
 import zlib from 'zlib';
-import { type Repository } from './business/repository';
 
+import { type Repository } from './business/repository';
 import type { ReposAppRequest, IAppSession, IReposError, SiteConfiguration } from './interfaces';
 import { getProviders } from './transitional';
 
@@ -363,3 +363,24 @@ export function getDateTimeBasedBlobFolder() {
 }
 
 export const botBracket = '[bot]';
+
+const githubAvatarHostnames = [
+  'githubusercontent.com',
+  'objects.githubusercontent.com',
+  'object.githubusercontent.com',
+  'raw.githubusercontent.com',
+  'avatars.githubusercontent.com',
+];
+
+export function getUserIdFromWellFormedAvatar(avatar: string): string {
+  // https://*.githubusercontent.com/u/userid?v=*
+  const url = new URL(avatar);
+  if (githubAvatarHostnames.includes(url.hostname)) {
+    const { pathname } = url;
+    const i = pathname.indexOf('/u/');
+    if (i >= 0) {
+      return pathname.substr(i + 3);
+    }
+  }
+  return null;
+}

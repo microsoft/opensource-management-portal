@@ -107,6 +107,7 @@
     "champscount",
     "champstatus",
     "chromedriver",
+    "checkmarks",
     "citus",
     "citusdata",
     "classificationdelegated",
@@ -377,6 +378,7 @@
     "jabberpl",
     "joblog",
     "jobname",
+    "json",
     "jsoncontribution",
     "jsoncreated",
     "jwilcox",
@@ -879,7 +881,8 @@
     "xlink",
     "XSTORE",
     "xtable",
-    "yamls"
+    "yamls",
+    "yml"
   ],
   "maxNumberOfProblems": 1000
 }
