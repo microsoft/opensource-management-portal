@@ -67,6 +67,7 @@ import { ConfigGitHubTemplates } from '../config/github.templates.types';
 import { GitHubTokenManager } from './githubApps/tokenManager';
 import { OrganizationProjects } from './projects';
 import { OrganizationDomains } from './domains';
+import { OrganizationCopilot } from './organizationCopilot';
 
 interface IGetMembersParameters {
   org: string;
@@ -219,6 +220,8 @@ export class Organization {
   private _projects: OrganizationProjects;
   private _domains: OrganizationDomains;
 
+  private _copilot: OrganizationCopilot;
+
   id: number;
   uncontrolled: boolean;
 
@@ -349,6 +352,17 @@ export class Organization {
       );
     }
     return this._projects;
+  }
+
+  get copilot() {
+    if (!this._copilot) {
+      this._copilot = new OrganizationCopilot(
+        this,
+        this._getSpecificAuthorizationHeader.bind(this),
+        this._operations
+      );
+    }
+    return this._copilot;
   }
 
   get domains() {

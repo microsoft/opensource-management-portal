@@ -254,9 +254,6 @@ export class ErrorHelper {
     if (asAny?.statusCode && typeof asAny.statusCode === 'number') {
       return asAny.statusCode as number;
     }
-    if (asAny?.code && typeof asAny.code === 'number') {
-      return asAny.code as number;
-    }
     if (asAny?.status) {
       const status = asAny.status;
       const type = typeof status;
@@ -268,6 +265,9 @@ export class ErrorHelper {
         console.warn(`Unsupported error.status type: ${type}`);
         return null;
       }
+    }
+    if (asAny?.code && typeof asAny.code === 'number') {
+      return asAny.code as number;
     }
     return null;
   }

@@ -13,12 +13,7 @@ import { IRestResponse, flattenData } from './core';
 import { CompositeApiContext, CompositeIntelligentEngine } from './composite';
 import { Collaborator } from '../../business/collaborator';
 import { Team } from '../../business/team';
-import {
-  IPagedCacheOptions,
-  IGetAuthorizationHeader,
-  IDictionary,
-  GitHubRepositoryPermission,
-} from '../../interfaces';
+import { IPagedCacheOptions, IGetAuthorizationHeader, IDictionary } from '../../interfaces';
 import { RestLibrary } from '.';
 import { sleep } from '../../utils';
 import GitHubApplication from '../../business/application';
@@ -28,6 +23,13 @@ import { RepositoryInvitation } from '../../business/repositoryInvitation';
 export interface IGetAppInstallationsParameters {
   app_id: string;
 }
+
+type WithPage<T> = T & { page?: number };
+
+export type CollectionCopilotSeatsOptions = {
+  org: string;
+  per_page?: number;
+};
 
 export enum GitHubPullRequestState {
   Open = 'open',
@@ -57,6 +59,8 @@ export interface IListPullsParameters {
   direction?: GitHubSortDirection;
 }
 
+const mostBasicAccountProperties = ['id', 'login', 'avatar_url'];
+
 const branchDetailsToCopy = ['name', 'commit', 'protected'];
 const repoDetailsToCopy = RepositoryPrimaryProperties;
 const teamDetailsToCopy = Team.PrimaryProperties;
@@ -64,6 +68,21 @@ const memberDetailsToCopy = Collaborator.PrimaryProperties;
 const appInstallDetailsToCopy = GitHubApplication.PrimaryInstallationProperties;
 const contributorsDetailsToCopy = [...Collaborator.PrimaryProperties, 'contributions'];
 const repoInviteDetailsToCopy = RepositoryInvitation.PrimaryProperties;
+
+type SubReducerProperties = Record<string, string[]>;
+
+type WithSubPropertyReducer = any[] & { subPropertiesToReduce?: SubReducerProperties };
+
+const copilotSeatPropertiesToCopy: WithSubPropertyReducer = [
+  'created_at',
+  'updated_at',
+  'last_activity_at',
+  'last_activity_editor',
+  'assignee', // id, login; mostBasicAccountProperties
+];
+copilotSeatPropertiesToCopy.subPropertiesToReduce = {
+  assignee: mostBasicAccountProperties,
+};
 
 const teamPermissionsToCopy = [
   'id',
@@ -75,6 +94,7 @@ const teamPermissionsToCopy = [
   'privacy',
   'permission',
 ];
+
 const teamRepoPermissionsToCopy = [
   'id',
   'name',
@@ -84,6 +104,7 @@ const teamRepoPermissionsToCopy = [
   'fork',
   'permissions',
 ];
+
 const pullDetailsToCopy = [
   'id',
   'number',
@@ -202,6 +223,31 @@ export class RestCollections {
       token,
       options,
       cacheOptions
+    );
+  }
+
+  getOrganizationCopilotSeats(
+    token: string | IGetAuthorizationHeader,
+    options: CollectionCopilotSeatsOptions,
+    cacheOptions: IPagedCacheOptions
+  ): Promise<any> {
+    // technically type CopilotSeatData
+    const orgName = options.org;
+    delete options.org;
+    const params = Object.assign(
+      {
+        octokitRequest: `GET /orgs/${orgName}/copilot/billing/seats`,
+      },
+      options
+    );
+    return this.generalizedCollectionWithFilter(
+      'orgCopilotSeats',
+      'request',
+      copilotSeatPropertiesToCopy,
+      token,
+      params,
+      cacheOptions,
+      'seats'
     );
   }
 
@@ -376,11 +422,12 @@ export class RestCollections {
     );
   }
 
-  private async getGithubCollection(
+  private async getGithubCollection<OptionsType>(
     token: string | IGetAuthorizationHeader,
-    methodName,
-    options,
-    cacheOptions: IPagedCacheOptions
+    methodName: string,
+    options: OptionsType,
+    cacheOptions: IPagedCacheOptions,
+    arrayReducePropertyName?: string
   ): Promise<IRequestWithData> {
     const hasNextPage = this.libraryContext.hasNextPage;
     const githubCall = this.githubCall;
@@ -390,14 +437,14 @@ export class RestCollections {
     const requests = [];
     let pages = 0;
     let currentPage = 0;
-    const pageLimit = options.pageLimit || cacheOptions['pageLimit'] || Number.MAX_VALUE;
+    const pageLimit = (options as any)?.pageLimit || cacheOptions['pageLimit'] || Number.MAX_VALUE;
     const pageRequestDelay = cacheOptions.pageRequestDelay || null;
     while (!done) {
       const method = githubCall;
       const args = [];
       const currentToken = typeof token === 'string' ? token : await token();
       args.push(currentToken);
-      const clonedOptions = Object.assign({}, options);
+      const clonedOptions: WithPage<OptionsType> = Object.assign({}, options);
       if (++currentPage > 1) {
         clonedOptions.page = currentPage;
       }
@@ -406,6 +453,19 @@ export class RestCollections {
       let result = null;
       try {
         result = await (method as any).apply(null, args);
+        if (
+          arrayReducePropertyName &&
+          result[arrayReducePropertyName] &&
+          Array.isArray(result[arrayReducePropertyName])
+        ) {
+          const originalResultProperties = {
+            headers: result?.headers,
+            cost: result?.cost,
+          };
+          result = result[arrayReducePropertyName];
+          result.headers = originalResultProperties.headers;
+          result.cost = originalResultProperties.cost;
+        }
         recentResult = result;
         if (result) {
           ++pages;
@@ -454,17 +514,26 @@ export class RestCollections {
     return { data, requests };
   }
 
-  private async getFilteredGithubCollection(
+  private async getFilteredGithubCollection<DataType, OptionsType>(
     token: string | IGetAuthorizationHeader,
-    methodName,
-    options,
+    methodName: string,
+    options: OptionsType,
     cacheOptions: IPagedCacheOptions,
-    propertiesToKeep
+    propertiesToKeep: string[],
+    arrayReducePropertyName?: string
   ): Promise<IRequestWithData> {
     const keepAll = !propertiesToKeep;
+    const subReductionProperties =
+      propertiesToKeep && (propertiesToKeep as WithSubPropertyReducer).subPropertiesToReduce;
     try {
       // IRequestWithData
-      const getCollectionResponse = await this.getGithubCollection(token, methodName, options, cacheOptions);
+      const getCollectionResponse = await this.getGithubCollection(
+        token,
+        methodName,
+        options,
+        cacheOptions,
+        arrayReducePropertyName
+      );
       if (!getCollectionResponse) {
         throw new Error('No response');
       }
@@ -484,6 +553,14 @@ export class RestCollections {
           const r = {};
           _.forOwn(doNotModify, (value, key) => {
             if (keepAll || propertiesToKeep.indexOf(key) >= 0) {
+              if (subReductionProperties && subReductionProperties[key]) {
+                const validSubKeys = new Set(subReductionProperties[key]);
+                for (const subKey of Object.getOwnPropertyNames(value)) {
+                  if (!validSubKeys.has(subKey)) {
+                    delete value[subKey];
+                  }
+                }
+              }
               r[key] = value;
             }
           });
@@ -502,19 +579,21 @@ export class RestCollections {
     }
   }
 
-  private async getFilteredGithubCollectionWithMetadataAnalysis(
+  private async getFilteredGithubCollectionWithMetadataAnalysis<DataType, OptionsType>(
     token: string | IGetAuthorizationHeader,
-    methodName,
-    options,
+    methodName: string,
+    options: OptionsType,
     cacheOptions: IPagedCacheOptions,
-    propertiesToKeep
+    propertiesToKeep: string[],
+    arrayReducePropertyName?: string
   ): Promise<IRestResponse> {
-    const collectionResults = await this.getFilteredGithubCollection(
+    const collectionResults = await this.getFilteredGithubCollection<DataType, OptionsType>(
       token,
       methodName,
       options,
       cacheOptions,
-      propertiesToKeep
+      propertiesToKeep,
+      arrayReducePropertyName
     );
     const results = collectionResults.data as IRestResponse;
     const requests = collectionResults.requests;
@@ -570,37 +649,47 @@ export class RestCollections {
     return compositeEngine.execute(apiContext);
   }
 
-  private getCollectionAndFilter(
+  private getCollectionAndFilter<DataType, OptionsType>(
     token: string | IGetAuthorizationHeader,
-    options,
+    options: OptionsType,
     cacheOptions: IPagedCacheOptions,
-    githubClientMethod,
-    propertiesToKeep
+    githubClientMethod: string,
+    propertiesToKeep: string[],
+    arrayReducePropertyName?: string
   ) {
     const capturedThis = this;
-    return function (token, options) {
-      return capturedThis.getFilteredGithubCollectionWithMetadataAnalysis(
+    return function (token: string | IGetAuthorizationHeader, options: OptionsType) {
+      return capturedThis.getFilteredGithubCollectionWithMetadataAnalysis<DataType, OptionsType>(
         token,
         githubClientMethod,
         options,
         cacheOptions,
-        propertiesToKeep
+        propertiesToKeep,
+        arrayReducePropertyName
       );
     };
   }
 
-  private async generalizedCollectionWithFilter(
-    name,
-    githubClientMethod,
-    propertiesToKeep,
-    token,
-    options,
-    cacheOptions: IPagedCacheOptions
-  ): Promise<any> {
+  private async generalizedCollectionWithFilter<DataType, OptionsType>(
+    name: string,
+    githubClientMethod: string,
+    propertiesToKeep: string[],
+    token: string | IGetAuthorizationHeader,
+    options: OptionsType,
+    cacheOptions: IPagedCacheOptions,
+    arrayReducePropertyName?: string
+  ): Promise<DataType> {
     const rows = await this.generalizedCollectionMethod(
       token,
       name,
-      this.getCollectionAndFilter(token, options, cacheOptions, githubClientMethod, propertiesToKeep),
+      this.getCollectionAndFilter(
+        token,
+        options,
+        cacheOptions,
+        githubClientMethod,
+        propertiesToKeep,
+        arrayReducePropertyName
+      ),
       options,
       cacheOptions
     );

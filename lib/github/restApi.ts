@@ -26,7 +26,14 @@ import {
 import { getEntityDefinitions, GitHubResponseType, ResponseBodyType } from './endpointEntities';
 
 import appPackage from '../../package.json';
-import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../interfaces';
+import { ErrorHelper } from '../../transitional';
+
+import type { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../interfaces';
+import {
+  type IGitHubAppConfiguration,
+  getAppPurposeId,
+  tryGetAppPurposeAppConfiguration,
+} from '../../business/githubApps';
 
 const appVersion = appPackage.version;
 
@@ -101,10 +108,11 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
         }
       }
     }
+    const purpose = apiContext?.tokenSource?.purpose ? getAppPurposeId(apiContext.tokenSource.purpose) : null;
     if (optionalMessage) {
       let apiTypeSuffix =
         apiContext.tokenSource && apiContext.tokenSource.purpose
-          ? ' [' + apiContext.tokenSource.purpose + ']'
+          ? ' [' + (purpose || apiContext.tokenSource.purpose) + ']'
           : '';
       if (!apiTypeSuffix && apiContext.tokenSource && apiContext.tokenSource.source) {
         apiTypeSuffix = ` [token source=${apiContext.tokenSource.source}]`;
@@ -139,8 +147,38 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
       args.push(argOptions);
     }
     const thisArgument = apiMethod.thisInstance || null;
-    const response = await apiMethod.apply(thisArgument, args);
-    return response;
+    try {
+      const response = await apiMethod.apply(thisArgument, args);
+      return response;
+    } catch (error) {
+      const asAny = error as any;
+      if (
+        ErrorHelper.IsNotAuthorized(error) &&
+        asAny?.message === 'Resource not accessible by integration' &&
+        apiContext.tokenSource
+      ) {
+        let appConfig: IGitHubAppConfiguration = null;
+        if (apiContext?.tokenSource?.purpose && apiContext?.tokenSource?.organizationName) {
+          appConfig = tryGetAppPurposeAppConfiguration(
+            apiContext.tokenSource.purpose,
+            apiContext.tokenSource.organizationName
+          );
+        }
+        asAny.source = apiContext.tokenSource.source;
+        const additional: string[] = [];
+        purpose && additional.push(`purpose=${purpose}`);
+        appConfig?.appId && additional.push(`appId=${appConfig.appId}`);
+        appConfig?.slug && additional.push(`slug=${appConfig.slug}`);
+        apiContext?.tokenSource?.installationId &&
+          additional.push(`installationId=${apiContext.tokenSource.installationId}`);
+        apiContext?.tokenSource?.organizationName &&
+          additional.push(`organization=${apiContext.tokenSource.organizationName}`);
+        const extra = ' ' + additional.join(', ');
+        debug(`Additional installation context added to message for 403: ${extra}`);
+        asAny.message += extra;
+      }
+      throw error;
+    }
   }
 
   processMetadataBeforeCall(apiContext: ApiContext, metadata: IRestMetadata) {

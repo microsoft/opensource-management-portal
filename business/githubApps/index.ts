@@ -107,6 +107,15 @@ export function getAppPurposeId(purpose: AppPurposeTypes) {
   return id;
 }
 
+export function tryGetAppPurposeAppConfiguration(purpose: AppPurposeTypes, organizationName: string) {
+  if (
+    (purpose as ICustomAppPurpose).isCustomAppPurpose === true &&
+    (purpose as ICustomAppPurpose).getForOrganizationName
+  ) {
+    return (purpose as ICustomAppPurpose).getForOrganizationName(organizationName);
+  }
+}
+
 export class GitHubAppPurposes {
   private static _instance: GitHubAppPurposes = new GitHubAppPurposes();
 
