@@ -590,6 +590,7 @@ async function connectRedis(
       port: config.redis.port ? Number(config.redis.port) : config.redis.tls ? 6380 : 6379,
       password: config.redis.key,
       tls: !!config.redis.tls,
+      pingInterval: 5 * 60 * 1000, // Ping Each 5min. https://learn.microsoft.com/en-us/azure/azure-cache-for-redis/cache-best-practices-connection#idle-timeout
     },
     // name
   };
