@@ -37,6 +37,7 @@ import routePlaceholders from './placeholders';
 import routeReleasesSpa from './releasesSpa';
 
 import { ReposAppRequest, UserAlertType } from '../interfaces';
+import { Repository } from '../business';
 
 // - - - Middleware: require that they have a passport - - -
 router.use(asyncHandler(requireAuthenticatedUserOrSignIn));
@@ -81,6 +82,40 @@ router.get('/news', (req: ReposAppRequest, res: Response, next: NextFunction) =>
     return next(); // only attach this route if there are any static stories
   }
 });
+
+router.use(
+  '/',
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+    // Helper method to allow pasting a GitHub URL into the app to go to a repo
+    const { rid, oid, action } = req.query;
+    const { operations } = getProviders(req);
+    if (!rid && !oid) {
+      return next();
+    }
+    const repositoryId = Number(rid);
+    const organizationId = Number(oid);
+    let organization: Organization = null;
+    let repository: Repository = null;
+    try {
+      organization = operations.getOrganizationById(organizationId);
+    } catch (error) {
+      // no-op continue
+      return next();
+    }
+    if (organization) {
+      try {
+        repository = await organization.getRepositoryById(repositoryId);
+        return res.redirect(
+          `/orgs/${organization.name}/repos/${repository.name}${action ? `/${action}` : ''}`
+        );
+      } catch (error) {
+        // no-op continue
+        return next();
+      }
+    }
+    return next();
+  })
+);
 
 // Link cleanups and check their signed-in username vs their link
 router.use(RequireLinkMatchesGitHubSessionExceptPrefixedRoute('/unlink'));
