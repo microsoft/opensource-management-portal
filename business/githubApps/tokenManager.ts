@@ -162,6 +162,28 @@ export class GitHubTokenManager {
     return null;
   }
 
+  async ensureConfigurationAppInitialized(
+    customPurpose: AppPurposeTypes,
+    customPurposeConfiguration: IGitHubAppConfiguration
+  ): Promise<GitHubAppTokens> {
+    const appId = customPurposeConfiguration.appId;
+    const asCustomPurpose = this.getCustomPurpose(customPurpose);
+    if (!asCustomPurpose?.isCustomAppPurpose) {
+      throw CreateError.InvalidParameters(`The purpose ${customPurpose} is not a custom app purpose`);
+    }
+    let app = this._appsById.get(appId);
+    if (!app) {
+      debug(`initializing app for custom purpose ${asCustomPurpose.id} with custom configuration`);
+      app = await this.initializeApp(asCustomPurpose, customPurposeConfiguration);
+    }
+    if (!app) {
+      throw CreateError.InvalidParameters(
+        `Error initializing purpose ${this.getPurposeDisplayId(customPurpose)}`
+      );
+    }
+    return app;
+  }
+
   async getOrganizationAuthorizationHeader(
     organizationName: string,
     preferredPurpose: AppPurposeTypes,

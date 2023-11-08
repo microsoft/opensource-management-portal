@@ -83,6 +83,7 @@ import type {
 } from '../interfaces';
 import initializeRepositoryProvider from '../entities/repository';
 import { tryGetImmutableStorageProvider } from '../lib/immutable';
+import { GitHubAppPurposes } from '../business/githubApps';
 
 const DefaultApplicationProfile: IApplicationProfile = {
   applicationName: 'Open Source Management Portal',
@@ -303,6 +304,7 @@ async function initializeAsync(
     });
     await operations.initialize();
     providers.operations = operations;
+    GitHubAppPurposes.RegisterOperationsInstanceForBuiltInPurposes(operations);
   } catch (ignoredError2) {
     console.dir(ignoredError2);
     throw ignoredError2;

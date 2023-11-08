@@ -7,6 +7,9 @@ import { ExecutionEnvironment } from '../../interfaces';
 import { CreateError } from '../../transitional';
 
 import Debug from 'debug';
+import GitHubApplication from '../application';
+import { Operations } from '../operations';
+import { GitHubTokenManager } from './tokenManager';
 const debug = Debug('github:tokens');
 
 export enum AppPurpose {
@@ -29,6 +32,10 @@ export interface ICustomAppPurpose {
 
 export type AppPurposeTypes = AppPurpose | ICustomAppPurpose;
 
+export type CustomAppPurposeWithGetApplications = ICustomAppPurpose & {
+  getGitHubAppInstances: () => GitHubApplication[];
+};
+
 export abstract class CustomAppPurpose implements ICustomAppPurpose {
   get isCustomAppPurpose() {
     return true;
@@ -40,14 +47,19 @@ export abstract class CustomAppPurpose implements ICustomAppPurpose {
 }
 
 export class CustomAppPurposeOrganizationVariance extends CustomAppPurpose {
+  private _appsByAppId = new Map<number, GitHubApplication>();
+
   fallbackIfNotConfiguredOrganizationName = false;
+
   constructor(
+    private operations: Operations,
     public id: string,
     public name: string,
     private configurations: IGitHubAppConfiguration[]
   ) {
     super(id, name);
   }
+
   getForOrganizationName(organizationName: string) {
     const configuration = this.configurations.find(
       (c) => c.specificOrganizationName.toLowerCase() === organizationName.toLowerCase()
@@ -57,10 +69,31 @@ export class CustomAppPurposeOrganizationVariance extends CustomAppPurpose {
     }
     return configuration || this.configurations[0];
   }
+
+  getGitHubAppInstances() {
+    const uniqueAppIds = new Set<number>(this.configurations.map((c) => c.appId).filter((id) => !!id));
+    const appInstances: GitHubApplication[] = [];
+    for (const appId of uniqueAppIds) {
+      let instance = this._appsByAppId.get(appId);
+      if (!instance) {
+        instance = createGitHubAppInstance(
+          this.operations,
+          this.configurations.find((c) => c.appId === appId),
+          this
+        );
+        this._appsByAppId.set(appId, instance);
+      }
+      appInstances.push(instance);
+    }
+    return appInstances;
+  }
 }
 
 export class CustomAppPurposeSingleConfiguration extends CustomAppPurpose {
+  private _appInstance: GitHubApplication;
+
   constructor(
+    private operations: Operations,
     public id: string,
     public name: string,
     private configuration: IGitHubAppConfiguration
@@ -71,6 +104,44 @@ export class CustomAppPurposeSingleConfiguration extends CustomAppPurpose {
   getApplicationConfigurationForInitialization() {
     return this.configuration;
   }
+
+  getGitHubAppInstances() {
+    if (!this._appInstance) {
+      this._appInstance = createGitHubAppInstance(this.operations, this.configuration, this);
+    }
+    return this._appInstance;
+  }
+}
+
+function createGitHubAppInstance(
+  operations: Operations,
+  configuration: IGitHubAppConfiguration,
+  customPurpose: AppPurposeTypes
+) {
+  const app = new GitHubApplication(
+    operations,
+    configuration.appId,
+    configuration.slug,
+    configuration.description || configuration.slug,
+    getAppAuthorizationHeader.bind(this, operations, configuration, customPurpose)
+  );
+  return app;
+}
+
+async function getAppAuthorizationHeader(
+  operations: Operations,
+  configuration: IGitHubAppConfiguration,
+  purpose: AppPurposeTypes
+): Promise<string> {
+  const appId = configuration.appId;
+  const tokenManager = GitHubTokenManager.TryGetTokenManagerForOperations(operations);
+  const appTokens = await tokenManager.ensureConfigurationAppInitialized(purpose, configuration);
+  if (!appTokens) {
+    CreateError.InvalidParameters(`No app tokens found configured for app ID ${appId} in tokens instance.`);
+  }
+  const jwt = await appTokens.getAppAuthenticationToken();
+  const value = `bearer ${jwt}`;
+  return value;
 }
 
 export const DefinedAppPurposes = [
@@ -116,12 +187,41 @@ export function tryGetAppPurposeAppConfiguration(purpose: AppPurposeTypes, organ
   }
 }
 
+export function tryGetAppPurposeGitHubAppInstances(purpose: AppPurposeTypes) {
+  if (
+    (purpose as ICustomAppPurpose).isCustomAppPurpose === true &&
+    (purpose as CustomAppPurposeWithGetApplications).getGitHubAppInstances
+  ) {
+    return (purpose as CustomAppPurposeWithGetApplications).getGitHubAppInstances();
+  }
+  const operations = GitHubAppPurposes.GetOperationsInstanceForBuiltInPurposes();
+  const tokenManager = GitHubTokenManager.TryGetTokenManagerForOperations(operations);
+  const appTokens = tokenManager.getAppForPurpose(purpose);
+  if (!appTokens) {
+    throw CreateError.InvalidParameters(`No app tokens found configured for purpose ${purpose}`);
+  }
+  const appId = appTokens.appId;
+  if (!appId) {
+    throw CreateError.InvalidParameters(`No app ID found configured for purpose ${purpose}`);
+  }
+  return [operations.getApplicationById(appId)];
+}
+
 export class GitHubAppPurposes {
+  private _operations: Operations;
   private static _instance: GitHubAppPurposes = new GitHubAppPurposes();
 
   static get AllAvailableAppPurposes() {
     debug(`Retrieving all available purposes (${this._instance._purposes.length})`);
     return this._instance._purposes;
+  }
+
+  static RegisterOperationsInstanceForBuiltInPurposes(operations: Operations) {
+    this._instance._operations = operations;
+  }
+
+  static GetOperationsInstanceForBuiltInPurposes() {
+    return this._instance._operations;
   }
 
   static RegisterCustomPurpose(purpose: ICustomAppPurpose) {
