@@ -136,7 +136,7 @@
     "@types/lodash": "4.14.200",
     "@types/luxon": "3.3.3",
     "@types/memory-cache": "0.2.4",
-    "@types/morgan": "1.9.7",
+    "@types/morgan": "1.9.9",
     "@types/node": "20.8.10",
     "@types/node-jose": "1.1.12",
     "@types/object-path": "0.11.3",
