@@ -115,7 +115,6 @@ router.get(
       }
       const userAggregateContext = activeContext.aggregations;
       const maintainedTeams = new Set<string>();
-      const broadTeams = new Set<number>(req.organization.broadAccessTeams);
       const userTeams = userAggregateContext.reduceOrganizationTeams(
         organization,
         await userAggregateContext.teams()

@@ -13,17 +13,26 @@ import { CompositeIntelligentEngine } from './composite';
 import { RestCollections } from './collections';
 import { CrossOrganizationCollator } from './crossOrganization';
 import { LinkMethods } from './links';
-import { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../interfaces';
+import { GetAuthorizationHeader, AuthorizationHeaderValue } from '../../interfaces';
 import { ICacheHelper } from '../caching';
-import { ICustomAppPurpose } from '../../business/githubApps';
+import { ICustomAppPurpose } from './appPurposes';
+import { CreateError } from '../../transitional';
 
 export enum CacheMode {
   ValidateCache = 'ValidateCache',
   BackgroundRefresh = 'BackgroundRefresh',
 }
 
+export enum HttpMethod {
+  Get = 'GET',
+  Post = 'POST',
+  Put = 'PUT',
+  Patch = 'PATCH',
+  Delete = 'DELETE',
+}
+
 export interface IGitHubPostFunction {
-  (awaitToken: IGetAuthorizationHeader, api: string, parameters: any): Promise<any>;
+  (awaitToken: GetAuthorizationHeader, api: string, parameters: any): Promise<any>;
 }
 
 export type OctokitGraphqlOptions = {
@@ -128,25 +137,27 @@ export class RestLibrary {
   hasNextPage?: (any) => boolean;
 
   private async resolveAuthorizationHeader(
-    authorizationHeader: IGetAuthorizationHeader | IAuthorizationHeaderValue | string
-  ): Promise<string | IAuthorizationHeaderValue> {
+    authorizationHeader: GetAuthorizationHeader | AuthorizationHeaderValue | string
+  ): Promise<string | AuthorizationHeaderValue> {
     let authorizationValue = null;
     try {
-      if (typeof authorizationHeader === 'string') {
+      if (!authorizationHeader) {
+        throw CreateError.InvalidParameters('No authorization header');
+      } else if (typeof authorizationHeader === 'string') {
         authorizationValue = authorizationHeader as string;
       } else if (typeof authorizationHeader === 'function') {
-        let asFunc = authorizationHeader as IGetAuthorizationHeader;
-        let resolved = asFunc.call(null) as Promise<IAuthorizationHeaderValue | string>;
+        let asFunc = authorizationHeader as GetAuthorizationHeader;
+        let resolved = asFunc.call(null) as Promise<AuthorizationHeaderValue | string>;
         authorizationValue = await resolved;
         if (typeof resolved === 'function') {
-          asFunc = resolved as IGetAuthorizationHeader;
-          resolved = asFunc.call(null) as Promise<IAuthorizationHeaderValue | string>;
+          asFunc = resolved as GetAuthorizationHeader;
+          resolved = asFunc.call(null) as Promise<AuthorizationHeaderValue | string>;
           authorizationValue = await resolved;
         }
       } else if (authorizationHeader && authorizationHeader['value']) {
-        authorizationValue = authorizationHeader as IAuthorizationHeaderValue;
+        authorizationValue = authorizationHeader as AuthorizationHeaderValue;
       } else {
-        throw new Error('Invalid resolveAuthorizationHeader');
+        throw CreateError.InvalidParameters('Unknown resolveAuthorizationHeader type');
       }
     } catch (getTokenError) {
       console.dir(getTokenError);
@@ -156,7 +167,7 @@ export class RestLibrary {
   }
 
   async call(
-    awaitToken: IGetAuthorizationHeader | IAuthorizationHeaderValue | string,
+    awaitToken: GetAuthorizationHeader | AuthorizationHeaderValue | string,
     api: string,
     options,
     cacheOptions = null
@@ -181,20 +192,32 @@ export class RestLibrary {
     return result;
   }
 
-  request(token, restEndpoint, parameters: any, cacheOptions): Promise<any> {
+  request(token: GetAuthorizationHeader | string, restEndpoint, parameters: any, cacheOptions): Promise<any> {
     parameters = parameters || {};
     parameters['octokitRequest'] = restEndpoint;
     return this.call(token, 'request', parameters, cacheOptions);
   }
 
-  requestAsPost(token, restEndpoint, parameters: any): Promise<any> {
+  requestAsPost(token: GetAuthorizationHeader | string, restEndpoint, parameters: any): Promise<any> {
     parameters = parameters || {};
     parameters['octokitRequest'] = restEndpoint;
     return this.post(token, 'request', parameters);
   }
 
+  restApi(
+    token: GetAuthorizationHeader | string,
+    httpMethod: HttpMethod,
+    restEndpoint: string,
+    parameters: any
+  ): Promise<any> {
+    const requestUrlValue = `${httpMethod} ${restEndpoint}`;
+    return httpMethod === HttpMethod.Get
+      ? this.request(token, requestUrlValue, parameters, {})
+      : this.requestAsPost(token, requestUrlValue, parameters);
+  }
+
   graphql<T = any>(
-    token,
+    token: GetAuthorizationHeader | string,
     query: string,
     parameters: any,
     graphqlOptions: OctokitGraphqlOptions = {}
@@ -203,7 +226,7 @@ export class RestLibrary {
   }
 
   graphqlIteration<T = any>(
-    token,
+    token: GetAuthorizationHeader | string,
     query: string,
     parameters: any,
     graphqlOptions: OctokitGraphqlOptions = {}
@@ -228,7 +251,7 @@ export class RestLibrary {
     return this.post(token, api, parameters);
   }
 
-  async post(awaitToken: IGetAuthorizationHeader | string, api: string, options: any): Promise<any> {
+  async post(awaitToken: GetAuthorizationHeader | string, api: string, options: any): Promise<any> {
     const method = restApi.IntelligentGitHubEngine.findLibraryMethod(this.github, api);
     if (!options.headers) {
       options.headers = {};
@@ -239,14 +262,14 @@ export class RestLibrary {
       delete options.allowEmptyResponse;
       massageData = noDataMassage;
     }
-    let diagnosticHeaderInformation: IAuthorizationHeaderValue = null;
+    let diagnosticHeaderInformation: AuthorizationHeaderValue = null;
     if (!options.headers.authorization) {
       const value = await this.resolveAuthorizationHeader(awaitToken);
-      if ((value as IAuthorizationHeaderValue)?.purpose) {
-        diagnosticHeaderInformation = value as IAuthorizationHeaderValue;
+      if ((value as AuthorizationHeaderValue)?.purpose) {
+        diagnosticHeaderInformation = value as AuthorizationHeaderValue;
       }
       options.headers.authorization =
-        typeof value === 'string' ? (value as string) : (value as IAuthorizationHeaderValue).value;
+        typeof value === 'string' ? (value as string) : (value as AuthorizationHeaderValue).value;
     }
     const diagnostic: Record<string, any> = {};
     try {
@@ -283,6 +306,10 @@ export class RestLibrary {
       return finalized;
     } catch (error) {
       console.log(`API ${api} POST error: ${error.message}`);
+      if (error?.message?.includes('Unexpected end of JSON input')) {
+        console.log('Usually a unicorn and bad GitHub 500');
+        console.dir(error);
+      }
       if (
         error?.message?.includes('Resource not accessible by integration') ||
         error?.message?.includes('Not Found')

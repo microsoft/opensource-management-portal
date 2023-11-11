@@ -85,7 +85,7 @@ Here is a short overview about the meanings of the different parameters:
 - **setupbycorporateusername** (string) - Username (from the corporate identity system) of the user who set up the organization
 - **setupbycorporateid** (string) - Unique identifier (from the corporate identity system) for the user who set up the organization
 - **setupbycorporatedisplayname** (string) - Display name (from the corporate identity system) for the user who set up the organization
-- **specialteams** (object{specialTeam: string, teamId: integer}) - Special team configuration for the organization supported values for `specialTeam` types are: `everyone, sudo, globalSudo, systemWrite, systemRead, systemAdmin`. The `teamId` is the GitHub team ID for the special team.
+- **specialteams** (object{specialTeam: string, teamId: integer}) - Special team configuration for the organization supported values for `specialTeam` types are: `everyone, sudo, globalSudo, systemWrite, systemRead, systemAdmin, openAccess`. The `teamId` is the GitHub team ID for the special team.
 
 ### Static settings
 

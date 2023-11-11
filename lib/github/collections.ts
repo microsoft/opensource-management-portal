@@ -13,7 +13,7 @@ import { IRestResponse, flattenData } from './core';
 import { CompositeApiContext, CompositeIntelligentEngine } from './composite';
 import { Collaborator } from '../../business/collaborator';
 import { Team } from '../../business/team';
-import { IPagedCacheOptions, IGetAuthorizationHeader, IDictionary } from '../../interfaces';
+import { IPagedCacheOptions, GetAuthorizationHeader, IDictionary } from '../../interfaces';
 import { RestLibrary } from '.';
 import { sleep } from '../../utils';
 import GitHubApplication from '../../business/application';
@@ -25,6 +25,8 @@ export interface IGetAppInstallationsParameters {
 }
 
 type WithPage<T> = T & { page?: number };
+
+type WithOctokitRequest<T> = T & { octokitRequest?: string };
 
 export type CollectionCopilotSeatsOptions = {
   org: string;
@@ -151,8 +153,56 @@ export class RestCollections {
     this.githubCall = githubCall;
   }
 
+  collectAllPages<ParametersType = any, EntityType = any>(
+    token: string | GetAuthorizationHeader,
+    collectionCacheKey: string,
+    octokitApiName: string,
+    parameters: ParametersType,
+    cacheOptions: IPagedCacheOptions,
+    fieldNamesToKeep?: string[] | WithSubPropertyReducer,
+    arrayReducePropertyName?: string
+  ): Promise<EntityType[]> {
+    return this.generalizedCollectionWithFilter(
+      collectionCacheKey,
+      octokitApiName,
+      fieldNamesToKeep,
+      token,
+      parameters,
+      cacheOptions,
+      arrayReducePropertyName
+    );
+  }
+
+  collectAllPagesViaHttpGet<ParametersType = any, EntityType = any>(
+    token: string | GetAuthorizationHeader,
+    collectionCacheKey: string,
+    getRestUrl: string,
+    parameters: ParametersType,
+    cacheOptions: IPagedCacheOptions,
+    fieldNamesToKeep?: string[] | WithSubPropertyReducer,
+    arrayReducePropertyName?: string
+  ): Promise<EntityType[]> {
+    const expandedOptions: WithOctokitRequest<ParametersType> = Object.assign(
+      {
+        octokitRequest: getRestUrl.startsWith('GET ') ? getRestUrl.substr(4) : getRestUrl,
+      },
+      parameters
+    );
+    return this.collectAllPages<ParametersType, EntityType>(
+      token,
+      collectionCacheKey,
+      'request',
+      expandedOptions,
+      cacheOptions,
+      fieldNamesToKeep,
+      arrayReducePropertyName
+    );
+  }
+
+  // ---
+
   getOrgRepos(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options,
     cacheOptions: IPagedCacheOptions
   ): Promise<any> {
@@ -167,7 +217,7 @@ export class RestCollections {
   }
 
   getOrgTeams(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options,
     cacheOptions: IPagedCacheOptions
   ): Promise<any> {
@@ -182,7 +232,7 @@ export class RestCollections {
   }
 
   getTeamChildTeams(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options,
     cacheOptions: IPagedCacheOptions
   ): Promise<any> {
@@ -197,7 +247,7 @@ export class RestCollections {
   }
 
   getUserActivity(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options,
     cacheOptions: IPagedCacheOptions
   ): Promise<any> {
@@ -212,7 +262,7 @@ export class RestCollections {
   }
 
   getOrgMembers(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options,
     cacheOptions: IPagedCacheOptions
   ): Promise<any> {
@@ -227,7 +277,7 @@ export class RestCollections {
   }
 
   getOrganizationCopilotSeats(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options: CollectionCopilotSeatsOptions,
     cacheOptions: IPagedCacheOptions
   ): Promise<any> {
@@ -252,7 +302,7 @@ export class RestCollections {
   }
 
   getAppInstallations(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     parameters: IGetAppInstallationsParameters,
     cacheOptions: IPagedCacheOptions
   ): Promise<any> {
@@ -273,7 +323,7 @@ export class RestCollections {
   }
 
   getRepoIssues(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options,
     cacheOptions: IPagedCacheOptions
   ): Promise<any[]> {
@@ -288,7 +338,7 @@ export class RestCollections {
   }
 
   getRepoProjects(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options,
     cacheOptions: IPagedCacheOptions
   ): Promise<any[]> {
@@ -303,7 +353,7 @@ export class RestCollections {
   }
 
   getRepoTeams(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options,
     cacheOptions: IPagedCacheOptions
   ): Promise<any> {
@@ -318,7 +368,7 @@ export class RestCollections {
   }
 
   getRepoContributors(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options,
     cacheOptions: IPagedCacheOptions
   ): Promise<any> {
@@ -333,7 +383,7 @@ export class RestCollections {
   }
 
   getRepoCollaborators(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options,
     cacheOptions: IPagedCacheOptions
   ): Promise<any> {
@@ -348,7 +398,7 @@ export class RestCollections {
   }
 
   getRepoInvitations(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options,
     cacheOptions: IPagedCacheOptions
   ): Promise<any> {
@@ -363,7 +413,7 @@ export class RestCollections {
   }
 
   getRepoBranches(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options,
     cacheOptions: IPagedCacheOptions
   ): Promise<any> {
@@ -378,7 +428,7 @@ export class RestCollections {
   }
 
   getRepoPullRequests(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options: IListPullsParameters,
     cacheOptions: IPagedCacheOptions
   ): Promise<any> {
@@ -393,7 +443,7 @@ export class RestCollections {
   }
 
   getTeamMembers(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options,
     cacheOptions: IPagedCacheOptions
   ): Promise<any> {
@@ -408,7 +458,7 @@ export class RestCollections {
   }
 
   getTeamRepos(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options,
     cacheOptions: IPagedCacheOptions
   ): Promise<any> {
@@ -423,7 +473,7 @@ export class RestCollections {
   }
 
   private async getGithubCollection<OptionsType>(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     methodName: string,
     options: OptionsType,
     cacheOptions: IPagedCacheOptions,
@@ -515,7 +565,7 @@ export class RestCollections {
   }
 
   private async getFilteredGithubCollection<DataType, OptionsType>(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     methodName: string,
     options: OptionsType,
     cacheOptions: IPagedCacheOptions,
@@ -580,7 +630,7 @@ export class RestCollections {
   }
 
   private async getFilteredGithubCollectionWithMetadataAnalysis<DataType, OptionsType>(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     methodName: string,
     options: OptionsType,
     cacheOptions: IPagedCacheOptions,
@@ -632,7 +682,7 @@ export class RestCollections {
   }
 
   private generalizedCollectionMethod(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     apiName: string,
     method,
     options,
@@ -650,7 +700,7 @@ export class RestCollections {
   }
 
   private getCollectionAndFilter<DataType, OptionsType>(
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options: OptionsType,
     cacheOptions: IPagedCacheOptions,
     githubClientMethod: string,
@@ -658,7 +708,7 @@ export class RestCollections {
     arrayReducePropertyName?: string
   ) {
     const capturedThis = this;
-    return function (token: string | IGetAuthorizationHeader, options: OptionsType) {
+    return function (token: string | GetAuthorizationHeader, options: OptionsType) {
       return capturedThis.getFilteredGithubCollectionWithMetadataAnalysis<DataType, OptionsType>(
         token,
         githubClientMethod,
@@ -674,7 +724,7 @@ export class RestCollections {
     name: string,
     githubClientMethod: string,
     propertiesToKeep: string[],
-    token: string | IGetAuthorizationHeader,
+    token: string | GetAuthorizationHeader,
     options: OptionsType,
     cacheOptions: IPagedCacheOptions,
     arrayReducePropertyName?: string

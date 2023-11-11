@@ -7,9 +7,10 @@ import { ExecutionEnvironment } from '../../interfaces';
 import { CreateError } from '../../transitional';
 
 import Debug from 'debug';
-import GitHubApplication from '../application';
-import { Operations } from '../operations';
 import { GitHubTokenManager } from './tokenManager';
+import GitHubApplication from '../../business/application';
+import { Operations, OperationsCore } from '../../business';
+
 const debug = Debug('github:tokens');
 
 export enum AppPurpose {
@@ -167,6 +168,9 @@ const appPurposeToConfigurationName = {
 };
 
 export function getAppPurposeId(purpose: AppPurposeTypes) {
+  if (!purpose) {
+    return 'n/a';
+  }
   if ((purpose as ICustomAppPurpose).isCustomAppPurpose === true) {
     return (purpose as ICustomAppPurpose).id;
   }
@@ -266,6 +270,7 @@ export interface IGitHubAppConfiguration {
 }
 
 export interface IGitHubAppsOptions {
+  operations: OperationsCore;
   // app: IReposApplication;
   configurations: Map<AppPurposeTypes, IGitHubAppConfiguration>;
   executionEnvironment: ExecutionEnvironment;

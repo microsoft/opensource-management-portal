@@ -11,7 +11,7 @@ import { getProviders } from '../../transitional';
 import {
   OrganizationSetting,
   IBasicGitHubAppInstallation,
-  SpecialTeam,
+  SystemTeam,
 } from '../../entities/organizationSettings/organizationSetting';
 import { IndividualContext } from '../../business/user';
 import { Operations, Organization } from '../../business';
@@ -296,22 +296,25 @@ router.post(
               // explicitly now allowing globalSudo to be set here
               throw new Error(`Unsupported team type: ${teamType}`);
             }
-            let specialTeamType: SpecialTeam = null;
+            let specialTeamType: SystemTeam = null;
             switch (teamType) {
               case 'everyone':
-                specialTeamType = SpecialTeam.Everyone;
+                specialTeamType = SystemTeam.Everyone;
+                break;
+              case 'openAccess':
+                specialTeamType = SystemTeam.OpenAccess;
                 break;
               case 'systemAdmin':
-                specialTeamType = SpecialTeam.SystemAdmin;
+                specialTeamType = SystemTeam.SystemAdmin;
                 break;
               case 'systemWrite':
-                specialTeamType = SpecialTeam.SystemWrite;
+                specialTeamType = SystemTeam.SystemWrite;
                 break;
               case 'systemRead':
-                specialTeamType = SpecialTeam.SystemRead;
+                specialTeamType = SystemTeam.SystemRead;
                 break;
               case 'sudo':
-                specialTeamType = SpecialTeam.Sudo;
+                specialTeamType = SystemTeam.Sudo;
                 break;
               // case 'globalSudo':
               // specialTeamType = SpecialTeam.GlobalSudo;

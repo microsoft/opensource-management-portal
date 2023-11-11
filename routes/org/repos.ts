@@ -386,7 +386,7 @@ export async function calculateGroupedPermissionsViewForRepository(repository: R
     collaborators, // Collaborator[]
     outsideCollaborators, // Collaborator[]
   } = await calculateRepoPermissions(organization, repository);
-  const systemTeams = combineAllTeams(organization.specialRepositoryPermissionTeams); // number[]
+  const systemTeams = combineAllTeams(organization.specialSystemTeams); // number[]
   const teamBasedPermissions = consolidateTeamPermissions(permissions, systemTeams); // busted?
   const groupedPermissions = slicePermissionsForView(
     filterSystemTeams(teamsFilterType.systemTeamsExcluded, systemTeams, permissions)
@@ -443,7 +443,7 @@ router.get(
       organization,
       repository
     );
-    const systemTeams = combineAllTeams(organization.specialRepositoryPermissionTeams);
+    const systemTeams = combineAllTeams(organization.specialSystemTeams);
     const teamBasedPermissions = consolidateTeamPermissions(permissions, systemTeams);
     const title = `${repository.name} - Repository`;
     const details = await repository.organization.getDetails();

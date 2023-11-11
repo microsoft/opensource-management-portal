@@ -28,12 +28,12 @@ import { getEntityDefinitions, GitHubResponseType, ResponseBodyType } from './en
 import appPackage from '../../package.json';
 import { ErrorHelper } from '../../transitional';
 
-import type { IGetAuthorizationHeader, IAuthorizationHeaderValue } from '../../interfaces';
+import type { GetAuthorizationHeader, AuthorizationHeaderValue } from '../../interfaces';
 import {
   type IGitHubAppConfiguration,
   getAppPurposeId,
   tryGetAppPurposeAppConfiguration,
-} from '../../business/githubApps';
+} from './appPurposes';
 
 const appVersion = appPackage.version;
 
@@ -446,7 +446,7 @@ export class GitHubApiContext extends ApiContext {
   private _apiMethod: any;
   private _redisKeys: IApiContextRedisKeys;
   private _cacheValues: IApiContextCacheValues;
-  private _token: string | IGetAuthorizationHeader | IAuthorizationHeaderValue;
+  private _token: string | GetAuthorizationHeader | AuthorizationHeaderValue;
 
   public fakeLink?: IGitHubLink;
 
@@ -472,7 +472,7 @@ export class GitHubApiContext extends ApiContext {
     };
   }
 
-  get token(): string | IGetAuthorizationHeader | IAuthorizationHeaderValue {
+  get token(): string | GetAuthorizationHeader | AuthorizationHeaderValue {
     return this._token;
   }
 
@@ -511,9 +511,9 @@ export class GitHubApiContext extends ApiContext {
     this.libraryContext = libraryContext;
   }
 
-  overrideToken(token: string | IGetAuthorizationHeader | IAuthorizationHeaderValue) {
+  overrideToken(token: string | GetAuthorizationHeader | AuthorizationHeaderValue) {
     if (token && token['value']) {
-      const asPair = token as IAuthorizationHeaderValue;
+      const asPair = token as AuthorizationHeaderValue;
       this._token = asPair.value;
       this.tokenSource = asPair;
     } else if (typeof token === 'string') {

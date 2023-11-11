@@ -83,7 +83,7 @@ import type {
 } from '../interfaces';
 import initializeRepositoryProvider from '../entities/repository';
 import { tryGetImmutableStorageProvider } from '../lib/immutable';
-import { GitHubAppPurposes } from '../business/githubApps';
+import { GitHubAppPurposes } from '../lib/github/appPurposes';
 
 const DefaultApplicationProfile: IApplicationProfile = {
   applicationName: 'Open Source Management Portal',
@@ -319,16 +319,6 @@ async function initializeAsync(
 }
 
 function configureGitHubLibrary(cacheProvider: ICacheHelper, config): RestLibrary {
-  if (
-    config &&
-    config.github &&
-    config.github.operations &&
-    !config.github.operations.centralOperationsToken
-  ) {
-    debug(
-      'WARNING: no central GitHub operations token is defined, some library operations may not succeed. ref: config.github.operations.centralOperationsToken var: GITHUB_CENTRAL_OPERATIONS_TOKEN'
-    );
-  }
   const libraryContext = new RestLibrary({
     config,
     cacheProvider,

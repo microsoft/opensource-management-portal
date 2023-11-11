@@ -51,6 +51,7 @@ router.get(
       const userAggregateContext = req.apiContext.aggregations;
       const maintainedTeams = new Set<string>();
       const broadTeams = new Set<number>(req.organization.broadAccessTeams);
+      const openAccessTeams = new Set<number>(req.organization.openAccessTeams);
       const userTeams = userAggregateContext.reduceOrganizationTeams(
         organization,
         await userAggregateContext.teams()
@@ -62,6 +63,7 @@ router.get(
       const personalizedTeams = Array.from(combinedTeams.values()).map((combinedTeam) => {
         return {
           broad: broadTeams.has(Number(combinedTeam.id)),
+          isOpenAccessTeam: openAccessTeams.has(Number(combinedTeam.id)),
           description: combinedTeam.description,
           id: Number(combinedTeam.id),
           name: combinedTeam.name,
@@ -86,6 +88,7 @@ router.get(
     const queryCache = providers.queryCache;
     const organization = req.organization as Organization;
     const broadTeams = new Set(organization.broadAccessTeams);
+    const openAccessTeams = new Set<number>(req.organization.openAccessTeams);
     if (req.query.refresh === undefined && queryCache && queryCache.supportsTeams) {
       // Use the newer method in this case...
       const organizationTeams = await queryCache.organizationTeams(organization.id.toString());
@@ -95,6 +98,9 @@ router.get(
           const t = team.toSimpleJsonObject();
           if (broadTeams.has(Number(t.id))) {
             t['broad'] = true;
+          }
+          if (openAccessTeams.has(Number(t.id))) {
+            t['openAccess'] = true;
           }
           return t;
         }),

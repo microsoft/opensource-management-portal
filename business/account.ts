@@ -10,7 +10,7 @@ import * as common from './common';
 import { wrapError } from '../utils';
 import { corporateLinkToJson } from './corporateLink';
 import { Organization } from './organization';
-import { AppPurpose } from './githubApps';
+import { AppPurpose } from '../lib/github/appPurposes';
 import { ILinkProvider } from '../lib/linkProviders';
 import { CacheDefault, getMaxAgeSeconds } from '.';
 import {
@@ -18,7 +18,7 @@ import {
   CoreCapability,
   ICacheOptions,
   ICorporateLink,
-  IGetAuthorizationHeader,
+  GetAuthorizationHeader,
   IGitHubAccountDetails,
   IOperationsInstance,
   IOperationsLinks,
@@ -46,7 +46,7 @@ const secondaryAccountProperties = [];
 
 export class Account {
   private _operations: IOperationsInstance;
-  private _getAuthorizationHeader: IGetAuthorizationHeader;
+  private _getAuthorizationHeader: GetAuthorizationHeader;
 
   private _link: ICorporateLink;
   private _id: number;
@@ -137,7 +137,7 @@ export class Account {
     return this._originalEntity ? this._originalEntity.name : undefined;
   }
 
-  constructor(entity, operations: IOperationsInstance, getAuthorizationHeader: IGetAuthorizationHeader) {
+  constructor(entity, operations: IOperationsInstance, getAuthorizationHeader: GetAuthorizationHeader) {
     common.assignKnownFieldsPrefixed(
       this,
       entity,
@@ -150,7 +150,7 @@ export class Account {
     this._getAuthorizationHeader = getAuthorizationHeader;
   }
 
-  overrideAuthorization(getAuthorizationHeader: IGetAuthorizationHeader) {
+  overrideAuthorization(getAuthorizationHeader: GetAuthorizationHeader) {
     this._getAuthorizationHeader = getAuthorizationHeader;
   }
 
@@ -571,11 +571,8 @@ export class Account {
     return { history, error };
   }
 
-  private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
-    const getAuthorizationHeader = this._getAuthorizationHeader.bind(
-      this,
-      purpose
-    ) as IGetAuthorizationHeader;
+  private authorize(purpose: AppPurpose): GetAuthorizationHeader | string {
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as GetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 }

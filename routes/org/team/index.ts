@@ -155,10 +155,11 @@ router.get(
   asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const team2 = req.team2 as Team;
     const organization = req.organization as Organization;
-    // The broad access "all members" team is always open for automatic joining without
-    // approval. This short circuit is to show that option.
-    const broadAccessTeams = new Set(organization.broadAccessTeams);
-    if (broadAccessTeams.has(team2.id)) {
+    // The broad access "all members" team and any "easy access" teams are
+    // always open for automatic joining without approval. This short circuit
+    // is to show that option.
+    const allowSelfJoinTeams = new Set([...organization.broadAccessTeams, ...organization.openAccessTeams]);
+    if (allowSelfJoinTeams.has(team2.id)) {
       req.individualContext.webContext.render({
         view: 'org/team/join',
         title: `Join ${team2.name}`,
@@ -255,7 +256,8 @@ export async function submitTeamJoinRequest(
 ): Promise<ITeamJoinRequestSubmitOutcome> {
   const { approvalProvider, config, graphProvider, mailProvider, insights, operations } = providers;
   const organization = team.organization;
-  const broadAccessTeams = new Set(organization.broadAccessTeams);
+  const { broadAccessTeams, openAccessTeams } = organization;
+  const allowSelfJoinTeams = new Set([...broadAccessTeams, ...openAccessTeams]);
   if (!approvalProvider) {
     return { error: new Error('No approval provider available') };
   }
@@ -263,8 +265,17 @@ export async function submitTeamJoinRequest(
   if (!username) {
     return { error: new Error('Active context required') };
   }
-  if (broadAccessTeams.has(team.id)) {
+  if (allowSelfJoinTeams.has(team.id)) {
     try {
+      const eventName = broadAccessTeams.includes(team.id) ? 'JoinBroadAccessTeam' : 'JoinOpenAccessTeam';
+      insights?.trackEvent({
+        name: eventName,
+        properties: {
+          organization: organization.name,
+          id: team.id,
+          slug: team.slug,
+        },
+      });
       await team.addMembership(username);
     } catch (error) {
       insights?.trackEvent({

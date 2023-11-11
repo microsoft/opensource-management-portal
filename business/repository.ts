@@ -17,9 +17,9 @@ import {
   RepositoryIssue,
 } from '.';
 import { RepositoryMetadataEntity } from '../entities/repositoryMetadata/repositoryMetadata';
-import { AppPurpose, AppPurposeTypes } from './githubApps';
+import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
 import {
-  IPurposefulGetAuthorizationHeader,
+  PurposefulGetAuthorizationHeader,
   IOperationsInstance,
   ICacheOptions,
   throwIfNotGitHubCapable,
@@ -42,7 +42,7 @@ import {
   IGitHubSecretScanningAlert,
   operationsWithCapability,
   IOperationsServiceAccounts,
-  IGetAuthorizationHeader,
+  GetAuthorizationHeader,
   IRepositoryGetIssuesOptions,
   IOperationsRepositoryMetadataProvider,
   IOperationsUrls,
@@ -214,8 +214,8 @@ export class Repository {
 
   private _awesomeness: number;
 
-  private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
-  private _getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader;
+  private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
+  private _getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader;
   private _operations: IOperationsInstance;
 
   private _organization: Organization;
@@ -366,8 +366,8 @@ export class Repository {
   constructor(
     organization: Organization,
     entity: any,
-    getAuthorizationHeader: IPurposefulGetAuthorizationHeader,
-    getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader,
+    getAuthorizationHeader: PurposefulGetAuthorizationHeader,
+    getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader,
     operations: IOperationsInstance
   ) {
     this._organization = organization;
@@ -884,9 +884,8 @@ export class Repository {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     try {
-      // CONSIDER: need a fallback authentication approach: try and app for a specific capability (the installation knows) and fallback to central ops
-      // const centralOps = operationsWithCapability<IOperationsCentralOperationsToken>(operations, CoreCapability.GitHubCentralOperations);
-      const tokenSource = this._getSpecificAuthorizationHeader(AppPurpose.Data); // centralOps ? centralOps.getCentralOperationsToken()(AppPurpose.Data) :
+      // CONSIDER: need a fallback authentication approach: try and app for a specific capability
+      const tokenSource = this._getSpecificAuthorizationHeader(AppPurpose.Data);
       const token = await tokenSource;
       return await operations.github.call(token, 'repos.getPages', parameters, cacheOptions);
     } catch (error) {
@@ -1365,9 +1364,6 @@ export class Repository {
         private: options.private,
       }
     );
-    // BUG: GitHub Apps do not work with locking down no repository permissions as documented here: https://github.community/t5/GitHub-API-Development-and/GitHub-App-cannot-patch-repo-visibility-in-org-with-repo/m-p/33448#M3150
-    // const token = this._operations.getCentralOperationsToken();
-    // return this._operations.github.post(token, 'repos.update', parameters);
     return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
   }
 
@@ -1589,7 +1585,10 @@ export class Repository {
     const teams = (await this.getTeamPermissions()).filter((tp) => tp.permission === 'admin');
     for (let i = 0; i < teams.length; i++) {
       const team = teams[i];
-      if (excludeBroadAndSystemTeams && (team.team.isSystemTeam || team.team.isBroadAccessTeam)) {
+      if (
+        excludeBroadAndSystemTeams &&
+        (team.team.isSystemTeam || team.team.isBroadAccessTeam || team.team.isOpenAccessTeam)
+      ) {
         // Do not include broad access teams
         continue;
       }
@@ -1699,19 +1698,16 @@ export class Repository {
     return Array.from(users.values());
   }
 
-  private authorize(purpose: AppPurposeTypes): IGetAuthorizationHeader | string {
-    const getAuthorizationHeader = this._getAuthorizationHeader.bind(
-      this,
-      purpose
-    ) as IGetAuthorizationHeader;
+  private authorize(purpose: AppPurposeTypes): GetAuthorizationHeader | string {
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as GetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 
-  private specificAuthorization(purpose: AppPurposeTypes): IGetAuthorizationHeader | string {
+  private specificAuthorization(purpose: AppPurposeTypes): GetAuthorizationHeader | string {
     const getSpecificHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose
-    ) as IGetAuthorizationHeader;
+    ) as GetAuthorizationHeader;
     return getSpecificHeader;
   }
 

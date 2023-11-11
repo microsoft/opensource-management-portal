@@ -7,10 +7,11 @@ import { request } from '@octokit/request';
 import { createAppAuth, InstallationAccessTokenAuthentication } from '@octokit/auth-app';
 import { AppAuthentication, AuthInterface } from '@octokit/auth-app/dist-types/types';
 
-import { AppPurposeTypes, ICustomAppPurpose } from '.';
-import { IAuthorizationHeaderValue } from '../../interfaces';
+import { AppPurposeTypes, ICustomAppPurpose } from './appPurposes';
+import { AuthorizationHeaderValue } from '../../interfaces';
 
 import Debug from 'debug';
+import { CreateError } from '../../transitional';
 const debug = Debug('github:tokens');
 
 interface IInstallationToken {
@@ -27,6 +28,45 @@ interface IInstallationToken {
 const InstallationTokenLifetimeMilliseconds = 1000 * 60 * 60;
 const ValidityOffsetAfterNowMilliseconds = 1000 * 120; // how long to require validity in the future
 
+export enum GitHubTokenType {
+  PersonalAccessToken = 'ghp',
+  OAuthAccessToken = 'gho',
+  UserToServerToken = 'ghu',
+  ServerToServerToken = 'ghs',
+  RefreshToken = 'ghr',
+  FineGrainedPersonalAccessToken = 'github_pat',
+}
+
+export const GitHubTokenTypes = [
+  GitHubTokenType.PersonalAccessToken,
+  GitHubTokenType.OAuthAccessToken,
+  GitHubTokenType.UserToServerToken,
+  GitHubTokenType.ServerToServerToken,
+  GitHubTokenType.RefreshToken,
+  GitHubTokenType.FineGrainedPersonalAccessToken,
+];
+
+export function getGitHubTokenTypeFromValue(value: string | AuthorizationHeaderValue): GitHubTokenType {
+  if (!value) {
+    throw CreateError.ParameterRequired('value');
+  }
+  if (typeof value === 'object') {
+    value = value.value;
+  } else if (typeof value !== 'string') {
+    throw CreateError.InvalidParameters('value must be a string or AuthorizationHeaderValue');
+  }
+  if (!value.startsWith('token ')) {
+    throw CreateError.InvalidParameters('value must start with "token "');
+  }
+  const tokenValue = value.substr(6);
+  for (const tokenType of GitHubTokenTypes) {
+    if (tokenValue.startsWith(tokenType)) {
+      return tokenType;
+    }
+  }
+  throw CreateError.InvalidParameters('value does not appear to be a GitHub token');
+}
+
 export class GitHubAppTokens {
   #privateKey: string;
   private _appId: number;
@@ -39,23 +79,25 @@ export class GitHubAppTokens {
 
   static CreateFromBase64EncodedFileString(
     purpose: AppPurposeTypes,
+    slug: string,
     friendlyName: string,
     applicationId: number,
     fileContents: string,
     baseUrl?: string
   ): GitHubAppTokens {
     const keyContents = Buffer.from(fileContents, 'base64').toString('utf8').replace(/\r\n/g, '\n');
-    return new GitHubAppTokens(purpose, friendlyName, applicationId, keyContents, baseUrl);
+    return new GitHubAppTokens(purpose, slug, friendlyName, applicationId, keyContents, baseUrl);
   }
 
   static CreateFromString(
     purpose: AppPurposeTypes,
+    slug: string,
     friendlyName: string,
     applicationId: number,
     value: string,
     baseUrl?: string
   ): GitHubAppTokens {
-    return new GitHubAppTokens(purpose, friendlyName, applicationId, value, baseUrl);
+    return new GitHubAppTokens(purpose, slug, friendlyName, applicationId, value, baseUrl);
   }
 
   get appId() {
@@ -68,6 +110,7 @@ export class GitHubAppTokens {
 
   constructor(
     purpose: AppPurposeTypes,
+    public slug: string,
     public friendlyName: string,
     appId: number,
     privateKey: string,
@@ -114,7 +157,7 @@ export class GitHubAppTokens {
   async getInstallationToken(
     installationId: number,
     organizationName: string
-  ): Promise<IAuthorizationHeaderValue> {
+  ): Promise<AuthorizationHeaderValue> {
     const now = new Date();
     const requiredValidityPeriod = new Date(now.getTime() + ValidityOffsetAfterNowMilliseconds);
     const latestToken = this.getLatestValidToken(installationId, requiredValidityPeriod);

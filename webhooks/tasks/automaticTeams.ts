@@ -31,7 +31,7 @@ interface ICustomDataEventName {
 
 export default class AutomaticTeamsWebhookProcessor implements WebhookProcessor {
   processOrgSpecialTeams(organization: Organization) {
-    const specialTeams = organization.specialRepositoryPermissionTeams;
+    const specialTeams = organization.specialSystemTeams;
     const specials = [];
     const specialTeamIds = new Set<number>();
     const specialTeamLevels = new Map<number, string>();

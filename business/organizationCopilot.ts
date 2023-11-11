@@ -4,14 +4,14 @@
 //
 
 import {
-  IGetAuthorizationHeader,
+  GetAuthorizationHeader,
   IOperationsInstance,
   IPagedCacheOptions,
-  IPurposefulGetAuthorizationHeader,
+  PurposefulGetAuthorizationHeader,
   throwIfNotGitHubCapable,
 } from '../interfaces';
 import type { CollectionCopilotSeatsOptions } from '../lib/github/collections';
-import { AppPurpose, AppPurposeTypes } from './githubApps';
+import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
 import { CacheDefault, getMaxAgeSeconds, getPageSize } from './operations/core';
 import { Organization } from './organization';
 
@@ -30,7 +30,7 @@ export type CopilotSeatData = {
 export class OrganizationCopilot {
   constructor(
     private organization: Organization,
-    private getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader,
+    private getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader,
     private operations: IOperationsInstance
   ) {}
 
@@ -43,7 +43,7 @@ export class OrganizationCopilot {
     const getAuthorizationHeader = this.getSpecificAuthorizationHeader.bind(
       this,
       appPurpose
-    ) as IGetAuthorizationHeader;
+    ) as GetAuthorizationHeader;
     const github = operations.github;
     const parameters: CollectionCopilotSeatsOptions = {
       org: this.organization.name,
