@@ -355,8 +355,8 @@ export default async function initialize(
   const containerPurpose = executionEnvironment.isJob
     ? 'job'
     : applicationProfile.webServer
-    ? 'web application'
-    : 'application';
+      ? 'web application'
+      : 'application';
   if (executionEnvironment.entrypointName) {
     debug(`${containerPurpose} name: ${executionEnvironment.entrypointName}`);
   }

@@ -17,7 +17,6 @@ import { CreateError } from '../transitional';
 import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
 import {
   CacheDefault,
-  createCacheOptions,
   createPagedCacheOptions,
   getMaxAgeSeconds,
   getPageSize,
@@ -40,7 +39,7 @@ export type OrganizationCustomPropertyEntity = {
   allowed_values?: string[];
 };
 
-type SetPropertyValue = {
+export type OrganizationCustomPropertySetPropertyValue = {
   property_name: string;
   value: string;
 };
@@ -64,32 +63,6 @@ export class OrganizationProperties {
       purpose
     ) as GetAuthorizationHeader;
     return getAuthorizationHeader;
-  }
-
-  async getRepositoryCustomProperties(
-    repositoryName: string,
-    options?: ICacheOptionsWithPurpose
-  ): Promise<Record<string, string>> {
-    options = options || {};
-    const operations = throwIfNotGitHubCapable(this.operations);
-    const { github } = operations;
-    const purpose = popPurpose(options, this._defaultPurpose);
-    const parameters = {
-      owner: this.organization.name,
-      repo: repositoryName,
-    };
-    const cacheOptions = createCacheOptions(operations, options);
-    try {
-      const responseArray = await github.request(
-        this.authorize(purpose),
-        'GET /repos/:owner/:repo/properties/values',
-        parameters,
-        cacheOptions
-      );
-      return symbolizeApiResponse(arrayToSetProperties(responseArray));
-    } catch (error) {
-      throw error;
-    }
   }
 
   async getCustomProperties(
@@ -187,15 +160,6 @@ export class OrganizationProperties {
     return res.properties;
   }
 
-  createOrUpdateRepositoryProperties(
-    repositoryName: string,
-    propertiesAndValues: Record<string, string>,
-    purpose?: AppPurposeTypes
-  ): Promise<void> {
-    const names = [repositoryName];
-    return this.createOrUpdateRepositoriesProperties(names, propertiesAndValues, purpose);
-  }
-
   async createOrUpdateRepositoriesProperties(
     organizationRepositoryNames: string[],
     propertiesAndValues: Record<string, string>,
@@ -223,7 +187,7 @@ export class OrganizationProperties {
 
 function setPropertiesRecordToArray(propertiesAndValues: Record<string, string>) {
   const keys = Object.getOwnPropertyNames(propertiesAndValues);
-  const properties: SetPropertyValue[] = [];
+  const properties: OrganizationCustomPropertySetPropertyValue[] = [];
   for (const key of keys) {
     properties.push({
       property_name: key,
@@ -231,12 +195,4 @@ function setPropertiesRecordToArray(propertiesAndValues: Record<string, string>)
     });
   }
   return properties;
-}
-
-function arrayToSetProperties(properties: SetPropertyValue[]) {
-  const propertiesAndValues: Record<string, string> = {};
-  for (const property of properties) {
-    propertiesAndValues[property.property_name] = property.value;
-  }
-  return propertiesAndValues;
 }

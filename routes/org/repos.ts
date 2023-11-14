@@ -85,10 +85,10 @@ function sliceCollaboratorsForView(collaborators) {
     const destination = permission.admin
       ? collabView.administrators
       : permission.push
-      ? collabView.writers
-      : permission.pull
-      ? collabView.readers
-      : null;
+        ? collabView.writers
+        : permission.pull
+          ? collabView.readers
+          : null;
     if (destination) {
       destination.push(collab);
     }

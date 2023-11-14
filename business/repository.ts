@@ -57,6 +57,7 @@ import { RepositoryPullRequest } from './repositoryPullRequest';
 import { ErrorHelper } from '../transitional';
 import { augmentInertiaPreview, RepositoryProject } from './repositoryProject';
 import { RepositoryInvitation } from './repositoryInvitation';
+import { RepositoryProperties } from './repositoryProperties';
 
 interface IRepositoryMoments {
   created?: moment.Moment;
@@ -219,6 +220,7 @@ export class Repository {
   private _operations: IOperationsInstance;
 
   private _organization: Organization;
+  private _customProperties: RepositoryProperties;
 
   private _name: string;
 
@@ -386,6 +388,17 @@ export class Repository {
     this._getAuthorizationHeader = getAuthorizationHeader;
     this._getSpecificAuthorizationHeader = getSpecificAuthorizationHeader;
     this._operations = operations;
+  }
+
+  get customProperties() {
+    if (!this._customProperties) {
+      this._customProperties = new RepositoryProperties(
+        this,
+        this._operations,
+        this._getSpecificAuthorizationHeader.bind(this)
+      );
+    }
+    return this._customProperties;
   }
 
   get moment(): IRepositoryMoments {

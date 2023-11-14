@@ -9,10 +9,11 @@ FROM $IMAGE_NAME AS build
 
 ARG NPM_TOKEN
 
-# Make Git available for NPM and rsync in the build image
-RUN tdnf -y update --quiet && \
-    tdnf -y install ca-certificates git --quiet && \
-    tdnf clean all --quiet
+RUN tdnf -y update --quiet
+
+# We used to also make Git available for NPM and rsync in build
+#   tdnf clean all --quiet && \
+#   tdnf -y install ca-certificates git --quiet && \
 
 WORKDIR /build
 
