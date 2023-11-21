@@ -134,7 +134,7 @@
     "@types/express-session": "1.17.10",
     "@types/jest": "29.5.8",
     "@types/lodash": "4.14.201",
-    "@types/luxon": "3.3.4",
+    "@types/luxon": "3.3.5",
     "@types/memory-cache": "0.2.5",
     "@types/morgan": "1.9.9",
     "@types/node": "20.9.0",
