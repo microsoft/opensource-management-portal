@@ -144,7 +144,7 @@
     "@types/passport-azure-ad": "4.3.4",
     "@types/passport-github": "1.1.12",
     "@types/pg": "8.10.9",
-    "@types/pug": "2.0.9",
+    "@types/pug": "2.0.10",
     "@types/recursive-readdir": "2.2.4",
     "@types/semver": "7.5.5",
     "@types/simple-oauth2": "5.0.7",
