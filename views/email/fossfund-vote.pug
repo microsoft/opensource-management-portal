@@ -48,16 +48,16 @@ block content
   p= election.description
 
   if userSettings && userSettings.contributionShareOptIn === true
-    //-h2 Launching soon, featuring you: the new opensource.microsoft.com
+    //-h2 Featuring you: the opensource.microsoft.com
     //-p Thanks for opting in to public data sharing. Your GitHub avatar and/or public contributions on GitHub may be featured. We will let you know when the new site launches.
     //-p: a(href='https://aka.ms/opensource/publicdatasharing') More info at aka.ms/opensource/publicdatasharing
   else if userSettings && userSettings.contributionShareOptIn === false
-    //-h2 The new opensource.microsoft.com site launches this month featuring many of your coworkers
+    //-h2 opensource.microsoft.com site features many of your coworkers
     //-p You have opted out of participating in the new site at this time. If you change your mind...
     //-p: a(href='https://aka.ms/opensource/publicdatasharing') More info and ability to opt-in at aka.ms/opensource/publicdatasharing
   else
-    h2 Want to be featured on the new opensource.microsoft.com site?
-    p Launched earlier this year, the new site features Microsoft employees who contribute to open source, whether part of their job, a hobby, or just something they do.
+    h2 Want to be featured on the opensource.microsoft.com site?
+    p The site features Microsoft employees who contribute to open source, whether part of their job, a hobby, or just something they do.
     p If you'd like to have your GitHub avatar appear on the homepage at times, and your contributions to other projects highlighted when they're made as part of the new "ecosystem" page, you can opt-in to sharing that already-public info.
     p: a(href='https://aka.ms/opensource/publicdatasharing') More info and ability to opt-in at aka.ms/opensource/publicdatasharing
 
@@ -79,19 +79,20 @@ block content
   p We are trying to drive a change across Microsoft. We'd like to see more Microsofties contributing to open source communities, whether as part of your role, a Day of Learning project, updating project dependencies, hobbies, or pursuing off-hours projects and interests.
 
   h2 About the FOSS Fund
-  p Microsoft's FOSS Fund gives $10,000 to the most-voted-for open source software project. Projects are nominated and selected by those at Microsoft who contribute to communities that are not primarily  Microsoft communities.
+  p Microsoft's FOSS Fund gives up to $10,000 to the most-voted-for open source software projects. Projects are nominated and selected by those at Microsoft who contribute to communities that are not primarily Microsoft communities.
   p Public information about the fund can be found at #[a(href='https://aka.ms/microsoftfossfund') https://aka.ms/microsoftfossfund], including previous fund winners.
 
   h3 Nominated projects
   p Projects must:
   ul
-    li Be used by Microsoft
-    li Have an OSI-approved license such as MIT, Apache 2.0, GPL, etc.
+    li Be used by Microsoft (used in Microsoft products and services)
+    li Have an #[a(href='https://opensource.org/licenses', target='_new') OSI-approved license] such as MIT, Apache 2.0, GPL, etc.
     li Must have a mechanism for receiving funds (the GitHub Sponsors team may be able to help)
     li Cannot be a Microsoft employee-led project
+    li Have a public-facing details of #[a(href='https://aka.ms/fossfundform/#funding', target='_new') who and how project sponsorship is distributed]
 
   h3 How to nominate a project for the next fund
-  p New FOSS Fund rounds are announced monthly via the #[a(href='https://idwebelements/GroupManagement.aspx?Group=osblast&Operation=join') osblast] discussion list.
+  p Nominate at any time using this #[a(href='https://aka.ms/fossfundform') form].
 
   h3 Selection eligibility
   p Eligibility requirements:
