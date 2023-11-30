@@ -147,8 +147,8 @@ export function projectCollaboratorPermissionToGitHubRepositoryPermission(
 }
 
 export class CreateError {
-  static CreateStatusCodeError(code: number, message?: string): Error {
-    const error = new Error(message);
+  static CreateStatusCodeError(code: number, message?: string, cause?: Error): Error {
+    const error = cause ? new Error(message, { cause }) : new Error(message);
     error['status'] = code;
     return error;
   }
@@ -170,20 +170,20 @@ export class CreateError {
     return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(400, message), innerError);
   }
 
-  static NotAuthenticated(message: string): Error {
-    return CreateError.CreateStatusCodeError(401, message);
+  static NotAuthenticated(message: string, cause?: Error): Error {
+    return CreateError.CreateStatusCodeError(401, message, cause);
   }
 
-  static NotImplemented(message?: string): Error {
-    return CreateError.CreateStatusCodeError(500, message || 'This scenario is not yet implemented');
+  static NotImplemented(message?: string, cause?: Error): Error {
+    return CreateError.CreateStatusCodeError(500, message || 'This scenario is not yet implemented', cause);
   }
 
-  static NotAuthorized(message: string): Error {
-    return CreateError.CreateStatusCodeError(403, message);
+  static NotAuthorized(message: string, cause?: Error): Error {
+    return CreateError.CreateStatusCodeError(403, message, cause);
   }
 
-  static ServerError(message: string, innerError?: Error): Error {
-    return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(500, message), innerError);
+  static ServerError(message: string, cause?: Error): Error {
+    return CreateError.CreateStatusCodeError(500, message, cause);
   }
 }
 
