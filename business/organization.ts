@@ -319,7 +319,7 @@ export class Organization {
       );
     }
 
-    return values;
+    return values as object;
   }
 
   getManagementApproach() {
@@ -827,6 +827,42 @@ export class Organization {
       visibilities: this.getSupportedRepositoryTypesByPriority(),
     };
     return metadata;
+  }
+
+  async getTeamById(id: number, options?: ICacheOptions): Promise<Team> {
+    options = options || {};
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const cacheOptions = {
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgTeamDetailsStaleSeconds, options),
+      backgroundRefresh: false,
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    const orgId = this.id;
+    if (!orgId) {
+      throw CreateError.InvalidParameters('The organization ID is not available.');
+    }
+    const parameters = {
+      org_id: orgId,
+      team_id: id,
+    };
+    try {
+      const entity = await operations.github.request(
+        this.authorize(AppPurpose.Data),
+        'GET /organizations/:org_id/team/:team_id',
+        parameters,
+        cacheOptions
+      );
+      return this.teamFromEntity(entity);
+    } catch (error) {
+      if (error.status && error.status === 404) {
+        throw CreateError.NotFound(
+          `The GitHub team with the ID ${id} could not be found for organization ${this.name} with ID ${orgId}.`
+        );
+      }
+      throw error;
+    }
   }
 
   async getTeamFromSlug(slug: string, options?: ICacheOptions): Promise<Team> {
