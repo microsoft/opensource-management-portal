@@ -26,6 +26,7 @@ import { postActionDecision, TeamApprovalDecision } from '../../../../routes/org
 import { PermissionWorkflowEngine } from '../../../../routes/org/team/approvals';
 import { CreateError, getProviders } from '../../../../transitional';
 import { IndividualContext } from '../../../../business/user';
+import getCompanySpecificDeployment from '../../../../middleware/companySpecificDeployment';
 
 const router: Router = Router();
 
@@ -85,6 +86,21 @@ router.post(
       }
       const team = getContextualTeam(req);
       const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+      const companySpecific = getCompanySpecificDeployment();
+      if (companySpecific?.middleware?.teamPermissions.beforeJoinRequest) {
+        try {
+          const optionalOutcome = await companySpecific.middleware.teamPermissions.beforeJoinRequest(
+            providers,
+            activeContext,
+            team
+          );
+          if (optionalOutcome) {
+            return res.json(optionalOutcome) as unknown as void;
+          }
+        } catch (error) {
+          return next(error);
+        }
+      }
       // no point query currently implemented
       let approvals = await approvalProvider.queryPendingApprovalsForTeam(String(team.id));
       approvals = approvals.filter((approval) => approval.corporateId === activeContext.corporateIdentity.id);
@@ -241,6 +257,10 @@ router.post(
     }
   })
 );
+
+const deployment = getCompanySpecificDeployment();
+deployment?.routes?.api?.context?.organization?.team &&
+  deployment?.routes?.api?.context?.organization?.team(router);
 
 router.use('*', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available for contextual team', 404));

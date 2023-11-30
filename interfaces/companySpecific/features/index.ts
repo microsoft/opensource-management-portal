@@ -22,7 +22,7 @@ export * from './organizationJoinAcl';
 export * from './augmentApiMetadata';
 
 export interface ICompanySpecificFeatures {
-  augmentApiMetadata: ICompanySpecificAugmentApiMetadata;
+  augmentApiMetadata?: ICompanySpecificAugmentApiMetadata;
   organizationSudo?: ICompanySpecificFeatureOrganizationSudo;
   organizationJoinAcl?: ICompanySpecificFeatureOrganizationJoinAcl;
   portalSudo?: ICompanySpecificFeaturePortalSudo;

@@ -9,6 +9,7 @@ import { Team } from '../../business';
 import {
   GitHubTeamRole,
   ITeamMembershipRoleState,
+  NoCacheNoBackground,
   OrganizationMembershipState,
   ReposAppRequest,
 } from '../../interfaces';
@@ -46,6 +47,7 @@ export async function AddTeamMembershipToRequest(req: ReposAppRequest, res: Resp
   if (req[teamStatusCacheKeyName]) {
     return next();
   }
+  const skipCache = req.query.cache === '0';
   const team2 = req['team2'] as Team;
   if (!team2) {
     return next(new Error('team2 required'));
@@ -61,7 +63,9 @@ export async function AddTeamMembershipToRequest(req: ReposAppRequest, res: Resp
   } else {
     const login = activeContext.getGitHubIdentity().username;
     try {
-      const statusResult = await team2.getMembershipEfficiently(login);
+      const statusResult = skipCache
+        ? await team2.getMembership(login, NoCacheNoBackground)
+        : await team2.getMembershipEfficiently(login);
       const value: IRequestTeamMembershipStatus = {
         membershipStatus:
           statusResult && (statusResult as ITeamMembershipRoleState).role

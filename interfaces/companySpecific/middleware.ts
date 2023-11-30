@@ -9,6 +9,7 @@ import { IProviders, ReposAppRequest } from '../../interfaces';
 import { IndividualContext } from '../../business/user';
 import { IRequestTeamPermissions } from '../../middleware/github/teamPermissions';
 import type { ApiClientGroupDisplay } from '../api';
+import { ITeamJoinRequestSubmitOutcome } from '../../routes/org/team';
 
 export interface ICompanySpecificRepoPermissionsMiddlewareCalls {
   afterPermissionsInitialized?: (
@@ -36,6 +37,11 @@ export interface ICompanySpecificTeamPermissionsMiddlewareCalls {
     activeContext: IndividualContext,
     team: Team
   ) => Promise<void>;
+  beforeJoinRequest?: (
+    providers: IProviders,
+    activeContext: IndividualContext,
+    team: Team
+  ) => Promise<ITeamJoinRequestSubmitOutcome | void>;
 }
 
 export interface ICompanySpecificAuthenticationCalls {

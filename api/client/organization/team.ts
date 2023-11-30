@@ -16,16 +16,27 @@ import { equivalentLegacyPeopleSearch } from './people';
 import { TeamRepositoryPermission, OrganizationMember, corporateLinkToJson } from '../../../business';
 import { ReposAppRequest, TeamJsonFormat, NoCacheNoBackground, ICorporateLink } from '../../../interfaces';
 import { sortRepositoriesByNameCaseInsensitive } from '../../../utils';
+import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
 
 const router: Router = Router();
 
 router.get(
   '/',
   asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+    const providers = getProviders(req);
     const team = getContextualTeam(req);
-    return res.json(
-      team.asJson(TeamJsonFormat.Augmented /* includes corporateMetadata */)
-    ) as unknown as void;
+    const format = TeamJsonFormat.Augmented; // includes corporateMetadata
+    let json = team.asJson(format);
+    const companySpecific = getCompanySpecificDeployment();
+    if (companySpecific?.features?.augmentApiMetadata?.augmentTeamClientJson) {
+      json = await companySpecific.features.augmentApiMetadata.augmentTeamClientJson(
+        providers,
+        team,
+        json,
+        format
+      );
+    }
+    return res.json(json) as unknown as void;
   })
 );
 
