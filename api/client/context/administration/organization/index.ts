@@ -14,12 +14,15 @@ const router: Router = Router();
 
 router.use('/settings', routeSettings);
 
-router.get('/', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const { organization } = req;
-  return res.json({
-    organization: organization.asClientJson(),
-  });
-}));
+router.get(
+  '/',
+  asyncHandler(async (req: ReposAppRequest, res, next) => {
+    const { organization } = req;
+    return res.json({
+      organization: organization.asClientJson(),
+    });
+  })
+);
 
 router.use('*', (req, res, next) => {
   return next(jsonError('no API or function available in administration - organization', 404));

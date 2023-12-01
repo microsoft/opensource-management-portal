@@ -4,14 +4,32 @@
 //
 
 import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
-import { GitHubAppAuthenticationType, AppPurpose } from '../../github';
-import { GitHubTokenManager } from '../../github/tokenManager';
-import { IProviders, ICacheDefaultTimes, IOperationsInstance, ICacheOptions, CoreCapability, IOperationsDefaultCacheTimes, IOperationsGitHubRestLibrary, IOperationsUrls, IOperationsProviders, throwIfNotGitHubCapable, throwIfNotCapable, IOperationsCentralOperationsToken, IAuthorizationHeaderValue } from '../../interfaces';
+import { GitHubAppAuthenticationType, AppPurpose, ICustomAppPurpose, AppPurposeTypes } from '../githubApps';
+import { GitHubTokenManager } from '../githubApps/tokenManager';
+import {
+  IProviders,
+  ICacheDefaultTimes,
+  IOperationsInstance,
+  ICacheOptions,
+  CoreCapability,
+  IOperationsDefaultCacheTimes,
+  IOperationsGitHubRestLibrary,
+  IOperationsUrls,
+  IOperationsProviders,
+  throwIfNotGitHubCapable,
+  throwIfNotCapable,
+  IOperationsCentralOperationsToken,
+  IAuthorizationHeaderValue,
+  SiteConfiguration,
+} from '../../interfaces';
 import { RestLibrary } from '../../lib/github';
 import { CreateError } from '../../transitional';
 import { wrapError } from '../../utils';
 import { Account } from '../account';
 import GitHubApplication from '../application';
+
+import Debug from 'debug';
+const debugGitHubTokens = Debug('github:tokens');
 
 export interface IOperationsCoreOptions {
   github: RestLibrary;
@@ -88,7 +106,12 @@ export function getPageSize(operations: IOperationsInstance, options?: IOptionWi
   return DefaultPageSize;
 }
 
-export function getMaxAgeSeconds(operations: IOperationsInstance, cacheDefault: CacheDefault, options?: ICacheOptions, fallback?: number) {
+export function getMaxAgeSeconds(
+  operations: IOperationsInstance,
+  cacheDefault: CacheDefault,
+  options?: ICacheOptions,
+  fallback?: number
+) {
   if (options && options.maxAgeSeconds !== undefined) {
     return options.maxAgeSeconds as number;
   }
@@ -103,11 +126,12 @@ export function getMaxAgeSeconds(operations: IOperationsInstance, cacheDefault: 
 
 export abstract class OperationsCore
   implements
-  IOperationsGitHubRestLibrary,
-  IOperationsUrls,
-  IOperationsDefaultCacheTimes,
-  IOperationsProviders,
-  IOperationsInstance {
+    IOperationsGitHubRestLibrary,
+    IOperationsUrls,
+    IOperationsDefaultCacheTimes,
+    IOperationsProviders,
+    IOperationsInstance
+{
   private _github: RestLibrary;
   private _defaults: ICacheDefaultTimes;
   private _applicationIds: Map<number, GitHubApplication>;
@@ -160,7 +184,7 @@ export abstract class OperationsCore
     if (!this.hasCapability(capability)) {
       throw new Error(`The operations implementation is not capable of supporting ${capability}`);
     }
-  };
+  }
 
   protected abstract get tokenManager(): GitHubTokenManager;
 
@@ -171,7 +195,10 @@ export abstract class OperationsCore
   async getAccountByUsername(username: string, options?: ICacheOptions): Promise<Account> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this);
-    const centralOperations = throwIfNotCapable<IOperationsCentralOperationsToken>(this, CoreCapability.GitHubCentralOperations);
+    const centralOperations = throwIfNotCapable<IOperationsCentralOperationsToken>(
+      this,
+      CoreCapability.GitHubCentralOperations
+    );
     if (!username) {
       throw CreateError.ParameterRequired('username');
     }
@@ -187,7 +214,12 @@ export abstract class OperationsCore
     try {
       const getHeaderFunction = centralOperations.getCentralOperationsToken();
       const authorizationHeader = await getHeaderFunction(AppPurpose.Data);
-      const entity = await operations.github.call(authorizationHeader, 'users.getByUsername', parameters, cacheOptions);
+      const entity = await operations.github.call(
+        authorizationHeader,
+        'users.getByUsername',
+        parameters,
+        cacheOptions
+      );
       const account = new Account(entity, this, getHeaderFunction.bind(null, AppPurpose.Data));
       return account;
     } catch (error) {
@@ -204,7 +236,8 @@ export abstract class OperationsCore
   get providers(): IProviders {
     return this._providers;
   }
-  get config(): any {
+
+  get config(): SiteConfiguration {
     return this.providers.config;
   }
 
@@ -233,17 +266,19 @@ export abstract class OperationsCore
   }
 
   get absoluteBaseUrl(): string {
-    let baseUrlRoot = this.config && this.config.webServer && this.config.webServer.baseUrl ? this.config.webServer.baseUrl as string : null;
+    let baseUrlRoot =
+      this.config && this.config.webServer && this.config.webServer.baseUrl
+        ? (this.config.webServer.baseUrl as string)
+        : null;
     if (baseUrlRoot && baseUrlRoot.endsWith('/')) {
       baseUrlRoot = baseUrlRoot.substr(0, baseUrlRoot.length - 1);
     }
-    let baseUrl = baseUrlRoot + this.baseUrl;
+    const baseUrl = baseUrlRoot + this.baseUrl;
     if (baseUrl) {
       return baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
     }
     return '/';
   }
-
 
   get initialized(): Date {
     return this._initialized;
@@ -259,11 +294,19 @@ export abstract class OperationsCore
 
   async initialize() {
     const tokenManager = this.tokenManager;
+    debugGitHubTokens('calling token manager initialize');
     await tokenManager.initialize();
-    tokenManager.getAppIds().map(appId => {
+    debugGitHubTokens('reviewing all app IDs from token manager');
+    tokenManager.getAppIds().map((appId) => {
       const { friendlyName } = tokenManager.getAppById(appId);
       const slug = tokenManager.getSlugById(appId);
-      const app = new GitHubApplication(this, appId, slug, friendlyName, this.getAppAuthorizationHeader.bind(this, tokenManager, appId));
+      const app = new GitHubApplication(
+        this,
+        appId,
+        slug,
+        friendlyName,
+        this.getAppAuthorizationHeader.bind(this, tokenManager, appId)
+      );
       this._applicationIds.set(appId, app);
     });
     this._initialized = new Date();
@@ -279,7 +322,10 @@ export abstract class OperationsCore
     return Array.from(this._applicationIds.values());
   }
 
-  protected async getAppAuthorizationHeader(tokenManager: GitHubTokenManager, appId: number): Promise<string> {
+  protected async getAppAuthorizationHeader(
+    tokenManager: GitHubTokenManager,
+    appId: number
+  ): Promise<string> {
     const jwt = await tokenManager.getAppById(appId).getAppAuthenticationToken();
     const value = `bearer ${jwt}`;
     return value;
@@ -291,18 +337,39 @@ export abstract class OperationsCore
     legacyOwnerToken: string,
     centralOperationsFallbackToken: string,
     appAuthenticationType: GitHubAppAuthenticationType,
-    purpose: AppPurpose): Promise<IAuthorizationHeaderValue> {
-    if (!this.tokenManager.organizationSupportsAnyPurpose(organizationName, organizationSettings)) {
+    purpose: AppPurposeTypes
+  ): Promise<IAuthorizationHeaderValue> {
+    const customPurpose = purpose as ICustomAppPurpose;
+    const isCustomPurpose = customPurpose?.isCustomAppPurpose === true;
+    if (
+      !isCustomPurpose &&
+      !this.tokenManager.organizationSupportsAnyPurpose(organizationName, organizationSettings)
+    ) {
       const legacyTokenValue = legacyOwnerToken || centralOperationsFallbackToken;
       if (!legacyTokenValue) {
-        throw new Error(`Organization ${organizationName} is not configured with a GitHub app, Personal Access Token ownerToken configuration value, or a fallback central operations token`);
+        throw new Error(
+          `Organization ${organizationName} is not configured with a GitHub app, Personal Access Token ownerToken configuration value, or a fallback central operations token for the ${
+            isCustomPurpose ? customPurpose.name : purpose
+          } purpose and the ${appAuthenticationType} type.`
+        );
       }
-      return { value: `token ${legacyTokenValue}`, purpose: null, source: legacyOwnerToken ? 'legacyOwnerToken' : 'centralOperationsFallbackToken' };
+      return {
+        value: `token ${legacyTokenValue}`,
+        purpose: null,
+        source: legacyOwnerToken ? 'legacyOwnerToken' : 'centralOperationsFallbackToken',
+      };
     }
     if (!purpose) {
       purpose = AppPurpose.Data;
-      console.log(`TODO: consider investigating the callback here as to why the getAuthorizationHeader call was not provided a purpose for the ${organizationName} org. falling back to: purpose=${purpose}`);
+      console.log(
+        `TODO: consider investigating the callback here as to why the getAuthorizationHeader call was not provided a purpose for the ${organizationName} org. falling back to: purpose=${purpose}`
+      );
     }
-    return this.tokenManager.getOrganizationAuthorizationHeader(organizationName, purpose, organizationSettings, appAuthenticationType);
+    return this.tokenManager.getOrganizationAuthorizationHeader(
+      organizationName,
+      purpose,
+      organizationSettings,
+      appAuthenticationType
+    );
   }
 }

@@ -20,7 +20,7 @@ import { ReposAppRequest } from '../interfaces';
 export const wrapErrorForImmediateUserError = (err: Error) => {
   (err as any).immediate = true;
   return err;
-}
+};
 
 export interface IApiRequest extends ReposAppRequest {
   apiKeyToken: PersonalAccessToken;
@@ -32,7 +32,7 @@ export interface IApiRequest extends ReposAppRequest {
 
 export default function ReposApiAuthentication(req: IApiRequest, res, next) {
   const user = basicAuth(req);
-  const key = user? (user.pass || user.name) : null;
+  const key = user ? user.pass || user.name : null;
   if (!key) {
     return next(jsonError('No key supplied', 400));
   }
@@ -53,11 +53,14 @@ export default function ReposApiAuthentication(req: IApiRequest, res, next) {
     statusCode: undefined,
     warning: undefined,
   };
-  tokenProvider.getToken(hashValue).then((token: PersonalAccessToken) => {
-    return after(null, token);
-  }).catch(error => {
-    return after(error, null);
-  });
+  tokenProvider
+    .getToken(hashValue)
+    .then((token: PersonalAccessToken) => {
+      return after(null, token);
+    })
+    .catch((error) => {
+      return after(error, null);
+    });
 
   function after(tokenError: any, token: PersonalAccessToken) {
     const eventName = 'ApiRequest' + (tokenError ? 'Denied' : 'Approved');

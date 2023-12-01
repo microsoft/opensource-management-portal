@@ -3,12 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Response, Request, Router } from 'express';
+import { Response, Request } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
 import zlib from 'zlib';
-import { ReposAppRequest, IAppSession, IReposError } from './interfaces';
+import { type Repository } from './business/repository';
+
+import { ReposAppRequest, IAppSession, IReposError, SiteConfiguration } from './interfaces';
 import { getProviders } from './transitional';
 
 export function daysInMilliseconds(days: number): number {
@@ -16,17 +18,17 @@ export function daysInMilliseconds(days: number): number {
 }
 
 export function stringOrNumberAsString(value: any) {
-  if (typeof (value) === 'number') {
+  if (typeof value === 'number') {
     return (value as number).toString();
-  } else if (typeof (value) === 'string') {
+  } else if (typeof value === 'string') {
     return value;
   }
-  const typeName = typeof (value);
+  const typeName = typeof value;
   throw new Error(`Unsupported type ${typeName} for value ${value} (stringOrNumberAsString)`);
 }
 
 export function stringOrNumberArrayAsStringArray(values: any[]) {
-  return values.map(val => stringOrNumberAsString(val));
+  return values.map((val) => stringOrNumberAsString(val));
 }
 
 export function requireJson(nameFromRoot: string): any {
@@ -45,13 +47,6 @@ export function requireJson(nameFromRoot: string): any {
   console.warn(`JSON as module (${file}) from project root (NOT TypeScript 'dist' folder)`);
   return JSON.parse(content);
 }
-
-// ----------------------------------------------------------------------------
-// Returns an integer, random, between low and high (exclusive) - [low, high)
-// ----------------------------------------------------------------------------
-export function randomInteger(low: number, high: number) {
-  return Math.floor(Math.random() * (high - low) + low);
-};
 
 export function safeLocalRedirectUrl(path: string) {
   if (!path) {
@@ -80,20 +75,53 @@ export function storeReferrer(req: ReposAppRequest, res, redirect, optionalReaso
     reason: optionalReason || 'unknown reason',
   };
   const session = req.session as IAppSession;
-  if (session && req.headers && req.headers.referer && session.referer !== undefined && !req.headers.referer.includes('/signout') && !session.referer) {
+  if (
+    session &&
+    req.headers &&
+    req.headers.referer &&
+    session.referer !== undefined &&
+    !req.headers.referer.includes('/signout') &&
+    !session.referer
+  ) {
     session.referer = req.headers.referer;
     eventDetails.referer = req.headers.referer;
+  } else {
+    eventDetails.referer = 'no referer';
   }
   if (redirect) {
     eventDetails.redirect = redirect;
     insights?.trackEvent({ name: 'RedirectWithReferrer', properties: eventDetails });
     res.redirect(redirect);
   }
-};
+}
 
 export function sortByCaseInsensitive(a: string, b: string) {
-  let nameA = a.toLowerCase();
-  let nameB = b.toLowerCase();
+  const nameA = a.toLowerCase();
+  const nameB = b.toLowerCase();
+  if (nameA < nameB) {
+    return -1;
+  }
+  if (nameA > nameB) {
+    return 1;
+  }
+  return 0;
+}
+
+export function cleanResponse<T = any>(response: T) {
+  (response as any)?.cost && delete (response as any).cost;
+  (response as any)?.headers && delete (response as any).headers;
+  return response as Omit<T, 'cost' | 'headers'>;
+}
+
+export function sortRepositoriesByNameCaseInsensitive(a: Repository, b: Repository, full_name = false) {
+  let nameA, nameB;
+  if (full_name) {
+    nameA = a.full_name.toLowerCase();
+    nameB = b.full_name.toLowerCase();
+  } else {
+    nameA = a.name.toLowerCase();
+    nameB = b.name.toLowerCase();
+  }
   if (nameA < nameB) {
     return -1;
   }
@@ -106,9 +134,14 @@ export function sortByCaseInsensitive(a: string, b: string) {
 // ----------------------------------------------------------------------------
 // Session utility: store the original URL
 // ----------------------------------------------------------------------------
-export function storeOriginalUrlAsReferrer(req: Request, res: Response, redirect: string, optionalReason?: string) {
+export function storeOriginalUrlAsReferrer(
+  req: Request,
+  res: Response,
+  redirect: string,
+  optionalReason?: string
+) {
   storeOriginalUrlAsVariable(req, res, 'referer', redirect, optionalReason);
-};
+}
 
 export function redirectToReferrer(req, res, url, optionalReason) {
   url = url || '/';
@@ -121,13 +154,13 @@ export function redirectToReferrer(req, res, url, optionalReason) {
     req.insights.trackEvent({ name: 'RedirectToReferrer', properties: eventDetails });
   }
   res.redirect(alternateUrl || url);
-};
+}
 
 export function storeOriginalUrlAsVariable(req, res, variable, redirect, optionalReason) {
   const eventDetails = {
     method: 'storeOriginalUrlAsVariable',
-    variable: variable,
-    redirect: redirect,
+    variable,
+    redirect,
     reason: optionalReason || 'unknown reason',
   };
   if (req.session && req.originalUrl) {
@@ -154,14 +187,10 @@ export function popSessionVariable(req, res, variableName) {
 // Provide our own error wrapper and message for an underlying thrown error.
 // Useful for the user-presentable version.
 // ----------------------------------------------------------------------------
-const errorPropertiesToClone = [
-  'stack',
-  'status',
-];
+const errorPropertiesToClone = ['stack', 'status'];
 
 export function wrapError(error, message, userIntendedMessage?: boolean): IReposError {
-  const err: IReposError = new Error(message);
-  err.innerError = error;
+  const err: IReposError = new Error(message, { cause: error });
   if (error) {
     for (let i = 0; i < errorPropertiesToClone.length; i++) {
       const key = errorPropertiesToClone[i];
@@ -178,81 +207,7 @@ export function wrapError(error, message, userIntendedMessage?: boolean): IRepos
     err.skipLog = true;
   }
   return err;
-};
-
-// ----------------------------------------------------------------------------
-// A destructive removal function for an object. Removes a single key.
-// ----------------------------------------------------------------------------
-export function stealValue(obj, key) {
-  if (obj[key] !== undefined) {
-    var val = obj[key];
-    delete obj[key];
-    return val;
-  }
-};
-
-// ----------------------------------------------------------------------------
-// Given a list of string values, check a string, using a case-insensitive
-// comparison.
-// ----------------------------------------------------------------------------
-export function inListInsensitive(list, value) {
-  value = value.toLowerCase();
-  for (var i = 0; i < list.length; i++) {
-    if (list[i].toLowerCase() === value) {
-      return true;
-    }
-  }
-  return false;
-};
-
-// ----------------------------------------------------------------------------
-// Given a list of lowercase values, check whether a value is present.
-// ----------------------------------------------------------------------------
-export function isInListAnycaseInLowercaseList(list, value) {
-  value = value.toLowerCase();
-  for (var i = 0; i < list.length; i++) {
-    if (list[i] === value) {
-      return true;
-    }
-  }
-  return false;
-};
-
-// ----------------------------------------------------------------------------
-// Given an array of things that have an `id` property, return a hash indexed
-// by that ID.
-// ----------------------------------------------------------------------------
-export function arrayToHashById(inputArray) {
-  var hash = {};
-  if (inputArray && inputArray.length) {
-    for (var i = 0; i < inputArray.length; i++) {
-      if (inputArray[i] && inputArray[i].id) {
-        hash[inputArray[i].id] = inputArray[i];
-      }
-    }
-  }
-  return hash;
-};
-
-// ----------------------------------------------------------------------------
-// Obfuscate a string value, optionally leaving a few characters visible.
-// ----------------------------------------------------------------------------
-export function obfuscate(value, lastCharactersShowCount) {
-  if (value === undefined || value === null || value.length === undefined) {
-    return value;
-  }
-  var length = value.length;
-  lastCharactersShowCount = lastCharactersShowCount || 0;
-  lastCharactersShowCount = Math.min(Math.round(lastCharactersShowCount), length - 1);
-  var obfuscated = '';
-  for (var i = 0; i < length - lastCharactersShowCount; i++) {
-    obfuscated += '*';
-  }
-  for (var j = length - lastCharactersShowCount; j < length; j++) {
-    obfuscated += value[j];
-  }
-  return obfuscated;
-};
+}
 
 // ----------------------------------------------------------------------------
 // A very basic breadcrumb stack that ties in to an Express request object.
@@ -267,7 +222,7 @@ export function addBreadcrumb(req, breadcrumbTitle, optionalBreadcrumbLink) {
   if (!optionalBreadcrumbLink && optionalBreadcrumbLink !== false) {
     optionalBreadcrumbLink = '/';
   }
-  var breadcrumbs = req.breadcrumbs;
+  let breadcrumbs = req.breadcrumbs;
   if (breadcrumbs === undefined) {
     breadcrumbs = [];
   }
@@ -276,20 +231,7 @@ export function addBreadcrumb(req, breadcrumbTitle, optionalBreadcrumbLink) {
     url: optionalBreadcrumbLink,
   });
   req.breadcrumbs = breadcrumbs;
-};
-
-export function stackSafeCallback(callback, err, item, extraItem) {
-  // Works around RangeError: Maximum call stack size exceeded.
-  setImmediate(() => {
-    callback(err, item, extraItem);
-  });
-};
-
-export function createSafeCallbackNoParams(cb) {
-  return () => {
-    exports.stackSafeCallback(cb);
-  };
-};
+}
 
 export function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -297,23 +239,6 @@ export function sleep(milliseconds: number): Promise<void> {
       process.nextTick(resolve);
     }, milliseconds);
   });
-}
-
-export function ParseReleaseReviewWorkItemId(uri: string): string {
-  const safeUrl = new URL(uri);
-  const id = safeUrl.searchParams.get('id');
-  if (id) {
-    return id;
-  }
-  const pathname = safeUrl.pathname;
-  const editIndex = pathname.indexOf('edit/');
-  if (editIndex >= 0) {
-    return pathname.substr(editIndex + 5);
-  }
-  if (safeUrl.host === 'osstool.microsoft.com') {
-    return null; // Very legacy
-  }
-  throw new Error(`Unable to parse work item information from: ${uri}`);
 }
 
 export function readFileToText(filename: string): Promise<string> {
@@ -326,7 +251,7 @@ export function readFileToText(filename: string): Promise<string> {
 
 export function writeTextToFile(filename: string, stringContent: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    return fs.writeFile(filename, stringContent, 'utf8', error => {
+    return fs.writeFile(filename, stringContent, 'utf8', (error) => {
       if (error) {
         console.warn(`Trouble writing ${filename} ${error}`);
       } else {
@@ -357,7 +282,7 @@ export function gunzipBuffer(buffer: Buffer): Promise<string> {
   return new Promise((resolve, reject) => {
     zlib.gunzip(buffer, (unzipError, unzipped) => {
       // Fallback if there is a data error (i.e. it's not compressed)
-      if (unzipError && (unzipError as any)?.errno === zlib.Z_DATA_ERROR) {
+      if (unzipError && (unzipError as any)?.errno === zlib.constants.Z_DATA_ERROR) {
         const originalValue = buffer.toString();
         return resolve(originalValue);
       } else if (unzipError) {
@@ -387,3 +312,45 @@ export function addArrayToSet<T>(set: Set<T>, array: T[]): Set<T> {
   }
   return set;
 }
+
+export function isEnterpriseManagedUserLogin(login: string) {
+  return login?.includes('_');
+}
+
+export function isCodespacesAuthenticating(config: SiteConfiguration, authType: 'aad' | 'github') {
+  const { codespaces } = config?.github || {};
+  return (
+    codespaces?.connected === true &&
+    codespaces?.authentication &&
+    codespaces.authentication[authType] &&
+    codespaces.authentication[authType].enabled
+  );
+}
+
+export function getCodespacesHostname(config: SiteConfiguration) {
+  const { github, webServer } = config;
+  const { codespaces } = github;
+  const { connected, desktop } = codespaces;
+  let codespacesPort = undefined;
+  if (connected === true) {
+    codespacesPort = codespaces.authentication?.port;
+  }
+  const port = codespacesPort || webServer.port || 3000;
+  const forwardingDomain = codespaces?.forwardingDomain || 'preview.app.github.dev';
+  return desktop ? `http://localhost:${port}` : `https://${codespaces.name}-${port}.${forwardingDomain}`;
+}
+
+export function getDateTimeBasedBlobFolder() {
+  // Returns a UTC-named folder name like "2020/01/01/00-00-00"
+  const now = new Date();
+  const timeFilename = `${String(now.getUTCHours()).padEnd(2)}-${String(now.getUTCMinutes()).padStart(
+    2,
+    '0'
+  )}-${String(now.getUTCSeconds()).padStart(2, '0')}`;
+  const blobFilename = `${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, '0')}/${String(
+    now.getUTCDate()
+  ).padStart(2, '0')}/${timeFilename}`;
+  return blobFilename;
+}
+
+export const botBracket = '[bot]';

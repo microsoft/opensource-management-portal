@@ -1,0 +1,120 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
+// https://github.com/microsoft/vscode-dev-containers/tree/v0.245.2/containers/typescript-node
+{
+  "name": "NIH GitHub Portal",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "web",
+  "workspaceFolder": "/workspace",
+  "postCreateCommand": "./.devcontainer/nih/setup.sh",
+  // If you change any local env vars be sure to close ALL VSCODE windows
+  // before rebuilding so vars are updated in the container
+  "remoteEnv": {
+    "AAD_CLIENT_ID": "${localEnv:AAD_CLIENT_ID}",
+    "AAD_CLIENT_SECRET": "${localEnv:AAD_CLIENT_SECRET}",
+    "AAD_ISSUER": "${localEnv:AAD_ISSUER}",
+    "AAD_REDIRECT_URL": "${localEnv:AAD_REDIRECT_URL}",
+    "AAD_TENANT_ID": "${localEnv:AAD_TENANT_ID}",
+    "APPINSIGHTS_INSTRUMENTATION_CS": "${localEnv:APPINSIGHTS_INSTRUMENTATION_CS}",
+    "APPINSIGHTS_INSTRUMENTATION_KEY": "${localEnv:APPINSIGHTS_INSTRUMENTATION_KEY}",
+    "AUTHORIZED_CORPORATE_ADMINISTRATOR_USERNAMES": "${localEnv:AUTHORIZED_CORPORATE_ADMINISTRATOR_USERNAMES}",
+    "DEBUG": "${localEnv:DEBUG:*}",
+    "DEBUG_ALLOW_HTTP": "${localEnv:DEBUG_ALLOW_HTTP}",
+    "DEBUG_SHOW_FOOTER": "${localEnv:DEBUG_SHOW_FOOTER:1}",
+    "ENVIRONMENT_NAME": "${localEnv:ENVIRONMENT_NAME}",
+    "FEATURE_FLAG_ALLOW_USERS_TO_VIEW_LOCKED_ORG_DETAILS": "1",
+    "GITHUB_APP_ACTIONS_APP_ID": "${localEnv:GH_APP_ACTIONS_APP_ID}",
+    "GITHUB_APP_ACTIONS_KEY": "${localEnv:GH_APP_ACTIONS_KEY}",
+    "GITHUB_APP_ACTIONS_KEY_FILE": "${localEnv:GH_APP_ACTIONS_KEY_FILE}",
+    "GITHUB_APP_ACTIONS_SLUG": "${localEnv:GH_APP_ACTIONS_SLUG}",
+    "GITHUB_APP_DATA_APP_ID": "${localEnv:GH_APP_DATA_APP_ID}",
+    "GITHUB_APP_DATA_KEY": "${localEnv:GH_APP_DATA_KEY}",
+    "GITHUB_APP_DATA_KEY_FILE": "${localEnv:GH_APP_DATA_KEY_FILE}",
+    "GITHUB_APP_DATA_SLUG": "${localEnv:GH_APP_DATA_SLUG}",
+    "GITHUB_APP_JOBS_APP_ID": "${localEnv:GH_APP_JOBS_APP_ID}",
+    "GITHUB_APP_JOBS_KEY": "${localEnv:GH_APP_JOBS_KEY}",
+    "GITHUB_APP_JOBS_KEY_FILE": "${localEnv:GH_APP_JOBS_KEY_FILE}",
+    "GITHUB_APP_JOBS_SLUG": "${localEnv:GH_APP_JOBS_SLUG}",
+    "GITHUB_APP_ONBOARDING_APP_ID": "${localEnv:GH_APP_ONBOARDING_APP_ID}",
+    "GITHUB_APP_ONBOARDING_KEY": "${localEnv:GH_APP_ONBOARDING_KEY}",
+    "GITHUB_APP_ONBOARDING_KEY_FILE": "${localEnv:GH_APP_ONBOARDING_KEY_FILE}",
+    "GITHUB_APP_ONBOARDING_SLUG": "${localEnv:GH_APP_ONBOARDING_SLUG}",
+    "GITHUB_APP_OPERATIONS_APP_ID": "${localEnv:GH_APP_OPERATIONS_APP_ID}",
+    "GITHUB_APP_OPERATIONS_KEY": "${localEnv:GH_APP_OPERATIONS_KEY}",
+    "GITHUB_APP_OPERATIONS_KEY_FILE": "${localEnv:GH_APP_OPERATIONS_KEY_FILE}",
+    "GITHUB_APP_OPERATIONS_SLUG": "${localEnv:GH_APP_OPERATIONS_SLUG}",
+    "GITHUB_APP_SECURITY_APP_ID": "${localEnv:GH_APP_SECURITY_APP_ID}",
+    "GITHUB_APP_SECURITY_KEY": "${localEnv:GH_APP_SECURITY_KEY}",
+    "GITHUB_APP_SECURITY_KEY_FILE": "${localEnv:GH_APP_SECURITY_KEY_FILE}",
+    "GITHUB_APP_SECURITY_SLUG": "${localEnv:GH_APP_SECURITY_SLUG}",
+    "GITHUB_APP_UI_APP_ID": "${localEnv:GH_APP_UI_APP_ID}",
+    "GITHUB_APP_UI_KEY": "${localEnv:GH_APP_UI_KEY}",
+    "GITHUB_APP_UI_KEY_FILE": "${localEnv:GH_APP_UI_KEY_FILE}",
+    "GITHUB_APP_UI_OAUTH_CLIENT_ID": "${localEnv:GH_APP_UI_OAUTH_CLIENT_ID}",
+    "GITHUB_APP_UI_OAUTH_CLIENT_SECRET": "${localEnv:GH_APP_UI_OAUTH_CLIENT_SECRET}",
+    "GITHUB_APP_UI_SLUG": "${localEnv:GH_APP_UI_SLUG}",
+    "GITHUB_APP_UPDATES_APP_ID": "${localEnv:GH_APP_UPDATES_APP_ID}",
+    "GITHUB_APP_UPDATES_KEY": "${localEnv:GH_APP_UPDATES_KEY}",
+    "GITHUB_APP_UPDATES_KEY_FILE": "${localEnv:GH_APP_UPDATES_KEY_FILE}",
+    "GITHUB_APP_UPDATES_SLUG": "${localEnv:GH_APP_UPDATES_SLUG}",
+    "GITHUB_CALLBACK_URL": "${localEnv:GH_CALLBACK_URL}",
+    "GITHUB_CLIENT_ID": "${localEnv:GH_CLIENT_ID}",
+    "GITHUB_CLIENT_SECRET": "${localEnv:GH_CLIENT_SECRET}",
+    "GITHUB_ORGANIZATIONS_FILE": "${localEnv:GH_ORGANIZATIONS_FILE}",
+    "GITHUB_PRIMARY_ORGANIZATION_ID": "${localEnv:GH_PRIMARY_ORGANIZATION_ID}",
+    "GITHUB_WEBHOOKS_SERVICEBUS_CONNECTIONSTRING": "${localEnv:GH_WEBHOOKS_SERVICEBUS_CONNECTIONSTRING}",
+    "GOOGLE_ANALYTICS_KEY": "${localEnv:GOOGLE_ANALYTICS_KEY}",
+    "MAIL_AZURESERVICEBUS_CONNECTIONSTRING": "${localEnv:MAIL_AZURESERVICEBUS_CONNECTIONSTRING}",
+    "MAIL_AZURESERVICEBUS_QUEUENAME": "${localEnv:MAIL_AZURESERVICEBUS_QUEUENAME}",
+    "MAIL_FROM": "${localEnv:MAIL_FROM}",
+    "PORTAL_ADMIN_EMAIL": "${localEnv:PORTAL_ADMIN_EMAIL}",
+    "REDIS_HOST": "${localEnv:REDIS_HOST:redis}",
+    "REDIS_TLS_HOST": "${localEnv:REDIS_TLS_HOST}",
+    "REDIS_PORT": "${localEnv:REDIS_PORT}",
+    "REDIS_KEY": "${localEnv:REDIS_KEY:redispw}",
+    "REPOS_LINKS_PROVIDER_NAME": "${localEnv:REPOS_LINKS_PROVIDER_NAME:postgres}",
+    "REPOS_POSTGRES_DATABASE": "${localEnv:REPOS_POSTGRES_DATABASE:postgres}",
+    "REPOS_POSTGRES_HOST": "${localEnv:REPOS_POSTGRES_HOST:localhost}",
+    "REPOS_POSTGRES_PASSWORD": "${localEnv:REPOS_POSTGRES_PASSWORD:postgres}",
+    "REPOS_POSTGRES_PORT": "${localEnv:REPOS_POSTGRES_PORT:5432}",
+    "REPOS_POSTGRES_SSL": "${localEnv:REPOS_POSTGRES_SSL:false}",
+    "REPOS_POSTGRES_USER": "${localEnv:REPOS_POSTGRES_USER:postgres}",
+    "SESSION_PROVIDER": "${localEnv:SESSION_PROVIDER:redis}",
+    "SESSION_COOKIE_DOMAIN": "${localEnv:SESSION_COOKIE_DOMAIN}",
+    "SITE_SERVICE_BANNER": "${localEnv:SITE_SERVICE_BANNER}",
+    "SITE_SERVICE_BANNER_DETAILS": "${localEnv:SITE_SERVICE_BANNER_DETAILS}",
+    "SITE_SERVICE_BANNER_LINK": "${localEnv:SITE_SERVICE_BANNER_LINK}",
+    "TEAM_JOIN_APPROVAL_TYPES": "${localEnv:TEAM_JOIN_APPROVAL_TYPES:mail}"
+  },
+
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "sqltools.connections": [
+          {
+            "name": "Postgres Database",
+            "driver": "PostgreSQL",
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 5432,
+            "database": "postgres",
+            "username": "postgres",
+            "password": "postgres"
+          }
+        ]
+      },
+      "extensions": ["mtxr.sqltools", "mtxr.sqltools-driver-pg"]
+    }
+  },
+
+  "forwardPorts": [3000, 5432],
+
+  //"remoteUser": "node"
+  "portsAttributes": {
+    "3000": {
+      "label": "NIH Portal"
+    },
+    "5432": {
+      "label": "Postgres Database"
+    }
+  }
+}

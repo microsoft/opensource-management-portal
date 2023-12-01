@@ -30,10 +30,11 @@ export class ServiceBusMessage implements IQueueMessage {
       this.enqueuedSecondsAgo = DateTime.fromJSDate(message.enqueuedTimeUtc).diffNow().seconds;
     }
     // let deliveryCount = message.brokerProperties[DeliveryCount] !== undefined ? message.brokerProperties[DeliveryCount] : null;
-    this.identifier = message.messageId && typeof(message.messageId) === 'string' ? message.messageId : undefined;
+    this.identifier =
+      message.messageId && typeof message.messageId === 'string' ? message.messageId : undefined;
     this.customProperties = message.applicationProperties as IDictionary<string>;
     this.unparsedBody = message.body;
-    this.body = typeof(message.body) === 'string' ? JSON.parse(message.body) : this.unparsedBody; // newer library parses JSON automatically
+    this.body = typeof message.body === 'string' ? JSON.parse(message.body) : this.unparsedBody; // newer library parses JSON automatically
   }
 
   body: Json;
@@ -66,7 +67,7 @@ export default class ServiceBusQueueProcessor implements IQueueProcessor {
     }
     this.#options = options;
   }
-  
+
   async initialize(): Promise<void> {
     const options = this.#options;
     const service = new ServiceBusClient(options.connectionString);
@@ -84,7 +85,7 @@ export default class ServiceBusQueueProcessor implements IQueueProcessor {
       const messages = await this.#receiver.receiveMessages(defaultMessagesPerRequest, {
         maxWaitTimeInMs,
       });
-      return messages.map(message => new ServiceBusMessage(message));
+      return messages.map((message) => new ServiceBusMessage(message));
     } catch (error) {
       // if empty, return empty array
 
@@ -101,7 +102,7 @@ export default class ServiceBusQueueProcessor implements IQueueProcessor {
     try {
       await this.#receiver.completeMessage(lockedMessage);
     } catch (deleteError) {
-      console.warn(`Delete error: ${deleteError}`)
+      console.warn(`Delete error: ${deleteError}`);
       throw deleteError;
     }
   }

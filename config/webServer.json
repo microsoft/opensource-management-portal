@@ -1,4 +1,15 @@
 {
+  "port": "env://PORT",
   "allowHttp": "env://DEBUG_ALLOW_HTTP?type=boolean&default=1&trueIf=1",
-  "baseUrl": "env://SITE_BASE_URL"
+  "appService": {
+    "slot": "env://WEBSITE_SLOT_NAME",
+    "name": "env://WEBSITE_SITE_NAME",
+    "region": "env://REGION_NAME"
+  },
+  "baseUrl": "env://SITE_BASE_URL",
+  "sslify": {
+    "enabled": "env://SSLIFY_ENABLED?trueIf=1",
+    "trustProtoHeader": "env://SSLIFY_TRUST_PROTO_HEADER?trueIf=1",
+    "trustAzureHeader": "env://SSLIFY_TRUST_AZURE_HEADER?trueIf=1"
+  }
 }

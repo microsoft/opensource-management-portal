@@ -5,7 +5,7 @@
 
 // Within the context, tries to resolve a link if it _can_. It does not force that a user is linked!
 
-import { IndividualContext } from '../../user';
+import { IndividualContext } from '../../business/user';
 import { getProviders } from '../../transitional';
 import { wrapError } from '../../utils';
 import { ReposAppRequest, IReposError } from '../../interfaces';
@@ -33,7 +33,9 @@ function requireLinkMatchesGitHubSession(allowedPrefix: string, req: ReposAppReq
     return next();
   }
   if (allowedPrefix && req.path.startsWith(allowedPrefix)) {
-    console.log(`Mixed GitHub identity issue. Allowed prefix ${allowedPrefix} matches for ${req.path}, allowing downstream route`);
+    console.log(
+      `Mixed GitHub identity issue. Allowed prefix ${allowedPrefix} matches for ${req.path}, allowing downstream route`
+    );
     return next();
   }
   let securityError: IReposError = new Error(`Your GitHub account identity has changed.`);
@@ -49,9 +51,14 @@ function requireLinkMatchesGitHubSession(allowedPrefix: string, req: ReposAppReq
   securityError.skipOops = true;
 
   // TODO_LOW: support multi-account again, if necessary
-  const multipleAccountsEnabled = sessionIdentity.id && context.webContext['_fake*property_session_enableMultipleAccounts'] === true;
+  const multipleAccountsEnabled =
+    sessionIdentity.id && context.webContext['_fake*property_session_enableMultipleAccounts'] === true;
   if (multipleAccountsEnabled) {
-    securityError = wrapError(null, 'You are currently signed in to an account on GitHub.com that is different than the one you have selected for your session. Please sign out of GitHub and head back.', true);
+    securityError = wrapError(
+      null,
+      'You are currently signed in to an account on GitHub.com that is different than the one you have selected for your session. Please sign out of GitHub and head back.',
+      true
+    );
     securityError.fancyLink = {
       title: 'Sign out of GitHub',
       link: '/signout/github?redirect=github',
@@ -84,11 +91,11 @@ export async function AddLinkToRequest(req, res, next) {
   if (links.length === 0) {
     return next();
   }
+  // No longer blocking multiple links. "Guess" on the most recent link.
+  const selectedLink = links.length > 1 ? links[links.length - 1] : links[0];
   if (links.length > 1) {
-    // TODO: are multiple links selected through a session or web context setting, or ?
-    return next(new Error('You cannot have multiple GitHub accounts'));
+    activeContext.setAdditionalLinks(links.filter((l) => l.thirdPartyId !== selectedLink.thirdPartyId));
   }
-  const selectedLink = links[0];
   activeContext.link = selectedLink;
   return next();
 }

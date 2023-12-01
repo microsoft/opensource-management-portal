@@ -48,4 +48,7 @@ block content
                 td= install.account.login
                 td= install.account.id
                 td= install.id
-                td: a.btn.btn-sm.btn-default(href=`./${app.id}/installations/${install.id}`) Manage
+                td
+                  //-a.btn.btn-sm.btn-default(href=`./${app.id}/installations/${install.id}`) Manage
+                  form(method='post', action=`./${app.id}/installations/${install.id}`)
+                    input.btn.btn-danger(type='submit', name='burn-org-app', value='Uninstall app')

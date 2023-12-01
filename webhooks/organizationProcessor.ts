@@ -3,7 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import _ from 'lodash';
 import crypto from 'crypto';
 import secureCompare from 'secure-compare';
 
@@ -12,6 +11,7 @@ import { Organization } from '../business';
 
 import Tasks from './tasks';
 import { sleep } from '../utils';
+import { type IProviders } from '../interfaces';
 
 interface IValidationError extends Error {
   statusCode?: number;
@@ -20,7 +20,7 @@ interface IValidationError extends Error {
 
 export abstract class WebhookProcessor {
   abstract filter(data: any): boolean;
-  abstract run(operations: Operations, organization: Organization, data: any): Promise<boolean>;
+  abstract run(providers: IProviders, organization: Organization, data: any): Promise<boolean>;
 }
 
 export interface IOrganizationWebhookEvent {
@@ -37,16 +37,18 @@ export interface IGitHubWebhookProperties {
 }
 
 export interface IProcessOrganizationWebhookOptions {
-  operations: Operations;
+  providers: IProviders;
   organization: Organization;
   event: IOrganizationWebhookEvent;
   acknowledgeValidEvent?: any;
 }
 
-export default async function ProcessOrganizationWebhook(options: IProcessOrganizationWebhookOptions): Promise<any> {
-  const operations = options.operations;
-  if (!operations) {
-    throw new Error('No operations instance provided');
+export default async function ProcessOrganizationWebhook(
+  options: IProcessOrganizationWebhookOptions
+): Promise<any> {
+  const providers = options.providers;
+  if (!providers) {
+    throw new Error('No providers provided');
   }
   const organization = options.organization;
   const event = options.event;
@@ -108,7 +110,7 @@ export default async function ProcessOrganizationWebhook(options: IProcessOrgani
     options.acknowledgeValidEvent();
   }
   let interestingEvents = 0;
-  const work = Tasks.filter(task => task.filter(event));
+  const work = Tasks.filter((task) => task.filter(event));
   if (work.length > 0) {
     ++interestingEvents;
     console.log(`[* interesting event: ${event.properties.event} (${work.length} interested tasks)]`);
@@ -116,9 +118,9 @@ export default async function ProcessOrganizationWebhook(options: IProcessOrgani
     console.log(`[uninteresting event: ${event.properties.event}]`);
   }
 
-  for (let processor of work) {
+  for (const processor of work) {
     try {
-      await processor.run(operations, organization, event);
+      await processor.run(providers, organization, event);
     } catch (processInitializationError) {
       if (processInitializationError.status === 403) {
         console.log(`403: ${processInitializationError}`);
@@ -136,7 +138,9 @@ export default async function ProcessOrganizationWebhook(options: IProcessOrgani
             const now = new Date();
             if (resetDate > now) {
               const difference = resetDate.getTime() - now.getTime();
-              console.log(`[rate limit sleep] This thread will sleep for the remainder of this limit, ${difference}ms, until ${resetDate}`);
+              console.log(
+                `[rate limit sleep] This thread will sleep for the remainder of this limit, ${difference}ms, until ${resetDate}`
+              );
               await sleep(difference);
               console.log('[resuming from rate limit sleep]');
             }

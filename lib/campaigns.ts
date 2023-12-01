@@ -13,13 +13,24 @@ export interface ICampaignUserState {
   sent?: Date;
 }
 
+export type CampaignStateWithData<T> = ICampaignUserState & {
+  data: T;
+};
+
 export interface ICampaignHelper {
   getState(corporateId: string, campaignGroupId: string, campaignId?: string): Promise<ICampaignUserState>;
   optOut(corporateId: string, campaignGroupId: string): Promise<void>;
   clearOptOut(corporateId: string, campaignGroupId: string): Promise<void>;
   setSent(corporateId: string, campaignGroupId: string, campaignId: string): Promise<void>;
+  setAny<T>(corporateId: string, campaignGroupId: string, campaignId: string, data: T): Promise<void>;
+  getAny<T>(documentId: string, partitionKey?: string): Promise<CampaignStateWithData<T>>;
+  getAnyScoped<T>(
+    corporateId: string,
+    campaignGroupId: string,
+    campaignId: string
+  ): Promise<CampaignStateWithData<T>>;
   clearSent(corporateId: string, campaignGroupId: string, campaignId: string): Promise<void>;
-  // 
+  //
   deleteOops(corporateId: string, campaignGroupId: string): Promise<void>;
 }
 
@@ -30,7 +41,11 @@ export class StatefulCampaignProvider implements ICampaignHelper {
     this.#cosmosHelper = cosmosHelper;
   }
 
-  async getState(corporateId: string, campaignGroupId: string, campaignId?: string): Promise<ICampaignUserState> {
+  async getState(
+    corporateId: string,
+    campaignGroupId: string,
+    campaignId?: string
+  ): Promise<ICampaignUserState> {
     const state: ICampaignUserState = {
       campaignGroupId,
       campaignId,
@@ -43,7 +58,7 @@ export class StatefulCampaignProvider implements ICampaignHelper {
       if (groupData && groupData.optOut) {
         state.optOut = new Date(groupData.optOut);
       }
-      // XXX TEMP
+      // XXX TEMP but hasn't been temp so ... ?
       if (groupData && groupData.sent) {
         state.sent = new Date(groupData.sent);
       }
@@ -75,7 +90,7 @@ export class StatefulCampaignProvider implements ICampaignHelper {
 
   async optOut(corporateId: string, campaignGroupId: string): Promise<void> {
     const value = Object.assign(this.baseObject(corporateId, campaignGroupId), {
-      optOut: (new Date()).toISOString(),
+      optOut: new Date().toISOString(),
     });
     await this.#cosmosHelper.setObject(value);
   }
@@ -89,9 +104,35 @@ export class StatefulCampaignProvider implements ICampaignHelper {
 
   async setSent(corporateId: string, campaignGroupId: string, campaignId: string): Promise<void> {
     const value = Object.assign(this.baseObject(corporateId, campaignGroupId, campaignId), {
-      sent: (new Date()).toISOString(),
+      sent: new Date().toISOString(),
     });
     await this.#cosmosHelper.setObject(value);
+  }
+
+  async setAny<T>(corporateId: string, campaignGroupId: string, campaignId: string, data: T) {
+    const value = Object.assign(this.baseObject(corporateId, campaignGroupId, campaignId), {
+      data,
+    });
+    await this.#cosmosHelper.setObject(value);
+  }
+
+  async getAny<T>(documentId: string, partitionKey = ''): Promise<CampaignStateWithData<T>> {
+    try {
+      const document = await this.#cosmosHelper.getObject(partitionKey, documentId);
+      return document as CampaignStateWithData<T>;
+    } catch (err) {
+      console.error(err);
+      throw new Error('Unexpected exception in StatefulCampaignProvider.getAny');
+    }
+  }
+
+  async getAnyScoped<T>(
+    corporateId: string,
+    campaignGroupId: string,
+    campaignId: string
+  ): Promise<CampaignStateWithData<T>> {
+    const documentId = this.key(corporateId, campaignGroupId, campaignId);
+    return this.getAny<T>(documentId, corporateId);
   }
 
   async deleteOops(corporateId: string, campaignGroupId: string): Promise<void> {
@@ -119,7 +160,9 @@ export class StatefulCampaignProvider implements ICampaignHelper {
   }
 
   private key(corporateId: string, campaignGroupId: string, campaignId?: string) {
-    return campaignId ? `${campaignGroupId}-${campaignId}-${corporateId}` : `${campaignGroupId}-${corporateId}`;
+    return campaignId
+      ? `${campaignGroupId}-${campaignId}-${corporateId}`
+      : `${campaignGroupId}-${corporateId}`;
   }
 
   private baseObject(corporateId: string, campaignGroupId: string, campaignId?: string) {

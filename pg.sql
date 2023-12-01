@@ -104,6 +104,15 @@ CREATE TABLE IF NOT EXISTS organizationsettings (
 CREATE INDEX IF NOT EXISTS organizationsettings_active ON organizationsettings ((metadata->>'active'));
 CREATE INDEX IF NOT EXISTS organizationsettings_organizationid ON organizationsettings ((metadata->>'organizationid'));
 
+CREATE TABLE IF NOT EXISTS organizationannotations (
+  entitytype text,
+  entityid text,
+  metadata jsonb,
+  PRIMARY KEY(entitytype, entityid)
+);
+
+CREATE INDEX IF NOT EXISTS organizationannotations_organizationid ON organizationannotations ((metadata->>'organizationid'));
+
 CREATE TABLE IF NOT EXISTS usersettings (
   entitytype text,
   entityid text,

@@ -5,9 +5,13 @@
 
 // ORGANIZATION membership and ownership
 
-import { Operations } from '../../business';
 import { Organization } from '../../business';
-import { OrganizationMembershipRole, IProviders, NoCacheNoBackground, OrganizationMembershipState } from '../../interfaces';
+import {
+  OrganizationMembershipRole,
+  type IProviders,
+  NoCacheNoBackground,
+  OrganizationMembershipState,
+} from '../../interfaces';
 import { WebhookProcessor } from '../organizationProcessor';
 
 // NOTE: unfortunately role changes from admin->member or member->admin do not fire GitHub hooks
@@ -25,12 +29,11 @@ function getRoleFromString(role: string): OrganizationMembershipRole {
 
 export default class OrganizationWebhookProcessor implements WebhookProcessor {
   filter(data: any) {
-    let eventType = data.properties.event;
+    const eventType = data.properties.event;
     return eventType === 'organization';
   }
 
-  async run(operations: Operations, organization: Organization, data: any): Promise<boolean> {
-    const providers = operations.providers as IProviders;
+  async run(providers: IProviders, organization: Organization, data: any): Promise<boolean> {
     const queryCache = providers.queryCache;
 
     const event = data.body;
@@ -39,9 +42,13 @@ export default class OrganizationWebhookProcessor implements WebhookProcessor {
       if (!event.invitation || !event.invitation.inviter || !event.invitation.inviter.login) {
         // should no longer be an issue per GitHub in September 2019
       }
-      console.log(`org member invite by ${event.invitation.inviter.login}; ghu ${event.invitation.login} role ${event.invitation.role} ghid ${event.invitation.id} org: ${event.organization.login}`);
+      console.log(
+        `org member invite by ${event.invitation.inviter.login}; ghu ${event.invitation.login} role ${event.invitation.role} ghid ${event.invitation.id} org: ${event.organization.login}`
+      );
     } else if (event.action === 'member_added') {
-      console.log(`org member added; ghu ${event.membership.user.login} role ${event.membership.role} state ${event.membership.state} ghid ${event.membership.user.id} org: ${event.organization.login}`);
+      console.log(
+        `org member added; ghu ${event.membership.user.login} role ${event.membership.role} state ${event.membership.state} ghid ${event.membership.user.id} org: ${event.organization.login}`
+      );
       if (event.membership.state === 'active' || event.membership.state === 'pending') {
         // triple-check the state; GitHub is sending new memberships are PENDING and not ACTIVE now.
         const login = event.membership.user.login;
@@ -58,7 +65,9 @@ export default class OrganizationWebhookProcessor implements WebhookProcessor {
             if (queryCache && queryCache.supportsOrganizationMembership) {
               const role = getRoleFromString(event.membership.role);
               await queryCache.addOrUpdateOrganizationMember(organizationIdAsString, role, userIdAsString);
-              console.log(`OK: query cache added orgid=${organizationIdAsString}, userid=${userIdAsString}, role=${role}`);
+              console.log(
+                `OK: query cache added orgid=${organizationIdAsString}, userid=${userIdAsString}, role=${role}`
+              );
             } else {
               console.warn('the organization does not use the query cache');
             }
@@ -71,7 +80,9 @@ export default class OrganizationWebhookProcessor implements WebhookProcessor {
       }
       refresh = true;
     } else if (event.action === 'member_removed') {
-      console.log(`org member REMOVED; ghu ${event.membership.user.login} role ${event.membership.role} state ${event.membership.state} ghid ${event.membership.user.id} org: ${event.organization.login}`);
+      console.log(
+        `org member REMOVED; ghu ${event.membership.user.login} role ${event.membership.role} state ${event.membership.state} ghid ${event.membership.user.id} org: ${event.organization.login}`
+      );
       const userIdAsString = event.membership.user.id.toString();
       const organizationIdAsString = event.organization.id.toString();
       try {

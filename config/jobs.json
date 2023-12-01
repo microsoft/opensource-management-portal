@@ -1,0 +1,3 @@
+{
+  "refreshWrites": "env://JOB_METADATA_REFRESH_WRITE?trueIf=1&default=1"
+}

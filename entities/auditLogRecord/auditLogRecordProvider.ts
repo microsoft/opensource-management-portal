@@ -3,14 +3,24 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { AuditLogRecord, AuditLogRecordQueryUndoCandidatesByThirdPartyId, AuditLogRecordQueryRecordsByActorThirdPartyId, AuditLogRecordQueryRecordsByUserThirdPartyId, AuditLogRecordQueryRecordsByRepositoryId, AuditLogRecordQueryRecordsByTeamId } from './auditLogRecord';
+import {
+  IEntityMetadata,
+  EntityMetadataBase,
+  IEntityMetadataBaseOptions,
+} from '../../lib/entityMetadataProvider/entityMetadata';
+import {
+  AuditLogRecord,
+  AuditLogRecordQueryUndoCandidatesByThirdPartyId,
+  AuditLogRecordQueryRecordsByActorThirdPartyId,
+  AuditLogRecordQueryRecordsByUserThirdPartyId,
+  AuditLogRecordQueryRecordsByRepositoryId,
+  AuditLogRecordQueryRecordsByTeamId,
+} from './auditLogRecord';
 import { EntityImplementation } from './auditLogRecord';
 
 const thisProviderType = EntityImplementation.Type;
 
-export interface IAuditLogRecordProviderCreateOptions extends IEntityMetadataBaseOptions {
-}
+export interface IAuditLogRecordProviderCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface IAuditLogRecordProvider {
   initialize(): Promise<void>;

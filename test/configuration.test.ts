@@ -59,11 +59,11 @@ describe('configuration', () => {
               test: {
                 value: {
                   is: keyVaultSchemeSecretId,
-                }
-              }
-            }
-          }
-        }
+                },
+              },
+            },
+          },
+        },
       };
       await keyVaultResolver.getObjectSecrets(config);
       expect(config.deep.object.nesting.test.value.is).toEqual('big secret');

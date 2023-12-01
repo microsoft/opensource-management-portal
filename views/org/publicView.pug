@@ -129,27 +129,4 @@ block content
                     != octicon('alert', 17) 
                   = 'Invitation Required'
                 p Access to this organization requires an invitation from one of the following administrators.
-                ul.list-unstyled
-                  - var admins = organizationAdmins
-                  - var adminCount = admins.length
-                  - for (var i = 0; i < adminCount; i++)
-                    - var admin = admins[i]
-                    li(style='vertical-align:top;width:370px')
-                    ul.list-inline
-                      if admin.avatar_url
-                        li(style='vertical-align:top;margin-top:12px;padding-right:3px'): img(
-                          alt=admin.login,
-                          src=admin.avatar_url + '&s=96',
-                          style='width:36px;height:36px;')
-                      li
-                        ul.list-unstyled(style='margin-right:16px')
-                          li: h5(style='margin-bottom:.3em')
-                            a(href='/people?q=' + admin.login)= admin.primaryName
-                            .label.label-info(title=organization.name + ' organization owner', style='margin-left: 5px; cursor: default') Owner
-                          ul.list-inline
-                            if admin.primaryName != admin.login
-                              li: p(style='font-size: .8em')
-                                a(href='https://github.com/' + admin.login, target='_new', style='color: black; text-decoration:none')= admin.login
-                            if admin.mailAddress
-                              li: a(href='mailto:' + admin.mailAddress, title='Send email to ' + admin.mailAddress)
-                                != octicon('mail', 16)
+                +orgAdminCards(organizationAdmins, 5)

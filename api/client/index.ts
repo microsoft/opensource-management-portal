@@ -6,22 +6,30 @@
 import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { apiContextMiddleware, AddLinkToRequest, requireAccessTokenClient, setIdentity, jsonError } from '../../middleware';
+import {
+  apiContextMiddleware,
+  AddLinkToRequest,
+  requireAccessTokenClient,
+  setIdentity,
+  jsonError,
+} from '../../middleware';
 import { getProviders } from '../../transitional';
 
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 
-import RouteClientNewRepo from './newRepo';
+import type { ReposAppRequest } from '../../interfaces';
+import type { IndividualContext } from '../../business/user';
 
-import RouteContext from './context';
-import RouteOrganizations from './organizations';
-import RouteLinking from './linking';
-import RouteSession from './session';
-import RouteBanner from './banner';
-import RouteCrossOrganizationPeople from './people';
-import RouteCrossOrganizationRepos from './repos';
-import RouteCrossOrganizationTeams from './teams';
-import { ReposAppRequest } from '../../interfaces';
+import routeClientNewRepo from './newRepo';
+import routeContext from './context';
+import routeOrganizations from './organizations';
+import routeLinking from './linking';
+import routeSession from './session';
+import routeBanner from './banner';
+import routeNews from './news';
+import routeCrossOrganizationPeople from './people';
+import routeCrossOrganizationRepos from './repos';
+import routeCrossOrganizationTeams from './teams';
 
 const router: Router = Router();
 
@@ -38,20 +46,79 @@ router.use(apiContextMiddleware);
 router.use(setIdentity);
 router.use(asyncHandler(AddLinkToRequest));
 
-router.use('/newRepo', RouteClientNewRepo);
+router.use('/newRepo', routeClientNewRepo);
 
-router.use('/context', RouteContext);
+router.use('/context', routeContext);
 
-router.use('/banner', RouteBanner);
-router.use('/orgs', RouteOrganizations);
-router.use('/link', RouteLinking);
-router.use('/signout', RouteSession);
-router.use('/people', RouteCrossOrganizationPeople);
-router.use('/repos', RouteCrossOrganizationRepos);
-router.use('/teams', RouteCrossOrganizationTeams);
+router.use('/banner', routeBanner);
+router.use('/orgs', routeOrganizations);
+router.use('/link', routeLinking);
+router.use('/signout', routeSession);
+router.use('/people', routeCrossOrganizationPeople);
+router.use('/repos', routeCrossOrganizationRepos);
+router.use('/teams', routeCrossOrganizationTeams);
+router.use('/news', routeNews);
 
 const dynamicStartupInstance = getCompanySpecificDeployment();
 dynamicStartupInstance?.routes?.api?.index && dynamicStartupInstance?.routes?.api?.index(router);
+
+router.get('/', (req: ReposAppRequest, res) => {
+  const { config } = getProviders(req);
+  const runtimeConfiguration = req.app.runtimeConfiguration;
+
+  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+  const isGitHubAuthenticated = !!activeContext.getSessionBasedGitHubIdentity()?.id;
+  const data = {
+    deployment: config.continuousDeployment,
+    frontend: runtimeConfiguration?.client || {},
+    hosting: {
+      app: config?.web?.app,
+      baseUrl: config?.webServer?.baseUrl,
+      server: {
+        port: config?.webServer?.port,
+        hostname: req.hostname,
+      },
+      appService: config?.webServer?.appService?.name
+        ? {
+            name: config?.webServer?.appService?.name,
+            slot: config?.webServer?.appService?.slot,
+            region: config?.webServer?.appService?.region,
+          }
+        : undefined,
+    },
+    runtime: {
+      node: {
+        environment: config?.node?.environment,
+        version: config?.node?.version,
+      },
+    },
+    development: {
+      githubCodespacesConnected: config?.github?.codespaces?.connected === true ? true : undefined,
+      githubCodespacesName: config?.github?.codespaces?.name,
+    },
+    app: {
+      environment: config?.environment?.name,
+      appName: config?.web?.app,
+    },
+    session: {
+      corporateIdentity: activeContext.corporateIdentity,
+      githubIdentity: activeContext.getGitHubIdentity(),
+      isAuthenticated: true,
+      isGitHubAuthenticated,
+      isLinked: !!activeContext.link,
+      hasAdditionalLinks: activeContext.hasAdditionalLinks,
+      impersonation: config.impersonation?.corporateId
+        ? {
+            corporateId: config.impersonation.corporateId,
+            githubId: config.impersonation.githubId,
+          }
+        : undefined,
+    },
+  };
+
+  res.contentType('application/json');
+  return res.send(JSON.stringify(data, null, 2));
+});
 
 router.use((req, res, next) => {
   return next(jsonError('The resource or endpoint you are looking for is not there', 404));

@@ -5,9 +5,17 @@
 
 import { Repository } from './repository';
 import { wrapError } from '../utils';
-import { AppPurpose } from '../github';
+import { AppPurpose } from './githubApps';
 import { CacheDefault, getMaxAgeSeconds } from '.';
-import { IOperationsInstance, IPurposefulGetAuthorizationHeader, GitHubIssueState, IIssueLabel, throwIfNotGitHubCapable, ICacheOptions, IGetAuthorizationHeader } from '../interfaces';
+import {
+  IOperationsInstance,
+  IPurposefulGetAuthorizationHeader,
+  GitHubIssueState,
+  IIssueLabel,
+  throwIfNotGitHubCapable,
+  ICacheOptions,
+  IGetAuthorizationHeader,
+} from '../interfaces';
 import { ErrorHelper } from '../transitional';
 
 // Pull requests are issues but not all issues are pull requests. So this is mostly a clone of repositoryIssue.ts
@@ -22,7 +30,13 @@ export class RepositoryPullRequest {
 
   private _entity: any;
 
-  constructor(repository: Repository, pullRequestNumber: number, operations: IOperationsInstance, getAuthorizationHeader: IPurposefulGetAuthorizationHeader, entity?: any) {
+  constructor(
+    repository: Repository,
+    pullRequestNumber: number,
+    operations: IOperationsInstance,
+    getAuthorizationHeader: IPurposefulGetAuthorizationHeader,
+    entity?: any
+  ) {
     this._getAuthorizationHeader = getAuthorizationHeader;
     this._repository = repository;
     this._number = pullRequestNumber;
@@ -32,10 +46,18 @@ export class RepositoryPullRequest {
     }
   }
 
-  get id(): number { return this._entity?.id as number; }
-  get title(): string { return this._entity?.title as string; }
-  get body(): string { return this._entity.body as string; }
-  get state(): GitHubIssueState { return this._entity?.state as GitHubIssueState; }
+  get id(): number {
+    return this._entity?.id as number;
+  }
+  get title(): string {
+    return this._entity?.title as string;
+  }
+  get body(): string {
+    return this._entity.body as string;
+  }
+  get state(): GitHubIssueState {
+    return this._entity?.state as GitHubIssueState;
+  }
   get labels(): IIssueLabel[] {
     if (this._entity) {
       return this._entity.labels as IIssueLabel[];
@@ -44,9 +66,13 @@ export class RepositoryPullRequest {
     }
   }
 
-  get number(): number { return this._number; }
+  get number(): number {
+    return this._number;
+  }
 
-  getEntity(): any { return this._entity; }
+  getEntity(): any {
+    return this._entity;
+  }
 
   get repository(): Repository {
     return this._repository;
@@ -60,7 +86,11 @@ export class RepositoryPullRequest {
       issue_number: this.number,
     });
     // Operations has issue write permissions
-    const details = await operations.github.post(this.authorize(AppPurpose.Operations), 'pulls.update', parameters);
+    const details = await operations.github.post(
+      this.authorize(AppPurpose.Operations),
+      'pulls.update',
+      parameters
+    );
     return details;
   }
 
@@ -71,7 +101,11 @@ export class RepositoryPullRequest {
       repo: this.repository.name,
       comment_id: commentId,
     });
-    const comment = await operations.github.post(this.authorize(AppPurpose.Operations), 'pulls.getReviewComment', parameters);
+    const comment = await operations.github.post(
+      this.authorize(AppPurpose.Operations),
+      'pulls.getReviewComment',
+      parameters
+    );
     return comment;
   }
 
@@ -95,7 +129,11 @@ export class RepositoryPullRequest {
       pull_number: this.number,
       review_id: reviewId,
     });
-    const comment = await operations.github.post(this.authorize(AppPurpose.Operations), 'pulls.getReview', parameters);
+    const comment = await operations.github.post(
+      this.authorize(AppPurpose.Operations),
+      'pulls.getReview',
+      parameters
+    );
     return comment;
   }
 
@@ -125,7 +163,7 @@ export class RepositoryPullRequest {
   //   return comment;
   // }
 
-  async getDetails(options?: ICacheOptions, okToUseLocalEntity: boolean = true): Promise<any> {
+  async getDetails(options?: ICacheOptions, okToUseLocalEntity = true): Promise<any> {
     if (okToUseLocalEntity && this._entity) {
       return this._entity;
     }
@@ -147,12 +185,21 @@ export class RepositoryPullRequest {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     try {
-      const entity = await operations.github.call(this.authorize(AppPurpose.Data), 'pulls.get', parameters, cacheOptions);
+      const entity = await operations.github.call(
+        this.authorize(AppPurpose.Data),
+        'pulls.get',
+        parameters,
+        cacheOptions
+      );
       this._entity = entity;
       return entity;
     } catch (error) {
       const notFound = error.status && error.status == /* loose */ 404;
-      error = wrapError(error, notFound ? 'The PR could not be found.' : `Could not get details about the PR. ${error.status}`, notFound);
+      error = wrapError(
+        error,
+        notFound ? 'The PR could not be found.' : `Could not get details about the PR. ${error.status}`,
+        notFound
+      );
       if (notFound) {
         error.status = 404;
       }
@@ -173,7 +220,10 @@ export class RepositoryPullRequest {
   }
 
   private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
-    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as IGetAuthorizationHeader;
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(
+      this,
+      purpose
+    ) as IGetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 }

@@ -11,11 +11,11 @@ import _ from 'lodash';
 
 import { getProviders } from '../../transitional';
 import { jsonError } from '../../middleware/jsonError';
-import { IndividualContext } from '../../user';
+import { IndividualContext } from '../../business/user';
 import { Organization } from '../../business/organization';
 import { CreateRepository, ICreateRepositoryApiResult, CreateRepositoryEntrypoint } from '../createRepo';
 import { Team } from '../../business/team';
-import { GitHubTeamRole, ReposAppRequest } from '../../interfaces';
+import { GitHubRepositoryVisibility, GitHubTeamRole, ReposAppRequest } from '../../interfaces';
 
 // This file supports the client apps for creating repos.
 
@@ -38,107 +38,121 @@ router.get('/metadata', (req: ILocalApiRequest, res, next) => {
   }
 });
 
-router.get('/personalizedTeams', asyncHandler(async (req: ILocalApiRequest, res, next) => {
-  try {
-    const organization = req.organization as Organization;
-    const userAggregateContext = req.apiContext.aggregations;
-    const maintainedTeams = new Set<string>();
-    const broadTeams = new Set<number>(req.organization.broadAccessTeams);
-    const userTeams = userAggregateContext.reduceOrganizationTeams(organization, await userAggregateContext.teams());
-    userTeams.maintainer.map(maintainedTeam => maintainedTeams.add(maintainedTeam.id.toString()));
-    const combinedTeams = new Map<string, Team>();
-    userTeams.maintainer.map(team => combinedTeams.set(team.id.toString(), team));
-    userTeams.member.map(team => combinedTeams.set(team.id.toString(), team));
-    const personalizedTeams = Array.from(combinedTeams.values()).map(combinedTeam => {
-      return {
-        broad: broadTeams.has(Number(combinedTeam.id)),
-        description: combinedTeam.description,
-        id: Number(combinedTeam.id),
-        name: combinedTeam.name,
-        role: maintainedTeams.has(combinedTeam.id.toString()) ? GitHubTeamRole.Maintainer : GitHubTeamRole.Member,
-      };
-    });
-    return res.json({
-      personalizedTeams,
-    });
-  } catch (error) {
-    return next(jsonError(error, 400));
-  }
-}));
+router.get(
+  '/personalizedTeams',
+  asyncHandler(async (req: ILocalApiRequest, res, next) => {
+    try {
+      const organization = req.organization as Organization;
+      const userAggregateContext = req.apiContext.aggregations;
+      const maintainedTeams = new Set<string>();
+      const broadTeams = new Set<number>(req.organization.broadAccessTeams);
+      const userTeams = userAggregateContext.reduceOrganizationTeams(
+        organization,
+        await userAggregateContext.teams()
+      );
+      userTeams.maintainer.map((maintainedTeam) => maintainedTeams.add(maintainedTeam.id.toString()));
+      const combinedTeams = new Map<string, Team>();
+      userTeams.maintainer.map((team) => combinedTeams.set(team.id.toString(), team));
+      userTeams.member.map((team) => combinedTeams.set(team.id.toString(), team));
+      const personalizedTeams = Array.from(combinedTeams.values()).map((combinedTeam) => {
+        return {
+          broad: broadTeams.has(Number(combinedTeam.id)),
+          description: combinedTeam.description,
+          id: Number(combinedTeam.id),
+          name: combinedTeam.name,
+          role: maintainedTeams.has(combinedTeam.id.toString())
+            ? GitHubTeamRole.Maintainer
+            : GitHubTeamRole.Member,
+        };
+      });
+      return res.json({
+        personalizedTeams,
+      });
+    } catch (error) {
+      return next(jsonError(error, 400));
+    }
+  })
+);
 
-router.get('/teams', asyncHandler(async (req: ILocalApiRequest, res, next) => {
-  const providers = getProviders(req);
-  const queryCache = providers.queryCache;
-  const organization = req.organization as Organization;
-  const broadTeams = new Set(organization.broadAccessTeams);
-  if (req.query.refresh === undefined && queryCache && queryCache.supportsTeams) {
-    // Use the newer method in this case...
-    const organizationTeams = await queryCache.organizationTeams(organization.id.toString());
-    return res.json({
-      teams: organizationTeams.map(qt => {
-        const team = qt.team;
+router.get(
+  '/teams',
+  asyncHandler(async (req: ILocalApiRequest, res, next) => {
+    const providers = getProviders(req);
+    const queryCache = providers.queryCache;
+    const organization = req.organization as Organization;
+    const broadTeams = new Set(organization.broadAccessTeams);
+    if (req.query.refresh === undefined && queryCache && queryCache.supportsTeams) {
+      // Use the newer method in this case...
+      const organizationTeams = await queryCache.organizationTeams(organization.id.toString());
+      return res.json({
+        teams: organizationTeams.map((qt) => {
+          const team = qt.team;
+          const t = team.toSimpleJsonObject();
+          if (broadTeams.has(Number(t.id))) {
+            t['broad'] = true;
+          }
+          return t;
+        }),
+      });
+    }
+
+    // By default, allow a 30-second old list of teams. If the cached
+    // view is older, refresh this list in the background for use if
+    // they refresh for a better user experience.
+    const caching = {
+      backgroundRefresh: true,
+      maxAgeSeconds: 30,
+    };
+
+    // If the user forces a true refresh, force a true walk of all the teams
+    // from GitHub. This will be slow the larger the org. Allow a short cache
+    // window for the case where a  webhook processes the change quickly.
+    if (req.query.refresh) {
+      caching.backgroundRefresh = false;
+      caching.maxAgeSeconds = 10;
+    }
+
+    try {
+      const teams = await organization.getTeams();
+      const simpleTeams = teams.map((team) => {
         const t = team.toSimpleJsonObject();
-        if (broadTeams.has(Number(t.id))) {
+        if (broadTeams.has(t.id)) {
           t['broad'] = true;
         }
         return t;
-      }),
+      });
+      res.json({
+        teams: simpleTeams,
+      });
+    } catch (getTeamsError) {
+      return next(jsonError(getTeamsError, 400));
+    }
+  })
+);
+
+router.get(
+  '/repo/:repo',
+  asyncHandler(async (req: ILocalApiRequest, res) => {
+    const { insights } = getProviders(req);
+    const repoName = req.params.repo;
+    let error = null;
+    try {
+      const repo = await req.organization.repository(repoName).getDetails();
+      res.json(repo);
+    } catch (repoDetailsError) {
+      res.status(404).end();
+      error = repoDetailsError;
+    }
+    insights?.trackEvent({
+      name: 'ApiClientNewRepoValidateAvailability',
+      properties: {
+        found: error ? true : false,
+        repoName,
+        org: req.organization.name,
+      },
     });
-  }
-
-  // By default, allow a 30-second old list of teams. If the cached
-  // view is older, refresh this list in the background for use if
-  // they refresh for a better user experience.
-  const caching = {
-    backgroundRefresh: true,
-    maxAgeSeconds: 30,
-  };
-
-  // If the user forces a true refresh, force a true walk of all the teams
-  // from GitHub. This will be slow the larger the org. Allow a short cache
-  // window for the casewhere a  webhook processes the change quickly.
-  if (req.query.refresh) {
-    caching.backgroundRefresh = false;
-    caching.maxAgeSeconds = 10;
-  }
-
-  try {
-    const teams = await organization.getTeams();
-    const simpleTeams = teams.map(team => {
-      const t = team.toSimpleJsonObject();
-      if (broadTeams.has(t.id)) {
-        t['broad'] = true;
-      }
-      return t;
-    });
-    res.json({
-      teams: simpleTeams,
-    });
-  } catch (getTeamsError) {
-    return next(jsonError(getTeamsError, 400));
-  }
-}));
-
-router.get('/repo/:repo', asyncHandler(async (req: ILocalApiRequest, res) => {
-  const { insights } = getProviders(req);
-  const repoName = req.params.repo;
-  let error = null;
-  try {
-    const repo = await req.organization.repository(repoName).getDetails();
-    res.json(repo);
-  } catch (repoDetailsError) {
-    res.status(404).end();
-    error = repoDetailsError;
-  }
-  insights?.trackEvent({
-    name: 'ApiClientNewRepoValidateAvailability',
-    properties: {
-      found: error ? true : false,
-      repoName,
-      org: req.organization.name,
-    },
-  });
-}));
+  })
+);
 
 export async function discoverUserIdentities(req: ReposAppRequest, res, next) {
   const apiContext = req.apiContext as IndividualContext;
@@ -155,7 +169,9 @@ export async function discoverUserIdentities(req: ReposAppRequest, res, next) {
     if (mailAddress) {
       req['knownRequesterMailAddress'] = mailAddress;
     }
-  } catch (ignoredError) { /* ignored */ }
+  } catch (ignoredError) {
+    /* ignored */
+  }
   return next();
 }
 
@@ -165,35 +181,53 @@ export async function createRepositoryFromClient(req: ILocalApiRequest, res, nex
   const providers = getProviders(req);
   const { insights, diagnosticsDrop, customizedNewRepositoryLogic, graphProvider } = providers;
   const individualContext = req.individualContext || req.apiContext;
-  const config = getProviders(req).config;;
+  const config = getProviders(req).config;
   const organization = (req.organization || (req as any).aeOrganization) as Organization;
   const existingRepoId = req.body.existingrepoid;
   const correlationId = req.correlationId;
   const debugValues = req.body.debugValues || {};
   const corporateId = individualContext.corporateIdentity.id;
   const customContext = customizedNewRepositoryLogic?.createContext(req);
-  const additionalTelemetryProperties = customizedNewRepositoryLogic?.getAdditionalTelemetryProperties(customContext) || {};
+  const additionalTelemetryProperties =
+    customizedNewRepositoryLogic?.getAdditionalTelemetryProperties(customContext) || {};
   insights.trackEvent({
     name: 'CreateRepositoryFromClientStart',
-    properties: Object.assign({
-      debugValues,
-      correlationId,
-      body: JSON.stringify(req.body),
-      query: JSON.stringify(req.query),
-      corporateId,
-    }, additionalTelemetryProperties),
+    properties: Object.assign(
+      {
+        debugValues,
+        correlationId,
+        body: JSON.stringify(req.body),
+        query: JSON.stringify(req.query),
+        corporateId,
+      },
+      additionalTelemetryProperties
+    ),
   });
   if (diagnosticsDrop) {
-    diagnosticsDrop.setObject(`newrepo.${organization.name}.${correlationId}`, Object.assign({
-      debugValues,
-      correlationId,
-      body: req.body,
-      query: req.query,
-      corporateId,
-    }, additionalTelemetryProperties));
+    diagnosticsDrop.setObject(
+      `newrepo.${organization.name}.${correlationId}`,
+      Object.assign(
+        {
+          debugValues,
+          correlationId,
+          body: req.body,
+          query: req.query,
+          corporateId,
+        },
+        additionalTelemetryProperties
+      )
+    );
   }
-  if (organization.createRepositoriesOnGitHub && !(existingRepoId && organization.isNewRepositoryLockdownSystemEnabled())) {
-    return next(jsonError(`The GitHub organization ${organization.name} is configured as "createRepositoriesOnGitHub": repos should be created on GitHub.com directly and not through this wizard.`, 400));
+  if (
+    organization.createRepositoriesOnGitHub &&
+    !(existingRepoId && organization.isNewRepositoryLockdownSystemEnabled())
+  ) {
+    return next(
+      jsonError(
+        `The GitHub organization ${organization.name} is configured as "createRepositoriesOnGitHub": repos should be created on GitHub.com directly and not through this wizard.`,
+        400
+      )
+    );
   }
   const body = req.body;
   if (!body) {
@@ -209,14 +243,16 @@ export async function createRepositoryFromClient(req: ILocalApiRequest, res, nex
     body['ms.onBehalfOf'] = req.apiContext.getGitHubIdentity().username;
   }
   // these fields do not need translation: name, description, private
-  let isApproved = customizedNewRepositoryLogic ? customizedNewRepositoryLogic.skipApproval(customContext, body) : false;
+  const isApproved = customizedNewRepositoryLogic
+    ? customizedNewRepositoryLogic.skipApproval(customContext, body)
+    : false;
   const approvalTypesToIds = config.github.approvalTypes.fields.approvalTypesToIds;
   if (!isApproved) {
     if (approvalTypesToIds[body.approvalType]) {
       body.approvalType = approvalTypesToIds[body.approvalType];
     } else {
       let valid = false;
-      Object.getOwnPropertyNames(approvalTypesToIds).forEach(key => {
+      Object.getOwnPropertyNames(approvalTypesToIds).forEach((key) => {
         if (approvalTypesToIds[key] === body.approvalType) {
           valid = true;
         }
@@ -227,12 +263,28 @@ export async function createRepositoryFromClient(req: ILocalApiRequest, res, nex
     }
   }
   // Property supporting private repos from the client
+  const targetType = body.visibility as GitHubRepositoryVisibility;
   if (body.visibility === 'private') {
     body.private = true;
     delete body.visibility;
   } else if (body.visibility === 'internal') {
     // visibility: internal is legitimate for GHEC or GHAE users
     body.private = true;
+  }
+  if (
+    !existingRepoId &&
+    targetType &&
+    organization.getRepositoryCreateMetadata()?.visibilities?.length >= 0
+  ) {
+    // Only if the organization types are configured in the settings should this gate the type of this
+    if (!organization.getRepositoryCreateMetadata()?.visibilities?.includes(targetType)) {
+      return next(
+        jsonError(
+          `The portal is not configured to allow the creation of ${targetType} repositories in the ${organization.name} organization`,
+          400
+        )
+      );
+    }
   }
   translateValue(body, 'approvalType', 'ms.approval');
   translateValue(body, 'approvalUrl', 'ms.approval-url');
@@ -278,7 +330,11 @@ export async function createRepositoryFromClient(req: ILocalApiRequest, res, nex
     }
   }
   if (!body['ms.notify']) {
-    body['ms.notify'] = individualContext?.link?.corporateMailAddress || req.knownRequesterMailAddress || config.brand.operationsMail || config.brand.supportMail;
+    body['ms.notify'] =
+      individualContext?.link?.corporateMailAddress ||
+      req.knownRequesterMailAddress ||
+      config.brand.operationsMail ||
+      config.brand.supportMail;
   }
   // these fields are currently ignored: orgName
   delete body.orgName;
@@ -291,9 +347,18 @@ export async function createRepositoryFromClient(req: ILocalApiRequest, res, nex
   });
   let success: ICreateRepositoryApiResult = null;
   try {
-    const newRepositoryParameters = customizedNewRepositoryLogic?.additionalCreateRepositoryParameters ?
-      Object.assign(body, customizedNewRepositoryLogic.additionalCreateRepositoryParameters(customContext)) : body;
-    success = await CreateRepository(req, organization, customizedNewRepositoryLogic, customContext, newRepositoryParameters, CreateRepositoryEntrypoint.Client, individualContext);
+    const newRepositoryParameters = customizedNewRepositoryLogic?.additionalCreateRepositoryParameters
+      ? Object.assign(body, customizedNewRepositoryLogic.additionalCreateRepositoryParameters(customContext))
+      : body;
+    success = await CreateRepository(
+      req,
+      organization,
+      customizedNewRepositoryLogic,
+      customContext,
+      newRepositoryParameters,
+      CreateRepositoryEntrypoint.Client,
+      individualContext
+    );
   } catch (createRepositoryError) {
     insights.trackEvent({
       name: 'ApiClientNewOrgRepoError',
@@ -307,7 +372,9 @@ export async function createRepositoryFromClient(req: ILocalApiRequest, res, nex
     }
     return next(createRepositoryError);
   }
-  let message = success.github ? `Your new repo, ${success.github.name}, has been created:` : 'Your repo request has been submitted.';
+  let message = success.github
+    ? `Your new repo, ${success.github.name}, has been created:`
+    : 'Your repo request has been submitted.';
   if (existingRepoId && success.github) {
     message = `Your repository ${success.github.name} is classified and the repo is now ready, unlocked, with your selected team permissions assigned.`;
   }
@@ -334,10 +401,10 @@ export async function createRepositoryFromClient(req: ILocalApiRequest, res, nex
 }
 
 function translateTeams(body) {
-  let admin = body.selectedAdminTeams;
-  let write = body.selectedWriteTeams;
-  let read = body.selectedReadTeams;
-  let maintain = body.selectedMaintainTeams;
+  const admin = body.selectedAdminTeams;
+  const write = body.selectedWriteTeams;
+  const read = body.selectedReadTeams;
+  const maintain = body.selectedMaintainTeams;
 
   // Remove teams with higher privileges already
   _.pullAll(maintain, admin);

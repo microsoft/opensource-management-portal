@@ -83,12 +83,14 @@ async function setup() {
 }
 
 function initialize() {
-  return setup().then(ok => {
-    console.log('OK');
-    process.exit(0);
-  }).catch(error => {
-    console.error(error);
-    console.dir(error);
-    process.exit(1);
-  });
+  return setup()
+    .then((ok) => {
+      console.log('OK');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error(error);
+      console.dir(error);
+      process.exit(1);
+    });
 }

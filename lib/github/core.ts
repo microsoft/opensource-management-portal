@@ -5,7 +5,6 @@
 
 import _ from 'lodash';
 import { randomUUID } from 'crypto';
-const debug = require('debug')('restapi');
 import moment from 'moment';
 
 import { RestLibrary } from '.';
@@ -14,6 +13,9 @@ import { sleep } from '../../utils';
 
 import cost from './cost';
 import { ErrorHelper } from '../../transitional';
+
+import Debug from 'debug';
+const debug = Debug.debug('restapi');
 
 const delayBeforeRefreshMilliseconds = 1000;
 
@@ -51,7 +53,8 @@ export interface IInterestingHeaders {
   ['x-ratelimit-used']?: string;
 }
 
-export interface ISpecializedCollectionHeaders { // really, these are the metadata fields, no headers at all...
+export interface ISpecializedCollectionHeaders {
+  // really, these are the metadata fields, no headers at all...
   dirty?: boolean;
   pages?: string[];
   etag?: string;
@@ -81,8 +84,7 @@ export interface IRestResponse {
   notModified?: boolean;
 }
 
-export interface IIntelligentCacheResponseArray extends Array<any>, IRestResponse {
-}
+export interface IIntelligentCacheResponseArray extends Array<any>, IRestResponse {}
 
 export interface IShouldServeCache {
   cache?: boolean;
@@ -136,7 +138,7 @@ export abstract class ApiContext {
   metadata?: IRestMetadata;
 
   generatedRefreshId?: string;
-};
+}
 
 export interface IApiContextRedisKeys {
   metadata: string;
@@ -149,7 +151,8 @@ export interface IApiContextCacheValues {
   acceleratedExpiration: number;
 }
 
-export abstract class IntelligentEngine { // in hindsight, "intelligent" is not what any of this is
+export abstract class IntelligentEngine {
+  // in hindsight, "intelligent" is not what any of this is
   public static redisKeyAspectSuffix(aspect: string): string {
     return aspect ? `:${aspect}` : '';
   }
@@ -165,8 +168,14 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
   abstract callApi(apiContext: ApiContext, optionalMessage?: string): Promise<IRestResponse>;
   abstract withResponseUpdateMetadata(apiContext: ApiContext, response: IRestResponse): IRestResponse;
 
-  abstract withResponseShouldCacheBeServed(apiContext: ApiContext, response: IRestResponse): boolean | IShouldServeCache;
-  abstract withMetadataShouldCacheBeServed(apiContext: ApiContext, metadata: IRestMetadata): boolean | IShouldServeCache;
+  abstract withResponseShouldCacheBeServed(
+    apiContext: ApiContext,
+    response: IRestResponse
+  ): boolean | IShouldServeCache;
+  abstract withMetadataShouldCacheBeServed(
+    apiContext: ApiContext,
+    metadata: IRestMetadata
+  ): boolean | IShouldServeCache;
   abstract reduceMetadataToCacheFromResponse(apiContext: ApiContext, response: IRestResponse): IRestMetadata;
   abstract getResponseMetadata(apiContext: ApiContext, response: IRestResponse): IRestMetadata;
   abstract optionalStripResponse(apiContext: ApiContext, response: IRestResponse): IRestResponse;
@@ -182,7 +191,9 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
         console.dir(err);
       }
     };
-    backgroundAsyncWork().then(ok => { }).catch(() => { });
+    backgroundAsyncWork()
+      .then((ok) => {})
+      .catch(() => {});
     return this.finalizeResult(apiContext, response);
   }
 
@@ -209,22 +220,32 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
 
   protected async tryGetCachedResult(apiContext: ApiContext): Promise<IRestResponse> {
     const key = this.redisKeyBodyVersion(apiContext);
-    let response = (await apiContext.libraryContext.cacheProvider.getObjectCompressed(key)) as IRestResponse;
+    const response = (await apiContext.libraryContext.cacheProvider.getObjectCompressed(
+      key
+    )) as IRestResponse;
     this.recordRedisCost(apiContext, 'get', response);
     return response;
   }
 
-  protected async getCachedResult(apiContext: ApiContext, optionalCacheDecisions?, notModifiedHeaders?: IInterestingHeaders): Promise<IRestResponse> {
-    let result = await this.tryGetCachedResult(apiContext);
+  protected async getCachedResult(
+    apiContext: ApiContext,
+    optionalCacheDecisions?,
+    notModifiedHeaders?: IInterestingHeaders
+  ): Promise<IRestResponse> {
+    const result = await this.tryGetCachedResult(apiContext);
     if (result && result.data) {
       // use the context metadata over any headers in the stored response, + any headers from 304
       result.headers = Object.assign({}, notModifiedHeaders || {}, apiContext.metadata);
       if (optionalCacheDecisions && optionalCacheDecisions.refresh === true) {
         // NOTE: this kicks off the refresh and so does not await
         debug('Starting a background refresh');
-        this.backgroundRefreshAsync(apiContext, apiContext.metadata).then(ok => { }).catch(() => { });
+        this.backgroundRefreshAsync(apiContext, apiContext.metadata)
+          .then((ok) => {})
+          .catch(() => {});
       } else {
-        this.slideObjectExpirationWindow(apiContext).then(ok => { }).catch(() => { });
+        this.slideObjectExpirationWindow(apiContext)
+          .then((ok) => {})
+          .catch(() => {});
       }
       debug('Finalizing result');
       return this.finalizeResult(apiContext, result);
@@ -235,7 +256,7 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
         .then(() => {
           console.log('(evicted)');
         })
-        .catch(err => {
+        .catch((err) => {
           if (!ErrorHelper.IsNotFound(err)) {
             console.warn(`(eviction error: ${err})`);
           }
@@ -252,14 +273,20 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
   protected async backgroundRefreshAsync(apiContext: ApiContext, currentMetadata): Promise<void> {
     // Potential data loss/consistency problem: upsert/overwrite
     try {
-      let refreshing = moment().utc().format();
-      let refreshId = randomUUID();
+      const refreshing = moment().utc().format();
+      const refreshId = randomUUID();
       currentMetadata.refreshing = refreshing;
       currentMetadata.refreshId = refreshId;
       apiContext.generatedRefreshId = refreshId;
-      debug(`refresh in the background starting for ${apiContext.redisKey.metadata} was updated ${apiContext.metadata.updated} and seconds of ${apiContext.maxAgeSeconds}`);
+      debug(
+        `refresh in the background starting for ${apiContext.redisKey.metadata} was updated ${apiContext.metadata.updated} and seconds of ${apiContext.maxAgeSeconds}`
+      );
       // TODO: use proper next tick to kick this off?
-      const setReturnValue = await apiContext.libraryContext.cacheProvider.setObjectWithExpire(apiContext.redisKey.metadata, currentMetadata, apiContext.cacheValues.longtermMetadata);
+      const setReturnValue = await apiContext.libraryContext.cacheProvider.setObjectWithExpire(
+        apiContext.redisKey.metadata,
+        currentMetadata,
+        apiContext.cacheValues.longtermMetadata
+      );
       // Remove the values in case the refresh uses the metadata
       delete currentMetadata.refreshing;
       delete currentMetadata.refreshId;
@@ -281,14 +308,18 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
 
   // --- Caching ---
 
-  protected async reduceObjectExpirationWindow(apiContext: ApiContext, response: IRestResponse): Promise<void> {
+  protected async reduceObjectExpirationWindow(
+    apiContext: ApiContext,
+    response: IRestResponse
+  ): Promise<void> {
     if (!apiContext.etag || (apiContext.etag && apiContext.etag === response.headers.etag)) {
       return;
     }
     debug('Expiring older cached response');
     const cost = await apiContext.libraryContext.cacheProvider.expire(
       this.redisKeyBodyVersion(apiContext, apiContext.etag),
-      apiContext.cacheValues.acceleratedExpiration);
+      apiContext.cacheValues.acceleratedExpiration
+    );
     this.recordRedisCost(apiContext, 'expire', cost);
   }
 
@@ -309,7 +340,8 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
     debug(`Sliding expiration window for ${this.redisKeyBodyVersion(apiContext, apiContext.etag)}`);
     const cost = await apiContext.libraryContext.cacheProvider.expire(
       this.redisKeyBodyVersion(apiContext, apiContext.etag),
-      apiContext.cacheValues.longtermResponse);
+      apiContext.cacheValues.longtermResponse
+    );
     this.recordRedisCost(apiContext, 'expire', cost);
   }
 
@@ -318,7 +350,8 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
     const cost = await apiContext.libraryContext.cacheProvider.setObjectWithExpire(
       apiContext.redisKey.metadata,
       reducedMetadata,
-      apiContext.cacheValues.longtermMetadata);
+      apiContext.cacheValues.longtermMetadata
+    );
     this.recordRedisCost(apiContext, 'set', cost);
   }
 
@@ -332,7 +365,8 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
     const cost = await apiContext.libraryContext.cacheProvider.setObjectCompressedWithExpire(
       key,
       response,
-      apiContext.cacheValues.longtermResponse);
+      apiContext.cacheValues.longtermResponse
+    );
     this.recordRedisCost(apiContext, 'set', cost);
   }
 
@@ -353,7 +387,7 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
     if (!type) {
       throw new Error('No type defined for recordRedisCost.');
     }
-    let hit = object !== undefined;
+    const hit = object !== undefined;
     if (type === 'get') {
       apiContext.cost.redis.cacheHit += hit ? 1 : 0;
       apiContext.cost.redis.cacheMisses += hit ? 0 : 1;
@@ -368,12 +402,21 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
   public async execute(apiContext: ApiContext): Promise<IRestResponse> {
     let metadata = await this.getCachedMetadata(apiContext);
     metadata = this.processMetadataBeforeCall(apiContext, metadata);
-    const shouldCacheBeServedImmediately: boolean | IShouldServeCache = this.withMetadataShouldCacheBeServed(apiContext, metadata);
+    const shouldCacheBeServedImmediately: boolean | IShouldServeCache = this.withMetadataShouldCacheBeServed(
+      apiContext,
+      metadata
+    );
     const displayKey = apiContext.redisKey ? apiContext.redisKey.root + ' ' : '';
-    if (shouldCacheBeServedImmediately === true || (shouldCacheBeServedImmediately as IShouldServeCache).cache === true) {
+    if (
+      shouldCacheBeServedImmediately === true ||
+      (shouldCacheBeServedImmediately as IShouldServeCache).cache === true
+    ) {
       debug('Cache should be served immediately.');
       if (metadata) {
-        const innerMessage = shouldCacheBeServedImmediately && (shouldCacheBeServedImmediately as IShouldServeCache).remaining ? ((shouldCacheBeServedImmediately as IShouldServeCache).remaining) : '';
+        const innerMessage =
+          shouldCacheBeServedImmediately && (shouldCacheBeServedImmediately as IShouldServeCache).remaining
+            ? (shouldCacheBeServedImmediately as IShouldServeCache).remaining
+            : '';
         debug(`Cache ${displayKey}data: ${innerMessage}`);
       }
       ++apiContext.cost.github.cacheHits;
@@ -440,7 +483,9 @@ export abstract class IntelligentEngine { // in hindsight, "intelligent" is not 
     if (!redisKey) {
       throw new Error('No Redis key provided in apiContext.redisKey.metadata');
     }
-    const cachedMetadata: IRestMetadata = await apiContext.libraryContext.cacheProvider.getObject(redisKey) as IRestMetadata;
+    const cachedMetadata: IRestMetadata = (await apiContext.libraryContext.cacheProvider.getObject(
+      redisKey
+    )) as IRestMetadata;
     // debug('Cached metadata retrieved');
     this.recordRedisCost(apiContext, 'get', cachedMetadata);
     return cachedMetadata;
@@ -459,15 +504,15 @@ function normalizedOptionsString(options) {
   if (options.additionalDifferentiationParameters) {
     additional = options.additionalDifferentiationParameters;
   }
-  let opts = { ...options, ...additional };
+  const opts = { ...options, ...additional };
   if (opts.additionalDifferentiationParameters) {
     delete opts.additionalDifferentiationParameters;
   }
   const sortedkeys = _.keys(opts).sort();
-  let normalized = [];
+  const normalized = [];
   sortedkeys.forEach((key) => {
     let value = opts[key];
-    const typeOf = typeof (value);
+    const typeOf = typeof value;
     if (typeOf === 'undefined') {
       return;
     }

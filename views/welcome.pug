@@ -18,18 +18,18 @@ block content
         if config.authentication.scheme === 'github'
           p.lead To onboard, please authenticate with Active Directory.
           p
-            a.btn.btn-lg.btn-primary(href='/signin/azure') Sign in to #{config.brand.companyName}
+            a.btn.btn-lg.btn-primary(href='/' + (signinPathSegment || 'signin') + '/azure') Sign in to #{config.brand.companyName}
         else if config.authentication.scheme === 'aad'
           p.lead Linking your #{config.brand.companyName} and GitHub accounts gives you access to the #{config.brand.companyName} orgs, teams, and repos on GitHub. We already know your #{primary} id, so just sign in to the #{secondary} account you want to link and we'll set that up.
     div.row
       div.col-md-6.col-lg-6.col-sm-6
           div
-            a.btn.btn-primary.btn-huge.full-width(href='/signin/github')
+            a.btn.btn-primary.btn-huge.full-width(href='/' + (signinPathSegment || 'signin') + '/github')
               h3 I already have a GitHub account
               p Sign in
       div.col-md-6.col-lg-6.col-sm-6
           div
-            a.btn.btn-default.btn-huge.full-width(href='/signin/github/join')
+            a.btn.btn-default.btn-huge.full-width(href='/' + (signinPathSegment || 'signin') + '/github/join')
               h3 I'm new to GitHub
               p Create a GitHub account
     div.row

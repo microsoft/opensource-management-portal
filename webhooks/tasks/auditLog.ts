@@ -9,11 +9,12 @@
 // for organizations, and also to import JSON-based audit export files.
 
 import { WebhookProcessor } from '../organizationProcessor';
-import { Operations } from '../../business';
 import { Organization } from '../../business';
 import { AuditLogRecord } from '../../entities/auditLogRecord/auditLogRecord';
 import { MapWebhookEventsToAuditEvents, AuditLogSource } from '../../entities/auditLogRecord';
+import type { IProviders } from '../../interfaces';
 
+// prettier-ignore
 const eventTypes = new Set([
   'membership',
   'member',
@@ -22,14 +23,15 @@ const eventTypes = new Set([
   'team',
 ]);
 
+// prettier-ignore
 const knownEventTypesToIgnore = new Set([
   'fork',
   'watch',
   'star',
 ]);
 
-async function runAsync(operations: Operations, organization: Organization, data: any) {
-  const { auditLogRecordProvider } = operations.providers;
+async function runAsync(providers: IProviders, organization: Organization, data: any) {
+  const { auditLogRecordProvider } = providers;
   if (!auditLogRecordProvider) {
     return;
   }
@@ -112,7 +114,7 @@ async function runAsync(operations: Operations, organization: Organization, data
 
 export default class AuditLogRecorderWebhookProcessor implements WebhookProcessor {
   filter(data: any) {
-    let eventType = data.properties.event;
+    const eventType = data.properties.event;
     const has = eventTypes.has(eventType);
     if (!has && !knownEventTypesToIgnore.has(eventType)) {
       console.log(`audit log does not support event type: ${eventType}`);
@@ -120,8 +122,8 @@ export default class AuditLogRecorderWebhookProcessor implements WebhookProcesso
     return has;
   }
 
-  async run(operations: Operations, organization: Organization, data: any): Promise<boolean> {
-    const result = await runAsync(operations, organization, data);
+  async run(providers: IProviders, organization: Organization, data: any): Promise<boolean> {
+    const result = await runAsync(providers, organization, data);
     return true;
   }
 }

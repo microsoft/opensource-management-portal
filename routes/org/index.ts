@@ -6,13 +6,15 @@
 import express, { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
-
 import { getProviders } from '../../transitional';
-import { IAggregateUserSummary } from '../../user/aggregate';
+import { IAggregateUserSummary } from '../../business/user/aggregate';
 import { TeamJoinApprovalEntity } from '../../entities/teamJoinApproval/teamJoinApproval';
 import { Team } from '../../business';
 import { ReposAppRequest, OrganizationMembershipState } from '../../interfaces';
-import { IRequestOrganizationPermissions, AddOrganizationPermissionsToRequest } from '../../middleware/github/orgPermissions';
+import {
+  IRequestOrganizationPermissions,
+  AddOrganizationPermissionsToRequest,
+} from '../../middleware/github/orgPermissions';
 
 import RouteRepos from './repos';
 import RouteTeams from './teams';
@@ -60,67 +62,78 @@ router.use('/teams', RouteTeams);
 // Org membership requirement middleware
 router.use(asyncHandler(AddOrganizationPermissionsToRequest));
 
-router.use(asyncHandler(async (req: ILocalOrgRequest, res, next) => {
-  const organization = req.organization;
-  const orgPermissions = req.orgPermissions;
-  if (!orgPermissions) {
-    return next(new Error('Organization permissions are unavailable'));
-  }
-  // Decorate the route for the sudoer
-  if (orgPermissions.sudo) {
-    req.sudoMode = true;
-  }
-  const membershipStatus = orgPermissions.membershipStatus;
-  if (membershipStatus === OrganizationMembershipState.Active) {
-    return next();
-  } else {
-    const individualContext = req.individualContext;
-    const username = individualContext.getGitHubIdentity().username;
+router.use(
+  asyncHandler(async (req: ILocalOrgRequest, res, next) => {
+    const organization = req.organization;
+    const orgPermissions = req.orgPermissions;
+    if (!orgPermissions) {
+      return next(new Error('Organization permissions are unavailable'));
+    }
+    // Decorate the route for the sudoer
+    if (orgPermissions.sudo) {
+      req.sudoMode = true;
+    }
+    const membershipStatus = orgPermissions.membershipStatus;
+    if (membershipStatus === OrganizationMembershipState.Active) {
+      return next();
+    } else {
+      const individualContext = req.individualContext;
+      const username = individualContext.getGitHubIdentity().username;
 
-    await organization.getOperationalMembership(username);
-    return res.redirect('/' + organization.name + '/join');
-  }
-}));
+      await organization.getOperationalMembership(username);
+      return res.redirect('/' + organization.name + '/join');
+    }
+  })
+);
 
 // Org membership required endpoints:
 
-router.get('/', asyncHandler(async function (req: ReposAppRequest, res, next) {
-  const providers = getProviders(req);
-  const approvalProvider = providers.approvalProvider;
-  const organization = req.organization;
-  const username = req.individualContext.getGitHubIdentity().username;
-  const individualContext = req.individualContext;
-  const results = {
-    orgUser: organization.memberFromEntity(await organization.getDetails()),
-    isMembershipPublic: await organization.checkPublicMembership(username),
-    organizationOverview: null as IAggregateUserSummary,
-    isAdministrator: false, // CONSIDER: UPDATE ORG SUDOERS SYSTEM UI... ... legacyUserContext.isAdministrator(callback);
-    isSudoer: false, // if (results.isAdministrator && results.isAdministrator === true) { results.isSudoer = true;
-    teamsMaintainedHash: null,
-    pendingApprovals: null as TeamJoinApprovalEntity[],
-  };
-  results.organizationOverview = await individualContext.aggregations.getAggregatedOrganizationOverview(organization);
-  // Check for pending approvals
-  const teamsMaintained = results.organizationOverview.teams.maintainer as Team[];
-  if (teamsMaintained && teamsMaintained.length && teamsMaintained.length > 0) {
-    const teamsMaintainedHash = {};
-    for (let i = 0; i < teamsMaintained.length; i++) {
-      teamsMaintainedHash[teamsMaintained[i].id] = teamsMaintained[i];
+router.get(
+  '/',
+  asyncHandler(async function (req: ReposAppRequest, res, next) {
+    const providers = getProviders(req);
+    const approvalProvider = providers.approvalProvider;
+    const organization = req.organization;
+    const username = req.individualContext.getGitHubIdentity().username;
+    const individualContext = req.individualContext;
+    const organizationAdmins = await organization.getOwnersCardData();
+    const results = {
+      orgUser: organization.memberFromEntity(await organization.getDetails()),
+      isMembershipPublic: await organization.checkPublicMembership(username),
+      organizationOverview: null as IAggregateUserSummary,
+      isAdministrator: false, // CONSIDER: UPDATE ORG SUDOERS SYSTEM UI... ... legacyUserContext.isAdministrator(callback);
+      isSudoer: false, // if (results.isAdministrator && results.isAdministrator === true) { results.isSudoer = true;
+      teamsMaintainedHash: null,
+      pendingApprovals: null as TeamJoinApprovalEntity[],
+      organizationAdmins,
+    };
+    results.organizationOverview = await individualContext.aggregations.getAggregatedOrganizationOverview(
+      organization
+    );
+    // Check for pending approvals
+    const teamsMaintained = results.organizationOverview.teams.maintainer as Team[];
+    if (teamsMaintained && teamsMaintained.length && teamsMaintained.length > 0) {
+      const teamsMaintainedHash = {};
+      for (let i = 0; i < teamsMaintained.length; i++) {
+        teamsMaintainedHash[teamsMaintained[i].id] = teamsMaintained[i];
+      }
+      results.teamsMaintainedHash = teamsMaintainedHash;
+      results.pendingApprovals = await approvalProvider.queryPendingApprovalsForTeams(
+        teamsMaintained.map((team) => team.id.toString())
+      );
     }
-    results.teamsMaintainedHash = teamsMaintainedHash;
-    results.pendingApprovals = await approvalProvider.queryPendingApprovalsForTeams(teamsMaintained.map(team => team.id.toString()));
-  }
-  let organizationEntity = results && results.orgUser ? results.orgUser.getEntity() : null;
-  req.individualContext.webContext.render({
-    view: 'org/index',
-    title: organization.name,
-    state: {
-      accountInfo: results,
-      organization,
-      organizationEntity,
-    },
-  });
-}));
+    const organizationEntity = results && results.orgUser ? results.orgUser.getEntity() : null;
+    req.individualContext.webContext.render({
+      view: 'org/index',
+      title: organization.name,
+      state: {
+        accountInfo: results,
+        organization,
+        organizationEntity,
+      },
+    });
+  })
+);
 
 router.use('/membership', RouteMembership);
 router.use('/leave', RouteLeave);
@@ -132,17 +145,20 @@ router.use('/new-repo', (req: ReposAppRequest, res) => {
 });
 router.use('/wizard', RouteNewRepoSpa);
 
-router.use('/:repoName', asyncHandler(async (req: ReposAppRequest, res, next) => {
-  const repoName = req.params.repoName;
-  const organization = req.organization;
-  const attemptedRepository = organization.repository(repoName);
-  try {
-    const details = await attemptedRepository.getDetails();
-    const correctUrl = `${organization.baseUrl}repos/${details.name}`;
-    return res.redirect(correctUrl);
-  } catch (error) {
-    return next();
-  }
-}));
+router.use(
+  '/:repoName',
+  asyncHandler(async (req: ReposAppRequest, res, next) => {
+    const repoName = req.params.repoName;
+    const organization = req.organization;
+    const attemptedRepository = organization.repository(repoName);
+    try {
+      const details = await attemptedRepository.getDetails();
+      const correctUrl = `${organization.baseUrl}repos/${details.name}`;
+      return res.redirect(correctUrl);
+    } catch (error) {
+      return next();
+    }
+  })
+);
 
 export default router;

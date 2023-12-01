@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-// const debugCacheOptimization = require('debug')('oss-cache-optimization');
-
 export enum FieldType {
   Keep, // keep the property value, if present
   Drop, // drop it
@@ -47,8 +45,7 @@ function RegisterEntity(entityType: GitHubResponseType, properties: any[]) {
   }
   // debugCacheOptimization(`Registering subset entity ${entityType}`);
   for (let i = 0; i < properties.length; i++) {
-    let pair: [string, FieldType, GitHubResponseType?];
-    pair = properties[i];
+    const pair: [string, FieldType, GitHubResponseType?] = properties[i];
     const fieldName = pair[0];
     if (pair[1] === FieldType.Drop || pair[1] === FieldType.Keep) {
       const targetMap = pair[1] === FieldType.Drop ? entityPropertiesToDrop : entityPropertiesToKeep;
@@ -69,7 +66,11 @@ function RegisterEntity(entityType: GitHubResponseType, properties: any[]) {
   }
 }
 
-function RegisterEndpoint(endpoint: string, entityType: GitHubResponseType, responseType: ResponseBodyType = ResponseBodyType.Entity) {
+function RegisterEndpoint(
+  endpoint: string,
+  entityType: GitHubResponseType,
+  responseType: ResponseBodyType = ResponseBodyType.Entity
+) {
   if (apiToEntityType.has(endpoint)) {
     throw new Error(`Endpoint ${endpoint} has already registered a GitHub entity type. No duplicates.`);
   }
@@ -400,7 +401,7 @@ export interface IGitHubEntityDefinitions {
   apiToEntityResponseType: Map<string, ResponseBodyType>;
 }
 
-export function getEntityDefinitions() : IGitHubEntityDefinitions {
+export function getEntityDefinitions(): IGitHubEntityDefinitions {
   return {
     entityPropertiesToKeep,
     entityPropertiesToDrop,

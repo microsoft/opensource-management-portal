@@ -14,7 +14,7 @@ import graphBuilder from './graphBuilder';
 async function composeGraphs(api: ILibraryOptions) {
   api = api || {};
   const options = api.options || {};
-  let applicationRoot = (options.applicationRoot || appRoot).toString();
+  const applicationRoot = (options.applicationRoot || appRoot).toString();
 
   const paths: string[] = [];
 
@@ -24,9 +24,11 @@ async function composeGraphs(api: ILibraryOptions) {
 
   // Configuration packages defined explicitly in app's package.json
   // ---------------------------------------------------------------
-  let pkg = getPackage(applicationRoot);
+  const pkg = getPackage(applicationRoot);
   if (pkg && pkg.painlessConfigObjectPackages) {
-    let pco = Array.isArray(pkg.painlessConfigObjectPackages) ? pkg.painlessConfigObjectPackages : pkg.painlessConfigObjectPackages.split(',');
+    const pco = Array.isArray(pkg.painlessConfigObjectPackages)
+      ? pkg.painlessConfigObjectPackages
+      : pkg.painlessConfigObjectPackages.split(',');
     addConfigPackages(paths, applicationRoot, pco);
   }
 
@@ -34,17 +36,21 @@ async function composeGraphs(api: ILibraryOptions) {
   // ----------------------------------------
   const environment = api.environment;
   if (!environment) {
-    console.warn(`libraryOptions has no environment property, environment-based configuration packages not available`);
+    console.warn(
+      `libraryOptions has no environment property, environment-based configuration packages not available`
+    );
   }
   const additionalPackagesKey = environment?.get('CONFIGURATION_PACKAGES_KEY') || 'CONFIGURATION_PACKAGES';
-  let configurationPackages = environment?.get(additionalPackagesKey) as string;
+  const configurationPackages = environment?.get(additionalPackagesKey) as string;
   if (configurationPackages) {
     const packages = configurationPackages.split(',');
     addConfigPackages(paths, applicationRoot, packages);
   }
 
   if (paths.length === 0) {
-    throw new Error('No configuration packages or directories were found to process. Consider using "options.graph" as an option to the configuration resolver if you do not need to use configuration directories. Otherwise, check that you have configured your package.json or other environment values as needed.');
+    throw new Error(
+      'No configuration packages or directories were found to process. Consider using "options.graph" as an option to the configuration resolver if you do not need to use configuration directories. Otherwise, check that you have configured your package.json or other environment values as needed.'
+    );
   }
 
   // Build the graph
@@ -56,7 +62,9 @@ async function composeGraphs(api: ILibraryOptions) {
     graph = deepmerge(graph, result, { arrayMerge: overwriteMerge });
   }
   if (!graph || Object.getOwnPropertyNames(graph).length === 0) {
-    throw new Error(`Successfully processed ${paths.length} configuration graph packages or directories, yet the resulting graph object did not have properties. This is likely an error or issue that should be corrected. Or, alternatively, use options.graph as an input to the resolver.`);
+    throw new Error(
+      `Successfully processed ${paths.length} configuration graph packages or directories, yet the resulting graph object did not have properties. This is likely an error or issue that should be corrected. Or, alternatively, use options.graph as an input to the resolver.`
+    );
   }
   return graph;
 }
@@ -84,14 +92,16 @@ function addConfigPackage(paths: string[], applicationRoot: string, npmName: str
     try {
       packageInstance = require(npmName);
     } catch (cannotRequire) {
-      const error: InnerError = new Error(`While trying to identify configuration graphs, ${npmName} could not be required`);
-      error.innerError = cannotRequire;
-      throw error;
+      throw new Error(`While trying to identify configuration graphs, ${npmName} could not be required`, {
+        cause: cannotRequire,
+      });
     }
-    if (typeof(packageInstance) === 'string') {
+    if (typeof packageInstance === 'string') {
       root = packageInstance;
     } else {
-      throw new Error(`The package ${npmName} instance is not of type string. For the configuration graph system it should be a string (a path).`);
+      throw new Error(
+        `The package ${npmName} instance is not of type string. For the configuration graph system it should be a string (a path).`
+      );
     }
   } else {
     root = path.resolve(path.join(applicationRoot, npmName));
@@ -101,14 +111,21 @@ function addConfigPackage(paths: string[], applicationRoot: string, npmName: str
     paths.push(root);
   } catch (notFound) {
     if (packageInstance) {
-      throw new Error(`While instantiating "${npmName}, the returned string value was not a valid path: ${root}`);
+      throw new Error(
+        `While instantiating "${npmName}, the returned string value was not a valid path: ${root}`
+      );
     } else {
       throw new Error(`Could not locate the local configuration directory for package "${npmName}": ${root}`);
     }
   }
 }
 
-function addAppConfigDirectory(paths: string[], api: ILibraryOptions, options: IProviderOptions, applicationRoot: string) {
+function addAppConfigDirectory(
+  paths: string[],
+  api: ILibraryOptions,
+  options: IProviderOptions,
+  applicationRoot: string
+) {
   let directoryName = options.directoryName;
   let key = null;
   if (!directoryName && api.environment) {
@@ -123,9 +140,9 @@ function addAppConfigDirectory(paths: string[], api: ILibraryOptions, options: I
     fs.statSync(dirPath);
     paths.push(dirPath);
   } catch (notFound) {
-    const error: InnerError = new Error(`The configuration graph directory ${dirPath} was not found. ${key}`);
-    error.innerError = notFound;
-    throw error;
+    throw new Error(`The configuration graph directory ${dirPath} was not found. ${key}`, {
+      cause: notFound,
+    });
   }
 }
 

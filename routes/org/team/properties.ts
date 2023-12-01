@@ -18,7 +18,7 @@ interface IRequestWithTeamAndLegacy extends ReposAppRequest {
 
 router.get('/', MiddlewareTeamAdminRequired, (req: IRequestWithTeamAndLegacy, res, next) => {
   const team2 = req.team2;
-  team2.getDetails(error => {
+  team2.getDetails((error) => {
     if (error) {
       return next(wrapError(error, 'Had trouble getting the detailed properties for this team.'));
     }
@@ -41,12 +41,16 @@ router.post('/', MiddlewareTeamAdminRequired, (req: IRequestWithTeamAndLegacy, r
     name: req.body.ghname,
     description: req.body.description,
   };
-  team2.edit(patch, error => {
+  team2.edit(patch, (error) => {
     if (error) {
       return next(error);
     }
-    req.individualContext.webContext.saveUserAlert('Team properties updated on GitHub', 'Properties Saved', UserAlertType.Success);
-    team2.getDetails(getDetailsError => {
+    req.individualContext.webContext.saveUserAlert(
+      'Team properties updated on GitHub',
+      'Properties Saved',
+      UserAlertType.Success
+    );
+    team2.getDetails((getDetailsError) => {
       if (getDetailsError) {
         return next(getDetailsError);
       }

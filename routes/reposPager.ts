@@ -8,41 +8,63 @@ import { NextFunction, Response } from 'express';
 import _ from 'lodash';
 
 import { daysInMilliseconds } from '../utils';
-import { Repository, IPersonalizedUserAggregateRepositoryPermission, TeamRepositoryPermission, Operations, Team, Organization, RepositorySearch } from '../business';
+import {
+  Repository,
+  IPersonalizedUserAggregateRepositoryPermission,
+  TeamRepositoryPermission,
+  Operations,
+  Team,
+  Organization,
+  RepositorySearch,
+} from '../business';
 import QueryCache from '../business/queryCache';
 import { GitHubRepositoryType, IReposAppWithTeam } from '../interfaces';
 import { IRequestTeamPermissions } from '../middleware/github/teamPermissions';
 import { getProviders } from '../transitional';
-import { UserContext } from '../user/aggregate';
+import { UserContext } from '../business/user/aggregate';
 
 interface IGetReposAndOptionalTeamPermissionsResponse {
   reposData: Repository[];
   ageInformation?: any;
   userRepos?: IPersonalizedUserAggregateRepositoryPermission[];
-  specificTeamRepos?: TeamRepositoryPermission[],
+  specificTeamRepos?: TeamRepositoryPermission[];
 }
 
 function sortOrgs(orgs) {
   return _.sortBy(orgs, ['name']);
 }
 
-async function getRepos(organizationId: number, operations: Operations, queryCache: QueryCache): Promise<Repository[]> {
+async function getRepos(
+  organizationId: number,
+  operations: Operations,
+  queryCache: QueryCache
+): Promise<Repository[]> {
   if (organizationId) {
     if (queryCache && queryCache.supportsRepositories) {
-      return (await queryCache.organizationRepositories(organizationId.toString())).map(wrapper => wrapper.repository);
+      return (await queryCache.organizationRepositories(organizationId.toString())).map(
+        (wrapper) => wrapper.repository
+      );
     } else {
       return operations.getOrganizationById(organizationId).getRepositories();
     }
   } else {
     if (queryCache && queryCache.supportsRepositories) {
-      return (await queryCache.allRepositories()).map(wrapper => wrapper.repository);
+      return (await queryCache.allRepositories()).map((wrapper) => wrapper.repository);
     }
     return operations.getRepos();
   }
 }
 
-async function getReposAndOptionalTeamPermissions(organizationId: number, operations: Operations, queryCache: QueryCache, teamsType: string | null | undefined, team2: Team, specificTeamRepos, userContext: UserContext): Promise<IGetReposAndOptionalTeamPermissionsResponse> {
-  // REMOVED: previously age information was avialable via getRepos(orgName, operations, (error, reposData, ageInformation). Was it really useful?
+async function getReposAndOptionalTeamPermissions(
+  organizationId: number,
+  operations: Operations,
+  queryCache: QueryCache,
+  teamsType: string | null | undefined,
+  team2: Team,
+  specificTeamRepos,
+  userContext: UserContext
+): Promise<IGetReposAndOptionalTeamPermissionsResponse> {
+  // REMOVED: previously age information was available via getRepos(orgName, operations, (error, reposData, ageInformation). Was it really useful?
   const reposData = await getRepos(organizationId, operations, queryCache);
   if (!teamsType || teamsType === 'all') {
     // Retrieve the repositories for this specific repo, along with permissions information
@@ -72,16 +94,29 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
   // Filter by team repositories, only in sub-team views
   const specificTeamPermissions = req.teamPermissions as IRequestTeamPermissions;
   const team2 = req.team2 as Team;
-  let specificTeamId = team2 ? team2.id : null;
-  const { reposData, userRepos, specificTeamRepos } = await getReposAndOptionalTeamPermissions(organizationId, operations, queryCache, teamsType, team2, specificTeamId, individualContext.aggregations);
+  const specificTeamId = team2 ? team2.id : null;
+  const { reposData, userRepos, specificTeamRepos } = await getReposAndOptionalTeamPermissions(
+    organizationId,
+    operations,
+    queryCache,
+    teamsType,
+    team2,
+    specificTeamId,
+    individualContext.aggregations
+  );
 
   const page = req.query.page_number ? Number(req.query.page_number) : 1;
 
-  let phrase = req.query.q as string;
+  const phrase = req.query.q as string;
 
   // TODO: Validate the type
   let type = req.query.type as string;
-  if (type !== 'public' && type !== 'private' && type !== 'source' && type !== 'fork' /*&& type !== 'mirrors' - we do not do mirror stuff */) {
+  if (
+    type !== 'public' &&
+    type !== 'private' &&
+    type !== 'source' &&
+    type !== 'fork' /*&& type !== 'mirrors' - we do not do mirror stuff */
+  ) {
     type = null;
   }
 
@@ -99,10 +134,10 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
   const createdSinceValue = req.query.cs ? Number(req.query.cs) : null;
   let createdSince = null;
   if (createdSinceValue) {
-    createdSince = new Date((new Date()).getTime() - daysInMilliseconds(createdSinceValue));
+    createdSince = new Date(new Date().getTime() - daysInMilliseconds(createdSinceValue));
   }
 
-  let showIds = req.query.showids === '1';
+  const showIds = req.query.showids === '1';
 
   let teamsSubType = null;
   if (teamsType !== 'myread' && teamsType !== 'mywrite' && teamsType !== 'myadmin') {
@@ -112,7 +147,7 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
     teamsType = 'my';
   }
   // TODO: Validate the language value is in the Linguist list
-  let language = req.query.language as string;
+  const language = req.query.language as string;
 
   const filters = [];
   if (type) {
@@ -138,7 +173,7 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
     });
   }
   if (teamsType) {
-    let ttValue = teamsType === 'my' ? 'my ' + teamsSubType : teamsType;
+    const ttValue = teamsType === 'my' ? 'my ' + teamsSubType : teamsType;
     filters.push({
       type: 'tt',
       value: ttValue,
@@ -184,7 +219,9 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
     view: 'repos/',
     title: 'Repos',
     state: {
-      organizations: isCrossOrg ? sortOrgs(operations.getOrganizations(operations.organizationNames)) : undefined,
+      organizations: isCrossOrg
+        ? sortOrgs(operations.getOrganizations(operations.organizationNames))
+        : undefined,
       organization: isCrossOrg ? undefined : req.organization,
       search,
       filters,

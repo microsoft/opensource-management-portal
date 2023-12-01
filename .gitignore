@@ -9,3 +9,7 @@ env.json
 env-orgs.json
 .secrets.env
 .gdn
+feedscan
+feedscan*
+..prettierignore.swp
+scripts/localCodespace.ts

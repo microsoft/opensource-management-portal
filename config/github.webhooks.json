@@ -1,4 +1,6 @@
 {
+  "firehoseOffline": "env://GITHUB_FIREHOSE_OFFLINE",
+
   "sharedSecret": "env://GITHUB_WEBHOOK_SHARED_SECRET",
 
   "runtimeMinutes": "env://GITHUB_WEBHOOKS_RUNTIME_MINUTES",

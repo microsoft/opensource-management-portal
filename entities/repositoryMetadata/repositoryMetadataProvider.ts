@@ -3,14 +3,21 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { RepositoryMetadataEntity, RepositoryMetadataFixedQueryAll, RepositoryMetadataFixedQueryByRepositoryId } from './repositoryMetadata';
+import {
+  IEntityMetadata,
+  EntityMetadataBase,
+  IEntityMetadataBaseOptions,
+} from '../../lib/entityMetadataProvider/entityMetadata';
+import {
+  RepositoryMetadataEntity,
+  RepositoryMetadataFixedQueryAll,
+  RepositoryMetadataFixedQueryByRepositoryId,
+} from './repositoryMetadata';
 import { EntityImplementation } from './repositoryMetadata';
 
 const thisProviderType = EntityImplementation.Type;
 
-export interface IRepositoryMetadataCreateOptions extends IEntityMetadataBaseOptions {
-}
+export interface IRepositoryMetadataCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface IRepositoryMetadataProvider {
   initialize(): Promise<void>;
@@ -81,7 +88,9 @@ export class RepositoryMetadataProvider extends EntityMetadataBase implements IR
       }
       if (exists) {
         // TODO: which storage error code would this be?
-        throw new Error(`There is already an entity of type ${thisProviderType} in the table for ID ${repoId}`);
+        throw new Error(
+          `There is already an entity of type ${thisProviderType} in the table for ID ${repoId}`
+        );
       }
     }
     await this._entities.setMetadata(entity);

@@ -14,12 +14,15 @@ const path = require('path');
 const organizationsFileVariableName = 'GITHUB_ORGANIZATIONS_FILE';
 const organizationsEnvironmentVariableName = 'GITHUB_ORGANIZATIONS_ENVIRONMENT_NAME';
 const organizationsEnvironmentTypeVariableName = 'GITHUB_ORGANIZATIONS_ENVIRONMENT_TYPE_NAME';
+const painlessConfigEnvironmentVariableName = 'CONFIGURATION_ENVIRONMENT';
 
 const defaultEnvironmentTypeName = 'github.organizations';
 
 function getModuleConfiguration(environmentInstances, environmentType, environmentName) {
   if (!environmentInstances) {
-    throw new Error(`${organizationsEnvironmentVariableName} configured but no environment instances were loaded by the config system`);
+    throw new Error(
+      `${organizationsEnvironmentVariableName} configured but no environment instances were loaded by the config system`
+    );
   }
   if (!environmentType) {
     throw new Error('No GitHub organizations environment type configured');
@@ -46,13 +49,20 @@ module.exports = (graphApi) => {
   const orgs = [];
   orgs.onboarding = [];
   orgs.ignore = [];
-  const defaultLegalEntities = arrayFromString(environmentProvider.get('GITHUB_ORGANIZATIONS_DEFAULT_LEGAL_ENTITIES'));
+  const defaultLegalEntities = arrayFromString(
+    environmentProvider.get('GITHUB_ORGANIZATIONS_DEFAULT_LEGAL_ENTITIES')
+  );
   const defaultTemplates = arrayFromString(environmentProvider.get('GITHUB_ORGANIZATIONS_DEFAULT_TEMPLATES'));
   const organizationsFile = environmentProvider.get(organizationsFileVariableName);
-  const organizationsEnvironmentName = environmentProvider.get(organizationsEnvironmentVariableName);
-  const organizationsEnvironmentType = environmentProvider.get(organizationsEnvironmentTypeVariableName) || defaultEnvironmentTypeName;
+  const organizationsEnvironmentName =
+    environmentProvider.get(organizationsEnvironmentVariableName) ||
+    environmentProvider.get(painlessConfigEnvironmentVariableName);
+  const organizationsEnvironmentType =
+    environmentProvider.get(organizationsEnvironmentTypeVariableName) || defaultEnvironmentTypeName;
   if (organizationsFile && organizationsEnvironmentName) {
-    console.warn(`GitHub organization loader: Configuration contains both ${organizationsFileVariableName} and ${organizationsEnvironmentVariableName} values. Only the file will be loaded.`);
+    console.warn(
+      `GitHub organization loader: Configuration contains both ${organizationsFileVariableName} and ${organizationsEnvironmentVariableName} values. Only the file will be loaded.`
+    );
   }
   let contents = null;
   if (organizationsFile) {
@@ -67,9 +77,15 @@ module.exports = (graphApi) => {
       throw notFound;
     }
   } else if (organizationsEnvironmentName && !environmentInstances) {
-    throw new Error(`${organizationsEnvironmentVariableName} configured but no environment instances were loaded by the config system`);
+    throw new Error(
+      `${organizationsEnvironmentVariableName} configured but no environment instances were loaded by the config system`
+    );
   } else if (organizationsEnvironmentName) {
-    contents = getModuleConfiguration(environmentInstances, organizationsEnvironmentType, organizationsEnvironmentName);
+    contents = getModuleConfiguration(
+      environmentInstances,
+      organizationsEnvironmentType,
+      organizationsEnvironmentName
+    );
   }
 
   if (contents && Array.isArray(contents)) {

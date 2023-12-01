@@ -7,8 +7,11 @@ import { Session } from 'express-session';
 import { Request, Response } from 'express';
 import { AccessToken } from 'simple-oauth2';
 
+import type { TelemetryClient } from 'applicationinsights';
+import type { IReposApplication } from './app';
+
 import { Organization, Team } from '../business';
-import { IndividualContext } from '../user';
+import { IndividualContext } from '../business/user';
 
 export enum UserAlertType {
   Success = 'success',
@@ -32,6 +35,7 @@ export interface IReposAppWithTeam extends ReposAppRequest {
 export enum LocalApiRepoAction {
   Delete = 'delete',
   Archive = 'archive',
+  UnArchive = 'unarchive',
 }
 
 export interface ReposAppRequest extends Request {
@@ -39,8 +43,10 @@ export interface ReposAppRequest extends Request {
   isAuthenticated(): boolean;
   user: any;
 
+  app: IReposApplication;
+
   // our extensions
-  insights?: any;
+  insights?: TelemetryClient;
   reposContext?: IReposAppContext;
   currentOrganizationMemberships?: any; // needs a redesign
   teamsPagerMode?: string;
@@ -62,7 +68,6 @@ export interface IUserAlert {
   context: UserAlertType;
   optionalLink: string;
   optionalCaption: string;
-
 }
 
 interface IAppSessionProperties extends Session {
@@ -74,10 +79,9 @@ interface IAppSessionProperties extends Session {
   referer: string;
 }
 
-export interface IAppSession extends IAppSessionProperties { }
+export interface IAppSession extends IAppSessionProperties {}
 
-export interface IReposAppResponse extends Response {
-}
+export interface IReposAppResponse extends Response {}
 
 export interface IReposRequestWithOrganization extends ReposAppRequest {
   organization?: any;

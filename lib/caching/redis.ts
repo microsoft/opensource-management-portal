@@ -3,32 +3,27 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import redis from 'redis';
+import { RedisClientType, commandOptions } from 'redis';
 import zlib from 'zlib';
 
-const debug = require('debug')('redis');
-const debugCrossOrganization = require('debug')('redis-cross-org');
+import Debug from 'debug';
+const debug = Debug.debug('redis');
+const debugCrossOrganization = Debug.debug('redis-cross-org');
 
 import { ICacheHelper } from '.';
-
-// const compressionOptions = {
-//   type: 'gzip',
-//   params: {
-//     level: zlib.Z_BEST_SPEED,
-//   },
-// };
+import { gunzipBuffer, gzipString } from '../../utils';
 
 export interface ISetCompressedOptions {
   minutesToExpire?: number;
 }
 
 export interface IRedisHelperOptions {
-  redisClient: redis.RedisClient;
+  redisClient: RedisClientType;
   prefix?: string;
 }
 
 export default class RedisHelper implements ICacheHelper {
-  private _redis: redis.RedisClient;
+  private _redis: RedisClientType;
   private _prefix: string;
 
   constructor(options: IRedisHelperOptions) {
@@ -49,48 +44,34 @@ export default class RedisHelper implements ICacheHelper {
     if (key.includes('.x#')) {
       debugCrossOrganization('    GET ' + key);
     }
-    return new Promise((resolve, reject) => {
-      this._redis.get(key, (error, value) => {
-        return error ? reject(error) : resolve(value);
-      });
-    });
+    return this._redis.get(key);
   }
 
-  getCompressed(key: string): Promise<string> {
+  async getCompressed(key: string): Promise<string> {
     key = this.key(key);
     debug('GET ' + key);
     if (key.includes('.x#')) {
       debugCrossOrganization('    GET ' + key);
     }
-    const bufferKey = Buffer.from(key);
-    return new Promise((resolve, reject) => {
-      this._redis.get(bufferKey as any as string /* Buffer */, (error, buffer) => {
-        if (error) {
-          return process.nextTick(reject, error);
-        }
-        if (buffer === undefined || buffer === null) {
-          return process.nextTick(resolve, buffer);
-        }
-        zlib.gunzip(buffer, (unzipError, unzipped) => {
-          // Fallback if there is a data error (i.e. it's not compressed)
-          if ((unzipError as any)?.errno === zlib.Z_DATA_ERROR) {
-            const originalValue = buffer.toString();
-            return process.nextTick(resolve, originalValue);
-          } else if (unzipError) {
-            return process.nextTick(reject, unzipError);
-          }
-          try {
-            const unzippedValue = unzipped.toString();
-            return process.nextTick(resolve, unzippedValue);
-          } catch (otherError) {
-            return process.nextTick(reject, otherError);
-          }
-        });
-      });
-    });
+    const bufferOptions = commandOptions({ returnBuffers: true });
+    const buffer = await this._redis.get(bufferOptions, key);
+    if (buffer === undefined || buffer === null) {
+      return null;
+    }
+    try {
+      const unzipped = await gunzipBuffer(buffer);
+      return unzipped;
+    } catch (unzipError) {
+      if ((unzipError as any)?.errno === zlib.constants.Z_DATA_ERROR) {
+        const originalValue = buffer.toString();
+        return originalValue;
+      } else if (unzipError) {
+        throw unzipError;
+      }
+    }
   }
 
-  setCompressed(key: string, value: string, options?: ISetCompressedOptions): Promise<void> {
+  async setCompressed(key: string, value: string, options?: ISetCompressedOptions): Promise<void> {
     key = this.key(key);
     const minutesToExpire = options ? options.minutesToExpire : null;
     if (minutesToExpire) {
@@ -98,23 +79,12 @@ export default class RedisHelper implements ICacheHelper {
     } else {
       debug(`SET ${key}`);
     }
-    const val = Buffer.from(value);
-    return new Promise((resolve, reject) => {
-      zlib.gzip(val, (gzipError, compressed) => {
-        if (gzipError) {
-          return reject(gzipError);
-        }
-        const bufferKey = Buffer.from(key);
-        const finalize = (error, ok) => {
-          return error ? reject(error) : resolve(ok);
-        };
-        if (minutesToExpire) {
-          this._redis.set(bufferKey as any as string /* Buffer key type to make TypeScript happy */, compressed as any, 'EX', minutesToExpire * 60, finalize);
-        } else {
-          this._redis.set(bufferKey as any as string /* Buffer key type to make TypeScript happy */, compressed as any, finalize);
-        }
-      });
-    });
+    const compressed = await gzipString(value);
+    if (minutesToExpire) {
+      await this._redis.setEx(key, minutesToExpire * 60, compressed);
+    } else {
+      await this._redis.set(key, compressed);
+    }
   }
 
   async getObject(key: string): Promise<any> {
@@ -132,14 +102,10 @@ export default class RedisHelper implements ICacheHelper {
     return this.set(key, json);
   }
 
-  set(key: string, value: string): Promise<void> {
+  async set(key: string, value: string): Promise<void> {
     key = this.key(key);
     debug('SET ' + key);
-    return new Promise((resolve, reject) => {
-      this._redis.set(key, value, (error, ok) => {
-        return error ? reject(error) : resolve();
-      });
-    });
+    await this._redis.set(key, value);
   }
 
   setObjectWithExpire(key: string, object: any, minutesToExpire: number): Promise<void> {
@@ -160,40 +126,27 @@ export default class RedisHelper implements ICacheHelper {
     return this.setCompressed(key, value, options);
   }
 
-  setWithExpire(key: string, value: string, minutesToExpire: number): Promise<void> {
+  async setWithExpire(key: string, value: string, minutesToExpire: number): Promise<void> {
     if (!minutesToExpire) {
       throw new Error('No minutes to expiration value');
     }
     key = this.key(key);
     debug(`SET ${key} EX ${minutesToExpire}m`);
-    return new Promise((resolve, reject) => {
-      this._redis.set(key, value, 'EX', minutesToExpire * 60, (error, ok) => {
-        // CONSIDER: do they want the return value from Redis here?
-        return error ? reject(error) : resolve();
-      });
-    });
+    await this._redis.setEx(key, minutesToExpire * 60, value);
   }
 
-  expire(key: string, minutesToExpire: number): Promise<void> {
+  async expire(key: string, minutesToExpire: number): Promise<void> {
     if (!minutesToExpire) {
       throw new Error('No minutes to expiration value');
     }
     key = this.key(key);
     debug(`EXP ${key}`);
-    return new Promise((resolve, reject) => {
-      this._redis.expire(key, minutesToExpire * 60, (error, ok) => {
-        return error ? reject(error) : resolve();
-      });
-    });
+    await this._redis.expire(key, minutesToExpire * 60);
   }
 
-  delete(key: string): Promise<void> {
+  async delete(key: string): Promise<void> {
     key = this.key(key);
     debug('DEL ' + key);
-    return new Promise((resolve, reject) => {
-      this._redis.del(key, (error, ok) => {
-        return error ? reject(error) : resolve();
-      });
-    });
+    await this._redis.del(key);
   }
 }

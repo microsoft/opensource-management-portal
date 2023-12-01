@@ -9,7 +9,8 @@ import BlobCache, { IBlobCacheOptions } from './blob';
 import { sleep } from '../../utils';
 import { ErrorHelper, sha256 } from '../../transitional';
 
-const debug = require('debug')('cache');
+import Debug from 'debug';
+const debug = Debug.debug('cache');
 
 export interface ICosmosCacheOptions {
   endpoint: string;
@@ -54,7 +55,7 @@ export default class CosmosCache implements ICacheHelper {
   }
 
   private safetyKey(str: string) {
-    return str.replace(/[%:\\\/\?#]/g, '');
+    return str.replace(/[%:\\/?#]/g, '');
   }
 
   private key(key: string) {
@@ -87,8 +88,12 @@ export default class CosmosCache implements ICacheHelper {
       throw new Error('options.database required');
     }
     this._client = new CosmosClient({ endpoint, key });
-    this._database = (await this._client.databases.createIfNotExists({ id: this._options.database })).database;
-    this._collection = (await this._database.containers.createIfNotExists({ id: this._options.collection })).container;
+    this._database = (
+      await this._client.databases.createIfNotExists({ id: this._options.database })
+    ).database;
+    this._collection = (
+      await this._database.containers.createIfNotExists({ id: this._options.collection })
+    ).container;
     if (this._blobCache) {
       await this._blobCache.initialize();
     }
@@ -134,9 +139,9 @@ export default class CosmosCache implements ICacheHelper {
         return null; // or throw
       }
       const compressed = response.resource.compress && response.resource.compress === true;
-      return compressed ?
-        await this._blobCache.getObjectCompressed(response.resource.blobKey) :
-        await this._blobCache.getObject(response.resource.blobKey);
+      return compressed
+        ? await this._blobCache.getObjectCompressed(response.resource.blobKey)
+        : await this._blobCache.getObject(response.resource.blobKey);
     } else if (response.resource?.chunks && response.resource.chunk) {
       const num = response.resource.chunks as number;
       debug('LARGE retrieval: ' + num + ' chunks found');
@@ -193,7 +198,7 @@ export default class CosmosCache implements ICacheHelper {
     const originalKey = this._keyPrefix + key;
     key = this.key(key);
     debug(`COSMOS SET OBJECT: ${key}`);
-    let approxSize: number = 0;
+    let approxSize = 0;
     try {
       if (object.id && object.id !== key) {
         // SAVE ORIGINAL ID PROPERTY
@@ -208,7 +213,9 @@ export default class CosmosCache implements ICacheHelper {
           debug(`storing in blob instead... key=${originalKey}, dataSize=${approxSize}`);
           const ttlSeconds = object.ttl;
           delete object.ttl;
-          await ttlSeconds ? this._blobCache.setObjectCompressedWithExpire(originalKey, object, ttlSeconds / 60) : this._blobCache.setObject(originalKey, object);
+          (await ttlSeconds)
+            ? this._blobCache.setObjectCompressedWithExpire(originalKey, object, ttlSeconds / 60)
+            : this._blobCache.setObject(originalKey, object);
           item = {
             blobKey: originalKey,
             id: key,
@@ -285,7 +292,7 @@ export default class CosmosCache implements ICacheHelper {
 
   setObjectWithExpire(key: string, object: any, minutesToExpire: number): Promise<void> {
     if (object.ttl) {
-      console.warn('Warning: the object has an existing \'ttl\' property before caching.');
+      console.warn("Warning: the object has an existing 'ttl' property before caching.");
     }
     object.ttl = minutesToExpire * 60;
     return this.setObject(key, object);
@@ -300,9 +307,13 @@ export default class CosmosCache implements ICacheHelper {
   }
 
   setCompressedWithExpire(key: string, value: string, minutesToExpire: number): Promise<void> {
-    return this.setObjectWithExpire(key, {
-      value,
-    }, minutesToExpire);
+    return this.setObjectWithExpire(
+      key,
+      {
+        value,
+      },
+      minutesToExpire
+    );
   }
 
   setWithExpire(key: string, value: string, minutesToExpire: number): Promise<void> {

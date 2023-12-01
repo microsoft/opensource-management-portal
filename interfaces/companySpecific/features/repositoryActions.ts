@@ -5,11 +5,20 @@
 
 import { IProviders, LocalApiRepoAction } from '../..';
 import { Repository } from '../../../business';
-import { IndividualContext } from '../../../user';
+import { IndividualContext } from '../../../business/user';
 
 export interface ICompanySpecificRepositoryStateStatus {}
 
 export interface ICompanySpecificFeatureRepositoryState {
-  getCurrentRepositoryState(providers: IProviders, repository: Repository): Promise<ICompanySpecificRepositoryStateStatus>;
-  sendActionReceipt(providers: IProviders, context: IndividualContext, repository: Repository, action: LocalApiRepoAction, currentState: ICompanySpecificRepositoryStateStatus): Promise<void>;
+  getCurrentRepositoryState(
+    providers: IProviders,
+    repository: Repository
+  ): Promise<ICompanySpecificRepositoryStateStatus>;
+  sendActionReceipt(
+    providers: IProviders,
+    context: IndividualContext,
+    repository: Repository,
+    action: LocalApiRepoAction,
+    currentState: ICompanySpecificRepositoryStateStatus
+  ): Promise<void>;
 }

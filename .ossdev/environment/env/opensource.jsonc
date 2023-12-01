@@ -1,0 +1,87 @@
+//
+//
+// This reflects the CI/CD environment for the open source project.
+//
+//
+{
+  "ENVIRONMENT_NAME": "Deployed (OSS/main)",
+  //
+  // Operations, support e-mail addresses. In development you may want to override these.
+  "PORTAL_ADMIN_EMAIL": "keyvault://cafe.vault.azure.net/secrets/email-contact",
+  "GITHUB_OPERATIONS_EMAIL": "keyvault://cafe.vault.azure.net/secrets/email-operations",
+  //
+  // Static administrators
+  "AUTHORIZED_CORPORATE_ADMINISTRATOR_USERNAMES": "keyvault://cafe.vault.azure.net/secrets/authorized-administrator-upns",
+  //
+  // Web app configuration
+  "SITE_BASE_URL": "https://portal.ospo.dev",
+  //
+  //
+  //
+  // Corporate authentication; also, must be set in the deployed environment: KEYVAULT_CLIENT_ID, KEYVAULT_CLIENT_SECRET, AAD_TENANT_ID
+  "AUTHENTICATION_SCHEME": "aad",
+  "AAD_CLIENT_SECRET": "keyvault://cafe.vault.azure.net/secrets/aad-app-secret",
+  "AAD_CLIENT_ID": "keyvault://clientid@cafe.vault.azure.net/secrets/aad-app-secret",
+  "AAD_REDIRECT_URL": "https://portal.ospo.dev/auth/azure/callback",
+  //
+  // Email
+  // "MAIL_OVERRIDE_RECIPIENT": N/A
+  //
+  // Source of truth database
+  "REPOS_LINKS_PROVIDER_NAME": "postgres",
+  "REPOS_GITHUB_APPROVALS_PROVIDER_NAME": "postgres",
+  "REPOS_POSTGRES_DATABASE": "keyvault://database@cafe.vault.azure.net/secrets/postgres",
+  "REPOS_POSTGRES_HOST": "keyvault://hostname@cafe.vault.azure.net/secrets/postgres",
+  "REPOS_POSTGRES_USER": "keyvault://username@cafe.vault.azure.net/secrets/postgres",
+  "REPOS_POSTGRES_PASSWORD": "keyvault://cafe.vault.azure.net/secrets/postgres",
+  //"REPOS_POSTGRES_LINKS_TABLE_NAME": "links",
+  //"REPOS_POSTGRES_LINKS_TABLE_NAME": "links",
+  //
+  // Cookies
+  "SESSION_NAME": "session",
+  "SESSION_SALT": "keyvault://cafe.vault.azure.net/secrets/development-session-salt",
+  //
+  // Web sessions
+  "SESSION_PROVIDER": "cosmosdb",
+  "SESSION_COSMOSDB_ENDPOINT": "keyvault://uri@cafe.vault.azure.net/secrets/cache-cosmosdb",
+  "SESSION_COSMOSDB_KEY": "keyvault://cafe.vault.azure.net/secrets/cache-cosmosdb",
+  "SESSION_COSMOSDB_DATABASE": "keyvault://db@cafe.vault.azure.net/secrets/cache-cosmosdb",
+  "SESSION_COSMOSDB_COLLECTION": "sessions",
+  //
+  // GitHub cache storage with blob fallback for large objects
+  "GITHUB_CACHE_PROVIDER": "cosmosdb",
+  "GITHUB_CACHE_COSMOSDB_ENDPOINT": "keyvault://uri@cafe.vault.azure.net/secrets/cache-cosmosdb",
+  "GITHUB_CACHE_COSMOSDB_KEY": "keyvault://cafe.vault.azure.net/secrets/cache-cosmosdb",
+  "GITHUB_CACHE_COSMOSDB_DATABASE": "keyvault://db@cafe.vault.azure.net/secrets/cache-cosmosdb",
+  "GITHUB_CACHE_COSMOSDB_COLLECTION": "cache",
+  "GITHUB_CACHE_COSMOSDB_BLOB_FALLBACK": 1,
+  "GITHUB_CACHE_COSMOS_FALLBACK_BLOB_ACCOUNT": "keyvault://name@cafe.vault.azure.net/secrets/cache-blob-performance",
+  "GITHUB_CACHE_COSMOS_FALLBACK_BLOB_KEY": "keyvault://cafe.vault.azure.net/secrets/cache-blob-performance",
+  "GITHUB_CACHE_COSMOS_FALLBACK_BLOB_CONTAINER": "keyvault://container@cafe.vault.azure.net/secrets/cache-blob-performance",
+  //
+  // General blob storage for backup jobs, misc. data
+  "XSTORE_ACCOUNT": "keyvault://account@cafe.vault.azure.net/secrets/blob-storage",
+  "XSTORE_KEY": "keyvault://cafe.vault.azure.net/secrets/blob-storage",
+  // Company basics
+  "COMPANY_NAME": "Contoso",
+  "COMPANY_LINK": "https://contoso.com",
+  //
+  // AAD directory graph
+  "GRAPH_PROVIDER": "microsoftGraphProvider",
+  "GRAPH_TOKEN_CACHE_SECONDS": 60,
+  "GRAPH_AAD_CLIENT_ID": "keyvault://clientid@cafe.vault.azure.net/secrets/aad-app-secret",
+  "GRAPH_AAD_CLIENT_SECRET": "keyvault://cafe.vault.azure.net/secrets/aad-app-secret",
+  //
+  // GitHub app
+  "GITHUB_APP_UI_APP_ID": "keyvault://appid@cafe.vault.azure.net/secrets/development-github-app",
+  "GITHUB_APP_UI_KEY": "keyvault://cafe.vault.azure.net/secrets/development-github-app",
+  "GITHUB_APP_UI_OAUTH_CLIENT_SECRET": "keyvault://cafe.vault.azure.net/secrets/development-github-oauth-app",
+  "GITHUB_APP_UI_OAUTH_CLIENT_ID": "keyvault://id@cafe.vault.azure.net/secrets/development-github-oauth-app",
+  "GITHUB_APP_UI_SLUG": "keyvault://slug@cafe.vault.azure.net/secrets/development-github-app",
+  //
+  // Firehose queue
+  "GITHUB_WEBHOOKS_PROVIDER": "azurequeues",
+  "GITHUB_WEBHOOKS_QUEUES_ACCOUNT": "keyvault://accountname@cafe.vault.azure.net/secrets/queue",
+  "GITHUB_WEBHOOKS_QUEUES_SAS": "keyvault://cafe.vault.azure.net/secrets/storage-queue-sas",
+  "GITHUB_WEBHOOKS_QUEUES_QUEUE": "keyvault://queuename@cafe.vault.azure.net/secrets/queue"
+}

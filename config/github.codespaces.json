@@ -1,0 +1,22 @@
+{
+  "block": "env://CODESPACES_BLOCK?trueIf=1",
+  "connected": "env://CODESPACES?trueIf=true",
+  "desktop": "env://CODESPACES_DESKTOP?trueIf=1",
+  "name": "env://CODESPACE_NAME",
+  "forwardingDomain": "env://GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN",
+  "authentication": {
+    "port": "env://CODESPACES_PORT?default=3000",
+    "github": {
+      "enabled": "env://CODESPACES_GITHUB_AUTHENTICATION_ENABLED?default=1",
+      "clientId": "env://CODESPACES_GITHUB_CLIENT_ID",
+      "clientSecret": "env://CODESPACES_GITHUB_CLIENT_SECRET",
+      "impersonateOverrideEmuAccount": {
+        "enabled": "env://CODESPACES_IMPERSONATE_OVERRIDE_EMU_ENABLED",
+        "login": "env://CODESPACES_IMPERSONATE_OVERRIDE_EMU_LOGIN?ignoreMoniker=-emu-login"
+      }
+    },
+    "aad": {
+      "enabled": "env://CODESPACES_AAD_AUTHENTICATION_ENABLED?default=1"
+    }
+  }
+}

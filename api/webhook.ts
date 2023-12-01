@@ -20,57 +20,69 @@ interface IRequestWithRaw extends ReposAppRequest {
   _raw?: any;
 }
 
-router.use(asyncHandler(async (req: IRequestWithRaw, res, next) => {
-  if (!isWebhookIngestionEndpointEnabled(req)) {
-    return next(jsonError('This feature is currently disabled. Only queue-based firehose ingestion will work at this time.', 401));
-  }
-
-  const { operations } = getProviders(req);
-  const body = req.body;
-  const orgName = body && body.organization && body.organization.login ? body.organization.login : null;
-  if (!orgName) {
-    return next(jsonError(new Error('No organization login in the body'), 400));
-  }
-  try {
-    if (!req.organization) {
-      req.organization = operations.getOrganization(orgName);
+router.use(
+  asyncHandler(async (req: IRequestWithRaw, res, next) => {
+    if (!isWebhookIngestionEndpointEnabled(req)) {
+      return next(
+        jsonError(
+          'This feature is currently disabled. Only queue-based firehose ingestion will work at this time.',
+          401
+        )
+      );
     }
-  } catch (noOrganization) {
-    return next(jsonError(new Error('This API endpoint is not configured for the provided organization name.')));
-  }
-  const properties = {
-    delivery: req.headers['x-github-delivery'] as string,
-    event: req.headers['x-github-event'] as string,
-    signature: req.headers['x-hub-signature'] as string,
-    started: moment().utc().format(),
-  };
-  if (!properties.delivery || !properties.signature || !properties.event) {
-    return next(jsonError(new Error('Missing X-GitHub-Delivery, X-GitHub-Event, and/or X-Hub-Signature'), 400));
-  }
-  const event = {
-    properties: properties,
-    body: req.body,
-    rawBody: req._raw,
-  };
-  const options = {
-    operations,
-    organization: req.organization,
-    event,
-  };
-  let error = null;
-  let result = null;
-  try {
-    result = await OrganizationWebhookProcessor(options);
-  } catch (hookError) {
-    error = hookError;
-  }
-  const obj = error || result;
-  const statusCode = obj.statusCode || obj.status || (error ? 400 : 200);
-  if (error) {
-    return next(jsonError(error, statusCode));
-  }
-  res.status(statusCode);
-  res.json(result);
-}));
+
+    const providers = getProviders(req);
+    const { operations } = providers;
+    const body = req.body;
+    const orgName = body && body.organization && body.organization.login ? body.organization.login : null;
+    if (!orgName) {
+      return next(jsonError(new Error('No organization login in the body'), 400));
+    }
+    try {
+      if (!req.organization) {
+        req.organization = operations.getOrganization(orgName);
+      }
+    } catch (noOrganization) {
+      return next(
+        jsonError(new Error('This API endpoint is not configured for the provided organization name.'))
+      );
+    }
+    const properties = {
+      delivery: req.headers['x-github-delivery'] as string,
+      event: req.headers['x-github-event'] as string,
+      signature: req.headers['x-hub-signature'] as string,
+      started: moment().utc().format(),
+    };
+    if (!properties.delivery || !properties.signature || !properties.event) {
+      return next(
+        jsonError(new Error('Missing X-GitHub-Delivery, X-GitHub-Event, and/or X-Hub-Signature'), 400)
+      );
+    }
+    const event = {
+      properties: properties,
+      body: req.body,
+      rawBody: req._raw,
+    };
+    const options = {
+      providers,
+      organization: req.organization,
+      event,
+    };
+    let error = null;
+    let result = null;
+    try {
+      result = await OrganizationWebhookProcessor(options);
+    } catch (hookError) {
+      error = hookError;
+    }
+    const obj = error || result;
+    const statusCode = obj.statusCode || obj.status || (error ? 400 : 200);
+    if (error) {
+      return next(jsonError(error, statusCode));
+    }
+    res.status(statusCode);
+    res.json(result);
+  })
+);
 
 export default router;

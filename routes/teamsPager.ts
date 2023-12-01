@@ -10,7 +10,7 @@ import { NextFunction, Response } from 'express';
 import { getProviders } from '../transitional';
 import { Operations } from '../business';
 import { Team } from '../business';
-import { UserContext } from '../user/aggregate';
+import { UserContext } from '../business/user/aggregate';
 
 import TeamSearch from '../business/teamSearch';
 import { ICrossOrganizationMembershipByOrganization, ReposAppRequest } from '../interfaces';
@@ -26,7 +26,11 @@ interface IGetTeamsDataResults {
   totalMaintainerships: number;
 }
 
-async function getTeamsData(singleOrganizationName: string | null, operations: Operations, userContext: UserContext): Promise<IGetTeamsDataResults> {
+async function getTeamsData(
+  singleOrganizationName: string | null,
+  operations: Operations,
+  userContext: UserContext
+): Promise<IGetTeamsDataResults> {
   const options = {
     backgroundRefresh: true,
     maxAgeSeconds: 60 * 10 /* 10 minutes */,
@@ -51,7 +55,7 @@ async function getTeamsData(singleOrganizationName: string | null, operations: O
 
   const yourTeamsMap = new Map();
   const overview = await userContext.getAggregatedOverview();
-  if (overview.teams && overview.teams.member.length) {
+  if (overview.teams && (overview.teams.member.length || overview.teams.maintainer.length)) {
     reduceTeams(overview.teams, 'member', yourTeamsMap);
     reduceTeams(overview.teams, 'maintainer', yourTeamsMap);
   }
@@ -68,7 +72,7 @@ function reduceTeams(collections, property, map) {
     return;
   }
   const values = collections[property];
-  values.forEach(team => {
+  values.forEach((team) => {
     map.set(team.id, property);
   });
 }
@@ -78,9 +82,13 @@ export default asyncHandler(async function (req: ReposAppRequest, res: Response,
   const isCrossOrg = req.teamsPagerMode === 'orgs';
   const aggregations = req.individualContext.aggregations;
   const orgName = isCrossOrg ? null : req.organization.name.toLowerCase();
-  const { teams, yourTeamsMap, totalMemberships, totalMaintainerships } = await getTeamsData(isCrossOrg ? null : orgName.toLowerCase(), operations, aggregations);
+  const { teams, yourTeamsMap, totalMemberships, totalMaintainerships } = await getTeamsData(
+    isCrossOrg ? null : orgName.toLowerCase(),
+    operations,
+    aggregations
+  );
   const page = req.query.page_number ? Number(req.query.page_number) : 1;
-  let phrase = req.query.q;
+  const phrase = req.query.q;
 
   let set = req.query.set;
   if (set !== 'all' && set !== 'available' && set !== 'your') {
@@ -108,7 +116,9 @@ export default asyncHandler(async function (req: ReposAppRequest, res: Response,
     view: 'teams/',
     title: 'Teams',
     state: {
-      organizations: isCrossOrg ? sortOrgs(operations.getOrganizations(operations.organizationNames)) : undefined,
+      organizations: isCrossOrg
+        ? sortOrgs(operations.getOrganizations(operations.organizationNames))
+        : undefined,
       organization: isCrossOrg ? undefined : req.organization,
       search,
       filters,

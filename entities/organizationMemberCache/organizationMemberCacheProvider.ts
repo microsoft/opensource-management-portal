@@ -3,19 +3,34 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IEntityMetadata, EntityMetadataBase, IEntityMetadataBaseOptions } from '../../lib/entityMetadataProvider/entityMetadata';
-import { OrganizationMemberCacheEntity, EntityImplementation, OrganizationMemberCacheFixedQueryAll, OrganizationMemberCacheFixedQueryByOrganizationId, OrganizationMemberCacheFixedQueryByUserId, OrganizationBasicsFixedQuery, OrganizationMemberCacheDeleteByOrganizationId, OrganizationOwnersQuery } from './organizationMemberCache';
+import {
+  IEntityMetadata,
+  EntityMetadataBase,
+  IEntityMetadataBaseOptions,
+} from '../../lib/entityMetadataProvider/entityMetadata';
+import {
+  OrganizationMemberCacheEntity,
+  EntityImplementation,
+  OrganizationMemberCacheFixedQueryAll,
+  OrganizationMemberCacheFixedQueryByOrganizationId,
+  OrganizationMemberCacheFixedQueryByUserId,
+  OrganizationBasicsFixedQuery,
+  OrganizationMemberCacheDeleteByOrganizationId,
+  OrganizationOwnersQuery,
+} from './organizationMemberCache';
 
 const thisProviderType = EntityImplementation.Type;
 
-export interface IOrganizationMemberCacheCreateOptions extends IEntityMetadataBaseOptions {
-}
+export interface IOrganizationMemberCacheCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface IOrganizationMemberCacheProvider {
   initialize(): Promise<void>;
 
   getOrganizationMemberCache(uniqueId: string): Promise<OrganizationMemberCacheEntity>;
-  getOrganizationMemberCacheByUserId(organizationId: string, userId: string): Promise<OrganizationMemberCacheEntity>;
+  getOrganizationMemberCacheByUserId(
+    organizationId: string,
+    userId: string
+  ): Promise<OrganizationMemberCacheEntity>;
   createOrganizationMemberCache(metadata: OrganizationMemberCacheEntity): Promise<string>;
   updateOrganizationMemberCache(metadata: OrganizationMemberCacheEntity): Promise<void>;
   deleteOrganizationMemberCache(metadata: OrganizationMemberCacheEntity): Promise<void>;
@@ -23,18 +38,26 @@ export interface IOrganizationMemberCacheProvider {
   queryOrganizationMembersByOrganizationId(organizationId: string): Promise<OrganizationMemberCacheEntity[]>;
   queryOrganizationMembersByUserId(userId: string): Promise<OrganizationMemberCacheEntity[]>;
   queryAllOrganizationIds(): Promise<string[]>;
-  queryAllOrganizationOwners(): Promise<OrganizationMemberCacheEntity[]>;
+  queryOrganizationOwners(organizationId: string): Promise<OrganizationMemberCacheEntity[]>;
   deleteByOrganizationId(organizationId: string): Promise<void>;
 }
 
-export class OrganizationMemberCacheProvider extends EntityMetadataBase implements IOrganizationMemberCacheProvider {
+export class OrganizationMemberCacheProvider
+  extends EntityMetadataBase
+  implements IOrganizationMemberCacheProvider
+{
   constructor(options: IOrganizationMemberCacheCreateOptions) {
     super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }
 
-  async getOrganizationMemberCacheByUserId(organizationId: string, userId: string): Promise<OrganizationMemberCacheEntity> {
-    return this.getOrganizationMemberCache(OrganizationMemberCacheEntity.GenerateIdentifier(organizationId, userId));
+  async getOrganizationMemberCacheByUserId(
+    organizationId: string,
+    userId: string
+  ): Promise<OrganizationMemberCacheEntity> {
+    return this.getOrganizationMemberCache(
+      OrganizationMemberCacheEntity.GenerateIdentifier(organizationId, userId)
+    );
   }
 
   async getOrganizationMemberCache(uniqueId: string): Promise<OrganizationMemberCacheEntity> {
@@ -63,7 +86,7 @@ export class OrganizationMemberCacheProvider extends EntityMetadataBase implemen
   async queryAllOrganizationIds(): Promise<string[]> {
     const query = new OrganizationBasicsFixedQuery();
     const results = await this._entities.fixedQueryMetadata(thisProviderType, query);
-    return results.map(row => row['organizationid']);
+    return results.map((row) => row['organizationid']);
   }
 
   async deleteByOrganizationId(organizationId: string): Promise<void> {
@@ -71,7 +94,9 @@ export class OrganizationMemberCacheProvider extends EntityMetadataBase implemen
     await this._entities.fixedQueryMetadata(thisProviderType, query);
   }
 
-  async queryOrganizationMembersByOrganizationId(organizationId: string): Promise<OrganizationMemberCacheEntity[]> {
+  async queryOrganizationMembersByOrganizationId(
+    organizationId: string
+  ): Promise<OrganizationMemberCacheEntity[]> {
     const query = new OrganizationMemberCacheFixedQueryByOrganizationId(organizationId);
     const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
     const results = this.deserializeArray<OrganizationMemberCacheEntity>(thisProviderType, metadatas);
@@ -85,8 +110,8 @@ export class OrganizationMemberCacheProvider extends EntityMetadataBase implemen
     return results;
   }
 
-  async queryAllOrganizationOwners(): Promise<OrganizationMemberCacheEntity[]> {
-    const query = new OrganizationOwnersQuery();
+  async queryOrganizationOwners(organizationId: string): Promise<OrganizationMemberCacheEntity[]> {
+    const query = new OrganizationOwnersQuery(organizationId);
     const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
     const results = this.deserializeArray<OrganizationMemberCacheEntity>(thisProviderType, metadatas);
     return results;

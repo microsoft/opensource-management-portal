@@ -27,7 +27,7 @@ export interface IGitHubAppInstallation {
   account: {
     login: string;
     id: number;
-  },
+  };
   app_id: number;
   target_id: number;
   target_type: string;

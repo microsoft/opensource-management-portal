@@ -6,7 +6,7 @@
 import asyncHandler from 'express-async-handler';
 
 import { ReposAppRequest, TeamJsonFormat } from '../../../interfaces';
-import { IndividualContext } from '../../../user';
+import { IndividualContext } from '../../../business/user';
 
 export default asyncHandler(async (req: ReposAppRequest, res, next) => {
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
@@ -15,12 +15,12 @@ export default asyncHandler(async (req: ReposAppRequest, res, next) => {
       isLinked: false,
       member: [],
       maintainer: [],
-    })
+    });
   }
   const permissions = await activeContext.aggregations.getQueryCacheTeams();
   return res.json({
     isLinked: true,
-    member: permissions.member.map(t => t.asJson(TeamJsonFormat.Augmented)),
-    maintainer: permissions.maintainer.map(t => t.asJson(TeamJsonFormat.Augmented)),
+    member: permissions.member.map((t) => t.asJson(TeamJsonFormat.Augmented)),
+    maintainer: permissions.maintainer.map((t) => t.asJson(TeamJsonFormat.Augmented)),
   });
 });

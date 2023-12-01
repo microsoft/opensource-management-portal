@@ -42,7 +42,7 @@ export default class AzureServiceBus implements IMailProvider {
     return mail;
   }
 
-  async initialize() { }
+  async initialize() {}
 
   async sendMail(mail: IMail): Promise<any> {
     const {

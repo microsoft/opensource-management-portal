@@ -3,7 +3,7 @@ $output = Get-Content ./raw.json | ConvertFrom-Json
 Write-Output $output.data.enterprise.organizations.nodes
 
 
-$orgsArry = @()
+$orgsArray = @()
 
 foreach ($org in $output.data.enterprise.organizations.nodes) {
   $envObj = [PSCustomObject]@{
@@ -14,8 +14,8 @@ foreach ($org in $output.data.enterprise.organizations.nodes) {
     locked      = $True
   }
 
-  $orgsArry += $envObj
-  Write-Output $orgsArry
+  $orgsArray += $envObj
+  Write-Output $orgsArray
 }
 
-$orgsArry | ConvertTo-Json -Depth 10 | Out-File -FilePath "orgs.json"
+$orgsArray | ConvertTo-Json -Depth 10 | Out-File -FilePath "orgs.json"

@@ -87,7 +87,7 @@ export default function initializeCampaigns(app) {
 
     const data: ICampaignData = getCampaignTelemetry(req) || {};
 
-    const sub = goGithub ? `/${goGithub}`  : '';
+    const sub = goGithub ? `/${goGithub}` : '';
     const base = 'https://github.com/';
 
     let identity = null;
@@ -128,4 +128,4 @@ export default function initializeCampaigns(app) {
   return {
     redirectGitHubMiddleware: redirectGitHubMiddleware,
   };
-};
+}

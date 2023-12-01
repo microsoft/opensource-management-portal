@@ -6,7 +6,7 @@
 import { IProviders } from '../interfaces';
 import { Repository } from '../business';
 
-// TODO: refresh occassionally.
+// TODO: refresh occasionally.
 
 const RepoSocialImagesCacheKey = 'repos:socialmediaimages';
 
@@ -38,7 +38,7 @@ export default class PublicReposFastFilter {
       throw new Error('Query cache of repositories must be available');
     }
     const { queryCache, cacheProvider } = this.#providers;
-    
+
     try {
       const socialMediaImagesValue = await cacheProvider.getCompressed(RepoSocialImagesCacheKey);
       if (socialMediaImagesValue) {
@@ -49,8 +49,8 @@ export default class PublicReposFastFilter {
       console.error(ignoreError);
     }
 
-    const repositories = (await queryCache.allRepositories()).filter(repo => !repo.repository.private);
-    this.repositories = repositories.map(entry => entry.repository);
+    const repositories = (await queryCache.allRepositories()).filter((repo) => !repo.repository.private);
+    this.repositories = repositories.map((entry) => entry.repository);
 
     this.#initialized = true;
   }

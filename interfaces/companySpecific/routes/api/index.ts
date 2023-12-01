@@ -16,11 +16,16 @@ export interface IAttachCompanySpecificRoutesApi {
 export interface IAttachCompanySpecificRoutesApiContextual {
   index?: ConnectRouter;
   organization?: IAttachCompanySpecificRoutesApiContextualOrganization;
+  administration?: IAttachCompanySpecificRoutesApiContextualAdministration;
 }
 
 export interface IAttachCompanySpecificRoutesApiContextualOrganization {
   index?: ConnectRouter;
   repo?: ConnectRouter;
+}
+
+export interface IAttachCompanySpecificRoutesApiContextualAdministration {
+  index?: ConnectRouter;
 }
 
 export interface IAttachCompanySpecificRoutesApiOrganization {

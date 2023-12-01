@@ -20,7 +20,7 @@ export default function returnCombinedMiddleware(supportedProviders) {
   if (!Array.isArray(supportedProviders)) {
     throw new Error('supportedProviders must be an array');
   }
-  let totalProviders = supportedProviders.length;
+  const totalProviders = supportedProviders.length;
   if (totalProviders <= 0) {
     throw new Error('supportedProviders must provide at least one provider to use for auth');
   }
@@ -28,7 +28,7 @@ export default function returnCombinedMiddleware(supportedProviders) {
     const { insights } = getProviders(req);
     let i = 0;
     let currentProvider = supportedProviders[i];
-    let authErrorMessages = [];
+    const authErrorMessages = [];
     function wrappedNext(error) {
       if (!error) {
         // No error but also now API use information
@@ -51,7 +51,7 @@ export default function returnCombinedMiddleware(supportedProviders) {
         error = jsonError(new Error(authErrorMessages.join('. ')), 401);
         error.skipLog = true; // do not log to insights data as an exception
         insights?.trackEvent({
-          name:'MultipleAuthProvidersUnauthorized',
+          name: 'MultipleAuthProvidersUnauthorized',
           properties: {
             message: error.message,
           },

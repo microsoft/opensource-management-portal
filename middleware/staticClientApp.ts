@@ -8,7 +8,8 @@ import appPackage from '../package.json';
 const packageVariableName = 'static-client-package-name';
 const otherPackageVariableName = 'static-react-package-name';
 
-const debug = require('debug')('startup');
+import Debug from 'debug';
+const debug = Debug.debug('startup');
 
 export function StaticClientApp(app, express) {
   // Serve/host the static client app from the location reported by the private
@@ -18,14 +19,16 @@ export function StaticClientApp(app, express) {
   const otherValue = appPackage[otherPackageVariableName];
   if (!staticClientPackageName) {
     if (!staticClientPackageName && !otherValue) {
-      debug(`package.json is not configured with a package in the property name ${packageVariableName}. No additional client package will be hosted.`);
+      debug(
+        `package.json is not configured with a package in the property name ${packageVariableName}. No additional client package will be hosted.`
+      );
     }
     return;
   }
 
   try {
     const clientDistPath = require(staticClientPackageName);
-    if (typeof (clientDistPath) !== 'string') {
+    if (typeof clientDistPath !== 'string') {
       throw new Error(`The return value of the package ${staticClientPackageName} must be a string/path`);
     }
     const clientPackage = require(`${staticClientPackageName}/package.json`);
@@ -36,4 +39,4 @@ export function StaticClientApp(app, express) {
     console.error(`The static client could not be loaded via package ${staticClientPackageName}`);
     throw hostClientError;
   }
-};
+}
