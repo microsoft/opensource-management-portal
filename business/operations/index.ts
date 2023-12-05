@@ -98,6 +98,12 @@ export type GetInvisibleOrganizationOptions = {
   storeInstanceByName?: boolean;
 };
 
+type CreateOrganizationOptions = {
+  settings: OrganizationSetting;
+  appAuthenticationType: GitHubAppAuthenticationType;
+  asUncontrolledPublicOnly?: boolean;
+};
+
 export class Operations
   extends OperationsCore
   implements
@@ -338,32 +344,46 @@ export class Operations
     return Array.from(this._organizationIds.keys());
   }
 
-  private createOrganization(
-    name: string,
-    settings: OrganizationSetting,
-    appAuthenticationType: GitHubAppAuthenticationType
-  ): Organization {
+  private createOrganization(name: string, options: CreateOrganizationOptions): Organization {
     name = name.toLowerCase();
+    if (!options) {
+      throw CreateError.ParameterRequired('options');
+    }
+    const { settings, appAuthenticationType, asUncontrolledPublicOnly } = options;
     if (!settings) {
-      throw new Error(`This application is not configured for the ${name} organization`);
+      throw CreateError.InvalidParameters(
+        `This application does not have configuration information for the ${name} organization`
+      );
     }
     const ownerToken = settings.getOwnerToken();
     const hasDynamicSettings =
       this._dynamicOrganizationIds &&
       settings.organizationId &&
       this._dynamicOrganizationIds.has(Number(settings.organizationId));
+    let configuredGetAuthorizationHeader: GetAuthorizationHeader = this.getAuthorizationHeader.bind(
+      this,
+      name,
+      settings,
+      ownerToken,
+      appAuthenticationType
+    );
+    let forcedGetAuthorizationHeader: GetAuthorizationHeader = this.getAuthorizationHeader.bind(
+      this,
+      name,
+      settings,
+      ownerToken,
+      GitHubAppAuthenticationType.ForceSpecificInstallation
+    );
+    if (!ownerToken && asUncontrolledPublicOnly) {
+      configuredGetAuthorizationHeader = this.getPublicAuthorizationToken();
+      forcedGetAuthorizationHeader = configuredGetAuthorizationHeader;
+    }
     return new Organization(
       this,
       name,
       settings,
-      this.getAuthorizationHeader.bind(this, name, settings, ownerToken, appAuthenticationType),
-      this.getAuthorizationHeader.bind(
-        this,
-        name,
-        settings,
-        ownerToken,
-        GitHubAppAuthenticationType.ForceSpecificInstallation
-      ),
+      configuredGetAuthorizationHeader,
+      forcedGetAuthorizationHeader,
       hasDynamicSettings
     );
   }
@@ -384,11 +404,10 @@ export class Operations
             settings = dos;
           }
         }
-        const organization = this.createOrganization(
-          name,
+        const organization = this.createOrganization(name, {
           settings,
-          GitHubAppAuthenticationType.BestAvailable
-        );
+          appAuthenticationType: GitHubAppAuthenticationType.BestAvailable,
+        });
         organizations.set(name, organization);
       }
       this._organizations = organizations;
@@ -407,11 +426,10 @@ export class Operations
       for (let i = 0; i < list.length; i++) {
         const settings = list[i];
         if (settings && settings.name && settings.name.toLowerCase() === lowercase) {
-          return this.createOrganization(
-            lowercase,
-            OrganizationSetting.CreateFromStaticSettings(settings),
-            GitHubAppAuthenticationType.BestAvailable
-          );
+          return this.createOrganization(lowercase, {
+            settings: OrganizationSetting.CreateFromStaticSettings(settings),
+            appAuthenticationType: GitHubAppAuthenticationType.BestAvailable,
+          });
         }
       }
     }
@@ -427,11 +445,10 @@ export class Operations
   }
 
   getUnconfiguredOrganization(settings: OrganizationSetting): Organization {
-    return this.createOrganization(
-      settings.organizationName.toLowerCase(),
+    return this.createOrganization(settings.organizationName.toLowerCase(), {
       settings,
-      GitHubAppAuthenticationType.BestAvailable
-    );
+      appAuthenticationType: GitHubAppAuthenticationType.BestAvailable,
+    });
   }
 
   // An invisible organization does not appear in the cross-organization
@@ -462,7 +479,10 @@ export class Operations
       dynamicSettings = options.settings;
     }
     const authenticationType = options?.authenticationType || GitHubAppAuthenticationType.BestAvailable;
-    const organization = this.createOrganization(name, dynamicSettings, authenticationType);
+    const organization = this.createOrganization(name, {
+      settings: dynamicSettings,
+      appAuthenticationType: authenticationType,
+    });
     if (!options || options?.storeInstanceByName) {
       this._invisibleOrganizations.set(name, organization);
     }
@@ -480,11 +500,12 @@ export class Operations
     }
     const emptySettings = new OrganizationSetting();
     emptySettings.operationsNotes = `Uncontrolled Organization - ${organizationName}`;
-    const org = this.createOrganization(
-      organizationName,
-      emptySettings,
-      GitHubAppAuthenticationType.ForceSpecificInstallation
-    );
+    const asUncontrolledPublicOnly = true;
+    const org = this.createOrganization(organizationName, {
+      settings: emptySettings,
+      appAuthenticationType: GitHubAppAuthenticationType.ForceSpecificInstallation,
+      asUncontrolledPublicOnly,
+    });
     this._uncontrolledOrganizations.set(organizationName, org);
     org.uncontrolled = true;
     return org;
@@ -501,11 +522,10 @@ export class Operations
       `Uncontrolled public organization - ${organizationName}`,
       organizationId
     );
-    const org = this.createOrganization(
-      organizationName,
-      emptySettings,
-      GitHubAppAuthenticationType.ForceSpecificInstallation
-    );
+    const org = this.createOrganization(organizationName, {
+      settings: emptySettings,
+      appAuthenticationType: GitHubAppAuthenticationType.ForceSpecificInstallation,
+    });
     this._uncontrolledOrganizations.set(organizationName, org);
     org.uncontrolled = true;
     return org;
@@ -813,8 +833,7 @@ export class Operations
     const lc = name.toLowerCase();
     const organization = this.organizations.get(lc);
     if (!organization) {
-      // will this impact things?
-      throw CreateError.InvalidParameters(`Could not find configuration for the "${name}" organization.`);
+      throw CreateError.NotFound(`Could not find configuration for the "${name}" organization.`);
     }
     return organization;
   }

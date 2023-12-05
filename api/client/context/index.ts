@@ -125,6 +125,7 @@ router.use(
       return next();
     } catch (noOrgError) {
       if (ErrorHelper.IsNotFound(noOrgError)) {
+        // Could be either the org truly does not exist, OR, it's uncontrolled.
         if (await isUnmanagedOrganization(providers, orgName)) {
           res.status(204);
           res.end();
