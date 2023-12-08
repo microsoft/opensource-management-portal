@@ -10,7 +10,7 @@ import { ReposAppRequest, AccountJsonFormat } from '../../interfaces';
 import { IGraphEntry } from '../../lib/graphProvider';
 
 import { jsonError } from '../../middleware';
-import { getProviders } from '../../transitional';
+import { CreateError, ErrorHelper, getProviders } from '../../transitional';
 
 const getPerson = asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
   const providers = getProviders(req);
@@ -74,7 +74,11 @@ const getPerson = asyncHandler(async (req: ReposAppRequest, res: Response, next:
     );
     return res.json(combined) as unknown as void;
   } catch (error) {
-    return next(jsonError(`login ${login} error: ${error}`, 500));
+    return next(
+      ErrorHelper.IsNotFound(error)
+        ? error
+        : CreateError.InvalidParameters(`Invalid issue retrieving user ${login}: ${error.message}`)
+    );
   }
 });
 
