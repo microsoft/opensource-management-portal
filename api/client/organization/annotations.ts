@@ -19,7 +19,7 @@ import {
 import {
   IOrganizationAnnotationChange,
   OrganizationAnnotation,
-  scrubOrganizationAnnotation,
+  getOrganizationAnnotationRestrictedPropertyNames,
 } from '../../../entities/organizationAnnotation';
 import { CreateError, ErrorHelper, getProviders } from '../../../transitional';
 import { IndividualContext } from '../../../business/user';
@@ -58,10 +58,14 @@ router.get(
   asyncHandler(async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
     const { annotations } = req;
     // Limited redaction
+    const annotation = { ...annotations };
     const isSystemAdministrator = await getIsCorporateAdministrator(req);
+    for (const propertyToRedact of getOrganizationAnnotationRestrictedPropertyNames(isSystemAdministrator)) {
+      delete annotation[propertyToRedact];
+    }
     return res.json({
       isSystemAdministrator,
-      annotations: scrubOrganizationAnnotation(annotations, isSystemAdministrator),
+      annotations: annotation,
     }) as unknown as void;
   })
 );

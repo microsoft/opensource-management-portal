@@ -5,8 +5,9 @@
 
 import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
+import throat from 'throat';
 
-import { jsonError } from '../../middleware';
+import { getIsCorporateAdministrator, jsonError } from '../../middleware';
 import { CreateError, getProviders } from '../../transitional';
 import { ReposAppRequest } from '../../interfaces';
 
@@ -16,13 +17,13 @@ import type { GitHubOrganizationResponseSanitized } from '../../business';
 import {
   OrganizationAnnotation,
   OrganizationAnnotationProperty,
-  scrubOrganizationAnnotation,
+  getOrganizationAnnotationRestrictedPropertyNames,
 } from '../../entities/organizationAnnotation';
 import { getOrganizationProfileViaMemoryCache } from '../../middleware/github/ensureOrganizationProfile';
 
 const router: Router = Router();
 
-type HighlightedOrganization = {
+export type OrganizationAnnotationPair = {
   profile: GitHubOrganizationResponseSanitized;
   annotations: OrganizationAnnotation;
 };
@@ -48,47 +49,74 @@ router.get(
   asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const providers = getProviders(req);
     const { organizationAnnotationsProvider } = providers;
-    const projection = typeof req.query.projection === 'string' ? req.query.projection : undefined;
+    const projectionQuery = typeof req.query.projection === 'string' ? req.query.projection : undefined;
+    const isSystemAdministrator = await getIsCorporateAdministrator(req);
     // governance filter: a specific value or unset cohort
     const governance =
       typeof req.query.governance === 'string' ? req.query.governance?.toLowerCase() : undefined;
     const filterByGovernance = governance !== undefined;
     try {
-      const highlights: HighlightedOrganization[] = [];
+      const highlights: OrganizationAnnotationPair[] = [];
       let annotations = await organizationAnnotationsProvider.getAllAnnotations();
       if (filterByGovernance) {
         annotations = annotations.filter((annotation) => {
-          const value = annotation.getProperty(OrganizationAnnotationProperty.Governance);
+          const value = annotation?.getProperty(OrganizationAnnotationProperty.Governance);
           return governance ? value === governance : !value;
         });
       }
-      for (const annotation of annotations) {
+      const getAnnotationProfile = async (annotation: OrganizationAnnotation) => {
         try {
           const profile = await getOrganizationProfileViaMemoryCache(providers, annotation.organizationId);
           highlights.push({
             profile,
-            annotations: scrubOrganizationAnnotation(annotation),
+            annotations: annotation,
           });
         } catch (error) {
           // we ignore any individual resolution error
         }
+      };
+      const projections = projectionQuery?.split(',');
+      if (projections?.length > 0) {
+        const propertiesToRedact = getOrganizationAnnotationRestrictedPropertyNames(isSystemAdministrator);
+        if (projections.some((p) => propertiesToRedact.includes(p))) {
+          throw CreateError.InvalidParameters(
+            `One or more of the requested projections are not authorized for the current user`
+          );
+        }
       }
-      if (projection) {
+      const parallelRequests = 6;
+      const throttle = throat(parallelRequests);
+      await Promise.all(annotations.map((annotation) => throttle(() => getAnnotationProfile(annotation))));
+      if (projectionQuery) {
+        if (projections.length > 1 && !projections.includes('login')) {
+          throw CreateError.InvalidParameters('When using multiple projections, login must be included');
+        }
         let projected = highlights.map((highlight) => {
           const profile = highlight.profile;
           const annotations = highlight.annotations;
-          if (profile[projection]) {
-            return profile[projection];
-          } else if (annotations.getProperty(projection)) {
-            return annotations.getProperty(projection);
-          } else if (annotations.hasFeature(projection)) {
-            return true;
+          const result = {};
+          for (const p of projections) {
+            let value = null;
+            if (profile[p]) {
+              value = result[p] = profile[p];
+            } else if (annotations?.getProperty(p)) {
+              value = result[p] = annotations.getProperty(p);
+            } else if (annotations?.hasFeature(p)) {
+              value = result[p] = true;
+            }
+            if (projections.length === 1) {
+              return value;
+            }
           }
-          return null;
+          return result;
         });
-        if (projected.length >= 1 && typeof projected[0] === 'string') {
+        if (projections.length === 1 && projected.length >= 1 && typeof projected[0] === 'string') {
           projected = projected.sort((a, b) => {
             return a.localeCompare(b);
+          });
+        } else if (projections.length > 1) {
+          projected = projected.sort((a, b) => {
+            return a['login'].localeCompare(b['login']);
           });
         }
         return res.json(projected) as unknown as void;

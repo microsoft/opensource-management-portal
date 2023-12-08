@@ -55,17 +55,9 @@ export interface IOrganizationAnnotationChange {
   text: string;
 }
 
-export function scrubOrganizationAnnotation(
-  annotation: OrganizationAnnotation,
-  isSystemAdministrator?: boolean
-): OrganizationAnnotation {
-  if (isSystemAdministrator === true || !annotation) {
-    return annotation;
-  }
-  const scrubbedAnnotations = { ...annotation };
-  delete scrubbedAnnotations.administratorNotes;
-  delete scrubbedAnnotations.history;
-  return scrubbedAnnotations as OrganizationAnnotation;
+export function getOrganizationAnnotationRestrictedPropertyNames(isSystemAdministrator?: boolean): string[] {
+  const restrictedProperties = ['administratorNodes', 'history'];
+  return isSystemAdministrator ? [] : restrictedProperties;
 }
 
 interface IOrganizationAnnotationMetadataProperties {
