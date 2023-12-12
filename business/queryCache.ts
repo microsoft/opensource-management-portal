@@ -16,7 +16,7 @@
 
 import Debug from 'debug';
 
-import { MassagePermissionsToGitHubRepositoryPermission } from '../transitional';
+import { projectCollaboratorPermissionToGitHubRepositoryPermission } from '../transitional';
 import { OrganizationMemberCacheEntity } from '../entities/organizationMemberCache/organizationMemberCache';
 import { Operations } from './operations';
 import { TeamMemberCacheEntity } from '../entities/teamMemberCache/teamMemberCache';
@@ -835,9 +835,8 @@ export default class QueryCache {
       this.throwMethodNotSupported('repositoryCollaborators', 'repositoryCollaboratorCacheProvider');
     }
     const repositoryCollaboratorCacheProvider = this._providers.repositoryCollaboratorCacheProvider;
-    const rawEntities = await repositoryCollaboratorCacheProvider.queryCollaboratorsByRepositoryId(
-      repositoryId
-    );
+    const rawEntities =
+      await repositoryCollaboratorCacheProvider.queryCollaboratorsByRepositoryId(repositoryId);
     return rawEntities
       .map((cacheEntity) => this.hydrateRepositoryCollaborator(cacheEntity))
       .filter((real) => real);
@@ -904,7 +903,7 @@ export default class QueryCache {
       affiliation: cacheEntity.collaboratorType,
       cacheEntity,
       userId: cacheEntity.userId,
-      permission: MassagePermissionsToGitHubRepositoryPermission(cacheEntity.permission),
+      permission: projectCollaboratorPermissionToGitHubRepositoryPermission(cacheEntity.permission),
     };
   }
 
@@ -993,9 +992,8 @@ export default class QueryCache {
       this.throwMethodNotSupported('organizationMembers', 'organizationMemberCacheProvider');
     }
     const organizationMemberCacheProvider = this._providers.organizationMemberCacheProvider;
-    const rawEntities = await organizationMemberCacheProvider.queryOrganizationMembersByOrganizationId(
-      organizationId
-    );
+    const rawEntities =
+      await organizationMemberCacheProvider.queryOrganizationMembersByOrganizationId(organizationId);
     return this.hydrateOrganizationMembers(rawEntities);
   }
 

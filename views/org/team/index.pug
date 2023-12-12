@@ -87,13 +87,6 @@ mixin membersList(typeOfList, membersList, isAdmin, moreMembersToShow)
         p.lead.text-primary.text-center: small &hellip; and others
 
 block content
-
-  //- Services
-  - var languageColor = viewServices.languageColor
-  - var octicon = viewServices.octicon
-  - var fileSize = viewServices.fileSize
-  - var moment = viewServices.moment
-
   //- Variables
   - var maximumMembersToShow = (4 * 3) - 1
   - var maximumRepositoriesToShow = 5
@@ -101,6 +94,7 @@ block content
   //- View services
   - var languageColor = viewServices.languageColor
   - var octicon = viewServices.octicon
+  - var moment = viewServices.moment
 
   //- Mode variables
   - var admin = teamPermissions.allowAdministration

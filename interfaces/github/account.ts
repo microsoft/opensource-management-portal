@@ -5,6 +5,7 @@
 
 export enum AccountJsonFormat {
   GitHub = 'github',
+  GitHubExtended = 'github+extended',
   UplevelWithLink = 'github+link',
   GitHubDetailedWithLink = 'detailed+link',
 }

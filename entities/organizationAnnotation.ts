@@ -41,7 +41,10 @@ const defaultPostgresTableName = 'organizationannotations';
 const organizationId = 'organizationId';
 const primaryKeyFieldName = organizationId;
 
-export enum OrganizationAnnotationProperty {}
+export enum OrganizationAnnotationProperty {
+  Governance = 'governance',
+}
+
 export enum OrganizationAnnotationFeature {}
 
 export interface IOrganizationAnnotationChange {
@@ -50,6 +53,11 @@ export interface IOrganizationAnnotationChange {
   displayName?: string;
   details?: string;
   text: string;
+}
+
+export function getOrganizationAnnotationRestrictedPropertyNames(isSystemAdministrator?: boolean): string[] {
+  const restrictedProperties = ['administratorNodes', 'history'];
+  return isSystemAdministrator ? [] : restrictedProperties;
 }
 
 interface IOrganizationAnnotationMetadataProperties {

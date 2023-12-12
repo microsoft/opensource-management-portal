@@ -41,6 +41,7 @@ import { codespacesDevAssistant } from './codespaces';
 export default async function initMiddleware(
   app: IReposApplication,
   express,
+  providers: IProviders,
   config: SiteConfiguration,
   dirname: string,
   hasCustomRoutes: boolean,
@@ -51,7 +52,6 @@ export default async function initMiddleware(
     config && config.typescript && config.typescript.appDirectory
       ? config.typescript.appDirectory
       : stripDistFolderName(dirname);
-  const providers = app.get('providers') as IProviders;
   const applicationProfile = providers.applicationProfile;
   if (initializationError) {
     providers.healthCheck.healthy = false;

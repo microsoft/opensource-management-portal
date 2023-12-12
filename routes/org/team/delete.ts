@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 const router: Router = Router();
 
 import { ReposAppRequest, UserAlertType } from '../../../interfaces';
@@ -14,7 +14,7 @@ interface ILocalRequest extends ReposAppRequest {
   team2?: any;
 }
 
-router.post('/', MiddlewareTeamAdminRequired, (req: ILocalRequest, res, next) => {
+router.post('/', MiddlewareTeamAdminRequired, (req: ILocalRequest, res: Response, next: NextFunction) => {
   const organization = req.organization;
   const team2 = req.team2;
   team2.delete((error) => {

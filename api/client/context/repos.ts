@@ -3,19 +3,20 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { NextFunction, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { GitHubRepositoryPermission, ReposAppRequest } from '../../../interfaces';
 import { IndividualContext } from '../../../business/user';
 
-export default asyncHandler(async (req: ReposAppRequest, res, next) => {
+export default asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
   try {
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
       return res.json({
         isLinked: false,
         repositories: [],
-      });
+      }) as unknown as void;
     }
     let permissions = await activeContext.aggregations.getQueryCacheRepositoryPermissions();
     permissions = permissions.filter((perm) => {
@@ -47,7 +48,7 @@ export default asyncHandler(async (req: ReposAppRequest, res, next) => {
           // TODO: would be nice for team permission for repos to also store the team slug in the query cache!
         };
       }),
-    });
+    }) as unknown as void;
   } catch (error) {
     return next(error);
   }

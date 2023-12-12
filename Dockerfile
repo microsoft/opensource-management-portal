@@ -1,4 +1,9 @@
-ARG IMAGE_NAME=node:16-alpine
+#
+# Copyright (c) Microsoft.
+# Licensed under the MIT license. See LICENSE file in the project root for full license information.
+#
+
+ARG IMAGE_NAME=mcr.microsoft.com/cbl-mariner/base/nodejs:18
 
 FROM $IMAGE_NAME AS build
 
@@ -6,6 +11,11 @@ ARG NPM_TOKEN
 
 # Make Git available for NPM and rsync in the build image
 RUN apk add --update git && rm -rf /var/cache/apk/*
+RUN tdnf -y update --quiet
+
+# We used to also make Git available for NPM and rsync in build
+#   tdnf clean all --quiet && \
+#   tdnf -y install ca-certificates git --quiet && \
 
 WORKDIR /build
 COPY package.json .

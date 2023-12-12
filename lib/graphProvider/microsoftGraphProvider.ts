@@ -8,6 +8,7 @@
 import cache from 'memory-cache';
 import axios, { AxiosError } from 'axios';
 import querystring from 'querystring';
+import validator from 'validator';
 
 import {
   IGraphProvider,
@@ -32,20 +33,60 @@ export interface IMicrosoftGraphProviderOptions {
   skipManagerLookupForIds?: string;
 }
 
+export type MicrosoftGraphGroupMembersOptions = {
+  getCount?: boolean;
+  maximumPages?: number;
+  throwOnMaximumPages?: boolean;
+  skipCache?: boolean;
+  additionalSelectValues?: string[];
+  membership?: MicrosoftGraphGroupMembershipType;
+};
+
+export enum MicrosoftGraphGroupMembershipType {
+  Transitive = 'transitiveMembers',
+  Direct = 'members',
+}
+
+export type MicrosoftGraphGroupMember = IGraphGroupMember & {
+  userType?: GraphUserType;
+};
+
+export function microsoftGraphUserTypeFromString(type: string): GraphUserType {
+  if (!type) {
+    return;
+  }
+  switch (type) {
+    case GraphUserType.Guest:
+      return GraphUserType.Guest;
+    case GraphUserType.Member:
+      return GraphUserType.Member;
+    default:
+      return GraphUserType.Unknown;
+  }
+}
+
 const graphBaseUrl = 'https://graph.microsoft.com/v1.0/';
 const odataNextLink = '@odata.nextLink';
-const defaultCachePeriodMinutes = 60;
+const defaultCachePeriodMinutes = 60 * 36; // 36 hours
 
 const attemptCacheGet = true;
 
-interface IGraphOptions {
+type MicrosoftGraphCallOptions = {
   selectValues?: string;
   filterValues?: string;
   orderBy?: string;
   body?: any;
   count?: boolean;
   consistencyLevel?: 'eventual';
-}
+};
+
+type GraphCacheOptions = {
+  skipCache?: boolean;
+  maximumPages?: number;
+  throwOnMaximumPages?: boolean;
+};
+
+type GraphOptions = MicrosoftGraphCallOptions & GraphCacheOptions;
 
 export class MicrosoftGraphProvider implements IGraphProvider {
   #_tokenCacheMilliseconds: number;
@@ -162,12 +203,18 @@ export class MicrosoftGraphProvider implements IGraphProvider {
   }
 
   async getGroup(corporateGroupId: string): Promise<IGraphGroup> {
+    const selectValues = 'description,displayName,id,mail,mailNickname';
+    // if (additionalSelectValues) {
+    //   selectValues = Array.from(
+    //     new Set<string>([...selectValues.split(','), ...additionalSelectValues]).values()
+    //   ).join(',');
+    // }
     // prettier-ignore
     const response = await this.lookupInGraph([
       'groups',
       corporateGroupId,
     ], {
-      selectValues: 'description,displayName,id,mail,mailNickname',
+      selectValues,
     });
     return response;
   }
@@ -357,26 +404,50 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       });
   }
 
-  async getGroupMembers(corporateGroupId: string): Promise<IGraphGroupMember[]> {
+  async getGroupMembers(
+    corporateGroupId: string,
+    options?: MicrosoftGraphGroupMembersOptions
+  ): Promise<MicrosoftGraphGroupMember[]> {
+    const defaultSelectSet = ['id', 'userPrincipalName'];
+    const selectValuesSet = new Set<string>([
+      ...defaultSelectSet,
+      ...(options?.additionalSelectValues || []),
+    ]);
+    const graphOptions: GraphOptions = {
+      selectValues: Array.from(selectValuesSet.values()).join(','),
+    };
+    if (options?.getCount) {
+      graphOptions.count = true;
+      graphOptions.consistencyLevel = 'eventual';
+    }
+    if (options?.maximumPages) {
+      graphOptions.maximumPages = options.maximumPages;
+    }
+    if (options?.throwOnMaximumPages) {
+      graphOptions.throwOnMaximumPages = options.throwOnMaximumPages;
+    }
+    const lookupType = options?.membership || MicrosoftGraphGroupMembershipType.Transitive;
+    const includesUserType = selectValuesSet.has('userType');
     const response = (await this.lookupInGraph(
-      [
-        'groups',
-        corporateGroupId,
-        'transitiveMembers', // transitiveMembers or members
-      ],
-      {
-        selectValues: 'id,userPrincipalName',
-      }
+      ['groups', corporateGroupId, lookupType],
+      graphOptions
     )) as any[];
-    // may be a caching bug:
     if (Array.isArray(response)) {
       return response.map((entry) => {
-        return { id: entry.id, userPrincipalName: entry.userPrincipalName };
+        return {
+          id: entry.id,
+          userPrincipalName: entry.userPrincipalName,
+          userType: includesUserType ? microsoftGraphUserTypeFromString(entry.userType) : undefined,
+        };
       });
     }
     const subResponse = (response as any).value ? (response as any).value : [];
     return subResponse.map((entry) => {
-      return { id: entry.id, userPrincipalName: entry.userPrincipalName };
+      return {
+        id: entry.id,
+        userPrincipalName: entry.userPrincipalName,
+        userType: includesUserType ? microsoftGraphUserTypeFromString(entry.userType) : undefined,
+      };
     });
   }
 
@@ -384,12 +455,18 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     if (!minimum3Characters || minimum3Characters.length < 3) {
       throw new Error(`Minimum 3 characters required: ${minimum3Characters}`);
     }
+
+    let filterValues = `securityEnabled eq true and (startswith(displayName, '${minimum3Characters}') or startswith(mailNickname, '${minimum3Characters}'))`;
+    if (validator.isUUID(minimum3Characters)) {
+      filterValues = `securityEnabled eq true and (id eq '${minimum3Characters}' or startswith(displayName, '${minimum3Characters}') or startswith(mailNickname, '${minimum3Characters}'))`;
+    }
+
     // NOTE: this is currently explicitly looking for Security Groups only
     // prettier-ignore
     let response = (await this.lookupInGraph([
       'groups',
     ], {
-      filterValues: `securityEnabled eq true and (startswith(displayName, '${minimum3Characters}') or startswith(mailNickname, '${minimum3Characters}'))`,
+      filterValues,
       selectValues: 'id,displayName,mailNickname',
     })) as any[];
     if (!response.filter && (response as any).value?.filter) {
@@ -488,8 +565,9 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     }
   }
 
-  private async lookupInGraph(entityPath: string[], options: IGraphOptions): Promise<any> {
+  private async lookupInGraph(entityPath: string[], options: GraphOptions): Promise<any> {
     // initial hacking on top of the API
+    const skipCache = options?.skipCache === true;
     const subUrl = entityPath.map((item) => encodeURIComponent(item)).join('/');
     const queries = {};
     if (options.filterValues) {
@@ -501,12 +579,15 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     if (options.orderBy) {
       queries['$orderby'] = options.orderBy;
     }
+    if (options.count === true) {
+      queries['$count'] = 'true';
+    }
     let hasArray = false;
     let value = null;
     let url = `${graphBaseUrl}${subUrl}?${querystring.stringify(queries)}`;
     const originalUrl = url;
     try {
-      if (this.#_cache && attemptCacheGet) {
+      if (this.#_cache && attemptCacheGet && !skipCache) {
         value = await this.#_cache.getObject(url);
         if (value?.cache) {
           if (Array.isArray(value.cache) && value.cache.length === 0) {
@@ -522,9 +603,10 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       console.warn(error);
     }
     let pages = 0;
+    const maximumPages = options?.maximumPages;
     do {
       const consistencyLevel = options.consistencyLevel;
-      const body = await this.request(url, options.body, consistencyLevel);
+      const body = await this.request(url, options.body, consistencyLevel, skipCache);
       if (body.value && pages === 0) {
         hasArray = body && body.value && Array.isArray(body.value);
         if (hasArray) {
@@ -541,12 +623,18 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       }
       ++pages;
       url = body && body[odataNextLink] ? body[odataNextLink] : null;
-    } while (url);
+    } while (url && (maximumPages ? pages < maximumPages : true));
+    if (pages >= maximumPages) {
+      if (options.throwOnMaximumPages) {
+        throw CreateError.InvalidParameters('Maximum pages exceeded for this resource');
+      }
+      console.warn(`Maximum pages exceeded for this resource: ${originalUrl}`);
+    }
     if (this.#_cache) {
       try {
         this.#_cache
           .setObjectWithExpire(originalUrl, { cache: value }, defaultCachePeriodMinutes)
-          .then((ok) => {})
+          .then(() => {})
           .catch((err) => {
             console.warn(err);
           });
@@ -557,10 +645,15 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     return value;
   }
 
-  private async request(url: string, body?: any, eventualConsistency?: string): Promise<any> {
+  private async request(
+    url: string,
+    body?: any,
+    eventualConsistency?: string,
+    skipCache?: boolean
+  ): Promise<any> {
     const token = await this.getToken();
     const method = body ? 'post' : 'get';
-    if (this.#_cache && attemptCacheGet && method === 'get') {
+    if (this.#_cache && attemptCacheGet && method === 'get' && !skipCache) {
       try {
         const value = await this.#_cache.getObject(url);
         if (value?.cache) {
@@ -596,13 +689,12 @@ export class MicrosoftGraphProvider implements IGraphProvider {
         throw CreateError.ServerError('Empty response');
       }
       if ((response.data as any).error?.message) {
-        // axios returns unknown now
-        throw CreateError.InvalidParameters((response.data as any).error.message); // axios returns unknown now
+        throw CreateError.InvalidParameters((response.data as any).error.message);
       }
       if (this.#_cache && method === 'get') {
         this.#_cache
           .setObjectWithExpire(url, { cache: response.data }, defaultCachePeriodMinutes)
-          .then((ok) => {})
+          .then(() => {})
           .catch((err) => {});
       }
       return response.data;

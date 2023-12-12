@@ -261,7 +261,7 @@ Status: 201 OK
 
 ### Create a repo
 
-> This API requires that your API key be authorized for the `createRepo` scope
+> This API requires that your API key be authorized for the `repo/create` scope
 
 This example uses a pure POST request plus headers for authorization:
 

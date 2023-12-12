@@ -12,14 +12,17 @@ import type { ICreateRepositoryApiResult } from './api/createRepo';
 import { Repository } from './business/repository';
 import {
   GitHubRepositoryPermission,
-  IDictionary,
-  IFunctionPromise,
-  IProviders,
-  ISettledValue,
-  ReposAppRequest,
+  type ICorporateLink,
+  type IDictionary,
+  type IFunctionPromise,
+  type IGitHubCollaboratorPermissions,
+  type IProviders,
+  type ISettledValue,
+  type ReposAppRequest,
   SettledState,
 } from './interfaces';
 import { Organization } from './business';
+import { ILinkProvider } from './lib/linkProviders';
 const packageVariableName = 'static-react-package-name';
 
 export function hasStaticReactClientApp() {
@@ -53,7 +56,9 @@ export function SettleToStateValue<T>(promise: Promise<T>): Promise<ISettledValu
   );
 }
 
-export function permissionsObjectToValue(permissions): GitHubRepositoryPermission {
+export function projectCollaboratorPermissionsObjectToGitHubRepositoryPermission(
+  permissions: IGitHubCollaboratorPermissions
+): GitHubRepositoryPermission {
   if (permissions.admin === true) {
     return GitHubRepositoryPermission.Admin;
   } else if (permissions.push === true) {
@@ -68,6 +73,19 @@ export function permissionsObjectToValue(permissions): GitHubRepositoryPermissio
   throw new Error(`Unsupported GitHubRepositoryPermission value inside permissions`);
 }
 
+export async function streamToBuffer(readableStream: NodeJS.ReadableStream): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    readableStream.on('data', (data: Buffer | string) => {
+      chunks.push(data instanceof Buffer ? data : Buffer.from(data));
+    });
+    readableStream.on('end', () => {
+      resolve(Buffer.concat(chunks));
+    });
+    readableStream.on('error', reject);
+  });
+}
+
 export function isPermissionBetterThan(
   currentBest: GitHubRepositoryPermission,
   newConsideration: GitHubRepositoryPermission
@@ -75,8 +93,8 @@ export function isPermissionBetterThan(
   if (!currentBest) {
     return true;
   }
-  const comparison = MassagePermissionsToGitHubRepositoryPermission(currentBest);
-  switch (MassagePermissionsToGitHubRepositoryPermission(newConsideration)) {
+  const comparison = projectCollaboratorPermissionToGitHubRepositoryPermission(currentBest);
+  switch (projectCollaboratorPermissionToGitHubRepositoryPermission(newConsideration)) {
     case GitHubRepositoryPermission.Admin:
       return true;
     case GitHubRepositoryPermission.Maintain:
@@ -103,7 +121,9 @@ export function isPermissionBetterThan(
   return false;
 }
 
-export function MassagePermissionsToGitHubRepositoryPermission(value: string): GitHubRepositoryPermission {
+export function projectCollaboratorPermissionToGitHubRepositoryPermission(
+  value: string
+): GitHubRepositoryPermission {
   // collaborator level APIs return a more generic read/write value, lead to some bad caches in the past...
   // TODO: support new collaboration values as they come online for Enterprise Cloud!
   switch (value) {
@@ -120,15 +140,15 @@ export function MassagePermissionsToGitHubRepositoryPermission(value: string): G
     case 'read':
       return GitHubRepositoryPermission.Pull;
     default:
-      throw new Error(
-        `Invalid ${value} GitHub repository permission [massagePermissionsToGitHubRepositoryPermission]`
+      throw CreateError.InvalidParameters(
+        `Invalid ${value} GitHub repository permission [projectCollaboratorPermissionsToGitHubRepositoryPermission]`
       );
   }
 }
 
 export class CreateError {
-  static CreateStatusCodeError(code: number, message?: string): Error {
-    const error = new Error(message);
+  static CreateStatusCodeError(code: number, message?: string, cause?: Error): Error {
+    const error = cause ? new Error(message, { cause }) : new Error(message);
     error['status'] = code;
     return error;
   }
@@ -150,16 +170,20 @@ export class CreateError {
     return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(400, message), innerError);
   }
 
-  static NotAuthenticated(message: string): Error {
-    return CreateError.CreateStatusCodeError(401, message);
+  static NotAuthenticated(message: string, cause?: Error): Error {
+    return CreateError.CreateStatusCodeError(401, message, cause);
   }
 
-  static NotAuthorized(message: string): Error {
-    return CreateError.CreateStatusCodeError(403, message);
+  static NotImplemented(message?: string, cause?: Error): Error {
+    return CreateError.CreateStatusCodeError(500, message || 'This scenario is not yet implemented', cause);
   }
 
-  static ServerError(message: string, innerError?: Error): Error {
-    return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(500, message), innerError);
+  static NotAuthorized(message: string, cause?: Error): Error {
+    return CreateError.CreateStatusCodeError(403, message, cause);
+  }
+
+  static ServerError(message: string, cause?: Error): Error {
+    return CreateError.CreateStatusCodeError(500, message, cause);
   }
 }
 
@@ -230,9 +254,6 @@ export class ErrorHelper {
     if (asAny?.statusCode && typeof asAny.statusCode === 'number') {
       return asAny.statusCode as number;
     }
-    if (asAny?.code && typeof asAny.code === 'number') {
-      return asAny.code as number;
-    }
     if (asAny?.status) {
       const status = asAny.status;
       const type = typeof status;
@@ -244,6 +265,9 @@ export class ErrorHelper {
         console.warn(`Unsupported error.status type: ${type}`);
         return null;
       }
+    }
+    if (asAny?.code && typeof asAny.code === 'number') {
+      return asAny.code as number;
     }
     return null;
   }
@@ -272,9 +296,27 @@ export function stripDistFolderName(dirname: string) {
   return dirname;
 }
 
+export function getSafeCosmosResourceKey(key: string) {
+  return key.replace(/[%:\\/?#]/g, '');
+}
+
 export function sha256(str: string) {
   const hash = crypto.createHash('sha256').update(str).digest('base64');
   return hash;
+}
+
+export async function getThirdPartyLinkById(
+  linkProvider: ILinkProvider,
+  thirdPartyId: string | number
+): Promise<ICorporateLink> {
+  try {
+    return await linkProvider.getByThirdPartyId(String(thirdPartyId));
+  } catch (error) {
+    if (ErrorHelper.IsNotFound(error)) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export interface ICustomizedNewRepositoryLogic {

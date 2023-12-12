@@ -22,7 +22,7 @@ import {
   IRestMetadata,
   IRestResponse,
 } from './core';
-import { IGetAuthorizationHeader } from '../../interfaces';
+import { GetAuthorizationHeader } from '../../interfaces';
 
 import appPackage from '../../package.json';
 
@@ -34,7 +34,7 @@ const acceleratedExpirationMinutes = 60; // 1 hour
 export class CompositeApiContext extends ApiContext {
   private _apiMethod: any;
   private _apiTypePrefix: string;
-  private _token: string | IGetAuthorizationHeader;
+  private _token: string | GetAuthorizationHeader;
   private _cacheValues: IApiContextCacheValues;
   private _redisKeys: IApiContextRedisKeys;
 
@@ -74,11 +74,11 @@ export class CompositeApiContext extends ApiContext {
     return this._cacheValues;
   }
 
-  get token(): string | IGetAuthorizationHeader {
+  get token(): string | GetAuthorizationHeader {
     return this._token;
   }
 
-  overrideToken(token: string | IGetAuthorizationHeader) {
+  overrideToken(token: string | GetAuthorizationHeader) {
     this._token = token;
   }
 

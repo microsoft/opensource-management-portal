@@ -8,13 +8,17 @@ import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
 import zlib from 'zlib';
-import { type Repository } from './business/repository';
 
-import { ReposAppRequest, IAppSession, IReposError, SiteConfiguration } from './interfaces';
+import { type Repository } from './business/repository';
+import type { ReposAppRequest, IAppSession, IReposError, SiteConfiguration } from './interfaces';
 import { getProviders } from './transitional';
 
 export function daysInMilliseconds(days: number): number {
   return 1000 * 60 * 60 * 24 * days;
+}
+
+export function dateToDateString(date: Date) {
+  return date.toISOString().substr(0, 10);
 }
 
 export function stringOrNumberAsString(value: any) {
@@ -262,7 +266,12 @@ export function writeTextToFile(filename: string, stringContent: string): Promis
   });
 }
 
-export function quitInTenSeconds(successful: boolean) {
+export function quitInTenSeconds(successful: boolean, config?: SiteConfiguration) {
+  // To allow telemetry to flush, we'll wait typically
+  if (config?.debug?.exitImmediately || process.env.EXIT_IMMEDIATELY === '1') {
+    console.log(`EXIT_IMMEDIATELY set, exiting... exit code=${successful ? 0 : 1}`);
+    return process.exit(successful ? 0 : 1);
+  }
   console.log(`Quitting process in 10s... exit code=${successful ? 0 : 1}`);
   return setTimeout(() => {
     process.exit(successful ? 0 : 1);
@@ -354,3 +363,24 @@ export function getDateTimeBasedBlobFolder() {
 }
 
 export const botBracket = '[bot]';
+
+const githubAvatarHostnames = [
+  'githubusercontent.com',
+  'objects.githubusercontent.com',
+  'object.githubusercontent.com',
+  'raw.githubusercontent.com',
+  'avatars.githubusercontent.com',
+];
+
+export function getUserIdFromWellFormedAvatar(avatar: string): string {
+  // https://*.githubusercontent.com/u/userid?v=*
+  const url = new URL(avatar);
+  if (githubAvatarHostnames.includes(url.hostname)) {
+    const { pathname } = url;
+    const i = pathname.indexOf('/u/');
+    if (i >= 0) {
+      return pathname.substr(i + 3);
+    }
+  }
+  return null;
+}

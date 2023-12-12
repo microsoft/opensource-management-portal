@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { Team, Organization } from '../../../business';
@@ -30,7 +30,7 @@ const approvalPairToJson = (pair: ApprovalPair) => {
 
 router.get(
   '/',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { approvalProvider, operations } = getProviders(req);
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
@@ -38,7 +38,7 @@ router.get(
         teamResponsibilities: [],
         usersRequests: [],
         isLinked: false,
-      });
+      }) as unknown as void;
     }
     try {
       // const username = activeContext.getGitHubIdentity().username;
@@ -54,7 +54,7 @@ router.get(
         teamResponsibilities: teamResponsibilities.map(approvalPairToJson),
         usersRequests: usersRequests.map(approvalPairToJson),
       };
-      return res.json(state);
+      return res.json(state) as unknown as void;
     } catch (error) {
       return next(jsonError(error));
     }
@@ -65,7 +65,7 @@ router.get(
 
 router.get(
   '/:approvalId',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const approvalId = req.params.approvalId;
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
@@ -112,7 +112,7 @@ router.get(
   })
 );
 
-router.use('*', (req: ReposAppRequest, res, next) => {
+router.use('*', (req: ReposAppRequest, res: Response, next: NextFunction) => {
   return next(jsonError('Contextual API or route not found within approvals', 404));
 });
 

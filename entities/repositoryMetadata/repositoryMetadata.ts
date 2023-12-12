@@ -4,8 +4,8 @@
 //
 
 import { EntityField } from '../../lib/entityMetadataProvider/entityMetadataProvider';
-import { IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
-import { IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
+import type { IEntityMetadata } from '../../lib/entityMetadataProvider/entityMetadata';
+import { type IEntityMetadataFixedQuery, FixedQueryType } from '../../lib/entityMetadataProvider/query';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
@@ -17,7 +17,7 @@ import {
   PostgresSettings,
   PostgresConfiguration,
 } from '../../lib/entityMetadataProvider/postgres';
-import { TableConfiguration, TableSettings } from '../../lib/entityMetadataProvider/table';
+import { TableSettings } from '../../lib/entityMetadataProvider/table';
 import { MemoryConfiguration, MemorySettings } from '../../lib/entityMetadataProvider/memory';
 import { odata, TableEntityQueryOptions } from '@azure/data-tables';
 import {

@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ICacheOptions, IPagedCacheOptions } from '.';
-import { ICorporateLink } from '..';
+import type { ICacheOptions, IPagedCacheOptions } from '.';
+import type { ICorporateLink } from '..';
 import { OrganizationMember } from '../../business';
 import { Repository } from '../../business/repository';
 
@@ -97,3 +97,24 @@ export interface IOrganizationMembership {
   organization: any;
   user: any;
 }
+
+export type GitHubSimpleAccount = {
+  login: string;
+  avatar_url: string;
+  id: number;
+};
+
+export type GitHubOrganizationInvite = {
+  created_at: string;
+  email: string;
+  failed_at: string;
+  failed_reason: string;
+  id: number;
+  invitation_source: string; // 'member'
+  invitation_teams_url: string;
+  inviter: GitHubSimpleAccount;
+  login: string;
+  node_id: string;
+  role: string; // 'direct_member'
+  team_count: number;
+};

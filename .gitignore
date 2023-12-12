@@ -1,6 +1,7 @@
 dist/
 node_modules/
 .DS_Store
+reports/
 
 # Potential local development environment scripts
 app.yaml

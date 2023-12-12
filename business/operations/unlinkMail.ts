@@ -64,7 +64,7 @@ export async function sendTerminatedAccountMail(
       break;
     case UnlinkPurpose.Termination:
       subjectPrefix = '[UNLINKED] ';
-      headline = `${displayName} is not an active employee`;
+      headline = `${displayName} has had their GitHub access offboarded`;
       break;
     case UnlinkPurpose.Unknown:
     default:

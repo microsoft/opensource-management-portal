@@ -18,9 +18,9 @@ export async function lockdownRepository(
   const organization = repository.organization;
   try {
     const specialPermittedTeams = new Set([
-      ...organization.specialRepositoryPermissionTeams.admin,
-      ...organization.specialRepositoryPermissionTeams.write,
-      ...organization.specialRepositoryPermissionTeams.read,
+      ...organization.specialSystemTeams.admin,
+      ...organization.specialSystemTeams.write,
+      ...organization.specialSystemTeams.read,
     ]);
     const teamPermissions = await repository.getTeamPermissions();
     for (const tp of teamPermissions) {

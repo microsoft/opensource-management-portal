@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 const router: Router = Router();
 
 import { ReposAppRequest } from '../interfaces';
@@ -17,7 +17,7 @@ import { ReposAppRequest } from '../interfaces';
 //   linksForCleanup?: any;
 // }
 
-router.use((req: ReposAppRequest, res, next) => {
+router.use((req: ReposAppRequest, res: Response, next: NextFunction) => {
   // TODO: revisit implementation
   return next();
 
@@ -104,7 +104,7 @@ router.use((req: ReposAppRequest, res, next) => {
 //   renderCleanupPage(req, res, null, null);
 // });
 
-// router.post('/', (req: IRequestWithSessionPlus, res, next) => {
+// router.post('/', (req: IRequestWithSessionPlus, res: Response, next: NextFunction) => {
 //   let action = 'unlink';
 //   let id = req.body.unlink;
 //   if (!req.body.unlink && req.session && req.session.enableMultipleAccounts === true && req.body.select) {

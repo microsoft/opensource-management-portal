@@ -29,8 +29,9 @@ export interface IBasicGitHubAppInstallation {
   appPurposeId?: string;
 }
 
-export enum SpecialTeam {
+export enum SystemTeam {
   Everyone = 'everyone', // teamAllMembers
+  OpenAccess = 'openAccess',
   Sudo = 'sudo', // teamSudoers
   GlobalSudo = 'globalSudo', // teamPortalSudoers
   SystemWrite = 'systemWrite', // teamAllReposWrite
@@ -56,7 +57,7 @@ export enum OrganizationProperty {
 }
 
 export interface ISpecialTeam {
-  specialTeam: SpecialTeam;
+  specialTeam: SystemTeam;
   teamId: number;
 }
 
@@ -156,6 +157,16 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
 
   getOwnerToken() {
     return this.#ownerToken;
+  }
+
+  static CreateEmptyWithOldToken(token: string, notes: string, organizationId?: number) {
+    const settings = new OrganizationSetting();
+    settings.#ownerToken = token;
+    if (organizationId) {
+      settings.organizationId = organizationId;
+    }
+    settings.operationsNotes = notes;
+    return settings;
   }
 
   static CreateFromStaticSettings(staticSettings: ConfigGitHubOrganization): OrganizationSetting {
@@ -260,12 +271,25 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
         : [clone.teamAllMembers as any];
       for (const value of arr) {
         settings.specialTeams.push({
-          specialTeam: SpecialTeam.Everyone,
+          specialTeam: SystemTeam.Everyone,
           teamId: Number(value),
         });
       }
     }
     delete clone.teamAllMembers;
+
+    if (clone.teamOpenAccess) {
+      const arr = Array.isArray(clone.teamOpenAccess)
+        ? (clone.teamOpenAccess as any[])
+        : [clone.teamOpenAccess as any];
+      for (const value of arr) {
+        settings.specialTeams.push({
+          specialTeam: SystemTeam.OpenAccess,
+          teamId: Number(value),
+        });
+      }
+    }
+    delete clone.teamOpenAccess;
 
     if (clone.teamAllReposRead) {
       const arr = Array.isArray(clone.teamAllReposRead)
@@ -273,7 +297,7 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
         : [clone.teamAllReposRead as any];
       for (const value of arr) {
         settings.specialTeams.push({
-          specialTeam: SpecialTeam.SystemRead,
+          specialTeam: SystemTeam.SystemRead,
           teamId: Number(value),
         });
       }
@@ -286,7 +310,7 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
         : [clone.teamAllReposWrite as any];
       for (const value of arr) {
         settings.specialTeams.push({
-          specialTeam: SpecialTeam.SystemWrite,
+          specialTeam: SystemTeam.SystemWrite,
           teamId: Number(value),
         });
       }
@@ -299,7 +323,7 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
         : [clone.teamAllReposAdmin as any];
       for (const value of arr) {
         settings.specialTeams.push({
-          specialTeam: SpecialTeam.SystemAdmin,
+          specialTeam: SystemTeam.SystemAdmin,
           teamId: Number(value),
         });
       }
@@ -312,7 +336,7 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
         : [clone.teamSudoers as any];
       for (const value of arr) {
         settings.specialTeams.push({
-          specialTeam: SpecialTeam.Sudo,
+          specialTeam: SystemTeam.Sudo,
           teamId: Number(value),
         });
       }
@@ -325,7 +349,7 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
         : [clone.teamPortalSudoers as any];
       for (const value of arr) {
         settings.specialTeams.push({
-          specialTeam: SpecialTeam.GlobalSudo,
+          specialTeam: SystemTeam.GlobalSudo,
           teamId: Number(value),
         });
       }

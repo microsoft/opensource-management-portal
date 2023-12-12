@@ -68,8 +68,7 @@ export default class MemberWebhookProcessor implements WebhookProcessor {
         const repositoryName = event.repository.name;
         const repository = organization.repository(repositoryName, event.repository);
         const collaborator = await repository.getCollaborator(event.member.login);
-        const permission = collaborator.asGitHubRepositoryPermission();
-        // TODO: may need to support the new 5 levels vs 3...
+        const permission = collaborator.interpretRoleAsDetailedPermission();
         if (permission) {
           const isOrganizationMember = await organization.getMembership(userLogin);
           const collaboratorType = isOrganizationMember

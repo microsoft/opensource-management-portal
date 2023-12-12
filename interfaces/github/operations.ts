@@ -3,7 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { CoreCapability, ICacheDefaultTimes, IPurposefulGetAuthorizationHeader, ICacheOptions } from '.';
+import {
+  CoreCapability,
+  ICacheDefaultTimes,
+  PurposefulGetAuthorizationHeader,
+  ICacheOptions,
+  GetAuthorizationHeader,
+} from '.';
 import { IProviders, ICorporateLink, ICachedEmployeeInformation } from '..';
 import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
 import { RestLibrary } from '../../lib/github';
@@ -37,7 +43,6 @@ export interface IOperationsLinks {
 
 export interface IOperationsNotifications {
   getOperationsMailAddress(): string;
-  getInfrastructureNotificationsMail(): string;
   getLinksNotificationMailAddress(): string;
   getRepositoriesNotificationMailAddress(): string;
 }
@@ -79,8 +84,9 @@ export interface IOperationsLockdownFeatureFlags {
 }
 
 export interface IOperationsCentralOperationsToken {
-  getCentralOperationsToken(): IPurposefulGetAuthorizationHeader; // IGetAuthorizationHeader ?;
   getAccountByUsername(username: string, options?: ICacheOptions): Promise<Account>;
+  getPublicReadOnlyStaticToken(): GetAuthorizationHeader;
+  getPublicAuthorizationToken(): GetAuthorizationHeader;
 }
 
 export function operationsIsCapable<T>(

@@ -5,16 +5,16 @@
 
 import { Repository } from './repository';
 import { wrapError } from '../utils';
-import { AppPurpose } from './githubApps';
+import { AppPurpose } from '../lib/github/appPurposes';
 import { CacheDefault, getMaxAgeSeconds, Operations } from '.';
 import {
   IOperationsInstance,
-  IPurposefulGetAuthorizationHeader,
+  PurposefulGetAuthorizationHeader,
   GitHubIssueState,
   IIssueLabel,
   throwIfNotGitHubCapable,
   ICacheOptions,
-  IGetAuthorizationHeader,
+  GetAuthorizationHeader,
   GitHubIssuePatchParameters,
   GitHubStateReason,
 } from '../interfaces';
@@ -22,7 +22,7 @@ import { CreateError, ErrorHelper } from '../transitional';
 
 export class RepositoryIssue {
   private _operations: IOperationsInstance;
-  private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
+  private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
 
   private _number: number;
   private _repository: Repository;
@@ -33,7 +33,7 @@ export class RepositoryIssue {
     repository: Repository,
     issueNumber: number,
     operations: IOperationsInstance,
-    getAuthorizationHeader: IPurposefulGetAuthorizationHeader,
+    getAuthorizationHeader: PurposefulGetAuthorizationHeader,
     entity?: any
   ) {
     this._getAuthorizationHeader = getAuthorizationHeader;
@@ -211,11 +211,8 @@ export class RepositoryIssue {
     return false;
   }
 
-  private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
-    const getAuthorizationHeader = this._getAuthorizationHeader.bind(
-      this,
-      purpose
-    ) as IGetAuthorizationHeader;
+  private authorize(purpose: AppPurpose): GetAuthorizationHeader | string {
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as GetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 

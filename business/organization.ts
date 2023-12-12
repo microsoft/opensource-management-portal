@@ -13,26 +13,27 @@ import { Repository } from './repository';
 import { wrapError } from '../utils';
 import { StripGitHubEntity } from '../lib/github/restApi';
 import { GitHubResponseType } from '../lib/github/endpointEntities';
-import { AppPurpose, AppPurposeTypes } from './githubApps';
+import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
 import {
   OrganizationFeature,
   OrganizationSetting,
-  SpecialTeam,
+  SystemTeam,
 } from '../entities/organizationSettings/organizationSetting';
 import { createOrganizationSudoInstance, IOrganizationSudo } from '../features';
 import { CacheDefault, getMaxAgeSeconds, getPageSize, OperationsCore } from './operations/core';
 import {
   CoreCapability,
   GitHubAuditLogEntry,
+  GitHubOrganizationInvite,
   GitHubRepositoryVisibility,
   IAccountBasics,
   IAddOrganizationMembershipOptions,
-  IAuthorizationHeaderValue,
+  AuthorizationHeaderValue,
   ICacheOptions,
   ICacheOptionsWithPurpose,
   ICorporateLink,
   ICreateRepositoryResult,
-  IGetAuthorizationHeader,
+  type GetAuthorizationHeader,
   IGetOrganizationAuditLogOptions,
   IGetOrganizationMembersOptions,
   IGitHubAccountDetails,
@@ -48,7 +49,7 @@ import {
   IOrganizationMemberPair,
   IOrganizationMembership,
   IPagedCacheOptions,
-  IPurposefulGetAuthorizationHeader,
+  type PurposefulGetAuthorizationHeader,
   IReposError,
   IReposRestRedisCacheCost,
   NoCacheNoBackground,
@@ -63,9 +64,11 @@ import { CreateError, ErrorHelper } from '../transitional';
 import { jsonError } from '../middleware';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 import { ConfigGitHubTemplates } from '../config/github.templates.types';
-import { GitHubTokenManager } from './githubApps/tokenManager';
+import { GitHubTokenManager } from '../lib/github/tokenManager';
 import { OrganizationProjects } from './projects';
 import { OrganizationDomains } from './domains';
+import { OrganizationCopilot } from './organizationCopilot';
+import { OrganizationProperties } from './organizationProperties';
 
 interface IGetMembersParameters {
   org: string;
@@ -101,7 +104,7 @@ export interface IGitHubOrganizationPlanResponse {
   space: number;
 }
 
-export interface IGitHubOrganizationResponse {
+export type GitHubOrganizationResponse = {
   avatar_url?: string;
   billing_email?: string;
   blog?: string;
@@ -135,6 +138,68 @@ export interface IGitHubOrganizationResponse {
   type: string;
   updated_at: string;
   url: string;
+};
+
+// the only fields we want in this type based on GitHubOrganizationResponse are avatar_url, blog, company, created_at, description, email, id, location, login, name, updated_at
+export type GitHubOrganizationResponseSanitized = Pick<
+  GitHubOrganizationResponse,
+  | 'avatar_url'
+  | 'blog'
+  | 'company'
+  | 'created_at'
+  | 'description'
+  | 'email'
+  | 'id'
+  | 'location'
+  | 'login'
+  | 'name'
+  | 'updated_at'
+>;
+
+const sanitizedFields = [
+  'avatar_url',
+  'blog',
+  'company',
+  'created_at',
+  'description',
+  'email',
+  'id',
+  'location',
+  'login',
+  'name',
+  'updated_at',
+];
+
+export function getOrganizationDetailsSanitized(
+  details: GitHubOrganizationResponse
+): GitHubOrganizationResponseSanitized {
+  if (details) {
+    const sanitized = {} as GitHubOrganizationResponseSanitized;
+    for (const field of sanitizedFields) {
+      if (details[field]) {
+        sanitized[field] = details[field];
+      }
+    }
+    return sanitized;
+  }
+}
+
+export interface RunnerData {
+  busy: boolean;
+  id: number;
+  name: string;
+  os: string;
+  status: string;
+  labels: {
+    id: number;
+    name: string;
+    type: string;
+  };
+}
+
+export interface IGitHubOrganizationRunners {
+  total_count: number;
+  runners: RunnerData[];
 }
 
 export class Organization {
@@ -144,17 +209,20 @@ export class Organization {
   private _nativeManagementUrl: string;
 
   private _operations: IOperationsInstance;
-  private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
-  private _getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader;
+  private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
+  private _getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader;
   private _usesGitHubApp: boolean;
   private _settings: OrganizationSetting;
 
-  private _entity: IGitHubOrganizationResponse;
+  private _entity: GitHubOrganizationResponse;
 
   private _organizationSudo: IOrganizationSudo;
 
   private _projects: OrganizationProjects;
   private _domains: OrganizationDomains;
+
+  private _copilot: OrganizationCopilot;
+  private _customProperties: OrganizationProperties;
 
   id: number;
   uncontrolled: boolean;
@@ -163,8 +231,8 @@ export class Organization {
     operations: IOperationsInstance,
     name: string,
     settings: OrganizationSetting,
-    getAuthorizationHeader: IPurposefulGetAuthorizationHeader,
-    getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader,
+    getAuthorizationHeader: PurposefulGetAuthorizationHeader,
+    getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader,
     public hasDynamicSettings: boolean
   ) {
     this._name = settings.organizationName || name;
@@ -251,7 +319,7 @@ export class Organization {
       );
     }
 
-    return values;
+    return values as object;
   }
 
   getManagementApproach() {
@@ -286,6 +354,28 @@ export class Organization {
       );
     }
     return this._projects;
+  }
+
+  get copilot() {
+    if (!this._copilot) {
+      this._copilot = new OrganizationCopilot(
+        this,
+        this._getSpecificAuthorizationHeader.bind(this),
+        this._operations
+      );
+    }
+    return this._copilot;
+  }
+
+  get customProperties() {
+    if (!this._customProperties) {
+      this._customProperties = new OrganizationProperties(
+        this,
+        this._getSpecificAuthorizationHeader.bind(this),
+        this._operations
+      );
+    }
+    return this._customProperties;
   }
 
   get domains() {
@@ -411,6 +501,29 @@ export class Organization {
     return repositories;
   }
 
+  async getOrgRunners(options?: ICacheOptions): Promise<IGitHubOrganizationRunners> {
+    options = options || {};
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const github = operations.github;
+    const orgName = this.name;
+    const parameters = {
+      orgName,
+    };
+    const cacheOptions: ICacheOptions = {
+      maxAgeSeconds: 1, // getMaxAgeSeconds(operations, CacheDefault.accountDetailStaleSeconds, options),
+    };
+    const runnerData = await operations.github.request(
+      this.authorize(AppPurpose.ActionsData),
+      'GET /orgs/:orgName/actions/runners',
+      parameters,
+      cacheOptions
+    );
+    return {
+      runners: runnerData.runners,
+      total_count: runnerData.total_count,
+    };
+  }
+
   get priority(): string {
     return this._settings.properties['priority'] || 'secondary';
   }
@@ -425,10 +538,6 @@ export class Organization {
 
   get hidden(): boolean {
     return this._settings.hasFeature(OrganizationFeature.Hidden) || false;
-  }
-
-  get pilot_program() {
-    return this._settings.properties['1es'];
   }
 
   get createRepositoriesOnGitHub(): boolean {
@@ -472,7 +581,11 @@ export class Organization {
   }
 
   get broadAccessTeams(): number[] {
-    return this.getSpecialTeam(SpecialTeam.Everyone, 'everyone membership');
+    return this.getSystemTeam(SystemTeam.Everyone, 'everyone membership');
+  }
+
+  get openAccessTeams(): number[] {
+    return this.getSystemTeam(SystemTeam.OpenAccess, 'open access');
   }
 
   get invitationTeam(): Team {
@@ -484,7 +597,7 @@ export class Organization {
   }
 
   get systemSudoersTeam(): Team {
-    const teams = this.getSpecialTeam(SpecialTeam.GlobalSudo, 'system sudoers');
+    const teams = this.getSystemTeam(SystemTeam.GlobalSudo, 'system sudoers');
     if (teams.length > 1) {
       throw new Error('Multiple system sudoer teams are not supported.');
     }
@@ -496,7 +609,7 @@ export class Organization {
   }
 
   get sudoersTeam(): Team {
-    const teams = this.getSpecialTeam(SpecialTeam.Sudo, 'organization sudoers');
+    const teams = this.getSystemTeam(SystemTeam.Sudo, 'organization sudoers');
     if (teams.length > 1) {
       throw new Error('Multiple sudoer teams are not supported.');
     }
@@ -510,15 +623,15 @@ export class Organization {
     return this._settings;
   }
 
-  get specialRepositoryPermissionTeams() {
+  get specialSystemTeams() {
     return {
-      read: this.getSpecialTeam(SpecialTeam.SystemRead, 'read everything'),
-      write: this.getSpecialTeam(SpecialTeam.SystemWrite, 'write everything'),
-      admin: this.getSpecialTeam(SpecialTeam.SystemAdmin, 'administer everything'),
+      read: this.getSystemTeam(SystemTeam.SystemRead, 'read everything'),
+      write: this.getSystemTeam(SystemTeam.SystemWrite, 'write everything'),
+      admin: this.getSystemTeam(SystemTeam.SystemAdmin, 'administer everything'),
     };
   }
 
-  getAuthorizationHeader(): IPurposefulGetAuthorizationHeader {
+  getAuthorizationHeader(): PurposefulGetAuthorizationHeader {
     return this._getAuthorizationHeader;
   }
 
@@ -592,7 +705,13 @@ export class Organization {
         teamIds.push(broadAccessTeams[i]); // is the actual ID, not the team object
       }
     }
-    const specialTeams = this.specialRepositoryPermissionTeams;
+    const openAccessTeams = this.openAccessTeams;
+    if (openAccessTeams) {
+      for (let i = 0; i < openAccessTeams.length; i++) {
+        teamIds.push(openAccessTeams[i]); // is the actual ID, not the team object
+      }
+    }
+    const specialTeams = this.specialSystemTeams;
     const keys = Object.getOwnPropertyNames(specialTeams);
     keys.forEach((type) => {
       const values = specialTeams[type];
@@ -625,12 +744,12 @@ export class Organization {
     );
   }
 
-  async getRepositoryCreateGitHubToken(): Promise<IAuthorizationHeaderValue> {
+  async getRepositoryCreateGitHubToken(): Promise<AuthorizationHeaderValue> {
     // This method leaks/releases the owner token. In the future a more crisp
     // way of accomplishing this without exposing the token should be created.
     // The function name is specific to the intended use instead of a general-
     // purpose token name.
-    const token = await (this.authorize(AppPurpose.Operations) as IGetAuthorizationHeader)();
+    const token = await (this.authorize(AppPurpose.Operations) as GetAuthorizationHeader)();
     token.source = 'repository create token';
     return token;
   }
@@ -674,7 +793,7 @@ export class Organization {
     }
   }
 
-  async getDetails(): Promise<IGitHubOrganizationResponse> {
+  async getDetails(): Promise<GitHubOrganizationResponse> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
       org: this.name,
@@ -685,7 +804,7 @@ export class Organization {
         this.id = entity.id;
       }
       this._entity = entity;
-      return entity as IGitHubOrganizationResponse;
+      return entity as GitHubOrganizationResponse;
     } catch (error) {
       throw wrapError(error, `Could not get details about the ${this.name} organization: ${error.message}`);
     }
@@ -708,6 +827,42 @@ export class Organization {
       visibilities: this.getSupportedRepositoryTypesByPriority(),
     };
     return metadata;
+  }
+
+  async getTeamById(id: number, options?: ICacheOptions): Promise<Team> {
+    options = options || {};
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const cacheOptions = {
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgTeamDetailsStaleSeconds, options),
+      backgroundRefresh: false,
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    const orgId = this.id;
+    if (!orgId) {
+      throw CreateError.InvalidParameters('The organization ID is not available.');
+    }
+    const parameters = {
+      org_id: orgId,
+      team_id: id,
+    };
+    try {
+      const entity = await operations.github.request(
+        this.authorize(AppPurpose.Data),
+        'GET /organizations/:org_id/team/:team_id',
+        parameters,
+        cacheOptions
+      );
+      return this.teamFromEntity(entity);
+    } catch (error) {
+      if (error.status && error.status === 404) {
+        throw CreateError.NotFound(
+          `The GitHub team with the ID ${id} could not be found for organization ${this.name} with ID ${orgId}.`
+        );
+      }
+      throw error;
+    }
   }
 
   async getTeamFromSlug(slug: string, options?: ICacheOptions): Promise<Team> {
@@ -1126,7 +1281,7 @@ export class Organization {
     const getAuthorizationHeader = this._getAuthorizationHeader.bind(
       this,
       AppPurpose.Data
-    ) as IGetAuthorizationHeader;
+    ) as GetAuthorizationHeader;
     const github = operations.github;
     const parameters: IGetMembersParameters = {
       org: this.name,
@@ -1241,7 +1396,7 @@ export class Organization {
     const getAuthorizationHeader = this._getAuthorizationHeader.bind(
       this,
       AppPurpose.Data
-    ) as IGetAuthorizationHeader;
+    ) as GetAuthorizationHeader;
     const teamEntities = await github.collections.getOrgTeams(getAuthorizationHeader, parameters, caching);
     const teams = common.createInstances<Team>(this, this.teamFromEntity, teamEntities);
     return teams;
@@ -1267,12 +1422,12 @@ export class Organization {
       if (queryCache?.supportsOrganizationMembership) {
         try {
           if (!optionalId) {
-            const centralOps = operationsWithCapability<IOperationsCentralOperationsToken>(
+            const ops = operationsWithCapability<IOperationsCentralOperationsToken>(
               operations,
               CoreCapability.GitHubCentralOperations
             );
-            if (centralOps) {
-              const account = await centralOps.getAccountByUsername(login);
+            if (ops) {
+              const account = await ops.getAccountByUsername(login);
               optionalId = account.id.toString();
             }
           }
@@ -1284,7 +1439,7 @@ export class Organization {
     }
   }
 
-  async getMembershipInvitations(): Promise<any> {
+  async getMembershipInvitations(): Promise<GitHubOrganizationInvite[]> {
     const operations = throwIfNotGitHubCapable(this._operations);
     const parameters = {
       org: this.name,
@@ -1295,7 +1450,7 @@ export class Organization {
         'orgs.listPendingInvitations',
         parameters
       );
-      return invitations;
+      return invitations as GitHubOrganizationInvite[];
     } catch (error) {
       if (error.status == /* loose */ 404) {
         return null;
@@ -1304,19 +1459,16 @@ export class Organization {
     }
   }
 
-  private authorize(purpose: AppPurpose): IGetAuthorizationHeader {
-    const getAuthorizationHeader = this._getAuthorizationHeader.bind(
-      this,
-      purpose
-    ) as IGetAuthorizationHeader;
+  private authorize(purpose: AppPurpose): GetAuthorizationHeader {
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as GetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 
-  private authorizeSpecificPurpose(purpose: AppPurposeTypes): IGetAuthorizationHeader {
+  private authorizeSpecificPurpose(purpose: AppPurposeTypes): GetAuthorizationHeader {
     const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose
-    ) as IGetAuthorizationHeader;
+    ) as GetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 
@@ -1458,22 +1610,14 @@ export class Organization {
     return { settings, operations };
   }
 
-  private getSpecialTeam(specialTeam: SpecialTeam, friendlyName: string, throwIfMissing?: boolean): number[] {
-    let teamId: number = null;
-    for (const entry of this._settings.specialTeams) {
-      if (entry.specialTeam === specialTeam) {
-        teamId = entry.teamId;
-        break;
-      }
-    }
-    if (throwIfMissing) {
+  private getSystemTeam(teamType: SystemTeam, friendlyName: string, throwIfMissing?: boolean): number[] {
+    const allOrgSystemTeams = this._settings.specialTeams;
+    const matchingSystemTeamTypes = allOrgSystemTeams.filter((t) => t.specialTeam === teamType);
+    const teams: number[] = matchingSystemTeamTypes.map((t) => t.teamId);
+    if (throwIfMissing && teams.length === 0) {
       throw new Error(
-        `Missing configured organization "${this.name}" special team ${specialTeam} - ${friendlyName}`
+        `Missing configured organization "${this.name}" special team ${teamType} - ${friendlyName}`
       );
-    }
-    const teams: number[] = [];
-    if (teamId) {
-      teams.push(teamId);
     }
     return teams;
   }

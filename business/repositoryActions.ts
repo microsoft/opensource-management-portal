@@ -5,16 +5,13 @@
 
 import { Repository } from './repository';
 import { getPageSize, getMaxAgeSeconds, CacheDefault } from '.';
-import { AppPurpose } from './githubApps';
+import { AppPurpose } from '../lib/github/appPurposes';
 import {
-  IPurposefulGetAuthorizationHeader,
+  PurposefulGetAuthorizationHeader,
   IOperationsInstance,
-  IGetBranchesOptions,
-  IGitHubBranch,
   throwIfNotGitHubCapable,
-  IGetPullsOptions,
   ICacheOptions,
-  IGetAuthorizationHeader,
+  GetAuthorizationHeader,
 } from '../interfaces';
 
 export interface IGitHubActionWorkflowsResponse {
@@ -36,16 +33,16 @@ export interface IGitHubActionWorkflow {
 }
 
 export class RepositoryActions {
-  private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
-  private _getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader;
+  private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
+  private _getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader;
   private _operations: IOperationsInstance;
 
   private _repository: Repository;
 
   constructor(
     repository: Repository,
-    getAuthorizationHeader: IPurposefulGetAuthorizationHeader,
-    getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader,
+    getAuthorizationHeader: PurposefulGetAuthorizationHeader,
+    getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader,
     operations: IOperationsInstance
   ) {
     this._repository = repository;
@@ -178,11 +175,11 @@ export class RepositoryActions {
     return entity;
   }
 
-  private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
+  private authorize(purpose: AppPurpose): GetAuthorizationHeader | string {
     const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose
-    ) as IGetAuthorizationHeader;
+    ) as GetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 }

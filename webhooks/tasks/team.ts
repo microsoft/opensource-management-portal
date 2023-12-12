@@ -10,7 +10,7 @@ import moment from 'moment';
 import { WebhookProcessor } from '../organizationProcessor';
 import { Operations } from '../../business';
 import { Organization } from '../../business';
-import { permissionsObjectToValue } from '../../transitional';
+import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../../transitional';
 import type { IProviders } from '../../interfaces';
 
 // When teams are added or removed on GitHub, refresh the organization's list of
@@ -64,10 +64,12 @@ export default class TeamWebhookProcessor implements WebhookProcessor {
         queryCache &&
         queryCache.supportsTeamPermissions
       ) {
-        const oldRepositoryPermissionLevel = permissionsObjectToValue(
+        const oldRepositoryPermissionLevel = projectCollaboratorPermissionsObjectToGitHubRepositoryPermission(
           event.changes.repository.permissions.from
         );
-        const newRepositoryPermissionLevel = permissionsObjectToValue(event.repository.permissions);
+        const newRepositoryPermissionLevel = projectCollaboratorPermissionsObjectToGitHubRepositoryPermission(
+          event.repository.permissions
+        );
         console.log(
           `team ${event.team.name} permission level for repo ${event.repository.name} changed from ${oldRepositoryPermissionLevel} to ${newRepositoryPermissionLevel}`
         );
@@ -100,7 +102,7 @@ export default class TeamWebhookProcessor implements WebhookProcessor {
             isPrivate,
             repoName,
             event.team.id.toString(),
-            permissionsObjectToValue(event.repository.permissions)
+            projectCollaboratorPermissionsObjectToGitHubRepositoryPermission(event.repository.permissions)
           ); // equiv to event.team.permission as GitHubRepositoryPermission
         }
       }

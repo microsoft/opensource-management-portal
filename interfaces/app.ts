@@ -3,14 +3,21 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Application } from 'express';
+import { Application, Response, NextFunction } from 'express';
 import { IProviders } from './providers';
 
 import type { RuntimeConfiguration } from './config';
+import { ReposAppRequest } from './web';
 
 export interface IApplicationProfile {
   applicationName: string;
-  customErrorHandlerRender?: (errorView: any, err: Error, req: any, res: any, next: any) => Promise<void>;
+  customErrorHandlerRender?: (
+    errorView: unknown,
+    err: Error,
+    req: ReposAppRequest,
+    res: Response,
+    next: NextFunction
+  ) => Promise<void | unknown>;
   customRoutes?: () => Promise<void>;
   logDependencies: boolean;
   serveClientAssets: boolean;
@@ -32,17 +39,36 @@ export interface IReposApplication extends Application {
   enableAllGitHubApps: boolean;
   runtimeConfiguration: RuntimeConfiguration;
 
+  executionEnvironment: ExecutionEnvironment;
+
   startServer: () => Promise<void>;
 
-  initializeApplication: (config: any, configurationError: Error) => Promise<IReposApplication>;
-  initializeJob: (config: any, configurationError: Error) => Promise<IReposApplication>;
+  initializeApplication: (
+    executionEnvironment: ExecutionEnvironment,
+    config: any,
+    configurationError: Error
+  ) => Promise<IReposApplication>;
+
   startupApplication: () => Promise<IReposApplication>;
-  startupJob: () => Promise<IReposApplication>;
   runJob: (
     job: (job: IReposJob) => Promise<IReposJobResult | void>,
     options?: IReposJobOptions
-  ) => Promise<IReposApplication>;
+  ) => Promise<IReposJobResult | void>;
 }
+
+export type ExecutionEnvironment = {
+  isJob: boolean;
+  enableAllGitHubApps: boolean;
+
+  expressApplication: IReposApplication | null;
+
+  providers: IProviders;
+  skipModules: Set<string>;
+
+  entrypointName: string;
+
+  started: Date;
+};
 
 export interface IReposJob {
   app: IReposApplication;
@@ -50,6 +76,8 @@ export interface IReposJob {
   providers: IProviders;
   parameters: any;
   args: string[];
+
+  executionEnvironment: ExecutionEnvironment;
 }
 
 export interface IReposJobResult {
@@ -62,4 +90,5 @@ export interface IReposJobOptions {
   insightsPrefix?: string;
   parameters?: any;
   enableAllGitHubApps?: boolean;
+  name?: string;
 }

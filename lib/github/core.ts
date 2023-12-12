@@ -8,7 +8,7 @@ import { randomUUID } from 'crypto';
 import moment from 'moment';
 
 import { RestLibrary } from '.';
-import { IAuthorizationHeaderValue } from '../../interfaces';
+import { AuthorizationHeaderValue } from '../../interfaces';
 import { sleep } from '../../utils';
 
 import cost from './cost';
@@ -99,7 +99,7 @@ export abstract class ApiContext {
 
   libraryContext: RestLibrary;
   etag?: string;
-  tokenSource: IAuthorizationHeaderValue;
+  tokenSource: AuthorizationHeaderValue;
 
   abstract get apiTypePrefix(): string;
   abstract get cacheValues(): IApiContextCacheValues;
@@ -122,7 +122,10 @@ export abstract class ApiContext {
     return this._cost;
   }
 
-  constructor(public api: any, public options: any) {
+  constructor(
+    public api: any,
+    public options: any
+  ) {
     this._log = [];
     if (!this._calledTime) {
       this._calledTime = new Date();

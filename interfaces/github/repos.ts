@@ -16,6 +16,7 @@ import {
   GitHubSortDirection,
 } from '../../lib/github/collections';
 import type { IRequestTeamPermissions } from '../../middleware/github/teamPermissions';
+import { CreateError } from '../../transitional';
 
 export enum GitHubRepositoryPermission {
   Pull = 'pull',
@@ -219,7 +220,9 @@ export interface IRepositorySearchOptions {
 
 export enum GitHubCollaboratorPermissionLevel {
   Admin = 'admin',
+  Maintain = 'maintain',
   Write = 'write',
+  Triage = 'triage',
   Read = 'read',
   None = 'none',
 }
@@ -232,13 +235,17 @@ export function ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermis
       return null;
     case GitHubCollaboratorPermissionLevel.Admin:
       return GitHubRepositoryPermission.Admin;
+    case GitHubCollaboratorPermissionLevel.Maintain:
+      return GitHubRepositoryPermission.Maintain;
     case GitHubCollaboratorPermissionLevel.Write:
       return GitHubRepositoryPermission.Push;
+    case GitHubCollaboratorPermissionLevel.Triage:
+      return GitHubRepositoryPermission.Triage;
     case GitHubCollaboratorPermissionLevel.Read:
       return GitHubRepositoryPermission.Pull;
     default:
-      throw new Error(
-        `ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission unrecognized value ${level} cannot be translated`
+      throw CreateError.InvalidParameters(
+        `Unrecognized GitHub permission value ${level}, current value cannot be translated (ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission)`
       );
   }
 }

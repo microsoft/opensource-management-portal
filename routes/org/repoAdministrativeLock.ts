@@ -4,7 +4,7 @@
 //
 
 import asyncHandler from 'express-async-handler';
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 const router: Router = Router();
 
 import { getProviders } from '../../transitional';
@@ -16,7 +16,7 @@ import { getRepositoryMetadataProvider, ReposAppRequest, UserAlertType } from '.
 
 router.use(
   '/',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const organization = req.organization as Organization;
     if (!organization.isNewRepositoryLockdownSystemEnabled()) {
       return next(new Error('This endpoint is not available as configured'));
@@ -27,7 +27,7 @@ router.use(
 
 router.use(
   '/',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const individualContext = req.individualContext;
     const isPortalAdministrator = await individualContext.isPortalAdministrator();
     if (!isPortalAdministrator) {
@@ -42,7 +42,7 @@ router.use(
 
 router.get(
   '/',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const repository = req['repository'] as Repository;
     const repositoryMetadata = req['repositoryMetadata'] as RepositoryMetadataEntity;
     return renderPage(req, repositoryMetadata, repository);
@@ -51,7 +51,7 @@ router.get(
 
 router.post(
   '/',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const providers = getProviders(req);
     const operations = providers.operations;
     const repository = req['repository'] as Repository;

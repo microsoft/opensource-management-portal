@@ -16,6 +16,7 @@ import {
   QueryBase,
 } from '../lib/entityMetadataProvider';
 import { PostgresConfiguration, PostgresSettings } from '../lib/entityMetadataProvider/postgres';
+import { ErrorHelper } from '../transitional';
 
 const type = new EntityMetadataType('RepositoryDetails');
 const typeColumnValue = 'repositorydetails';
@@ -34,7 +35,10 @@ class ThisQueryBase extends QueryBase<ClassType> {
 }
 
 class ThisQuery<T> extends ThisQueryBase {
-  constructor(query: Query, public parameters: T) {
+  constructor(
+    query: Query,
+    public parameters: T
+  ) {
     super(query);
     if (!this.parameters) {
       this.parameters = {} as T;
@@ -309,6 +313,21 @@ for (let i = 0; i < fieldNames.length; i++) {
   const fn = fieldNames[i];
   if (Field[fn] !== fn) {
     throw new Error(`Field name ${fn} and value do not match in ${__filename}`);
+  }
+}
+
+export async function tryGetRepositoryEntity(
+  repositoryProvider: IRepositoryProvider,
+  repositoryId: number
+): Promise<RepositoryEntity> {
+  try {
+    const repositoryEntity = await repositoryProvider.get(repositoryId);
+    return repositoryEntity;
+  } catch (error) {
+    if (ErrorHelper.IsNotFound(error)) {
+      return null;
+    }
+    throw error;
   }
 }
 

@@ -78,20 +78,7 @@ block content
       div.row
         div.col-md-8.col-lg-8
           h1 Want to join #{organization.name}?
-          if organization && organization.pilot_program && organization.pilot_program === 'pilot'
-            //- Pilot program
-            //- Due to SAML, auto-invite and accept does not work
-            p.lead 1ES Engineering Pilot
-            ul
-              li An invitation will be sent to your GitHub account.
-              li You accept the invitation in on GitHub.com. Due to SAML (single Microsoft sign-on), you may need to authenticate again with Microsoft AAD.
-              li You come back to this site and continue onboarding.
-            p &nbsp;
-            form(method='post')
-              p
-                input.btn.btn-primary.btn-lg(type='submit', value='Join ' + organization.name)
-
-          else if hasIncreasedScope && supportsExpressJoinExperience
+          if hasIncreasedScope && supportsExpressJoinExperience
             form(method='post')
               p(style='margin-top:24px')
                 input.btn.btn-primary.btn-huge(type='submit', value='Join ' + organization.name)

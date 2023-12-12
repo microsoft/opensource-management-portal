@@ -5,15 +5,15 @@
 
 import { Repository } from './repository';
 import { wrapError } from '../utils';
-import { AppPurpose, AppPurposeTypes } from './githubApps';
+import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
 import { CacheDefault, getMaxAgeSeconds } from '.';
 import {
   IOperationsInstance,
-  IPurposefulGetAuthorizationHeader,
+  PurposefulGetAuthorizationHeader,
   GitHubIssueState,
   throwIfNotGitHubCapable,
   ICacheOptions,
-  IGetAuthorizationHeader,
+  GetAuthorizationHeader,
   ICacheOptionsWithPurpose,
 } from '../interfaces';
 import { ErrorHelper } from '../transitional';
@@ -22,8 +22,8 @@ import * as common from './common';
 
 export class RepositoryProject {
   private _operations: IOperationsInstance;
-  private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
-  private _getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader;
+  private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
+  private _getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader;
 
   private _id: number;
   private _repository: Repository;
@@ -36,8 +36,8 @@ export class RepositoryProject {
     repository: Repository,
     projectId: number,
     operations: IOperationsInstance,
-    getAuthorizationHeader: IPurposefulGetAuthorizationHeader,
-    getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader,
+    getAuthorizationHeader: PurposefulGetAuthorizationHeader,
+    getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader,
     entity?: any
   ) {
     this._getAuthorizationHeader = getAuthorizationHeader;
@@ -213,11 +213,11 @@ export class RepositoryProject {
     return false;
   }
 
-  private authorizeSpecificPurpose(purpose: AppPurposeTypes): IGetAuthorizationHeader | string {
+  private authorizeSpecificPurpose(purpose: AppPurposeTypes): GetAuthorizationHeader | string {
     const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose
-    ) as IGetAuthorizationHeader;
+    ) as GetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 }

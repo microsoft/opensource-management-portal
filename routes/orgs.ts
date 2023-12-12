@@ -5,7 +5,7 @@
 
 import querystring from 'querystring';
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
@@ -26,7 +26,11 @@ if (hasReactApp) {
 
 router.use('/:orgName', asyncHandler(forwardToOrganizationRoutes));
 
-async function forwardToOrganizationRoutes(req: IReposRequestWithOrganization, res, next) {
+async function forwardToOrganizationRoutes(
+  req: IReposRequestWithOrganization,
+  res: Response,
+  next: NextFunction
+) {
   // This middleware contains both the original GitHub operations types
   // as well as the newer implementation. In time this will peel apart.
   const orgName = req.params.orgName;

@@ -14,6 +14,17 @@ export type ConfigWebServer = {
     slot: string;
     name: string;
     region: string;
+    advanced?: {
+      resourceGroup: string;
+      warmup: string;
+      swapWarmup: string;
+      containerName: string;
+      instanceId: string;
+      sku: string;
+      hostname: string;
+      alwaysOn: string;
+      slotType: 'production' | 'staging' | undefined;
+    };
   };
   baseUrl: string;
   sslify: {

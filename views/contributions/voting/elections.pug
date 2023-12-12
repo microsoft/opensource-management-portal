@@ -6,13 +6,6 @@
 extends ../../layout
 
 block content
-  - var fileSize = viewServices.fileSize
-  - var moment = viewServices.moment
-  - var octicon = viewServices.octicon
-
-  //- var startMonthName = moment(start).format('MMMM')
-  //- var previousMonthName = moment(start).subtract(1, 'months').format('MMMM')
-
   .container
     h2 Active Elections
     
@@ -23,4 +16,3 @@ block content
         p= election.description
     else
       p No active voting opportunities.
-

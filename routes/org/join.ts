@@ -31,8 +31,8 @@ import getCompanySpecificDeployment from '../../middleware/companySpecificDeploy
 //-------------
 // Join checks
 //-------------
-router.use(function (req: ReposAppRequest, res, next) {
-  const { organization } = req;
+router.use(function (req: ReposAppRequest, res: Response, next: NextFunction) {
+  const organization = req.organization;
   let err = null;
 
   if (organization.locked) {

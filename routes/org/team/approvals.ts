@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
@@ -91,14 +91,14 @@ export class PermissionWorkflowEngine {
 
 // Find the request and assign the workflow engine
 
-router.use(function (req: ReposAppRequest, res, next) {
+router.use(function (req: ReposAppRequest, res: Response, next: NextFunction) {
   req.individualContext.webContext.pushBreadcrumb('Approvals');
   next();
 });
 
 router.get(
   '/',
-  asyncHandler(async (req: IRequestTeams, res, next) => {
+  asyncHandler(async (req: IRequestTeams, res: Response, next: NextFunction) => {
     const team = req.team2 as Team;
     const approvals = await team.getApprovals();
     req.individualContext.webContext.render({
@@ -119,7 +119,7 @@ interface IRequestPlusApprovalEngine extends IRequestTeams {
 
 router.use(
   '/:requestid',
-  asyncHandler(async function (req: IRequestPlusApprovalEngine, res, next) {
+  asyncHandler(async function (req: IRequestPlusApprovalEngine, res: Response, next: NextFunction) {
     const team = req.team2 as Team;
     const requestid = req.params.requestid;
     const { approvalProvider, operations } = getProviders(req);

@@ -17,6 +17,7 @@ import {
 } from '../../business/user';
 import { storeOriginalUrlAsReferrer } from '../../utils';
 import getCompanySpecificDeployment from '../companySpecificDeployment';
+import { Response, NextFunction } from 'express';
 
 export async function requireAuthenticatedUserOrSignInExcluding(
   exclusionPaths: string[],
@@ -24,9 +25,9 @@ export async function requireAuthenticatedUserOrSignInExcluding(
   res,
   next
 ) {
-  const baseUrl = req.baseUrl;
+  const url = req.url;
   for (let i = 0; i < exclusionPaths.length; i++) {
-    if (baseUrl.startsWith(exclusionPaths[i])) {
+    if (url.startsWith(exclusionPaths[i])) {
       console.log(`${req.method} ${req.baseUrl} excluded from auth by prefix: ${exclusionPaths[i]}`);
       return next();
     }
@@ -34,7 +35,7 @@ export async function requireAuthenticatedUserOrSignInExcluding(
   return await requireAuthenticatedUserOrSignIn(req, res, next);
 }
 
-export async function requireAccessTokenClient(req: ReposAppRequest, res, next) {
+export async function requireAccessTokenClient(req: ReposAppRequest, res: Response, next: NextFunction) {
   if (req.oauthAccessToken) {
     return next();
   }
@@ -83,7 +84,11 @@ function redirectToSignIn(req, res) {
   );
 }
 
-export async function requireAuthenticatedUserOrSignIn(req: ReposAppRequest, res, next) {
+export async function requireAuthenticatedUserOrSignIn(
+  req: ReposAppRequest,
+  res: Response,
+  next: NextFunction
+) {
   const companySpecific = getCompanySpecificDeployment();
   const providers = getProviders(req);
   const { config } = providers;
@@ -111,7 +116,7 @@ export async function requireAuthenticatedUserOrSignIn(req: ReposAppRequest, res
   return shouldRedirectToSignIn ? redirectToSignIn(req, res) : next();
 }
 
-export function setIdentity(req: ReposAppRequest, res, next) {
+export function setIdentity(req: ReposAppRequest, res: Response, next: NextFunction) {
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   if (!activeContext) {
     return next(new Error('No context available'));

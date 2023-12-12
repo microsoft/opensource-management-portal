@@ -64,7 +64,10 @@ export class TeamMemberCacheFixedQueryByUserId implements IEntityMetadataFixedQu
 
 export class TeamMemberCacheFixedQueryByOrganizationIdAndUserId implements IEntityMetadataFixedQuery {
   public readonly fixedQueryType: FixedQueryType = FixedQueryType.TeamMemberCacheGetByOrganizationIdAndUserId;
-  constructor(public organizationId: string, public userId: string) {
+  constructor(
+    public organizationId: string,
+    public userId: string
+  ) {
     if (typeof this.userId !== 'string') {
       throw new Error(`userId ${userId} must be a string`);
     }

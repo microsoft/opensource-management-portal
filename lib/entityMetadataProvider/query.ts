@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IEntityMetadataProvider } from './entityMetadataProvider';
+import type { IEntityMetadataProvider } from './entityMetadataProvider';
 import { EntityMetadataType, EntityMetadataBase } from './entityMetadata';
 
 // Newer "entity" implementations have fully decoupled and no longer use this single query type.
