@@ -21,7 +21,7 @@ import {
   type ReposAppRequest,
   SettledState,
 } from './interfaces';
-import { Organization } from './business';
+import { ITeamRepositoryPermission, Organization } from './business';
 import { ILinkProvider } from './lib/linkProviders';
 const packageVariableName = 'static-react-package-name';
 
@@ -57,20 +57,20 @@ export function SettleToStateValue<T>(promise: Promise<T>): Promise<ISettledValu
 }
 
 export function projectCollaboratorPermissionsObjectToGitHubRepositoryPermission(
-  permissions: IGitHubCollaboratorPermissions
+  permissions: IGitHubCollaboratorPermissions | ITeamRepositoryPermission
 ): GitHubRepositoryPermission {
   if (permissions.admin === true) {
     return GitHubRepositoryPermission.Admin;
+  } else if (permissions.maintain === true) {
+    return GitHubRepositoryPermission.Maintain;
   } else if (permissions.push === true) {
     return GitHubRepositoryPermission.Push;
   } else if (permissions.triage === true) {
     return GitHubRepositoryPermission.Triage;
-  } else if (permissions.maintain === true) {
-    return GitHubRepositoryPermission.Maintain;
   } else if (permissions.pull === true) {
     return GitHubRepositoryPermission.Pull;
   }
-  throw new Error(`Unsupported GitHubRepositoryPermission value inside permissions`);
+  throw new Error(`Unsupported GitHub repository permission value inside permissions`);
 }
 
 export async function streamToBuffer(readableStream: NodeJS.ReadableStream): Promise<Buffer> {
@@ -215,6 +215,11 @@ export class ErrorHelper {
   public static IsNotFound(error: Error): boolean {
     const statusNumber = ErrorHelper.GetStatus(error);
     return statusNumber && statusNumber === 404;
+  }
+
+  public static IsServerError(error: Error): boolean {
+    const statusNumber = ErrorHelper.GetStatus(error);
+    return statusNumber && statusNumber >= 500;
   }
 
   public static IsNotAuthorized(error: Error): boolean {
