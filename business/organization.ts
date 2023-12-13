@@ -631,8 +631,8 @@ export class Organization {
     };
   }
 
-  getAuthorizationHeader(): PurposefulGetAuthorizationHeader {
-    return this._getAuthorizationHeader;
+  getAuthorizationHeader(purpose: AppPurposeTypes): PurposefulGetAuthorizationHeader {
+    return purpose ? this._getAuthorizationHeader.bind(this, purpose) : this._getAuthorizationHeader;
   }
 
   async getUserDetailsByLogin(login: string, purpose?: AppPurposeTypes): Promise<IGitHubAccountDetails> {
