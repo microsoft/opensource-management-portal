@@ -86,15 +86,18 @@ copilotSeatPropertiesToCopy.subPropertiesToReduce = {
   assignee: mostBasicAccountProperties,
 };
 
-const teamPermissionsToCopy = [
-  'id',
+const teamPermissionsToCopyForRepository = [
   'name',
+  'id',
   'slug',
   'description',
-  'members_count',
-  'repos_count',
+  // 'members_count',
+  // 'repos_count',
   'privacy',
-  'permission',
+  // 'notification_setting',
+  'permission', // custom role name at times
+  'permissions', // array of booleans for admin, maintain, push, triage, pull
+  'parent', // large object for a parent team, if present
 ];
 
 const teamRepoPermissionsToCopy = [
@@ -105,6 +108,7 @@ const teamRepoPermissionsToCopy = [
   'private',
   'fork',
   'permissions',
+  'role_name',
 ];
 
 const pullDetailsToCopy = [
@@ -360,7 +364,7 @@ export class RestCollections {
     return this.generalizedCollectionWithFilter(
       'repoTeamPermissions',
       'repos.listTeams',
-      teamPermissionsToCopy,
+      teamPermissionsToCopyForRepository,
       token,
       options,
       cacheOptions

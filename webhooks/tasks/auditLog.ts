@@ -28,6 +28,7 @@ const knownEventTypesToIgnore = new Set([
   'fork',
   'watch',
   'star',
+  'installation_repositories',
 ]);
 
 async function runAsync(providers: IProviders, organization: Organization, data: any) {

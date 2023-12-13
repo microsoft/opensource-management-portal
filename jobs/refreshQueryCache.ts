@@ -385,7 +385,7 @@ async function cacheRepositoryTeams(
   const repositoryId = repository.id.toString();
   for (const teamPermission of repoTeamPermissions) {
     const teamId = teamPermission.team.id.toString();
-    const permission = teamPermission.permission;
+    const permission = teamPermission.getAsPermission();
     const isPrivate = repository.private as boolean;
     const repoName = repository.name as string;
     ops.push(

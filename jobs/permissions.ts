@@ -108,7 +108,7 @@ async function reviewOrganizationSystemTeams(
       }
       const currentPermissions = new Map<number, GitHubRepositoryPermission>();
       permissions.forEach((entry) => {
-        currentPermissions.set(Number(entry.team.id), entry.permission);
+        currentPermissions.set(Number(entry.team.id), entry.getAsPermission());
       });
       const teamsToSet = new Set<number>();
       specialTeamIds.forEach((specialTeamId) => {

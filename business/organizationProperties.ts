@@ -172,9 +172,9 @@ export class OrganizationProperties {
       );
     }
     const parameters = {
-      repository_names: organizationRepositoryNames,
       org: this.organization.name,
       properties: setPropertiesRecordToArray(propertiesAndValues),
+      repository_names: organizationRepositoryNames,
     };
     (await operations.github.restApi(
       this.authorize(purpose || this._defaultPurpose),

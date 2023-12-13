@@ -36,6 +36,7 @@ import {
   IGetTeamRepositoriesOptions,
   GitHubRepositoryType,
   IOperationsProviders,
+  GitHubTeamDetails,
 } from '../interfaces';
 import { validateGitHubLogin, ErrorHelper } from '../transitional';
 
@@ -217,7 +218,7 @@ export class Team {
     if (this._name && this._slug) {
       return;
     }
-    return await this.getDetails();
+    await this.getDetails();
   }
 
   async isDeleted(options?: ICacheOptions): Promise<boolean> {
@@ -231,7 +232,7 @@ export class Team {
     return false;
   }
 
-  async getDetails(options?: ICacheOptions): Promise<any> {
+  async getDetails(options?: ICacheOptions): Promise<GitHubTeamDetails> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const cacheOptions = {

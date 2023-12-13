@@ -6,17 +6,20 @@
 import crypto from 'crypto';
 import secureCompare from 'secure-compare';
 
-import { Operations } from '../business';
 import { Organization } from '../business';
 
-import Tasks from './tasks';
 import { sleep } from '../utils';
 import { type IProviders } from '../interfaces';
+
+import defaultWebhookTasks from './tasks';
+import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 
 interface IValidationError extends Error {
   statusCode?: number;
   computedHash?: string;
 }
+
+let companySpecificWebhookTasks: WebhookProcessor[] = null;
 
 export abstract class WebhookProcessor {
   abstract filter(data: any): boolean;
@@ -49,6 +52,14 @@ export default async function ProcessOrganizationWebhook(
   const providers = options.providers;
   if (!providers) {
     throw new Error('No providers provided');
+  }
+  const companySpecific = getCompanySpecificDeployment();
+  if (
+    companySpecific?.features?.firehose?.getAdditionalWebhookTasks &&
+    companySpecificWebhookTasks === null
+  ) {
+    companySpecificWebhookTasks =
+      await companySpecific.features.firehose.getAdditionalWebhookTasks(providers);
   }
   const organization = options.organization;
   const event = options.event;
@@ -110,7 +121,8 @@ export default async function ProcessOrganizationWebhook(
     options.acknowledgeValidEvent();
   }
   let interestingEvents = 0;
-  const work = Tasks.filter((task) => task.filter(event));
+  const availableTasks = [...defaultWebhookTasks, ...(companySpecificWebhookTasks || [])];
+  const work = availableTasks.filter((task) => task.filter(event));
   if (work.length > 0) {
     ++interestingEvents;
     console.log(`[* interesting event: ${event.properties.event} (${work.length} interested tasks)]`);

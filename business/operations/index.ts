@@ -16,6 +16,7 @@ import { wrapError, sortByCaseInsensitive } from '../../utils';
 import { Repository } from '../repository';
 import { RestLibrary } from '../../lib/github';
 import {
+  AppPurpose,
   AppPurposeTypes,
   getAppPurposeId,
   GitHubAppAuthenticationType,
@@ -608,7 +609,7 @@ export class Operations
         if (entry.active && !visited.has(lowercase) && !entry.hasFeature(OrganizationFeature.Invisible)) {
           visited.add(lowercase);
           const orgInstance = this.getOrganization(lowercase);
-          const token = orgInstance.getAuthorizationHeader();
+          const token = orgInstance.getAuthorizationHeader(AppPurpose.Data);
           tokens.set(lowercase, token);
         }
       }
@@ -976,7 +977,7 @@ export class Operations
     const organization = this._organizationIds.get(lookupUsingIdOrCentralToken);
     let header: GetAuthorizationHeader = null;
     if (organization) {
-      header = organization.getAuthorizationHeader() as GetAuthorizationHeader; // fallback will happen
+      header = organization.getAuthorizationHeader(AppPurpose.Data) as GetAuthorizationHeader;
     } else {
       header = this.getPublicAuthorizationToken();
     }

@@ -5,8 +5,6 @@
 
 // TEAM changes
 
-import moment from 'moment';
-
 import { WebhookProcessor } from '../organizationProcessor';
 import { Operations } from '../../business';
 import { Organization } from '../../business';
@@ -15,9 +13,6 @@ import type { IProviders } from '../../interfaces';
 
 // When teams are added or removed on GitHub, refresh the organization's list of
 // teams as well as the cross-organization view of the teams.
-
-// TODO: connect to query cache
-// TODO: consider whether to slowly kick off Redis cache updates, too
 
 export default class TeamWebhookProcessor implements WebhookProcessor {
   filter(data: any) {
@@ -32,7 +27,7 @@ export default class TeamWebhookProcessor implements WebhookProcessor {
     let refresh = false;
     let expectedAfterRefresh = false;
     const teamId = event.team.id;
-    const teamIdAsString = event.team.id.toString();
+    const teamIdAsString = String(teamId);
     const organizationIdAsString = event.organization.id.toString();
     let addOrUpdate = false;
     if (event.action === 'created') {
@@ -133,7 +128,6 @@ export default class TeamWebhookProcessor implements WebhookProcessor {
     }
 
     if (refresh) {
-      const startingRefresh = moment();
       // organization.getTeams(immediateRefreshOptions, () => {
       //   console.log('refreshing teams list after add or remove operations');
       //   const now = moment();
