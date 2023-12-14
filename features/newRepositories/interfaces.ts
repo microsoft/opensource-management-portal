@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { TelemetryClient } from 'applicationinsights';
+
 import { Operations, Organization, Repository } from '../../business';
 import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
 import { ICorporateLink, RepositoryLockdownState } from '../../interfaces';
@@ -13,6 +15,7 @@ export enum RepositoryLockdownCreateType {
 }
 
 export type RepositoryLockdownCreateProviders = {
+  insights: TelemetryClient;
   operations: Operations;
   repositoryMetadataProvider: IRepositoryMetadataProvider;
 };
@@ -73,9 +76,10 @@ export interface IMailToLockdownRepo {
   isForkDeleted: boolean;
 }
 
-export interface INewRepositoryLockdownSystemOptions {
+export type NewRepositoryLockdownSystemOptions = {
+  insights: TelemetryClient;
   operations: Operations;
   organization: Organization;
   repository: Repository;
   repositoryMetadataProvider: IRepositoryMetadataProvider;
-}
+};

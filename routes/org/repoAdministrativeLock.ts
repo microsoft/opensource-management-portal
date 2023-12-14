@@ -53,7 +53,7 @@ router.post(
   '/',
   asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const providers = getProviders(req);
-    const operations = providers.operations;
+    const { insights, operations } = providers;
     const repository = req['repository'] as Repository;
     const entity = repository.getEntity();
     if (!entity.parent) {
@@ -68,6 +68,7 @@ router.post(
     const repositoryMetadataProvider = getRepositoryMetadataProvider(operations);
     const organization = repository.organization;
     const lockdownSystem = new NewRepositoryLockdownSystem({
+      insights,
       operations,
       organization,
       repository,

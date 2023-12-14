@@ -40,11 +40,12 @@ router.use(
 router.post(
   '/approve',
   asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
-    const { operations } = getProviders(req);
+    const { insights, operations } = getProviders(req);
     const repository = getContextualRepository(req);
     const repositoryMetadataProvider = getRepositoryMetadataProvider(operations);
     const organization = repository.organization;
     const lockdownSystem = new NewRepositoryLockdownSystem({
+      insights,
       operations,
       organization,
       repository,

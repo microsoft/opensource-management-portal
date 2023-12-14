@@ -14,14 +14,14 @@ const debugShowStandardBehavior = false;
 const debugOutputUnregisteredEntityApis = true;
 
 import {
-  IShouldServeCache,
+  ShouldServeCache,
   IntelligentEngine,
   ApiContext,
   IApiContextCacheValues,
   IApiContextRedisKeys,
   ApiContextType,
-  IRestResponse,
-  IRestMetadata,
+  RestResponse,
+  RestMetadata,
 } from './core';
 import { getEntityDefinitions, GitHubResponseType, ResponseBodyType } from './endpointEntities';
 
@@ -77,7 +77,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     return method;
   }
 
-  async callApi(apiContext: GitHubApiContext, optionalMessage?: string): Promise<IRestResponse> {
+  async callApi(apiContext: GitHubApiContext, optionalMessage?: string): Promise<RestResponse> {
     const token = apiContext.token;
     // CONSIDER: rename apiContext.token *to* something like apiContext.authorization
     if (
@@ -181,7 +181,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     }
   }
 
-  processMetadataBeforeCall(apiContext: ApiContext, metadata: IRestMetadata) {
+  processMetadataBeforeCall(apiContext: ApiContext, metadata: RestMetadata) {
     if (
       metadata &&
       metadata.av &&
@@ -203,11 +203,11 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     return metadata;
   }
 
-  withResponseUpdateMetadata(apiContext: ApiContext, response: IRestResponse) {
+  withResponseUpdateMetadata(apiContext: ApiContext, response: RestResponse) {
     return response;
   }
 
-  optionalStripResponse(apiContext: ApiContext, response: IRestResponse): IRestResponse {
+  optionalStripResponse(apiContext: ApiContext, response: RestResponse): RestResponse {
     const clonedResponse = Object.assign({}, response);
     if (response.headers) {
       const clonedHeaders = StripGitHubEntity(
@@ -295,7 +295,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     return clonedResponse;
   }
 
-  reduceMetadataToCacheFromResponse(apiContext: ApiContext, response: IRestResponse): any {
+  reduceMetadataToCacheFromResponse(apiContext: ApiContext, response: RestResponse): any {
     const headers = response ? response.headers : null;
     if (headers?.etag) {
       const reduced: IReducedGitHubMetadata = {
@@ -320,8 +320,8 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
 
   withResponseShouldCacheBeServed(
     apiContext: ApiContext,
-    response: IRestResponse
-  ): boolean | IShouldServeCache {
+    response: RestResponse
+  ): boolean | ShouldServeCache {
     if (response === undefined) {
       throw new Error('The response was undefined and unable to process.');
     }
@@ -358,8 +358,8 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
     return cacheOk;
   }
 
-  getResponseMetadata(apiContext: ApiContext, response: IRestResponse): IRestMetadata {
-    const md: IRestMetadata = {
+  getResponseMetadata(apiContext: ApiContext, response: RestResponse): RestMetadata {
+    const md: RestMetadata = {
       headers: response.headers,
       status: response.status,
     };
@@ -368,12 +368,12 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
 
   withMetadataShouldCacheBeServed(
     apiContext: ApiContext,
-    metadata: IRestMetadata
-  ): boolean | IShouldServeCache {
+    metadata: RestMetadata
+  ): boolean | ShouldServeCache {
     // result can be falsy OR an object; { cache: true, refresh: true }
     // cache: whether to use the cache, if available
     // refresh: whether to refresh in the background for a newer value
-    let shouldServeCache: IShouldServeCache | boolean = false;
+    let shouldServeCache: ShouldServeCache | boolean = false;
     const maxAgeSeconds = apiContext.maxAgeSeconds;
     const updatedIso = metadata ? metadata.updated : null;
     const refreshingIso = metadata ? metadata.refreshing : null;

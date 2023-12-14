@@ -48,6 +48,7 @@ import {
   IOperationsUrls,
   GitHubRepositoryPermission,
   GitHubRepositoryVisibility,
+  GitHubRepositoryDetails,
 } from '../interfaces';
 import { IListPullsParameters, GitHubPullRequestState } from '../lib/github/collections';
 
@@ -58,6 +59,7 @@ import { ErrorHelper } from '../transitional';
 import { augmentInertiaPreview, RepositoryProject } from './repositoryProject';
 import { RepositoryInvitation } from './repositoryInvitation';
 import { RepositoryProperties } from './repositoryProperties';
+import { WithGitHubRestHeaders } from '../lib/github/core';
 
 interface IRepositoryMoments {
   created?: moment.Moment;
@@ -207,7 +209,7 @@ const safeEntityFieldsForJsonSend = [
 ];
 
 export class Repository {
-  private _entity: any;
+  private _entity: WithGitHubRestHeaders<GitHubRepositoryDetails>;
   private _baseUrl: string;
   private _absoluteBaseUrl: string;
   private _nativeUrl: string;
@@ -226,7 +228,7 @@ export class Repository {
 
   private _moments: IRepositoryMoments;
 
-  getEntity(): any {
+  getEntity(): WithGitHubRestHeaders<GitHubRepositoryDetails> {
     return this._entity;
   }
 
@@ -278,13 +280,13 @@ export class Repository {
   get archived(): boolean {
     return this._entity ? this._entity.archived : false;
   }
-  get created_at(): Date {
+  get created_at(): string {
     return this._entity ? this._entity.created_at : null;
   }
-  get updated_at(): Date {
+  get updated_at(): string {
     return this._entity ? this._entity.updated_at : null;
   }
-  get pushed_at(): Date {
+  get pushed_at(): string {
     return this._entity ? this._entity.pushed_at : null;
   }
   get git_url(): string {
@@ -452,12 +454,22 @@ export class Repository {
     );
   }
 
-  async getDetails(options?: ICacheOptions): Promise<any> {
+  async getDetails(options?: ICacheOptions): Promise<WithGitHubRestHeaders<GitHubRepositoryDetails>> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
-    if (this.id && !this.name) {
+    const cacheOptions: ICacheOptions = {
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    if ((options as any).noConditionalRequests === true) {
+      (cacheOptions as any).noConditionalRequests = true;
+    }
+    // always prefer ID over name
+    if (this.id) {
       try {
-        const lookupById = await this.organization.getRepositoryById(this.id);
+        const lookupById = await this.organization.getRepositoryById(this.id, cacheOptions);
         this._entity = lookupById.getEntity();
         this._name = this._entity.name;
       } catch (getByIdError) {
@@ -475,17 +487,8 @@ export class Repository {
     if (mediaType) {
       (parameters as any).mediaType = mediaType;
     }
-    const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
-    };
-    if (options.backgroundRefresh !== undefined) {
-      cacheOptions.backgroundRefresh = options.backgroundRefresh;
-    }
-    if ((options as any).noConditionalRequests === true) {
-      (cacheOptions as any).noConditionalRequests = true;
-    }
     try {
-      let entity: any = undefined;
+      let entity: WithGitHubRestHeaders<GitHubRepositoryDetails> = undefined;
       if ((cacheOptions as any)?.noConditionalRequests === true) {
         entity = await operations.github.post(this.authorize(AppPurpose.Data), 'repos.get', parameters);
       } else {

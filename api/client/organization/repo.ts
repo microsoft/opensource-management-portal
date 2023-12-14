@@ -45,8 +45,8 @@ router.get(
     try {
       await repository.getDetails({ backgroundRefresh: false });
       const clone = Object.assign({}, repository.getEntity());
-      delete clone.temp_clone_token; // never share this back
-      delete clone.cost;
+      delete (clone as any).temp_clone_token; // never share this back
+      delete (clone as any).cost;
 
       return res.json(repository.getEntity()) as unknown as void;
     } catch (repoError) {
@@ -330,6 +330,7 @@ router.delete(
     const { operations } = getProviders(req);
     const repositoryMetadataProvider = getRepositoryMetadataProvider(operations);
     const lockdownSystem = new NewRepositoryLockdownSystem({
+      insights,
       operations,
       organization,
       repository,

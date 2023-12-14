@@ -42,7 +42,7 @@ export async function lockdownRepository(
         if (collaborator.login.toLowerCase() !== creatorLogin.toLowerCase()) {
           await tryDropCollaborator(repository, collaborator.login, log);
         } else {
-          // Downgrade the creator to only having READ access (V2)
+          // Downgrade the creator to only having READ access
           if (collaborator.permissions.admin || collaborator.permissions.push) {
             await tryDowngradeCollaborator(repository, collaborator.login, log);
           } else {

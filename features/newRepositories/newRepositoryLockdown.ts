@@ -16,7 +16,7 @@ import {
 import { CreateError } from '../../transitional';
 import {
   ILockdownResult,
-  INewRepositoryLockdownSystemOptions,
+  NewRepositoryLockdownSystemOptions,
   IRepoPatch,
   RepositoryLockdownCreateOptions,
   RepositoryLockdownCreateType,
@@ -29,8 +29,10 @@ import { setupRepositorySubstring } from './strings';
 import { immediatelyDeleteFork, tryCreateReadme } from './actions';
 import { repositoryLockdownStatics } from './staticFunctions';
 import { lockdownRepository } from './actions/lockdown';
+import { TelemetryClient } from 'applicationinsights';
 
 export default class NewRepositoryLockdownSystem {
+  insights: TelemetryClient;
   organization: Organization;
   operations: Operations;
   repository: Repository;
@@ -40,7 +42,8 @@ export default class NewRepositoryLockdownSystem {
   private readonly lockdownForks: boolean;
   private readonly lockdownTransfers: boolean;
 
-  constructor(options: INewRepositoryLockdownSystemOptions) {
+  constructor(options: NewRepositoryLockdownSystemOptions) {
+    this.insights = options.insights;
     this.organization = options.organization;
     this.operations = options.operations;
     this.repository = options.repository;
@@ -108,6 +111,7 @@ export default class NewRepositoryLockdownSystem {
         repository: this.repository,
       },
       providers: {
+        insights: this.insights,
         repositoryMetadataProvider: this.repositoryMetadataProvider,
         operations: this.operations,
       },
@@ -162,20 +166,22 @@ export default class NewRepositoryLockdownSystem {
     if (!this.organization.isNewRepositoryLockdownSystemEnabled()) {
       return { wasLocked: false, notifyOperations: false };
     }
-    lockdownLog.push(
-      `Confirmed that the ${this.organization.name} organization has opted into the new repository lockdown system`
-    );
-    if (this.deleteForks) {
-      lockdownLog.push(
-        'Confirmed that the delete fork feature is enabled for this org. It will supersede fork lockdown capabilities.'
-      );
-    }
-    if (this.lockdownForks) {
-      lockdownLog.push('Confirmed that the additional fork lockdown feature is enabled for this org');
-    }
-    if (this.lockdownTransfers) {
-      lockdownLog.push('Confirmed that the additional transfer lockdown feature is enabled for this org');
-    }
+    // informationalLog.push(
+    //   `Confirmed that the ${this.organization.name} organization has opted into the new repository lockdown system`
+    // );
+    // if (this.deleteForks) {
+    //   informationalLog.push(
+    //     'Confirmed that the delete fork feature is enabled for this org. It will supersede fork lockdown capabilities.'
+    //   );
+    // }
+    // if (this.lockdownForks) {
+    //   informationalLog.push('Confirmed that the additional fork lockdown feature is enabled for this org');
+    // }
+    // if (this.lockdownTransfers) {
+    //   informationalLog.push(
+    //     'Confirmed that the additional transfer lockdown feature is enabled for this org'
+    //   );
+    // }
     const setupUrl = `${this.organization.absoluteBaseUrl}wizard?existingreponame=${this.repository.name}&existingrepoid=${this.repository.id}`;
     const isTransfer = action === RepositoryLockdownCreateType.Transferred;
     if (isTransfer && !this.lockdownTransfers) {
@@ -198,7 +204,7 @@ export default class NewRepositoryLockdownSystem {
       lockdownLog.push(`Created by a bot or GitHub App: ${username}`);
       return { wasLocked: false, log: lockdownLog, notifyOperations: false };
     }
-    lockdownLog.push(`Confirmed that the repository was not ${action} by a bot`);
+    // informationalLog.push(`Confirmed that the repository was not ${action} by a bot`);
     // a repository created by one of the operations accounts in the allowed list is OK and will not be locked down
     const systemAccounts = new Set(
       this.operations.systemAccountsByUsername.map((username) => username.toLowerCase())
@@ -207,11 +213,11 @@ export default class NewRepositoryLockdownSystem {
       lockdownLog.push(`Created by a system account: ${username}`);
       return { wasLocked: false, log: lockdownLog, notifyOperations: true };
     }
-    lockdownLog.push(
-      `Confirmed that the repository was not ${action} by any of the system accounts: ${Array.from(
-        systemAccounts.values()
-      ).join(', ')}`
-    );
+    // informationalLog.push(
+    //   `Confirmed that the repository was not ${action} by any of the system accounts: ${Array.from(
+    //     systemAccounts.values()
+    //   ).join(', ')}`
+    // );
     const userMembership = await this.organization.getMembership(username, NoCacheNoBackground);
     let userIsOrganizationOwner = false;
     if (
@@ -261,13 +267,13 @@ export default class NewRepositoryLockdownSystem {
 
       const patchChanges: IRepoPatch = {};
       if (!isFork && !isTransfer && !this.repository.private) {
-        lockdownLog.push('Preparing to hide the public repository pending setup (V2)');
+        // informationalLog.push('Preparing to hide the public repository pending setup');
         patchChanges.private = true;
       }
       if (!isFork) {
-        lockdownLog.push('Updating the description and web site to point at the setup wizard (V2)');
-        lockdownLog.push(`Will direct the user to ${setupUrl}`);
-        patchChanges.description = `${setupRepositorySubstring} ${setupUrl}`;
+        // informationalLog.push('Updating the description and web site to point at the setup wizard');
+        // informationalLog.push(`Will direct the user to ${setupUrl}`);
+        patchChanges.description = setupRepositorySubstring;
         patchChanges.homepage = setupUrl;
       }
       if (Object.getOwnPropertyNames(patchChanges).length > 0) {
@@ -280,7 +286,7 @@ export default class NewRepositoryLockdownSystem {
           lockdownLog.push(`Updating repository with patch ${descriptiveUpdate}`);
           await this.repository.update(patchChanges);
         } catch (hideError) {
-          lockdownLog.push(`Error while trying to update the new repo: ${hideError} (V2)`);
+          lockdownLog.push(`Error while trying to update the new repo: ${hideError}`);
         }
       }
     }

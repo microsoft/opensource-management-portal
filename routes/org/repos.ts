@@ -221,10 +221,11 @@ router.post(
   asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     // NOTE: this code is also duplicated for now in the client/internal/* folder
     // CONSIDER: de-duplicate
-    const { operations } = getProviders(req);
+    const { insights, operations } = getProviders(req);
     const { organization, repository } = req;
     const repositoryMetadataProvider = getRepositoryMetadataProvider(operations);
     const lockdownSystem = new NewRepositoryLockdownSystem({
+      insights,
       operations,
       organization,
       repository,

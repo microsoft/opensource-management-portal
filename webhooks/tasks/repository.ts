@@ -17,7 +17,7 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
   }
 
   async run(providers: IProviders, organization: Organization, data: any): Promise<boolean> {
-    const { immutable, operations } = providers;
+    const { immutable, insights, operations } = providers;
     const event = data.body;
     const queryCache = operations.providers.queryCache;
     let update = false;
@@ -26,6 +26,9 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
     let transferSourceLogin: string = null;
     const action = event.action;
     const organizationId = event.organization.id as number;
+    const repositoryId = event?.repository?.id as number;
+    const repositoryIdAsString = String(repositoryId);
+    const organizationIdAsString = String(organizationId);
     if (!operations.isOrganizationManagedById(organizationId)) {
       console.log(
         `skipping organization ID ${organizationId} which is not directly managed: ${event.organization.login}`
@@ -57,8 +60,6 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
         } by ${event.sender.login}`
       );
       update = true;
-      const repositoryIdAsString = event.repository.id.toString();
-      const organizationIdAsString = event.organization.id.toString();
       try {
         if (
           organizationIdAsString === organization.id.toString() &&
@@ -88,8 +89,6 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
       console.log(`repository event not being intercepted: ${action}`);
     }
     if (addOrUpdateRepositoryQueryCache) {
-      const repositoryIdAsString = event.repository.id.toString();
-      const organizationIdAsString = event.organization.id.toString();
       try {
         if (
           organizationIdAsString === organization.id.toString() &&
@@ -132,6 +131,7 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
         const repository = organization.repository(event.repository.name, event.repository);
         const repositoryMetadataProvider = getRepositoryMetadataProvider(organization.operations);
         const lockdownSystem = new NewRepositoryLockdownSystem({
+          insights,
           operations,
           organization,
           repository,

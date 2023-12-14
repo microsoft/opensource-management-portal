@@ -249,3 +249,105 @@ export function ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermis
       );
   }
 }
+
+export enum GitHubAdvancedSecurityFeatureState {
+  Enabled = 'enabled',
+  Disabled = 'disabled',
+}
+
+export type GitHubAdvancedSecurityFeatureStatusValue = {
+  status: GitHubAdvancedSecurityFeatureState;
+};
+
+export type GitHubSecurityAnalysisFeatures = {
+  advanced_security: GitHubAdvancedSecurityFeatureStatusValue;
+  secret_scanning: GitHubAdvancedSecurityFeatureStatusValue;
+  secret_scanning_push_protection: GitHubAdvancedSecurityFeatureStatusValue;
+  dependabot_security_updates: GitHubAdvancedSecurityFeatureStatusValue;
+  secret_scanning_validity_checks: GitHubAdvancedSecurityFeatureStatusValue;
+};
+
+export enum GitHubRepositoryOwnerType {
+  Organization = 'Organization',
+  User = 'User',
+}
+
+export type GitHubRepositoryOwner = {
+  login: string;
+  id: number;
+  node_id: string;
+  avatar_url: string;
+  url: string;
+  type: GitHubRepositoryOwnerType;
+};
+
+export type GitHubRepositoryLicense = {
+  key: string;
+  name: string;
+  spdx_id: string;
+  url: string;
+  node_id: string;
+};
+
+export type GitHubRepositoryDetails = {
+  id: number;
+  node_id: string;
+  name: string;
+  full_name: string;
+  private: boolean;
+  owner: GitHubRepositoryOwner;
+  html_url: string;
+  description: string;
+  fork: boolean;
+  url: string;
+  created_at: string;
+  updated_at: string;
+  pushed_at: string;
+  git_url: string;
+  ssh_url: string;
+  clone_url: string;
+  homepage: string | null;
+  size: number;
+  stargazers_count: number;
+  watchers_count: number;
+  language: string;
+  has_issues: boolean;
+  has_projects: boolean;
+  has_downloads: boolean;
+  has_wiki: boolean;
+  has_pages: boolean;
+  has_discussions: boolean;
+  forks_count: number;
+  archived: boolean;
+  disabled: boolean;
+  open_issues_count: number;
+  license?: GitHubRepositoryLicense;
+  allow_forking: boolean;
+  is_template: boolean;
+  web_commit_signoff_required: boolean;
+  topics: string[];
+  visibility?: GitHubRepositoryVisibility;
+  forks: number;
+  open_issues: number;
+  watchers: number;
+  default_branch: string;
+  // permissions: admin / maintain / push / triage / pull
+  // temp_clone_token: ...
+  allow_squash_merge: boolean;
+  allow_merge_commit: boolean;
+  allow_rebase_merge: boolean;
+  allow_auto_merge: boolean;
+  delete_branch_on_merge: boolean;
+  allow_update_branch: boolean;
+  use_squash_pr_title_as_default: boolean;
+  squash_merge_commit_message: string;
+  squash_merge_commit_title: string;
+  merge_commit_message: string;
+  merge_commit_title: string;
+  template_repository: GitHubRepositoryDetails;
+  organization?: GitHubRepositoryOwner;
+  security_and_analysis?: GitHubSecurityAnalysisFeatures;
+  network_count: number;
+  subscribers_count: number;
+  parent?: GitHubRepositoryDetails;
+};

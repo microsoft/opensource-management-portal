@@ -176,7 +176,7 @@ export async function CreateRepository(
     try {
       createResult = await organization.createRepository(parameters.name, parameters);
       if (createResult && createResult.repository) {
-        repository = organization.repositoryFromEntity(createResult.repository);
+        repository = organization.repositoryFromEntity(createResult.repository.getEntity());
       }
     } catch (error) {
       providers.insights?.trackEvent({

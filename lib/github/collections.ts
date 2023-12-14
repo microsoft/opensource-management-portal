@@ -9,7 +9,7 @@ import Debug from 'debug';
 const debug = Debug.debug('restapi');
 
 import cost from './cost';
-import { IRestResponse, flattenData } from './core';
+import { RestResponse, flattenData } from './core';
 import { CompositeApiContext, CompositeIntelligentEngine } from './composite';
 import { Collaborator } from '../../business/collaborator';
 import { Team } from '../../business/team';
@@ -640,7 +640,7 @@ export class RestCollections {
     cacheOptions: IPagedCacheOptions,
     propertiesToKeep: string[],
     arrayReducePropertyName?: string
-  ): Promise<IRestResponse> {
+  ): Promise<RestResponse> {
     const collectionResults = await this.getFilteredGithubCollection<DataType, OptionsType>(
       token,
       methodName,
@@ -649,7 +649,7 @@ export class RestCollections {
       propertiesToKeep,
       arrayReducePropertyName
     );
-    const results = collectionResults.data as IRestResponse;
+    const results = collectionResults.data as RestResponse;
     const requests = collectionResults.requests;
     const pages = [];
     let dirty = false;
@@ -691,7 +691,7 @@ export class RestCollections {
     method,
     options,
     cacheOptions: IPagedCacheOptions
-  ): Promise<IRestResponse> {
+  ): Promise<RestResponse> {
     const apiContext = new CompositeApiContext(apiName, method, options);
     apiContext.maxAgeSeconds = cacheOptions.maxAgeSeconds || 600;
     apiContext.overrideToken(token);

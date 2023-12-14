@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IRestResponse, IIntelligentCacheResponseArray, flattenData } from './core';
+import { RestResponse, IIntelligentCacheResponseArray, flattenData } from './core';
 import { CompositeApiContext } from './composite';
 import { RestLibrary } from '.';
 import { RestCollections } from './collections';
@@ -16,11 +16,11 @@ import {
 } from '../../interfaces';
 import { AppPurpose } from './appPurposes';
 
-interface IOrganizationsResponse extends IRestResponse {
+interface IOrganizationsResponse extends RestResponse {
   orgs?: any;
 }
 
-interface ICrossOrganizationDataResponse extends IRestResponse {
+interface ICrossOrganizationDataResponse extends RestResponse {
   //  data?: any;
 }
 

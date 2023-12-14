@@ -5,6 +5,7 @@
 
 import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
 import { GitHubRepositoryVisibility, ICorporateLink } from '../../interfaces';
+import { ErrorHelper } from '../../transitional';
 import { RepositoryLockdownCreateOptions } from './interfaces';
 
 export async function initializeRepositoryMetadata(parameters: RepositoryLockdownCreateOptions) {
@@ -19,7 +20,7 @@ export async function initializeRepositoryMetadata(parameters: RepositoryLockdow
     instances,
   } = parameters;
   const { repository } = instances;
-  const { repositoryMetadataProvider } = providers;
+  const { insights, repositoryMetadataProvider } = providers;
   const { organization } = repository;
   try {
     // Repository metadata is used to lock down the security of the repository setup system. Only
@@ -28,8 +29,20 @@ export async function initializeRepositoryMetadata(parameters: RepositoryLockdow
     let repositoryMetadata: RepositoryMetadataEntity = null;
     try {
       repositoryMetadata = await repositoryMetadataProvider.getRepositoryMetadata(String(repository.id));
-    } catch (doesNotExist) {
-      // ignore: 404 is standard here
+    } catch (error) {
+      if (!ErrorHelper.IsNotFound(error)) {
+        insights?.trackException({
+          exception: error,
+          properties: {
+            content: 'RepositoryMetadataProviderGetRepositoryMetadataError',
+            message: error.message,
+            repositoryId: repository.id.toString(),
+            repositoryName: repository.name,
+            organizationName: organization.name,
+            organizationId: organization.id.toString(),
+          },
+        });
+      }
     }
     if (repositoryMetadata) {
       lockdownLog.push(`Repository metadata already exists for repository ID ${repository.id}`);
