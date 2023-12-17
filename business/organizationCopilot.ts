@@ -57,7 +57,7 @@ export class OrganizationCopilot {
     if (options && options.backgroundRefresh === false) {
       caching.backgroundRefresh = false;
     }
-    (caching as any).pageLimit = 10;
+    // (caching as any).pageLimit = 10;
     const seats = (await github.collections.getOrganizationCopilotSeats(
       getAuthorizationHeader,
       parameters,
