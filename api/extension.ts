@@ -9,7 +9,7 @@ const router: Router = Router();
 
 import { getProviders } from '../transitional';
 import { setIdentity } from '../middleware/business/authentication';
-import { AddLinkToRequest } from '../middleware/links';
+import { AddLinkToRequest } from '../middleware/business/links';
 import { jsonError } from '../middleware';
 import { apiContextMiddleware } from '../middleware/business/setContext';
 import { ILocalExtensionKeyProvider } from '../entities/localExtensionKey';

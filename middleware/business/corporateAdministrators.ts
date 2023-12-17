@@ -18,7 +18,7 @@ export interface IReposAppRequestWithSystemAdministration extends ReposAppReques
   isSystemAdministrator: boolean;
 }
 
-function denyRoute(next, isApi: boolean) {
+function denyRoute(next: NextFunction, isApi: boolean) {
   if (isApi) {
     return next(jsonError('This API is unavailable for you', 403));
   }
@@ -48,8 +48,8 @@ export async function AuthorizeOnlyCorporateAdministrators(
 
 export async function checkIsCorporateAdministrator(
   req: IReposAppRequestWithSystemAdministration,
-  res,
-  next
+  res: Response,
+  next: NextFunction
 ) {
   await getIsCorporateAdministrator(req);
   return next();

@@ -19,5 +19,5 @@ export default function (req: ReposAppRequest, res: Response, next: NextFunction
     }
   }
   req.scrubbedUrl = url;
-  next();
+  return next();
 }

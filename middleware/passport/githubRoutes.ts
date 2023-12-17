@@ -5,8 +5,9 @@
 
 import { NextFunction, Response } from 'express';
 import querystring from 'querystring';
+import { PassportStatic } from 'passport';
 
-import { ReposAppRequest } from '../../interfaces';
+import { IReposApplication, ReposAppRequest, SiteConfiguration } from '../../interfaces';
 import { getProviders } from '../../transitional';
 import { isCodespacesAuthenticating } from '../../utils';
 import { IAuthenticationHelperMethods } from '../passport-routes';
@@ -19,9 +20,9 @@ import {
 } from '../passport/githubStrategy';
 
 export function attachGitHubPassportRoutes(
-  app,
-  config: any,
-  passport,
+  app: IReposApplication,
+  config: SiteConfiguration,
+  passport: PassportStatic,
   helpers: IAuthenticationHelperMethods
 ) {
   const signinPath = isCodespacesAuthenticating(config, 'github') ? 'sign-in' : 'signin';

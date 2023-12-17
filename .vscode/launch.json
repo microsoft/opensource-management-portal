@@ -141,6 +141,21 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "66: Order 66 Terminations",
+      "program": "${workspaceRoot}/dist/microsoft/jobs/terminations.js",
+      "args": ["all"],
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,appinsights"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Job: Backfill aliases (3)",
       "program": "${workspaceRoot}/dist/jobs/refreshUsernames.js",
       "cwd": "${workspaceRoot}/dist",

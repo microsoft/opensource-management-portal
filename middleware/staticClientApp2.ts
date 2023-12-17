@@ -16,6 +16,7 @@ const staticReactFlightingPackageNameKey = 'static-react-flight-package-name';
 const staticClientFlightingPackageName = appPackage[staticReactFlightingPackageNameKey];
 
 import Debug from 'debug';
+import { ExpressWithStatic } from './types';
 const debug = Debug.debug('startup');
 
 export type RuntimeConfigurationClient = {
@@ -31,7 +32,11 @@ export type RootRuntimeConfigurationClient = {
   client?: RuntimeConfigurationClient;
 };
 
-export function StaticReactClientApp(app: IReposApplication, express, config: SiteConfiguration) {
+export function StaticReactClientApp(
+  app: IReposApplication,
+  express: ExpressWithStatic,
+  config: SiteConfiguration
+) {
   const clientRuntimeConfiguration: RuntimeConfigurationClient = {};
   app.runtimeConfiguration.client = clientRuntimeConfiguration;
 

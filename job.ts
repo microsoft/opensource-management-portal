@@ -154,7 +154,7 @@ function initializeJob(
   );
 }
 
-const job = {
+export const job = {
   runBackgroundJob: async (
     script: (providers: IProviders, jobParameters?: IReposJob) => Promise<IReposJobResult | void>,
     options?: IReposJobOptions

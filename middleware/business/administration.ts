@@ -4,13 +4,12 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-const router: Router = Router();
 
 import { ReposAppRequest } from '../../interfaces';
 
 import { wrapError } from '../../utils';
 
-function denyRoute(next) {
+function denyRoute(next: NextFunction) {
   next(
     wrapError(
       null,

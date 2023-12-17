@@ -9,7 +9,7 @@ import redis, { RedisClientType } from 'redis';
 import { Pool as PostgresPool } from 'pg';
 
 import {
-  IApplicationProfile,
+  ApplicationProfile,
   ICorporationAdministrationSection,
   IReposApplication,
   SiteConfiguration,
@@ -48,7 +48,7 @@ type ProviderGenerator = (value: string) => IEntityMetadataProvider;
 
 export interface IProviders {
   app: IReposApplication;
-  applicationProfile: IApplicationProfile;
+  applicationProfile: ApplicationProfile;
   authorizationCodeClient?: AuthorizationCode;
   corporateAdministrationProfile?: ICorporationAdministrationSection;
   corporateViews?: any;

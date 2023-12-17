@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { NextFunction, Response } from 'express';
+import { Express, NextFunction, Response } from 'express';
 import path from 'path';
 
 import CosmosSessionStore from '../lib/cosmosSession';
@@ -19,7 +19,7 @@ import { createAndInitializeRepositoryMetadataProviderInstance } from '../entiti
 import createAndInitializeOrganizationAnnotationProviderInstance from '../entities/organizationAnnotation';
 import { createMailAddressProviderInstance, IMailAddressProvider } from '../lib/mailAddressProvider';
 
-import ErrorRoutes from './error-routes';
+import ErrorRoutes from './errorRoutes';
 
 import { createClient, RedisClientType } from 'redis';
 import { Pool as PostgresPool } from 'pg';
@@ -76,7 +76,7 @@ import middlewareIndex from '.';
 import type { ICacheHelper } from '../lib/caching';
 import type {
   ExecutionEnvironment,
-  IApplicationProfile,
+  ApplicationProfile,
   IProviders,
   IReposApplication,
   SiteConfiguration,
@@ -85,7 +85,7 @@ import initializeRepositoryProvider from '../entities/repository';
 import { tryGetImmutableStorageProvider } from '../lib/immutable';
 import { GitHubAppPurposes } from '../lib/github/appPurposes';
 
-const DefaultApplicationProfile: IApplicationProfile = {
+const DefaultApplicationProfile: ApplicationProfile = {
   applicationName: 'Open Source Management Portal',
   serveStaticAssets: true,
   serveClientAssets: true,
@@ -121,7 +121,6 @@ async function initializeAsync(
   } else if (config.github.cache.provider === 'redis') {
     const redisClient = await connectRedis(config, config.redis, 'cache');
     const redisHelper = new RedisHelper({ redisClient, prefix: config.redis.prefix });
-    // providers.redisClient = redisClient;
     providers.cacheProvider = redisHelper;
   } else {
     throw new Error('No cache provider available');
@@ -318,7 +317,7 @@ async function initializeAsync(
   }
 }
 
-function configureGitHubLibrary(cacheProvider: ICacheHelper, config): RestLibrary {
+function configureGitHubLibrary(cacheProvider: ICacheHelper, config: SiteConfiguration): RestLibrary {
   const libraryContext = new RestLibrary({
     config,
     cacheProvider,
@@ -330,7 +329,7 @@ function configureGitHubLibrary(cacheProvider: ICacheHelper, config): RestLibrar
 export default async function initialize(
   executionEnvironment: ExecutionEnvironment,
   app: IReposApplication,
-  express,
+  express: Express,
   rootdir: string,
   config: SiteConfiguration,
   exception: Error
@@ -541,7 +540,7 @@ export default async function initialize(
   return executionEnvironment;
 }
 
-function createGraphProvider(providers: IProviders, config: any): Promise<IGraphProvider> {
+function createGraphProvider(providers: IProviders, config: SiteConfiguration): Promise<IGraphProvider> {
   return new Promise((resolve, reject) => {
     // The graph provider is optional. A graph provider can connect to a
     // corporate directory to validate or lookup employees and other
@@ -642,7 +641,10 @@ async function connectRedis(
   return redisClient;
 }
 
-async function createMailAddressProvider(config: any, providers: IProviders): Promise<IMailAddressProvider> {
+async function createMailAddressProvider(
+  config: SiteConfiguration,
+  providers: IProviders
+): Promise<IMailAddressProvider> {
   const options = {
     config: config,
     providers: providers,
