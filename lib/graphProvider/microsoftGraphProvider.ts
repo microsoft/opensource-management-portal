@@ -281,8 +281,8 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     ], {
       filterValues: `mail eq '${mail}'`, // encodeURIComponent(
       selectValues: 'id',
-      count: true,
-      consistencyLevel: 'eventual',
+      // count: true,
+      // consistencyLevel: 'eventual',
     })) as any[];
     if (!response || response.length === 0) {
       return null;
@@ -416,14 +416,14 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     const graphOptions: GraphOptions = {
       selectValues: Array.from(selectValuesSet.values()).join(','),
     };
-    if (options?.getCount) {
+    if (options?.getCount !== undefined) {
       graphOptions.count = true;
       graphOptions.consistencyLevel = 'eventual';
     }
-    if (options?.maximumPages) {
+    if (options?.maximumPages !== undefined) {
       graphOptions.maximumPages = options.maximumPages;
     }
-    if (options?.throwOnMaximumPages) {
+    if (options?.throwOnMaximumPages !== undefined) {
       graphOptions.throwOnMaximumPages = options.throwOnMaximumPages;
     }
     const lookupType = options?.membership || MicrosoftGraphGroupMembershipType.Transitive;
@@ -621,6 +621,11 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       } else {
         throw new Error(`Page ${pages} in response is not an array type but had a link: ${url}`);
       }
+      if (body && body['@odata.count'] !== undefined) {
+        const count = body['@odata.count'];
+        // NOTE: we don't store or cache or return this today
+        console.log(`Total objects in response: ${count}`);
+      }
       ++pages;
       url = body && body[odataNextLink] ? body[odataNextLink] : null;
     } while (url && (maximumPages ? pages < maximumPages : true));
@@ -628,7 +633,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       if (options.throwOnMaximumPages) {
         throw CreateError.InvalidParameters('Maximum pages exceeded for this resource');
       }
-      console.warn(`Maximum pages exceeded for this resource: ${originalUrl}`);
+      console.warn(`WARN: Maximum pages exceeded for this resource: ${originalUrl}`);
     }
     if (this.#_cache) {
       try {
@@ -677,7 +682,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       }
 
       if (eventualConsistency) {
-        // headers.ConsistencyLevel = eventualConsistency;
+        headers['ConsistencyLevel'] = eventualConsistency;
       }
       const response = await axios({
         url,
