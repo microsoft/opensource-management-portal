@@ -14,7 +14,7 @@ import {
 } from '@azure/storage-blob';
 
 import { ICacheHelper } from '.';
-import { gunzipBuffer, gzipString } from '../../utils';
+import { gunzipBuffer, gzipString } from '../utils';
 
 import Debug from 'debug';
 const debug = Debug.debug('cache');

@@ -7,7 +7,7 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { Team, Organization } from '../../../business';
-import { TeamJoinApprovalEntity } from '../../../entities/teamJoinApproval/teamJoinApproval';
+import { TeamJoinApprovalEntity } from '../../../business/entities/teamJoinApproval/teamJoinApproval';
 import { TeamJsonFormat, ReposAppRequest } from '../../../interfaces';
 import { jsonError } from '../../../middleware';
 import {
@@ -16,7 +16,7 @@ import {
   Approvals_getUserRequests,
   closeOldRequest,
 } from '../../../routes/settings/approvals';
-import { getProviders } from '../../../transitional';
+import { getProviders } from '../../../lib/transitional';
 import { IndividualContext } from '../../../business/user';
 
 const router: Router = Router();

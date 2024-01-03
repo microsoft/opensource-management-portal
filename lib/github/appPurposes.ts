@@ -4,7 +4,7 @@
 //
 
 import { ExecutionEnvironment } from '../../interfaces';
-import { CreateError } from '../../transitional';
+import { CreateError } from '../transitional';
 
 import Debug from 'debug';
 import { GitHubTokenManager } from './tokenManager';

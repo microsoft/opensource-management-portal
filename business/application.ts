@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { OrganizationSetting } from '../entities/organizationSettings/organizationSetting';
+import { OrganizationSetting } from './entities/organizationSettings/organizationSetting';
 import {
   IOperationsGitHubRestLibrary,
   IOperationsDefaultCacheTimes,
@@ -11,7 +11,7 @@ import {
   IGitHubAppInstallation,
   ICacheOptions,
 } from '../interfaces';
-import { wrapError } from '../utils';
+import { wrapError } from '../lib/utils';
 
 const primaryInstallationProperties = [
   'id',

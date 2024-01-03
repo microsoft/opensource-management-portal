@@ -7,7 +7,7 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders } from '../transitional';
+import { getProviders } from '../lib/transitional';
 
 import { requirePortalAdministrationPermission } from '../middleware/business/administration';
 import { PostgresLinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
@@ -16,7 +16,7 @@ import { Organization } from '../business';
 import { Account } from '../business';
 import { ILinkProvider } from '../lib/linkProviders';
 import { ICorporateLink, ReposAppRequest, IProviders, UnlinkPurpose } from '../interfaces';
-import { isCodespacesAuthenticating } from '../utils';
+import { isCodespacesAuthenticating } from '../lib/utils';
 
 // - - - Middleware: require that the user isa portal administrator to continue
 router.use(requirePortalAdministrationPermission);

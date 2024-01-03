@@ -50,7 +50,7 @@ import {
   MetadataMappingDefinitionBase,
 } from './declarations';
 import { encryptTableEntity, decryptTableEntity, ITableEncryptionOperationOptions } from './tableEncryption';
-import { CreateError, ErrorHelper } from '../../transitional';
+import { CreateError, ErrorHelper } from '../transitional';
 import { IKeyVaultSecretResolver } from '../keyVaultResolver';
 
 export interface ITableEncryptionOptions {

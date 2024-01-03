@@ -16,7 +16,7 @@ import {
   TeamPermission,
   RepositoryIssue,
 } from '.';
-import { RepositoryMetadataEntity } from '../entities/repositoryMetadata/repositoryMetadata';
+import { RepositoryMetadataEntity } from './entities/repositoryMetadata/repositoryMetadata';
 import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
 import {
   PurposefulGetAuthorizationHeader,
@@ -31,7 +31,7 @@ import {
   ITemporaryCommandOutput,
   NoCacheNoBackground,
   IGitHubProtectedBranchConfiguration,
-  IRepositoryBranchAccessProtections,
+  RepositoryBranchAccessProtections as RepositoryBranchAccessProtections,
   IListContributorsOptions,
   IGetCollaboratorsOptions,
   GitHubCollaboratorAffiliationQuery,
@@ -52,10 +52,10 @@ import {
 } from '../interfaces';
 import { IListPullsParameters, GitHubPullRequestState } from '../lib/github/collections';
 
-import { wrapError } from '../utils';
+import { wrapError } from '../lib/utils';
 import { RepositoryActions } from './repositoryActions';
 import { RepositoryPullRequest } from './repositoryPullRequest';
-import { ErrorHelper } from '../transitional';
+import { CreateError, ErrorHelper } from '../lib/transitional';
 import { augmentInertiaPreview, RepositoryProject } from './repositoryProject';
 import { RepositoryInvitation } from './repositoryInvitation';
 import { RepositoryProperties } from './repositoryProperties';
@@ -776,6 +776,27 @@ export class Repository {
     }
   }
 
+  async updateBranchProtectionRule2(
+    parameters: string,
+    cacheOptions?: ICacheOptions
+  ): Promise<RepositoryBranchAccessProtections> {
+    cacheOptions = cacheOptions || {};
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const github = operations.github;
+
+    Object.assign(parameters, cacheOptions);
+    // PUT /repos/{owner}/{repo}/branches/{branch}/protection
+    const protections = await github.call(
+      this.authorize(AppPurpose.Data),
+      'repos.updateBranchProtection',
+      parameters
+    );
+    if (protections.length >= 100) {
+      console.warn('This API does not support pagination currently... there may be more items');
+    }
+    return protections as RepositoryBranchAccessProtections;
+  }
+
   async listBranchProtectionRules(): Promise<IGitHubProtectedBranchConfiguration[]> {
     await this.organization.requireUpdatesApp('listBranchProtectionRules');
     const query = `query($owner: String!, $repo: String!) {
@@ -828,7 +849,7 @@ export class Repository {
   async getProtectedBranchAccessRestrictions(
     branchName: string,
     cacheOptions?: ICacheOptions
-  ): Promise<IRepositoryBranchAccessProtections> {
+  ): Promise<RepositoryBranchAccessProtections> {
     // NOTE: GitHub has a "100-item limit" currently. This is an object response and not
     // technically paginated.
     cacheOptions = cacheOptions || {};
@@ -852,7 +873,31 @@ export class Repository {
       'repos.getBranchProtection',
       parameters
     );
-    return protections as IRepositoryBranchAccessProtections;
+    return protections as RepositoryBranchAccessProtections;
+  }
+
+  async getAdminProtectedBranchAccessRestrictions(
+    branchName: string,
+    cacheOptions?: ICacheOptions
+  ): Promise<RepositoryBranchAccessProtections> {
+    // NOTE: GitHub has a "100-item limit" currently. This is an object response and not
+    // technically paginated.
+    cacheOptions = cacheOptions || {};
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const github = operations.github;
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      branch: branchName,
+    };
+    Object.assign(parameters, cacheOptions);
+    // GET /repos/{owner}/{repo}/branches/{branch}/protection/enforce_admins
+    const protections = await github.call(
+      this.authorize(AppPurpose.Data),
+      'repos.getAdminBranchProtection',
+      parameters
+    );
+    return protections as RepositoryBranchAccessProtections;
   }
 
   async setDefaultBranch(defaultBranchName: string): Promise<void> {

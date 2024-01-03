@@ -4,7 +4,7 @@
 //
 
 import { Repository } from './repository';
-import { wrapError } from '../utils';
+import { wrapError } from '../lib/utils';
 import { AppPurpose } from '../lib/github/appPurposes';
 import { CacheDefault, getMaxAgeSeconds } from '.';
 import {
@@ -16,7 +16,7 @@ import {
   ICacheOptions,
   GetAuthorizationHeader,
 } from '../interfaces';
-import { ErrorHelper } from '../transitional';
+import { ErrorHelper } from '../lib/transitional';
 
 // Pull requests are issues but not all issues are pull requests. So this is mostly a clone of repositoryIssue.ts
 // right now, with slightly different endpoints.

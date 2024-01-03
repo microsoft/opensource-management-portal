@@ -11,7 +11,7 @@ import {
   GetAuthorizationHeader,
 } from '.';
 import { IProviders, ICorporateLink, ICachedEmployeeInformation } from '..';
-import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
+import { IRepositoryMetadataProvider } from '../../business/entities/repositoryMetadata/repositoryMetadataProvider';
 import { RestLibrary } from '../../lib/github';
 import { Account } from '../../business';
 

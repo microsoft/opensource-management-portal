@@ -7,7 +7,7 @@ import asyncHandler from 'express-async-handler';
 import { NextFunction, Response } from 'express';
 import _ from 'lodash';
 
-import { daysInMilliseconds } from '../utils';
+import { daysInMilliseconds } from '../lib/utils';
 import {
   Repository,
   IPersonalizedUserAggregateRepositoryPermission,
@@ -20,7 +20,7 @@ import {
 import QueryCache from '../business/queryCache';
 import { GitHubRepositoryType, IReposAppWithTeam } from '../interfaces';
 import { IRequestTeamPermissions } from '../middleware/github/teamPermissions';
-import { getProviders } from '../transitional';
+import { getProviders } from '../lib/transitional';
 import { UserContext } from '../business/user/aggregate';
 
 interface IGetReposAndOptionalTeamPermissionsResponse {

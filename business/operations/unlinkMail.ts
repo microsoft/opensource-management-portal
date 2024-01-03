@@ -7,7 +7,7 @@ import { Operations } from '.';
 import { Account } from '../account';
 import { UnlinkPurpose, IUnlinkMailStatus, ICachedEmployeeInformation } from '../../interfaces';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
-import { assertUnreachable } from '../../transitional';
+import { assertUnreachable } from '../../lib/transitional';
 
 export async function sendTerminatedAccountMail(
   operations: Operations,

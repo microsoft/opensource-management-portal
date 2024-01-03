@@ -12,7 +12,7 @@ import path from 'path';
 initialize();
 
 async function setup() {
-  const sql = fs.readFileSync(path.join(__dirname, '../../../pg.sql'), 'utf8');
+  const sql = fs.readFileSync(path.join(__dirname, '../../data/pg.sql'), 'utf8');
 
   const server = await prompt('postgres server: ');
   const adminUsername = await prompt('admin user: ');

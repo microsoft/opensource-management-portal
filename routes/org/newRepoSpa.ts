@@ -8,9 +8,9 @@ import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
 import { getRepositoryMetadataProvider, ReposAppRequest } from '../../interfaces';
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 import { Organization } from '../../business/organization';
-import NewRepositoryLockdownSystem from '../../features/newRepositories/newRepositoryLockdown';
+import NewRepositoryLockdownSystem from '../../business/features/newRepositories/newRepositoryLockdown';
 
 router.get(
   '/',

@@ -7,8 +7,8 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders } from '../../transitional';
-import { wrapError } from '../../utils';
+import { getProviders } from '../../lib/transitional';
+import { wrapError } from '../../lib/utils';
 import { Organization } from '../../business';
 import { OrganizationMembershipState, ReposAppRequest, UserAlertType } from '../../interfaces';
 

@@ -11,7 +11,7 @@ import { AppPurposeTypes, ICustomAppPurpose } from './appPurposes';
 import { AuthorizationHeaderValue } from '../../interfaces';
 
 import Debug from 'debug';
-import { CreateError } from '../../transitional';
+import { CreateError } from '../transitional';
 const debug = Debug('github:tokens');
 
 interface IInstallationToken {

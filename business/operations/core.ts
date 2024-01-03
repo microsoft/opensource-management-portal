@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
+import { OrganizationSetting } from '../entities/organizationSettings/organizationSetting';
 import {
   GitHubAppAuthenticationType,
   AppPurpose,
@@ -31,8 +31,8 @@ import {
   ICacheOptionsWithPurpose,
 } from '../../interfaces';
 import { RestLibrary } from '../../lib/github';
-import { CreateError } from '../../transitional';
-import { wrapError } from '../../utils';
+import { CreateError } from '../../lib/transitional';
+import { wrapError } from '../../lib/utils';
 import { Account } from '../account';
 import GitHubApplication from '../application';
 

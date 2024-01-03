@@ -10,7 +10,7 @@ import { OrganizationMember } from './organizationMember';
 import { Team } from './team';
 import { Repository } from './repository';
 
-import { wrapError } from '../utils';
+import { wrapError } from '../lib/utils';
 import { StripGitHubEntity } from '../lib/github/restApi';
 import { GitHubResponseType } from '../lib/github/endpointEntities';
 import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
@@ -18,8 +18,8 @@ import {
   OrganizationFeature,
   OrganizationSetting,
   SystemTeam,
-} from '../entities/organizationSettings/organizationSetting';
-import { createOrganizationSudoInstance, IOrganizationSudo } from '../features';
+} from './entities/organizationSettings/organizationSetting';
+import { createOrganizationSudoInstance, IOrganizationSudo } from './features';
 import { CacheDefault, getMaxAgeSeconds, getPageSize, OperationsCore } from './operations/core';
 import {
   CoreCapability,
@@ -61,7 +61,7 @@ import {
   throwIfNotGitHubCapable,
   GitHubRepositoryDetails,
 } from '../interfaces';
-import { CreateError, ErrorHelper } from '../transitional';
+import { CreateError, ErrorHelper } from '../lib/transitional';
 import { jsonError } from '../middleware';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 import { ConfigGitHubTemplates } from '../config/github.templates.types';

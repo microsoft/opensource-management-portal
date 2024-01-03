@@ -8,7 +8,7 @@ import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
 import { ReposAppRequest, UserAlertType } from '../../interfaces';
-import { CreateError, getProviders } from '../../transitional';
+import { CreateError, getProviders } from '../../lib/transitional';
 
 router.use('/:campaignGroupId', (req: ReposAppRequest, res: any, next) => {
   const { config } = getProviders(req);

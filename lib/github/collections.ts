@@ -15,7 +15,7 @@ import { Collaborator } from '../../business/collaborator';
 import { Team } from '../../business/team';
 import { IPagedCacheOptions, GetAuthorizationHeader, IDictionary } from '../../interfaces';
 import { RestLibrary } from '.';
-import { sleep } from '../../utils';
+import { sleep } from '../utils';
 import GitHubApplication from '../../business/application';
 import { RepositoryPrimaryProperties } from '../../business/primaryProperties';
 import { RepositoryInvitation } from '../../business/repositoryInvitation';

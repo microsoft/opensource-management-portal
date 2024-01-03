@@ -7,10 +7,10 @@ import querystring from 'querystring';
 
 import { Repository } from './repository';
 import { IPersonalizedUserAggregateRepositoryPermission } from './graphManager';
-import { RepositoryMetadataEntity } from '../entities/repositoryMetadata/repositoryMetadata';
-import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repositoryMetadataProvider';
+import { RepositoryMetadataEntity } from './entities/repositoryMetadata/repositoryMetadata';
+import { IRepositoryMetadataProvider } from './entities/repositoryMetadata/repositoryMetadataProvider';
 import { TeamRepositoryPermission } from './teamRepositoryPermission';
-import { sortRepositoriesByNameCaseInsensitive } from '../utils';
+import { sortRepositoriesByNameCaseInsensitive } from '../lib/utils';
 import { GitHubRepositoryPermission, IRepositorySearchOptions, RepositoryLockdownState } from '../interfaces';
 
 const defaultPageSize = 20; // GitHub.com seems to use a value around 33

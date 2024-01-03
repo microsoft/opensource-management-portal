@@ -17,7 +17,7 @@ import {
   IteratorResponse,
   PaginationPageSizeOptions,
 } from './iterable';
-import { DefaultGraphqlPageSize } from '../transitional';
+import { DefaultGraphqlPageSize } from '../lib/transitional';
 
 type DomainResponse = {
   id: string;

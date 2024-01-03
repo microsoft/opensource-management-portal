@@ -9,8 +9,8 @@ import jwksClient from 'jwks-rsa';
 
 import { isJsonError, jsonError } from './jsonError';
 import { IApiRequest, wrapErrorForImmediateUserError } from './apiReposAuth';
-import { PersonalAccessToken } from '../entities/token/token';
-import { CreateError, getProviders } from '../transitional';
+import { PersonalAccessToken } from '../business/entities/token/token';
+import { CreateError, getProviders } from '../lib/transitional';
 import getCompanySpecificDeployment from './companySpecificDeployment';
 
 // CONSIDER: Caching of signing keys

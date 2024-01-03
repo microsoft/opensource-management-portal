@@ -5,7 +5,7 @@
 
 import { NextFunction, Response } from 'express';
 
-import { ErrorHelper, getProviders } from '../../transitional';
+import { ErrorHelper, getProviders } from '../../lib/transitional';
 import { Repository } from '../../business/repository';
 import { GitHubIdentitySource, IIndividualContextOptions, IndividualContext } from '../../business/user';
 import getCompanySpecificDeployment from '../companySpecificDeployment';

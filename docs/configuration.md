@@ -125,13 +125,13 @@ The opensource-portal can also be configured to read organization configurations
 
 ## PostgreSQL Configuration
 
-To run the opensource-portal with a postgres database, you need to [setup postgres](https://www.postgresql.org/docs/11/runtime.html) and initialize the database by running the `pg.sql`-file in the psql-terminal.
+To run the opensource-portal with a postgres database, you need to [setup postgres](https://www.postgresql.org/docs/11/runtime.html) and initialize the database by running the `data/pg.sql`-file in the psql-terminal.
 It's recommended to [run postgres in a docker container](https://hub.docker.com/_/postgres), there is also an official docker image called `postgres` for building.
 
 Once the setup is done, set the `host`, `database`, `user`, `password`, `ssl` (as boolean) and `port` of the postgres in the `config/data.postgres.json`-file.
-Additionally set the name of the linking-table (`tableName` parameter), if the tables were created with the `pg.sql`-file, the name for this table is `links`.
+Additionally set the name of the linking-table (`tableName` parameter), if the tables were created with the `data/pg.sql`-file, the name for this table is `links`.
 
-There is also a script in the `scripts` folder that can blast the `pg.sql` insertions into a new database. Be
+There is also a script in the `scripts` folder that can blast the `data/pg.sql` insertions into a new database. Be
 sure to configure grants and your user accounts with the concept of least privilege required.
 
 ## Cache Configuration

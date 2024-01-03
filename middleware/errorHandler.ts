@@ -6,8 +6,8 @@
 import querystring from 'querystring';
 import { AxiosError } from 'axios';
 
-import { wrapError } from '../utils';
-import { getProviders } from '../transitional';
+import { wrapError } from '../lib/utils';
+import { getProviders } from '../lib/transitional';
 import { isJsonError } from '.';
 import { NextFunction, Response } from 'express';
 import { ReposAppRequest } from '../interfaces';

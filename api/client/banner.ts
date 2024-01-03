@@ -7,7 +7,7 @@ import { NextFunction, Response, Router } from 'express';
 import { ReposAppRequest } from '../../interfaces';
 
 import { jsonError } from '../../middleware';
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 
 const router: Router = Router();
 

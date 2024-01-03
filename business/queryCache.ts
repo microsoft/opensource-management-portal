@@ -16,15 +16,15 @@
 
 import Debug from 'debug';
 
-import { projectCollaboratorPermissionToGitHubRepositoryPermission } from '../transitional';
-import { OrganizationMemberCacheEntity } from '../entities/organizationMemberCache/organizationMemberCache';
+import { projectCollaboratorPermissionToGitHubRepositoryPermission } from '../lib/transitional';
+import { OrganizationMemberCacheEntity } from './entities/organizationMemberCache/organizationMemberCache';
 import { Operations } from './operations';
-import { TeamMemberCacheEntity } from '../entities/teamMemberCache/teamMemberCache';
+import { TeamMemberCacheEntity } from './entities/teamMemberCache/teamMemberCache';
 
-import { TeamCacheEntity } from '../entities/teamCache/teamCache';
-import { RepositoryTeamCacheEntity } from '../entities/repositoryTeamCache/repositoryTeamCache';
-import { RepositoryCacheEntity } from '../entities/repositoryCache/repositoryCache';
-import { RepositoryCollaboratorCacheEntity } from '../entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
+import { TeamCacheEntity } from './entities/teamCache/teamCache';
+import { RepositoryTeamCacheEntity } from './entities/repositoryTeamCache/repositoryTeamCache';
+import { RepositoryCacheEntity } from './entities/repositoryCache/repositoryCache';
+import { RepositoryCollaboratorCacheEntity } from './entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
 import { Repository } from '.';
 import {
   IProviders,

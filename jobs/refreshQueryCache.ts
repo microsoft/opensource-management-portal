@@ -16,7 +16,7 @@ job.runBackgroundJob(refreshQueryCache, {
   insightsPrefix: 'JobRefreshQueryCache',
 });
 
-import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../transitional';
+import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../lib/transitional';
 import {
   Collaborator,
   Operations,
@@ -27,7 +27,7 @@ import {
   TeamMember,
   TeamPermission,
 } from '../business';
-import { sleep, addArrayToSet } from '../utils';
+import { sleep, addArrayToSet } from '../lib/utils';
 import QueryCache from '../business/queryCache';
 import {
   IPagedCacheOptions,

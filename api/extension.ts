@@ -7,15 +7,15 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders } from '../transitional';
+import { getProviders } from '../lib/transitional';
 import { setIdentity } from '../middleware/business/authentication';
 import { AddLinkToRequest } from '../middleware/business/links';
 import { jsonError } from '../middleware';
 import { apiContextMiddleware } from '../middleware/business/setContext';
-import { ILocalExtensionKeyProvider } from '../entities/localExtensionKey';
-import { LocalExtensionKey } from '../entities/localExtensionKey/localExtensionKey';
+import { ILocalExtensionKeyProvider } from '../business/entities/localExtensionKey';
+import { LocalExtensionKey } from '../business/entities/localExtensionKey/localExtensionKey';
 import { IApiRequest } from '../middleware/apiReposAuth';
-import { PersonalAccessToken } from '../entities/token/token';
+import { PersonalAccessToken } from '../business/entities/token/token';
 
 const thisApiScopeName = 'extension';
 

@@ -11,9 +11,9 @@ const router: Router = Router();
 
 import querystring from 'querystring';
 
-import { CreateError, getProviders } from '../../transitional';
+import { CreateError, getProviders } from '../../lib/transitional';
 import { IndividualContext } from '../../business/user';
-import { sleep, storeOriginalUrlAsReferrer, wrapError } from '../../utils';
+import { sleep, storeOriginalUrlAsReferrer, wrapError } from '../../lib/utils';
 import RequireActiveGitHubSession from '../../middleware/github/requireActiveSession';
 import { jsonError } from '../../middleware/jsonError';
 import { Organization, Team } from '../../business';

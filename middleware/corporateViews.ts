@@ -7,7 +7,7 @@ import { constants as fsConstants, promises as fs } from 'fs';
 import path from 'path';
 
 import { IProviders } from '../interfaces';
-import { stripDistFolderName } from '../transitional';
+import { stripDistFolderName } from '../lib/transitional';
 
 // providers.corporateViews:
 // ---

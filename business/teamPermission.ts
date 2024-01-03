@@ -16,7 +16,7 @@ import {
   GitHubRepositoryPermission,
   type IGitHubTeamBasics,
 } from '../interfaces';
-import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../transitional';
+import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../lib/transitional';
 
 export interface ITeamRepositoryPermission {
   pull: boolean;

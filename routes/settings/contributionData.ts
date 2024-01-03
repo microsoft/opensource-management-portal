@@ -7,8 +7,8 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { ErrorHelper, getProviders } from '../../transitional';
-import { UserSettings } from '../../entities/userSettings';
+import { ErrorHelper, getProviders } from '../../lib/transitional';
+import { UserSettings } from '../../business/entities/userSettings';
 import { UserAlertType } from '../../interfaces';
 import type { ReposAppRequestWithUserSettings } from '../../interfaces/middleware';
 import { getUserSettings } from '../../middleware/business/userSettings';

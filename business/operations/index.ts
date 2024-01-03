@@ -12,7 +12,7 @@ import { GraphManager } from '../graphManager';
 import { GitHubOrganizationResponse, Organization } from '../organization';
 import { GitHubTokenManager } from '../../lib/github/tokenManager';
 import RenderHtmlMail from '../../lib/emailRender';
-import { wrapError, sortByCaseInsensitive } from '../../utils';
+import { wrapError, sortByCaseInsensitive } from '../../lib/utils';
 import { Repository } from '../repository';
 import { RestLibrary } from '../../lib/github';
 import {
@@ -26,12 +26,12 @@ import {
 import {
   OrganizationFeature,
   OrganizationSetting,
-} from '../../entities/organizationSettings/organizationSetting';
-import { OrganizationSettingProvider } from '../../entities/organizationSettings/organizationSettingProvider';
+} from '../entities/organizationSettings/organizationSetting';
+import { OrganizationSettingProvider } from '../entities/organizationSettings/organizationSettingProvider';
 import { IMail } from '../../lib/mailProvider';
 import { ILinkProvider } from '../../lib/linkProviders';
 import { ICacheHelper } from '../../lib/caching';
-import { createPortalSudoInstance, IPortalSudo } from '../../features';
+import { createPortalSudoInstance, IPortalSudo } from '../features';
 import { CacheDefault, getMaxAgeSeconds, IOperationsCoreOptions, OperationsCore } from './core';
 import { linkAccounts as linkAccountsMethod } from './link';
 import { sendTerminatedAccountMail as sendTerminatedAccountMailMethod } from './unlinkMail';
@@ -65,9 +65,9 @@ import {
   SupportedLinkType,
   UnlinkPurpose,
 } from '../../interfaces';
-import { CreateError, ErrorHelper } from '../../transitional';
+import { CreateError, ErrorHelper } from '../../lib/transitional';
 import { Team } from '../team';
-import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
+import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repositoryMetadataProvider';
 import { isAuthorizedSystemAdministrator } from './administration';
 import type { ConfigGitHubOrganizationsSpecializedList } from '../../config/github.organizations.types';
 import { type GitHubTokenType, getGitHubTokenTypeFromValue } from '../../lib/github/appTokens';

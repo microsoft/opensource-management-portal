@@ -7,7 +7,7 @@ import { NextFunction, Response } from 'express';
 
 import { Repository } from '../../business/repository';
 import type { ReposAppRequest } from '../../interfaces/web';
-import { CreateError } from '../../transitional';
+import { CreateError } from '../../lib/transitional';
 
 export type RequestWithRepo = ReposAppRequest & {
   repository: Repository;

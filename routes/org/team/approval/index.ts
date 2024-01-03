@@ -7,7 +7,7 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { ErrorHelper, getProviders } from '../../../../transitional';
+import { ErrorHelper, getProviders } from '../../../../lib/transitional';
 import { Team } from '../../../../business';
 import { PermissionWorkflowEngine } from '../approvals';
 import RenderHtmlMail from '../../../../lib/emailRender';

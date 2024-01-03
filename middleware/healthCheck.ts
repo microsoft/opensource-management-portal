@@ -13,7 +13,7 @@ import type {
   ConfiguredProbeBase,
 } from '../config/webHealthProbes.types';
 import { IReposApplication, ReposAppRequest, SiteConfiguration } from '../interfaces';
-import { CreateError } from '../transitional';
+import { CreateError } from '../lib/transitional';
 
 const dbg = Debug.debug('health');
 

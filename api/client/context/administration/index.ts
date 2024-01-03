@@ -10,7 +10,7 @@ import { Organization } from '../../../../business/organization';
 import { ReposAppRequest } from '../../../../interfaces';
 import { getIsCorporateAdministrator, jsonError } from '../../../../middleware';
 import getCompanySpecificDeployment from '../../../../middleware/companySpecificDeployment';
-import { ErrorHelper, getProviders } from '../../../../transitional';
+import { ErrorHelper, getProviders } from '../../../../lib/transitional';
 
 import routeIndividualOrganization from './organization';
 import routeApps from './apps';

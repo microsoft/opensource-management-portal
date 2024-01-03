@@ -9,10 +9,10 @@ const router: Router = Router();
 
 import RouteApproval from './approval';
 
-import { getProviders } from '../../../transitional';
-import { wrapError } from '../../../utils';
+import { getProviders } from '../../../lib/transitional';
+import { wrapError } from '../../../lib/utils';
 import { Team } from '../../../business';
-import { TeamJoinApprovalEntity } from '../../../entities/teamJoinApproval/teamJoinApproval';
+import { TeamJoinApprovalEntity } from '../../../business/entities/teamJoinApproval/teamJoinApproval';
 import { Account } from '../../../business';
 import { ReposAppRequest, IRequestTeams } from '../../../interfaces';
 

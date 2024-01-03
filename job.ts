@@ -15,7 +15,7 @@ import type {
   SiteConfiguration,
 } from './interfaces';
 import { commonStartup } from '.';
-import { quitInTenSeconds } from './utils';
+import { quitInTenSeconds } from './lib/utils';
 import initialize from './middleware/initialize';
 
 export async function runJob(

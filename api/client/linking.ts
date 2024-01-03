@@ -8,7 +8,7 @@ import asyncHandler from 'express-async-handler';
 
 import { IndividualContext } from '../../business/user';
 import { jsonError } from '../../middleware';
-import { ErrorHelper, getProviders } from '../../transitional';
+import { ErrorHelper, getProviders } from '../../lib/transitional';
 import { unlinkInteractive } from '../../routes/unlink';
 import { interactiveLinkUser } from '../../routes/link';
 import { ReposAppRequest } from '../../interfaces';

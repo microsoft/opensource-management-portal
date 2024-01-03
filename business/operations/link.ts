@@ -12,7 +12,7 @@ import {
   ICorporateLink,
 } from '../../interfaces';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
-import { CreateError, ErrorHelper, setImmediateAsync } from '../../transitional';
+import { CreateError, ErrorHelper, setImmediateAsync } from '../../lib/transitional';
 
 export async function linkAccounts(
   operations: Operations,

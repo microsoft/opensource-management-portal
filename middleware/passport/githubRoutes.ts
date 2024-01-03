@@ -8,8 +8,8 @@ import querystring from 'querystring';
 import { PassportStatic } from 'passport';
 
 import { IReposApplication, ReposAppRequest, SiteConfiguration } from '../../interfaces';
-import { getProviders } from '../../transitional';
-import { isCodespacesAuthenticating } from '../../utils';
+import { getProviders } from '../../lib/transitional';
+import { isCodespacesAuthenticating } from '../../lib/utils';
 import { IAuthenticationHelperMethods } from '../passport-routes';
 import {
   getGithubAppConfigurationOptions,

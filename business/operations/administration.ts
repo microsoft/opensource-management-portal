@@ -4,7 +4,7 @@
 //
 
 import { IProviders } from '../../interfaces';
-import { ErrorHelper } from '../../transitional';
+import { ErrorHelper } from '../../lib/transitional';
 
 export async function isAuthorizedSystemAdministrator(
   providers: IProviders,

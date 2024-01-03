@@ -9,7 +9,7 @@ import asyncHandler from 'express-async-handler';
 import { sendLinkedAccountMail } from '../../../business/operations/link';
 import { ReposAppRequest } from '../../../interfaces';
 import { jsonError } from '../../../middleware';
-import { CreateError, getProviders } from '../../../transitional';
+import { CreateError, getProviders } from '../../../lib/transitional';
 import { IndividualContext } from '../../../business/user';
 
 const router: Router = Router();

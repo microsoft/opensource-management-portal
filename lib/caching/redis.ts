@@ -11,7 +11,7 @@ const debug = Debug.debug('redis');
 const debugCrossOrganization = Debug.debug('redis-cross-org');
 
 import type { ICacheHelper } from '.';
-import { gunzipBuffer, gzipString } from '../../utils';
+import { gunzipBuffer, gzipString } from '../utils';
 
 export interface ISetCompressedOptions {
   minutesToExpire?: number;

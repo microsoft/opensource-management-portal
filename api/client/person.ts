@@ -10,7 +10,7 @@ import { ReposAppRequest, AccountJsonFormat } from '../../interfaces';
 import { IGraphEntry } from '../../lib/graphProvider';
 
 import { jsonError } from '../../middleware';
-import { CreateError, ErrorHelper, getProviders } from '../../transitional';
+import { CreateError, ErrorHelper, getProviders } from '../../lib/transitional';
 
 const getPerson = asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
   const providers = getProviders(req);

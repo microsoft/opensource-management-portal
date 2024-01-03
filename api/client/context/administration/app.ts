@@ -7,12 +7,12 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { ReposAppRequest } from '../../../../interfaces';
-import { CreateError, getProviders } from '../../../../transitional';
+import { CreateError, getProviders } from '../../../../lib/transitional';
 
 import routeIndividualApp from './app';
 import GitHubApplication from '../../../../business/application';
-import { OrganizationSetting } from '../../../../entities/organizationSettings/organizationSetting';
-import { sortByCaseInsensitive } from '../../../../utils';
+import { OrganizationSetting } from '../../../../business/entities/organizationSettings/organizationSetting';
+import { sortByCaseInsensitive } from '../../../../lib/utils';
 import routeApplicationInstallation from './appInstallation';
 import { ApiRequestWithGitHubApplication, RequestWithInstallation } from './types';
 

@@ -8,7 +8,7 @@ import memoryCache from 'memory-cache';
 import { NextFunction, Response } from 'express';
 
 import type { IReposAppRequestWithOrganizationManagementType } from '../business/organization';
-import { CreateError, getProviders } from '../../transitional';
+import { CreateError, getProviders } from '../../lib/transitional';
 import {
   getOrganizationDetailsSanitized,
   type GitHubOrganizationResponseSanitized,

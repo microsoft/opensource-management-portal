@@ -9,7 +9,7 @@ import asyncHandler from 'express-async-handler';
 import { Repository } from '../../business';
 import { ReposAppRequest } from '../../interfaces';
 import { jsonError } from '../../middleware';
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 import JsonPager from './jsonPager';
 import { RepositorySearchSortOrder, searchRepos } from './organization/repos';
 

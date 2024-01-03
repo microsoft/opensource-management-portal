@@ -8,7 +8,7 @@ import { Repository } from './repository';
 
 import type { GitHubRepositoryPermission, IOperationsInstance } from '../interfaces';
 import { isStandardGitHubTeamPermission, type ITeamRepositoryPermission } from './teamPermission';
-import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../transitional';
+import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../lib/transitional';
 
 // this is used when a team returns the repositories it can work with;
 // the GitHub API is pretty inconsistent. The actual entities are a combination of

@@ -7,7 +7,7 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { ReposAppRequest } from '../../../interfaces';
-import { CreateError, getProviders } from '../../../transitional';
+import { CreateError, getProviders } from '../../../lib/transitional';
 import { getUserSettings } from '../../../middleware/business/userSettings';
 
 import type { ReposAppRequestWithUserSettings } from '../../../interfaces/middleware';

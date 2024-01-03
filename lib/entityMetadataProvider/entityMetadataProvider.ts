@@ -5,7 +5,7 @@
 
 import { type IEntityMetadata, EntityMetadataType } from './entityMetadata';
 import type { IEntityMetadataFixedQuery } from './query';
-import { swapMap } from '../../utils';
+import { swapMap } from '../utils';
 
 export enum EntityField {
   Type = 'entityType',

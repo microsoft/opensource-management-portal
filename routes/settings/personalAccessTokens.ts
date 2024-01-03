@@ -7,8 +7,8 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders } from '../../transitional';
-import { PersonalAccessToken } from '../../entities/token/token';
+import { getProviders } from '../../lib/transitional';
+import { PersonalAccessToken } from '../../business/entities/token/token';
 import { ReposAppRequest } from '../../interfaces';
 
 type ResponseWithNewKey = Response & {

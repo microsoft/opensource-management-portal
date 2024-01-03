@@ -7,7 +7,7 @@ import { NextFunction, Response, Router } from 'express';
 
 import { ReposAppRequest } from '../../interfaces';
 
-import { wrapError } from '../../utils';
+import { wrapError } from '../../lib/utils';
 
 function denyRoute(next: NextFunction) {
   next(

@@ -8,7 +8,7 @@ import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
 import { IAppSession, ReposAppRequest } from '../interfaces';
-import { CreateError, getProviders } from '../transitional';
+import { CreateError, getProviders } from '../lib/transitional';
 
 const redacted = '*****';
 

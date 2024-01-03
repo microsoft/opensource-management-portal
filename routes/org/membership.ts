@@ -7,7 +7,7 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { ReposAppRequest, UserAlertType } from '../../interfaces';
-import { wrapError } from '../../utils';
+import { wrapError } from '../../lib/utils';
 import RequireActiveGitHubSession from '../../middleware/github/requireActiveSession';
 const router: Router = Router();
 

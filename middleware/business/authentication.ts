@@ -10,14 +10,14 @@ import { ReposAppRequest, IAppSession } from '../../interfaces';
 import Debug from 'debug';
 const debug = Debug.debug('user');
 
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 import {
   ICorporateIdentity,
   IGitHubIdentity,
   IndividualContext,
   GitHubIdentitySource,
 } from '../../business/user';
-import { storeOriginalUrlAsReferrer } from '../../utils';
+import { storeOriginalUrlAsReferrer } from '../../lib/utils';
 import getCompanySpecificDeployment from '../companySpecificDeployment';
 
 export async function requireAuthenticatedUserOrSignInExcluding(

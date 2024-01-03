@@ -19,7 +19,7 @@ import {
   OrganizationMembershipRoleQuery,
   GitHubRepositoryPermission,
 } from '../../interfaces';
-import { SettleToStateValue, isPermissionBetterThan, ErrorHelper } from '../../transitional';
+import { SettleToStateValue, isPermissionBetterThan, ErrorHelper } from '../../lib/transitional';
 import LinkManager from './linkManager';
 
 // PLANNING once consolidated

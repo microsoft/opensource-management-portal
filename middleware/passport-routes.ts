@@ -5,8 +5,8 @@
 
 import type { Response, NextFunction } from 'express';
 
-import { redirectToReferrer, storeReferrer } from '../utils';
-import { getProviders } from '../transitional';
+import { redirectToReferrer, storeReferrer } from '../lib/utils';
+import { getProviders } from '../lib/transitional';
 import type { ReposAppRequest, IAppSession } from '../interfaces';
 import getCompanySpecificDeployment from './companySpecificDeployment';
 import { attachAadPassportRoutes } from './passport/aadRoutes';

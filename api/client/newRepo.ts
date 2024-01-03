@@ -6,7 +6,7 @@
 import { NextFunction, Response, Router } from 'express';
 const router: Router = Router();
 
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 import { jsonError } from '../../middleware/jsonError';
 
 import newOrgRepo from './newOrgRepo';

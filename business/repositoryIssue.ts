@@ -4,7 +4,7 @@
 //
 
 import { Repository } from './repository';
-import { wrapError } from '../utils';
+import { wrapError } from '../lib/utils';
 import { AppPurpose } from '../lib/github/appPurposes';
 import { CacheDefault, getMaxAgeSeconds, Operations } from '.';
 import {
@@ -18,7 +18,7 @@ import {
   GitHubIssuePatchParameters,
   GitHubStateReason,
 } from '../interfaces';
-import { CreateError, ErrorHelper } from '../transitional';
+import { CreateError, ErrorHelper } from '../lib/transitional';
 
 export class RepositoryIssue {
   private _operations: IOperationsInstance;

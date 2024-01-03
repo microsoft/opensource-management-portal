@@ -11,8 +11,8 @@ import { ICrossOrganizationMembersResult, MemberSearch, Operations } from '../..
 import { ICorporateLink, VoidedExpressRoute } from '../../interfaces';
 import { IApiRequest } from '../../middleware/apiReposAuth';
 import postLinkApi from './link';
-import { CreateError, ErrorHelper, getProviders } from '../../transitional';
-import { wrapError } from '../../utils';
+import { CreateError, ErrorHelper, getProviders } from '../../lib/transitional';
+import { wrapError } from '../../lib/utils';
 
 const router: Router = Router();
 

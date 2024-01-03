@@ -14,9 +14,9 @@ import throat from 'throat';
 
 import job from '../job';
 import { Organization, sortByRepositoryDate } from '../business';
-import { RepositoryEntity, tryGetRepositoryEntity } from '../entities/repository';
+import { RepositoryEntity, tryGetRepositoryEntity } from '../business/entities/repository';
 import { IProviders, IReposJobResult } from '../interfaces';
-import { sleep } from '../utils';
+import { sleep } from '../lib/utils';
 
 const sleepBetweenReposMs = 125;
 const maxParallel = 6;

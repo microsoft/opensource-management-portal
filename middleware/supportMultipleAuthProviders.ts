@@ -7,7 +7,7 @@ import { NextFunction, Response } from 'express';
 
 import { jsonError } from './jsonError';
 import { IApiRequest } from './apiReposAuth';
-import { getProviders } from '../transitional';
+import { getProviders } from '../lib/transitional';
 
 // We have made a decision to not use Passport for the API routes, which is why this
 // performs some passport-like functionality...

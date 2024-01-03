@@ -20,8 +20,8 @@ import {
   IOrganizationAnnotationChange,
   OrganizationAnnotation,
   getOrganizationAnnotationRestrictedPropertyNames,
-} from '../../../entities/organizationAnnotation';
-import { CreateError, ErrorHelper, getProviders } from '../../../transitional';
+} from '../../../business/entities/organizationAnnotation';
+import { CreateError, ErrorHelper, getProviders } from '../../../lib/transitional';
 import { IndividualContext } from '../../../business/user';
 import { IProviders } from '../../../interfaces';
 import { ensureOrganizationProfileMiddleware } from '../../../middleware/github/ensureOrganizationProfile';

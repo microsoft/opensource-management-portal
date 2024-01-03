@@ -7,9 +7,9 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../../middleware';
-import { CreateError, ErrorHelper, getProviders } from '../../../transitional';
+import { CreateError, ErrorHelper, getProviders } from '../../../lib/transitional';
 import { IndividualContext } from '../../../business/user';
-import NewRepositoryLockdownSystem from '../../../features/newRepositories/newRepositoryLockdown';
+import NewRepositoryLockdownSystem from '../../../business/features/newRepositories/newRepositoryLockdown';
 import {
   AddRepositoryPermissionsToRequest,
   getContextualRepositoryPermissions,

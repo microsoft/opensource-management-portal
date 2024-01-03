@@ -23,8 +23,8 @@
     "./business/**/*",
     "./config/**/*",
     "./data/**/*",
-    "./entities/**/*",
-    "./features/**/*",
+    "business/entities/**/*",
+    "business/features/**/*",
     "./interfaces/**/*",
     "./jobs/**/*",
     "./lib/**/*",
@@ -33,6 +33,6 @@
     "./routes/**/*",
     "./scripts/**/*",
     "./test/**/*",
-    "./webhooks/**/*"
+    "business/webhooks/**/*"
   ]
 }

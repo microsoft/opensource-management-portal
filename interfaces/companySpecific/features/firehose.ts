@@ -4,7 +4,7 @@
 //
 
 import { IGitHubAppInstallation, IGitHubWebhookEnterprise, IProviders } from '../../../interfaces';
-import type { WebhookProcessor } from '../../../webhooks/organizationProcessor';
+import type { WebhookProcessor } from '../../../business/webhooks/organizationProcessor';
 
 export interface ICompanySpecificFeatureFirehose {
   processWebhook?: (

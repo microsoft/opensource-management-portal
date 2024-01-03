@@ -13,13 +13,13 @@ import moment from 'moment';
 import lowercaser from '../../middleware/lowercaser';
 
 import routeAdministrativeLock from './repoAdministrativeLock';
-import NewRepositoryLockdownSystem from '../../features/newRepositories/newRepositoryLockdown';
+import NewRepositoryLockdownSystem from '../../business/features/newRepositories/newRepositoryLockdown';
 import { IGraphEntry } from '../../lib/graphProvider';
 import { IMail } from '../../lib/mailProvider';
 import { IndividualContext } from '../../business/user';
 
 import { Repository, Collaborator, TeamPermission, Organization, OrganizationMember } from '../../business';
-import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { RepositoryMetadataEntity } from '../../business/entities/repositoryMetadata/repositoryMetadata';
 import {
   ReposAppRequest,
   GitHubCollaboratorAffiliationQuery,
@@ -35,7 +35,7 @@ import {
   getContextualRepositoryPermissions,
   IContextualRepositoryPermissions,
 } from '../../middleware/github/repoPermissions';
-import { getProviders, CreateError, ErrorHelper } from '../../transitional';
+import { getProviders, CreateError, ErrorHelper } from '../../lib/transitional';
 
 import RouteReposPager from '../reposPager';
 

@@ -10,7 +10,7 @@
 import { IProviders } from '../interfaces';
 import job from '../job';
 import { TeamApprovalDecision } from '../routes/org/team/approval';
-import { CreateError } from '../transitional';
+import { CreateError } from '../lib/transitional';
 
 job.runBackgroundJob(cleanup, {
   timeoutMinutes: 5,

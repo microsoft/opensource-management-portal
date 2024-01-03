@@ -9,9 +9,9 @@
 import { NextFunction, Response } from 'express';
 
 import { ReposAppRequest } from '../../interfaces';
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 import { IndividualContext } from '../../business/user';
-import { wrapError } from '../../utils';
+import { wrapError } from '../../lib/utils';
 import { jsonError } from '../jsonError';
 
 export interface IReposAppRequestWithSystemAdministration extends ReposAppRequest {

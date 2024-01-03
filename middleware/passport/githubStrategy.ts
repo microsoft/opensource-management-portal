@@ -5,7 +5,11 @@
 
 import { Strategy as GithubStrategy } from 'passport-github';
 
-import { getCodespacesHostname, isCodespacesAuthenticating, isEnterpriseManagedUserLogin } from '../../utils';
+import {
+  getCodespacesHostname,
+  isCodespacesAuthenticating,
+  isEnterpriseManagedUserLogin,
+} from '../../lib/utils';
 import type {
   IGitHubAccountDetails,
   IProviders,

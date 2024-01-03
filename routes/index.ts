@@ -16,7 +16,7 @@ import ExploreRoute from './explore';
 import ApprovalsRoute from './approvals';
 import AuthenticatedRoute from './index-authenticated';
 
-import { hasStaticReactClientApp } from '../transitional';
+import { hasStaticReactClientApp } from '../lib/transitional';
 import { injectReactClient } from '../middleware';
 
 router.use('/api/client', clientApiRoute);

@@ -4,7 +4,7 @@
 //
 
 import { Repository } from './repository';
-import { wrapError } from '../utils';
+import { wrapError } from '../lib/utils';
 import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
 import { CacheDefault, getMaxAgeSeconds } from '.';
 import {
@@ -16,7 +16,7 @@ import {
   GetAuthorizationHeader,
   ICacheOptionsWithPurpose,
 } from '../interfaces';
-import { ErrorHelper } from '../transitional';
+import { ErrorHelper } from '../lib/transitional';
 import { RepositoryProjectColumn } from './repositoryProjectColumn';
 import * as common from './common';
 

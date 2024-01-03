@@ -9,10 +9,10 @@ import moment from 'moment';
 
 import { RestLibrary } from '.';
 import { AuthorizationHeaderValue } from '../../interfaces';
-import { sleep } from '../../utils';
+import { sleep } from '../utils';
 
 import cost from './cost';
-import { ErrorHelper } from '../../transitional';
+import { ErrorHelper } from '../transitional';
 
 import Debug from 'debug';
 const debug = Debug.debug('restapi');

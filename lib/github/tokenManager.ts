@@ -18,10 +18,10 @@ import {
 } from './appPurposes';
 import { GitHubAppTokens } from './appTokens';
 import { AuthorizationHeaderValue, GetAuthorizationHeader, NoCacheNoBackground } from '../../interfaces';
-import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
-import { readFileToText } from '../../utils';
+import { OrganizationSetting } from '../../business/entities/organizationSettings/organizationSetting';
+import { readFileToText } from '../utils';
 import { Operations, OperationsCore, Organization } from '../../business';
-import { CreateError } from '../../transitional';
+import { CreateError } from '../transitional';
 import { shuffle } from 'lodash';
 
 export type GitHubRateLimit = {

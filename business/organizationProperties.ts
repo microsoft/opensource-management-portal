@@ -13,7 +13,7 @@ import {
   throwIfNotGitHubCapable,
 } from '../interfaces';
 import { HttpMethod } from '../lib/github';
-import { CreateError } from '../transitional';
+import { CreateError } from '../lib/transitional';
 import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
 import {
   CacheDefault,

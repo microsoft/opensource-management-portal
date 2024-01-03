@@ -8,7 +8,7 @@ import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
 import { ReposAppRequest } from '../../interfaces';
-import { popSessionVariable } from '../../utils';
+import { popSessionVariable } from '../../lib/utils';
 import lowercaser from '../../middleware/lowercaser';
 
 import RouteTeam from './team/';

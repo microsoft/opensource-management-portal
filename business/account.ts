@@ -7,7 +7,7 @@ import _ from 'lodash';
 
 import * as common from './common';
 
-import { wrapError } from '../utils';
+import { wrapError } from '../lib/utils';
 import { corporateLinkToJson } from './corporateLink';
 import { Organization } from './organization';
 import { AppPurpose } from '../lib/github/appPurposes';
@@ -29,7 +29,7 @@ import {
   throwIfNotCapable,
   throwIfNotGitHubCapable,
 } from '../interfaces';
-import { ErrorHelper } from '../transitional';
+import { ErrorHelper } from '../lib/transitional';
 
 interface IRemoveOrganizationMembershipsResult {
   error?: IReposError;

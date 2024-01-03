@@ -4,7 +4,7 @@
 //
 
 import { NextFunction, Response } from 'express';
-import { getProviders } from '../transitional';
+import { getProviders } from '../lib/transitional';
 
 export default function JsonErrorHandler(err, req, res: Response, next: NextFunction) {
   if (err && err['json']) {

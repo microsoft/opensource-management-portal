@@ -18,7 +18,7 @@ import {
   IGraphGroup,
   GraphUserType,
 } from '.';
-import { ErrorHelper, CreateError, splitSemiColonCommas } from '../../transitional';
+import { ErrorHelper, CreateError, splitSemiColonCommas } from '../transitional';
 import { ICacheHelper } from '../caching';
 
 const axios12BufferDecompressionBugHeaderAddition = true;

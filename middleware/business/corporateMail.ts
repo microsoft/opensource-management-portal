@@ -5,7 +5,7 @@
 
 import { jsonError } from '..';
 import { IProviders, ReposAppRequest } from '../../interfaces';
-import { ErrorHelper, getProviders } from '../../transitional';
+import { ErrorHelper, getProviders } from '../../lib/transitional';
 import { IndividualContext } from '../../business/user';
 
 const cachedCorporateMailRequestKey = '__corporateMail';

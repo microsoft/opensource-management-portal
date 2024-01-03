@@ -7,8 +7,8 @@ import type { NextFunction, Response } from 'express';
 
 import type { ReposAppRequestWithUserSettings } from '../../interfaces/middleware';
 
-import { UserSettings } from '../../entities/userSettings';
-import { ErrorHelper, getProviders } from '../../transitional';
+import { UserSettings } from '../../business/entities/userSettings';
+import { ErrorHelper, getProviders } from '../../lib/transitional';
 import { IndividualContext } from '../../business/user';
 
 export async function getUserSettings(

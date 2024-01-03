@@ -10,7 +10,7 @@
 
 import { GitHubOrganizationInvite, IProviders } from '../interfaces';
 import job from '../job';
-import { daysInMilliseconds } from '../utils';
+import { daysInMilliseconds } from '../lib/utils';
 
 const defaultMaximumInvitationAgeDays = 4;
 

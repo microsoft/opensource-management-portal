@@ -7,7 +7,7 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { ReposAppRequest, AccountJsonFormat } from '../../interfaces';
-import { CreateError, getProviders } from '../../transitional';
+import { CreateError, getProviders } from '../../lib/transitional';
 
 const router: Router = Router();
 

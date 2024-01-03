@@ -17,7 +17,7 @@ export * from './business/links';
 export * from './business';
 export * from './jsonError';
 
-import { hasStaticReactClientApp, stripDistFolderName } from '../transitional';
+import { hasStaticReactClientApp, stripDistFolderName } from '../lib/transitional';
 import { StaticClientApp } from './staticClientApp';
 import { StaticReactClientApp } from './staticClientApp2';
 import { StaticSiteFavIcon, StaticSiteAssets } from './staticSiteAssets';

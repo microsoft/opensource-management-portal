@@ -6,8 +6,8 @@
 import { NextFunction, Response } from 'express';
 
 import { ReposAppRequest } from '../../interfaces';
-import { getProviders } from '../../transitional';
-import { wrapError } from '../../utils';
+import { getProviders } from '../../lib/transitional';
+import { wrapError } from '../../lib/utils';
 
 const cachedLinksRequestKeyName = 'cachedLinks';
 

@@ -4,19 +4,20 @@
 //
 
 import type { ICacheOptions, IPagedCacheOptions, IAccountBasics, IGitHubTeamBasics } from '.';
+import type { IGitHubWebhookEnterprise } from './apps';
 import {
   IPersonalizedUserAggregateRepositoryPermission,
   TeamRepositoryPermission,
   GraphManager,
 } from '../../business';
-import type { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
+import type { IRepositoryMetadataProvider } from '../../business/entities/repositoryMetadata/repositoryMetadataProvider';
 import {
   GitHubPullRequestState,
   GitHubPullRequestSort,
   GitHubSortDirection,
 } from '../../lib/github/collections';
 import type { IRequestTeamPermissions } from '../../middleware/github/teamPermissions';
-import { CreateError } from '../../transitional';
+import { CreateError } from '../../lib/transitional';
 
 export enum GitHubRepositoryPermission {
   Pull = 'pull',
@@ -175,7 +176,49 @@ export interface IGitHubBranchDetailed {
   };
 }
 
-export interface IRepositoryBranchAccessProtections {
+export type RepositoryBranchAccessProtections = {
+  required_signatures: {
+    enabled: boolean;
+  };
+  allow_fork_syncing: {
+    enabled: boolean;
+  };
+  lock_branch: {
+    enabled: boolean;
+  };
+  required_conversation_resolution: {
+    enabled: boolean;
+  };
+  block_creations: {
+    enabled: boolean;
+  };
+  required_pull_request_reviews: {
+    dismissal_restrictions:
+      | {
+          users: IAccountBasics[];
+          teams: IGitHubTeamBasics[];
+          apps: IGitHubWebhookEnterprise[];
+        }
+      | Record<string, never>;
+    dismiss_stale_reviews: boolean;
+    require_code_owner_reviews: boolean;
+    required_approving_review_count: number;
+    require_last_push_approval: boolean;
+    bypass_pull_request_allowances: {
+      users: IAccountBasics[];
+      teams: IGitHubTeamBasics[];
+      apps: IGitHubWebhookEnterprise[];
+    };
+  } | null;
+  required_status_checks: {
+    strict: boolean;
+    contexts: string[];
+    checks: {
+      context: string;
+      app_id: number;
+    }[];
+  } | null;
+  branch?: string;
   allow_deletions: {
     enabled: boolean;
   };
@@ -195,7 +238,7 @@ export interface IRepositoryBranchAccessProtections {
     apps: unknown[];
   };
   url: string;
-}
+};
 
 export interface ITemporaryCommandOutput {
   error?: Error;

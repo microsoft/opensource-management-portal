@@ -9,7 +9,7 @@ import asyncHandler from 'express-async-handler';
 import { ReposAppRequest } from '../../../interfaces';
 import { jsonError } from '../../../middleware';
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
-import { getProviders } from '../../../transitional';
+import { getProviders } from '../../../lib/transitional';
 import {
   blockIfUnmanagedOrganization,
   IReposAppRequestWithOrganizationManagementType,

@@ -9,10 +9,10 @@ const router: Router = Router();
 
 import throat from 'throat';
 
-import { getProviders } from '../../../transitional';
-import { sortRepositoriesByNameCaseInsensitive, wrapError } from '../../../utils';
-import { TeamJoinApprovalEntity } from '../../../entities/teamJoinApproval/teamJoinApproval';
-import SelfServiceTeamMemberToMaintainerUpgrades from '../../../features/teamMemberToMaintainerUpgrade';
+import { getProviders } from '../../../lib/transitional';
+import { sortRepositoriesByNameCaseInsensitive, wrapError } from '../../../lib/utils';
+import { TeamJoinApprovalEntity } from '../../../business/entities/teamJoinApproval/teamJoinApproval';
+import SelfServiceTeamMemberToMaintainerUpgrades from '../../../business/features/teamMemberToMaintainerUpgrade';
 import RouteMembers from './members';
 import RouteReposPager from '../../reposPager';
 import RouteDelete from './delete';

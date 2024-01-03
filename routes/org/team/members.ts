@@ -9,7 +9,7 @@ const router: Router = Router();
 
 import { Team, TeamMember } from '../../../business';
 import { ReposAppRequest, RequestTeamMemberAddType, UserAlertType } from '../../../interfaces';
-import { getProviders, validateGitHubLogin } from '../../../transitional';
+import { getProviders, validateGitHubLogin } from '../../../lib/transitional';
 
 import RoutePeopleSearch from '../../peopleSearch';
 import MiddlewareTeamAdminRequired from './teamAdminRequired';

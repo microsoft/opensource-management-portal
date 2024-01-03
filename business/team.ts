@@ -8,11 +8,11 @@ import _ from 'lodash';
 
 import * as common from './common';
 
-import { wrapError } from '../utils';
+import { wrapError } from '../lib/utils';
 import { TeamMember } from './teamMember';
 import { TeamRepositoryPermission } from './teamRepositoryPermission';
-import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';
-import { TeamJoinApprovalEntity } from '../entities/teamJoinApproval/teamJoinApproval';
+import { IApprovalProvider } from './entities/teamJoinApproval/approvalProvider';
+import { TeamJoinApprovalEntity } from './entities/teamJoinApproval/teamJoinApproval';
 import { AppPurpose } from '../lib/github/appPurposes';
 import { CacheDefault, getMaxAgeSeconds, getPageSize, Organization } from '.';
 import {
@@ -38,7 +38,7 @@ import {
   IOperationsProviders,
   GitHubTeamDetails,
 } from '../interfaces';
-import { validateGitHubLogin, ErrorHelper } from '../transitional';
+import { validateGitHubLogin, ErrorHelper } from '../lib/transitional';
 
 const teamPrimaryProperties = [
   'id',

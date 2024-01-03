@@ -6,10 +6,10 @@
 import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { OrganizationSetting } from '../../../../../entities/organizationSettings/organizationSetting';
+import { OrganizationSetting } from '../../../../../business/entities/organizationSettings/organizationSetting';
 import { ReposAppRequest } from '../../../../../interfaces';
 import { jsonError } from '../../../../../middleware';
-import { CreateError, ErrorHelper, getProviders } from '../../../../../transitional';
+import { CreateError, ErrorHelper, getProviders } from '../../../../../lib/transitional';
 
 const router: Router = Router();
 

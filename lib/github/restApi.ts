@@ -26,7 +26,7 @@ import {
 import { getEntityDefinitions, GitHubResponseType, ResponseBodyType } from './endpointEntities';
 
 import appPackage from '../../package.json';
-import { ErrorHelper } from '../../transitional';
+import { ErrorHelper } from '../transitional';
 
 import type { GetAuthorizationHeader, AuthorizationHeaderValue } from '../../interfaces';
 import {

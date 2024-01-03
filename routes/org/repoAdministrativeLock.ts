@@ -7,11 +7,11 @@ import asyncHandler from 'express-async-handler';
 import { NextFunction, Response, Router } from 'express';
 const router: Router = Router();
 
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 import { Repository } from '../../business/repository';
-import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { RepositoryMetadataEntity } from '../../business/entities/repositoryMetadata/repositoryMetadata';
 import { Organization } from '../../business/organization';
-import NewRepositoryLockdownSystem from '../../features/newRepositories/newRepositoryLockdown';
+import NewRepositoryLockdownSystem from '../../business/features/newRepositories/newRepositoryLockdown';
 import { getRepositoryMetadataProvider, ReposAppRequest, UserAlertType } from '../../interfaces';
 
 router.use(

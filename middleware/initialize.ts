@@ -15,8 +15,8 @@ import {
   createAndInitializeEntityMetadataProviderInstance,
   IEntityMetadataProvidersOptions,
 } from '../lib/entityMetadataProvider';
-import { createAndInitializeRepositoryMetadataProviderInstance } from '../entities/repositoryMetadata';
-import createAndInitializeOrganizationAnnotationProviderInstance from '../entities/organizationAnnotation';
+import { createAndInitializeRepositoryMetadataProviderInstance } from '../business/entities/repositoryMetadata';
+import createAndInitializeOrganizationAnnotationProviderInstance from '../business/entities/organizationAnnotation';
 import { createMailAddressProviderInstance, IMailAddressProvider } from '../lib/mailAddressProvider';
 
 import ErrorRoutes from './errorRoutes';
@@ -38,9 +38,9 @@ import expressRoutes from '../routes/';
 import alternateRoutes from './alternateApps';
 
 import RedisHelper from '../lib/caching/redis';
-import { createTokenProvider } from '../entities/token';
-import { createAndInitializeApprovalProviderInstance } from '../entities/teamJoinApproval';
-import { CreateLocalExtensionKeyProvider } from '../entities/localExtensionKey';
+import { createTokenProvider } from '../business/entities/token';
+import { createAndInitializeApprovalProviderInstance } from '../business/entities/teamJoinApproval';
+import { CreateLocalExtensionKeyProvider } from '../business/entities/localExtensionKey';
 import { CreateGraphProviderInstance, IGraphProvider } from '../lib/graphProvider/';
 import initializeCorporateViews from './corporateViews';
 
@@ -48,16 +48,16 @@ import keyVaultResolver, { IKeyVaultSecretResolver } from '../lib/keyVaultResolv
 
 import { createMailProviderInstance } from '../lib/mailProvider/';
 import { RestLibrary } from '../lib/github';
-import { CreateRepositoryCacheProviderInstance } from '../entities/repositoryCache';
-import { CreateRepositoryCollaboratorCacheProviderInstance } from '../entities/repositoryCollaboratorCache';
-import { CreateTeamCacheProviderInstance } from '../entities/teamCache';
-import { CreateTeamMemberCacheProviderInstance } from '../entities/teamMemberCache';
-import { CreateRepositoryTeamCacheProviderInstance } from '../entities/repositoryTeamCache';
-import { CreateOrganizationMemberCacheProviderInstance } from '../entities/organizationMemberCache';
+import { CreateRepositoryCacheProviderInstance } from '../business/entities/repositoryCache';
+import { CreateRepositoryCollaboratorCacheProviderInstance } from '../business/entities/repositoryCollaboratorCache';
+import { CreateTeamCacheProviderInstance } from '../business/entities/teamCache';
+import { CreateTeamMemberCacheProviderInstance } from '../business/entities/teamMemberCache';
+import { CreateRepositoryTeamCacheProviderInstance } from '../business/entities/repositoryTeamCache';
+import { CreateOrganizationMemberCacheProviderInstance } from '../business/entities/organizationMemberCache';
 import QueryCache from '../business/queryCache';
-import { createAndInitializeOrganizationSettingProviderInstance } from '../entities/organizationSettings';
+import { createAndInitializeOrganizationSettingProviderInstance } from '../business/entities/organizationSettings';
 import { IEntityMetadataProvider } from '../lib/entityMetadataProvider/entityMetadataProvider';
-import { createAndInitializeAuditLogRecordProviderInstance } from '../entities/auditLogRecord';
+import { createAndInitializeAuditLogRecordProviderInstance } from '../business/entities/auditLogRecord';
 import CosmosCache from '../lib/caching/cosmosdb';
 import BlobCache from '../lib/caching/blob';
 import { StatefulCampaignProvider } from '../lib/campaigns';
@@ -65,7 +65,7 @@ import CosmosHelper from '../lib/cosmosHelper';
 import { IQueueProcessor } from '../lib/queues';
 import ServiceBusQueueProcessor from '../lib/queues/servicebus';
 import AzureQueuesProcessor from '../lib/queues/azurequeue';
-import { UserSettingsProvider } from '../entities/userSettings';
+import { UserSettingsProvider } from '../business/entities/userSettings';
 import getCompanySpecificDeployment from './companySpecificDeployment';
 
 import routeCorrelationId from './correlationId';
@@ -81,7 +81,7 @@ import type {
   IReposApplication,
   SiteConfiguration,
 } from '../interfaces';
-import initializeRepositoryProvider from '../entities/repository';
+import initializeRepositoryProvider from '../business/entities/repository';
 import { tryGetImmutableStorageProvider } from '../lib/immutable';
 import { GitHubAppPurposes } from '../lib/github/appPurposes';
 
