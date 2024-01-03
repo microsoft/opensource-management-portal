@@ -86,7 +86,7 @@ async function processOrganization(
           continue;
         } else {
           updatedFields = setFields(repositoryEntity, entity, false /* not new */);
-          replace = !!updatedFields;
+          replace = updatedFields?.length > 0;
         }
         if (updatedFields.length === 0 && shouldUpdateCached) {
           replace = true;
@@ -317,7 +317,7 @@ function setFields(repositoryEntity: RepositoryEntity, entity: any, isNew: boole
     const updatedAt = new Date(entity.updated_at);
     const currentUpdatedAt = repositoryEntity.updatedAt ? new Date(repositoryEntity.updatedAt) : null;
     if (currentUpdatedAt && updatedAt && currentUpdatedAt.toISOString() !== updatedAt.toISOString()) {
-      repositoryEntity.pushedAt = updatedAt;
+      repositoryEntity.updatedAt = updatedAt;
       changed.push('updated_at');
     } else if (!currentUpdatedAt && updatedAt) {
       repositoryEntity.updatedAt = updatedAt;
@@ -345,6 +345,6 @@ function setFields(repositoryEntity: RepositoryEntity, entity: any, isNew: boole
 }
 
 job.run(refreshRepositories, {
-  timeoutMinutes: 320,
+  timeoutMinutes: 600,
   insightsPrefix: 'JobRefreshRepositories',
 });
