@@ -361,6 +361,10 @@ export default async function initialize(
   }
   debug(`${containerPurpose} profile: ${applicationProfile.applicationName}`);
   debug(`environment: ${config?.debug?.environmentName || 'Unknown'}`);
+  if (config?.continuousDeployment) {
+    const values = Object.values(config.continuousDeployment).filter((x) => x);
+    values.length > 0 && debug(`build: ${values.join(', ')}`);
+  }
 
   const codespacesConfig = (config as SiteConfiguration)?.github?.codespaces;
   if (codespacesConfig?.connected === true && codespacesConfig.block === true) {
