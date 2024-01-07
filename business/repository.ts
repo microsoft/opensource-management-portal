@@ -163,6 +163,46 @@ interface IUnarchiveResponse {
   };
 }
 
+export type GitHubBranchProtectionParameters = {
+  owner: string;
+  repo: string;
+  branch: string;
+  required_status_checks: {
+    strict: boolean;
+    contexts: string[];
+    checks?: string[];
+  } | null;
+  enforce_admins: boolean | null;
+  required_pull_request_reviews: {
+    dismissal_restrictions: {
+      users: string[];
+      teams: string[];
+      apps: string[];
+    };
+    dismiss_stale_reviews: boolean;
+    require_code_owner_reviews: boolean;
+    required_approving_review_count: number;
+    require_last_push_approval: boolean;
+    bypass_pull_request_allowances: {
+      users: string[];
+      teams: string[];
+      apps: string[];
+    };
+  } | null;
+  restrictions: {
+    users: string[];
+    teams: string[];
+    apps: string[];
+  };
+  required_linear_history: boolean;
+  allow_force_pushes: boolean | null;
+  allow_deletions: boolean;
+  block_creations: boolean;
+  required_conversation_resolution: boolean;
+  lock_branch: boolean;
+  allow_fork_syncing: boolean;
+};
+
 export type GitHubPagesResponse = {
   status: string;
   cname: string;
@@ -777,7 +817,7 @@ export class Repository {
   }
 
   async updateBranchProtectionRule2(
-    parameters: string,
+    parameters: GitHubBranchProtectionParameters,
     cacheOptions?: ICacheOptions
   ): Promise<RepositoryBranchAccessProtections> {
     cacheOptions = cacheOptions || {};
