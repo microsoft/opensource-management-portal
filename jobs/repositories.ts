@@ -18,7 +18,7 @@ import { RepositoryEntity, tryGetRepositoryEntity } from '../business/entities/r
 import { IProviders, IReposJobResult } from '../interfaces';
 import { sleep } from '../lib/utils';
 
-const sleepBetweenReposMs = 125;
+const sleepBetweenReposMs = 110;
 const maxParallel = 6;
 
 const shouldUpdateCached = true;
@@ -31,7 +31,7 @@ async function refreshRepositories(providers: IProviders): Promise<IReposJobResu
   }
 
   const started = new Date();
-  console.log(`Starting at ${started}`);
+  console.log(`Starting at ${started.toISOString()}`);
 
   const orgs = operations.getOrganizations();
   const throttle = throat(maxParallel);
@@ -44,7 +44,7 @@ async function refreshRepositories(providers: IProviders): Promise<IReposJobResu
   );
 
   // TODO: query all, remove any not processed [recently]
-  console.log(`Finished at ${new Date()}, started at ${started}`);
+  console.log(`Finished at ${new Date().toISOString()}, started at ${started.toISOString()}`);
 
   return {};
 }

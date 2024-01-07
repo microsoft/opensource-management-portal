@@ -30,7 +30,8 @@
       "env": {
         "NODE_ENV": "development",
         "PORT": "4000",
-        "DEBUG": "startup,cosmosdb,g:server,context,*simple-oauth2*,appinsights,insights,appinsights,cache"
+        "DEBUG": "startup,g:server,context,*simple-oauth2*,appinsights,insights,appinsights",
+        "_DEBUG": "cosmosdb,cache"
       }
     },
     {
