@@ -420,7 +420,7 @@ export class Account {
     };
     const eventData = {
       github: {
-        id: id,
+        id,
         login: this._login,
       },
       aad: aadIdentity,

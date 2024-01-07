@@ -64,6 +64,8 @@ import {
   NoCacheNoBackground,
   SupportedLinkType,
   UnlinkPurpose,
+  type LinkEvent,
+  type UnlinkEvent,
 } from '../../interfaces';
 import { CreateError, ErrorHelper } from '../../lib/transitional';
 import { Team } from '../team';
@@ -71,6 +73,7 @@ import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repo
 import { isAuthorizedSystemAdministrator } from './administration';
 import type { ConfigGitHubOrganizationsSpecializedList } from '../../config/github.organizations.types';
 import { type GitHubTokenType, getGitHubTokenTypeFromValue } from '../../lib/github/appTokens';
+import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 
 export * from './core';
 
@@ -1291,11 +1294,17 @@ export class Operations
 
   // Eventually link/unlink should move from context into operations here to centralize more than just the events
 
-  async fireLinkEvent(value): Promise<void> {
+  async fireLinkEvent(value: LinkEvent): Promise<void> {
+    const companySpecific = getCompanySpecificDeployment();
+    companySpecific?.events?.linking?.onLink && companySpecific.events.linking.onLink(this.providers, value);
     await fireEvent(this.config, 'link', value);
   }
 
-  async fireUnlinkEvent(value): Promise<void> {
+  async fireUnlinkEvent(value: UnlinkEvent): Promise<void> {
+    const corporateId = value?.aad?.id;
+    const companySpecific = getCompanySpecificDeployment();
+    companySpecific?.events?.linking?.onUnlink &&
+      companySpecific.events.linking.onUnlink(this.providers, corporateId);
     await fireEvent(this.config, 'unlink', value);
   }
 

@@ -32,13 +32,30 @@ export interface IOperationsProviders {
   providers: IProviders;
 }
 
+export type LinkEvent = ICorporateLink & {
+  linkId: string;
+  correlationId: string;
+};
+
+export type UnlinkEvent = {
+  github: {
+    id: number;
+    login: string;
+  };
+  aad: {
+    preferredName: string;
+    userPrincipalName: string;
+    id: string;
+  };
+};
+
 export interface IOperationsLinks {
   getLinks(options?: any): Promise<ICorporateLink[]>;
   getLinkByThirdPartyId(thirdPartyId: string): Promise<ICorporateLink>;
   getLinkByThirdPartyUsername(username: string): Promise<ICorporateLink>;
   tryGetLink(login: string): Promise<ICorporateLink>;
-  fireLinkEvent(value): Promise<void>;
-  fireUnlinkEvent(value): Promise<void>;
+  fireLinkEvent(value: LinkEvent): Promise<void>;
+  fireUnlinkEvent(value: UnlinkEvent): Promise<void>;
 }
 
 export interface IOperationsNotifications {
