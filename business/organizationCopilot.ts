@@ -15,6 +15,7 @@ import type { CollectionCopilotSeatsOptions } from '../lib/github/collections';
 import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
 import { CacheDefault, getMaxAgeSeconds, getPageSize, symbolizeApiResponse } from './operations/core';
 import { Organization } from './organization';
+import { HttpMethod } from '../lib/github';
 
 export type CopilotSeatData = {
   assignee: {
