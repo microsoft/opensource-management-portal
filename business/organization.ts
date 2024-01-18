@@ -10,7 +10,7 @@ import { OrganizationMember } from './organizationMember';
 import { Team } from './team';
 import { Repository } from './repository';
 
-import { wrapError } from '../utils';
+import { wrapError } from '../lib/utils';
 import { StripGitHubEntity } from '../lib/github/restApi';
 import { GitHubResponseType } from '../lib/github/endpointEntities';
 import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
@@ -18,8 +18,8 @@ import {
   OrganizationFeature,
   OrganizationSetting,
   SystemTeam,
-} from '../entities/organizationSettings/organizationSetting';
-import { createOrganizationSudoInstance, IOrganizationSudo } from '../features';
+} from './entities/organizationSettings/organizationSetting';
+import { createOrganizationSudoInstance, IOrganizationSudo } from './features';
 import { CacheDefault, getMaxAgeSeconds, getPageSize, OperationsCore } from './operations/core';
 import {
   CoreCapability,
@@ -59,8 +59,9 @@ import {
   OrganizationMembershipTwoFactorFilter,
   throwIfNotCapable,
   throwIfNotGitHubCapable,
+  GitHubRepositoryDetails,
 } from '../interfaces';
-import { CreateError, ErrorHelper } from '../transitional';
+import { CreateError, ErrorHelper } from '../lib/transitional';
 import { jsonError } from '../middleware';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 import { ConfigGitHubTemplates } from '../config/github.templates.types';
@@ -201,6 +202,9 @@ export interface IGitHubOrganizationRunners {
   total_count: number;
   runners: RunnerData[];
 }
+type CreateRepositoryEntityById = Partial<GitHubRepositoryDetails> & Pick<GitHubRepositoryDetails, 'id'>;
+type CreateRepositoryEntityByName = Partial<GitHubRepositoryDetails> & Pick<GitHubRepositoryDetails, 'name'>;
+type CreateRepositoryEntity = CreateRepositoryEntityById | CreateRepositoryEntityByName;
 
 export class Organization {
   private _name: string;
@@ -415,7 +419,7 @@ export class Organization {
     return tokenManager.getRateLimitInformation(purpose, this);
   }
 
-  repository(name: string, optionalEntity?) {
+  repository(name: string, optionalEntity?: CreateRepositoryEntity) {
     const entity = Object.assign({}, optionalEntity || {}, {
       name,
     });
@@ -446,15 +450,24 @@ export class Organization {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     try {
-      const entity = await operations.github.request(
-        this.authorize(AppPurpose.Data),
-        'GET /repositories/:id',
-        parameters,
-        cacheOptions
-      );
+      let entity: any = null;
+      if ((cacheOptions as any)?.noConditionalRequests === true) {
+        entity = await operations.github.requestAsPost(
+          this.authorize(AppPurpose.Data),
+          'GET /repositories/:id',
+          parameters
+        );
+      } else {
+        entity = await operations.github.request(
+          this.authorize(AppPurpose.Data),
+          'GET /repositories/:id',
+          parameters,
+          cacheOptions
+        );
+      }
       if (entity.owner.id !== this.id) {
         throw CreateError.NotFound(
-          `Repository ID ${parameters.id} has a different owner of ${entity.owner.login} instead of ${this.name}. It has been relocated and will be treated as a 404.`
+          `Repository ID ${id} has a different owner of ${entity.owner.login} instead of ${this.name}. It has been relocated and will be treated as a 404.`
         );
       }
       return this.repositoryFromEntity(entity);
@@ -631,8 +644,8 @@ export class Organization {
     };
   }
 
-  getAuthorizationHeader(): PurposefulGetAuthorizationHeader {
-    return this._getAuthorizationHeader;
+  getAuthorizationHeader(purpose: AppPurposeTypes): PurposefulGetAuthorizationHeader {
+    return purpose ? this._getAuthorizationHeader.bind(this, purpose) : this._getAuthorizationHeader;
   }
 
   async getUserDetailsByLogin(login: string, purpose?: AppPurposeTypes): Promise<IGitHubAccountDetails> {
@@ -1600,7 +1613,7 @@ export class Organization {
     return this.team(entity.id, entity);
   }
 
-  repositoryFromEntity(entity): Repository {
+  repositoryFromEntity(entity: CreateRepositoryEntity): Repository {
     return this.repository(entity.name, entity);
   }
 

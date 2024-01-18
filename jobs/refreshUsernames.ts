@@ -11,9 +11,9 @@ import job from '../job';
 import throat from 'throat';
 import { shuffle } from 'lodash';
 
-import { sleep } from '../utils';
+import { sleep } from '../lib/utils';
 import { IProviders, IReposJobResult, UnlinkPurpose } from '../interfaces';
-import { ErrorHelper } from '../transitional';
+import { ErrorHelper } from '../lib/transitional';
 
 job.runBackgroundJob(refresh, {
   insightsPrefix: 'JobRefreshUsernames',

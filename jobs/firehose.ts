@@ -8,7 +8,9 @@
 import os from 'os';
 import { DateTime } from 'luxon';
 
-import ProcessOrganizationWebhook, { IGitHubWebhookProperties } from '../webhooks/organizationProcessor';
+import ProcessOrganizationWebhook, {
+  IGitHubWebhookProperties,
+} from '../business/webhooks/organizationProcessor';
 import {
   IGitHubAppInstallation,
   IGitHubWebhookEnterprise,
@@ -16,7 +18,7 @@ import {
   IReposJob,
   IReposJobResult,
 } from '../interfaces';
-import { sleep } from '../utils';
+import { sleep } from '../lib/utils';
 import { IQueueMessage } from '../lib/queues';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
 import job from '../job';

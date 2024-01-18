@@ -10,9 +10,9 @@ import moment from 'moment';
 import { ReposAppRequest } from '../interfaces';
 
 import { jsonError } from '../middleware';
-import { getProviders, isWebhookIngestionEndpointEnabled } from '../transitional';
+import { getProviders, isWebhookIngestionEndpointEnabled } from '../lib/transitional';
 
-import OrganizationWebhookProcessor from '../webhooks/organizationProcessor';
+import OrganizationWebhookProcessor from '../business/webhooks/organizationProcessor';
 
 const router: Router = Router();
 

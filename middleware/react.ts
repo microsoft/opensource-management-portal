@@ -10,8 +10,8 @@ import path from 'path';
 import appPackage from '../package.json';
 
 import { getStaticBlobCacheFallback } from '../lib/staticBlobCacheFallback';
-import { getProviders, splitSemiColonCommas } from '../transitional';
-import { ReposAppRequest } from '../interfaces';
+import { getProviders, splitSemiColonCommas } from '../lib/transitional';
+import type { ReposAppRequest, SiteConfiguration } from '../interfaces';
 import { IndividualContext } from '../business/user';
 
 const staticReactPackageNameKey = 'static-react-package-name';
@@ -169,7 +169,7 @@ function evaluateFlightConditions(req: ReposAppRequest): FlightingOptions | Basi
   };
 }
 
-function getUserClientFeatureFlags(config: any, corporateId: string) {
+function getUserClientFeatureFlags(config: SiteConfiguration, corporateId: string) {
   const featureFlagList = config?.client?.flighting?.featureFlagUsers;
   if (featureFlagList && typeof featureFlagList === 'object') {
     const flights = [];

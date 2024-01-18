@@ -3,27 +3,28 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { Response, NextFunction } from 'express';
+
 import { ReposAppRequest, IAppSession } from '../../interfaces';
 
 import Debug from 'debug';
 const debug = Debug.debug('user');
 
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 import {
   ICorporateIdentity,
   IGitHubIdentity,
   IndividualContext,
   GitHubIdentitySource,
 } from '../../business/user';
-import { storeOriginalUrlAsReferrer } from '../../utils';
+import { storeOriginalUrlAsReferrer } from '../../lib/utils';
 import getCompanySpecificDeployment from '../companySpecificDeployment';
-import { Response, NextFunction } from 'express';
 
 export async function requireAuthenticatedUserOrSignInExcluding(
   exclusionPaths: string[],
   req: ReposAppRequest,
-  res,
-  next
+  res: Response,
+  next: NextFunction
 ) {
   const url = req.url;
   for (let i = 0; i < exclusionPaths.length; i++) {
@@ -64,7 +65,7 @@ export async function requireAccessTokenClient(req: ReposAppRequest, res: Respon
   return next();
 }
 
-function signoutThenSignIn(req: ReposAppRequest, res) {
+function signoutThenSignIn(req: ReposAppRequest, res: Response) {
   const { insights } = getProviders(req);
   req.logout({ keepSessionInfo: false }, (err) => {
     if (err) {
@@ -74,7 +75,7 @@ function signoutThenSignIn(req: ReposAppRequest, res) {
   });
 }
 
-function redirectToSignIn(req, res) {
+function redirectToSignIn(req: ReposAppRequest, res: Response) {
   const config = getProviders(req).config;
   storeOriginalUrlAsReferrer(
     req,

@@ -6,7 +6,7 @@
 import { NextFunction, Response } from 'express';
 
 import { ReposAppRequest, IReposError } from '../../interfaces';
-import { isEnterpriseManagedUserLogin } from '../../utils';
+import { isEnterpriseManagedUserLogin } from '../../lib/utils';
 
 export function blockEnterpriseManagedUsersAuthentication(
   req: ReposAppRequest,

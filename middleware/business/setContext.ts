@@ -13,7 +13,7 @@ import {
   WebApiContext,
 } from '../../business/user';
 import { ReposAppRequest } from '../../interfaces';
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 
 export function webContextMiddleware(req: ReposAppRequest, res: Response, next: NextFunction) {
   const { operations, insights } = getProviders(req);

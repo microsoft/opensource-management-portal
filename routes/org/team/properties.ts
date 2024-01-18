@@ -7,7 +7,7 @@ import { NextFunction, Response, Router } from 'express';
 const router: Router = Router();
 
 import { ReposAppRequest, UserAlertType } from '../../../interfaces';
-import { wrapError } from '../../../utils';
+import { wrapError } from '../../../lib/utils';
 
 import MiddlewareTeamAdminRequired from './teamAdminRequired';
 

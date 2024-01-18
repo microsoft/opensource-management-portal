@@ -21,6 +21,22 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Launch site :4000 as-is",
+      "program": "${workspaceFolder}/dist/bin/www.js",
+      "cwd": "${workspaceFolder}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "PORT": "4000",
+        "DEBUG": "startup,g:server,context,*simple-oauth2*,appinsights,insights,appinsights",
+        "_DEBUG": "cosmosdb,cache"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Launch site :4000 sudo OFF",
       "program": "${workspaceFolder}/dist/bin/www.js",
       "cwd": "${workspaceFolder}/dist",
@@ -136,6 +152,21 @@
         "NODE_ENV": "localhost",
         "DEBUG": "startup",
         "EXIT_IMMEDIATELY": "1"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "66: Order 66 Terminations",
+      "program": "${workspaceRoot}/dist/microsoft/jobs/terminations.js",
+      "args": ["all"],
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup,appinsights"
       }
     },
     {
@@ -318,6 +349,20 @@
       "request": "launch",
       "name": "Job: Cleanup blob cache (17)",
       "program": "${workspaceRoot}/dist/jobs/cleanupBlobCache.js",
+      "cwd": "${workspaceRoot}/dist",
+      "preLaunchTask": "tsbuild",
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "DEBUG": "startup"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Job: Cleanup team requests (18)",
+      "program": "${workspaceRoot}/dist/jobs/cleanupTeamRequests.js",
       "cwd": "${workspaceRoot}/dist",
       "preLaunchTask": "tsbuild",
       "sourceMaps": true,

@@ -9,25 +9,25 @@ import redis, { RedisClientType } from 'redis';
 import { Pool as PostgresPool } from 'pg';
 
 import {
-  IApplicationProfile,
+  ApplicationProfile,
   ICorporationAdministrationSection,
   IReposApplication,
   SiteConfiguration,
 } from '.';
 import { Operations } from '../business';
 import QueryCache from '../business/queryCache';
-import { IAuditLogRecordProvider } from '../entities/auditLogRecord/auditLogRecordProvider';
-import { ILocalExtensionKeyProvider } from '../entities/localExtensionKey';
-import { IOrganizationMemberCacheProvider } from '../entities/organizationMemberCache/organizationMemberCacheProvider';
-import { IOrganizationSettingProvider } from '../entities/organizationSettings/organizationSettingProvider';
-import { IRepositoryCacheProvider } from '../entities/repositoryCache/repositoryCacheProvider';
-import { IRepositoryCollaboratorCacheProvider } from '../entities/repositoryCollaboratorCache/repositoryCollaboratorCacheProvider';
-import { IRepositoryTeamCacheProvider } from '../entities/repositoryTeamCache/repositoryTeamCacheProvider';
-import { ITeamCacheProvider } from '../entities/teamCache/teamCacheProvider';
-import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';
-import { ITeamMemberCacheProvider } from '../entities/teamMemberCache/teamMemberCacheProvider';
-import { ITokenProvider } from '../entities/token';
-import { IUserSettingsProvider } from '../entities/userSettings';
+import { IAuditLogRecordProvider } from '../business/entities/auditLogRecord/auditLogRecordProvider';
+import { ILocalExtensionKeyProvider } from '../business/entities/localExtensionKey';
+import { IOrganizationMemberCacheProvider } from '../business/entities/organizationMemberCache/organizationMemberCacheProvider';
+import { IOrganizationSettingProvider } from '../business/entities/organizationSettings/organizationSettingProvider';
+import { IRepositoryCacheProvider } from '../business/entities/repositoryCache/repositoryCacheProvider';
+import { IRepositoryCollaboratorCacheProvider } from '../business/entities/repositoryCollaboratorCache/repositoryCollaboratorCacheProvider';
+import { IRepositoryTeamCacheProvider } from '../business/entities/repositoryTeamCache/repositoryTeamCacheProvider';
+import { ITeamCacheProvider } from '../business/entities/teamCache/teamCacheProvider';
+import { IApprovalProvider } from '../business/entities/teamJoinApproval/approvalProvider';
+import { ITeamMemberCacheProvider } from '../business/entities/teamMemberCache/teamMemberCacheProvider';
+import { ITokenProvider } from '../business/entities/token';
+import { IUserSettingsProvider } from '../business/entities/userSettings';
 import { ICacheHelper } from '../lib/caching';
 import BlobCache from '../lib/caching/blob';
 import { ICampaignHelper } from '../lib/campaigns';
@@ -37,18 +37,18 @@ import { ILinkProvider } from '../lib/linkProviders';
 import { IMailAddressProvider } from '../lib/mailAddressProvider';
 import { IMailProvider } from '../lib/mailProvider';
 import { IQueueProcessor } from '../lib/queues';
-import { ICustomizedNewRepositoryLogic, ICustomizedTeamPermissionsWebhookLogic } from '../transitional';
+import { ICustomizedNewRepositoryLogic, ICustomizedTeamPermissionsWebhookLogic } from '../lib/transitional';
 import { IEntityMetadataProvider } from '../lib/entityMetadataProvider';
-import { IRepositoryProvider } from '../entities/repository';
+import { IRepositoryProvider } from '../business/entities/repository';
 import { IKeyVaultSecretResolver } from '../lib/keyVaultResolver';
-import { IOrganizationAnnotationMetadataProvider } from '../entities/organizationAnnotation';
+import { IOrganizationAnnotationMetadataProvider } from '../business/entities/organizationAnnotation';
 import type { IImmutableStorageProvider } from '../lib/immutable';
 
 type ProviderGenerator = (value: string) => IEntityMetadataProvider;
 
 export interface IProviders {
   app: IReposApplication;
-  applicationProfile: IApplicationProfile;
+  applicationProfile: ApplicationProfile;
   authorizationCodeClient?: AuthorizationCode;
   corporateAdministrationProfile?: ICorporationAdministrationSection;
   corporateViews?: any;

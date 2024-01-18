@@ -8,10 +8,10 @@ import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
 import { Operations, Repository } from '../business';
-import { ErrorHelper, getProviders } from '../transitional';
-import { AuditLogRecord } from '../entities/auditLogRecord/auditLogRecord';
-import { daysInMilliseconds } from '../utils';
-import { AuditEvents } from '../entities/auditLogRecord';
+import { ErrorHelper, getProviders } from '../lib/transitional';
+import { AuditLogRecord } from '../business/entities/auditLogRecord/auditLogRecord';
+import { daysInMilliseconds } from '../lib/utils';
+import { AuditEvents } from '../business/entities/auditLogRecord';
 import { IGitHubIdentity, IndividualContext } from '../business/user';
 import { IMail } from '../lib/mailProvider';
 import { GitHubRepositoryPermission, ReposAppRequest, UserAlertType } from '../interfaces';

@@ -6,8 +6,8 @@
 import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { CreateError, getProviders } from '../../../../transitional';
-import { OrganizationSetting } from '../../../../entities/organizationSettings/organizationSetting';
+import { CreateError, getProviders } from '../../../../lib/transitional';
+import { OrganizationSetting } from '../../../../business/entities/organizationSettings/organizationSetting';
 import { AdministrativeGitHubAppInstallationResponse, RequestWithInstallation } from './types';
 
 const router: Router = Router();

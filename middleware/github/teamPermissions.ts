@@ -13,7 +13,7 @@ import {
   OrganizationMembershipState,
   ReposAppRequest,
 } from '../../interfaces';
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 import { IndividualContext } from '../../business/user';
 import getCompanySpecificDeployment from '../companySpecificDeployment';
 

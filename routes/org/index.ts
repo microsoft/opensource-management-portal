@@ -6,9 +6,14 @@
 import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
+<<<<<<< HEAD
 import { getProviders } from '../../transitional';
+=======
+
+import { getProviders } from '../../lib/transitional';
+>>>>>>> upstream/main
 import { IAggregateUserSummary } from '../../business/user/aggregate';
-import { TeamJoinApprovalEntity } from '../../entities/teamJoinApproval/teamJoinApproval';
+import { TeamJoinApprovalEntity } from '../../business/entities/teamJoinApproval/teamJoinApproval';
 import { Team } from '../../business';
 import { ReposAppRequest, OrganizationMembershipState } from '../../interfaces';
 import {

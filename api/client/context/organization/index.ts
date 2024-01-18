@@ -19,7 +19,7 @@ import { IndividualContext } from '../../../../business/user';
 
 import routeRepos from './repos';
 import routeTeams from './teams';
-import { CreateError } from '../../../../transitional';
+import { CreateError } from '../../../../lib/transitional';
 
 const router: Router = Router();
 

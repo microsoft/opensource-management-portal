@@ -4,7 +4,7 @@
 //
 
 import { GitHubRepositoryPermission, IGitHubCollaboratorPermissions } from '../interfaces';
-import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../transitional';
+import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../lib/transitional';
 import * as common from './common';
 
 // prettier-ignore

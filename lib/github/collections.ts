@@ -9,13 +9,13 @@ import Debug from 'debug';
 const debug = Debug.debug('restapi');
 
 import cost from './cost';
-import { IRestResponse, flattenData } from './core';
+import { RestResponse, flattenData } from './core';
 import { CompositeApiContext, CompositeIntelligentEngine } from './composite';
 import { Collaborator } from '../../business/collaborator';
 import { Team } from '../../business/team';
 import { IPagedCacheOptions, GetAuthorizationHeader, IDictionary } from '../../interfaces';
 import { RestLibrary } from '.';
-import { sleep } from '../../utils';
+import { sleep } from '../utils';
 import GitHubApplication from '../../business/application';
 import { RepositoryPrimaryProperties } from '../../business/primaryProperties';
 import { RepositoryInvitation } from '../../business/repositoryInvitation';
@@ -86,15 +86,18 @@ copilotSeatPropertiesToCopy.subPropertiesToReduce = {
   assignee: mostBasicAccountProperties,
 };
 
-const teamPermissionsToCopy = [
-  'id',
+const teamPermissionsToCopyForRepository = [
   'name',
+  'id',
   'slug',
   'description',
-  'members_count',
-  'repos_count',
+  // 'members_count',
+  // 'repos_count',
   'privacy',
-  'permission',
+  // 'notification_setting',
+  'permission', // custom role name at times
+  'permissions', // array of booleans for admin, maintain, push, triage, pull
+  'parent', // large object for a parent team, if present
 ];
 
 const teamRepoPermissionsToCopy = [
@@ -105,6 +108,7 @@ const teamRepoPermissionsToCopy = [
   'private',
   'fork',
   'permissions',
+  'role_name',
 ];
 
 const pullDetailsToCopy = [
@@ -360,7 +364,7 @@ export class RestCollections {
     return this.generalizedCollectionWithFilter(
       'repoTeamPermissions',
       'repos.listTeams',
-      teamPermissionsToCopy,
+      teamPermissionsToCopyForRepository,
       token,
       options,
       cacheOptions
@@ -636,7 +640,7 @@ export class RestCollections {
     cacheOptions: IPagedCacheOptions,
     propertiesToKeep: string[],
     arrayReducePropertyName?: string
-  ): Promise<IRestResponse> {
+  ): Promise<RestResponse> {
     const collectionResults = await this.getFilteredGithubCollection<DataType, OptionsType>(
       token,
       methodName,
@@ -645,7 +649,7 @@ export class RestCollections {
       propertiesToKeep,
       arrayReducePropertyName
     );
-    const results = collectionResults.data as IRestResponse;
+    const results = collectionResults.data as RestResponse;
     const requests = collectionResults.requests;
     const pages = [];
     let dirty = false;
@@ -687,7 +691,7 @@ export class RestCollections {
     method,
     options,
     cacheOptions: IPagedCacheOptions
-  ): Promise<IRestResponse> {
+  ): Promise<RestResponse> {
     const apiContext = new CompositeApiContext(apiName, method, options);
     apiContext.maxAgeSeconds = cacheOptions.maxAgeSeconds || 600;
     apiContext.overrideToken(token);

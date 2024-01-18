@@ -4,12 +4,12 @@
 //
 
 import { Application, Response, NextFunction } from 'express';
-import { IProviders } from './providers';
 
-import type { RuntimeConfiguration } from './config';
-import { ReposAppRequest } from './web';
+import type { IProviders } from './providers';
+import type { RuntimeConfiguration, SiteConfiguration } from './config';
+import type { ReposAppRequest } from './web';
 
-export interface IApplicationProfile {
+export type ApplicationProfile = {
   applicationName: string;
   customErrorHandlerRender?: (
     errorView: unknown,
@@ -26,7 +26,7 @@ export interface IApplicationProfile {
   startup?: (providers: IProviders) => Promise<void>;
   sessions: boolean;
   webServer: boolean;
-}
+};
 
 export interface IReposApplication extends Application {
   // Standard Express
@@ -34,7 +34,7 @@ export interface IReposApplication extends Application {
 
   // Local things
   providers: IProviders;
-  config: any;
+  config: SiteConfiguration;
   isBackgroundJob: boolean;
   enableAllGitHubApps: boolean;
   runtimeConfiguration: RuntimeConfiguration;
@@ -45,7 +45,7 @@ export interface IReposApplication extends Application {
 
   initializeApplication: (
     executionEnvironment: ExecutionEnvironment,
-    config: any,
+    config: SiteConfiguration,
     configurationError: Error
   ) => Promise<IReposApplication>;
 

@@ -5,8 +5,8 @@
 
 import { NextFunction, Response } from 'express';
 import { ReposAppRequest } from '../../interfaces';
-import { getProviders } from '../../transitional';
-import { isCodespacesAuthenticating, storeOriginalUrlAsReferrer } from '../../utils';
+import { getProviders } from '../../lib/transitional';
+import { isCodespacesAuthenticating, storeOriginalUrlAsReferrer } from '../../lib/utils';
 
 export default function RequireActiveGitHubSession(req: ReposAppRequest, res: Response, next: NextFunction) {
   const { config } = getProviders(req);

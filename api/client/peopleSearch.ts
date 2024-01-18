@@ -5,7 +5,7 @@
 
 import { Organization, MemberSearch, ICrossOrganizationMembersResult, Operations } from '../../business';
 import { ReposAppRequest } from '../../interfaces';
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 import LeakyLocalCache, { getLinksLightCache } from './leakyLocalCache';
 
 // BAD PRACTICE: leaky local cache

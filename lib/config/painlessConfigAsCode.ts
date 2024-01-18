@@ -10,7 +10,7 @@ import path from 'path';
 import walkBack from 'walk-back';
 import { InnerError, IPainlessConfigGet, IProviderOptions } from '.';
 import { processEnvironmentProvider } from './environmentConfigurationResolver';
-import { CreateError } from '../../transitional';
+import { CreateError } from '../transitional';
 
 const debug = Debug.debug('config');
 

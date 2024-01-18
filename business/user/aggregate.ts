@@ -19,7 +19,7 @@ import {
   OrganizationMembershipRoleQuery,
   GitHubRepositoryPermission,
 } from '../../interfaces';
-import { SettleToStateValue, isPermissionBetterThan, ErrorHelper } from '../../transitional';
+import { SettleToStateValue, isPermissionBetterThan, ErrorHelper } from '../../lib/transitional';
 import LinkManager from './linkManager';
 
 // PLANNING once consolidated
@@ -267,7 +267,11 @@ export class UserContext {
         const permission = tp.permission;
         const entity = { ...team.toSimpleJsonObject() };
         entity['permission'] = permission;
-        const teamRepositoryPermission = new TeamRepositoryPermission(team, entity, this._operations);
+        const teamRepositoryPermission = new TeamRepositoryPermission(
+          team,
+          entity as any /* RepositoryWithTeamPermissionsEntity */,
+          this._operations
+        );
         if (isPermissionBetterThan(bestPermission, permission)) {
           bestPermission = permission;
         }

@@ -14,7 +14,7 @@ import {
   jsonError,
   requireAuthenticatedUserOrSignIn,
 } from '../../middleware';
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 

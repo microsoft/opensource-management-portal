@@ -8,13 +8,13 @@ const debug = Debug.debug('startup');
 
 import path from 'path';
 
-import { IApplicationProfile, IReposApplication } from '../interfaces';
+import type { ApplicationProfile, IReposApplication, SiteConfiguration } from '../interfaces';
 
 export default async function initializeAlternateApps(
-  config,
+  config: SiteConfiguration,
   app: IReposApplication,
   appName: string
-): Promise<IApplicationProfile> {
+): Promise<ApplicationProfile> {
   const appPath = path.resolve(path.join(__dirname, '..', appName, '/'));
   debug(`Alternate app requested: name=${appName}, path=${appPath}`);
   try {

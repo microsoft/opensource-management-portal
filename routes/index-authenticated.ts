@@ -9,7 +9,7 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { hasStaticReactClientApp, getProviders } from '../transitional';
+import { hasStaticReactClientApp, getProviders } from '../lib/transitional';
 
 import { Organization } from '../business/organization';
 

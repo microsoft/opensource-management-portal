@@ -6,7 +6,7 @@
 // I no longer believe this file FYI... I don't think we need this any longer.
 
 import { NextFunction, Response } from 'express';
-import { getProviders } from '../transitional';
+import { getProviders } from '../lib/transitional';
 
 // Office uses a specialized pre-fetch to learn more about hyperlinks before
 // opening. As a result, if the Office user agent is in use, and the

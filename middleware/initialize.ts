@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { NextFunction, Response } from 'express';
+import { Express, NextFunction, Response } from 'express';
 import path from 'path';
 
 import CosmosSessionStore from '../lib/cosmosSession';
@@ -15,11 +15,11 @@ import {
   createAndInitializeEntityMetadataProviderInstance,
   IEntityMetadataProvidersOptions,
 } from '../lib/entityMetadataProvider';
-import { createAndInitializeRepositoryMetadataProviderInstance } from '../entities/repositoryMetadata';
-import createAndInitializeOrganizationAnnotationProviderInstance from '../entities/organizationAnnotation';
+import { createAndInitializeRepositoryMetadataProviderInstance } from '../business/entities/repositoryMetadata';
+import createAndInitializeOrganizationAnnotationProviderInstance from '../business/entities/organizationAnnotation';
 import { createMailAddressProviderInstance, IMailAddressProvider } from '../lib/mailAddressProvider';
 
-import ErrorRoutes from './error-routes';
+import ErrorRoutes from './errorRoutes';
 
 import { createClient, RedisClientType } from 'redis';
 import { Pool as PostgresPool } from 'pg';
@@ -38,9 +38,9 @@ import expressRoutes from '../routes/';
 import alternateRoutes from './alternateApps';
 
 import RedisHelper from '../lib/caching/redis';
-import { createTokenProvider } from '../entities/token';
-import { createAndInitializeApprovalProviderInstance } from '../entities/teamJoinApproval';
-import { CreateLocalExtensionKeyProvider } from '../entities/localExtensionKey';
+import { createTokenProvider } from '../business/entities/token';
+import { createAndInitializeApprovalProviderInstance } from '../business/entities/teamJoinApproval';
+import { CreateLocalExtensionKeyProvider } from '../business/entities/localExtensionKey';
 import { CreateGraphProviderInstance, IGraphProvider } from '../lib/graphProvider/';
 import initializeCorporateViews from './corporateViews';
 
@@ -48,16 +48,16 @@ import keyVaultResolver, { IKeyVaultSecretResolver } from '../lib/keyVaultResolv
 
 import { createMailProviderInstance } from '../lib/mailProvider/';
 import { RestLibrary } from '../lib/github';
-import { CreateRepositoryCacheProviderInstance } from '../entities/repositoryCache';
-import { CreateRepositoryCollaboratorCacheProviderInstance } from '../entities/repositoryCollaboratorCache';
-import { CreateTeamCacheProviderInstance } from '../entities/teamCache';
-import { CreateTeamMemberCacheProviderInstance } from '../entities/teamMemberCache';
-import { CreateRepositoryTeamCacheProviderInstance } from '../entities/repositoryTeamCache';
-import { CreateOrganizationMemberCacheProviderInstance } from '../entities/organizationMemberCache';
+import { CreateRepositoryCacheProviderInstance } from '../business/entities/repositoryCache';
+import { CreateRepositoryCollaboratorCacheProviderInstance } from '../business/entities/repositoryCollaboratorCache';
+import { CreateTeamCacheProviderInstance } from '../business/entities/teamCache';
+import { CreateTeamMemberCacheProviderInstance } from '../business/entities/teamMemberCache';
+import { CreateRepositoryTeamCacheProviderInstance } from '../business/entities/repositoryTeamCache';
+import { CreateOrganizationMemberCacheProviderInstance } from '../business/entities/organizationMemberCache';
 import QueryCache from '../business/queryCache';
-import { createAndInitializeOrganizationSettingProviderInstance } from '../entities/organizationSettings';
+import { createAndInitializeOrganizationSettingProviderInstance } from '../business/entities/organizationSettings';
 import { IEntityMetadataProvider } from '../lib/entityMetadataProvider/entityMetadataProvider';
-import { createAndInitializeAuditLogRecordProviderInstance } from '../entities/auditLogRecord';
+import { createAndInitializeAuditLogRecordProviderInstance } from '../business/entities/auditLogRecord';
 import CosmosCache from '../lib/caching/cosmosdb';
 import BlobCache from '../lib/caching/blob';
 import { StatefulCampaignProvider } from '../lib/campaigns';
@@ -65,7 +65,7 @@ import CosmosHelper from '../lib/cosmosHelper';
 import { IQueueProcessor } from '../lib/queues';
 import ServiceBusQueueProcessor from '../lib/queues/servicebus';
 import AzureQueuesProcessor from '../lib/queues/azurequeue';
-import { UserSettingsProvider } from '../entities/userSettings';
+import { UserSettingsProvider } from '../business/entities/userSettings';
 import getCompanySpecificDeployment from './companySpecificDeployment';
 
 import routeCorrelationId from './correlationId';
@@ -76,16 +76,16 @@ import middlewareIndex from '.';
 import type { ICacheHelper } from '../lib/caching';
 import type {
   ExecutionEnvironment,
-  IApplicationProfile,
+  ApplicationProfile,
   IProviders,
   IReposApplication,
   SiteConfiguration,
 } from '../interfaces';
-import initializeRepositoryProvider from '../entities/repository';
+import initializeRepositoryProvider from '../business/entities/repository';
 import { tryGetImmutableStorageProvider } from '../lib/immutable';
 import { GitHubAppPurposes } from '../lib/github/appPurposes';
 
-const DefaultApplicationProfile: IApplicationProfile = {
+const DefaultApplicationProfile: ApplicationProfile = {
   applicationName: 'Open Source Management Portal',
   serveStaticAssets: true,
   serveClientAssets: true,
@@ -121,7 +121,6 @@ async function initializeAsync(
   } else if (config.github.cache.provider === 'redis') {
     const redisClient = await connectRedis(config, config.redis, 'cache');
     const redisHelper = new RedisHelper({ redisClient, prefix: config.redis.prefix });
-    // providers.redisClient = redisClient;
     providers.cacheProvider = redisHelper;
   } else {
     throw new Error('No cache provider available');
@@ -318,7 +317,7 @@ async function initializeAsync(
   }
 }
 
-function configureGitHubLibrary(cacheProvider: ICacheHelper, config): RestLibrary {
+function configureGitHubLibrary(cacheProvider: ICacheHelper, config: SiteConfiguration): RestLibrary {
   const libraryContext = new RestLibrary({
     config,
     cacheProvider,
@@ -330,7 +329,7 @@ function configureGitHubLibrary(cacheProvider: ICacheHelper, config): RestLibrar
 export default async function initialize(
   executionEnvironment: ExecutionEnvironment,
   app: IReposApplication,
-  express,
+  express: Express,
   rootdir: string,
   config: SiteConfiguration,
   exception: Error
@@ -362,6 +361,10 @@ export default async function initialize(
   }
   debug(`${containerPurpose} profile: ${applicationProfile.applicationName}`);
   debug(`environment: ${config?.debug?.environmentName || 'Unknown'}`);
+  if (config?.continuousDeployment) {
+    const values = Object.values(config.continuousDeployment).filter((x) => x);
+    values.length > 0 && debug(`build: ${values.join(', ')}`);
+  }
 
   const codespacesConfig = (config as SiteConfiguration)?.github?.codespaces;
   if (codespacesConfig?.connected === true && codespacesConfig.block === true) {
@@ -541,7 +544,7 @@ export default async function initialize(
   return executionEnvironment;
 }
 
-function createGraphProvider(providers: IProviders, config: any): Promise<IGraphProvider> {
+function createGraphProvider(providers: IProviders, config: SiteConfiguration): Promise<IGraphProvider> {
   return new Promise((resolve, reject) => {
     // The graph provider is optional. A graph provider can connect to a
     // corporate directory to validate or lookup employees and other
@@ -639,7 +642,10 @@ async function connectRedis(
   return redisClient;
 }
 
-async function createMailAddressProvider(config: any, providers: IProviders): Promise<IMailAddressProvider> {
+async function createMailAddressProvider(
+  config: SiteConfiguration,
+  providers: IProviders
+): Promise<IMailAddressProvider> {
   const options = {
     config: config,
     providers: providers,

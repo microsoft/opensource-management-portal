@@ -61,4 +61,7 @@ COPY --from=build /build/package.json ./package.json
 # Only if needed, copy our environment
 # COPY --from=build /build/.environment ./.environment
 
+# Only if needed, binary resources
+# COPY --from=build /build/microsoft/assets ./microsoft/assets
+
 ENTRYPOINT ["npm", "run-script", "start-in-container"]

@@ -12,7 +12,7 @@ import { OIDCStrategy } from 'passport-azure-ad';
 import type { IProviders, IReposApplication, SiteConfiguration } from '../../interfaces';
 
 import { GraphUserType } from '../../lib/graphProvider';
-import { getCodespacesHostname, isCodespacesAuthenticating } from '../../utils';
+import { getCodespacesHostname, isCodespacesAuthenticating } from '../../lib/utils';
 
 export const aadStrategyName = 'azure-active-directory';
 export const aadStrategyUserPropertyName = 'azure';

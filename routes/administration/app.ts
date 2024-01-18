@@ -7,12 +7,12 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 import {
   OrganizationSetting,
   IBasicGitHubAppInstallation,
   SystemTeam,
-} from '../../entities/organizationSettings/organizationSetting';
+} from '../../business/entities/organizationSettings/organizationSetting';
 import { IndividualContext } from '../../business/user';
 import { Operations, Organization } from '../../business';
 import GitHubApplication, { isInstallationConfigured } from '../../business/application';

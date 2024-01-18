@@ -12,10 +12,11 @@ import { GraphManager } from '../graphManager';
 import { GitHubOrganizationResponse, Organization } from '../organization';
 import { GitHubTokenManager } from '../../lib/github/tokenManager';
 import RenderHtmlMail from '../../lib/emailRender';
-import { wrapError, sortByCaseInsensitive } from '../../utils';
+import { wrapError, sortByCaseInsensitive } from '../../lib/utils';
 import { Repository } from '../repository';
 import { RestLibrary } from '../../lib/github';
 import {
+  AppPurpose,
   AppPurposeTypes,
   getAppPurposeId,
   GitHubAppAuthenticationType,
@@ -25,12 +26,12 @@ import {
 import {
   OrganizationFeature,
   OrganizationSetting,
-} from '../../entities/organizationSettings/organizationSetting';
-import { OrganizationSettingProvider } from '../../entities/organizationSettings/organizationSettingProvider';
+} from '../entities/organizationSettings/organizationSetting';
+import { OrganizationSettingProvider } from '../entities/organizationSettings/organizationSettingProvider';
 import { IMail } from '../../lib/mailProvider';
 import { ILinkProvider } from '../../lib/linkProviders';
 import { ICacheHelper } from '../../lib/caching';
-import { createPortalSudoInstance, IPortalSudo } from '../../features';
+import { createPortalSudoInstance, IPortalSudo } from '../features';
 import { CacheDefault, getMaxAgeSeconds, IOperationsCoreOptions, OperationsCore } from './core';
 import { linkAccounts as linkAccountsMethod } from './link';
 import { sendTerminatedAccountMail as sendTerminatedAccountMailMethod } from './unlinkMail';
@@ -63,13 +64,16 @@ import {
   NoCacheNoBackground,
   SupportedLinkType,
   UnlinkPurpose,
+  type LinkEvent,
+  type UnlinkEvent,
 } from '../../interfaces';
-import { CreateError, ErrorHelper } from '../../transitional';
+import { CreateError, ErrorHelper } from '../../lib/transitional';
 import { Team } from '../team';
-import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
+import { IRepositoryMetadataProvider } from '../entities/repositoryMetadata/repositoryMetadataProvider';
 import { isAuthorizedSystemAdministrator } from './administration';
 import type { ConfigGitHubOrganizationsSpecializedList } from '../../config/github.organizations.types';
 import { type GitHubTokenType, getGitHubTokenTypeFromValue } from '../../lib/github/appTokens';
+import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 
 export * from './core';
 
@@ -608,7 +612,7 @@ export class Operations
         if (entry.active && !visited.has(lowercase) && !entry.hasFeature(OrganizationFeature.Invisible)) {
           visited.add(lowercase);
           const orgInstance = this.getOrganization(lowercase);
-          const token = orgInstance.getAuthorizationHeader();
+          const token = orgInstance.getAuthorizationHeader(AppPurpose.Data);
           tokens.set(lowercase, token);
         }
       }
@@ -976,7 +980,7 @@ export class Operations
     const organization = this._organizationIds.get(lookupUsingIdOrCentralToken);
     let header: GetAuthorizationHeader = null;
     if (organization) {
-      header = organization.getAuthorizationHeader() as GetAuthorizationHeader; // fallback will happen
+      header = organization.getAuthorizationHeader(AppPurpose.Data) as GetAuthorizationHeader;
     } else {
       header = this.getPublicAuthorizationToken();
     }
@@ -1294,11 +1298,17 @@ export class Operations
 
   // Eventually link/unlink should move from context into operations here to centralize more than just the events
 
-  async fireLinkEvent(value): Promise<void> {
+  async fireLinkEvent(value: LinkEvent): Promise<void> {
+    const companySpecific = getCompanySpecificDeployment();
+    companySpecific?.events?.linking?.onLink && companySpecific.events.linking.onLink(this.providers, value);
     await fireEvent(this.config, 'link', value);
   }
 
-  async fireUnlinkEvent(value): Promise<void> {
+  async fireUnlinkEvent(value: UnlinkEvent): Promise<void> {
+    const corporateId = value?.aad?.id;
+    const companySpecific = getCompanySpecificDeployment();
+    companySpecific?.events?.linking?.onUnlink &&
+      companySpecific.events.linking.onUnlink(this.providers, corporateId);
     await fireEvent(this.config, 'unlink', value);
   }
 

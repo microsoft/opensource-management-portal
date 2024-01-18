@@ -6,8 +6,8 @@
 import { NextFunction, Response } from 'express';
 import { PassportStatic } from 'passport';
 import { type IReposApplication, type IReposError, ReposAppRequest } from '../../interfaces';
-import { getProviders } from '../../transitional';
-import { isCodespacesAuthenticating } from '../../utils';
+import { getProviders } from '../../lib/transitional';
+import { isCodespacesAuthenticating } from '../../lib/utils';
 import { IPrimaryAuthenticationHelperMethods } from '../passport-routes';
 import { aadStrategyUserPropertyName } from './aadStrategy';
 

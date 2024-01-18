@@ -18,7 +18,7 @@ import {
   IGraphGroup,
   GraphUserType,
 } from '.';
-import { ErrorHelper, CreateError, splitSemiColonCommas } from '../../transitional';
+import { ErrorHelper, CreateError, splitSemiColonCommas } from '../transitional';
 import { ICacheHelper } from '../caching';
 
 const axios12BufferDecompressionBugHeaderAddition = true;
@@ -64,6 +64,14 @@ export function microsoftGraphUserTypeFromString(type: string): GraphUserType {
       return GraphUserType.Unknown;
   }
 }
+
+type GraphCheckMembersRequest = {
+  ids: string[];
+};
+
+type GraphCheckMembersResponse = {
+  value: string[];
+};
 
 const graphBaseUrl = 'https://graph.microsoft.com/v1.0/';
 const odataNextLink = '@odata.nextLink';
@@ -121,9 +129,26 @@ export class MicrosoftGraphProvider implements IGraphProvider {
   }
 
   async isUserInGroup(corporateId: string, securityGroupId: string): Promise<boolean> {
-    // TODO: refactor for efficient use of Microsoft Graph's checkMemberObjects https://docs.microsoft.com/en-us/graph/api/group-checkmemberobjects?view=graph-rest-1.0&tabs=http
-    const members = await this.getGroupMembers(securityGroupId);
-    return members.filter((m) => m.id === corporateId).length > 0;
+    // Formerly used a very inefficient approach:
+    // const members = await this.getGroupMembers(securityGroupId);
+    // return members.filter((m) => m.id === corporateId).length > 0;
+    return await this.checkMemberObjectsForUserId(corporateId, securityGroupId);
+  }
+
+  private async checkMemberObjectsForUserId(corporateId: string, securityGroupId: string): Promise<boolean> {
+    const requestBody: GraphCheckMembersRequest = {
+      ids: [securityGroupId],
+    };
+    const url = `${graphBaseUrl}users/${corporateId}/checkMemberObjects`;
+    const response = await this.request<GraphCheckMembersResponse>(
+      url,
+      requestBody,
+      null,
+      true
+    ); /* no cache */
+    const foundGroupIds = response.value;
+    const found = foundGroupIds.includes(securityGroupId);
+    return found;
   }
 
   private async getTokenThenEntity(aadId: string, resource: string): Promise<unknown> {
@@ -281,8 +306,8 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     ], {
       filterValues: `mail eq '${mail}'`, // encodeURIComponent(
       selectValues: 'id',
-      count: true,
-      consistencyLevel: 'eventual',
+      // count: true,
+      // consistencyLevel: 'eventual',
     })) as any[];
     if (!response || response.length === 0) {
       return null;
@@ -416,14 +441,14 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     const graphOptions: GraphOptions = {
       selectValues: Array.from(selectValuesSet.values()).join(','),
     };
-    if (options?.getCount) {
+    if (options?.getCount !== undefined) {
       graphOptions.count = true;
       graphOptions.consistencyLevel = 'eventual';
     }
-    if (options?.maximumPages) {
+    if (options?.maximumPages !== undefined) {
       graphOptions.maximumPages = options.maximumPages;
     }
-    if (options?.throwOnMaximumPages) {
+    if (options?.throwOnMaximumPages !== undefined) {
       graphOptions.throwOnMaximumPages = options.throwOnMaximumPages;
     }
     const lookupType = options?.membership || MicrosoftGraphGroupMembershipType.Transitive;
@@ -606,7 +631,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     const maximumPages = options?.maximumPages;
     do {
       const consistencyLevel = options.consistencyLevel;
-      const body = await this.request(url, options.body, consistencyLevel, skipCache);
+      const body = await this.request<any>(url, options.body, consistencyLevel, skipCache);
       if (body.value && pages === 0) {
         hasArray = body && body.value && Array.isArray(body.value);
         if (hasArray) {
@@ -621,6 +646,11 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       } else {
         throw new Error(`Page ${pages} in response is not an array type but had a link: ${url}`);
       }
+      if (body && body['@odata.count'] !== undefined) {
+        const count = body['@odata.count'];
+        // NOTE: we don't store or cache or return this today
+        console.log(`Total objects in response: ${count}`);
+      }
       ++pages;
       url = body && body[odataNextLink] ? body[odataNextLink] : null;
     } while (url && (maximumPages ? pages < maximumPages : true));
@@ -628,7 +658,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       if (options.throwOnMaximumPages) {
         throw CreateError.InvalidParameters('Maximum pages exceeded for this resource');
       }
-      console.warn(`Maximum pages exceeded for this resource: ${originalUrl}`);
+      console.warn(`WARN: Maximum pages exceeded for this resource: ${originalUrl}`);
     }
     if (this.#_cache) {
       try {
@@ -645,12 +675,12 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     return value;
   }
 
-  private async request(
+  private async request<T>(
     url: string,
     body?: any,
     eventualConsistency?: string,
     skipCache?: boolean
-  ): Promise<any> {
+  ): Promise<T> {
     const token = await this.getToken();
     const method = body ? 'post' : 'get';
     if (this.#_cache && attemptCacheGet && method === 'get' && !skipCache) {
@@ -677,7 +707,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       }
 
       if (eventualConsistency) {
-        // headers.ConsistencyLevel = eventualConsistency;
+        headers['ConsistencyLevel'] = eventualConsistency;
       }
       const response = await axios({
         url,

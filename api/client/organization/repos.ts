@@ -7,12 +7,12 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../../middleware';
-import { CreateError, getProviders } from '../../../transitional';
+import { CreateError, getProviders } from '../../../lib/transitional';
 import { Repository } from '../../../business';
 
 import JsonPager from '../jsonPager';
 import { ReposAppRequest, IProviders } from '../../../interfaces';
-import { sortRepositoriesByNameCaseInsensitive } from '../../../utils';
+import { sortRepositoriesByNameCaseInsensitive } from '../../../lib/utils';
 import { apiMiddlewareRepositoriesToRepository } from '../../../middleware/business/repository';
 
 import routeRepo from './repo';

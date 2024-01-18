@@ -7,12 +7,12 @@ import _ from 'lodash';
 
 import * as common from './common';
 
-import { wrapError } from '../utils';
+import { wrapError } from '../lib/utils';
 import { corporateLinkToJson } from './corporateLink';
 import { Organization } from './organization';
 import { AppPurpose } from '../lib/github/appPurposes';
 import { ILinkProvider } from '../lib/linkProviders';
-import { CacheDefault, getMaxAgeSeconds } from '.';
+import { CacheDefault, Operations, getMaxAgeSeconds } from '.';
 import {
   AccountJsonFormat,
   CoreCapability,
@@ -29,7 +29,7 @@ import {
   throwIfNotCapable,
   throwIfNotGitHubCapable,
 } from '../interfaces';
-import { ErrorHelper } from '../transitional';
+import { ErrorHelper } from '../lib/transitional';
 
 interface IRemoveOrganizationMembershipsResult {
   error?: IReposError;
@@ -358,8 +358,10 @@ export class Account {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     try {
+      const ops = operations as Operations;
       const entity = (await operations.github.request(
-        this.authorize(AppPurpose.Data),
+        ops.getPublicAuthorizationToken(),
+        // this.authorize(AppPurpose.Data),
         'GET /user/:id',
         parameters,
         cacheOptions
@@ -418,7 +420,7 @@ export class Account {
     };
     const eventData = {
       github: {
-        id: id,
+        id,
         login: this._login,
       },
       aad: aadIdentity,

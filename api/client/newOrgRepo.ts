@@ -9,7 +9,7 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 import { jsonError } from '../../middleware/jsonError';
 import { IndividualContext } from '../../business/user';
 import { Organization } from '../../business/organization';

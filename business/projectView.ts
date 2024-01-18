@@ -17,7 +17,7 @@ import {
   IteratorResponse,
   PaginationPageSizeOptions,
 } from './iterable';
-import { DefaultGraphqlPageSize } from '../transitional';
+import { DefaultGraphqlPageSize } from '../lib/transitional';
 import { OrganizationProject, ProjectViewEssentials } from './project';
 
 type ProjectViewDetails = {

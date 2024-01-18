@@ -28,7 +28,7 @@ import { CorporateTableLink } from './tableLink';
 import { ILinkProvider } from '..';
 
 import tableEntity from '../../tableEntity';
-import { ErrorHelper } from '../../../transitional';
+import { ErrorHelper } from '../../transitional';
 import { decryptEntityAsync, encryptEntityAsync, IEncryptionOptions } from '../../encryption';
 import { IKeyVaultSecretResolver } from '../../keyVaultResolver';
 

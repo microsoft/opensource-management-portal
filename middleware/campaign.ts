@@ -5,7 +5,7 @@
 
 import { NextFunction, Response } from 'express';
 
-import { getProviders } from '../transitional';
+import { getProviders } from '../lib/transitional';
 
 interface ICampaignData {
   uri?: any;

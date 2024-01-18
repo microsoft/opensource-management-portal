@@ -11,7 +11,7 @@ import { IProviders, ReposAppRequest } from '../../../interfaces';
 
 import { jsonError } from '../../../middleware';
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
-import { ErrorHelper, getProviders } from '../../../transitional';
+import { ErrorHelper, getProviders } from '../../../lib/transitional';
 import { IndividualContext } from '../../../business/user';
 
 import routeApprovals from './approvals';

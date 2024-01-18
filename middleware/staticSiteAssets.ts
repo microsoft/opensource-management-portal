@@ -12,7 +12,7 @@ const debug = Debug.debug('startup');
 import favicon from 'serve-favicon';
 import path from 'path';
 
-import { CreateError } from '../transitional';
+import { CreateError } from '../lib/transitional';
 
 const appRootPath = appRoot.toString();
 

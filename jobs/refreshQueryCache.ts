@@ -16,7 +16,7 @@ job.runBackgroundJob(refreshQueryCache, {
   insightsPrefix: 'JobRefreshQueryCache',
 });
 
-import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../transitional';
+import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../lib/transitional';
 import {
   Collaborator,
   Operations,
@@ -27,7 +27,7 @@ import {
   TeamMember,
   TeamPermission,
 } from '../business';
-import { sleep, addArrayToSet } from '../utils';
+import { sleep, addArrayToSet } from '../lib/utils';
 import QueryCache from '../business/queryCache';
 import {
   IPagedCacheOptions,
@@ -385,7 +385,7 @@ async function cacheRepositoryTeams(
   const repositoryId = repository.id.toString();
   for (const teamPermission of repoTeamPermissions) {
     const teamId = teamPermission.team.id.toString();
-    const permission = teamPermission.permission;
+    const permission = teamPermission.getAsPermission();
     const isPrivate = repository.private as boolean;
     const repoName = repository.name as string;
     ops.push(

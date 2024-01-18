@@ -17,9 +17,9 @@ import {
   ICustomizedNewRepositoryLogic,
   INewRepositoryContext,
   splitSemiColonCommas,
-} from '../transitional';
+} from '../lib/transitional';
 import { Organization, Repository } from '../business';
-import { RepositoryMetadataEntity } from '../entities/repositoryMetadata/repositoryMetadata';
+import { RepositoryMetadataEntity } from '../business/entities/repositoryMetadata/repositoryMetadata';
 import RenderHtmlMail from '../lib/emailRender';
 
 import {
@@ -29,7 +29,7 @@ import {
 } from '../routes/org/repoWorkflowEngine';
 import { IMailProvider } from '../lib/mailProvider';
 import { IndividualContext } from '../business/user';
-import NewRepositoryLockdownSystem from '../features/newRepositories/newRepositoryLockdown';
+import NewRepositoryLockdownSystem from '../business/features/newRepositories/newRepositoryLockdown';
 import {
   ICreateRepositoryResult,
   ICorporateLink,
@@ -176,7 +176,7 @@ export async function CreateRepository(
     try {
       createResult = await organization.createRepository(parameters.name, parameters);
       if (createResult && createResult.repository) {
-        repository = organization.repositoryFromEntity(createResult.repository);
+        repository = organization.repositoryFromEntity(createResult.repository.getEntity());
       }
     } catch (error) {
       providers.insights?.trackEvent({

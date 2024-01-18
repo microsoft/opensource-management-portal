@@ -4,7 +4,7 @@
 //
 
 import GitHubApplication, { type GitHubAppDefinition } from '../../../../business/application';
-import { OrganizationSetting } from '../../../../entities/organizationSettings/organizationSetting';
+import { OrganizationSetting } from '../../../../business/entities/organizationSettings/organizationSetting';
 import type { IGitHubAppInstallation, ReposAppRequest } from '../../../../interfaces';
 
 export type ApiRequestWithGitHubApplication = ReposAppRequest & {

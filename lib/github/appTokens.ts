@@ -11,7 +11,7 @@ import { AppPurposeTypes, ICustomAppPurpose } from './appPurposes';
 import { AuthorizationHeaderValue } from '../../interfaces';
 
 import Debug from 'debug';
-import { CreateError } from '../../transitional';
+import { CreateError } from '../transitional';
 const debug = Debug('github:tokens');
 
 interface IInstallationToken {
@@ -259,7 +259,9 @@ function tokenValidFilter(timeTokenMustBeValid: Date, token: IInstallationToken)
     const header = token.headerValue.substr(6);
     const subset = (header.length > 12 ? header.substr(0, 8) : '') + '*'.repeat(4);
     console.log(
-      `token expired: redacted=${subset}, expires=${token.expires}, install_id=${token.installationId}, org=${token.organizationName}`
+      `token expired: redacted=${subset}, expires=${token.expires.toISOString()}, install_id=${
+        token.installationId
+      }, org=${token.organizationName}`
     );
     return false;
   }

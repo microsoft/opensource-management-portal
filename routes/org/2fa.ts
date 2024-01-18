@@ -10,7 +10,7 @@ const router: Router = Router();
 import moment from 'moment';
 
 import { NoCacheNoBackground, ReposAppRequest } from '../../interfaces';
-import { wrapError } from '../../utils';
+import { wrapError } from '../../lib/utils';
 
 router.get(
   '/',

@@ -5,7 +5,7 @@
 
 import { NextFunction, Response } from 'express';
 
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 import { jsonError } from '../../middleware';
 import { IApiRequest } from '../../middleware/apiReposAuth';
 import { ICorporateLink, LinkOperationSource } from '../../interfaces';

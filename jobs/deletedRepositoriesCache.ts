@@ -7,11 +7,11 @@
 
 import job from '../job';
 import { Organization } from '../business/organization';
-import { RepositoryCollaboratorCacheEntity } from '../entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
-import { RepositoryTeamCacheEntity } from '../entities/repositoryTeamCache/repositoryTeamCache';
+import { RepositoryCollaboratorCacheEntity } from '../business/entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
+import { RepositoryTeamCacheEntity } from '../business/entities/repositoryTeamCache/repositoryTeamCache';
 import { IProviders, IReposJobResult } from '../interfaces';
-import { ErrorHelper } from '../transitional';
-import { sleep } from '../utils';
+import { ErrorHelper } from '../lib/transitional';
+import { sleep } from '../lib/utils';
 
 const killBitHours = 8;
 

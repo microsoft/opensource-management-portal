@@ -8,11 +8,11 @@ import _ from 'lodash';
 
 import * as common from './common';
 
-import { wrapError } from '../utils';
+import { wrapError } from '../lib/utils';
 import { TeamMember } from './teamMember';
 import { TeamRepositoryPermission } from './teamRepositoryPermission';
-import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';
-import { TeamJoinApprovalEntity } from '../entities/teamJoinApproval/teamJoinApproval';
+import { IApprovalProvider } from './entities/teamJoinApproval/approvalProvider';
+import { TeamJoinApprovalEntity } from './entities/teamJoinApproval/teamJoinApproval';
 import { AppPurpose } from '../lib/github/appPurposes';
 import { CacheDefault, getMaxAgeSeconds, getPageSize, Organization } from '.';
 import {
@@ -36,8 +36,9 @@ import {
   IGetTeamRepositoriesOptions,
   GitHubRepositoryType,
   IOperationsProviders,
+  GitHubTeamDetails,
 } from '../interfaces';
-import { validateGitHubLogin, ErrorHelper } from '../transitional';
+import { validateGitHubLogin, ErrorHelper } from '../lib/transitional';
 
 const teamPrimaryProperties = [
   'id',
@@ -217,7 +218,7 @@ export class Team {
     if (this._name && this._slug) {
       return;
     }
-    return await this.getDetails();
+    await this.getDetails();
   }
 
   async isDeleted(options?: ICacheOptions): Promise<boolean> {
@@ -231,7 +232,7 @@ export class Team {
     return false;
   }
 
-  async getDetails(options?: ICacheOptions): Promise<any> {
+  async getDetails(options?: ICacheOptions): Promise<GitHubTeamDetails> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const cacheOptions = {

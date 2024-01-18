@@ -11,8 +11,8 @@ const router: Router = Router();
 
 import { IReposRequestWithOrganization } from '../interfaces';
 import { injectReactClient, TryFallbackToBlob } from '../middleware';
-import { getProviders, hasStaticReactClientApp } from '../transitional';
-import { wrapError } from '../utils';
+import { getProviders, hasStaticReactClientApp } from '../lib/transitional';
+import { wrapError } from '../lib/utils';
 
 import orgRoute from './org/';
 

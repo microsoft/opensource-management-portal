@@ -7,7 +7,7 @@ import { NextFunction, Response } from 'express';
 
 import { ReposAppRequest } from '../../interfaces/web';
 import { jsonError } from '../jsonError';
-import { CreateError, ErrorHelper, getProviders } from '../../transitional';
+import { CreateError, ErrorHelper, getProviders } from '../../lib/transitional';
 import { setOrganizationProfileForRequest } from '../github/ensureOrganizationProfile';
 
 export enum OrganizationManagementType {

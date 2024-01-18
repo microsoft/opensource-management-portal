@@ -13,7 +13,7 @@ import {
   TeamJsonFormat,
 } from '../../interfaces';
 import { jsonError } from '../../middleware';
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 import JsonPager from './jsonPager';
 
 const router: Router = Router();

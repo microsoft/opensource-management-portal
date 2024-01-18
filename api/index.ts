@@ -9,7 +9,7 @@ const router: Router = Router();
 
 import cors from 'cors';
 
-import { CreateError, getProviders } from '../transitional';
+import { CreateError, getProviders } from '../lib/transitional';
 
 import { jsonError } from '../middleware';
 import { IApiRequest } from '../middleware/apiReposAuth';

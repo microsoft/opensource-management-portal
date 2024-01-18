@@ -8,7 +8,7 @@ import asyncHandler from 'express-async-handler';
 import throat from 'throat';
 
 import { getIsCorporateAdministrator, jsonError } from '../../middleware';
-import { CreateError, getProviders } from '../../transitional';
+import { CreateError, getProviders } from '../../lib/transitional';
 import { ReposAppRequest } from '../../interfaces';
 
 import RouteOrganization from './organization';
@@ -18,7 +18,7 @@ import {
   OrganizationAnnotation,
   OrganizationAnnotationProperty,
   getOrganizationAnnotationRestrictedPropertyNames,
-} from '../../entities/organizationAnnotation';
+} from '../../business/entities/organizationAnnotation';
 import { getOrganizationProfileViaMemoryCache } from '../../middleware/github/ensureOrganizationProfile';
 
 const router: Router = Router();

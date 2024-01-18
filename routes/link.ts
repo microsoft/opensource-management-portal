@@ -14,9 +14,9 @@ import {
   ICorporateLink,
   LinkOperationSource,
 } from '../interfaces';
-import { getProviders, splitSemiColonCommas } from '../transitional';
+import { getProviders, splitSemiColonCommas } from '../lib/transitional';
 import { IndividualContext } from '../business/user';
-import { isCodespacesAuthenticating, storeOriginalUrlAsReferrer, wrapError } from '../utils';
+import { isCodespacesAuthenticating, storeOriginalUrlAsReferrer, wrapError } from '../lib/utils';
 
 import validator from 'validator';
 

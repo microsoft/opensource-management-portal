@@ -23,6 +23,7 @@ import type {
   ICorporationAdministrationSection,
   IAttachCompanySpecificStrings,
   ICompanySpecificFeatures,
+  ICompanySpecificEvents,
   IAttachCompanySpecificViews,
   IAttachCompanySpecificUrls,
 } from './companySpecific';
@@ -34,6 +35,7 @@ import type { IProviders } from './providers';
 
 export interface ICompanySpecificStartupProperties {
   isCompanySpecific: true;
+  events?: ICompanySpecificEvents;
   routes?: IAttachCompanySpecificRoutes;
   middleware?: IAttachCompanySpecificMiddleware;
   administrationSection?: ICorporationAdministrationSection;

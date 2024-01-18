@@ -8,9 +8,9 @@ import fs from 'fs';
 import path from 'path';
 import recursiveReadDirectory from 'recursive-readdir';
 
-import { wrapError, sleep } from '../../utils';
+import { wrapError, sleep } from '../../lib/utils';
 import { Organization } from '../../business';
-import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { RepositoryMetadataEntity } from '../../business/entities/repositoryMetadata/repositoryMetadata';
 import { Repository } from '../../business';
 import { CreateRepositoryEntrypoint, ICreateRepositoryApiResult } from '../../api/createRepo';
 import {
@@ -24,11 +24,11 @@ import {
   IReposAppWithTeam,
   throwIfNotCapable,
 } from '../../interfaces';
-import { ErrorHelper } from '../../transitional';
+import { ErrorHelper } from '../../lib/transitional';
 import {
   setupRepositoryReadmeSubstring,
   setupRepositorySubstring,
-} from '../../features/newRepositories/strings';
+} from '../../business/features/newRepositories/strings';
 
 export interface IApprovalPackage {
   id: string;

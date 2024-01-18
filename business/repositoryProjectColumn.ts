@@ -16,7 +16,7 @@ import {
 import { augmentInertiaPreview, RepositoryProject } from './repositoryProject';
 import { RepositoryProjectCard } from './repositoryProjectCard';
 import * as common from './common';
-import { CreateError } from '../transitional';
+import { CreateError } from '../lib/transitional';
 
 export class RepositoryProjectColumn {
   private _operations: IOperationsInstance;

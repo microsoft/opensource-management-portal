@@ -7,9 +7,9 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { CreateError, hasStaticReactClientApp, getProviders } from '../transitional';
+import { CreateError, hasStaticReactClientApp, getProviders } from '../lib/transitional';
 import { IndividualContext } from '../business/user';
-import { storeOriginalUrlAsVariable } from '../utils';
+import { storeOriginalUrlAsVariable } from '../lib/utils';
 import { AuthorizeOnlyCorporateAdministrators } from '../middleware/business/corporateAdministrators';
 
 import RouteAdministration from './administration';

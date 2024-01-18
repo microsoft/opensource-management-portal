@@ -22,7 +22,7 @@ import {
   MetadataMappingDefinition,
   MetadataMappingDefinitionBase,
 } from './declarations';
-import { CreateError } from '../../transitional';
+import { CreateError } from '../transitional';
 import { IDictionary } from '../../interfaces';
 
 const MetadataColumnName = 'metadata';

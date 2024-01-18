@@ -6,7 +6,7 @@
 import { NextFunction, Response, Router } from 'express';
 
 import { ReposAppRequest } from '../../../interfaces';
-import { wrapError } from '../../../utils';
+import { wrapError } from '../../../lib/utils';
 const router: Router = Router();
 
 import RouteApprovals from './approvals';

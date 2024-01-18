@@ -8,7 +8,7 @@ import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
 import { ReposAppRequest } from '../../interfaces';
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
 

@@ -18,10 +18,11 @@ import {
 } from './appPurposes';
 import { GitHubAppTokens } from './appTokens';
 import { AuthorizationHeaderValue, GetAuthorizationHeader, NoCacheNoBackground } from '../../interfaces';
-import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
-import { readFileToText } from '../../utils';
+import { OrganizationSetting } from '../../business/entities/organizationSettings/organizationSetting';
+import { readFileToText } from '../utils';
 import { Operations, OperationsCore, Organization } from '../../business';
-import { CreateError } from '../../transitional';
+import { CreateError } from '../transitional';
+import { shuffle } from 'lodash';
 
 export type GitHubRateLimit = {
   limit: number;
@@ -273,7 +274,7 @@ export class GitHubTokenManager {
     return value;
   }
 
-  async getInstallationAuthorizationHeader(
+  getInstallationAuthorizationHeader(
     appId: number,
     installationId: number,
     organizationName: string
@@ -318,11 +319,13 @@ export class GitHubTokenManager {
   }
 
   getAnyConfiguredInstallationIdForAnyApp(operations: Operations) {
-    const orgs = operations.getOrganizations();
+    const orgs = shuffle(operations.getOrganizations());
     for (const org of orgs) {
       const settings = org.getDynamicSettings();
       if (settings?.installations) {
-        for (const { installationId, appId } of settings.installations) {
+        const installs = shuffle(settings.installations);
+        const configuredInstalls = installs.filter((i) => this._appsById.has(i.appId));
+        for (const { installationId, appId } of configuredInstalls) {
           return { installationId, organizationName: org.name, appId };
         }
       }
@@ -358,11 +361,10 @@ export class GitHubTokenManager {
     }
   }
 
-  getAuthorizationHeaderForAnyApp(): AuthorizationHeaderValue {
+  getAuthorizationHeaderForAnyApp(): Promise<AuthorizationHeaderValue> {
     const anyConfigured = this.getAnyConfiguredInstallationIdForAnyApp(this.operations());
     if (anyConfigured) {
-      return this.getInstallationAuthorizationHeader.bind(
-        this,
+      return this.getInstallationAuthorizationHeader(
         anyConfigured.appId,
         anyConfigured.installationId,
         anyConfigured.organizationName

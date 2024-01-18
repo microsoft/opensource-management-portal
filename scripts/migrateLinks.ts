@@ -18,7 +18,7 @@ import throat from 'throat';
 import job from '../job';
 import { ICorporateLink, IProviders } from '../interfaces';
 import { createAndInitializeLinkProviderInstance } from '../lib/linkProviders';
-import { getThirdPartyLinkById } from '../transitional';
+import { getThirdPartyLinkById } from '../lib/transitional';
 
 const parallelWorkLimit = 5;
 

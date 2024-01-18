@@ -6,7 +6,7 @@
 import { jsonError } from '..';
 import { IProviders, ReposAppRequest } from '../../interfaces';
 import { IGraphEntry } from '../../lib/graphProvider';
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 import { IndividualContext } from '../../business/user';
 
 const cachedCorporateHierarchyRequestKey = '__corporateTree';

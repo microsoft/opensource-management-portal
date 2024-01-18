@@ -7,7 +7,7 @@ import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders, validateGitHubLogin } from '../../../transitional';
+import { getProviders, validateGitHubLogin } from '../../../lib/transitional';
 import {
   ReposAppRequest,
   RequestTeamMemberAddType,

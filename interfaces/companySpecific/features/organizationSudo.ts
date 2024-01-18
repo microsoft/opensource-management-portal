@@ -4,7 +4,7 @@
 //
 
 import { Organization } from '../../../business';
-import { IOrganizationSudo } from '../../../features';
+import { IOrganizationSudo } from '../../../business/features';
 import { IProviders } from '../../../interfaces';
 
 export interface ICompanySpecificFeatureOrganizationSudo {

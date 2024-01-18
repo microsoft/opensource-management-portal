@@ -16,7 +16,7 @@ import { LinkMethods } from './links';
 import { GetAuthorizationHeader, AuthorizationHeaderValue } from '../../interfaces';
 import { ICacheHelper } from '../caching';
 import { ICustomAppPurpose } from './appPurposes';
-import { CreateError } from '../../transitional';
+import { CreateError } from '../transitional';
 
 export enum CacheMode {
   ValidateCache = 'ValidateCache',

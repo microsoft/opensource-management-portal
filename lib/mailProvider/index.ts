@@ -50,6 +50,21 @@ export async function createMailAttachment(
   };
 }
 
+export function createMailAttachmentFromBase64(
+  base64contents: string,
+  name: string,
+  contentType: string,
+  contentId?: string
+): MailAttachment {
+  const realContentId = contentId || randomUUID();
+  return {
+    name,
+    contentId: realContentId,
+    contentType,
+    base64Value: base64contents,
+  };
+}
+
 export interface IMailProvider {
   info: string;
   sendMail(mail: IMail): Promise<any>;

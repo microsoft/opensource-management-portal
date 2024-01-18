@@ -9,8 +9,8 @@ import { NextFunction, Response } from 'express';
 
 import { jsonError } from './jsonError';
 import { IApiRequest } from './apiReposAuth';
-import { PersonalAccessToken } from '../entities/token/token';
-import { getProviders } from '../transitional';
+import { PersonalAccessToken } from '../business/entities/token/token';
+import { getProviders } from '../lib/transitional';
 
 // TODO: consider better caching
 const localMemoryCacheVstsToAadId = new Map();

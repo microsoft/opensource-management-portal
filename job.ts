@@ -15,7 +15,7 @@ import type {
   SiteConfiguration,
 } from './interfaces';
 import { commonStartup } from '.';
-import { quitInTenSeconds } from './utils';
+import { quitInTenSeconds } from './lib/utils';
 import initialize from './middleware/initialize';
 
 export async function runJob(
@@ -154,7 +154,7 @@ function initializeJob(
   );
 }
 
-const job = {
+export const job = {
   runBackgroundJob: async (
     script: (providers: IProviders, jobParameters?: IReposJob) => Promise<IReposJobResult | void>,
     options?: IReposJobOptions

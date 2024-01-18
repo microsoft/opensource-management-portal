@@ -4,9 +4,10 @@
 //
 
 import { IGitHubAppInstallation, IGitHubWebhookEnterprise, IProviders } from '../../../interfaces';
+import type { WebhookProcessor } from '../../../business/webhooks/organizationProcessor';
 
 export interface ICompanySpecificFeatureFirehose {
-  processWebhook: (
+  processWebhook?: (
     providers: IProviders,
     body: any,
     eventType: string,
@@ -14,4 +15,6 @@ export interface ICompanySpecificFeatureFirehose {
     installation: IGitHubAppInstallation,
     acknowledgeEvent: () => void
   ) => Promise<boolean>;
+
+  getAdditionalWebhookTasks?: (providers: IProviders) => Promise<WebhookProcessor[]>;
 }

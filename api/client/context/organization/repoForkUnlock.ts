@@ -11,8 +11,8 @@ import { getRepositoryMetadataProvider, ReposAppRequest } from '../../../../inte
 import { Organization } from '../../../../business';
 import { getContextualRepository } from '../../../../middleware/github/repoPermissions';
 import { IndividualContext } from '../../../../business/user';
-import { ErrorHelper, getProviders } from '../../../../transitional';
-import NewRepositoryLockdownSystem from '../../../../features/newRepositories/newRepositoryLockdown';
+import { ErrorHelper, getProviders } from '../../../../lib/transitional';
+import NewRepositoryLockdownSystem from '../../../../business/features/newRepositories/newRepositoryLockdown';
 
 const router: Router = Router();
 
@@ -40,11 +40,12 @@ router.use(
 router.post(
   '/approve',
   asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
-    const { operations } = getProviders(req);
+    const { insights, operations } = getProviders(req);
     const repository = getContextualRepository(req);
     const repositoryMetadataProvider = getRepositoryMetadataProvider(operations);
     const organization = repository.organization;
     const lockdownSystem = new NewRepositoryLockdownSystem({
+      insights,
       operations,
       organization,
       repository,

@@ -11,9 +11,9 @@ import throat from 'throat';
 import job from '../job';
 import { TeamPermission } from '../business/teamPermission';
 import { GitHubRepositoryPermission, IProviders, IReposJobResult } from '../interfaces';
-import AutomaticTeamsWebhookProcessor from '../webhooks/tasks/automaticTeams';
-import { sleep } from '../utils';
-import { ErrorHelper } from '../transitional';
+import AutomaticTeamsWebhookProcessor from '../business/webhooks/tasks/automaticTeams';
+import { sleep } from '../lib/utils';
+import { ErrorHelper } from '../lib/transitional';
 import { Organization } from '../business';
 
 // Permissions processing: visit all repos and make sure that any designated read, write, admin
@@ -108,7 +108,7 @@ async function reviewOrganizationSystemTeams(
       }
       const currentPermissions = new Map<number, GitHubRepositoryPermission>();
       permissions.forEach((entry) => {
-        currentPermissions.set(Number(entry.team.id), entry.permission);
+        currentPermissions.set(Number(entry.team.id), entry.getAsPermission());
       });
       const teamsToSet = new Set<number>();
       specialTeamIds.forEach((specialTeamId) => {

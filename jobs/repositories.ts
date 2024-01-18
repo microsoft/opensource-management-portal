@@ -14,11 +14,11 @@ import throat from 'throat';
 
 import job from '../job';
 import { Organization, sortByRepositoryDate } from '../business';
-import { RepositoryEntity, tryGetRepositoryEntity } from '../entities/repository';
+import { RepositoryEntity, tryGetRepositoryEntity } from '../business/entities/repository';
 import { IProviders, IReposJobResult } from '../interfaces';
-import { sleep } from '../utils';
+import { sleep } from '../lib/utils';
 
-const sleepBetweenReposMs = 125;
+const sleepBetweenReposMs = 110;
 const maxParallel = 6;
 
 const shouldUpdateCached = true;
@@ -31,7 +31,7 @@ async function refreshRepositories(providers: IProviders): Promise<IReposJobResu
   }
 
   const started = new Date();
-  console.log(`Starting at ${started}`);
+  console.log(`Starting at ${started.toISOString()}`);
 
   const orgs = operations.getOrganizations();
   const throttle = throat(maxParallel);
@@ -44,7 +44,7 @@ async function refreshRepositories(providers: IProviders): Promise<IReposJobResu
   );
 
   // TODO: query all, remove any not processed [recently]
-  console.log(`Finished at ${new Date()}, started at ${started}`);
+  console.log(`Finished at ${new Date().toISOString()}, started at ${started.toISOString()}`);
 
   return {};
 }
@@ -86,7 +86,7 @@ async function processOrganization(
           continue;
         } else {
           updatedFields = setFields(repositoryEntity, entity, false /* not new */);
-          replace = !!updatedFields;
+          replace = updatedFields?.length > 0;
         }
         if (updatedFields.length === 0 && shouldUpdateCached) {
           replace = true;
@@ -317,7 +317,7 @@ function setFields(repositoryEntity: RepositoryEntity, entity: any, isNew: boole
     const updatedAt = new Date(entity.updated_at);
     const currentUpdatedAt = repositoryEntity.updatedAt ? new Date(repositoryEntity.updatedAt) : null;
     if (currentUpdatedAt && updatedAt && currentUpdatedAt.toISOString() !== updatedAt.toISOString()) {
-      repositoryEntity.pushedAt = updatedAt;
+      repositoryEntity.updatedAt = updatedAt;
       changed.push('updated_at');
     } else if (!currentUpdatedAt && updatedAt) {
       repositoryEntity.updatedAt = updatedAt;
@@ -345,6 +345,6 @@ function setFields(repositoryEntity: RepositoryEntity, entity: any, isNew: boole
 }
 
 job.run(refreshRepositories, {
-  timeoutMinutes: 320,
+  timeoutMinutes: 600,
   insightsPrefix: 'JobRefreshRepositories',
 });

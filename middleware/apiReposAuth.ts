@@ -14,8 +14,8 @@ import crypto from 'crypto';
 import { NextFunction, Response } from 'express';
 
 import { jsonError } from './jsonError';
-import { getProviders } from '../transitional';
-import { PersonalAccessToken } from '../entities/token/token';
+import { getProviders } from '../lib/transitional';
+import { PersonalAccessToken } from '../business/entities/token/token';
 import { ReposAppRequest } from '../interfaces';
 
 export const wrapErrorForImmediateUserError = (err: Error) => {

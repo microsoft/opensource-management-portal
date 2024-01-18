@@ -9,13 +9,13 @@ import asyncHandler from 'express-async-handler';
 import { getContextualTeam } from '../../../middleware/github/teamPermissions';
 
 import { jsonError } from '../../../middleware';
-import { getProviders } from '../../../transitional';
+import { getProviders } from '../../../lib/transitional';
 import JsonPager from '../jsonPager';
 import { getLinksLightCache } from '../leakyLocalCache';
 import { equivalentLegacyPeopleSearch } from './people';
 import { TeamRepositoryPermission, OrganizationMember, corporateLinkToJson } from '../../../business';
 import { ReposAppRequest, TeamJsonFormat, NoCacheNoBackground, ICorporateLink } from '../../../interfaces';
-import { sortRepositoriesByNameCaseInsensitive } from '../../../utils';
+import { sortRepositoriesByNameCaseInsensitive } from '../../../lib/utils';
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
 
 const router: Router = Router();

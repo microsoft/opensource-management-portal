@@ -13,7 +13,7 @@ import {
   throwIfNotGitHubCapable,
 } from '../interfaces';
 import { HttpMethod } from '../lib/github';
-import { CreateError } from '../transitional';
+import { CreateError } from '../lib/transitional';
 import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
 import {
   CacheDefault,
@@ -172,9 +172,9 @@ export class OrganizationProperties {
       );
     }
     const parameters = {
-      repository_names: organizationRepositoryNames,
       org: this.organization.name,
       properties: setPropertiesRecordToArray(propertiesAndValues),
+      repository_names: organizationRepositoryNames,
     };
     (await operations.github.restApi(
       this.authorize(purpose || this._defaultPurpose),

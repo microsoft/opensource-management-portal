@@ -6,7 +6,7 @@
 import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
-import { TeamJoinApprovalEntity } from '../../../../entities/teamJoinApproval/teamJoinApproval';
+import { TeamJoinApprovalEntity } from '../../../../business/entities/teamJoinApproval/teamJoinApproval';
 import {
   ReposAppRequest,
   OrganizationMembershipState,
@@ -24,7 +24,7 @@ import {
 import { submitTeamJoinRequest } from '../../../../routes/org/team';
 import { postActionDecision, TeamApprovalDecision } from '../../../../routes/org/team/approval';
 import { PermissionWorkflowEngine } from '../../../../routes/org/team/approvals';
-import { CreateError, getProviders } from '../../../../transitional';
+import { CreateError, getProviders } from '../../../../lib/transitional';
 import { IndividualContext } from '../../../../business/user';
 import getCompanySpecificDeployment from '../../../../middleware/companySpecificDeployment';
 
