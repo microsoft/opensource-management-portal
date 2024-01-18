@@ -10,12 +10,8 @@ import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
 import querystring from 'querystring';
-<<<<<<< HEAD
-import { CreateError, getProviders } from '../../transitional';
-=======
 
 import { CreateError, getProviders } from '../../lib/transitional';
->>>>>>> upstream/main
 import { IndividualContext } from '../../business/user';
 import { sleep, storeOriginalUrlAsReferrer, wrapError } from '../../lib/utils';
 import RequireActiveGitHubSession from '../../middleware/github/requireActiveSession';
