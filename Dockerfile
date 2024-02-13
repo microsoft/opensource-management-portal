@@ -22,7 +22,7 @@ COPY . .
 # Only if needed, copy file with NPM_TOKEN arg
 # COPY .npmrc.arg /build/.npmrc
 
-# RUN npm install --ignore-scripts --production --verbose
+RUN npm install --ignore-scripts --production --verbose
 RUN npm ci
 RUN npm run-script build
 RUN mv node_modules production_node_modules
