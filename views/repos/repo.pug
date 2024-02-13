@@ -102,7 +102,7 @@ block content
             if repo.language
               li
                 span(style={color: languageColor(repo.language)})
-                  != octicon('primitive-dot', 10)
+                  != octicon('dot-fill', 10)
                 = ' ' + repo.language
             if repo.license && repo.license.featured && repo.license.name
               li
