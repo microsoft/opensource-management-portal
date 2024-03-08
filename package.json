@@ -107,7 +107,7 @@
     "moment": "2.30.1",
     "morgan": "1.10.0",
     "node-jose": "2.2.0",
-    "nodemailer": "6.9.8",
+    "nodemailer": "6.9.11",
     "object-path": "0.11.8",
     "passport": "0.7.0",
     "passport-azure-ad": "4.3.5",
