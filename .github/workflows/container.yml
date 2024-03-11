@@ -51,7 +51,7 @@ jobs:
 
       - name: Azure OpenID Connect ✨
         if: github.repository == 'microsoft/opensource-management-portal' # official repo only
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.CLIENT_ID }}
           tenant-id: ${{ secrets.TENANT_ID }}
@@ -99,7 +99,7 @@ jobs:
       url: https://portal-staging.ospo.dev
     steps:
       - name: Azure OpenID Connect ✨
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.CLIENT_ID }}
           tenant-id: ${{ secrets.TENANT_ID }}
@@ -123,7 +123,7 @@ jobs:
       url: https://portal.ospo.dev
     steps:
       - name: Azure OpenID Connect ✨
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.CLIENT_ID }}
           tenant-id: ${{ secrets.TENANT_ID }}
