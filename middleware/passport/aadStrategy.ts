@@ -147,14 +147,15 @@ function activeDirectorySubset(
 }
 
 export default function createAADStrategy(app: IReposApplication, config: SiteConfiguration) {
-  const { redirectUrl, tenantId, clientId, clientSecret } = config.activeDirectory;
+  const { redirectUrl, tenantId, clientId: id, clientSecret: secret, isMultiTenant } = config.activeDirectory;
   const codespaces = config?.github?.codespaces;
-  if (!clientId) {
+  if (!id) {
     debug('No Azure Active Directory clientID configured, corporate authentication will be unavailable.');
     return {};
   }
   const providers = app.settings.providers as IProviders;
-  const aadAuthority = `https://login.microsoftonline.com/${tenantId}/`;
+  const authoritySegment = isMultiTenant ? 'organizations' : tenantId;
+  const aadAuthority = `https://login.microsoftonline.com/${authoritySegment}/`;
   // const aadMetadata = 'v2.0/.well-known/openid-configuration'; // used to use: .well-known/openid-configuration
   // const identityMetadata = `${aadAuthority}${aadMetadata}`;
   const originalIdentityMetadata = `${aadAuthority}.well-known/openid-configuration`;
@@ -163,8 +164,8 @@ export default function createAADStrategy(app: IReposApplication, config: SiteCo
   const aadScopes = 'profile openid user.read';
   const oauth2Client = new AuthorizationCode({
     client: {
-      id: clientId,
-      secret: clientSecret,
+      id,
+      secret,
     },
     auth: {
       tokenHost: aadAuthority,
@@ -177,7 +178,7 @@ export default function createAADStrategy(app: IReposApplication, config: SiteCo
     isCodespacesAuthenticating(config, 'aad') && !codespaces?.block
       ? getCodespacesHostname(config) + redirectSuffix
       : redirectUrl;
-  debug(`aad auth clientId=${clientId}, redirectUrl=${finalRedirectUrl}`);
+  debug(`aad auth clientId=${id}, redirectUrl=${finalRedirectUrl}`);
   providers.authorizationCodeClient = oauth2Client;
   const aadStrategy = new OIDCStrategy(
     {
@@ -185,8 +186,8 @@ export default function createAADStrategy(app: IReposApplication, config: SiteCo
       allowHttpForRedirectUrl: config.containers.docker || config.webServer.allowHttp,
       // @ts-ignore
       realm: tenantId,
-      clientID: clientId,
-      clientSecret,
+      clientID: id,
+      clientSecret: secret,
       identityMetadata: originalIdentityMetadata,
       responseType: 'id_token code',
       responseMode: 'form_post',
@@ -207,7 +208,7 @@ export default function createAADStrategy(app: IReposApplication, config: SiteCo
     const args = Array.prototype.slice.call(arguments);
     const messageToIntercept = 'In collectInfoFromReq: invalid state received in the request';
     if (args.length === 1 && typeof args[0] === 'string') {
-      console.warn(`AAD Failure: clientId=${clientId}, tenantId=${tenantId}, message=${args[0]}`);
+      console.warn(`AAD Failure: clientId=${id}, tenantId=${tenantId}, message=${args[0]}`);
     }
     if (args.length === 1 && typeof args[0] === 'string' && args[0] === messageToIntercept) {
       return this.redirect('/auth/azure/callback?failure=invalid');

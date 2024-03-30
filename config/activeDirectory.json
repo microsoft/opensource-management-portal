@@ -2,6 +2,7 @@
   "clientId": "env://AAD_CLIENT_ID",
   "clientSecret": "env://AAD_CLIENT_SECRET",
   "tenantId": "env://AAD_TENANT_ID",
+  "isMultiTenant": "env://AAD_MULTI_TENANT?trueIf=1",
   "redirectUrl": "env://AAD_REDIRECT_URL",
   "issuer": "env://AAD_ISSUER",
   "blockGuestUserTypes": "env://AAD_BLOCK_GUEST_LINKING?trueIf=block",

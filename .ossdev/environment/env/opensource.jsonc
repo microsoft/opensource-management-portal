@@ -20,6 +20,7 @@
   //
   // Corporate authentication; also, must be set in the deployed environment: KEYVAULT_CLIENT_ID, KEYVAULT_CLIENT_SECRET, AAD_TENANT_ID
   "AUTHENTICATION_SCHEME": "aad",
+  "AAD_MULTI_TENANT": "1",
   "AAD_CLIENT_SECRET": "keyvault://cafe.vault.azure.net/secrets/aad-app-secret",
   "AAD_CLIENT_ID": "keyvault://clientid@cafe.vault.azure.net/secrets/aad-app-secret",
   "AAD_REDIRECT_URL": "https://portal.ospo.dev/auth/azure/callback",

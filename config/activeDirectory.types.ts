@@ -11,6 +11,7 @@ export type ConfigActiveDirectory = {
   clientId: string;
   clientSecret: string;
   tenantId: string;
+  isMultiTenant: boolean;
   redirectUrl: string;
   issuer: string;
   blockGuestUserTypes: boolean;
